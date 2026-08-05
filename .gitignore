@@ -1,0 +1,14 @@
+.godot/
+.mcp.json
+*.log
+build/
+dist/
+artifacts/
+test-results/
+user-data/
+*.r2save
+*.r2save.bak
+*.realmz2
+
+# Local oracle/reference worktrees are never repository content.
+.references/
