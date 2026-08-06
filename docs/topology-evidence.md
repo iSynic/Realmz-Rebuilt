@@ -16,9 +16,9 @@ These observations do not prove final 2.0 search chances, LOS rules, elapsed-tim
 
 ## Providence compiler normalization
 
-Providence commit `a06f2ef152139dfd3fccfc5e563ba9ee58b62d3a` is the current authoritative compiler checkpoint. Its `src-tauri/src/dungeon.rs` decoder names packed dungeon bits, and the `.realmz2` exporter converts those bits into stable cells, directional edges, and explicit features. Providence Layout adjacency becomes explicit bidirectional map transitions, and placed AP headers become validated post-action destinations. Packed native values do not enter the runtime package as an alternate topology.
+Providence commit `a525e9df0d0619847a5928463eed881ace79152a` is the current authoritative compiler checkpoint. Its `src-tauri/src/dungeon.rs` decoder names packed dungeon bits, and the `.realmz2` exporter converts those bits into stable cells, directional edges, and explicit features. Providence Layout adjacency becomes explicit bidirectional map transitions, and placed AP headers become validated post-action destinations. Referenced land atlases and the normalized PICT 302 dungeon-composition atlas become immutable package media, while packed native values do not enter the runtime package as an alternate topology.
 
-The runtime mirror is schema v1 SHA-256 `16ec7efe0aa3ef335f0b2c37b32424b571c2f8035e65da7f0b0c45d37be21298`.
+The runtime mirror is schema v1 SHA-256 `4ecdc3866ada29a0d311e87700870d2e63732d97bf04d4898a3bc68331d073fd`.
 
 ## Realmz 2.0 behavior and proof
 
@@ -27,7 +27,7 @@ Target behavior:
 - `MapTopology.probe_entry` owns passability, wall, door, and secret entry decisions.
 - `MapTopology.find_path`, LOS, visibility, movement, search, trigger discovery, random-region membership, and presentation views consume the same cells, edges, features, and overlays.
 - `WorldState` owns terrain replacements, opened doors, discovered secrets, disabled triggers, and visited/minimap cells in the save aggregate.
-- `ClassicMapPresenter` consumes only `GameView`; its map, minimap, and debug facts cannot become simulation authority.
+- `ClassicMapPresenter` consumes only `GameView`; its clipped, party-centered atlas view, minimap, and debug facts cannot become simulation authority.
 
 Evidence labels:
 

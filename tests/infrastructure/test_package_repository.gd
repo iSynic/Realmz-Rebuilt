@@ -11,7 +11,7 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "15bfa8e19283877c2c833ffbd4f73a1115e1503d40dec7a02c21b2c361d2512f", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "53b6ab7cec5e3aa63d86360bbe016b63c415c64d24b472cc951986db4317f1c9", "package identity is retained")
 	var map := loaded.content.world.map_by_id("land:0")
 	assert_not_null(map, "the authoritative start map is constructed")
 	assert_equal(map.topology.width, 3, "fixture topology width is preserved")
@@ -43,13 +43,20 @@ func run() -> void:
 	assert_equal(loaded.content.spell_by_id("classic.spell.5101").damage_max, 4, "custom spells use packed Realmz class/level/slot identity")
 	assert_not_null(loaded.content.spell_by_id("classic.spell.1101"), "Providence compiles standard Data S spells into normalized runtime definitions")
 	assert_not_null(loaded.media, "validated package media receives a typed catalog")
-	assert_equal(loaded.media.assets().size(), 2, "the synthetic fixture carries only its authored picture and sound")
+	assert_equal(loaded.media.assets().size(), 4, "the synthetic fixture carries authored picture/sound media and both referenced map atlases")
 	var indexed_picture := loaded.media.picture_by_resource_id(128)
 	assert_not_null(indexed_picture, "Classic picture identity resolves through the typed media index")
 	assert_false(loaded.media.read_bytes(indexed_picture).is_empty(), "content-addressed picture bytes are hash-checked when read")
 	var indexed_sound := loaded.media.sound_by_resource_id(30005)
 	assert_not_null(indexed_sound, "Classic sound identity resolves through the typed media index")
 	assert_false(loaded.media.read_bytes(indexed_sound).is_empty(), "content-addressed sound bytes are hash-checked when read")
+	var land_tileset := loaded.media.tileset_by_id("landlook-0")
+	assert_not_null(land_tileset, "the authoritative land render identity resolves to a package tileset")
+	assert_equal(land_tileset.region_for(156), Rect2i(480, 224, 32, 32), "Classic one-based land tile IDs resolve to the expected atlas region")
+	assert_false(loaded.media.read_bytes(land_tileset).is_empty(), "content-addressed land atlas bytes are hash-checked when read")
+	var dungeon_tileset := loaded.media.tileset_by_id("dungeon-top-down-302")
+	assert_not_null(dungeon_tileset, "the authoritative dungeon render identity resolves to a package tileset")
+	assert_equal(dungeon_tileset.region_for(1), Rect2i(0, 0, 16, 16), "the first Classic dungeon tile resolves without an off-by-one shift")
 
 	var install_root := "user://realmz2-tests/package-install"
 	var installed := repository.install_package(FIXTURE_PATH, install_root)
@@ -68,7 +75,7 @@ func run() -> void:
 				assert_true(candidate.ready, "discovery reports independently validated readiness")
 		assert_equal(matching_installations, 1, "discovery returns the immutable package identity exactly once")
 
-	var picture := PackageMediaAsset.new("fixture.picture", "Fixture", "picture", "image/png", "PICT", 128, 0, "0000000000000000000000000000000000000000000000000000000000000000", "assets/media/0000000000000000000000000000000000000000000000000000000000000000.png", 1, 1, 0, 0, 0)
+	var picture := PackageMediaAsset.new("fixture.picture", "Fixture", "picture", "image/png", "PICT", 128, 0, "0000000000000000000000000000000000000000000000000000000000000000", "assets/media/0000000000000000000000000000000000000000000000000000000000000000.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
 	assert_true(picture.is_picture(), "package media classifies pictures by typed MIME and resource identity")
 	assert_false(picture.is_sound(), "picture media cannot be selected by the sound presenter")
 

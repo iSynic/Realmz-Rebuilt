@@ -15,9 +15,15 @@ var height: int
 var duration_ms: int
 var sample_rate: int
 var channels: int
+var tile_width: int
+var tile_height: int
+var columns: int
+var rows: int
+var landlook: int
+var base_tile: int
 
 
-func _init(asset_id: String, asset_label: String, asset_kind: String, asset_mime_type: String, asset_resource_type: String, asset_resource_id: int, asset_byte_count: int, asset_sha256: String, asset_path: String, asset_width: int, asset_height: int, asset_duration_ms: int, asset_sample_rate: int, asset_channels: int) -> void:
+func _init(asset_id: String, asset_label: String, asset_kind: String, asset_mime_type: String, asset_resource_type: String, asset_resource_id: int, asset_byte_count: int, asset_sha256: String, asset_path: String, asset_width: int, asset_height: int, asset_duration_ms: int, asset_sample_rate: int, asset_channels: int, asset_tile_width: int, asset_tile_height: int, asset_columns: int, asset_rows: int, asset_landlook: int, asset_base_tile: int) -> void:
 	id = asset_id
 	label = asset_label
 	kind = asset_kind
@@ -32,6 +38,12 @@ func _init(asset_id: String, asset_label: String, asset_kind: String, asset_mime
 	duration_ms = asset_duration_ms
 	sample_rate = asset_sample_rate
 	channels = asset_channels
+	tile_width = asset_tile_width
+	tile_height = asset_tile_height
+	columns = asset_columns
+	rows = asset_rows
+	landlook = asset_landlook
+	base_tile = asset_base_tile
 
 
 func is_picture() -> bool:
@@ -40,3 +52,16 @@ func is_picture() -> bool:
 
 func is_sound() -> bool:
 	return mime_type.begins_with("audio/") or kind.to_lower() in ["sound", "music"] or resource_type.strip_edges().to_upper() in ["SND", "MOD"]
+
+
+func is_tileset() -> bool:
+	return kind == "tileset" and mime_type.begins_with("image/") and tile_width > 0 and tile_height > 0 and columns > 0 and rows > 0
+
+
+func region_for(tile_id: int) -> Rect2i:
+	if not is_tileset():
+		return Rect2i()
+	var atlas_index := maxi(tile_id - 1, 0)
+	if atlas_index >= columns * rows:
+		return Rect2i()
+	return Rect2i((atlas_index % columns) * tile_width, floori(float(atlas_index) / float(columns)) * tile_height, tile_width, tile_height)

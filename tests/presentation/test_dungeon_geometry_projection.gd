@@ -2,6 +2,9 @@ extends RealmzTestCase
 
 
 func run() -> void:
+	assert_equal(ClassicMapPresenter.camera_top_left(Vector2i(48, 15), Vector2i(90, 90), Vector2i(11, 8)), Vector2i(43, 11), "exploration camera centers the AOGM start within the bounded map viewport")
+	assert_equal(ClassicMapPresenter.camera_top_left(Vector2i.ZERO, Vector2i(90, 90), Vector2i(11, 8)), Vector2i.ZERO, "exploration camera clamps at the north-west map boundary")
+	assert_equal(ClassicMapPresenter.camera_top_left(Vector2i(89, 89), Vector2i(90, 90), Vector2i(11, 8)), Vector2i(79, 82), "exploration camera clamps at the south-east map boundary")
 	var cells: Array[MapCellView] = [
 		_cell(Vector2i.ZERO, true, true, [&"stairs"], {&"north": &"wall", &"east": &"door", &"south": &"open", &"west": &"map-boundary"}, {&"north": false, &"east": true, &"south": true, &"west": false}),
 		_cell(Vector2i.RIGHT, true, true, [&"column"], {&"north": &"secret", &"east": &"map-boundary", &"south": &"open", &"west": &"door"}, {&"north": false, &"east": false, &"south": true, &"west": true}),
@@ -14,6 +17,8 @@ func run() -> void:
 	assert_equal(projection.cells().size(), 2, "only topology-visible cells become presentation geometry")
 	assert_equal(projection.edges().size(), 8, "every visible directed topology edge is preserved for equivalence checks")
 	for source: MapCellView in dungeon_view.cells():
+		assert_equal(source.render_tile, 1, "detached presentation cells retain their immutable render tile")
+		assert_equal(source.tileset_id, "dungeon-top-down-302", "detached presentation cells retain their immutable tileset identity")
 		if not source.visible:
 			assert_equal(projection.cell_at(source.coordinate), null, "hidden cells cannot leak into dungeon geometry")
 			continue
@@ -35,4 +40,4 @@ func run() -> void:
 
 
 func _cell(coordinate: Vector2i, passable: bool, visible: bool, features: Array[StringName], edge_kinds: Dictionary, edge_passability: Dictionary) -> MapCellView:
-	return MapCellView.new(coordinate, "classic.terrain.test", passable, false, visible, visible, false, false, features, edge_kinds, edge_passability)
+	return MapCellView.new(coordinate, "classic.terrain.test", 1, "dungeon-top-down-302", passable, false, visible, visible, false, false, features, {}, edge_kinds, edge_passability)

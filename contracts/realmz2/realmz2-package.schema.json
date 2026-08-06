@@ -835,11 +835,11 @@
     },
     "asset": {
       "type": "object",
-      "required": ["id", "label", "kind", "bytes", "sha256", "path"],
+      "required": ["id", "label", "kind", "bytes", "sha256", "path", "tileWidth", "tileHeight", "columns", "rows", "landlook", "baseTile"],
       "properties": {
         "id": { "$ref": "#/$defs/identifier" },
         "label": { "type": "string" },
-        "kind": {},
+        "kind": { "type": "string", "minLength": 1 },
         "mimeType": { "type": ["string", "null"] },
         "resourceType": { "type": ["string", "null"] },
         "resourceId": { "type": ["integer", "null"] },
@@ -850,7 +850,13 @@
         "height": { "type": ["integer", "null"], "minimum": 0 },
         "durationMs": { "type": ["integer", "null"], "minimum": 0 },
         "sampleRate": { "type": ["integer", "null"], "minimum": 0 },
-        "channels": { "type": ["integer", "null"], "minimum": 0 }
+        "channels": { "type": ["integer", "null"], "minimum": 0 },
+        "tileWidth": { "type": ["integer", "null"], "minimum": 1 },
+        "tileHeight": { "type": ["integer", "null"], "minimum": 1 },
+        "columns": { "type": ["integer", "null"], "minimum": 1 },
+        "rows": { "type": ["integer", "null"], "minimum": 1 },
+        "landlook": { "type": ["integer", "null"] },
+        "baseTile": { "type": ["integer", "null"] }
       },
       "additionalProperties": false
     },

@@ -30,6 +30,13 @@ func sound_by_resource_id(resource_id: int) -> PackageMediaAsset:
 	return null
 
 
+func tileset_by_id(tileset_id: String) -> PackageMediaAsset:
+	for asset: PackageMediaAsset in _assets:
+		if asset.id == tileset_id and asset.is_tileset():
+			return asset
+	return null
+
+
 func read_bytes(asset: PackageMediaAsset) -> PackedByteArray:
 	if asset == null or not _assets.has(asset):
 		return PackedByteArray()

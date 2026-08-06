@@ -3,6 +3,8 @@ extends RefCounted
 
 var coordinate: Vector2i
 var terrain_id: String
+var render_tile: int
+var tileset_id: String
 var passable: bool
 var blocks_los: bool
 var visible: bool
@@ -10,13 +12,16 @@ var visited: bool
 var has_trigger: bool
 var in_random_region: bool
 var _feature_kinds: Array[StringName]
+var _feature_orientations: Dictionary = {}
 var _edge_kinds: Dictionary = {}
 var _edge_passability: Dictionary = {}
 
 
-func _init(cell_coordinate: Vector2i, terrain: String, can_enter: bool, blocks_visibility: bool, is_visible: bool, was_visited: bool, trigger_present: bool, random_region_present: bool, feature_kinds: Array[StringName], edge_kinds: Dictionary, edge_passability: Dictionary) -> void:
+func _init(cell_coordinate: Vector2i, terrain: String, tile: int, cell_tileset_id: String, can_enter: bool, blocks_visibility: bool, is_visible: bool, was_visited: bool, trigger_present: bool, random_region_present: bool, feature_kinds: Array[StringName], feature_orientations: Dictionary, edge_kinds: Dictionary, edge_passability: Dictionary) -> void:
 	coordinate = cell_coordinate
 	terrain_id = terrain
+	render_tile = tile
+	tileset_id = cell_tileset_id
 	passable = can_enter
 	blocks_los = blocks_visibility
 	visible = is_visible
@@ -24,6 +29,7 @@ func _init(cell_coordinate: Vector2i, terrain: String, can_enter: bool, blocks_v
 	has_trigger = trigger_present
 	in_random_region = random_region_present
 	_feature_kinds = feature_kinds.duplicate()
+	_feature_orientations = feature_orientations.duplicate()
 	_edge_kinds = edge_kinds.duplicate()
 	_edge_passability = edge_passability.duplicate()
 
@@ -34,6 +40,10 @@ func has_feature(feature_kind: StringName) -> bool:
 
 func features() -> Array[StringName]:
 	return _feature_kinds.duplicate()
+
+
+func feature_orientation(feature_kind: StringName) -> StringName:
+	return StringName(_feature_orientations.get(feature_kind, ""))
 
 
 func edge_kind(direction: StringName) -> StringName:

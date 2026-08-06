@@ -1,11 +1,12 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "16ec7efe0aa3ef335f0b2c37b32424b571c2f8035e65da7f0b0c45d37be21298"
+const EXPECTED_SCHEMA_HASH: String = "4ecdc3866ada29a0d311e87700870d2e63732d97bf04d4898a3bc68331d073fd"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
 	"realmz.presentation.content-addressed-media-v1",
+	"realmz.presentation.tileset-atlases-v1",
 	"realmz.scenario.classic-vm-v1",
 	"realmz.scenario.safe-actions-v1",
 	"realmz.world.topology-v1",
@@ -129,6 +130,8 @@ func _load_open_archive(archive: ZIPReader, source_path: String) -> PackageLoadR
 	if not _validate_document_header(content_document, "realmz2.content") or not _validate_document_header(world_document, "realmz2.world") or not _validate_document_header(scenario_document, "realmz2.scenario") or not _validate_document_header(asset_document, "realmz2.assets"):
 		return _validation_failure()
 	if not _validate_assets(asset_document, manifest["files"]):
+		return _validation_failure()
+	if not _validate_tileset_references(asset_document, world_document):
 		return _validation_failure()
 	var runtime_content := _construct_content(manifest, content_document, world_document, scenario_document)
 	if runtime_content == null:
@@ -1605,7 +1608,7 @@ func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
 	var ids: Dictionary = {}
 	var resources: Dictionary = {}
 	for asset: Variant in document["assets"]:
-		if not asset is Dictionary or not _exact_fields(asset, ["id", "label", "kind", "mimeType", "resourceType", "resourceId", "bytes", "sha256", "path", "width", "height", "durationMs", "sampleRate", "channels"]):
+		if not asset is Dictionary or not _exact_fields(asset, ["id", "label", "kind", "mimeType", "resourceType", "resourceId", "bytes", "sha256", "path", "width", "height", "durationMs", "sampleRate", "channels", "tileWidth", "tileHeight", "columns", "rows", "landlook", "baseTile"]):
 			return _reject("Asset index contains a malformed record.")
 		if not asset["id"] is String or asset["id"].is_empty() or ids.has(asset["id"]) or not asset["label"] is String or not asset["kind"] is String:
 			return _reject("Asset identities, labels, and kinds must be typed and unique.")
@@ -1616,9 +1619,15 @@ func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
 			return _reject("Asset resource type must be a string or null.")
 		if asset["resourceId"] != null and not _is_integer(asset["resourceId"]):
 			return _reject("Asset resource ID must be an integer or null.")
-		for optional_integer: String in ["width", "height", "durationMs", "sampleRate", "channels"]:
+		for optional_integer: String in ["width", "height", "durationMs", "sampleRate", "channels", "tileWidth", "tileHeight", "columns", "rows", "landlook", "baseTile"]:
 			if asset[optional_integer] != null and (not _is_integer(asset[optional_integer]) or _integer(asset[optional_integer]) < 0):
 				return _reject("Asset %s must be a non-negative integer or null." % optional_integer)
+		if asset["kind"] == "tileset":
+			for tileset_field: String in ["width", "height", "tileWidth", "tileHeight", "columns", "rows"]:
+				if asset[tileset_field] == null or _integer(asset[tileset_field]) < 1:
+					return _reject("Tileset asset '%s' has invalid %s metadata." % [asset["id"], tileset_field])
+			if not String(asset["mimeType"]).begins_with("image/") or _integer(asset["width"]) != _integer(asset["tileWidth"]) * _integer(asset["columns"]) or _integer(asset["height"]) != _integer(asset["tileHeight"]) * _integer(asset["rows"]):
+				return _reject("Tileset asset '%s' dimensions do not match its atlas grid." % asset["id"])
 		if not _is_integer(asset["bytes"]) or _integer(asset["bytes"]) < 0 or not asset["path"] is String or not _is_sha256(asset["sha256"]) or not files.has(asset["path"]):
 			return _reject("Asset index contains a malformed or untracked payload.")
 		if not asset["path"].begins_with("assets/media/") or files[asset["path"]]["sha256"] != asset["sha256"] or _integer(files[asset["path"]]["bytes"]) != _integer(asset["bytes"]):
@@ -1628,6 +1637,24 @@ func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
 			if resources.has(resource_key):
 				return _reject("Asset resource identities must be unique.")
 			resources[resource_key] = true
+	return true
+
+
+func _validate_tileset_references(assets: Dictionary, world: Dictionary) -> bool:
+	var tileset_ids: Dictionary = {}
+	for asset: Dictionary in assets["assets"]:
+		if asset["kind"] == "tileset":
+			tileset_ids[asset["id"]] = true
+	if not world.get("maps") is Array:
+		return _reject("World maps must be available for tileset validation.")
+	for map: Variant in world["maps"]:
+		if not map is Dictionary or not map.get("cells") is Array:
+			return _reject("World map is malformed during tileset validation.")
+		for cell: Variant in map["cells"]:
+			if not cell is Dictionary or not cell.get("render") is Dictionary or not cell["render"].get("tilesetId") is String:
+				return _reject("Topology render facts are malformed during tileset validation.")
+			if not tileset_ids.has(cell["render"]["tilesetId"]):
+				return _reject("Topology references missing tileset asset '%s'." % cell["render"]["tilesetId"])
 	return true
 
 
@@ -1649,6 +1676,12 @@ func _construct_assets(document: Dictionary) -> Array[PackageMediaAsset]:
 			0 if record["durationMs"] == null else _integer(record["durationMs"]),
 			0 if record["sampleRate"] == null else _integer(record["sampleRate"]),
 			0 if record["channels"] == null else _integer(record["channels"]),
+			0 if record["tileWidth"] == null else _integer(record["tileWidth"]),
+			0 if record["tileHeight"] == null else _integer(record["tileHeight"]),
+			0 if record["columns"] == null else _integer(record["columns"]),
+			0 if record["rows"] == null else _integer(record["rows"]),
+			-1 if record["landlook"] == null else _integer(record["landlook"]),
+			-1 if record["baseTile"] == null else _integer(record["baseTile"]),
 		))
 	return assets
 

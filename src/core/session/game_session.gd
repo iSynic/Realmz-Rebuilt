@@ -748,6 +748,7 @@ func _build_map_view() -> MapView:
 	var cells: Array[MapCellView] = []
 	for cell: MapCell in map.topology.cells():
 		var feature_kinds: Array[StringName] = []
+		var feature_orientations: Dictionary = {}
 		var edge_kinds: Dictionary = {}
 		var edge_passability: Dictionary = {}
 		for direction: StringName in [&"north", &"east", &"south", &"west"]:
@@ -761,6 +762,7 @@ func _build_map_view() -> MapView:
 				continue
 			if not feature_kinds.has(feature.kind):
 				feature_kinds.append(feature.kind)
+				feature_orientations[feature.kind] = feature.orientation
 		var can_enter := cell.passable and not hidden_secret
-		cells.append(MapCellView.new(cell.coordinate, _state.world.terrain_for(map.id, cell), can_enter, cell.blocks_los, visible.has(cell.coordinate), _state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not cell.random_rect_ids().is_empty(), feature_kinds, edge_kinds, edge_passability))
+		cells.append(MapCellView.new(cell.coordinate, _state.world.terrain_for(map.id, cell), cell.render_tile, cell.tileset_id, can_enter, cell.blocks_los, visible.has(cell.coordinate), _state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not cell.random_rect_ids().is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability))
 	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, _state.party.coordinate, cells, _state.world.map_is_dark(map))

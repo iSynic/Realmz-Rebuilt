@@ -21,6 +21,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - Animation completion never advances simulation; only genuine interaction responses resume it.
 - While an interaction is pending, exploration controls remain disabled and the presenter cannot bypass the session response path.
 - TileMap layers, collisions, AStar structures, meshes, minimap textures, and other caches are disposable derivatives of `GameView` facts produced from topology plus overlays.
+- The 2D exploration viewport is clipped to its center panel and party-centered with edge clamping. It renders package-backed Classic atlases from each detached cell's `tileset_id` and `render_tile`; dungeon composition uses the same detached feature and edge facts as the topology views.
 - Switching between 2D and 3D changes only presentation settings. It cannot create collision, movement, LOS, discovery, or door state.
 - Presentation and accessibility settings cannot change rules.
 - Cosmetic RNG cannot enter saves, replays, oracle traces, or simulation decisions.

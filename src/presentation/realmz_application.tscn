@@ -71,6 +71,8 @@ text = "Verify input"
 [node name="ExplorationMap" type="Control" parent="." unique_id=169771348]
 unique_name_in_owner = true
 z_index = 5
+clip_contents = true
+texture_filter = 1
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5

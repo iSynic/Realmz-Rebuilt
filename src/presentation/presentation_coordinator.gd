@@ -36,6 +36,7 @@ func _on_step_committed(step: SessionStep) -> void:
 
 func set_package_media(media: PackageMediaCatalog) -> void:
 	_media = media
+	_map_presenter.set_media_catalog(media)
 
 
 func set_dungeon_3d_enabled(enabled: bool) -> void:
