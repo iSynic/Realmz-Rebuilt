@@ -43,14 +43,31 @@ func _initialize() -> void:
 	var media := PackageMediaCatalog.new(package_path, manifest["packageHash"], repository._construct_assets(asset_document))
 	archive.close()
 	var session := GameSession.new()
+	var session_started_at := Time.get_ticks_msec()
 	var step := session.start(content, 1)
+	var session_start_ms := Time.get_ticks_msec() - session_started_at
 	if step.state == SessionStep.State.FAILED:
 		printerr("SESSION_REJECTED %s: %s" % [step.error_code, step.error_message])
 		call_deferred("_quit_cleanly", 1)
 		return
+	var view_started_at := Time.get_ticks_msec()
 	var view := session.view()
+	var first_view_ms := Time.get_ticks_msec() - view_started_at
+	var repeat_views_started_at := Time.get_ticks_msec()
+	for index: int in 10:
+		session.view()
+	var ten_repeat_views_ms := Time.get_ticks_msec() - repeat_views_started_at
+	var blocked_move_started_at := Time.get_ticks_msec()
+	var blocked_move := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	var blocked_move_ms := Time.get_ticks_msec() - blocked_move_started_at
+	var post_move_view_started_at := Time.get_ticks_msec()
+	session.view()
+	var post_move_view_ms := Time.get_ticks_msec() - post_move_view_started_at
 	print(CanonicalJson.encode({
+		"blockedMoveError": String(blocked_move.error_code),
+		"blockedMoveMs": blocked_move_ms,
 		"campaignId": content.campaign_id,
+		"firstViewMs": first_view_ms,
 		"packageHash": content.package_hash,
 		"rulesVersion": content.rules_version,
 		"startMapId": view.party_map_id,
@@ -59,6 +76,9 @@ func _initialize() -> void:
 		"partySetupAvailable": view.party_setup_available,
 		"pendingInteraction": step.interaction != null,
 		"mediaAssets": media.assets().size(),
+		"postMoveViewMs": post_move_view_ms,
+		"sessionStartMs": session_start_ms,
+		"tenRepeatViewsMs": ten_repeat_views_ms,
 		"totalMs": Time.get_ticks_msec() - started_at,
 	}))
 	call_deferred("_quit_cleanly", 0)

@@ -1,20 +1,60 @@
 class_name ClassicMapPresenter
 extends Control
 
-@export var cell_size: float = 48.0
+signal movement_requested(direction: Vector2i)
+
+const MOUSE_REPEAT_DELAY: float = 0.28
+const MOUSE_REPEAT_INTERVAL: float = 0.11
+
+@export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2(0.0, 24.0)
 @export var minimap_size: float = 94.0
-@export var show_debug_facts: bool = true
+@export var show_debug_facts: bool = false
 
 var _view: GameView
 var _media: PackageMediaCatalog
 var _atlas_assets: Dictionary = {}
 var _atlas_textures: Dictionary = {}
+var _party_rect: Rect2
+var _minimap_rect: Rect2
+var _held_direction: Vector2i = Vector2i.ZERO
+var _mouse_repeat_remaining: float = 0.0
+
+
+func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	set_process(true)
+
+
+func _process(delta: float) -> void:
+	if _held_direction == Vector2i.ZERO or not visible:
+		return
+	_mouse_repeat_remaining -= delta
+	if _mouse_repeat_remaining <= 0.0:
+		movement_requested.emit(_held_direction)
+		_mouse_repeat_remaining = MOUSE_REPEAT_INTERVAL
+
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			_held_direction = _movement_direction_at(event.position)
+			if _held_direction != Vector2i.ZERO:
+				movement_requested.emit(_held_direction)
+				_mouse_repeat_remaining = MOUSE_REPEAT_DELAY
+				accept_event()
+		else:
+			_held_direction = Vector2i.ZERO
+			_mouse_repeat_remaining = 0.0
+	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
+		_held_direction = _movement_direction_at(event.position)
 
 
 func present(game_view: GameView) -> void:
 	_view = game_view
 	visible = game_view != null and game_view.session_started and game_view.map_view != null
+	if not visible:
+		_held_direction = Vector2i.ZERO
 	queue_redraw()
 
 
@@ -52,21 +92,23 @@ func _draw() -> void:
 			continue
 		var rect := Rect2(map_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
 		_draw_cell(cell, rect, map_view.level_type, map_view.dark)
-		draw_rect(rect, Color(0.22, 0.25, 0.30), false, 1.0)
-		_draw_edges(cell, rect)
-		_draw_features(cell, rect)
-		if cell.has_trigger:
-			var center := rect.get_center()
-			draw_colored_polygon(PackedVector2Array([center + Vector2(0, -8), center + Vector2(8, 0), center + Vector2(0, 8), center + Vector2(-8, 0)]), Color(0.95, 0.72, 0.26))
-		if cell.in_random_region:
-			draw_rect(rect.grow(-5.0), Color(0.48, 0.29, 0.58, 0.9), false, 2.0)
 		if show_debug_facts:
+			draw_rect(rect, Color(0.22, 0.25, 0.30), false, 1.0)
+			_draw_edges(cell, rect)
+			_draw_features(cell, rect)
+			if cell.has_trigger:
+				var center := rect.get_center()
+				draw_colored_polygon(PackedVector2Array([center + Vector2(0, -6), center + Vector2(6, 0), center + Vector2(0, 6), center + Vector2(-6, 0)]), Color(0.95, 0.72, 0.26))
+			if cell.in_random_region:
+				draw_rect(rect.grow(-4.0), Color(0.48, 0.29, 0.58, 0.9), false, 2.0)
 			var facts := "%s%s%s" % ["M" if cell.passable else "X", "L" if cell.blocks_los else "", "R" if cell.in_random_region else ""]
 			draw_string(font, rect.position + Vector2(7, 17), facts, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.78, 0.82, 0.88))
-	var party_rect := Rect2(map_origin + Vector2(map_view.party_coordinate - camera) * cell_size, Vector2.ONE * cell_size)
-	draw_circle(party_rect.get_center(), 13.0, Color(0.92, 0.78, 0.34))
-	draw_circle(party_rect.get_center(), 7.0, Color(0.17, 0.12, 0.06))
+	_party_rect = Rect2(map_origin + Vector2(map_view.party_coordinate - camera) * cell_size, Vector2.ONE * cell_size)
+	draw_circle(_party_rect.get_center(), 10.0, Color(0.92, 0.78, 0.34))
+	draw_circle(_party_rect.get_center(), 5.0, Color(0.17, 0.12, 0.06))
+	_draw_movement_cues(map_view, _party_rect)
 	draw_string(font, Vector2(8.0, 17.0), "%s • %s" % [map_view.map_name, String(map_view.level_type)], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.86, 0.75, 0.42))
+	draw_string(font, Vector2(size.x - 238.0, 17.0), "Click map or use arrows / WASD", HORIZONTAL_ALIGNMENT_RIGHT, 230.0, 12, Color(0.66, 0.69, 0.73))
 	_draw_minimap(map_view, font)
 
 
@@ -187,11 +229,35 @@ func _draw_minimap(map_view: MapView, font: Font) -> void:
 	var scale := minf(minimap_size / float(map_view.width), minimap_size / float(map_view.height))
 	var map_pixel_size := Vector2(map_view.width, map_view.height) * scale
 	var origin := Vector2(size.x - map_pixel_size.x - 8.0, size.y - map_pixel_size.y - 8.0)
-	draw_rect(Rect2(origin - Vector2.ONE * 4.0, map_pixel_size + Vector2.ONE * 8.0), Color(0.035, 0.04, 0.05, 0.9), true)
+	_minimap_rect = Rect2(origin - Vector2.ONE * 4.0, map_pixel_size + Vector2.ONE * 8.0)
+	draw_rect(_minimap_rect, Color(0.035, 0.04, 0.05, 0.9), true)
 	draw_string(font, origin - Vector2(0, 7), "Map", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.72, 0.76, 0.82))
-	for cell: MapCellView in map_view.cells():
-		var rect := Rect2(origin + Vector2(cell.coordinate) * scale, Vector2.ONE * maxf(scale, 1.0))
-		var color := Color(0.28, 0.48, 0.32) if cell.visited else Color(0.09, 0.10, 0.12)
-		draw_rect(rect, color, true)
+	for coordinate: Vector2i in map_view.visited_coordinates():
+		var rect := Rect2(origin + Vector2(coordinate) * scale, Vector2.ONE * maxf(scale, 1.0))
+		draw_rect(rect, Color(0.28, 0.48, 0.32), true)
 	var party_center := origin + (Vector2(map_view.party_coordinate) + Vector2.ONE * 0.5) * scale
 	draw_circle(party_center, maxf(2.0, scale * 1.5), Color(0.94, 0.78, 0.28))
+
+
+func _draw_movement_cues(map_view: MapView, party_rect: Rect2) -> void:
+	var center := party_rect.get_center()
+	var cue_points := {
+		Vector2i.UP: PackedVector2Array([center + Vector2(-4, -11), center + Vector2(4, -11), center + Vector2(0, -15)]),
+		Vector2i.RIGHT: PackedVector2Array([center + Vector2(11, -4), center + Vector2(11, 4), center + Vector2(15, 0)]),
+		Vector2i.DOWN: PackedVector2Array([center + Vector2(-4, 11), center + Vector2(4, 11), center + Vector2(0, 15)]),
+		Vector2i.LEFT: PackedVector2Array([center + Vector2(-11, -4), center + Vector2(-11, 4), center + Vector2(-15, 0)]),
+	}
+	for direction: Vector2i in cue_points:
+		var color := Color(0.95, 0.76, 0.25, 0.95) if map_view.can_move(direction) else Color(0.42, 0.16, 0.15, 0.90)
+		draw_colored_polygon(cue_points[direction], color)
+
+
+func _movement_direction_at(position: Vector2) -> Vector2i:
+	if _party_rect.size == Vector2.ZERO or _minimap_rect.has_point(position):
+		return Vector2i.ZERO
+	var offset := position - _party_rect.get_center()
+	if absf(offset.x) < cell_size * 0.35 and absf(offset.y) < cell_size * 0.35:
+		return Vector2i.ZERO
+	if absf(offset.x) > absf(offset.y):
+		return Vector2i.RIGHT if offset.x > 0.0 else Vector2i.LEFT
+	return Vector2i.DOWN if offset.y > 0.0 else Vector2i.UP

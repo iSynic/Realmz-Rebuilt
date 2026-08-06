@@ -97,6 +97,21 @@ func was_visited(map_id: String, coordinate: Vector2i) -> bool:
 	return _visited_cells.has(_cell_key(map_id, coordinate))
 
 
+func visited_coordinates(map_id: String) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	var prefix := "%s:" % map_id
+	for key_value: Variant in _visited_cells.keys():
+		var key := String(key_value)
+		if not key.begins_with(prefix):
+			continue
+		var components := key.trim_prefix(prefix).split(",", false, 1)
+		if components.size() != 2 or not components[0].is_valid_int() or not components[1].is_valid_int():
+			continue
+		result.append(Vector2i(int(components[0]), int(components[1])))
+	result.sort_custom(func(left: Vector2i, right: Vector2i) -> bool: return left.y < right.y or left.y == right.y and left.x < right.x)
+	return result
+
+
 func to_data() -> Dictionary:
 	var random_regions: Array[Dictionary] = []
 	var random_region_ids: Array = _random_regions.keys()

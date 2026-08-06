@@ -13,6 +13,9 @@ func run() -> void:
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "exploration session starts")
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "Providence start coordinate is authoritative")
 	assert_equal(session.view().map_view.cells().size(), 9, "GameView exposes a topology-derived map")
+	assert_true(session.view().map_view.can_move(Vector2i.UP), "the detached view exposes an authoritative passable movement direction")
+	assert_false(session.view().map_view.can_move(Vector2i.LEFT), "the detached view exposes an authoritative blocked movement direction")
+	assert_equal(session.view().map_view.visited_coordinates(), [Vector2i(1, 1)], "the minimap receives only session-owned visited coordinates")
 
 	var north := session.submit_intent(PlayerIntent.move(Vector2i.UP))
 	assert_equal(session.view().party_coordinate, Vector2i(1, 0), "typed movement intent commits through GameSession")
@@ -28,6 +31,7 @@ func run() -> void:
 	var search := session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	assert_equal(search.events[0].payload["roll"], 37, "search follows Castle random-rectangle draw ordering through the centralized RNG")
 	assert_true(_has_event(search, &"secret_discovered"), "search commits secret discovery")
+	assert_true(session.view().map_view.can_move(Vector2i.LEFT), "movement cues update from the same discovered-secret overlay as simulation")
 	var secret_entry := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal(session.view().party_coordinate, Vector2i(0, 1), "discovered secret permits movement")
 	assert_true(_has_event(secret_entry, &"message_shown"), "secret AP uses the ordinary action sequence")

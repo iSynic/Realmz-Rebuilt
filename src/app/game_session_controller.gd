@@ -4,15 +4,21 @@ extends Node
 signal step_committed(step: SessionStep)
 
 var _session: GameSession = GameSession.new()
+var _current_view: GameView = _session.view()
 
 
 func session() -> GameSession:
 	return _session
 
 
+func view() -> GameView:
+	return _current_view
+
+
 func replace_session(replacement: GameSession) -> void:
 	assert(replacement != null, "A session replacement is required")
 	_session = replacement
+	_current_view = _session.view()
 
 
 func start(content: RealmzContent, initial_seed: int) -> SessionStep:
@@ -35,11 +41,13 @@ func restore(content: RealmzContent, envelope: SaveEnvelope) -> SessionStep:
 
 func submit_intent(intent: PlayerIntent) -> SessionStep:
 	var step: SessionStep = _session.submit_intent(intent)
+	_current_view = _session.view()
 	step_committed.emit(step)
 	return step
 
 
 func respond(response: InteractionResponse) -> SessionStep:
 	var step: SessionStep = _session.respond(response)
+	_current_view = _session.view()
 	step_committed.emit(step)
 	return step

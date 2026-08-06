@@ -13,6 +13,7 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 ## Local Contracts
 
 - Treat package and save data as untrusted until all structural, hash, reference, limit, topology, and capability checks pass.
+- Discovery verifies manifest/schema/capability and complete archive size/hash integrity without parsing and constructing every campaign. Starting a package performs the complete typed validation; unchanged immutable packages may reuse an in-memory result keyed by canonical path, modification time, and byte count.
 - Validate Classic opcode support, Scenario Action namespaces, caller contexts, typed arguments, Safe bytecode limits, and every program/action reference before constructing content.
 - Verify deterministic ZIP inventory/order, canonical manifest package hash, schema hash, and every file hash before parsing runtime documents.
 - Runtime JSON dictionaries do not cross into the core; validating factories construct typed immutable content, including explicit topology edges/features, random regions, cross-map transitions, direct Simple/Complex/Thief/Timed Encounters, and rule definitions for races, castes, items, spells, monsters, battles, treasures, and shops.

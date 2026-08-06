@@ -10,6 +10,7 @@ func run() -> void:
 	assert_true(loaded.is_ok(), "the Providence-authored fixture passes package validation: %s" % loaded.error_message)
 	if not loaded.is_ok():
 		return
+	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
 	assert_equal(loaded.content.package_hash, "53b6ab7cec5e3aa63d86360bbe016b63c415c64d24b472cc951986db4317f1c9", "package identity is retained")
 	var map := loaded.content.world.map_by_id("land:0")
@@ -72,7 +73,7 @@ func run() -> void:
 		for candidate: PackageDiscoveryResult in discovered:
 			if candidate.package_hash == loaded.content.package_hash:
 				matching_installations += 1
-				assert_true(candidate.ready, "discovery reports independently validated readiness")
+				assert_true(candidate.ready, "discovery reports manifest integrity and capability readiness without constructing the campaign")
 		assert_equal(matching_installations, 1, "discovery returns the immutable package identity exactly once")
 
 	var picture := PackageMediaAsset.new("fixture.picture", "Fixture", "picture", "image/png", "PICT", 128, 0, "0000000000000000000000000000000000000000000000000000000000000000", "assets/media/0000000000000000000000000000000000000000000000000000000000000000.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
@@ -105,6 +106,16 @@ func run() -> void:
 	var rejected := repository.load_package(TAMPERED_FIXTURE_PATH)
 	assert_false(rejected.is_ok(), "a content mutation without matching manifest hashes is rejected")
 	assert_contains(rejected.error_message, "failed size or SHA-256", "hash rejection reports the violated boundary")
+	var fixture_discovery := repository.discover_packages(["res://tests/fixtures/packages"])
+	var discovered_valid := false
+	var discovered_tampered := false
+	for candidate: PackageDiscoveryResult in fixture_discovery:
+		if candidate.path == FIXTURE_PATH:
+			discovered_valid = candidate.ready
+		elif candidate.path == TAMPERED_FIXTURE_PATH:
+			discovered_tampered = not candidate.ready and candidate.error_message.contains("failed size or SHA-256")
+	assert_true(discovered_valid, "manifest-only discovery accepts the intact fixture without typed content construction")
+	assert_true(discovered_tampered, "manifest-only discovery still rejects stale content hashes")
 
 	var sandbox_error := PackageRepository.package_capability_error("realmz.scenario.gdscript-actions-v1")
 	assert_contains(sandbox_error, "no secure external host", "the manifest readiness path rejects deferred GDScript backends at the security boundary")

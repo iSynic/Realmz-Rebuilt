@@ -27,6 +27,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `MapTopology` plus `WorldState` overlays is the only source for simulation map facts; movement, pathfinding, LOS, search, triggers, and views reuse its explicit cells, edges, and features.
 - Random rectangles follow Castle's reverse region order, 1-in-10,000 chance scale, three ordered random-door draws, signed one-shot door state, surprise choice, and battle selection through the session RNG.
 - `GameView` and its map/cell views are detached read models for presentation and never expose mutable simulation objects.
+- `MapView` carries a bounded 25×25 party-local cell projection, the complete visited-coordinate set needed by the minimap, and cardinal movement availability computed through the same topology probe as movement. It does not duplicate the full 90×90 map for every presentation revision.
 - Classic-visible Realmz behavior is the fixed ruleset. Fidelity corrections require a documented decision and source/oracle tests.
 - Unsuspended held-over allies are consumed into the combat roster as non-traitors. After combat, surviving friendly monsters with nonzero `canSummon` eligibility return only through the typed Classic body-count selection; negative eligibility is mandatory. Monster targeting compares allegiance, so hostile monsters can attack party characters or friendly monsters and friendly monsters target hostiles.
 

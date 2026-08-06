@@ -38,6 +38,7 @@ func _ready() -> void:
 	add_child(_dungeon_presenter)
 	presentation_coordinator.bind(session_controller, _map_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
 	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
+	_map_presenter.movement_requested.connect(_on_map_movement_requested)
 	_shell_presenter.start_package_requested.connect(start_package)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
 	_shell_presenter.intent_submitted.connect(_submit_intent)
@@ -58,14 +59,14 @@ func _ready() -> void:
 
 func _on_smoke_action_pressed() -> void:
 	_smoke_button.release_focus()
-	if not session_controller.session().view().session_started:
+	if not session_controller.view().session_started:
 		_status_label.text = "MCP input verified • no package loaded"
 		return
 	var step := _submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	if step.state == SessionStep.State.FAILED:
 		return
 	var roll: int = step.events[0].payload.get("roll", 0)
-	var current_view := session_controller.session().view()
+	var current_view := session_controller.view()
 	_status_label.text = "Search committed • roll %d • day %d %02d:00" % [roll, current_view.realmz_day, current_view.realmz_hour]
 
 
@@ -84,7 +85,7 @@ func start_package(package_path: String, initial_seed: int) -> SessionStep:
 		return step
 	_active_content = package_result.content
 	_smoke_button.text = "Search area"
-	var current_view := session_controller.session().view()
+	var current_view := session_controller.view()
 	_status_label.text = "Loaded %s • %s %d,%d • seed %d" % [_active_content.campaign_id, current_view.party_map_id, current_view.party_coordinate.x, current_view.party_coordinate.y, initial_seed]
 	_shell_presenter.set_status(_status_label.text)
 	_refresh_campaigns()
@@ -92,11 +93,11 @@ func start_package(package_path: String, initial_seed: int) -> SessionStep:
 
 
 func _input(event: InputEvent) -> void:
-	if not event is InputEventKey or not event.is_pressed() or event.is_echo() or not session_controller.session().view().session_started:
+	if not event is InputEventKey or not event.is_pressed() or not session_controller.view().session_started:
 		return
 	if not _shell_presenter.accepts_exploration_input():
 		return
-	if session_controller.session().view().pending_interaction != null:
+	if session_controller.view().pending_interaction != null:
 		return
 	var direction := Vector2i.ZERO
 	match event.keycode:
@@ -109,8 +110,18 @@ func _input(event: InputEvent) -> void:
 		KEY_LEFT, KEY_A:
 			direction = Vector2i.LEFT
 	if direction != Vector2i.ZERO:
-		_submit_intent(PlayerIntent.move(direction))
+		_submit_movement(direction)
 		get_viewport().set_input_as_handled()
+
+
+func _on_map_movement_requested(direction: Vector2i) -> void:
+	_submit_movement(direction)
+
+
+func _submit_movement(direction: Vector2i) -> void:
+	if not _shell_presenter.accepts_exploration_input() or not session_controller.view().session_started or session_controller.view().pending_interaction != null:
+		return
+	_submit_intent(PlayerIntent.move(direction))
 
 
 func _submit_intent(intent: PlayerIntent) -> SessionStep:
@@ -161,7 +172,7 @@ func load_active_session(slot_id: String) -> SessionStep:
 	if envelope == null:
 		_status_label.text = "Load failed • %s" % save_repository.last_error
 		_shell_presenter.set_status(_status_label.text, true)
-		return SessionStep.failed(session_controller.session().view().revision, "save_load_failed", save_repository.last_error)
+		return SessionStep.failed(session_controller.view().revision, "save_load_failed", save_repository.last_error)
 	var step := session_controller.restore(_active_content, envelope)
 	_status_label.text = "Loaded save %s" % slot_id if step.state != SessionStep.State.FAILED else "Load failed • %s" % step.error_message
 	_shell_presenter.set_status(_status_label.text, step.state == SessionStep.State.FAILED)

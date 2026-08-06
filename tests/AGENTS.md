@@ -23,6 +23,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - Direct ED3/XAP route checkpoints may name a compiled program explicitly; this proves that macro's ordinary VM behavior, not map reachability for an unplaced record.
 - Post-battle tests preserve Castle's distinction between consumed held-over allies and the subsequent `bodycount()` survivor selection; route defaults must use the request's source-backed preselection rather than silently retaining all friendlies.
 - Presentation tests compare 2D topology facts with the 3D geometry projection. Local MCP screenshots are visual evidence only and remain outside the repository.
+- Exploration integration tests require detached movement cues and minimap coordinates to agree with the same secret/door/world overlays used by simulation; presentation tests retain native 32-pixel land cells and typed click direction translation.
 - War in the Sword Lands certification uses an external route, package, and report. Only package/route hashes, stage names, and resulting observations may enter documentation.
 
 ## Work Guidance

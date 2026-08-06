@@ -30,6 +30,8 @@ flowchart LR
 
 `src/app` constructs dependencies and translates host operations. It may replace a session only after a complete restore has validated.
 
+The host materializes one detached `GameView` for a committed session revision and shares it across input gating and presenters. A map view contains the party-local 25×25 render projection, complete visited coordinates for the minimap, and cardinal movement results from topology; it does not rebuild all 8,100 cells of a Classic map for every key event.
+
 `src/presentation` reads `GameView` and ordered domain events, renders disposable caches, and sends typed intents/responses. Animation never controls simulation timing.
 
 ## Session boundary
@@ -52,6 +54,8 @@ The engine models Realmz concepts—party, characters, maps, APs/XAPs, Simple/Co
 ## Topology
 
 `MapTopology` and `WorldState` overlays are authoritative. Providence normalizes land cells, packed dungeon fields, Layout adjacency, and placed AP post-action destinations into cells with explicit directional edges/features, random regions, transitions, and validated map coordinates. Movement, LOS, deterministic pathfinding, searches, triggers, random encounters, AP destination rechecks, battle-terrain derivation, minimaps, 2D views, and the optional dungeon 3D view ask that same query surface. TileMaps, collisions, AStar graphs, textures, and meshes are presentation caches and cannot answer simulation questions. See `docs/topology-evidence.md` for the Castle evidence boundary and Phase 2 proofs.
+
+Classic land presentation uses the package atlas at its native 32×32 cell size. Normal play does not overlay topology edges, random rectangles, AP markers, or debug grids on that art. Small cardinal cues expose the already-computed topology answer, and keyboard or map click/hold input becomes the same typed movement intent.
 
 ## Scenario execution
 

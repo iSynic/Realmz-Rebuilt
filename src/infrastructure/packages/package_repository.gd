@@ -22,16 +22,22 @@ const EDGE_KINDS: Array[String] = ["open", "wall", "door", "secret", "archway", 
 const FEATURE_KINDS: Array[String] = ["door", "secret", "stairs", "column", "unmapped", "note", "action-point", "archway", "no-wall-in-battle"]
 
 var _last_error: String = ""
+var _loaded_packages: Dictionary = {}
 
 
 func load_package(path: String) -> PackageLoadResult:
 	_last_error = ""
+	var cache_key := _package_cache_key(path)
+	if _loaded_packages.has(cache_key):
+		return _loaded_packages[cache_key] as PackageLoadResult
 	var archive := ZIPReader.new()
 	var open_error := archive.open(path)
 	if open_error != OK:
 		return PackageLoadResult.failed("package_open_failed", "Could not open package '%s' (error %d)." % [path, open_error])
 	var result := _load_open_archive(archive, path)
 	archive.close()
+	if result.is_ok():
+		_loaded_packages[cache_key] = result
 	return result
 
 
@@ -47,6 +53,8 @@ func install_package(source_path: String, install_root: String = "user://package
 		return PackageInstallResult.failed("package_install_directory_failed", "Could not create the package installation directory (error %d)." % create_error)
 	var target_path := campaign_root.path_join("%s.realmz2" % source.content.package_hash)
 	if FileAccess.file_exists(target_path):
+		if _same_package_path(source_path, target_path):
+			return PackageInstallResult.succeeded(target_path, source)
 		var existing := load_package(target_path)
 		if existing.is_ok() and existing.content.package_hash == source.content.package_hash:
 			return PackageInstallResult.succeeded(target_path, existing)
@@ -71,9 +79,8 @@ func install_package(source_path: String, install_root: String = "user://package
 	if rename_error != OK:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
 		return PackageInstallResult.failed("package_install_commit_failed", "Could not atomically install the verified package (error %d)." % rename_error)
-	var installed := load_package(target_path)
-	if not installed.is_ok():
-		return PackageInstallResult.failed("package_install_final_validation_failed", installed.error_message)
+	var installed := PackageLoadResult.succeeded(verified.content, PackageMediaCatalog.new(target_path, verified.content.package_hash, verified.media.assets()))
+	_loaded_packages[_package_cache_key(target_path)] = installed
 	return PackageInstallResult.succeeded(target_path, installed)
 
 
@@ -84,12 +91,29 @@ func discover_packages(search_roots: Array[String]) -> Array[PackageDiscoveryRes
 	paths.sort()
 	var discovered: Array[PackageDiscoveryResult] = []
 	for path: String in paths:
-		var loaded := load_package(path)
-		if loaded.is_ok():
-			discovered.append(PackageDiscoveryResult.new(path, true, loaded.content.campaign_id, loaded.content.package_hash, loaded.content.rules_version))
-		else:
-			discovered.append(PackageDiscoveryResult.new(path, false, "", "", "", loaded.error_message))
+		discovered.append(_inspect_package(path))
 	return discovered
+
+
+func _inspect_package(path: String) -> PackageDiscoveryResult:
+	_last_error = ""
+	var archive := ZIPReader.new()
+	var open_error := archive.open(path)
+	if open_error != OK:
+		return PackageDiscoveryResult.new(path, false, "", "", "", "Could not open package (error %d)." % open_error)
+	var entries_value: Variant = _zip_entries(archive)
+	var manifest_value: Variant = _read_document(archive, "manifest.json")
+	if entries_value == null or manifest_value == null or not manifest_value is Dictionary:
+		archive.close()
+		return PackageDiscoveryResult.new(path, false, "", "", "", _last_error if not _last_error.is_empty() else "Package manifest is unavailable.")
+	var entries: Array[String] = []
+	entries.assign(entries_value)
+	var manifest: Dictionary = manifest_value
+	if not _validate_manifest(manifest, archive, entries):
+		archive.close()
+		return PackageDiscoveryResult.new(path, false, "", "", "", _last_error if not _last_error.is_empty() else "Package manifest is invalid.")
+	archive.close()
+	return PackageDiscoveryResult.new(path, true, manifest["campaignId"], manifest["packageHash"], manifest["engine"]["rulesVersion"])
 
 
 func _collect_package_paths(root: String, paths: Array[String], depth: int) -> void:
@@ -102,6 +126,17 @@ func _collect_package_paths(root: String, paths: Array[String], depth: int) -> v
 		if directory_name.begins_with("."):
 			continue
 		_collect_package_paths(root.path_join(directory_name), paths, depth + 1)
+
+
+func _package_cache_key(path: String) -> String:
+	var absolute_path := ProjectSettings.globalize_path(path).simplify_path()
+	if not FileAccess.file_exists(path):
+		return absolute_path
+	return "%s:%d:%d" % [absolute_path, FileAccess.get_modified_time(path), FileAccess.get_size(path)]
+
+
+func _same_package_path(left: String, right: String) -> bool:
+	return ProjectSettings.globalize_path(left).simplify_path().to_lower() == ProjectSettings.globalize_path(right).simplify_path().to_lower()
 
 
 func _load_open_archive(archive: ZIPReader, source_path: String) -> PackageLoadResult:

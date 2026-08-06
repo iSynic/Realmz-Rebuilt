@@ -45,7 +45,7 @@ func set_dungeon_3d_enabled(enabled: bool) -> void:
 
 
 func _present_current_view() -> void:
-	var game_view := _session_controller.session().view()
+	var game_view := _session_controller.view()
 	_map_presenter.present(game_view)
 	_dungeon_presenter.present(game_view)
 	_map_presenter.visible = not _dungeon_presenter.is_active() and game_view != null and game_view.session_started

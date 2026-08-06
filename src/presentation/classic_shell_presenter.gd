@@ -30,6 +30,7 @@ var _simulation_buttons: Array[Button] = []
 var _utility_buttons: Array[Button] = []
 var _campaign_overlay: Control
 var _campaign_list: VBoxContainer
+var _campaign_feedback: Label
 var _package_path: LineEdit
 var _seed: SpinBox
 var _modal_overlay: Control
@@ -127,24 +128,34 @@ func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
 		return
 	var ordered := campaigns.duplicate()
 	ordered.sort_custom(_campaign_precedes)
+	var rejected: Array[PackageDiscoveryResult] = []
 	for campaign: PackageDiscoveryResult in ordered:
+		if not campaign.ready:
+			rejected.append(campaign)
+			continue
 		var row := HBoxContainer.new()
 		row.custom_minimum_size = Vector2(0, 56)
 		var details := Label.new()
 		details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		if campaign.ready:
-			details.text = "%s\nReady • %s" % [_campaign_display_name(campaign.campaign_id), campaign.rules_version]
-		else:
-			details.text = "Rejected package\n%s" % campaign.error_message
+		details.text = "%s\nAvailable • %s • validates before play" % [_campaign_display_name(campaign.campaign_id), campaign.rules_version]
 		details.tooltip_text = campaign.path
 		details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		row.add_child(details)
 		var play := Button.new()
-		play.text = "Play" if campaign.ready else "Details"
-		play.disabled = not campaign.ready
+		play.text = "Play"
 		play.pressed.connect(_request_start.bind(campaign.path))
 		row.add_child(play)
 		_campaign_list.add_child(row)
+	if not rejected.is_empty():
+		var incompatible := Label.new()
+		incompatible.text = "%d incompatible or stale package%s hidden" % [rejected.size(), "" if rejected.size() == 1 else "s"]
+		incompatible.modulate = Color("8f939b")
+		incompatible.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var rejected_details: Array[String] = []
+		for campaign: PackageDiscoveryResult in rejected:
+			rejected_details.append("%s\n%s" % [campaign.path, campaign.error_message])
+		incompatible.tooltip_text = "\n\n".join(rejected_details)
+		_campaign_list.add_child(incompatible)
 
 
 func _campaign_precedes(left: PackageDiscoveryResult, right: PackageDiscoveryResult) -> bool:
@@ -163,6 +174,7 @@ func show_campaign_selection() -> void:
 	_party_setup_prompted = false
 	_campaign_overlay.visible = true
 	_modal_overlay.visible = false
+	_campaign_feedback.text = ""
 	_package_path.text = DEV_FIXTURE_PATH if OS.is_debug_build() else ""
 	set_status("Choose a validated Realmz 2.0 package")
 
@@ -275,6 +287,10 @@ func _build_campaign_overlay() -> void:
 	_campaign_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_campaign_list.add_theme_constant_override("separation", 8)
 	campaign_scroll.add_child(_campaign_list)
+	_campaign_feedback = Label.new()
+	_campaign_feedback.modulate = GOLD
+	_campaign_feedback.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(_campaign_feedback)
 	var path_row := HBoxContainer.new()
 	_package_path = LineEdit.new()
 	_package_path.placeholder_text = "Path to .realmz2 package"
@@ -650,6 +666,8 @@ func _request_start(path: String) -> void:
 		set_status("Choose a .realmz2 package first", true)
 		return
 	_party_setup_prompted = false
+	_campaign_feedback.text = "Validating package and building the Classic world…"
+	await get_tree().process_frame
 	start_package_requested.emit(trimmed, int(_seed.value))
 
 
@@ -677,6 +695,18 @@ func _present_event(event: DomainEvent) -> void:
 			_append_log("The party enters the realm.")
 		&"party_moved":
 			set_status("%s • %d,%d" % [_view.party_map_id if _view != null else "Map", int(event.payload.get("x", 0)), int(event.payload.get("y", 0))])
+		&"movement_blocked":
+			set_status("That way is blocked")
+		&"search_completed":
+			_append_log("The party searches the area.")
+		&"party_camped":
+			_append_log("The party camps and recovers.")
+		&"door_opened":
+			_append_log("A door opens.")
+		&"secret_discovered":
+			_append_log("A secret is revealed.")
+		&"random_encounter_checked", &"time_advanced", &"session_started":
+			pass
 		&"battle_started":
 			_append_log("[color=#d5b45d]Battle begins.[/color]")
 		&"battle_completed":

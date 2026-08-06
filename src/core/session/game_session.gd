@@ -1,6 +1,8 @@
 class_name GameSession
 extends RefCounted
 
+const MAP_VIEW_RADIUS: int = 12
+
 var _content: RealmzContent
 var _state: GameState
 var _rng: RealmzRng
@@ -741,28 +743,60 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 
 func _build_map_view() -> MapView:
 	var map := _content.world.map_by_id(_state.party.map_id)
-	var visible_coordinates := map.topology.visible_cells(_state.party.coordinate, 8, _state.world, map.uses_los)
 	var visible: Dictionary = {}
-	for coordinate: Vector2i in visible_coordinates:
-		visible[coordinate] = true
+	if map.uses_los:
+		for coordinate: Vector2i in map.topology.visible_cells(_state.party.coordinate, 8, _state.world, true):
+			visible[coordinate] = true
 	var cells: Array[MapCellView] = []
-	for cell: MapCell in map.topology.cells():
-		var feature_kinds: Array[StringName] = []
-		var feature_orientations: Dictionary = {}
-		var edge_kinds: Dictionary = {}
-		var edge_passability: Dictionary = {}
-		for direction: StringName in [&"north", &"east", &"south", &"west"]:
-			var edge := cell.edge(direction)
-			edge_kinds[direction] = edge.kind
-			edge_passability[direction] = edge.passable
-		var hidden_secret := false
-		for feature: MapFeature in cell.features():
-			if feature.kind == &"secret" and not _state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
-				hidden_secret = true
+	var first_x := maxi(0, _state.party.coordinate.x - MAP_VIEW_RADIUS)
+	var first_y := maxi(0, _state.party.coordinate.y - MAP_VIEW_RADIUS)
+	var last_x := mini(map.topology.width, _state.party.coordinate.x + MAP_VIEW_RADIUS + 1)
+	var last_y := mini(map.topology.height, _state.party.coordinate.y + MAP_VIEW_RADIUS + 1)
+	for y: int in range(first_y, last_y):
+		for x: int in range(first_x, last_x):
+			var cell := map.topology.cell_at(Vector2i(x, y))
+			if cell == null:
 				continue
-			if not feature_kinds.has(feature.kind):
-				feature_kinds.append(feature.kind)
-				feature_orientations[feature.kind] = feature.orientation
-		var can_enter := cell.passable and not hidden_secret
-		cells.append(MapCellView.new(cell.coordinate, _state.world.terrain_for(map.id, cell), cell.render_tile, cell.tileset_id, can_enter, cell.blocks_los, visible.has(cell.coordinate), _state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not cell.random_rect_ids().is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability))
-	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, _state.party.coordinate, cells, _state.world.map_is_dark(map))
+			cells.append(_build_cell_view(map, cell, not map.uses_los or visible.has(cell.coordinate)))
+	var movement_options: Dictionary = {}
+	for direction: Vector2i in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
+		var direction_name := MapTopology.direction_name(direction)
+		var probe := _probe_movement(direction)
+		movement_options[direction_name] = {"allowed": probe.allowed, "reason": String(probe.reason)}
+	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, _state.party.coordinate, cells, _state.world.map_is_dark(map), _state.world.visited_coordinates(map.id), movement_options)
+
+
+func _build_cell_view(map: MapDefinition, cell: MapCell, is_visible: bool) -> MapCellView:
+	var feature_kinds: Array[StringName] = []
+	var feature_orientations: Dictionary = {}
+	var edge_kinds: Dictionary = {}
+	var edge_passability: Dictionary = {}
+	for direction: StringName in [&"north", &"east", &"south", &"west"]:
+		var edge := cell.edge(direction)
+		edge_kinds[direction] = edge.kind
+		edge_passability[direction] = edge.passable
+	var hidden_secret := false
+	for feature: MapFeature in cell.features():
+		if feature.kind == &"secret" and not _state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+			hidden_secret = true
+			continue
+		if not feature_kinds.has(feature.kind):
+			feature_kinds.append(feature.kind)
+			feature_orientations[feature.kind] = feature.orientation
+	var can_enter := cell.passable and not hidden_secret
+	return MapCellView.new(cell.coordinate, _state.world.terrain_for(map.id, cell), cell.render_tile, cell.tileset_id, can_enter, cell.blocks_los, is_visible, _state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not cell.random_rect_ids().is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability)
+
+
+func _probe_movement(direction: Vector2i) -> TopologyMoveResult:
+	var source_map := _content.world.map_by_id(_state.party.map_id)
+	var target_map := source_map
+	var target_coordinate := _state.party.coordinate + direction
+	if not source_map.topology.contains(target_coordinate):
+		var transition := _content.world.transition_from(source_map.id, MapTopology.direction_name(direction))
+		if transition == null:
+			return TopologyMoveResult.blocked(&"map_boundary")
+		target_map = _content.world.map_by_id(transition.target_map_id)
+		target_coordinate = _content.world.transition_target_coordinate(transition, _state.party.coordinate)
+	if target_map == null:
+		return TopologyMoveResult.blocked(&"outside_map")
+	return target_map.topology.probe_entry(target_coordinate, direction, _state.world)

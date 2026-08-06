@@ -8,6 +8,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 
 - `RealmzApplication` constructs the dependency graph explicitly.
 - `GameSessionController` owns the replaceable `GameSession` instance and publishes committed steps.
+- `GameSessionController` materializes one detached `GameView` per committed revision and shares it with host input checks and presenters; host code must not rebuild the same revision repeatedly.
 - This boundary coordinates repositories and presenters but contains no Realmz rules.
 
 ## Local Contracts
