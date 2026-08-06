@@ -125,7 +125,9 @@ func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
 		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_campaign_list.add_child(empty)
 		return
-	for campaign: PackageDiscoveryResult in campaigns:
+	var ordered := campaigns.duplicate()
+	ordered.sort_custom(_campaign_precedes)
+	for campaign: PackageDiscoveryResult in ordered:
 		var row := HBoxContainer.new()
 		row.custom_minimum_size = Vector2(0, 56)
 		var details := Label.new()
@@ -143,6 +145,18 @@ func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
 		play.pressed.connect(_request_start.bind(campaign.path))
 		row.add_child(play)
 		_campaign_list.add_child(row)
+
+
+func _campaign_precedes(left: PackageDiscoveryResult, right: PackageDiscoveryResult) -> bool:
+	if left.ready != right.ready:
+		return left.ready
+	if left.ready:
+		var left_name := _campaign_display_name(left.campaign_id)
+		var right_name := _campaign_display_name(right.campaign_id)
+		var name_order := left_name.naturalnocasecmp_to(right_name)
+		if name_order != 0:
+			return name_order < 0
+	return left.path.naturalnocasecmp_to(right.path) < 0
 
 
 func show_campaign_selection() -> void:
