@@ -127,9 +127,14 @@ func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
 		return
 	for campaign: PackageDiscoveryResult in campaigns:
 		var row := HBoxContainer.new()
+		row.custom_minimum_size = Vector2(0, 56)
 		var details := Label.new()
 		details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		details.text = "%s\n%s" % [campaign.campaign_id if campaign.ready else campaign.path.get_file(), "Ready • %s" % campaign.rules_version if campaign.ready else "Rejected • %s" % campaign.error_message]
+		if campaign.ready:
+			details.text = "%s\nReady • %s" % [_campaign_display_name(campaign.campaign_id), campaign.rules_version]
+		else:
+			details.text = "Rejected package\n%s" % campaign.error_message
+		details.tooltip_text = campaign.path
 		details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		row.add_child(details)
 		var play := Button.new()
@@ -247,9 +252,15 @@ func _build_campaign_overlay() -> void:
 	subtitle.text = "Providence compiles immutable .realmz2 packages. Packages are fully validated before play."
 	subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(subtitle)
+	var campaign_scroll := ScrollContainer.new()
+	campaign_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	campaign_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	campaign_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	column.add_child(campaign_scroll)
 	_campaign_list = VBoxContainer.new()
-	_campaign_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(_campaign_list)
+	_campaign_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_campaign_list.add_theme_constant_override("separation", 8)
+	campaign_scroll.add_child(_campaign_list)
 	var path_row := HBoxContainer.new()
 	_package_path = LineEdit.new()
 	_package_path.placeholder_text = "Path to .realmz2 package"
@@ -626,6 +637,13 @@ func _request_start(path: String) -> void:
 		return
 	_party_setup_prompted = false
 	start_package_requested.emit(trimmed, int(_seed.value))
+
+
+func _campaign_display_name(campaign_id: String) -> String:
+	var display_name := campaign_id.trim_prefix("scenario-").trim_prefix("realmz2-")
+	if display_name.is_empty():
+		return campaign_id
+	return display_name.replace("-", " ").capitalize()
 
 
 func _present_event(event: DomainEvent) -> void:
