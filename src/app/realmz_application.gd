@@ -7,6 +7,8 @@ const PackageRepositoryScript := preload("res://src/infrastructure/packages/pack
 const SaveRepositoryScript := preload("res://src/infrastructure/saves/save_repository.gd")
 
 @onready var _status_label: Label = %Status
+@onready var _smoke_button: Button = %SmokeAction
+@onready var _map_presenter: ClassicMapPresenter = %ExplorationMap
 
 var session_controller: GameSessionController
 var presentation_coordinator: PresentationCoordinator
@@ -22,17 +24,17 @@ func _ready() -> void:
 	presentation_coordinator = PresentationCoordinatorScript.new()
 	add_child(session_controller)
 	add_child(presentation_coordinator)
-	presentation_coordinator.bind(session_controller)
+	presentation_coordinator.bind(session_controller, _map_presenter)
 	_status_label.text = "Pure session boundary online"
 
 
 func _on_smoke_action_pressed() -> void:
+	_smoke_button.release_focus()
 	if not session_controller.session().view().session_started:
 		_status_label.text = "MCP input verified • no package loaded"
 		return
-	var step := session_controller.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+	var step := _submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	if step.state == SessionStep.State.FAILED:
-		_status_label.text = "Search failed • %s" % step.error_message
 		return
 	var roll: int = step.events[0].payload.get("roll", 0)
 	var current_view := session_controller.session().view()
@@ -49,8 +51,43 @@ func start_package(package_path: String, initial_seed: int) -> SessionStep:
 		_status_label.text = "Session start failed • %s" % step.error_message
 		return step
 	_active_content = package_result.content
+	_smoke_button.text = "Search area"
 	var current_view := session_controller.session().view()
 	_status_label.text = "Loaded %s • %s %d,%d • seed %d" % [_active_content.campaign_id, current_view.party_map_id, current_view.party_coordinate.x, current_view.party_coordinate.y, initial_seed]
+	return step
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not event.is_pressed() or event.is_echo() or not session_controller.session().view().session_started:
+		return
+	var direction := Vector2i.ZERO
+	match event.keycode:
+		KEY_UP, KEY_W:
+			direction = Vector2i.UP
+		KEY_RIGHT, KEY_D:
+			direction = Vector2i.RIGHT
+		KEY_DOWN, KEY_S:
+			direction = Vector2i.DOWN
+		KEY_LEFT, KEY_A:
+			direction = Vector2i.LEFT
+	if direction != Vector2i.ZERO:
+		_submit_intent(PlayerIntent.move(direction))
+		get_viewport().set_input_as_handled()
+
+
+func _submit_intent(intent: PlayerIntent) -> SessionStep:
+	var step := session_controller.submit_intent(intent)
+	if step.state == SessionStep.State.FAILED:
+		_status_label.text = "Action failed • %s" % step.error_message
+		return step
+	for event: DomainEvent in step.events:
+		match event.kind:
+			&"message_shown":
+				_status_label.text = event.payload.get("text", "Message")
+			&"map_transitioned":
+				_status_label.text = "Entered %s" % event.payload.get("targetMapId", "map")
+			&"movement_blocked":
+				_status_label.text = "Blocked • %s" % event.payload.get("reason", "unknown")
 	return step
 
 
@@ -61,3 +98,16 @@ func save_active_session(slot_id: String) -> bool:
 	var saved := save_repository.save(_active_content.campaign_id, slot_id, session_controller.session().snapshot())
 	_status_label.text = "Saved %s" % slot_id if saved else "Save failed • %s" % save_repository.last_error
 	return saved
+
+
+func load_active_session(slot_id: String) -> SessionStep:
+	if _active_content == null:
+		_status_label.text = "Load failed • no package loaded"
+		return SessionStep.failed(0, "no_package_loaded", "Load a package before restoring a save.")
+	var envelope := save_repository.load(_active_content.campaign_id, slot_id, _active_content.package_hash)
+	if envelope == null:
+		_status_label.text = "Load failed • %s" % save_repository.last_error
+		return SessionStep.failed(session_controller.session().view().revision, "save_load_failed", save_repository.last_error)
+	var step := session_controller.restore(_active_content, envelope)
+	_status_label.text = "Loaded save %s" % slot_id if step.state != SessionStep.State.FAILED else "Load failed • %s" % step.error_message
+	return step

@@ -29,6 +29,7 @@ func run() -> void:
 		return
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, loaded_save).state, SessionStep.State.COMPLETED, "transactional restore constructs a replacement session")
+	assert_equal(restored.snapshot().rng_state.to_data(), held_snapshot.rng_state.to_data(), "restore retains the exact RNG state and draw index")
 	var restored_search := restored.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 
 	var control := GameSession.new()
@@ -36,7 +37,7 @@ func run() -> void:
 	control.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	var control_search := control.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	assert_equal(restored_search.events[0].payload["roll"], control_search.events[0].payload["roll"], "save/reload resumes the exact RNG branch")
-	assert_equal(restored.snapshot().rng_state.draw_count, 2, "restored mutation advances the persisted draw count")
+	assert_equal(restored.snapshot().rng_state.draw_count, 1, "searching an already discovered area does not invent a random draw")
 	assert_equal(restored.snapshot().game_state.clock.total_minutes(), 2, "restored mutation advances the persisted clock")
 
 	var mismatched := SaveEnvelope.new(content.campaign_id, "0".repeat(64), content.rules_version, loaded_save.view_revision, loaded_save.game_state, loaded_save.rng_state)

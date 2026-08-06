@@ -3,13 +3,14 @@ extends RefCounted
 
 var party: PartyState
 var clock: RealmzClock
+var world: WorldState
 var _searched_cells: Dictionary = {}
-var _world_overlays: Dictionary = {}
 
 
-func _init(party_state: PartyState, realmz_clock: RealmzClock) -> void:
+func _init(party_state: PartyState, realmz_clock: RealmzClock, world_state: WorldState = null) -> void:
 	party = party_state
 	clock = realmz_clock
+	world = world_state if world_state != null else WorldState.new()
 
 
 func mark_searched(map_id: String, coordinate: Vector2i) -> void:
@@ -29,7 +30,7 @@ func to_data() -> Dictionary:
 		"party": party.to_data(),
 		"clock": clock.to_data(),
 		"searchedCells": searched,
-		"worldOverlays": _world_overlays.duplicate(true),
+		"worldOverlays": world.to_data(),
 	}
 
 
@@ -41,14 +42,14 @@ static func from_data(data: Variant) -> GameState:
 			return null
 	var party_state := PartyState.from_data(data["party"])
 	var realmz_clock := RealmzClock.from_data(data["clock"])
-	if party_state == null or realmz_clock == null or not data["searchedCells"] is Array or not data["worldOverlays"] is Dictionary:
+	var world_state := WorldState.from_data(data["worldOverlays"])
+	if party_state == null or realmz_clock == null or world_state == null or not data["searchedCells"] is Array:
 		return null
-	var state := GameState.new(party_state, realmz_clock)
+	var state := GameState.new(party_state, realmz_clock, world_state)
 	for key: Variant in data["searchedCells"]:
 		if not key is String or key.is_empty():
 			return null
 		state._searched_cells[key] = true
-	state._world_overlays = data["worldOverlays"].duplicate(true)
 	return state
 
 

@@ -9,6 +9,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - Durable design decisions and their consequences.
 - Current roadmap and evidence-backed completion status.
 - Castle/Providence/reference provenance without copied archaeology artifacts.
+- Source/runtime evidence boundaries for topology and each source-backed gameplay domain.
 
 ## Local Contracts
 

@@ -17,7 +17,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - Castle fixtures use pinned commit `491816ad60037394f92c428e99c004494d3c28b3` and synthetic data.
 - Do not commit extracted commercial campaign payloads, user saves, generated Castle installations, or copyrighted media.
 - Tests requiring identical branches use injected scripted RNG/input.
-- `tests/fixtures/packages/fixture-provenance.json` owns the hashes and Providence commit for both the positive `.realmz2` fixture and its valid-ZIP stale-hash negative derivative.
+- `tests/fixtures/packages/fixture-provenance.json` owns the hashes and Providence commit for both the positive `.realmz2` fixture and its valid-ZIP stale-hash negative derivative. The current fixture contains two land maps, one packed-source dungeon map, explicit topology features, and Layout transitions.
 
 ## Work Guidance
 

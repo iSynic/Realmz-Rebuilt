@@ -12,7 +12,7 @@ A deterministic ZIP contains canonical minified JSON and content-addressed media
 
 Providence owns the schema. The runtime mirror under `contracts` is byte-identical and independently enforced. The package excludes editor layout, absolute paths, native raw bytes, compatibility annexes, and archaeology artifacts.
 
-Schema v1 is pinned by SHA-256 `215e3e53c25d2f48417cbf084e74e41ceaf5b759a402d37d6c9d45a4911238c5` from Providence commit `af50087d9554114cfa0a1456e545b4a1134d067e`. `PackageRepository` rejects unsafe/extra entries, noncanonical entry order, schema or capability drift, per-file size/hash mismatches, package-hash mismatches, malformed topology, duplicate identities, unresolved map/trigger/program references, invalid Classic instruction shapes, and out-of-contract Scenario Actions before constructing `RealmzContent`.
+Schema v1 is pinned by SHA-256 `816caa25632b89b2e342ff1dc814189d05c2d12899844ac0f4eb688f370448e3` from Providence commit `e38b3f7584dbe87e8a59c54c372b5626d0aafb07`. Its world contract uses normalized directional edges and explicit features; Castle's packed dungeon fields and Providence's Layout record remain compiler inputs, not runtime map models. `PackageRepository` rejects unsafe/extra entries, noncanonical entry order, schema or capability drift, per-file size/hash mismatches, package-hash mismatches, malformed topology, duplicate identities, unresolved map/trigger/program references, invalid Classic instruction shapes, and out-of-contract Scenario Actions before constructing `RealmzContent`.
 
 ## `.r2save`
 

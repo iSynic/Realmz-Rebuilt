@@ -51,7 +51,7 @@ The engine models Realmz concepts—party, characters, maps, APs/XAPs, encounter
 
 ## Topology
 
-`MapTopology` and `WorldState` overlays are authoritative. Movement, LOS, pathfinding, searches, triggers, random encounters, battle-terrain derivation, minimaps, 2D views, and later 3D views ask the same query surface. TileMaps, collisions, AStar graphs, textures, and meshes are presentation caches and cannot answer simulation questions.
+`MapTopology` and `WorldState` overlays are authoritative. Providence normalizes land cells, packed dungeon fields, and Layout adjacency into cells with explicit directional edges/features, random regions, and transitions. Movement, LOS, deterministic pathfinding, searches, triggers, random encounters, battle-terrain derivation, minimaps, 2D views, and later 3D views ask that same query surface. TileMaps, collisions, AStar graphs, textures, and meshes are presentation caches and cannot answer simulation questions. See `docs/topology-evidence.md` for the Castle evidence boundary and Phase 2 proofs.
 
 ## Scenario execution
 

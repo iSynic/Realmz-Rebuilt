@@ -14,7 +14,7 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 
 - Treat package and save data as untrusted until all structural, hash, reference, limit, topology, and capability checks pass.
 - Verify deterministic ZIP inventory/order, canonical manifest package hash, schema hash, and every file hash before parsing runtime documents.
-- Runtime JSON dictionaries do not cross into the core; validating factories construct typed immutable content.
+- Runtime JSON dictionaries do not cross into the core; validating factories construct typed immutable content, including explicit topology edges/features, random regions, and cross-map transitions.
 - Save only at committed session boundaries. Save the whole aggregate, including VM, interaction, clock, overlays, action state, and RNG.
 - Write a temporary save, read and validate it, rotate one backup, then atomically replace the slot.
 - Restore failure leaves the current session untouched.

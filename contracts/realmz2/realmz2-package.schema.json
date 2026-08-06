@@ -162,6 +162,109 @@
       },
       "additionalProperties": false
     },
+    "topologyEdge": {
+      "type": "object",
+      "required": ["kind", "passable", "blocksLos", "doorId", "secretId", "initiallyDiscovered"],
+      "properties": {
+        "kind": { "enum": ["open", "wall", "door", "secret", "archway", "map-boundary"] },
+        "passable": { "type": "boolean" },
+        "blocksLos": { "type": "boolean" },
+        "doorId": { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        "secretId": { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        "initiallyDiscovered": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "topologyFeature": {
+      "type": "object",
+      "required": ["id", "kind", "state", "orientation"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "kind": { "enum": ["door", "secret", "stairs", "column", "unmapped", "note", "action-point", "archway", "no-wall-in-battle"] },
+        "state": { "type": ["string", "null"] },
+        "orientation": { "enum": ["horizontal", "vertical", "north", "east", "south", "west", null] }
+      },
+      "additionalProperties": false
+    },
+    "randomRectangle": {
+      "type": "object",
+      "required": ["id", "top", "left", "bottom", "right", "chancePercent", "battleRange", "randomDoors", "randomDoorPercent", "only", "option", "soundId", "textId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "top": { "type": "integer", "minimum": 0 },
+        "left": { "type": "integer", "minimum": 0 },
+        "bottom": { "type": "integer", "minimum": 0 },
+        "right": { "type": "integer", "minimum": 0 },
+        "chancePercent": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "battleRange": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
+        "randomDoors": { "type": "array", "items": { "type": "integer" }, "minItems": 3, "maxItems": 3 },
+        "randomDoorPercent": { "type": "array", "items": { "type": "integer" }, "minItems": 3, "maxItems": 3 },
+        "only": { "type": "boolean" },
+        "option": { "type": "integer" },
+        "soundId": { "type": "integer" },
+        "textId": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "worldTransition": {
+      "type": "object",
+      "required": ["id", "source", "target"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "source": {
+          "type": "object",
+          "required": ["mapId", "edge"],
+          "properties": {
+            "mapId": { "$ref": "#/$defs/identifier" },
+            "edge": { "enum": ["north", "east", "south", "west"] }
+          },
+          "additionalProperties": false
+        },
+        "target": {
+          "type": "object",
+          "required": ["mapId", "edge"],
+          "properties": {
+            "mapId": { "$ref": "#/$defs/identifier" },
+            "edge": { "enum": ["north", "east", "south", "west"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "trigger": {
+      "type": "object",
+      "required": ["id", "mapId", "coordinate", "active", "chancePercent", "replacement"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "mapId": { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        "coordinate": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["x", "y"],
+              "properties": { "x": { "type": "integer", "minimum": 0 }, "y": { "type": "integer", "minimum": 0 } },
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
+        "active": { "type": "boolean" },
+        "chancePercent": { "type": "integer", "minimum": -128, "maximum": 127 },
+        "replacement": {
+          "type": "object",
+          "required": ["doorId", "terrainId", "targetX", "targetY"],
+          "properties": {
+            "doorId": { "type": "integer" },
+            "terrainId": { "type": "integer", "minimum": 0, "maximum": 255 },
+            "targetX": { "type": "integer", "minimum": 0, "maximum": 255 },
+            "targetY": { "type": "integer", "minimum": 0, "maximum": 255 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "cell": {
       "type": "object",
       "required": [
@@ -212,12 +315,35 @@
           },
           "additionalProperties": false
         },
-        "metadata": { "type": "object" },
+        "metadata": {
+          "type": "object",
+          "required": ["movementSoundId"],
+          "properties": { "movementSoundId": { "type": ["integer", "null"] } },
+          "additionalProperties": false
+        },
         "triggerIds": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
         "randomRectIds": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
-        "edges": { "type": "object" },
-        "features": { "type": "array" },
-        "render": { "type": "object" }
+        "edges": {
+          "type": "object",
+          "required": ["north", "east", "south", "west"],
+          "properties": {
+            "north": { "$ref": "#/$defs/topologyEdge" },
+            "east": { "$ref": "#/$defs/topologyEdge" },
+            "south": { "$ref": "#/$defs/topologyEdge" },
+            "west": { "$ref": "#/$defs/topologyEdge" }
+          },
+          "additionalProperties": false
+        },
+        "features": { "type": "array", "items": { "$ref": "#/$defs/topologyFeature" }, "uniqueItems": true },
+        "render": {
+          "type": "object",
+          "required": ["tile", "tilesetId"],
+          "properties": {
+            "tile": { "type": "integer" },
+            "tilesetId": { "$ref": "#/$defs/identifier" }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     },
@@ -231,9 +357,18 @@
         "levelIndex": { "type": "integer", "minimum": 0 },
         "width": { "type": "integer", "minimum": 1 },
         "height": { "type": "integer", "minimum": 1 },
-        "metadata": { "type": "object" },
+        "metadata": {
+          "type": "object",
+          "required": ["dark", "usesLos", "landlook"],
+          "properties": {
+            "dark": { "type": "boolean" },
+            "usesLos": { "type": "boolean" },
+            "landlook": { "type": ["integer", "null"] }
+          },
+          "additionalProperties": false
+        },
         "cells": { "type": "array", "items": { "$ref": "#/$defs/cell" }, "minItems": 1 },
-        "randomRectangles": { "type": "array" }
+        "randomRectangles": { "type": "array", "items": { "$ref": "#/$defs/randomRectangle" } }
       },
       "additionalProperties": false
     },
@@ -244,8 +379,8 @@
         "kind": { "const": "realmz2.world" },
         "schemaVersion": { "const": 1 },
         "maps": { "type": "array", "items": { "$ref": "#/$defs/map" }, "minItems": 1 },
-        "triggers": { "type": "array" },
-        "transitions": { "type": "array" },
+        "triggers": { "type": "array", "items": { "$ref": "#/$defs/trigger" } },
+        "transitions": { "type": "array", "items": { "$ref": "#/$defs/worldTransition" } },
         "landLayout": {},
         "timedEncounters": { "type": "array" }
       },

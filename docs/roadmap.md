@@ -17,14 +17,15 @@ Exit evidence: the application launched through MCP Pro 1.16.0 on Godot 4.7.1; r
 - Implemented evidence: repeated Providence exports compare byte-for-byte; runtime accepts the generated package and rejects a valid-ZIP stale-hash mutation; deterministic search/save/reload resumes the same RNG branch and state revision.
 Exit evidence: repeated Providence exports are byte-identical; the runtime independently accepts the generated package and rejects a valid-ZIP stale-hash mutation; seed 1 produces the verified QuickDraw/Castle search roll 52; save/reload preserves the session revision, one-minute clock advance, RNG state, and draw count; and failed restore leaves the active session untouched. Through MCP Pro, the composition root loaded the package, committed the search through simulated input, observed the expected runtime state, saved `mcp-phase1`, and captured the 960×600 loaded-session screenshot. The final editor error list was empty and the full 43-assertion verification suite passed.
 
-## Phase 2 — Authoritative world and exploration (in progress)
+## Phase 2 — Authoritative world and exploration (completed)
 
-- Land/dungeon topology, overlays, movement, LOS, searches, secrets, doors, transitions, random rectangles, time, triggers.
-- Topology-derived 2D presenter, minimap, and debug overlays.
+- Implemented: Providence normalization of land and packed dungeon representations into explicit cells, directional edges/features, random regions, and Layout transitions; strict independent runtime construction and validation.
+- Implemented: typed world overlays, movement, deterministic pathfinding, LOS/visibility, search, secrets, doors, transitions, random rectangles, clock advancement, trigger execution, and terrain replacement through one topology.
+- Implemented: a `GameView`-only Classic 2D presenter with topology-derived minimap and movement/LOS/trigger debug facts.
 
-Exit: the fixture exercises exploration and mutations through one topology with MCP visual/input verification.
+Exit evidence: the synthetic three-map fixture exercises message AP execution, terrain replacement, random-region gating, hidden-secret blocking/discovery, directional dungeon secrets, door opening, land transition, pathfinding, visibility, and save/reload through one topology. The 93-assertion suite passes across six suites. MCP Pro keyboard/mouse input traversed the message AP, search roll 52, secret, and transition; restart/restore retained map, coordinate, clock, RNG state/draw count, and overlays; the 960×600 topology/minimap screenshot was inspected; and a fresh editor inspection reported zero errors.
 
-## Phase 3 — Scenario VM and Actions (pending)
+## Phase 3 — Scenario VM and Actions (in progress)
 
 - Serializable Classic VM, AP/XAP/GOSUB/encounters/yields and one session runtime API.
 - Safe Scenario Actions and ordinary Providence timeline calls; no visible scripting modes or behavior anchors.
