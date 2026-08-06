@@ -6,6 +6,7 @@ const PresentationCoordinatorScript := preload("res://src/presentation/presentat
 const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
 const SaveRepositoryScript := preload("res://src/infrastructure/saves/save_repository.gd")
 const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
+const DungeonMap3DPresenterScript := preload("res://src/presentation/dungeon_map_3d_presenter.gd")
 
 @onready var _status_label: Label = %Status
 @onready var _smoke_button: Button = %SmokeAction
@@ -21,6 +22,7 @@ var save_repository: SaveRepository
 var settings_repository: SettingsRepository
 var _active_content: RealmzContent
 var _presentation_settings: PresentationSettings
+var _dungeon_presenter: DungeonMap3DPresenter
 
 
 func _ready() -> void:
@@ -30,9 +32,11 @@ func _ready() -> void:
 	_presentation_settings = settings_repository.load_settings()
 	session_controller = GameSessionControllerScript.new()
 	presentation_coordinator = PresentationCoordinatorScript.new()
+	_dungeon_presenter = DungeonMap3DPresenterScript.new()
 	add_child(session_controller)
 	add_child(presentation_coordinator)
-	presentation_coordinator.bind(session_controller, _map_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
+	add_child(_dungeon_presenter)
+	presentation_coordinator.bind(session_controller, _map_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
 	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
 	_shell_presenter.start_package_requested.connect(start_package)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
@@ -40,12 +44,14 @@ func _ready() -> void:
 	_shell_presenter.save_requested.connect(save_active_session)
 	_shell_presenter.load_requested.connect(load_active_session)
 	_shell_presenter.topology_debug_changed.connect(_on_topology_debug_changed)
+	_shell_presenter.dungeon_3d_changed.connect(_on_dungeon_3d_changed)
 	_shell_presenter.master_volume_changed.connect(_on_master_volume_changed)
 	_shell_presenter.text_scale_changed.connect(_on_text_scale_changed)
 	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed)
 	_shell_presenter.apply_settings(_presentation_settings)
 	_audio_presenter.set_master_volume(_presentation_settings.master_volume)
 	_on_topology_debug_changed(_presentation_settings.topology_debug)
+	_on_dungeon_3d_changed(_presentation_settings.dungeon_3d)
 	_status_label.text = "Pure session boundary online"
 	_refresh_campaigns()
 
@@ -171,6 +177,13 @@ func _on_topology_debug_changed(enabled: bool) -> void:
 	_map_presenter.queue_redraw()
 	if _presentation_settings != null:
 		_presentation_settings.topology_debug = enabled
+		settings_repository.save_settings(_presentation_settings)
+
+
+func _on_dungeon_3d_changed(enabled: bool) -> void:
+	presentation_coordinator.set_dungeon_3d_enabled(enabled)
+	if _presentation_settings != null:
+		_presentation_settings.dungeon_3d = enabled
 		settings_repository.save_settings(_presentation_settings)
 
 

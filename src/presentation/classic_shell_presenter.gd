@@ -7,6 +7,7 @@ signal intent_submitted(intent: PlayerIntent)
 signal save_requested(slot_id: String)
 signal load_requested(slot_id: String)
 signal topology_debug_changed(enabled: bool)
+signal dungeon_3d_changed(enabled: bool)
 signal master_volume_changed(value: float)
 signal text_scale_changed(value: float)
 signal reduced_motion_changed(enabled: bool)
@@ -469,6 +470,11 @@ func _show_settings() -> void:
 	debug.button_pressed = _settings.topology_debug
 	debug.toggled.connect(func(enabled: bool) -> void: topology_debug_changed.emit(enabled))
 	_modal_body.add_child(debug)
+	var dungeon_3d := CheckButton.new()
+	dungeon_3d.text = "Use topology-derived 3D view in dungeons"
+	dungeon_3d.button_pressed = _settings.dungeon_3d
+	dungeon_3d.toggled.connect(func(enabled: bool) -> void: dungeon_3d_changed.emit(enabled))
+	_modal_body.add_child(dungeon_3d)
 	var volume_label := Label.new()
 	volume_label.text = "Master volume"
 	_modal_body.add_child(volume_label)
