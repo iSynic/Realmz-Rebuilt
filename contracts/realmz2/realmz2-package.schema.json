@@ -152,13 +152,36 @@
         "itemTexts": { "type": "array" },
         "treasures": { "type": "array" },
         "shops": { "type": "array" },
-        "simpleEncounters": { "type": "array" },
+        "simpleEncounters": { "type": "array", "items": { "$ref": "#/$defs/simpleEncounter" } },
         "complexEncounters": { "type": "array" },
         "thiefEncounters": { "type": "array" },
         "timedEncounters": { "type": "array" },
         "spells": { "type": "array" },
         "races": { "type": "array" },
         "castes": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "simpleEncounterResponse": {
+      "type": "object",
+      "required": ["id", "label", "resultProgramId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "label": { "type": "string", "minLength": 1 },
+        "resultProgramId": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": false
+    },
+    "simpleEncounter": {
+      "type": "object",
+      "required": ["id", "promptMessageId", "responses", "canBackOut", "maxTimes", "casteSuccess"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 0 },
+        "promptMessageId": { "type": "integer" },
+        "responses": { "type": "array", "items": { "$ref": "#/$defs/simpleEncounterResponse" }, "minItems": 1, "maxItems": 4 },
+        "canBackOut": { "type": "boolean" },
+        "maxTimes": { "type": "integer", "minimum": -128, "maximum": 127 },
+        "casteSuccess": { "type": "integer", "minimum": -128, "maximum": 127 }
       },
       "additionalProperties": false
     },
@@ -234,9 +257,10 @@
     },
     "trigger": {
       "type": "object",
-      "required": ["id", "mapId", "coordinate", "active", "chancePercent", "replacement"],
+      "required": ["id", "programId", "mapId", "coordinate", "active", "chancePercent", "replacement"],
       "properties": {
         "id": { "$ref": "#/$defs/identifier" },
+        "programId": { "$ref": "#/$defs/identifier" },
         "mapId": { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
         "coordinate": {
           "anyOf": [
@@ -400,6 +424,175 @@
       },
       "additionalProperties": false
     },
+    "callScenarioActionInstruction": {
+      "type": "object",
+      "required": ["kind", "actionId", "arguments", "result"],
+      "properties": {
+        "kind": { "const": "callScenarioAction" },
+        "actionId": { "$ref": "#/$defs/identifier" },
+        "arguments": { "type": "object", "additionalProperties": { "$ref": "#/$defs/safeExpression" } },
+        "result": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "scenarioProgram": {
+      "type": "object",
+      "required": ["id", "ownerKind", "ownerId", "instructions"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "ownerKind": { "enum": ["trigger", "extra-action-point", "simple-encounter-result", "complex-encounter-result"] },
+        "ownerId": { "$ref": "#/$defs/identifier" },
+        "instructions": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": { "oneOf": [{ "$ref": "#/$defs/classicInstruction" }, { "$ref": "#/$defs/callScenarioActionInstruction" }] }
+        }
+      },
+      "additionalProperties": false
+    },
+    "safeExpression": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "value"],
+          "properties": { "kind": { "const": "literal" }, "value": {} },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "scope", "stateScope", "ownerId", "name"],
+          "properties": {
+            "kind": { "const": "variable" },
+            "scope": { "enum": ["parameter", "local", "persistent", "context"] },
+            "stateScope": { "type": ["string", "null"] },
+            "ownerId": { "type": ["string", "null"] },
+            "name": { "$ref": "#/$defs/identifier" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "values"],
+          "properties": { "kind": { "const": "array" }, "values": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/safeExpression" } } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "fields"],
+          "properties": { "kind": { "const": "record" }, "fields": { "type": "object", "additionalProperties": { "$ref": "#/$defs/safeExpression" } } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "operator", "operand"],
+          "properties": { "kind": { "const": "unary" }, "operator": { "enum": ["not", "-"] }, "operand": { "$ref": "#/$defs/safeExpression" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "operator", "left", "right"],
+          "properties": {
+            "kind": { "const": "binary" },
+            "operator": { "enum": ["==", "!=", "<", "<=", ">", ">=", "+", "-", "*", "/", "and", "or"] },
+            "left": { "$ref": "#/$defs/safeExpression" },
+            "right": { "$ref": "#/$defs/safeExpression" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "object", "member"],
+          "properties": { "kind": { "const": "member" }, "object": { "$ref": "#/$defs/safeExpression" }, "member": { "$ref": "#/$defs/identifier" } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "operation", "collection", "itemName", "predicate"],
+          "properties": {
+            "kind": { "const": "collection" },
+            "operation": { "enum": ["count", "any", "all", "first"] },
+            "collection": { "$ref": "#/$defs/safeExpression" },
+            "itemName": { "type": ["string", "null"] },
+            "predicate": { "anyOf": [{ "$ref": "#/$defs/safeExpression" }, { "type": "null" }] }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "safeInstruction": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "capability", "arguments", "result"],
+          "properties": {
+            "kind": { "const": "operation" },
+            "capability": { "$ref": "#/$defs/identifier" },
+            "arguments": { "type": "object", "additionalProperties": { "$ref": "#/$defs/safeExpression" } },
+            "result": { "type": ["string", "null"] }
+          },
+          "additionalProperties": false
+        },
+        { "$ref": "#/$defs/callScenarioActionInstruction" },
+        {
+          "type": "object",
+          "required": ["kind", "scope", "stateScope", "ownerId", "name", "value"],
+          "properties": {
+            "kind": { "const": "setValue" },
+            "scope": { "enum": ["local", "persistent"] },
+            "stateScope": { "type": ["string", "null"] },
+            "ownerId": { "type": ["string", "null"] },
+            "name": { "$ref": "#/$defs/identifier" },
+            "value": { "$ref": "#/$defs/safeExpression" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "condition", "target"],
+          "properties": { "kind": { "const": "jumpIfFalse" }, "condition": { "$ref": "#/$defs/safeExpression" }, "target": { "type": "integer", "minimum": 0, "maximum": 4096 } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "target"],
+          "properties": { "kind": { "const": "jump" }, "target": { "type": "integer", "minimum": 0, "maximum": 4096 } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "itemName", "collection", "endTarget"],
+          "properties": { "kind": { "const": "beginForEach" }, "itemName": { "$ref": "#/$defs/identifier" }, "collection": { "$ref": "#/$defs/safeExpression" }, "endTarget": { "type": "integer", "minimum": 0, "maximum": 4096 } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "beginTarget"],
+          "properties": { "kind": { "const": "nextForEach" }, "beginTarget": { "type": "integer", "minimum": 0, "maximum": 4096 } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "value"],
+          "properties": { "kind": { "const": "return" }, "value": { "anyOf": [{ "$ref": "#/$defs/safeExpression" }, { "type": "null" }] } },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "outcome"],
+          "properties": { "kind": { "const": "halt" }, "outcome": {} },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "safeProgram": {
+      "type": "object",
+      "required": ["format", "instructions"],
+      "properties": {
+        "format": { "const": "realmz.safe-bytecode.v1" },
+        "instructions": { "type": "array", "maxItems": 4096, "items": { "$ref": "#/$defs/safeInstruction" } }
+      },
+      "additionalProperties": false
+    },
     "scenarioAction": {
       "type": "object",
       "required": [
@@ -434,30 +627,18 @@
         "requiredCapabilities": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
         "persistentState": {},
         "backend": { "const": "safe" },
-        "program": {}
+        "program": { "$ref": "#/$defs/safeProgram" }
       },
       "additionalProperties": false
     },
     "scenario": {
       "type": "object",
-      "required": ["kind", "schemaVersion", "classicPrograms", "scenarioActions", "callSites", "stateDefinitions", "migrations"],
+      "required": ["kind", "schemaVersion", "programs", "scenarioActions", "stateDefinitions", "migrations"],
       "properties": {
         "kind": { "const": "realmz2.scenario" },
         "schemaVersion": { "const": 1 },
-        "classicPrograms": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["triggerId", "instructions"],
-            "properties": {
-              "triggerId": { "$ref": "#/$defs/identifier" },
-              "instructions": { "type": "array", "items": { "$ref": "#/$defs/classicInstruction" } }
-            },
-            "additionalProperties": false
-          }
-        },
+        "programs": { "type": "array", "items": { "$ref": "#/$defs/scenarioProgram" } },
         "scenarioActions": { "type": "array", "items": { "$ref": "#/$defs/scenarioAction" } },
-        "callSites": { "type": "array" },
         "stateDefinitions": { "type": "array" },
         "migrations": { "type": "array" }
       },

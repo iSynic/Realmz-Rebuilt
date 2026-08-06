@@ -9,6 +9,7 @@ const SaveRepositoryScript := preload("res://src/infrastructure/saves/save_repos
 @onready var _status_label: Label = %Status
 @onready var _smoke_button: Button = %SmokeAction
 @onready var _map_presenter: ClassicMapPresenter = %ExplorationMap
+@onready var _interaction_presenter: InteractionPresenter = %InteractionPanel
 
 var session_controller: GameSessionController
 var presentation_coordinator: PresentationCoordinator
@@ -24,7 +25,8 @@ func _ready() -> void:
 	presentation_coordinator = PresentationCoordinatorScript.new()
 	add_child(session_controller)
 	add_child(presentation_coordinator)
-	presentation_coordinator.bind(session_controller, _map_presenter)
+	presentation_coordinator.bind(session_controller, _map_presenter, _interaction_presenter)
+	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
 	_status_label.text = "Pure session boundary online"
 
 
@@ -60,6 +62,8 @@ func start_package(package_path: String, initial_seed: int) -> SessionStep:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event.is_pressed() or event.is_echo() or not session_controller.session().view().session_started:
 		return
+	if session_controller.session().view().pending_interaction != null:
+		return
 	var direction := Vector2i.ZERO
 	match event.keycode:
 		KEY_UP, KEY_W:
@@ -77,9 +81,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _submit_intent(intent: PlayerIntent) -> SessionStep:
 	var step := session_controller.submit_intent(intent)
+	_present_step_status(step)
+	return step
+
+
+func _on_interaction_response_submitted(response: InteractionResponse) -> void:
+	var step := session_controller.respond(response)
+	_present_step_status(step)
+
+
+func _present_step_status(step: SessionStep) -> void:
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Action failed • %s" % step.error_message
-		return step
+		return
 	for event: DomainEvent in step.events:
 		match event.kind:
 			&"message_shown":
@@ -88,7 +102,8 @@ func _submit_intent(intent: PlayerIntent) -> SessionStep:
 				_status_label.text = "Entered %s" % event.payload.get("targetMapId", "map")
 			&"movement_blocked":
 				_status_label.text = "Blocked • %s" % event.payload.get("reason", "unknown")
-	return step
+	if step.state == SessionStep.State.WAITING_FOR_INTERACTION:
+		_status_label.text = String(step.interaction.payload.get("prompt", "Choose an option"))
 
 
 func save_active_session(slot_id: String) -> bool:

@@ -25,12 +25,13 @@ Exit evidence: repeated Providence exports are byte-identical; the runtime indep
 
 Exit evidence: the synthetic three-map fixture exercises message AP execution, terrain replacement, random-region gating, hidden-secret blocking/discovery, directional dungeon secrets, door opening, land transition, pathfinding, visibility, and save/reload through one topology. The 93-assertion suite passes across six suites. MCP Pro keyboard/mouse input traversed the message AP, search roll 52, secret, and transition; restart/restore retained map, coordinate, clock, RNG state/draw count, and overlays; the 960×600 topology/minimap screenshot was inspected; and a fresh editor inspection reported zero errors.
 
-## Phase 3 — Scenario VM and Actions (in progress)
+## Phase 3 — Scenario VM and Actions (completed)
 
-- Serializable Classic VM, AP/XAP/GOSUB/encounters/yields and one session runtime API.
-- Safe Scenario Actions and ordinary Providence timeline calls; no visible scripting modes or behavior anchors.
+- Implemented: a serializable, session-owned VM with preserved Classic instructions, signed GOSUB, CODE 111/112 stack behavior, XAP replacement, Simple Encounter yields, one runtime API, and explicit unsupported behavior.
+- Implemented: compiled Safe Scenario Actions with typed calls, persistent state, private helpers, bounded flow/arrays/steps, separate Classic/Safe frame limits, and save/resume at interaction boundaries.
+- Implemented: Providence ordinary Action calls and generated call editors, project-wide Scenario Action library, Safe bytecode compilation, derived export readiness, and removal of visible scripting tiers, gameplay profiles, behavior anchors, and sandbox creation from the normal 2.0 path.
 
-Exit: AP to encounter to result to XAP/Scenario Action to return survives every save boundary and matches Castle fixtures.
+Exit evidence: the synthetic route executes AP opcode -4 to a serializable Simple Encounter request, selected result message, `CallScenarioAction`, Classic opcode 39 to an XAP, and CODE 111 return as one ordered trace. Save/reload reproduces the pending request and exact continuation. The 132-assertion runtime suite passes across seven suites; Providence passes 905 frontend tests plus its Rust exporter, typecheck, lint, architecture, module-size, production-build, and cargo-check gates. Repeated Phase 3 exports are byte-identical. MCP Pro exercised the pending-save, response, restore, repeated response, and final route state with a clean editor error inspection. Castle source/control-flow evidence and the precise proof boundary are recorded in `docs/scenario-vm-evidence.md`.
 
 ## Phase 4 — Realmz gameplay domains (pending)
 

@@ -29,10 +29,11 @@ static func waiting(revision: int, request: InteractionRequest, committed_events
 	return step
 
 
-static func failed(revision: int, code: StringName, message: String) -> SessionStep:
+static func failed(revision: int, code: StringName, message: String, committed_events: Array[DomainEvent] = []) -> SessionStep:
 	var step := SessionStep.new()
 	step.view_revision = revision
 	step.state = State.FAILED
 	step.error_code = code
 	step.error_message = message
+	step.events.assign(committed_events)
 	return step

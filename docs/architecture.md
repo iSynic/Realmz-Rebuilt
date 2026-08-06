@@ -55,7 +55,9 @@ The engine models Realmz concepts—party, characters, maps, APs/XAPs, encounter
 
 ## Scenario execution
 
-Classic instructions retain opcode identity and provenance. AP/Encounter timelines may also call reusable typed Scenario Actions. Safe Actions compile to bounded programs and execute in the same serializable VM. Core operations cannot be overridden. GDScript is not a fallback; a later GDScript backend must use an OS-confined external process and the same JSON-safe Scenario Action ABI.
+Classic instructions retain raw/normalized opcode identity, slot, ID, and provenance. Triggers reference ordinary programs whose instructions are either preserved `ClassicAction` records or typed `CallScenarioAction` records. Negative Classic opcodes retain GOSUB intent; CODE 111 returns through the saved Classic frame, CODE 112 discards one, and opcode 39 replaces execution with an XAP program.
+
+Safe Scenario Actions compile in Providence to bounded bytecode. They use separate Safe frames, typed arguments, explicit caller contexts and capabilities, and versioned optional persistent state, but execute inside the same serializable VM. A domain operation goes through the one `RealmzRuntimeApi` owned by `GameSession`; a genuine player decision yields a serializable request and resumes the exact issuing frame after a matching typed response. Core `realmz.*` operations cannot be overridden, package actions are namespaced, and unknown behavior fails explicitly. GDScript is not a fallback; a later GDScript backend must use an OS-confined external process and the same JSON-safe Scenario Action ABI. See `docs/scenario-vm-evidence.md`.
 
 ## Persistence and randomness
 

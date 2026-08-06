@@ -1,15 +1,19 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "816caa25632b89b2e342ff1dc814189d05c2d12899844ac0f4eb688f370448e3"
+const EXPECTED_SCHEMA_HASH: String = "31fbbaac9f6ef8fbedc20e628be9f4a05bdf1ebffda97709dcd84319beedadc6"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
 	"realmz.presentation.content-addressed-media-v1",
 	"realmz.scenario.classic-vm-v1",
+	"realmz.scenario.safe-actions-v1",
 	"realmz.world.topology-v1",
 ]
-const SUPPORTED_CLASSIC_OPCODES: Array[int] = [1]
+const SUPPORTED_CLASSIC_OPCODES: Array[int] = [1, 4, 39, 111, 112]
+const SUPPORTED_SAFE_CAPABILITIES: Array[String] = ["core.presentation.choice", "core.presentation.text", "core.state.read", "core.state.write"]
+const SUPPORTED_ACTION_CONTEXTS: Array[String] = ["action", "encounter", "spell", "item", "monster-ai", "lifecycle", "rule-modifier"]
+const SUPPORTED_VALUE_TYPES: Array[String] = ["void", "bool", "int", "float", "string", "location-snapshot", "time-snapshot", "wealth-snapshot", "character-snapshot", "character-snapshot-array", "combat-snapshot", "action-outcome", "encounter-outcome", "effect-outcome", "spell-validation-outcome", "spell-cast-outcome", "spell-effect-outcome", "spell-tick-outcome", "spell-expiration-outcome", "item-outcome", "monster-decision", "rule-modifier", "bool-array", "int-array", "float-array", "string-array"]
 const DIRECTIONS: Array[String] = ["north", "east", "south", "west"]
 const EDGE_KINDS: Array[String] = ["open", "wall", "door", "secret", "archway", "map-boundary"]
 const FEATURE_KINDS: Array[String] = ["door", "secret", "stairs", "column", "unmapped", "note", "action-point", "archway", "no-wall-in-battle"]
@@ -117,19 +121,19 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 	var message_ids: Dictionary = {}
 	for message: MessageDefinition in messages:
 		message_ids[message.id] = true
-	var programs_value: Variant = _construct_programs(scenario.get("classicPrograms"))
-	if programs_value == null or not _validate_scenario_actions(scenario.get("scenarioActions"), manifest["campaignId"]):
+	var encounters_value: Variant = _construct_simple_encounters(content.get("simpleEncounters"))
+	if encounters_value == null:
 		return null
-	var programs: Dictionary = programs_value
-	var triggers_value: Variant = _construct_triggers(world.get("triggers"), programs)
+	var simple_encounters: Array[SimpleEncounterDefinition] = encounters_value
+	var scenario_definition := _construct_scenario(scenario, manifest["campaignId"])
+	if scenario_definition == null:
+		return null
+	var triggers_value: Variant = _construct_triggers(world.get("triggers"), scenario_definition)
 	if triggers_value == null:
 		return null
 	var triggers: Array[TriggerDefinition] = triggers_value
-	for trigger: TriggerDefinition in triggers:
-		for action: ClassicActionDefinition in trigger.actions():
-			if action.opcode == 1 and not message_ids.has(action.operand_id):
-				_reject("Trigger '%s' references unavailable message %d." % [trigger.id, action.operand_id])
-				return null
+	if not _validate_scenario_references(scenario_definition, message_ids, simple_encounters):
+		return null
 	var trigger_ids: Dictionary = {}
 	for trigger: TriggerDefinition in triggers:
 		if trigger_ids.has(trigger.id):
@@ -160,7 +164,7 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 			if map == null or map.topology.cell_at(trigger.coordinate) == null:
 				_reject("Trigger '%s' references an unavailable topology coordinate." % trigger.id)
 				return null
-	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, messages, triggers)
+	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters)
 
 
 func _construct_messages(value: Variant) -> Variant:
@@ -182,56 +186,156 @@ func _construct_messages(value: Variant) -> Variant:
 	return messages
 
 
+func _construct_simple_encounters(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Simple Encounters must be an array.")
+		return null
+	var encounters: Array[SimpleEncounterDefinition] = []
+	var ids: Dictionary = {}
+	for record: Variant in value:
+		if not record is Dictionary or not _exact_fields(record, ["id", "promptMessageId", "responses", "canBackOut", "maxTimes", "casteSuccess"]):
+			_reject("Simple Encounter definition is malformed.")
+			return null
+		var encounter_id := _integer(record["id"])
+		if encounter_id < 0 or ids.has(encounter_id) or not _is_integer(record["promptMessageId"]) or not record["responses"] is Array or record["responses"].is_empty() or record["responses"].size() > 4 or not record["canBackOut"] is bool or not _is_integer(record["maxTimes"]) or not _is_integer(record["casteSuccess"]):
+			_reject("Simple Encounter identity, choices, or Classic fields are malformed.")
+			return null
+		var responses: Array[SimpleEncounterResponse] = []
+		var response_ids: Dictionary = {}
+		for response: Variant in record["responses"]:
+			if not response is Dictionary or not _exact_fields(response, ["id", "label", "resultProgramId"]) or not response["id"] is String or response["id"].is_empty() or response_ids.has(response["id"]) or not response["label"] is String or response["label"].is_empty() or not response["resultProgramId"] is String or response["resultProgramId"].is_empty():
+				_reject("Simple Encounter %d contains a malformed or duplicate response." % encounter_id)
+				return null
+			response_ids[response["id"]] = true
+			responses.append(SimpleEncounterResponse.new(response["id"], response["label"], response["resultProgramId"]))
+		ids[encounter_id] = true
+		encounters.append(SimpleEncounterDefinition.new(encounter_id, _integer(record["promptMessageId"]), responses, record["canBackOut"], _integer(record["maxTimes"]), _integer(record["casteSuccess"])))
+	return encounters
+
+
+func _construct_scenario(document: Dictionary, campaign_id: String) -> ScenarioDefinition:
+	if not _has_fields(document, ["programs", "scenarioActions", "stateDefinitions", "migrations"], "scenario document"):
+		return null
+	if not document["stateDefinitions"] is Array or document["stateDefinitions"].size() > 4096 or not document["migrations"] is Array or document["migrations"].size() > 4096 or not _json_safe(document["stateDefinitions"], 0) or not _json_safe(document["migrations"], 0):
+		_reject("Scenario state definitions or migrations are malformed.")
+		return null
+	var programs_value: Variant = _construct_programs(document["programs"])
+	var actions_value: Variant = _construct_scenario_actions(document["scenarioActions"], campaign_id)
+	if programs_value == null or actions_value == null:
+		return null
+	var programs: Array[ScenarioProgramDefinition] = programs_value
+	var actions: Array[ScenarioActionDefinition] = actions_value
+	var definition := ScenarioDefinition.new(programs, actions)
+	for program: ScenarioProgramDefinition in programs:
+		for index: int in range(program.instruction_count()):
+			var instruction: Variant = program.instruction_at(index)
+			if instruction is CallScenarioActionInstruction:
+				var called_action := definition.action_by_id(instruction.action_id)
+				var calling_context := _program_context(program.owner_kind)
+				if called_action == null or called_action.visibility != &"public" or calling_context == &"" or not called_action.allows_context(calling_context) or not _call_arguments_match(instruction.argument_names(), instruction.result_target, called_action):
+					_reject("Scenario program '%s' has an invalid public Scenario Action call to '%s'." % [program.id, instruction.action_id])
+					return null
+	for action: ScenarioActionDefinition in actions:
+		for index: int in range(action.program.instruction_count()):
+			var instruction := action.program.instruction_at(index)
+			if instruction.kind == SafeInstructionDefinition.Kind.CALL_ACTION:
+				var called_action := definition.action_by_id(instruction.action_id)
+				if called_action == null or not _call_arguments_match(instruction.argument_names(), instruction.result_target, called_action) or not _contexts_are_compatible(action, called_action):
+					_reject("Scenario Action '%s' has an invalid call to '%s'." % [action.id, instruction.action_id])
+					return null
+	return definition
+
+
 func _construct_programs(value: Variant) -> Variant:
 	if not value is Array:
-		_reject("Classic programs must be an array.")
+		_reject("Scenario programs must be an array.")
 		return null
-	var programs: Dictionary = {}
+	var programs: Array[ScenarioProgramDefinition] = []
+	var ids: Dictionary = {}
 	for program: Variant in value:
-		if not program is Dictionary or not program.get("triggerId") is String or not program.get("instructions") is Array:
-			_reject("Classic program is malformed.")
+		if not program is Dictionary or not _exact_fields(program, ["id", "ownerKind", "ownerId", "instructions"]) or not program["id"] is String or program["id"].is_empty() or not program["ownerKind"] is String or program["ownerKind"] not in ["trigger", "extra-action-point", "simple-encounter-result", "complex-encounter-result"] or not program["ownerId"] is String or program["ownerId"].is_empty() or not program["instructions"] is Array or program["instructions"].size() > 4096:
+			_reject("Scenario program is malformed.")
 			return null
-		if programs.has(program["triggerId"]):
-			_reject("Classic program for '%s' is duplicated." % program["triggerId"])
+		if ids.has(program["id"]):
+			_reject("Scenario program '%s' is duplicated." % program["id"])
 			return null
-		var actions: Array[ClassicActionDefinition] = []
+		var instructions: Array[Variant] = []
 		for instruction: Variant in program["instructions"]:
-			if not instruction is Dictionary or instruction.get("kind") != "classicAction":
-				_reject("Classic instruction is malformed or unknown.")
+			var constructed: Variant = _construct_program_instruction(instruction)
+			if constructed == null:
 				return null
-			for field: String in ["slot", "rawOpcode", "opcode", "id"]:
-				if not _is_integer(instruction.get(field)):
-					_reject("Classic instruction field '%s' is not an integer." % field)
-					return null
-			if not instruction.get("gosub") is bool:
-				_reject("Classic instruction GOSUB identity is malformed.")
-				return null
-			var extra_code: Array[int] = []
-			if instruction.get("extraCode") != null:
-				if not instruction["extraCode"] is Array or instruction["extraCode"].size() != 5:
-					_reject("Classic E-code must contain five integers.")
-					return null
-				for extra: Variant in instruction["extraCode"]:
-					if not _is_integer(extra):
-						_reject("Classic E-code contains a non-integer.")
-						return null
-					extra_code.append(_integer(extra))
-			actions.append(ClassicActionDefinition.new(_integer(instruction["slot"]), _integer(instruction["rawOpcode"]), _integer(instruction["opcode"]), _integer(instruction["id"]), instruction["gosub"], extra_code))
-		programs[program["triggerId"]] = actions
+			instructions.append(constructed)
+		ids[program["id"]] = true
+		programs.append(ScenarioProgramDefinition.new(program["id"], StringName(program["ownerKind"]), program["ownerId"], instructions))
 	return programs
 
 
-func _construct_triggers(value: Variant, programs: Dictionary) -> Variant:
+func _construct_program_instruction(instruction: Variant) -> Variant:
+	if not instruction is Dictionary or not instruction.get("kind") is String:
+		_reject("Scenario instruction is malformed.")
+		return null
+	if instruction["kind"] == "callScenarioAction":
+		return _construct_call_instruction(instruction)
+	if instruction["kind"] != "classicAction" or not _exact_fields(instruction, ["kind", "slot", "rawOpcode", "opcode", "id", "gosub", "extraCode"]):
+		_reject("Scenario program contains an unknown instruction kind.")
+		return null
+	for field: String in ["slot", "rawOpcode", "opcode", "id"]:
+		if not _is_integer(instruction[field]):
+			_reject("Classic instruction field '%s' is not an integer." % field)
+			return null
+	if _integer(instruction["slot"]) < 0 or not instruction["gosub"] is bool:
+		_reject("Classic instruction slot or GOSUB identity is malformed.")
+		return null
+	var raw_opcode := _integer(instruction["rawOpcode"])
+	var normalized := raw_opcode * -1 if raw_opcode < 0 and raw_opcode not in [-14, -23] else raw_opcode
+	if normalized != _integer(instruction["opcode"]) or instruction["gosub"] != (raw_opcode < 0 and raw_opcode not in [-14, -23]):
+		_reject("Classic instruction raw/normalized/GOSUB identity is inconsistent.")
+		return null
+	if not SUPPORTED_CLASSIC_OPCODES.has(normalized):
+		_reject("Scenario program requires unsupported Classic opcode %d." % normalized)
+		return null
+	var extra_code: Array[int] = []
+	if instruction["extraCode"] != null:
+		if not instruction["extraCode"] is Array or instruction["extraCode"].size() != 5:
+			_reject("Classic E-code must contain five integers.")
+			return null
+		for extra: Variant in instruction["extraCode"]:
+			if not _is_integer(extra):
+				_reject("Classic E-code contains a non-integer.")
+				return null
+			extra_code.append(_integer(extra))
+	return ClassicActionDefinition.new(_integer(instruction["slot"]), raw_opcode, normalized, _integer(instruction["id"]), instruction["gosub"], extra_code)
+
+
+func _construct_call_instruction(record: Dictionary) -> CallScenarioActionInstruction:
+	if not _exact_fields(record, ["kind", "actionId", "arguments", "result"]) or not record["actionId"] is String or record["actionId"].is_empty() or not record["arguments"] is Dictionary or record["result"] != null and not record["result"] is String:
+		_reject("Scenario Action call instruction is malformed.")
+		return null
+	var arguments: Dictionary = {}
+	var count := [0]
+	for name: Variant in record["arguments"].keys():
+		if not name is String or name.is_empty():
+			_reject("Scenario Action call contains an invalid argument name.")
+			return null
+		var expression := _construct_safe_expression(record["arguments"][name], count, 0)
+		if expression == null:
+			return null
+		arguments[name] = expression
+	return CallScenarioActionInstruction.new(record["actionId"], arguments, "" if record["result"] == null else record["result"])
+
+
+func _construct_triggers(value: Variant, scenario: ScenarioDefinition) -> Variant:
 	if not value is Array:
 		_reject("World triggers must be an array.")
 		return null
 	var triggers: Array[TriggerDefinition] = []
 	for record: Variant in value:
-		if not record is Dictionary or not record.get("id") is String or record["id"].is_empty() or not record.get("active") is bool:
+		if not record is Dictionary or not record.get("id") is String or record["id"].is_empty() or not record.get("programId") is String or record["programId"].is_empty() or not record.get("active") is bool:
 			_reject("Trigger record is malformed.")
 			return null
-		if not programs.has(record["id"]):
-			_reject("Trigger '%s' has no Classic program." % record["id"])
+		var trigger_program := scenario.program_by_id(record["programId"])
+		if trigger_program == null or trigger_program.owner_id != record["id"] or trigger_program.owner_kind not in [&"trigger", &"extra-action-point"]:
+			_reject("Trigger '%s' references unavailable scenario program '%s'." % [record["id"], record["programId"]])
 			return null
 		var map_id: String = ""
 		var coordinate := Vector2i(-1, -1)
@@ -256,14 +360,8 @@ func _construct_triggers(value: Variant, programs: Dictionary) -> Variant:
 			if not _is_integer(replacement_record.get(replacement_field)):
 				_reject("Trigger '%s' replacement field '%s' is malformed." % [record["id"], replacement_field])
 				return null
-		var actions: Array[ClassicActionDefinition] = programs[record["id"]]
-		if record["active"]:
-			for action: ClassicActionDefinition in actions:
-				if not SUPPORTED_CLASSIC_OPCODES.has(action.opcode):
-					_reject("Active trigger '%s' requires unsupported Classic opcode %d." % [record["id"], action.opcode])
-					return null
 		var replacement := TriggerReplacementDefinition.new(_integer(replacement_record["doorId"]), _integer(replacement_record["terrainId"]), Vector2i(_integer(replacement_record["targetX"]), _integer(replacement_record["targetY"])))
-		triggers.append(TriggerDefinition.new(record["id"], map_id, coordinate, record["active"], chance, actions, replacement))
+		triggers.append(TriggerDefinition.new(record["id"], record["programId"], map_id, coordinate, record["active"], chance, replacement))
 	return triggers
 
 
@@ -485,37 +583,340 @@ func _construct_transitions(value: Variant, maps: Array[MapDefinition]) -> Varia
 	return transitions
 
 
-func _validate_scenario_actions(value: Variant, campaign_id: String) -> bool:
+func _construct_scenario_actions(value: Variant, campaign_id: String) -> Variant:
 	if not value is Array:
-		return _reject("Scenario Actions must be an array.")
+		_reject("Scenario Actions must be an array.")
+		return null
+	var actions: Array[ScenarioActionDefinition] = []
 	var ids: Dictionary = {}
-	for action: Variant in value:
-		if not action is Dictionary or not action.get("id") is String or action["id"].is_empty() or action.get("backend") != "safe" or not action.has("program"):
-			return _reject("Scenario Action definition is malformed or uses an unavailable backend.")
-		var required_prefix := "scenario.%s." % campaign_id
-		if action["id"].begins_with("realmz.") or not action["id"].begins_with(required_prefix) or ids.has(action["id"]):
-			return _reject("Scenario Action ID '%s' has an invalid or duplicate namespace." % action["id"])
-		ids[action["id"]] = true
-		var count := [0]
-		if not _validate_program_node(action["program"], count):
-			return false
+	var required_prefix := "scenario.%s." % campaign_id
+	for record: Variant in value:
+		var fields: Array[String] = ["id", "name", "description", "visibility", "category", "abiVersion", "implementationVersion", "stateSchemaVersion", "parameters", "returnType", "allowedContexts", "requiredCapabilities", "persistentState", "backend", "program"]
+		if not record is Dictionary or not _exact_fields(record, fields) or not record["id"] is String or record["id"].is_empty() or not record["name"] is String or record["name"].is_empty() or not record["description"] is String or record["visibility"] not in ["public", "private"] or not record["category"] is String or record["category"].is_empty() or not record["returnType"] is String or not SUPPORTED_VALUE_TYPES.has(record["returnType"]) or record["backend"] != "safe" or not record["persistentState"] is Dictionary or not _json_safe(record["persistentState"], 0):
+			_reject("Scenario Action definition is malformed or uses an unavailable backend.")
+			return null
+		if record["id"].begins_with("realmz.") or not record["id"].begins_with(required_prefix) or ids.has(record["id"]):
+			_reject("Scenario Action ID '%s' has an invalid or duplicate namespace." % record["id"])
+			return null
+		for version_field: String in ["abiVersion", "implementationVersion", "stateSchemaVersion"]:
+			if _integer(record[version_field]) < 1:
+				_reject("Scenario Action '%s' has invalid version field '%s'." % [record["id"], version_field])
+				return null
+		if not record["parameters"] is Array or record["parameters"].size() > 256:
+			_reject("Scenario Action '%s' parameters are malformed." % record["id"])
+			return null
+		var parameters: Array[ScenarioActionParameter] = []
+		var parameter_names: Dictionary = {}
+		for parameter: Variant in record["parameters"]:
+			if not parameter is Dictionary or not _exact_fields(parameter, ["name", "valueType", "maxLength"]) or not parameter["name"] is String or not _safe_identifier(parameter["name"]) or parameter_names.has(parameter["name"]) or not parameter["valueType"] is String or not SUPPORTED_VALUE_TYPES.has(parameter["valueType"]) or parameter["valueType"] == "void" or (parameter["maxLength"] != null and (_integer(parameter["maxLength"]) < 1 or _integer(parameter["maxLength"]) > 256)):
+				_reject("Scenario Action '%s' contains a malformed or duplicate parameter." % record["id"])
+				return null
+			parameter_names[parameter["name"]] = true
+			parameters.append(ScenarioActionParameter.new(parameter["name"], StringName(parameter["valueType"]), -1 if parameter["maxLength"] == null else _integer(parameter["maxLength"])))
+		var contexts_value: Variant = _string_array(record["allowedContexts"], "Scenario Action allowed contexts")
+		var capabilities_value: Variant = _string_array(record["requiredCapabilities"], "Scenario Action required capabilities")
+		if contexts_value == null or capabilities_value == null:
+			return null
+		var context_strings: Array[String] = contexts_value
+		if context_strings.is_empty():
+			_reject("Scenario Action '%s' has no allowed calling context." % record["id"])
+			return null
+		var contexts: Array[StringName] = []
+		for context: String in context_strings:
+			if not SUPPORTED_ACTION_CONTEXTS.has(context) or contexts.has(StringName(context)):
+				_reject("Scenario Action '%s' has an unknown or duplicate calling context '%s'." % [record["id"], context])
+				return null
+			contexts.append(StringName(context))
+		var capabilities: Array[String] = capabilities_value
+		for capability: String in capabilities:
+			if not SUPPORTED_SAFE_CAPABILITIES.has(capability) or capabilities.count(capability) > 1:
+				_reject("Scenario Action '%s' requires unknown capability '%s'." % [record["id"], capability])
+				return null
+		var program := _construct_safe_program(record["program"], capabilities)
+		if program == null:
+			return null
+		ids[record["id"]] = true
+		actions.append(ScenarioActionDefinition.new(record["id"], record["name"], record["description"], StringName(record["visibility"]), StringName(record["category"]), _integer(record["abiVersion"]), _integer(record["implementationVersion"]), _integer(record["stateSchemaVersion"]), parameters, StringName(record["returnType"]), contexts, capabilities, &"safe", program))
+	return actions
+
+
+func _construct_safe_program(value: Variant, declared_capabilities: Array[String]) -> SafeProgramDefinition:
+	if not value is Dictionary or not _exact_fields(value, ["format", "instructions"]) or value["format"] != "realmz.safe-bytecode.v1" or not value["instructions"] is Array or value["instructions"].size() > 4096:
+		_reject("Safe Scenario Action bytecode is malformed or exceeds 4,096 instructions.")
+		return null
+	var instructions: Array[SafeInstructionDefinition] = []
+	var node_count := [value["instructions"].size()]
+	for record: Variant in value["instructions"]:
+		var instruction := _construct_safe_instruction(record, node_count)
+		if instruction == null:
+			return null
+		if instruction.kind == SafeInstructionDefinition.Kind.OPERATION and not declared_capabilities.has(instruction.capability):
+			_reject("Safe program uses undeclared capability '%s'." % instruction.capability)
+			return null
+		instructions.append(instruction)
+	for index: int in range(instructions.size()):
+		var instruction := instructions[index]
+		if instruction.kind in [SafeInstructionDefinition.Kind.JUMP, SafeInstructionDefinition.Kind.JUMP_IF_FALSE, SafeInstructionDefinition.Kind.BEGIN_FOR_EACH] and instruction.target > instructions.size():
+			_reject("Safe instruction %d jumps outside its program." % index)
+			return null
+		if instruction.kind == SafeInstructionDefinition.Kind.NEXT_FOR_EACH and (instruction.target < 0 or instruction.target >= instructions.size() or instructions[instruction.target].kind != SafeInstructionDefinition.Kind.BEGIN_FOR_EACH):
+			_reject("Safe for-each continuation at %d has an invalid begin target." % index)
+			return null
+		if instruction.kind == SafeInstructionDefinition.Kind.BEGIN_FOR_EACH and (instruction.target <= index + 1 or instructions[instruction.target - 1].kind != SafeInstructionDefinition.Kind.NEXT_FOR_EACH or instructions[instruction.target - 1].target != index):
+			_reject("Safe for-each beginning at %d has an invalid bounded loop target." % index)
+			return null
+	return SafeProgramDefinition.new(instructions)
+
+
+func _construct_safe_instruction(value: Variant, node_count: Array) -> SafeInstructionDefinition:
+	if not value is Dictionary or not value.get("kind") is String:
+		_reject("Safe instruction is malformed.")
+		return null
+	match value["kind"]:
+		"operation":
+			if not _exact_fields(value, ["kind", "capability", "arguments", "result"]) or not value["capability"] is String or not SUPPORTED_SAFE_CAPABILITIES.has(value["capability"]) or not value["arguments"] is Dictionary or value["result"] != null and not value["result"] is String:
+				_reject("Safe operation instruction is malformed or unavailable.")
+				return null
+			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.OPERATION)
+			instruction.capability = value["capability"]
+			instruction.result_target = "" if value["result"] == null else value["result"]
+			var arguments: Variant = _construct_safe_arguments(value["arguments"], node_count)
+			if arguments == null:
+				return null
+			instruction.set_arguments(arguments)
+			return instruction
+		"callScenarioAction":
+			if not _exact_fields(value, ["kind", "actionId", "arguments", "result"]) or not value["actionId"] is String or value["actionId"].is_empty() or not value["arguments"] is Dictionary or value["result"] != null and not value["result"] is String:
+				_reject("Safe Scenario Action call is malformed.")
+				return null
+			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.CALL_ACTION)
+			instruction.action_id = value["actionId"]
+			instruction.result_target = "" if value["result"] == null else value["result"]
+			var arguments: Variant = _construct_safe_arguments(value["arguments"], node_count)
+			if arguments == null:
+				return null
+			instruction.set_arguments(arguments)
+			return instruction
+		"setValue":
+			if not _exact_fields(value, ["kind", "scope", "stateScope", "ownerId", "name", "value"]) or value["scope"] not in ["local", "persistent"] or value["stateScope"] != null and not value["stateScope"] is String or value["ownerId"] != null and not value["ownerId"] is String or not value["name"] is String or value["name"].is_empty():
+				_reject("Safe value assignment is malformed.")
+				return null
+			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.SET_VALUE)
+			instruction.scope = StringName(value["scope"])
+			instruction.state_scope = "" if value["stateScope"] == null else value["stateScope"]
+			instruction.owner_id = "" if value["ownerId"] == null else value["ownerId"]
+			instruction.name = value["name"]
+			instruction.value = _construct_safe_expression(value["value"], node_count, 0)
+			return instruction if instruction.value != null else null
+		"jumpIfFalse":
+			if not _exact_fields(value, ["kind", "condition", "target"]) or _integer(value["target"]) < 0:
+				_reject("Safe conditional jump is malformed.")
+				return null
+			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.JUMP_IF_FALSE)
+			instruction.condition = _construct_safe_expression(value["condition"], node_count, 0)
+			instruction.target = _integer(value["target"])
+			return instruction if instruction.condition != null else null
+		"jump":
+			if not _exact_fields(value, ["kind", "target"]) or _integer(value["target"]) < 0:
+				_reject("Safe jump is malformed.")
+				return null
+			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.JUMP)
+			instruction.target = _integer(value["target"])
+			return instruction
+		"beginForEach":
+			if not _exact_fields(value, ["kind", "itemName", "collection", "endTarget"]) or not value["itemName"] is String or value["itemName"].is_empty() or _integer(value["endTarget"]) < 0:
+				_reject("Safe for-each beginning is malformed.")
+				return null
+			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.BEGIN_FOR_EACH)
+			instruction.item_name = value["itemName"]
+			instruction.collection = _construct_safe_expression(value["collection"], node_count, 0)
+			instruction.target = _integer(value["endTarget"])
+			return instruction if instruction.collection != null else null
+		"nextForEach":
+			if not _exact_fields(value, ["kind", "beginTarget"]) or _integer(value["beginTarget"]) < 0:
+				_reject("Safe for-each continuation is malformed.")
+				return null
+			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.NEXT_FOR_EACH)
+			instruction.target = _integer(value["beginTarget"])
+			return instruction
+		"return":
+			if not _exact_fields(value, ["kind", "value"]):
+				_reject("Safe return instruction is malformed.")
+				return null
+			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.RETURN)
+			if value["value"] != null:
+				instruction.value = _construct_safe_expression(value["value"], node_count, 0)
+				if instruction.value == null:
+					return null
+			return instruction
+		"halt":
+			if not _exact_fields(value, ["kind", "outcome"]):
+				_reject("Safe halt instruction is malformed.")
+				return null
+			var instruction := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.HALT)
+			instruction.outcome = value["outcome"]
+			return instruction
+	_reject("Safe program contains unknown instruction kind '%s'." % value["kind"])
+	return null
+
+
+func _construct_safe_arguments(value: Dictionary, node_count: Array) -> Variant:
+	var result: Dictionary = {}
+	for name: Variant in value.keys():
+		if not name is String or name.is_empty():
+			_reject("Safe instruction contains an invalid argument name.")
+			return null
+		var expression := _construct_safe_expression(value[name], node_count, 0)
+		if expression == null:
+			return null
+		result[name] = expression
+	return result
+
+
+func _construct_safe_expression(value: Variant, node_count: Array, depth: int) -> SafeExpressionDefinition:
+	node_count[0] += 1
+	if node_count[0] > 4096 or depth > 64 or not value is Dictionary or not value.get("kind") is String:
+		_reject("Safe expression is malformed or exceeds its complexity limit.")
+		return null
+	match value["kind"]:
+		"literal":
+			if not _exact_fields(value, ["kind", "value"]) or not _json_safe(value["value"], depth + 1):
+				_reject("Safe literal expression is malformed.")
+				return null
+			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.LITERAL)
+			expression.value = value["value"]
+			return expression
+		"variable":
+			if not _exact_fields(value, ["kind", "scope", "stateScope", "ownerId", "name"]) or value["scope"] not in ["parameter", "local", "persistent", "context"] or value["stateScope"] != null and not value["stateScope"] is String or value["ownerId"] != null and not value["ownerId"] is String or not value["name"] is String or value["name"].is_empty():
+				_reject("Safe variable expression is malformed.")
+				return null
+			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.VARIABLE)
+			expression.scope = StringName(value["scope"])
+			expression.state_scope = "" if value["stateScope"] == null else value["stateScope"]
+			expression.owner_id = "" if value["ownerId"] == null else value["ownerId"]
+			expression.name = value["name"]
+			return expression
+		"array":
+			if not _exact_fields(value, ["kind", "values"]) or not value["values"] is Array or value["values"].size() > 256:
+				_reject("Safe array expression is malformed or exceeds 256 entries.")
+				return null
+			var entries: Array[SafeExpressionDefinition] = []
+			for child: Variant in value["values"]:
+				var entry := _construct_safe_expression(child, node_count, depth + 1)
+				if entry == null:
+					return null
+				entries.append(entry)
+			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.ARRAY)
+			expression.set_values(entries)
+			return expression
+		"record":
+			if not _exact_fields(value, ["kind", "fields"]) or not value["fields"] is Dictionary or value["fields"].size() > 256:
+				_reject("Safe record expression is malformed or oversized.")
+				return null
+			var fields: Dictionary = {}
+			for field_name: Variant in value["fields"].keys():
+				if not field_name is String:
+					_reject("Safe record field name is malformed.")
+					return null
+				var field := _construct_safe_expression(value["fields"][field_name], node_count, depth + 1)
+				if field == null:
+					return null
+				fields[field_name] = field
+			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.RECORD)
+			expression.set_fields(fields)
+			return expression
+		"unary":
+			if not _exact_fields(value, ["kind", "operator", "operand"]) or value["operator"] not in ["not", "-"]:
+				_reject("Safe unary expression is malformed.")
+				return null
+			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.UNARY)
+			expression.operator = StringName(value["operator"])
+			expression.operand = _construct_safe_expression(value["operand"], node_count, depth + 1)
+			return expression if expression.operand != null else null
+		"binary":
+			if not _exact_fields(value, ["kind", "operator", "left", "right"]) or value["operator"] not in ["==", "!=", "<", "<=", ">", ">=", "+", "-", "*", "/", "and", "or"]:
+				_reject("Safe binary expression is malformed.")
+				return null
+			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.BINARY)
+			expression.operator = StringName(value["operator"])
+			expression.left = _construct_safe_expression(value["left"], node_count, depth + 1)
+			expression.right = _construct_safe_expression(value["right"], node_count, depth + 1)
+			return expression if expression.left != null and expression.right != null else null
+		"member":
+			if not _exact_fields(value, ["kind", "object", "member"]) or not value["member"] is String or value["member"].is_empty():
+				_reject("Safe member expression is malformed.")
+				return null
+			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.MEMBER)
+			expression.object = _construct_safe_expression(value["object"], node_count, depth + 1)
+			expression.member = value["member"]
+			return expression if expression.object != null else null
+		"collection":
+			if not _exact_fields(value, ["kind", "operation", "collection", "itemName", "predicate"]) or value["operation"] not in ["count", "any", "all", "first"] or value["itemName"] != null and not value["itemName"] is String:
+				_reject("Safe collection expression is malformed.")
+				return null
+			var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.COLLECTION)
+			expression.operator = StringName(value["operation"])
+			expression.collection = _construct_safe_expression(value["collection"], node_count, depth + 1)
+			expression.item_name = "" if value["itemName"] == null else value["itemName"]
+			if value["operation"] == "count" and (value["itemName"] != null or value["predicate"] != null) or value["operation"] in ["any", "all"] and (expression.item_name.is_empty() or value["predicate"] == null) or value["operation"] == "first" and ((value["predicate"] == null) != expression.item_name.is_empty()):
+				_reject("Safe collection expression has an inconsistent predicate contract.")
+				return null
+			if value["predicate"] != null:
+				expression.predicate = _construct_safe_expression(value["predicate"], node_count, depth + 1)
+			return expression if expression.collection != null and (value["predicate"] == null or expression.predicate != null) else null
+	_reject("Safe program contains unknown expression kind '%s'." % value["kind"])
+	return null
+
+
+func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition]) -> bool:
+	var encounter_ids: Dictionary = {}
+	for encounter: SimpleEncounterDefinition in encounters:
+		encounter_ids[encounter.id] = true
+		if not message_ids.has(encounter.prompt_message_id):
+			return _reject("Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
+		for response: SimpleEncounterResponse in encounter.responses():
+			if scenario.program_by_id(response.result_program_id) == null:
+				return _reject("Simple Encounter %d response '%s' references unavailable result program '%s'." % [encounter.id, response.id, response.result_program_id])
+	for program_id: String in scenario.program_ids():
+		var program := scenario.program_by_id(program_id)
+		for index: int in range(program.instruction_count()):
+			var instruction: Variant = program.instruction_at(index)
+			if not instruction is ClassicActionDefinition:
+				continue
+			match instruction.opcode:
+				1:
+					if not message_ids.has(instruction.operand_id):
+						return _reject("Scenario program '%s' references unavailable message %d." % [program.id, instruction.operand_id])
+				4:
+					if not encounter_ids.has(instruction.operand_id):
+						return _reject("Scenario program '%s' references unavailable Simple Encounter %d." % [program.id, instruction.operand_id])
+				39:
+					if scenario.program_by_id("xap:%d" % instruction.operand_id) == null:
+						return _reject("Scenario program '%s' references unavailable XAP %d." % [program.id, instruction.operand_id])
 	return true
 
 
-func _validate_program_node(value: Variant, count: Array) -> bool:
-	count[0] += 1
-	if count[0] > 4096:
-		return _reject("Safe Scenario Action exceeds 4,096 program nodes.")
-	if value is Array:
-		if value.size() > 256:
-			return _reject("Safe Scenario Action contains an array larger than 256 entries.")
-		for child: Variant in value:
-			if not _validate_program_node(child, count):
-				return false
-	elif value is Dictionary:
-		for child: Variant in value.values():
-			if not _validate_program_node(child, count):
-				return false
+func _program_context(owner_kind: StringName) -> StringName:
+	match owner_kind:
+		&"simple-encounter-result", &"complex-encounter-result":
+			return &"encounter"
+		&"trigger", &"extra-action-point":
+			return &"action"
+	return &""
+
+
+func _call_arguments_match(argument_names: Array[String], result_target: String, action: ScenarioActionDefinition) -> bool:
+	if argument_names != action.parameter_names():
+		return false
+	if result_target.is_empty():
+		return true
+	return action.return_type != &"void" and _safe_identifier(result_target)
+
+
+func _contexts_are_compatible(caller: ScenarioActionDefinition, called: ScenarioActionDefinition) -> bool:
+	for context: StringName in caller.allowed_contexts():
+		if not called.allows_context(context):
+			return false
 	return true
 
 
@@ -570,6 +971,15 @@ func _has_fields(value: Dictionary, fields: Array[String], label: String) -> boo
 	return true
 
 
+func _exact_fields(value: Dictionary, fields: Array[String]) -> bool:
+	if value.size() != fields.size():
+		return false
+	for field: String in fields:
+		if not value.has(field):
+			return false
+	return true
+
+
 func _string_array(value: Variant, label: String) -> Variant:
 	if not value is Array:
 		_reject("%s must be an array." % label)
@@ -615,6 +1025,40 @@ func _is_sha256(value: Variant) -> bool:
 		if not character in "0123456789abcdef":
 			return false
 	return true
+
+
+func _safe_identifier(value: String) -> bool:
+	if value.is_empty():
+		return false
+	for index: int in value.length():
+		var code := value.unicode_at(index)
+		var lower := code >= 97 and code <= 122
+		var digit := code >= 48 and code <= 57
+		if not lower and not (digit and index > 0) and not (code == 95 and index > 0):
+			return false
+	return true
+
+
+func _json_safe(value: Variant, depth: int) -> bool:
+	if depth > 64:
+		return false
+	if value == null or value is bool or value is int or value is float or value is String:
+		return true
+	if value is Array:
+		if value.size() > 4096:
+			return false
+		for child: Variant in value:
+			if not _json_safe(child, depth + 1):
+				return false
+		return true
+	if value is Dictionary:
+		if value.size() > 4096:
+			return false
+		for key: Variant in value.keys():
+			if not key is String or not _json_safe(value[key], depth + 1):
+				return false
+		return true
+	return false
 
 
 func _sha256(bytes: PackedByteArray) -> String:

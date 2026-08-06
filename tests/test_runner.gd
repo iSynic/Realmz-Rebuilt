@@ -5,6 +5,7 @@ const SUITES: Array[Script] = [
 	preload("res://tests/core/test_realmz_rng.gd"),
 	preload("res://tests/core/test_map_topology.gd"),
 	preload("res://tests/infrastructure/test_package_repository.gd"),
+	preload("res://tests/scenario/test_scenario_vm.gd"),
 	preload("res://tests/integration/test_exploration_session.gd"),
 	preload("res://tests/integration/test_session_persistence.gd"),
 ]

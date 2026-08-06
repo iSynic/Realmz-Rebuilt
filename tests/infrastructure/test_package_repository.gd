@@ -11,7 +11,7 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "4a55d5762ff84fc0b82b2d4ce9fca9e1bc2a2d21151542f082f0951773a95102", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "880a83d780c9aec6bb3b4af9c69920ae73d5f7444d1363c7162259555f28aaef", "package identity is retained")
 	var map := loaded.content.world.map_by_id("land:0")
 	assert_not_null(map, "the authoritative start map is constructed")
 	assert_equal(map.topology.width, 3, "fixture topology width is preserved")
@@ -23,8 +23,11 @@ func run() -> void:
 	assert_equal(dungeon.topology.cell_at(Vector2i(1, 0)).edge(&"north").kind, &"door", "packed dungeon doors become explicit topology edges")
 	assert_equal(dungeon.topology.cell_at(Vector2i(0, 1)).edge(&"east").kind, &"secret", "packed dungeon passage directions become explicit topology edges")
 	assert_equal(loaded.content.message_by_id(1).text, "The Realmz 2.0 fixture is deterministic.", "runtime message text crosses the validating factory")
-	assert_equal(loaded.content.trigger_by_id("ap.fixture.message").actions()[0].opcode, 1, "Classic opcode identity is typed")
+	var message_program := loaded.content.scenario.program_by_id(loaded.content.trigger_by_id("ap.fixture.message").program_id)
+	assert_equal(message_program.instruction_at(0).opcode, 1, "Classic opcode identity is typed in the ordinary trigger program")
 	assert_equal(loaded.content.trigger_by_id("ap.fixture.message").replacement.target_coordinate, Vector2i(2, 2), "AP replacement data is typed")
+	assert_equal(loaded.content.simple_encounter_by_id(0).response_at(0).result_program_id, "simple:0:result:0", "Encounter choices reference ordinary result programs")
+	assert_not_null(loaded.content.scenario.action_by_id("scenario.realmz2-synthetic-fixture.after-encounter"), "compiled Scenario Actions become typed callable definitions")
 
 	var rejected := repository.load_package(TAMPERED_FIXTURE_PATH)
 	assert_false(rejected.is_ok(), "a content mutation without matching manifest hashes is rejected")

@@ -14,6 +14,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 
 - No gameplay autoloads, service locators, `GameGlobal`, `NodeAccess`, or string-based dispatch.
 - The controller may call only the public `GameSession` operations.
+- Interaction UI responses enter through `GameSession.respond`; presenters never resume the VM or mutate state themselves.
 - Restore constructs and validates a replacement before swapping the active session.
 
 ## Work Guidance

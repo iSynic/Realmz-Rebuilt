@@ -31,6 +31,8 @@ After the initial bootstrap, change project settings through MCP/editor project-
 6. Capture screenshots.
 7. Call `stop_scene`.
 
+For interaction slices, inspect the pending request ID before responding, save while the request is pending, resume it once, restore that save, and resume it again. This proves that presentation is returning typed responses and that the issuing VM frame—not a UI callback—is the continuation authority.
+
 Runtime operations before `play_scene` are invalid. Use CLI discovery with `node <server>/build/cli.js --help` when MCP tools are not exposed in the current client.
 
 Do not run the headless verification lane while a live MCP editor session is open. MCP Pro injects editor-only autoloads and removes them when an editor process exits; serializing these lanes prevents a headless process from removing the live editor's runtime inspector settings. The MCP scene-save command can also emit Godot progress-dialog errors while handling its deferred request; restart the editor before the final clean error inspection after MCP-authored scene changes.

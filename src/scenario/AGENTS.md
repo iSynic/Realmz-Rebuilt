@@ -19,6 +19,8 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 - Unknown instructions, IDs, capabilities, actions, and response shapes fail explicitly.
 - Packages cannot override `realmz.*`; campaign actions use `scenario.<campaign>.*`.
 - A Scenario Action call is an ordinary AP/Encounter timeline entry. Authoring gaps and behavior anchors are not runtime concepts.
+- Runtime instruction forms are preserved `ClassicAction` records and typed `CallScenarioAction` records. Safe bytecode is compiler output, never Providence editor state.
+- The session owns the active VM, action state, runtime API, and post-move continuation. VM snapshots include Classic and Safe frames, origin, trace, and any pending typed interaction.
 
 ## Work Guidance
 
