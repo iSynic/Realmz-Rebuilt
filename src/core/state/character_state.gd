@@ -5,6 +5,40 @@ var id: String
 var name: String
 var current_health: int
 var maximum_health: int
+var race_id: String = "realmz.race.human"
+var caste_id: String = "realmz.caste.adventurer"
+var gender: int = 1
+var level: int = 1
+var experience: int = 0
+var age_days: int = 0
+var brawn: int = 10
+var knowledge: int = 10
+var judgment: int = 10
+var agility: int = 10
+var vitality: int = 10
+var luck: int = 10
+var to_hit: int = 0
+var dodge: int = 20
+var missile: int = 0
+var hand_to_hand: int = 1
+var damage_bonus: int = 0
+var armor: int = 0
+var magic_resistance: int = 0
+var movement: int = 0
+var maximum_movement: int = 10
+var normal_attacks: int = 1
+var attacks_remaining: int = 1
+var spellcaster_type: int = 0
+var spell_points: int = 0
+var maximum_spell_points: int = 0
+var carried_load: int = 0
+var maximum_load: int = 0
+var conditions: ConditionSet
+var money: WealthState
+var _saves: Array[int] = []
+var _specials: Array[int] = []
+var _inventory: Array[ItemInstance] = []
+var _known_spells: Array[String] = []
 
 
 func _init(character_id: String, character_name: String, health: int, max_health: int) -> void:
@@ -12,10 +46,67 @@ func _init(character_id: String, character_name: String, health: int, max_health
 	name = character_name
 	current_health = health
 	maximum_health = max_health
+	conditions = ConditionSet.new()
+	money = WealthState.new()
+	_saves.resize(8)
+	_saves.fill(50)
+	_specials.resize(12)
+	_specials.fill(0)
+
+
+func save_value(index: int) -> int:
+	return 0 if index < 0 or index >= _saves.size() else _saves[index]
+
+
+func set_save_value(index: int, value: int) -> bool:
+	if index < 0 or index >= _saves.size():
+		return false
+	_saves[index] = clampi(value, -99, 120)
+	return true
+
+
+func special_value(index: int) -> int:
+	return 0 if index < 0 or index >= _specials.size() else _specials[index]
+
+
+func set_special_value(index: int, value: int) -> bool:
+	if index < 0 or index >= _specials.size():
+		return false
+	_specials[index] = clampi(value, -32_768, 32_767)
+	return true
+
+
+func inventory() -> Array[ItemInstance]:
+	return _inventory.duplicate()
+
+
+func set_inventory(items: Array[ItemInstance]) -> void:
+	_inventory = items.duplicate()
+
+
+func known_spells() -> Array[String]:
+	return _known_spells.duplicate()
+
+
+func set_known_spells(spell_ids: Array[String]) -> void:
+	_known_spells = spell_ids.duplicate()
 
 
 func to_data() -> Dictionary:
-	return {"id": id, "name": name, "currentHealth": current_health, "maximumHealth": maximum_health}
+	var item_data: Array[Dictionary] = []
+	for item: ItemInstance in _inventory:
+		item_data.append(item.to_data())
+	return {
+		"id": id, "name": name, "currentHealth": current_health, "maximumHealth": maximum_health,
+		"raceId": race_id, "casteId": caste_id, "gender": gender, "level": level, "experience": experience, "ageDays": age_days,
+		"attributes": [brawn, knowledge, judgment, agility, vitality, luck],
+		"toHit": to_hit, "dodge": dodge, "missile": missile, "handToHand": hand_to_hand, "damageBonus": damage_bonus,
+		"armor": armor, "magicResistance": magic_resistance, "movement": movement, "maximumMovement": maximum_movement,
+		"normalAttacks": normal_attacks, "attacksRemaining": attacks_remaining, "spellcasterType": spellcaster_type,
+		"spellPoints": spell_points, "maximumSpellPoints": maximum_spell_points, "load": carried_load, "maximumLoad": maximum_load,
+		"conditions": conditions.to_data(), "money": money.to_data(), "saves": _saves.duplicate(), "specials": _specials.duplicate(),
+		"inventory": item_data, "knownSpells": _known_spells.duplicate(),
+	}
 
 
 static func from_data(data: Variant) -> CharacterState:
@@ -28,11 +119,92 @@ static func from_data(data: Variant) -> CharacterState:
 		return null
 	var health := _integer(data["currentHealth"])
 	var maximum := _integer(data["maximumHealth"])
-	if health < 0 or maximum < 1:
+	if health < -32_768 or maximum < 1:
 		return null
 	if health > maximum:
 		return null
-	return CharacterState.new(data["id"], data["name"], health, maximum)
+	var result := CharacterState.new(data["id"], data["name"], health, maximum)
+	if not data.has("raceId"):
+		return result
+	for field: String in ["raceId", "casteId", "gender", "level", "experience", "ageDays", "attributes", "toHit", "dodge", "missile", "handToHand", "damageBonus", "armor", "magicResistance", "movement", "maximumMovement", "normalAttacks", "attacksRemaining", "spellcasterType", "spellPoints", "maximumSpellPoints", "load", "maximumLoad", "conditions", "money", "saves", "specials", "inventory", "knownSpells"]:
+		if not data.has(field):
+			return null
+	if not data["raceId"] is String or data["raceId"].is_empty() or not data["casteId"] is String or data["casteId"].is_empty() or not data["attributes"] is Array or data["attributes"].size() != 6 or not data["saves"] is Array or data["saves"].size() != 8 or not data["specials"] is Array or data["specials"].size() != 12 or not data["inventory"] is Array or not data["knownSpells"] is Array:
+		return null
+	var numeric_values: Dictionary = {}
+	for field: String in ["gender", "level", "experience", "ageDays", "toHit", "dodge", "missile", "handToHand", "damageBonus", "armor", "magicResistance", "movement", "maximumMovement", "normalAttacks", "attacksRemaining", "spellcasterType", "spellPoints", "maximumSpellPoints", "load", "maximumLoad"]:
+		var value := _signed_integer(data[field])
+		if value == -100_000:
+			return null
+		numeric_values[field] = value
+	var loaded_conditions := ConditionSet.from_data(data["conditions"], ConditionSet.CHARACTER_COUNT)
+	var loaded_money := WealthState.from_data(data["money"])
+	if loaded_conditions == null or loaded_money == null:
+		return null
+	var attributes: Array[int] = []
+	var saves: Array[int] = []
+	var specials: Array[int] = []
+	for value: Variant in data["attributes"]:
+		var parsed := _signed_integer(value)
+		if parsed == -100_000:
+			return null
+		attributes.append(parsed)
+	for value: Variant in data["saves"]:
+		var parsed := _signed_integer(value)
+		if parsed == -100_000:
+			return null
+		saves.append(parsed)
+	for value: Variant in data["specials"]:
+		var parsed := _signed_integer(value)
+		if parsed == -100_000:
+			return null
+		specials.append(parsed)
+	var items: Array[ItemInstance] = []
+	for item_data: Variant in data["inventory"]:
+		var item := ItemInstance.from_data(item_data)
+		if item == null:
+			return null
+		items.append(item)
+	var spells: Array[String] = []
+	for spell_id: Variant in data["knownSpells"]:
+		if not spell_id is String or spell_id.is_empty():
+			return null
+		spells.append(spell_id)
+	result.race_id = data["raceId"]
+	result.caste_id = data["casteId"]
+	result.gender = numeric_values["gender"]
+	result.level = numeric_values["level"]
+	result.experience = numeric_values["experience"]
+	result.age_days = numeric_values["ageDays"]
+	result.brawn = attributes[0]
+	result.knowledge = attributes[1]
+	result.judgment = attributes[2]
+	result.agility = attributes[3]
+	result.vitality = attributes[4]
+	result.luck = attributes[5]
+	result.to_hit = numeric_values["toHit"]
+	result.dodge = numeric_values["dodge"]
+	result.missile = numeric_values["missile"]
+	result.hand_to_hand = numeric_values["handToHand"]
+	result.damage_bonus = numeric_values["damageBonus"]
+	result.armor = numeric_values["armor"]
+	result.magic_resistance = numeric_values["magicResistance"]
+	result.movement = numeric_values["movement"]
+	result.maximum_movement = numeric_values["maximumMovement"]
+	result.normal_attacks = numeric_values["normalAttacks"]
+	result.attacks_remaining = numeric_values["attacksRemaining"]
+	result.spellcaster_type = numeric_values["spellcasterType"]
+	result.spell_points = numeric_values["spellPoints"]
+	result.maximum_spell_points = numeric_values["maximumSpellPoints"]
+	result.carried_load = numeric_values["load"]
+	result.maximum_load = numeric_values["maximumLoad"]
+	result.conditions = loaded_conditions
+	result.money = loaded_money
+	result._saves = saves
+	result._specials = specials
+	result._inventory = items
+	result._known_spells = spells
+	return result
 
 
 static func _integer(value: Variant) -> int:
@@ -41,3 +213,11 @@ static func _integer(value: Variant) -> int:
 	if value is float and is_equal_approx(value, round(value)):
 		return int(value)
 	return -1
+
+
+static func _signed_integer(value: Variant) -> int:
+	if value is int:
+		return value
+	if value is float and is_equal_approx(value, round(value)):
+		return int(value)
+	return -100_000

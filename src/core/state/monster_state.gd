@@ -1,0 +1,86 @@
+class_name MonsterState
+extends RefCounted
+
+var id: String
+var definition_id: String
+var name: String
+var hit_dice: int
+var current_health: int
+var maximum_health: int
+var agility: int
+var armor: int
+var magic_resistance: int
+var spell_points: int
+var maximum_spell_points: int
+var traitor: bool
+var weapon_id: String = ""
+var conditions: ConditionSet
+
+
+func _init(instance_id: String, source_definition_id: String, display_name: String, health: int, max_health: int, hd: int = 1, dexterity: int = 1, armor_rating: int = 0, magic_resist: int = 0, spell_energy: int = 0, is_traitor: bool = true) -> void:
+	id = instance_id
+	definition_id = source_definition_id
+	name = display_name
+	current_health = health
+	maximum_health = max_health
+	hit_dice = hd
+	agility = dexterity
+	armor = armor_rating
+	magic_resistance = magic_resist
+	spell_points = spell_energy
+	maximum_spell_points = spell_energy
+	traitor = is_traitor
+	conditions = ConditionSet.new()
+
+
+func to_data() -> Dictionary:
+	return {
+		"id": id,
+		"definitionId": definition_id,
+		"name": name,
+		"hitDice": hit_dice,
+		"currentHealth": current_health,
+		"maximumHealth": maximum_health,
+		"agility": agility,
+		"armor": armor,
+		"magicResistance": magic_resistance,
+		"spellPoints": spell_points,
+		"maximumSpellPoints": maximum_spell_points,
+		"traitor": traitor,
+		"weaponId": weapon_id,
+		"conditions": conditions.to_data(),
+	}
+
+
+static func from_data(data: Variant) -> MonsterState:
+	if not data is Dictionary:
+		return null
+	for field: String in ["id", "definitionId", "name", "hitDice", "currentHealth", "maximumHealth", "agility", "armor", "magicResistance", "spellPoints", "maximumSpellPoints", "traitor", "weaponId", "conditions"]:
+		if not data.has(field):
+			return null
+	if not data["id"] is String or data["id"].is_empty() or not data["definitionId"] is String or data["definitionId"].is_empty() or not data["name"] is String or not data["traitor"] is bool or not data["weaponId"] is String:
+		return null
+	var values: Dictionary = {}
+	for field: String in ["hitDice", "currentHealth", "maximumHealth", "agility", "armor", "magicResistance", "spellPoints", "maximumSpellPoints"]:
+		var value := _integer(data[field])
+		if value == -100_000:
+			return null
+		values[field] = value
+	if values["hitDice"] < 0 or values["maximumHealth"] < 1 or values["currentHealth"] > values["maximumHealth"] or values["maximumSpellPoints"] < 0 or values["spellPoints"] < 0 or values["spellPoints"] > values["maximumSpellPoints"]:
+		return null
+	var loaded_conditions := ConditionSet.from_data(data["conditions"], ConditionSet.CHARACTER_COUNT)
+	if loaded_conditions == null:
+		return null
+	var result := MonsterState.new(data["id"], data["definitionId"], data["name"], values["currentHealth"], values["maximumHealth"], values["hitDice"], values["agility"], values["armor"], values["magicResistance"], values["maximumSpellPoints"], data["traitor"])
+	result.spell_points = values["spellPoints"]
+	result.weapon_id = data["weaponId"]
+	result.conditions = loaded_conditions
+	return result
+
+
+static func _integer(value: Variant) -> int:
+	if value is int:
+		return value
+	if value is float and is_equal_approx(value, round(value)):
+		return int(value)
+	return -100_000

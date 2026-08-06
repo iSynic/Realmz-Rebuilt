@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "31fbbaac9f6ef8fbedc20e628be9f4a05bdf1ebffda97709dcd84319beedadc6"
+const EXPECTED_SCHEMA_HASH: String = "2798e65c8f5d6e6ebd99222c18859cbd7b8874c8b170de44245f2fa85df39739"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -10,8 +10,7 @@ const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.scenario.safe-actions-v1",
 	"realmz.world.topology-v1",
 ]
-const SUPPORTED_CLASSIC_OPCODES: Array[int] = [1, 4, 39, 111, 112]
-const SUPPORTED_SAFE_CAPABILITIES: Array[String] = ["core.presentation.choice", "core.presentation.text", "core.state.read", "core.state.write"]
+const SUPPORTED_SAFE_CAPABILITIES: Array[String] = RealmzRuntimeApi.SUPPORTED_SAFE_CAPABILITIES
 const SUPPORTED_ACTION_CONTEXTS: Array[String] = ["action", "encounter", "spell", "item", "monster-ai", "lifecycle", "rule-modifier"]
 const SUPPORTED_VALUE_TYPES: Array[String] = ["void", "bool", "int", "float", "string", "location-snapshot", "time-snapshot", "wealth-snapshot", "character-snapshot", "character-snapshot-array", "combat-snapshot", "action-outcome", "encounter-outcome", "effect-outcome", "spell-validation-outcome", "spell-cast-outcome", "spell-effect-outcome", "spell-tick-outcome", "spell-expiration-outcome", "item-outcome", "monster-decision", "rule-modifier", "bool-array", "int-array", "float-array", "string-array"]
 const DIRECTIONS: Array[String] = ["north", "east", "south", "west"]
@@ -125,6 +124,35 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 	if encounters_value == null:
 		return null
 	var simple_encounters: Array[SimpleEncounterDefinition] = encounters_value
+	var complex_encounters_value: Variant = _construct_complex_encounters(content.get("complexEncounters"))
+	var thief_encounters_value: Variant = _construct_thief_encounters(content.get("thiefEncounters"))
+	var timed_encounters_value: Variant = _construct_timed_encounters(content.get("timedEncounters"))
+	if complex_encounters_value == null or thief_encounters_value == null or timed_encounters_value == null:
+		return null
+	if CanonicalJson.encode(content.get("timedEncounters")) != CanonicalJson.encode(world.get("timedEncounters")):
+		_reject("Content and world timed-encounter inventories do not match.")
+		return null
+	var complex_encounters: Array[ComplexEncounterDefinition] = complex_encounters_value
+	var thief_encounters: Array[ThiefEncounterDefinition] = thief_encounters_value
+	var timed_encounters: Array[TimedEncounterDefinition] = timed_encounters_value
+	var races_value: Variant = _construct_races(content.get("races"))
+	var castes_value: Variant = _construct_castes(content.get("castes"))
+	var items_value: Variant = _construct_items(content.get("items"))
+	var spells_value: Variant = _construct_spells(content.get("spells"))
+	var monsters_value: Variant = _construct_monsters(content.get("monsters"))
+	var battles_value: Variant = _construct_battles(content.get("battles"))
+	var treasures_value: Variant = _construct_treasures(content.get("treasures"))
+	var shops_value: Variant = _construct_shops(content.get("shops"))
+	if races_value == null or castes_value == null or items_value == null or spells_value == null or monsters_value == null or battles_value == null or treasures_value == null or shops_value == null:
+		return null
+	var races: Array[RaceDefinition] = races_value
+	var castes: Array[CasteDefinition] = castes_value
+	var items: Array[ItemDefinition] = items_value
+	var spells: Array[SpellDefinition] = spells_value
+	var monsters: Array[MonsterDefinition] = monsters_value
+	var battles: Array[BattleDefinition] = battles_value
+	var treasures: Array[TreasureDefinition] = treasures_value
+	var shops: Array[ShopDefinition] = shops_value
 	var scenario_definition := _construct_scenario(scenario, manifest["campaignId"])
 	if scenario_definition == null:
 		return null
@@ -132,7 +160,9 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 	if triggers_value == null:
 		return null
 	var triggers: Array[TriggerDefinition] = triggers_value
-	if not _validate_scenario_references(scenario_definition, message_ids, simple_encounters):
+	if not _validate_scenario_references(scenario_definition, message_ids, simple_encounters, complex_encounters, thief_encounters):
+		return null
+	if not _validate_rule_references(races, castes, items, spells, monsters, battles, treasures, shops, message_ids):
 		return null
 	var trigger_ids: Dictionary = {}
 	for trigger: TriggerDefinition in triggers:
@@ -164,7 +194,7 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 			if map == null or map.topology.cell_at(trigger.coordinate) == null:
 				_reject("Trigger '%s' references an unavailable topology coordinate." % trigger.id)
 				return null
-	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters)
+	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters)
 
 
 func _construct_messages(value: Variant) -> Variant:
@@ -184,6 +214,351 @@ func _construct_messages(value: Variant) -> Variant:
 		ids[id] = true
 		messages.append(MessageDefinition.new(id, record["text"]))
 	return messages
+
+
+func _construct_items(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Content items must be an array.")
+		return null
+	var fields: Array[String] = ["id", "classicId", "name", "unidentifiedName", "description", "iconId", "itemType", "strengthBonus", "blunt", "hands", "luckBonus", "movementBonus", "armorBonus", "magicResistanceBonus", "damageBonus", "spellPointBonus", "soundId", "weight", "cost", "initialCharges", "cursedItemId", "magical", "itemCategoryMaskLow", "itemCategoryMaskHigh", "raceRestrictions", "casteRestrictions", "specificRaceId", "specificCasteId", "raceClassOnly", "casteClassOnly", "versusSmall", "versusLarge", "heat", "cold", "electric", "versusUndead", "versusDemonDevil", "versusEvil", "special", "weightPerCharge", "dropOnEmpty"]
+	var integer_fields: Array[String] = ["classicId", "iconId", "itemType", "strengthBonus", "blunt", "hands", "luckBonus", "movementBonus", "armorBonus", "magicResistanceBonus", "damageBonus", "spellPointBonus", "soundId", "weight", "cost", "initialCharges", "itemCategoryMaskLow", "itemCategoryMaskHigh", "raceRestrictions", "casteRestrictions", "raceClassOnly", "casteClassOnly", "versusSmall", "versusLarge", "heat", "cold", "electric", "versusUndead", "versusDemonDevil", "versusEvil", "weightPerCharge"]
+	var result: Array[ItemDefinition] = []
+	var ids: Dictionary = {}
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Item definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Item definition")
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Item") or not record["unidentifiedName"] is String or record["unidentifiedName"].is_empty() or not record["description"] is String or not record["cursedItemId"] is String or not record["specificRaceId"] is String or not record["specificCasteId"] is String or not record["magical"] is bool or not record["dropOnEmpty"] is bool:
+			_reject("Item definition is malformed or duplicated.")
+			return null
+		var special_value: Variant = _integer_array(record["special"], 5, "Item special values")
+		if special_value == null:
+			return null
+		var integers: Dictionary = integers_value
+		var special: Array[int] = special_value
+		var item := ItemDefinition.new(record["id"], integers["classicId"], record["name"], record["unidentifiedName"], record["description"])
+		item.icon_id = integers["iconId"]
+		item.item_type = integers["itemType"]
+		item.strength_bonus = integers["strengthBonus"]
+		item.blunt = integers["blunt"]
+		item.hands = integers["hands"]
+		item.luck_bonus = integers["luckBonus"]
+		item.movement_bonus = integers["movementBonus"]
+		item.armor_bonus = integers["armorBonus"]
+		item.magic_resistance_bonus = integers["magicResistanceBonus"]
+		item.damage_bonus = integers["damageBonus"]
+		item.spell_point_bonus = integers["spellPointBonus"]
+		item.sound_id = integers["soundId"]
+		item.weight = integers["weight"]
+		item.cost = integers["cost"]
+		item.initial_charges = integers["initialCharges"]
+		item.cursed_item_id = record["cursedItemId"]
+		item.magical = record["magical"]
+		item.item_category_mask_low = integers["itemCategoryMaskLow"]
+		item.item_category_mask_high = integers["itemCategoryMaskHigh"]
+		item.race_restrictions = integers["raceRestrictions"]
+		item.caste_restrictions = integers["casteRestrictions"]
+		item.specific_race_id = record["specificRaceId"]
+		item.specific_caste_id = record["specificCasteId"]
+		item.race_class_only = integers["raceClassOnly"]
+		item.caste_class_only = integers["casteClassOnly"]
+		item.vs_small = integers["versusSmall"]
+		item.vs_large = integers["versusLarge"]
+		item.heat = integers["heat"]
+		item.cold = integers["cold"]
+		item.electric = integers["electric"]
+		item.vs_undead = integers["versusUndead"]
+		item.vs_demon_devil = integers["versusDemonDevil"]
+		item.vs_evil = integers["versusEvil"]
+		item.special_1 = special[0]
+		item.special_2 = special[1]
+		item.special_3 = special[2]
+		item.special_4 = special[3]
+		item.special_5 = special[4]
+		item.weight_per_charge = integers["weightPerCharge"]
+		item.drop_on_empty = record["dropOnEmpty"]
+		result.append(item)
+	return result
+
+
+func _construct_races(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Content races must be an array.")
+		return null
+	var fields: Array[String] = ["id", "classicId", "name", "hitModifiers", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "ageRanges", "maximumAge", "doesNotDie", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "canRegenerate", "defaultIconSet", "itemCategoryMasks", "descriptorFlags"]
+	var integer_fields: Array[String] = ["classicId", "maximumAge", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "defaultIconSet", "descriptorFlags"]
+	var result: Array[RaceDefinition] = []
+	var ids: Dictionary = {}
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Race definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Race definition")
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Race") or not record["doesNotDie"] is bool or not record["canRegenerate"] is bool or not record["ageRanges"] is Array or record["ageRanges"].size() != 5:
+			_reject("Race definition is malformed or duplicated.")
+			return null
+		var hit_value: Variant = _integer_array(record["hitModifiers"], 8, "Race hit modifiers")
+		var save_value: Variant = _integer_array(record["saveBonuses"], 8, "Race save bonuses")
+		var bonus_value: Variant = _integer_array(record["attributeBonuses"], 6, "Race attribute bonuses")
+		var limits_value: Variant = _integer_array(record["attributeLimits"], 12, "Race attribute limits")
+		var conditions_value: Variant = _integer_array(record["conditionLevels"], 40, "Race condition levels")
+		var masks_value: Variant = _integer_array(record["itemCategoryMasks"], 2, "Race item masks")
+		if hit_value == null or save_value == null or bonus_value == null or limits_value == null or conditions_value == null or masks_value == null:
+			return null
+		var ages: Array[Vector2i] = []
+		for row: Variant in record["ageRanges"]:
+			var pair_value: Variant = _integer_array(row, 2, "Race age range")
+			if pair_value == null:
+				return null
+			var pair: Array[int] = pair_value
+			ages.append(Vector2i(pair[0], pair[1]))
+		var integers: Dictionary = integers_value
+		var masks: Array[int] = masks_value
+		result.append(RaceDefinition.new(record["id"], integers["classicId"], record["name"], hit_value, save_value, bonus_value, limits_value, conditions_value, ages, integers["maximumAge"], record["doesNotDie"], integers["baseMovement"], integers["magicResistance"], integers["twoHandBonus"], integers["missileBonus"], integers["baseAttacks"], integers["maximumAttacks"], record["canRegenerate"], integers["defaultIconSet"], masks[0], masks[1], integers["descriptorFlags"]))
+	return result
+
+
+func _construct_castes(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Content castes must be an array.")
+		return null
+	var fields: Array[String] = ["id", "classicId", "name", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "staminaDice", "strengthValues", "dodgeValues", "toHitValues", "missileValues", "handToHandValues", "spellcasterRows", "attackLevels", "startingItemIds", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "canUseMissile", "getsMissileBonus", "defaultIcon", "itemCategoryMasks"]
+	var integer_fields: Array[String] = ["classicId", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "defaultIcon"]
+	var result: Array[CasteDefinition] = []
+	var ids: Dictionary = {}
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Caste definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Caste definition")
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Caste") or not record["canUseMissile"] is bool or not record["getsMissileBonus"] is bool or not record["spellcasterRows"] is Array or record["spellcasterRows"].size() != 4:
+			_reject("Caste definition is malformed or duplicated.")
+			return null
+		var saves_value: Variant = _integer_array(record["saveBonuses"], 8, "Caste save bonuses")
+		var bonuses_value: Variant = _integer_array(record["attributeBonuses"], 6, "Caste attribute bonuses")
+		var limits_value: Variant = _integer_array(record["attributeLimits"], 12, "Caste attribute limits")
+		var conditions_value: Variant = _integer_array(record["conditionLevels"], 40, "Caste condition levels")
+		var stamina_value: Variant = _integer_array(record["staminaDice"], 2, "Caste stamina dice")
+		var strength_value: Variant = _integer_array(record["strengthValues"], 2, "Caste strength values")
+		var dodge_value: Variant = _integer_array(record["dodgeValues"], 2, "Caste dodge values")
+		var to_hit_value: Variant = _integer_array(record["toHitValues"], 2, "Caste to-hit values")
+		var missile_value: Variant = _integer_array(record["missileValues"], 2, "Caste missile values")
+		var hand_value: Variant = _integer_array(record["handToHandValues"], 2, "Caste hand-to-hand values")
+		var attacks_value: Variant = _integer_array(record["attackLevels"], 10, "Caste attack levels")
+		var masks_value: Variant = _integer_array(record["itemCategoryMasks"], 2, "Caste item masks")
+		var start_items_value: Variant = _string_list(record["startingItemIds"], "Caste starting item IDs")
+		if saves_value == null or bonuses_value == null or limits_value == null or conditions_value == null or stamina_value == null or strength_value == null or dodge_value == null or to_hit_value == null or missile_value == null or hand_value == null or attacks_value == null or masks_value == null or start_items_value == null:
+			return null
+		var spellcasters: Array[Vector3i] = []
+		for row: Variant in record["spellcasterRows"]:
+			var row_value: Variant = _integer_array(row, 3, "Caste spellcaster row")
+			if row_value == null:
+				return null
+			var values: Array[int] = row_value
+			spellcasters.append(Vector3i(values[0], values[1], values[2]))
+		var integers: Dictionary = integers_value
+		var stamina: Array[int] = stamina_value
+		var strength: Array[int] = strength_value
+		var dodge: Array[int] = dodge_value
+		var to_hit: Array[int] = to_hit_value
+		var missile: Array[int] = missile_value
+		var hand: Array[int] = hand_value
+		var masks: Array[int] = masks_value
+		result.append(CasteDefinition.new(record["id"], integers["classicId"], record["name"], saves_value, bonuses_value, limits_value, conditions_value, Vector2i(stamina[0], stamina[1]), Vector2i(to_hit[0], to_hit[1]), Vector2i(dodge[0], dodge[1]), Vector2i(missile[0], missile[1]), Vector2i(hand[0], hand[1]), spellcasters, attacks_value, start_items_value, integers["casteClass"], integers["minimumAgeGroup"], integers["movementBonus"], integers["magicResistanceMultiplier"], integers["twoHandBonus"], integers["maximumStaminaBonus"], integers["bonusAttacks"], integers["maximumAttacks"], integers["startMoney"], record["canUseMissile"], record["getsMissileBonus"], integers["defaultIcon"], masks[0], masks[1], Vector2i(strength[0], strength[1])))
+	return result
+
+
+func _construct_spells(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Content spells must be an array.")
+		return null
+	var fields: Array[String] = ["id", "classicId", "name", "description", "rangeMin", "rangeMax", "queueIcon", "toHitBonus", "saveBonus", "fixedTargetCount", "canRotate", "saveAdjust", "cannot", "resistanceAdjust", "cost", "damageMin", "damageMax", "powerDamageMin", "powerDamageMax", "durationMin", "durationMax", "powerDurationMin", "powerDurationMax", "lookStart", "lookEnd", "soundStart", "soundEnd", "targetType", "size", "special", "damageType", "spellClass", "inCombat", "inCamp"]
+	var integer_fields := fields.slice(1)
+	integer_fields.erase("name")
+	integer_fields.erase("description")
+	integer_fields.erase("canRotate")
+	integer_fields.erase("inCombat")
+	integer_fields.erase("inCamp")
+	var result: Array[SpellDefinition] = []
+	var ids: Dictionary = {}
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Spell definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Spell definition")
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Spell") or not record["description"] is String or not record["canRotate"] is bool or not record["inCombat"] is bool or not record["inCamp"] is bool:
+			_reject("Spell definition is malformed or duplicated.")
+			return null
+		var integers: Dictionary = integers_value
+		var spell := SpellDefinition.new(record["id"], integers["classicId"], record["name"], record["description"])
+		spell.range_min = integers["rangeMin"]
+		spell.range_max = integers["rangeMax"]
+		spell.queue_icon = integers["queueIcon"]
+		spell.to_hit_bonus = integers["toHitBonus"]
+		spell.save_bonus = integers["saveBonus"]
+		spell.fixed_target_count = integers["fixedTargetCount"]
+		spell.can_rotate = record["canRotate"]
+		spell.save_adjust = integers["saveAdjust"]
+		spell.cannot = integers["cannot"]
+		spell.resistance_adjust = integers["resistanceAdjust"]
+		spell.cost = integers["cost"]
+		spell.damage_min = integers["damageMin"]
+		spell.damage_max = integers["damageMax"]
+		spell.power_damage_min = integers["powerDamageMin"]
+		spell.power_damage_max = integers["powerDamageMax"]
+		spell.duration_min = integers["durationMin"]
+		spell.duration_max = integers["durationMax"]
+		spell.power_duration_min = integers["powerDurationMin"]
+		spell.power_duration_max = integers["powerDurationMax"]
+		spell.look_start = integers["lookStart"]
+		spell.look_end = integers["lookEnd"]
+		spell.sound_start = integers["soundStart"]
+		spell.sound_end = integers["soundEnd"]
+		spell.target_type = integers["targetType"]
+		spell.size = integers["size"]
+		spell.special = integers["special"]
+		spell.damage_type = integers["damageType"]
+		spell.spell_class = integers["spellClass"]
+		spell.in_combat = record["inCombat"]
+		spell.in_camp = record["inCamp"]
+		result.append(spell)
+	return result
+
+
+func _construct_monsters(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Content monsters must be an array.")
+		return null
+	var fields: Array[String] = ["id", "classicId", "name", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "distance", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "money", "spellIds", "itemIds", "weaponId", "iconId", "spellPoints", "experience", "deathMacro"]
+	var integer_fields: Array[String] = ["classicId", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "distance", "size", "attackCount", "magicAttackCount", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "iconId", "spellPoints", "experience", "deathMacro"]
+	var result: Array[MonsterDefinition] = []
+	var ids: Dictionary = {}
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Monster definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Monster definition")
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Monster") or not record["traitor"] is bool or not record["weaponId"] is String or not record["attacks"] is Array:
+			_reject("Monster definition is malformed or duplicated.")
+			return null
+		var type_value: Variant = _integer_array(record["typeFlags"], 8, "Monster type flags")
+		var saves_value: Variant = _integer_array(record["saves"], 6, "Monster saves")
+		var immunity_value: Variant = _integer_array(record["spellImmunities"], 6, "Monster spell immunities")
+		var money_value: Variant = _integer_array(record["money"], 3, "Monster wealth")
+		var spell_ids_value: Variant = _string_list(record["spellIds"], "Monster spell IDs")
+		var item_ids_value: Variant = _string_list(record["itemIds"], "Monster item IDs")
+		if type_value == null or saves_value == null or immunity_value == null or money_value == null or spell_ids_value == null or item_ids_value == null:
+			return null
+		var attacks: Array[MonsterAttackDefinition] = []
+		for attack_value: Variant in record["attacks"]:
+			if not attack_value is Dictionary or not _exact_fields(attack_value, ["damageMin", "damageMax", "soundOrType", "special"]):
+				_reject("Monster attack definition is malformed.")
+				return null
+			var attack_integers_value: Variant = _validated_integer_fields(attack_value, ["damageMin", "damageMax", "soundOrType", "special"], "Monster attack")
+			if attack_integers_value == null:
+				return null
+			var attack_integers: Dictionary = attack_integers_value
+			attacks.append(MonsterAttackDefinition.new(attack_integers["damageMin"], attack_integers["damageMax"], attack_integers["soundOrType"], attack_integers["special"]))
+		var integers: Dictionary = integers_value
+		var monster := MonsterDefinition.new(record["id"], integers["classicId"], record["name"], integers["hitDice"], integers["staminaBonus"], integers["agility"], integers["armor"], integers["magicResistance"], type_value, saves_value, immunity_value, money_value, spell_ids_value, item_ids_value, attacks)
+		monster.movement_max = integers["movementMaximum"]
+		monster.distance = integers["distance"]
+		monster.traitor = record["traitor"]
+		monster.size = integers["size"]
+		monster.attack_count = integers["attackCount"]
+		monster.magic_attack_count = integers["magicAttackCount"]
+		monster.damage_bonus = integers["damageBonus"]
+		monster.cast_percent = integers["castPercent"]
+		monster.run_percent = integers["runPercent"]
+		monster.surrender_percent = integers["surrenderPercent"]
+		monster.missile_percent = integers["missilePercent"]
+		monster.can_summon = integers["canSummon"]
+		monster.weapon_id = record["weaponId"]
+		monster.icon_id = integers["iconId"]
+		monster.spell_points = integers["spellPoints"]
+		monster.experience = integers["experience"]
+		monster.death_macro = integers["deathMacro"]
+		result.append(monster)
+	return result
+
+
+func _construct_battles(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Content battles must be an array.")
+		return null
+	var fields: Array[String] = ["id", "classicId", "monsterIds", "distance", "messageBeforeId", "messageAfterId", "macroId"]
+	var result: Array[BattleDefinition] = []
+	var ids: Dictionary = {}
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Battle definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		var integers_value: Variant = _validated_integer_fields(record, ["classicId", "distance", "messageBeforeId", "messageAfterId", "macroId"], "Battle definition")
+		var monster_ids_value: Variant = _string_list(record.get("monsterIds"), "Battle monster IDs", true)
+		if not _exact_fields(record, fields) or integers_value == null or monster_ids_value == null or not _definition_identity(record, ids, "Battle", false):
+			_reject("Battle definition is malformed or duplicated.")
+			return null
+		var integers: Dictionary = integers_value
+		result.append(BattleDefinition.new(record["id"], integers["classicId"], monster_ids_value, integers["distance"], integers["messageBeforeId"], integers["messageAfterId"], integers["macroId"]))
+	return result
+
+
+func _construct_treasures(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Content treasures must be an array.")
+		return null
+	var fields: Array[String] = ["id", "classicId", "itemIds", "experience", "gold", "gems", "jewelry"]
+	var result: Array[TreasureDefinition] = []
+	var ids: Dictionary = {}
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Treasure definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		var integers_value: Variant = _validated_integer_fields(record, ["classicId", "experience", "gold", "gems", "jewelry"], "Treasure definition")
+		var item_ids_value: Variant = _string_list(record.get("itemIds"), "Treasure item IDs")
+		if not _exact_fields(record, fields) or integers_value == null or item_ids_value == null or not _definition_identity(record, ids, "Treasure", false):
+			_reject("Treasure definition is malformed or duplicated.")
+			return null
+		var integers: Dictionary = integers_value
+		result.append(TreasureDefinition.new(record["id"], integers["classicId"], item_ids_value, integers["experience"], integers["gold"], integers["gems"], integers["jewelry"]))
+	return result
+
+
+func _construct_shops(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Content shops must be an array.")
+		return null
+	var fields: Array[String] = ["id", "classicId", "inflationPercent", "stock"]
+	var result: Array[ShopDefinition] = []
+	var ids: Dictionary = {}
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Shop definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		var integers_value: Variant = _validated_integer_fields(record, ["classicId", "inflationPercent"], "Shop definition")
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Shop", false) or not record["stock"] is Array or record["stock"].size() > 1000:
+			_reject("Shop definition is malformed or duplicated.")
+			return null
+		var item_ids: Array[String] = []
+		var quantities: Array[int] = []
+		for stock_value: Variant in record["stock"]:
+			if not stock_value is Dictionary or not _exact_fields(stock_value, ["itemId", "quantity"]) or not stock_value["itemId"] is String or stock_value["itemId"].is_empty() or not _is_integer(stock_value["quantity"]) or _integer(stock_value["quantity"]) < 0:
+				_reject("Shop stock record is malformed.")
+				return null
+			item_ids.append(stock_value["itemId"])
+			quantities.append(_integer(stock_value["quantity"]))
+		var integers: Dictionary = integers_value
+		result.append(ShopDefinition.new(record["id"], integers["classicId"], item_ids, quantities, integers["inflationPercent"]))
+	return result
 
 
 func _construct_simple_encounters(value: Variant) -> Variant:
@@ -210,6 +585,121 @@ func _construct_simple_encounters(value: Variant) -> Variant:
 			responses.append(SimpleEncounterResponse.new(response["id"], response["label"], response["resultProgramId"]))
 		ids[encounter_id] = true
 		encounters.append(SimpleEncounterDefinition.new(encounter_id, _integer(record["promptMessageId"]), responses, record["canBackOut"], _integer(record["maxTimes"]), _integer(record["casteSuccess"])))
+	return encounters
+
+
+func _construct_complex_encounters(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Complex Encounters must be an array.")
+		return null
+	var fields: Array[String] = ["id", "promptMessageId", "actionResult", "wordResult", "groups", "spellIds", "spellResults", "itemIds", "itemResults", "canBackOut", "thief", "maxTimes", "casteSuccess", "thiefSuccess", "thiefFail", "texts"]
+	var scalar_fields: Array[String] = ["id", "promptMessageId", "actionResult", "wordResult", "maxTimes", "casteSuccess", "thiefSuccess", "thiefFail"]
+	var encounters: Array[ComplexEncounterDefinition] = []
+	var ids: Dictionary = {}
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Complex Encounter definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		var scalars_value: Variant = _validated_integer_fields(record, scalar_fields, "Complex Encounter")
+		if not _exact_fields(record, fields) or scalars_value == null or not record["canBackOut"] is bool or not record["thief"] is bool:
+			_reject("Complex Encounter definition is malformed.")
+			return null
+		var scalars: Dictionary = scalars_value
+		if scalars["id"] < 0 or ids.has(scalars["id"]) or not _integers_in_range(scalars, ["actionResult", "wordResult", "maxTimes", "casteSuccess", "thiefSuccess", "thiefFail"], -128, 127):
+			_reject("Complex Encounter identity or Classic scalar fields are malformed.")
+			return null
+		var groups_value: Variant = _integer_array(record["groups"], 8, "Complex Encounter groups")
+		var spell_ids_value: Variant = _integer_array(record["spellIds"], 10, "Complex Encounter spell IDs")
+		var spell_results_value: Variant = _integer_array(record["spellResults"], 10, "Complex Encounter spell results")
+		var item_ids_value: Variant = _integer_array(record["itemIds"], 5, "Complex Encounter item IDs")
+		var item_results_value: Variant = _integer_array(record["itemResults"], 5, "Complex Encounter item results")
+		var texts_value: Variant = _fixed_string_list(record["texts"], 9, 40, "Complex Encounter texts")
+		if groups_value == null or spell_ids_value == null or spell_results_value == null or item_ids_value == null or item_results_value == null or texts_value == null:
+			return null
+		var groups: Array[int] = groups_value
+		var spell_ids: Array[int] = spell_ids_value
+		var spell_results: Array[int] = spell_results_value
+		var item_ids: Array[int] = item_ids_value
+		var item_results: Array[int] = item_results_value
+		if not _array_values_in_range(groups, -128, 127) or not _array_values_in_range(spell_ids, -32768, 32767) or not _array_values_in_range(spell_results, -128, 127) or not _array_values_in_range(item_ids, -32768, 32767) or not _array_values_in_range(item_results, -128, 127):
+			_reject("Complex Encounter arrays exceed Classic storage.")
+			return null
+		ids[scalars["id"]] = true
+		encounters.append(ComplexEncounterDefinition.new(scalars["id"], scalars["promptMessageId"], scalars["actionResult"], scalars["wordResult"], groups, spell_ids, spell_results, item_ids, item_results, record["canBackOut"], record["thief"], scalars["maxTimes"], scalars["casteSuccess"], scalars["thiefSuccess"], scalars["thiefFail"], texts_value))
+	return encounters
+
+
+func _construct_thief_encounters(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Thief Encounters must be an array.")
+		return null
+	var fields: Array[String] = ["id", "typeFlags", "modifiers", "successCodes", "failureCodes", "successText", "failureText", "successSounds", "failureSounds", "spellId", "lowDamage", "highDamage", "tumblers", "prompts", "promptSounds"]
+	var scalar_fields: Array[String] = ["id", "spellId", "lowDamage", "highDamage", "tumblers"]
+	var encounters: Array[ThiefEncounterDefinition] = []
+	var ids: Dictionary = {}
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Thief Encounter definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		var scalars_value: Variant = _validated_integer_fields(record, scalar_fields, "Thief Encounter")
+		if not _exact_fields(record, fields) or scalars_value == null:
+			_reject("Thief Encounter definition is malformed.")
+			return null
+		var scalars: Dictionary = scalars_value
+		if scalars["id"] < 0 or ids.has(scalars["id"]) or not _integers_in_range(scalars, ["spellId", "lowDamage", "highDamage", "tumblers"], -32768, 32767):
+			_reject("Thief Encounter identity or Classic scalar fields are malformed.")
+			return null
+		var type_flags_value: Variant = _boolean_array(record["typeFlags"], 10, "Thief Encounter type flags")
+		var modifiers_value: Variant = _integer_array(record["modifiers"], 8, "Thief Encounter modifiers")
+		var success_codes_value: Variant = _integer_array(record["successCodes"], 8, "Thief Encounter success codes")
+		var failure_codes_value: Variant = _integer_array(record["failureCodes"], 8, "Thief Encounter failure codes")
+		var success_text_value: Variant = _integer_array(record["successText"], 8, "Thief Encounter success text")
+		var failure_text_value: Variant = _integer_array(record["failureText"], 8, "Thief Encounter failure text")
+		var success_sounds_value: Variant = _integer_array(record["successSounds"], 8, "Thief Encounter success sounds")
+		var failure_sounds_value: Variant = _integer_array(record["failureSounds"], 8, "Thief Encounter failure sounds")
+		var prompts_value: Variant = _integer_array(record["prompts"], 3, "Thief Encounter prompts")
+		var prompt_sounds_value: Variant = _integer_array(record["promptSounds"], 3, "Thief Encounter prompt sounds")
+		if type_flags_value == null or modifiers_value == null or success_codes_value == null or failure_codes_value == null or success_text_value == null or failure_text_value == null or success_sounds_value == null or failure_sounds_value == null or prompts_value == null or prompt_sounds_value == null:
+			return null
+		for signed_bytes: Array[int] in [modifiers_value, success_codes_value, failure_codes_value]:
+			if not _array_values_in_range(signed_bytes, -128, 127):
+				_reject("Thief Encounter byte arrays exceed Classic storage.")
+				return null
+		for signed_shorts: Array[int] in [success_text_value, failure_text_value, success_sounds_value, failure_sounds_value, prompts_value, prompt_sounds_value]:
+			if not _array_values_in_range(signed_shorts, -32768, 32767):
+				_reject("Thief Encounter short arrays exceed Classic storage.")
+				return null
+		ids[scalars["id"]] = true
+		encounters.append(ThiefEncounterDefinition.new(scalars["id"], type_flags_value, modifiers_value, success_codes_value, failure_codes_value, success_text_value, failure_text_value, success_sounds_value, failure_sounds_value, scalars["spellId"], scalars["lowDamage"], scalars["highDamage"], scalars["tumblers"], prompts_value, prompt_sounds_value))
+	return encounters
+
+
+func _construct_timed_encounters(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Timed Encounters must be an array.")
+		return null
+	var fields: Array[String] = ["id", "day", "increment", "chancePercent", "triggerRecordIndex", "requiredLevel", "requiredRandomRectangle", "requiredX", "requiredY", "requiredItemId", "requiredQuestId", "locationKind"]
+	var integer_fields: Array[String] = ["id", "day", "increment", "chancePercent", "triggerRecordIndex", "requiredLevel", "requiredRandomRectangle", "requiredX", "requiredY", "requiredItemId", "requiredQuestId"]
+	var encounters: Array[TimedEncounterDefinition] = []
+	var ids: Dictionary = {}
+	var location_kinds: Dictionary = {"any": TimedEncounterDefinition.LocationKind.ANY, "land": TimedEncounterDefinition.LocationKind.LAND, "dungeon": TimedEncounterDefinition.LocationKind.DUNGEON}
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Timed Encounter definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Timed Encounter")
+		if not _exact_fields(record, fields) or integers_value == null or not record["locationKind"] is String or not location_kinds.has(record["locationKind"]):
+			_reject("Timed Encounter definition is malformed.")
+			return null
+		var integers: Dictionary = integers_value
+		if integers["id"] < 0 or ids.has(integers["id"]) or not _integers_in_range(integers, integer_fields.slice(1), -32768, 32767):
+			_reject("Timed Encounter identity or Classic fields are malformed.")
+			return null
+		ids[integers["id"]] = true
+		encounters.append(TimedEncounterDefinition.new(integers["id"], integers["day"], integers["increment"], integers["chancePercent"], integers["triggerRecordIndex"], integers["requiredLevel"], integers["requiredRandomRectangle"], integers["requiredX"], integers["requiredY"], integers["requiredItemId"], integers["requiredQuestId"], location_kinds[record["locationKind"]]))
 	return encounters
 
 
@@ -287,11 +777,11 @@ func _construct_program_instruction(instruction: Variant) -> Variant:
 		_reject("Classic instruction slot or GOSUB identity is malformed.")
 		return null
 	var raw_opcode := _integer(instruction["rawOpcode"])
-	var normalized := raw_opcode * -1 if raw_opcode < 0 and raw_opcode not in [-14, -23] else raw_opcode
+	var normalized := ClassicOpcodeCatalog.normalize(raw_opcode)
 	if normalized != _integer(instruction["opcode"]) or instruction["gosub"] != (raw_opcode < 0 and raw_opcode not in [-14, -23]):
 		_reject("Classic instruction raw/normalized/GOSUB identity is inconsistent.")
 		return null
-	if not SUPPORTED_CLASSIC_OPCODES.has(normalized):
+	if not ClassicOpcodeCatalog.is_executable(normalized):
 		_reject("Scenario program requires unsupported Classic opcode %d." % normalized)
 		return null
 	var extra_code: Array[int] = []
@@ -330,7 +820,7 @@ func _construct_triggers(value: Variant, scenario: ScenarioDefinition) -> Varian
 		return null
 	var triggers: Array[TriggerDefinition] = []
 	for record: Variant in value:
-		if not record is Dictionary or not record.get("id") is String or record["id"].is_empty() or not record.get("programId") is String or record["programId"].is_empty() or not record.get("active") is bool:
+		if not record is Dictionary or not record.get("id") is String or record["id"].is_empty() or not record.get("programId") is String or record["programId"].is_empty() or not _is_integer(record.get("classicRecordIndex")) or _integer(record["classicRecordIndex"]) < 0 or not record.get("active") is bool:
 			_reject("Trigger record is malformed.")
 			return null
 		var trigger_program := scenario.program_by_id(record["programId"])
@@ -361,7 +851,7 @@ func _construct_triggers(value: Variant, scenario: ScenarioDefinition) -> Varian
 				_reject("Trigger '%s' replacement field '%s' is malformed." % [record["id"], replacement_field])
 				return null
 		var replacement := TriggerReplacementDefinition.new(_integer(replacement_record["doorId"]), _integer(replacement_record["terrainId"]), Vector2i(_integer(replacement_record["targetX"]), _integer(replacement_record["targetY"])))
-		triggers.append(TriggerDefinition.new(record["id"], record["programId"], map_id, coordinate, record["active"], chance, replacement))
+		triggers.append(TriggerDefinition.new(record["id"], record["programId"], map_id, coordinate, record["active"], chance, replacement, _integer(record["classicRecordIndex"])))
 	return triggers
 
 
@@ -868,7 +1358,51 @@ func _construct_safe_expression(value: Variant, node_count: Array, depth: int) -
 	return null
 
 
-func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition]) -> bool:
+func _validate_rule_references(races: Array[RaceDefinition], castes: Array[CasteDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition], monsters: Array[MonsterDefinition], battles: Array[BattleDefinition], treasures: Array[TreasureDefinition], shops: Array[ShopDefinition], message_ids: Dictionary) -> bool:
+	var race_ids := _definition_ids(races)
+	var caste_ids := _definition_ids(castes)
+	var item_ids := _definition_ids(items)
+	var spell_ids := _definition_ids(spells)
+	var monster_ids := _definition_ids(monsters)
+	for item: ItemDefinition in items:
+		if not item.cursed_item_id.is_empty() and not item_ids.has(item.cursed_item_id):
+			return _reject("Item '%s' references unavailable cursed item '%s'." % [item.id, item.cursed_item_id])
+		if not item.specific_race_id.is_empty() and not race_ids.has(item.specific_race_id):
+			return _reject("Item '%s' references unavailable race '%s'." % [item.id, item.specific_race_id])
+		if not item.specific_caste_id.is_empty() and not caste_ids.has(item.specific_caste_id):
+			return _reject("Item '%s' references unavailable caste '%s'." % [item.id, item.specific_caste_id])
+	for caste: CasteDefinition in castes:
+		for item_id: String in caste.start_items():
+			if not item_ids.has(item_id):
+				return _reject("Caste '%s' references unavailable starting item '%s'." % [caste.id, item_id])
+	for monster: MonsterDefinition in monsters:
+		for spell_id: String in monster.spell_ids():
+			if not spell_ids.has(spell_id):
+				return _reject("Monster '%s' references unavailable spell '%s'." % [monster.id, spell_id])
+		for item_id: String in monster.item_ids():
+			if not item_ids.has(item_id):
+				return _reject("Monster '%s' references unavailable item '%s'." % [monster.id, item_id])
+		if not monster.weapon_id.is_empty() and not item_ids.has(monster.weapon_id):
+			return _reject("Monster '%s' references unavailable weapon '%s'." % [monster.id, monster.weapon_id])
+	for battle: BattleDefinition in battles:
+		for monster_id: String in battle.monster_ids():
+			if not monster_id.is_empty() and not monster_ids.has(monster_id):
+				return _reject("Battle '%s' references unavailable monster '%s'." % [battle.id, monster_id])
+		for message_id: int in [battle.message_before_id, battle.message_after_id]:
+			if message_id != 0 and not message_ids.has(message_id):
+				return _reject("Battle '%s' references unavailable message %d." % [battle.id, message_id])
+	for treasure: TreasureDefinition in treasures:
+		for item_id: String in treasure.item_ids():
+			if not item_ids.has(item_id):
+				return _reject("Treasure '%s' references unavailable item '%s'." % [treasure.id, item_id])
+	for shop: ShopDefinition in shops:
+		for item_id: String in shop.item_ids():
+			if not item_ids.has(item_id):
+				return _reject("Shop '%s' references unavailable item '%s'." % [shop.id, item_id])
+	return true
+
+
+func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Dictionary, encounters: Array[SimpleEncounterDefinition], complex_encounters: Array[ComplexEncounterDefinition], thief_encounters: Array[ThiefEncounterDefinition]) -> bool:
 	var encounter_ids: Dictionary = {}
 	for encounter: SimpleEncounterDefinition in encounters:
 		encounter_ids[encounter.id] = true
@@ -877,6 +1411,19 @@ func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Di
 		for response: SimpleEncounterResponse in encounter.responses():
 			if scenario.program_by_id(response.result_program_id) == null:
 				return _reject("Simple Encounter %d response '%s' references unavailable result program '%s'." % [encounter.id, response.id, response.result_program_id])
+	var complex_ids: Dictionary = {}
+	var thief_ids: Dictionary = {}
+	for thief_encounter: ThiefEncounterDefinition in thief_encounters:
+		thief_ids[thief_encounter.id] = true
+	for encounter: ComplexEncounterDefinition in complex_encounters:
+		complex_ids[encounter.id] = true
+		if not message_ids.has(absi(encounter.prompt_message_id)):
+			return _reject("Complex Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
+		for outcome: int in range(1, 5):
+			if scenario.program_by_id(encounter.result_program_id(outcome)) == null:
+				return _reject("Complex Encounter %d references unavailable result program %d." % [encounter.id, outcome])
+		if encounter.thief and not thief_ids.has(encounter.thief_success):
+			return _reject("Complex Encounter %d references unavailable Thief Encounter %d." % [encounter.id, encounter.thief_success])
 	for program_id: String in scenario.program_ids():
 		var program := scenario.program_by_id(program_id)
 		for index: int in range(program.instruction_count()):
@@ -890,6 +1437,9 @@ func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Di
 				4:
 					if not encounter_ids.has(instruction.operand_id):
 						return _reject("Scenario program '%s' references unavailable Simple Encounter %d." % [program.id, instruction.operand_id])
+				5:
+					if not complex_ids.has(instruction.operand_id):
+						return _reject("Scenario program '%s' references unavailable Complex Encounter %d." % [program.id, instruction.operand_id])
 				39:
 					if scenario.program_by_id("xap:%d" % instruction.operand_id) == null:
 						return _reject("Scenario program '%s' references unavailable XAP %d." % [program.id, instruction.operand_id])
@@ -991,6 +1541,84 @@ func _string_array(value: Variant, label: String) -> Variant:
 			return null
 		strings.append(item)
 	return strings
+
+
+func _string_list(value: Variant, label: String, allow_empty: bool = false) -> Variant:
+	if not value is Array or value.size() > 4096:
+		_reject("%s must be a bounded array." % label)
+		return null
+	var strings: Array[String] = []
+	for item: Variant in value:
+		if not item is String or not allow_empty and item.is_empty():
+			_reject("%s contains an invalid ID." % label)
+			return null
+		strings.append(item)
+	return strings
+
+
+func _fixed_string_list(value: Variant, expected_size: int, maximum_length: int, label: String) -> Variant:
+	if not value is Array or value.size() != expected_size:
+		_reject("%s must contain %d strings." % [label, expected_size])
+		return null
+	var strings: Array[String] = []
+	for item: Variant in value:
+		if not item is String or item.length() > maximum_length:
+			_reject("%s contains an invalid string." % label)
+			return null
+		strings.append(item)
+	return strings
+
+
+func _boolean_array(value: Variant, expected_size: int, label: String) -> Variant:
+	if not value is Array or value.size() != expected_size:
+		_reject("%s must contain %d booleans." % [label, expected_size])
+		return null
+	var booleans: Array[bool] = []
+	for item: Variant in value:
+		if not item is bool:
+			_reject("%s contains a non-boolean." % label)
+			return null
+		booleans.append(item)
+	return booleans
+
+
+func _validated_integer_fields(record: Dictionary, fields: Array[String], label: String) -> Variant:
+	var result: Dictionary = {}
+	for field: String in fields:
+		if not record.has(field) or not _is_integer(record[field]):
+			_reject("%s field '%s' must be an integer." % [label, field])
+			return null
+		result[field] = _integer(record[field])
+	return result
+
+
+func _integers_in_range(values: Dictionary, fields: Array[String], minimum: int, maximum: int) -> bool:
+	for field: String in fields:
+		var value := int(values[field])
+		if value < minimum or value > maximum:
+			return false
+	return true
+
+
+func _array_values_in_range(values: Array[int], minimum: int, maximum: int) -> bool:
+	for value: int in values:
+		if value < minimum or value > maximum:
+			return false
+	return true
+
+
+func _definition_identity(record: Dictionary, ids: Dictionary, _label: String, requires_name: bool = true) -> bool:
+	if not record.get("id") is String or record["id"].is_empty() or requires_name and (not record.get("name") is String or record["name"].is_empty()) or ids.has(record["id"]):
+		return false
+	ids[record["id"]] = true
+	return true
+
+
+func _definition_ids(values: Array) -> Dictionary:
+	var result: Dictionary = {}
+	for value: Variant in values:
+		result[value.id] = true
+	return result
 
 
 func _integer_array(value: Variant, expected_size: int, label: String) -> Variant:

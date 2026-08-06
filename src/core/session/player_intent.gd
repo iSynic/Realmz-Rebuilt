@@ -13,6 +13,10 @@ enum Kind {
 var kind: Kind
 var direction: Vector2i = Vector2i.ZERO
 var target_id: String = ""
+var secondary_target_id: String = ""
+var actor_id: String = ""
+var action: StringName = &""
+var power_level: int = 1
 
 
 func _init(intent_kind: Kind) -> void:
@@ -31,7 +35,22 @@ static func use_item(item_id: String) -> PlayerIntent:
 	return intent
 
 
-static func cast_spell(spell_id: String) -> PlayerIntent:
+static func camp() -> PlayerIntent:
+	return PlayerIntent.new(Kind.CAMP)
+
+
+static func cast_spell(spell_id: String, caster_id: String = "", target_combatant_id: String = "", power: int = 1) -> PlayerIntent:
 	var intent := PlayerIntent.new(Kind.CAST_SPELL)
 	intent.target_id = spell_id
+	intent.actor_id = caster_id
+	intent.secondary_target_id = target_combatant_id
+	intent.power_level = power
+	return intent
+
+
+static func combat_action(action_kind: StringName, actor: String, target: String = "") -> PlayerIntent:
+	var intent := PlayerIntent.new(Kind.CHOOSE_COMBAT_ACTION)
+	intent.action = action_kind
+	intent.actor_id = actor
+	intent.target_id = target
 	return intent

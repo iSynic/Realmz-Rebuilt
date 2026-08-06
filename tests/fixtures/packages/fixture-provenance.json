@@ -1,13 +1,13 @@
 {
-  "fixture_id": "realmz2-synthetic-phase3-v1",
+  "fixture_id": "realmz2-synthetic-phase4-v2",
   "evidence_label": "runtime-integration",
   "authoring": "synthetic Providence-authored data",
   "commercial_payload": false,
-  "providence_commit": "1c99556a8ab679956d68a2aec3f422806c012546",
-  "schema_sha256": "31fbbaac9f6ef8fbedc20e628be9f4a05bdf1ebffda97709dcd84319beedadc6",
-  "package_sha256": "871a8e0de126013256e5f7b66efb472edc6daf97d4e605b905820daccd4365b2",
-  "package_hash": "880a83d780c9aec6bb3b4af9c69920ae73d5f7444d1363c7162259555f28aaef",
-  "negative_fixture_sha256": "b4dd2800716fe86a73d50213f2cf00dcd5b9b35f291cbcf92050a5a2e1613b24",
+  "providence_commit": "364755324fae1685b82bbf0c751572045ee6888d",
+  "schema_sha256": "2798e65c8f5d6e6ebd99222c18859cbd7b8874c8b170de44245f2fa85df39739",
+  "package_sha256": "df044e2bd8a9ca6adb8005bb9051fde66867a9ed091c02cf06b5f6b2a709da99",
+  "package_hash": "540d28daa48531e158da56d40e6ff10809c96695119cd02f7d8a46423ec3d1b8",
+  "negative_fixture_sha256": "9857b2cba79f33c11622142590552d64a331716944a886f2b9ea4f8563ebeb3a",
   "negative_fixture_mutation": "content.json replaces deterministic with counterfeited without updating manifest integrity",
   "generator": "cargo run --manifest-path src-tauri/Cargo.toml --example export_realmz2_fixture -- <output-directory>"
 }

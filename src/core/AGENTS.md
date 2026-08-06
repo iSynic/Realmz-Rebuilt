@@ -6,7 +6,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 
 ## Ownership
 
-- Direct Realmz definitions and mutable playthrough state.
+- Direct Realmz definitions and mutable playthrough state, including characters, equipment, wealth, conditions, encounters, battles, shops, treasures, spells, monsters, races, and castes.
 - `GameSession`, typed intents/events/interactions/views, and snapshot boundaries.
 - `RealmzRules`, `RealmzClock`, `RealmzRng`, topology queries, and world overlays.
 
@@ -17,6 +17,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - JSON dictionaries stop at validating infrastructure factories. Domain state is typed and does not expose writable backing dictionaries.
 - Every gameplay mutation is committed synchronously by `GameSession`.
 - `GameSession` owns scenario execution state and is the only object allowed to connect VM operations to domain mutations.
+- Session state owns encounter attempts/type flags, equipment escrow, mutable shop stock, combat, and scenario-program replacement. These are save data, never mutations of installed package definitions.
 - Every gameplay random draw goes through the session-owned `RealmzRng` and is serializable.
 - `RealmzRng` uses the documented QuickDraw 16807/mod-2147483647 state transition and Castle's inclusive scaling; raw scripted values are test-only branch controls.
 - Snapshots and restores detach typed state so callers cannot mutate an active session through a prior envelope.
@@ -27,6 +28,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 ## Work Guidance
 
 - Prefer small domain modules behind a fixed `RealmzRules` facade; do not add registries or profile selectors.
+- Keep character, condition/time, inventory/economy, combat, magic, and monster behavior in their owned rule modules. Opcode handlers adapt Classic records to these rules instead of duplicating formulas.
 - Preserve 16-bit and 32-bit arithmetic semantics explicitly where Castle behavior depends on them.
 - Keep serialized IDs stable strings and use `StringName` only as an internal lookup optimization.
 

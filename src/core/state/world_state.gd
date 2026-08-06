@@ -6,6 +6,9 @@ var _door_states: Dictionary = {}
 var _discovered_secrets: Dictionary = {}
 var _disabled_triggers: Dictionary = {}
 var _visited_cells: Dictionary = {}
+var _trigger_chances: Dictionary = {}
+var _acquired_maps: Dictionary = {}
+var _random_regions: Dictionary = {}
 
 
 func terrain_for(map_id: String, cell: MapCell) -> String:
@@ -44,6 +47,38 @@ func trigger_is_disabled(trigger_id: String) -> bool:
 	return _disabled_triggers.has(trigger_id)
 
 
+func set_trigger_chance(trigger_id: String, percent: int) -> void:
+	if trigger_id.is_empty():
+		return
+	_trigger_chances[trigger_id] = clampi(percent, -1, 100)
+	if percent < 0:
+		disable_trigger(trigger_id)
+
+
+func trigger_chance(trigger_id: String, authored_percent: int) -> int:
+	return int(_trigger_chances.get(trigger_id, authored_percent))
+
+
+func acquire_map(map_id: String) -> void:
+	if not map_id.is_empty():
+		_acquired_maps[map_id] = true
+
+
+func has_map(map_id: String) -> bool:
+	return _acquired_maps.has(map_id)
+
+
+func set_random_region(region: RandomRegionState) -> void:
+	if region != null and not region.id.is_empty():
+		_random_regions[region.id] = region
+
+
+func random_region(region: RandomEncounterRegion) -> RandomRegionState:
+	if _random_regions.has(region.id):
+		return _random_regions[region.id] as RandomRegionState
+	return RandomRegionState.new(region.id, region.chance_percent, region.battle_minimum, region.battle_maximum)
+
+
 func mark_visited(map_id: String, coordinate: Vector2i) -> void:
 	_visited_cells[_cell_key(map_id, coordinate)] = true
 
@@ -53,12 +88,20 @@ func was_visited(map_id: String, coordinate: Vector2i) -> bool:
 
 
 func to_data() -> Dictionary:
+	var random_regions: Array[Dictionary] = []
+	var random_region_ids: Array = _random_regions.keys()
+	random_region_ids.sort()
+	for region_id: Variant in random_region_ids:
+		random_regions.append((_random_regions[region_id] as RandomRegionState).to_data())
 	return {
 		"terrainOverrides": _sorted_dictionary(_terrain_overrides),
 		"doorStates": _sorted_dictionary(_door_states),
 		"discoveredSecrets": _sorted_keys(_discovered_secrets),
 		"disabledTriggers": _sorted_keys(_disabled_triggers),
 		"visitedCells": _sorted_keys(_visited_cells),
+		"triggerChances": _sorted_dictionary(_trigger_chances),
+		"acquiredMaps": _sorted_keys(_acquired_maps),
+		"randomRegions": random_regions,
 	}
 
 
@@ -81,6 +124,24 @@ static func from_data(data: Variant) -> WorldState:
 		state._door_states[key] = data["doorStates"][key]
 	if not _load_key_array(data["discoveredSecrets"], state._discovered_secrets) or not _load_key_array(data["disabledTriggers"], state._disabled_triggers) or not _load_key_array(data["visitedCells"], state._visited_cells):
 		return null
+	if data.has("triggerChances"):
+		if not data["triggerChances"] is Dictionary:
+			return null
+		for key: Variant in data["triggerChances"]:
+			var percent := _integer(data["triggerChances"][key])
+			if not key is String or key.is_empty() or percent < -1 or percent > 100:
+				return null
+			state._trigger_chances[key] = percent
+	if data.has("acquiredMaps") and not _load_key_array(data["acquiredMaps"], state._acquired_maps):
+		return null
+	if data.has("randomRegions"):
+		if not data["randomRegions"] is Array:
+			return null
+		for entry: Variant in data["randomRegions"]:
+			var region := RandomRegionState.from_data(entry)
+			if region == null or state._random_regions.has(region.id):
+				return null
+			state._random_regions[region.id] = region
 	return state
 
 
@@ -113,3 +174,11 @@ static func _sorted_keys(source: Dictionary) -> Array[String]:
 
 static func _cell_key(map_id: String, coordinate: Vector2i) -> String:
 	return "%s:%d,%d" % [map_id, coordinate.x, coordinate.y]
+
+
+static func _integer(value: Variant) -> int:
+	if value is int:
+		return value
+	if value is float and is_equal_approx(value, round(value)):
+		return int(value)
+	return -100_000

@@ -4,6 +4,7 @@ extends RefCounted
 var _content: RealmzContent
 var _state: GameState
 var _rng: RealmzRng
+var _rules: RealmzRules
 var _scenario_vm: ScenarioVm
 var _scenario_action_state: ScenarioActionState
 var _runtime_api: RealmzRuntimeApi
@@ -30,9 +31,10 @@ func start(content: RealmzContent, initial_seed: int) -> SessionStep:
 	_content = content
 	_state = game_state
 	_rng = random_source
+	_rules = RealmzRules.new()
 	_scenario_action_state = action_state
 	_scenario_vm = scenario_vm
-	_runtime_api = RealmzRuntimeApi.new(_content, _state, _rng, _scenario_action_state)
+	_runtime_api = RealmzRuntimeApi.new(_content, _state, _rng, _scenario_action_state, _rules)
 	_session_continuation.clear()
 	_started = true
 	_view_revision = 1
@@ -66,9 +68,10 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 	_content = content
 	_state = replacement_state
 	_rng = replacement_rng
+	_rules = RealmzRules.new()
 	_scenario_action_state = replacement_action_state
 	_scenario_vm = replacement_vm
-	_runtime_api = RealmzRuntimeApi.new(_content, _state, _rng, _scenario_action_state)
+	_runtime_api = RealmzRuntimeApi.new(_content, _state, _rng, _scenario_action_state, _rules)
 	_session_continuation = replacement_continuation
 	_view_revision = save_envelope.view_revision
 	_started = true
@@ -87,6 +90,14 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _move(intent.direction)
 		PlayerIntent.Kind.SEARCH:
 			return _search()
+		PlayerIntent.Kind.CAMP:
+			return _camp()
+		PlayerIntent.Kind.USE_ITEM:
+			return _use_item(intent.target_id)
+		PlayerIntent.Kind.CAST_SPELL:
+			return _cast_spell(intent)
+		PlayerIntent.Kind.CHOOSE_COMBAT_ACTION:
+			return _combat_action(intent)
 		_:
 			return SessionStep.failed(_view_revision, &"intent_not_implemented", "This Realmz intent is not implemented in the current slice.")
 
@@ -115,7 +126,11 @@ func respond(response: InteractionResponse) -> SessionStep:
 func view() -> GameView:
 	if not _started:
 		return GameView.new(_view_revision, false, null)
-	return GameView.new(_view_revision, true, _scenario_vm.pending_request(), _state.party.map_id, _state.party.coordinate, _state.clock.day(), _state.clock.hour(), _build_map_view())
+	var members: Array[CharacterView] = []
+	for character: CharacterState in _state.party.characters():
+		members.append(CharacterView.new(character))
+	var current_combat := CombatView.new(_state.combat) if _state.combat != null else null
+	return GameView.new(_view_revision, true, _scenario_vm.pending_request(), _state.party.map_id, _state.party.coordinate, _state.clock.day(), _state.clock.hour(), _build_map_view(), members, _state.party.fatigue, _state.party.pooled_wealth.gold, current_combat)
 
 
 func snapshot() -> SaveEnvelope:
@@ -131,6 +146,44 @@ func rng_trace() -> Array[Dictionary]:
 
 func scenario_trace() -> Array[Dictionary]:
 	return [] if _scenario_vm == null else _scenario_vm.trace()
+
+
+func _camp() -> SessionStep:
+	if _state.combat != null and not _state.combat.completed:
+		return SessionStep.failed(_view_revision, &"camp_during_battle", "The party cannot camp during battle.")
+	if not _state.camping_allowed:
+		return SessionStep.failed(_view_revision, &"camping_disabled", "Camping is not allowed at this location.")
+	return _finish_completed(_rules.clock.camp(_state))
+
+
+func _use_item(instance_id: String) -> SessionStep:
+	if instance_id.is_empty():
+		return SessionStep.failed(_view_revision, &"invalid_item", "Use Item requires a stable item instance ID.")
+	for character: CharacterState in _state.party.characters():
+		for instance: ItemInstance in character.inventory():
+			if instance.id != instance_id:
+				continue
+			var definition := _content.item_by_id(instance.definition_id)
+			if definition == null:
+				return SessionStep.failed(_view_revision, &"unknown_item", "The item definition is unavailable.")
+			if not _rules.inventory.use_charge(character, instance.id, definition):
+				return SessionStep.failed(_view_revision, &"item_unusable", "The item has no usable charge.")
+			return _finish_completed([DomainEvent.new(&"item_used", {"characterId": character.id, "instanceId": instance.id, "itemId": definition.id, "remainingCharges": maxi(0, instance.charges)})])
+	return SessionStep.failed(_view_revision, &"unknown_item_instance", "The party does not possess item instance '%s'." % instance_id)
+
+
+func _cast_spell(intent: PlayerIntent) -> SessionStep:
+	var result := _rules.combat_flow.cast_spell(_state, _content, intent.actor_id, intent.secondary_target_id, intent.target_id, intent.power_level, _rng)
+	if not result.ok:
+		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	return _finish_completed(result.events)
+
+
+func _combat_action(intent: PlayerIntent) -> SessionStep:
+	var result := _rules.combat_flow.submit_action(_state, _content, intent.actor_id, intent.action, intent.target_id, _rng)
+	if not result.ok:
+		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	return _finish_completed(result.events)
 
 
 func _search() -> SessionStep:
@@ -225,9 +278,13 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 		if trigger == null or not trigger.active or _state.world.trigger_is_disabled(trigger_id):
 			_session_continuation["triggerIndex"] = trigger_index + 1
 			continue
-		if trigger.chance_percent < 100:
+		var trigger_chance := _state.world.trigger_chance(trigger.id, trigger.chance_percent)
+		if trigger_chance < 0:
+			_session_continuation["triggerIndex"] = trigger_index + 1
+			continue
+		if trigger_chance < 100:
 			var chance_roll := _rng.draw(100, StringName("trigger.%s" % trigger.id))
-			if chance_roll > trigger.chance_percent:
+			if chance_roll > trigger_chance:
 				_session_continuation["triggerIndex"] = trigger_index + 1
 				continue
 		events.append(DomainEvent.new("trigger_fired", {"triggerId": trigger.id}))
@@ -267,18 +324,23 @@ func _movement_blocked(reason: StringName) -> SessionStep:
 
 
 func _check_random_regions(map: MapDefinition, cell: MapCell, events: Array[DomainEvent]) -> void:
+	if not _state.random_encounters_enabled:
+		return
 	for region_id: String in cell.random_rect_ids():
 		var region := map.random_region_by_id(region_id)
-		if region == null or region.chance_percent <= 0:
+		if region == null:
 			continue
-		var triggered := region.chance_percent >= 100
+		var effective := _state.world.random_region(region)
+		if effective.chance_percent <= 0:
+			continue
+		var triggered := effective.chance_percent >= 100
 		var roll := 0
 		if not triggered:
 			roll = _rng.draw(100, StringName("random-region.%s" % region.id))
-			triggered = roll <= region.chance_percent
-		events.append(DomainEvent.new("random_encounter_checked", {"regionId": region.id, "roll": roll, "chancePercent": region.chance_percent, "triggered": triggered}))
+			triggered = roll <= effective.chance_percent
+		events.append(DomainEvent.new("random_encounter_checked", {"regionId": region.id, "roll": roll, "chancePercent": effective.chance_percent, "triggered": triggered}))
 		if triggered:
-			events.append(DomainEvent.new("random_encounter_triggered", {"regionId": region.id, "battleMinimum": region.battle_minimum, "battleMaximum": region.battle_maximum, "textId": region.text_id, "soundId": region.sound_id}))
+			events.append(DomainEvent.new("random_encounter_triggered", {"regionId": region.id, "battleMinimum": effective.battle_minimum, "battleMaximum": effective.battle_maximum, "textId": region.text_id, "soundId": region.sound_id}))
 
 
 func _finish_completed(events: Array[DomainEvent]) -> SessionStep:

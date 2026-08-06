@@ -34,3 +34,12 @@ func random_regions() -> Array[RandomEncounterRegion]:
 	for region: Variant in _random_regions.values():
 		regions.append(region as RandomEncounterRegion)
 	return regions
+
+
+func random_region_by_index(index: int) -> RandomEncounterRegion:
+	var suffix := ":rect:%d" % index
+	for value: Variant in _random_regions.values():
+		var region := value as RandomEncounterRegion
+		if region.id.ends_with(suffix):
+			return region
+	return null

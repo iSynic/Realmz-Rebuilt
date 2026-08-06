@@ -32,6 +32,17 @@ func draw(range_max: int, semantic_tag: StringName) -> int:
 	return result
 
 
+func draw_between(low: int, high: int, semantic_tag: StringName) -> int:
+	if high < low or high - low + 1 > 32_767:
+		push_error("RealmzRng inclusive range is invalid.")
+		return low
+	var result := draw(high - low + 1, semantic_tag) - 1 + low
+	_trace[-1]["low"] = low
+	_trace[-1]["high"] = high
+	_trace[-1]["result"] = result
+	return result
+
+
 func snapshot() -> RealmzRngState:
 	return RealmzRngState.new(_state, _draw_count)
 

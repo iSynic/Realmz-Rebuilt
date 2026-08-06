@@ -24,6 +24,14 @@ func map_ids() -> Array[String]:
 	return ids
 
 
+func map_by_type_and_index(level_type: StringName, level_index: int) -> MapDefinition:
+	for value: Variant in _maps_by_id.values():
+		var map := value as MapDefinition
+		if map.level_type == level_type and map.level_index == level_index:
+			return map
+	return null
+
+
 func transition_from(map_id: String, edge: StringName) -> MapTransition:
 	return _transitions_by_source.get(_transition_key(map_id, edge)) as MapTransition
 

@@ -105,6 +105,108 @@
       },
       "additionalProperties": false
     },
+    "integerArray": {
+      "type": "array",
+      "items": { "type": "integer" }
+    },
+    "stringArray": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/identifier" }
+    },
+    "battleDefinition": {
+      "type": "object",
+      "required": ["id", "classicId", "monsterIds", "distance", "messageBeforeId", "messageAfterId", "macroId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "classicId": { "type": "integer", "minimum": 0 },
+        "monsterIds": { "type": "array", "items": { "type": "string" } },
+        "distance": { "type": "integer" },
+        "messageBeforeId": { "type": "integer" },
+        "messageAfterId": { "type": "integer" },
+        "macroId": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "monsterAttackDefinition": {
+      "type": "object",
+      "required": ["damageMin", "damageMax", "soundOrType", "special"],
+      "properties": {
+        "damageMin": { "type": "integer" },
+        "damageMax": { "type": "integer" },
+        "soundOrType": { "type": "integer" },
+        "special": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "monsterDefinition": {
+      "type": "object",
+      "required": ["id", "classicId", "name", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "distance", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "money", "spellIds", "itemIds", "weaponId", "iconId", "spellPoints", "experience", "deathMacro"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 0 }, "name": { "type": "string", "minLength": 1 },
+        "hitDice": { "type": "integer", "minimum": 0 }, "staminaBonus": { "type": "integer" }, "agility": { "type": "integer" }, "movementMaximum": { "type": "integer" }, "armor": { "type": "integer" }, "magicResistance": { "type": "integer" }, "distance": { "type": "integer" }, "traitor": { "type": "boolean" }, "size": { "type": "integer" },
+        "typeFlags": { "$ref": "#/$defs/integerArray" }, "attackCount": { "type": "integer" }, "magicAttackCount": { "type": "integer" }, "attacks": { "type": "array", "items": { "$ref": "#/$defs/monsterAttackDefinition" } }, "damageBonus": { "type": "integer" }, "castPercent": { "type": "integer" }, "runPercent": { "type": "integer" }, "surrenderPercent": { "type": "integer" }, "missilePercent": { "type": "integer" }, "canSummon": { "type": "integer" },
+        "saves": { "$ref": "#/$defs/integerArray" }, "spellImmunities": { "$ref": "#/$defs/integerArray" }, "money": { "$ref": "#/$defs/integerArray" }, "spellIds": { "$ref": "#/$defs/stringArray" }, "itemIds": { "$ref": "#/$defs/stringArray" }, "weaponId": { "type": "string" }, "iconId": { "type": "integer" }, "spellPoints": { "type": "integer" }, "experience": { "type": "integer" }, "deathMacro": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "itemDefinition": {
+      "type": "object",
+      "required": ["id", "classicId", "name", "unidentifiedName", "description", "iconId", "itemType", "strengthBonus", "blunt", "hands", "luckBonus", "movementBonus", "armorBonus", "magicResistanceBonus", "damageBonus", "spellPointBonus", "soundId", "weight", "cost", "initialCharges", "cursedItemId", "magical", "itemCategoryMaskLow", "itemCategoryMaskHigh", "raceRestrictions", "casteRestrictions", "specificRaceId", "specificCasteId", "raceClassOnly", "casteClassOnly", "versusSmall", "versusLarge", "heat", "cold", "electric", "versusUndead", "versusDemonDevil", "versusEvil", "special", "weightPerCharge", "dropOnEmpty"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer" }, "name": { "type": "string", "minLength": 1 }, "unidentifiedName": { "type": "string", "minLength": 1 }, "description": { "type": "string" },
+        "iconId": { "type": "integer" }, "itemType": { "type": "integer" }, "strengthBonus": { "type": "integer" }, "blunt": { "type": "integer" }, "hands": { "type": "integer" }, "luckBonus": { "type": "integer" }, "movementBonus": { "type": "integer" }, "armorBonus": { "type": "integer" }, "magicResistanceBonus": { "type": "integer" }, "damageBonus": { "type": "integer" }, "spellPointBonus": { "type": "integer" }, "soundId": { "type": "integer" }, "weight": { "type": "integer" }, "cost": { "type": "integer" }, "initialCharges": { "type": "integer" }, "cursedItemId": { "type": "string" }, "magical": { "type": "boolean" },
+        "itemCategoryMaskLow": { "type": "integer" }, "itemCategoryMaskHigh": { "type": "integer" }, "raceRestrictions": { "type": "integer" }, "casteRestrictions": { "type": "integer" }, "specificRaceId": { "type": "string" }, "specificCasteId": { "type": "string" }, "raceClassOnly": { "type": "integer" }, "casteClassOnly": { "type": "integer" },
+        "versusSmall": { "type": "integer" }, "versusLarge": { "type": "integer" }, "heat": { "type": "integer" }, "cold": { "type": "integer" }, "electric": { "type": "integer" }, "versusUndead": { "type": "integer" }, "versusDemonDevil": { "type": "integer" }, "versusEvil": { "type": "integer" }, "special": { "allOf": [{ "$ref": "#/$defs/integerArray" }], "minItems": 5, "maxItems": 5 }, "weightPerCharge": { "type": "integer" }, "dropOnEmpty": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "treasureDefinition": {
+      "type": "object",
+      "required": ["id", "classicId", "itemIds", "experience", "gold", "gems", "jewelry"],
+      "properties": { "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 0 }, "itemIds": { "$ref": "#/$defs/stringArray" }, "experience": { "type": "integer" }, "gold": { "type": "integer" }, "gems": { "type": "integer" }, "jewelry": { "type": "integer" } },
+      "additionalProperties": false
+    },
+    "shopStock": {
+      "type": "object",
+      "required": ["itemId", "quantity"],
+      "properties": { "itemId": { "$ref": "#/$defs/identifier" }, "quantity": { "type": "integer", "minimum": 0 } },
+      "additionalProperties": false
+    },
+    "shopDefinition": {
+      "type": "object",
+      "required": ["id", "classicId", "inflationPercent", "stock"],
+      "properties": { "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 0 }, "inflationPercent": { "type": "integer" }, "stock": { "type": "array", "items": { "$ref": "#/$defs/shopStock" } } },
+      "additionalProperties": false
+    },
+    "spellDefinition": {
+      "type": "object",
+      "required": ["id", "classicId", "name", "description", "rangeMin", "rangeMax", "queueIcon", "toHitBonus", "saveBonus", "fixedTargetCount", "canRotate", "saveAdjust", "cannot", "resistanceAdjust", "cost", "damageMin", "damageMax", "powerDamageMin", "powerDamageMax", "durationMin", "durationMax", "powerDurationMin", "powerDurationMax", "lookStart", "lookEnd", "soundStart", "soundEnd", "targetType", "size", "special", "damageType", "spellClass", "inCombat", "inCamp"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 0 }, "name": { "type": "string", "minLength": 1 }, "description": { "type": "string" },
+        "rangeMin": { "type": "integer" }, "rangeMax": { "type": "integer" }, "queueIcon": { "type": "integer" }, "toHitBonus": { "type": "integer" }, "saveBonus": { "type": "integer" }, "fixedTargetCount": { "type": "integer" }, "canRotate": { "type": "boolean" }, "saveAdjust": { "type": "integer" }, "cannot": { "type": "integer" }, "resistanceAdjust": { "type": "integer" }, "cost": { "type": "integer" }, "damageMin": { "type": "integer" }, "damageMax": { "type": "integer" }, "powerDamageMin": { "type": "integer" }, "powerDamageMax": { "type": "integer" }, "durationMin": { "type": "integer" }, "durationMax": { "type": "integer" }, "powerDurationMin": { "type": "integer" }, "powerDurationMax": { "type": "integer" }, "lookStart": { "type": "integer" }, "lookEnd": { "type": "integer" }, "soundStart": { "type": "integer" }, "soundEnd": { "type": "integer" }, "targetType": { "type": "integer" }, "size": { "type": "integer" }, "special": { "type": "integer" }, "damageType": { "type": "integer" }, "spellClass": { "type": "integer" }, "inCombat": { "type": "boolean" }, "inCamp": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "raceDefinition": {
+      "type": "object",
+      "required": ["id", "classicId", "name", "hitModifiers", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "ageRanges", "maximumAge", "doesNotDie", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "canRegenerate", "defaultIconSet", "itemCategoryMasks", "descriptorFlags"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 0 }, "name": { "type": "string", "minLength": 1 },
+        "hitModifiers": { "$ref": "#/$defs/integerArray" }, "saveBonuses": { "$ref": "#/$defs/integerArray" }, "attributeBonuses": { "$ref": "#/$defs/integerArray" }, "attributeLimits": { "$ref": "#/$defs/integerArray" }, "conditionLevels": { "$ref": "#/$defs/integerArray" }, "ageRanges": { "type": "array", "items": { "$ref": "#/$defs/integerArray" } },
+        "maximumAge": { "type": "integer" }, "doesNotDie": { "type": "boolean" }, "baseMovement": { "type": "integer" }, "magicResistance": { "type": "integer" }, "twoHandBonus": { "type": "integer" }, "missileBonus": { "type": "integer" }, "baseAttacks": { "type": "integer" }, "maximumAttacks": { "type": "integer" }, "canRegenerate": { "type": "boolean" }, "defaultIconSet": { "type": "integer" }, "itemCategoryMasks": { "$ref": "#/$defs/integerArray" }, "descriptorFlags": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "casteDefinition": {
+      "type": "object",
+      "required": ["id", "classicId", "name", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "staminaDice", "strengthValues", "dodgeValues", "toHitValues", "missileValues", "handToHandValues", "spellcasterRows", "attackLevels", "startingItemIds", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "canUseMissile", "getsMissileBonus", "defaultIcon", "itemCategoryMasks"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 0 }, "name": { "type": "string", "minLength": 1 },
+        "saveBonuses": { "$ref": "#/$defs/integerArray" }, "attributeBonuses": { "$ref": "#/$defs/integerArray" }, "attributeLimits": { "$ref": "#/$defs/integerArray" }, "conditionLevels": { "$ref": "#/$defs/integerArray" }, "staminaDice": { "$ref": "#/$defs/integerArray" }, "strengthValues": { "$ref": "#/$defs/integerArray" }, "dodgeValues": { "$ref": "#/$defs/integerArray" }, "toHitValues": { "$ref": "#/$defs/integerArray" }, "missileValues": { "$ref": "#/$defs/integerArray" }, "handToHandValues": { "$ref": "#/$defs/integerArray" }, "spellcasterRows": { "type": "array", "items": { "$ref": "#/$defs/integerArray" } }, "attackLevels": { "$ref": "#/$defs/integerArray" }, "startingItemIds": { "$ref": "#/$defs/stringArray" },
+        "casteClass": { "type": "integer" }, "minimumAgeGroup": { "type": "integer" }, "movementBonus": { "type": "integer" }, "magicResistanceMultiplier": { "type": "integer" }, "twoHandBonus": { "type": "integer" }, "maximumStaminaBonus": { "type": "integer" }, "bonusAttacks": { "type": "integer" }, "maximumAttacks": { "type": "integer" }, "startMoney": { "type": "integer" }, "canUseMissile": { "type": "boolean" }, "getsMissileBonus": { "type": "boolean" }, "defaultIcon": { "type": "integer" }, "itemCategoryMasks": { "$ref": "#/$defs/integerArray" }
+      },
+      "additionalProperties": false
+    },
     "content": {
       "type": "object",
       "required": [
@@ -144,21 +246,21 @@
         },
         "messages": { "type": "array" },
         "optionLabels": { "type": "array" },
-        "battles": { "type": "array" },
-        "monsters": { "type": "array" },
+        "battles": { "type": "array", "items": { "$ref": "#/$defs/battleDefinition" } },
+        "monsters": { "type": "array", "items": { "$ref": "#/$defs/monsterDefinition" } },
         "monsterSets": { "type": "array" },
         "monsterDescriptions": { "type": "array" },
-        "items": { "type": "array" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/itemDefinition" } },
         "itemTexts": { "type": "array" },
-        "treasures": { "type": "array" },
-        "shops": { "type": "array" },
+        "treasures": { "type": "array", "items": { "$ref": "#/$defs/treasureDefinition" } },
+        "shops": { "type": "array", "items": { "$ref": "#/$defs/shopDefinition" } },
         "simpleEncounters": { "type": "array", "items": { "$ref": "#/$defs/simpleEncounter" } },
-        "complexEncounters": { "type": "array" },
-        "thiefEncounters": { "type": "array" },
-        "timedEncounters": { "type": "array" },
-        "spells": { "type": "array" },
-        "races": { "type": "array" },
-        "castes": { "type": "array" }
+        "complexEncounters": { "type": "array", "items": { "$ref": "#/$defs/complexEncounter" } },
+        "thiefEncounters": { "type": "array", "items": { "$ref": "#/$defs/thiefEncounter" } },
+        "timedEncounters": { "type": "array", "items": { "$ref": "#/$defs/timedEncounter" } },
+        "spells": { "type": "array", "items": { "$ref": "#/$defs/spellDefinition" } },
+        "races": { "type": "array", "items": { "$ref": "#/$defs/raceDefinition" } },
+        "castes": { "type": "array", "items": { "$ref": "#/$defs/casteDefinition" } }
       },
       "additionalProperties": false
     },
@@ -182,6 +284,70 @@
         "canBackOut": { "type": "boolean" },
         "maxTimes": { "type": "integer", "minimum": -128, "maximum": 127 },
         "casteSuccess": { "type": "integer", "minimum": -128, "maximum": 127 }
+      },
+      "additionalProperties": false
+    },
+    "complexEncounter": {
+      "type": "object",
+      "required": ["id", "promptMessageId", "actionResult", "wordResult", "groups", "spellIds", "spellResults", "itemIds", "itemResults", "canBackOut", "thief", "maxTimes", "casteSuccess", "thiefSuccess", "thiefFail", "texts"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 0 },
+        "promptMessageId": { "type": "integer" },
+        "actionResult": { "type": "integer", "minimum": -128, "maximum": 127 },
+        "wordResult": { "type": "integer", "minimum": -128, "maximum": 127 },
+        "groups": { "type": "array", "items": { "type": "integer", "minimum": -128, "maximum": 127 }, "minItems": 8, "maxItems": 8 },
+        "spellIds": { "type": "array", "items": { "type": "integer", "minimum": -32768, "maximum": 32767 }, "minItems": 10, "maxItems": 10 },
+        "spellResults": { "type": "array", "items": { "type": "integer", "minimum": -128, "maximum": 127 }, "minItems": 10, "maxItems": 10 },
+        "itemIds": { "type": "array", "items": { "type": "integer", "minimum": -32768, "maximum": 32767 }, "minItems": 5, "maxItems": 5 },
+        "itemResults": { "type": "array", "items": { "type": "integer", "minimum": -128, "maximum": 127 }, "minItems": 5, "maxItems": 5 },
+        "canBackOut": { "type": "boolean" },
+        "thief": { "type": "boolean" },
+        "maxTimes": { "type": "integer", "minimum": -128, "maximum": 127 },
+        "casteSuccess": { "type": "integer", "minimum": -128, "maximum": 127 },
+        "thiefSuccess": { "type": "integer", "minimum": -128, "maximum": 127 },
+        "thiefFail": { "type": "integer", "minimum": -128, "maximum": 127 },
+        "texts": { "type": "array", "items": { "type": "string", "maxLength": 40 }, "minItems": 9, "maxItems": 9 }
+      },
+      "additionalProperties": false
+    },
+    "thiefEncounter": {
+      "type": "object",
+      "required": ["id", "typeFlags", "modifiers", "successCodes", "failureCodes", "successText", "failureText", "successSounds", "failureSounds", "spellId", "lowDamage", "highDamage", "tumblers", "prompts", "promptSounds"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 0 },
+        "typeFlags": { "type": "array", "items": { "type": "boolean" }, "minItems": 10, "maxItems": 10 },
+        "modifiers": { "type": "array", "items": { "type": "integer", "minimum": -128, "maximum": 127 }, "minItems": 8, "maxItems": 8 },
+        "successCodes": { "type": "array", "items": { "type": "integer", "minimum": -128, "maximum": 127 }, "minItems": 8, "maxItems": 8 },
+        "failureCodes": { "type": "array", "items": { "type": "integer", "minimum": -128, "maximum": 127 }, "minItems": 8, "maxItems": 8 },
+        "successText": { "type": "array", "items": { "type": "integer", "minimum": -32768, "maximum": 32767 }, "minItems": 8, "maxItems": 8 },
+        "failureText": { "type": "array", "items": { "type": "integer", "minimum": -32768, "maximum": 32767 }, "minItems": 8, "maxItems": 8 },
+        "successSounds": { "type": "array", "items": { "type": "integer", "minimum": -32768, "maximum": 32767 }, "minItems": 8, "maxItems": 8 },
+        "failureSounds": { "type": "array", "items": { "type": "integer", "minimum": -32768, "maximum": 32767 }, "minItems": 8, "maxItems": 8 },
+        "spellId": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "lowDamage": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "highDamage": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "tumblers": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "prompts": { "type": "array", "items": { "type": "integer", "minimum": -32768, "maximum": 32767 }, "minItems": 3, "maxItems": 3 },
+        "promptSounds": { "type": "array", "items": { "type": "integer", "minimum": -32768, "maximum": 32767 }, "minItems": 3, "maxItems": 3 }
+      },
+      "additionalProperties": false
+    },
+    "timedEncounter": {
+      "type": "object",
+      "required": ["id", "day", "increment", "chancePercent", "triggerRecordIndex", "requiredLevel", "requiredRandomRectangle", "requiredX", "requiredY", "requiredItemId", "requiredQuestId", "locationKind"],
+      "properties": {
+        "id": { "type": "integer", "minimum": 0 },
+        "day": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "increment": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "chancePercent": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "triggerRecordIndex": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "requiredLevel": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "requiredRandomRectangle": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "requiredX": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "requiredY": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "requiredItemId": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "requiredQuestId": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "locationKind": { "enum": ["any", "land", "dungeon"] }
       },
       "additionalProperties": false
     },
@@ -257,10 +423,11 @@
     },
     "trigger": {
       "type": "object",
-      "required": ["id", "programId", "mapId", "coordinate", "active", "chancePercent", "replacement"],
+      "required": ["id", "programId", "classicRecordIndex", "mapId", "coordinate", "active", "chancePercent", "replacement"],
       "properties": {
         "id": { "$ref": "#/$defs/identifier" },
         "programId": { "$ref": "#/$defs/identifier" },
+        "classicRecordIndex": { "type": "integer", "minimum": 0 },
         "mapId": { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
         "coordinate": {
           "anyOf": [
@@ -406,7 +573,7 @@
         "triggers": { "type": "array", "items": { "$ref": "#/$defs/trigger" } },
         "transitions": { "type": "array", "items": { "$ref": "#/$defs/worldTransition" } },
         "landLayout": {},
-        "timedEncounters": { "type": "array" }
+        "timedEncounters": { "type": "array", "items": { "$ref": "#/$defs/timedEncounter" } }
       },
       "additionalProperties": false
     },

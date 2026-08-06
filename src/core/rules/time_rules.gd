@@ -1,0 +1,32 @@
+class_name ClockRules
+extends RefCounted
+
+var _conditions: ConditionRules
+
+
+func _init(condition_rules: ConditionRules) -> void:
+	_conditions = condition_rules
+
+
+func change_fatigue(party: PartyState, amount: int) -> int:
+	party.fatigue = clampi(party.fatigue + amount, 4, 135)
+	return party.fatigue
+
+
+func advance_minutes(state: GameState, minutes: int, condition_ticks: int = 0) -> Array[DomainEvent]:
+	state.clock.advance_minutes(maxi(0, minutes))
+	var events: Array[DomainEvent] = [DomainEvent.new(&"time_advanced", {"minutes": maxi(0, minutes), "day": state.clock.day(), "hour": state.clock.hour()})]
+	for tick: int in condition_ticks:
+		events.append_array(_conditions.tick_party(state.party))
+	return events
+
+
+func camp(state: GameState, hours: int = 8) -> Array[DomainEvent]:
+	var events := advance_minutes(state, maxi(1, hours) * 60, maxi(1, hours))
+	state.party.fatigue = 4
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0:
+			character.current_health = mini(character.maximum_health, character.current_health + maxi(1, hours))
+			character.spell_points = character.maximum_spell_points
+	events.append(DomainEvent.new(&"party_camped", {"hours": maxi(1, hours)}))
+	return events

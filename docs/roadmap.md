@@ -33,11 +33,15 @@ Exit evidence: the synthetic three-map fixture exercises message AP execution, t
 
 Exit evidence: the synthetic route executes AP opcode -4 to a serializable Simple Encounter request, selected result message, `CallScenarioAction`, Classic opcode 39 to an XAP, and CODE 111 return as one ordered trace. Save/reload reproduces the pending request and exact continuation. The 132-assertion runtime suite passes across seven suites; Providence passes 905 frontend tests plus its Rust exporter, typecheck, lint, architecture, module-size, production-build, and cargo-check gates. Repeated Phase 3 exports are byte-identical. MCP Pro exercised the pending-save, response, restore, repeated response, and final route state with a clean editor error inspection. Castle source/control-flow evidence and the precise proof boundary are recorded in `docs/scenario-vm-evidence.md`.
 
-## Phase 4 — Realmz gameplay domains (pending)
+## Phase 4 — Realmz gameplay domains (completed)
 
-- Character, inventory/economy, combat, magic, monster/AI, lifecycle, and active opcode ownership.
+- Implemented: direct race, caste, item, spell, monster, battle, treasure, shop, and Complex/Thief/Timed Encounter models with independently validated package construction.
+- Implemented: fixed character, condition/time, inventory/economy, combat, magic, monster, and combat-flow rules; save-owned domain state; packed standard/scenario spell identities; opcode 7/8 program mutation; opcode 36 equipment escrow; and stateful opcode 122 fumble behavior.
+- Implemented evidence: the 452-assertion suite covers rules, package construction, domain mutation, RNG ordering, save/restore, VM routing, and explicit error paths. A bounded hash-labelled Assault on Giant Mountain inventory declares 58 active normalized opcodes; every one has one owner, passes package readiness, and dispatches without top-level fallback. This is content-inventory evidence, not live-route proof.
 
 Exit: every active capability needed by the synthetic fixture and Assault on Giant Mountain has executable source-backed behavior with no fallback or silent no-op.
+
+Exit evidence: Providence commit `364755324fae1685b82bbf0c751572045ee6888d` passes its Rust library/exporter/example checks, 321 library tests, frontend typecheck, and production build. The runtime's full gate passes 452 assertions across eight suites plus schema, fixture-provenance, architecture, export-exclusion, and whitespace checks. A fresh MCP Pro editor session reported zero errors; the main scene played, exposed the expected runtime tree, accepted simulated mouse input, changed the observed status, captured a 960×600 frame, and stopped cleanly. Phase 4 domain behavior is proven by deterministic headless tests; the current minimal host does not yet expose those domain screens, which is Phase 5 work.
 
 ## Phase 5 — Classic shell and first campaign (pending)
 

@@ -30,3 +30,4 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 ## Child DOX Index
 
 - `adr/` contains immutable decision records and follows this contract; no additional child AGENTS.md is currently needed.
+- `gameplay-domain-evidence.md` owns Phase 4 Castle source ranges, bounded campaign-inventory provenance, and the distinction between source, runtime-unit, integration, and live-route proof.

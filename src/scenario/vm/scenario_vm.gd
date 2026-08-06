@@ -86,39 +86,35 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 	_pending_continuation.clear()
 	_append_trace({"event": "resume", "requestId": request_id, "kind": continuation.get("kind", "")})
 	match continuation.get("kind"):
-		"simple-encounter":
-			var encounter := runtime_api.simple_encounter_by_id(int(continuation.get("encounterId", -1)))
-			if encounter == null:
-				return _fail(&"unknown_encounter", "The pending Simple Encounter is unavailable.", events)
-			if response.kind != &"encounter_choice" or not response.payload.get("index") is int:
-				return _fail(&"invalid_interaction_response", "Simple Encounter response must contain a choice index.", events)
-			var selected := encounter.response_at(response.payload["index"])
-			if selected == null:
-				return _fail(&"invalid_interaction_response", "Simple Encounter response index is outside the authored choices.", events)
-			var result_program := _definition.program_by_id(selected.result_program_id)
-			if result_program == null:
-				return _fail(&"unknown_scenario_program", "Encounter result program '%s' is unavailable." % selected.result_program_id, events)
-			var result_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, selected.result_program_id)
-			result_frame.counts_as_classic_call = bool(continuation.get("gosub", false))
-			result_frame.set_context({"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id})
-			if result_frame.counts_as_classic_call:
-				if _classic_call_depth() >= CLASSIC_CALL_LIMIT:
-					return _fail(&"classic_gosub_limit", "Classic GOSUB stack exceeded 20 frames.", events)
-				_frames.append(result_frame)
-			else:
-				_frames[_frames.size() - 1] = result_frame
-			_append_trace({"event": "encounter-result", "programId": selected.result_program_id, "gosub": result_frame.counts_as_classic_call})
 		"safe-operation":
-			var operation := runtime_api.resume_safe(continuation.get("runtime", {}), response)
+			var operation := runtime_api.resume_safe(continuation.get("runtime", {}), response, _next_request_id())
 			if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 				return _fail(operation.error_code, operation.error_message, events)
 			events.append_array(operation.events)
+			if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
+				_pending_request = operation.interaction
+				_pending_continuation = {"kind": "safe-operation", "frameIndex": continuation.get("frameIndex", -1), "resultTarget": continuation.get("resultTarget", ""), "runtime": operation.continuation.duplicate(true)}
+				_append_trace({"event": "yield", "requestId": operation.interaction.request_id, "kind": String(operation.interaction.kind)})
+				return ScenarioVmResult.waiting(operation.interaction, events)
 			var frame_index: int = int(continuation.get("frameIndex", -1))
 			if frame_index < 0 or frame_index >= _frames.size() or _frames[frame_index].kind != ScenarioFrame.ACTION:
 				return _fail(&"invalid_vm_continuation", "Scenario Action continuation frame is unavailable.", events)
 			var result_target: String = str(continuation.get("resultTarget", ""))
 			if not result_target.is_empty():
 				_frames[frame_index].set_local(result_target, operation.value)
+		"classic-operation":
+			var operation := runtime_api.resume_classic(continuation.get("runtime", {}), response, _next_request_id())
+			if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
+				return _fail(operation.error_code, operation.error_message, events)
+			events.append_array(operation.events)
+			if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
+				_pending_request = operation.interaction
+				_pending_continuation = {"kind": "classic-operation", "runtime": operation.continuation.duplicate(true)}
+				_append_trace({"event": "yield", "requestId": operation.interaction.request_id, "kind": String(operation.interaction.kind)})
+				return ScenarioVmResult.waiting(operation.interaction, events)
+			var directive_result := _apply_classic_directive(operation.directive)
+			if directive_result.state == ScenarioVmResult.State.FAILED:
+				return _fail(directive_result.error_code, directive_result.error_message, events)
 		_:
 			return _fail(&"unknown_interaction_continuation", "Scenario VM continuation kind is unavailable.", events)
 	var resumed := run(runtime_api)
@@ -190,6 +186,18 @@ func pending_request() -> InteractionRequest:
 
 
 func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
+	if frame.cursor == 0 and frame.context_value("_programResolved") != true:
+		var original_program_id := frame.definition_id
+		var resolved_program_id := runtime_api.resolve_program_id(original_program_id)
+		if _definition.program_by_id(resolved_program_id) == null:
+			return ScenarioVmResult.failed(&"unknown_scenario_program", "Scenario program override for '%s' references unavailable program '%s'." % [original_program_id, resolved_program_id])
+		var resolved_context := frame.context_data()
+		resolved_context["_programResolved"] = true
+		resolved_context["originalProgramId"] = original_program_id
+		frame.set_context(resolved_context)
+		frame.definition_id = resolved_program_id
+		if resolved_program_id != original_program_id:
+			_append_trace({"event": "program-override", "sourceProgramId": original_program_id, "targetProgramId": resolved_program_id})
 	var program := _definition.program_by_id(frame.definition_id)
 	if program == null:
 		return ScenarioVmResult.failed(&"unknown_scenario_program", "Scenario program '%s' disappeared during execution." % frame.definition_id)
@@ -228,16 +236,62 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 			_pop_classic_caller_below_top()
 			return ScenarioVmResult.completed()
 	var request_id := _next_request_id()
-	var operation := runtime_api.execute_classic(action, request_id)
+	var operation := runtime_api.execute_classic(action, request_id, frame.context_data())
 	frame.cursor += 1
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return ScenarioVmResult.failed(operation.error_code, operation.error_message)
 	if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
 		_pending_request = operation.interaction
-		_pending_continuation = operation.continuation.duplicate(true)
+		_pending_continuation = {"kind": "classic-operation", "runtime": operation.continuation.duplicate(true)}
 		_append_trace({"event": "yield", "requestId": request_id, "kind": String(operation.interaction.kind)})
 		return ScenarioVmResult.waiting(operation.interaction, operation.events)
+	var directive_result := _apply_classic_directive(operation.directive)
+	if directive_result.state == ScenarioVmResult.State.FAILED:
+		return directive_result
 	return ScenarioVmResult.completed(operation.events)
+
+
+func _apply_classic_directive(directive: Dictionary) -> ScenarioVmResult:
+	if directive.is_empty():
+		return ScenarioVmResult.completed()
+	match directive.get("kind"):
+		"finish":
+			_return_from_frame(null)
+			return ScenarioVmResult.completed()
+		"branch-xap":
+			var program_id := "xap:%d" % int(directive.get("targetId", -1))
+			if _definition.program_by_id(program_id) == null:
+				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic branch references unavailable XAP %d." % int(directive.get("targetId", -1)))
+			var target_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
+			if bool(directive.get("gosub", false)):
+				if _classic_call_depth() >= CLASSIC_CALL_LIMIT:
+					return ScenarioVmResult.failed(&"classic_gosub_limit", "Classic GOSUB stack exceeded 20 frames.")
+				target_frame.counts_as_classic_call = true
+				_frames.append(target_frame)
+			else:
+				_frames[_frames.size() - 1] = target_frame
+			_append_trace({"event": "classic-branch", "programId": program_id, "gosub": bool(directive.get("gosub", false))})
+			return ScenarioVmResult.completed()
+		"branch-program":
+			var program_id: String = str(directive.get("programId", ""))
+			if _definition.program_by_id(program_id) == null:
+				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic branch references unavailable program '%s'." % program_id)
+			var target_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
+			target_frame.counts_as_classic_call = bool(directive.get("gosub", false))
+			var context: Variant = directive.get("context", {})
+			if not context is Dictionary:
+				return ScenarioVmResult.failed(&"invalid_vm_directive", "Classic branch context is malformed.")
+			target_frame.set_context(context)
+			if target_frame.counts_as_classic_call:
+				if _classic_call_depth() >= CLASSIC_CALL_LIMIT:
+					return ScenarioVmResult.failed(&"classic_gosub_limit", "Classic GOSUB stack exceeded 20 frames.")
+				_frames.append(target_frame)
+			else:
+				_frames[_frames.size() - 1] = target_frame
+			_append_trace({"event": "classic-branch", "programId": program_id, "gosub": target_frame.counts_as_classic_call})
+			return ScenarioVmResult.completed()
+		_:
+			return ScenarioVmResult.failed(&"unknown_vm_directive", "Realmz Runtime API returned an unknown VM directive.")
 
 
 func _execute_action_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:

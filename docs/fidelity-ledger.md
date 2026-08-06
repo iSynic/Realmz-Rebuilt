@@ -4,6 +4,8 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 
 No fidelity deviations are currently approved.
 
+Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
+
 Each future entry must include:
 
 - stable deviation ID and affected rule;
