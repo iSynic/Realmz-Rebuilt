@@ -23,6 +23,8 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 - Runtime instruction forms are preserved `ClassicAction` records and typed `CallScenarioAction` records. Safe bytecode is compiler output, never Providence editor state.
 - The session owns the active VM, action state, runtime API, and post-move continuation. VM snapshots include Classic and Safe frames, origin, trace, and any pending typed interaction.
 - A saved Classic program replacement is resolved once when a frame starts. Redirecting the active AP changes that frame explicitly; neither behavior rewrites immutable package programs.
+- Classic XAP transfers inherit the issuing frame's AP origin/context. Loading macro code cannot erase the trigger identity required by source-backed operations such as opcode 25.
+- Battle opcodes resolve the Classic battle ID from Extra Code slot zero when a row is present; the action operand is only the direct-ID form when no Extra Code row exists.
 - Executable-opcode readiness is declared by `ClassicOpcodeCatalog` and checked against bounded, provenance-labelled content inventories. A declared opcode must have an explicit handler and may never fall through to dynamic dispatch or a silent no-op.
 
 ## Work Guidance
@@ -33,7 +35,7 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 
 ## Verification
 
-- VM tests cover calls, returns, limits, yields, save/resume, unknown behavior, Castle traces, program replacement/redirect, domain dispatch, and bounded campaign-inventory readiness.
+- VM tests cover calls, returns, limits, yields, save/resume, unknown behavior, Castle traces, inherited AP context, Extra Code battle identity, program replacement/redirect, domain dispatch, and bounded campaign-inventory readiness.
 
 ## Child DOX Index
 

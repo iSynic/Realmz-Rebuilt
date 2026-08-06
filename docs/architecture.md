@@ -51,7 +51,7 @@ The engine models Realmz concepts—party, characters, maps, APs/XAPs, Simple/Co
 
 ## Topology
 
-`MapTopology` and `WorldState` overlays are authoritative. Providence normalizes land cells, packed dungeon fields, and Layout adjacency into cells with explicit directional edges/features, random regions, and transitions. Movement, LOS, deterministic pathfinding, searches, triggers, random encounters, battle-terrain derivation, minimaps, 2D views, and later 3D views ask that same query surface. TileMaps, collisions, AStar graphs, textures, and meshes are presentation caches and cannot answer simulation questions. See `docs/topology-evidence.md` for the Castle evidence boundary and Phase 2 proofs.
+`MapTopology` and `WorldState` overlays are authoritative. Providence normalizes land cells, packed dungeon fields, Layout adjacency, and placed AP post-action destinations into cells with explicit directional edges/features, random regions, transitions, and validated map coordinates. Movement, LOS, deterministic pathfinding, searches, triggers, random encounters, AP destination rechecks, battle-terrain derivation, minimaps, 2D views, and later 3D views ask that same query surface. TileMaps, collisions, AStar graphs, textures, and meshes are presentation caches and cannot answer simulation questions. See `docs/topology-evidence.md` for the Castle evidence boundary and Phase 2 proofs.
 
 ## Scenario execution
 
@@ -61,6 +61,6 @@ Safe Scenario Actions compile in Providence to bounded bytecode. They use separa
 
 ## Persistence and randomness
 
-One `.r2save` envelope contains all mutable session state, including overlays, clock, equipment escrow, wealth, allies, encounter attempts/type flags, shop stock, combat, scenario-program replacements, VM frames, VM or session-owned pending interaction, post-move/random-region continuation, action state, and RNG state/draw count. Installed package content is referenced by package hash and never copied into the save.
+One `.r2save` envelope contains all mutable session state, including overlays, clock, equipment escrow, wealth, allies, encounter attempts/type flags, shop stock, combat, scenario-program replacements, VM frames, VM or session-owned pending interaction, post-move/random-region/AP-destination continuation, action state, and RNG state/draw count. Installed package content is referenced by package hash and never copied into the save.
 
 Every gameplay draw uses `RealmzRng`. It owns the QuickDraw `randSeed = randSeed * 16807 mod 2147483647` transition, signed low-word return (mapping `0x8000` to zero), Castle's inclusive `1 + abs(raw) * range / 32768` scaling, draw count, and semantic trace. Presentation has a separate cosmetic RNG. Oracle tests may inject raw scripted values so Castle and the new runtime take identical branches. See `docs/rng-evidence.md` for the evidence boundary.

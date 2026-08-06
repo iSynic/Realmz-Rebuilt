@@ -2,7 +2,7 @@ class_name SaveEnvelope
 extends RefCounted
 
 const FORMAT: String = "realmz2-save"
-const FORMAT_VERSION: int = 2
+const FORMAT_VERSION: int = 3
 
 var campaign_id: String
 var package_hash: String
@@ -116,34 +116,47 @@ static func _migrate(value: Variant) -> Variant:
 	var version := _integer(value.get("formatVersion", -1))
 	if version == FORMAT_VERSION:
 		return value.duplicate(true)
-	if version != 1:
-		return null
-	var fields_v1: Array[String] = ["format", "formatVersion", "campaignId", "packageHash", "rulesVersion", "deviationIds", "viewRevision", "gameState", "rng", "scenarioVm", "scenarioActionState", "sessionContinuation", "combatState", "metadata"]
-	if value.size() != fields_v1.size():
-		return null
-	for field: String in fields_v1:
-		if not value.has(field):
-			return null
 	var migrated: Dictionary = value.duplicate(true)
-	migrated["formatVersion"] = FORMAT_VERSION
-	migrated["sessionInteraction"] = {}
+	if version == 1:
+		var fields_v1: Array[String] = ["format", "formatVersion", "campaignId", "packageHash", "rulesVersion", "deviationIds", "viewRevision", "gameState", "rng", "scenarioVm", "scenarioActionState", "sessionContinuation", "combatState", "metadata"]
+		if migrated.size() != fields_v1.size():
+			return null
+		for field: String in fields_v1:
+			if not migrated.has(field):
+				return null
+		migrated["formatVersion"] = 2
+		migrated["sessionInteraction"] = {}
+		if migrated["sessionContinuation"] is Dictionary and not migrated["sessionContinuation"].is_empty():
+			var continuation_v1: Dictionary = migrated["sessionContinuation"]
+			for field: String in ["randomRegionIds", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage"]:
+				if not continuation_v1.has(field):
+					if field == "randomRegionIds":
+						continuation_v1[field] = []
+					else:
+						continuation_v1[field] = ""
+			if not continuation_v1.has("randomRegionIndex"):
+				continuation_v1["randomRegionIndex"] = -1
+		version = 2
+	if version != 2:
+		return null
+	var fields_v2: Array[String] = ["format", "formatVersion", "campaignId", "packageHash", "rulesVersion", "deviationIds", "viewRevision", "gameState", "rng", "scenarioVm", "scenarioActionState", "sessionContinuation", "sessionInteraction", "combatState", "metadata"]
+	if migrated.size() != fields_v2.size():
+		return null
+	for field: String in fields_v2:
+		if not migrated.has(field):
+			return null
 	if migrated["sessionContinuation"] is Dictionary and not migrated["sessionContinuation"].is_empty():
-		var continuation: Dictionary = migrated["sessionContinuation"]
-		for field: String in ["randomRegionIds", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage"]:
-			if not continuation.has(field):
-				if field == "randomRegionIds":
-					continuation[field] = []
-				else:
-					continuation[field] = ""
-		if not continuation.has("randomRegionIndex"):
-			continuation["randomRegionIndex"] = -1
+		var continuation_v2: Dictionary = migrated["sessionContinuation"]
+		if not continuation_v2.has("actionPointDestinationDepth"):
+			continuation_v2["actionPointDestinationDepth"] = 0
+	migrated["formatVersion"] = FORMAT_VERSION
 	return migrated
 
 
 static func _normalize_session_continuation(value: Dictionary) -> Variant:
 	if value.is_empty():
 		return {}
-	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage"]
+	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
 	if value.size() != fields.size():
 		return null
 	for field: String in fields:
@@ -153,7 +166,8 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 	var y := _integer(value["y"])
 	var trigger_index := _integer(value["triggerIndex"])
 	var random_region_index := _integer(value["randomRegionIndex"])
-	if value["kind"] != "post-move" or not value["mapId"] is String or x < 0 or y < 0 or not value["triggerIds"] is Array or trigger_index < 0 or not value["activeTriggerId"] is String or not value["randomRegionIds"] is Array or random_region_index < -1 or not value["activeRandomProgramId"] is String or not value["activeRandomRegionId"] is String or not value["randomBattleStage"] is String or value["randomBattleStage"] not in ["", "surprise-choice"]:
+	var destination_depth := _integer(value["actionPointDestinationDepth"])
+	if value["kind"] != "post-move" or not value["mapId"] is String or x < 0 or y < 0 or not value["triggerIds"] is Array or trigger_index < 0 or not value["activeTriggerId"] is String or not value["randomRegionIds"] is Array or random_region_index < -1 or not value["activeRandomProgramId"] is String or not value["activeRandomRegionId"] is String or not value["randomBattleStage"] is String or value["randomBattleStage"] not in ["", "surprise-choice"] or destination_depth < 0 or destination_depth > 1:
 		return null
 	var trigger_ids: Array[String] = []
 	for trigger_id: Variant in value["triggerIds"]:
@@ -169,7 +183,7 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 		return null
 	if value["randomBattleStage"] == "surprise-choice" and value["activeRandomRegionId"].is_empty():
 		return null
-	return {"kind": "post-move", "mapId": value["mapId"], "x": x, "y": y, "triggerIds": trigger_ids, "triggerIndex": trigger_index, "activeTriggerId": value["activeTriggerId"], "randomRegionIds": random_region_ids, "randomRegionIndex": random_region_index, "activeRandomProgramId": value["activeRandomProgramId"], "activeRandomRegionId": value["activeRandomRegionId"], "randomBattleStage": value["randomBattleStage"]}
+	return {"kind": "post-move", "mapId": value["mapId"], "x": x, "y": y, "triggerIds": trigger_ids, "triggerIndex": trigger_index, "activeTriggerId": value["activeTriggerId"], "randomRegionIds": random_region_ids, "randomRegionIndex": random_region_index, "activeRandomProgramId": value["activeRandomProgramId"], "activeRandomRegionId": value["activeRandomRegionId"], "randomBattleStage": value["randomBattleStage"], "actionPointDestinationDepth": destination_depth}
 
 
 static func _json_safe(value: Variant, depth: int) -> bool:

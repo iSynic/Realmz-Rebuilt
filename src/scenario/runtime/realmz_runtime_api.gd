@@ -81,7 +81,7 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 			return _control_flow_operations.branch_to_trigger_program(action, context)
 		2, 48, 56, 107:
 			var battle_id := action.operand_id
-			if action.opcode in [48, 56, 107] and not action.extra_code.is_empty():
+			if not action.extra_code.is_empty():
 				battle_id = absi(action.extra_code[0])
 			return _start_battle(battle_id, request_id, action.opcode)
 		9:

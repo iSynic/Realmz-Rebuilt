@@ -298,21 +298,27 @@ func _move(direction: Vector2i) -> SessionStep:
 	events.append(DomainEvent.new("party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": target_coordinate.x, "y": target_coordinate.y}))
 	if transition != null:
 		events.append(DomainEvent.new("map_transitioned", {"transitionId": transition.id, "sourceMapId": source_map_id, "targetMapId": target_map.id}))
+	_set_post_move_continuation(target_map, target_coordinate)
+	return _continue_post_move(events)
+
+
+func _set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, destination_depth: int = 0) -> void:
+	var cell := map.topology.cell_at(coordinate)
 	_session_continuation = {
 		"kind": "post-move",
-		"mapId": target_map.id,
-		"x": target_coordinate.x,
-		"y": target_coordinate.y,
-		"triggerIds": probe.target_cell.trigger_ids(),
+		"mapId": map.id,
+		"x": coordinate.x,
+		"y": coordinate.y,
+		"triggerIds": cell.trigger_ids(),
 		"triggerIndex": 0,
 		"activeTriggerId": "",
-		"randomRegionIds": probe.target_cell.random_rect_ids(),
-		"randomRegionIndex": probe.target_cell.random_rect_ids().size() - 1,
+		"randomRegionIds": cell.random_rect_ids(),
+		"randomRegionIndex": cell.random_rect_ids().size() - 1,
 		"activeRandomProgramId": "",
 		"activeRandomRegionId": "",
 		"randomBattleStage": "",
+		"actionPointDestinationDepth": destination_depth,
 	}
-	return _continue_post_move(events)
 
 
 func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
@@ -332,7 +338,10 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 		if completed_trigger == null:
 			_session_continuation.clear()
 			return _finish_failed(&"invalid_session_continuation", "Completed trigger continuation is unavailable.", events)
-		_apply_trigger_replacement(map, completed_trigger, events)
+		if _apply_trigger_destination(completed_trigger, events, int(_session_continuation.get("actionPointDestinationDepth", 0)) == 0):
+			var destination_map := _content.world.map_by_id(_state.party.map_id)
+			_set_post_move_continuation(destination_map, _state.party.coordinate, 1)
+			return _continue_post_move(events)
 		_session_continuation["activeTriggerId"] = ""
 		_session_continuation["triggerIndex"] = int(_session_continuation["triggerIndex"]) + 1
 	var trigger_ids: Array = _session_continuation["triggerIds"]
@@ -365,7 +374,10 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 		if result.state == ScenarioVmResult.State.FAILED:
 			_session_continuation.clear()
 			return _finish_failed(result.error_code, result.error_message, events)
-		_apply_trigger_replacement(map, trigger, events)
+		if _apply_trigger_destination(trigger, events, int(_session_continuation.get("actionPointDestinationDepth", 0)) == 0):
+			var destination_map := _content.world.map_by_id(_state.party.map_id)
+			_set_post_move_continuation(destination_map, _state.party.coordinate, 1)
+			return _continue_post_move(events)
 		_session_continuation["activeTriggerId"] = ""
 		_session_continuation["triggerIndex"] = trigger_index + 1
 	var random_step := _continue_random_regions(map, events)
@@ -375,15 +387,17 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 	return _finish_completed(events)
 
 
-func _apply_trigger_replacement(map: MapDefinition, trigger: TriggerDefinition, events: Array[DomainEvent]) -> void:
-	if trigger.replacement == null or not trigger.replacement.changes_terrain():
-		return
-	var replacement_cell := map.topology.cell_at(trigger.replacement.target_coordinate)
-	if replacement_cell == null:
-		return
-	var terrain_id := "classic.terrain.%d" % trigger.replacement.terrain_id
-	_state.world.replace_terrain(map.id, replacement_cell.coordinate, terrain_id)
-	events.append(DomainEvent.new("tile_replaced", {"mapId": map.id, "x": replacement_cell.coordinate.x, "y": replacement_cell.coordinate.y, "terrainId": terrain_id}))
+func _apply_trigger_destination(trigger: TriggerDefinition, events: Array[DomainEvent], allow_destination: bool) -> bool:
+	var destination := trigger.post_action_location
+	if not allow_destination or destination == null or destination.map_id == _state.party.map_id and destination.coordinate == _state.party.coordinate:
+		return false
+	var source_map_id := _state.party.map_id
+	var source_coordinate := _state.party.coordinate
+	_state.party.map_id = destination.map_id
+	_state.party.coordinate = destination.coordinate
+	_state.world.mark_visited(destination.map_id, destination.coordinate)
+	events.append(DomainEvent.new(&"party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": destination.map_id, "x": destination.coordinate.x, "y": destination.coordinate.y, "source": "action-point-destination", "triggerId": trigger.id}))
+	return true
 
 
 func _movement_blocked(reason: StringName) -> SessionStep:
@@ -525,13 +539,13 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 
 
 static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
-	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage"]
+	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
 	if continuation.size() != fields.size():
 		return false
 	for field: String in fields:
 		if not continuation.has(field):
 			return false
-	if continuation["kind"] != "post-move" or not continuation["mapId"] is String or not continuation["x"] is int or not continuation["y"] is int or not continuation["triggerIds"] is Array or not continuation["triggerIndex"] is int or not continuation["activeTriggerId"] is String or not continuation["randomRegionIds"] is Array or not continuation["randomRegionIndex"] is int or not continuation["activeRandomProgramId"] is String or not continuation["activeRandomRegionId"] is String or not continuation["randomBattleStage"] is String:
+	if continuation["kind"] != "post-move" or not continuation["mapId"] is String or not continuation["x"] is int or not continuation["y"] is int or not continuation["triggerIds"] is Array or not continuation["triggerIndex"] is int or not continuation["activeTriggerId"] is String or not continuation["randomRegionIds"] is Array or not continuation["randomRegionIndex"] is int or not continuation["activeRandomProgramId"] is String or not continuation["activeRandomRegionId"] is String or not continuation["randomBattleStage"] is String or not continuation["actionPointDestinationDepth"] is int or int(continuation["actionPointDestinationDepth"]) < 0 or int(continuation["actionPointDestinationDepth"]) > 1:
 		return false
 	var map := content.world.map_by_id(continuation["mapId"])
 	var coordinate := Vector2i(continuation["x"], continuation["y"])

@@ -19,6 +19,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `GameSession` owns scenario execution state and is the only object allowed to connect VM operations to domain mutations.
 - Session state owns encounter attempts/type flags, equipment escrow, mutable shop stock, combat, and scenario-program replacement. These are save data, never mutations of installed package definitions.
 - Session state owns non-VM interaction continuations as well as VM continuations. Random-rectangle surprise choices serialize with their owning region and resume only through `GameSession.respond`.
+- A placed Action Point's Classic header is a post-action map/coordinate destination. `GameSession` applies it only after that AP completes, rechecks the destination cell once, and serializes the recheck depth so save/resume cannot repeat or skip it.
 - Every gameplay random draw goes through the session-owned `RealmzRng` and is serializable.
 - `RealmzRng` uses the documented QuickDraw 16807/mod-2147483647 state transition and Castle's inclusive scaling; raw scripted values are test-only branch controls.
 - Snapshots and restores detach typed state so callers cannot mutate an active session through a prior envelope.

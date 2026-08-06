@@ -17,7 +17,7 @@ func run() -> void:
 	var north := session.submit_intent(PlayerIntent.move(Vector2i.UP))
 	assert_equal(session.view().party_coordinate, Vector2i(1, 0), "typed movement intent commits through GameSession")
 	assert_true(_has_event(north, &"message_shown"), "message AP executes on entry")
-	assert_true(_has_event(north, &"tile_replaced"), "AP replacement mutates the world overlay")
+	assert_true(_has_event(north, &"tile_replaced"), "Classic opcode 12 mutates the world overlay")
 	assert_true(_has_event(north, &"random_region_triggered"), "random rectangle gates through the moved-to topology cell")
 	assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).terrain_id, "classic.terrain.2", "presenter view reads the same tile overlay as simulation")
 
@@ -100,12 +100,28 @@ func run() -> void:
 	var second_door := restored_door.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_false(_has_event(second_door, &"random_door_triggered"), "save/reload preserves consumed random doors")
 
+	var destination_envelope := session.snapshot()
+	destination_envelope.game_state.party.map_id = "land:1"
+	destination_envelope.game_state.party.coordinate = Vector2i(0, 1)
+	var destination_session := GameSession.new()
+	assert_equal(destination_session.restore(content, destination_envelope).state, SessionStep.State.COMPLETED, "validated restore establishes the AP destination fixture")
+	var relocated := destination_session.submit_intent(PlayerIntent.move(Vector2i.UP))
+	assert_equal(destination_session.view().party_coordinate, Vector2i(1, 0), "the Classic AP header relocates the party after its actions")
+	assert_equal(_message_ids(relocated), [5, 6], "the destination cell Action Point is rechecked exactly once")
+	assert_equal(_event_count(relocated, &"party_moved"), 2, "the initial move and one AP relocation occur without recursive movement")
+
 	var v1_data := session.snapshot().to_data()
 	v1_data["formatVersion"] = 1
 	v1_data.erase("sessionInteraction")
 	var migrated_v1 := SaveEnvelope.from_data(v1_data)
 	assert_not_null(migrated_v1, "save v1 migrates through the ordered pure transform")
-	assert_equal(migrated_v1.to_data()["formatVersion"], 2, "migrated saves serialize as the current envelope version")
+	assert_equal(migrated_v1.to_data()["formatVersion"], 3, "migrated saves serialize as the current envelope version")
+	var v2_data := surprise_snapshot.to_data()
+	v2_data["formatVersion"] = 2
+	v2_data["sessionContinuation"].erase("actionPointDestinationDepth")
+	var migrated_v2 := SaveEnvelope.from_data(v2_data)
+	assert_not_null(migrated_v2, "save v2 migrates through the ordered AP-destination transform")
+	assert_equal(migrated_v2.session_continuation["actionPointDestinationDepth"], 0, "save v2 resumes before any AP destination recheck")
 
 
 func _has_event(step: SessionStep, event_kind: StringName) -> bool:
@@ -120,3 +136,19 @@ func _event(step: SessionStep, event_kind: StringName) -> DomainEvent:
 		if event.kind == event_kind:
 			return event
 	return null
+
+
+func _event_count(step: SessionStep, event_kind: StringName) -> int:
+	var count := 0
+	for event: DomainEvent in step.events:
+		if event.kind == event_kind:
+			count += 1
+	return count
+
+
+func _message_ids(step: SessionStep) -> Array[int]:
+	var ids: Array[int] = []
+	for event: DomainEvent in step.events:
+		if event.kind == &"message_shown":
+			ids.append(int(event.payload.get("messageId", -1)))
+	return ids

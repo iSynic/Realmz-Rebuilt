@@ -43,16 +43,17 @@ Exit: every active capability needed by the synthetic fixture and Assault on Gia
 
 Exit evidence: Providence commit `364755324fae1685b82bbf0c751572045ee6888d` passes its Rust library/exporter/example checks, 321 library tests, frontend typecheck, and production build. The runtime's full gate passes 452 assertions across eight suites plus schema, fixture-provenance, architecture, export-exclusion, and whitespace checks. A fresh MCP Pro editor session reported zero errors; the main scene played, exposed the expected runtime tree, accepted simulated mouse input, changed the observed status, captured a 960×600 frame, and stopped cleanly. Phase 4 domain behavior is proven by deterministic headless tests; the current minimal host does not yet expose those domain screens, which is Phase 5 work.
 
-## Phase 5 — Classic shell and first campaign (certification in progress)
+## Phase 5 — Classic shell and first campaign (completed)
 
 - Implemented: Classic-first 2D shell with campaign discovery/install, party creation, exploration HUD, character/inventory/spell views, typed encounter/combat/shop/temple/bank presenters, package pictures/audio, settings, and save/load surfaces.
-- Implemented: source-backed random-rectangle continuation, active-combat intent lockout, save v2 migration, and deterministic synthetic interaction/save routes. The runtime gate passes 520 assertions across eight suites.
-- Package-readiness evidence: a fresh local Providence export of Assault on Giant Mountain independently validates and starts with 21 decoded media assets; package hash `40e91c9a838d18dd97fe0e8292eecd5799b04e264429f358391c12bcdc4ed77c` remains local and uncommitted.
-- Compiler evidence: Providence commit `bb300fe8795604e5b288eee41b82f819a13eb951` passes 322 Rust library tests with one audit test ignored, frontend typecheck, production build, and `cargo check`.
+- Implemented: source-backed random-rectangle continuation, active-combat intent lockout, save v3 migration, Castle-correct AP post-action destinations, and deterministic synthetic interaction/save routes. The runtime gate passes 531 assertions across eight suites.
+- Package/route evidence: a fresh local Providence export of Assault on Giant Mountain independently validates and starts with 21 decoded media assets. Package hash `7561aa2d2f1c2acf4dc57bc12cef1d79049473a2e9bd19fe8c6e377acf087e84` and route hash `b84ff7d68d2d203cb03aca65f94600d4f7c87e01054d8b9a97aba6d68ef19a95` remain local-only evidence; no campaign payload is committed. The route passes opening presentation, Battle 60, Baron briefing/macro, Battle 274, four fortress tile mutations, quest 17, rewards 68/467/625, final report, and final position land 0 (84,8).
+- Compiler evidence: Providence commit `a06f2ef152139dfd3fccfc5e563ba9ee58b62d3a` passes 323 Rust library tests with one audit test ignored, frontend typecheck, production build, and `cargo check`.
 - MCP evidence: Godot MCP Pro discovered the unfixed port automatically, opened and inspected the main scene, started the synthetic campaign, created the party, entered the typed random-surprise request, saved it as `quick`, declined it, loaded the save, observed the identical prompt and options again, and accepted the restored decline response. A 960×600 frame was captured. A fresh post-fix editor session repeated project/scene inspection, play, runtime text inspection, screenshot capture, and stop with zero editor errors.
-- Remaining certification: completion-critical Assault on Giant Mountain route checkpoints. Package readiness, startup, and opcode inventory do not substitute for this live-route proof.
 
 Exit: a fresh export completes the certified route with no unsupported active mechanic or save/reload divergence.
+
+Exit evidence: the source-backed route completes through the ordinary 2.0 session/VM API with no fallback, the synthetic suite covers save/reload at its typed interaction boundaries, and the compiler/runtime gates above pass. This certifies the bounded completion spine; it does not claim exhaustive Castle parity for every optional branch.
 
 ## Phase 6 — Corpus, releases, and extensions (pending)
 

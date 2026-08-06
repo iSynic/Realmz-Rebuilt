@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "dd3c467b9dc3fe61574a2809c43e9c28f38c7e5d4fee98a547dfcd9da95dfe2b"
+const EXPECTED_SCHEMA_HASH: String = "16ec7efe0aa3ef335f0b2c37b32424b571c2f8035e65da7f0b0c45d37be21298"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -265,6 +265,11 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 			var map := world_definition.map_by_id(trigger.map_id)
 			if map == null or map.topology.cell_at(trigger.coordinate) == null:
 				_reject("Trigger '%s' references an unavailable topology coordinate." % trigger.id)
+				return null
+		if trigger.post_action_location != null:
+			var destination_map := world_definition.map_by_id(trigger.post_action_location.map_id)
+			if destination_map == null or destination_map.topology.cell_at(trigger.post_action_location.coordinate) == null:
+				_reject("Trigger '%s' references an unavailable post-action location." % trigger.id)
 				return null
 	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters)
 
@@ -904,7 +909,7 @@ func _construct_triggers(value: Variant, scenario: ScenarioDefinition) -> Varian
 		return null
 	var triggers: Array[TriggerDefinition] = []
 	for record: Variant in value:
-		if not record is Dictionary or not record.get("id") is String or record["id"].is_empty() or not record.get("programId") is String or record["programId"].is_empty() or not _is_integer(record.get("classicRecordIndex")) or _integer(record["classicRecordIndex"]) < 0 or not record.get("active") is bool:
+		if not record is Dictionary or not _exact_fields(record, ["id", "programId", "classicRecordIndex", "mapId", "coordinate", "active", "chancePercent", "postActionLocation"]) or not record.get("id") is String or record["id"].is_empty() or not record.get("programId") is String or record["programId"].is_empty() or not _is_integer(record.get("classicRecordIndex")) or _integer(record["classicRecordIndex"]) < 0 or not record.get("active") is bool:
 			_reject("Trigger record is malformed.")
 			return null
 		var trigger_program := scenario.program_by_id(record["programId"])
@@ -914,7 +919,7 @@ func _construct_triggers(value: Variant, scenario: ScenarioDefinition) -> Varian
 		var map_id: String = ""
 		var coordinate := Vector2i(-1, -1)
 		if record.get("mapId") != null or record.get("coordinate") != null:
-			if not record.get("mapId") is String or not record.get("coordinate") is Dictionary:
+			if not record.get("mapId") is String or not record.get("coordinate") is Dictionary or not _exact_fields(record["coordinate"], ["x", "y"]):
 				_reject("Placed trigger '%s' has incomplete map coordinates." % record["id"])
 				return null
 			map_id = record["mapId"]
@@ -926,16 +931,18 @@ func _construct_triggers(value: Variant, scenario: ScenarioDefinition) -> Varian
 		if chance < -128 or chance > 127:
 			_reject("Trigger '%s' chance is outside Classic storage." % record["id"])
 			return null
-		var replacement_record: Variant = record.get("replacement")
-		if not replacement_record is Dictionary:
-			_reject("Trigger '%s' replacement is malformed." % record["id"])
-			return null
-		for replacement_field: String in ["doorId", "terrainId", "targetX", "targetY"]:
-			if not _is_integer(replacement_record.get(replacement_field)):
-				_reject("Trigger '%s' replacement field '%s' is malformed." % [record["id"], replacement_field])
+		var destination_record: Variant = record.get("postActionLocation")
+		var destination: TriggerDestinationDefinition = null
+		if destination_record != null:
+			if not destination_record is Dictionary or not _exact_fields(destination_record, ["mapId", "coordinate"]) or not destination_record.get("mapId") is String or not destination_record.get("coordinate") is Dictionary or not _exact_fields(destination_record["coordinate"], ["x", "y"]):
+				_reject("Trigger '%s' post-action location is malformed." % record["id"])
 				return null
-		var replacement := TriggerReplacementDefinition.new(_integer(replacement_record["doorId"]), _integer(replacement_record["terrainId"]), Vector2i(_integer(replacement_record["targetX"]), _integer(replacement_record["targetY"])))
-		triggers.append(TriggerDefinition.new(record["id"], record["programId"], map_id, coordinate, record["active"], chance, replacement, _integer(record["classicRecordIndex"])))
+			var destination_coordinate: Dictionary = destination_record["coordinate"]
+			if not _is_integer(destination_coordinate.get("x")) or not _is_integer(destination_coordinate.get("y")):
+				_reject("Trigger '%s' post-action coordinate is malformed." % record["id"])
+				return null
+			destination = TriggerDestinationDefinition.new(destination_record["mapId"], Vector2i(_integer(destination_coordinate["x"]), _integer(destination_coordinate["y"])))
+		triggers.append(TriggerDefinition.new(record["id"], record["programId"], map_id, coordinate, record["active"], chance, destination, _integer(record["classicRecordIndex"])))
 	return triggers
 
 

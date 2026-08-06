@@ -434,7 +434,7 @@
     },
     "trigger": {
       "type": "object",
-      "required": ["id", "programId", "classicRecordIndex", "mapId", "coordinate", "active", "chancePercent", "replacement"],
+      "required": ["id", "programId", "classicRecordIndex", "mapId", "coordinate", "active", "chancePercent", "postActionLocation"],
       "properties": {
         "id": { "$ref": "#/$defs/identifier" },
         "programId": { "$ref": "#/$defs/identifier" },
@@ -453,16 +453,27 @@
         },
         "active": { "type": "boolean" },
         "chancePercent": { "type": "integer", "minimum": -128, "maximum": 127 },
-        "replacement": {
-          "type": "object",
-          "required": ["doorId", "terrainId", "targetX", "targetY"],
-          "properties": {
-            "doorId": { "type": "integer" },
-            "terrainId": { "type": "integer", "minimum": 0, "maximum": 255 },
-            "targetX": { "type": "integer", "minimum": 0, "maximum": 255 },
-            "targetY": { "type": "integer", "minimum": 0, "maximum": 255 }
-          },
-          "additionalProperties": false
+        "postActionLocation": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["mapId", "coordinate"],
+              "properties": {
+                "mapId": { "$ref": "#/$defs/identifier" },
+                "coordinate": {
+                  "type": "object",
+                  "required": ["x", "y"],
+                  "properties": {
+                    "x": { "type": "integer", "minimum": 0 },
+                    "y": { "type": "integer", "minimum": 0 }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
         }
       },
       "additionalProperties": false

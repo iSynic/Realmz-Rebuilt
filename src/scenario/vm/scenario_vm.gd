@@ -223,7 +223,9 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic opcode 39 references unavailable XAP %d." % action.operand_id)
 			var replacement := ScenarioFrame.new(ScenarioFrame.PROGRAM, target_id)
 			replacement.counts_as_classic_call = frame.counts_as_classic_call
-			replacement.set_context({"originProgramId": program.id})
+			var transfer_context := frame.context_data()
+			transfer_context["originProgramId"] = program.id
+			replacement.set_context(transfer_context)
 			_frames[_frames.size() - 1] = replacement
 			_append_trace({"event": "classic-transfer", "programId": target_id})
 			return ScenarioVmResult.completed()
@@ -245,13 +247,13 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 		_pending_continuation = {"kind": "classic-operation", "runtime": operation.continuation.duplicate(true)}
 		_append_trace({"event": "yield", "requestId": request_id, "kind": String(operation.interaction.kind)})
 		return ScenarioVmResult.waiting(operation.interaction, operation.events)
-	var directive_result := _apply_classic_directive(operation.directive)
+	var directive_result := _apply_classic_directive(operation.directive, frame.context_data())
 	if directive_result.state == ScenarioVmResult.State.FAILED:
 		return directive_result
 	return ScenarioVmResult.completed(operation.events)
 
 
-func _apply_classic_directive(directive: Dictionary) -> ScenarioVmResult:
+func _apply_classic_directive(directive: Dictionary, inherited_context: Dictionary = {}) -> ScenarioVmResult:
 	if directive.is_empty():
 		return ScenarioVmResult.completed()
 	match directive.get("kind"):
@@ -263,6 +265,7 @@ func _apply_classic_directive(directive: Dictionary) -> ScenarioVmResult:
 			if _definition.program_by_id(program_id) == null:
 				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic branch references unavailable XAP %d." % int(directive.get("targetId", -1)))
 			var target_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
+			target_frame.set_context(inherited_context)
 			if bool(directive.get("gosub", false)):
 				if _classic_call_depth() >= CLASSIC_CALL_LIMIT:
 					return ScenarioVmResult.failed(&"classic_gosub_limit", "Classic GOSUB stack exceeded 20 frames.")
@@ -281,7 +284,10 @@ func _apply_classic_directive(directive: Dictionary) -> ScenarioVmResult:
 			var context: Variant = directive.get("context", {})
 			if not context is Dictionary:
 				return ScenarioVmResult.failed(&"invalid_vm_directive", "Classic branch context is malformed.")
-			target_frame.set_context(context)
+			var merged_context := inherited_context.duplicate(true)
+			for key: Variant in context:
+				merged_context[key] = context[key]
+			target_frame.set_context(merged_context)
 			if target_frame.counts_as_classic_call:
 				if _classic_call_depth() >= CLASSIC_CALL_LIMIT:
 					return ScenarioVmResult.failed(&"classic_gosub_limit", "Classic GOSUB stack exceeded 20 frames.")

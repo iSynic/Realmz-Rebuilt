@@ -14,6 +14,7 @@ func run() -> void:
 	_test_safe_choice_resume(loaded.content)
 	_test_persistent_action_state(loaded.content)
 	_test_classic_call_limit(loaded.content)
+	_test_classic_transfer_keeps_trigger_context(loaded.content)
 	_test_action_call_limit(loaded.content)
 	_test_execution_step_limit(loaded.content)
 	_test_unknown_opcode_failure(loaded.content)
@@ -219,6 +220,22 @@ func _test_classic_call_limit(content: RealmzContent) -> void:
 	assert_equal(result.error_code, &"classic_gosub_limit", "Classic GOSUB stack fails explicitly beyond 20 frames")
 
 
+func _test_classic_transfer_keeps_trigger_context(content: RealmzContent) -> void:
+	var programs: Array[ScenarioProgramDefinition] = [
+		ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 39, 39, 0, false, [])]),
+		ScenarioProgramDefinition.new("xap:0", &"extra-action-point", "0", [ClassicActionDefinition.new(0, 25, 25, 0, false, []), ClassicActionDefinition.new(1, 111, 111, 0, false, [])]),
+	]
+	var definition := ScenarioDefinition.new(programs, [])
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("context", "Context", 1, 1)])
+	var state := GameState.new(party, RealmzClock.new())
+	var vm := ScenarioVm.new()
+	vm.configure(definition)
+	vm.start_program("root", {"callingContext": "action", "triggerId": "ap.fixture.message", "mapId": content.start_map_id})
+	var result := vm.run(RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new()))
+	assert_equal(result.state, ScenarioVmResult.State.COMPLETED, "Classic opcode 39 completes through the transferred XAP")
+	assert_true(state.world.trigger_is_disabled("ap.fixture.message"), "Classic transfer retains Action Point origin context for opcode 25")
+
+
 func _test_action_call_limit(content: RealmzContent) -> void:
 	var recurse := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.CALL_ACTION)
 	recurse.action_id = "scenario.test.recurse"
@@ -313,6 +330,9 @@ func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> vo
 	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "typed combat response resolves inside the restored session VM")
 	assert_equal(state.last_battle_outcome, &"victory", "battle completion and outcome remain in GameState")
 	assert_true(_event_has(completed.events, &"battle_completed"), "battle completion is published as a domain event")
+	var extra_code_battle := api.execute_classic(ClassicActionDefinition.new(0, 2, 2, 70, false, [0, 0, 0, 0, 0]), "request.extra-code-battle")
+	assert_equal(extra_code_battle.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic battle opcode accepts an authored Extra Code row")
+	assert_equal(_event_classic_id(extra_code_battle.events, &"battle_started"), 0, "Classic battle opcode resolves the battle ID from Extra Code slot zero")
 	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	assert_not_null(round_trip, "rules, combat, quest, and instance state remain saveable after battle")
 	assert_equal(round_trip.to_data(), state.to_data(), "post-battle session state round-trips exactly")
@@ -492,3 +512,10 @@ func _event_has(events: Array[DomainEvent], kind: StringName) -> bool:
 		if event.kind == kind:
 			return true
 	return false
+
+
+func _event_classic_id(events: Array[DomainEvent], kind: StringName) -> int:
+	for event: DomainEvent in events:
+		if event.kind == kind:
+			return int(event.payload.get("classicId", -1))
+	return -1
