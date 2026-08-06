@@ -79,13 +79,26 @@ func run() -> void:
 	settings.topology_debug = true
 	settings.text_scale = 1.2
 	settings.reduced_motion = true
+	settings.dungeon_3d = true
+	assert_true(settings.to_data()["dungeon3d"] is bool, "dungeon presentation setting serializes as a JSON-safe boolean")
+	assert_not_null(PresentationSettings.from_data(settings.to_data()), "current presentation settings round-trip before filesystem persistence")
+	var parsed_settings_data: Dictionary = JSON.parse_string(CanonicalJson.encode(settings.to_data()))
+	assert_not_null(PresentationSettings.from_data(parsed_settings_data), "canonical JSON presentation settings round-trip (schema=%s dungeon=%s)" % [type_string(typeof(parsed_settings_data.get("schemaVersion"))), type_string(typeof(parsed_settings_data.get("dungeon3d")))])
 	assert_true(settings_repository.save_settings(settings), "presentation settings commit through validated temporary replacement")
 	var restored_settings := settings_repository.load_settings()
 	assert_equal(restored_settings.master_volume, 0.35, "master volume persists outside gameplay state")
 	assert_true(restored_settings.topology_debug, "topology display preference persists without altering rules")
 	assert_equal(restored_settings.text_scale, 1.2, "accessibility text scale persists")
 	assert_true(restored_settings.reduced_motion, "reduced cosmetic motion persists")
+	assert_true(restored_settings.dungeon_3d, "topology-derived dungeon presentation preference persists")
+	var legacy_settings := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 1, "masterVolume": 1.0, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false})
+	assert_not_null(legacy_settings, "version-one presentation settings migrate without entering gameplay state")
+	assert_false(legacy_settings.dungeon_3d, "migrated presentation settings default the optional 3D view off")
 
 	var rejected := repository.load_package(TAMPERED_FIXTURE_PATH)
 	assert_false(rejected.is_ok(), "a content mutation without matching manifest hashes is rejected")
 	assert_contains(rejected.error_message, "failed size or SHA-256", "hash rejection reports the violated boundary")
+
+	var sandbox_error := PackageRepository.package_capability_error("realmz.scenario.gdscript-actions-v1")
+	assert_contains(sandbox_error, "no secure external host", "the manifest readiness path rejects deferred GDScript backends at the security boundary")
+	assert_contains(PackageRepository.package_capability_error("realmz.scenario.unknown-v1"), "unknown capability", "the same readiness path rejects unrecognized package capabilities")

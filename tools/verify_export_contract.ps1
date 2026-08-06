@@ -12,13 +12,29 @@ if (-not (Test-Path -LiteralPath $presetPath)) {
 }
 
 $preset = Get-Content -Raw -LiteralPath $presetPath
-foreach ($requiredExclusion in @("addons/godot_mcp/**", "tests/**", "artifacts/**", ".references/**")) {
-    if (-not $preset.Contains($requiredExclusion)) {
-        throw "Release exports must exclude $requiredExclusion"
+$presetSections = [regex]::Matches($preset, '(?ms)^\[preset\.\d+\]\s*(.*?)(?=^\[preset\.\d+(?:\.options)?\]|\z)')
+$expectedPresets = [ordered]@{
+    "Windows Desktop" = "Windows Desktop"
+    "Linux" = "Linux"
+    "macOS" = "macOS"
+}
+foreach ($expected in $expectedPresets.GetEnumerator()) {
+    $section = $presetSections | Where-Object { $_.Groups[1].Value -match ('(?m)^name="' + [regex]::Escape($expected.Key) + '"$') } | Select-Object -First 1
+    if ($null -eq $section) {
+        throw "Missing release export preset $($expected.Key)."
+    }
+    $body = $section.Groups[1].Value
+    if ($body -notmatch ('(?m)^platform="' + [regex]::Escape($expected.Value) + '"$') -or $body -notmatch '(?m)^script_export_mode=2$') {
+        throw "Release preset $($expected.Key) must target $($expected.Value) with compiled script export."
+    }
+    foreach ($requiredExclusion in @("addons/godot_mcp/**", "tests/**", "tools/**", "docs/**", "contracts/**", "artifacts/**", ".references/**", ".github/**", ".mcp.json", "AGENTS.md", "README.md")) {
+        if (-not $body.Contains($requiredExclusion)) {
+            throw "Release preset $($expected.Key) must exclude $requiredExclusion"
+        }
     }
 }
 
-Write-Host "Release export exclusions verified."
+Write-Host "Windows, Linux, and macOS release export contracts verified."
 
 if (-not (Test-Path -LiteralPath $addonConfigPath)) {
     throw "The vendored Godot MCP Pro addon is missing."

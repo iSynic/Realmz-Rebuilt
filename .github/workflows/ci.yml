@@ -5,8 +5,13 @@ on:
   pull_request:
 
 jobs:
-  godot:
-    runs-on: windows-latest
+  verify:
+    name: Verify (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: chickensoft-games/setup-godot@v2
@@ -17,3 +22,42 @@ jobs:
       - name: Verify project
         shell: pwsh
         run: ./tools/verify.ps1 -GodotPath (Get-Command godot).Source
+
+  export:
+    name: Export (${{ matrix.preset }})
+    needs: verify
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            preset: Windows Desktop
+            output: dist/windows/Realmz Remake 2.0.exe
+            artifact: realmz-remake-2-windows
+          - os: ubuntu-latest
+            preset: Linux
+            output: dist/linux/Realmz Remake 2.0.x86_64
+            artifact: realmz-remake-2-linux
+          - os: macos-latest
+            preset: macOS
+            output: dist/macos/Realmz Remake 2.0.zip
+            artifact: realmz-remake-2-macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.1
+          use-dotnet: false
+          include-templates: true
+      - name: Export Safe-only runtime
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path (Split-Path '${{ matrix.output }}') | Out-Null
+          & (Get-Command godot).Source --headless --path . --export-release '${{ matrix.preset }}' '${{ matrix.output }}'
+          if ($LASTEXITCODE -ne 0) { throw "Godot export failed with exit code $LASTEXITCODE." }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.output }}
+          if-no-files-found: error

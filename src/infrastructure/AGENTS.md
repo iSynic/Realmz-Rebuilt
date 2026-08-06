@@ -20,10 +20,13 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 - Standard and scenario spells use Castle's packed spell identity at the package boundary. The loader rejects duplicate packed IDs and unresolved cross-domain references before constructing content.
 - Imported Providence resource-catalog pictures, icons, and sounds are compiled as content-addressed package media. A runtime-ready managed asset with the same Classic resource identity replaces the imported preview.
 - Save only at committed session boundaries. Save the whole aggregate, including VM and session interactions, post-move/random-region continuation, clock, overlays, action state, and RNG.
+- Saves may also contain a pending direct-session monster death macro; its battle, combatant, program, VM request, and RNG position validate as one continuation.
 - Write a temporary save, read and validate it, rotate one backup, then atomically replace the slot.
 - Restore failure leaves the current session untouched.
 - Save installation is temporary-write, typed readback, one-backup rotation, then same-volume rename; never expose a partially parsed envelope.
 - Infrastructure may use Godot filesystem APIs; core and scenario code may not.
+- Packages requiring `realmz.scenario.gdscript-actions-v1` fail readiness until an OS-confined external host exists. No in-process or token-scanned GDScript fallback is permitted.
+- Release exports contain runtime resources plus Godot-generated export metadata only; local MCP configuration, addon code, tests, tools, docs, contract mirrors, and references are excluded.
 
 ## Work Guidance
 

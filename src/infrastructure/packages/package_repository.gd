@@ -10,6 +10,9 @@ const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.scenario.safe-actions-v1",
 	"realmz.world.topology-v1",
 ]
+const DEFERRED_PACKAGE_CAPABILITIES: Array[String] = [
+	"realmz.scenario.gdscript-actions-v1",
+]
 const SUPPORTED_SAFE_CAPABILITIES: Array[String] = RealmzRuntimeApi.SUPPORTED_SAFE_CAPABILITIES
 const SUPPORTED_ACTION_CONTEXTS: Array[String] = ["action", "encounter", "spell", "item", "monster-ai", "lifecycle", "rule-modifier"]
 const SUPPORTED_VALUE_TYPES: Array[String] = ["void", "bool", "int", "float", "string", "location-snapshot", "time-snapshot", "wealth-snapshot", "character-snapshot", "character-snapshot-array", "combat-snapshot", "action-outcome", "encounter-outcome", "effect-outcome", "spell-validation-outcome", "spell-cast-outcome", "spell-effect-outcome", "spell-tick-outcome", "spell-expiration-outcome", "item-outcome", "monster-decision", "rule-modifier", "bool-array", "int-array", "float-array", "string-array"]
@@ -151,8 +154,9 @@ func _validate_manifest(manifest: Dictionary, archive: ZIPReader, archive_entrie
 	if not manifest["capabilities"] is Array:
 		return _reject("Manifest capabilities must be an array.")
 	for capability: Variant in manifest["capabilities"]:
-		if not capability is String or not SUPPORTED_CAPABILITIES.has(capability):
-			return _reject("Package requires unknown capability '%s'." % str(capability))
+		var readiness_error := package_capability_error(capability)
+		if not readiness_error.is_empty():
+			return _reject(readiness_error)
 	if not manifest["files"] is Dictionary:
 		return _reject("Manifest file integrity table is missing.")
 	var expected_entries: Array[String] = ["manifest.json"]
@@ -177,6 +181,14 @@ func _validate_manifest(manifest: Dictionary, archive: ZIPReader, archive_entrie
 	if _sha256(CanonicalJson.encode(unhashed).to_utf8_buffer()) != manifest["packageHash"]:
 		return _reject("Package hash does not match the canonical unhashed manifest.")
 	return true
+
+
+static func package_capability_error(capability: Variant) -> String:
+	if capability is String and DEFERRED_PACKAGE_CAPABILITIES.has(capability):
+		return "Package requires sandboxed GDScript Scenario Actions, but no secure external host is available on this platform."
+	if not capability is String or not SUPPORTED_CAPABILITIES.has(capability):
+		return "Package requires unknown capability '%s'." % str(capability)
+	return ""
 
 
 func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictionary, scenario: Dictionary) -> RealmzContent:
