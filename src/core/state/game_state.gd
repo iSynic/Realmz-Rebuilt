@@ -8,6 +8,7 @@ var combat: CombatState
 var random_encounters_enabled: bool = true
 var camping_allowed: bool = true
 var last_battle_outcome: StringName = &"none"
+var party_setup_completed: bool = false
 var _searched_cells: Dictionary = {}
 var _quest_values: Dictionary = {}
 var _selected_character_ids: Array[String] = []
@@ -195,6 +196,7 @@ func to_data() -> Dictionary:
 		"randomEncountersEnabled": random_encounters_enabled,
 		"campingAllowed": camping_allowed,
 		"lastBattleOutcome": String(last_battle_outcome),
+		"partySetupCompleted": party_setup_completed,
 		"questValues": quests,
 		"selectedCharacterIds": _selected_character_ids.duplicate(),
 		"timedEncounterOverrides": timed,
@@ -234,12 +236,15 @@ static func from_data(data: Variant) -> GameState:
 				return null
 		if not data["randomEncountersEnabled"] is bool or not data["campingAllowed"] is bool or not data["lastBattleOutcome"] is String or not data["questValues"] is Dictionary or not data["selectedCharacterIds"] is Array or not data["timedEncounterOverrides"] is Dictionary:
 			return null
+		if data.has("partySetupCompleted") and not data["partySetupCompleted"] is bool:
+			return null
 		var counter := _integer(data["instanceCounter"])
 		if counter < 0:
 			return null
 		state.random_encounters_enabled = data["randomEncountersEnabled"]
 		state.camping_allowed = data["campingAllowed"]
 		state.last_battle_outcome = StringName(data["lastBattleOutcome"])
+		state.party_setup_completed = bool(data.get("partySetupCompleted", false))
 		for key: Variant in data["questValues"]:
 			if not key is String or not key.is_valid_int():
 				return null

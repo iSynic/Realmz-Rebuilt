@@ -43,10 +43,14 @@ Exit: every active capability needed by the synthetic fixture and Assault on Gia
 
 Exit evidence: Providence commit `364755324fae1685b82bbf0c751572045ee6888d` passes its Rust library/exporter/example checks, 321 library tests, frontend typecheck, and production build. The runtime's full gate passes 452 assertions across eight suites plus schema, fixture-provenance, architecture, export-exclusion, and whitespace checks. A fresh MCP Pro editor session reported zero errors; the main scene played, exposed the expected runtime tree, accepted simulated mouse input, changed the observed status, captured a 960×600 frame, and stopped cleanly. Phase 4 domain behavior is proven by deterministic headless tests; the current minimal host does not yet expose those domain screens, which is Phase 5 work.
 
-## Phase 5 — Classic shell and first campaign (pending)
+## Phase 5 — Classic shell and first campaign (certification in progress)
 
-- Complete Classic-first 2D shell and local Providence export of Assault on Giant Mountain.
-- Deterministic completion-critical route checkpoints.
+- Implemented: Classic-first 2D shell with campaign discovery/install, party creation, exploration HUD, character/inventory/spell views, typed encounter/combat/shop/temple/bank presenters, package pictures/audio, settings, and save/load surfaces.
+- Implemented: source-backed random-rectangle continuation, active-combat intent lockout, save v2 migration, and deterministic synthetic interaction/save routes. The runtime gate passes 520 assertions across eight suites.
+- Package-readiness evidence: a fresh local Providence export of Assault on Giant Mountain independently validates and starts with 21 decoded media assets; package hash `40e91c9a838d18dd97fe0e8292eecd5799b04e264429f358391c12bcdc4ed77c` remains local and uncommitted.
+- Compiler evidence: Providence commit `bb300fe8795604e5b288eee41b82f819a13eb951` passes 322 Rust library tests with one audit test ignored, frontend typecheck, production build, and `cargo check`.
+- MCP evidence: Godot MCP Pro discovered the unfixed port automatically, opened and inspected the main scene, started the synthetic campaign, created the party, entered the typed random-surprise request, saved it as `quick`, declined it, loaded the save, observed the identical prompt and options again, and accepted the restored decline response. A 960×600 frame was captured. A fresh post-fix editor session repeated project/scene inspection, play, runtime text inspection, screenshot capture, and stop with zero editor errors.
+- Remaining certification: completion-critical Assault on Giant Mountain route checkpoints. Package readiness, startup, and opcode inventory do not substitute for this live-route proof.
 
 Exit: a fresh export completes the certified route with no unsupported active mechanic or save/reload divergence.
 

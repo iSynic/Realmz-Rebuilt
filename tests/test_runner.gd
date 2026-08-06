@@ -16,8 +16,10 @@ func _initialize() -> void:
 	var assertion_count: int = 0
 	var failure_count: int = 0
 	for suite_script: Script in SUITES:
+		print("RUN: %s" % suite_script.resource_path)
 		var suite: RealmzTestCase = suite_script.new()
 		suite.run()
+		print("DONE: %s (%d assertions)" % [suite_script.resource_path, suite.assertions])
 		assertion_count += suite.assertions
 		for failure: String in suite.failures:
 			failure_count += 1

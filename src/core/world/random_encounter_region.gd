@@ -3,7 +3,7 @@ extends RefCounted
 
 var id: String
 var bounds: Rect2i
-var chance_percent: int
+var chance_ten_thousand: int
 var battle_minimum: int
 var battle_maximum: int
 var only: bool
@@ -17,7 +17,7 @@ var _random_door_percents: Array[int]
 func _init(region_id: String, region_bounds: Rect2i, chance: int, battle_min: int, battle_max: int, door_ids: Array[int], door_percents: Array[int], region_only: bool, region_option: int, region_sound_id: int, region_text_id: int) -> void:
 	id = region_id
 	bounds = region_bounds
-	chance_percent = chance
+	chance_ten_thousand = chance
 	battle_minimum = battle_min
 	battle_maximum = battle_max
 	_random_doors = door_ids.duplicate()

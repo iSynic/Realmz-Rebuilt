@@ -8,6 +8,7 @@ enum Kind {
 	USE_ITEM,
 	CAST_SPELL,
 	CHOOSE_COMBAT_ACTION,
+	CREATE_PARTY,
 }
 
 var kind: Kind
@@ -17,6 +18,7 @@ var secondary_target_id: String = ""
 var actor_id: String = ""
 var action: StringName = &""
 var power_level: int = 1
+var party_members: Array[CharacterCreationSpec] = []
 
 
 func _init(intent_kind: Kind) -> void:
@@ -53,4 +55,10 @@ static func combat_action(action_kind: StringName, actor: String, target: String
 	intent.action = action_kind
 	intent.actor_id = actor
 	intent.target_id = target
+	return intent
+
+
+static func create_party(members: Array[CharacterCreationSpec]) -> PlayerIntent:
+	var intent := PlayerIntent.new(Kind.CREATE_PARTY)
+	intent.party_members = members.duplicate()
 	return intent

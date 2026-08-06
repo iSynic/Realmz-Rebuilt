@@ -25,6 +25,7 @@ func run() -> void:
 	_test_scenario_spell_opcodes(loaded.content)
 	_test_combat_fumble_mutation(loaded.content)
 	_test_aogm_dispatch_has_no_fallback(loaded.content)
+	_test_classic_shell_domain_route(loaded.content)
 
 
 func _test_classic_encounter_action_xap_trace(content: RealmzContent) -> void:
@@ -75,6 +76,50 @@ func _test_session_save_resume_boundary(content: RealmzContent) -> void:
 	assert_equal(completed.state, SessionStep.State.COMPLETED, "typed response resumes simulation without presentation mutation: %s %s" % [completed.error_code, completed.error_message])
 	assert_equal(_message_texts(completed.events), ["The encounter result begins.", "The reusable Scenario Action ran.", "The Extra Action Point returns through CODE 111."], "restored interaction follows the same action timeline")
 	assert_equal(restored.snapshot().session_continuation, {}, "completed action timeline clears the serialized host continuation")
+
+
+func _test_classic_shell_domain_route(content: RealmzContent) -> void:
+	var session := GameSession.new()
+	session.start(content, 1)
+	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	var encounter := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_equal(encounter.interaction.kind, &"encounter_choice", "synthetic shell route enters the ordinary Simple Encounter picker")
+	assert_not_null(SaveEnvelope.from_data(session.snapshot().to_data()), "encounter picker is a serializable committed boundary")
+	var resolved_encounter := session.respond(InteractionResponse.new(encounter.interaction.request_id, &"encounter_choice", {"index": 0}))
+	assert_equal(resolved_encounter.state, SessionStep.State.COMPLETED, "synthetic encounter result and Scenario Action return before the next domain")
+
+	var battle := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_equal(battle.interaction.kind, &"combat_action", "battle AP enters the typed combat presenter contract")
+	assert_not_null(SaveEnvelope.from_data(session.snapshot().to_data()), "combat interaction and VM continuation serialize together")
+	var combat_steps: int = 0
+	while session.view().pending_interaction != null and combat_steps < 32:
+		var request := session.view().pending_interaction
+		var targets: Array = request.payload.get("targets", [])
+		var payload := {"actorId": String(request.payload.get("actorId", "")), "action": "defend", "targetId": ""}
+		if not targets.is_empty():
+			payload = {"actorId": String(request.payload.get("actorId", "")), "action": "attack", "targetId": String(targets[0].get("id", ""))}
+		session.respond(InteractionResponse.new(request.request_id, &"combat_action", payload))
+		combat_steps += 1
+	assert_true(combat_steps < 32, "synthetic battle reaches a committed outcome without presentation-driven advancement")
+	assert_true(session.view().pending_interaction == null, "combat completion clears only its genuine interaction boundary")
+
+	var shop := session.submit_intent(PlayerIntent.move(Vector2i.DOWN))
+	assert_equal(shop.interaction.kind, &"shop_action", "shop AP exposes typed stock, party, and leave actions")
+	assert_true(shop.interaction.payload.get("stock") is Array and shop.interaction.payload.get("characters") is Array, "shop request carries detached purchase and sale read models")
+	assert_not_null(SaveEnvelope.from_data(session.snapshot().to_data()), "shop interaction serializes through the same VM frame")
+	assert_equal(session.respond(InteractionResponse.new(shop.interaction.request_id, &"shop_action", {"action": "leave"})).state, SessionStep.State.COMPLETED, "leaving the shop resumes and completes the AP")
+
+	var temple := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	assert_equal(temple.interaction.kind, &"temple_action", "temple AP exposes a typed service request")
+	assert_true(temple.interaction.payload.get("characters") is Array, "temple request is presentation-ready without core access")
+	assert_equal(session.respond(InteractionResponse.new(temple.interaction.request_id, &"temple_action", {"action": "leave"})).state, SessionStep.State.COMPLETED, "leaving the temple resumes the AP")
+
+	var bank := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	assert_equal(bank.interaction.kind, &"bank_action", "bank AP exposes typed carried and deposited wealth")
+	assert_true(bank.interaction.payload.has("carriedGold") and bank.interaction.payload.has("bankedGold"), "bank presenter receives only detached wealth values")
+	assert_not_null(SaveEnvelope.from_data(session.snapshot().to_data()), "bank interaction is a committed save boundary")
+	assert_equal(session.respond(InteractionResponse.new(bank.interaction.request_id, &"bank_action", {"action": "leave", "amount": 0})).state, SessionStep.State.COMPLETED, "leaving the bank resumes the AP")
 
 
 func _test_complex_encounter_save_resume(content: RealmzContent) -> void:

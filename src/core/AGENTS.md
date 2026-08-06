@@ -18,10 +18,12 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - Every gameplay mutation is committed synchronously by `GameSession`.
 - `GameSession` owns scenario execution state and is the only object allowed to connect VM operations to domain mutations.
 - Session state owns encounter attempts/type flags, equipment escrow, mutable shop stock, combat, and scenario-program replacement. These are save data, never mutations of installed package definitions.
+- Session state owns non-VM interaction continuations as well as VM continuations. Random-rectangle surprise choices serialize with their owning region and resume only through `GameSession.respond`.
 - Every gameplay random draw goes through the session-owned `RealmzRng` and is serializable.
 - `RealmzRng` uses the documented QuickDraw 16807/mod-2147483647 state transition and Castle's inclusive scaling; raw scripted values are test-only branch controls.
 - Snapshots and restores detach typed state so callers cannot mutate an active session through a prior envelope.
 - `MapTopology` plus `WorldState` overlays is the only source for simulation map facts; movement, pathfinding, LOS, search, triggers, and views reuse its explicit cells, edges, and features.
+- Random rectangles follow Castle's reverse region order, 1-in-10,000 chance scale, three ordered random-door draws, signed one-shot door state, surprise choice, and battle selection through the session RNG.
 - `GameView` and its map/cell views are detached read models for presentation and never expose mutable simulation objects.
 - Classic-visible Realmz behavior is the fixed ruleset. Fidelity corrections require a documented decision and source/oracle tests.
 

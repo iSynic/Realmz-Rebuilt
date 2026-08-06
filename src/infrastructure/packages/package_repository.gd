@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "2798e65c8f5d6e6ebd99222c18859cbd7b8874c8b170de44245f2fa85df39739"
+const EXPECTED_SCHEMA_HASH: String = "dd3c467b9dc3fe61574a2809c43e9c28f38c7e5d4fee98a547dfcd9da95dfe2b"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -26,12 +26,81 @@ func load_package(path: String) -> PackageLoadResult:
 	var open_error := archive.open(path)
 	if open_error != OK:
 		return PackageLoadResult.failed("package_open_failed", "Could not open package '%s' (error %d)." % [path, open_error])
-	var result := _load_open_archive(archive)
+	var result := _load_open_archive(archive, path)
 	archive.close()
 	return result
 
 
-func _load_open_archive(archive: ZIPReader) -> PackageLoadResult:
+func install_package(source_path: String, install_root: String = "user://packages") -> PackageInstallResult:
+	var source := load_package(source_path)
+	if not source.is_ok():
+		return PackageInstallResult.failed(source.error_code, source.error_message)
+	if not _safe_path_component(source.content.campaign_id):
+		return PackageInstallResult.failed("campaign_path_unsafe", "Campaign ID cannot be used as a portable installation path.")
+	var campaign_root := install_root.trim_suffix("/").path_join(source.content.campaign_id)
+	var create_error := DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(campaign_root))
+	if create_error != OK:
+		return PackageInstallResult.failed("package_install_directory_failed", "Could not create the package installation directory (error %d)." % create_error)
+	var target_path := campaign_root.path_join("%s.realmz2" % source.content.package_hash)
+	if FileAccess.file_exists(target_path):
+		var existing := load_package(target_path)
+		if existing.is_ok() and existing.content.package_hash == source.content.package_hash:
+			return PackageInstallResult.succeeded(target_path, existing)
+		return PackageInstallResult.failed("package_install_collision", "An invalid package already occupies the immutable installation path.")
+	var temporary_path := target_path + ".installing"
+	if FileAccess.file_exists(temporary_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
+	var source_bytes := FileAccess.get_file_as_bytes(source_path)
+	if source_bytes.is_empty():
+		return PackageInstallResult.failed("package_install_read_failed", "Could not read the source package for installation.")
+	var temporary := FileAccess.open(temporary_path, FileAccess.WRITE)
+	if temporary == null:
+		return PackageInstallResult.failed("package_install_write_failed", "Could not open the temporary package installation file.")
+	temporary.store_buffer(source_bytes)
+	temporary.flush()
+	temporary.close()
+	var verified := load_package(temporary_path)
+	if not verified.is_ok() or verified.content.package_hash != source.content.package_hash:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
+		return PackageInstallResult.failed("package_install_readback_failed", "Temporary package installation failed typed readback validation.")
+	var rename_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary_path), ProjectSettings.globalize_path(target_path))
+	if rename_error != OK:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
+		return PackageInstallResult.failed("package_install_commit_failed", "Could not atomically install the verified package (error %d)." % rename_error)
+	var installed := load_package(target_path)
+	if not installed.is_ok():
+		return PackageInstallResult.failed("package_install_final_validation_failed", installed.error_message)
+	return PackageInstallResult.succeeded(target_path, installed)
+
+
+func discover_packages(search_roots: Array[String]) -> Array[PackageDiscoveryResult]:
+	var paths: Array[String] = []
+	for root: String in search_roots:
+		_collect_package_paths(root, paths, 0)
+	paths.sort()
+	var discovered: Array[PackageDiscoveryResult] = []
+	for path: String in paths:
+		var loaded := load_package(path)
+		if loaded.is_ok():
+			discovered.append(PackageDiscoveryResult.new(path, true, loaded.content.campaign_id, loaded.content.package_hash, loaded.content.rules_version))
+		else:
+			discovered.append(PackageDiscoveryResult.new(path, false, "", "", "", loaded.error_message))
+	return discovered
+
+
+func _collect_package_paths(root: String, paths: Array[String], depth: int) -> void:
+	if depth > 4 or not DirAccess.dir_exists_absolute(root):
+		return
+	for file_name: String in DirAccess.get_files_at(root):
+		if file_name.to_lower().ends_with(".realmz2"):
+			paths.append(root.path_join(file_name))
+	for directory_name: String in DirAccess.get_directories_at(root):
+		if directory_name.begins_with("."):
+			continue
+		_collect_package_paths(root.path_join(directory_name), paths, depth + 1)
+
+
+func _load_open_archive(archive: ZIPReader, source_path: String) -> PackageLoadResult:
 	var archive_entries_value: Variant = _zip_entries(archive)
 	var archive_entries: Array[String] = []
 	if archive_entries_value != null:
@@ -61,7 +130,8 @@ func _load_open_archive(archive: ZIPReader) -> PackageLoadResult:
 	var runtime_content := _construct_content(manifest, content_document, world_document, scenario_document)
 	if runtime_content == null:
 		return _validation_failure()
-	return PackageLoadResult.succeeded(runtime_content)
+	var runtime_assets := _construct_assets(asset_document)
+	return PackageLoadResult.succeeded(runtime_content, PackageMediaCatalog.new(source_path, manifest["packageHash"], runtime_assets))
 
 
 func _validate_manifest(manifest: Dictionary, archive: ZIPReader, archive_entries: Array[String]) -> bool:
@@ -74,7 +144,7 @@ func _validate_manifest(manifest: Dictionary, archive: ZIPReader, archive_entrie
 		return _reject("Package schema hash does not match the runtime contract mirror.")
 	if not _is_sha256(manifest["packageHash"]) or not _is_sha256(manifest["contentId"]):
 		return _reject("Manifest package/content identity is malformed.")
-	if not manifest["campaignId"] is String or manifest["campaignId"].is_empty():
+	if not manifest["campaignId"] is String or not _safe_path_component(manifest["campaignId"]):
 		return _reject("Manifest campaign ID is missing.")
 	if not manifest["engine"] is Dictionary or manifest["engine"].get("rulesVersion") != "realmz-classic-1":
 		return _reject("Package requires an unsupported Realmz rules version.")
@@ -174,6 +244,8 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 	if maps_value == null:
 		return null
 	var maps: Array[MapDefinition] = maps_value
+	if not _validate_random_region_references(maps, scenario_definition, battles):
+		return null
 	var transitions_value: Variant = _construct_transitions(world.get("transitions"), maps)
 	if transitions_value == null:
 		return null
@@ -434,8 +506,8 @@ func _construct_monsters(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content monsters must be an array.")
 		return null
-	var fields: Array[String] = ["id", "classicId", "name", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "distance", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "money", "spellIds", "itemIds", "weaponId", "iconId", "spellPoints", "experience", "deathMacro"]
-	var integer_fields: Array[String] = ["classicId", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "distance", "size", "attackCount", "magicAttackCount", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "iconId", "spellPoints", "experience", "deathMacro"]
+	var fields: Array[String] = ["id", "classicId", "name", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "distance", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "money", "spellIds", "itemIds", "weaponId", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
+	var integer_fields: Array[String] = ["classicId", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "distance", "size", "attackCount", "magicAttackCount", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
 	var result: Array[MonsterDefinition] = []
 	var ids: Dictionary = {}
 	for value_record: Variant in value:
@@ -444,7 +516,7 @@ func _construct_monsters(value: Variant) -> Variant:
 			return null
 		var record: Dictionary = value_record
 		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Monster definition")
-		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Monster") or not record["traitor"] is bool or not record["weaponId"] is String or not record["attacks"] is Array:
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Monster") or not record["traitor"] is bool or not record["weaponId"] is String or not record["attacks"] is Array or _integer(record["randomWeaponTable"]) < 0 or _integer(record["randomWeaponTable"]) > 10:
 			_reject("Monster definition is malformed or duplicated.")
 			return null
 		var type_value: Variant = _integer_array(record["typeFlags"], 8, "Monster type flags")
@@ -480,6 +552,7 @@ func _construct_monsters(value: Variant) -> Variant:
 		monster.missile_percent = integers["missilePercent"]
 		monster.can_summon = integers["canSummon"]
 		monster.weapon_id = record["weaponId"]
+		monster.random_weapon_table = integers["randomWeaponTable"]
 		monster.icon_id = integers["iconId"]
 		monster.spell_points = integers["spellPoints"]
 		monster.experience = integers["experience"]
@@ -492,7 +565,7 @@ func _construct_battles(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content battles must be an array.")
 		return null
-	var fields: Array[String] = ["id", "classicId", "monsterIds", "distance", "messageBeforeId", "messageAfterId", "macroId"]
+	var fields: Array[String] = ["id", "classicId", "monsterSlots", "distance", "messageBeforeId", "messageAfterId", "macroId"]
 	var result: Array[BattleDefinition] = []
 	var ids: Dictionary = {}
 	for value_record: Variant in value:
@@ -501,12 +574,23 @@ func _construct_battles(value: Variant) -> Variant:
 			return null
 		var record: Dictionary = value_record
 		var integers_value: Variant = _validated_integer_fields(record, ["classicId", "distance", "messageBeforeId", "messageAfterId", "macroId"], "Battle definition")
-		var monster_ids_value: Variant = _string_list(record.get("monsterIds"), "Battle monster IDs", true)
-		if not _exact_fields(record, fields) or integers_value == null or monster_ids_value == null or not _definition_identity(record, ids, "Battle", false):
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Battle", false) or not record["monsterSlots"] is Array or record["monsterSlots"].size() > 169:
 			_reject("Battle definition is malformed or duplicated.")
 			return null
+		var monster_slots: Array[BattleMonsterSlotDefinition] = []
+		var occupied: Dictionary = {}
+		for slot_value: Variant in record["monsterSlots"]:
+			if not slot_value is Dictionary or not _exact_fields(slot_value, ["x", "y", "monsterId", "invertTraitor"]) or not _is_integer(slot_value["x"]) or not _is_integer(slot_value["y"]) or _integer(slot_value["x"]) < 0 or _integer(slot_value["x"]) > 12 or _integer(slot_value["y"]) < 0 or _integer(slot_value["y"]) > 12 or not slot_value["monsterId"] is String or slot_value["monsterId"].is_empty() or not slot_value["invertTraitor"] is bool:
+				_reject("Battle monster slot is malformed.")
+				return null
+			var coordinate := Vector2i(_integer(slot_value["x"]), _integer(slot_value["y"]))
+			if occupied.has(coordinate):
+				_reject("Battle monster slot coordinate is duplicated.")
+				return null
+			occupied[coordinate] = true
+			monster_slots.append(BattleMonsterSlotDefinition.new(coordinate, slot_value["monsterId"], slot_value["invertTraitor"]))
 		var integers: Dictionary = integers_value
-		result.append(BattleDefinition.new(record["id"], integers["classicId"], monster_ids_value, integers["distance"], integers["messageBeforeId"], integers["messageAfterId"], integers["macroId"]))
+		result.append(BattleDefinition.new(record["id"], integers["classicId"], monster_slots, integers["distance"], integers["messageBeforeId"], integers["messageAfterId"], integers["macroId"]))
 	return result
 
 
@@ -1020,7 +1104,7 @@ func _construct_random_regions(value: Variant, width: int, height: int, map_id: 
 		if not record is Dictionary or not record.get("id") is String or record["id"].is_empty() or ids.has(record["id"]):
 			_reject("Map '%s' contains a malformed or duplicate random rectangle." % map_id)
 			return null
-		for field: String in ["top", "left", "bottom", "right", "chancePercent", "option", "soundId", "textId"]:
+		for field: String in ["top", "left", "bottom", "right", "chanceTenThousand", "option", "soundId", "textId"]:
 			if not _is_integer(record.get(field)):
 				_reject("Random rectangle '%s' field '%s' is malformed." % [record["id"], field])
 				return null
@@ -1028,7 +1112,9 @@ func _construct_random_regions(value: Variant, width: int, height: int, map_id: 
 		var left := _integer(record["left"])
 		var bottom := _integer(record["bottom"])
 		var right := _integer(record["right"])
-		if top < 0 or left < 0 or bottom < top or right < left or bottom >= height or right >= width or not record.get("only") is bool:
+		var chance := _integer(record["chanceTenThousand"])
+		var classic_scalars := {"chance": chance, "option": _integer(record["option"]), "sound": _integer(record["soundId"]), "text": _integer(record["textId"])}
+		if top < 0 or left < 0 or bottom < top or right < left or bottom >= height or right >= width or not _integers_in_range(classic_scalars, ["chance", "option", "sound", "text"], -32768, 32767) or not record.get("only") is bool:
 			_reject("Random rectangle '%s' bounds or flags are malformed." % record["id"])
 			return null
 		var battle_range_value: Variant = _integer_array(record.get("battleRange"), 2, "battle range")
@@ -1039,9 +1125,33 @@ func _construct_random_regions(value: Variant, width: int, height: int, map_id: 
 		var battle_range: Array[int] = battle_range_value
 		var doors: Array[int] = doors_value
 		var percents: Array[int] = percents_value
+		if not _integers_in_range({"battleMinimum": battle_range[0], "battleMaximum": battle_range[1]}, ["battleMinimum", "battleMaximum"], -32768, 32767) or not _integers_in_range({"door0": doors[0], "door1": doors[1], "door2": doors[2]}, ["door0", "door1", "door2"], -32768, 32767) or not _integers_in_range({"chance0": percents[0], "chance1": percents[1], "chance2": percents[2]}, ["chance0", "chance1", "chance2"], -32768, 32767):
+			_reject("Random rectangle '%s' has values outside Classic 16-bit storage." % record["id"])
+			return null
 		ids[record["id"]] = true
-		regions.append(RandomEncounterRegion.new(record["id"], Rect2i(left, top, right - left + 1, bottom - top + 1), _integer(record["chancePercent"]), battle_range[0], battle_range[1], doors, percents, record["only"], _integer(record["option"]), _integer(record["soundId"]), _integer(record["textId"])))
+		regions.append(RandomEncounterRegion.new(record["id"], Rect2i(left, top, right - left + 1, bottom - top + 1), chance, battle_range[0], battle_range[1], doors, percents, record["only"], _integer(record["option"]), _integer(record["soundId"]), _integer(record["textId"])))
 	return regions
+
+
+func _validate_random_region_references(maps: Array[MapDefinition], scenario: ScenarioDefinition, battles: Array[BattleDefinition]) -> bool:
+	var battle_ids: Dictionary = {}
+	for battle: BattleDefinition in battles:
+		battle_ids[battle.classic_id] = true
+	for map: MapDefinition in maps:
+		for region: RandomEncounterRegion in map.random_regions():
+			var doors := region.random_doors()
+			var door_percents := region.random_door_percents()
+			for index: int in doors.size():
+				if door_percents[index] != 0 and (doors[index] < 0 or scenario.program_by_id("xap:%d" % doors[index]) == null):
+					return _reject("Random rectangle '%s' references unavailable XAP %d." % [region.id, doors[index]])
+			if region.battle_minimum == 0:
+				continue
+			if region.battle_minimum < 1 or region.battle_maximum < region.battle_minimum:
+				return _reject("Random rectangle '%s' has an invalid battle range." % region.id)
+			for battle_id: int in range(region.battle_minimum, region.battle_maximum + 1):
+				if not battle_ids.has(battle_id):
+					return _reject("Random rectangle '%s' references unavailable battle %d." % [region.id, battle_id])
+	return true
 
 
 func _construct_transitions(value: Variant, maps: Array[MapDefinition]) -> Variant:
@@ -1385,11 +1495,11 @@ func _validate_rule_references(races: Array[RaceDefinition], castes: Array[Caste
 		if not monster.weapon_id.is_empty() and not item_ids.has(monster.weapon_id):
 			return _reject("Monster '%s' references unavailable weapon '%s'." % [monster.id, monster.weapon_id])
 	for battle: BattleDefinition in battles:
-		for monster_id: String in battle.monster_ids():
-			if not monster_id.is_empty() and not monster_ids.has(monster_id):
-				return _reject("Battle '%s' references unavailable monster '%s'." % [battle.id, monster_id])
+		for slot: BattleMonsterSlotDefinition in battle.monster_slots():
+			if not monster_ids.has(slot.monster_id):
+				return _reject("Battle '%s' references unavailable monster '%s'." % [battle.id, slot.monster_id])
 		for message_id: int in [battle.message_before_id, battle.message_after_id]:
-			if message_id != 0 and not message_ids.has(message_id):
+			if message_id != 0 and not message_ids.has(absi(message_id)):
 				return _reject("Battle '%s' references unavailable message %d." % [battle.id, message_id])
 	for treasure: TreasureDefinition in treasures:
 		for item_id: String in treasure.item_ids():
@@ -1406,7 +1516,7 @@ func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Di
 	var encounter_ids: Dictionary = {}
 	for encounter: SimpleEncounterDefinition in encounters:
 		encounter_ids[encounter.id] = true
-		if not message_ids.has(encounter.prompt_message_id):
+		if not message_ids.has(absi(encounter.prompt_message_id)):
 			return _reject("Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
 		for response: SimpleEncounterResponse in encounter.responses():
 			if scenario.program_by_id(response.result_program_id) == null:
@@ -1432,7 +1542,7 @@ func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Di
 				continue
 			match instruction.opcode:
 				1:
-					if not message_ids.has(instruction.operand_id):
+					if not message_ids.has(absi(instruction.operand_id)):
 						return _reject("Scenario program '%s' references unavailable message %d." % [program.id, instruction.operand_id])
 				4:
 					if not encounter_ids.has(instruction.operand_id):
@@ -1473,12 +1583,55 @@ func _contexts_are_compatible(caller: ScenarioActionDefinition, called: Scenario
 func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
 	if not document.get("assets") is Array:
 		return _reject("Asset index must contain an assets array.")
+	var ids: Dictionary = {}
+	var resources: Dictionary = {}
 	for asset: Variant in document["assets"]:
-		if not asset is Dictionary or not asset.get("path") is String or not _is_sha256(asset.get("sha256")) or not files.has(asset["path"]):
+		if not asset is Dictionary or not _exact_fields(asset, ["id", "label", "kind", "mimeType", "resourceType", "resourceId", "bytes", "sha256", "path", "width", "height", "durationMs", "sampleRate", "channels"]):
+			return _reject("Asset index contains a malformed record.")
+		if not asset["id"] is String or asset["id"].is_empty() or ids.has(asset["id"]) or not asset["label"] is String or not asset["kind"] is String:
+			return _reject("Asset identities, labels, and kinds must be typed and unique.")
+		ids[asset["id"]] = true
+		if asset["mimeType"] != null and not asset["mimeType"] is String:
+			return _reject("Asset MIME type must be a string or null.")
+		if asset["resourceType"] != null and not asset["resourceType"] is String:
+			return _reject("Asset resource type must be a string or null.")
+		if asset["resourceId"] != null and not _is_integer(asset["resourceId"]):
+			return _reject("Asset resource ID must be an integer or null.")
+		for optional_integer: String in ["width", "height", "durationMs", "sampleRate", "channels"]:
+			if asset[optional_integer] != null and (not _is_integer(asset[optional_integer]) or _integer(asset[optional_integer]) < 0):
+				return _reject("Asset %s must be a non-negative integer or null." % optional_integer)
+		if not _is_integer(asset["bytes"]) or _integer(asset["bytes"]) < 0 or not asset["path"] is String or not _is_sha256(asset["sha256"]) or not files.has(asset["path"]):
 			return _reject("Asset index contains a malformed or untracked payload.")
-		if not asset["path"].begins_with("assets/media/") or files[asset["path"]]["sha256"] != asset["sha256"]:
+		if not asset["path"].begins_with("assets/media/") or files[asset["path"]]["sha256"] != asset["sha256"] or _integer(files[asset["path"]]["bytes"]) != _integer(asset["bytes"]):
 			return _reject("Asset payload identity does not match the manifest.")
+		if asset["resourceType"] != null and asset["resourceId"] != null:
+			var resource_key := "%s:%d" % [asset["resourceType"], _integer(asset["resourceId"])]
+			if resources.has(resource_key):
+				return _reject("Asset resource identities must be unique.")
+			resources[resource_key] = true
 	return true
+
+
+func _construct_assets(document: Dictionary) -> Array[PackageMediaAsset]:
+	var assets: Array[PackageMediaAsset] = []
+	for record: Dictionary in document["assets"]:
+		assets.append(PackageMediaAsset.new(
+			record["id"],
+			record["label"],
+			record["kind"],
+			"" if record["mimeType"] == null else record["mimeType"],
+			"" if record["resourceType"] == null else record["resourceType"],
+			-1 if record["resourceId"] == null else _integer(record["resourceId"]),
+			_integer(record["bytes"]),
+			record["sha256"],
+			record["path"],
+			0 if record["width"] == null else _integer(record["width"]),
+			0 if record["height"] == null else _integer(record["height"]),
+			0 if record["durationMs"] == null else _integer(record["durationMs"]),
+			0 if record["sampleRate"] == null else _integer(record["sampleRate"]),
+			0 if record["channels"] == null else _integer(record["channels"]),
+		))
+	return assets
 
 
 func _zip_entries(archive: ZIPReader) -> Variant:
@@ -1651,6 +1804,17 @@ func _is_sha256(value: Variant) -> bool:
 		return false
 	for character: String in value:
 		if not character in "0123456789abcdef":
+			return false
+	return true
+
+
+func _safe_path_component(value: String) -> bool:
+	if value.is_empty() or value.length() > 128:
+		return false
+	for index: int in value.length():
+		var code := value.unicode_at(index)
+		var valid := (code >= 48 and code <= 57) or (code >= 65 and code <= 90) or (code >= 97 and code <= 122) or code == 45 or code == 95
+		if not valid:
 			return false
 	return true
 

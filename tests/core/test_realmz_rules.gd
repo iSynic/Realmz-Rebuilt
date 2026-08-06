@@ -188,6 +188,11 @@ func _test_combat_magic_and_monsters() -> void:
 	var built := rules.monsters.build_monster(definition, "monster.built", -1, 1, 0, ScriptedRng.new([0, 0, 0, 0, 0]))
 	assert_equal(built.maximum_health, 3, "monster stamina applies HD dice and difficulty scaling")
 	assert_equal(built.magic_resistance, 16, "Castle's two resistance difficulty adjustments are preserved")
+	definition.random_weapon_table = 6
+	var random_weapon_rng := ScriptedRng.new([0, 0, 0, 0, 0, 32_767])
+	var randomly_armed := rules.monsters.build_monster(definition, "monster.random-weapon", -1, 1, 0, random_weapon_rng)
+	assert_equal(randomly_armed.weapon_id, "classic.item.120", "negative Classic monster weapons select from their source combatsetup table")
+	assert_equal(random_weapon_rng.snapshot().draw_count, 6, "random monster weapons consume one session-owned draw after construction variation")
 	definition.missile_percent = 100
 	assert_equal(rules.monsters.choose_action(built, definition, ScriptedRng.new([0])), &"missile", "monster AI considers missile behavior before casting")
 	built.current_health = 1

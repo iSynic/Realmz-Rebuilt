@@ -22,6 +22,7 @@ var surrender_percent: int
 var missile_percent: int
 var can_summon: int
 var weapon_id: String
+var random_weapon_table: int
 var icon_id: int
 var spell_points: int
 var experience: int

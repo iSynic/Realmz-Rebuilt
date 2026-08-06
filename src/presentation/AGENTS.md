@@ -11,6 +11,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - `InteractionPresenter` renders serializable requests and emits only a typed response carrying the matching request ID.
 - Consumption of `GameView`, domain events, and interaction requests.
 - `ClassicMapPresenter` rendering of map, minimap, and debug facts from detached map/cell views.
+- `ClassicShellPresenter` campaign/party/character/inventory/spell/settings/save surfaces and `ClassicAudioPresenter` package-media playback.
 - Cosmetic-only animation and randomness.
 
 ## Local Contracts

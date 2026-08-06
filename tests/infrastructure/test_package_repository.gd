@@ -11,7 +11,7 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "540d28daa48531e158da56d40e6ff10809c96695119cd02f7d8a46423ec3d1b8", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "49ae6f2dddac69625756e2398a81fa6db6a35304b8b394b5b6659a3d6c826f05", "package identity is retained")
 	var map := loaded.content.world.map_by_id("land:0")
 	assert_not_null(map, "the authoritative start map is constructed")
 	assert_equal(map.topology.width, 3, "fixture topology width is preserved")
@@ -36,11 +36,54 @@ func run() -> void:
 	assert_equal(loaded.content.race_by_id("classic.race.0").base_movement, 10, "race rules cross the compiler boundary as direct Realmz data")
 	assert_equal(loaded.content.caste_by_id("classic.caste.0").maximum_damage_bonus(), 5, "caste strength caps retain their source field meaning")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").attacks()[0].damage_max, 4, "monster attacks are typed instead of retained as native row dictionaries")
-	assert_equal(loaded.content.battle_by_id("classic.battle.0").monster_ids()[0], "classic.monster.1", "battle slots reference stable monster IDs")
+	assert_equal(loaded.content.battle_by_id("classic.battle.0").monster_slots()[0].monster_id, "classic.monster.1", "battle placements reference stable monster IDs")
 	assert_equal(loaded.content.shop_by_id("classic.shop.0").quantity(0), 2, "shop stock compiles to stable item references and quantities")
 	assert_equal(loaded.content.treasure_by_id("classic.treasure.0").item_ids()[0], "classic.item.901", "treasures use the same item identity as inventory")
 	assert_equal(loaded.content.spell_by_id("classic.spell.5101").damage_max, 4, "custom spells use packed Realmz class/level/slot identity")
 	assert_not_null(loaded.content.spell_by_id("classic.spell.1101"), "Providence compiles standard Data S spells into normalized runtime definitions")
+	assert_not_null(loaded.media, "validated package media receives a typed catalog")
+	assert_equal(loaded.media.assets().size(), 2, "the synthetic fixture carries only its authored picture and sound")
+	var indexed_picture := loaded.media.picture_by_resource_id(128)
+	assert_not_null(indexed_picture, "Classic picture identity resolves through the typed media index")
+	assert_false(loaded.media.read_bytes(indexed_picture).is_empty(), "content-addressed picture bytes are hash-checked when read")
+	var indexed_sound := loaded.media.sound_by_resource_id(30005)
+	assert_not_null(indexed_sound, "Classic sound identity resolves through the typed media index")
+	assert_false(loaded.media.read_bytes(indexed_sound).is_empty(), "content-addressed sound bytes are hash-checked when read")
+
+	var install_root := "user://realmz2-tests/package-install"
+	var installed := repository.install_package(FIXTURE_PATH, install_root)
+	assert_true(installed.is_ok(), "a validated package installs through temporary typed readback: %s" % installed.error_message)
+	if installed.is_ok():
+		assert_true(FileAccess.file_exists(installed.installed_path), "the immutable installed package exists at its content-hash path")
+		assert_contains(installed.installed_path, loaded.content.package_hash, "the installation path carries the package identity")
+		var repeated := repository.install_package(FIXTURE_PATH, install_root)
+		assert_true(repeated.is_ok(), "reinstalling identical immutable content is idempotent")
+		assert_equal(repeated.installed_path, installed.installed_path, "idempotent installation resolves to the same package")
+		var discovered := repository.discover_packages([install_root])
+		var matching_installations: int = 0
+		for candidate: PackageDiscoveryResult in discovered:
+			if candidate.package_hash == loaded.content.package_hash:
+				matching_installations += 1
+				assert_true(candidate.ready, "discovery reports independently validated readiness")
+		assert_equal(matching_installations, 1, "discovery returns the immutable package identity exactly once")
+
+	var picture := PackageMediaAsset.new("fixture.picture", "Fixture", "picture", "image/png", "PICT", 128, 0, "0000000000000000000000000000000000000000000000000000000000000000", "assets/media/0000000000000000000000000000000000000000000000000000000000000000.png", 1, 1, 0, 0, 0)
+	assert_true(picture.is_picture(), "package media classifies pictures by typed MIME and resource identity")
+	assert_false(picture.is_sound(), "picture media cannot be selected by the sound presenter")
+
+	var settings_path := "user://realmz2-tests/presentation-settings.json"
+	var settings_repository := SettingsRepository.new(settings_path)
+	var settings := PresentationSettings.new()
+	settings.master_volume = 0.35
+	settings.topology_debug = true
+	settings.text_scale = 1.2
+	settings.reduced_motion = true
+	assert_true(settings_repository.save_settings(settings), "presentation settings commit through validated temporary replacement")
+	var restored_settings := settings_repository.load_settings()
+	assert_equal(restored_settings.master_volume, 0.35, "master volume persists outside gameplay state")
+	assert_true(restored_settings.topology_debug, "topology display preference persists without altering rules")
+	assert_equal(restored_settings.text_scale, 1.2, "accessibility text scale persists")
+	assert_true(restored_settings.reduced_motion, "reduced cosmetic motion persists")
 
 	var rejected := repository.load_package(TAMPERED_FIXTURE_PATH)
 	assert_false(rejected.is_ok(), "a content mutation without matching manifest hashes is rejected")

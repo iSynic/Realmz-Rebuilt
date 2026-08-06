@@ -8,15 +8,14 @@ func _init(rules: RealmzRules) -> void:
 	_rules = rules
 
 
-func start_battle(state: GameState, content: RealmzContent, battle: BattleDefinition, rng: RealmzRng) -> CombatFlowResult:
+func start_battle(state: GameState, content: RealmzContent, battle: BattleDefinition, rng: RealmzRng, surprise: int = 0) -> CombatFlowResult:
 	if state == null or content == null or battle == null or rng == null:
 		return CombatFlowResult.failed(&"invalid_battle", "Battle setup requires validated state, content, and randomness.")
 	if state.combat != null and not state.combat.completed:
 		return CombatFlowResult.failed(&"battle_already_active", "A Realmz battle is already active.")
 	var monsters: Array[MonsterState] = []
-	for definition_id: String in battle.monster_ids():
-		if definition_id.is_empty():
-			continue
+	for slot: BattleMonsterSlotDefinition in battle.monster_slots():
+		var definition_id := slot.monster_id
 		var definition := content.monster_by_id(definition_id)
 		if definition == null:
 			return CombatFlowResult.failed(&"unknown_monster", "Battle '%s' references unavailable monster '%s'." % [battle.id, definition_id])
@@ -24,13 +23,15 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		var monster := _rules.monsters.build_monster(definition, instance_id, -1, 0, state.clock.day(), rng)
 		if monster == null:
 			return CombatFlowResult.failed(&"invalid_monster", "Battle '%s' could not construct monster '%s'." % [battle.id, definition_id])
+		if slot.invert_traitor:
+			monster.traitor = not monster.traitor
 		monsters.append(monster)
 	if monsters.is_empty():
 		return CombatFlowResult.failed(&"empty_battle", "Battle '%s' has no viable monsters." % battle.id)
 	var combat := CombatState.new(battle.id, monsters)
-	combat.set_turn_order(_rules.combat.initiative_order(state.party.characters(), monsters, 0, rng))
+	combat.set_turn_order(_rules.combat.initiative_order(state.party.characters(), monsters, surprise, rng))
 	state.combat = combat
-	var events: Array[DomainEvent] = [DomainEvent.new(&"battle_started", {"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "turnOrder": combat.turn_order()})]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"battle_started", {"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "surprise": surprise, "turnOrder": combat.turn_order()})]
 	_process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 

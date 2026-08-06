@@ -18,7 +18,7 @@ func run() -> void:
 	assert_equal(session.view().party_coordinate, Vector2i(1, 0), "typed movement intent commits through GameSession")
 	assert_true(_has_event(north, &"message_shown"), "message AP executes on entry")
 	assert_true(_has_event(north, &"tile_replaced"), "AP replacement mutates the world overlay")
-	assert_true(_has_event(north, &"random_encounter_triggered"), "random rectangle gates through the moved-to topology cell")
+	assert_true(_has_event(north, &"random_region_triggered"), "random rectangle gates through the moved-to topology cell")
 	assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).terrain_id, "classic.terrain.2", "presenter view reads the same tile overlay as simulation")
 
 	session.submit_intent(PlayerIntent.move(Vector2i.DOWN))
@@ -26,7 +26,7 @@ func run() -> void:
 	assert_true(_has_event(blocked, &"movement_blocked"), "concealed secret blocks movement before discovery")
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "blocked movement does not mutate party location")
 	var search := session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
-	assert_equal(search.events[0].payload["roll"], 52, "search uses the centralized Castle-compatible RNG")
+	assert_equal(search.events[0].payload["roll"], 37, "search follows Castle random-rectangle draw ordering through the centralized RNG")
 	assert_true(_has_event(search, &"secret_discovered"), "search commits secret discovery")
 	var secret_entry := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal(session.view().party_coordinate, Vector2i(0, 1), "discovered secret permits movement")
@@ -60,9 +60,63 @@ func run() -> void:
 	assert_equal(restored_dungeon.restore(content, dungeon_session.snapshot()).state, SessionStep.State.COMPLETED, "door-state save restores transactionally")
 	assert_true(restored_dungeon.snapshot().game_state.world.door_is_open(door_id), "restored session retains the opened door")
 
+	var surprise_session := GameSession.new()
+	surprise_session.start(content, 1)
+	surprise_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	var surprise_wait := surprise_session.submit_intent(PlayerIntent.move(Vector2i.UP))
+	assert_equal(surprise_wait.state, SessionStep.State.WAITING_FOR_INTERACTION, "a source-backed random rectangle can yield a typed surprise choice")
+	assert_equal(surprise_wait.interaction.kind, &"yes_no", "the random surprise uses the ordinary interaction presenter ABI")
+	assert_equal(surprise_session.rng_trace()[-1]["tag"], "random-region.land:0:randlevel:rect:1.good-surprise", "Castle random-region draw order reaches the surprise roll after three door rolls")
+	var surprise_snapshot := surprise_session.snapshot()
+	assert_not_null(surprise_snapshot, "the random surprise interaction is a committed save boundary")
+	assert_equal(surprise_snapshot.session_interaction.request_id, surprise_wait.interaction.request_id, "the save aggregate owns the non-VM interaction")
+	assert_equal(surprise_snapshot.session_continuation["randomBattleStage"], "surprise-choice", "the save aggregate owns random battle continuation state")
+	var restored_surprise := GameSession.new()
+	assert_equal(restored_surprise.restore(content, SaveEnvelope.from_data(surprise_snapshot.to_data())).state, SessionStep.State.COMPLETED, "random surprise save restores transactionally")
+	var accepted := restored_surprise.respond(InteractionResponse.new(surprise_wait.interaction.request_id, &"yes_no", {"accepted": true}))
+	assert_true(_has_event(accepted, &"random_encounter_triggered"), "accepting the surprise choice starts the selected random battle")
+	assert_equal(_event(accepted, &"battle_started").payload["surprise"], 1, "accepted random surprise gives the party source-backed initiative")
+	var battle_coordinate := restored_surprise.view().party_coordinate
+	var blocked_during_battle := restored_surprise.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	assert_equal(blocked_during_battle.error_code, &"battle_in_progress", "active combat rejects exploration intents at the session boundary")
+	assert_equal(restored_surprise.view().party_coordinate, battle_coordinate, "rejected combat-time movement cannot mutate topology state")
+	var declined_surprise := GameSession.new()
+	declined_surprise.restore(content, surprise_snapshot)
+	var declined := declined_surprise.respond(InteractionResponse.new(surprise_wait.interaction.request_id, &"yes_no", {"accepted": false}))
+	assert_equal(declined.state, SessionStep.State.COMPLETED, "declining an only-region surprise cleanly resumes exploration")
+	assert_true(declined_surprise.view().combat_view == null, "declining the random encounter does not create combat state")
+	assert_equal(declined_surprise.snapshot().session_continuation, {}, "declining the only region clears its continuation")
+
+	var door_session := GameSession.new()
+	door_session.start(content, 1)
+	door_session.submit_intent(PlayerIntent.move(Vector2i.DOWN))
+	var first_door := door_session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	assert_true(_has_event(first_door, &"random_door_triggered"), "a positive random-door chance invokes its XAP through the normal VM")
+	var door_region := content.world.map_by_id("land:0").random_region_by_id("land:0:randlevel:rect:2")
+	assert_equal(door_session.snapshot().game_state.world.random_region(door_region).random_door_percents()[0], 0, "a positive random-door chance becomes one-shot world state")
+	var restored_door := GameSession.new()
+	restored_door.restore(content, door_session.snapshot())
+	restored_door.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	var second_door := restored_door.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	assert_false(_has_event(second_door, &"random_door_triggered"), "save/reload preserves consumed random doors")
+
+	var v1_data := session.snapshot().to_data()
+	v1_data["formatVersion"] = 1
+	v1_data.erase("sessionInteraction")
+	var migrated_v1 := SaveEnvelope.from_data(v1_data)
+	assert_not_null(migrated_v1, "save v1 migrates through the ordered pure transform")
+	assert_equal(migrated_v1.to_data()["formatVersion"], 2, "migrated saves serialize as the current envelope version")
+
 
 func _has_event(step: SessionStep, event_kind: StringName) -> bool:
 	for event: DomainEvent in step.events:
 		if event.kind == event_kind:
 			return true
 	return false
+
+
+func _event(step: SessionStep, event_kind: StringName) -> DomainEvent:
+	for event: DomainEvent in step.events:
+		if event.kind == event_kind:
+			return event
+	return null

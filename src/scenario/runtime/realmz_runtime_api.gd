@@ -44,10 +44,11 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 		-14, 14:
 			return _request_character_selection(action, request_id, action.opcode == -14)
 		1:
-			var message := _content.message_by_id(action.operand_id)
+			var message_id := absi(action.operand_id)
+			var message := _content.message_by_id(message_id)
 			if message == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 1 references unavailable message %d." % action.operand_id)
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new("message_shown", {"messageId": action.operand_id, "text": message.text, "source": "classic"})])
+			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new("message_shown", {"messageId": message_id, "text": message.text, "source": "classic", "classicClick": action.operand_id > 0})])
 		4:
 			var encounter := _content.simple_encounter_by_id(action.operand_id)
 			if encounter == null:
@@ -386,10 +387,24 @@ func _complex_encounter_request(encounter: ComplexEncounterDefinition, request_i
 	if actions.is_empty():
 		return null
 	var characters: Array[Dictionary] = []
+	var items: Array[Dictionary] = []
+	var spells: Array[Dictionary] = []
+	var seen_items: Dictionary = {}
+	var seen_spells: Dictionary = {}
 	for character: CharacterState in _game_state.party.characters():
 		if character.current_health > 0:
 			characters.append({"id": character.id, "name": character.name})
-	return InteractionRequest.new(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text, "actions": actions, "characters": characters, "canBackOut": encounter.can_back_out})
+		for instance: ItemInstance in character.inventory():
+			var item := _content.item_by_id(instance.definition_id)
+			if item != null and not seen_items.has(item.classic_id):
+				seen_items[item.classic_id] = true
+				items.append({"classicItemId": item.classic_id, "name": item.name})
+		for spell_id: String in character.known_spells():
+			var spell := _content.spell_by_id(spell_id)
+			if spell != null and not seen_spells.has(spell.classic_id):
+				seen_spells[spell.classic_id] = true
+				spells.append({"classicSpellId": spell.classic_id, "name": spell.name})
+	return InteractionRequest.new(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text, "actions": actions, "characters": characters, "items": items, "spells": spells, "canBackOut": encounter.can_back_out})
 
 
 func _resume_complex_encounter(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -853,9 +868,9 @@ func _mutate_random_region(action: ClassicActionDefinition, dungeon: bool) -> Sc
 	var previous := _game_state.world.random_region(region)
 	var battle_min := previous.battle_minimum if action.extra_code[3] < 0 else action.extra_code[3]
 	var battle_max := previous.battle_maximum if action.extra_code[4] < 0 else action.extra_code[4]
-	var updated := RandomRegionState.new(region.id, action.extra_code[2], battle_min, battle_max)
+	var updated := RandomRegionState.new(region.id, action.extra_code[2], battle_min, battle_max, previous.random_door_percents())
 	_game_state.world.set_random_region(updated)
-	return ScenarioRuntimeOperationResult.completed(updated.id, [DomainEvent.new(&"random_region_changed", {"regionId": updated.id, "chancePercent": updated.chance_percent, "battleMinimum": updated.battle_minimum, "battleMaximum": updated.battle_maximum})])
+	return ScenarioRuntimeOperationResult.completed(updated.id, [DomainEvent.new(&"random_region_changed", {"regionId": updated.id, "chanceTenThousand": updated.chance_ten_thousand, "battleMinimum": updated.battle_minimum, "battleMaximum": updated.battle_maximum})])
 
 
 func _mutate_tile(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -944,13 +959,21 @@ func _request_shop(classic_shop_id: int, request_id: String) -> ScenarioRuntimeO
 
 func _shop_request(shop: ShopDefinition, request_id: String) -> InteractionRequest:
 	var stock: Array[Dictionary] = []
+	var characters: Array[Dictionary] = []
 	var item_ids := shop.item_ids()
 	for index: int in item_ids.size():
 		var item := _content.item_by_id(item_ids[index])
 		if item == null:
 			continue
 		stock.append({"index": index, "itemId": item.id, "name": item.name, "quantity": _game_state.shop_quantity(shop, index), "buyPrice": _shop_item_price(item, shop, false), "sellPrice": _shop_item_price(item, shop, true)})
-	return InteractionRequest.new(request_id, &"shop_action", {"shopId": shop.id, "inflationPercent": _game_state.shop_inflation(shop), "stock": stock, "actions": ["buy", "sell", "leave"]})
+	for character: CharacterState in _game_state.party.characters():
+		var inventory: Array[Dictionary] = []
+		for instance: ItemInstance in character.inventory():
+			var definition := _content.item_by_id(instance.definition_id)
+			if definition != null:
+				inventory.append({"instanceId": instance.id, "itemId": definition.id, "name": definition.name, "sellPrice": _shop_item_price(definition, shop, true)})
+		characters.append({"id": character.id, "name": character.name, "inventory": inventory})
+	return InteractionRequest.new(request_id, &"shop_action", {"shopId": shop.id, "inflationPercent": _game_state.shop_inflation(shop), "stock": stock, "characters": characters, "actions": ["buy", "sell", "leave"]})
 
 
 func _resume_shop(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:

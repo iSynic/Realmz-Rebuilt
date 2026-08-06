@@ -76,7 +76,7 @@ func set_random_region(region: RandomRegionState) -> void:
 func random_region(region: RandomEncounterRegion) -> RandomRegionState:
 	if _random_regions.has(region.id):
 		return _random_regions[region.id] as RandomRegionState
-	return RandomRegionState.new(region.id, region.chance_percent, region.battle_minimum, region.battle_maximum)
+	return RandomRegionState.new(region.id, region.chance_ten_thousand, region.battle_minimum, region.battle_maximum, region.random_door_percents())
 
 
 func mark_visited(map_id: String, coordinate: Vector2i) -> void:

@@ -8,6 +8,7 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 
 - Headless Godot verification and architecture boundary guards.
 - Package determinism/schema mirror checks and oracle harness launchers as introduced.
+- `package_probe.gd` independently validates and starts an arbitrary local `.realmz2` package without installing or committing it.
 - Synthetic package provenance and fixture-byte checks used by the aggregate gate.
 
 ## Local Contracts

@@ -192,3 +192,30 @@ func item_definitions() -> Array[ItemDefinition]:
 	for id: Variant in ids:
 		result.append(_items[id] as ItemDefinition)
 	return result
+
+
+func race_definitions() -> Array[RaceDefinition]:
+	var result: Array[RaceDefinition] = []
+	var ids: Array = _races.keys()
+	ids.sort()
+	for id: Variant in ids:
+		result.append(_races[id] as RaceDefinition)
+	return result
+
+
+func caste_definitions() -> Array[CasteDefinition]:
+	var result: Array[CasteDefinition] = []
+	var ids: Array = _castes.keys()
+	ids.sort()
+	for id: Variant in ids:
+		result.append(_castes[id] as CasteDefinition)
+	return result
+
+
+func spell_definitions() -> Array[SpellDefinition]:
+	var result: Array[SpellDefinition] = []
+	var ids: Array = _spells.keys()
+	ids.sort()
+	for id: Variant in ids:
+		result.append(_spells[id] as SpellDefinition)
+	return result

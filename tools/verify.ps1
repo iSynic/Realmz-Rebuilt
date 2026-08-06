@@ -14,14 +14,25 @@ if ([string]::IsNullOrWhiteSpace($GodotPath)) {
     $GodotPath = $candidate
 }
 
-& $GodotPath --headless --path $repoRoot --editor --quit
-if ($LASTEXITCODE -ne 0) { throw "Godot project import/script validation failed." }
+function Invoke-GodotGate {
+    param(
+        [string]$Label,
+        [string[]]$GodotArguments
+    )
 
-& $GodotPath --headless --path $repoRoot --quit-after 5
-if ($LASTEXITCODE -ne 0) { throw "Main scene smoke launch failed." }
+    $output = & $GodotPath @GodotArguments 2>&1
+    $exitCode = $LASTEXITCODE
+    $output | ForEach-Object { Write-Host $_ }
+    $combined = $output -join "`n"
+    if ($exitCode -ne 0) { throw "$Label failed with exit code $exitCode." }
+    if ($combined -match "SCRIPT ERROR:" -or $combined -match "Parse Error:") {
+        throw "$Label emitted a GDScript error despite returning exit 0."
+    }
+}
 
-& $GodotPath --headless --path $repoRoot --script res://tests/test_runner.gd
-if ($LASTEXITCODE -ne 0) { throw "Headless test suite failed." }
+Invoke-GodotGate "Godot project import/script validation" @("--headless", "--path", $repoRoot, "--editor", "--quit")
+Invoke-GodotGate "Main scene smoke launch" @("--headless", "--path", $repoRoot, "--quit-after", "5")
+Invoke-GodotGate "Headless test suite" @("--headless", "--path", $repoRoot, "--script", "res://tests/test_runner.gd")
 
 & "$PSScriptRoot\verify_architecture.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Architecture boundary verification failed." }

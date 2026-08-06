@@ -5,29 +5,49 @@ const GameSessionControllerScript := preload("res://src/app/game_session_control
 const PresentationCoordinatorScript := preload("res://src/presentation/presentation_coordinator.gd")
 const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
 const SaveRepositoryScript := preload("res://src/infrastructure/saves/save_repository.gd")
+const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
 
 @onready var _status_label: Label = %Status
 @onready var _smoke_button: Button = %SmokeAction
 @onready var _map_presenter: ClassicMapPresenter = %ExplorationMap
 @onready var _interaction_presenter: InteractionPresenter = %InteractionPanel
+@onready var _shell_presenter: ClassicShellPresenter = %ClassicShell
+@onready var _audio_presenter: ClassicAudioPresenter = %ClassicAudio
 
 var session_controller: GameSessionController
 var presentation_coordinator: PresentationCoordinator
 var package_repository: PackageRepository
 var save_repository: SaveRepository
+var settings_repository: SettingsRepository
 var _active_content: RealmzContent
+var _presentation_settings: PresentationSettings
 
 
 func _ready() -> void:
 	package_repository = PackageRepositoryScript.new()
 	save_repository = SaveRepositoryScript.new()
+	settings_repository = SettingsRepositoryScript.new()
+	_presentation_settings = settings_repository.load_settings()
 	session_controller = GameSessionControllerScript.new()
 	presentation_coordinator = PresentationCoordinatorScript.new()
 	add_child(session_controller)
 	add_child(presentation_coordinator)
-	presentation_coordinator.bind(session_controller, _map_presenter, _interaction_presenter)
+	presentation_coordinator.bind(session_controller, _map_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
 	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
+	_shell_presenter.start_package_requested.connect(start_package)
+	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
+	_shell_presenter.intent_submitted.connect(_submit_intent)
+	_shell_presenter.save_requested.connect(save_active_session)
+	_shell_presenter.load_requested.connect(load_active_session)
+	_shell_presenter.topology_debug_changed.connect(_on_topology_debug_changed)
+	_shell_presenter.master_volume_changed.connect(_on_master_volume_changed)
+	_shell_presenter.text_scale_changed.connect(_on_text_scale_changed)
+	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed)
+	_shell_presenter.apply_settings(_presentation_settings)
+	_audio_presenter.set_master_volume(_presentation_settings.master_volume)
+	_on_topology_debug_changed(_presentation_settings.topology_debug)
 	_status_label.text = "Pure session boundary online"
+	_refresh_campaigns()
 
 
 func _on_smoke_action_pressed() -> void:
@@ -44,23 +64,31 @@ func _on_smoke_action_pressed() -> void:
 
 
 func start_package(package_path: String, initial_seed: int) -> SessionStep:
-	var package_result := package_repository.load_package(package_path)
-	if not package_result.is_ok():
-		_status_label.text = "Package rejected • %s" % package_result.error_message
-		return SessionStep.failed(0, package_result.error_code, package_result.error_message)
+	var installation := package_repository.install_package(package_path)
+	if not installation.is_ok():
+		_status_label.text = "Package rejected • %s" % installation.error_message
+		_shell_presenter.set_status(_status_label.text, true)
+		return SessionStep.failed(0, installation.error_code, installation.error_message)
+	var package_result := installation.package
+	presentation_coordinator.set_package_media(package_result.media)
 	var step := session_controller.start(package_result.content, initial_seed)
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Session start failed • %s" % step.error_message
+		_shell_presenter.set_status(_status_label.text, true)
 		return step
 	_active_content = package_result.content
 	_smoke_button.text = "Search area"
 	var current_view := session_controller.session().view()
 	_status_label.text = "Loaded %s • %s %d,%d • seed %d" % [_active_content.campaign_id, current_view.party_map_id, current_view.party_coordinate.x, current_view.party_coordinate.y, initial_seed]
+	_shell_presenter.set_status(_status_label.text)
+	_refresh_campaigns()
 	return step
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	if not event.is_pressed() or event.is_echo() or not session_controller.session().view().session_started:
+func _input(event: InputEvent) -> void:
+	if not event is InputEventKey or not event.is_pressed() or event.is_echo() or not session_controller.session().view().session_started:
+		return
+	if not _shell_presenter.accepts_exploration_input():
 		return
 	if session_controller.session().view().pending_interaction != null:
 		return
@@ -93,6 +121,7 @@ func _on_interaction_response_submitted(response: InteractionResponse) -> void:
 func _present_step_status(step: SessionStep) -> void:
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Action failed • %s" % step.error_message
+		_shell_presenter.set_status(_status_label.text, true)
 		return
 	for event: DomainEvent in step.events:
 		match event.kind:
@@ -109,20 +138,54 @@ func _present_step_status(step: SessionStep) -> void:
 func save_active_session(slot_id: String) -> bool:
 	if _active_content == null:
 		_status_label.text = "Save failed • no package loaded"
+		_shell_presenter.set_status(_status_label.text, true)
 		return false
 	var saved := save_repository.save(_active_content.campaign_id, slot_id, session_controller.session().snapshot())
 	_status_label.text = "Saved %s" % slot_id if saved else "Save failed • %s" % save_repository.last_error
+	_shell_presenter.set_status(_status_label.text, not saved)
 	return saved
 
 
 func load_active_session(slot_id: String) -> SessionStep:
 	if _active_content == null:
 		_status_label.text = "Load failed • no package loaded"
+		_shell_presenter.set_status(_status_label.text, true)
 		return SessionStep.failed(0, "no_package_loaded", "Load a package before restoring a save.")
 	var envelope := save_repository.load(_active_content.campaign_id, slot_id, _active_content.package_hash)
 	if envelope == null:
 		_status_label.text = "Load failed • %s" % save_repository.last_error
+		_shell_presenter.set_status(_status_label.text, true)
 		return SessionStep.failed(session_controller.session().view().revision, "save_load_failed", save_repository.last_error)
 	var step := session_controller.restore(_active_content, envelope)
 	_status_label.text = "Loaded save %s" % slot_id if step.state != SessionStep.State.FAILED else "Load failed • %s" % step.error_message
+	_shell_presenter.set_status(_status_label.text, step.state == SessionStep.State.FAILED)
 	return step
+
+
+func _refresh_campaigns() -> void:
+	_shell_presenter.set_campaigns(package_repository.discover_packages(["user://packages"]))
+
+
+func _on_topology_debug_changed(enabled: bool) -> void:
+	_map_presenter.show_debug_facts = enabled
+	_map_presenter.queue_redraw()
+	if _presentation_settings != null:
+		_presentation_settings.topology_debug = enabled
+		settings_repository.save_settings(_presentation_settings)
+
+
+func _on_master_volume_changed(value: float) -> void:
+	_audio_presenter.set_master_volume(value)
+	_presentation_settings.master_volume = value
+	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_text_scale_changed(value: float) -> void:
+	_presentation_settings.text_scale = value
+	_shell_presenter.apply_settings(_presentation_settings)
+	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_reduced_motion_changed(enabled: bool) -> void:
+	_presentation_settings.reduced_motion = enabled
+	settings_repository.save_settings(_presentation_settings)
