@@ -27,12 +27,15 @@ var magic_resistance: int = 0
 var movement: int = 0
 var maximum_movement: int = 10
 var normal_attacks: int = 1
+var attack_bonus: int = 0
 var attacks_remaining: int = 1
+var maximum_spell_attacks: int = 0
 var spellcaster_type: int = 0
 var spell_points: int = 0
 var maximum_spell_points: int = 0
 var carried_load: int = 0
 var maximum_load: int = 0
+var prestige_penalty: int = 0
 var conditions: ConditionSet
 var money: WealthState
 var _saves: Array[int] = []
@@ -102,8 +105,9 @@ func to_data() -> Dictionary:
 		"attributes": [brawn, knowledge, judgment, agility, vitality, luck],
 		"toHit": to_hit, "dodge": dodge, "missile": missile, "handToHand": hand_to_hand, "damageBonus": damage_bonus,
 		"armor": armor, "magicResistance": magic_resistance, "movement": movement, "maximumMovement": maximum_movement,
-		"normalAttacks": normal_attacks, "attacksRemaining": attacks_remaining, "spellcasterType": spellcaster_type,
+		"normalAttacks": normal_attacks, "attackBonus": attack_bonus, "attacksRemaining": attacks_remaining, "maximumSpellAttacks": maximum_spell_attacks, "spellcasterType": spellcaster_type,
 		"spellPoints": spell_points, "maximumSpellPoints": maximum_spell_points, "load": carried_load, "maximumLoad": maximum_load,
+		"prestigePenalty": prestige_penalty,
 		"conditions": conditions.to_data(), "money": money.to_data(), "saves": _saves.duplicate(), "specials": _specials.duplicate(),
 		"inventory": item_data, "knownSpells": _known_spells.duplicate(),
 	}
@@ -134,6 +138,11 @@ static func from_data(data: Variant) -> CharacterState:
 	var numeric_values: Dictionary = {}
 	for field: String in ["gender", "level", "experience", "ageDays", "toHit", "dodge", "missile", "handToHand", "damageBonus", "armor", "magicResistance", "movement", "maximumMovement", "normalAttacks", "attacksRemaining", "spellcasterType", "spellPoints", "maximumSpellPoints", "load", "maximumLoad"]:
 		var value := _signed_integer(data[field])
+		if value == -100_000:
+			return null
+		numeric_values[field] = value
+	for field: String in ["attackBonus", "maximumSpellAttacks", "prestigePenalty"]:
+		var value := _signed_integer(data.get(field, 0))
 		if value == -100_000:
 			return null
 		numeric_values[field] = value
@@ -192,12 +201,15 @@ static func from_data(data: Variant) -> CharacterState:
 	result.movement = numeric_values["movement"]
 	result.maximum_movement = numeric_values["maximumMovement"]
 	result.normal_attacks = numeric_values["normalAttacks"]
+	result.attack_bonus = numeric_values["attackBonus"]
 	result.attacks_remaining = numeric_values["attacksRemaining"]
+	result.maximum_spell_attacks = numeric_values["maximumSpellAttacks"]
 	result.spellcaster_type = numeric_values["spellcasterType"]
 	result.spell_points = numeric_values["spellPoints"]
 	result.maximum_spell_points = numeric_values["maximumSpellPoints"]
 	result.carried_load = numeric_values["load"]
 	result.maximum_load = numeric_values["maximumLoad"]
+	result.prestige_penalty = numeric_values["prestigePenalty"]
 	result.conditions = loaded_conditions
 	result.money = loaded_money
 	result._saves = saves

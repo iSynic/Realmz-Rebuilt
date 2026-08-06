@@ -17,6 +17,13 @@ func advance_minutes(minutes: int) -> bool:
 	return true
 
 
+func set_total_minutes(minutes: int) -> bool:
+	if minutes < 0:
+		return false
+	_total_minutes = minutes
+	return true
+
+
 func total_minutes() -> int:
 	return _total_minutes
 

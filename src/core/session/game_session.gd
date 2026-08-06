@@ -135,6 +135,8 @@ func respond(response: InteractionResponse) -> SessionStep:
 		_session_continuation.clear()
 		return _finish_failed(result.error_code, result.error_message, events)
 	if not _session_continuation.is_empty():
+		if _session_continuation.get("kind") == "combat-death-macro":
+			return _continue_session_death_macro(events)
 		return _continue_post_move(events)
 	return _finish_completed(events)
 
@@ -200,6 +202,10 @@ func _cast_spell(intent: PlayerIntent) -> SessionStep:
 	var result := _rules.combat_flow.cast_spell(_state, _content, intent.actor_id, intent.secondary_target_id, intent.target_id, intent.power_level, _rng)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	if not _event_payload(result.events, &"monster_death_macro_requested").is_empty():
+		return _start_session_death_macro(result.events)
+	if result.completed:
+		return _finish_direct_battle(result.events)
 	return _finish_completed(result.events)
 
 
@@ -207,6 +213,10 @@ func _combat_action(intent: PlayerIntent) -> SessionStep:
 	var result := _rules.combat_flow.submit_action(_state, _content, intent.actor_id, intent.action, intent.target_id, _rng)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	if not _event_payload(result.events, &"monster_death_macro_requested").is_empty():
+		return _start_session_death_macro(result.events)
+	if result.completed:
+		return _finish_direct_battle(result.events)
 	return _finish_completed(result.events)
 
 
@@ -293,6 +303,7 @@ func _move(direction: Vector2i) -> SessionStep:
 	var source_coordinate := _state.party.coordinate
 	_state.party.map_id = target_map.id
 	_state.party.coordinate = target_coordinate
+	_state.last_move_direction = direction
 	_state.world.mark_visited(target_map.id, target_coordinate)
 	_state.clock.advance_minutes(probe.target_cell.movement_cost)
 	events.append(DomainEvent.new("party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": target_coordinate.x, "y": target_coordinate.y}))
@@ -322,6 +333,12 @@ func _set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, desti
 
 
 func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
+	if _events_have(events, &"destination_trigger_recheck_requested") and int(_session_continuation.get("actionPointDestinationDepth", 0)) == 0:
+		var requested_map := _content.world.map_by_id(_state.party.map_id)
+		if requested_map == null:
+			_session_continuation.clear()
+			return _finish_failed(&"invalid_teleport", "Destination trigger recheck references an unavailable map.", events)
+		_set_post_move_continuation(requested_map, _state.party.coordinate, 1)
 	var map := _content.world.map_by_id(String(_session_continuation.get("mapId", "")))
 	var coordinate := Vector2i(int(_session_continuation.get("x", -1)), int(_session_continuation.get("y", -1)))
 	var cell: MapCell = null if map == null else map.topology.cell_at(coordinate)
@@ -374,6 +391,13 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 		if result.state == ScenarioVmResult.State.FAILED:
 			_session_continuation.clear()
 			return _finish_failed(result.error_code, result.error_message, events)
+		if _events_have(result.events, &"destination_trigger_recheck_requested"):
+			var requested_map := _content.world.map_by_id(_state.party.map_id)
+			if requested_map == null:
+				_session_continuation.clear()
+				return _finish_failed(&"invalid_teleport", "Destination trigger recheck references an unavailable map.", events)
+			_set_post_move_continuation(requested_map, _state.party.coordinate, 1)
+			return _continue_post_move(events)
 		if _apply_trigger_destination(trigger, events, int(_session_continuation.get("actionPointDestinationDepth", 0)) == 0):
 			var destination_map := _content.world.map_by_id(_state.party.map_id)
 			_set_post_move_continuation(destination_map, _state.party.coordinate, 1)
@@ -402,6 +426,105 @@ func _apply_trigger_destination(trigger: TriggerDefinition, events: Array[Domain
 
 func _movement_blocked(reason: StringName) -> SessionStep:
 	return _finish_completed([DomainEvent.new("movement_blocked", {"reason": String(reason)})])
+
+
+static func _events_have(events: Array[DomainEvent], kind: StringName) -> bool:
+	for event: DomainEvent in events:
+		if event.kind == kind:
+			return true
+	return false
+
+
+static func _event_payload(events: Array[DomainEvent], kind: StringName) -> Dictionary:
+	for index: int in range(events.size() - 1, -1, -1):
+		if events[index].kind == kind:
+			return events[index].payload
+	return {}
+
+
+func _start_session_death_macro(preceding_events: Array[DomainEvent]) -> SessionStep:
+	var request := _event_payload(preceding_events, &"monster_death_macro_requested")
+	var combat := _state.combat
+	if request.is_empty() or combat == null:
+		return _finish_failed(&"invalid_death_macro_request", "Monster death-macro execution requires an active combatant request.", preceding_events)
+	var combatant_id := str(request.get("combatantId", ""))
+	var program_id := str(request.get("programId", ""))
+	var monster := combat.monster_by_id(combatant_id)
+	if monster == null or _content.scenario.program_by_id(program_id) == null:
+		return _finish_failed(&"invalid_death_macro_request", "Monster death-macro execution references unavailable content.", preceding_events)
+	_session_continuation = {
+		"kind": "combat-death-macro",
+		"battleId": combat.battle_id,
+		"combatantId": combatant_id,
+		"programId": program_id,
+	}
+	var started := _scenario_vm.start_program(program_id, {
+		"callingContext": "monster-death-macro",
+		"battleId": combat.battle_id,
+		"combatantId": combatant_id,
+		"classicMonsterId": int(request.get("classicMonsterId", 0)),
+		"traitor": bool(request.get("traitor", monster.traitor)),
+	})
+	if started.state == ScenarioVmResult.State.FAILED:
+		_session_continuation.clear()
+		return _finish_failed(started.error_code, started.error_message, preceding_events)
+	var result := _scenario_vm.run(_runtime_api)
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	events.append(DomainEvent.new(&"monster_death_macro_started", {"battleId": combat.battle_id, "combatantId": combatant_id, "programId": program_id}))
+	events.append_array(result.events)
+	if result.state == ScenarioVmResult.State.FAILED:
+		_session_continuation.clear()
+		return _finish_failed(result.error_code, result.error_message, events)
+	if result.state == ScenarioVmResult.State.WAITING:
+		return _finish_waiting(result.interaction, events)
+	return _continue_session_death_macro(events)
+
+
+func _continue_session_death_macro(events: Array[DomainEvent]) -> SessionStep:
+	var combat := _state.combat
+	var battle_id := str(_session_continuation.get("battleId", ""))
+	var combatant_id := str(_session_continuation.get("combatantId", ""))
+	var program_id := str(_session_continuation.get("programId", ""))
+	if combat == null or combat.battle_id != battle_id:
+		_session_continuation.clear()
+		return _finish_failed(&"invalid_battle_continuation", "Monster death-macro completion lost its battle.", events)
+	var monster := combat.monster_by_id(combatant_id)
+	if monster != null:
+		monster.traitor = false
+	events.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))
+	_session_continuation.clear()
+	var continued := _rules.combat_flow.continue_after_monster_death_macro(_state, _content, _rng)
+	if not continued.ok:
+		return _finish_failed(continued.error_code, continued.error_message, events)
+	events.append_array(continued.events)
+	if not _event_payload(continued.events, &"monster_death_macro_requested").is_empty():
+		return _start_session_death_macro(events)
+	if continued.completed:
+		return _finish_direct_battle(events)
+	return _finish_completed(events)
+
+
+func _append_session_battle_after_message(battle_id: String, events: Array[DomainEvent]) -> void:
+	var battle := _content.battle_by_id(battle_id)
+	if battle == null or battle.message_after_id == 0:
+		return
+	var message := _content.message_by_id(absi(battle.message_after_id))
+	if message != null:
+		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-battle-definition"}))
+
+
+func _finish_direct_battle(events: Array[DomainEvent]) -> SessionStep:
+	if _state.combat == null or not _state.combat.completed:
+		return _finish_failed(&"invalid_battle_continuation", "Post-battle completion requires a completed battle.", events)
+	var payload := _rules.combat_flow.ally_selection_payload(_state, _content)
+	if not payload.is_empty():
+		var request_id := "session.ally-selection.%d" % (_view_revision + 1)
+		_session_continuation = {"kind": "combat-ally-selection", "battleId": _state.combat.battle_id}
+		_session_interaction = InteractionRequest.new(request_id, &"ally_selection", payload)
+		return _finish_waiting(_session_interaction, events)
+	_append_session_battle_after_message(_state.combat.battle_id, events)
+	return _finish_completed(events)
 
 
 func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) -> SessionStep:
@@ -445,6 +568,13 @@ func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) ->
 				if result.state == ScenarioVmResult.State.FAILED:
 					_session_continuation.clear()
 					return _finish_failed(result.error_code, result.error_message, events)
+				if _events_have(result.events, &"destination_trigger_recheck_requested"):
+					var requested_map := _content.world.map_by_id(_state.party.map_id)
+					if requested_map == null:
+						_session_continuation.clear()
+						return _finish_failed(&"invalid_teleport", "Destination trigger recheck references an unavailable map.", events)
+					_set_post_move_continuation(requested_map, _state.party.coordinate, 1)
+					return _continue_post_move(events)
 				_session_continuation.clear()
 				return _finish_completed(events)
 			if effective.battle_minimum != 0 and not _state.party.conditions.is_active(7):
@@ -488,6 +618,8 @@ func _pending_interaction() -> InteractionRequest:
 
 
 func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
+	if _session_continuation.get("kind") == "combat-ally-selection":
+		return _respond_session_ally_selection(response)
 	if response.kind != &"yes_no" or not response.payload.has("accepted") or not response.payload["accepted"] is bool:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "The random encounter response must be a yes/no choice.")
 	if _session_continuation.get("randomBattleStage", "") != "surprise-choice":
@@ -514,6 +646,22 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 	return _finish_completed(events)
 
 
+func _respond_session_ally_selection(response: InteractionResponse) -> SessionStep:
+	if response.kind != &"ally_selection" or not response.payload.has("selectedIds"):
+		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Ally selection requires selectedIds.")
+	if _state.combat == null or not _state.combat.completed or _state.combat.battle_id != _session_continuation.get("battleId"):
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The completed battle is unavailable for ally selection.")
+	var result := _rules.combat_flow.apply_ally_selection(_state, _content, response.payload["selectedIds"])
+	if not result.ok:
+		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	_session_interaction = null
+	_session_continuation.clear()
+	var events: Array[DomainEvent] = []
+	events.assign(result.events)
+	_append_session_battle_after_message(_state.combat.battle_id, events)
+	return _finish_completed(events)
+
+
 func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: Array[DomainEvent]) -> SessionStep:
 	var effective := _state.world.random_region(region)
 	if effective.battle_maximum < effective.battle_minimum:
@@ -533,12 +681,33 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 		_session_continuation.clear()
 		return _finish_failed(battle_result.error_code, battle_result.error_message, events)
 	events.append_array(battle_result.events)
+	if not _event_payload(battle_result.events, &"monster_death_macro_requested").is_empty():
+		_session_interaction = null
+		_session_continuation.clear()
+		return _start_session_death_macro(events)
 	_session_interaction = null
 	_session_continuation.clear()
+	if battle_result.completed:
+		return _finish_direct_battle(events)
 	return _finish_completed(events)
 
 
 static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	if continuation.get("kind") == "combat-death-macro":
+		var death_fields: Array[String] = ["kind", "battleId", "combatantId", "programId"]
+		if continuation.size() != death_fields.size():
+			return false
+		for field: String in death_fields:
+			if not continuation.has(field) or not continuation[field] is String or continuation[field].is_empty():
+				return false
+		if session_interaction != null or vm_interaction == null or state.combat == null or state.combat.battle_id != continuation["battleId"]:
+			return false
+		return state.combat.monster_by_id(continuation["combatantId"]) != null and content.scenario.program_by_id(continuation["programId"]) != null
+	if continuation.get("kind") == "combat-ally-selection":
+		var ally_fields: Array[String] = ["kind", "battleId"]
+		if continuation.size() != ally_fields.size() or not continuation.get("battleId") is String or continuation["battleId"].is_empty():
+			return false
+		return vm_interaction == null and session_interaction != null and session_interaction.kind == &"ally_selection" and state.combat != null and state.combat.completed and state.combat.battle_id == continuation["battleId"]
 	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
 	if continuation.size() != fields.size():
 		return false
@@ -594,4 +763,4 @@ func _build_map_view() -> MapView:
 				feature_kinds.append(feature.kind)
 		var can_enter := cell.passable and not hidden_secret
 		cells.append(MapCellView.new(cell.coordinate, _state.world.terrain_for(map.id, cell), can_enter, cell.blocks_los, visible.has(cell.coordinate), _state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not cell.random_rect_ids().is_empty(), feature_kinds, edge_kinds, edge_passability))
-	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, _state.party.coordinate, cells)
+	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, _state.party.coordinate, cells, _state.world.map_is_dark(map))

@@ -27,7 +27,11 @@ func replace_scenario_program(action: ClassicActionDefinition, context: Dictiona
 			target_program_id = "complex:%d:result:%d" % [int(values[1]), int(values[4])]
 		_:
 			var current_trigger := _content.trigger_by_id(str(context.get("triggerId", "")))
-			var current_map := _content.world.map_by_id(current_trigger.map_id) if current_trigger != null else _content.world.map_by_id(_game_state.party.map_id)
+			var current_map: MapDefinition = null
+			if current_trigger != null and not current_trigger.map_id.is_empty():
+				current_map = _content.world.map_by_id(current_trigger.map_id)
+			if current_map == null:
+				current_map = _content.world.map_by_id(_game_state.party.map_id)
 			if current_map == null:
 				return ScenarioRuntimeOperationResult.failed(&"missing_trigger_context", "Classic opcode 7 cannot resolve the current map.")
 			var level_type := current_map.level_type

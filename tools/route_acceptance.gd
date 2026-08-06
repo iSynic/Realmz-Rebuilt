@@ -95,6 +95,9 @@ func _run_step(step_definition: Dictionary) -> void:
 		_fail("%s references unavailable trigger %s" % [step_id, trigger_id])
 		_stage(step_id, failure_count)
 		return
+	if trigger.map_id.is_empty() or _content.world.map_by_id(trigger.map_id) == null:
+		_run_program_step(step_id, step_definition, trigger, failure_count)
+		return
 	_validate_step_position(step_id, step_definition.get("position", {}), trigger)
 	_session._state.party.map_id = trigger.map_id
 	_session._state.party.coordinate = trigger.coordinate
@@ -120,6 +123,43 @@ func _run_step(step_definition: Dictionary) -> void:
 	if result.state == SessionStep.State.FAILED:
 		_fail("%s failed with %s: %s" % [step_id, result.error_code, result.error_message])
 	_validate_step_events(step_id, step_definition, events)
+	_stage(step_id, failure_count)
+
+
+func _run_program_step(step_id: String, step_definition: Dictionary, trigger: TriggerDefinition, failure_count: int) -> void:
+	var position: Variant = step_definition.get("position", {})
+	if not position is Dictionary:
+		_fail("%s has no source position" % step_id)
+		_stage(step_id, failure_count)
+		return
+	var map := _content.world.map_by_type_and_index(StringName(position.get("levelType", "")), int(position.get("levelIndex", -1)))
+	var coordinate := Vector2i(int(position.get("x", -1)), int(position.get("y", -1)))
+	if map == null or map.topology.cell_at(coordinate) == null:
+		_fail("%s source position is outside authoritative topology" % step_id)
+		_stage(step_id, failure_count)
+		return
+	_session._state.party.map_id = map.id
+	_session._state.party.coordinate = coordinate
+	_session._state.world.mark_visited(map.id, coordinate)
+	var events: Array[DomainEvent] = [DomainEvent.new(&"trigger_fired", {"triggerId": trigger.id, "source": "route-program"})]
+	var started := _session._scenario_vm.start_program(trigger.program_id, {"callingContext": "action", "triggerId": trigger.id, "mapId": map.id, "x": coordinate.x, "y": coordinate.y})
+	var result: SessionStep
+	if started.state == ScenarioVmResult.State.FAILED:
+		result = SessionStep.failed(0, started.error_code, started.error_message, events)
+	else:
+		var vm_result := _session._scenario_vm.run(_session._runtime_api)
+		events.append_array(vm_result.events)
+		if vm_result.state == ScenarioVmResult.State.FAILED:
+			result = SessionStep.failed(0, vm_result.error_code, vm_result.error_message, events)
+		elif vm_result.state == ScenarioVmResult.State.WAITING:
+			result = SessionStep.waiting(0, vm_result.interaction, events)
+		else:
+			result = SessionStep.completed(0, events)
+	var observed_events: Array[DomainEvent] = []
+	result = _drain_interactions(result, observed_events, step_id)
+	if result.state == SessionStep.State.FAILED:
+		_fail("%s failed with %s: %s" % [step_id, result.error_code, result.error_message])
+	_validate_step_events(step_id, step_definition, observed_events)
 	_stage(step_id, failure_count)
 
 
@@ -157,6 +197,8 @@ func _default_response(request: InteractionRequest, step_id: String) -> Interact
 			return InteractionResponse.new(request.request_id, request.kind, {"action": "leave"})
 		&"bank_action":
 			return InteractionResponse.new(request.request_id, request.kind, {"action": "leave", "amount": 0})
+		&"ally_selection":
+			return InteractionResponse.new(request.request_id, request.kind, {"selectedIds": request.payload.get("selectedIds", []).duplicate()})
 	_fail("%s yielded unsupported interaction %s" % [step_id, request.kind])
 	return null
 

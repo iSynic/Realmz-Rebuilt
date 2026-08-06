@@ -22,7 +22,7 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	for cell: MapCellView in map_view.cells():
 		var rect := Rect2(map_origin + Vector2(cell.coordinate) * cell_size, Vector2.ONE * cell_size)
-		draw_rect(rect, _cell_color(cell, map_view.level_type), true)
+		draw_rect(rect, _cell_color(cell, map_view.level_type, map_view.dark), true)
 		draw_rect(rect, Color(0.22, 0.25, 0.30), false, 1.0)
 		_draw_edges(cell, rect)
 		_draw_features(cell, rect)
@@ -41,16 +41,19 @@ func _draw() -> void:
 	_draw_minimap(map_view, font)
 
 
-func _cell_color(cell: MapCellView, level_type: StringName) -> Color:
+func _cell_color(cell: MapCellView, level_type: StringName, dark: bool = false) -> Color:
+	var color: Color
 	if not cell.visible:
-		return Color(0.025, 0.03, 0.04)
-	if not cell.passable:
-		return Color(0.16, 0.17, 0.20)
-	if cell.terrain_id.ends_with(".2"):
-		return Color(0.34, 0.50, 0.31)
-	if level_type == &"dungeon":
-		return Color(0.28, 0.27, 0.24)
-	return Color(0.20, 0.38, 0.27)
+		color = Color(0.025, 0.03, 0.04)
+	elif not cell.passable:
+		color = Color(0.16, 0.17, 0.20)
+	elif cell.terrain_id.ends_with(".2"):
+		color = Color(0.34, 0.50, 0.31)
+	elif level_type == &"dungeon":
+		color = Color(0.28, 0.27, 0.24)
+	else:
+		color = Color(0.20, 0.38, 0.27)
+	return color.darkened(0.45) if dark else color
 
 
 func _draw_edges(cell: MapCellView, rect: Rect2) -> void:

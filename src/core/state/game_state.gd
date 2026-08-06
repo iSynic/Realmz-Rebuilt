@@ -7,6 +7,16 @@ var world: WorldState
 var combat: CombatState
 var random_encounters_enabled: bool = true
 var camping_allowed: bool = true
+var party_in_boat: bool = false
+var party_camping: bool = false
+var priest_turning_allowed: bool = true
+var allies_suspended: bool = false
+var character_spellcasting: bool = false
+var monster_spellcasting: bool = false
+var spell_charging: bool = false
+var last_move_direction: Vector2i = Vector2i.ZERO
+var active_shop_id: String = ""
+var _shop_accept_ranges: Array[int] = []
 var last_battle_outcome: StringName = &"none"
 var party_setup_completed: bool = false
 var _searched_cells: Dictionary = {}
@@ -169,6 +179,18 @@ func set_shop_inflation(shop: ShopDefinition, percent: int) -> bool:
 	return true
 
 
+func set_active_shop(shop_id: String, accept_ranges: Array[int]) -> bool:
+	if shop_id.is_empty() or accept_ranges.size() != 4:
+		return false
+	active_shop_id = shop_id
+	_shop_accept_ranges = accept_ranges.duplicate()
+	return true
+
+
+func shop_accept_ranges() -> Array[int]:
+	return _shop_accept_ranges.duplicate()
+
+
 func to_data() -> Dictionary:
 	var searched: Array[String] = []
 	for key: Variant in _searched_cells.keys():
@@ -195,6 +217,17 @@ func to_data() -> Dictionary:
 		"combat": combat_data,
 		"randomEncountersEnabled": random_encounters_enabled,
 		"campingAllowed": camping_allowed,
+		"partyInBoat": party_in_boat,
+		"partyCamping": party_camping,
+		"priestTurningAllowed": priest_turning_allowed,
+		"alliesSuspended": allies_suspended,
+		"characterSpellcasting": character_spellcasting,
+		"monsterSpellcasting": monster_spellcasting,
+		"spellCharging": spell_charging,
+		"lastMoveX": last_move_direction.x,
+		"lastMoveY": last_move_direction.y,
+		"activeShopId": active_shop_id,
+		"shopAcceptRanges": _shop_accept_ranges.duplicate(),
 		"lastBattleOutcome": String(last_battle_outcome),
 		"partySetupCompleted": party_setup_completed,
 		"questValues": quests,
@@ -243,6 +276,42 @@ static func from_data(data: Variant) -> GameState:
 			return null
 		state.random_encounters_enabled = data["randomEncountersEnabled"]
 		state.camping_allowed = data["campingAllowed"]
+		if data.has("partyInBoat") and (not data["partyInBoat"] is bool or not data.get("partyCamping") is bool):
+			return null
+		state.party_in_boat = bool(data.get("partyInBoat", false))
+		state.party_camping = bool(data.get("partyCamping", false))
+		if data.has("priestTurningAllowed") and not data["priestTurningAllowed"] is bool:
+			return null
+		state.priest_turning_allowed = bool(data.get("priestTurningAllowed", true))
+		if data.has("alliesSuspended") and not data["alliesSuspended"] is bool:
+			return null
+		state.allies_suspended = bool(data.get("alliesSuspended", false))
+		for field: String in ["characterSpellcasting", "monsterSpellcasting", "spellCharging"]:
+			if data.has(field) and not data[field] is bool:
+				return null
+		state.character_spellcasting = bool(data.get("characterSpellcasting", false))
+		state.monster_spellcasting = bool(data.get("monsterSpellcasting", false))
+		state.spell_charging = bool(data.get("spellCharging", false))
+		if data.has("lastMoveX") or data.has("lastMoveY"):
+			var last_x := _signed_integer(data.get("lastMoveX"))
+			var last_y := _signed_integer(data.get("lastMoveY"))
+			var last_direction := Vector2i(last_x, last_y)
+			if last_direction not in [Vector2i.ZERO, Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
+				return null
+			state.last_move_direction = last_direction
+		if data.has("activeShopId") or data.has("shopAcceptRanges"):
+			if not data.get("activeShopId") is String or not data.get("shopAcceptRanges") is Array:
+				return null
+			var accept_ranges: Array[int] = []
+			for value: Variant in data["shopAcceptRanges"]:
+				var accepted := _signed_integer(value)
+				if accepted < -32_768 or accepted > 32_767:
+					return null
+				accept_ranges.append(accepted)
+			if not String(data["activeShopId"]).is_empty() and not state.set_active_shop(data["activeShopId"], accept_ranges):
+				return null
+			if String(data["activeShopId"]).is_empty() and not accept_ranges.is_empty():
+				return null
 		state.last_battle_outcome = StringName(data["lastBattleOutcome"])
 		state.party_setup_completed = bool(data.get("partySetupCompleted", false))
 		for key: Variant in data["questValues"]:

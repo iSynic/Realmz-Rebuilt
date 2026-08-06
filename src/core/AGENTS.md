@@ -19,6 +19,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `GameSession` owns scenario execution state and is the only object allowed to connect VM operations to domain mutations.
 - Session state owns encounter attempts/type flags, equipment escrow, mutable shop stock, combat, and scenario-program replacement. These are save data, never mutations of installed package definitions.
 - Session state owns non-VM interaction continuations as well as VM continuations. Random-rectangle surprise choices serialize with their owning region and resume only through `GameSession.respond`.
+- Monster death macros execute before battle resolution. Their combatant identity, VM interaction, and direct-session continuation belong to the save aggregate and resume only through `GameSession.respond`.
 - A placed Action Point's Classic header is a post-action map/coordinate destination. `GameSession` applies it only after that AP completes, rechecks the destination cell once, and serializes the recheck depth so save/resume cannot repeat or skip it.
 - Every gameplay random draw goes through the session-owned `RealmzRng` and is serializable.
 - `RealmzRng` uses the documented QuickDraw 16807/mod-2147483647 state transition and Castle's inclusive scaling; raw scripted values are test-only branch controls.
@@ -27,6 +28,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - Random rectangles follow Castle's reverse region order, 1-in-10,000 chance scale, three ordered random-door draws, signed one-shot door state, surprise choice, and battle selection through the session RNG.
 - `GameView` and its map/cell views are detached read models for presentation and never expose mutable simulation objects.
 - Classic-visible Realmz behavior is the fixed ruleset. Fidelity corrections require a documented decision and source/oracle tests.
+- Unsuspended held-over allies are consumed into the combat roster as non-traitors. After combat, surviving friendly monsters with nonzero `canSummon` eligibility return only through the typed Classic body-count selection; negative eligibility is mandatory. Monster targeting compares allegiance, so hostile monsters can attack party characters or friendly monsters and friendly monsters target hostiles.
 
 ## Work Guidance
 

@@ -9,6 +9,7 @@ var _visited_cells: Dictionary = {}
 var _trigger_chances: Dictionary = {}
 var _acquired_maps: Dictionary = {}
 var _random_regions: Dictionary = {}
+var _map_darkness: Dictionary = {}
 
 
 func terrain_for(map_id: String, cell: MapCell) -> String:
@@ -79,6 +80,15 @@ func random_region(region: RandomEncounterRegion) -> RandomRegionState:
 	return RandomRegionState.new(region.id, region.chance_ten_thousand, region.battle_minimum, region.battle_maximum, region.random_door_percents())
 
 
+func set_map_darkness(map_id: String, dark: bool) -> void:
+	if not map_id.is_empty():
+		_map_darkness[map_id] = dark
+
+
+func map_is_dark(map: MapDefinition) -> bool:
+	return false if map == null else bool(_map_darkness.get(map.id, map.dark))
+
+
 func mark_visited(map_id: String, coordinate: Vector2i) -> void:
 	_visited_cells[_cell_key(map_id, coordinate)] = true
 
@@ -102,6 +112,7 @@ func to_data() -> Dictionary:
 		"triggerChances": _sorted_dictionary(_trigger_chances),
 		"acquiredMaps": _sorted_keys(_acquired_maps),
 		"randomRegions": random_regions,
+		"mapDarkness": _sorted_dictionary(_map_darkness),
 	}
 
 
@@ -142,6 +153,13 @@ static func from_data(data: Variant) -> WorldState:
 			if region == null or state._random_regions.has(region.id):
 				return null
 			state._random_regions[region.id] = region
+	if data.has("mapDarkness"):
+		if not data["mapDarkness"] is Dictionary:
+			return null
+		for key: Variant in data["mapDarkness"]:
+			if not key is String or key.is_empty() or not data["mapDarkness"][key] is bool:
+				return null
+			state._map_darkness[key] = data["mapDarkness"][key]
 	return state
 
 

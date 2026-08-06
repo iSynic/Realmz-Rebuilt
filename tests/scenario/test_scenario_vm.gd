@@ -25,6 +25,36 @@ func run() -> void:
 	_test_program_replacement_and_redirect(loaded.content)
 	_test_scenario_spell_opcodes(loaded.content)
 	_test_combat_fumble_mutation(loaded.content)
+	_test_classic_encounter_break(loaded.content)
+	_test_classic_party_shift(loaded.content)
+	_test_classic_game_time_mutation(loaded.content)
+	_test_classic_game_time_branch(loaded.content)
+	_test_classic_camping_availability(loaded.content)
+	_test_classic_ally_branch(loaded.content)
+	_test_classic_misc_branch(loaded.content)
+	_test_classic_party_backup(loaded.content)
+	_test_classic_map_darkness(loaded.content)
+	_test_classic_teleport_and_recheck(loaded.content)
+	_test_classic_quest_values(loaded.content)
+	_test_registration_marker(loaded.content)
+	_test_classic_party_mode(loaded.content)
+	_test_scrolling_text_event(loaded.content)
+	_test_classic_shop_configuration(loaded.content)
+	_test_classic_priest_turning(loaded.content)
+	_test_classic_experience_loss_and_drop(loaded.content)
+	_test_classic_character_money_loss(loaded.content)
+	_test_classic_battle_macro_controls(loaded.content)
+	_test_classic_selected_character_alteration(loaded.content)
+	_test_classic_combat_monster_alteration(loaded.content)
+	_test_classic_ally_participation(loaded.content)
+	_test_classic_bodycount_selection(loaded.content)
+	_test_classic_spellcasting_flags(loaded.content)
+	_test_classic_identity_selection(loaded.content)
+	_test_classic_monster_route(loaded.content)
+	_test_classic_random_items(loaded.content)
+	_test_classic_selected_level_up(loaded.content)
+	_test_classic_death_macro_revival(loaded.content)
+	_test_automatic_monster_death_macro(loaded.content)
 	_test_aogm_dispatch_has_no_fallback(loaded.content)
 	_test_classic_shell_domain_route(loaded.content)
 
@@ -301,6 +331,10 @@ func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> vo
 	character.damage_bonus = 30
 	character.luck = 1
 	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	var ally_definition := content.monster_by_classic_id(1)
+	assert_not_null(ally_definition, "battle fixture contains an ally-capable Classic monster")
+	var ally := MonsterState.new("ally.battle-participant", ally_definition.id, "Battle Ally", 20, 20, 1, 1, 0, 0, 0, false)
+	party.add_ally(ally)
 	var state := GameState.new(party, RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new(), RealmzRules.new())
 	var item := api.execute_safe("core.inventory.grant-item", {"characterId": character.id, "itemId": "classic.item.901", "identified": true}, "request.item")
@@ -321,15 +355,21 @@ func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> vo
 	var waiting := vm.run(api)
 	assert_equal(waiting.state, ScenarioVmResult.State.WAITING, "Classic battle opcode yields a typed combat action instead of delegating simulation to presentation")
 	assert_equal(waiting.interaction.kind, &"combat_action", "battle continuation uses the shared typed host boundary")
+	assert_not_null(state.combat.monster_by_id(ally.id), "unsuspended party allies enter the shared combat roster")
+	assert_equal(party.allies().size(), 0, "Classic battle setup consumes participating held-over allies")
 	var saved := ScenarioVmSnapshot.from_data(vm.snapshot().to_data())
 	var restored := ScenarioVm.new()
 	restored.configure(definition)
 	assert_true(restored.restore(saved), "active battle VM continuation serializes at the player turn")
 	var target_id: String = waiting.interaction.payload["targets"][0]["id"]
 	var completed := restored.resume(InteractionResponse.new(waiting.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "attack", "targetId": target_id}), api)
+	var battle_events: Array[DomainEvent] = []
+	battle_events.assign(completed.events)
+	if completed.state == ScenarioVmResult.State.WAITING and completed.interaction.kind == &"ally_selection":
+		completed = restored.resume(InteractionResponse.new(completed.interaction.request_id, &"ally_selection", {"selectedIds": completed.interaction.payload["selectedIds"]}), api)
 	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "typed combat response resolves inside the restored session VM")
 	assert_equal(state.last_battle_outcome, &"victory", "battle completion and outcome remain in GameState")
-	assert_true(_event_has(completed.events, &"battle_completed"), "battle completion is published as a domain event")
+	assert_true(_event_has(battle_events, &"battle_completed"), "battle completion is published as a domain event")
 	var extra_code_battle := api.execute_classic(ClassicActionDefinition.new(0, 2, 2, 70, false, [0, 0, 0, 0, 0]), "request.extra-code-battle")
 	assert_equal(extra_code_battle.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic battle opcode accepts an authored Extra Code row")
 	assert_equal(_event_classic_id(extra_code_battle.events, &"battle_started"), 0, "Classic battle opcode resolves the battle ID from Extra Code slot zero")
@@ -451,6 +491,559 @@ func _test_combat_fumble_mutation(content: RealmzContent) -> void:
 	assert_equal(character.inventory().size(), 0, "fumble removes the equipped item from the combatant")
 	assert_equal(party.storage().size(), 1, "fumbled item remains recoverable in session-owned party storage")
 	assert_true(_event_has(fumbled.events, &"combatant_fumbled"), "fumble mutation publishes its outcome")
+
+
+func _test_classic_party_shift(content: RealmzContent) -> void:
+	var dungeon := content.world.map_by_type_and_index(&"dungeon", 0)
+	assert_not_null(dungeon, "party-shift fixture has a normalized dungeon topology")
+	if dungeon == null:
+		return
+	var character := CharacterState.new("shift.character", "Shifter", 10, 10)
+	var party := PartyState.new(dungeon.id, Vector2i(1, 1), [character])
+	var state := GameState.new(party, RealmzClock.new())
+	var fixed_rng := RealmzRng.new(1)
+	var api := RealmzRuntimeApi.new(content, state, fixed_rng, ScenarioActionState.new())
+	var fixed := api.execute_classic(ClassicActionDefinition.new(0, 61, 61, 0, false, [0, 1, -1, 0, 0]), "request.fixed-shift")
+	assert_equal(fixed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 61 applies authored X/Y offsets on the current map")
+	assert_equal(party.coordinate, Vector2i(2, 0), "fixed party shift uses Extra Code X then Y without changing maps")
+	assert_equal(fixed_rng.snapshot().draw_count, 0, "fixed party shift consumes no gameplay randomness")
+	assert_true(state.world.was_visited(dungeon.id, Vector2i(2, 0)), "shifted destination becomes visible session state")
+	assert_true(_event_has(fixed.events, &"party_shifted"), "party shift publishes a detached presentation observation")
+
+	party.coordinate = Vector2i(1, 1)
+	var random_rng := ScriptedRng.new([-32_767, 0, 0, 32_767])
+	var random_api := RealmzRuntimeApi.new(content, state, random_rng, ScenarioActionState.new())
+	var random := random_api.execute_classic(ClassicActionDefinition.new(0, 61, 61, 0, false, [0, 1, 1, 1, 0]), "request.random-shift")
+	assert_equal(random.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 61 supports Castle's random signed-offset mode")
+	assert_equal(party.coordinate, Vector2i(0, 2), "random party shift consumes sign then inclusive magnitude for each axis")
+	assert_equal(random_rng.snapshot().draw_count, 4, "random party shift preserves Castle's four-draw order")
+	assert_equal(random_rng.trace()[0]["tag"], "classic.opcode61.x-sign", "party-shift trace labels the first sign draw")
+	assert_equal(random_rng.trace()[3]["tag"], "classic.opcode61.y-magnitude", "party-shift trace labels the final magnitude draw")
+
+	party.coordinate = Vector2i.ZERO
+	var rejected := api.execute_classic(ClassicActionDefinition.new(0, 61, 61, 0, false, [0, -1, 0, 0, 0]), "request.out-of-bounds-shift")
+	assert_equal(rejected.error_code, &"shift_out_of_bounds", "party shift rejects a destination absent from authoritative topology")
+	assert_equal(party.coordinate, Vector2i.ZERO, "rejected party shift leaves session location untouched")
+
+
+func _test_classic_encounter_break(content: RealmzContent) -> void:
+	var stop := ClassicActionDefinition.new(0, 34, 34, 0, false, [])
+	var unreachable := ClassicActionDefinition.new(1, 1, 1, 901, false, [])
+	var definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("encounter-break", &"complex-encounter-result", "test", [stop, unreachable])], [])
+	var vm := ScenarioVm.new()
+	vm.configure(definition)
+	vm.start_program("encounter-break", {"callingContext": "encounter"})
+	var result := vm.run(_runtime_api(content, ScenarioActionState.new()))
+	assert_equal(result.state, ScenarioVmResult.State.COMPLETED, "Classic opcode 34 ends the issuing encounter-result frame")
+	assert_true(_event_has(result.events, &"encounter_loop_finished"), "encounter break publishes an explicit observation")
+	assert_equal(_message_texts(result.events), [], "encounter break does not execute later result slots")
+
+
+func _test_classic_game_time_mutation(content: RealmzContent) -> void:
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("clock.character", "Clock", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var offset := api.execute_classic(ClassicActionDefinition.new(0, 63, 63, 0, false, [2, 1, 2, 30, 0]), "request.offset-clock")
+	assert_equal(offset.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 63 offsets the session-owned game clock")
+	assert_equal(state.clock.total_minutes(), 1_590, "clock offset combines days, hours, and minutes without wall-clock access")
+	assert_equal(state.clock.day(), 2, "clock offset preserves the runtime's one-based Realmz day")
+	var absolute := api.execute_classic(ClassicActionDefinition.new(0, 63, 63, 0, false, [1, -1, 7, 15, 0]), "request.set-clock")
+	assert_equal(absolute.state, ScenarioRuntimeOperationResult.State.COMPLETED, "absolute clock mode accepts Castle's -1 preserve sentinel")
+	assert_equal(state.clock.total_minutes(), 1_875, "absolute clock mutation preserves the current day and replaces hour/minute")
+	var rejected := api.execute_classic(ClassicActionDefinition.new(0, 63, 63, 0, false, [2, -10, 0, 0, 0]), "request.invalid-clock")
+	assert_equal(rejected.error_code, &"invalid_game_time", "clock mutation fails explicitly before time zero")
+	assert_equal(state.clock.total_minutes(), 1_875, "rejected clock mutation leaves session time untouched")
+
+
+func _test_classic_game_time_branch(content: RealmzContent) -> void:
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("time-branch.character", "Time Branch", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new(8 * 60 + 30))
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var action := ClassicActionDefinition.new(0, 64, 64, 0, true, [-1, 8, 59, 11, 12])
+	var early := api.execute_classic(action, "request.time-early")
+	assert_equal(early.directive.get("targetId"), 11, "Classic opcode 64 takes the before-or-equal game-time branch")
+	assert_true(early.directive.get("gosub"), "game-time branch preserves Classic GOSUB identity")
+	state.clock.set_total_minutes(9 * 60)
+	var late := api.execute_classic(action, "request.time-late")
+	assert_equal(late.directive.get("targetId"), 12, "Classic opcode 64 takes the after-time branch")
+	assert_true(_event_has(late.events, &"game_time_branch_checked"), "game-time branch publishes the observed day/hour comparison")
+
+
+func _test_classic_camping_availability(content: RealmzContent) -> void:
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("camp.character", "Camp", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var disabled := api.execute_classic(ClassicActionDefinition.new(0, 66, 66, 1, false, []), "request.disable-camp")
+	assert_false(state.camping_allowed, "Classic opcode 66 ID 1 disables camping")
+	assert_true(_event_has(disabled.events, &"camping_availability_changed"), "camping availability change is presentation-observable")
+	api.execute_classic(ClassicActionDefinition.new(0, 66, 66, 0, false, []), "request.enable-camp")
+	assert_true(state.camping_allowed, "Classic opcode 66 ID 0 enables camping")
+
+
+func _test_classic_ally_branch(content: RealmzContent) -> void:
+	var monster := content.monster_by_classic_id(1)
+	assert_not_null(monster, "ally-branch fixture contains a Classic monster identity")
+	if monster == null:
+		return
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("ally.character", "Ally Test", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var action := ClassicActionDefinition.new(0, 87, 87, 0, true, [1, 0, 1, 7, 0])
+	var absent := api.execute_classic(action, "request.ally-absent")
+	assert_equal(absent.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 87 can continue when an ally is absent")
+	assert_true(absent.directive.is_empty(), "absent ally behavior one does not invent a branch")
+	party.add_ally(MonsterState.new("ally.instance", monster.id, monster.name, 5, 5))
+	var present := api.execute_classic(action, "request.ally-present")
+	assert_equal(present.directive.get("kind"), "branch-xap", "present ally branches through the ordinary Classic VM directive")
+	assert_equal(present.directive.get("targetId"), 7, "ally branch keeps its authored XAP target")
+	assert_true(present.directive.get("gosub"), "negative ally opcode retains Classic GOSUB behavior")
+	assert_true(_event_has(present.events, &"ally_branch_checked"), "ally branch publishes the tested identity and result")
+
+
+func _test_classic_misc_branch(content: RealmzContent) -> void:
+	var character := CharacterState.new("misc.character", "Misc Test", 10, 10)
+	character.level = 5
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var level_branch := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, true, [7, 3, 0, 8, 0]), "request.misc-level")
+	assert_equal(level_branch.directive.get("kind"), "branch-xap", "Classic opcode 86 branches on total party level")
+	assert_equal(level_branch.directive.get("targetId"), 8, "miscellaneous branch uses its matched target")
+	var boat_branch := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 0, 9, 0]), "request.misc-boat")
+	assert_true(boat_branch.directive.is_empty(), "boat test continues while the party is not in a boat")
+	state.party_in_boat = true
+	boat_branch = api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 0, 9, 0]), "request.misc-boat-present")
+	assert_equal(boat_branch.directive.get("targetId"), 9, "boat status is session-owned branch state")
+	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(round_trip, "boat and camping branch state remains inside the save aggregate")
+	assert_true(round_trip.party_in_boat and not round_trip.party_camping, "miscellaneous status flags restore exactly")
+
+
+func _test_classic_party_backup(content: RealmzContent) -> void:
+	var map := content.world.map_by_id(content.start_map_id)
+	var source := content.start_coordinate
+	var direction := Vector2i.RIGHT
+	if map.topology.cell_at(source - direction) == null:
+		direction = Vector2i.LEFT
+	assert_not_null(map.topology.cell_at(source - direction), "party-backup fixture has a previous land cell")
+	if map.topology.cell_at(source - direction) == null:
+		return
+	var party := PartyState.new(map.id, source, [CharacterState.new("backup.character", "Backup", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	state.last_move_direction = direction
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var backed_up := api.execute_classic(ClassicActionDefinition.new(0, 101, 101, 0, false, []), "request.backup")
+	assert_equal(backed_up.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 101 reverses the last land movement direction")
+	assert_equal(party.coordinate, source - direction, "party backup mutates only the session-owned location")
+	assert_true(_event_has(backed_up.events, &"party_backed_up"), "party backup publishes its source and destination")
+	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(round_trip, "last movement direction survives the central save aggregate")
+	assert_equal(round_trip.last_move_direction, direction, "restored backup direction is exact")
+
+
+func _test_classic_map_darkness(content: RealmzContent) -> void:
+	var map := content.world.map_by_id(content.start_map_id)
+	var party := PartyState.new(map.id, content.start_coordinate, [CharacterState.new("dark.character", "Dark", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var changed := api.execute_classic(ClassicActionDefinition.new(0, 106, 106, 0, false, [2, 0, 0, 0, 0]), "request.dark")
+	assert_true(state.world.map_is_dark(map), "Classic opcode 106 stores current-map darkness as a world overlay")
+	assert_true(_event_has(changed.events, &"map_darkness_changed"), "map darkness change is presentation-observable")
+	var round_trip := WorldState.from_data(JSON.parse_string(JSON.stringify(state.world.to_data())))
+	assert_not_null(round_trip, "map darkness overlay serializes with the authoritative world state")
+	assert_true(round_trip.map_is_dark(map), "restored map darkness overrides immutable map metadata")
+	var unchanged := api.execute_classic(ClassicActionDefinition.new(0, 106, 106, 0, false, [2, 1, 0, 0, 0]), "request.dark-unchanged")
+	assert_equal(unchanged.directive.get("kind"), "finish", "opcode 106 can discontinue the issuing script when darkness already matches")
+
+
+func _test_classic_teleport_and_recheck(content: RealmzContent) -> void:
+	var map := content.world.map_by_id(content.start_map_id)
+	var target := content.start_coordinate
+	for cell: MapCell in map.topology.cells():
+		if cell.coordinate != content.start_coordinate:
+			target = cell.coordinate
+			break
+	assert_true(target != content.start_coordinate, "teleport fixture has a second authoritative cell")
+	var party := PartyState.new(map.id, content.start_coordinate, [CharacterState.new("teleport.character", "Teleport", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var action := ClassicActionDefinition.new(0, 20, 20, 0, false, [-1, target.x, target.y, 77, 1])
+	var teleported := api.execute_classic(action, "request.teleport")
+	assert_equal(teleported.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 20 teleports within the current map using Castle's -1 preserve sentinel")
+	assert_equal(party.coordinate, target, "teleport mutates the session-owned party location")
+	assert_true(_event_has(teleported.events, &"sound_requested"), "opcode 20 publishes its authored post-teleport sound")
+	assert_equal(_message_texts(teleported.events), ["The Realmz 2.0 fixture is deterministic."], "opcode 20 displays its authored post-teleport message")
+	assert_equal(teleported.directive.get("kind"), "finish", "opcode 20 ends the current script before destination AP activation")
+	assert_true(_event_has(teleported.events, &"destination_trigger_recheck_requested"), "opcode 20 requests destination trigger discovery through GameSession")
+
+
+func _test_classic_quest_values(content: RealmzContent) -> void:
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("quest.character", "Quest", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var adjusted := api.execute_classic(ClassicActionDefinition.new(0, 76, 76, 0, false, [13, 150, 0, 0, 0]), "request.quest-adjust")
+	assert_equal(adjusted.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 76 adjusts a session-owned quest value")
+	assert_equal(state.quest_value(13), 127, "quest adjustment preserves Castle's signed-byte clamp")
+	var matched := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, true, [13, 100, 0, 7, 8]), "request.quest-branch")
+	assert_equal(matched.directive.get("targetId"), 8, "Classic opcode 77 branches when quest value reaches its threshold")
+	assert_true(matched.directive.get("gosub"), "quest-value branch preserves Classic GOSUB identity")
+	state.set_quest_value(13, 10)
+	var missing := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [13, 100, 0, 7, 8]), "request.quest-branch-low")
+	assert_equal(missing.directive.get("targetId"), 7, "quest-value branch uses its below-threshold target")
+
+
+func _test_registration_marker(content: RealmzContent) -> void:
+	var api := _runtime_api(content, ScenarioActionState.new())
+	var registration := api.execute_classic(ClassicActionDefinition.new(0, 98, 98, 1, false, []), "request.registration")
+	assert_equal(registration.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Castle's open-source opcode 98 path performs no registration gate")
+	assert_true(_event_has(registration.events, &"classic_control_marker"), "registration no-op remains explicit in the domain trace")
+
+
+func _test_classic_party_mode(content: RealmzContent) -> void:
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("mode.character", "Mode", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var requires_boat := api.execute_classic(ClassicActionDefinition.new(0, 103, 103, 0, false, [1, 0, 0, 0, 0]), "request.require-boat")
+	assert_equal(requires_boat.directive.get("kind"), "finish", "Classic opcode 103 ends the script when required boat state is absent")
+	var enter_boat := api.execute_classic(ClassicActionDefinition.new(0, 103, 103, 0, false, [0, 0, 1, 0, 0]), "request.enter-boat")
+	assert_true(state.party_in_boat, "Classic opcode 103 can place the party in a boat")
+	assert_true(enter_boat.directive.is_empty(), "party-mode mutation continues when no status check fails")
+	var excludes_boat := api.execute_classic(ClassicActionDefinition.new(0, 103, 103, 0, false, [2, 0, 0, 0, 0]), "request.exclude-boat")
+	assert_equal(excludes_boat.directive.get("kind"), "finish", "Classic opcode 103 can require the party to be outside a boat")
+
+
+func _test_scrolling_text_event(content: RealmzContent) -> void:
+	var api := _runtime_api(content, ScenarioActionState.new())
+	var result := api.execute_classic(ClassicActionDefinition.new(0, 62, 62, -1, false, []), "request.scrolling-text")
+	assert_equal(result.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 62 emits scrolling text without making animation a simulation boundary")
+	assert_true(_event_has(result.events, &"scrolling_text_requested"), "scrolling text crosses the host boundary as a presentation event")
+
+
+func _test_classic_shop_configuration(content: RealmzContent) -> void:
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("shop-config.character", "Shop Config", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var configured := api.execute_classic(ClassicActionDefinition.new(0, 73, 73, 0, false, [0, 1, 799, 800, 970]), "request.configure-shop")
+	assert_equal(configured.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 73 configures a shop without forcing presentation")
+	assert_equal(state.active_shop_id, "classic.shop.0", "configured shop identity is session-owned")
+	assert_equal(state.shop_accept_ranges(), [1, 799, 800, 970], "shop sale restrictions preserve both authored ranges")
+	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(round_trip, "active shop and restrictions serialize in the central save aggregate")
+	assert_equal(round_trip.shop_accept_ranges(), state.shop_accept_ranges(), "restored shop restrictions are exact")
+
+
+func _test_classic_priest_turning(content: RealmzContent) -> void:
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("turning.character", "Turning", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var disabled := api.execute_classic(ClassicActionDefinition.new(0, 82, 82, 0, false, []), "request.turning-off")
+	assert_false(state.priest_turning_allowed, "Classic opcode 82 disables priest turning in session state")
+	assert_true(_event_has(disabled.events, &"priest_turning_availability_changed"), "turning availability publishes an explicit domain event")
+	var enabled := api.execute_classic(ClassicActionDefinition.new(0, 83, 83, 0, false, []), "request.turning-on")
+	assert_true(state.priest_turning_allowed, "Classic opcode 83 restores priest turning")
+	assert_true(_event_has(enabled.events, &"message_shown"), "Castle's turning feedback crosses the presentation boundary as an event")
+	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(round_trip, "priest-turning availability serializes in the central save aggregate")
+	assert_true(round_trip.priest_turning_allowed, "restored turning availability is exact")
+
+
+func _test_classic_experience_loss_and_drop(content: RealmzContent) -> void:
+	var first := CharacterState.new("penalty.first", "First", 10, 10)
+	var second := CharacterState.new("penalty.second", "Second", 10, 10)
+	first.experience = 100
+	second.experience = 100
+	first.carried_load = 12
+	first.set_inventory([ItemInstance.new("penalty.item", "item.fixture.sword", 0, true, true)])
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [first, second])
+	var state := GameState.new(party, RealmzClock.new())
+	state.set_selected_character_ids([second.id])
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	api.execute_classic(ClassicActionDefinition.new(0, 90, 90, 0, false, [30, 1, 0, 0, 0]), "request.take-victory")
+	assert_equal(first.experience, 100, "Classic opcode 90 selected mode leaves unselected characters unchanged")
+	assert_equal(second.experience, 70, "Classic opcode 90 removes authored experience from selected characters")
+	var dropped := api.execute_classic(ClassicActionDefinition.new(0, 91, 91, 0, false, []), "request.drop-equipment")
+	assert_equal(first.inventory().size(), 0, "Classic opcode 91 removes every carried item")
+	assert_equal(first.carried_load, 0, "dropping all equipment clears carried load")
+	assert_true(_event_has(dropped.events, &"party_equipment_dropped"), "bulk equipment loss is explicit in the domain trace")
+
+
+func _test_classic_character_money_loss(content: RealmzContent) -> void:
+	var first := CharacterState.new("money.first", "First", 10, 10)
+	var second := CharacterState.new("money.second", "Second", 10, 10)
+	first.money.jewelry = 2
+	second.money.jewelry = 3
+	first.carried_load = 30
+	second.carried_load = 45
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [first, second])
+	var state := GameState.new(party, RealmzClock.new())
+	state.set_selected_character_ids([second.id])
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var cleared := api.execute_classic(ClassicActionDefinition.new(0, 60, 60, 0, false, [3, 1, 0, 0, 0]), "request.clear-money")
+	assert_equal(first.money.jewelry, 2, "Classic opcode 60 selected mode preserves unselected character wealth")
+	assert_equal(second.money.jewelry, 0, "Classic opcode 60 clears the selected authored wealth kind")
+	assert_equal(second.carried_load, 0, "jewelry removal preserves Castle's fifteen-load-units convention")
+	assert_equal(cleared.value, 3, "wealth-loss result reports the removed quantity")
+
+
+func _test_classic_battle_macro_controls(content: RealmzContent) -> void:
+	var definition := content.monster_by_classic_id(1)
+	assert_not_null(definition, "battle-macro fixture contains a Classic monster identity")
+	if definition == null:
+		return
+	var character := CharacterState.new("macro.character", "Macro", 10, 10)
+	var monster := MonsterState.new("macro.monster", definition.id, definition.name, 5, 5)
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	var state := GameState.new(party, RealmzClock.new())
+	state.combat = CombatState.new("classic.battle.0", [monster], -9)
+	state.combat.round_number = 2
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var round_branch := api.execute_classic(ClassicActionDefinition.new(0, 126, 126, 0, false, [0, 1, 0, 11, 0]), "request.round-macro")
+	assert_equal(round_branch.directive.get("targetId"), 11, "Classic opcode 126 branches to the authored battle macro on its matching completed round")
+	assert_equal(state.combat.macro_id, 0, "single-use battle macro clears its mutable session-owned hook")
+	var present := api.execute_classic(ClassicActionDefinition.new(0, 127, 127, 1, false, []), "request.monster-present")
+	assert_true(present.directive.is_empty(), "Classic opcode 127 continues while its living monster identity is present")
+	monster.current_health = 0
+	var absent := api.execute_classic(ClassicActionDefinition.new(0, 127, 127, 1, false, []), "request.monster-absent")
+	assert_equal(absent.directive.get("kind"), "finish", "monster-presence failure ends the active battle macro")
+	var round_trip := CombatState.from_data(JSON.parse_string(JSON.stringify(state.combat.to_data())))
+	assert_not_null(round_trip, "mutable battle macro identity serializes with combat state")
+	assert_equal(round_trip.macro_id, state.combat.macro_id, "restored battle macro identity is exact")
+
+
+func _test_classic_selected_character_alteration(content: RealmzContent) -> void:
+	var first := CharacterState.new("alter.first", "First", 10, 10)
+	var second := CharacterState.new("alter.second", "Second", 10, 10)
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [first, second])
+	var state := GameState.new(party, RealmzClock.new())
+	state.set_selected_character_ids([second.id])
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	api.execute_classic(ClassicActionDefinition.new(0, 108, 108, 0, false, [7, -20, 0, 0, 0]), "request.alter-stamina")
+	assert_equal(first.maximum_health, 10, "Classic opcode 108 leaves unselected characters unchanged")
+	assert_equal(second.maximum_health, 2, "selected stamina alteration preserves Castle's minimum of two")
+	assert_equal(second.current_health, 2, "direct model remains valid when maximum stamina drops below current stamina")
+	api.execute_classic(ClassicActionDefinition.new(0, 108, 108, 0, false, [1, 3, 0, 0, 0]), "request.alter-attacks")
+	assert_equal(second.attack_bonus, 3, "attacks-per-round bonus is represented independently from the character's base attacks")
+	var round_trip := CharacterState.from_data(JSON.parse_string(JSON.stringify(second.to_data())))
+	assert_not_null(round_trip, "new Classic character alteration fields serialize in the central save aggregate")
+	assert_equal(round_trip.attack_bonus, second.attack_bonus, "restored attack bonus is exact")
+
+
+func _test_classic_combat_monster_alteration(content: RealmzContent) -> void:
+	var definition := content.monster_by_classic_id(1)
+	assert_not_null(definition, "combat-alteration fixture contains a Classic monster identity")
+	if definition == null:
+		return
+	var monster := MonsterState.new("alter.monster", definition.id, definition.name, 5, 5)
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("alter.monster.character", "Alter", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	state.combat = CombatState.new("classic.battle.0", [monster])
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var altered := api.execute_classic(ClassicActionDefinition.new(0, 120, 120, 0, false, [2, 1, 1, -1, 0]), "request.alter-monster")
+	assert_false(monster.traitor, "Classic opcode 120 can convert an authored combat monster to the party side")
+	assert_equal(altered.value, 1, "combat monster alteration respects its authored count")
+	monster.icon_id = 27
+	var round_trip := MonsterState.from_data(JSON.parse_string(JSON.stringify(monster.to_data())))
+	assert_not_null(round_trip, "mutable combat icon identity serializes with monster state")
+	assert_equal(round_trip.icon_id, 27, "restored combat icon identity is exact")
+
+
+func _test_classic_ally_participation(content: RealmzContent) -> void:
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("suspend.character", "Suspend", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var suspended := api.execute_classic(ClassicActionDefinition.new(0, 105, 105, 1, false, []), "request.suspend-allies")
+	assert_true(state.allies_suspended, "Classic opcode 105 suspends ally battle participation in session state")
+	assert_true(_event_has(suspended.events, &"ally_participation_changed"), "ally participation change is explicit in the domain trace")
+	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(round_trip, "ally participation state serializes in the central save aggregate")
+	assert_true(round_trip.allies_suspended, "restored ally participation state is exact")
+
+
+func _test_classic_bodycount_selection(content: RealmzContent) -> void:
+	var definition := content.monster_by_classic_id(1)
+	assert_not_null(definition, "body-count fixture contains a Classic ally definition")
+	if definition == null:
+		return
+	var original_can_summon := definition.can_summon
+	definition.can_summon = 1
+	var survivor := MonsterState.new("bodycount.survivor", definition.id, "Survivor", 9, 12, 1, 1, 0, 0, 0, false)
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("bodycount.character", "Body Count", 10, 10)]), RealmzClock.new())
+	state.combat = CombatState.new("classic.battle.0", [survivor])
+	state.combat.completed = true
+	state.combat.outcome = &"victory"
+	var flow := RealmzRules.new().combat_flow
+	var payload := flow.ally_selection_payload(state, content)
+	assert_equal(payload.get("selectedIds"), [survivor.id], "Classic body-count defaults surviving eligible allies to selected")
+	var selected := flow.apply_ally_selection(state, content, payload.get("selectedIds", []))
+	assert_true(selected.ok, "typed post-battle selection retains a surviving ally")
+	assert_equal(state.party.allies()[0].id, survivor.id, "selected combat survivor returns to the held-over party")
+	definition.can_summon = -1
+	state.party.set_allies([])
+	var mandatory := flow.apply_ally_selection(state, content, [])
+	assert_false(mandatory.ok, "scenario-mandatory Classic allies cannot be left behind")
+	assert_equal(mandatory.error_code, &"required_ally_missing", "mandatory ally rejection is explicit")
+	definition.can_summon = original_can_summon
+
+
+func _test_classic_spellcasting_flags(content: RealmzContent) -> void:
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("casting.character", "Casting", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var changed := api.execute_classic(ClassicActionDefinition.new(0, 69, 69, 1, false, [1, 0, 1, 0, 0]), "request.casting-flags")
+	assert_true(state.character_spellcasting and not state.monster_spellcasting and state.spell_charging, "Classic opcode 69 owns all three authored spellcasting flags")
+	assert_true(_event_has(changed.events, &"spellcasting_flags_changed"), "spellcasting flag changes are explicit in the domain trace")
+	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(round_trip, "spellcasting flags serialize in the central save aggregate")
+	assert_true(round_trip.character_spellcasting and round_trip.spell_charging, "restored spellcasting flags are exact")
+
+
+func _test_classic_identity_selection(content: RealmzContent) -> void:
+	var first := CharacterState.new("identity.first", "First", 10, 10)
+	var second := CharacterState.new("identity.second", "Second", 0, 10)
+	first.race_id = "classic.race.0"
+	second.race_id = "classic.race.0"
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [first, second])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var selected := api.execute_classic(ClassicActionDefinition.new(0, 50, 50, 0, false, [0, 0, 0, 0, 1]), "request.select-race")
+	assert_equal(selected.value, [first.id], "Classic opcode 50 selects matching living characters by direct Realmz race identity")
+	assert_equal(state.selected_character_ids(), [first.id], "identity selection updates the shared selected-character set used by later opcodes")
+
+
+func _test_classic_monster_route(content: RealmzContent) -> void:
+	var definition := content.monster_by_classic_id(1)
+	assert_not_null(definition, "route fixture contains a Classic monster identity")
+	if definition == null:
+		return
+	var monster := MonsterState.new("route.monster", definition.id, definition.name, 5, 5)
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("route.character", "Route", 10, 10)])
+	var state := GameState.new(party, RealmzClock.new())
+	state.combat = CombatState.new("classic.battle.0", [monster])
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var routed := api.execute_classic(ClassicActionDefinition.new(0, 123, 123, 0, false, [1, 0, 0, 0, 0]), "request.route")
+	assert_equal(routed.value, 1, "Classic opcode 123 routes every matching monster on the macro source's side")
+	assert_equal(monster.conditions.value(ConditionRules.RUNS_AWAY), -1, "routed monster receives Castle's persistent run-away condition")
+	assert_equal(monster.surrender_percent, 50, "routed monster receives Castle's fifty-percent surrender override")
+
+
+func _test_classic_random_items(content: RealmzContent) -> void:
+	var character := CharacterState.new("random-item.character", "Random Item", 10, 10)
+	character.maximum_load = 1_000
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	var state := GameState.new(party, RealmzClock.new())
+	var rng := ScriptedRng.new([0, 0])
+	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new())
+	var granted := api.execute_classic(ClassicActionDefinition.new(0, 65, 65, 0, false, [-1, 901, 901, 0, 0]), "request.random-item")
+	assert_equal(granted.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 65 grants source-defined random items through inventory rules")
+	assert_equal(character.inventory().size(), 1, "random item becomes a direct Realmz item instance")
+	assert_equal(rng.snapshot().draw_count, 2, "random item count and inclusive item range each consume one session RNG draw")
+
+
+func _test_classic_selected_level_up(content: RealmzContent) -> void:
+	var character := CharacterState.new("level.character", "Level", 10, 10)
+	character.race_id = "classic.race.0"
+	character.caste_id = "classic.caste.0"
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	var state := GameState.new(party, RealmzClock.new())
+	state.set_selected_character_ids([character.id])
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var leveled := api.execute_classic(ClassicActionDefinition.new(0, 102, 102, 0, false, []), "request.level-selected")
+	assert_equal(leveled.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 102 levels picked characters through fixed character rules")
+	assert_equal(character.level, 2, "selected character advances exactly one level")
+	assert_equal(character.experience, 1, "forced level-up preserves Castle's explicit experience marker")
+
+
+func _test_classic_death_macro_revival(content: RealmzContent) -> void:
+	var character := CharacterState.new("revive.character", "Revive", 0, 10)
+	character.conditions.set_value(ConditionRules.ANIMATED, -1)
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var revived := api.execute_classic(ClassicActionDefinition.new(0, 119, 119, 0, false, []), "request.revive-party")
+	assert_equal(character.current_health, 1, "Classic opcode 119 revives a defeated party at one stamina")
+	assert_equal(character.conditions.value(ConditionRules.ANIMATED), 0, "party revival clears animated death state")
+	assert_equal(revived.directive.get("kind"), "finish", "whole-party revival exits its death macro as Castle does")
+
+
+func _test_automatic_monster_death_macro(content: RealmzContent) -> void:
+	var monster_definition := content.monster_by_classic_id(1)
+	var battle := content.battle_by_classic_id(0)
+	assert_not_null(monster_definition, "automatic death-macro fixture contains a Classic monster")
+	assert_not_null(battle, "automatic death-macro fixture contains a Classic battle")
+	if monster_definition == null or battle == null:
+		return
+	var original_death_macro := monster_definition.death_macro
+	monster_definition.death_macro = 321
+	var programs: Array[ScenarioProgramDefinition] = [
+		ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 2, 2, 0, false, [])]),
+		ScenarioProgramDefinition.new("xap:321", &"extra-action-point", "321", [ClassicActionDefinition.new(0, 119, 119, 0, false, [])]),
+	]
+	var messages: Array[MessageDefinition] = [MessageDefinition.new(1, "Before battle"), MessageDefinition.new(4, "After battle")]
+	var direct := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(programs, []), messages, [], [], [], [], [], [], [monster_definition], [battle])
+	var character := CharacterState.new("death-macro.attacker", "Death Macro Attacker", 100, 100)
+	character.agility = 100
+	character.to_hit = 100
+	character.damage_bonus = 100
+	character.luck = 1
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
+	var vm := ScenarioVm.new()
+	vm.configure(direct.scenario)
+	vm.start_program("root", {"callingContext": "action"})
+	var api := RealmzRuntimeApi.new(direct, state, RealmzRng.new(1), ScenarioActionState.new())
+	var waiting := vm.run(api)
+	assert_equal(waiting.state, ScenarioVmResult.State.WAITING, "death-macro battle reaches the player combat boundary: %s %s" % [waiting.error_code, waiting.error_message])
+	if waiting.state != ScenarioVmResult.State.WAITING:
+		monster_definition.death_macro = original_death_macro
+		return
+	var target_id: String = waiting.interaction.payload["targets"][0]["id"]
+	var completed := vm.resume(InteractionResponse.new(waiting.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "attack", "targetId": target_id}), api)
+	var macro_events: Array[DomainEvent] = []
+	macro_events.assign(completed.events)
+	assert_true(_event_has(macro_events, &"monster_death_macro_started"), "automatic death macro publishes its start")
+	assert_true(_event_has(macro_events, &"monster_revived"), "opcode 119 receives the defeated combatant context")
+	assert_true(_event_has(macro_events, &"monster_death_macro_completed"), "automatic death macro publishes its completion")
+	if completed.state == ScenarioVmResult.State.WAITING and completed.interaction.kind == &"ally_selection":
+		completed = vm.resume(InteractionResponse.new(completed.interaction.request_id, &"ally_selection", {"selectedIds": completed.interaction.payload["selectedIds"]}), api)
+	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "defeating a macro-bearing monster runs its XAP before battle completion")
+	var revived := state.combat.monster_by_id(target_id)
+	assert_equal(revived.current_health, 1, "death macro can revive its owning monster")
+	assert_false(revived.traitor, "Classic death-macro completion moves the monster off the enemy side")
+	assert_equal(state.last_battle_outcome, &"victory", "battle resolution runs after the death macro commits")
+
+	var yielding_programs: Array[ScenarioProgramDefinition] = [
+		ScenarioProgramDefinition.new("xap:321", &"extra-action-point", "321", [
+			ClassicActionDefinition.new(0, 14, 14, 1, false, []),
+			ClassicActionDefinition.new(1, 119, 119, 0, false, []),
+		]),
+	]
+	var yielding_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(yielding_programs, []), messages, [], [], [], [], [], [], [monster_definition], [battle])
+	var session := GameSession.new()
+	session.start(yielding_content, 1)
+	var session_character: CharacterState = session._state.party.characters()[0]
+	session_character.agility = 100
+	session_character.to_hit = 100
+	session_character.damage_bonus = 100
+	session_character.luck = 1
+	var battle_started := session._rules.combat_flow.start_battle(session._state, yielding_content, battle, session._rng)
+	assert_true(battle_started.ok, "direct session death-macro fixture starts a battle")
+	var session_target: MonsterState = session._state.combat.monsters()[0]
+	var yielded := session.submit_intent(PlayerIntent.combat_action(&"attack", session_character.id, session_target.id))
+	assert_equal(yielded.state, SessionStep.State.WAITING_FOR_INTERACTION, "direct session death macro can yield a typed interaction")
+	assert_equal(yielded.interaction.kind, &"character_selection", "death-macro interaction crosses the normal session host boundary")
+	var held := session.snapshot()
+	assert_not_null(held, "pending direct-session death macro is a committed save boundary")
+	var restored := GameSession.new()
+	assert_equal(restored.restore(yielding_content, held).state, SessionStep.State.COMPLETED, "direct-session death macro restores transactionally")
+	var restored_request := restored.view().pending_interaction
+	var resumed := restored.respond(InteractionResponse.new(restored_request.request_id, &"character_selection", {"characterIds": [session_character.id]}))
+	assert_true(_event_has(resumed.events, &"monster_death_macro_completed"), "restored direct-session death macro completes before battle resolution")
+	if resumed.state == SessionStep.State.WAITING_FOR_INTERACTION and resumed.interaction.kind == &"ally_selection":
+		var ally_boundary := SaveEnvelope.from_data(restored.snapshot().to_data())
+		assert_not_null(ally_boundary, "post-battle ally selection is a committed save boundary")
+		resumed = restored.respond(InteractionResponse.new(resumed.interaction.request_id, &"ally_selection", {"selectedIds": resumed.interaction.payload["selectedIds"]}))
+	assert_equal(resumed.state, SessionStep.State.COMPLETED, "restored death-macro interaction resumes through GameSession")
+	assert_equal(restored._state.last_battle_outcome, &"victory", "restored direct-session battle resolves after its death macro")
+	monster_definition.death_macro = original_death_macro
 
 
 func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:

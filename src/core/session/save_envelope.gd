@@ -156,6 +156,18 @@ static func _migrate(value: Variant) -> Variant:
 static func _normalize_session_continuation(value: Dictionary) -> Variant:
 	if value.is_empty():
 		return {}
+	if value.get("kind") == "combat-death-macro":
+		var death_fields: Array[String] = ["kind", "battleId", "combatantId", "programId"]
+		if value.size() != death_fields.size():
+			return null
+		for field: String in death_fields:
+			if not value.has(field) or not value[field] is String or value[field].is_empty():
+				return null
+		return {"kind": "combat-death-macro", "battleId": value["battleId"], "combatantId": value["combatantId"], "programId": value["programId"]}
+	if value.get("kind") == "combat-ally-selection":
+		if value.size() != 2 or not value.get("battleId") is String or value["battleId"].is_empty():
+			return null
+		return {"kind": "combat-ally-selection", "battleId": value["battleId"]}
 	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
 	if value.size() != fields.size():
 		return null

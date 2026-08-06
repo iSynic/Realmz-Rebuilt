@@ -147,6 +147,7 @@ func _configure_spellcaster(character: CharacterState, caste: CasteDefinition, r
 		if row.y <= 0:
 			continue
 		character.spellcaster_type = index + 1
+		character.maximum_spell_attacks = 1
 		if character.level >= row.y:
 			match character.spellcaster_type:
 				1: character.maximum_spell_points = 4 + character.knowledge + rng.draw(maxi(1, character.judgment), &"character.create.spell-points")

@@ -20,6 +20,10 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - `tests/fixtures/packages/fixture-provenance.json` owns the hashes and Providence commit for both the positive `.realmz2` fixture and its valid-ZIP stale-hash negative derivative. The current fixture contains two land maps, one packed-source dungeon map, explicit topology features and Layout transitions, three random rectangles covering ordinary checks, a surprise battle, a one-shot XAP, an AP-to-AP post-action relocation pair, direct Complex/Thief/Timed Encounters, 799 bundled Classic items plus scenario supply/custom items, 420 normalized standard spells plus one packed scenario spell, two content-addressed media assets, and an AP to Simple Encounter to result to Scenario Action to XAP/CODE 111 route.
 - `tests/fixtures/oracle/aogm-active-opcode-inventory.json` is a bounded content inventory only. Its source hash, counts, and normalized opcode set may prove compiler/runtime readiness coverage; it does not contain commercial records and makes no reachability or live-route claim.
 - `tools/route_acceptance.gd` is a generic local harness. Certified route JSON, campaign packages, and emitted reports stay outside this repository when they contain or identify commercial campaign content.
+- Direct ED3/XAP route checkpoints may name a compiled program explicitly; this proves that macro's ordinary VM behavior, not map reachability for an unplaced record.
+- Post-battle tests preserve Castle's distinction between consumed held-over allies and the subsequent `bodycount()` survivor selection; route defaults must use the request's source-backed preselection rather than silently retaining all friendlies.
+- Presentation tests compare 2D topology facts with the 3D geometry projection. Local MCP screenshots are visual evidence only and remain outside the repository.
+- War in the Sword Lands certification uses an external route, package, and report. Only package/route hashes, stage names, and resulting observations may enter documentation.
 
 ## Work Guidance
 

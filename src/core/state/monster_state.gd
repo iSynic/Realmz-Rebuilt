@@ -13,6 +13,8 @@ var magic_resistance: int
 var spell_points: int
 var maximum_spell_points: int
 var traitor: bool
+var icon_id: int = 0
+var surrender_percent: int = 0
 var weapon_id: String = ""
 var conditions: ConditionSet
 
@@ -47,6 +49,8 @@ func to_data() -> Dictionary:
 		"spellPoints": spell_points,
 		"maximumSpellPoints": maximum_spell_points,
 		"traitor": traitor,
+		"iconId": icon_id,
+		"surrenderPercent": surrender_percent,
 		"weaponId": weapon_id,
 		"conditions": conditions.to_data(),
 	}
@@ -73,6 +77,12 @@ static func from_data(data: Variant) -> MonsterState:
 		return null
 	var result := MonsterState.new(data["id"], data["definitionId"], data["name"], values["currentHealth"], values["maximumHealth"], values["hitDice"], values["agility"], values["armor"], values["magicResistance"], values["maximumSpellPoints"], data["traitor"])
 	result.spell_points = values["spellPoints"]
+	result.icon_id = _integer(data.get("iconId", 0))
+	if result.icon_id == -100_000:
+		return null
+	result.surrender_percent = _integer(data.get("surrenderPercent", 0))
+	if result.surrender_percent == -100_000:
+		return null
 	result.weapon_id = data["weaponId"]
 	result.conditions = loaded_conditions
 	return result

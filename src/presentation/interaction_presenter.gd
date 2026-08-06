@@ -32,6 +32,8 @@ func present(request: InteractionRequest) -> void:
 			_add_response_button("Continue", {})
 		&"character_selection":
 			_build_character_selection()
+		&"ally_selection":
+			_build_ally_selection()
 		&"complex_encounter":
 			_build_complex_encounter()
 		&"shop_action":
@@ -89,6 +91,43 @@ func _submit_characters(required: int) -> void:
 		_prompt.text = "Choose exactly %d character%s." % [required, "" if required == 1 else "s"]
 		return
 	_submit_payload({"characterIds": ids})
+
+
+func _build_ally_selection() -> void:
+	_character_checks.clear()
+	var maximum := int(_request.payload.get("maximum", 0))
+	var selected: Variant = _request.payload.get("selectedIds", [])
+	var candidates: Variant = _request.payload.get("candidates", [])
+	_add_hint("Choose up to %d surviving allies. Required allies stay selected." % maximum)
+	if candidates is Array:
+		for entry: Variant in candidates:
+			if not entry is Dictionary:
+				continue
+			var check := CheckButton.new()
+			var ally_id := String(entry.get("id", ""))
+			var required := bool(entry.get("required", false))
+			check.text = "%s • HP %d/%d%s" % [entry.get("name", "Ally"), int(entry.get("currentHealth", 0)), int(entry.get("maximumHealth", 0)), " • Required" if required else ""]
+			check.set_meta("character_id", ally_id)
+			check.set_meta("required", required)
+			check.button_pressed = required or selected is Array and selected.has(ally_id)
+			check.disabled = required
+			_character_checks.append(check)
+			_options.add_child(check)
+	var submit := Button.new()
+	submit.text = "Continue"
+	submit.pressed.connect(_submit_allies.bind(maximum))
+	_options.add_child(submit)
+
+
+func _submit_allies(maximum: int) -> void:
+	var ids: Array[String] = []
+	for check: CheckButton in _character_checks:
+		if check.button_pressed:
+			ids.append(String(check.get_meta("character_id")))
+	if ids.size() > maximum:
+		_prompt.text = "Choose no more than %d allies." % maximum
+		return
+	_submit_payload({"selectedIds": ids})
 
 
 func _build_complex_encounter() -> void:

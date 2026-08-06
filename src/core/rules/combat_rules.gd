@@ -73,6 +73,34 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 	return AttackResolution.new(true, defender.current_health <= 0, chance, roll, damage)
 
 
+func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: MonsterState, rng: RealmzRng) -> AttackResolution:
+	if attacker == null or attacker_definition == null or defender == null or rng == null:
+		return null
+	var chance := 50 + 5 * attacker.hit_dice
+	chance += _attacker_condition_modifier(attacker.conditions)
+	chance -= defender.armor
+	chance += _defender_condition_modifier(defender.conditions)
+	chance = maxi(5, chance)
+	var roll := rng.draw(100, &"combat.monster-attack.hit")
+	var hit := roll <= chance or defender.conditions.is_active(ConditionRules.HELPLESS)
+	if not hit:
+		return AttackResolution.new(false, false, chance, roll, 0)
+	var attacks := attacker_definition.attacks()
+	var attack := MonsterAttackDefinition.new()
+	if not attacks.is_empty():
+		attack = attacks[clampi(attack_index, 0, attacks.size() - 1)]
+	var damage := attacker_definition.damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
+	if attacker.conditions.is_active(ConditionRules.STRONG):
+		damage += 3
+	if attack.damage_max >= attack.damage_min:
+		damage += rng.draw_between(attack.damage_min, attack.damage_max, &"combat.monster-attack.damage")
+	damage = maxi(0, damage)
+	if defender.conditions.is_active(ConditionRules.HELPLESS):
+		damage = defender.current_health
+	defender.current_health -= damage
+	return AttackResolution.new(true, defender.current_health <= 0, chance, roll, damage)
+
+
 func initiative_order(characters: Array[CharacterState], monsters: Array[MonsterState], surprise: int, rng: RealmzRng) -> Array[String]:
 	var order: Array[String] = []
 	for character: CharacterState in characters:

@@ -30,6 +30,7 @@ func build_monster(definition: MonsterDefinition, instance_id: String, traitor_o
 		stamina += int(float(realmz_day) / float(denominator))
 	var traitor := definition.traitor if traitor_override < 0 else traitor_override != 0
 	var result := MonsterState.new(instance_id, definition.id, definition.name, stamina, stamina, definition.hit_dice, agility, armor, magic_resistance, spell_points, traitor)
+	result.surrender_percent = definition.surrender_percent
 	result.weapon_id = _random_weapon(definition.random_weapon_table, instance_id, rng) if definition.random_weapon_table > 0 else definition.weapon_id
 	return result
 
@@ -71,8 +72,9 @@ func morale_action(monster: MonsterState, definition: MonsterDefinition) -> Stri
 		return &"defeated"
 	# Castle getup.c computes current/current before the thresholds; preserve the observable 100 percent result.
 	var percent := 100
-	if percent < definition.surrender_percent:
-		return &"panic" if definition.surrender_percent == 101 else &"surrender"
+	var surrender_percent := monster.surrender_percent if monster.surrender_percent != 0 else definition.surrender_percent
+	if percent < surrender_percent:
+		return &"panic" if surrender_percent == 101 else &"surrender"
 	if percent < definition.run_percent:
 		return &"retreat"
 	return &"fight"
