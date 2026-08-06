@@ -61,4 +61,4 @@ Classic instructions retain opcode identity and provenance. AP/Encounter timelin
 
 One `.r2save` envelope contains all mutable session state, including overlays, clock, combat, VM frames, pending interaction, action state, and RNG state/draw count. Installed package content is referenced by package hash and never copied into the save.
 
-Every gameplay draw uses `RealmzRng`. Presentation has a separate cosmetic RNG. Oracle tests may inject raw scripted values so Castle and the new runtime take identical branches before the exact QuickDraw-compatible generator sequence is certified.
+Every gameplay draw uses `RealmzRng`. It owns the QuickDraw `randSeed = randSeed * 16807 mod 2147483647` transition, signed low-word return (mapping `0x8000` to zero), Castle's inclusive `1 + abs(raw) * range / 32768` scaling, draw count, and semantic trace. Presentation has a separate cosmetic RNG. Oracle tests may inject raw scripted values so Castle and the new runtime take identical branches. See `docs/rng-evidence.md` for the evidence boundary.

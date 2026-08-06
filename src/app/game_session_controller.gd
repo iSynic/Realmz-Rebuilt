@@ -15,6 +15,24 @@ func replace_session(replacement: GameSession) -> void:
 	_session = replacement
 
 
+func start(content: RealmzContent, initial_seed: int) -> SessionStep:
+	var replacement := GameSession.new()
+	var step := replacement.start(content, initial_seed)
+	if step.state != SessionStep.State.FAILED:
+		replace_session(replacement)
+	step_committed.emit(step)
+	return step
+
+
+func restore(content: RealmzContent, envelope: SaveEnvelope) -> SessionStep:
+	var replacement := GameSession.new()
+	var step := replacement.restore(content, envelope)
+	if step.state != SessionStep.State.FAILED:
+		replace_session(replacement)
+	step_committed.emit(step)
+	return step
+
+
 func submit_intent(intent: PlayerIntent) -> SessionStep:
 	var step: SessionStep = _session.submit_intent(intent)
 	step_committed.emit(step)

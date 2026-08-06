@@ -18,8 +18,8 @@
     {
       "id": "providence-compiler-base",
       "repository": "Realmz Providence",
-      "commit": "1bbe5aaf4faa9224381e045d75a7b887cc7f40fd",
-      "role": "canonical project, compiler, and new package exporter base",
+      "commit": "af50087d9554114cfa0a1456e545b4a1134d067e",
+      "role": "canonical project, deterministic package compiler, schema, and synthetic fixture generator",
       "policy": "coordinated implementation branch preserving existing export targets"
     }
   ]

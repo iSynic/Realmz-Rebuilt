@@ -10,15 +10,14 @@ Status values describe current evidence, not intent. A phase completes only when
 
 Exit evidence: the application launched through MCP Pro 1.16.0 on Godot 4.7.1; runtime UI discovery and simulated input changed observed state; a 960×600 smoke screenshot was captured; the final editor error list was empty; headless verification passed; pinned clean reference worktrees were created; and the DOX hierarchy was re-read and reconciled.
 
-## Phase 1 — Package contract and deterministic kernel (in progress)
+## Phase 1 — Package contract and deterministic kernel (completed)
 
-- Providence-authoritative `.realmz2` schema/exporter and byte-identical runtime mirror.
-- Validating loader, immutable models, `GameSession`, state, clock, RNG, typed boundaries, and save v1.
-- Tiny synthetic Providence fixture with one party/map/message/AP/saveable mutation.
+- Implemented: additive Providence `.realmz2` exporter, deterministic ZIP/JSON/hashes, desktop target/report, authoritative schema, byte-identical runtime mirror, and a 3×3 synthetic package generator.
+- Implemented: independent ZIP/hash/capability/reference/topology validation into typed Realmz content; direct map/AP/Classic-action models; deterministic session, party/state, clock, QuickDraw-compatible RNG and traces; detached save envelope and transactional save repository.
+- Implemented evidence: repeated Providence exports compare byte-for-byte; runtime accepts the generated package and rejects a valid-ZIP stale-hash mutation; deterministic search/save/reload resumes the same RNG branch and state revision.
+Exit evidence: repeated Providence exports are byte-identical; the runtime independently accepts the generated package and rejects a valid-ZIP stale-hash mutation; seed 1 produces the verified QuickDraw/Castle search roll 52; save/reload preserves the session revision, one-minute clock advance, RNG state, and draw count; and failed restore leaves the active session untouched. Through MCP Pro, the composition root loaded the package, committed the search through simulated input, observed the expected runtime state, saved `mcp-phase1`, and captured the 960×600 loaded-session screenshot. The final editor error list was empty and the full 43-assertion verification suite passed.
 
-Exit: repeated exports are byte-identical; load, deterministic transitions, save/reload, and RNG replay match.
-
-## Phase 2 — Authoritative world and exploration (pending)
+## Phase 2 — Authoritative world and exploration (in progress)
 
 - Land/dungeon topology, overlays, movement, LOS, searches, secrets, doors, transitions, random rectangles, time, triggers.
 - Topology-derived 2D presenter, minimap, and debug overlays.

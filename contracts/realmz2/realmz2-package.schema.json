@@ -1,0 +1,363 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://realmz.app/contracts/realmz2-package.schema.json",
+  "title": "Realmz Remake 2.0 package documents",
+  "oneOf": [
+    { "$ref": "#/$defs/manifest" },
+    { "$ref": "#/$defs/content" },
+    { "$ref": "#/$defs/world" },
+    { "$ref": "#/$defs/scenario" },
+    { "$ref": "#/$defs/assets" }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "documentHeader": {
+      "type": "object",
+      "required": ["kind", "schemaVersion"]
+    },
+    "fileIntegrity": {
+      "type": "object",
+      "required": ["bytes", "sha256"],
+      "properties": {
+        "bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "manifest": {
+      "type": "object",
+      "required": [
+        "kind",
+        "format",
+        "formatVersion",
+        "schemaVersion",
+        "schemaHash",
+        "campaignId",
+        "contentId",
+        "name",
+        "compiler",
+        "engine",
+        "start",
+        "capabilities",
+        "files",
+        "packageHash"
+      ],
+      "properties": {
+        "kind": { "const": "realmz2.manifest" },
+        "format": { "const": "realmz2" },
+        "formatVersion": { "const": 1 },
+        "schemaVersion": { "const": 1 },
+        "schemaHash": { "$ref": "#/$defs/sha256" },
+        "campaignId": { "$ref": "#/$defs/identifier" },
+        "contentId": { "$ref": "#/$defs/sha256" },
+        "name": { "type": "string", "minLength": 1 },
+        "compiler": {
+          "type": "object",
+          "required": ["name", "version", "commit", "projectSchemaVersion", "projectOrigin"],
+          "properties": {
+            "name": { "const": "Providence" },
+            "version": { "type": "string", "minLength": 1 },
+            "commit": { "type": "string", "minLength": 1 },
+            "projectSchemaVersion": { "type": "integer", "minimum": 1 },
+            "projectOrigin": { "type": ["string", "object", "null"] }
+          },
+          "additionalProperties": false
+        },
+        "engine": {
+          "type": "object",
+          "required": ["minimumVersion", "rulesVersion"],
+          "properties": {
+            "minimumVersion": { "type": "string", "minLength": 1 },
+            "rulesVersion": { "const": "realmz-classic-1" }
+          },
+          "additionalProperties": false
+        },
+        "start": {
+          "type": "object",
+          "required": ["mapId", "x", "y"],
+          "properties": {
+            "mapId": { "$ref": "#/$defs/identifier" },
+            "x": { "type": "integer", "minimum": 0 },
+            "y": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "capabilities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/identifier" },
+          "uniqueItems": true
+        },
+        "files": {
+          "type": "object",
+          "required": ["content.json", "world.json", "scenario.json", "assets/index.json"],
+          "propertyNames": { "pattern": "^(content\\.json|world\\.json|scenario\\.json|assets/index\\.json|assets/media/[0-9a-f]{64}(\\.[a-z0-9]+)?)$" },
+          "additionalProperties": { "$ref": "#/$defs/fileIntegrity" }
+        },
+        "packageHash": { "$ref": "#/$defs/sha256" }
+      },
+      "additionalProperties": false
+    },
+    "content": {
+      "type": "object",
+      "required": [
+        "kind",
+        "schemaVersion",
+        "campaign",
+        "messages",
+        "optionLabels",
+        "battles",
+        "monsters",
+        "monsterSets",
+        "monsterDescriptions",
+        "items",
+        "itemTexts",
+        "treasures",
+        "shops",
+        "simpleEncounters",
+        "complexEncounters",
+        "thiefEncounters",
+        "timedEncounters",
+        "spells",
+        "races",
+        "castes"
+      ],
+      "properties": {
+        "kind": { "const": "realmz2.content" },
+        "schemaVersion": { "const": 1 },
+        "campaign": {
+          "type": "object",
+          "required": ["id", "name", "restrictions"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "name": { "type": "string", "minLength": 1 },
+            "restrictions": {}
+          },
+          "additionalProperties": false
+        },
+        "messages": { "type": "array" },
+        "optionLabels": { "type": "array" },
+        "battles": { "type": "array" },
+        "monsters": { "type": "array" },
+        "monsterSets": { "type": "array" },
+        "monsterDescriptions": { "type": "array" },
+        "items": { "type": "array" },
+        "itemTexts": { "type": "array" },
+        "treasures": { "type": "array" },
+        "shops": { "type": "array" },
+        "simpleEncounters": { "type": "array" },
+        "complexEncounters": { "type": "array" },
+        "thiefEncounters": { "type": "array" },
+        "timedEncounters": { "type": "array" },
+        "spells": { "type": "array" },
+        "races": { "type": "array" },
+        "castes": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "cell": {
+      "type": "object",
+      "required": [
+        "id",
+        "x",
+        "y",
+        "terrainId",
+        "movement",
+        "visibility",
+        "semantics",
+        "metadata",
+        "triggerIds",
+        "randomRectIds",
+        "edges",
+        "features",
+        "render"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "x": { "type": "integer", "minimum": 0 },
+        "y": { "type": "integer", "minimum": 0 },
+        "terrainId": { "$ref": "#/$defs/identifier" },
+        "movement": {
+          "type": "object",
+          "required": ["passable", "cost"],
+          "properties": {
+            "passable": { "type": "boolean" },
+            "cost": { "type": "integer", "minimum": 1 }
+          },
+          "additionalProperties": false
+        },
+        "visibility": {
+          "type": "object",
+          "required": ["blocksLos"],
+          "properties": { "blocksLos": { "type": "boolean" } },
+          "additionalProperties": false
+        },
+        "semantics": {
+          "type": "object",
+          "required": ["land", "water", "shore", "path", "boatRequired", "flyFloatRequired"],
+          "properties": {
+            "land": { "type": "boolean" },
+            "water": { "type": "boolean" },
+            "shore": { "type": "boolean" },
+            "path": { "type": "boolean" },
+            "boatRequired": { "type": "boolean" },
+            "flyFloatRequired": { "type": "boolean" }
+          },
+          "additionalProperties": false
+        },
+        "metadata": { "type": "object" },
+        "triggerIds": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
+        "randomRectIds": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
+        "edges": { "type": "object" },
+        "features": { "type": "array" },
+        "render": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "map": {
+      "type": "object",
+      "required": ["id", "name", "levelType", "levelIndex", "width", "height", "metadata", "cells", "randomRectangles"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "type": "string" },
+        "levelType": { "enum": ["land", "dungeon"] },
+        "levelIndex": { "type": "integer", "minimum": 0 },
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "metadata": { "type": "object" },
+        "cells": { "type": "array", "items": { "$ref": "#/$defs/cell" }, "minItems": 1 },
+        "randomRectangles": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "world": {
+      "type": "object",
+      "required": ["kind", "schemaVersion", "maps", "triggers", "transitions", "landLayout", "timedEncounters"],
+      "properties": {
+        "kind": { "const": "realmz2.world" },
+        "schemaVersion": { "const": 1 },
+        "maps": { "type": "array", "items": { "$ref": "#/$defs/map" }, "minItems": 1 },
+        "triggers": { "type": "array" },
+        "transitions": { "type": "array" },
+        "landLayout": {},
+        "timedEncounters": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "classicInstruction": {
+      "type": "object",
+      "required": ["kind", "slot", "rawOpcode", "opcode", "id", "gosub", "extraCode"],
+      "properties": {
+        "kind": { "const": "classicAction" },
+        "slot": { "type": "integer", "minimum": 0 },
+        "rawOpcode": { "type": "integer" },
+        "opcode": { "type": "integer" },
+        "id": { "type": "integer" },
+        "gosub": { "type": "boolean" },
+        "extraCode": { "type": ["array", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "scenarioAction": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "description",
+        "visibility",
+        "category",
+        "abiVersion",
+        "implementationVersion",
+        "stateSchemaVersion",
+        "parameters",
+        "returnType",
+        "allowedContexts",
+        "requiredCapabilities",
+        "persistentState",
+        "backend",
+        "program"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "name": { "type": "string", "minLength": 1 },
+        "description": { "type": "string" },
+        "visibility": { "enum": ["public", "private"] },
+        "category": {},
+        "abiVersion": { "type": "integer", "minimum": 1 },
+        "implementationVersion": { "type": "integer", "minimum": 1 },
+        "stateSchemaVersion": { "type": "integer", "minimum": 1 },
+        "parameters": { "type": "array", "maxItems": 256 },
+        "returnType": {},
+        "allowedContexts": { "type": "array", "minItems": 1 },
+        "requiredCapabilities": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "persistentState": {},
+        "backend": { "const": "safe" },
+        "program": {}
+      },
+      "additionalProperties": false
+    },
+    "scenario": {
+      "type": "object",
+      "required": ["kind", "schemaVersion", "classicPrograms", "scenarioActions", "callSites", "stateDefinitions", "migrations"],
+      "properties": {
+        "kind": { "const": "realmz2.scenario" },
+        "schemaVersion": { "const": 1 },
+        "classicPrograms": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["triggerId", "instructions"],
+            "properties": {
+              "triggerId": { "$ref": "#/$defs/identifier" },
+              "instructions": { "type": "array", "items": { "$ref": "#/$defs/classicInstruction" } }
+            },
+            "additionalProperties": false
+          }
+        },
+        "scenarioActions": { "type": "array", "items": { "$ref": "#/$defs/scenarioAction" } },
+        "callSites": { "type": "array" },
+        "stateDefinitions": { "type": "array" },
+        "migrations": { "type": "array" }
+      },
+      "additionalProperties": false
+    },
+    "asset": {
+      "type": "object",
+      "required": ["id", "label", "kind", "bytes", "sha256", "path"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "label": { "type": "string" },
+        "kind": {},
+        "mimeType": { "type": ["string", "null"] },
+        "resourceType": { "type": ["string", "null"] },
+        "resourceId": { "type": ["integer", "null"] },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "path": { "type": "string", "pattern": "^assets/media/[0-9a-f]{64}(\\.[a-z0-9]+)?$" },
+        "width": { "type": ["integer", "null"], "minimum": 0 },
+        "height": { "type": ["integer", "null"], "minimum": 0 },
+        "durationMs": { "type": ["integer", "null"], "minimum": 0 },
+        "sampleRate": { "type": ["integer", "null"], "minimum": 0 },
+        "channels": { "type": ["integer", "null"], "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "assets": {
+      "type": "object",
+      "required": ["kind", "schemaVersion", "assets"],
+      "properties": {
+        "kind": { "const": "realmz2.assets" },
+        "schemaVersion": { "const": 1 },
+        "assets": { "type": "array", "items": { "$ref": "#/$defs/asset" } }
+      },
+      "additionalProperties": false
+    }
+  }
+}

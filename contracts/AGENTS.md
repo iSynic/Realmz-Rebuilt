@@ -18,6 +18,7 @@ Mirror the authoritative Providence `.realmz2` schemas byte-for-byte and expose 
 ## Work Guidance
 
 - Record the matching Providence commit and schema SHA-256 when updating the mirror.
+- Schema v1 currently mirrors Providence `af50087d9554114cfa0a1456e545b4a1134d067e` at SHA-256 `215e3e53c25d2f48417cbf084e74e41ceaf5b759a402d37d6c9d45a4911238c5`.
 
 ## Verification
 

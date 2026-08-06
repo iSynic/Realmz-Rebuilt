@@ -17,7 +17,7 @@ The project uses `application/config/use_custom_user_dir` with the stable name `
 ./tools/verify.ps1
 ```
 
-The aggregate gate imports the project headlessly, validates all scripts, runs typed GDScript tests, checks forbidden core dependencies, and runs `git diff --check`.
+The aggregate gate imports the project headlessly, validates all scripts, runs typed GDScript tests, checks forbidden core dependencies, verifies the mirrored schema and synthetic package hashes/provenance, and runs `git diff --check`.
 
 ## Godot MCP Pro workflow
 

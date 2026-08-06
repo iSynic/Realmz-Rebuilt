@@ -17,6 +17,8 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - JSON dictionaries stop at validating infrastructure factories. Domain state is typed and does not expose writable backing dictionaries.
 - Every gameplay mutation is committed synchronously by `GameSession`.
 - Every gameplay random draw goes through the session-owned `RealmzRng` and is serializable.
+- `RealmzRng` uses the documented QuickDraw 16807/mod-2147483647 state transition and Castle's inclusive scaling; raw scripted values are test-only branch controls.
+- Snapshots and restores detach typed state so callers cannot mutate an active session through a prior envelope.
 - `MapTopology` plus `WorldState` overlays is the only source for simulation map facts.
 - Classic-visible Realmz behavior is the fixed ruleset. Fidelity corrections require a documented decision and source/oracle tests.
 

@@ -1,0 +1,13 @@
+{
+  "fixture_id": "realmz2-synthetic-phase1-v1",
+  "evidence_label": "runtime-integration",
+  "authoring": "synthetic Providence-authored data",
+  "commercial_payload": false,
+  "providence_commit": "af50087d9554114cfa0a1456e545b4a1134d067e",
+  "schema_sha256": "215e3e53c25d2f48417cbf084e74e41ceaf5b759a402d37d6c9d45a4911238c5",
+  "package_sha256": "7cdefea958d9a7661c5e98bc0819573a507f1a9cfee67ce9b11990bdb15f093b",
+  "package_hash": "6ad37e8527eacfcae81ae9b0b92ad8afd4b5826ff34de5d15fa64b80faea70bc",
+  "negative_fixture_sha256": "f5b9254916ccc01d2b40cb95bedc94e0bd981a99616698572550463b68ac6bfe",
+  "negative_fixture_mutation": "content.json replaces deterministic with counterfeited without updating manifest integrity",
+  "generator": "cargo run --manifest-path src-tauri/Cargo.toml --example export_realmz2_fixture -- <output-directory>"
+}
