@@ -55,8 +55,17 @@ Exit: a fresh export completes the certified route with no unsupported active me
 
 Exit evidence: the source-backed route completes through the ordinary 2.0 session/VM API with no fallback, the synthetic suite covers save/reload at its typed interaction boundaries, and the compiler/runtime gates above pass. This certifies the bounded completion spine; it does not claim exhaustive Castle parity for every optional branch.
 
-## Phase 6 — Corpus, releases, and extensions (pending)
+## Phase 6 — Corpus, releases, and extensions (implemented; cross-platform certification pending)
 
-- Expanded Castle/campaign corpus, Windows/macOS/Linux gates, optional OS-confined GDScript Action host, optional topology-derived 3D.
+- Implemented: Windows, Linux, and macOS export presets plus three-runner verify/export CI matrices. Release exports exclude MCP, tests, references, and local evidence.
+- Implemented: optional Classic dungeon 3D whose floor, edges, doors, secrets, stairs, and columns are projected from the same `MapView` facts as the 2D map. No second collision or discovery model exists.
+- Implemented: explicit rejection of packages requiring `realmz.scenario.gdscript-actions-v1`. Safe packages remain portable; an in-process or token-scanned GDScript fallback was not introduced.
+- Implemented: generic external corpus probing/routing, expanded source-backed opcode ownership, held-over ally combat with serializable Castle body-count selection, serializable battle-round/death macros, and Providence reachability retention for direct opcode 88/89 monster references.
+- Local campaign evidence: a fresh War in the Sword Lands package at hash `4509fcda9f3684292b5406c151b7108979f4f6211eb1ee198b808ce798e464dd` passes all eight external route stages and observes Battles 377, 473, 474, and 212 before ending at land 16 (78,36) with quest flags 1, 42, and 75. Route hash `fa08b47bd53e0f506333c3c488ccb609b7387fc324b7784586b88d9899e5b1d3`; package, route, and report remain local-only.
+- Compiler evidence: Providence commit `23bf99e0` retains direct ally monster definitions and passes its focused Rust test. Runtime unit/integration coverage currently passes 743 assertions across nine suites.
+- Local release-pack evidence: Windows, Linux, and macOS presets each produce a 497,592-byte Safe runtime PCK with SHA-256 `530c3d07f020fa90ee0cb9da5223086d8d1d745b052795665643f65b33494b5a`; inspection of Godot's export inventory found no MCP configuration/addon, tests, tools, docs, contract mirrors, references, or GitHub workflow entries.
+- MCP evidence: the 1.16.0 doctor check passed; automatic port discovery inspected the Godot 4.7.1 project and scene tree; a fresh editor reported zero errors; the main scene played; runtime inspection observed `Pure session boundary online`; simulated mouse input loaded the synthetic package and changed that status to `Loaded realmz2-synthetic-fixture • land:0 1,1 • seed 1`; a 960×600 frame was captured; the post-input editor error list remained empty; and the scene stopped cleanly.
 
 Exit: Safe packages are cross-platform deterministic, certified routes pass, 2D/3D agree, and unsupported sandbox requirements reject cleanly.
+
+Remaining exit evidence: execute the configured native-binary verify/export matrices on actual Windows, macOS, and Linux runners. The byte-identical cross-preset PCK is local packaging evidence, not proof that each native executable launches. The implementation does not claim Phase 6 certification until those jobs pass; additional campaign routes expand corpus confidence without weakening the completed AOGM and War route boundaries.

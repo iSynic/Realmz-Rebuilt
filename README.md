@@ -6,7 +6,7 @@ This repository intentionally does not load saves or campaign projects from the 
 
 ## Current status
 
-The repository is under active construction. The current roadmap and exit gates are in [docs/roadmap.md](docs/roadmap.md). Architectural contracts are in [docs/architecture.md](docs/architecture.md) and the ADRs under `docs/adr`.
+The greenfield kernel, package loader, topology, Scenario VM/Actions, Classic-first shell, source-backed AOGM/War route lanes, and optional topology-derived dungeon 3D are implemented. Native three-platform release jobs are configured but remain certification evidence only after they run. The current roadmap and exit gates are in [docs/roadmap.md](docs/roadmap.md). Architectural contracts are in [docs/architecture.md](docs/architecture.md) and the ADRs under `docs/adr`.
 
 ## Development
 

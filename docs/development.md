@@ -37,7 +37,11 @@ Runtime operations before `play_scene` are invalid. Use CLI discovery with `node
 
 Do not run the headless verification lane while a live MCP editor session is open. MCP Pro injects editor-only autoloads and removes them when an editor process exits; serializing these lanes prevents a headless process from removing the live editor's runtime inspector settings. The MCP scene-save command can also emit Godot progress-dialog errors while handling its deferred request; restart the editor before the final clean error inspection after MCP-authored scene changes.
 
-Release presets exclude `addons/godot_mcp`, tests, local artifacts, and ignored reference worktrees. `tools/verify_export_contract.ps1` enforces those exclusions.
+Release presets exclude `addons/godot_mcp`, `.mcp.json`, tests, tools, docs, contract mirrors, local artifacts, and ignored reference worktrees. `tools/verify_export_contract.ps1` enforces those exclusions; Godot's generated export metadata remains part of a valid pack.
+
+The repository defines `Windows Desktop`, `Linux`, and `macOS` release presets. CI runs the same import, typed test, architecture, contract, and export gates on native runners; a configured matrix is not cross-platform evidence until those jobs pass.
+
+`tools/corpus_acceptance.ps1` accepts caller-supplied package/route/report descriptors so commercial campaign locations remain external. `tools/route_acceptance.gd` may execute a named compiled macro directly for an unplaced ED3/XAP checkpoint; that proves the macro path and never upgrades it to placed-map reachability.
 
 ## Reference repositories
 
@@ -46,3 +50,5 @@ Reference repositories are read-only inputs unless work is explicitly assigned t
 ## Evidence and copyright
 
 Each Classic fidelity test identifies whether its evidence is source/control-flow, Castle runtime, runtime unit/integration, or a live certified route. Synthetic fixtures are preferred. Commercial scenario data, extracted assets, user saves, and generated oracle installations remain local and untracked.
+
+Packages declaring `realmz.scenario.gdscript-actions-v1` are rejected until a platform has an independently confined process host with passing abuse, timeout, memory, filesystem, network, process, reflection, and state-size tests. Safe Scenario Actions require no such host.
