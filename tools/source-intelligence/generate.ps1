@@ -487,8 +487,9 @@ function Test-WrittenArtifacts {
     $overview = Read-Utf8Text (Join-Path $Root "codemap.json") | ConvertFrom-Json
     $lock = Read-Utf8Text (Join-Path $Root "codemap.lock") | ConvertFrom-Json
     $currentCommit = (git -C $repoRoot rev-parse HEAD).Trim()
+    $snapshotCommit = [string]$lock.current_commit
+    if ([string]::IsNullOrWhiteSpace($snapshotCommit)) { throw "Lock source snapshot commit is missing" }
     $currentDirty = Get-WorkingTreeHasUncommittedChanges
-    if ([string]$lock.current_commit -ne $currentCommit) { throw "Lock commit does not match current HEAD" }
     if ([bool]$lock.working_tree_has_uncommitted_changes -ne $currentDirty) { throw "Lock working-tree state is stale" }
     $inputPaths = Get-InputPaths
     if ([string]$lock.input_fingerprint -ne (Get-InputFingerprint $inputPaths @{})) { throw "Lock input fingerprint is stale" }
@@ -497,8 +498,8 @@ function Test-WrittenArtifacts {
     if ($intelligence.schema_version -ne 1) { throw "Unsupported intelligence schema" }
     if ($overview.nodes.Count -gt 20) { throw "Overview has more than 20 nodes" }
     if (($overview.flows | Where-Object { $_.primary -eq $true }).Count -gt 5) { throw "Overview has more than five primary flows" }
-    if ([string]$overview.generated_from_commit -ne $currentCommit) { throw "Overview commit is stale" }
-    if ([string]$intelligence.repository.commit -ne $currentCommit) { throw "Intelligence commit is stale" }
+    if ([string]$overview.generated_from_commit -ne $snapshotCommit) { throw "Overview source snapshot commit is stale" }
+    if ([string]$intelligence.repository.commit -ne $snapshotCommit) { throw "Intelligence source snapshot commit is stale" }
     if ([string]$overview.generated_at -ne [string]$intelligence.repository.generated_at -or [string]$overview.generated_at -ne [string]$lock.generated_at) { throw "Generated timestamps do not match" }
     $artifactFileByPath = @{}
     foreach ($file in $intelligence.files) {
@@ -540,7 +541,7 @@ function Test-WrittenArtifacts {
         if (-not $ids.ContainsKey($chunk.entity_id)) { throw "Chunk entity missing: $($chunk.entity_id)" }
         if (-not $artifactFileByPath.ContainsKey($chunk.path)) { throw "Chunk source path missing: $($chunk.path)" }
         $file = $artifactFileByPath[$chunk.path]
-        if ([string]$chunk.source_sha256 -ne [string]$file.sha256 -or [string]$chunk.commit -ne $currentCommit) { throw "Chunk source provenance mismatch: $($chunk.id)" }
+        if ([string]$chunk.source_sha256 -ne [string]$file.sha256 -or [string]$chunk.commit -ne $snapshotCommit) { throw "Chunk source provenance mismatch: $($chunk.id)" }
         $start = [int]$chunk.start_line; $end = [int]$chunk.end_line
         if ($start -lt 1 -or $end -lt $start -or $end -gt [int]$file.line_count) { throw "Chunk line range is outside file: $($chunk.id)" }
         $actualChunk = (($file.lines[($start - 1)..($end - 1)]) -join [Environment]::NewLine)
@@ -584,6 +585,9 @@ foreach ($path in $inputPaths) {
     $fileByPath[$path] = $record
 }
 $inputFingerprint = Get-InputFingerprint $inputPaths $fileByPath
+if ($oldLock -and $oldLock.generator_version -eq $generatorVersion -and [string]$oldLock.input_fingerprint -eq $inputFingerprint) {
+    $commit = [string]$oldLock.current_commit
+}
 $effectiveGeneratedAt = Get-CanonicalGeneratedAt $GeneratedAt
 if ([string]::IsNullOrWhiteSpace($effectiveGeneratedAt) -and $oldLock -and $oldLock.input_fingerprint -eq $inputFingerprint -and $oldLock.generator_version -eq $generatorVersion) {
     $effectiveGeneratedAt = Get-CanonicalGeneratedAt $oldLock.generated_at

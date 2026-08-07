@@ -18,7 +18,7 @@ Own the generated Realmz Remake source encyclopedia, its machine-readable graph,
 - Local source and documentation may be embedded; Castle and Providence source remains citation-only external evidence.
 - Every resolved relationship has source-span evidence. Ambiguous or dynamic relationships use `status: "unknown"` and do not receive a guessed target.
 - The overview remains at most 20 primary nodes and five primary flows; the detailed entity graph is not subject to that limit.
-- Generated artifacts are produced together from one source snapshot and must agree on commit, file hashes, entities, relations, flows, and source spans.
+- Generated artifacts are produced together from one source snapshot and must agree on the snapshot commit, file hashes, entities, relations, flows, and source spans. An artifact-only commit may advance HEAD without changing that snapshot; exact input/module fingerprints determine freshness.
 - Excluded directories and binary/generated files stay outside the embedded corpus and are recorded in the lock.
 - HTML is direct-open, offline, escaped, and free of external scripts, styles, fonts, network calls, and runtime services.
 - Graph node details remain pinned after pointer release; background clicks clear the selection, and node dragging redraws after release without losing the selection.

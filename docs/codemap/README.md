@@ -19,7 +19,7 @@ From the repository root:
 - `codemap.json` is the compact architectural contract: at most 20 overview nodes and five primary flows.
 - `intelligence.json` is the complete entity/relation graph. Stable identifiers use `module:`, `file:`, `symbol:`, `doc:`, `concept:`, and `external:` prefixes.
 - `chunks.jsonl` contains deterministic retrieval chunks for files, functions, classes, Markdown sections, DOX sections, and bounded continuations.
-- `codemap.lock` records the commit, dirty state, scope, exclusions, generator/schema versions, input/output hashes, and module fingerprints.
+- `codemap.lock` records the source-snapshot commit, dirty state, scope, exclusions, generator/schema versions, input/output hashes, and module fingerprints. The snapshot commit can be the parent of an artifact-only codemap commit; validation uses the exact input and module fingerprints to prove that the current source is unchanged, avoiding an impossible self-referential commit hash.
 
 Every local file is embedded with its exact SHA-256. Every local source span records its path, symbol, line/column range, file hash, and generation commit. External Castle and Providence material remains citation-only.
 
