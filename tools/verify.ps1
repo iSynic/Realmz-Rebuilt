@@ -30,8 +30,14 @@ function Invoke-GodotGate {
         [string[]]$GodotArguments
     )
 
-    $output = & $GodotPath @GodotArguments 2>&1
-    $exitCode = $LASTEXITCODE
+    $previousErrorAction = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    try {
+        $output = & $GodotPath @GodotArguments 2>&1
+        $exitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorAction
+    }
     $output | ForEach-Object { Write-Host $_ }
     $combined = $output -join "`n"
     if ($exitCode -ne 0) { throw "$Label failed with exit code $exitCode." }
