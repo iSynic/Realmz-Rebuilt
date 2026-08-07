@@ -70,6 +70,18 @@ function Read-Utf8Text {
     return [IO.File]::ReadAllText($Path, [Text.UTF8Encoding]::new($false, $true))
 }
 
+function Get-WorkingTreeHasUncommittedChanges {
+    $statusLines = @(git -C $repoRoot status --porcelain --untracked-files=all)
+    foreach ($statusLine in $statusLines) {
+        $statusPath = ([string]$statusLine).Substring(3).Trim() -replace "\\", "/"
+        if ($statusPath -match "^(?:.* -> )?docs/codemap/(codemap\.html|codemap\.json|codemap\.lock|intelligence\.json|chunks\.jsonl)$") {
+            continue
+        }
+        return $true
+    }
+    return $false
+}
+
 function Get-CanonicalGeneratedAt {
     param([object]$Value)
     if ($null -eq $Value) { return "" }
@@ -475,7 +487,7 @@ function Test-WrittenArtifacts {
     $overview = Read-Utf8Text (Join-Path $Root "codemap.json") | ConvertFrom-Json
     $lock = Read-Utf8Text (Join-Path $Root "codemap.lock") | ConvertFrom-Json
     $currentCommit = (git -C $repoRoot rev-parse HEAD).Trim()
-    $currentDirty = [bool](git -C $repoRoot status --porcelain)
+    $currentDirty = Get-WorkingTreeHasUncommittedChanges
     if ([string]$lock.current_commit -ne $currentCommit) { throw "Lock commit does not match current HEAD" }
     if ([bool]$lock.working_tree_has_uncommitted_changes -ne $currentDirty) { throw "Lock working-tree state is stale" }
     $inputPaths = Get-InputPaths
@@ -561,7 +573,7 @@ if ($ValidateOnly) {
 $catalog = Get-Content -Raw $catalogPath | ConvertFrom-Json
 $inputPaths = Get-InputPaths
 $commit = (git -C $repoRoot rev-parse HEAD).Trim()
-$dirtyBefore = [bool](git -C $repoRoot status --porcelain)
+$dirtyBefore = Get-WorkingTreeHasUncommittedChanges
 $oldLock = $null
 if (Test-Path -LiteralPath (Join-Path $outputRoot "codemap.lock")) {
     try { $oldLock = Get-Content -Raw (Join-Path $outputRoot "codemap.lock") | ConvertFrom-Json } catch { $oldLock = $null }
