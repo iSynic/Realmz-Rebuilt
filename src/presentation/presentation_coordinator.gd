@@ -32,6 +32,9 @@ func _on_step_committed(step: SessionStep) -> void:
 	_shell_presenter.present_step(step)
 	_shell_presenter.present_media_events(step.events, _media)
 	_audio_presenter.present_events(step.events, _media)
+	for event: DomainEvent in step.events:
+		if event.kind == &"message_shown" and event.payload.has("classicClick") and not bool(event.payload.get("classicClick", false)):
+			_interaction_presenter.present_passive_classic_text(String(event.payload.get("text", "")))
 
 
 func set_package_media(media: PackageMediaCatalog) -> void:

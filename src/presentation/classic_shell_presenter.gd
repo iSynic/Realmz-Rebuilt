@@ -682,14 +682,16 @@ func _present_event(event: DomainEvent) -> void:
 	match event.kind:
 		&"message_shown":
 			var text := String(event.payload.get("text", "Message"))
-			set_status(text)
+			if event.payload.has("classicClick"):
+				set_status("Scenario text • continue when ready" if bool(event.payload.get("classicClick", false)) else "Scenario text")
+			else:
+				set_status(text)
 			_append_log(text)
 		&"picture_requested":
 			_picture.texture = null
 			_picture_caption.text = "Picture %d" % int(event.payload.get("pictureId", 0))
-			_append_log("Picture %d requested" % int(event.payload.get("pictureId", 0)))
 		&"sound_requested":
-			_append_log("Sound %d requested" % int(event.payload.get("soundId", 0)))
+			pass
 		&"party_created":
 			set_status("Party created • the adventure begins")
 			_append_log("The party enters the realm.")
@@ -712,7 +714,7 @@ func _present_event(event: DomainEvent) -> void:
 		&"battle_completed":
 			_append_log("Battle completed • %s" % event.payload.get("outcome", "resolved"))
 		_:
-			_append_log(String(event.kind).replace("_", " ").capitalize())
+			pass
 
 
 func _decode_image(asset: PackageMediaAsset, bytes: PackedByteArray) -> Image:

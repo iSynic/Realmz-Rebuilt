@@ -48,7 +48,11 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 			var message := _content.message_by_id(message_id)
 			if message == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 1 references unavailable message %d." % action.operand_id)
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new("message_shown", {"messageId": message_id, "text": message.text, "source": "classic", "classicClick": action.operand_id > 0})])
+			var event := DomainEvent.new(&"message_shown", {"messageId": message_id, "text": message.text, "source": "classic", "classicClick": action.operand_id > 0})
+			if action.operand_id > 0:
+				var request := InteractionRequest.new(request_id, &"acknowledge", {"prompt": message.text, "messageId": message_id, "presentation": "classic-textbox"})
+				return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-textbox", "messageId": message_id}, [event])
+			return ScenarioRuntimeOperationResult.completed(null, [event])
 		4:
 			var encounter := _content.simple_encounter_by_id(action.operand_id)
 			if encounter == null:
@@ -660,6 +664,10 @@ func resume_classic(continuation: Dictionary, response: InteractionResponse, req
 		"classic-acknowledge":
 			if response.kind != &"acknowledge":
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Acknowledgement response has the wrong kind.")
+			return ScenarioRuntimeOperationResult.completed(true)
+		"classic-textbox":
+			if response.kind != &"acknowledge":
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic textbox response must acknowledge the displayed message.")
 			return ScenarioRuntimeOperationResult.completed(true)
 		"classic-combat":
 			return _resume_battle(continuation, response, request_id)

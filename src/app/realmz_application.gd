@@ -143,13 +143,16 @@ func _present_step_status(step: SessionStep) -> void:
 	for event: DomainEvent in step.events:
 		match event.kind:
 			&"message_shown":
-				_status_label.text = event.payload.get("text", "Message")
+				_status_label.text = "Scenario text" if event.payload.has("classicClick") else event.payload.get("text", "Message")
 			&"map_transitioned":
 				_status_label.text = "Entered %s" % event.payload.get("targetMapId", "map")
 			&"movement_blocked":
 				_status_label.text = "Blocked • %s" % event.payload.get("reason", "unknown")
 	if step.state == SessionStep.State.WAITING_FOR_INTERACTION:
-		_status_label.text = String(step.interaction.payload.get("prompt", "Choose an option"))
+		if step.interaction.kind == &"acknowledge" and step.interaction.payload.get("presentation") == "classic-textbox":
+			_status_label.text = "Scenario text • continue when ready"
+		else:
+			_status_label.text = String(step.interaction.payload.get("prompt", "Choose an option"))
 
 
 func save_active_session(slot_id: String) -> bool:

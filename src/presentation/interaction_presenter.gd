@@ -52,6 +52,14 @@ func present(request: InteractionRequest) -> void:
 			first.grab_focus()
 
 
+func present_passive_classic_text(text: String) -> void:
+	if _request != null:
+		return
+	_clear_options()
+	_prompt.text = text
+	visible = not text.is_empty()
+
+
 func _build_index_choices(value: Variant) -> void:
 	if value is Array:
 		for index: int in value.size():
