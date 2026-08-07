@@ -4,6 +4,8 @@ extends RefCounted
 var id: String
 var classic_id: int
 var name: String
+var description: String = ""
+var eligible_race_ids: Array[String] = []
 var caste_class: int
 var minimum_age_group: int
 var movement_bonus: int
@@ -33,10 +35,12 @@ var _attack_levels: Array[int]
 var _start_items: Array[String]
 
 
-func _init(definition_id: String, native_id: int, display_name: String, save_bonuses: Array[int], attribute_bonuses: Array[int], attribute_limits: Array[int], condition_levels: Array[int], stamina_dice: Vector2i, to_hit_values: Vector2i, dodge_values: Vector2i, missile_values: Vector2i, hand_to_hand_values: Vector2i, authored_spellcaster_rows: Array[Vector3i] = [], authored_attack_levels: Array[int] = [], starting_items: Array[String] = [], class_id: int = 0, minimum_age: int = 1, move_bonus: int = 0, magic_multiplier: int = 1, two_hand: int = 0, max_stamina_bonus: int = 0, extra_attacks: int = 0, max_attack_count: int = 1, money: int = 0, uses_missile: bool = true, missile_bonus_enabled: bool = false, icon: int = 0, item_mask_low: int = 0, item_mask_high: int = 0, strength_values: Vector2i = Vector2i(0, 8)) -> void:
+func _init(definition_id: String, native_id: int, display_name: String, save_bonuses: Array[int], attribute_bonuses: Array[int], attribute_limits: Array[int], condition_levels: Array[int], stamina_dice: Vector2i, to_hit_values: Vector2i, dodge_values: Vector2i, missile_values: Vector2i, hand_to_hand_values: Vector2i, authored_spellcaster_rows: Array[Vector3i] = [], authored_attack_levels: Array[int] = [], starting_items: Array[String] = [], class_id: int = 0, minimum_age: int = 1, move_bonus: int = 0, magic_multiplier: int = 1, two_hand: int = 0, max_stamina_bonus: int = 0, extra_attacks: int = 0, max_attack_count: int = 1, money: int = 0, uses_missile: bool = true, missile_bonus_enabled: bool = false, icon: int = 0, item_mask_low: int = 0, item_mask_high: int = 0, strength_values: Vector2i = Vector2i(0, 8), display_description: String = "", allowed_races: Array[String] = []) -> void:
 	id = definition_id
 	classic_id = native_id
 	name = display_name
+	description = display_description
+	eligible_race_ids = allowed_races.duplicate()
 	_save_bonuses = save_bonuses.duplicate()
 	_attribute_bonuses = attribute_bonuses.duplicate()
 	_attribute_limits = attribute_limits.duplicate()

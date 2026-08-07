@@ -68,3 +68,13 @@ Safe Scenario Actions compile in Providence to bounded bytecode. They use separa
 One `.r2save` envelope contains all mutable session state, including overlays, clock, equipment escrow, wealth, allies, encounter attempts/type flags, shop stock, combat, scenario-program replacements, VM frames, VM or session-owned pending interaction, post-move/random-region/AP-destination, direct combat-death-macro, or post-battle ally-selection continuation, action state, and RNG state/draw count. Installed package content is referenced by package hash and never copied into the save.
 
 Every gameplay draw uses `RealmzRng`. It owns the QuickDraw `randSeed = randSeed * 16807 mod 2147483647` transition, signed low-word return (mapping `0x8000` to zero), Castle's inclusive `1 + abs(raw) * range / 32768` scaling, draw count, and semantic trace. Presentation has a separate cosmetic RNG. Oracle tests may inject raw scripted values so Castle and the new runtime take identical branches. See `docs/rng-evidence.md` for the evidence boundary.
+
+## Classic application reconstruction
+
+The application layer is now being rebuilt around `ClassicApplicationShell` and `ClassicScreenRouter`, while the session protocol above remains unchanged. The shell owns campaign discovery, setup, vault access, navigation, and the persistent Classic-shaped workspace. A dedicated interaction layer will own textbox, picture, choice, picker, service, and combat overlays; each overlay returns a typed response rather than calling gameplay objects.
+
+The party-setup view is campaign-aware. It presents the authored campaign title/version/author and restriction summary from package v2, places Race on the left, filters Class on the right from typed eligibility relationships, and exposes the five creator stages: Identity, Race & Class, Appearance, Review, and Spells. Appearance identities are package data, and a missing catalog entry is an explicit unavailable choice rather than a guessed path.
+
+Reusable characters are separate from campaign saves. `CharacterVaultRepository` owns immutable `.r2char` revisions and recovery, while `GameSession` validates and clones a selected revision through `IMPORT_VAULT_CHARACTER`. Publishing is explicit and only occurs at a committed boundary. The vault cannot mutate an active session or silently rewrite a character from another campaign.
+
+This tranche intentionally establishes typed shells and gallery surfaces before wiring every service and battle action. The procedural `ClassicShellPresenter` remains only as a route-comparison donor until the new screens cover the same certified paths; no Classic/Remake presentation mode is exposed to players.

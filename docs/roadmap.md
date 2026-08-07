@@ -72,3 +72,23 @@ Exit evidence: the source-backed route completes through the ordinary 2.0 sessio
 Exit: Safe packages are cross-platform deterministic, certified routes pass, 2D/3D agree, and unsupported sandbox requirements reject cleanly.
 
 Remaining exit evidence: execute the configured native-binary verify/export matrices on actual Windows, macOS, and Linux runners. The byte-identical cross-preset PCK is local packaging evidence, not proof that each native executable launches. The implementation does not claim Phase 6 certification until those jobs pass; additional campaign routes expand corpus confidence without weakening the completed AOGM and War route boundaries.
+
+## Current follow-on tranche — Classic application reconstruction (in progress)
+
+The kernel, package loader, scenario VM, and bounded campaign routes are established. The current work shifts the primary effort to reconstructing Realmz as a complete application instead of adding more scenario-driver coverage in isolation.
+
+Implemented in this tranche:
+
+- `ClassicApplicationShell` scene composition and `ClassicScreenRouter` navigation over the existing typed session boundary.
+- Campaign-aware party setup with schema-v2 title/version/author/restriction metadata, Race-left/Class-right filtering, and explicit setup errors.
+- Character creator foundation with the five visible stages, Classic-default appearance identities, review/spell guidance, and session-owned finalization.
+- Immutable `.r2char` character vault records/repository, explicit import intent, transactional persistence, archive/recovery, and target-package eligibility checks.
+- Providence schema v2 exporter plus byte-identical runtime mirror and regenerated synthetic fixtures.
+- Typed gallery surfaces for character, vault, inventory, spells, services, combat, journal, and system workspaces.
+
+Still required before this tranche's acceptance gates:
+
+- Complete typed fixture gallery coverage at 960×600, 1280×720, and 1920×1080 with 100–150% text scale, overlap checks, focus checks, and empty/loading/error states.
+- Dedicated Classic textbox/picture/picker layer and ordinary UI wiring for exploration, inventory, services, rewards, level-up, and tactical combat.
+- Package media catalogs for portraits/combat icons and the remaining character review/spell choices.
+- Cutover from the old procedural presenter after the new shell passes the same AOGM ordinary-play route; the current committed fixture remains synthetic.

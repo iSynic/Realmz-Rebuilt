@@ -12,7 +12,11 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "adf7417d26d2b12663d17d59b0539d3c69f1f1c5eb82c2ab2639268e821cb626", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "f477641aa84824f5dd7d3fe315579326b9a0a6d0fbd1fb7522ac6c6262159738", "package identity is retained")
+	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
+	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
+	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
+	assert_true(loaded.content.campaign_definition().contact.has("email"), "campaign contact metadata is validated as a fixed shape")
 	var map := loaded.content.world.map_by_id("land:0")
 	assert_not_null(map, "the authoritative start map is constructed")
 	assert_equal(map.topology.width, 3, "fixture topology width is preserved")
@@ -68,7 +72,7 @@ func run() -> void:
 	assert_not_null(dungeon_tileset, "the authoritative dungeon render identity resolves to a package tileset")
 	assert_equal(dungeon_tileset.region_for(1), Rect2i(0, 0, 16, 16), "the first Classic dungeon tile resolves without an off-by-one shift")
 
-	var install_root := "user://realmz2-tests/package-install"
+	var install_root := "user://realmz2-tests/package-install-schema-v2b"
 	var installed := repository.install_package(FIXTURE_PATH, install_root)
 	assert_true(installed.is_ok(), "a validated package installs through temporary typed readback: %s" % installed.error_message)
 	if installed.is_ok():
@@ -77,7 +81,7 @@ func run() -> void:
 		var repeated := repository.install_package(FIXTURE_PATH, install_root)
 		assert_true(repeated.is_ok(), "reinstalling identical immutable content is idempotent")
 		assert_equal(repeated.installed_path, installed.installed_path, "idempotent installation resolves to the same package")
-		var duplicate_path := installed.installed_path.get_base_dir().path_join("duplicate.realmz2")
+		var duplicate_path := installed.installed_path.get_base_dir().path_join("zz-duplicate.realmz2")
 		if FileAccess.file_exists(duplicate_path):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(duplicate_path))
 		var discovered := repository.discover_packages([install_root])

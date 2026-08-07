@@ -114,6 +114,10 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _combat_action(intent)
 		PlayerIntent.Kind.CREATE_PARTY:
 			return _create_party(intent.party_members)
+		PlayerIntent.Kind.BEGIN_ADVENTURE:
+			return _begin_adventure()
+		PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
+			return _import_vault_character(intent)
 		_:
 			return SessionStep.failed(_view_revision, &"intent_not_implemented", "This Realmz intent is not implemented in the current slice.")
 
@@ -154,10 +158,34 @@ func view() -> GameView:
 	result.campaign_id = _content.campaign_id
 	result.rules_version = _content.rules_version
 	result.party_setup_available = not _state.party_setup_completed and _view_revision == 1 and _pending_interaction() == null
+	result.campaign_summary = CampaignSummaryView.new()
+	result.campaign_summary.campaign_id = _content.campaign_id
+	var campaign := _content.campaign_definition()
+	result.campaign_summary.title = campaign.title if not campaign.title.is_empty() else _content.campaign_id.replace("-", " ").capitalize()
+	result.campaign_summary.version = campaign.version if not campaign.version.is_empty() else _content.rules_version
+	result.campaign_summary.author = campaign.author
+	result.campaign_summary.contact = campaign.contact.duplicate(true)
+	result.campaign_summary.description = campaign.description
+	result.campaign_summary.splash_asset_id = campaign.splash_asset_id
+	result.campaign_summary.restriction_description = campaign.restrictions.description
+	result.campaign_summary.maximum_party_size = campaign.restrictions.maximum_party_size
+	result.campaign_summary.maximum_level = campaign.restrictions.maximum_level
+	result.campaign_summary.banned_races = campaign.restrictions.banned_races.duplicate()
+	result.campaign_summary.banned_castes = campaign.restrictions.banned_castes.duplicate()
+	result.campaign_summary.package_hash = _content.package_hash
+	result.party_summary = PartySummaryView.new()
+	for character: CharacterState in _state.party.characters():
+		result.party_summary.character_ids.append(character.id)
+	for ally: MonsterState in _state.party.allies():
+		result.party_summary.ally_ids.append(ally.id)
+	result.party_summary.pooled_gold = _state.party.pooled_wealth.gold
+	result.party_summary.banked_gold = _state.party.banked_wealth.gold
+	result.party_summary.fatigue = _state.party.fatigue
+	result.party_summary.acquired_map_ids = _state.world.acquired_map_ids()
 	for race: RaceDefinition in _content.race_definitions():
-		result.race_options.append(DefinitionOptionView.new(race.id, race.name))
+		result.race_options.append(DefinitionOptionView.new(race.id, race.name, race.description, race.eligible_caste_ids))
 	for caste: CasteDefinition in _content.caste_definitions():
-		result.caste_options.append(DefinitionOptionView.new(caste.id, caste.name))
+		result.caste_options.append(DefinitionOptionView.new(caste.id, caste.name, caste.description, caste.eligible_race_ids))
 	return result
 
 
@@ -225,8 +253,9 @@ func _combat_action(intent: PlayerIntent) -> SessionStep:
 func _create_party(specs: Array[CharacterCreationSpec]) -> SessionStep:
 	if _state.party_setup_completed or _view_revision != 1 or _pending_interaction() != null:
 		return SessionStep.failed(_view_revision, &"party_setup_closed", "Party creation is available only at a fresh campaign start.")
-	if specs.is_empty() or specs.size() > 6:
-		return SessionStep.failed(_view_revision, &"invalid_party_size", "A Realmz party requires one through six characters.")
+	var maximum_party_size := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
+	if specs.is_empty() or specs.size() > maximum_party_size:
+		return SessionStep.failed(_view_revision, &"invalid_party_size", "This campaign allows one through %d characters." % maximum_party_size)
 	var created: Array[CharacterState] = []
 	var names: Dictionary = {}
 	for index: int in specs.size():
@@ -240,10 +269,21 @@ func _create_party(specs: Array[CharacterCreationSpec]) -> SessionStep:
 		var caste := _content.caste_by_id(spec.caste_id)
 		if race == null or caste == null:
 			return SessionStep.failed(_view_revision, &"unknown_character_definition", "Party creation references an unavailable race or caste.")
+		var restrictions := _content.campaign_definition().restrictions
+		if restrictions.banned_races.has(race.id):
+			return SessionStep.failed(_view_revision, &"restricted_race", "This campaign does not allow the selected race.")
+		if restrictions.banned_castes.has(caste.id):
+			return SessionStep.failed(_view_revision, &"restricted_caste", "This campaign does not allow the selected class.")
+		if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
+			return SessionStep.failed(_view_revision, &"incompatible_race_class", "The selected race cannot use that class.")
+		if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
+			return SessionStep.failed(_view_revision, &"incompatible_class_race", "The selected class is not available to that race.")
 		names[name_key] = true
 		var character := _rules.characters.create_character("party.character.%d" % (index + 1), spec.name, race, caste, spec.gender, _rng)
 		if character == null:
 			return SessionStep.failed(_view_revision, &"character_creation_failed", "Realmz rules rejected a party member.")
+		character.portrait_id = spec.portrait_id
+		character.combat_icon_id = spec.combat_icon_id
 		created.append(character)
 	var replacement := PartyState.new(_state.party.map_id, _state.party.coordinate, created)
 	_state.party = replacement
@@ -252,6 +292,62 @@ func _create_party(specs: Array[CharacterCreationSpec]) -> SessionStep:
 	for character: CharacterState in created:
 		character_ids.append(character.id)
 	return _finish_completed([DomainEvent.new(&"party_created", {"characterIds": character_ids})])
+
+
+func _begin_adventure() -> SessionStep:
+	if _state.party_setup_completed or _view_revision != 1 or _pending_interaction() != null:
+		return SessionStep.failed(_view_revision, &"party_setup_closed", "Party setup is no longer active.")
+	var characters := _state.party.characters()
+	if characters.size() == 1 and characters[0].id == "party.starting.adventurer":
+		return SessionStep.failed(_view_revision, &"empty_party", "Add or import at least one character before beginning.")
+	if characters.is_empty():
+		return SessionStep.failed(_view_revision, &"empty_party", "Add or import at least one character before beginning.")
+	_state.party_setup_completed = true
+	var character_ids: Array[String] = []
+	for character: CharacterState in characters:
+		character_ids.append(character.id)
+	return _finish_completed([DomainEvent.new(&"party_created", {"characterIds": character_ids})])
+
+
+func _import_vault_character(intent: PlayerIntent) -> SessionStep:
+	if _state.party_setup_completed or _view_revision != 1 or _pending_interaction() != null:
+		return SessionStep.failed(_view_revision, &"party_setup_closed", "Vault import is available only during fresh party setup.")
+	if intent.target_id.is_empty() or intent.revision_hash.is_empty() or intent.vault_state_data.is_empty():
+		return SessionStep.failed(_view_revision, &"invalid_vault_import", "A validated vault character revision is required.")
+	var imported := CharacterState.from_data(intent.vault_state_data)
+	if imported == null or imported.id != intent.target_id:
+		return SessionStep.failed(_view_revision, &"invalid_vault_import", "The vault character state is malformed.")
+	var restrictions := _content.campaign_definition().restrictions
+	var maximum_party_size := clampi(restrictions.maximum_party_size, 1, 6)
+	var current_characters := _state.party.characters()
+	if current_characters.size() == 1 and current_characters[0].id == "party.starting.adventurer":
+		current_characters.clear()
+	if current_characters.size() >= maximum_party_size:
+		return SessionStep.failed(_view_revision, &"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
+	if _content.race_by_id(imported.race_id) == null or _content.caste_by_id(imported.caste_id) == null:
+		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's race or class is not defined by this campaign.")
+	if restrictions.banned_races.has(imported.race_id) or restrictions.banned_castes.has(imported.caste_id):
+		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The campaign restrictions reject this vault character.")
+	if restrictions.maximum_level > 0 and imported.level > restrictions.maximum_level:
+		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character exceeds this campaign's maximum level.")
+	var race := _content.race_by_id(imported.race_id)
+	var caste := _content.caste_by_id(imported.caste_id)
+	if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
+		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's race cannot use that class.")
+	if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
+		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's class is not available to that race.")
+	for item: ItemInstance in imported.inventory():
+		if _content.item_by_id(item.definition_id) == null:
+			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character carries an item unavailable in this campaign.")
+	for spell_id: String in imported.known_spells():
+		if _content.spell_by_id(spell_id) == null:
+			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character knows a spell unavailable in this campaign.")
+	for current: CharacterState in current_characters:
+		if current.id == imported.id or current.name.to_lower() == imported.name.to_lower():
+			return SessionStep.failed(_view_revision, &"duplicate_party_member", "That vault character is already represented in the party.")
+	current_characters.append(imported)
+	_state.party = PartyState.new(_state.party.map_id, _state.party.coordinate, current_characters)
+	return _finish_completed([DomainEvent.new(&"vault_character_imported", {"characterId": imported.id, "revisionHash": intent.revision_hash, "sourceCampaignId": intent.vault_source_campaign_id})])
 
 
 func _search() -> SessionStep:

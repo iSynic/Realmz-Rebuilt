@@ -69,6 +69,15 @@ func has_map(map_id: String) -> bool:
 	return _acquired_maps.has(map_id)
 
 
+func acquired_map_ids() -> Array[String]:
+	var result: Array[String] = []
+	for map_id: Variant in _acquired_maps.keys():
+		if map_id is String:
+			result.append(map_id)
+	result.sort()
+	return result
+
+
 func set_random_region(region: RandomRegionState) -> void:
 	if region != null and not region.id.is_empty():
 		_random_regions[region.id] = region

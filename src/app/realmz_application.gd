@@ -5,20 +5,23 @@ const GameSessionControllerScript := preload("res://src/app/game_session_control
 const PresentationCoordinatorScript := preload("res://src/presentation/presentation_coordinator.gd")
 const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
 const SaveRepositoryScript := preload("res://src/infrastructure/saves/save_repository.gd")
+const CharacterVaultRepositoryScript := preload("res://src/infrastructure/characters/character_vault_repository.gd")
 const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
 const DungeonMap3DPresenterScript := preload("res://src/presentation/dungeon_map_3d_presenter.gd")
 
-@onready var _status_label: Label = %Status
-@onready var _smoke_button: Button = %SmokeAction
+@onready var _status_label: Label = $ClassicShell/TopBar/Status
+@onready var _smoke_button: Button = $ClassicShell/SmokeAction
 @onready var _map_presenter: ClassicMapPresenter = %ExplorationMap
 @onready var _interaction_presenter: InteractionPresenter = %InteractionPanel
-@onready var _shell_presenter: ClassicShellPresenter = %ClassicShell
+@onready var _shell_presenter: ClassicShellPresenter = $ClassicShell
+@onready var _classic_shell: ClassicApplicationShell = $ClassicShell
 @onready var _audio_presenter: ClassicAudioPresenter = %ClassicAudio
 
 var session_controller: GameSessionController
 var presentation_coordinator: PresentationCoordinator
 var package_repository: PackageRepository
 var save_repository: SaveRepository
+var character_vault_repository: CharacterVaultRepository
 var settings_repository: SettingsRepository
 var _active_content: RealmzContent
 var _presentation_settings: PresentationSettings
@@ -28,6 +31,7 @@ var _dungeon_presenter: DungeonMap3DPresenter
 func _ready() -> void:
 	package_repository = PackageRepositoryScript.new()
 	save_repository = SaveRepositoryScript.new()
+	character_vault_repository = CharacterVaultRepositoryScript.new()
 	settings_repository = SettingsRepositoryScript.new()
 	_presentation_settings = settings_repository.load_settings()
 	session_controller = GameSessionControllerScript.new()
@@ -55,6 +59,7 @@ func _ready() -> void:
 	_on_dungeon_3d_changed(_presentation_settings.dungeon_3d)
 	_status_label.text = "Pure session boundary online"
 	_refresh_campaigns()
+	_classic_shell.set_vault_records(character_vault_repository.list_current_records())
 
 
 func _on_smoke_action_pressed() -> void:
@@ -125,6 +130,13 @@ func _submit_movement(direction: Vector2i) -> void:
 
 
 func _submit_intent(intent: PlayerIntent) -> SessionStep:
+	if intent != null and intent.kind == PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
+		var record := character_vault_repository.load_revision(intent.target_id, intent.revision_hash)
+		if record == null:
+			var failed := SessionStep.failed(session_controller.view().revision, &"vault_load_failed", character_vault_repository.last_error if not character_vault_repository.last_error.is_empty() else "The requested vault revision is unavailable.")
+			_present_step_status(failed)
+			return failed
+		intent = PlayerIntent.import_vault_character(record.character_id, record.revision_hash, record.state.to_data(), record.source_campaign_id, record.source_package_hash)
 	var step := session_controller.submit_intent(intent)
 	_present_step_status(step)
 	return step

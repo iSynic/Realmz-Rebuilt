@@ -1,0 +1,274 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/presentation/classic_application_shell.gd" id="1_shell"]
+[ext_resource type="Script" path="res://src/presentation/classic_screen_router.gd" id="2_router"]
+
+[sub_resource type="StyleBoxFlat" id="TopStyle"]
+bg_color = Color(0.11, 0.125, 0.15, 0.98)
+border_width_bottom = 1
+border_color = Color(0.24, 0.27, 0.32, 1)
+
+[sub_resource type="StyleBoxFlat" id="SideStyle"]
+bg_color = Color(0.15, 0.17, 0.2, 0.98)
+border_width_right = 1
+border_color = Color(0.24, 0.27, 0.32, 1)
+
+[sub_resource type="StyleBoxFlat" id="RightStyle"]
+bg_color = Color(0.15, 0.17, 0.2, 0.98)
+border_width_left = 1
+border_color = Color(0.24, 0.27, 0.32, 1)
+
+[sub_resource type="StyleBoxFlat" id="BottomStyle"]
+bg_color = Color(0.11, 0.125, 0.15, 0.98)
+border_width_top = 1
+border_color = Color(0.24, 0.27, 0.32, 1)
+
+[node name="ClassicApplicationShell" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+z_index = 10
+script = ExtResource("1_shell")
+
+[node name="TopBar" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_bottom = 58.0
+grow_horizontal = 2
+theme_override_styles/panel = SubResource("TopStyle")
+
+[node name="Title" type="Label" parent="TopBar"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 130.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.84, 0.71, 0.36, 1)
+theme_override_font_sizes/font_size = 28
+text = "REALMZ"
+vertical_alignment = 1
+
+[node name="Status" type="Label" parent="TopBar"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 142.0
+offset_top = 10.0
+offset_right = 760.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.85, 0.86, 0.84, 1)
+theme_override_font_sizes/font_size = 15
+text = "Choose a validated Realmz campaign"
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="Clock" type="Label" parent="TopBar"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 770.0
+offset_top = 10.0
+offset_right = 880.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.9, 0.9, 0.9, 1)
+horizontal_alignment = 2
+vertical_alignment = 1
+text = "No active session"
+
+[node name="Gold" type="Label" parent="TopBar"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 888.0
+offset_top = 10.0
+offset_right = 950.0
+offset_bottom = 48.0
+theme_override_colors/font_color = Color(0.84, 0.71, 0.36, 1)
+horizontal_alignment = 2
+vertical_alignment = 1
+text = "Gold —"
+
+[node name="PartyPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 6
+anchor_right = 0.0
+anchor_bottom = 1.0
+offset_right = 205.0
+offset_top = 58.0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("SideStyle")
+
+[node name="Heading" type="Label" parent="PartyPanel"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 12.0
+offset_right = 190.0
+offset_bottom = 38.0
+theme_override_colors/font_color = Color(0.84, 0.71, 0.36, 1)
+theme_override_font_sizes/font_size = 18
+text = "Party"
+
+[node name="PartyList" type="VBoxContainer" parent="PartyPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 12.0
+offset_top = 44.0
+offset_right = 193.0
+offset_bottom = -12.0
+theme_override_constants/separation = 6
+
+[node name="RightPanel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -225.0
+offset_top = 58.0
+offset_bottom = 0.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_styles/panel = SubResource("RightStyle")
+
+[node name="Heading" type="Label" parent="RightPanel"]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 12.0
+offset_right = 210.0
+offset_bottom = 38.0
+theme_override_colors/font_color = Color(0.84, 0.71, 0.36, 1)
+theme_override_font_sizes/font_size = 18
+text = "Chronicle"
+
+[node name="Picture" type="TextureRect" parent="RightPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 14.0
+offset_top = 44.0
+offset_right = 211.0
+offset_bottom = 126.0
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PictureCaption" type="Label" parent="RightPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 14.0
+offset_top = 128.0
+offset_right = 211.0
+offset_bottom = 150.0
+theme_override_colors/font_color = Color(0.6, 0.62, 0.66, 1)
+horizontal_alignment = 1
+text = "No picture"
+
+[node name="Chronicle" type="RichTextLabel" parent="RightPanel"]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 14.0
+offset_top = 158.0
+offset_right = 211.0
+offset_bottom = -12.0
+bbcode_enabled = true
+scroll_active = true
+fit_content = false
+
+[node name="ScenarioText" type="Label" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 220.0
+offset_top = 108.0
+offset_right = 730.0
+offset_bottom = 160.0
+
+[node name="ScreenRouter" type="Control" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+script = ExtResource("2_router")
+
+[node name="BottomBar" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_left = 0.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 205.0
+offset_top = -62.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_styles/panel = SubResource("BottomStyle")
+
+[node name="CommandRow" type="HBoxContainer" parent="BottomBar"]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 8.0
+offset_right = -10.0
+offset_bottom = 48.0
+theme_override_constants/separation = 5
+
+[node name="Search" type="Button" parent="BottomBar/CommandRow"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Search"
+
+[node name="Camp" type="Button" parent="BottomBar/CommandRow"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Camp"
+
+[node name="Character" type="Button" parent="BottomBar/CommandRow"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Character"
+
+[node name="Inventory" type="Button" parent="BottomBar/CommandRow"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Inventory"
+
+[node name="Spells" type="Button" parent="BottomBar/CommandRow"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Spells"
+
+[node name="Save" type="Button" parent="BottomBar/CommandRow"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Save"
+
+[node name="Load" type="Button" parent="BottomBar/CommandRow"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Load"
+
+[node name="Settings" type="Button" parent="BottomBar/CommandRow"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Settings"
+
+[node name="Campaigns" type="Button" parent="BottomBar/CommandRow"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Campaigns"
+
+[node name="SmokeAction" type="Button" parent="."]
+unique_name_in_owner = true
+visible = false
+text = "Verify input"

@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "b48086c5dc62c76f4d349784870ba08aeb91d149410057931a09ee76eb4b00bf"
+const EXPECTED_SCHEMA_HASH: String = "c9c713b99ec58c366f6eeaf96ed371c94e491e8ab8351ba791a848d5f2f878ac"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -205,7 +205,7 @@ func _validate_manifest(manifest: Dictionary, archive: ZIPReader, archive_entrie
 	var required_fields: Array[String] = ["kind", "format", "formatVersion", "schemaVersion", "schemaHash", "campaignId", "contentId", "engine", "start", "capabilities", "files", "packageHash"]
 	if not _has_fields(manifest, required_fields, "manifest"):
 		return false
-	if manifest["kind"] != "realmz2.manifest" or manifest["format"] != "realmz2" or _integer(manifest["formatVersion"]) != 1 or _integer(manifest["schemaVersion"]) != 1:
+	if manifest["kind"] != "realmz2.manifest" or manifest["format"] != "realmz2" or _integer(manifest["formatVersion"]) != 1 or _integer(manifest["schemaVersion"]) != 2:
 		return _reject("Unsupported Realmz 2.0 package or schema version.")
 	if manifest["schemaHash"] != EXPECTED_SCHEMA_HASH:
 		return _reject("Package schema hash does not match the runtime contract mirror.")
@@ -258,6 +258,9 @@ static func package_capability_error(capability: Variant) -> String:
 func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictionary, scenario: Dictionary) -> RealmzContent:
 	if not content.has("campaign") or not content["campaign"] is Dictionary or content["campaign"].get("id") != manifest["campaignId"]:
 		_reject("Content campaign identity does not match the manifest.")
+		return null
+	var campaign_definition := _construct_campaign_definition(content["campaign"])
+	if campaign_definition == null:
 		return null
 	var messages_value: Variant = _construct_messages(content.get("messages"))
 	if messages_value == null:
@@ -351,7 +354,49 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 			if destination_map == null or destination_map.topology.cell_at(trigger.post_action_location.coordinate) == null:
 				_reject("Trigger '%s' references an unavailable post-action location." % trigger.id)
 				return null
-	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters, option_labels)
+	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters, option_labels, campaign_definition)
+
+
+func _construct_campaign_definition(value: Variant) -> CampaignDefinition:
+	if not value is Dictionary:
+		_reject("Content campaign metadata must be an object.")
+		return null
+	var record: Dictionary = value
+	var fields: Array[String] = ["id", "name", "version", "author", "contact", "description", "splashAssetId", "restrictions"]
+	if not _exact_fields(record, fields) or not record["id"] is String or record["id"].is_empty() or not record["name"] is String or record["name"].is_empty() or not record["version"] is String or not record["author"] is String or not record["contact"] is Dictionary or not record["description"] is String or not record["splashAssetId"] is String or not record["restrictions"] is Dictionary:
+		_reject("Campaign display metadata is malformed.")
+		return null
+	var contact: Dictionary = record["contact"]
+	if not _exact_fields(contact, ["email", "web", "date", "fee"]) or not contact["email"] is String or not contact["web"] is String or not contact["date"] is String or not contact["fee"] is String:
+		_reject("Campaign contact metadata is malformed.")
+		return null
+	var restrictions: Dictionary = record["restrictions"]
+	var restriction_fields: Array[String] = ["description", "maxPartySize", "maxLevel", "bannedRaces", "bannedCastes"]
+	if not _exact_fields(restrictions, restriction_fields) or not restrictions["description"] is String or _integer(restrictions["maxPartySize"]) < 1 or _integer(restrictions["maxPartySize"]) > 6 or _integer(restrictions["maxLevel"]) < 0 or not restrictions["bannedRaces"] is Array or not restrictions["bannedCastes"] is Array:
+		_reject("Campaign restriction metadata is malformed.")
+		return null
+	var result := CampaignDefinition.new()
+	result.id = record["id"]
+	result.title = record["name"]
+	result.version = record["version"]
+	result.author = record["author"]
+	result.contact = record["contact"].duplicate(true)
+	result.description = record["description"]
+	result.splash_asset_id = record["splashAssetId"]
+	result.restrictions.description = restrictions["description"]
+	result.restrictions.maximum_party_size = _integer(restrictions["maxPartySize"])
+	result.restrictions.maximum_level = _integer(restrictions["maxLevel"])
+	for race_id: Variant in restrictions["bannedRaces"]:
+		if not race_id is String:
+			_reject("Campaign banned race IDs must be strings.")
+			return null
+		result.restrictions.banned_races.append(race_id)
+	for caste_id: Variant in restrictions["bannedCastes"]:
+		if not caste_id is String:
+			_reject("Campaign banned caste IDs must be strings.")
+			return null
+		result.restrictions.banned_castes.append(caste_id)
+	return result
 
 
 func _construct_messages(value: Variant) -> Variant:
@@ -463,7 +508,7 @@ func _construct_races(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content races must be an array.")
 		return null
-	var fields: Array[String] = ["id", "classicId", "name", "hitModifiers", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "ageRanges", "maximumAge", "doesNotDie", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "canRegenerate", "defaultIconSet", "itemCategoryMasks", "descriptorFlags"]
+	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleCasteIds", "hitModifiers", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "ageRanges", "maximumAge", "doesNotDie", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "canRegenerate", "defaultIconSet", "itemCategoryMasks", "descriptorFlags"]
 	var integer_fields: Array[String] = ["classicId", "maximumAge", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "defaultIconSet", "descriptorFlags"]
 	var result: Array[RaceDefinition] = []
 	var ids: Dictionary = {}
@@ -473,7 +518,7 @@ func _construct_races(value: Variant) -> Variant:
 			return null
 		var record: Dictionary = value_record
 		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Race definition")
-		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Race") or not record["doesNotDie"] is bool or not record["canRegenerate"] is bool or not record["ageRanges"] is Array or record["ageRanges"].size() != 5:
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Race") or not record["name"] is String or not record["description"] is String or not record["eligibleCasteIds"] is Array or not record["doesNotDie"] is bool or not record["canRegenerate"] is bool or not record["ageRanges"] is Array or record["ageRanges"].size() != 5:
 			_reject("Race definition is malformed or duplicated.")
 			return null
 		var hit_value: Variant = _integer_array(record["hitModifiers"], 8, "Race hit modifiers")
@@ -493,7 +538,13 @@ func _construct_races(value: Variant) -> Variant:
 			ages.append(Vector2i(pair[0], pair[1]))
 		var integers: Dictionary = integers_value
 		var masks: Array[int] = masks_value
-		result.append(RaceDefinition.new(record["id"], integers["classicId"], record["name"], hit_value, save_value, bonus_value, limits_value, conditions_value, ages, integers["maximumAge"], record["doesNotDie"], integers["baseMovement"], integers["magicResistance"], integers["twoHandBonus"], integers["missileBonus"], integers["baseAttacks"], integers["maximumAttacks"], record["canRegenerate"], integers["defaultIconSet"], masks[0], masks[1], integers["descriptorFlags"]))
+		var eligible_castes: Array[String] = []
+		for caste_id: Variant in record["eligibleCasteIds"]:
+			if not caste_id is String or caste_id.is_empty():
+				_reject("Race eligibility IDs must be non-empty strings.")
+				return null
+			eligible_castes.append(caste_id)
+		result.append(RaceDefinition.new(record["id"], integers["classicId"], record["name"], hit_value, save_value, bonus_value, limits_value, conditions_value, ages, integers["maximumAge"], record["doesNotDie"], integers["baseMovement"], integers["magicResistance"], integers["twoHandBonus"], integers["missileBonus"], integers["baseAttacks"], integers["maximumAttacks"], record["canRegenerate"], integers["defaultIconSet"], masks[0], masks[1], integers["descriptorFlags"], record["description"], eligible_castes))
 	return result
 
 
@@ -501,7 +552,7 @@ func _construct_castes(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content castes must be an array.")
 		return null
-	var fields: Array[String] = ["id", "classicId", "name", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "staminaDice", "strengthValues", "dodgeValues", "toHitValues", "missileValues", "handToHandValues", "spellcasterRows", "attackLevels", "startingItemIds", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "canUseMissile", "getsMissileBonus", "defaultIcon", "itemCategoryMasks"]
+	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleRaceIds", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "staminaDice", "strengthValues", "dodgeValues", "toHitValues", "missileValues", "handToHandValues", "spellcasterRows", "attackLevels", "startingItemIds", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "canUseMissile", "getsMissileBonus", "defaultIcon", "itemCategoryMasks"]
 	var integer_fields: Array[String] = ["classicId", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "defaultIcon"]
 	var result: Array[CasteDefinition] = []
 	var ids: Dictionary = {}
@@ -511,7 +562,7 @@ func _construct_castes(value: Variant) -> Variant:
 			return null
 		var record: Dictionary = value_record
 		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Caste definition")
-		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Caste") or not record["canUseMissile"] is bool or not record["getsMissileBonus"] is bool or not record["spellcasterRows"] is Array or record["spellcasterRows"].size() != 4:
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Caste") or not record["name"] is String or not record["description"] is String or not record["eligibleRaceIds"] is Array or not record["canUseMissile"] is bool or not record["getsMissileBonus"] is bool or not record["spellcasterRows"] is Array or record["spellcasterRows"].size() != 4:
 			_reject("Caste definition is malformed or duplicated.")
 			return null
 		var saves_value: Variant = _integer_array(record["saveBonuses"], 8, "Caste save bonuses")
@@ -544,7 +595,13 @@ func _construct_castes(value: Variant) -> Variant:
 		var missile: Array[int] = missile_value
 		var hand: Array[int] = hand_value
 		var masks: Array[int] = masks_value
-		result.append(CasteDefinition.new(record["id"], integers["classicId"], record["name"], saves_value, bonuses_value, limits_value, conditions_value, Vector2i(stamina[0], stamina[1]), Vector2i(to_hit[0], to_hit[1]), Vector2i(dodge[0], dodge[1]), Vector2i(missile[0], missile[1]), Vector2i(hand[0], hand[1]), spellcasters, attacks_value, start_items_value, integers["casteClass"], integers["minimumAgeGroup"], integers["movementBonus"], integers["magicResistanceMultiplier"], integers["twoHandBonus"], integers["maximumStaminaBonus"], integers["bonusAttacks"], integers["maximumAttacks"], integers["startMoney"], record["canUseMissile"], record["getsMissileBonus"], integers["defaultIcon"], masks[0], masks[1], Vector2i(strength[0], strength[1])))
+		var eligible_races: Array[String] = []
+		for race_id: Variant in record["eligibleRaceIds"]:
+			if not race_id is String or race_id.is_empty():
+				_reject("Caste eligibility IDs must be non-empty strings.")
+				return null
+			eligible_races.append(race_id)
+		result.append(CasteDefinition.new(record["id"], integers["classicId"], record["name"], saves_value, bonuses_value, limits_value, conditions_value, Vector2i(stamina[0], stamina[1]), Vector2i(to_hit[0], to_hit[1]), Vector2i(dodge[0], dodge[1]), Vector2i(missile[0], missile[1]), Vector2i(hand[0], hand[1]), spellcasters, attacks_value, start_items_value, integers["casteClass"], integers["minimumAgeGroup"], integers["movementBonus"], integers["magicResistanceMultiplier"], integers["twoHandBonus"], integers["maximumStaminaBonus"], integers["bonusAttacks"], integers["maximumAttacks"], integers["startMoney"], record["canUseMissile"], record["getsMissileBonus"], integers["defaultIcon"], masks[0], masks[1], Vector2i(strength[0], strength[1]), record["description"], eligible_races))
 	return result
 
 
@@ -1807,7 +1864,7 @@ func _read_document(archive: ZIPReader, path: String) -> Variant:
 
 
 func _validate_document_header(document: Dictionary, expected_kind: String) -> bool:
-	if document.get("kind") != expected_kind or _integer(document.get("schemaVersion")) != 1:
+	if document.get("kind") != expected_kind or _integer(document.get("schemaVersion")) != 2:
 		return _reject("Package document '%s' has an unsupported header." % expected_kind)
 	return true
 

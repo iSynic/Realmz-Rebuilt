@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://c4lmfeiqvh15e" path="res://src/app/realmz_application.gd" id="1_application"]
 [ext_resource type="Script" uid="uid://cx16ce4so2bne" path="res://src/presentation/classic_map_presenter.gd" id="2_gxxd3"]
 [ext_resource type="Script" uid="uid://cxksrtsb7dh56" path="res://src/presentation/interaction_presenter.gd" id="3_uarpi"]
-[ext_resource type="Script" uid="uid://dod56afmp7bda" path="res://src/presentation/classic_shell_presenter.gd" id="4_vnciy"]
+[ext_resource type="PackedScene" path="res://src/presentation/classic_application_shell.tscn" id="4_shell"]
 [ext_resource type="Script" uid="uid://3njyl4c48r3i" path="res://src/presentation/classic_audio_presenter.gd" id="5_lvslj"]
 
 [node name="RealmzApplication" type="Control" unique_id=180838614]
@@ -24,49 +24,6 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 color = Color(0.035, 0.043, 0.055, 1)
-
-[node name="Content" type="VBoxContainer" parent="." unique_id=1028273456]
-visible = false
-layout_mode = 1
-anchors_preset = 5
-anchor_left = 0.5
-anchor_right = 0.5
-offset_left = -310.0
-offset_top = 18.0
-offset_right = 310.0
-offset_bottom = 168.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_override_constants/separation = 18
-
-[node name="Title" type="Label" parent="Content" unique_id=233042813]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.86, 0.75, 0.42, 1)
-theme_override_font_sizes/font_size = 32
-text = "Realmz Remake 2.0"
-horizontal_alignment = 1
-
-[node name="Architecture" type="Label" parent="Content" unique_id=168680016]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.72, 0.76, 0.82, 1)
-theme_override_font_sizes/font_size = 17
-text = "Deterministic Realmz simulation • Providence packages • Godot presentation"
-horizontal_alignment = 1
-
-[node name="Status" type="Label" parent="Content" unique_id=365211400]
-unique_name_in_owner = true
-layout_mode = 2
-tooltip_text = "MCP-verified composition root"
-theme_override_colors/font_color = Color(0.48, 0.77, 0.61, 1)
-theme_override_font_sizes/font_size = 16
-text = "Foundation ready"
-horizontal_alignment = 1
-
-[node name="SmokeAction" type="Button" parent="Content" unique_id=1499120744]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 40)
-layout_mode = 2
-text = "Verify input"
 
 [node name="ExplorationMap" type="Control" parent="." unique_id=169771348]
 unique_name_in_owner = true
@@ -121,13 +78,8 @@ autowrap_mode = 2
 unique_name_in_owner = true
 layout_mode = 2
 
-[node name="ClassicShell" type="Control" parent="." unique_id=387710786]
-unique_name_in_owner = true
-anchors_preset = 0
-script = ExtResource("4_vnciy")
+[node name="ClassicShell" parent="." unique_id=387710786 instance=ExtResource("4_shell")]
 
 [node name="ClassicAudio" type="Node" parent="." unique_id=321473188]
 unique_name_in_owner = true
 script = ExtResource("5_lvslj")
-
-[connection signal="pressed" from="Content/SmokeAction" to="." method="_on_smoke_action_pressed"]

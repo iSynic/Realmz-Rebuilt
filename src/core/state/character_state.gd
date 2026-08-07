@@ -8,6 +8,8 @@ var maximum_health: int
 var race_id: String = "realmz.race.human"
 var caste_id: String = "realmz.caste.adventurer"
 var gender: int = 1
+var portrait_id: String = ""
+var combat_icon_id: String = ""
 var level: int = 1
 var experience: int = 0
 var age_days: int = 0
@@ -101,7 +103,7 @@ func to_data() -> Dictionary:
 		item_data.append(item.to_data())
 	return {
 		"id": id, "name": name, "currentHealth": current_health, "maximumHealth": maximum_health,
-		"raceId": race_id, "casteId": caste_id, "gender": gender, "level": level, "experience": experience, "ageDays": age_days,
+		"raceId": race_id, "casteId": caste_id, "gender": gender, "portraitId": portrait_id, "combatIconId": combat_icon_id, "level": level, "experience": experience, "ageDays": age_days,
 		"attributes": [brawn, knowledge, judgment, agility, vitality, luck],
 		"toHit": to_hit, "dodge": dodge, "missile": missile, "handToHand": hand_to_hand, "damageBonus": damage_bonus,
 		"armor": armor, "magicResistance": magic_resistance, "movement": movement, "maximumMovement": maximum_movement,
@@ -182,6 +184,8 @@ static func from_data(data: Variant) -> CharacterState:
 	result.race_id = data["raceId"]
 	result.caste_id = data["casteId"]
 	result.gender = numeric_values["gender"]
+	result.portrait_id = String(data.get("portraitId", ""))
+	result.combat_icon_id = String(data.get("combatIconId", ""))
 	result.level = numeric_values["level"]
 	result.experience = numeric_values["experience"]
 	result.age_days = numeric_values["ageDays"]

@@ -21,6 +21,10 @@ func present(request: InteractionRequest) -> void:
 	if request == null:
 		_prompt.text = ""
 		return
+	if not request.is_supported_kind():
+		_prompt.text = "Unsupported Realmz interaction: %s" % String(request.kind)
+		_add_hint("This package cannot continue because its interaction contract is unavailable.")
+		return
 	_prompt.text = String(request.payload.get("prompt", _title_for_kind(request.kind)))
 	match request.kind:
 		&"encounter_choice", &"scenario_choice":
@@ -45,7 +49,7 @@ func present(request: InteractionRequest) -> void:
 		&"combat_action":
 			_build_combat()
 		_:
-			_build_generic_actions()
+			_prompt.text = "Unsupported Realmz interaction: %s" % String(request.kind)
 	if _options.get_child_count() > 0:
 		var first := _first_focusable(_options)
 		if first != null:

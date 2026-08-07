@@ -31,6 +31,8 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `GameView` and its map/cell views are detached read models for presentation and never expose mutable simulation objects.
 - `MapView` carries a bounded 25×25 party-local cell projection, the complete visited-coordinate set needed by the minimap, and cardinal movement availability computed through the same topology probe as movement. It does not duplicate the full 90×90 map for every presentation revision.
 - Classic-visible Realmz behavior is the fixed ruleset. Fidelity corrections require a documented decision and source/oracle tests.
+- Campaign display metadata, restriction summaries, race/caste eligibility, and character-creation drafts are detached read models. They may explain a legal choice, but only `GameSession` and fixed Classic rules decide whether a character can enter a party.
+- Character vault imports arrive as detached validated state plus provenance. The active session clones the state; it never writes back to the vault implicitly.
 - Unsuspended held-over allies are consumed into the combat roster as non-traitors. After combat, surviving friendly monsters with nonzero `canSummon` eligibility return only through the typed Classic body-count selection; negative eligibility is mandatory. Monster targeting compares allegiance, so hostile monsters can attack party characters or friendly monsters and friendly monsters target hostiles.
 
 ## Work Guidance

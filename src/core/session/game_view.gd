@@ -18,6 +18,10 @@ var rules_version: String = ""
 var party_setup_available: bool = false
 var race_options: Array[DefinitionOptionView] = []
 var caste_options: Array[DefinitionOptionView] = []
+var campaign_summary: CampaignSummaryView
+var party_summary: PartySummaryView
+var journal_entries: Array[JournalEntryView] = []
+var services: Array[ServiceView] = []
 
 
 func _init(current_revision: int, started: bool, interaction: InteractionRequest, map_id: String = "", coordinate: Vector2i = Vector2i.ZERO, day: int = 0, hour: int = 0, current_map_view: MapView = null, members: Array[CharacterView] = [], fatigue: int = 0, gold: int = 0, current_combat: CombatView = null) -> void:

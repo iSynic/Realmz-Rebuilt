@@ -1,0 +1,51 @@
+class_name CharacterDraft
+extends RefCounted
+
+var name: String = ""
+var gender: int = 1
+var race_id: String = ""
+var caste_id: String = ""
+var portrait_id: String = ""
+var combat_icon_id: String = ""
+var finalized: bool = false
+
+
+func to_creation_spec() -> CharacterCreationSpec:
+	return CharacterCreationSpec.new(name, race_id, caste_id, gender, portrait_id, combat_icon_id)
+
+
+func is_ready() -> bool:
+	return not name.strip_edges().is_empty() and not race_id.is_empty() and not caste_id.is_empty()
+
+
+func to_data() -> Dictionary:
+	return {
+		"name": name,
+		"gender": gender,
+		"raceId": race_id,
+		"casteId": caste_id,
+		"portraitId": portrait_id,
+		"combatIconId": combat_icon_id,
+		"finalized": finalized,
+	}
+
+
+static func from_data(value: Variant) -> CharacterDraft:
+	if not value is Dictionary:
+		return null
+	for field: String in ["name", "gender", "raceId", "casteId", "portraitId", "combatIconId", "finalized"]:
+		if not value.has(field):
+			return null
+	if not value["name"] is String or not value["raceId"] is String or not value["casteId"] is String or not value["portraitId"] is String or not value["combatIconId"] is String or not value["finalized"] is bool:
+		return null
+	if not value["gender"] is int or int(value["gender"]) not in [1, 2]:
+		return null
+	var result := CharacterDraft.new()
+	result.name = value["name"]
+	result.gender = value["gender"]
+	result.race_id = value["raceId"]
+	result.caste_id = value["casteId"]
+	result.portrait_id = value["portraitId"]
+	result.combat_icon_id = value["combatIconId"]
+	result.finalized = value["finalized"]
+	return result

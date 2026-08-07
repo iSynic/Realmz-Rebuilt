@@ -34,6 +34,8 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 ## Work Guidance
 
 - Keep installed immutable content separate from mutable session state.
+- `CharacterVaultRepository` owns immutable `.r2char` revisions under `user://characters/<character-id>/`. Reads are untrusted and typed; publishing uses temporary write/readback, one-backup rotation, and atomic replacement. Archive is the only removal operation.
+- Vault eligibility is calculated against the target package's stable race, caste, level, item, and spell identities. Missing definitions and authored restrictions produce explicit reasons; import never strips or substitutes content.
 - Return typed validation errors suitable for readiness/error screens.
 
 ## Verification

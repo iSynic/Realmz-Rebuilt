@@ -13,6 +13,8 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - `ClassicMapPresenter` rendering of map, minimap, and debug facts from detached map/cell views.
 - `DungeonGeometryProjection` and `DungeonMap3DPresenter` derive floor, wall, door, secret, stair, and column geometry from the same detached topology view as 2D.
 - `ClassicShellPresenter` campaign/party/character/inventory/spell/settings/save surfaces and `ClassicAudioPresenter` package-media playback.
+- `ClassicApplicationShell` is the scene-backed composition for the application. `ClassicScreenRouter` owns navigable Classic-shaped workspaces and a typed-fixture gallery; it may retain presentation selection state but it cannot mutate `GameSession`.
+- The party-setup workspace is campaign-aware: Race is the left-hand driver, available classes are filtered from typed eligibility facts, and the five creator stages are visible as Identity, Race & Class, Appearance, Review, and Spells. Media choices remain explicit package data, never guessed filesystem paths.
 - Cosmetic-only animation and randomness.
 
 ## Local Contracts

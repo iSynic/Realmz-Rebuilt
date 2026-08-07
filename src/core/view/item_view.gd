@@ -10,6 +10,9 @@ var equipped: bool
 var identified: bool
 var usable: bool
 var weight: int
+var description: String
+var value: int
+var restriction_reason: String = ""
 
 
 func _init(instance: ItemInstance, definition: ItemDefinition) -> void:
@@ -21,8 +24,11 @@ func _init(instance: ItemInstance, definition: ItemDefinition) -> void:
 	if definition == null:
 		classic_id = 0
 		name = instance.definition_id
+		description = "Definition unavailable"
 		return
 	classic_id = definition.classic_id
 	name = definition.name
 	usable = definition.initial_charges > 0
 	weight = definition.instance_weight(instance.charges)
+	description = definition.description
+	value = definition.cost
