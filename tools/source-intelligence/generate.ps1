@@ -74,7 +74,7 @@ function Get-WorkingTreeHasUncommittedChanges {
     $statusLines = @(git -C $repoRoot status --porcelain --untracked-files=all)
     foreach ($statusLine in $statusLines) {
         $statusPath = ([string]$statusLine).Substring(3).Trim() -replace "\\", "/"
-        if ($statusPath -match "^(?:.* -> )?docs/codemap/(codemap\.html|codemap\.json|codemap\.lock|intelligence\.json|chunks\.jsonl)$") {
+        if ($statusPath -match "^(?:.* -> )?docs/codemap/(?:\.stage-[^/]+/|codemap\.html$|codemap\.json$|codemap\.lock$|intelligence\.json$|chunks\.jsonl$)") {
             continue
         }
         return $true
