@@ -28,6 +28,7 @@ const SCREEN_DEFINITIONS := [
 var _view: GameView
 var _campaigns: Array[PackageDiscoveryResult] = []
 var _screen_id: StringName = &"exploration"
+var _body_scroll: ScrollContainer
 var _body: VBoxContainer
 var _navigation: HBoxContainer
 var _campaign_overlay: PanelContainer
@@ -147,15 +148,23 @@ func _build_navigation() -> void:
 
 
 func _build_body() -> void:
+	_body_scroll = ScrollContainer.new()
+	_body_scroll.name = "ScreenBodyScroll"
+	_body_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_body_scroll.offset_top = 100.0
+	_body_scroll.offset_bottom = -8.0
+	_body_scroll.offset_left = 220.0
+	_body_scroll.offset_right = -228.0
+	_body_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_body_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_body_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+	add_child(_body_scroll)
 	_body = VBoxContainer.new()
 	_body.name = "ScreenBody"
-	_body.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_body.offset_top = 100.0
-	_body.offset_bottom = -8.0
-	_body.offset_left = 220.0
-	_body.offset_right = -228.0
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_body.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	_body.add_theme_constant_override("separation", 12)
-	add_child(_body)
+	_body_scroll.add_child(_body)
 
 
 func _build_campaign_overlay() -> void:

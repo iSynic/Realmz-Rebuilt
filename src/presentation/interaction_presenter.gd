@@ -4,6 +4,7 @@ extends PanelContainer
 signal response_submitted(response: InteractionResponse)
 
 @onready var _prompt: Label = %InteractionPrompt
+@onready var _heading: Label = %InteractionHeading
 @onready var _options: VBoxContainer = %InteractionOptions
 
 var _request: InteractionRequest
@@ -19,9 +20,12 @@ func present(request: InteractionRequest) -> void:
 	_clear_options()
 	visible = request != null
 	if request == null:
+		_heading.text = "Classic Textbox"
 		_prompt.text = ""
 		return
+	_heading.text = _heading_for_kind(request.kind)
 	if not request.is_supported_kind():
+		_heading.text = "Unsupported Interaction"
 		_prompt.text = "Unsupported Realmz interaction: %s" % String(request.kind)
 		_add_hint("This package cannot continue because its interaction contract is unavailable.")
 		return
@@ -60,6 +64,7 @@ func present_passive_classic_text(text: String) -> void:
 	if _request != null:
 		return
 	_clear_options()
+	_heading.text = "Classic Textbox"
 	_prompt.text = text
 	visible = not text.is_empty()
 
@@ -350,6 +355,28 @@ func _clear_options() -> void:
 
 static func _title_for_kind(kind: StringName) -> String:
 	return String(kind).replace("_", " ").capitalize()
+
+
+static func _heading_for_kind(kind: StringName) -> String:
+	match kind:
+		&"acknowledge":
+			return "Classic Textbox"
+		&"yes_no":
+			return "Classic Choice"
+		&"encounter_choice", &"scenario_choice", &"complex_encounter":
+			return "Encounter"
+		&"character_selection", &"ally_selection":
+			return "Character Selection"
+		&"shop_action":
+			return "Shop"
+		&"temple_action":
+			return "Temple"
+		&"bank_action":
+			return "Bank"
+		&"combat_action":
+			return "Battle"
+		_:
+			return _title_for_kind(kind)
 
 
 static func _first_focusable(parent: Node) -> Control:

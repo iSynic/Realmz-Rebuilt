@@ -71,7 +71,7 @@ Every gameplay draw uses `RealmzRng`. It owns the QuickDraw `randSeed = randSeed
 
 ## Classic application reconstruction
 
-The application layer is now being rebuilt around `ClassicApplicationShell` and `ClassicScreenRouter`, while the session protocol above remains unchanged. The shell owns campaign discovery, setup, vault access, navigation, and the persistent Classic-shaped workspace. A dedicated interaction layer will own textbox, picture, choice, picker, service, and combat overlays; each overlay returns a typed response rather than calling gameplay objects.
+The application layer is now being rebuilt around `ClassicApplicationShell` and `ClassicScreenRouter`, while the session protocol above remains unchanged. The shell owns campaign discovery, setup, vault access, navigation, and the persistent Classic-shaped workspace. The dedicated `InteractionPresenter` layer owns the framed textbox, picture, choice, picker, service, and combat overlays; each overlay returns a typed response rather than calling gameplay objects. Screen workspaces use a clipped vertical scroll surface so long content remains reachable at larger text scales.
 
 The party-setup view is campaign-aware. It presents the authored campaign title/version/author and restriction summary from package v2, places Race on the left, filters Class on the right from typed eligibility relationships, and exposes the five creator stages: Identity, Race & Class, Appearance, Review, and Spells. Appearance identities are package data, and a missing catalog entry is an explicit unavailable choice rather than a guessed path.
 

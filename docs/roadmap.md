@@ -85,6 +85,7 @@ Implemented in this tranche:
 - Immutable `.r2char` character vault records/repository, explicit import intent, transactional persistence, archive/recovery, and target-package eligibility checks.
 - Providence schema v2 exporter plus byte-identical runtime mirror and regenerated synthetic fixtures.
 - Typed gallery surfaces for character, vault, inventory, spells, services, combat, journal, and system workspaces.
+- Dedicated framed Classic interaction stage with typed headings for text, choices, encounters, services, and combat; workspace content now scrolls within its presentation bounds.
 
 Still required before this tranche's acceptance gates:
 

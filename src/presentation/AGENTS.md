@@ -8,7 +8,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 
 - Classic-first 2D shell and optional topology-derived 3D dungeon presenter.
 - Translation of user input to typed intents/responses.
-- `InteractionPresenter` renders serializable requests and emits only a typed response carrying the matching request ID.
+- `InteractionPresenter` is the dedicated Classic interaction layer. It renders serializable requests in a framed, headed textbox/choice/service/battle stage and emits only a typed response carrying the matching request ID.
 - Consumption of `GameView`, domain events, and interaction requests.
 - `ClassicMapPresenter` rendering of map, minimap, and debug facts from detached map/cell views.
 - `DungeonGeometryProjection` and `DungeonMap3DPresenter` derive floor, wall, door, secret, stair, and column geometry from the same detached topology view as 2D.
@@ -28,6 +28,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - Normal play never paints topology grid lines, AP markers, random-rectangle bounds, or abstract land edges over Classic art. Those remain opt-in debug facts. Cardinal cues and click/hold movement report the session-provided topology probe and emit typed movement intent only.
 - Switching between 2D and 3D changes only presentation settings. It cannot create collision, movement, LOS, discovery, or door state.
 - Presentation and accessibility settings cannot change rules.
+- Screen workspaces live inside a clipped vertical scroll surface so long inventories, service actions, and accessibility-scaled text remain reachable instead of escaping the viewport. The interaction stage has its own opaque frame and heading; it is not a Chronicle replacement or an unbounded event log.
 - A positive Classic message is rendered by `InteractionPresenter` as a dedicated textbox with an explicit Continue response. A negative Classic message uses the same textbox without introducing an interaction and remains until the next committed step, matching Castle's no-click path. Chronicle may retain player-facing message history, but it excludes internal event names and sound/picture request diagnostics.
 - Classic sound playback rotates across four presentation-owned channels. Positive sound requests may overlap; a negative request waits for that channel's completion before the presenter drains later sound events, without introducing a simulation wait.
 - Cosmetic RNG cannot enter saves, replays, oracle traces, or simulation decisions.
