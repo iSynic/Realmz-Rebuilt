@@ -95,6 +95,32 @@ func discover_packages(search_roots: Array[String]) -> Array[PackageDiscoveryRes
 	return discovered
 
 
+func discover_campaigns(search_roots: Array[String]) -> Array[PackageDiscoveryResult]:
+	var selected_by_campaign: Dictionary = {}
+	var visible: Array[PackageDiscoveryResult] = []
+	for candidate: PackageDiscoveryResult in discover_packages(search_roots):
+		if not candidate.ready:
+			visible.append(candidate)
+			continue
+		var selected := selected_by_campaign.get(candidate.campaign_id) as PackageDiscoveryResult
+		if selected == null or _package_revision_is_newer(candidate, selected):
+			selected_by_campaign[candidate.campaign_id] = candidate
+	var campaign_ids: Array[String] = []
+	campaign_ids.assign(selected_by_campaign.keys())
+	campaign_ids.sort()
+	for campaign_id: String in campaign_ids:
+		visible.append(selected_by_campaign[campaign_id] as PackageDiscoveryResult)
+	return visible
+
+
+func _package_revision_is_newer(candidate: PackageDiscoveryResult, selected: PackageDiscoveryResult) -> bool:
+	var candidate_modified := FileAccess.get_modified_time(candidate.path)
+	var selected_modified := FileAccess.get_modified_time(selected.path)
+	if candidate_modified != selected_modified:
+		return candidate_modified > selected_modified
+	return candidate.path.naturalnocasecmp_to(selected.path) > 0
+
+
 func _inspect_package(path: String) -> PackageDiscoveryResult:
 	_last_error = ""
 	var archive := ZIPReader.new()

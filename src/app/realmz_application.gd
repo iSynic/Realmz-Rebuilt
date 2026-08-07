@@ -180,7 +180,7 @@ func load_active_session(slot_id: String) -> SessionStep:
 
 
 func _refresh_campaigns() -> void:
-	_shell_presenter.set_campaigns(package_repository.discover_packages(["user://packages"]))
+	_shell_presenter.set_campaigns(package_repository.discover_campaigns(["user://packages"]))
 
 
 func _on_topology_debug_changed(enabled: bool) -> void:

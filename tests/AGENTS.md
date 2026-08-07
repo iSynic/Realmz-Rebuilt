@@ -35,6 +35,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 
 - `godot --headless --path . --script res://tests/test_runner.gd` runs the typed GDScript suite.
 - `tools/verify.ps1` runs import/script checks, tests, architecture guards, and `git diff --check`.
+- Package contract coverage verifies that multiple immutable files for one campaign collapse to one current selector entry without deleting revisions.
 
 ## Child DOX Index
 

@@ -77,6 +77,9 @@ func run() -> void:
 		var repeated := repository.install_package(FIXTURE_PATH, install_root)
 		assert_true(repeated.is_ok(), "reinstalling identical immutable content is idempotent")
 		assert_equal(repeated.installed_path, installed.installed_path, "idempotent installation resolves to the same package")
+		var duplicate_path := installed.installed_path.get_base_dir().path_join("duplicate.realmz2")
+		if FileAccess.file_exists(duplicate_path):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(duplicate_path))
 		var discovered := repository.discover_packages([install_root])
 		var matching_installations: int = 0
 		for candidate: PackageDiscoveryResult in discovered:
@@ -84,6 +87,20 @@ func run() -> void:
 				matching_installations += 1
 				assert_true(candidate.ready, "discovery reports manifest integrity and capability readiness without constructing the campaign")
 		assert_equal(matching_installations, 1, "discovery returns the immutable package identity exactly once")
+		var duplicate := FileAccess.open(duplicate_path, FileAccess.WRITE)
+		assert_not_null(duplicate, "the campaign-discovery fixture can create a second immutable revision path")
+		if duplicate != null:
+			duplicate.store_buffer(FileAccess.get_file_as_bytes(FIXTURE_PATH))
+			duplicate.close()
+		var campaign_listing := repository.discover_campaigns([install_root])
+		var listed_campaigns: int = 0
+		var listed_path: String = ""
+		for candidate: PackageDiscoveryResult in campaign_listing:
+			if candidate.ready and candidate.campaign_id == loaded.content.campaign_id:
+				listed_campaigns += 1
+				listed_path = candidate.path
+		assert_equal(listed_campaigns, 1, "campaign discovery collapses immutable revisions to one current campaign entry")
+		assert_equal(listed_path, duplicate_path, "campaign discovery selects the most recently installed valid revision")
 
 	var picture := PackageMediaAsset.new("fixture.picture", "Fixture", "picture", "image/png", "PICT", 128, 0, "0000000000000000000000000000000000000000000000000000000000000000", "assets/media/0000000000000000000000000000000000000000000000000000000000000000.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
 	assert_true(picture.is_picture(), "package media classifies pictures by typed MIME and resource identity")
