@@ -505,7 +505,7 @@ function Test-WrittenArtifacts {
     foreach ($file in $intelligence.files) {
         $artifactFileByPath[[string]$file.path] = [ordered]@{path=$file.path;sha256=$file.sha256;line_count=$file.line_count;content=$file.content;lines=[regex]::Split([string]$file.content,"\r\n|\n|\r")}
     }
-    Test-Model ([ordered]@{files=$intelligence.files;entities=$intelligence.entities;relations=$intelligence.relations;flows=$intelligence.flows}) $artifactFileByPath $currentCommit
+    Test-Model ([ordered]@{files=$intelligence.files;entities=$intelligence.entities;relations=$intelligence.relations;flows=$intelligence.flows}) $artifactFileByPath $snapshotCommit
     $ids = @{}
     foreach ($entity in $intelligence.entities) { $ids[$entity.id] = $true }
     foreach ($relation in $intelligence.relations) {
