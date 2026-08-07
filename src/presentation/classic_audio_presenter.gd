@@ -3,14 +3,22 @@ extends Node
 
 signal sound_observed(sound_id: int)
 
+const CHANNEL_COUNT: int = 4
+
 var last_sound_id: int = 0
 var master_volume: float = 1.0
-var _player: AudioStreamPlayer
+var _players: Array[AudioStreamPlayer] = []
+var _channel_index: int = -1
+var _pending_sounds: Array[Dictionary] = []
+var _processing_sounds: bool = false
 
 
 func _ready() -> void:
-	_player = AudioStreamPlayer.new()
-	add_child(_player)
+	for index: int in range(CHANNEL_COUNT):
+		var player := AudioStreamPlayer.new()
+		player.name = "ClassicSoundChannel%d" % (index + 1)
+		_players.append(player)
+		add_child(player)
 	_apply_volume()
 
 
@@ -29,8 +37,8 @@ func present_events(events: Array[DomainEvent], media: PackageMediaCatalog) -> v
 		var stream := _decode_stream(asset, bytes)
 		if stream == null:
 			continue
-		_player.stream = stream
-		_player.play()
+		_pending_sounds.append({"stream": stream, "waitForCompletion": bool(event.payload.get("waitForCompletion", false))})
+	_drain_sound_queue()
 
 
 func set_master_volume(value: float) -> void:
@@ -39,8 +47,32 @@ func set_master_volume(value: float) -> void:
 
 
 func _apply_volume() -> void:
-	if _player != null:
-		_player.volume_db = -80.0 if master_volume <= 0.0 else linear_to_db(master_volume)
+	for player: AudioStreamPlayer in _players:
+		player.volume_db = -80.0 if master_volume <= 0.0 else linear_to_db(master_volume)
+
+
+func _drain_sound_queue() -> void:
+	if _processing_sounds:
+		return
+	_processing_sounds = true
+	while not _pending_sounds.is_empty():
+		var request: Dictionary = _pending_sounds.pop_front()
+		var player := _next_channel()
+		if player == null:
+			continue
+		player.stop()
+		player.stream = request["stream"] as AudioStream
+		player.play()
+		if bool(request["waitForCompletion"]) and player.playing:
+			await player.finished
+	_processing_sounds = false
+
+
+func _next_channel() -> AudioStreamPlayer:
+	if _players.is_empty():
+		return null
+	_channel_index = (_channel_index + 1) % _players.size()
+	return _players[_channel_index]
 
 
 func _decode_stream(asset: PackageMediaAsset, bytes: PackedByteArray) -> AudioStream:

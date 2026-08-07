@@ -82,7 +82,7 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 		2, 48, 56, 107:
 			return _start_classic_battle(action, request_id)
 		9:
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"sound_requested", {"soundId": absi(action.operand_id), "source": "classic"})])
+			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"sound_requested", {"soundId": absi(action.operand_id), "waitForCompletion": action.operand_id < 0, "source": "classic"})])
 		10:
 			return _grant_treasure(action.operand_id)
 		11:
@@ -921,10 +921,30 @@ func _request_classic_choice(action: ClassicActionDefinition, request_id: String
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 3 requires a five-value Extra Code row.")
 	var yes_id := action.extra_code[3]
 	var no_id := action.extra_code[4]
-	var yes_message := _content.message_by_id(yes_id)
-	var no_message := _content.message_by_id(no_id)
-	var request := InteractionRequest.new(request_id, &"yes_no", {"yesId": yes_id, "yesLabel": yes_message.text if yes_message != null else "Yes", "noId": no_id, "noLabel": no_message.text if no_message != null else "No"})
+	var yes_label_value: Variant
+	var no_label_value: Variant
+	if yes_id == 0:
+		yes_label_value = "Yes"
+		no_label_value = "No"
+	else:
+		yes_label_value = _classic_choice_label(yes_id)
+		no_label_value = _classic_choice_label(no_id)
+	if yes_label_value == null or no_label_value == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_option_label", "Classic opcode 3 references an unavailable option label.")
+	var request := InteractionRequest.new(request_id, &"yes_no", {"yesId": yes_id, "yesLabel": yes_label_value, "noId": no_id, "noLabel": no_label_value})
 	return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-choice", "values": action.extra_code.duplicate(), "gosub": action.gosub})
+
+
+func _classic_choice_label(label_id: int) -> Variant:
+	if _content.has_option_labels():
+		var option_label := _content.option_label_by_id(absi(label_id))
+		if option_label == null:
+			return null
+		return option_label.text
+	var message := _content.message_by_id(absi(label_id))
+	if message == null:
+		return null
+	return message.text
 
 
 func _resume_classic_choice(continuation: Dictionary, response: InteractionResponse) -> ScenarioRuntimeOperationResult:

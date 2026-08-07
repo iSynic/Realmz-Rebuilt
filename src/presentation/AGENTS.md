@@ -25,6 +25,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - Normal play never paints topology grid lines, AP markers, random-rectangle bounds, or abstract land edges over Classic art. Those remain opt-in debug facts. Cardinal cues and click/hold movement report the session-provided topology probe and emit typed movement intent only.
 - Switching between 2D and 3D changes only presentation settings. It cannot create collision, movement, LOS, discovery, or door state.
 - Presentation and accessibility settings cannot change rules.
+- Classic sound playback rotates across four presentation-owned channels. Positive sound requests may overlap; a negative request waits for that channel's completion before the presenter drains later sound events, without introducing a simulation wait.
 - Cosmetic RNG cannot enter saves, replays, oracle traces, or simulation decisions.
 
 ## Work Guidance

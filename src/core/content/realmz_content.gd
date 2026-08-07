@@ -10,6 +10,7 @@ var start_coordinate: Vector2i
 var world: WorldDefinition
 var scenario: ScenarioDefinition
 var _messages: Dictionary = {}
+var _option_labels: Dictionary = {}
 var _triggers: Dictionary = {}
 var _simple_encounters: Dictionary = {}
 var _complex_encounters: Dictionary = {}
@@ -25,7 +26,7 @@ var _treasures: Dictionary = {}
 var _shops: Dictionary = {}
 
 
-func _init(campaign: String, package_identity: String, content_identity: String, rules: String, start_map: String, start_position: Vector2i, world_definition: WorldDefinition, scenario_definition: ScenarioDefinition, messages: Array[MessageDefinition], triggers: Array[TriggerDefinition], simple_encounters: Array[SimpleEncounterDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = [], items: Array[ItemDefinition] = [], spells: Array[SpellDefinition] = [], monsters: Array[MonsterDefinition] = [], battles: Array[BattleDefinition] = [], treasures: Array[TreasureDefinition] = [], shops: Array[ShopDefinition] = [], complex_encounters: Array[ComplexEncounterDefinition] = [], thief_encounters: Array[ThiefEncounterDefinition] = [], authored_timed_encounters: Array[TimedEncounterDefinition] = []) -> void:
+func _init(campaign: String, package_identity: String, content_identity: String, rules: String, start_map: String, start_position: Vector2i, world_definition: WorldDefinition, scenario_definition: ScenarioDefinition, messages: Array[MessageDefinition], triggers: Array[TriggerDefinition], simple_encounters: Array[SimpleEncounterDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = [], items: Array[ItemDefinition] = [], spells: Array[SpellDefinition] = [], monsters: Array[MonsterDefinition] = [], battles: Array[BattleDefinition] = [], treasures: Array[TreasureDefinition] = [], shops: Array[ShopDefinition] = [], complex_encounters: Array[ComplexEncounterDefinition] = [], thief_encounters: Array[ThiefEncounterDefinition] = [], authored_timed_encounters: Array[TimedEncounterDefinition] = [], authored_option_labels: Array[OptionLabelDefinition] = []) -> void:
 	campaign_id = campaign
 	package_hash = package_identity
 	content_id = content_identity
@@ -36,6 +37,8 @@ func _init(campaign: String, package_identity: String, content_identity: String,
 	scenario = scenario_definition
 	for message: MessageDefinition in messages:
 		_messages[message.id] = message
+	for option_label: OptionLabelDefinition in authored_option_labels:
+		_option_labels[option_label.id] = option_label
 	for trigger: TriggerDefinition in triggers:
 		_triggers[trigger.id] = trigger
 	for encounter: SimpleEncounterDefinition in simple_encounters:
@@ -66,6 +69,14 @@ func _init(campaign: String, package_identity: String, content_identity: String,
 
 func message_by_id(message_id: int) -> MessageDefinition:
 	return _messages.get(message_id) as MessageDefinition
+
+
+func option_label_by_id(option_label_id: int) -> OptionLabelDefinition:
+	return _option_labels.get(option_label_id) as OptionLabelDefinition
+
+
+func has_option_labels() -> bool:
+	return not _option_labels.is_empty()
 
 
 func trigger_by_id(trigger_id: String) -> TriggerDefinition:

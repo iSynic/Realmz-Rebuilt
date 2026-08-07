@@ -26,6 +26,8 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 - Classic XAP transfers inherit the issuing frame's AP origin/context. Loading macro code cannot erase the trigger identity required by source-backed operations such as opcode 25.
 - Battle opcodes resolve the Classic battle ID from Extra Code slot zero when a row is present; the action operand is only the direct-ID form when no Extra Code row exists.
 - Battle-round and monster-death macros run as serializable nested VM frames. A death macro receives the defeated combatant ID and must complete before allegiance and battle outcome are finalized.
+- Classic opcode 3 treats zero option IDs as the standard Yes/No pair. Nonzero IDs resolve through the package's Data OD option-label table, with ordinary message lookup used only for old-format packages that have no option-label table.
+- Classic opcode 9 publishes the absolute `snd ` resource ID while preserving the operand sign as presentation playback metadata: positive is asynchronous and negative waits within the Classic sound queue. It never blocks or advances simulation.
 - Completed battles may yield a typed `ally_selection` from the issuing combat continuation. That response rebuilds the held-over ally party under Castle body-count limits before the scenario frame continues.
 - Executable-opcode readiness is declared by `ClassicOpcodeCatalog` and checked against bounded, provenance-labelled content inventories. A declared opcode must have an explicit handler and may never fall through to dynamic dispatch or a silent no-op.
 

@@ -12,7 +12,7 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "60c492908f72b62d2f4bef1a4ae582928c25748309ca9c3995979e4a47cce98b", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "adf7417d26d2b12663d17d59b0539d3c69f1f1c5eb82c2ab2639268e821cb626", "package identity is retained")
 	var map := loaded.content.world.map_by_id("land:0")
 	assert_not_null(map, "the authoritative start map is constructed")
 	assert_equal(map.topology.width, 3, "fixture topology width is preserved")
@@ -27,6 +27,8 @@ func run() -> void:
 	assert_equal(dungeon.topology.cell_at(Vector2i(1, 0)).edge(&"north").kind, &"door", "packed dungeon doors become explicit topology edges")
 	assert_equal(dungeon.topology.cell_at(Vector2i(0, 1)).edge(&"east").kind, &"secret", "packed dungeon passage directions become explicit topology edges")
 	assert_equal(loaded.content.message_by_id(1).text, "The Realmz 2.0 fixture is deterministic.", "runtime message text crosses the validating factory")
+	assert_true(loaded.content.has_option_labels(), "Classic Data OD option labels cross the validating package boundary")
+	assert_equal(loaded.content.option_label_by_id(1).text, "Proceed", "typed option labels remain distinct from ordinary scenario messages")
 	var message_program := loaded.content.scenario.program_by_id(loaded.content.trigger_by_id("ap.fixture.message").program_id)
 	assert_equal(message_program.instruction_at(0).opcode, 1, "Classic opcode identity is typed in the ordinary trigger program")
 	assert_equal(loaded.content.trigger_by_id("ap.fixture.message").post_action_location.map_id, "land:0", "AP post-action map identity is typed")

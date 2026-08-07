@@ -237,6 +237,10 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 	if messages_value == null:
 		return null
 	var messages: Array[MessageDefinition] = messages_value
+	var option_labels_value: Variant = _construct_option_labels(content.get("optionLabels"))
+	if option_labels_value == null:
+		return null
+	var option_labels: Array[OptionLabelDefinition] = option_labels_value
 	var message_ids: Dictionary = {}
 	for message: MessageDefinition in messages:
 		message_ids[message.id] = true
@@ -321,7 +325,7 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 			if destination_map == null or destination_map.topology.cell_at(trigger.post_action_location.coordinate) == null:
 				_reject("Trigger '%s' references an unavailable post-action location." % trigger.id)
 				return null
-	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters)
+	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters, option_labels)
 
 
 func _construct_messages(value: Variant) -> Variant:
@@ -341,6 +345,25 @@ func _construct_messages(value: Variant) -> Variant:
 		ids[id] = true
 		messages.append(MessageDefinition.new(id, record["text"]))
 	return messages
+
+
+func _construct_option_labels(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Content option labels must be an array.")
+		return null
+	var option_labels: Array[OptionLabelDefinition] = []
+	var ids: Dictionary = {}
+	for record: Variant in value:
+		if not record is Dictionary or not _exact_fields(record, ["id", "text"]) or _integer(record.get("id")) < 0 or not record.get("text") is String:
+			_reject("Option-label record is malformed.")
+			return null
+		var id := _integer(record["id"])
+		if ids.has(id):
+			_reject("Option-label ID %d is duplicated." % id)
+			return null
+		ids[id] = true
+		option_labels.append(OptionLabelDefinition.new(id, record["text"]))
+	return option_labels
 
 
 func _construct_items(value: Variant) -> Variant:

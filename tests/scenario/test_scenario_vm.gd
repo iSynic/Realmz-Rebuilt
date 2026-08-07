@@ -10,6 +10,7 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	_test_classic_encounter_action_xap_trace(loaded.content)
+	_test_classic_choice_labels_and_sound_wait(loaded.content)
 	_test_session_save_resume_boundary(loaded.content)
 	_test_safe_choice_resume(loaded.content)
 	_test_persistent_action_state(loaded.content)
@@ -80,6 +81,24 @@ func _test_classic_encounter_action_xap_trace(content: RealmzContent) -> void:
 	assert_true(_trace_has(restored.trace(), "call-action"), "VM trace records the Scenario Action frame")
 	assert_true(_trace_has(restored.trace(), "classic-transfer"), "VM trace records the XAP transfer")
 	assert_true(_trace_has(restored.trace(), "classic-return"), "VM trace records CODE 111 return")
+
+
+func _test_classic_choice_labels_and_sound_wait(content: RealmzContent) -> void:
+	var api := _runtime_api(content, ScenarioActionState.new())
+	var default_choice := api.execute_classic(ClassicActionDefinition.new(0, 3, 3, 0, false, [1, 0, 0, 0, 2]), "request.default-choice")
+	assert_equal(default_choice.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic opcode 3 yields a typed yes/no request")
+	assert_equal(default_choice.interaction.payload["yesLabel"], "Yes", "zero Classic option ID uses the standard Yes label")
+	assert_equal(default_choice.interaction.payload["noLabel"], "No", "a zero first Classic option ID selects the complete standard Yes/No pair")
+	var authored_choice := api.execute_classic(ClassicActionDefinition.new(0, 3, 3, 0, false, [1, 0, 0, 1, 2]), "request.authored-choice")
+	assert_equal(authored_choice.state, ScenarioRuntimeOperationResult.State.WAITING, "authored Classic choice labels remain a serializable interaction")
+	assert_equal(authored_choice.interaction.payload["yesLabel"], "Proceed", "Classic option IDs resolve through the Data OD option-label table")
+	assert_equal(authored_choice.interaction.payload["noLabel"], "Turn back", "Classic option labels do not alias ordinary scenario messages")
+	var blocking_sound := api.execute_classic(ClassicActionDefinition.new(0, 9, 9, -10001, false, []), "request.blocking-sound")
+	assert_equal(blocking_sound.events[0].payload["soundId"], 10001, "Classic sound lookup uses the absolute resource ID")
+	assert_true(blocking_sound.events[0].payload["waitForCompletion"], "negative Classic sound IDs preserve the blocking playback flag")
+	var asynchronous_sound := api.execute_classic(ClassicActionDefinition.new(0, 9, 9, 10049, false, []), "request.asynchronous-sound")
+	assert_equal(asynchronous_sound.events[0].payload["soundId"], 10049, "positive Classic sounds retain their resource identity")
+	assert_false(asynchronous_sound.events[0].payload["waitForCompletion"], "positive Classic sound IDs preserve asynchronous playback")
 
 
 func _test_session_save_resume_boundary(content: RealmzContent) -> void:

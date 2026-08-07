@@ -15,6 +15,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - All classes are pure `RefCounted` or value-like data. They never extend or retain Nodes.
 - No scenes, autoloads, filesystem/resource APIs, audio, OS services, wall-clock time, or Godot randomness.
 - JSON dictionaries stop at validating infrastructure factories. Domain state is typed and does not expose writable backing dictionaries.
+- Classic option-label records are immutable typed content distinct from ordinary messages; runtime choice resolution may query them but never mutate their source table.
 - Every gameplay mutation is committed synchronously by `GameSession`.
 - `GameSession` owns scenario execution state and is the only object allowed to connect VM operations to domain mutations.
 - Session state owns encounter attempts/type flags, equipment escrow, mutable shop stock, combat, and scenario-program replacement. These are save data, never mutations of installed package definitions.
