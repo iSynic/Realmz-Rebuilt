@@ -784,7 +784,7 @@ func _build_cell_view(map: MapDefinition, cell: MapCell, is_visible: bool) -> Ma
 			feature_kinds.append(feature.kind)
 			feature_orientations[feature.kind] = feature.orientation
 	var can_enter := cell.passable and not hidden_secret
-	return MapCellView.new(cell.coordinate, _state.world.terrain_for(map.id, cell), cell.render_tile, cell.tileset_id, can_enter, cell.blocks_los, is_visible, _state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not cell.random_rect_ids().is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability)
+	return MapCellView.new(cell.coordinate, _state.world.terrain_for(map.id, cell), cell.render_tile, cell.tileset_id, can_enter, cell.blocks_los, is_visible, _state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not cell.random_rect_ids().is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability, cell.overlay_asset_id)
 
 
 func _probe_movement(direction: Vector2i) -> TopologyMoveResult:

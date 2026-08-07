@@ -16,6 +16,13 @@ func assets() -> Array[PackageMediaAsset]:
 	return _assets.duplicate()
 
 
+func asset_by_id(asset_id: String) -> PackageMediaAsset:
+	for asset: PackageMediaAsset in _assets:
+		if asset.id == asset_id:
+			return asset
+	return null
+
+
 func picture_by_resource_id(resource_id: int) -> PackageMediaAsset:
 	for asset: PackageMediaAsset in _assets:
 		if asset.resource_id == resource_id and asset.is_picture():

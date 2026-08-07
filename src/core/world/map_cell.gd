@@ -16,13 +16,14 @@ var fly_float_required: bool
 var movement_sound_id: int
 var render_tile: int
 var tileset_id: String
+var overlay_asset_id: String
 var _trigger_ids: Array[String]
 var _random_rect_ids: Array[String]
 var _edges: Dictionary = {}
 var _features: Array[MapFeature]
 
 
-func _init(cell_id: String, cell_coordinate: Vector2i, terrain: String, can_enter: bool, cost: int, los_blocked: bool, land: bool, water: bool, shore: bool, path: bool, needs_boat: bool, needs_fly_float: bool, sound_id: int, tile: int, cell_tileset_id: String, cell_trigger_ids: Array[String], cell_random_rect_ids: Array[String], cell_edges: Dictionary, cell_features: Array[MapFeature]) -> void:
+func _init(cell_id: String, cell_coordinate: Vector2i, terrain: String, can_enter: bool, cost: int, los_blocked: bool, land: bool, water: bool, shore: bool, path: bool, needs_boat: bool, needs_fly_float: bool, sound_id: int, tile: int, cell_tileset_id: String, cell_trigger_ids: Array[String], cell_random_rect_ids: Array[String], cell_edges: Dictionary, cell_features: Array[MapFeature], cell_overlay_asset_id: String = "") -> void:
 	id = cell_id
 	coordinate = cell_coordinate
 	terrain_id = terrain
@@ -38,6 +39,7 @@ func _init(cell_id: String, cell_coordinate: Vector2i, terrain: String, can_ente
 	movement_sound_id = sound_id
 	render_tile = tile
 	tileset_id = cell_tileset_id
+	overlay_asset_id = cell_overlay_asset_id
 	_trigger_ids = cell_trigger_ids.duplicate()
 	_random_rect_ids = cell_random_rect_ids.duplicate()
 	_edges = cell_edges.duplicate()

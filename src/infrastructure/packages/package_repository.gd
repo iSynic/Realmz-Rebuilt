@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "4ecdc3866ada29a0d311e87700870d2e63732d97bf04d4898a3bc68331d073fd"
+const EXPECTED_SCHEMA_HASH: String = "b48086c5dc62c76f4d349784870ba08aeb91d149410057931a09ee76eb4b00bf"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -166,7 +166,7 @@ func _load_open_archive(archive: ZIPReader, source_path: String) -> PackageLoadR
 		return _validation_failure()
 	if not _validate_assets(asset_document, manifest["files"]):
 		return _validation_failure()
-	if not _validate_tileset_references(asset_document, world_document):
+	if not _validate_render_references(asset_document, world_document):
 		return _validation_failure()
 	var runtime_content := _construct_content(manifest, content_document, world_document, scenario_document)
 	if runtime_content == null:
@@ -1087,8 +1087,11 @@ func _construct_cell(record: Variant, width: int, height: int, trigger_ids: Dict
 	if not metadata is Dictionary or metadata.get("movementSoundId") != null and not _is_integer(metadata.get("movementSoundId")):
 		_reject("Topology cell movement metadata is malformed.")
 		return null
-	if not render is Dictionary or not _is_integer(render.get("tile")) or not render.get("tilesetId") is String or render["tilesetId"].is_empty():
+	if not render is Dictionary or not _exact_fields(render, ["tile", "tilesetId", "overlayAssetId"]) or not _is_integer(render.get("tile")) or not render.get("tilesetId") is String or render["tilesetId"].is_empty():
 		_reject("Topology cell render facts are malformed.")
+		return null
+	if render["overlayAssetId"] != null and (not render["overlayAssetId"] is String or render["overlayAssetId"].is_empty()):
+		_reject("Topology cell overlay render identity is malformed.")
 		return null
 	var features_value: Variant = _construct_features(record.get("features"), record["id"])
 	if features_value == null:
@@ -1099,7 +1102,7 @@ func _construct_cell(record: Variant, width: int, height: int, trigger_ids: Dict
 		return null
 	var edges: Dictionary = edges_value
 	var sound_id := -1 if metadata["movementSoundId"] == null else _integer(metadata["movementSoundId"])
-	return MapCell.new(record["id"], Vector2i(x, y), record["terrainId"], movement["passable"], _integer(movement["cost"]), visibility["blocksLos"], semantics["land"], semantics["water"], semantics["shore"], semantics["path"], semantics["boatRequired"], semantics["flyFloatRequired"], sound_id, _integer(render["tile"]), render["tilesetId"], cell_triggers, random_rects, edges, features)
+	return MapCell.new(record["id"], Vector2i(x, y), record["terrainId"], movement["passable"], _integer(movement["cost"]), visibility["blocksLos"], semantics["land"], semantics["water"], semantics["shore"], semantics["path"], semantics["boatRequired"], semantics["flyFloatRequired"], sound_id, _integer(render["tile"]), render["tilesetId"], cell_triggers, random_rects, edges, features, "" if render["overlayAssetId"] == null else render["overlayAssetId"])
 
 
 func _construct_features(value: Variant, cell_id: String) -> Variant:
@@ -1675,21 +1678,27 @@ func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
 	return true
 
 
-func _validate_tileset_references(assets: Dictionary, world: Dictionary) -> bool:
+func _validate_render_references(assets: Dictionary, world: Dictionary) -> bool:
 	var tileset_ids: Dictionary = {}
+	var image_ids: Dictionary = {}
 	for asset: Dictionary in assets["assets"]:
 		if asset["kind"] == "tileset":
 			tileset_ids[asset["id"]] = true
+		if asset["mimeType"] is String and asset["mimeType"].begins_with("image/"):
+			image_ids[asset["id"]] = true
 	if not world.get("maps") is Array:
 		return _reject("World maps must be available for tileset validation.")
 	for map: Variant in world["maps"]:
 		if not map is Dictionary or not map.get("cells") is Array:
 			return _reject("World map is malformed during tileset validation.")
 		for cell: Variant in map["cells"]:
-			if not cell is Dictionary or not cell.get("render") is Dictionary or not cell["render"].get("tilesetId") is String:
+			if not cell is Dictionary or not cell.get("render") is Dictionary or not cell["render"].get("tilesetId") is String or not cell["render"].has("overlayAssetId"):
 				return _reject("Topology render facts are malformed during tileset validation.")
 			if not tileset_ids.has(cell["render"]["tilesetId"]):
 				return _reject("Topology references missing tileset asset '%s'." % cell["render"]["tilesetId"])
+			var overlay_asset_id: Variant = cell["render"]["overlayAssetId"]
+			if overlay_asset_id != null and (not overlay_asset_id is String or not image_ids.has(overlay_asset_id)):
+				return _reject("Topology references missing image overlay asset '%s'." % overlay_asset_id)
 	return true
 
 

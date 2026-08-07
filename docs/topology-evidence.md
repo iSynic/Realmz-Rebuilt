@@ -17,9 +17,9 @@ These observations do not prove final 2.0 search chances, LOS rules, elapsed-tim
 
 ## Providence compiler normalization
 
-Providence commit `a525e9df0d0619847a5928463eed881ace79152a` is the current authoritative compiler checkpoint. Its `src-tauri/src/dungeon.rs` decoder names packed dungeon bits, and the `.realmz2` exporter converts those bits into stable cells, directional edges, and explicit features. Providence Layout adjacency becomes explicit bidirectional map transitions, and placed AP headers become validated post-action destinations. Referenced land atlases and the normalized PICT 302 dungeon-composition atlas become immutable package media, while packed native values do not enter the runtime package as an alternate topology.
+Providence commit `d8a958c1bfa7f2e3ee344c7f33f5db95be05024c` is the current authoritative compiler checkpoint. Its `src-tauri/src/dungeon.rs` decoder names packed dungeon bits, and the `.realmz2` exporter converts those bits into stable cells, directional edges, and explicit features. Providence Layout adjacency becomes explicit bidirectional map transitions, and placed AP headers become validated post-action destinations. Classic land matrices use their native `x * height + y` storage while dungeon matrices remain `y * width + x`; both compile to explicit `(x,y)` cells. Referenced land atlases, negative-land `cicn` overlays, and the normalized PICT 302 dungeon-composition atlas become immutable package media, while packed native values do not enter the runtime package as an alternate topology.
 
-The runtime mirror is schema v1 SHA-256 `4ecdc3866ada29a0d311e87700870d2e63732d97bf04d4898a3bc68331d073fd`.
+The runtime mirror is schema v1 SHA-256 `b48086c5dc62c76f4d349784870ba08aeb91d149410057931a09ee76eb4b00bf`.
 
 ## Realmz 2.0 behavior and proof
 

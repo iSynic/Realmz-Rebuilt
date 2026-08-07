@@ -5,6 +5,7 @@ var coordinate: Vector2i
 var terrain_id: String
 var render_tile: int
 var tileset_id: String
+var overlay_asset_id: String
 var passable: bool
 var blocks_los: bool
 var visible: bool
@@ -17,11 +18,12 @@ var _edge_kinds: Dictionary = {}
 var _edge_passability: Dictionary = {}
 
 
-func _init(cell_coordinate: Vector2i, terrain: String, tile: int, cell_tileset_id: String, can_enter: bool, blocks_visibility: bool, is_visible: bool, was_visited: bool, trigger_present: bool, random_region_present: bool, feature_kinds: Array[StringName], feature_orientations: Dictionary, edge_kinds: Dictionary, edge_passability: Dictionary) -> void:
+func _init(cell_coordinate: Vector2i, terrain: String, tile: int, cell_tileset_id: String, can_enter: bool, blocks_visibility: bool, is_visible: bool, was_visited: bool, trigger_present: bool, random_region_present: bool, feature_kinds: Array[StringName], feature_orientations: Dictionary, edge_kinds: Dictionary, edge_passability: Dictionary, cell_overlay_asset_id: String = "") -> void:
 	coordinate = cell_coordinate
 	terrain_id = terrain
 	render_tile = tile
 	tileset_id = cell_tileset_id
+	overlay_asset_id = cell_overlay_asset_id
 	passable = can_enter
 	blocks_los = blocks_visibility
 	visible = is_visible

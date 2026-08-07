@@ -16,6 +16,7 @@ func run() -> void:
 	assert_true(session.view().map_view.can_move(Vector2i.UP), "the detached view exposes an authoritative passable movement direction")
 	assert_false(session.view().map_view.can_move(Vector2i.LEFT), "the detached view exposes an authoritative blocked movement direction")
 	assert_equal(session.view().map_view.visited_coordinates(), [Vector2i(1, 1)], "the minimap receives only session-owned visited coordinates")
+	assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).overlay_asset_id, "fixture.special-land.neg-99", "the detached presentation view retains the validated special-land overlay identity")
 
 	var north := session.submit_intent(PlayerIntent.move(Vector2i.UP))
 	assert_equal(session.view().party_coordinate, Vector2i(1, 0), "typed movement intent commits through GameSession")

@@ -550,10 +550,16 @@
         "features": { "type": "array", "items": { "$ref": "#/$defs/topologyFeature" }, "uniqueItems": true },
         "render": {
           "type": "object",
-          "required": ["tile", "tilesetId"],
+          "required": ["tile", "tilesetId", "overlayAssetId"],
           "properties": {
             "tile": { "type": "integer" },
-            "tilesetId": { "$ref": "#/$defs/identifier" }
+            "tilesetId": { "$ref": "#/$defs/identifier" },
+            "overlayAssetId": {
+              "anyOf": [
+                { "$ref": "#/$defs/identifier" },
+                { "type": "null" }
+              ]
+            }
           },
           "additionalProperties": false
         }

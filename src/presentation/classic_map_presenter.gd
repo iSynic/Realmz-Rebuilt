@@ -15,6 +15,7 @@ var _view: GameView
 var _media: PackageMediaCatalog
 var _atlas_assets: Dictionary = {}
 var _atlas_textures: Dictionary = {}
+var _overlay_textures: Dictionary = {}
 var _party_rect: Rect2
 var _minimap_rect: Rect2
 var _held_direction: Vector2i = Vector2i.ZERO
@@ -62,17 +63,21 @@ func set_media_catalog(media: PackageMediaCatalog) -> void:
 	_media = media
 	_atlas_assets.clear()
 	_atlas_textures.clear()
+	_overlay_textures.clear()
 	if _media == null:
 		queue_redraw()
 		return
 	for asset: PackageMediaAsset in _media.assets():
-		if not asset.is_tileset():
+		if not asset.is_tileset() and not asset.is_picture():
 			continue
-		var texture := _load_atlas_texture(asset)
+		var texture := _load_image_texture(asset)
 		if texture == null:
 			continue
-		_atlas_assets[asset.id] = asset
-		_atlas_textures[asset.id] = texture
+		if asset.is_tileset():
+			_atlas_assets[asset.id] = asset
+			_atlas_textures[asset.id] = texture
+		else:
+			_overlay_textures[asset.id] = texture
 	queue_redraw()
 
 
@@ -136,6 +141,9 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 		draw_rect(rect, _cell_color(cell, level_type, false), true)
 	else:
 		draw_texture_rect_region(atlas_texture, rect, Rect2(region))
+	var overlay_texture: Texture2D = _overlay_textures.get(cell.overlay_asset_id) as Texture2D
+	if overlay_texture != null:
+		draw_texture_rect(overlay_texture, rect, false)
 	if dark:
 		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.45), true)
 
@@ -163,7 +171,7 @@ func _draw_atlas_region(rect: Rect2, atlas_asset: PackageMediaAsset, atlas_textu
 		draw_texture_rect_region(atlas_texture, rect, Rect2(region))
 
 
-func _load_atlas_texture(asset: PackageMediaAsset) -> Texture2D:
+func _load_image_texture(asset: PackageMediaAsset) -> Texture2D:
 	var bytes := _media.read_bytes(asset)
 	if bytes.is_empty():
 		return null
@@ -176,7 +184,9 @@ func _load_atlas_texture(asset: PackageMediaAsset) -> Texture2D:
 			load_error = image.load_jpg_from_buffer(bytes)
 		"image/webp":
 			load_error = image.load_webp_from_buffer(bytes)
-	if load_error != OK or image.get_width() != asset.width or image.get_height() != asset.height:
+	if load_error != OK:
+		return null
+	if asset.width > 0 and asset.height > 0 and (image.get_width() != asset.width or image.get_height() != asset.height):
 		return null
 	return ImageTexture.create_from_image(image)
 
