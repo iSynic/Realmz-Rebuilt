@@ -11,6 +11,10 @@ The project-local `.mcp.json` contains machine-specific absolute paths and stays
 
 The project uses `application/config/use_custom_user_dir` with the stable name `RealmzRemake2`. This keeps Godot 4.7.1 and MCP Pro 1.16.0 on the same file-IPC `user://` path and gives save repositories a predictable root.
 
+## Source intelligence
+
+The repository also maintains an offline source-intelligence snapshot under docs/codemap/. It embeds exact local source and documentation text, source spans, DOX ownership, tests, flows, retrieval chunks, and conservative resolved/unknown relationships. Open docs/codemap/codemap.html directly for the browser encyclopedia, or consume intelligence.json and chunks.jsonl from an agent. Use ./tools/source-intelligence/validate.ps1 for the read-only artifact check. The aggregate gate regenerates it automatically; local verification leaves regenerated files for review and CI fails if the committed snapshot is stale.
+
 ## Local gate
 
 ```powershell

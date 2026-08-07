@@ -32,3 +32,4 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 ## Child DOX Index
 
 - No child AGENTS.md files are currently required.
+- `source-intelligence/AGENTS.md` owns deterministic source indexing, artifact generation, validation, catalog, schema, and HTML template contracts.
