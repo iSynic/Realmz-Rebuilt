@@ -14,7 +14,7 @@ var _textbox_rect := Rect2(8.0, 424.0, 696.0, 168.0)
 var _passive_text: bool = false
 
 
-func present(request: InteractionRequest) -> void:
+func present(request: InteractionRequest, classic_text_context: String = "") -> void:
 	_request = request
 	_passive_text = false
 	_clear_options()
@@ -24,7 +24,7 @@ func present(request: InteractionRequest) -> void:
 		_prompt.text = ""
 		return
 	_heading.text = _heading_for_kind(request.kind)
-	_prompt.text = String(request.payload.get("prompt", _title_for_kind(request.kind)))
+	_prompt.text = _prompt_for(request, classic_text_context)
 	_component = _component_for(request.kind)
 	if _component == null:
 		_heading.text = "Unsupported Interaction"
@@ -148,12 +148,24 @@ static func _title_for_kind(kind: StringName) -> String:
 	return String(kind).replace("_", " ").capitalize()
 
 
+static func _prompt_for(request: InteractionRequest, classic_text_context: String) -> String:
+	var explicit_prompt := String(request.payload.get("prompt", "")).strip_edges()
+	if not explicit_prompt.is_empty():
+		return explicit_prompt
+	if request.kind == InteractionRequest.YES_NO:
+		var authored_context := classic_text_context.strip_edges()
+		if not authored_context.is_empty():
+			return authored_context
+		return "Choose Yes or No to continue."
+	return _title_for_kind(request.kind)
+
+
 static func _heading_for_kind(kind: StringName) -> String:
 	match kind:
 		&"acknowledge":
 			return "Classic Textbox"
 		&"yes_no":
-			return "Classic Choice"
+			return "Question"
 		&"encounter_choice", &"scenario_choice", &"complex_encounter":
 			return "Encounter"
 		&"character_selection", &"ally_selection":

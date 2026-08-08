@@ -1,10 +1,14 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://src/presentation/classic_application_shell.gd" id="1_shell"]
 [ext_resource type="Script" path="res://src/presentation/classic_screen_router.gd" id="2_router"]
 [ext_resource type="Theme" path="res://src/presentation/classic_ui_theme.tres" id="3_theme"]
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-raised-frame.png" id="4_frame"]
 [ext_resource type="PackedScene" path="res://src/presentation/screens/classic_party_roster.tscn" id="5_roster"]
+
+[sub_resource type="AtlasTexture" id="OpenRightFrameTexture"]
+atlas = ExtResource("4_frame")
+region = Rect2(0, 0, 520, 528)
 
 [node name="ClassicApplicationShell" type="Control"]
 layout_mode = 3
@@ -93,10 +97,9 @@ offset_top = 28.0
 offset_right = 704.0
 offset_bottom = 424.0
 mouse_filter = 2
-texture = ExtResource("4_frame")
+texture = SubResource("OpenRightFrameTexture")
 patch_margin_left = 8
 patch_margin_top = 8
-patch_margin_right = 8
 patch_margin_bottom = 8
 axis_stretch_horizontal = 1
 axis_stretch_vertical = 1
@@ -146,6 +149,7 @@ layout_mode = 0
 offset_top = 424.0
 offset_right = 704.0
 offset_bottom = 600.0
+theme_type_variation = &"ClassicOpenRight"
 z_index = 15
 
 [node name="BottomRow" type="BoxContainer" parent="BottomRegion"]

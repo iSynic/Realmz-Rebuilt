@@ -9,6 +9,7 @@ func run() -> void:
 	_test_action_availability()
 	_test_fixture_gallery_coverage()
 	_test_interaction_identity()
+	_test_classic_choice_context()
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
 	_test_scene_composition()
@@ -110,6 +111,14 @@ func _test_interaction_identity() -> void:
 	assert_equal(response.payload, {"accepted": true}, "interaction response preserves the exact selected payload")
 
 
+func _test_classic_choice_context() -> void:
+	var classic_request := InteractionRequest.new("classic-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"})
+	assert_equal(InteractionPresenter._prompt_for(classic_request, "Will you enter the ruined keep?"), "Will you enter the ruined keep?", "a label-only Classic choice retains its source-authored textbox context")
+	assert_equal(InteractionPresenter._prompt_for(classic_request, ""), "Choose Yes or No to continue.", "a context-free Classic choice explains the required decision without presenting button labels as a prompt")
+	var explicit_request := InteractionRequest.yes_no("explicit-choice", "Enter battle?", "Fight", "Avoid")
+	assert_equal(InteractionPresenter._prompt_for(explicit_request, "Stale textbox text"), "Enter battle?", "an explicit typed prompt remains authoritative over prior Classic textbox context")
+
+
 func _test_classic_asset_catalog() -> void:
 	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://src/presentation/assets/classic-ui-assets.json"))
 	assert_equal(manifest["source_commit"], "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61", "Classic controls retain exact Remake commit provenance")
@@ -162,8 +171,18 @@ func _test_stone_surface_tiling() -> void:
 	var stage_frame := application.get_node("ClassicShell/StageFrame") as NinePatchRect
 	assert_equal(int(stage_frame.axis_stretch_horizontal), 1, "stage-frame horizontal edges tile instead of stretching")
 	assert_equal(int(stage_frame.axis_stretch_vertical), 1, "stage-frame vertical edges tile instead of stretching")
+	assert_equal(stage_frame.patch_margin_right, 0, "the stage frame leaves its shared roster boundary open")
+	assert_true(stage_frame.texture is AtlasTexture and (stage_frame.texture as AtlasTexture).region.size.x == 520.0, "the open-right stage frame crops only the source texture's eight-pixel right edge")
 	application.free()
 	var ui_theme := load("res://src/presentation/classic_ui_theme.tres") as Theme
+	var menu_normal := ui_theme.get_stylebox("normal", "MenuButton")
+	for menu_state: StringName in [&"hover", &"pressed", &"disabled"]:
+		var menu_style := ui_theme.get_stylebox(menu_state, "MenuButton")
+		for side: int in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+			assert_equal(menu_style.get_content_margin(side), menu_normal.get_content_margin(side), "MenuButton %s keeps the measured text margins on every side" % menu_state)
+	var open_right_style := ui_theme.get_stylebox("panel", "ClassicOpenRight") as StyleBoxTexture
+	assert_true(open_right_style != null and open_right_style.get_texture_margin(SIDE_RIGHT) == 0.0, "shared-stage panels use the open-right frame variation instead of drawing a vertical seam")
+	assert_true(ui_theme.get_stylebox("panel", "ClassicSharedStone") is StyleBoxEmpty, "stage overlays expose the already aligned root stone instead of restarting the texture inside another panel")
 	var tiled_styles: Array[StyleBox] = [
 		ui_theme.get_stylebox("panel", "PanelContainer"),
 		ui_theme.get_stylebox("panel", "ClassicInset"),
@@ -188,6 +207,8 @@ func _test_scene_composition() -> void:
 	var bottom_region := shell.get_node("BottomRegion") as Control
 	assert_not_null(router, "the shell owns one workspace router")
 	assert_not_null(shell.get_node("PartyRoster"), "the shell owns the persistent six-slot roster")
+	assert_true((roster as PanelContainer).get_theme_stylebox("panel") is StyleBoxEmpty, "the roster shares the uninterrupted root stone surface instead of restarting a second framed tile at the stage boundary")
+	assert_equal((bottom_region as PanelContainer).theme_type_variation, &"ClassicOpenRight", "the bottom narrative region also leaves the shared roster boundary open")
 	assert_not_null(shell.get_node("BottomRegion/BottomRow/NarrativeWell"), "the shell owns a Classic narrative well")
 	assert_not_null(shell.get_node("BottomRegion/BottomRow/CommandPanel"), "the shell owns a contextual command deck")
 	assert_equal(shell.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the structural shell cannot mask earlier root-level interaction controls")

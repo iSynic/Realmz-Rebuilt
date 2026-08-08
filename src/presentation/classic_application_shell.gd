@@ -49,6 +49,7 @@ var _presentation_settings := PresentationSettings.new()
 var _profile: UiLayoutProfile
 var _media: PackageMediaCatalog
 var _selected_character_id: String = ""
+var _latest_classic_text: String = ""
 var _simulation_buttons: Dictionary = {}
 var _menu_actions: Dictionary = {}
 var _menus_connected: Dictionary = {}
@@ -73,8 +74,10 @@ func _ready() -> void:
 
 
 func present(game_view: GameView) -> void:
+	var previous_campaign_id := _current_view.campaign_id if _current_view != null and _current_view.session_started else ""
 	_current_view = game_view
 	if game_view == null or not game_view.session_started:
+		_latest_classic_text = ""
 		_package_status.text = "No campaign"
 		_clock_label.text = "Day —"
 		_gold_label.text = "Gold —"
@@ -82,8 +85,12 @@ func present(game_view: GameView) -> void:
 		_fatigue_label.text = "Fatigue —"
 		_party_roster.present(game_view)
 		_router.present(game_view)
+		_stage_frame.visible = false
+		_bottom_region.visible = false
 		_update_command_availability()
 		return
+	if previous_campaign_id != game_view.campaign_id:
+		_latest_classic_text = ""
 	_clock_label.text = "Day %d • %02d:00" % [game_view.realmz_day, game_view.realmz_hour]
 	_gold_label.text = "Gold %d" % game_view.pooled_gold
 	_coordinates_label.text = "%s • %d,%d" % [game_view.party_map_id, game_view.party_coordinate.x, game_view.party_coordinate.y]
@@ -93,6 +100,9 @@ func present(game_view: GameView) -> void:
 		_selected_character_id = game_view.party_members[0].id
 	_party_roster.present(game_view, _selected_character_id)
 	_router.present(game_view)
+	var play_regions_visible := not _router.full_stage_overlay_visible()
+	_stage_frame.visible = play_regions_visible
+	_bottom_region.visible = play_regions_visible
 	if game_view.combat_view != null and _router.current_screen() == &"exploration":
 		_router.open_screen(&"combat")
 	elif game_view.pending_interaction != null and game_view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK] and _router.current_screen() == &"exploration":
@@ -111,6 +121,10 @@ func present_step(step: SessionStep) -> void:
 	_picture_stage.visible = false
 	for event: DomainEvent in step.events:
 		_present_event(event)
+
+
+func latest_classic_text() -> String:
+	return _latest_classic_text
 
 
 func set_package_media(media: PackageMediaCatalog) -> void:
@@ -161,7 +175,12 @@ func handle_back() -> bool:
 	if _picture_stage.visible:
 		_picture_stage.visible = false
 		return true
-	return _router.handle_back()
+	var handled := _router.handle_back()
+	if handled:
+		var play_regions_visible := _current_view != null and _current_view.session_started and not _router.full_stage_overlay_visible()
+		_stage_frame.visible = play_regions_visible
+		_bottom_region.visible = play_regions_visible
+	return handled
 
 
 func handle_route_shortcut(event: InputEvent) -> bool:
@@ -187,6 +206,8 @@ func set_vault_records(records: Array[CharacterVaultRecord]) -> void:
 
 func show_campaign_selection() -> void:
 	_router.show_campaign_selection()
+	_stage_frame.visible = false
+	_bottom_region.visible = false
 
 
 func _apply_layout() -> void:
@@ -372,6 +393,9 @@ func _activate_command(command_id: StringName) -> void:
 
 
 func _on_screen_changed(screen_id: StringName) -> void:
+	var play_regions_visible := _current_view != null and _current_view.session_started
+	_stage_frame.visible = play_regions_visible
+	_bottom_region.visible = play_regions_visible
 	set_status(String(screen_id).replace("_", " ").capitalize())
 	_rebuild_command_deck()
 	route_changed.emit(screen_id)
@@ -413,6 +437,7 @@ func _present_event(event: DomainEvent) -> void:
 	match event.kind:
 		&"message_shown":
 			var text := String(event.payload.get("text", "Message"))
+			_latest_classic_text = text
 			_append_narrative(text)
 			set_status("Continue when ready" if bool(event.payload.get("classicClick", false)) else text)
 		&"party_created":

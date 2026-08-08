@@ -1,8 +1,15 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://src/presentation/screens/classic_party_roster.gd" id="1_roster"]
 
+[sub_resource type="StyleBoxEmpty" id="RosterSurface"]
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
 [node name="ClassicPartyRoster" type="PanelContainer"]
+theme_override_styles/panel = SubResource("RosterSurface")
 script = ExtResource("1_roster")
 
 [node name="RosterColumn" type="VBoxContainer" parent="."]

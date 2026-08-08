@@ -194,6 +194,10 @@ func show_campaign_selection() -> void:
 	call_deferred("_prepare_campaign_selection")
 
 
+func full_stage_overlay_visible() -> bool:
+	return _campaign_overlay != null and _campaign_overlay.visible or _setup_overlay != null and _setup_overlay.visible
+
+
 func accepts_exploration_input() -> bool:
 	return not _campaign_overlay.visible and not _setup_overlay.visible and _screen_id == &"exploration"
 
@@ -266,6 +270,7 @@ func _mount_workspace(screen_id: StringName) -> void:
 func _build_campaign_overlay() -> void:
 	_campaign_overlay = PanelContainer.new()
 	_campaign_overlay.name = "CampaignLibrary"
+	_campaign_overlay.theme_type_variation = &"ClassicSharedStone"
 	_campaign_overlay.set_anchors_preset(Control.PRESET_CENTER)
 	_campaign_overlay.offset_left = -300.0
 	_campaign_overlay.offset_top = -220.0
@@ -320,6 +325,7 @@ func _details_button(row: HBoxContainer) -> void:
 func _build_setup_overlay() -> void:
 	_setup_overlay = PanelContainer.new()
 	_setup_overlay.name = "PartySetup"
+	_setup_overlay.theme_type_variation = &"ClassicSharedStone"
 	_setup_overlay.set_anchors_preset(Control.PRESET_CENTER)
 	_setup_overlay.offset_left = -440.0
 	_setup_overlay.offset_top = -238.0

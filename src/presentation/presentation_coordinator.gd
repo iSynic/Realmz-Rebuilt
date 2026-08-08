@@ -29,13 +29,18 @@ func bind(session_controller: GameSessionController, map_presenter: ClassicMapPr
 
 
 func _on_step_committed(step: SessionStep) -> void:
-	_present_current_view()
+	_present_current_view(false)
 	_shell_presenter.present_step(step)
 	_shell_presenter.present_media_events(step.events, _media)
 	_audio_presenter.present_events(step.events, _media)
+	var passive_classic_text := ""
 	for event: DomainEvent in step.events:
 		if event.kind == &"message_shown" and event.payload.has("classicClick") and not bool(event.payload.get("classicClick", false)):
-			_interaction_presenter.present_passive_classic_text(String(event.payload.get("text", "")))
+			passive_classic_text = String(event.payload.get("text", ""))
+	var game_view := _session_controller.view()
+	_present_interaction(game_view)
+	if game_view.pending_interaction == null and not passive_classic_text.is_empty():
+		_interaction_presenter.present_passive_classic_text(passive_classic_text)
 
 
 func set_package_media(media: PackageMediaCatalog) -> void:
@@ -54,12 +59,17 @@ func set_dungeon_3d_enabled(enabled: bool) -> void:
 	_present_current_view()
 
 
-func _present_current_view() -> void:
+func _present_current_view(include_interaction: bool = true) -> void:
 	var game_view := _session_controller.view()
 	_map_presenter.present(game_view)
 	_dungeon_presenter.present(game_view)
 	var exploration_visible := _active_route == &"exploration" and game_view != null and game_view.session_started
 	_map_presenter.visible = exploration_visible and not _dungeon_presenter.is_active()
 	_dungeon_presenter.visible = exploration_visible and _dungeon_presenter.is_active()
-	_interaction_presenter.present(game_view.pending_interaction)
 	_shell_presenter.present(game_view)
+	if include_interaction:
+		_present_interaction(game_view)
+
+
+func _present_interaction(game_view: GameView) -> void:
+	_interaction_presenter.present(game_view.pending_interaction, _shell_presenter.latest_classic_text())
