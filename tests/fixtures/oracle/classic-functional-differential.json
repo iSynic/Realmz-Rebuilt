@@ -1,0 +1,200 @@
+{
+  "formatVersion": 1,
+  "references": {
+    "castle": "491816ad60037394f92c428e99c004494d3c28b3",
+    "remakeFunctional": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+    "remakeVm": "cdaa0d8dcc5ab81c195aa960c860bf74e7d4f40b",
+    "providence": "2b5eadfffd605b3b043680f7ad17b1a2c10bf7f1"
+  },
+  "cases": [
+    {
+      "id": "movement.land-eight-direction",
+      "domain": "movement",
+      "claim": "Land movement and land pathfinding use the same eight destination probes without an orthogonal corner-blocking rule; dungeon movement remains cardinal and edge-based.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Keyboard, mouse, and the Classic map bridge expose diagonal land movement, including a diagonal Layout transition characterization.",
+        "sources": [
+          { "path": "src/scripts/game_state.gd", "symbol": "func get_dir_input_from_kb" },
+          { "path": "src/scripts/game_state.gd", "symbol": "func get_dir_input_from_mouse" },
+          { "path": "src/scripts/classic_runtime/classic_map_bridge.gd", "symbol": "func resolve_movement" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_map_bridge" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/checkkeypad.c", "symbol": "short checkkeypad" },
+          { "path": "src/realmz_orig/buttonchoice.c", "symbol": "short buttonchoice" },
+          { "path": "src/realmz_orig/moveparty.c", "symbol": "void moveparty" }
+        ],
+        "authoredInputs": ["land cell value", "Layout transitions", "dungeon edge features"],
+        "observation": "Land input sets both axes before one destination-tile movement check. Dungeon movement follows its separate cardinal edge path."
+      },
+      "providence": {
+        "commit": "2b5eadfffd605b3b043680f7ad17b1a2c10bf7f1",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn normalized_cell_topology" }
+        ],
+        "expectedRepresentation": "Map cells retain terrain/passability and dungeon edges; Layout transitions retain destination coordinates."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/world/map_topology.gd", "symbol": "func find_path" },
+        "expectedTrace": ["movement probe", "movement commit", "time advancement", "trigger discovery", "random rectangle check"],
+        "tests": [
+          { "path": "tests/core/test_map_topology.gd", "symbol": "func run" },
+          { "path": "tests/integration/test_exploration_session.gd", "symbol": "func run" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func run" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "characterized"
+    },
+    {
+      "id": "action-point.placed-first-match",
+      "domain": "action-points",
+      "claim": "A placed Action Point selects the first native record at the coordinate and does not fall through to another same-cell record when its chance fails or it is disabled.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "The Classic runtime materializes effective triggers and consumes or restores deferred AP continuations.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_runtime_state.gd", "symbol": "func get_effective_triggers_at" },
+          { "path": "src/scripts/classic_runtime/classic_runtime_host.gd", "symbol": "func start_trigger" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_action_point_consumption" },
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_deferred_action_point_continuation_restore" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/newland.c", "symbol": "short newland" },
+          { "path": "src/realmz_orig/flashrange-loaddoor.c", "symbol": "void loaddoor2" }
+        ],
+        "authoredInputs": ["door record order", "door coordinate", "door percentage", "Keep Codes", "remove code"],
+        "observation": "newland scans the fixed door table in order, selects the first coordinate match, and leaves the scan path after that selected record regardless of its chance result."
+      },
+      "providence": {
+        "commit": "2b5eadfffd605b3b043680f7ad17b1a2c10bf7f1",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" }
+        ],
+        "expectedRepresentation": "Each cell carries trigger references in native placed-record order and each trigger retains classicRecordIndex."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _continue_post_move" },
+        "expectedTrace": ["select first placed AP", "chance decision", "optional VM continuation", "single destination recheck"],
+        "tests": [
+          { "path": "tests/integration/test_exploration_session.gd", "symbol": "func run" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func run" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "characterized"
+    },
+    {
+      "id": "media.classic-resource-key",
+      "domain": "media",
+      "claim": "Classic media identity is the normalized resource type plus signed resource ID, with one deterministic effective package asset for each key.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Shared assets and Classic sound resolution use typed catalogs and test media readiness.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_shared_asset_store.gd", "symbol": "class_name ClassicSharedAssetStore" },
+          { "path": "src/scripts/classic_runtime/classic_sound_resolution.gd", "symbol": "static func resolve" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_shared_asset_store" },
+          { "path": "src/scripts/classic_runtime/tests/classic_media_readiness_smoke.gd", "symbol": "func _test_media_classification" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/centerpict.c", "symbol": "void centerpict" },
+          { "path": "src/realmz_orig/fastplot.c", "symbol": "void fastplot" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "void sound" }
+        ],
+        "authoredInputs": ["PICT ID", "CICN ID", "snd ID", "landlook", "negative land cell"],
+        "observation": "Castle selects resources through type-specific lookup paths; the same numeric ID in a different resource type is not interchangeable."
+      },
+      "providence": {
+        "commit": "2b5eadfffd605b3b043680f7ad17b1a2c10bf7f1",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_assets" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn managed_replaces_catalog_resource" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn asset_index_document" }
+        ],
+        "expectedRepresentation": "assets/index.json contains one effective stable asset for each normalized Classic resource type and ID key."
+      },
+      "realmz2": {
+        "owner": { "path": "src/infrastructure/packages/package_media_catalog.gd", "symbol": "func asset_by_resource" },
+        "expectedTrace": ["authored typed reference", "effective package asset", "content hash validation", "decode", "typed presentation role"],
+        "tests": [
+          { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func run" }
+        ]
+      },
+      "decision": "compiler-defect",
+      "availability": "implemented",
+      "status": "characterized"
+    },
+    {
+      "id": "interaction.classic-staged-presentation",
+      "domain": "interaction-pacing",
+      "claim": "Completed narrative enters history, while the active Classic textbox, picture, and typed response remain staged until the required response is submitted.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Scenario commands suspend and resume through command-specific continuations, including choices and sound-plus-treasure sequences.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_runtime_host.gd", "symbol": "func _resume_after_command" },
+          { "path": "src/scripts/scenario_runtime/godot/scenario_godot_services.gd", "symbol": "func play_classic_map_sound" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_choice_continuation" },
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_sound_and_treasure" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/newland.c", "symbol": "short newland" },
+          { "path": "src/realmz_orig/textbox-time.c", "symbol": "void textbox" },
+          { "path": "src/realmz_orig/question.c", "symbol": "short question2" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "void sound" }
+        ],
+        "authoredInputs": ["textbox sign", "picture ID", "sound sign", "choice labels"],
+        "observation": "Castle performs presentation-producing actions in program order and blocks only at its explicit click or selection boundaries."
+      },
+      "providence": {
+        "commit": "2b5eadfffd605b3b043680f7ad17b1a2c10bf7f1",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
+        ],
+        "expectedRepresentation": "Scenario instructions retain typed text, picture, sound, and choice operands in execution order."
+      },
+      "realmz2": {
+        "owner": { "path": "src/presentation/interaction_presenter.gd", "symbol": "func present" },
+        "expectedTrace": ["committed presentation event", "active interaction request", "typed response", "VM resume", "completed history entry"],
+        "tests": [
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func run" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_classic_choice_context" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
+    }
+  ]
+}

@@ -16,9 +16,16 @@
       "policy": "read-only clean worktree; do not port host architecture"
     },
     {
+      "id": "realmz-remake-functional-reference",
+      "repository": "Realmz Remake",
+      "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "role": "functional differences, decoded mappings, tests, and presentation behavior",
+      "policy": "read-only clean worktree; Castle adjudicates behavior and no host architecture is ported"
+    },
+    {
       "id": "providence-compiler-base",
       "repository": "Realmz Providence",
-      "commit": "e38b3f7584dbe87e8a59c54c372b5626d0aafb07",
+      "commit": "2b5eadfffd605b3b043680f7ad17b1a2c10bf7f1",
       "role": "canonical project, deterministic package compiler, schema, and synthetic fixture generator",
       "policy": "coordinated implementation branch preserving existing export targets"
     }

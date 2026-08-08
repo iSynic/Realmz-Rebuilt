@@ -1,0 +1,27 @@
+# Classic functional differential
+
+Classic-visible behavior is developed through a rolling differential gate. Current Remake identifies existing functionality, mappings, tests, and likely differences. Castle source controls the behavioral decision; a controlled Castle runtime fixture is used only when complete source flow is insufficient. Providence must preserve the authored inputs, and Realmz Remake 2.0 must own the result through typed runtime boundaries.
+
+The machine-readable record is `tests/fixtures/oracle/classic-functional-differential.json`. It contains the detailed paths, symbols, commits, expected traces, tests, and decision state. This document summarizes only the current conclusions.
+
+## Current cases
+
+| Case | Current decision | Durable conclusion |
+| --- | --- | --- |
+| `movement.land-eight-direction` | Runtime defect | Land input and pathfinding use the same eight destination probes. Dungeon movement remains cardinal and edge-based. No land corner-blocking rule is added without contrary Castle evidence. |
+| `action-point.placed-first-match` | Runtime defect | A placed AP selects the first native record at the coordinate. Chance failure or a disabled selected record does not fall through to a later same-cell AP. |
+| `media.classic-resource-key` | Compiler defect | Classic media identity is `(resourceType, resourceId)`. Providence emits one deterministic effective asset for that key and runtime lookup remains typed. |
+| `interaction.classic-staged-presentation` | Aligned | The active textbox, picture, and response remain staged. Completed narrative may enter the Chronicle, but the Chronicle is not the interaction surface. |
+
+## Rolling gate
+
+For each functional slice:
+
+1. Inventory the pinned Remake implementation, mappings, and tests.
+2. Trace the complete Castle control flow and authored fields that determine the observable behavior.
+3. Add a controlled synthetic Castle fixture only if source flow cannot settle the observation.
+4. Verify Providence preserves the required data in the Realmz 2 package.
+5. Add the failing 2.0 characterization, implement through the owning typed boundary, and verify save/resume and RNG where applicable.
+6. Update the machine record and the owning domain evidence document before closing the slice.
+
+An unresolved behavior remains disabled with an explicit reason. Remake host architecture, direct Godot mutation, service locators, compatibility profiles, and inferred Classic behavior are not accepted as implementations.

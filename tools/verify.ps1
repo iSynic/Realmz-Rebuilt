@@ -56,6 +56,9 @@ if ($LASTEXITCODE -ne 0) { throw "Architecture boundary verification failed." }
 & "$PSScriptRoot\verify_export_contract.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Release export contract verification failed." }
 
+& "$PSScriptRoot\verify_differential_evidence.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Differential evidence verification failed." }
+
 git -C $repoRoot diff --check
 if ($LASTEXITCODE -ne 0) { throw "git diff --check failed." }
 

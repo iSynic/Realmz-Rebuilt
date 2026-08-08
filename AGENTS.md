@@ -80,6 +80,7 @@ When the user requests a durable behavior change, record it here or in the relev
 
 - Build a greenfield Realmz runtime. Do not reproduce Samuel's host architecture or add compatibility paths for its saves and campaigns.
 - Model Castle Realmz concepts and behavior directly. Keep Classic behavior as the fixed ruleset and document deliberate fidelity corrections.
+- Use the pinned current Remake as a functional-difference and test donor, then use Castle source or a controlled Castle runtime fixture to adjudicate every Classic-visible difference before implementation.
 - Providence is the canonical authoring/compiler system. Runtime packages are immutable compiled inputs.
 - Keep simulation deterministic and presentation-independent. Gameplay code must not use Nodes, autoloads, wall-clock time, filesystem APIs, or Godot randomness.
 - Keep one authoritative map topology and derive every renderer or navigation cache from it.
