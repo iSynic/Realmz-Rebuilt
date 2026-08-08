@@ -8,7 +8,7 @@ The machine-readable record is `tests/fixtures/oracle/classic-functional-differe
 
 | Case | Current decision | Durable conclusion |
 | --- | --- | --- |
-| `movement.land-eight-direction` | Runtime defect | Land input and pathfinding use the same eight destination probes. Dungeon movement remains cardinal and edge-based. No land corner-blocking rule is added without contrary Castle evidence. |
+| `movement.land-eight-direction` | Aligned | Land input, availability, and pathfinding use the same eight destination probes; diagonal corner exits follow compiled Layout neighbors. Dungeon movement remains cardinal and edge-based. |
 | `action-point.placed-first-match` | Runtime defect | A placed AP selects the first native record at the coordinate. Chance failure or a disabled selected record does not fall through to a later same-cell AP. |
 | `media.classic-resource-key` | Compiler defect | Classic media identity is `(resourceType, resourceId)`. Providence emits one deterministic effective asset for that key and runtime lookup remains typed. |
 | `interaction.classic-staged-presentation` | Aligned | The active textbox, picture, and response remain staged. Completed narrative may enter the Chronicle, but the Chronicle is not the interaction surface. |

@@ -27,6 +27,18 @@ func run() -> void:
 	var restored_diagonal := GameSession.new()
 	assert_equal(restored_diagonal.restore(content, SaveEnvelope.from_data(diagonal_session.snapshot().to_data())).state, SessionStep.State.COMPLETED, "diagonal movement state restores transactionally")
 	assert_equal(restored_diagonal.snapshot().game_state.last_move_direction, Vector2i(-1, -1), "save/reload preserves a diagonal backup direction")
+	var layout_maps: Array[MapDefinition] = [content.world.map_by_id("land:0"), content.world.map_by_id("land:1")]
+	var layout_transitions: Array[MapTransition] = [MapTransition.new("layout:land:0:northwest:land:1", "land:0", &"northwest", "land:1", &"southeast")]
+	var diagonal_layout_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:0", Vector2i.ZERO, WorldDefinition.new(layout_maps, layout_transitions), ScenarioDefinition.new([], []), [], [])
+	var diagonal_layout_session := GameSession.new()
+	assert_equal(diagonal_layout_session.start(diagonal_layout_content, 1).state, SessionStep.State.COMPLETED, "a diagonal Layout transition session starts")
+	var diagonal_layout_step := diagonal_layout_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
+	assert_equal(diagonal_layout_session.view().party_map_id, "land:1", "diagonal boundary input follows the compiled diagonal Layout neighbor")
+	assert_equal(diagonal_layout_session.view().party_coordinate, Vector2i(2, 2), "diagonal boundary input wraps to the opposite target corner")
+	assert_true(_has_event(diagonal_layout_step, &"map_transitioned"), "diagonal Layout movement publishes the ordinary transition event")
+	var restored_diagonal_layout := GameSession.new()
+	assert_equal(restored_diagonal_layout.restore(diagonal_layout_content, SaveEnvelope.from_data(diagonal_layout_session.snapshot().to_data())).state, SessionStep.State.COMPLETED, "diagonal Layout movement restores transactionally")
+	assert_equal(restored_diagonal_layout.view().party_coordinate, Vector2i(2, 2), "save/reload retains the diagonal Layout destination")
 
 	var north := session.submit_intent(PlayerIntent.move(Vector2i.UP))
 	assert_equal(session.view().party_coordinate, Vector2i(1, 0), "typed movement intent commits through GameSession")

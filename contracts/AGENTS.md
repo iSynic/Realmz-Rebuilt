@@ -18,7 +18,7 @@ Mirror the authoritative Providence `.realmz2` schemas byte-for-byte and expose 
 ## Work Guidance
 
 - Record the matching Providence commit and schema SHA-256 when updating the mirror.
-- Schema v2 currently mirrors Providence commit `2b5eadff` at SHA-256 `c9c713b99ec58c366f6eeaf96ed371c94e491e8ab8351ba791a848d5f2f878ac`. The v2 campaign contract adds typed display metadata, restrictions, contact fields, splash identity, and race/caste eligibility relationships.
+- Schema v2 currently mirrors Providence commit `8ec2ca2a` at SHA-256 `d6ba21062f162dd453e898eab83cf52a36b524c3985742090db3253de4a69b6e`. The v2 campaign contract includes typed display metadata, restrictions, contact fields, splash identity, race/caste eligibility relationships, and eight-direction land Layout transitions.
 
 ## Verification
 

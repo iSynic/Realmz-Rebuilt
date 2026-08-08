@@ -53,6 +53,16 @@ func probe_land_entry(coordinate: Vector2i, world_state: WorldState) -> Topology
 	return TopologyMoveResult.permitted(cell)
 
 
+func probe_movement(coordinate: Vector2i, move_direction: Vector2i, world_state: WorldState, level_type: StringName) -> TopologyMoveResult:
+	if level_type == &"land":
+		if not is_cardinal_direction(move_direction) and not is_diagonal_direction(move_direction):
+			return TopologyMoveResult.blocked(&"invalid_direction")
+		return probe_land_entry(coordinate, world_state)
+	if not is_cardinal_direction(move_direction):
+		return TopologyMoveResult.blocked(&"invalid_direction")
+	return probe_entry(coordinate, move_direction, world_state)
+
+
 func has_line_of_sight(from: Vector2i, to: Vector2i, world_state: WorldState) -> bool:
 	if not contains(from) or not contains(to):
 		return false
@@ -87,7 +97,7 @@ func visible_cells(origin: Vector2i, radius: int, world_state: WorldState, use_l
 	return result
 
 
-func find_path(origin: Vector2i, destination: Vector2i, world_state: WorldState) -> Array[Vector2i]:
+func find_path(origin: Vector2i, destination: Vector2i, world_state: WorldState, level_type: StringName) -> Array[Vector2i]:
 	if not contains(origin) or not contains(destination):
 		return []
 	if origin == destination:
@@ -95,7 +105,7 @@ func find_path(origin: Vector2i, destination: Vector2i, world_state: WorldState)
 	var frontier: Array[Vector2i] = [origin]
 	var frontier_index := 0
 	var previous: Dictionary = {origin: origin}
-	var directions: Array[Vector2i] = [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
+	var directions := land_directions() if level_type == &"land" else cardinal_directions()
 	while frontier_index < frontier.size():
 		var current := frontier[frontier_index]
 		frontier_index += 1
@@ -103,7 +113,7 @@ func find_path(origin: Vector2i, destination: Vector2i, world_state: WorldState)
 			var neighbor := current + move_direction
 			if not contains(neighbor) or previous.has(neighbor):
 				continue
-			if not probe_entry(neighbor, move_direction, world_state).allowed:
+			if not probe_movement(neighbor, move_direction, world_state, level_type).allowed:
 				continue
 			previous[neighbor] = current
 			if neighbor == destination:

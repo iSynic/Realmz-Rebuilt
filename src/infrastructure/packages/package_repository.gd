@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "c9c713b99ec58c366f6eeaf96ed371c94e491e8ab8351ba791a848d5f2f878ac"
+const EXPECTED_SCHEMA_HASH: String = "d6ba21062f162dd453e898eab83cf52a36b524c3985742090db3253de4a69b6e"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -18,6 +18,7 @@ const SUPPORTED_SAFE_CAPABILITIES: Array[String] = RealmzRuntimeApi.SUPPORTED_SA
 const SUPPORTED_ACTION_CONTEXTS: Array[String] = ["action", "encounter", "spell", "item", "monster-ai", "lifecycle", "rule-modifier"]
 const SUPPORTED_VALUE_TYPES: Array[String] = ["void", "bool", "int", "float", "string", "location-snapshot", "time-snapshot", "wealth-snapshot", "character-snapshot", "character-snapshot-array", "combat-snapshot", "action-outcome", "encounter-outcome", "effect-outcome", "spell-validation-outcome", "spell-cast-outcome", "spell-effect-outcome", "spell-tick-outcome", "spell-expiration-outcome", "item-outcome", "monster-decision", "rule-modifier", "bool-array", "int-array", "float-array", "string-array"]
 const DIRECTIONS: Array[String] = ["north", "east", "south", "west"]
+const TRANSITION_DIRECTIONS: Array[String] = ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"]
 const EDGE_KINDS: Array[String] = ["open", "wall", "door", "secret", "archway", "map-boundary"]
 const FEATURE_KINDS: Array[String] = ["door", "secret", "stairs", "column", "unmapped", "note", "action-point", "archway", "no-wall-in-battle"]
 
@@ -1336,7 +1337,7 @@ func _construct_transitions(value: Variant, maps: Array[MapDefinition]) -> Varia
 			return null
 		var source: Dictionary = record["source"]
 		var target: Dictionary = record["target"]
-		if not source.get("mapId") is String or not target.get("mapId") is String or not map_ids.has(source["mapId"]) or not map_ids.has(target["mapId"]) or not source.get("edge") is String or not DIRECTIONS.has(source["edge"]) or not target.get("edge") is String or not DIRECTIONS.has(target["edge"]):
+		if not source.get("mapId") is String or not target.get("mapId") is String or not map_ids.has(source["mapId"]) or not map_ids.has(target["mapId"]) or not source.get("edge") is String or not TRANSITION_DIRECTIONS.has(source["edge"]) or not target.get("edge") is String or not TRANSITION_DIRECTIONS.has(target["edge"]):
 			_reject("Transition '%s' references an invalid map edge." % record["id"])
 			return null
 		var source_key := "%s:%s" % [source["mapId"], source["edge"]]

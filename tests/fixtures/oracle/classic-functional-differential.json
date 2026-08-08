@@ -4,7 +4,7 @@
     "castle": "491816ad60037394f92c428e99c004494d3c28b3",
     "remakeFunctional": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
     "remakeVm": "cdaa0d8dcc5ab81c195aa960c860bf74e7d4f40b",
-    "providence": "2b5eadfffd605b3b043680f7ad17b1a2c10bf7f1"
+    "providence": "8ec2ca2afff8fc4d622770a80d15e3659ca3ecef"
   },
   "cases": [
     {
@@ -35,7 +35,7 @@
         "observation": "Land input sets both axes before one destination-tile movement check. Dungeon movement follows its separate cardinal edge path."
       },
       "providence": {
-        "commit": "2b5eadfffd605b3b043680f7ad17b1a2c10bf7f1",
+        "commit": "8ec2ca2afff8fc4d622770a80d15e3659ca3ecef",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn normalized_cell_topology" }
@@ -51,9 +51,9 @@
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func run" }
         ]
       },
-      "decision": "runtime-defect",
+      "decision": "aligned",
       "availability": "implemented",
-      "status": "characterized"
+      "status": "verified"
     },
     {
       "id": "action-point.placed-first-match",
@@ -82,7 +82,7 @@
         "observation": "newland scans the fixed door table in order, selects the first coordinate match, and leaves the scan path after that selected record regardless of its chance result."
       },
       "providence": {
-        "commit": "2b5eadfffd605b3b043680f7ad17b1a2c10bf7f1",
+        "commit": "8ec2ca2afff8fc4d622770a80d15e3659ca3ecef",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" }
@@ -129,7 +129,7 @@
         "observation": "Castle selects resources through type-specific lookup paths; the same numeric ID in a different resource type is not interchangeable."
       },
       "providence": {
-        "commit": "2b5eadfffd605b3b043680f7ad17b1a2c10bf7f1",
+        "commit": "8ec2ca2afff8fc4d622770a80d15e3659ca3ecef",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_assets" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn managed_replaces_catalog_resource" },
@@ -178,7 +178,7 @@
         "observation": "Castle performs presentation-producing actions in program order and blocks only at its explicit click or selection boundaries."
       },
       "providence": {
-        "commit": "2b5eadfffd605b3b043680f7ad17b1a2c10bf7f1",
+        "commit": "8ec2ca2afff8fc4d622770a80d15e3659ca3ecef",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
         ],

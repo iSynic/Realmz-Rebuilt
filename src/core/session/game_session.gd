@@ -399,24 +399,15 @@ func _search() -> SessionStep:
 
 
 func _move(direction: Vector2i) -> SessionStep:
-	var source_map := _content.world.map_by_id(_state.party.map_id)
-	var diagonal_land_move := source_map.level_type == &"land" and MapTopology.is_diagonal_direction(direction)
-	if not MapTopology.is_cardinal_direction(direction) and not diagonal_land_move:
+	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world)
+	if not movement.allowed and movement.reason == &"invalid_direction":
 		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
-	var target_map := source_map
-	var target_coordinate := _state.party.coordinate + direction
-	var transition: MapTransition = null
-	if not source_map.topology.contains(target_coordinate):
-		if diagonal_land_move:
-			return _movement_blocked(&"map_boundary")
-		transition = _content.world.transition_from(source_map.id, MapTopology.direction_name(direction))
-		if transition == null:
-			return _movement_blocked(&"map_boundary")
-		target_map = _content.world.map_by_id(transition.target_map_id)
-		target_coordinate = _content.world.transition_target_coordinate(transition, _state.party.coordinate)
-	var probe := target_map.topology.probe_land_entry(target_coordinate, _state.world) if diagonal_land_move else target_map.topology.probe_entry(target_coordinate, direction, _state.world)
-	if not probe.allowed:
-		return _movement_blocked(probe.reason)
+	if not movement.allowed:
+		return _movement_blocked(movement.reason)
+	var target_map := movement.target_map
+	var target_coordinate := movement.target_coordinate
+	var transition := movement.transition
+	var probe := movement.topology_result
 	var events: Array[DomainEvent] = []
 	if not probe.door_id.is_empty() and not _state.world.door_is_open(probe.door_id):
 		_state.world.open_door(probe.door_id)
@@ -927,21 +918,5 @@ func _build_cell_view(map: MapDefinition, cell: MapCell, is_visible: bool) -> Ma
 	return MapCellView.new(cell.coordinate, _state.world.terrain_for(map.id, cell), cell.render_tile, cell.tileset_id, can_enter, cell.blocks_los, is_visible, _state.world.was_visited(map.id, cell.coordinate), not hidden_secret and not cell.trigger_ids().is_empty(), not cell.random_rect_ids().is_empty(), feature_kinds, feature_orientations, edge_kinds, edge_passability, cell.overlay_asset_id)
 
 
-func _probe_movement(direction: Vector2i) -> TopologyMoveResult:
-	var source_map := _content.world.map_by_id(_state.party.map_id)
-	var diagonal_land_move := source_map.level_type == &"land" and MapTopology.is_diagonal_direction(direction)
-	if not MapTopology.is_cardinal_direction(direction) and not diagonal_land_move:
-		return TopologyMoveResult.blocked(&"invalid_direction")
-	var target_map := source_map
-	var target_coordinate := _state.party.coordinate + direction
-	if not source_map.topology.contains(target_coordinate):
-		if diagonal_land_move:
-			return TopologyMoveResult.blocked(&"map_boundary")
-		var transition := _content.world.transition_from(source_map.id, MapTopology.direction_name(direction))
-		if transition == null:
-			return TopologyMoveResult.blocked(&"map_boundary")
-		target_map = _content.world.map_by_id(transition.target_map_id)
-		target_coordinate = _content.world.transition_target_coordinate(transition, _state.party.coordinate)
-	if target_map == null:
-		return TopologyMoveResult.blocked(&"outside_map")
-	return target_map.topology.probe_land_entry(target_coordinate, _state.world) if diagonal_land_move else target_map.topology.probe_entry(target_coordinate, direction, _state.world)
+func _probe_movement(direction: Vector2i) -> WorldMovementResult:
+	return _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world)

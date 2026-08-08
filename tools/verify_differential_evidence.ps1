@@ -52,8 +52,8 @@ function Assert-ReferenceRoot([string]$Root, [string]$ExpectedCommit, [string]$L
 Assert-Condition (Test-Path -LiteralPath $ledgerPath -PathType Leaf) "Ledger is missing."
 Assert-Condition (Test-Path -LiteralPath $referencesPath -PathType Leaf) "Reference lock is missing."
 
-$ledger = Get-Content -LiteralPath $ledgerPath -Raw | ConvertFrom-Json -Depth 100
-$referenceLock = Get-Content -LiteralPath $referencesPath -Raw | ConvertFrom-Json -Depth 100
+$ledger = Get-Content -LiteralPath $ledgerPath -Raw | ConvertFrom-Json
+$referenceLock = Get-Content -LiteralPath $referencesPath -Raw | ConvertFrom-Json
 $lockedById = @{}
 foreach ($reference in $referenceLock.references) {
     $lockedById[[string]$reference.id] = [string]$reference.commit

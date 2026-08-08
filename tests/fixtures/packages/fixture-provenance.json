@@ -3,12 +3,12 @@
   "evidence_label": "runtime-integration",
   "authoring": "synthetic Providence-authored data",
   "commercial_payload": false,
-  "providence_commit": "84a5afde2ec13b218289fcb02ace20adfc71b6f2",
-  "schema_sha256": "c9c713b99ec58c366f6eeaf96ed371c94e491e8ab8351ba791a848d5f2f878ac",
+  "providence_commit": "8ec2ca2afff8fc4d622770a80d15e3659ca3ecef",
+  "schema_sha256": "d6ba21062f162dd453e898eab83cf52a36b524c3985742090db3253de4a69b6e",
   "package_bytes": 1098592,
-  "package_sha256": "5c4172b15862a4e3e3040edc8e581567c243afa8a409628c0458efc63000475f",
-  "package_hash": "f477641aa84824f5dd7d3fe315579326b9a0a6d0fbd1fb7522ac6c6262159738",
-  "negative_fixture_sha256": "b85183fbe5dcd3036a3bedfe6f3d9c88365f7296d6029d05d678284c45b7a851",
+  "package_sha256": "5518c3fafc8cc3d1161ae045833046b0ae4c4b8281c7695efa3ab67e7b690e28",
+  "package_hash": "dfbfac0b5ba331c457173e4a1e4bd773afe5884f4c1d2d1ae6e97b197f4ef7c1",
+  "negative_fixture_sha256": "b38d5b8dec08813ce5021965d391b082886914cb292b6aa621e2be5f0ae184c0",
   "negative_fixture_mutation": "content.json replaces Fixture Wand with Fixture Band without updating manifest integrity",
   "generator": "cargo run --manifest-path src-tauri/Cargo.toml --example export_realmz2_fixture -- <output-directory>"
 }

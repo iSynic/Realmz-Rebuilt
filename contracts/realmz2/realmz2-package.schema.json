@@ -443,7 +443,7 @@
           "required": ["mapId", "edge"],
           "properties": {
             "mapId": { "$ref": "#/$defs/identifier" },
-            "edge": { "enum": ["north", "east", "south", "west"] }
+            "edge": { "enum": ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"] }
           },
           "additionalProperties": false
         },
@@ -452,7 +452,7 @@
           "required": ["mapId", "edge"],
           "properties": {
             "mapId": { "$ref": "#/$defs/identifier" },
-            "edge": { "enum": ["north", "east", "south", "west"] }
+            "edge": { "enum": ["north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest"] }
           },
           "additionalProperties": false
         }
