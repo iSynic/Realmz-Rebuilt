@@ -86,6 +86,11 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 	for index: int in 8:
 		result.set_save_value(index, 50 + race.save_bonus(index) + caste.save_bonus(index))
 		result.set_special_value(index, race.hit_modifier(index))
+	for index: int in ConditionSet.CHARACTER_COUNT:
+		var starting_condition := race.condition_level(index)
+		if caste.condition_level(index) == 1:
+			starting_condition = -1
+		result.conditions.set_value(index, starting_condition)
 	_configure_spellcaster(result, caste, rng)
 	var items: Array[ItemInstance] = []
 	for index: int in caste.start_items().size():

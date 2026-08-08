@@ -246,6 +246,51 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "character.creation-starting-defenses",
+      "domain": "character-creation",
+      "claim": "Level-one character creation combines race and caste saving-throw bonuses within Classic's -99 through 120 bounds, copies all forty racial starting-condition values, and replaces only caste condition-level one with permanent -1; higher caste values remain level-up thresholds.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake's Classic character adapter applies the same save bounds and starting-condition precedence before later level progression.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_character_rules.gd", "symbol": "static func apply_character_creation_defenses" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_character_rule_profile" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/newcharacter.c", "symbol": "void NewCharacter(short level)" },
+          { "path": "src/realmz_orig/newcharacter.c", "symbol": "characterl.condition[t] = races.conditions[t];" },
+          { "path": "src/realmz_orig/newcharacter.c", "symbol": "if (caste.conditions[t] == 1)" },
+          { "path": "src/realmz_orig/newcharacter.c", "symbol": "characterl.save[t] = 50 + races.drvbonus[t] + caste.drvbonus[t];" }
+        ],
+        "authoredInputs": ["Data Race drvbonus and conditions", "Data Caste drvbonus and conditions"],
+        "observation": "NewCharacter initializes saves from the two authored bonus tables, copies race conditions first, overwrites only caste value one with -1, and later clamps saves below -99 or above 120."
+      },
+      "providence": {
+        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
+        ],
+        "expectedRepresentation": "Every race and caste retains exactly forty conditionLevels entries and eight saveBonuses entries in content.json."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/character_rules.gd", "symbol": "func create_character" },
+        "expectedTrace": ["roll attributes", "initialize bounded saves", "copy race conditions", "apply caste level-one permanent conditions", "defer higher thresholds"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_character_creation_and_leveling" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
     }
   ]
 }

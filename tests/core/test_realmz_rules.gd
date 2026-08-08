@@ -35,6 +35,22 @@ func _test_character_creation_and_leveling() -> void:
 	assert_equal(created.inventory().size(), 1, "caste starting equipment becomes stable item instances")
 	assert_equal(rules.characters.strength_bonuses(30, 5).damage_bonus, 5, "caste strength caps brawn damage without changing hit bonus")
 
+	var race_conditions := _ints_size(40, 0)
+	race_conditions[4] = 2
+	race_conditions[5] = 3
+	race_conditions[10] = -3
+	var caste_conditions := _ints_size(40, 0)
+	caste_conditions[5] = 1
+	caste_conditions[6] = 2
+	var defense_race := RaceDefinition.new("race.defense", 2, "Defense Race", _ints_size(8, 0), _ints([100, -200, 0, 0, 0, 0, 0, 100]), _ints_size(6, 0), _attribute_limits(), race_conditions, [Vector2i(18, 18)], 100)
+	var defense_caste := CasteDefinition.new("caste.defense", 2, "Defense Caste", _ints([100, 0, 0, 0, 0, 0, 0, 100]), _ints_size(6, 0), _attribute_limits(), caste_conditions, Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
+	var defended := rules.characters.create_character("character.defense", "Defender", defense_race, defense_caste, 1, ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0]))
+	assert_equal([defended.save_value(0), defended.save_value(1), defended.save_value(7)], [120, -99, 120], "creation saves combine race and caste values within Castle's bounds")
+	assert_equal(defended.conditions.value(4), 2, "racial starting conditions retain their authored duration")
+	assert_equal(defended.conditions.value(5), -1, "caste condition level one replaces a racial value with a permanent condition")
+	assert_equal(defended.conditions.value(6), 0, "later caste condition thresholds do not become level-one conditions")
+	assert_equal(defended.conditions.value(10), -3, "negative racial starting conditions retain their authored strength")
+
 	created.vitality = 18
 	created.level = 1
 	created.missile = 2
