@@ -12,6 +12,7 @@ Evidence label: `source-control-flow` at Castle commit `491816ad60037394f92c428e
 
 - `src/realmz_orig/textbox-time.c:376-426` visits matching random rectangles from slot 19 down to 0, rolls `Rand(10000)`, consumes three ordered random-door rolls, clears a positive door percentage after success, optionally asks the player whether to take a favorable surprise, rolls a separate 10-percent unfavorable surprise, and then selects the battle. The 2.0 session preserves that order and serializes both one-shot door state and the surprise interaction.
 - `src/realmz_orig/structs.h:49-56` stores `landid`, `landx`, and `landy` in each `door`/AP record. `newland.c:3742-3772` applies those fields after the action sequence as a level and position destination, then allows one `seconddoor` recheck. `flashrange-loaddoor.c:43-59` preserves the current AP's destination fields while loading XAP code. This proves the AP header is post-action location data, not terrain replacement data, and that macro transfer must retain AP origin context.
+- `src/realmz_orig/newland.c:2336-2339` identifies opcode 24 as Keep Codes and jumps past ordinary cleanup. At `newland.c:3729-3730`, a completed placed AP otherwise sets its saved percent to `-1`. Realmz 2 therefore disables an ordinary AP only after its full direct or resumed timeline succeeds, preserves it when opcode 24 is reached, and serializes that state. This corrects replaying story APs such as Assault's starting AP without inventing coordinate- or campaign-specific exceptions.
 
 These observations do not prove final 2.0 search chances, LOS rules, elapsed-time costs, or presentation timing. Those exact formulas require Castle runtime fixtures where source control flow alone is insufficient.
 
@@ -28,13 +29,14 @@ Target behavior:
 - `MapTopology.probe_entry` owns passability, wall, door, and secret entry decisions.
 - `MapTopology.find_path`, LOS, visibility, movement, search, trigger discovery, random-region membership, and presentation views consume the same cells, edges, features, and overlays.
 - `WorldState` owns terrain replacements, opened doors, discovered secrets, disabled triggers, and visited/minimap cells in the save aggregate.
+- Placed APs are one-shot by default after successful completion. Opcode 24 Keep Codes is the source-backed repeatable exception, while opcode 25 explicitly removes the issuing AP.
 - `ClassicMapPresenter` consumes only `GameView`; its clipped, party-centered native 32-pixel atlas view, minimap, cardinal cues, and opt-in debug facts cannot become simulation authority. Normal play does not draw fabricated land-edge walls, AP diamonds, random-region boxes, or cell grids over Classic art.
 - `GameView` projects at most a 25×25 party-local cell window while carrying the complete visited-coordinate set and four topology-probed movement answers. This reduces presentation work without creating an alternate map or passability model.
 
 Evidence labels:
 
 - `runtime-unit`: the synthetic package verifies normalized land/dungeon cells, directional secret entry, door identity, wall rejection, deterministic pathfinding, visibility, native atlas sizing, click-direction translation, and typed overlay serialization.
-- `runtime-integration`: typed intents execute message APs, explicit opcode-12 terrain replacement, one post-action AP relocation and destination recheck, reverse-order random rectangles, one-shot random-door XAPs, serializable surprise choices, battle start, search/discovery, map transition, dungeon door opening, movement-cue changes, visited minimap facts, and transactional save/restore through `GameSession`.
+- `runtime-integration`: typed intents execute message APs, default one-shot AP cleanup after a resumed textbox timeline, opcode-24 Keep Codes preservation, explicit opcode-12 terrain replacement, one post-action AP relocation and destination recheck, reverse-order random rectangles, one-shot random-door XAPs, serializable surprise choices, battle start, search/discovery, map transition, dungeon door opening, movement-cue changes, visited minimap facts, and transactional save/restore through `GameSession`.
 - `live-route`: MCP Pro keyboard/mouse input exercised movement, a message AP, search roll 52, secret discovery, a Layout transition, save, restart, and restore. A fresh editor inspection reported zero errors and the captured 960×600 exploration view showed the topology-derived map and minimap.
 
 The fixture is synthetic and Providence-authored. Its exact package and compiler hashes are recorded in `tests/fixtures/packages/fixture-provenance.json`; it contains no commercial campaign data.

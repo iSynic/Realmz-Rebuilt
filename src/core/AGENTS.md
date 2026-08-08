@@ -22,6 +22,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - Session state owns non-VM interaction continuations as well as VM continuations. Random-rectangle surprise choices serialize with their owning region and resume only through `GameSession.respond`.
 - Monster death macros execute before battle resolution. Their combatant identity, VM interaction, and direct-session continuation belong to the save aggregate and resume only through `GameSession.respond`.
 - A placed Action Point's Classic header is a post-action map/coordinate destination. `GameSession` applies it only after that AP completes, rechecks the destination cell once, and serializes the recheck depth so save/resume cannot repeat or skip it.
+- An ordinary placed Action Point becomes disabled after its complete timeline. Classic opcode 24 Keep Codes preserves it; opcode 25 may disable it explicitly. This world-overlay state is serialized across every interaction and save boundary.
 - Every gameplay random draw goes through the session-owned `RealmzRng` and is serializable.
 - `RealmzRng` uses the documented QuickDraw 16807/mod-2147483647 state transition and Castle's inclusive scaling; raw scripted values are test-only branch controls.
 - Snapshots and restores detach typed state so callers cannot mutate an active session through a prior envelope.

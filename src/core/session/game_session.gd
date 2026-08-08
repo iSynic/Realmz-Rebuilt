@@ -477,6 +477,7 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 		if completed_trigger == null:
 			_session_continuation.clear()
 			return _finish_failed(&"invalid_session_continuation", "Completed trigger continuation is unavailable.", events)
+		_finalize_completed_trigger(completed_trigger, events)
 		if _apply_trigger_destination(completed_trigger, events, int(_session_continuation.get("actionPointDestinationDepth", 0)) == 0):
 			var destination_map := _content.world.map_by_id(_state.party.map_id)
 			_set_post_move_continuation(destination_map, _state.party.coordinate, 1)
@@ -513,6 +514,7 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 		if result.state == ScenarioVmResult.State.FAILED:
 			_session_continuation.clear()
 			return _finish_failed(result.error_code, result.error_message, events)
+		_finalize_completed_trigger(trigger, events)
 		if _events_have(result.events, &"destination_trigger_recheck_requested"):
 			var requested_map := _content.world.map_by_id(_state.party.map_id)
 			if requested_map == null:
@@ -546,6 +548,13 @@ func _apply_trigger_destination(trigger: TriggerDefinition, events: Array[Domain
 	return true
 
 
+func _finalize_completed_trigger(trigger: TriggerDefinition, events: Array[DomainEvent]) -> void:
+	if _events_keep_trigger(events, trigger.id) or _state.world.trigger_is_disabled(trigger.id):
+		return
+	_state.world.disable_trigger(trigger.id)
+	events.append(DomainEvent.new(&"trigger_disabled", {"triggerId": trigger.id, "source": "classic-default-one-shot"}))
+
+
 func _movement_blocked(reason: StringName) -> SessionStep:
 	return _finish_completed([DomainEvent.new("movement_blocked", {"reason": String(reason)})])
 
@@ -553,6 +562,13 @@ func _movement_blocked(reason: StringName) -> SessionStep:
 static func _events_have(events: Array[DomainEvent], kind: StringName) -> bool:
 	for event: DomainEvent in events:
 		if event.kind == kind:
+			return true
+	return false
+
+
+static func _events_keep_trigger(events: Array[DomainEvent], trigger_id: String) -> bool:
+	for event: DomainEvent in events:
+		if event.kind == &"action_point_kept" and String(event.payload.get("triggerId", "")) == trigger_id:
 			return true
 	return false
 

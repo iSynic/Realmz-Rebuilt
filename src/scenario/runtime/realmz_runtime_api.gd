@@ -112,7 +112,7 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 		22:
 			return _mutate_items(action)
 		24:
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"action_point_finished", {"reason": "classic-opcode-24"})], {"kind": "finish"})
+			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"action_point_kept", {"triggerId": String(context.get("triggerId", "")), "source": "classic"})], {"kind": "finish"})
 		25:
 			var trigger_id := String(context.get("triggerId", ""))
 			if trigger_id.is_empty():

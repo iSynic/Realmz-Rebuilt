@@ -26,6 +26,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - The Classic UI fixture gallery covers every route and interaction kind in nominal, empty, loading, error, unavailable, and oversized states. It verifies profile boundaries, scale migration, safe hidden-item display, explicit availability, and request identity; screenshots remain local visual evidence.
 - Exploration integration tests require detached movement cues and minimap coordinates to agree with the same secret/door/world overlays used by simulation; presentation tests retain native 32-pixel land cells and typed click direction translation.
 - Scenario and exploration tests preserve opcode 1's signed textbox behavior: positive message IDs pause at a serializable acknowledgement request, negative IDs continue, and later AP/XAP actions cannot execute before acknowledgement.
+- Exploration tests preserve Castle's placed-AP lifecycle across direct and resumed timelines: ordinary APs become one-shot, opcode 24 Keep Codes APs remain active, and disabled state survives save/reload.
 - War in the Sword Lands certification uses an external route, package, and report. Only package/route hashes, stage names, and resulting observations may enter documentation.
 - Schema-v2 fixture tests cover campaign display metadata, contact shape, restrictions, and race/caste eligibility. Character-vault tests cover immutable revisions, typed readback, archive, backup/atomic replacement, and target-campaign eligibility.
 

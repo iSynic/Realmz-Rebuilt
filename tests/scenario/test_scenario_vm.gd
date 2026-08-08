@@ -16,6 +16,7 @@ func run() -> void:
 	_test_persistent_action_state(loaded.content)
 	_test_classic_call_limit(loaded.content)
 	_test_classic_transfer_keeps_trigger_context(loaded.content)
+	_test_classic_keep_codes(loaded.content)
 	_test_action_call_limit(loaded.content)
 	_test_execution_step_limit(loaded.content)
 	_test_unknown_opcode_failure(loaded.content)
@@ -318,6 +319,17 @@ func _test_classic_transfer_keeps_trigger_context(content: RealmzContent) -> voi
 	var result := vm.run(RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new()))
 	assert_equal(result.state, ScenarioVmResult.State.COMPLETED, "Classic opcode 39 completes through the transferred XAP")
 	assert_true(state.world.trigger_is_disabled("ap.fixture.message"), "Classic transfer retains Action Point origin context for opcode 25")
+
+
+func _test_classic_keep_codes(content: RealmzContent) -> void:
+	var keep := ClassicActionDefinition.new(0, 24, 24, 0, false, [])
+	var definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("root", &"trigger", "root", [keep])], [])
+	var vm := ScenarioVm.new()
+	vm.configure(definition)
+	vm.start_program("root", {"callingContext": "action", "triggerId": "ap.fixture.keep"})
+	var result := vm.run(_runtime_api(content, ScenarioActionState.new()))
+	assert_equal(result.state, ScenarioVmResult.State.COMPLETED, "Classic opcode 24 finishes the active AP timeline")
+	assert_true(_event_has(result.events, &"action_point_kept"), "Classic opcode 24 carries the Keep Codes exception back to the session")
 
 
 func _test_action_call_limit(content: RealmzContent) -> void:

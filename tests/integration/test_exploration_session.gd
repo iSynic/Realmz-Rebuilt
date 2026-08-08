@@ -31,6 +31,8 @@ func run() -> void:
 	var north_completed := north_restored.respond(InteractionResponse.new(north_restored.view().pending_interaction.request_id, &"acknowledge", {}))
 	assert_true(_has_event(north_completed, &"tile_replaced"), "Classic opcode 12 mutates the world overlay after acknowledgement")
 	assert_true(_has_event(north_completed, &"random_region_triggered"), "random rectangle gates after the moved-to AP finishes")
+	var north_trigger_id := content.world.map_by_id("land:0").topology.cell_at(Vector2i(1, 0)).trigger_ids()[0]
+	assert_true(north_restored.snapshot().game_state.world.trigger_is_disabled(north_trigger_id), "an ordinary placed Action Point becomes one-shot after its complete resumed timeline")
 	session = north_restored
 	assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).terrain_id, "classic.terrain.2", "presenter view reads the same tile overlay as simulation")
 
@@ -62,6 +64,17 @@ func run() -> void:
 	assert_equal(restored.restore(content, snapshot).state, SessionStep.State.COMPLETED, "exploration aggregate restores transactionally")
 	assert_equal(restored.view().party_map_id, "land:1", "restored session retains transitioned map")
 	assert_equal(restored.snapshot().game_state.world.terrain_for("land:0", replacement_cell), "classic.terrain.2", "restored session retains world overlays")
+	assert_true(restored.snapshot().game_state.world.trigger_is_disabled(north_trigger_id), "save/reload preserves default one-shot Action Point state")
+
+	var keep_source := content.trigger_by_id("ap.fixture.destination-source")
+	var keep_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 24, 24, 0, false, [])])
+	var keep_trigger := TriggerDefinition.new(keep_source.id, keep_program.id, keep_source.map_id, keep_source.coordinate, keep_source.active, keep_source.chance_percent, keep_source.post_action_location, keep_source.classic_record_index)
+	var keep_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([keep_program], []), [], [keep_trigger])
+	var keep_session := GameSession.new()
+	keep_session.start(keep_content, 1)
+	var kept := keep_session.submit_intent(PlayerIntent.move(Vector2i.UP))
+	assert_true(_has_event(kept, &"action_point_kept"), "Classic opcode 24 marks the issuing placed Action Point as Keep Codes")
+	assert_false(keep_session.snapshot().game_state.world.trigger_is_disabled(keep_trigger.id), "Keep Codes is the explicit exception to default one-shot Action Points")
 
 	var dungeon_envelope := session.snapshot()
 	dungeon_envelope.game_state.party.map_id = "dungeon:0"
