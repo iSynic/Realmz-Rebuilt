@@ -62,6 +62,8 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 	var replacement_action_state := ScenarioActionState.from_data(save_envelope.scenario_action_state.to_data())
 	if replacement_state == null or replacement_action_state == null:
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved game or Scenario Action state is invalid.")
+	var replacement_rules := RealmzRules.new()
+	_normalize_age_groups(replacement_state, content, replacement_rules)
 	var replacement_vm := ScenarioVm.new()
 	replacement_vm.configure(content.scenario)
 	if not replacement_vm.restore(save_envelope.scenario_vm):
@@ -79,7 +81,7 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 	_content = content
 	_state = replacement_state
 	_rng = replacement_rng
-	_rules = RealmzRules.new()
+	_rules = replacement_rules
 	_scenario_action_state = replacement_action_state
 	_scenario_vm = replacement_vm
 	_runtime_api = RealmzRuntimeApi.new(_content, _state, _rng, _scenario_action_state, _rules)
@@ -243,7 +245,7 @@ func _camp() -> SessionStep:
 		return SessionStep.failed(_view_revision, &"camp_during_battle", "The party cannot camp during battle.")
 	if not _state.camping_allowed:
 		return SessionStep.failed(_view_revision, &"camping_disabled", "Camping is not allowed at this location.")
-	return _finish_completed(_rules.clock.camp(_state))
+	return _finish_completed(_rules.clock.camp(_state, _content))
 
 
 func _use_item(instance_id: String) -> SessionStep:
@@ -345,6 +347,7 @@ func _import_vault_character(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character exceeds this campaign's maximum level.")
 	var race := _content.race_by_id(imported.race_id)
 	var caste := _content.caste_by_id(imported.caste_id)
+	_rules.characters.ensure_age_group(imported, race, caste)
 	if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
 		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's race cannot use that class.")
 	if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
@@ -448,8 +451,8 @@ func _search() -> SessionStep:
 			if roll <= 100:
 				_state.world.discover_secret(feature.id)
 				discovered.append(feature.id)
-	_state.clock.advance_minutes(1)
 	var events: Array[DomainEvent] = [DomainEvent.new("search_completed", {"mapId": _state.party.map_id, "x": _state.party.coordinate.x, "y": _state.party.coordinate.y, "roll": first_roll, "discoveredSecrets": discovered})]
+	events.append_array(_rules.clock.advance_minutes(_state, _content, 1))
 	for secret_id: String in discovered:
 		events.append(DomainEvent.new("secret_discovered", {"secretId": secret_id}))
 	return _finish_completed(events)
@@ -478,8 +481,8 @@ func _move(direction: Vector2i) -> SessionStep:
 	_state.party.coordinate = target_coordinate
 	_state.last_move_direction = direction
 	_state.world.mark_visited(target_map.id, target_coordinate)
-	_state.clock.advance_minutes(probe.target_cell.movement_cost)
 	events.append(DomainEvent.new("party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": target_coordinate.x, "y": target_coordinate.y}))
+	events.append_array(_rules.clock.advance_minutes(_state, _content, probe.target_cell.movement_cost))
 	if transition != null:
 		events.append(DomainEvent.new("map_transitioned", {"transitionId": transition.id, "sourceMapId": source_map_id, "targetMapId": target_map.id}))
 	_set_post_move_continuation(target_map, target_coordinate)
@@ -503,6 +506,14 @@ func _set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, desti
 		"randomBattleStage": "",
 		"actionPointDestinationDepth": destination_depth,
 	}
+
+
+func _normalize_age_groups(state: GameState, content: RealmzContent, rules: RealmzRules) -> void:
+	for character: CharacterState in state.party.characters():
+		var race := content.race_by_id(character.race_id)
+		var caste := content.caste_by_id(character.caste_id)
+		if race != null and caste != null:
+			rules.characters.ensure_age_group(character, race, caste)
 
 
 func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:

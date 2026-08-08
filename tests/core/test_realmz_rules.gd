@@ -4,6 +4,7 @@ extends RealmzTestCase
 func run() -> void:
 	_test_arithmetic_and_ranges()
 	_test_character_creation_and_leveling()
+	_test_live_aging_and_maximum_age()
 	_test_conditions_time_and_persistence()
 	_test_inventory_economy_and_treasure()
 	_test_combat_magic_and_monsters()
@@ -33,6 +34,7 @@ func _test_character_creation_and_leveling() -> void:
 	assert_equal(created.magic_resistance, 5, "race and caste magic resistance inputs are applied")
 	assert_equal(created.maximum_load, 500, "Classic load capacity retains its 500 minimum")
 	assert_equal(created.age_days, 18 * 365, "age is rolled from the race range selected by caste")
+	assert_equal(created.age_group, 1, "creation persists the caste-selected current age group independently from age days")
 	assert_equal(created.inventory().size(), 1, "caste starting equipment becomes stable item instances")
 	assert_equal(rules.characters.strength_bonuses(30, 5).damage_bonus, 5, "caste strength caps brawn damage without changing hit bonus")
 	assert_equal(creation_rng.snapshot().draw_count, 12, "creation preserves Castle's discarded attribute and three special-bonus rolls")
@@ -81,6 +83,95 @@ func _test_character_creation_and_leveling() -> void:
 	assert_equal(created.to_hit, -8, "level to-hit growth mutates the character aggregate")
 
 
+func _test_live_aging_and_maximum_age() -> void:
+	var rules := RealmzRules.new()
+	var changes := _age_changes()
+	changes[1] = PackedInt32Array([1, 2, 3, 4, 5, 6, 7, -20, 100, -200, 3, 4, 5, 6, 7])
+	var race := RaceDefinition.new("race.live-aging", 4, "Live Aging", _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), [Vector2i(10, 19), Vector2i(20, 29), Vector2i(30, 39), Vector2i(40, 49), Vector2i(50, 59)], changes, 100, false, 10, 5)
+	var caste := _caste()
+	var character := CharacterState.new("character.live-aging", "Aging Hero", 10, 10)
+	character.race_id = race.id
+	character.caste_id = caste.id
+	character.age_days = 19 * 365 + 364
+	character.age_group = 1
+	character.brawn = 15
+	character.knowledge = 10
+	character.judgment = 10
+	character.agility = 10
+	character.vitality = 10
+	character.luck = 10
+	character.to_hit = 10
+	character.damage_bonus = 2
+	character.magic_resistance = 20
+	character.maximum_movement = 12
+	character.set_save_value_raw(0, 100)
+	character.set_save_value_raw(1, -50)
+	var advanced := rules.characters.advance_age_days(character, race, caste, 1)
+	assert_equal(advanced.transition, 1, "crossing an authored birthday boundary advances one Classic age band")
+	assert_equal(character.age_group, 2, "the independent current age group advances by one")
+	assert_equal([character.brawn, character.knowledge, character.judgment, character.agility, character.vitality, character.luck], [16, 12, 13, 14, 15, 16], "live aging applies the destination band's six attribute changes without creation bounds")
+	assert_equal([character.to_hit, character.damage_bonus], [15, 3], "live brawn aging removes and reapplies Castle strength bonuses")
+	assert_equal([character.magic_resistance, character.maximum_movement], [27, 2], "live aging applies magic resistance and floors maximum movement at two")
+	assert_equal([character.save_value(0), character.save_value(1), character.save_value(7)], [200, -250, 50], "live aging changes seven saves without creation-time clamping")
+
+	var skipped := CharacterState.from_data(character.to_data())
+	assert_not_null(skipped, "the current age group survives the central character serialization boundary")
+	skipped.age_days = 45 * 365
+	skipped.age_group = 1
+	var skipped_result := rules.characters.advance_age_days(skipped, race, caste, 0)
+	assert_equal([skipped_result.transition, skipped.age_group], [1, 2], "one aging operation advances only one adjacent band even when age crosses several ranges")
+
+	character.age_days = 25 * 365
+	character.age_group = 2
+	var reversed := rules.characters.advance_age_days(character, race, caste, -10 * 365)
+	assert_equal([reversed.transition, character.age_group], [-1, 1], "age reversal erases only the current band and moves back one group")
+	assert_equal(character.maximum_movement, 22, "reversing a movement penalty preserves Castle's non-invertible minimum-movement floor")
+	var outside := rules.characters.advance_age_days(character, race, caste, 100 * 365)
+	assert_equal([outside.transition, character.age_group], [0, 1], "an age outside all five authored ranges does not invent a transition")
+
+	character.age_days = 100 * 365
+	assert_equal(rules.characters.battle_experience(character, race, 1_500), 999, "characters at maximum age receive Castle's truncated two-thirds battle experience")
+	race.does_not_die = true
+	assert_equal(rules.characters.battle_experience(character, race, 1_500), 999, "the stored doesNotDie flag does not alter Castle's maximum-age experience rule")
+
+	var clock_character := CharacterState.new("character.clock-aging", "Clock Hero", 10, 10)
+	clock_character.race_id = race.id
+	clock_character.caste_id = caste.id
+	clock_character.age_days = 19 * 365 + 364
+	clock_character.age_group = 1
+	var clock_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, _characters([clock_character])), RealmzClock.new(RealmzClock.MINUTES_PER_DAY - 1))
+	var aging_content := RealmzContent.new("aging", "0".repeat(64), "aging-content", "realmz-classic-1", "", Vector2i.ZERO, WorldDefinition.new([]), ScenarioDefinition.new([], []), [], [], [], [race], [caste])
+	var clock_events := rules.clock.advance_minutes(clock_state, aging_content, 1)
+	assert_equal(clock_character.age_days, 20 * 365, "each crossed midnight adds one day to every character")
+	assert_true(clock_events.any(func(event: DomainEvent) -> bool: return event.kind == &"character_age_changed"), "a midnight age-band transition publishes a typed domain event")
+
+	var haste := SpellDefinition.new("spell.haste-aging", 1, "Haste")
+	haste.special = 24
+	haste.duration_min = 0
+	haste.duration_max = 0
+	haste.damage_min = 0
+	haste.damage_max = 0
+	clock_character.age_days = 19 * 365 + 350
+	clock_character.age_group = 1
+	var haste_result := rules.magic.resolve_scenario_spell(clock_character, haste, 1, 0, true, ScriptedRng.new([0, 0]), caste, race)
+	assert_equal([haste_result.aging.transition, clock_character.age_days, clock_character.age_group], [1, 19 * 365 + 380, 2], "Castle haste ages by power times thirty percent-months and invokes one age transition")
+
+	var youth := SpellDefinition.new("spell.youth", 2, "Youth")
+	youth.special = 92
+	youth.duration_min = 1
+	youth.duration_max = 1
+	youth.damage_min = 0
+	youth.damage_max = 0
+	clock_character.age_days = 20 * 365
+	clock_character.age_group = 2
+	clock_character.maximum_health = 10
+	clock_character.current_health = 8
+	var youth_result := rules.magic.resolve_scenario_spell(clock_character, youth, 1, 0, true, ScriptedRng.new([0, 0, 32_767]), caste, race)
+	assert_equal([youth_result.aging.transition, clock_character.age_group], [-1, 1], "the youth special reverses one current age band")
+	assert_equal([clock_character.maximum_health, clock_character.current_health], [7, 5], "the youth special consumes Castle's one-to-three stamina loss draw")
+	assert_true(clock_character.age_days >= 3_650, "the youth special never reduces age below ten years")
+
+
 func _test_conditions_time_and_persistence() -> void:
 	var rules := RealmzRules.new()
 	var character := CharacterState.new("character.conditions", "Conditions", 5, 10)
@@ -101,7 +192,7 @@ func _test_conditions_time_and_persistence() -> void:
 	assert_equal(party.conditions.value(0), 0, "party conditions decay through the same fixed owner")
 	assert_true(events.size() >= 4, "condition ticks publish domain observations")
 	assert_equal(rules.clock.change_fatigue(party, 500), 135, "fatigue is clamped to Castle's upper bound")
-	rules.clock.camp(state, 8)
+	rules.clock.camp(state, null, 8)
 	assert_equal(party.fatigue, 4, "camping returns fatigue to Castle's lower bound")
 	assert_equal(state.clock.total_minutes(), 480, "camping advances only the session-owned Realmz clock")
 	assert_equal(character.spell_points, character.maximum_spell_points, "camping restores available spell energy")

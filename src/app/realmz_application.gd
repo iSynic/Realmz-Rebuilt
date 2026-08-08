@@ -190,6 +190,8 @@ func _present_step_status(step: SessionStep) -> void:
 				_status_label.text = "Character removed from party setup"
 			&"party_created":
 				_status_label.text = "Party assembled • the adventure begins"
+			&"character_age_changed":
+				_status_label.text = "%s entered a new age group" % event.payload.get("characterName", "A party member")
 			&"message_shown":
 				_status_label.text = "Scenario text" if event.payload.has("classicClick") else event.payload.get("text", "Message")
 			&"map_transitioned":

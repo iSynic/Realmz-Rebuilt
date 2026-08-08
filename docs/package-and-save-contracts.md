@@ -26,6 +26,8 @@ Installed-package discovery is deliberately staged. It verifies the manifest, sc
 
 A versioned envelope under `user://saves/<campaign-id>/` records the campaign and package hash, rules/deviation IDs, complete game state, overlays, clock, economy, equipment escrow, allies, encounter attempts/type flags, mutable shop stock, combat, scenario-program replacements, VM frames, VM or session-owned pending interaction, post-move/random-region/AP-destination, direct combat-death-macro, or post-battle ally-selection continuation, Scenario Action state, RNG state/draw count, and metadata.
 
+Each serialized character stores `ageDays` and the independent Classic `ageGroup`. The group cannot be reconstructed from age alone after a spell jumps multiple ranges because Castle applies only one neighboring row per operation. Save envelope v3 is unchanged: prerecord nested characters without `ageGroup` remain readable and infer their group from the package's authored race range, with the caste minimum as the fallback for legacy placeholder ages.
+
 Saves occur only at committed boundaries. Infrastructure writes a temporary file, reads and validates it, rotates one backup, and atomically replaces the slot. Restore validates an entire replacement before changing the active session. Schema migrations are ordered pure transforms with fixtures.
 
 Party assembly is also a committed save boundary. Before Begin, the party may be empty or partially assembled and `partySetupCompleted` remains false; finalized and imported characters already belong to session state. A completed campaign state must contain at least one character. Add, remove, import, and Begin are typed session intents rather than presenter-local edits.

@@ -282,9 +282,13 @@ func _finish_if_resolved(state: GameState, content: RealmzContent, events: Array
 			var definition := content.monster_by_id(monster.definition_id)
 			if definition != null and monster.traitor:
 				experience += maxi(0, definition.experience)
+		var experience_by_character: Dictionary = {}
 		for character: CharacterState in state.party.characters():
 			if character.current_health > 0:
-				character.experience += experience
-		events.append(DomainEvent.new(&"battle_rewards_granted", {"experiencePerSurvivor": experience}))
+				var race := content.race_by_id(character.race_id)
+				var awarded := _rules.characters.battle_experience(character, race, experience)
+				character.experience += awarded
+				experience_by_character[character.id] = awarded
+		events.append(DomainEvent.new(&"battle_rewards_granted", {"experiencePerSurvivor": experience, "experienceByCharacter": experience_by_character}))
 	events.append(DomainEvent.new(&"battle_completed", {"battleId": combat.battle_id, "outcome": String(combat.outcome)}))
 	return true

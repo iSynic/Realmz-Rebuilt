@@ -452,6 +452,13 @@ func _present_event(event: DomainEvent) -> void:
 		&"movement_blocked": set_status("That way is blocked")
 		&"search_completed": _append_narrative("The party searches the area.")
 		&"party_camped": _append_narrative("The party camps and recovers.")
+		&"character_age_changed":
+			var direction := int(event.payload.get("transition", 0))
+			var age_group := int(event.payload.get("ageGroup", 0))
+			var age_name := CharacterView._age_group_name(age_group)
+			var text := "%s has grown into the %s age group." % [event.payload.get("characterName", "A party member"), age_name] if direction > 0 else "%s has returned to the %s age group." % [event.payload.get("characterName", "A party member"), age_name]
+			set_status(text)
+			_append_narrative(text)
 		&"door_opened": _append_narrative("A door opens.")
 		&"secret_discovered": _append_narrative("A secret is revealed.")
 		&"battle_started": _append_narrative("Battle begins.")

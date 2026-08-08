@@ -8,6 +8,7 @@ var cost: int
 var damage: int
 var duration: int
 var target_defeated: bool
+var aging: CharacterAgingResult
 
 
 func _init(was_cast: bool, was_resisted: bool, did_save: bool, spell_cost: int, dealt_damage: int, effect_duration: int, defeated: bool = false) -> void:

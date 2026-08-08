@@ -564,11 +564,11 @@ func execute_safe(capability: String, arguments: Dictionary, request_id: String)
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Camp does not accept arguments.")
 			if not _game_state.camping_allowed or _game_state.combat != null and not _game_state.combat.completed:
 				return ScenarioRuntimeOperationResult.failed(&"camping_unavailable", "The party cannot camp in the current state.")
-			return ScenarioRuntimeOperationResult.completed(true, _rules.clock.camp(_game_state))
+			return ScenarioRuntimeOperationResult.completed(true, _rules.clock.camp(_game_state, _content))
 		"core.time.advance":
 			if not _whole_number(arguments.get("minutes")) or int(arguments["minutes"]) < 0:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Advance Time requires non-negative integer minutes.")
-			return ScenarioRuntimeOperationResult.completed(true, _rules.clock.advance_minutes(_game_state, int(arguments["minutes"])))
+			return ScenarioRuntimeOperationResult.completed(true, _rules.clock.advance_minutes(_game_state, _content, int(arguments["minutes"])))
 		"core.inventory.grant-item":
 			if not arguments.get("characterId") is String or not arguments.get("itemId") is String or arguments.get("identified", false) is not bool:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Grant Item requires characterId, itemId, and optional identified bool.")

@@ -1,6 +1,12 @@
 class_name MagicRules
 extends RefCounted
 
+var _characters: CharacterRules
+
+
+func _init(character_rules: CharacterRules = null) -> void:
+	_characters = character_rules if character_rules != null else CharacterRules.new()
+
 
 func resolve_character_spell(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> SpellResolution:
 	if caster == null or target == null or target_definition == null or spell == null or rng == null or power_level < 1:
@@ -48,7 +54,7 @@ func character_resists(caster_level: int, target: CharacterState, spell: SpellDe
 	return rng.draw(100, &"magic.resistance") <= target.magic_resistance + power_level * spell.resistance_adjust
 
 
-func resolve_scenario_spell(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition = null) -> SpellResolution:
+func resolve_scenario_spell(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition = null, race: RaceDefinition = null) -> SpellResolution:
 	if target == null or spell == null or rng == null or power_level < 0:
 		return null
 	var tag_prefix := "scenario-spell.%d.%s" % [spell.classic_id, target.id]
@@ -114,11 +120,26 @@ func resolve_scenario_spell(target: CharacterState, spell: SpellDefinition, powe
 				target.current_health = -9
 		66:
 			_apply_attribute_increase(target, spell.size, caste, rng, tag_prefix)
+	var aging: CharacterAgingResult = null
+	if race != null and caste != null and special in [24, 91]:
+		var age_percent_months := power_level * 30 if special == 24 else duration * 30
+		var added_days := int(float(race.max_age) * 0.01 * float(age_percent_months))
+		aging = _characters.advance_age_days(target, race, caste, added_days)
+	elif race != null and caste != null and special == 92:
+		var youth_months := duration * 30
+		var removed_days := int(float(race.max_age) * 0.01 * float(youth_months))
+		var next_age := maxi(3_650, target.age_days - removed_days)
+		var stamina_loss := rng.draw(3, StringName("%s.youth-stamina" % tag_prefix))
+		target.maximum_health = maxi(1, target.maximum_health - stamina_loss)
+		target.current_health = maxi(1, target.current_health - stamina_loss)
+		aging = _characters.advance_age_days(target, race, caste, next_age - target.age_days)
 	if damage < 0:
 		target.current_health = mini(target.maximum_health, target.current_health - damage)
 	elif damage > 0 and target.current_health >= 0 and target.current_health > -10:
 		target.current_health -= damage
-	return SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= -10)
+	var result := SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= -10)
+	result.aging = aging
+	return result
 
 
 func _monster_resists(caster: CharacterState, target: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> bool:

@@ -9,6 +9,10 @@ var spell_points: int
 var maximum_spell_points: int
 var level: int
 var experience: int
+var age_days: int
+var age_years: int
+var age_group: int
+var age_group_name: String
 var race_id: String
 var caste_id: String
 var race_name: String
@@ -50,6 +54,10 @@ func _init(character: CharacterState, content: RealmzContent = null) -> void:
 	maximum_spell_points = character.maximum_spell_points
 	level = character.level
 	experience = character.experience
+	age_days = character.age_days
+	age_years = floori(float(character.age_days) / 365.0)
+	age_group = character.age_group
+	age_group_name = _age_group_name(age_group)
 	race_id = character.race_id
 	caste_id = character.caste_id
 	race_name = race_id.replace("_", " ").replace("-", " ").capitalize()
@@ -93,3 +101,13 @@ func _init(character: CharacterState, content: RealmzContent = null) -> void:
 			var definition := content.spell_by_id(spell_id)
 			if definition != null:
 				spells.append(SpellView.new(definition))
+
+
+static func _age_group_name(group: int) -> String:
+	match group:
+		1: return "Youth"
+		2: return "Young"
+		3: return "Prime"
+		4: return "Adult"
+		5: return "Senior"
+		_: return "Unknown"

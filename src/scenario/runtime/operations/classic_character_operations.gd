@@ -28,7 +28,8 @@ func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool) -
 		var before_health := character.current_health
 		var before_conditions := character.conditions.values()
 		var caste := _content.caste_by_id(character.caste_id)
-		var resolution := _rules.magic.resolve_scenario_spell(character, spell, int(action.extra_code[1]), int(action.extra_code[2]), int(action.extra_code[3]) != 0, _rng, caste)
+		var race := _content.race_by_id(character.race_id)
+		var resolution := _rules.magic.resolve_scenario_spell(character, spell, int(action.extra_code[1]), int(action.extra_code[2]), int(action.extra_code[3]) != 0, _rng, caste, race)
 		if resolution == null:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_spell_effect", "Classic scenario spell inputs are invalid.")
 		events.append(DomainEvent.new(&"scenario_spell_applied", {
@@ -44,4 +45,6 @@ func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool) -
 			"conditionsChanged": before_conditions != character.conditions.values(),
 			"source": "classic",
 		}))
+		if resolution.aging != null and resolution.aging.changed_group():
+			events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(character)))
 	return ScenarioRuntimeOperationResult.completed(targets.size(), events)

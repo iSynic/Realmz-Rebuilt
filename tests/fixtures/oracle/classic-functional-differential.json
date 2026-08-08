@@ -339,6 +339,55 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "character.live-aging-and-maximum-age",
+      "domain": "time-and-aging",
+      "claim": "Each crossed midnight adds one age day; each aging operation moves at most one adjacent authored age band, applies the exact live age row without creation bounds, and maximum-age characters receive a truncated two-thirds battle-experience share. Haste, age, and youth spells use the same one-transition operation.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake persists exact age days and current group, applies one forward or reverse age row per operation, advances age across midnight seams, and applies the maximum-age battle-experience penalty.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_character_rules.gd", "symbol": "static func advance_character_age_days" },
+          { "path": "src/scripts/classic_runtime/classic_character_rules.gd", "symbol": "static func advance_character_age_between_times" },
+          { "path": "src/scripts/classic_runtime/classic_character_rules.gd", "symbol": "static func classic_battle_experience" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_character_rule_profile" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/age.c", "symbol": "short age(int32_t age, short raceid, short currentagegroup)" },
+          { "path": "src/realmz_orig/age.c", "symbol": "void applyage(short raceid, short agegroup, short direction)" },
+          { "path": "src/realmz_orig/textbox-time.c", "symbol": "if (tyme.tm_hour == 24)" },
+          { "path": "src/realmz_orig/booty.c", "symbol": "void booty(short mode)" },
+          { "path": "src/realmz_orig/spelllist.c", "symbol": "short spelllist(short who, short special)" }
+        ],
+        "authoredInputs": ["Data Race agerange, agechange, maxage, and doesnotdie", "Data Caste maximum damage bonus", "spell special, power, and duration"],
+        "observation": "age scans the five ranges but advances or erases only one neighboring row per call. applyage changes six attributes, strength-owned hit/damage, magic resistance, maximum movement with a floor of two, and saves zero through six without creation bounds. Midnight increments age before calling age. booty multiplies a maximum-age character's share by .6666666; the pinned source stores doesnotdie but does not consult it here. Spell specials 24, 91, and 92 alter age and call age once, with youth also consuming one Rand(3) stamina loss."
+      },
+      "providence": {
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
+        ],
+        "expectedRepresentation": "Race definitions retain five age ranges, five signed age-change rows, maximumAge, and doesNotDie; caste definitions retain the strength damage cap used when a live age row changes Brawn."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/character_rules.gd", "symbol": "func advance_age_days" },
+        "expectedTrace": ["time or spell age-day mutation", "one range scan", "zero or one adjacent row", "persist age days and current group", "optional age-change event", "maximum-age battle reward adjustment"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_live_aging_and_maximum_age" },
+          { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
     }
   ]
 }

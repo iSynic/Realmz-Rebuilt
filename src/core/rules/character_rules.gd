@@ -79,6 +79,7 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 	result.race_id = race.id
 	result.caste_id = caste.id
 	result.gender = gender
+	result.age_group = age_group_count
 	result.brawn = attributes[0]
 	result.knowledge = attributes[1]
 	result.judgment = attributes[2]
@@ -119,6 +120,55 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 		items.append(ItemInstance.new("%s.item.%d" % [character_id, index], item_id))
 	result.set_inventory(items)
 	return result
+
+
+func infer_age_group(age_days: int, race: RaceDefinition) -> int:
+	if race == null:
+		return 0
+	var age_years := floori(float(age_days) / 365.0)
+	for index: int in 5:
+		var authored_range := race.age_range(index)
+		if age_years >= authored_range.x and age_years <= authored_range.y:
+			return index + 1
+	return 0
+
+
+func ensure_age_group(character: CharacterState, race: RaceDefinition, caste: CasteDefinition = null) -> int:
+	if character == null or race == null:
+		return 0
+	if character.age_group >= 1 and character.age_group <= 5:
+		return character.age_group
+	character.age_group = infer_age_group(character.age_days, race)
+	if character.age_group == 0:
+		character.age_group = clampi(caste.minimum_age_group if caste != null else 1, 1, 5)
+	return character.age_group
+
+
+func advance_age_days(character: CharacterState, race: RaceDefinition, caste: CasteDefinition, day_change: int) -> CharacterAgingResult:
+	if character == null or race == null or caste == null:
+		return null
+	var previous_days := character.age_days
+	var previous_group := ensure_age_group(character, race, caste)
+	character.age_days = _signed_32(character.age_days + day_change)
+	var target_group := infer_age_group(character.age_days, race)
+	if target_group > character.age_group and character.age_group < 5:
+		character.age_group += 1
+		_apply_age_change(character, race, caste, character.age_group, 1)
+		return CharacterAgingResult.new(previous_days, character.age_days, previous_group, character.age_group, 1, character.age_group)
+	if target_group > 0 and target_group < character.age_group and character.age_group > 1:
+		var erased_group := character.age_group
+		_apply_age_change(character, race, caste, erased_group, -1)
+		character.age_group -= 1
+		return CharacterAgingResult.new(previous_days, character.age_days, previous_group, character.age_group, -1, erased_group)
+	return CharacterAgingResult.new(previous_days, character.age_days, previous_group, character.age_group)
+
+
+func battle_experience(character: CharacterState, race: RaceDefinition, share: int) -> int:
+	if character == null or race == null:
+		return 0
+	if floori(float(character.age_days) / 365.0) >= race.max_age:
+		return int(float(share) * 0.6666666)
+	return share
 
 
 func level_up(character: CharacterState, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng) -> LevelUpResult:
@@ -180,6 +230,38 @@ func _configure_spellcaster(character: CharacterState, caste: CasteDefinition, r
 				2: character.maximum_spell_points = 4 + character.judgment + rng.draw(maxi(1, character.knowledge), &"character.create.spell-points")
 				3: character.maximum_spell_points = 10 + rng.draw(maxi(1, character.judgment + character.knowledge), &"character.create.spell-points")
 	character.spell_points = character.maximum_spell_points
+
+
+func _apply_age_change(character: CharacterState, race: RaceDefinition, caste: CasteDefinition, age_group: int, direction: int) -> void:
+	var change := race.age_change(age_group - 1)
+	if change.size() != 15:
+		return
+	var before_strength := strength_bonuses(character.brawn, caste.maximum_damage_bonus())
+	character.to_hit = _signed_16(character.to_hit - before_strength.to_hit_bonus)
+	character.damage_bonus = _signed_16(character.damage_bonus - before_strength.damage_bonus)
+	character.brawn = _signed_16(character.brawn + direction * change[0])
+	var after_strength := strength_bonuses(character.brawn, caste.maximum_damage_bonus())
+	character.to_hit = _signed_16(character.to_hit + after_strength.to_hit_bonus)
+	character.damage_bonus = _signed_16(character.damage_bonus + after_strength.damage_bonus)
+	character.knowledge = _signed_16(character.knowledge + direction * change[1])
+	character.judgment = _signed_16(character.judgment + direction * change[2])
+	character.agility = _signed_16(character.agility + direction * change[3])
+	character.vitality = _signed_16(character.vitality + direction * change[4])
+	character.luck = _signed_16(character.luck + direction * change[5])
+	character.magic_resistance = _signed_16(character.magic_resistance + direction * change[6])
+	character.maximum_movement = maxi(2, _signed_16(character.maximum_movement + direction * change[7]))
+	for save_index: int in 7:
+		character.set_save_value_raw(save_index, _signed_16(character.save_value(save_index) + direction * change[8 + save_index]))
+
+
+static func _signed_16(value: int) -> int:
+	var wrapped := value & 0xffff
+	return wrapped - 0x10000 if wrapped >= 0x8000 else wrapped
+
+
+static func _signed_32(value: int) -> int:
+	var wrapped := value & 0xffffffff
+	return wrapped - 0x100000000 if wrapped >= 0x80000000 else wrapped
 
 
 func _level_spell_points(character: CharacterState, caste: CasteDefinition, rng: RealmzRng) -> int:

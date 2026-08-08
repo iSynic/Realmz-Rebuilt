@@ -13,6 +13,7 @@ var combat_icon_id: String = ""
 var level: int = 1
 var experience: int = 0
 var age_days: int = 0
+var age_group: int = 0
 var brawn: int = 10
 var knowledge: int = 10
 var judgment: int = 10
@@ -70,6 +71,13 @@ func set_save_value(index: int, value: int) -> bool:
 	return true
 
 
+func set_save_value_raw(index: int, value: int) -> bool:
+	if index < 0 or index >= _saves.size():
+		return false
+	_saves[index] = value
+	return true
+
+
 func special_value(index: int) -> int:
 	return 0 if index < 0 or index >= _specials.size() else _specials[index]
 
@@ -103,7 +111,7 @@ func to_data() -> Dictionary:
 		item_data.append(item.to_data())
 	return {
 		"id": id, "name": name, "currentHealth": current_health, "maximumHealth": maximum_health,
-		"raceId": race_id, "casteId": caste_id, "gender": gender, "portraitId": portrait_id, "combatIconId": combat_icon_id, "level": level, "experience": experience, "ageDays": age_days,
+		"raceId": race_id, "casteId": caste_id, "gender": gender, "portraitId": portrait_id, "combatIconId": combat_icon_id, "level": level, "experience": experience, "ageDays": age_days, "ageGroup": age_group,
 		"attributes": [brawn, knowledge, judgment, agility, vitality, luck],
 		"toHit": to_hit, "dodge": dodge, "missile": missile, "handToHand": hand_to_hand, "damageBonus": damage_bonus,
 		"armor": armor, "magicResistance": magic_resistance, "movement": movement, "maximumMovement": maximum_movement,
@@ -189,6 +197,9 @@ static func from_data(data: Variant) -> CharacterState:
 	result.level = numeric_values["level"]
 	result.experience = numeric_values["experience"]
 	result.age_days = numeric_values["ageDays"]
+	result.age_group = _signed_integer(data.get("ageGroup", 0))
+	if result.age_group < 0 or result.age_group > 5:
+		return null
 	result.brawn = attributes[0]
 	result.knowledge = attributes[1]
 	result.judgment = attributes[2]

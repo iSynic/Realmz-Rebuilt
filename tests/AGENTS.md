@@ -34,6 +34,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - Schema-v2 fixture tests cover campaign display metadata, contact shape, restrictions, race/caste eligibility, and complete race aging tables. Character-vault tests cover immutable revisions, typed readback, archive, backup/atomic replacement, and target-campaign eligibility.
 - Campaign-startup integration tests begin from an empty party, preserve setup across repeated typed edits and save/restore, and prove that only explicit Begin enables gameplay. Gameplay fixtures import a deterministic synthetic member and Begin through the public session API without consuming RNG.
 - Character-rule tests distinguish racial starting-condition values, permanent caste condition-level `1`, deferred higher caste thresholds, bounded initial saves, cumulative creation aging, Castle's discarded seventh attribute draw, conditional special-bonus draws, and the resulting RNG order; keep those assertions tied to `newcharacter.c`, `age.c`, and the serialized race/caste records.
+- Live-aging tests keep `ageDays` and `ageGroup` distinct, cover one-row forward/reverse transitions, unbounded live stat/save changes, movement-floor reversal, midnight progression, haste/youth effects, maximum-age experience truncation, and legacy nested-character restore. Castle's blocking age-update dialog is presentation evidence, not implied by the mutation tests.
 
 ## Work Guidance
 
