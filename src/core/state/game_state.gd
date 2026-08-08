@@ -376,6 +376,8 @@ static func from_data(data: Variant) -> GameState:
 			if not key is String or key.is_empty() or not target is String or target.is_empty():
 				return null
 			state._scenario_program_overrides[key] = target
+	if state.party.characters().is_empty() and (not data.has("partySetupCompleted") or state.party_setup_completed):
+		return null
 	return state
 
 

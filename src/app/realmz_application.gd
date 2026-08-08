@@ -182,6 +182,14 @@ func _present_step_status(step: SessionStep) -> void:
 		return
 	for event: DomainEvent in step.events:
 		match event.kind:
+			&"character_finalized":
+				_status_label.text = "Character added to party setup"
+			&"vault_character_imported":
+				_status_label.text = "Vault character added to party setup"
+			&"party_member_removed":
+				_status_label.text = "Character removed from party setup"
+			&"party_created":
+				_status_label.text = "Party assembled • the adventure begins"
 			&"message_shown":
 				_status_label.text = "Scenario text" if event.payload.has("classicClick") else event.payload.get("text", "Message")
 			&"map_transitioned":

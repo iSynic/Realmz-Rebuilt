@@ -28,6 +28,8 @@ A versioned envelope under `user://saves/<campaign-id>/` records the campaign an
 
 Saves occur only at committed boundaries. Infrastructure writes a temporary file, reads and validates it, rotates one backup, and atomically replaces the slot. Restore validates an entire replacement before changing the active session. Schema migrations are ordered pure transforms with fixtures.
 
+Party assembly is also a committed save boundary. Before Begin, the party may be empty or partially assembled and `partySetupCompleted` remains false; finalized and imported characters already belong to session state. A completed campaign state must contain at least one character. Add, remove, import, and Begin are typed session intents rather than presenter-local edits.
+
 There is no Classic or prior-Remake save importer.
 
 ## `.r2char`

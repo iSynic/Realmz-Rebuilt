@@ -44,7 +44,8 @@ var _setup_message: Label
 var _review_label: Label
 var _spell_label: Label
 var _begin_button: Button
-var _party_specs: Array[CharacterCreationSpec] = []
+var _add_character_button: Button
+var _setup_import_button: Button
 var _vault_records: Array[CharacterVaultRecord] = []
 var _selected_race_id: String = ""
 var _selected_caste_id: String = ""
@@ -424,14 +425,14 @@ func _build_setup_overlay() -> void:
 	_setup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var action_bar := HBoxContainer.new()
 	action_bar.alignment = BoxContainer.ALIGNMENT_END
-	var add_member := Button.new()
-	add_member.text = "Add character"
-	add_member.pressed.connect(_add_character)
-	action_bar.add_child(add_member)
-	var import_member := Button.new()
-	import_member.text = "Import from vault"
-	import_member.pressed.connect(_show_vault_for_setup)
-	action_bar.add_child(import_member)
+	_add_character_button = Button.new()
+	_add_character_button.text = "Add character"
+	_add_character_button.pressed.connect(_add_character)
+	action_bar.add_child(_add_character_button)
+	_setup_import_button = Button.new()
+	_setup_import_button.text = "Import from vault"
+	_setup_import_button.pressed.connect(_show_vault_for_setup)
+	action_bar.add_child(_setup_import_button)
 	_setup_body.add_child(action_bar)
 	_begin_button = Button.new()
 	_begin_button.text = "Begin adventure"
@@ -490,8 +491,11 @@ func _refresh_setup_options() -> void:
 			_caste_list.select(first_caste)
 			_caste_selected(first_caste)
 	_refresh_party_list()
-	_begin_button.disabled = _party_specs.is_empty() and not _has_imported_party_member()
-	_begin_button.text = "Begin adventure (%d/%d)" % [_party_specs.size() + (1 if _has_imported_party_member() else 0), _maximum_party_size()]
+	var setup_count := _view.party_members.size()
+	_apply_availability(_add_character_button, &"finalize_character")
+	_apply_availability(_setup_import_button, &"import_vault_character")
+	_apply_availability(_begin_button, &"begin_adventure")
+	_begin_button.text = "Begin adventure (%d/%d)" % [setup_count, _maximum_party_size()]
 	_update_creator_review()
 
 
@@ -548,60 +552,48 @@ func _first_enabled_item(list: ItemList) -> int:
 
 
 func _add_character() -> void:
-	if _has_imported_party_member():
-		_setup_message.text = "Imported characters are already in the party. Begin the adventure or start a new party setup."
-		return
 	if _selected_race_id.is_empty() or _selected_caste_id.is_empty():
 		_setup_message.text = "Choose both a race and a class."
 		return
 	var name := _name_edit.text.strip_edges()
 	if name.is_empty():
-		name = "Adventurer %d" % (_party_specs.size() + 1)
-	if _party_specs.size() >= _maximum_party_size():
+		name = "Adventurer %d" % (_view.party_members.size() + 1)
+	if _view.party_members.size() >= _maximum_party_size():
 		_setup_message.text = "This campaign allows no more than %d characters." % _maximum_party_size()
 		return
 	var portrait_id := "" if _portrait_option.get_selected_id() == 0 else str(_portrait_option.get_selected_id())
 	var combat_icon_id := "" if _combat_icon_option.get_selected_id() == 0 else str(_combat_icon_option.get_selected_id())
-	_party_specs.append(CharacterCreationSpec.new(name, _selected_race_id, _selected_caste_id, _gender_option.get_selected_id(), portrait_id, combat_icon_id))
-	_refresh_party_list()
+	intent_submitted.emit(PlayerIntent.finalize_character(CharacterCreationSpec.new(name, _selected_race_id, _selected_caste_id, _gender_option.get_selected_id(), portrait_id, combat_icon_id)))
 	_name_edit.clear()
-	_begin_button.disabled = _party_specs.is_empty()
-	_begin_button.text = "Begin adventure (%d/%d)" % [_party_specs.size(), _maximum_party_size()]
-	_setup_message.text = "Character added. Add another or begin the adventure."
-	_update_creator_review()
 
 
 func _refresh_party_list() -> void:
 	_clear(_party_list)
 	if _view != null:
 		for character: CharacterView in _view.party_members:
-			if character.id == "party.starting.adventurer":
-				continue
-			_add_label(_party_list, "Imported • %s" % character.name, Color("e0e2e5"))
-	for index: int in _party_specs.size():
-		var spec := _party_specs[index]
-		_add_label(_party_list, "%d. %s" % [index + 1, spec.name], Color("e0e2e5"))
+			var row := HBoxContainer.new()
+			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var label := Label.new()
+			label.text = "%d. %s" % [_party_list.get_child_count() + 1, character.name]
+			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			label.modulate = Color("e0e2e5")
+			row.add_child(label)
+			var remove_button := Button.new()
+			remove_button.text = "Remove"
+			_apply_availability(remove_button, &"remove_party_member")
+			remove_button.pressed.connect(_remove_setup_character.bind(character.id))
+			row.add_child(remove_button)
+			_party_list.add_child(row)
+
+
+func _remove_setup_character(character_id: String) -> void:
+	intent_submitted.emit(PlayerIntent.remove_party_member(character_id))
 
 
 func _submit_party() -> void:
-	if _has_imported_party_member() and _party_specs.is_empty():
-		intent_submitted.emit(PlayerIntent.begin_adventure())
+	if _view == null or _view.party_members.is_empty():
 		return
-	if _has_imported_party_member():
-		_setup_message.text = "Finish the imported party before creating another character."
-		return
-	if _party_specs.is_empty():
-		return
-	intent_submitted.emit(PlayerIntent.create_party(_party_specs))
-
-
-func _has_imported_party_member() -> bool:
-	if _view == null:
-		return false
-	for character: CharacterView in _view.party_members:
-		if character.id != "party.starting.adventurer":
-			return true
-	return false
+	intent_submitted.emit(PlayerIntent.begin_adventure())
 
 
 func _maximum_party_size() -> int:

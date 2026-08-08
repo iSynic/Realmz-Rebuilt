@@ -198,6 +198,54 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "campaign.party-setup-commit",
+      "domain": "campaign-startup",
+      "claim": "Party selection remains editable across repeated add, import, and remove operations; only the explicit Done or Begin action commits the party and enters play. Realmz 2.0 additionally treats each edit as a saveable session boundary.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "The party-selection screen moves eligible characters into and out of a selected-party list, revalidates the complete party, and starts only after the separate ready action.",
+        "sources": [
+          { "path": "src/scenes/UI/Party Selection/CharPickRect.gd", "symbol": "func _on_AddButton_pressed" },
+          { "path": "src/scenes/UI/Party Selection/CharPickRect.gd", "symbol": "func _on_DropButton_pressed" },
+          { "path": "src/scenes/UI/Party Selection/CharPickRect.gd", "symbol": "func check_party_ok" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_campaign_admission" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/partyselect.c", "symbol": "void partyselect" },
+          { "path": "src/realmz_orig/partyselect.c", "symbol": "if (itemHit == 34)" },
+          { "path": "src/realmz_orig/partyselect.c", "symbol": "if ((itemHit == 35)" },
+          { "path": "src/realmz_orig/partyselect.c", "symbol": "if ((itemHit == 36)" }
+        ],
+        "authoredInputs": ["character files", "Data RI maximum party size", "Data RI maximum level", "banned races", "banned castes"],
+        "observation": "Castle repeatedly adds and drops selected character records inside partyselect. Item 34 is the distinct Done boundary; add or drop does not leave party selection."
+      },
+      "providence": {
+        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_campaign" }
+        ],
+        "expectedRepresentation": "Campaign metadata retains the authored Data RI party-size, per-character level, race, and caste restrictions; mutable party assembly remains session state."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _finalize_character" },
+        "expectedTrace": ["start empty party setup", "add, import, or remove member", "save or continue setup", "explicit Begin", "exploration enabled"],
+        "tests": [
+          { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" },
+          { "path": "tests/integration/test_exploration_session.gd", "symbol": "func _begin_fixture_adventure" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _begin_fixture_adventure" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
     }
   ]
 }

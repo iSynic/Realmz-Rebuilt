@@ -36,6 +36,22 @@ func character_by_id(character_id: String) -> CharacterState:
 	return null
 
 
+func add_character(character: CharacterState) -> bool:
+	if character == null or character.id.is_empty() or character_by_id(character.id) != null:
+		return false
+	_characters.append(character)
+	return true
+
+
+func remove_character(character_id: String) -> bool:
+	for index: int in _characters.size():
+		if _characters[index].id != character_id:
+			continue
+		_characters.remove_at(index)
+		return true
+	return false
+
+
 func allies() -> Array[MonsterState]:
 	return _allies.duplicate()
 
@@ -153,8 +169,6 @@ static func from_data(data: Variant) -> PartyState:
 		if character == null:
 			return null
 		loaded_characters.append(character)
-	if loaded_characters.is_empty():
-		return null
 	var result := PartyState.new(data["mapId"], Vector2i(x, y), loaded_characters)
 	if not data.has("pooledWealth"):
 		return result

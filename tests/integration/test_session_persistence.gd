@@ -11,6 +11,7 @@ func run() -> void:
 	var content := package_result.content
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "validated content starts synchronously")
+	_begin_fixture_adventure(session, content)
 	var first_search := session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	assert_equal(first_search.state, SessionStep.State.COMPLETED, "search commits at one session boundary")
 	assert_equal(first_search.events[0].payload["roll"], 52, "the committed event records the first deterministic draw")
@@ -34,6 +35,7 @@ func run() -> void:
 
 	var control := GameSession.new()
 	control.start(content, 1)
+	_begin_fixture_adventure(control, content)
 	control.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	var control_search := control.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	assert_equal(restored_search.events[0].payload["roll"], control_search.events[0].payload["roll"], "save/reload resumes the exact RNG branch")
@@ -61,3 +63,48 @@ func run() -> void:
 	assert_equal(restored_party.restore(content, party_save).state, SessionStep.State.COMPLETED, "created party restores transactionally")
 	assert_equal(restored_party.view().party_members[0].name, "Ari", "created party survives save and restore")
 	assert_equal(restored_party.submit_intent(PlayerIntent.create_party([member])).error_code, &"party_setup_closed", "party setup cannot be replayed after restore")
+
+	var staged_setup := GameSession.new()
+	staged_setup.start(content, 11)
+	assert_true(staged_setup.view().party_members.is_empty(), "fresh setup has no synthetic placeholder character")
+	assert_false(staged_setup.view().availability(&"begin_adventure").enabled, "an empty setup cannot begin the adventure")
+	var empty_setup_save := staged_setup.snapshot()
+	assert_not_null(empty_setup_save, "an empty committed party-setup boundary is saveable")
+	var restored_setup := GameSession.new()
+	assert_equal(restored_setup.restore(content, empty_setup_save).state, SessionStep.State.COMPLETED, "empty party setup restores without inventing a member")
+	var finalized := restored_setup.submit_intent(PlayerIntent.finalize_character(member))
+	assert_equal(finalized.state, SessionStep.State.COMPLETED, "one typed character draft finalizes into session-owned setup state")
+	assert_true(restored_setup.view().party_setup_available, "finalizing a character does not implicitly leave party setup")
+	assert_equal(restored_setup.view().party_members.size(), 1, "the finalized character appears in the detached setup view")
+	assert_true(restored_setup.view().availability(&"begin_adventure").enabled, "a nonempty setup may explicitly begin")
+	var staged_setup_save := restored_setup.snapshot()
+	var resumed_setup := GameSession.new()
+	assert_equal(resumed_setup.restore(content, staged_setup_save).state, SessionStep.State.COMPLETED, "an in-progress assembled party restores at the setup boundary")
+	assert_true(resumed_setup.view().party_setup_available, "restored setup remains open after its revision advances")
+	var imported := CharacterState.new("vault.character.one", "Vault Hero", 12, 12)
+	imported.race_id = setup_view.race_options[0].id
+	imported.caste_id = setup_view.caste_options[0].id
+	var import_step := resumed_setup.submit_intent(PlayerIntent.import_vault_character(imported.id, "a".repeat(64), imported.to_data(), "fixture-source", "b".repeat(64)))
+	assert_equal(import_step.state, SessionStep.State.COMPLETED, "vault import adds another member without completing party setup")
+	assert_equal(resumed_setup.view().party_members.size(), 2, "created and vault characters may share one setup party")
+	assert_true(resumed_setup.view().party_setup_available, "multiple committed setup edits remain available until Begin")
+	var created_id := resumed_setup.view().party_members[0].id
+	assert_equal(resumed_setup.submit_intent(PlayerIntent.remove_party_member(created_id)).state, SessionStep.State.COMPLETED, "typed removal updates the setup party")
+	assert_equal(resumed_setup.view().party_members.size(), 1, "removal leaves the remaining vault character in setup")
+	assert_true(resumed_setup.view().party_setup_available, "removing a member does not begin the adventure")
+	assert_equal(resumed_setup.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "Begin explicitly commits the assembled party")
+	assert_false(resumed_setup.view().party_setup_available, "party setup closes only after Begin")
+	assert_equal(resumed_setup.submit_intent(PlayerIntent.remove_party_member(imported.id)).error_code, &"party_setup_closed", "party composition cannot change after Begin")
+
+
+func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
+	var races := content.race_definitions()
+	var castes := content.caste_definitions()
+	assert_false(races.is_empty() or castes.is_empty(), "playable fixture provides one race and class for setup")
+	if races.is_empty() or castes.is_empty():
+		return
+	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
+	character.race_id = races[0].id
+	character.caste_id = castes[0].id
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture vault member enters party setup without consuming RNG")
+	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "fixture party explicitly begins before gameplay intents")

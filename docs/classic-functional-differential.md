@@ -12,6 +12,7 @@ The machine-readable record is `tests/fixtures/oracle/classic-functional-differe
 | `action-point.placed-first-match` | Aligned | A placed AP selects the lowest native record at the coordinate. Disabled state or chance failure ends the placed-AP check without falling through; percent below one consumes no draw. |
 | `media.classic-resource-key` | Aligned | Classic media identity is the exact four-character `(resourceType, resourceId)` pair. Scenario media wins over stock fallback; Providence rejects unresolved duplicate keys and runtime never performs numeric-ID-only lookup. |
 | `interaction.classic-staged-presentation` | Aligned | The active textbox, picture, and response remain staged. Completed narrative may enter the Chronicle, but the Chronicle is not the interaction surface. |
+| `campaign.party-setup-commit` | Aligned | Campaign startup begins with an empty session-owned party. Add, vault import, remove, save, and restore remain in setup across revisions; only explicit Begin enters exploration. |
 
 ## Rolling gate
 

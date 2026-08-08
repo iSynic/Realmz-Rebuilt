@@ -18,6 +18,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - `UiRouteCatalog` is the single route, label, shortcut, and workspace-scene registry. `ClassicCommandCatalog` is the single command/asset/action/context/availability/focus registry. `UiLayoutProfile` owns Compact, Standard, and Wide geometry after interface density is applied.
 - `ClassicUiAssetCatalog` owns imported app-control lookup and keeps those controls separate from package media.
 - The party-setup workspace is campaign-aware: Race is the left-hand driver, available classes are filtered from typed eligibility facts, and the five creator stages are visible as Identity, Race & Class, Appearance, Review, and Spells. Media choices remain explicit package data, never guessed filesystem paths.
+- Finalized and imported setup members render only from `GameView`; Add, Remove, and Begin emit typed intents. The presenter does not retain a parallel party array or infer that a committed setup edit has begun the adventure.
 - Cosmetic-only animation and randomness.
 
 ## Local Contracts

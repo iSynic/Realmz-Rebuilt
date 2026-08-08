@@ -11,6 +11,7 @@ func run() -> void:
 	var content := loaded.content
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "exploration session starts")
+	_begin_fixture_adventure(session, content)
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "Providence start coordinate is authoritative")
 	assert_equal(session.view().map_view.cells().size(), 9, "GameView exposes a topology-derived map")
 	assert_true(session.view().map_view.can_move(Vector2i.UP), "the detached view exposes an authoritative passable movement direction")
@@ -19,6 +20,7 @@ func run() -> void:
 	assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).overlay_asset_id, "fixture.special-land.neg-99", "the detached presentation view retains the validated special-land overlay identity")
 	var diagonal_session := GameSession.new()
 	assert_equal(diagonal_session.start(content, 1).state, SessionStep.State.COMPLETED, "a dedicated land-diagonal session starts")
+	_begin_fixture_adventure(diagonal_session, content)
 	assert_true(diagonal_session.view().map_view.can_move(Vector2i(-1, -1)), "land views expose source-backed diagonal movement availability")
 	var diagonal_step := diagonal_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
 	assert_equal(diagonal_step.state, SessionStep.State.COMPLETED, "a diagonal land move commits as one ordinary movement step")
@@ -29,9 +31,10 @@ func run() -> void:
 	assert_equal(restored_diagonal.snapshot().game_state.last_move_direction, Vector2i(-1, -1), "save/reload preserves a diagonal backup direction")
 	var layout_maps: Array[MapDefinition] = [content.world.map_by_id("land:0"), content.world.map_by_id("land:1")]
 	var layout_transitions: Array[MapTransition] = [MapTransition.new("layout:land:0:northwest:land:1", "land:0", &"northwest", "land:1", &"southeast")]
-	var diagonal_layout_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:0", Vector2i.ZERO, WorldDefinition.new(layout_maps, layout_transitions), ScenarioDefinition.new([], []), [], [])
+	var diagonal_layout_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:0", Vector2i.ZERO, WorldDefinition.new(layout_maps, layout_transitions), ScenarioDefinition.new([], []), [], [], [], content.race_definitions(), content.caste_definitions())
 	var diagonal_layout_session := GameSession.new()
 	assert_equal(diagonal_layout_session.start(diagonal_layout_content, 1).state, SessionStep.State.COMPLETED, "a diagonal Layout transition session starts")
+	_begin_fixture_adventure(diagonal_layout_session, diagonal_layout_content)
 	var diagonal_layout_step := diagonal_layout_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
 	assert_equal(diagonal_layout_session.view().party_map_id, "land:1", "diagonal boundary input follows the compiled diagonal Layout neighbor")
 	assert_equal(diagonal_layout_session.view().party_coordinate, Vector2i(2, 2), "diagonal boundary input wraps to the opposite target corner")
@@ -91,39 +94,44 @@ func run() -> void:
 	var keep_source := content.trigger_by_id("ap.fixture.destination-source")
 	var keep_program := ScenarioProgramDefinition.new(keep_source.program_id, &"trigger", keep_source.id, [ClassicActionDefinition.new(0, 24, 24, 0, false, [])])
 	var keep_trigger := TriggerDefinition.new(keep_source.id, keep_program.id, keep_source.map_id, keep_source.coordinate, keep_source.active, keep_source.chance_percent, keep_source.post_action_location, keep_source.classic_record_index)
-	var keep_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([keep_program], []), [], [keep_trigger])
+	var keep_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:1", Vector2i(0, 1), content.world, ScenarioDefinition.new([keep_program], []), [], [keep_trigger], [], content.race_definitions(), content.caste_definitions())
 	var keep_session := GameSession.new()
 	keep_session.start(keep_content, 1)
+	_begin_fixture_adventure(keep_session, keep_content)
 	var kept := keep_session.submit_intent(PlayerIntent.move(Vector2i.UP))
 	assert_true(_has_event(kept, &"action_point_kept"), "Classic opcode 24 marks the issuing placed Action Point as Keep Codes")
 	assert_false(keep_session.snapshot().game_state.world.trigger_is_disabled(keep_trigger.id), "Keep Codes is the explicit exception to default one-shot Action Points")
 
-	var ordered_ap_content := _duplicate_placed_ap_content(100)
+	var ordered_ap_content := _duplicate_placed_ap_content(100, content)
 	var ordered_ap_session := GameSession.new()
 	ordered_ap_session.start(ordered_ap_content, 1)
+	_begin_fixture_adventure(ordered_ap_session, ordered_ap_content)
 	var ordered_ap_step := ordered_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	assert_equal(_event_count(ordered_ap_step, &"trigger_fired"), 1, "one coordinate selects only one placed Action Point")
 	assert_equal(_event(ordered_ap_step, &"trigger_fired").payload["triggerId"], "ap.first-native", "the lowest Classic record index wins even when cell references are reversed")
 	assert_false(ordered_ap_session.snapshot().game_state.world.trigger_is_disabled("ap.later-native"), "a later same-cell Action Point is not executed or consumed")
 
-	var chance_ap_content := _duplicate_placed_ap_content(1)
+	var chance_ap_content := _duplicate_placed_ap_content(1, content)
 	var chance_ap_session := GameSession.new()
 	chance_ap_session.start(chance_ap_content, 1)
+	_begin_fixture_adventure(chance_ap_session, chance_ap_content)
 	var chance_ap_step := chance_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	assert_false(_has_event(chance_ap_step, &"trigger_fired"), "a failed selected AP chance does not fall through to a later same-cell record")
 	assert_equal(chance_ap_session.rng_trace().size(), 1, "a positive sub-100 selected AP consumes one chance draw")
 	assert_equal(chance_ap_session.rng_trace()[0]["tag"], "trigger.ap.first-native", "the chance draw belongs to the first native AP")
 
-	var zero_ap_content := _duplicate_placed_ap_content(0)
+	var zero_ap_content := _duplicate_placed_ap_content(0, content)
 	var zero_ap_session := GameSession.new()
 	zero_ap_session.start(zero_ap_content, 1)
+	_begin_fixture_adventure(zero_ap_session, zero_ap_content)
 	var zero_ap_step := zero_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	assert_false(_has_event(zero_ap_step, &"trigger_fired"), "Classic percent zero disables the selected AP without falling through")
 	assert_equal(zero_ap_session.rng_trace().size(), 0, "a disabled selected AP consumes no random draw")
 
-	var disabled_ap_content := _duplicate_placed_ap_content(100)
+	var disabled_ap_content := _duplicate_placed_ap_content(100, content)
 	var disabled_ap_source := GameSession.new()
 	disabled_ap_source.start(disabled_ap_content, 1)
+	_begin_fixture_adventure(disabled_ap_source, disabled_ap_content)
 	var disabled_ap_save := disabled_ap_source.snapshot()
 	disabled_ap_save.game_state.world.disable_trigger("ap.first-native")
 	var disabled_ap_session := GameSession.new()
@@ -150,6 +158,7 @@ func run() -> void:
 
 	var surprise_session := GameSession.new()
 	surprise_session.start(content, 1)
+	_begin_fixture_adventure(surprise_session, content)
 	surprise_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	var surprise_wait := surprise_session.submit_intent(PlayerIntent.move(Vector2i.UP))
 	assert_equal(surprise_wait.state, SessionStep.State.WAITING_FOR_INTERACTION, "a source-backed random rectangle can yield a typed surprise choice")
@@ -177,6 +186,7 @@ func run() -> void:
 
 	var door_session := GameSession.new()
 	door_session.start(content, 1)
+	_begin_fixture_adventure(door_session, content)
 	door_session.submit_intent(PlayerIntent.move(Vector2i.DOWN))
 	var first_door := door_session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_true(_has_event(first_door, &"random_door_triggered"), "a positive random-door chance invokes its XAP through the normal VM")
@@ -247,7 +257,20 @@ func _message_ids(step: SessionStep) -> Array[int]:
 	return ids
 
 
-func _duplicate_placed_ap_content(first_chance: int) -> RealmzContent:
+func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
+	var races := content.race_definitions()
+	var castes := content.caste_definitions()
+	assert_false(races.is_empty() or castes.is_empty(), "playable exploration fixture provides one race and class")
+	if races.is_empty() or castes.is_empty():
+		return
+	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
+	character.race_id = races[0].id
+	character.caste_id = castes[0].id
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
+	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "exploration fixture explicitly leaves party setup")
+
+
+func _duplicate_placed_ap_content(first_chance: int, source_content: RealmzContent) -> RealmzContent:
 	var empty_features: Array[MapFeature] = []
 	var empty_ids: Array[String] = []
 	var origin_triggers: Array[String] = []
@@ -265,4 +288,4 @@ func _duplicate_placed_ap_content(first_chance: int) -> RealmzContent:
 		ScenarioProgramDefinition.new(first.program_id, &"trigger", first.id, []),
 		ScenarioProgramDefinition.new(later.program_id, &"trigger", later.id, []),
 	]
-	return RealmzContent.new("ap-order", "0".repeat(64), "ap-order-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new(programs, []), [], triggers)
+	return RealmzContent.new("ap-order", "0".repeat(64), "ap-order-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new(programs, []), [], triggers, [], source_content.race_definitions(), source_content.caste_definitions())

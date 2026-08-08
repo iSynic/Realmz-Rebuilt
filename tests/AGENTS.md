@@ -32,6 +32,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - Duplicate-coordinate AP fixtures deliberately reverse package references and prove selection by native record index, including success, chance miss, percent-zero, and restored-disabled paths without later-record fallthrough.
 - War in the Sword Lands certification uses an external route, package, and report. Only package/route hashes, stage names, and resulting observations may enter documentation.
 - Schema-v2 fixture tests cover campaign display metadata, contact shape, restrictions, and race/caste eligibility. Character-vault tests cover immutable revisions, typed readback, archive, backup/atomic replacement, and target-campaign eligibility.
+- Campaign-startup integration tests begin from an empty party, preserve setup across repeated typed edits and save/restore, and prove that only explicit Begin enables gameplay. Gameplay fixtures import a deterministic synthetic member and Begin through the public session API without consuming RNG.
 
 ## Work Guidance
 

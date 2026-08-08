@@ -125,6 +125,7 @@ func _test_classic_choice_labels_and_sound_wait(content: RealmzContent) -> void:
 func _test_session_save_resume_boundary(content: RealmzContent) -> void:
 	var session := GameSession.new()
 	session.start(content, 1)
+	_begin_fixture_adventure(session, content)
 	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	var waiting := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
@@ -163,6 +164,7 @@ func _test_session_save_resume_boundary(content: RealmzContent) -> void:
 func _test_classic_shell_domain_route(content: RealmzContent) -> void:
 	var session := GameSession.new()
 	session.start(content, 1)
+	_begin_fixture_adventure(session, content)
 	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	var encounter := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
@@ -1080,9 +1082,10 @@ func _test_automatic_monster_death_macro(content: RealmzContent) -> void:
 			ClassicActionDefinition.new(1, 119, 119, 0, false, []),
 		]),
 	]
-	var yielding_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(yielding_programs, []), messages, [], [], [], [], [], [], [monster_definition], [battle])
+	var yielding_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(yielding_programs, []), messages, [], [], content.race_definitions(), content.caste_definitions(), [], [], [monster_definition], [battle])
 	var session := GameSession.new()
 	session.start(yielding_content, 1)
+	_begin_fixture_adventure(session, yielding_content)
 	var session_character: CharacterState = session._state.party.characters()[0]
 	session_character.agility = 100
 	session_character.to_hit = 100
@@ -1119,6 +1122,19 @@ func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:
 		var action := ClassicActionDefinition.new(0, opcode, opcode, 0, false, [0, 0, 0, 0, 0])
 		var operation := api.execute_classic(action, "request.dispatch", {"callingContext": "action"})
 		assert_true(operation != null and operation.error_code != &"unsupported_classic_opcode", "AOGM opcode %d dispatches to its declared runtime owner" % opcode)
+
+
+func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
+	var races := content.race_definitions()
+	var castes := content.caste_definitions()
+	assert_false(races.is_empty() or castes.is_empty(), "playable scenario fixture provides one race and class")
+	if races.is_empty() or castes.is_empty():
+		return
+	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
+	character.race_id = races[0].id
+	character.caste_id = castes[0].id
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "scenario fixture imports a deterministic party member")
+	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "scenario fixture explicitly completes party setup")
 
 
 func _runtime_api(content: RealmzContent, action_state: ScenarioActionState) -> RealmzRuntimeApi:
