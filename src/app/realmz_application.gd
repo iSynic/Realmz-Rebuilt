@@ -288,8 +288,12 @@ func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) 
 	if _dungeon_presenter != null:
 		_dungeon_presenter.position = content_rect.position
 		_dungeon_presenter.size = content_rect.size
-	var textbox_rect := Rect2(6.0, workspace_rect.end.y + 6.0, workspace_rect.size.x - 12.0, _profile.bottom_height - 12.0)
+	var textbox_rect := classic_textbox_rect(workspace_rect, _profile.bottom_height)
 	_interaction_presenter.set_classic_regions(content_rect, textbox_rect)
+
+
+static func classic_textbox_rect(workspace_rect: Rect2, bottom_height: float) -> Rect2:
+	return Rect2(workspace_rect.position.x, workspace_rect.end.y, workspace_rect.size.x, bottom_height)
 
 
 func _on_reduced_motion_changed(enabled: bool) -> void:

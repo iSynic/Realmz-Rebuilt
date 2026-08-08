@@ -39,6 +39,10 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"exploration")
 	await _settle()
 	await _capture("standard-explore-960x600")
+	_interaction.present(InteractionRequest.acknowledge("gallery-edge-to-edge", "The party follows the old road toward Northgate."))
+	await _settle()
+	await _capture("standard-acknowledge-edge-to-edge-960x600")
+	_interaction.present(null)
 	var gallery_view := _application.session_controller.view()
 	if not gallery_view.party_members.is_empty():
 		var definition := _application._active_content.item_by_id("classic.item.901")

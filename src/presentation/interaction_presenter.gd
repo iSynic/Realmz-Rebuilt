@@ -119,15 +119,21 @@ func _apply_classic_region() -> void:
 	if not is_inside_tree():
 		return
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
-	if _passive_text or _request != null and _request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice"]:
+	if uses_textbox_region(_request, _passive_text):
+		theme_type_variation = &"ClassicOpenRight"
 		position = _textbox_rect.position
 		size = _textbox_rect.size
 	else:
+		theme_type_variation = &"ClassicInset"
 		var desired := Vector2(minf(700.0, _stage_rect.size.x - 20.0), minf(520.0, _stage_rect.size.y - 20.0))
 		desired.x = maxf(300.0, desired.x)
 		desired.y = maxf(260.0, desired.y)
 		position = _stage_rect.position + (_stage_rect.size - desired) * 0.5
 		size = desired
+
+
+static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
+	return passive_text or request != null and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice"]
 
 
 func _add_hint(text: String) -> void:
