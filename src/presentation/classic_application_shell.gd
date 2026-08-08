@@ -46,6 +46,7 @@ const TEXT := Color("d8d9d2")
 @onready var _smoke_action: Button = %SmokeAction
 
 var _current_view: GameView
+var last_picture_media_diagnostic: Dictionary = {}
 var _presentation_settings := PresentationSettings.new()
 var _profile: UiLayoutProfile
 var _media: PackageMediaCatalog
@@ -142,11 +143,13 @@ func present_media_events(events: Array[DomainEvent], media: PackageMediaCatalog
 		var picture_id := int(event.payload.get("pictureId", 0))
 		var asset := media.asset_by_resource("PICT", picture_id)
 		if asset == null:
+			last_picture_media_diagnostic = media.resolution_diagnostic("PICT", picture_id, "classic-picture")
 			_picture.texture = null
 			_picture_caption.text = "PICT %d unavailable" % picture_id
 			_picture_stage.visible = true
 			continue
 		var image := _decode_image(asset, media.read_bytes(asset))
+		last_picture_media_diagnostic = media.resolution_diagnostic("PICT", picture_id, "classic-picture", "decoded" if image != null else "decode-failed")
 		_picture.texture = ImageTexture.create_from_image(image) if image != null else null
 		_picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		_picture_caption.text = asset.label

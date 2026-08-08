@@ -7,6 +7,7 @@ const CHANNEL_COUNT: int = 4
 
 var last_sound_id: int = 0
 var master_volume: float = 1.0
+var last_media_diagnostic: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
 var _channel_index: int = -1
 var _pending_sounds: Array[Dictionary] = []
@@ -30,11 +31,13 @@ func present_events(events: Array[DomainEvent], media: PackageMediaCatalog) -> v
 		sound_observed.emit(last_sound_id)
 		if media == null:
 			continue
-		var asset := media.sound_by_resource_id(last_sound_id)
+		var asset := media.asset_by_resource("snd ", last_sound_id)
 		if asset == null:
+			last_media_diagnostic = media.resolution_diagnostic("snd ", last_sound_id, "classic-sound")
 			continue
 		var bytes := media.read_bytes(asset)
 		var stream := _decode_stream(asset, bytes)
+		last_media_diagnostic = media.resolution_diagnostic("snd ", last_sound_id, "classic-sound", "decoded" if stream != null else "decode-failed")
 		if stream == null:
 			continue
 		_pending_sounds.append({"stream": stream, "waitForCompletion": bool(event.payload.get("waitForCompletion", false))})

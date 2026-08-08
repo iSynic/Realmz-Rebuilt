@@ -62,7 +62,7 @@ Every route has its own scene-backed workspace registered in `UiRouteCatalog`. T
 
 ## Package media and secrecy
 
-Package media lookup is exact by resource type plus ID, so `CICN 128`, `ICON 128`, and `PICT 128` cannot collide. Missing media produces a neutral framed fallback and diagnostic. Presentation never guesses a filename.
+Package media lookup is exact by four-character resource type plus signed ID, so `cicn 128`, `ICON 128`, and `PICT 128` cannot collide. Type case and trailing spaces remain significant. Missing or ambiguous media produces a neutral framed fallback and a developer diagnostic containing the authored key, presentation role, effective package asset ID, hash, and decoder outcome. Presentation never guesses a filename.
 
 Detached views expose only facts needed to draw the current state. In particular, an unidentified item cannot reveal its identified name, definition identity, value, description, curse relationship, or other hidden behavior. Navigation and presentation settings never mutate simulation.
 

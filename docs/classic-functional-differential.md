@@ -10,7 +10,7 @@ The machine-readable record is `tests/fixtures/oracle/classic-functional-differe
 | --- | --- | --- |
 | `movement.land-eight-direction` | Aligned | Land input, availability, and pathfinding use the same eight destination probes; diagonal corner exits follow compiled Layout neighbors. Dungeon movement remains cardinal and edge-based. |
 | `action-point.placed-first-match` | Aligned | A placed AP selects the lowest native record at the coordinate. Disabled state or chance failure ends the placed-AP check without falling through; percent below one consumes no draw. |
-| `media.classic-resource-key` | Compiler defect | Classic media identity is `(resourceType, resourceId)`. Providence emits one deterministic effective asset for that key and runtime lookup remains typed. |
+| `media.classic-resource-key` | Aligned | Classic media identity is the exact four-character `(resourceType, resourceId)` pair. Scenario media wins over stock fallback; Providence rejects unresolved duplicate keys and runtime never performs numeric-ID-only lookup. |
 | `interaction.classic-staged-presentation` | Aligned | The active textbox, picture, and response remain staged. Completed narrative may enter the Chronicle, but the Chronicle is not the interaction surface. |
 
 ## Rolling gate

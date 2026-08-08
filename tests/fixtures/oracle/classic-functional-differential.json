@@ -4,7 +4,7 @@
     "castle": "491816ad60037394f92c428e99c004494d3c28b3",
     "remakeFunctional": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
     "remakeVm": "cdaa0d8dcc5ab81c195aa960c860bf74e7d4f40b",
-    "providence": "2a992304d405f619bd6a0c815ae06948849e34da"
+    "providence": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789"
   },
   "cases": [
     {
@@ -35,7 +35,7 @@
         "observation": "Land input sets both axes before one destination-tile movement check. Dungeon movement follows its separate cardinal edge path."
       },
       "providence": {
-        "commit": "2a992304d405f619bd6a0c815ae06948849e34da",
+        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn normalized_cell_topology" }
@@ -82,7 +82,7 @@
         "observation": "newland scans the fixed door table in order, selects the first coordinate match, and leaves the scan path after that selected record regardless of its chance result."
       },
       "providence": {
-        "commit": "2a992304d405f619bd6a0c815ae06948849e34da",
+        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" }
@@ -104,7 +104,7 @@
     {
       "id": "media.classic-resource-key",
       "domain": "media",
-      "claim": "Classic media identity is the normalized resource type plus signed resource ID, with one deterministic effective package asset for each key.",
+      "claim": "Classic media identity is the exact four-character resource type plus signed resource ID, with one deterministic effective package asset for each key.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "Shared assets and Classic sound resolution use typed catalogs and test media readiness.",
@@ -123,19 +123,22 @@
         "controlFlow": [
           { "path": "src/realmz_orig/centerpict.c", "symbol": "void centerpict" },
           { "path": "src/realmz_orig/fastplot.c", "symbol": "void fastplot" },
-          { "path": "src/realmz_orig/misc.c", "symbol": "void sound" }
+          { "path": "src/realmz_orig/misc.c", "symbol": "void sound" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "refnum = MyrOpenResFile" },
+          { "path": "src/ResourceManager.cpp", "symbol": "std::shared_ptr<Resource> get_resource" }
         ],
-        "authoredInputs": ["PICT ID", "CICN ID", "snd ID", "landlook", "negative land cell"],
-        "observation": "Castle selects resources through type-specific lookup paths; the same numeric ID in a different resource type is not interchangeable."
+        "authoredInputs": ["PICT ID", "cicn ID", "snd ID", "landlook", "negative land cell", "open resource-fork order"],
+        "observation": "Castle selects exact resource type/ID pairs. Newly opened scenario forks lead the GetResource search chain, so scenario-local resources replace stock resources with the same exact key while equal IDs in other types remain unrelated."
       },
       "providence": {
-        "commit": "2a992304d405f619bd6a0c815ae06948849e34da",
+        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_assets" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn managed_replaces_catalog_resource" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn validate_effective_asset_identities" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn asset_index_document" }
         ],
-        "expectedRepresentation": "assets/index.json contains one effective stable asset for each normalized Classic resource type and ID key."
+        "expectedRepresentation": "assets/index.json contains one effective stable asset for each exact Classic resource type and ID key after scenario-over-stock precedence."
       },
       "realmz2": {
         "owner": { "path": "src/infrastructure/packages/package_media_catalog.gd", "symbol": "func asset_by_resource" },
@@ -145,9 +148,9 @@
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func run" }
         ]
       },
-      "decision": "compiler-defect",
+      "decision": "aligned",
       "availability": "implemented",
-      "status": "characterized"
+      "status": "verified"
     },
     {
       "id": "interaction.classic-staged-presentation",
@@ -178,7 +181,7 @@
         "observation": "Castle performs presentation-producing actions in program order and blocks only at its explicit click or selection boundaries."
       },
       "providence": {
-        "commit": "2a992304d405f619bd6a0c815ae06948849e34da",
+        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
         ],

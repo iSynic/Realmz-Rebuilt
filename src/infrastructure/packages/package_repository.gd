@@ -1784,7 +1784,7 @@ func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
 		if not asset["path"].begins_with("assets/media/") or files[asset["path"]]["sha256"] != asset["sha256"] or _integer(files[asset["path"]]["bytes"]) != _integer(asset["bytes"]):
 			return _reject("Asset payload identity does not match the manifest.")
 		if asset["resourceType"] != null and asset["resourceId"] != null:
-			var resource_key := "%s:%d" % [asset["resourceType"], _integer(asset["resourceId"])]
+			var resource_key := JSON.stringify([asset["resourceType"], _integer(asset["resourceId"])])
 			if resources.has(resource_key):
 				return _reject("Asset resource identities must be unique.")
 			resources[resource_key] = true

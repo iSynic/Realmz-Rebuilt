@@ -13,6 +13,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - `ClassicMapPresenter` rendering of map, minimap, and debug facts from detached map/cell views.
 - `DungeonGeometryProjection` and `DungeonMap3DPresenter` derive floor, wall, door, secret, stair, and column geometry from the same detached topology view as 2D.
 - `ClassicAudioPresenter` owns package-media playback.
+- Picture and sound presenters resolve exact Classic resource type/ID pairs and expose developer-only resolution diagnostics with the package asset, hash, and decoder outcome. They never search by numeric ID alone.
 - `ClassicApplicationShell` is the sole scene-backed application composition. It owns the compact menu, map/picture stage boundary, right roster, bottom narrative/status well, and contextual command deck. `ClassicScreenRouter` owns scene-backed Classic workspaces; it may retain presentation selection/focus/filter state but it cannot mutate `GameSession`.
 - `UiRouteCatalog` is the single route, label, shortcut, and workspace-scene registry. `ClassicCommandCatalog` is the single command/asset/action/context/availability/focus registry. `UiLayoutProfile` owns Compact, Standard, and Wide geometry after interface density is applied.
 - `ClassicUiAssetCatalog` owns imported app-control lookup and keeps those controls separate from package media.
