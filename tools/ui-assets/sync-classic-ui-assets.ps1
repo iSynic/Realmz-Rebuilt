@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string]$SourceRepository
+    [string]$SourceRepository,
+    [string]$CastleRepository = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -9,36 +10,80 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
 $catalogPath = Join-Path $toolRoot "catalog.json"
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 $sourceRoot = (Resolve-Path -LiteralPath $SourceRepository).Path
+$classicEntries = @($catalog.assets | Where-Object { $_.source_kind -eq "classic-cicn" })
+$castleRoot = ""
 $destinationRoot = Join-Path $repoRoot "src/presentation/assets/classic-controls"
 $manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-ui-assets.json"
+$cicnExporterPath = Join-Path $toolRoot "export-classic-cicn.ps1"
 
 $resolvedCommit = (& git -C $sourceRoot rev-parse "$($catalog.source_commit)^{commit}").Trim()
 if ($LASTEXITCODE -ne 0 -or $resolvedCommit -ne $catalog.source_commit) {
     throw "The requested Remake source commit is unavailable: $($catalog.source_commit)"
 }
+if ($classicEntries.Count -gt 0) {
+    if (-not $CastleRepository) {
+        throw "CastleRepository is required for cataloged Classic resource-fork assets"
+    }
+    $castleRoot = (Resolve-Path -LiteralPath $CastleRepository).Path
+    $castleCommits = @($classicEntries | ForEach-Object { $_.source_commit } | Sort-Object -Unique)
+    if ($castleCommits.Count -ne 1) {
+        throw "Classic resource-fork assets must share one Castle source commit"
+    }
+    $resolvedCastleCommit = (& git -C $castleRoot rev-parse "$($castleCommits[0])^{commit}").Trim()
+    if ($LASTEXITCODE -ne 0 -or $resolvedCastleCommit -ne $castleCommits[0]) {
+        throw "The requested Castle source commit is unavailable: $($castleCommits[0])"
+    }
+}
 
 $stagingRoot = Join-Path ([IO.Path]::GetTempPath()) ("realmz2-ui-assets-" + [Guid]::NewGuid().ToString("N"))
 $archivePath = Join-Path $stagingRoot "source.zip"
 $extractRoot = Join-Path $stagingRoot "source"
+$castleArchivePath = Join-Path $stagingRoot "castle-source.zip"
+$castleExtractRoot = Join-Path $stagingRoot "castle-source"
 $outputRoot = Join-Path $stagingRoot "output"
 $sidecarRoot = Join-Path $stagingRoot "sidecars"
-New-Item -ItemType Directory -Path $extractRoot, $outputRoot, $sidecarRoot | Out-Null
+New-Item -ItemType Directory -Path $extractRoot, $castleExtractRoot, $outputRoot, $sidecarRoot | Out-Null
 
 try {
-    $sourcePaths = @($catalog.assets | ForEach-Object { $_.source_path } | Sort-Object -Unique)
+    $sourcePaths = @($catalog.assets | Where-Object { $_.source_kind -ne "classic-cicn" } | ForEach-Object { $_.source_path } | Sort-Object -Unique)
     & git -C $sourceRoot archive --format=zip --output=$archivePath $catalog.source_commit -- @sourcePaths
     if ($LASTEXITCODE -ne 0) {
         throw "git archive failed"
     }
     Expand-Archive -LiteralPath $archivePath -DestinationPath $extractRoot
+    if ($classicEntries.Count -gt 0) {
+        $castleSourcePaths = @($classicEntries | ForEach-Object { $_.source_path } | Sort-Object -Unique)
+        $castleCommit = $classicEntries[0].source_commit
+        & git -C $castleRoot archive --format=zip --output=$castleArchivePath $castleCommit -- @castleSourcePaths
+        if ($LASTEXITCODE -ne 0) {
+            throw "Castle git archive failed"
+        }
+        Expand-Archive -LiteralPath $castleArchivePath -DestinationPath $castleExtractRoot
+    }
 
     $records = @()
     foreach ($entry in $catalog.assets) {
-        $sourcePath = Join-Path $extractRoot ($entry.source_path -replace "/", [IO.Path]::DirectorySeparatorChar)
+        $isClassicCicn = $entry.source_kind -eq "classic-cicn"
+        $entryExtractRoot = if ($isClassicCicn) { $castleExtractRoot } else { $extractRoot }
+        $sourcePath = Join-Path $entryExtractRoot ($entry.source_path -replace "/", [IO.Path]::DirectorySeparatorChar)
         if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
             throw "Catalog source is missing from the recorded commit: $($entry.source_path)"
         }
-        $bytes = [IO.File]::ReadAllBytes($sourcePath)
+        if ($entry.PSObject.Properties.Name -contains "source_file_sha256") {
+            $sourceSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash.ToLowerInvariant()
+            if ($sourceSha256 -ne $entry.source_file_sha256) {
+                throw "Catalog source hash mismatch: $($entry.source_path)"
+            }
+        }
+        $targetPath = Join-Path $outputRoot ($entry.target_path -replace "/", [IO.Path]::DirectorySeparatorChar)
+        New-Item -ItemType Directory -Path (Split-Path -Parent $targetPath) -Force | Out-Null
+        if ($isClassicCicn) {
+            & $cicnExporterPath -ResourceForkPath $sourcePath -ResourceId $entry.resource_id -OutputPath $targetPath
+        }
+        else {
+            [IO.File]::WriteAllBytes($targetPath, [IO.File]::ReadAllBytes($sourcePath))
+        }
+        $bytes = [IO.File]::ReadAllBytes($targetPath)
         if ($bytes.Length -lt 24 -or [Text.Encoding]::ASCII.GetString($bytes, 1, 3) -ne "PNG") {
             throw "Only validated PNG controls may be imported: $($entry.source_path)"
         }
@@ -47,10 +92,10 @@ try {
         if ($width -le 0 -or $height -le 0) {
             throw "Invalid PNG dimensions: $($entry.source_path)"
         }
-        $targetPath = Join-Path $outputRoot ($entry.target_path -replace "/", [IO.Path]::DirectorySeparatorChar)
-        New-Item -ItemType Directory -Path (Split-Path -Parent $targetPath) -Force | Out-Null
-        [IO.File]::WriteAllBytes($targetPath, $bytes)
         $sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
+        if ($entry.PSObject.Properties.Name -contains "sha256" -and $sha256 -ne $entry.sha256) {
+            throw "Catalog output hash mismatch: $($entry.target_path)"
+        }
         $classification = if ($entry.PSObject.Properties.Name -contains "classification") { $entry.classification } else { "tracked-remake-bitmap" }
         $evidenceStatus = if ($entry.PSObject.Properties.Name -contains "evidence_status") { $entry.evidence_status } else { "remake-scene-use" }
         $evidenceNote = if ($entry.PSObject.Properties.Name -contains "evidence_note") { $entry.evidence_note } else { "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed." }
@@ -65,11 +110,11 @@ try {
         if ($entry.PSObject.Properties.Name -contains "evidence_commit") {
             $evidence["commit"] = $entry.evidence_commit
         }
-        $records += [ordered]@{
+        $record = [ordered]@{
             id = $entry.id
             path = "res://src/presentation/assets/classic-controls/$($entry.target_path)"
-            source_repository = $catalog.source_repository
-            source_commit = $catalog.source_commit
+            source_repository = if ($entry.PSObject.Properties.Name -contains "source_repository") { $entry.source_repository } else { $catalog.source_repository }
+            source_commit = if ($entry.PSObject.Properties.Name -contains "source_commit") { $entry.source_commit } else { $catalog.source_commit }
             source_path = $entry.source_path
             native_width = $width
             native_height = $height
@@ -82,6 +127,12 @@ try {
                 source_pixels_modified = $false
             }
         }
+        if ($isClassicCicn) {
+            $record["source_file_sha256"] = $entry.source_file_sha256
+            $record["source_resource_type"] = $entry.resource_type
+            $record["source_resource_id"] = $entry.resource_id
+        }
+        $records += $record
     }
 
     $manifest = [ordered]@{

@@ -317,19 +317,19 @@
       }
     },
     {
-      "id": "map.party_on_foot.right",
-      "path": "res://src/presentation/assets/classic-controls/map/party-on-foot-right.png",
-      "source_repository": "Realmz Remake",
-      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
-      "source_path": "src/Campaigns/War in the Sword Lands (Classic)/media/images/cicn-186-fafdea1fdffb.png",
+      "id": "map.party.right",
+      "path": "res://src/presentation/assets/classic-controls/map/party-right.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
       "native_width": 32,
       "native_height": 32,
-      "sha256": "fafdea1fdffb18a7ee093fcda924b3fba7ad9cc18cc75031daf5972290457ddb",
-      "classification": "tracked-remake-cicn-preview",
+      "sha256": "b8ebb3d539cc564afe2b401aaab941b7c90e1b2dd885051c8c4db9e4956819c6",
+      "classification": "classic-resource-extract",
       "classic_evidence": {
         "status": "source-control-flow",
         "path": "src/realmz_orig/centerpict.c:198-238",
-        "note": "Castle centerpict selects CICN 175 or 186 from horizontal facing and draws it over the party's native 32-pixel land cell; this preserved bitmap is CICN 186.",
+        "note": "Castle centerpict selects built-in CICN 175 + 11 * face for ordinary land travel. This is exact built-in CICN 186, the right-facing mounted party image, extracted from The Family Jewels resource fork rather than a scenario-local resource with the same numeric ID.",
         "repository": "Realmz Castle Realmz",
         "commit": "491816ad60037394f92c428e99c004494d3c28b3"
       },
@@ -340,7 +340,10 @@
           2
         ],
         "source_pixels_modified": false
-      }
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 186
     },
     {
       "id": "inventory.category.armor",

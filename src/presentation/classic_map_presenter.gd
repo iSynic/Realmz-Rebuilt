@@ -6,7 +6,7 @@ signal movement_requested(direction: Vector2i)
 const MOUSE_REPEAT_DELAY: float = 0.28
 const MOUSE_REPEAT_INTERVAL: float = 0.11
 const DETACHED_VIEW_DIAMETER: int = 25
-const PARTY_MARKER_ASSET_ID: StringName = &"map.party_on_foot.right"
+const PARTY_MARKER_ASSET_ID: StringName = &"map.party.right"
 
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2(0.0, 24.0)
@@ -111,7 +111,6 @@ func _draw() -> void:
 			var facts := "%s%s%s" % ["M" if cell.passable else "X", "L" if cell.blocks_los else "", "R" if cell.in_random_region else ""]
 			draw_string(font, rect.position + Vector2(7, 17), facts, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.78, 0.82, 0.88))
 	_party_rect = Rect2(draw_origin + Vector2(map_view.party_coordinate - camera) * cell_size, Vector2.ONE * cell_size)
-	_draw_movement_cues(map_view, _party_rect)
 	_draw_party_marker(_party_rect)
 	draw_string(font, Vector2(8.0, 17.0), "%s • %s" % [map_view.map_name, String(map_view.level_type)], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.86, 0.75, 0.42))
 	var input_hint := "Click map • numpad / arrows / WASD" if map_view.level_type == &"land" else "Click map • arrows / WASD"
@@ -273,19 +272,6 @@ func _draw_minimap(map_view: MapView, font: Font) -> void:
 		draw_rect(rect, Color(0.28, 0.48, 0.32), true)
 	var party_center := origin + (Vector2(map_view.party_coordinate) + Vector2.ONE * 0.5) * scale
 	draw_circle(party_center, maxf(2.0, scale * 1.5), Color(0.94, 0.78, 0.28))
-
-
-func _draw_movement_cues(map_view: MapView, party_rect: Rect2) -> void:
-	var center := party_rect.get_center()
-	var cue_points := {
-		Vector2i.UP: PackedVector2Array([center + Vector2(-4, -11), center + Vector2(4, -11), center + Vector2(0, -15)]),
-		Vector2i.RIGHT: PackedVector2Array([center + Vector2(11, -4), center + Vector2(11, 4), center + Vector2(15, 0)]),
-		Vector2i.DOWN: PackedVector2Array([center + Vector2(-4, 11), center + Vector2(4, 11), center + Vector2(0, 15)]),
-		Vector2i.LEFT: PackedVector2Array([center + Vector2(-11, -4), center + Vector2(-11, 4), center + Vector2(-15, 0)]),
-	}
-	for direction: Vector2i in cue_points:
-		var color := Color(0.95, 0.76, 0.25, 0.95) if map_view.can_move(direction) else Color(0.42, 0.16, 0.15, 0.90)
-		draw_colored_polygon(cue_points[direction], color)
 
 
 func _movement_direction_at(position: Vector2) -> Vector2i:
