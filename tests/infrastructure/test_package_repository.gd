@@ -38,6 +38,16 @@ func run() -> void:
 	assert_equal(loaded.content.trigger_by_id("ap.fixture.message").post_action_location.map_id, "land:0", "AP post-action map identity is typed")
 	assert_equal(loaded.content.trigger_by_id("ap.fixture.message").post_action_location.coordinate, Vector2i(1, 0), "AP post-action coordinate is typed")
 	assert_equal(loaded.content.trigger_by_id("ap.fixture.message").classic_record_index, 0, "Classic trigger record identity crosses the compiler boundary")
+	var duplicate_programs: Array[ScenarioProgramDefinition] = [
+		ScenarioProgramDefinition.new("duplicate-program-a", &"trigger", "duplicate-trigger-a", []),
+		ScenarioProgramDefinition.new("duplicate-program-b", &"trigger", "duplicate-trigger-b", []),
+	]
+	var duplicate_scenario := ScenarioDefinition.new(duplicate_programs, [])
+	var duplicate_placed_records: Array = [
+		{"id": "duplicate-trigger-a", "programId": "duplicate-program-a", "classicRecordIndex": 3, "mapId": "land:0", "coordinate": {"x": 0, "y": 0}, "active": true, "chancePercent": 100, "postActionLocation": null},
+		{"id": "duplicate-trigger-b", "programId": "duplicate-program-b", "classicRecordIndex": 3, "mapId": "land:0", "coordinate": {"x": 1, "y": 0}, "active": true, "chancePercent": 100, "postActionLocation": null},
+	]
+	assert_true(PackageRepository.new()._construct_triggers(duplicate_placed_records, duplicate_scenario) == null, "the loader rejects ambiguous duplicate Classic placed-record identities")
 	assert_equal(loaded.content.simple_encounter_by_id(0).response_at(0).result_program_id, "simple:0:result:0", "Encounter choices reference ordinary result programs")
 	assert_equal(loaded.content.complex_encounter_by_id(0).expected_word(), "open", "Complex Encounter words become typed runtime data")
 	assert_equal(loaded.content.thief_encounter_by_id(0).type_flags().size(), 10, "Thief Encounter mutable flags have a fixed source-backed shape")

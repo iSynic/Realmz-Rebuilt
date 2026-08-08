@@ -1065,6 +1065,7 @@ func _construct_triggers(value: Variant, scenario: ScenarioDefinition) -> Varian
 		_reject("World triggers must be an array.")
 		return null
 	var triggers: Array[TriggerDefinition] = []
+	var placed_record_keys: Dictionary = {}
 	for record: Variant in value:
 		if not record is Dictionary or not _exact_fields(record, ["id", "programId", "classicRecordIndex", "mapId", "coordinate", "active", "chancePercent", "postActionLocation"]) or not record.get("id") is String or record["id"].is_empty() or not record.get("programId") is String or record["programId"].is_empty() or not _is_integer(record.get("classicRecordIndex")) or _integer(record["classicRecordIndex"]) < 0 or not record.get("active") is bool:
 			_reject("Trigger record is malformed.")
@@ -1084,6 +1085,11 @@ func _construct_triggers(value: Variant, scenario: ScenarioDefinition) -> Varian
 			if coordinate.x < 0 or coordinate.y < 0:
 				_reject("Placed trigger '%s' has invalid map coordinates." % record["id"])
 				return null
+			var placed_record_key := "%s:%d" % [map_id, _integer(record["classicRecordIndex"])]
+			if placed_record_keys.has(placed_record_key):
+				_reject("Placed trigger '%s' duplicates Classic record %d on map '%s'." % [record["id"], _integer(record["classicRecordIndex"]), map_id])
+				return null
+			placed_record_keys[placed_record_key] = true
 		var chance := _integer(record.get("chancePercent"))
 		if chance < -128 or chance > 127:
 			_reject("Trigger '%s' chance is outside Classic storage." % record["id"])

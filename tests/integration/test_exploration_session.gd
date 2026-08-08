@@ -98,6 +98,40 @@ func run() -> void:
 	assert_true(_has_event(kept, &"action_point_kept"), "Classic opcode 24 marks the issuing placed Action Point as Keep Codes")
 	assert_false(keep_session.snapshot().game_state.world.trigger_is_disabled(keep_trigger.id), "Keep Codes is the explicit exception to default one-shot Action Points")
 
+	var ordered_ap_content := _duplicate_placed_ap_content(100)
+	var ordered_ap_session := GameSession.new()
+	ordered_ap_session.start(ordered_ap_content, 1)
+	var ordered_ap_step := ordered_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_equal(_event_count(ordered_ap_step, &"trigger_fired"), 1, "one coordinate selects only one placed Action Point")
+	assert_equal(_event(ordered_ap_step, &"trigger_fired").payload["triggerId"], "ap.first-native", "the lowest Classic record index wins even when cell references are reversed")
+	assert_false(ordered_ap_session.snapshot().game_state.world.trigger_is_disabled("ap.later-native"), "a later same-cell Action Point is not executed or consumed")
+
+	var chance_ap_content := _duplicate_placed_ap_content(1)
+	var chance_ap_session := GameSession.new()
+	chance_ap_session.start(chance_ap_content, 1)
+	var chance_ap_step := chance_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_false(_has_event(chance_ap_step, &"trigger_fired"), "a failed selected AP chance does not fall through to a later same-cell record")
+	assert_equal(chance_ap_session.rng_trace().size(), 1, "a positive sub-100 selected AP consumes one chance draw")
+	assert_equal(chance_ap_session.rng_trace()[0]["tag"], "trigger.ap.first-native", "the chance draw belongs to the first native AP")
+
+	var zero_ap_content := _duplicate_placed_ap_content(0)
+	var zero_ap_session := GameSession.new()
+	zero_ap_session.start(zero_ap_content, 1)
+	var zero_ap_step := zero_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_false(_has_event(zero_ap_step, &"trigger_fired"), "Classic percent zero disables the selected AP without falling through")
+	assert_equal(zero_ap_session.rng_trace().size(), 0, "a disabled selected AP consumes no random draw")
+
+	var disabled_ap_content := _duplicate_placed_ap_content(100)
+	var disabled_ap_source := GameSession.new()
+	disabled_ap_source.start(disabled_ap_content, 1)
+	var disabled_ap_save := disabled_ap_source.snapshot()
+	disabled_ap_save.game_state.world.disable_trigger("ap.first-native")
+	var disabled_ap_session := GameSession.new()
+	assert_equal(disabled_ap_session.restore(disabled_ap_content, disabled_ap_save).state, SessionStep.State.COMPLETED, "a disabled first-record fixture restores transactionally")
+	var disabled_ap_step := disabled_ap_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_false(_has_event(disabled_ap_step, &"trigger_fired"), "a world-disabled selected AP does not fall through to a later same-cell record")
+	assert_false(disabled_ap_session.snapshot().game_state.world.trigger_is_disabled("ap.later-native"), "the unselected later AP remains untouched")
+
 	var dungeon_envelope := session.snapshot()
 	dungeon_envelope.game_state.party.map_id = "dungeon:0"
 	dungeon_envelope.game_state.party.coordinate = Vector2i(2, 0)
@@ -211,3 +245,24 @@ func _message_ids(step: SessionStep) -> Array[int]:
 		if event.kind == &"message_shown":
 			ids.append(int(event.payload.get("messageId", -1)))
 	return ids
+
+
+func _duplicate_placed_ap_content(first_chance: int) -> RealmzContent:
+	var empty_features: Array[MapFeature] = []
+	var empty_ids: Array[String] = []
+	var origin_triggers: Array[String] = []
+	var target_triggers: Array[String] = ["ap.later-native", "ap.first-native"]
+	var cells: Array[MapCell] = [
+		MapCell.new("ap-order:cell:0,0", Vector2i.ZERO, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", origin_triggers, empty_ids, {}, empty_features),
+		MapCell.new("ap-order:cell:1,0", Vector2i(1, 0), "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", target_triggers, empty_ids, {}, empty_features),
+	]
+	var map := MapDefinition.new("ap-order", "Placed AP Order", &"land", 0, MapTopology.new(2, 1, cells))
+	var maps: Array[MapDefinition] = [map]
+	var first := TriggerDefinition.new("ap.first-native", "program.first-native", map.id, Vector2i(1, 0), true, first_chance, null, 2)
+	var later := TriggerDefinition.new("ap.later-native", "program.later-native", map.id, Vector2i(1, 0), true, 100, null, 9)
+	var triggers: Array[TriggerDefinition] = [later, first]
+	var programs: Array[ScenarioProgramDefinition] = [
+		ScenarioProgramDefinition.new(first.program_id, &"trigger", first.id, []),
+		ScenarioProgramDefinition.new(later.program_id, &"trigger", later.id, []),
+	]
+	return RealmzContent.new("ap-order", "0".repeat(64), "ap-order-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new(programs, []), [], triggers)

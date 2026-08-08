@@ -436,7 +436,7 @@ func _set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, desti
 		"mapId": map.id,
 		"x": coordinate.x,
 		"y": coordinate.y,
-		"triggerIds": cell.trigger_ids(),
+		"triggerIds": _selected_placed_trigger_ids(_content, cell),
 		"triggerIndex": 0,
 		"activeTriggerId": "",
 		"randomRegionIds": cell.random_rect_ids(),
@@ -477,24 +477,24 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 			_set_post_move_continuation(destination_map, _state.party.coordinate, 1)
 			return _continue_post_move(events)
 		_session_continuation["activeTriggerId"] = ""
-		_session_continuation["triggerIndex"] = int(_session_continuation["triggerIndex"]) + 1
+		_session_continuation["triggerIndex"] = _session_continuation["triggerIds"].size()
 	var trigger_ids: Array = _session_continuation["triggerIds"]
 	while int(_session_continuation["triggerIndex"]) < trigger_ids.size():
 		var trigger_index: int = int(_session_continuation["triggerIndex"])
 		var trigger_id: String = String(trigger_ids[trigger_index])
 		var trigger := _content.trigger_by_id(trigger_id)
 		if trigger == null or not trigger.active or _state.world.trigger_is_disabled(trigger_id):
-			_session_continuation["triggerIndex"] = trigger_index + 1
-			continue
+			_session_continuation["triggerIndex"] = trigger_ids.size()
+			break
 		var trigger_chance := _state.world.trigger_chance(trigger.id, trigger.chance_percent)
-		if trigger_chance < 0:
-			_session_continuation["triggerIndex"] = trigger_index + 1
-			continue
+		if trigger_chance < 1:
+			_session_continuation["triggerIndex"] = trigger_ids.size()
+			break
 		if trigger_chance < 100:
 			var chance_roll := _rng.draw(100, StringName("trigger.%s" % trigger.id))
 			if chance_roll > trigger_chance:
-				_session_continuation["triggerIndex"] = trigger_index + 1
-				continue
+				_session_continuation["triggerIndex"] = trigger_ids.size()
+				break
 		events.append(DomainEvent.new("trigger_fired", {"triggerId": trigger.id}))
 		_session_continuation["activeTriggerId"] = trigger.id
 		var started := _scenario_vm.start_program(trigger.program_id, {"callingContext": "action", "triggerId": trigger.id, "mapId": map.id, "x": coordinate.x, "y": coordinate.y})
@@ -521,7 +521,7 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 			_set_post_move_continuation(destination_map, _state.party.coordinate, 1)
 			return _continue_post_move(events)
 		_session_continuation["activeTriggerId"] = ""
-		_session_continuation["triggerIndex"] = trigger_index + 1
+		_session_continuation["triggerIndex"] = trigger_ids.size()
 	var random_step := _continue_random_regions(map, events)
 	if random_step != null:
 		return random_step
@@ -851,7 +851,7 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 	var map := content.world.map_by_id(continuation["mapId"])
 	var coordinate := Vector2i(continuation["x"], continuation["y"])
 	var cell: MapCell = null if map == null else map.topology.cell_at(coordinate)
-	if cell == null or state.party.map_id != map.id or state.party.coordinate != coordinate or continuation["triggerIds"] != cell.trigger_ids() or continuation["randomRegionIds"] != cell.random_rect_ids():
+	if cell == null or state.party.map_id != map.id or state.party.coordinate != coordinate or continuation["triggerIds"] != _selected_placed_trigger_ids(content, cell) or continuation["randomRegionIds"] != cell.random_rect_ids():
 		return false
 	var random_index: int = continuation["randomRegionIndex"]
 	if random_index < -1 or random_index >= continuation["randomRegionIds"].size():
@@ -869,6 +869,17 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 	if index < 0 or index >= continuation["triggerIds"].size() or continuation["activeTriggerId"].is_empty() or continuation["triggerIds"][index] != continuation["activeTriggerId"]:
 		return false
 	return content.trigger_by_id(continuation["activeTriggerId"]) != null
+
+
+static func _selected_placed_trigger_ids(content: RealmzContent, cell: MapCell) -> Array[String]:
+	var selected_id := ""
+	var selected_record_index := 2_147_483_647
+	for trigger_id: String in cell.trigger_ids():
+		var trigger := content.trigger_by_id(trigger_id)
+		if trigger != null and trigger.classic_record_index < selected_record_index:
+			selected_id = trigger.id
+			selected_record_index = trigger.classic_record_index
+	return [] if selected_id.is_empty() else [selected_id]
 
 
 func _build_map_view() -> MapView:
