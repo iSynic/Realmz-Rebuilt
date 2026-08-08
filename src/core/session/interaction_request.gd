@@ -6,6 +6,7 @@ var kind: StringName
 var payload: Dictionary
 
 const ACKNOWLEDGE: StringName = &"acknowledge"
+const AGE_UPDATE: StringName = &"age_update"
 const YES_NO: StringName = &"yes_no"
 const INDEXED_CHOICE: StringName = &"scenario_choice"
 const ENCOUNTER_CHOICE: StringName = &"encounter_choice"
@@ -33,11 +34,15 @@ func is_supported_kind() -> bool:
 
 
 static func kind_is_supported(request_kind: StringName) -> bool:
-	return request_kind in [ACKNOWLEDGE, YES_NO, INDEXED_CHOICE, ENCOUNTER_CHOICE, CHARACTER_SELECTION, ALLY_SELECTION, WORD_AND_ACTION, SHOP, TEMPLE, BANK, COMBAT]
+	return request_kind in [ACKNOWLEDGE, AGE_UPDATE, YES_NO, INDEXED_CHOICE, ENCOUNTER_CHOICE, CHARACTER_SELECTION, ALLY_SELECTION, WORD_AND_ACTION, SHOP, TEMPLE, BANK, COMBAT]
 
 
 static func acknowledge(id: String, prompt: String, message_id: int = 0) -> InteractionRequest:
 	return InteractionRequest.new(id, ACKNOWLEDGE, {"prompt": prompt, "messageId": message_id, "presentation": "classic-textbox"})
+
+
+static func age_update(id: String, update_payload: Dictionary) -> InteractionRequest:
+	return InteractionRequest.new(id, AGE_UPDATE, update_payload)
 
 
 static func yes_no(id: String, prompt: String, yes_label: String, no_label: String) -> InteractionRequest:

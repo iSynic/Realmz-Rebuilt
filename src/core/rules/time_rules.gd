@@ -28,7 +28,7 @@ func advance_minutes(state: GameState, content: RealmzContent, minutes: int, con
 				continue
 			var aging := _characters.advance_age_days(character, race, caste, 1)
 			if aging != null and aging.changed_group():
-				events.append(DomainEvent.new(&"character_age_changed", aging.event_payload(character)))
+				events.append(DomainEvent.new(&"character_age_changed", aging.event_payload(character, race)))
 	for tick: int in condition_ticks:
 		events.append_array(_conditions.tick_party(state.party))
 	return events

@@ -388,6 +388,56 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "character.age-update-interaction",
+      "domain": "interaction-pacing",
+      "claim": "Every live age-band transition opens a blocking character age update in party/target order, displays the resulting band and range plus the fifteen applied deltas, requests sound 3002, and resumes the exact clock or spell continuation only after input.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake exposes callable day and clock-seam aging helpers and preserves transition results, but the pinned implementation has no corresponding blocking age-update presentation or saveable interaction continuation.",
+        "sources": [
+          { "path": "src/Creature/PlayerCharacter.gd", "symbol": "func advance_classic_age_days" },
+          { "path": "src/scripts/classic_runtime/classic_character_rules.gd", "symbol": "static func advance_character_age_days" },
+          { "path": "src/scripts/classic_runtime/classic_character_rules.gd", "symbol": "static func advance_character_age_between_times" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_character_rule_profile" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/age.c", "symbol": "void showageupdate(short who, short agegroup, short backup)" },
+          { "path": "src/realmz_orig/textbox-time.c", "symbol": "showageupdate(t, c[t].currentagegroup, 0);" },
+          { "path": "src/realmz_orig/spelllist.c", "symbol": "showageupdate(who, c[who].currentagegroup, 0);" },
+          { "path": "src/realmz_orig/spelllist.c", "symbol": "showageupdate(who, c[who].currentagegroup, 1);" },
+          { "path": "src/realmz_orig/attack.c", "symbol": "showageupdate(chare, c[chare].currentagegroup, 0);" }
+        ],
+        "authoredInputs": ["character name, portrait, and combat icon", "Data Race name, agerange, and agechange", "age transition direction"],
+        "observation": "showageupdate renders the character identity, race, resulting Youth/Young/Prime/Adult/Senior band, that band's year range, portrait, combat icon, and fifteen nonzero changes. Rejuvenation negates the erased higher band's row. It calls sound(3002) and remains in ModalDialog until any dialog item is activated. Midnight iterates party order and spells invoke the dialog before returning to their caller."
+      },
+      "providence": {
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" }
+        ],
+        "expectedRepresentation": "Existing schema-v2 character media identities and race names, ranges, and fifteen-value change rows provide all immutable inputs; interaction and sound sequencing remain runtime behavior."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _finish_with_age_updates" },
+        "expectedTrace": ["committed age transition", "typed age_update request", "sound 3002", "saveable owning continuation", "typed acknowledgement", "next ordered update or original continuation"],
+        "tests": [
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_age_update_precedes_post_move" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_scenario_spell_opcodes" },
+          { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_fixture_gallery_coverage" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
     }
   ]
 }

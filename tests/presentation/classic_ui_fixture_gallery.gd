@@ -4,6 +4,7 @@ extends RefCounted
 const STATES: Array[StringName] = [&"nominal", &"empty", &"loading", &"error", &"unavailable", &"oversized", &"missing_media", &"unidentified", &"six_member"]
 const INTERACTIONS: Array[StringName] = [
 	InteractionRequest.ACKNOWLEDGE,
+	InteractionRequest.AGE_UPDATE,
 	InteractionRequest.YES_NO,
 	InteractionRequest.INDEXED_CHOICE,
 	InteractionRequest.ENCOUNTER_CHOICE,
@@ -51,6 +52,25 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 	var characters: Array = [] if empty_values else [{"id": "hero", "name": "Hero", "currentHealth": 8, "maximumHealth": 10, "inventory": [{"instanceId": "item-1", "name": "Potion", "sellPrice": 5}]}]
 	var payload: Dictionary = {"prompt": long_text}
 	match kind:
+		InteractionRequest.AGE_UPDATE:
+			payload.merge({
+				"prompt": "Hero has grown into the Young age group.",
+				"characterId": "hero",
+				"characterName": "A deliberately long adventurer name" if state == &"oversized" else "Hero",
+				"raceId": "race.fixture",
+				"raceName": "Human",
+				"portraitId": "portrait.fixture",
+				"combatIconId": "icon.fixture",
+				"ageGroup": 2,
+				"ageGroupName": "Young",
+				"ageMinimumYears": 20,
+				"ageMaximumYears": 39,
+				"transition": 1,
+				"appliedAgeGroup": 2,
+				"changes": [1, 0, -1, 2, 0, 0, 5, -1, 1, 2, 3, 4, 5, 6, 7],
+				"presentation": "classic-age-update",
+				"soundId": 3002,
+			})
 		InteractionRequest.YES_NO:
 			payload.merge({"yesLabel": "Yes", "noLabel": "No"})
 		InteractionRequest.INDEXED_CHOICE, InteractionRequest.ENCOUNTER_CHOICE:

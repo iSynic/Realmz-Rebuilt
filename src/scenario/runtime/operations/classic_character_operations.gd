@@ -46,5 +46,5 @@ func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool) -
 			"source": "classic",
 		}))
 		if resolution.aging != null and resolution.aging.changed_group():
-			events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(character)))
+			events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(character, race)))
 	return ScenarioRuntimeOperationResult.completed(targets.size(), events)

@@ -20,6 +20,10 @@ static func acknowledge(request: InteractionRequest) -> InteractionResponse:
 	return InteractionResponse.new(request.request_id, InteractionRequest.ACKNOWLEDGE, {})
 
 
+static func age_update(request: InteractionRequest) -> InteractionResponse:
+	return InteractionResponse.new(request.request_id, InteractionRequest.AGE_UPDATE, {})
+
+
 static func yes_no(request: InteractionRequest, accepted: bool) -> InteractionResponse:
 	return InteractionResponse.new(request.request_id, InteractionRequest.YES_NO, {"accepted": accepted})
 

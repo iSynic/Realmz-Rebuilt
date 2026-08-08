@@ -79,6 +79,8 @@ func _component_for(kind: StringName) -> InteractionComponent:
 	match kind:
 		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice":
 			return TextChoiceInteraction.new()
+		&"age_update":
+			return AgeUpdateInteraction.new()
 		&"character_selection", &"ally_selection":
 			return SelectionInteraction.new()
 		&"complex_encounter":
@@ -170,6 +172,8 @@ static func _heading_for_kind(kind: StringName) -> String:
 	match kind:
 		&"acknowledge":
 			return ""
+		&"age_update":
+			return "Age Update"
 		&"yes_no":
 			return "Question"
 		&"encounter_choice", &"scenario_choice", &"complex_encounter":

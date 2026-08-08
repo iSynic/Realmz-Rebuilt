@@ -245,7 +245,7 @@ func _camp() -> SessionStep:
 		return SessionStep.failed(_view_revision, &"camp_during_battle", "The party cannot camp during battle.")
 	if not _state.camping_allowed:
 		return SessionStep.failed(_view_revision, &"camping_disabled", "Camping is not allowed at this location.")
-	return _finish_completed(_rules.clock.camp(_state, _content))
+	return _finish_with_age_updates(_rules.clock.camp(_state, _content), "completed")
 
 
 func _use_item(instance_id: String) -> SessionStep:
@@ -455,7 +455,7 @@ func _search() -> SessionStep:
 	events.append_array(_rules.clock.advance_minutes(_state, _content, 1))
 	for secret_id: String in discovered:
 		events.append(DomainEvent.new("secret_discovered", {"secretId": secret_id}))
-	return _finish_completed(events)
+	return _finish_with_age_updates(events, "completed")
 
 
 func _move(direction: Vector2i) -> SessionStep:
@@ -486,7 +486,7 @@ func _move(direction: Vector2i) -> SessionStep:
 	if transition != null:
 		events.append(DomainEvent.new("map_transitioned", {"transitionId": transition.id, "sourceMapId": source_map_id, "targetMapId": target_map.id}))
 	_set_post_move_continuation(target_map, target_coordinate)
-	return _continue_post_move(events)
+	return _finish_with_age_updates(events, "post-move", _session_continuation)
 
 
 func _set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, destination_depth: int = 0) -> void:
@@ -818,6 +818,8 @@ func _pending_interaction() -> InteractionRequest:
 
 
 func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
+	if _session_continuation.get("kind") == "age-updates":
+		return _respond_session_age_update(response)
 	if _session_continuation.get("kind") == "combat-ally-selection":
 		return _respond_session_ally_selection(response)
 	if response.kind != &"yes_no" or not response.payload.has("accepted") or not response.payload["accepted"] is bool:
@@ -844,6 +846,56 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 		return next_step
 	_session_continuation.clear()
 	return _finish_completed(events)
+
+
+func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: String, resume_continuation: Dictionary = {}) -> SessionStep:
+	var updates := CharacterAgingResult.update_payloads(events)
+	if updates.is_empty():
+		if resume_kind == "post-move":
+			_session_continuation = resume_continuation.duplicate(true)
+			return _continue_post_move(events)
+		return _finish_completed(events)
+	_session_continuation = {
+		"kind": "age-updates",
+		"updates": updates,
+		"index": 1,
+		"resumeKind": resume_kind,
+		"resumeContinuation": resume_continuation.duplicate(true),
+	}
+	_session_interaction = InteractionRequest.age_update(_session_age_update_request_id(updates[0], 0), updates[0])
+	events.append(CharacterAgingResult.sound_event(updates[0]))
+	return _finish_waiting(_session_interaction, events)
+
+
+func _respond_session_age_update(response: InteractionResponse) -> SessionStep:
+	if response.kind != InteractionRequest.AGE_UPDATE or not response.payload.is_empty():
+		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Classic age updates require an empty age-update acknowledgement.")
+	var updates: Variant = _session_continuation.get("updates", [])
+	var index := int(_session_continuation.get("index", -1))
+	if not updates is Array or updates.is_empty() or index < 1 or index > updates.size():
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The age-update queue is unavailable.")
+	var acknowledged: Dictionary = updates[index - 1]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"character_age_update_acknowledged", {"characterId": acknowledged.get("characterId", "")})]
+	if index < updates.size():
+		var next_payload: Dictionary = updates[index]
+		_session_continuation["index"] = index + 1
+		_session_interaction = InteractionRequest.age_update(_session_age_update_request_id(next_payload, index), next_payload)
+		events.append(CharacterAgingResult.sound_event(next_payload))
+		return _finish_waiting(_session_interaction, events)
+	var resume_kind := String(_session_continuation.get("resumeKind", ""))
+	var resume_continuation: Dictionary = _session_continuation.get("resumeContinuation", {}).duplicate(true)
+	_session_interaction = null
+	_session_continuation.clear()
+	if resume_kind == "post-move":
+		_session_continuation = resume_continuation
+		return _continue_post_move(events)
+	if resume_kind == "completed":
+		return _finish_completed(events)
+	return _finish_failed(&"invalid_session_continuation", "The age-update queue has no valid completion path.", events)
+
+
+func _session_age_update_request_id(payload: Dictionary, index: int) -> String:
+	return "session.age-update:%s:%d:%d" % [payload.get("characterId", "character"), _view_revision + 1, index]
 
 
 func _respond_session_ally_selection(response: InteractionResponse) -> SessionStep:
@@ -893,6 +945,28 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 
 
 static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	if continuation.get("kind") == "age-updates":
+		var age_fields: Array[String] = ["kind", "updates", "index", "resumeKind", "resumeContinuation"]
+		if continuation.size() != age_fields.size() or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.AGE_UPDATE:
+			return false
+		for field: String in age_fields:
+			if not continuation.has(field):
+				return false
+		var updates: Variant = continuation["updates"]
+		var age_index: Variant = continuation["index"]
+		if not updates is Array or updates.is_empty() or not age_index is int or age_index < 1 or age_index > updates.size():
+			return false
+		for update: Variant in updates:
+			if not _valid_age_update_payload(state, update):
+				return false
+		var current_update: Dictionary = updates[age_index - 1]
+		if session_interaction.payload != current_update:
+			return false
+		var resume_kind: Variant = continuation["resumeKind"]
+		var resume_continuation: Variant = continuation["resumeContinuation"]
+		if resume_kind == "completed":
+			return resume_continuation is Dictionary and resume_continuation.is_empty()
+		return resume_kind == "post-move" and resume_continuation is Dictionary and _valid_ready_post_move_continuation(content, state, resume_continuation)
 	if continuation.get("kind") == "combat-death-macro":
 		var death_fields: Array[String] = ["kind", "battleId", "combatantId", "programId"]
 		if continuation.size() != death_fields.size():
@@ -937,6 +1011,36 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 	if index < 0 or index >= continuation["triggerIds"].size() or continuation["activeTriggerId"].is_empty() or continuation["triggerIds"][index] != continuation["activeTriggerId"]:
 		return false
 	return content.trigger_by_id(continuation["activeTriggerId"]) != null
+
+
+static func _valid_age_update_payload(state: GameState, value: Variant) -> bool:
+	if not value is Dictionary:
+		return false
+	var character_id: Variant = value.get("characterId")
+	var changes: Variant = value.get("changes")
+	return character_id is String and not character_id.is_empty() and state.party.character_by_id(character_id) != null \
+		and value.get("presentation") == "classic-age-update" and value.get("soundId") is int \
+		and value.get("ageGroup") is int and int(value.get("ageGroup")) >= 1 and int(value.get("ageGroup")) <= 5 \
+		and value.get("transition") is int and int(value.get("transition")) in [-1, 1] \
+		and changes is Array and changes.size() == 15 and changes.all(func(change: Variant) -> bool: return change is int)
+
+
+static func _valid_ready_post_move_continuation(content: RealmzContent, state: GameState, continuation: Dictionary) -> bool:
+	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
+	if continuation.size() != fields.size():
+		return false
+	for field: String in fields:
+		if not continuation.has(field):
+			return false
+	if continuation["kind"] != "post-move" or not continuation["mapId"] is String or not continuation["x"] is int or not continuation["y"] is int or not continuation["triggerIds"] is Array or continuation["triggerIndex"] != 0 or not continuation["activeTriggerId"] is String or not continuation["activeTriggerId"].is_empty() or not continuation["randomRegionIds"] is Array or not continuation["randomRegionIndex"] is int or not continuation["activeRandomProgramId"] is String or not continuation["activeRandomProgramId"].is_empty() or not continuation["activeRandomRegionId"] is String or not continuation["activeRandomRegionId"].is_empty() or not continuation["randomBattleStage"] is String or not continuation["randomBattleStage"].is_empty() or not continuation["actionPointDestinationDepth"] is int or int(continuation["actionPointDestinationDepth"]) < 0 or int(continuation["actionPointDestinationDepth"]) > 1:
+		return false
+	var map := content.world.map_by_id(continuation["mapId"])
+	var coordinate := Vector2i(continuation["x"], continuation["y"])
+	var cell: MapCell = null if map == null else map.topology.cell_at(coordinate)
+	return cell != null and state.party.map_id == map.id and state.party.coordinate == coordinate \
+		and continuation["triggerIds"] == _selected_placed_trigger_ids(content, cell) \
+		and continuation["randomRegionIds"] == cell.random_rect_ids() \
+		and int(continuation["randomRegionIndex"]) == continuation["randomRegionIds"].size() - 1
 
 
 static func _selected_placed_trigger_ids(content: RealmzContent, cell: MapCell) -> Array[String]:

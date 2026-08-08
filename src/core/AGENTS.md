@@ -20,6 +20,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `GameSession` owns scenario execution state and is the only object allowed to connect VM operations to domain mutations.
 - Session state owns encounter attempts/type flags, equipment escrow, mutable shop stock, combat, and scenario-program replacement. These are save data, never mutations of installed package definitions.
 - Session state owns non-VM interaction continuations as well as VM continuations. Random-rectangle surprise choices serialize with their owning region and resume only through `GameSession.respond`.
+- Live age-band changes yield ordered `age_update` requests. Direct clock work may suspend an unstarted post-move continuation beneath the bounded queue; each typed response advances one character before the owning session operation resumes.
 - Monster death macros execute before battle resolution. Their combatant identity, VM interaction, and direct-session continuation belong to the save aggregate and resume only through `GameSession.respond`.
 - A placed Action Point's Classic header is a post-action map/coordinate destination. `GameSession` applies it only after that AP completes, rechecks the destination cell once, and serializes the recheck depth so save/resume cannot repeat or skip it.
 - An ordinary placed Action Point becomes disabled after its complete timeline. Classic opcode 24 Keep Codes preserves it; opcode 25 may disable it explicitly. This world-overlay state is serialized across every interaction and save boundary.

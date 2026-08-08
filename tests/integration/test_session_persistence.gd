@@ -42,6 +42,45 @@ func run() -> void:
 	assert_equal(restored.snapshot().rng_state.draw_count, 1, "searching an already discovered area does not invent a random draw")
 	assert_equal(restored.snapshot().game_state.clock.total_minutes(), 2, "restored mutation advances the persisted clock")
 
+	var age_source := GameSession.new()
+	age_source.start(content, 17)
+	_begin_fixture_adventure(age_source, content)
+	var age_save := age_source.snapshot()
+	var aging_race := _aging_race(content)
+	assert_not_null(aging_race, "the fixture contains a complete adjacent Classic age range")
+	var first_aging_character := age_save.game_state.party.characters()[0]
+	first_aging_character.race_id = aging_race.id
+	first_aging_character.age_group = 1
+	first_aging_character.age_days = aging_race.age_range(1).x * 365 - 1
+	var second_aging_character := CharacterState.from_data(first_aging_character.to_data())
+	second_aging_character.id = "fixture.party.second-aging-member"
+	second_aging_character.name = "Second Aging Hero"
+	assert_true(age_save.game_state.party.add_character(second_aging_character), "the synthetic save carries a second ordered age update")
+	age_save.game_state.clock.advance_minutes(RealmzClock.MINUTES_PER_DAY - 1)
+	var age_session := GameSession.new()
+	assert_equal(age_session.restore(content, age_save).state, SessionStep.State.COMPLETED, "the pre-midnight aging fixture restores")
+	var first_age_update := age_session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+	assert_equal(first_age_update.state, SessionStep.State.WAITING_FOR_INTERACTION, "crossing midnight blocks at the first Classic age-update dialog")
+	assert_equal(first_age_update.interaction.kind, InteractionRequest.AGE_UPDATE, "midnight exposes a dedicated typed age-update request")
+	assert_equal(first_age_update.interaction.payload["characterId"], first_aging_character.id, "party order determines the first Castle age-update dialog")
+	assert_equal(first_age_update.interaction.payload["changes"].size(), 15, "the request preserves all fifteen displayed Castle age deltas")
+	assert_true(first_age_update.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 3002), "opening the age dialog requests Castle sound 3002")
+	var age_boundary_save := SaveEnvelope.from_data(age_session.snapshot().to_data())
+	assert_not_null(age_boundary_save, "the first age-update click boundary is centrally saveable")
+	var age_restored := GameSession.new()
+	assert_equal(age_restored.restore(content, age_boundary_save).state, SessionStep.State.COMPLETED, "the ordered age-update queue restores transactionally")
+	assert_equal(age_restored.view().pending_interaction.payload["characterId"], first_aging_character.id, "restore retains the exact current age dialog")
+	var wrong_age_response := age_restored.respond(InteractionResponse.acknowledge(age_restored.view().pending_interaction))
+	assert_equal(wrong_age_response.error_code, &"invalid_interaction_response", "a generic textbox acknowledgement cannot bypass the age-update contract")
+	var second_age_update := age_restored.respond(InteractionResponse.age_update(age_restored.view().pending_interaction))
+	assert_equal(second_age_update.state, SessionStep.State.WAITING_FOR_INTERACTION, "acknowledging the first character advances to the next ordered age dialog")
+	assert_equal(second_age_update.interaction.payload["characterId"], second_aging_character.id, "the second dialog retains Castle party order")
+	assert_true(second_age_update.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 3002), "each age dialog independently requests Castle sound 3002")
+	var age_completed := age_restored.respond(InteractionResponse.age_update(second_age_update.interaction))
+	assert_equal(age_completed.state, SessionStep.State.COMPLETED, "the final age acknowledgement completes the interrupted session operation")
+	assert_equal(age_restored.snapshot().session_continuation, {}, "the completed age-update queue clears its save continuation")
+	assert_equal([age_restored.view().party_members[0].age_group, age_restored.view().party_members[1].age_group], [2, 2], "both committed age mutations survive the staged presentation boundary")
+
 	var mismatched := SaveEnvelope.new(content.campaign_id, "0".repeat(64), content.rules_version, loaded_save.view_revision, loaded_save.game_state, loaded_save.rng_state)
 	var before_failed_restore := restored.snapshot().to_data()
 	assert_equal(restored.restore(content, mismatched).error_code, &"package_mismatch", "package mismatch fails explicitly")
@@ -118,3 +157,10 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	character.caste_id = castes[0].id
 	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture vault member enters party setup without consuming RNG")
 	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "fixture party explicitly begins before gameplay intents")
+
+
+func _aging_race(content: RealmzContent) -> RaceDefinition:
+	for race: RaceDefinition in content.race_definitions():
+		if race.max_age > 0 and race.age_range(1).x == race.age_range(0).y + 1:
+			return race
+	return null

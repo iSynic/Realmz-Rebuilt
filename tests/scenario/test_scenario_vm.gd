@@ -12,6 +12,7 @@ func run() -> void:
 	_test_classic_encounter_action_xap_trace(loaded.content)
 	_test_classic_choice_labels_and_sound_wait(loaded.content)
 	_test_session_save_resume_boundary(loaded.content)
+	_test_age_update_precedes_post_move(loaded.content)
 	_test_safe_choice_resume(loaded.content)
 	_test_persistent_action_state(loaded.content)
 	_test_classic_call_limit(loaded.content)
@@ -159,6 +160,33 @@ func _test_session_save_resume_boundary(content: RealmzContent) -> void:
 	assert_equal(completed.state, SessionStep.State.COMPLETED, "typed acknowledgements resume simulation without presentation mutation: %s %s" % [completed.error_code, completed.error_message])
 	assert_equal(message_texts, ["The encounter result begins.", "The reusable Scenario Action ran.", "The Extra Action Point returns through CODE 111."], "restored interactions follow the same action timeline")
 	assert_equal(textbox_restored.snapshot().session_continuation, {}, "completed action timeline clears the serialized host continuation")
+
+
+func _test_age_update_precedes_post_move(content: RealmzContent) -> void:
+	var source := GameSession.new()
+	source.start(content, 1)
+	_begin_fixture_adventure(source, content)
+	source.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	source.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	var boundary := source.snapshot()
+	var character := boundary.game_state.party.characters()[0]
+	var race := _aging_race(content)
+	character.race_id = race.id
+	character.age_group = 1
+	character.age_days = race.age_range(1).x * 365 - 1
+	boundary.game_state.clock.advance_minutes(RealmzClock.MINUTES_PER_DAY - 1 - boundary.game_state.clock.total_minutes())
+	var session := GameSession.new()
+	assert_equal(session.restore(content, boundary).state, SessionStep.State.COMPLETED, "the pre-midnight AP fixture restores")
+	var moved := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_equal(moved.interaction.kind, InteractionRequest.AGE_UPDATE, "the Castle age dialog blocks before destination AP execution")
+	assert_equal(session.snapshot().session_continuation["resumeKind"], "post-move", "the age dialog owns the unstarted post-move continuation")
+	var held := SaveEnvelope.from_data(session.snapshot().to_data())
+	assert_not_null(held, "the age-before-AP boundary serializes with its nested topology continuation")
+	var restored := GameSession.new()
+	assert_equal(restored.restore(content, held).state, SessionStep.State.COMPLETED, "the nested age/post-move continuation validates transactionally")
+	var encounter := restored.respond(InteractionResponse.age_update(restored.view().pending_interaction))
+	assert_equal(encounter.state, SessionStep.State.WAITING_FOR_INTERACTION, "acknowledging age resumes destination trigger discovery")
+	assert_equal(encounter.interaction.kind, InteractionRequest.ENCOUNTER_CHOICE, "the original AP then reaches its ordinary encounter interaction")
 
 
 func _test_classic_shell_domain_route(content: RealmzContent) -> void:
@@ -539,6 +567,42 @@ func _test_scenario_spell_opcodes(content: RealmzContent) -> void:
 	assert_equal(entire_party.events.size(), 2, "scenario spell publishes one ordered observation per target")
 	var unknown := api.execute_classic(ClassicActionDefinition.new(0, 18, 18, 0, false, [9999, 1, 0, 1]), "request.unknown-spell")
 	assert_equal(unknown.error_code, &"unknown_spell", "unknown packed spells fail explicitly")
+
+	var race := _aging_race(content)
+	var caste := content.caste_definitions()[0]
+	var aging_spell := SpellDefinition.new("classic.spell.5999", 5999, "Aging Haste")
+	aging_spell.special = 24
+	var aging_instructions: Array[Variant] = [
+		ClassicActionDefinition.new(0, 17, 17, 0, false, [5999, 1, 0, 1]),
+		ClassicActionDefinition.new(1, 1, 1, 909, false, []),
+	]
+	var aging_program := ScenarioProgramDefinition.new("test.age-update", &"trigger", "test.age-update", aging_instructions)
+	var aging_scenario := ScenarioDefinition.new([aging_program], [])
+	var aging_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, aging_scenario, [MessageDefinition.new(909, "The spell timeline continues.")], [], [], [race], [caste], [], [aging_spell])
+	var aging_character := CharacterState.new("spell.aging", "Aging Spell Target", 20, 20)
+	aging_character.race_id = race.id
+	aging_character.caste_id = caste.id
+	aging_character.age_group = 1
+	aging_character.age_days = race.age_range(1).x * 365 - 1
+	var aging_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [aging_character]), RealmzClock.new())
+	aging_state.set_selected_character_ids([aging_character.id])
+	var aging_api := RealmzRuntimeApi.new(aging_content, aging_state, RealmzRng.new(1), ScenarioActionState.new())
+	var aging_vm := ScenarioVm.new()
+	aging_vm.configure(aging_scenario)
+	aging_vm.start_program(aging_program.id, {"callingContext": "action"})
+	var age_dialog := aging_vm.run(aging_api)
+	assert_equal(age_dialog.state, ScenarioVmResult.State.WAITING, "an age-changing scenario spell blocks its issuing VM frame")
+	assert_equal(age_dialog.interaction.kind, InteractionRequest.AGE_UPDATE, "the spell uses the dedicated Classic age-update contract")
+	assert_true(age_dialog.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 3002), "the spell dialog requests Castle sound 3002")
+	var aging_snapshot := ScenarioVmSnapshot.from_data(aging_vm.snapshot().to_data())
+	assert_not_null(aging_snapshot, "the age-changing spell continuation serializes")
+	var restored_aging_vm := ScenarioVm.new()
+	restored_aging_vm.configure(aging_scenario)
+	assert_true(restored_aging_vm.restore(aging_snapshot), "the age-changing spell continuation restores")
+	var after_age := restored_aging_vm.resume(InteractionResponse.age_update(aging_snapshot.pending_request), aging_api)
+	assert_equal(after_age.state, ScenarioVmResult.State.WAITING, "acknowledging age resumes the original spell timeline")
+	assert_equal(after_age.interaction.kind, InteractionRequest.ACKNOWLEDGE, "the instruction after the spell now owns the next interaction")
+	assert_equal(restored_aging_vm.resume(InteractionResponse.acknowledge(after_age.interaction), aging_api).state, ScenarioVmResult.State.COMPLETED, "the resumed spell timeline completes normally")
 
 
 func _test_combat_fumble_mutation(content: RealmzContent) -> void:
@@ -1140,6 +1204,13 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 func _runtime_api(content: RealmzContent, action_state: ScenarioActionState) -> RealmzRuntimeApi:
 	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("test", "Test", 1, 1)])
 	return RealmzRuntimeApi.new(content, GameState.new(party, RealmzClock.new()), RealmzRng.new(1), action_state)
+
+
+func _aging_race(content: RealmzContent) -> RaceDefinition:
+	for race: RaceDefinition in content.race_definitions():
+		if race.max_age > 0 and race.age_range(1).x == race.age_range(0).y + 1:
+			return race
+	return null
 
 
 func _action(id: String, return_type: StringName, instructions: Array[SafeInstructionDefinition], capabilities: Array[String] = []) -> ScenarioActionDefinition:

@@ -27,6 +27,7 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 - Battle opcodes resolve the Classic battle ID from Extra Code slot zero when a row is present; the action operand is only the direct-ID form when no Extra Code row exists.
 - Battle-round and monster-death macros run as serializable nested VM frames. A death macro receives the defeated combatant ID and must complete before allegiance and battle outcome are finalized.
 - Classic opcode 1 preserves the message operand sign as control flow. A positive message yields a typed, saveable `acknowledge` request for the dedicated Classic textbox; a negative message publishes its presentation event and continues without a click boundary.
+- A Classic or Safe time operation and Classic opcode 17/18 spell that changes an age band yields a typed `age_update`; its runtime continuation owns the ordered remaining updates and resumes the exact issuing VM frame only after every response.
 - Classic opcode 3 treats zero option IDs as the standard Yes/No pair. Nonzero IDs resolve through the package's Data OD option-label table, with ordinary message lookup used only for old-format packages that have no option-label table.
 - Classic opcode 9 publishes the absolute `snd ` resource ID while preserving the operand sign as presentation playback metadata: positive is asynchronous and negative waits within the Classic sound queue. It never blocks or advances simulation.
 - Classic opcode 24 ends the current timeline and reports Keep Codes for the issuing placed Action Point. Without that exception, the session disables the AP after successful completion; opcode 25 remains the explicit in-program removal operation.
@@ -41,7 +42,7 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 
 ## Verification
 
-- VM tests cover calls, returns, limits, signed Classic textbox pacing, yields, save/resume, unknown behavior, Castle traces, inherited AP context, Extra Code battle identity, serializable battle/death/body-count flows, program replacement/redirect, domain dispatch, and bounded campaign-inventory readiness.
+- VM tests cover calls, returns, limits, signed Classic textbox and age-update pacing, yields, save/resume, unknown behavior, Castle traces, inherited AP context, Extra Code battle identity, serializable battle/death/body-count flows, program replacement/redirect, domain dispatch, and bounded campaign-inventory readiness.
 
 ## Child DOX Index
 

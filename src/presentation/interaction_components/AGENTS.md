@@ -6,6 +6,7 @@
 
 - Components translate an existing request payload into controls and emit the exact response payload selected by the player.
 - `InteractionPresenter` owns request identity, modal visibility, and construction of `InteractionResponse`.
+- `AgeUpdateInteraction` presents the source-backed band/range and nonzero fifteen-column age changes and emits only the empty `age_update` acknowledgement payload.
 
 # Local Contracts
 

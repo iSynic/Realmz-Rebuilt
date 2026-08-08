@@ -91,7 +91,7 @@ Implemented in this tranche:
 - Bundled Alegreya/Alegreya Sans fonts, pinned Google Fonts provenance, file hashes, and OFL licenses with no runtime network dependency.
 - Presentation-complete honest states for all nine workspaces, CICN/ICON/PICT collision-free media lookup, safe unidentified-item views, and explicit action availability from `GameSession`.
 - Typed interaction components for text/choice, selection, encounters, shops, temples, banks, and battles. The old procedural presenter is removed.
-- A test-only gallery covers six states for every route and interaction kind. Local rendered frames have been inspected at 800×600, 960×600, 1280×720, and 1920×1080, including dense inventory/services and 150% compact settings.
+- A test-only gallery covers nine states for every route and interaction kind. Local rendered frames have been inspected at 800×600, 960×600, 1280×720, and 1920×1080, including dense inventory/services and 150% compact settings.
 
 Still required for live visual acceptance and later gameplay completion:
 
@@ -101,11 +101,11 @@ Still required for live visual acceptance and later gameplay completion:
 - Package media catalogs for portraits/combat icons and the remaining character review/spell choices.
 - Re-run the external AOGM ordinary-play route through the new shell; the committed gallery remains synthetic and is not live-campaign proof.
 
-## Current rolling fidelity pass — live aging and maximum age (implemented)
+## Current rolling fidelity pass — blocking age updates (implemented)
 
-- Remake identifies the useful persisted-age and transition implementation. Castle `age`, `applyage`, the midnight branch in `textbox-time.c`, `booty`, and `spelllist` adjudicate the result: each operation changes at most one adjacent band, live rows are not creation-bounded, reversing a floored movement penalty is intentionally non-invertible, and maximum-age battle experience uses the source float truncation. The pinned source stores `doesnotdie` but does not consult it in these paths.
-- Providence commit `cad17d11bd8ec798d29bf5468ed8071019f32c1f` already emits the complete five-range/five-row tables, maximum age, immortality flag, and caste damage cap, so no compiler or schema change was required.
-- `CharacterState` now persists exact age days plus the independent current band inside save envelope v3. Legacy nested characters infer a band during restore/import. The session clock adds one age day per crossed midnight; scenario haste/age/youth effects use the same operation; battle rewards apply the per-character maximum-age penalty; and detached character views expose age years/band.
-- The full typed suite passes 1,558 assertions across 11 suites. Differential validation passes all eight cases against the pinned Castle, Remake, and Providence roots.
+- Remake supplies the live-aging mutation lead but has no equivalent blocking age-update presentation. Castle `showageupdate`, its midnight caller, and its spell callers establish the interaction: resulting band/range, character and race identity, portrait/icon, fifteen forward or reversed deltas, sound 3002, and one modal input boundary per changed character.
+- Providence commit `cad17d11bd8ec798d29bf5468ed8071019f32c1f` already emits the immutable names, media identities, ranges, and change rows, so package schema v2 remains unchanged.
+- `age_update` is now a supported typed interaction with a dedicated inset presenter. Direct clock work queues updates before destination AP processing; scenario spells retain the issuing VM frame. Both forms serialize through save envelope v3, reject generic acknowledgements, and resume one ordered character at a time.
+- The typed suite passes 1,600 assertions across 11 suites. Differential validation covers nine cases against the pinned Castle, Remake, and Providence roots.
 
-Remaining fidelity boundary: Castle's blocking `showageupdate` dialog is not yet a typed continuation; the current event/Chronicle notice is presentation only. Aging monster-attack specials remain in the later combat-special pass. The next rolling slice should not claim either behavior until its owning continuation and combat flow are source-backed and saveable.
+Remaining fidelity boundary: the dialog carries stable portrait and combat-icon IDs, but the current programmatic component does not yet draw those package media assets. Castle's monster attack special 17 still needs its own combat-rule and continuation pass; this interaction implementation is ready to host it without claiming that attack behavior.

@@ -16,8 +16,9 @@ The machine-readable record is `tests/fixtures/oracle/classic-functional-differe
 | `character.creation-starting-defenses` | Aligned | Level-one creation combines race/caste saves within `-99…120`, copies racial conditions verbatim, and replaces caste condition-level `1` with permanent `-1`; later caste thresholds wait for level-up. |
 | `character.creation-aging-and-rng-order` | Aligned | Creation preserves Castle's discarded seventh attribute roll, cumulative race aging through the caste minimum group, first-seven-save adjustments, three special-bonus checks, and subsequent stamina/age/spell-point draw order. |
 | `character.live-aging-and-maximum-age` | Aligned | Midnight and age-changing spells mutate exact age days and invoke at most one adjacent age row. Live rows are unbounded, maximum movement floors at two, and maximum-age battle XP truncates to two thirds; `doesNotDie` does not add behavior absent from the pinned source. |
+| `character.age-update-interaction` | Aligned | Every changed band yields a dedicated typed dialog in party/target order with character/race identity, resulting band/range, fifteen applied deltas, and sound 3002. Save/resume retains the exact clock, post-move, or spell continuation. |
 
-The rule, clock, spell, battle-reward, and persistence behavior is covered. Castle's `showageupdate` remains a distinct presentation follow-up: 2.0 currently publishes a detached age-change event and updates the character view, but it does not yet pause the owning clock or spell continuation on the source dialog's click boundary. Monster attack specials that age a character remain owned by the later combat-special differential pass.
+The rule, clock, spell, battle-reward, persistence, and `showageupdate` click boundary are covered. Monster attack specials that age a character remain owned by the later combat-special differential pass; this interaction pass does not imply that the combat special itself is implemented.
 
 ## Rolling gate
 

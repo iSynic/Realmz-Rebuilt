@@ -126,9 +126,14 @@ func _test_action_availability() -> void:
 
 func _test_fixture_gallery_coverage() -> void:
 	assert_equal(ClassicUiFixtureGallery.screen_cases().size(), 81, "all nine screens have nine fixture states")
-	assert_equal(ClassicUiFixtureGallery.interaction_cases().size(), 99, "all eleven interaction kinds have nine fixture states")
+	assert_equal(ClassicUiFixtureGallery.interaction_cases().size(), 108, "all twelve interaction kinds have nine fixture states")
 	for interaction: StringName in ClassicUiFixtureGallery.INTERACTIONS:
 		assert_true(ClassicUiFixtureGallery.request_for(interaction).is_supported_kind(), "gallery interaction %s is a supported typed request" % interaction)
+	var age_component := AgeUpdateInteraction.new()
+	age_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.AGE_UPDATE))
+	assert_true(age_component.get_child_count() >= 4, "the Classic age update renders identity, band, changed statistics, and a response")
+	assert_true(age_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Continue"), "the blocking age update exposes one keyboard-focusable continuation")
+	age_component.free()
 
 
 func _test_interaction_identity() -> void:

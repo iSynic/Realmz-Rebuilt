@@ -156,6 +156,28 @@ static func _migrate(value: Variant) -> Variant:
 static func _normalize_session_continuation(value: Dictionary) -> Variant:
 	if value.is_empty():
 		return {}
+	if value.get("kind") == "age-updates":
+		var age_fields: Array[String] = ["kind", "updates", "index", "resumeKind", "resumeContinuation"]
+		if value.size() != age_fields.size():
+			return null
+		for field: String in age_fields:
+			if not value.has(field):
+				return null
+		var index := _integer(value["index"])
+		if not value["updates"] is Array or value["updates"].is_empty() or value["updates"].size() > 30 or index < 1 or index > value["updates"].size() or not _json_safe(value["updates"], 0):
+			return null
+		if not value["resumeKind"] is String or value["resumeKind"] not in ["completed", "post-move"] or not value["resumeContinuation"] is Dictionary:
+			return null
+		var resume_continuation: Dictionary = {}
+		if value["resumeKind"] == "completed":
+			if not value["resumeContinuation"].is_empty():
+				return null
+		else:
+			var normalized_resume: Variant = _normalize_session_continuation(value["resumeContinuation"])
+			if not normalized_resume is Dictionary or normalized_resume.get("kind") != "post-move":
+				return null
+			resume_continuation = normalized_resume
+		return {"kind": "age-updates", "updates": value["updates"].duplicate(true), "index": index, "resumeKind": value["resumeKind"], "resumeContinuation": resume_continuation}
 	if value.get("kind") == "combat-death-macro":
 		var death_fields: Array[String] = ["kind", "battleId", "combatantId", "programId"]
 		if value.size() != death_fields.size():

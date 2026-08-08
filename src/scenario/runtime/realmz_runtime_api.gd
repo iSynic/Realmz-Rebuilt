@@ -102,7 +102,7 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 		15, 16:
 			return _apply_health(action, action.opcode == 16)
 		17, 18:
-			return _character_operations.apply_scenario_spell(action, action.opcode == 18)
+			return _with_age_update_interactions(_character_operations.apply_scenario_spell(action, action.opcode == 18), request_id, "classic-age-updates")
 		19:
 			return _show_random_message(action)
 		20:
@@ -564,11 +564,11 @@ func execute_safe(capability: String, arguments: Dictionary, request_id: String)
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Camp does not accept arguments.")
 			if not _game_state.camping_allowed or _game_state.combat != null and not _game_state.combat.completed:
 				return ScenarioRuntimeOperationResult.failed(&"camping_unavailable", "The party cannot camp in the current state.")
-			return ScenarioRuntimeOperationResult.completed(true, _rules.clock.camp(_game_state, _content))
+			return _with_age_update_interactions(ScenarioRuntimeOperationResult.completed(true, _rules.clock.camp(_game_state, _content)), request_id, "safe-age-updates")
 		"core.time.advance":
 			if not _whole_number(arguments.get("minutes")) or int(arguments["minutes"]) < 0:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Advance Time requires non-negative integer minutes.")
-			return ScenarioRuntimeOperationResult.completed(true, _rules.clock.advance_minutes(_game_state, _content, int(arguments["minutes"])))
+			return _with_age_update_interactions(ScenarioRuntimeOperationResult.completed(true, _rules.clock.advance_minutes(_game_state, _content, int(arguments["minutes"]))), request_id, "safe-age-updates")
 		"core.inventory.grant-item":
 			if not arguments.get("characterId") is String or not arguments.get("itemId") is String or arguments.get("identified", false) is not bool:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Grant Item requires characterId, itemId, and optional identified bool.")
@@ -626,6 +626,8 @@ func execute_safe(capability: String, arguments: Dictionary, request_id: String)
 
 func resume_safe(continuation: Dictionary, response: InteractionResponse, request_id: String = "") -> ScenarioRuntimeOperationResult:
 	match continuation.get("kind"):
+		"safe-age-updates":
+			return _resume_age_update_interactions(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		"safe-choice":
 			var option_count: int = int(continuation.get("optionCount", 0))
 			if response.kind != &"scenario_choice" or not response.payload.get("index") is int or response.payload["index"] < 0 or response.payload["index"] >= option_count:
@@ -657,6 +659,8 @@ func read_action_state(state_scope: String, owner_id: String, name: String, defa
 
 func resume_classic(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	match continuation.get("kind"):
+		"classic-age-updates":
+			return _resume_age_update_interactions(continuation, response, request_id)
 		"classic-simple-encounter":
 			return _resume_simple_encounter(continuation, response)
 		"classic-complex-encounter":
@@ -691,6 +695,44 @@ func resume_classic(continuation: Dictionary, response: InteractionResponse, req
 			return _resume_banking(continuation, response, request_id)
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_interaction_continuation", "Classic interaction continuation is unavailable.")
+
+
+func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, request_id: String, continuation_kind: String) -> ScenarioRuntimeOperationResult:
+	if operation == null or operation.state != ScenarioRuntimeOperationResult.State.COMPLETED:
+		return operation
+	var updates := CharacterAgingResult.update_payloads(operation.events)
+	if updates.is_empty():
+		return operation
+	var continuation := {
+		"kind": continuation_kind,
+		"updates": updates,
+		"index": 1,
+		"value": operation.value,
+		"directive": operation.directive.duplicate(true),
+	}
+	var events: Array[DomainEvent] = []
+	events.assign(operation.events)
+	events.append(CharacterAgingResult.sound_event(updates[0]))
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update(request_id, updates[0]), continuation, events)
+
+
+func _resume_age_update_interactions(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
+	if response.kind != InteractionRequest.AGE_UPDATE or not response.payload.is_empty():
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic age updates require an empty age-update acknowledgement.")
+	var updates: Variant = continuation.get("updates", [])
+	var index := int(continuation.get("index", -1))
+	if not updates is Array or updates.is_empty() or index < 1 or index > updates.size():
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_continuation", "Classic age-update continuation is invalid.")
+	var acknowledged: Dictionary = updates[index - 1]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"character_age_update_acknowledged", {"characterId": acknowledged.get("characterId", "")})]
+	if index < updates.size():
+		var next_payload: Dictionary = updates[index]
+		var next_continuation := continuation.duplicate(true)
+		next_continuation["index"] = index + 1
+		events.append(CharacterAgingResult.sound_event(next_payload))
+		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update(request_id, next_payload), next_continuation, events)
+	var directive: Variant = continuation.get("directive", {})
+	return ScenarioRuntimeOperationResult.completed(continuation.get("value"), events, directive if directive is Dictionary else {})
 
 
 func _resume_simple_encounter(continuation: Dictionary, response: InteractionResponse) -> ScenarioRuntimeOperationResult:

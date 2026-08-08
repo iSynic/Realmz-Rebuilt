@@ -104,10 +104,4 @@ func _init(character: CharacterState, content: RealmzContent = null) -> void:
 
 
 static func _age_group_name(group: int) -> String:
-	match group:
-		1: return "Youth"
-		2: return "Young"
-		3: return "Prime"
-		4: return "Adult"
-		5: return "Senior"
-		_: return "Unknown"
+	return CharacterAgingResult.age_group_name(group)
