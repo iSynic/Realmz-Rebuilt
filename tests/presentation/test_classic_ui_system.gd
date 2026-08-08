@@ -150,7 +150,7 @@ func _test_classic_choice_context() -> void:
 func _test_classic_asset_catalog() -> void:
 	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://src/presentation/assets/classic-ui-assets.json"))
 	assert_equal(manifest["source_commit"], "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61", "Classic controls retain exact Remake commit provenance")
-	assert_equal(manifest["assets"].size(), 60, "the curated Classic UI corpus is complete")
+	assert_equal(manifest["assets"].size(), 61, "the curated Classic UI and map-marker corpus is complete")
 	var ids: Dictionary = {}
 	for entry: Dictionary in manifest["assets"]:
 		ids[entry["id"]] = true
@@ -163,6 +163,12 @@ func _test_classic_asset_catalog() -> void:
 		assert_false(bool(entry["rendering"]["source_pixels_modified"]), "Classic source pixels are never repainted")
 	assert_equal(ids.size(), manifest["assets"].size(), "Classic semantic asset IDs are unique")
 	assert_not_null(ClassicUiAssetCatalog.texture(&"command.camp"), "runtime asset catalog resolves the Camp bitmap")
+	var party_marker := ClassicUiAssetCatalog.definition(ClassicMapPresenter.PARTY_MARKER_ASSET_ID)
+	assert_not_null(ClassicUiAssetCatalog.texture(ClassicMapPresenter.PARTY_MARKER_ASSET_ID), "the land presenter resolves the preserved Classic foot-party CICN")
+	assert_equal(ClassicUiAssetCatalog.native_size(ClassicMapPresenter.PARTY_MARKER_ASSET_ID), Vector2i(32, 32), "the foot-party CICN retains its native map-cell dimensions")
+	assert_equal(party_marker["source_path"], "src/Campaigns/War in the Sword Lands (Classic)/media/images/cicn-186-fafdea1fdffb.png", "party-marker bytes come from the pinned donor commit rather than its working tree")
+	assert_equal(party_marker["classic_evidence"]["status"], "source-control-flow", "party-marker semantics are labeled from Castle source rather than inferred from a filename")
+	assert_equal(party_marker["classic_evidence"]["commit"], "491816ad60037394f92c428e99c004494d3c28b3", "party-marker behavior retains its pinned Castle evidence commit")
 	var fonts: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://src/presentation/assets/fonts/font-assets.json"))
 	assert_equal(fonts["source_commit"], "2d85e20401920891efb7cd6272d6339685df2820", "bundled fonts retain pinned source provenance")
 	for entry: Dictionary in fonts["assets"]:

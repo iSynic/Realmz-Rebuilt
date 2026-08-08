@@ -6,6 +6,7 @@ signal movement_requested(direction: Vector2i)
 const MOUSE_REPEAT_DELAY: float = 0.28
 const MOUSE_REPEAT_INTERVAL: float = 0.11
 const DETACHED_VIEW_DIAMETER: int = 25
+const PARTY_MARKER_ASSET_ID: StringName = &"map.party_on_foot.right"
 
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2(0.0, 24.0)
@@ -21,10 +22,12 @@ var _party_rect: Rect2
 var _minimap_rect: Rect2
 var _held_direction: Vector2i = Vector2i.ZERO
 var _mouse_repeat_remaining: float = 0.0
+var _party_marker_texture: Texture2D
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	_party_marker_texture = ClassicUiAssetCatalog.texture(PARTY_MARKER_ASSET_ID)
 	set_process(true)
 
 
@@ -108,13 +111,20 @@ func _draw() -> void:
 			var facts := "%s%s%s" % ["M" if cell.passable else "X", "L" if cell.blocks_los else "", "R" if cell.in_random_region else ""]
 			draw_string(font, rect.position + Vector2(7, 17), facts, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.78, 0.82, 0.88))
 	_party_rect = Rect2(draw_origin + Vector2(map_view.party_coordinate - camera) * cell_size, Vector2.ONE * cell_size)
-	draw_circle(_party_rect.get_center(), 10.0, Color(0.92, 0.78, 0.34))
-	draw_circle(_party_rect.get_center(), 5.0, Color(0.17, 0.12, 0.06))
 	_draw_movement_cues(map_view, _party_rect)
+	_draw_party_marker(_party_rect)
 	draw_string(font, Vector2(8.0, 17.0), "%s • %s" % [map_view.map_name, String(map_view.level_type)], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.86, 0.75, 0.42))
 	var input_hint := "Click map • numpad / arrows / WASD" if map_view.level_type == &"land" else "Click map • arrows / WASD"
 	draw_string(font, Vector2(size.x - 258.0, 17.0), input_hint, HORIZONTAL_ALIGNMENT_RIGHT, 250.0, 12, Color(0.66, 0.69, 0.73))
 	_draw_minimap(map_view, font)
+
+
+func _draw_party_marker(party_rect: Rect2) -> void:
+	if _party_marker_texture != null:
+		draw_texture_rect(_party_marker_texture, party_rect, false)
+		return
+	draw_circle(party_rect.get_center(), 10.0, Color(0.92, 0.78, 0.34))
+	draw_circle(party_rect.get_center(), 5.0, Color(0.17, 0.12, 0.06))
 
 
 static func camera_top_left(party_coordinate: Vector2i, map_size: Vector2i, viewport_cells: Vector2i) -> Vector2i:

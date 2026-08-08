@@ -317,6 +317,32 @@
       }
     },
     {
+      "id": "map.party_on_foot.right",
+      "path": "res://src/presentation/assets/classic-controls/map/party-on-foot-right.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/Campaigns/War in the Sword Lands (Classic)/media/images/cicn-186-fafdea1fdffb.png",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "fafdea1fdffb18a7ee093fcda924b3fba7ad9cc18cc75031daf5972290457ddb",
+      "classification": "tracked-remake-cicn-preview",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle centerpict selects CICN 175 or 186 from horizontal facing and draws it over the party's native 32-pixel land cell; this preserved bitmap is CICN 186.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
       "id": "inventory.category.armor",
       "path": "res://src/presentation/assets/classic-controls/inventory/category-armor.png",
       "source_repository": "Realmz Remake",

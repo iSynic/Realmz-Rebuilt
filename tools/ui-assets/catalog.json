@@ -8,7 +8,8 @@
     "encounter": "src/scenes/UI/HUD/Special Encounter/encounter_control.tscn",
     "party": "src/scenes/UI/HUD/Characters Panel/CharacterSmallPanel.tscn",
     "torch": "src/scenes/UI/HUD/ClassicTorch/classic_torch_button.tscn",
-    "loot": "src/scenes/UI/HUD/Looting/treasure_control.tscn"
+    "loot": "src/scenes/UI/HUD/Looting/treasure_control.tscn",
+    "map_party": "src/realmz_orig/centerpict.c:198-238"
   },
   "assets": [
     {"id":"command.abilities","context":"hud","source_path":"src/scenes/UI/HUD/Button_Abilities.png","target_path":"commands/abilities.png"},
@@ -24,6 +25,7 @@
     {"id":"command.settings","context":"hud","source_path":"src/scenes/UI/HUD/Button_Settings.png","target_path":"commands/settings.png"},
     {"id":"command.spells","context":"hud","source_path":"src/scenes/UI/HUD/Button_Spells.png","target_path":"commands/spells.png"},
     {"id":"command.temple","context":"hud","source_path":"src/scenes/UI/HUD/Button_Temple.png","target_path":"commands/temple.png"},
+    {"id":"map.party_on_foot.right","context":"map_party","source_path":"src/Campaigns/War in the Sword Lands (Classic)/media/images/cicn-186-fafdea1fdffb.png","target_path":"map/party-on-foot-right.png","classification":"tracked-remake-cicn-preview","evidence_status":"source-control-flow","evidence_repository":"Realmz Castle Realmz","evidence_commit":"491816ad60037394f92c428e99c004494d3c28b3","evidence_note":"Castle centerpict selects CICN 175 or 186 from horizontal facing and draws it over the party's native 32-pixel land cell; this preserved bitmap is CICN 186."},
     {"id":"inventory.category.armor","context":"inventory","source_path":"src/scenes/UI/HUD/Inventory/ButtonBodyArmor.png","target_path":"inventory/category-armor.png"},
     {"id":"inventory.category.limb_armor","context":"inventory","source_path":"src/scenes/UI/HUD/Inventory/ButtonLimbArmor.png","target_path":"inventory/category-limb-armor.png"},
     {"id":"inventory.category.magic","context":"inventory","source_path":"src/scenes/UI/HUD/Inventory/ButtonMagic.png","target_path":"inventory/category-magic.png"},

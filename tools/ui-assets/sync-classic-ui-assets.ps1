@@ -21,10 +21,12 @@ $stagingRoot = Join-Path ([IO.Path]::GetTempPath()) ("realmz2-ui-assets-" + [Gui
 $archivePath = Join-Path $stagingRoot "source.zip"
 $extractRoot = Join-Path $stagingRoot "source"
 $outputRoot = Join-Path $stagingRoot "output"
-New-Item -ItemType Directory -Path $extractRoot, $outputRoot | Out-Null
+$sidecarRoot = Join-Path $stagingRoot "sidecars"
+New-Item -ItemType Directory -Path $extractRoot, $outputRoot, $sidecarRoot | Out-Null
 
 try {
-    & git -C $sourceRoot archive --format=zip --output=$archivePath $catalog.source_commit -- "src/scenes/UI/HUD"
+    $sourcePaths = @($catalog.assets | ForEach-Object { $_.source_path } | Sort-Object -Unique)
+    & git -C $sourceRoot archive --format=zip --output=$archivePath $catalog.source_commit -- @sourcePaths
     if ($LASTEXITCODE -ne 0) {
         throw "git archive failed"
     }
@@ -49,6 +51,20 @@ try {
         New-Item -ItemType Directory -Path (Split-Path -Parent $targetPath) -Force | Out-Null
         [IO.File]::WriteAllBytes($targetPath, $bytes)
         $sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
+        $classification = if ($entry.PSObject.Properties.Name -contains "classification") { $entry.classification } else { "tracked-remake-bitmap" }
+        $evidenceStatus = if ($entry.PSObject.Properties.Name -contains "evidence_status") { $entry.evidence_status } else { "remake-scene-use" }
+        $evidenceNote = if ($entry.PSObject.Properties.Name -contains "evidence_note") { $entry.evidence_note } else { "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed." }
+        $evidence = [ordered]@{
+            status = $evidenceStatus
+            path = $catalog.contexts.($entry.context)
+            note = $evidenceNote
+        }
+        if ($entry.PSObject.Properties.Name -contains "evidence_repository") {
+            $evidence["repository"] = $entry.evidence_repository
+        }
+        if ($entry.PSObject.Properties.Name -contains "evidence_commit") {
+            $evidence["commit"] = $entry.evidence_commit
+        }
         $records += [ordered]@{
             id = $entry.id
             path = "res://src/presentation/assets/classic-controls/$($entry.target_path)"
@@ -58,12 +74,8 @@ try {
             native_width = $width
             native_height = $height
             sha256 = $sha256
-            classification = "tracked-remake-bitmap"
-            classic_evidence = [ordered]@{
-                status = "remake-scene-use"
-                path = $catalog.contexts.($entry.context)
-                note = "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
-            }
+            classification = $classification
+            classic_evidence = $evidence
             rendering = [ordered]@{
                 filter = "nearest"
                 allowed_scales = @(1, 2)
@@ -88,10 +100,26 @@ try {
     }
 
     if (Test-Path -LiteralPath $destinationRoot) {
+        foreach ($sidecar in Get-ChildItem -LiteralPath $destinationRoot -Recurse -File -Filter "*.import") {
+            $relativePath = [IO.Path]::GetRelativePath($destinationRoot, $sidecar.FullName)
+            $stagedSidecar = Join-Path $sidecarRoot $relativePath
+            New-Item -ItemType Directory -Path (Split-Path -Parent $stagedSidecar) -Force | Out-Null
+            Copy-Item -LiteralPath $sidecar.FullName -Destination $stagedSidecar
+        }
         Remove-Item -LiteralPath $destinationRoot -Recurse -Force
     }
     New-Item -ItemType Directory -Path $destinationRoot | Out-Null
     Copy-Item -Path (Join-Path $outputRoot "*") -Destination $destinationRoot -Recurse -Force
+    foreach ($sidecar in Get-ChildItem -LiteralPath $sidecarRoot -Recurse -File -Filter "*.import") {
+        $relativePath = [IO.Path]::GetRelativePath($sidecarRoot, $sidecar.FullName)
+        $sourceAssetRelativePath = $relativePath.Substring(0, $relativePath.Length - ".import".Length)
+        if (-not (Test-Path -LiteralPath (Join-Path $destinationRoot $sourceAssetRelativePath) -PathType Leaf)) {
+            continue
+        }
+        $destinationSidecar = Join-Path $destinationRoot $relativePath
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destinationSidecar) -Force | Out-Null
+        Copy-Item -LiteralPath $sidecar.FullName -Destination $destinationSidecar
+    }
     Copy-Item -LiteralPath $stagedManifest -Destination $manifestPath -Force
     Write-Host "Imported $($records.Count) exact-commit Classic UI assets."
 }
