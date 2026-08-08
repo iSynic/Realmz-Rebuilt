@@ -28,21 +28,29 @@ func cells() -> Array[MapCell]:
 
 
 func probe_entry(coordinate: Vector2i, move_direction: Vector2i, world_state: WorldState) -> TopologyMoveResult:
+	var cell_probe := probe_land_entry(coordinate, world_state)
+	if not cell_probe.allowed:
+		return cell_probe
+	var cell := cell_probe.target_cell
+	var entry_direction_name := direction_name(move_direction)
+	if not is_cardinal_direction(move_direction):
+		return TopologyMoveResult.blocked(&"invalid_direction")
+	var edge := cell.edge(entry_direction_name)
+	if edge == null or not edge.passable:
+		return TopologyMoveResult.blocked(&"edge_blocked")
+	return TopologyMoveResult.permitted(cell, edge.door_id, edge.secret_id)
+
+
+func probe_land_entry(coordinate: Vector2i, world_state: WorldState) -> TopologyMoveResult:
 	var cell := cell_at(coordinate)
 	if cell == null:
 		return TopologyMoveResult.blocked(&"outside_map")
 	if not cell.passable:
 		return TopologyMoveResult.blocked(&"terrain_blocked")
-	var entry_direction_name := direction_name(move_direction)
-	if entry_direction_name.is_empty():
-		return TopologyMoveResult.blocked(&"invalid_direction")
-	var edge := cell.edge(entry_direction_name)
-	if edge == null or not edge.passable:
-		return TopologyMoveResult.blocked(&"edge_blocked")
 	var cell_secret := cell.feature_by_kind(&"secret")
 	if cell_secret != null and cell_secret.orientation.is_empty() and not world_state.secret_is_discovered(cell_secret.id, cell_secret.initial_state == &"revealed"):
 		return TopologyMoveResult.blocked(&"secret_hidden")
-	return TopologyMoveResult.permitted(cell, edge.door_id, edge.secret_id)
+	return TopologyMoveResult.permitted(cell)
 
 
 func has_line_of_sight(from: Vector2i, to: Vector2i, world_state: WorldState) -> bool:
@@ -114,8 +122,32 @@ static func direction_name(direction: Vector2i) -> StringName:
 			return &"south"
 		Vector2i.LEFT:
 			return &"west"
+		Vector2i(-1, -1):
+			return &"northwest"
+		Vector2i(1, -1):
+			return &"northeast"
+		Vector2i(-1, 1):
+			return &"southwest"
+		Vector2i(1, 1):
+			return &"southeast"
 		_:
 			return &""
+
+
+static func is_cardinal_direction(direction: Vector2i) -> bool:
+	return direction in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
+
+
+static func is_diagonal_direction(direction: Vector2i) -> bool:
+	return absi(direction.x) == 1 and absi(direction.y) == 1
+
+
+static func cardinal_directions() -> Array[Vector2i]:
+	return [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]
+
+
+static func land_directions() -> Array[Vector2i]:
+	return [Vector2i.UP, Vector2i(1, -1), Vector2i.RIGHT, Vector2i(1, 1), Vector2i.DOWN, Vector2i(-1, 1), Vector2i.LEFT, Vector2i(-1, -1)]
 
 
 static func _cell_blocks_los(cell: MapCell, world_state: WorldState) -> bool:

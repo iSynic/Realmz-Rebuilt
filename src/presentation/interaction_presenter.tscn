@@ -6,7 +6,6 @@
 unique_name_in_owner = true
 visible = false
 z_index = 40
-custom_minimum_size = Vector2(320, 280)
 theme_type_variation = &"ClassicInset"
 script = ExtResource("1_presenter")
 
@@ -19,13 +18,13 @@ follow_focus = true
 custom_minimum_size = Vector2(280, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 12
+theme_override_constants/separation = 6
 
 [node name="InteractionHeading" type="Label" parent="InteractionScroll/InteractionContent"]
 unique_name_in_owner = true
+visible = false
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
-text = "Classic Textbox"
 
 [node name="InteractionPrompt" type="Label" parent="InteractionScroll/InteractionContent"]
 unique_name_in_owner = true

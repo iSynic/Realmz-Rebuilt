@@ -112,7 +112,8 @@ func _draw() -> void:
 	draw_circle(_party_rect.get_center(), 5.0, Color(0.17, 0.12, 0.06))
 	_draw_movement_cues(map_view, _party_rect)
 	draw_string(font, Vector2(8.0, 17.0), "%s • %s" % [map_view.map_name, String(map_view.level_type)], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.86, 0.75, 0.42))
-	draw_string(font, Vector2(size.x - 238.0, 17.0), "Click map or use arrows / WASD", HORIZONTAL_ALIGNMENT_RIGHT, 230.0, 12, Color(0.66, 0.69, 0.73))
+	var input_hint := "Click map • numpad / arrows / WASD" if map_view.level_type == &"land" else "Click map • arrows / WASD"
+	draw_string(font, Vector2(size.x - 258.0, 17.0), input_hint, HORIZONTAL_ALIGNMENT_RIGHT, 250.0, 12, Color(0.66, 0.69, 0.73))
 	_draw_minimap(map_view, font)
 
 
@@ -280,9 +281,17 @@ func _draw_movement_cues(map_view: MapView, party_rect: Rect2) -> void:
 func _movement_direction_at(position: Vector2) -> Vector2i:
 	if _party_rect.size == Vector2.ZERO or _minimap_rect.has_point(position):
 		return Vector2i.ZERO
+	if _view != null and _view.map_view != null and _view.map_view.level_type == &"land":
+		return land_direction_at(position, _party_rect)
 	var offset := position - _party_rect.get_center()
 	if absf(offset.x) < cell_size * 0.35 and absf(offset.y) < cell_size * 0.35:
 		return Vector2i.ZERO
 	if absf(offset.x) > absf(offset.y):
 		return Vector2i.RIGHT if offset.x > 0.0 else Vector2i.LEFT
 	return Vector2i.DOWN if offset.y > 0.0 else Vector2i.UP
+
+
+static func land_direction_at(position: Vector2, party_rect: Rect2) -> Vector2i:
+	var horizontal := -1 if position.x < party_rect.position.x else 1 if position.x > party_rect.end.x else 0
+	var vertical := -1 if position.y < party_rect.position.y else 1 if position.y > party_rect.end.y else 0
+	return Vector2i(horizontal, vertical)

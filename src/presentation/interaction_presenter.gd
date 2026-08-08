@@ -20,14 +20,14 @@ func present(request: InteractionRequest, classic_text_context: String = "") -> 
 	_clear_options()
 	visible = request != null
 	if request == null:
-		_heading.text = "Classic Textbox"
+		_set_heading("")
 		_prompt.text = ""
 		return
-	_heading.text = _heading_for_kind(request.kind)
+	_set_heading(_heading_for_kind(request.kind))
 	_prompt.text = _prompt_for(request, classic_text_context)
 	_component = _component_for(request.kind)
 	if _component == null:
-		_heading.text = "Unsupported Interaction"
+		_set_heading("Unsupported Interaction")
 		_prompt.text = "Unsupported Realmz interaction: %s" % String(request.kind)
 		_add_hint("This package cannot continue because its interaction contract is unavailable.")
 		return
@@ -59,7 +59,7 @@ func present_passive_classic_text(text: String) -> void:
 	if _request != null:
 		return
 	_clear_options()
-	_heading.text = "Classic Textbox"
+	_set_heading("")
 	_prompt.text = text
 	_passive_text = not text.is_empty()
 	visible = not text.is_empty()
@@ -163,7 +163,7 @@ static func _prompt_for(request: InteractionRequest, classic_text_context: Strin
 static func _heading_for_kind(kind: StringName) -> String:
 	match kind:
 		&"acknowledge":
-			return "Classic Textbox"
+			return ""
 		&"yes_no":
 			return "Question"
 		&"encounter_choice", &"scenario_choice", &"complex_encounter":
@@ -179,6 +179,11 @@ static func _heading_for_kind(kind: StringName) -> String:
 		&"combat_action":
 			return "Battle"
 	return _title_for_kind(kind)
+
+
+func _set_heading(value: String) -> void:
+	_heading.text = value
+	_heading.visible = not value.is_empty()
 
 
 static func _first_focusable(parent: Node) -> Control:

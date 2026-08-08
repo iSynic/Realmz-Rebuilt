@@ -2,10 +2,14 @@ class_name UiInputActions
 extends RefCounted
 
 const DEFINITIONS: Array[Dictionary] = [
-	{"id": &"realmz_move_up", "keys": [KEY_UP, KEY_W]},
-	{"id": &"realmz_move_right", "keys": [KEY_RIGHT, KEY_D]},
-	{"id": &"realmz_move_down", "keys": [KEY_DOWN, KEY_S]},
-	{"id": &"realmz_move_left", "keys": [KEY_LEFT, KEY_A]},
+	{"id": &"realmz_move_up", "keys": [KEY_UP, KEY_W, KEY_KP_8]},
+	{"id": &"realmz_move_up_right", "keys": [KEY_KP_9]},
+	{"id": &"realmz_move_right", "keys": [KEY_RIGHT, KEY_D, KEY_KP_6]},
+	{"id": &"realmz_move_down_right", "keys": [KEY_KP_3]},
+	{"id": &"realmz_move_down", "keys": [KEY_DOWN, KEY_S, KEY_KP_2]},
+	{"id": &"realmz_move_down_left", "keys": [KEY_KP_1]},
+	{"id": &"realmz_move_left", "keys": [KEY_LEFT, KEY_A, KEY_KP_4]},
+	{"id": &"realmz_move_up_left", "keys": [KEY_KP_7]},
 	{"id": &"realmz_search", "keys": [KEY_F]},
 	{"id": &"realmz_camp", "keys": [KEY_C]},
 	{"id": &"realmz_back", "keys": [KEY_ESCAPE]},
@@ -32,3 +36,23 @@ static func ensure_defaults() -> void:
 			var event := InputEventKey.new()
 			event.physical_keycode = keycode
 			InputMap.action_add_event(action_id, event)
+
+
+static func movement_direction(event: InputEvent) -> Vector2i:
+	if event.is_action_pressed(&"realmz_move_up"):
+		return Vector2i.UP
+	if event.is_action_pressed(&"realmz_move_up_right"):
+		return Vector2i(1, -1)
+	if event.is_action_pressed(&"realmz_move_right"):
+		return Vector2i.RIGHT
+	if event.is_action_pressed(&"realmz_move_down_right"):
+		return Vector2i(1, 1)
+	if event.is_action_pressed(&"realmz_move_down"):
+		return Vector2i.DOWN
+	if event.is_action_pressed(&"realmz_move_down_left"):
+		return Vector2i(-1, 1)
+	if event.is_action_pressed(&"realmz_move_left"):
+		return Vector2i.LEFT
+	if event.is_action_pressed(&"realmz_move_up_left"):
+		return Vector2i(-1, -1)
+	return Vector2i.ZERO

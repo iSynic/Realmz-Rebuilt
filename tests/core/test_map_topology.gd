@@ -16,6 +16,8 @@ func run() -> void:
 	assert_equal(land.topology.probe_entry(hidden_cell.coordinate, Vector2i.LEFT, world_state).reason, &"secret_hidden", "hidden land secret blocks movement through topology")
 	world_state.discover_secret(hidden_feature.id)
 	assert_true(land.topology.probe_entry(hidden_cell.coordinate, Vector2i.LEFT, world_state).allowed, "discovery overlay changes the same topology query")
+	assert_true(land.topology.probe_land_entry(Vector2i.ZERO, world_state).allowed, "land entry checks the destination tile without inventing a diagonal edge")
+	assert_equal(land.topology.probe_entry(Vector2i.ZERO, Vector2i(-1, -1), world_state).reason, &"invalid_direction", "edge-based topology entry remains cardinal for dungeons and pathfinding")
 	assert_equal(land.topology.visible_cells(Vector2i(1, 1), 8, world_state, false).size(), 9, "non-LOS land view derives every visible cell from topology")
 
 	var dungeon := loaded.content.world.map_by_id("dungeon:0")

@@ -27,12 +27,13 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `RealmzRng` uses the documented QuickDraw 16807/mod-2147483647 state transition and Castle's inclusive scaling; raw scripted values are test-only branch controls.
 - Snapshots and restores detach typed state so callers cannot mutate an active session through a prior envelope.
 - `MapTopology` plus `WorldState` overlays is the only source for simulation map facts; movement, pathfinding, LOS, search, triggers, and views reuse its explicit cells, edges, and features.
+- Land travel accepts all eight adjacent destination cells and charges the destination tile's ordinary movement cost. Diagonals inspect destination terrain/secret state directly, matching Castle land movement; dungeon movement and edge/door/secret traversal remain cardinal.
 - A topology cell retains immutable presentation metadata for its base tileset/tile and optional special-land overlay asset. These facts pass through detached views but never become an alternate movement, LOS, or trigger model.
 - Random rectangles follow Castle's reverse region order, 1-in-10,000 chance scale, three ordered random-door draws, signed one-shot door state, surprise choice, and battle selection through the session RNG.
 - `GameView` and its map/cell views are detached read models for presentation and never expose mutable simulation objects.
 - Detached item/spell/monster views carry exact content icon IDs and resource types. Item views retain player-visible item type and icon while revealing identified names, descriptions, definition identity, and values only after simulation marks the instance identified.
 - `GameView` reports action availability as `enabled` plus an explicit reason. Presenters cannot infer availability from the existence of a control.
-- `MapView` carries a bounded 25×25 party-local cell projection, the complete visited-coordinate set needed by the minimap, and cardinal movement availability computed through the same topology probe as movement. It does not duplicate the full 90×90 map for every presentation revision.
+- `MapView` carries a bounded 25×25 party-local cell projection, the complete visited-coordinate set needed by the minimap, and movement availability computed through the same topology query as movement: eight directions on land and four in dungeons. It does not duplicate the full 90×90 map for every presentation revision.
 - Classic-visible Realmz behavior is the fixed ruleset. Fidelity corrections require a documented decision and source/oracle tests.
 - Campaign display metadata, restriction summaries, race/caste eligibility, and character-creation drafts are detached read models. They may explain a legal choice, but only `GameSession` and fixed Classic rules decide whether a character can enter a party.
 - Character vault imports arrive as detached validated state plus provenance. The active session clones the state; it never writes back to the vault implicitly.

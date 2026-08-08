@@ -9,6 +9,9 @@ func run() -> void:
 	assert_equal(map_presenter._movement_direction_at(Vector2(130, 80)), Vector2i.RIGHT, "map clicks to the right of the party request eastward movement")
 	assert_equal(map_presenter._movement_direction_at(Vector2(80, 20)), Vector2i.UP, "map clicks above the party request northward movement")
 	assert_equal(map_presenter._movement_direction_at(Vector2(80, 80)), Vector2i.ZERO, "clicking the party marker does not move")
+	assert_equal(ClassicMapPresenter.land_direction_at(Vector2(130, 20), map_presenter._party_rect), Vector2i(1, -1), "land clicks beyond both party-cell axes request northeast movement")
+	assert_equal(ClassicMapPresenter.land_direction_at(Vector2(20, 130), map_presenter._party_rect), Vector2i(-1, 1), "land clicks beyond both party-cell axes request southwest movement")
+	assert_equal(ClassicMapPresenter.land_direction_at(Vector2(80, 20), map_presenter._party_rect), Vector2i.UP, "land clicks aligned with the party column remain cardinal")
 	map_presenter.free()
 
 	assert_equal(ClassicMapPresenter.camera_top_left(Vector2i(48, 15), Vector2i(90, 90), Vector2i(16, 13)), Vector2i(40, 9), "native Classic cells center the AOGM start within the bounded map viewport")

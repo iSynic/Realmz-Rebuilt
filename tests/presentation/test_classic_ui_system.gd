@@ -5,6 +5,7 @@ func run() -> void:
 	_test_route_catalog()
 	_test_layout_profiles()
 	_test_settings_schema_and_migration()
+	_test_movement_input()
 	_test_safe_item_display()
 	_test_action_availability()
 	_test_fixture_gallery_coverage()
@@ -63,6 +64,32 @@ func _test_settings_schema_and_migration() -> void:
 	assert_not_null(version_two, "schema-two settings migrate")
 	assert_equal(version_two.ui_scale_mode, PresentationSettings.UI_SCALE_AUTO, "migrated settings default to automatic interface density")
 	assert_equal(version_two.window_mode, PresentationSettings.WINDOWED, "migrated settings retain windowed behavior")
+
+
+func _test_movement_input() -> void:
+	UiInputActions.ensure_defaults()
+	var expected: Dictionary = {
+		&"realmz_move_up": Vector2i.UP,
+		&"realmz_move_up_right": Vector2i(1, -1),
+		&"realmz_move_right": Vector2i.RIGHT,
+		&"realmz_move_down_right": Vector2i(1, 1),
+		&"realmz_move_down": Vector2i.DOWN,
+		&"realmz_move_down_left": Vector2i(-1, 1),
+		&"realmz_move_left": Vector2i.LEFT,
+		&"realmz_move_up_left": Vector2i(-1, -1),
+	}
+	for action: StringName in expected:
+		var event := InputEventAction.new()
+		event.action = action
+		event.pressed = true
+		assert_equal(UiInputActions.movement_direction(event), expected[action], "%s resolves to its complete movement vector" % action)
+	var keypad_bindings: Dictionary = {}
+	for definition: Dictionary in UiInputActions.DEFINITIONS:
+		keypad_bindings[definition["id"]] = definition["keys"]
+	assert_true(KEY_KP_7 in keypad_bindings[&"realmz_move_up_left"], "keypad 7 owns northwest land movement")
+	assert_true(KEY_KP_9 in keypad_bindings[&"realmz_move_up_right"], "keypad 9 owns northeast land movement")
+	assert_true(KEY_KP_1 in keypad_bindings[&"realmz_move_down_left"], "keypad 1 owns southwest land movement")
+	assert_true(KEY_KP_3 in keypad_bindings[&"realmz_move_down_right"], "keypad 3 owns southeast land movement")
 
 
 func _test_safe_item_display() -> void:
@@ -220,6 +247,12 @@ func _test_scene_composition() -> void:
 	assert_equal((bottom_region as PanelContainer).theme_type_variation, &"ClassicOpenRight", "the bottom narrative region also leaves the shared roster boundary open")
 	assert_not_null(shell.get_node("BottomRegion/BottomRow/NarrativeWell"), "the shell owns a Classic narrative well")
 	assert_not_null(shell.get_node("BottomRegion/BottomRow/CommandPanel"), "the shell owns a contextual command deck")
+	var picture_backing := shell.get_node("PictureStage/PictureBacking") as TextureRect
+	var picture_frame := shell.get_node("PictureStage/PictureFrame") as NinePatchRect
+	assert_equal(int(picture_backing.stretch_mode), TextureRect.STRETCH_TILE, "scenario-picture stone fills the complete overlay without stretching")
+	assert_equal(int(picture_backing.texture_repeat), CanvasItem.TEXTURE_REPEAT_ENABLED, "scenario-picture backing repeats seamlessly beneath transparent bevel pixels")
+	assert_false(picture_frame.draw_center, "the scenario-picture bevel is an overlay around the independently filled stone center")
+	assert_true(picture_frame.get_index() > shell.get_node("PictureStage/PictureMargin").get_index(), "the bevel draws over the filled picture surface without exposing the map between layers")
 	assert_equal(shell.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the structural shell cannot mask earlier root-level interaction controls")
 	assert_equal(router.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the full-window router cannot mask menus or sibling controls")
 	assert_true(router.get_index() > roster.get_index() and router.get_index() > bottom_region.get_index(), "modal router children are ordered above roster and textbox input regions")
@@ -235,6 +268,10 @@ func _test_scene_composition() -> void:
 	var application_scene := load("res://src/presentation/realmz_application.tscn") as PackedScene
 	var application := application_scene.instantiate() as Control
 	assert_true(application.get_node("InteractionPanel").get_index() > application.get_node("ClassicShell").get_index(), "AP and encounter presenter controls are ordered above the shell for mouse input")
+	var interaction := application.get_node("InteractionPanel") as InteractionPresenter
+	assert_equal(interaction.custom_minimum_size, Vector2.ZERO, "textbox interactions may shrink to the bottom-region rectangle instead of retaining a stage-modal minimum")
+	assert_equal(InteractionPresenter._heading_for_kind(&"acknowledge"), "", "ordinary narrative text does not label itself Classic Textbox")
+	assert_false((interaction.get_node("InteractionScroll/InteractionContent/InteractionHeading") as Label).visible, "the unused narrative heading consumes no textbox height")
 	application.free()
 	var texture_path := "res://src/presentation/assets/ui/classic-charcoal-slate.png"
 	assert_true(ResourceLoader.exists(texture_path, "Texture2D"), "the selected low-contrast stone texture imports as a Godot texture")

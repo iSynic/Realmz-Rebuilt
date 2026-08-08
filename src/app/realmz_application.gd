@@ -138,15 +138,7 @@ func _input(event: InputEvent) -> void:
 		_submit_intent(PlayerIntent.camp())
 		get_viewport().set_input_as_handled()
 		return
-	var direction := Vector2i.ZERO
-	if event.is_action_pressed(&"realmz_move_up"):
-		direction = Vector2i.UP
-	elif event.is_action_pressed(&"realmz_move_right"):
-		direction = Vector2i.RIGHT
-	elif event.is_action_pressed(&"realmz_move_down"):
-		direction = Vector2i.DOWN
-	elif event.is_action_pressed(&"realmz_move_left"):
-		direction = Vector2i.LEFT
+	var direction := UiInputActions.movement_direction(event)
 	if direction != Vector2i.ZERO:
 		_submit_movement(direction)
 		get_viewport().set_input_as_handled()
@@ -158,6 +150,9 @@ func _on_map_movement_requested(direction: Vector2i) -> void:
 
 func _submit_movement(direction: Vector2i) -> void:
 	if not _shell_presenter.accepts_exploration_input() or not session_controller.view().session_started or session_controller.view().pending_interaction != null:
+		return
+	var map_view := session_controller.view().map_view
+	if MapTopology.is_diagonal_direction(direction) and (map_view == null or map_view.level_type != &"land"):
 		return
 	_submit_intent(PlayerIntent.move(direction))
 

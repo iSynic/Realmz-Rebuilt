@@ -50,14 +50,4 @@ func movement_block_reason(direction: Vector2i) -> StringName:
 
 
 static func _direction_name(direction: Vector2i) -> StringName:
-	match direction:
-		Vector2i.UP:
-			return &"north"
-		Vector2i.RIGHT:
-			return &"east"
-		Vector2i.DOWN:
-			return &"south"
-		Vector2i.LEFT:
-			return &"west"
-		_:
-			return &""
+	return MapTopology.direction_name(direction)

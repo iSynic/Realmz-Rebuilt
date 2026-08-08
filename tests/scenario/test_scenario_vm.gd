@@ -688,9 +688,7 @@ func _test_classic_misc_branch(content: RealmzContent) -> void:
 func _test_classic_party_backup(content: RealmzContent) -> void:
 	var map := content.world.map_by_id(content.start_map_id)
 	var source := content.start_coordinate
-	var direction := Vector2i.RIGHT
-	if map.topology.cell_at(source - direction) == null:
-		direction = Vector2i.LEFT
+	var direction := Vector2i(-1, -1)
 	assert_not_null(map.topology.cell_at(source - direction), "party-backup fixture has a previous land cell")
 	if map.topology.cell_at(source - direction) == null:
 		return

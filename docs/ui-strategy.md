@@ -39,7 +39,7 @@ Services and Battle open from typed session context, not as ordinary global dest
 
 ## Screen composition
 
-- Explore leaves the native map as the dominant stage. Scenario pictures temporarily occupy the stage; narration and history remain in the bottom textbox.
+- Explore leaves the native map as the dominant stage. Scenario pictures temporarily occupy the stage on an opaque, natively tiled stone surface that reaches beneath the complete raised bevel; narration and history remain in the bottom narrative region.
 - Characters and Vault use compact stat/revision rows with portraits, equipment, saves, conditions, eligibility, and provenance when supplied.
 - Inventory uses visible CICNs, original category and verb controls, dense item rows, and a single scroll surface. Unidentified items preserve their visible icon while exposing only player-knowable identity and details.
 - Spells use original cast/abort and supporting strip art around known spells, costs, range/duration, target facts, and session-authorized casting.
@@ -54,10 +54,11 @@ Every route has its own scene-backed workspace registered in `UiRouteCatalog`. T
 ## Input, focus, and interaction
 
 - Mouse and keyboard have equivalent access. Named input actions own movement, search, camp, route shortcuts, activation, cancellation, and future device bindings.
+- Land maps use the complete eight-direction Classic compass: mouse regions derive horizontal and vertical movement independently, while keypad 7/9/1/3 supply diagonals and 8/6/2/4 supply cardinals. Dungeon movement remains cardinal through arrows, WASD, or keypad 8/6/2/4.
 - Focus is visible and restored per route. Opening an interaction focuses the first valid response.
 - Escape closes a stage picture or top interaction first, then returns through route history to Explore.
 - A pending request suppresses exploration and route mutation. `InteractionPresenter` preserves request ID and exact response payload.
-- Positive Classic messages use an explicit Continue response in the textbox region. Passive negative messages use the same narrative surface without fabricating a wait.
+- Positive Classic messages use an explicit Continue response in the narrative region without a redundant "Classic Textbox" title. The interaction surface honors the assigned bottom-region bounds instead of retaining a stage-dialog minimum. Passive negative messages use the same narrative surface without fabricating a wait.
 
 ## Package media and secrecy
 

@@ -296,7 +296,7 @@ static func from_data(data: Variant) -> GameState:
 			var last_x := _signed_integer(data.get("lastMoveX"))
 			var last_y := _signed_integer(data.get("lastMoveY"))
 			var last_direction := Vector2i(last_x, last_y)
-			if last_direction not in [Vector2i.ZERO, Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
+			if last_direction != Vector2i.ZERO and not MapTopology.is_cardinal_direction(last_direction) and not MapTopology.is_diagonal_direction(last_direction):
 				return null
 			state.last_move_direction = last_direction
 		if data.has("activeShopId") or data.has("shopAcceptRanges"):
