@@ -5,7 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$generatorVersion = "1.0.1"
+$generatorVersion = "1.0.2"
 $scriptDirectory = Split-Path -Parent $PSCommandPath
 $repoRoot = (Resolve-Path (Join-Path $scriptDirectory "..\..")).Path
 $outputRoot = Join-Path $repoRoot "docs\codemap"
@@ -84,6 +84,20 @@ function Get-WorkingTreeHasUncommittedChanges {
         return $true
     }
     return $false
+}
+
+function Test-CommitsHaveSameIndexedInputs {
+    param(
+        [string]$LeftCommit,
+        [string]$RightCommit,
+        [string[]]$Paths
+    )
+    if ([string]::IsNullOrWhiteSpace($LeftCommit) -or [string]::IsNullOrWhiteSpace($RightCommit)) { return $false }
+    $arguments = @("-C", $repoRoot, "diff", "--quiet", "--no-ext-diff", $LeftCommit, $RightCommit, "--") + $Paths
+    & git @arguments
+    if ($LASTEXITCODE -eq 0) { return $true }
+    if ($LASTEXITCODE -eq 1) { return $false }
+    throw "Unable to compare indexed inputs between commits '$LeftCommit' and '$RightCommit'."
 }
 
 function Get-CanonicalGeneratedAt {
@@ -496,6 +510,11 @@ function Test-WrittenArtifacts {
     $currentDirty = Get-WorkingTreeHasUncommittedChanges
     if ([bool]$lock.working_tree_has_uncommitted_changes -ne $currentDirty) { throw "Lock working-tree state is stale" }
     $inputPaths = Get-InputPaths
+    if ($currentDirty) {
+        if ($snapshotCommit -ne $currentCommit) { throw "Dirty source snapshot must name the current HEAD commit" }
+    } elseif (-not (Test-CommitsHaveSameIndexedInputs $snapshotCommit $currentCommit $inputPaths)) {
+        throw "Lock source snapshot commit does not contain the current indexed inputs"
+    }
     if ([string]$lock.input_fingerprint -ne (Get-InputFingerprint $inputPaths @{})) { throw "Lock input fingerprint is stale" }
     $computedModules = Get-ModuleFingerprints $inputPaths
     if ((Get-CanonicalJson $computedModules) -ne (Get-CanonicalJson $lock.module_fingerprints)) { throw "Lock module fingerprints are stale" }
@@ -589,8 +608,11 @@ foreach ($path in $inputPaths) {
     $fileByPath[$path] = $record
 }
 $inputFingerprint = Get-InputFingerprint $inputPaths $fileByPath
-if ($oldLock -and $oldLock.generator_version -eq $generatorVersion -and [string]$oldLock.input_fingerprint -eq $inputFingerprint) {
-    $commit = [string]$oldLock.current_commit
+if ($oldLock -and $oldLock.generator_version -eq $generatorVersion -and [string]$oldLock.input_fingerprint -eq $inputFingerprint -and -not $dirtyBefore) {
+    $oldSnapshotCommit = [string]$oldLock.current_commit
+    if (Test-CommitsHaveSameIndexedInputs $oldSnapshotCommit $commit $inputPaths) {
+        $commit = $oldSnapshotCommit
+    }
 }
 $effectiveGeneratedAt = Get-CanonicalGeneratedAt $GeneratedAt
 if ([string]::IsNullOrWhiteSpace($effectiveGeneratedAt) -and $oldLock -and $oldLock.input_fingerprint -eq $inputFingerprint -and $oldLock.generator_version -eq $generatorVersion) {
