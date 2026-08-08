@@ -12,6 +12,7 @@ func run() -> void:
 	_test_classic_choice_context()
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
+	_test_spatial_stage_visibility()
 	_test_scene_composition()
 
 
@@ -196,6 +197,14 @@ func _test_stone_surface_tiling() -> void:
 		if style is StyleBoxTexture:
 			assert_equal(int(style.axis_stretch_horizontal), 1, "stone stylebox centers tile horizontally")
 			assert_equal(int(style.axis_stretch_vertical), 1, "stone stylebox centers tile vertically")
+
+
+func _test_spatial_stage_visibility() -> void:
+	var active_view := GameView.new(1, true, null)
+	assert_true(PresentationCoordinator.should_show_spatial_stage(&"exploration", active_view, true), "the map may render only inside an active Explore play stage")
+	assert_false(PresentationCoordinator.should_show_spatial_stage(&"exploration", active_view, false), "full-stage campaign and party-setup overlays suppress the map beneath their shared-stone surface")
+	assert_false(PresentationCoordinator.should_show_spatial_stage(&"inventory", active_view, true), "non-Explore workspaces suppress spatial renderers")
+	assert_false(PresentationCoordinator.should_show_spatial_stage(&"exploration", GameView.new(0, false, null), true), "an inactive session cannot expose a stale map")
 
 
 func _test_scene_composition() -> void:

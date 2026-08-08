@@ -16,6 +16,7 @@ signal window_mode_changed(value: String)
 signal reduced_motion_changed(enabled: bool)
 signal layout_changed(workspace_rect: Rect2, profile: UiLayoutProfile)
 signal route_changed(route_id: StringName)
+signal play_stage_visibility_changed(visible: bool)
 
 const MUTED := Color("9aa4a5")
 const ERROR := Color("ef7770")
@@ -85,8 +86,7 @@ func present(game_view: GameView) -> void:
 		_fatigue_label.text = "Fatigue —"
 		_party_roster.present(game_view)
 		_router.present(game_view)
-		_stage_frame.visible = false
-		_bottom_region.visible = false
+		_set_play_regions_visible(false)
 		_update_command_availability()
 		return
 	if previous_campaign_id != game_view.campaign_id:
@@ -101,8 +101,7 @@ func present(game_view: GameView) -> void:
 	_party_roster.present(game_view, _selected_character_id)
 	_router.present(game_view)
 	var play_regions_visible := not _router.full_stage_overlay_visible()
-	_stage_frame.visible = play_regions_visible
-	_bottom_region.visible = play_regions_visible
+	_set_play_regions_visible(play_regions_visible)
 	if game_view.combat_view != null and _router.current_screen() == &"exploration":
 		_router.open_screen(&"combat")
 	elif game_view.pending_interaction != null and game_view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK] and _router.current_screen() == &"exploration":
@@ -178,8 +177,7 @@ func handle_back() -> bool:
 	var handled := _router.handle_back()
 	if handled:
 		var play_regions_visible := _current_view != null and _current_view.session_started and not _router.full_stage_overlay_visible()
-		_stage_frame.visible = play_regions_visible
-		_bottom_region.visible = play_regions_visible
+		_set_play_regions_visible(play_regions_visible)
 	return handled
 
 
@@ -206,8 +204,7 @@ func set_vault_records(records: Array[CharacterVaultRecord]) -> void:
 
 func show_campaign_selection() -> void:
 	_router.show_campaign_selection()
-	_stage_frame.visible = false
-	_bottom_region.visible = false
+	_set_play_regions_visible(false)
 
 
 func _apply_layout() -> void:
@@ -393,12 +390,17 @@ func _activate_command(command_id: StringName) -> void:
 
 
 func _on_screen_changed(screen_id: StringName) -> void:
-	var play_regions_visible := _current_view != null and _current_view.session_started
-	_stage_frame.visible = play_regions_visible
-	_bottom_region.visible = play_regions_visible
+	var play_regions_visible := _current_view != null and _current_view.session_started and not _router.full_stage_overlay_visible()
+	_set_play_regions_visible(play_regions_visible)
 	set_status(String(screen_id).replace("_", " ").capitalize())
 	_rebuild_command_deck()
 	route_changed.emit(screen_id)
+
+
+func _set_play_regions_visible(visible: bool) -> void:
+	_stage_frame.visible = visible
+	_bottom_region.visible = visible
+	play_stage_visibility_changed.emit(visible)
 
 
 func _on_system_action_requested(action_id: StringName, value: Variant) -> void:

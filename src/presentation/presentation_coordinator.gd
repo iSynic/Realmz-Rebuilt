@@ -9,6 +9,7 @@ var _shell_presenter: ClassicApplicationShell
 var _audio_presenter: ClassicAudioPresenter
 var _media: PackageMediaCatalog
 var _active_route: StringName = &"exploration"
+var _play_stage_visible := false
 
 
 func bind(session_controller: GameSessionController, map_presenter: ClassicMapPresenter, dungeon_presenter: DungeonMap3DPresenter, interaction_presenter: InteractionPresenter, shell_presenter: ClassicApplicationShell, audio_presenter: ClassicAudioPresenter) -> void:
@@ -25,6 +26,7 @@ func bind(session_controller: GameSessionController, map_presenter: ClassicMapPr
 	_shell_presenter = shell_presenter
 	_audio_presenter = audio_presenter
 	_session_controller.step_committed.connect(_on_step_committed)
+	_shell_presenter.play_stage_visibility_changed.connect(set_play_stage_visible)
 	_present_current_view()
 
 
@@ -54,6 +56,12 @@ func set_active_route(route_id: StringName) -> void:
 	_present_current_view()
 
 
+func set_play_stage_visible(visible: bool) -> void:
+	_play_stage_visible = visible
+	if _session_controller != null:
+		_update_spatial_visibility(_session_controller.view())
+
+
 func set_dungeon_3d_enabled(enabled: bool) -> void:
 	_dungeon_presenter.set_enabled(enabled)
 	_present_current_view()
@@ -63,12 +71,20 @@ func _present_current_view(include_interaction: bool = true) -> void:
 	var game_view := _session_controller.view()
 	_map_presenter.present(game_view)
 	_dungeon_presenter.present(game_view)
-	var exploration_visible := _active_route == &"exploration" and game_view != null and game_view.session_started
-	_map_presenter.visible = exploration_visible and not _dungeon_presenter.is_active()
-	_dungeon_presenter.visible = exploration_visible and _dungeon_presenter.is_active()
 	_shell_presenter.present(game_view)
+	_update_spatial_visibility(game_view)
 	if include_interaction:
 		_present_interaction(game_view)
+
+
+func _update_spatial_visibility(game_view: GameView) -> void:
+	var exploration_visible := should_show_spatial_stage(_active_route, game_view, _play_stage_visible)
+	_map_presenter.visible = exploration_visible and not _dungeon_presenter.is_active()
+	_dungeon_presenter.visible = exploration_visible and _dungeon_presenter.is_active()
+
+
+static func should_show_spatial_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
+	return active_route == &"exploration" and game_view != null and game_view.session_started and play_stage_visible
 
 
 func _present_interaction(game_view: GameView) -> void:
