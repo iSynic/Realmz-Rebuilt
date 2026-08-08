@@ -24,7 +24,8 @@ func _test_character_creation_and_leveling() -> void:
 	var rules := RealmzRules.new()
 	var race := _race()
 	var caste := _caste()
-	var created := rules.characters.create_character("character.hero", "Hero", race, caste, 1, ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0]))
+	var creation_rng := ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+	var created := rules.characters.create_character("character.hero", "Hero", race, caste, 1, creation_rng)
 	assert_not_null(created, "a valid race/caste pair constructs a direct Realmz character")
 	assert_equal([created.brawn, created.knowledge, created.judgment, created.agility, created.vitality, created.luck], [2, 1, 1, 1, 1, 1], "attribute rolls apply gender and min/max constraints in Castle order")
 	assert_equal(created.maximum_health, 1, "initial stamina uses the caste die")
@@ -34,6 +35,14 @@ func _test_character_creation_and_leveling() -> void:
 	assert_equal(created.age_days, 18 * 365, "age is rolled from the race range selected by caste")
 	assert_equal(created.inventory().size(), 1, "caste starting equipment becomes stable item instances")
 	assert_equal(rules.characters.strength_bonuses(30, 5).damage_bonus, 5, "caste strength caps brawn damage without changing hit bonus")
+	assert_equal(creation_rng.snapshot().draw_count, 12, "creation preserves Castle's discarded attribute and three special-bonus rolls")
+	var creation_trace := creation_rng.trace()
+	assert_equal([creation_trace[6]["tag"], creation_trace[7]["tag"], creation_trace[10]["tag"], creation_trace[11]["tag"]], ["character.create.attribute.discarded", "character.create.special-bonus.80.roll", "character.create.stamina", "character.create.age"], "creation trace exposes Castle's source-ordered random draws")
+
+	var special_rng := ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767, 32_767, 0, 0, 0, 0])
+	var specially_gifted := rules.characters.create_character("character.special", "Special", race, caste, 1, special_rng)
+	assert_equal(specially_gifted.special_value(7), 1, "each successful Castle creation bonus increments the randomly selected hit modifier")
+	assert_equal(special_rng.snapshot().draw_count, 13, "a successful creation bonus consumes its separate inclusive index draw")
 
 	var race_conditions := _ints_size(40, 0)
 	race_conditions[4] = 2
@@ -42,14 +51,23 @@ func _test_character_creation_and_leveling() -> void:
 	var caste_conditions := _ints_size(40, 0)
 	caste_conditions[5] = 1
 	caste_conditions[6] = 2
-	var defense_race := RaceDefinition.new("race.defense", 2, "Defense Race", _ints_size(8, 0), _ints([100, -200, 0, 0, 0, 0, 0, 100]), _ints_size(6, 0), _attribute_limits(), race_conditions, [Vector2i(18, 18)], 100)
+	var defense_race := RaceDefinition.new("race.defense", 2, "Defense Race", _ints_size(8, 0), _ints([100, -200, 0, 0, 0, 0, 0, 100]), _ints_size(6, 0), _attribute_limits(), race_conditions, [Vector2i(18, 18)], _age_changes(), 100)
 	var defense_caste := CasteDefinition.new("caste.defense", 2, "Defense Caste", _ints([100, 0, 0, 0, 0, 0, 0, 100]), _ints_size(6, 0), _attribute_limits(), caste_conditions, Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
-	var defended := rules.characters.create_character("character.defense", "Defender", defense_race, defense_caste, 1, ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0]))
+	var defended := rules.characters.create_character("character.defense", "Defender", defense_race, defense_caste, 1, ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
 	assert_equal([defended.save_value(0), defended.save_value(1), defended.save_value(7)], [120, -99, 120], "creation saves combine race and caste values within Castle's bounds")
 	assert_equal(defended.conditions.value(4), 2, "racial starting conditions retain their authored duration")
 	assert_equal(defended.conditions.value(5), -1, "caste condition level one replaces a racial value with a permanent condition")
 	assert_equal(defended.conditions.value(6), 0, "later caste condition thresholds do not become level-one conditions")
 	assert_equal(defended.conditions.value(10), -3, "negative racial starting conditions retain their authored strength")
+
+	var aging_changes := _age_changes()
+	aging_changes[0] = PackedInt32Array([1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7])
+	aging_changes[1] = PackedInt32Array([-1, -1, -1, -1, -1, -1, -7, -8, 10, 10, 10, 10, 10, 10, 10])
+	var aging_race := RaceDefinition.new("race.aging", 3, "Aging Race", _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), [Vector2i(18, 18), Vector2i(25, 25), Vector2i(35, 35), Vector2i(50, 50), Vector2i(70, 70)], aging_changes, 100, false, 10, 5)
+	var aged := rules.characters.create_character("character.aged", "Aged", aging_race, _caste(2), 1, ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+	assert_equal([aged.brawn, aged.knowledge, aged.judgment, aged.agility, aged.vitality, aged.luck], [2, 2, 3, 3, 5, 6], "creation cumulatively applies every race aging row through the caste minimum age group")
+	assert_equal([aged.save_value(0), aged.save_value(1), aged.save_value(2), aged.save_value(3), aged.save_value(4), aged.save_value(5), aged.save_value(6), aged.save_value(7)], [61, 62, 63, 64, 65, 66, 67, 50], "creation applies Castle age defenses to only the first seven saves")
+	assert_equal(aged.age_days, 25 * 365, "the caste minimum age group selects the matching race age range after aging modifiers")
 
 	created.vitality = 18
 	created.level = 1
@@ -226,12 +244,19 @@ func _test_combat_magic_and_monsters() -> void:
 
 func _race() -> RaceDefinition:
 	var ages: Array[Vector2i] = [Vector2i(18, 18), Vector2i(25, 25), Vector2i(35, 35), Vector2i(50, 50), Vector2i(70, 70)]
-	return RaceDefinition.new("race.test", 1, "Test Race", _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), ages, 100, false, 10, 5, 0, 0, 1, 3)
+	return RaceDefinition.new("race.test", 1, "Test Race", _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), ages, _age_changes(), 100, false, 10, 5, 0, 0, 1, 3)
 
 
-func _caste() -> CasteDefinition:
+func _caste(minimum_age_group: int = 1) -> CasteDefinition:
 	var spellcasters: Array[Vector3i] = []
-	return CasteDefinition.new("caste.test", 1, "Test Caste", _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), Vector2i(8, 8), Vector2i(10, 2), Vector2i(0, 1), Vector2i(2, 6), Vector2i(4, 1), spellcasters, _ints([2]), _strings(["item.start"]), 0, 1, 0, 1, 0, 3, 0, 3, 12, true, false, 0, 0, 0, Vector2i(0, 5))
+	return CasteDefinition.new("caste.test", 1, "Test Caste", _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), Vector2i(8, 8), Vector2i(10, 2), Vector2i(0, 1), Vector2i(2, 6), Vector2i(4, 1), spellcasters, _ints([2]), _strings(["item.start"]), 0, minimum_age_group, 0, 1, 0, 3, 0, 3, 12, true, false, 0, 0, 0, Vector2i(0, 5))
+
+
+func _age_changes() -> Array[PackedInt32Array]:
+	var result: Array[PackedInt32Array] = []
+	for index: int in 5:
+		result.append(PackedInt32Array(_ints_size(15, 0)))
+	return result
 
 
 func _monster_definition() -> MonsterDefinition:

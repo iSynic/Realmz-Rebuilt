@@ -42,6 +42,10 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 		rolled = clampi(rolled, caste.attribute_minimum(index), caste.attribute_maximum(index))
 		rolled = clampi(rolled, race.attribute_minimum(index), race.attribute_maximum(index))
 		attributes.append(rolled)
+	# Castle's seven-iteration loop aliases its final profile offset back to Luck,
+	# consumes the roll, and never assigns the value. The draw is observable in
+	# every later creation roll, so the deterministic session must retain it.
+	rng.draw_between(1, 18, &"character.create.attribute.discarded")
 	if gender == 2:
 		attributes[0] -= 1
 		attributes[3] += 1
@@ -49,8 +53,25 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 	else:
 		attributes[0] += 1
 		attributes[3] -= 1
+	var save_values: Array[int] = []
+	var special_values: Array[int] = []
+	for index: int in 8:
+		save_values.append(50 + race.save_bonus(index) + caste.save_bonus(index))
+		special_values.append(race.hit_modifier(index))
+	var age_group_count := clampi(caste.minimum_age_group, 1, 5)
+	for age_index: int in age_group_count:
+		var age_change := race.age_change(age_index)
+		for attribute_index: int in ATTRIBUTE_COUNT:
+			attributes[attribute_index] += age_change[attribute_index]
+		for save_index: int in 7:
+			save_values[save_index] += age_change[8 + save_index]
 	for index: int in ATTRIBUTE_COUNT:
-		attributes[index] = clampi(attributes[index], maxi(caste.attribute_minimum(index), race.attribute_minimum(index)), mini(caste.attribute_maximum(index), race.attribute_maximum(index)))
+		attributes[index] = clampi(attributes[index], caste.attribute_minimum(index), caste.attribute_maximum(index))
+		attributes[index] = clampi(attributes[index], race.attribute_minimum(index), race.attribute_maximum(index))
+	for threshold: int in [80, 90, 95]:
+		if rng.draw(100, StringName("character.create.special-bonus.%d.roll" % threshold)) > threshold:
+			var special_index := rng.draw_between(0, 7, StringName("character.create.special-bonus.%d.index" % threshold))
+			special_values[special_index] += 1
 	var vitality_bonus := maxi(0, attributes[4] - 16)
 	vitality_bonus = mini(vitality_bonus, caste.maximum_stamina_bonus)
 	var maximum_health := rng.draw(maxi(1, caste.initial_stamina_die()), &"character.create.stamina") + vitality_bonus
@@ -84,8 +105,8 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 	if selected_age_range.y >= selected_age_range.x and selected_age_range.y > 0:
 		result.age_days = rng.draw_between(selected_age_range.x, selected_age_range.y, &"character.create.age") * 365
 	for index: int in 8:
-		result.set_save_value(index, 50 + race.save_bonus(index) + caste.save_bonus(index))
-		result.set_special_value(index, race.hit_modifier(index))
+		result.set_save_value(index, save_values[index])
+		result.set_special_value(index, special_values[index])
 	for index: int in ConditionSet.CHARACTER_COUNT:
 		var starting_condition := race.condition_level(index)
 		if caste.condition_level(index) == 1:

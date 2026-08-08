@@ -25,9 +25,10 @@ var _attribute_bonuses: Array[int]
 var _attribute_limits: Array[int]
 var _condition_levels: Array[int]
 var _age_ranges: Array[Vector2i]
+var _age_changes: Array[PackedInt32Array]
 
 
-func _init(definition_id: String, native_id: int, display_name: String, hit_modifiers: Array[int], save_bonuses: Array[int], attribute_bonuses: Array[int], attribute_limits: Array[int], condition_levels: Array[int], age_ranges: Array[Vector2i], maximum_age: int = 0, immortal: bool = false, movement: int = 10, magic_resist: int = 0, two_hand: int = 0, missile: int = 0, attacks: int = 1, max_attacks: int = 1, regenerates: bool = false, icon_set: int = 0, item_mask_low: int = 0, item_mask_high: int = 0, descriptors: int = 0, display_description: String = "", allowed_castes: Array[String] = []) -> void:
+func _init(definition_id: String, native_id: int, display_name: String, hit_modifiers: Array[int], save_bonuses: Array[int], attribute_bonuses: Array[int], attribute_limits: Array[int], condition_levels: Array[int], age_ranges: Array[Vector2i], age_changes: Array[PackedInt32Array], maximum_age: int = 0, immortal: bool = false, movement: int = 10, magic_resist: int = 0, two_hand: int = 0, missile: int = 0, attacks: int = 1, max_attacks: int = 1, regenerates: bool = false, icon_set: int = 0, item_mask_low: int = 0, item_mask_high: int = 0, descriptors: int = 0, display_description: String = "", allowed_castes: Array[String] = []) -> void:
 	id = definition_id
 	classic_id = native_id
 	name = display_name
@@ -39,6 +40,7 @@ func _init(definition_id: String, native_id: int, display_name: String, hit_modi
 	_attribute_limits = attribute_limits.duplicate()
 	_condition_levels = condition_levels.duplicate()
 	_age_ranges = age_ranges.duplicate()
+	_age_changes = age_changes.duplicate(true)
 	max_age = maximum_age
 	does_not_die = immortal
 	base_movement = movement
@@ -80,6 +82,10 @@ func condition_level(index: int) -> int:
 
 func age_range(index: int) -> Vector2i:
 	return Vector2i.ZERO if index < 0 or index >= _age_ranges.size() else _age_ranges[index]
+
+
+func age_change(index: int) -> PackedInt32Array:
+	return PackedInt32Array() if index < 0 or index >= _age_changes.size() else _age_changes[index].duplicate()
 
 
 static func _at(values: Array[int], index: int, fallback: int = 0) -> int:

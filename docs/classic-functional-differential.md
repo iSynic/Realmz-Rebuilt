@@ -14,6 +14,9 @@ The machine-readable record is `tests/fixtures/oracle/classic-functional-differe
 | `interaction.classic-staged-presentation` | Aligned | The active textbox, picture, and response remain staged. Completed narrative may enter the Chronicle, but the Chronicle is not the interaction surface. |
 | `campaign.party-setup-commit` | Aligned | Campaign startup begins with an empty session-owned party. Add, vault import, remove, save, and restore remain in setup across revisions; only explicit Begin enters exploration. |
 | `character.creation-starting-defenses` | Aligned | Level-one creation combines race/caste saves within `-99…120`, copies racial conditions verbatim, and replaces caste condition-level `1` with permanent `-1`; later caste thresholds wait for level-up. |
+| `character.creation-aging-and-rng-order` | Aligned | Creation preserves Castle's discarded seventh attribute roll, cumulative race aging through the caste minimum group, first-seven-save adjustments, three special-bonus checks, and subsequent stamina/age/spell-point draw order. |
+
+Live day-by-day age-band transitions, maximum-age death or immortality, and age reversal are not covered by this creation-only case. They remain unresolved until their separate time-domain pass traces `age.c` through the session clock and persistence boundary.
 
 ## Rolling gate
 

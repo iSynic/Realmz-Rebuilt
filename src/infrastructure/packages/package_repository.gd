@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "d6ba21062f162dd453e898eab83cf52a36b524c3985742090db3253de4a69b6e"
+const EXPECTED_SCHEMA_HASH: String = "9d52599ed2d790d5264da5e67556b831aa66a3e1ccb79300864fe36877b4a33c"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -509,7 +509,7 @@ func _construct_races(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content races must be an array.")
 		return null
-	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleCasteIds", "hitModifiers", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "ageRanges", "maximumAge", "doesNotDie", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "canRegenerate", "defaultIconSet", "itemCategoryMasks", "descriptorFlags"]
+	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleCasteIds", "hitModifiers", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "ageRanges", "ageChanges", "maximumAge", "doesNotDie", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "canRegenerate", "defaultIconSet", "itemCategoryMasks", "descriptorFlags"]
 	var integer_fields: Array[String] = ["classicId", "maximumAge", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "defaultIconSet", "descriptorFlags"]
 	var result: Array[RaceDefinition] = []
 	var ids: Dictionary = {}
@@ -519,7 +519,7 @@ func _construct_races(value: Variant) -> Variant:
 			return null
 		var record: Dictionary = value_record
 		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Race definition")
-		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Race") or not record["name"] is String or not record["description"] is String or not record["eligibleCasteIds"] is Array or not record["doesNotDie"] is bool or not record["canRegenerate"] is bool or not record["ageRanges"] is Array or record["ageRanges"].size() != 5:
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Race") or not record["name"] is String or not record["description"] is String or not record["eligibleCasteIds"] is Array or not record["doesNotDie"] is bool or not record["canRegenerate"] is bool or not record["ageRanges"] is Array or record["ageRanges"].size() != 5 or not record["ageChanges"] is Array or record["ageChanges"].size() != 5:
 			_reject("Race definition is malformed or duplicated.")
 			return null
 		var hit_value: Variant = _integer_array(record["hitModifiers"], 8, "Race hit modifiers")
@@ -537,6 +537,13 @@ func _construct_races(value: Variant) -> Variant:
 				return null
 			var pair: Array[int] = pair_value
 			ages.append(Vector2i(pair[0], pair[1]))
+		var age_changes: Array[PackedInt32Array] = []
+		for row: Variant in record["ageChanges"]:
+			var changes_value: Variant = _integer_array(row, 15, "Race age change")
+			if changes_value == null:
+				return null
+			var changes: Array[int] = changes_value
+			age_changes.append(PackedInt32Array(changes))
 		var integers: Dictionary = integers_value
 		var masks: Array[int] = masks_value
 		var eligible_castes: Array[String] = []
@@ -545,7 +552,7 @@ func _construct_races(value: Variant) -> Variant:
 				_reject("Race eligibility IDs must be non-empty strings.")
 				return null
 			eligible_castes.append(caste_id)
-		result.append(RaceDefinition.new(record["id"], integers["classicId"], record["name"], hit_value, save_value, bonus_value, limits_value, conditions_value, ages, integers["maximumAge"], record["doesNotDie"], integers["baseMovement"], integers["magicResistance"], integers["twoHandBonus"], integers["missileBonus"], integers["baseAttacks"], integers["maximumAttacks"], record["canRegenerate"], integers["defaultIconSet"], masks[0], masks[1], integers["descriptorFlags"], record["description"], eligible_castes))
+		result.append(RaceDefinition.new(record["id"], integers["classicId"], record["name"], hit_value, save_value, bonus_value, limits_value, conditions_value, ages, age_changes, integers["maximumAge"], record["doesNotDie"], integers["baseMovement"], integers["magicResistance"], integers["twoHandBonus"], integers["missileBonus"], integers["baseAttacks"], integers["maximumAttacks"], record["canRegenerate"], integers["defaultIconSet"], masks[0], masks[1], integers["descriptorFlags"], record["description"], eligible_castes))
 	return result
 
 

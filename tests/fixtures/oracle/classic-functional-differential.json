@@ -4,7 +4,7 @@
     "castle": "491816ad60037394f92c428e99c004494d3c28b3",
     "remakeFunctional": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
     "remakeVm": "cdaa0d8dcc5ab81c195aa960c860bf74e7d4f40b",
-    "providence": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789"
+    "providence": "cad17d11bd8ec798d29bf5468ed8071019f32c1f"
   },
   "cases": [
     {
@@ -35,7 +35,7 @@
         "observation": "Land input sets both axes before one destination-tile movement check. Dungeon movement follows its separate cardinal edge path."
       },
       "providence": {
-        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn normalized_cell_topology" }
@@ -82,7 +82,7 @@
         "observation": "newland scans the fixed door table in order, selects the first coordinate match, and leaves the scan path after that selected record regardless of its chance result."
       },
       "providence": {
-        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" }
@@ -131,7 +131,7 @@
         "observation": "Castle selects exact resource type/ID pairs. Newly opened scenario forks lead the GetResource search chain, so scenario-local resources replace stock resources with the same exact key while equal IDs in other types remain unrelated."
       },
       "providence": {
-        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_assets" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn managed_replaces_catalog_resource" },
@@ -181,7 +181,7 @@
         "observation": "Castle performs presentation-producing actions in program order and blocks only at its explicit click or selection boundaries."
       },
       "providence": {
-        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
         ],
@@ -228,7 +228,7 @@
         "observation": "Castle repeatedly adds and drops selected character records inside partyselect. Item 34 is the distinct Done boundary; add or drop does not leave party selection."
       },
       "providence": {
-        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_campaign" }
         ],
@@ -274,7 +274,7 @@
         "observation": "NewCharacter initializes saves from the two authored bonus tables, copies race conditions first, overwrites only caste value one with -1, and later clamps saves below -99 or above 120."
       },
       "providence": {
-        "commit": "c1957c257dd4375e3a797ab02bd74fe4ea4a0789",
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
@@ -286,6 +286,54 @@
         "expectedTrace": ["roll attributes", "initialize bounded saves", "copy race conditions", "apply caste level-one permanent conditions", "defer higher thresholds"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_character_creation_and_leveling" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
+    },
+    {
+      "id": "character.creation-aging-and-rng-order",
+      "domain": "character-creation",
+      "claim": "Character creation consumes Castle's seventh discarded attribute roll, applies every race aging row through the caste minimum age group before final attribute bounds, adjusts only the first seven saves, performs the 80/90/95 special-bonus rolls, and then rolls stamina, age, and any spell points in source order.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake retains the age-table transformation for six attributes and the first seven saves. Its helper accepts six prepared attribute rolls, so it is useful transformation evidence but does not establish Castle's complete creation RNG sequence.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_character_rules.gd", "symbol": "static func apply_character_creation_attributes" },
+          { "path": "src/scripts/classic_runtime/classic_character_rules.gd", "symbol": "static func apply_character_creation_defenses" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_character_rule_profile" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/newcharacter.c", "symbol": "void NewCharacter(short level)" },
+          { "path": "src/realmz_orig/newcharacter.c", "symbol": "for (t = 0; t < 7; t++)" },
+          { "path": "src/realmz_orig/newcharacter.c", "symbol": "if (Rand(100) > 80)" },
+          { "path": "src/realmz_orig/newcharacter.c", "symbol": "characterl.staminamax = Rand(tempdice);" },
+          { "path": "src/realmz_orig/age.c", "symbol": "void applyage(short raceid, short agegroup, short direction)" },
+          { "path": "src/realmz_orig/structs.h", "symbol": "char agechange[5][15];" }
+        ],
+        "authoredInputs": ["Data Race agechange and agerange", "Data Caste minimumagegroup", "race/caste attribute limits", "race/caste defense bonuses"],
+        "observation": "NewCharacter's seven-iteration attribute loop consumes but does not assign its final roll. It applies age groups 1 through minimumagegroup, re-bounds the six attributes, performs three threshold rolls with conditional 0-through-7 special indices, then rolls stamina and age. applyage adjusts age-table columns 0 through 5 and saves 0 through 6; its creation-time magic-resistance and movement changes are overwritten by the later base formulas."
+      },
+      "providence": {
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" }
+        ],
+        "expectedRepresentation": "Each race contains exactly five signed ageChanges rows of fifteen values plus five ageRanges in content.json."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/character_rules.gd", "symbol": "func create_character" },
+        "expectedTrace": ["six assigned attribute rolls", "one discarded attribute roll", "gender adjustment", "cumulative age rows", "final bounds", "three threshold rolls and conditional indices", "stamina", "age", "optional spell points"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_character_creation_and_leveling" },
+          { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run" }
         ]
       },
       "decision": "aligned",

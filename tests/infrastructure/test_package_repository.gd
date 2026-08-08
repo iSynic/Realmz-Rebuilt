@@ -12,7 +12,7 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "dfbfac0b5ba331c457173e4a1e4bd773afe5884f4c1d2d1ae6e97b197f4ef7c1", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "9bf53e9b0b51973114dc53d933b02c916e3f8551a8276663f4354eca47cfa2e1", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -55,6 +55,7 @@ func run() -> void:
 	assert_not_null(loaded.content.scenario.action_by_id("scenario.realmz2-synthetic-fixture.after-encounter"), "compiled Scenario Actions become typed callable definitions")
 	assert_equal(loaded.content.item_by_id("classic.item.901").name, "Fixture Wand", "Providence item records become immutable runtime definitions")
 	assert_equal(loaded.content.race_by_id("classic.race.0").base_movement, 10, "race rules cross the compiler boundary as direct Realmz data")
+	assert_equal(loaded.content.race_by_id("classic.race.0").age_change(4).size(), 15, "the complete Castle race aging table crosses the validating package boundary")
 	assert_equal(loaded.content.caste_by_id("classic.caste.0").maximum_damage_bonus(), 5, "caste strength caps retain their source field meaning")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").attacks()[0].damage_max, 4, "monster attacks are typed instead of retained as native row dictionaries")
 	assert_equal(loaded.content.battle_by_id("classic.battle.0").monster_slots()[0].monster_id, "classic.monster.1", "battle placements reference stable monster IDs")

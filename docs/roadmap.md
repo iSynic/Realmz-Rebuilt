@@ -95,8 +95,18 @@ Implemented in this tranche:
 
 Still required for live visual acceptance and later gameplay completion:
 
-- Complete MCP `play_scene` keyboard/focus and live-campaign inspection; the current client did not expose Godot MCP Pro tools, so local real-renderer gallery evidence remains distinct.
+- Complete the full MCP keyboard/focus matrix. The official Godot MCP Pro 1.16.0 CLI now provides live-campaign evidence for package selection and startup, while the broader gallery remains synthetic evidence.
 - Inspect every interaction kind beside the Classic reference board; deterministic gallery coverage is broader than the currently reviewed representative frames.
 - Gameplay implementations for rewards, level-up, storage/treasure assignment, and tactical combat positions; their current controls remain explicitly unavailable.
 - Package media catalogs for portraits/combat icons and the remaining character review/spell choices.
 - Re-run the external AOGM ordinary-play route through the new shell; the committed gallery remains synthetic and is not live-campaign proof.
+
+## Current rolling fidelity pass — character-creation aging and RNG order (implemented)
+
+- Castle `NewCharacter` and `applyage` establish the creation sequence: six assigned attribute rolls, one consumed but discarded seventh roll, gender adjustment, cumulative race aging rows through the caste minimum age group, final attribute bounds, three 80/90/95 special-bonus rolls with conditional indices, stamina, age, and optional spell points. Creation-time aging changes only attributes 0–5 and saves 0–6; later formulas replace the age table's magic-resistance and movement changes.
+- Remake preserves the six-attribute and seven-save age transformation but does not establish the complete RNG sequence, so Castle controls the result. The machine ledger records this as `character.creation-aging-and-rng-order` with exact pinned symbols.
+- Providence commit `cad17d11bd8ec798d29bf5468ed8071019f32c1f` emits each race's exact 5×15 signed `ageChanges` table. The schema and runtime mirror hash is `9d52599ed2d790d5264da5e67556b831aa66a3e1ccb79300864fe36877b4a33c`; repeated synthetic exports are byte-identical.
+- The runtime independently validates and constructs those tables, applies the Castle sequence through session-owned `RealmzRng`, and covers no-bonus, conditional-bonus, cumulative-aging, save-boundary, and package-loader cases. The full gate passes 1,533 assertions across 11 suites plus architecture, export, schema, fixture-provenance, differential-evidence, and whitespace checks.
+- Local-only MCP evidence: Godot MCP Pro discovered the unfixed port, inspected the error-free editor and main scene, played the current package library, selected the current AOGM package through simulated mouse input, rendered the ordinary exploration shell with map, six-character party, narrative well, and command deck, captured a 960×600 frame, and stopped cleanly. The current local AOGM package hash is `85cf7adedd62052355bcd098648c0f050afeb0a383c5a06b0b8a09a73b02cab0`; it independently validates with nine maps and 119 media assets.
+
+Remaining fidelity boundary: this pass establishes creation-time aging only. Day-by-day aging, maximum-age behavior, and age reversal require their own rolling Castle comparison before implementation or certification.
