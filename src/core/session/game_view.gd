@@ -22,6 +22,7 @@ var campaign_summary: CampaignSummaryView
 var party_summary: PartySummaryView
 var journal_entries: Array[JournalEntryView] = []
 var services: Array[ServiceView] = []
+var action_availability: Dictionary = {}
 
 
 func _init(current_revision: int, started: bool, interaction: InteractionRequest, map_id: String = "", coordinate: Vector2i = Vector2i.ZERO, day: int = 0, hour: int = 0, current_map_view: MapView = null, members: Array[CharacterView] = [], fatigue: int = 0, gold: int = 0, current_combat: CombatView = null) -> void:
@@ -37,3 +38,14 @@ func _init(current_revision: int, started: bool, interaction: InteractionRequest
 	party_fatigue = fatigue
 	pooled_gold = gold
 	combat_view = current_combat
+
+
+func set_action_availability(action_id: StringName, enabled: bool, reason: String = "") -> void:
+	action_availability[action_id] = ActionAvailabilityView.new(action_id, enabled, reason)
+
+
+func availability(action_id: StringName) -> ActionAvailabilityView:
+	var value: Variant = action_availability.get(action_id)
+	if value is ActionAvailabilityView:
+		return value
+	return ActionAvailabilityView.new(action_id, false, "This action is unavailable in the current gameplay slice.")

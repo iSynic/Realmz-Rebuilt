@@ -23,6 +23,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - Direct ED3/XAP route checkpoints may name a compiled program explicitly; this proves that macro's ordinary VM behavior, not map reachability for an unplaced record.
 - Post-battle tests preserve Castle's distinction between consumed held-over allies and the subsequent `bodycount()` survivor selection; route defaults must use the request's source-backed preselection rather than silently retaining all friendlies.
 - Presentation tests compare 2D topology facts with the 3D geometry projection. Local MCP screenshots are visual evidence only and remain outside the repository.
+- The Classic UI fixture gallery covers every route and interaction kind in nominal, empty, loading, error, unavailable, and oversized states. It verifies profile boundaries, scale migration, safe hidden-item display, explicit availability, and request identity; screenshots remain local visual evidence.
 - Exploration integration tests require detached movement cues and minimap coordinates to agree with the same secret/door/world overlays used by simulation; presentation tests retain native 32-pixel land cells and typed click direction translation.
 - Scenario and exploration tests preserve opcode 1's signed textbox behavior: positive message IDs pause at a serializable acknowledgement request, negative IDs continue, and later AP/XAP actions cannot execute before acknowledgement.
 - War in the Sword Lands certification uses an external route, package, and report. Only package/route hashes, stage names, and resulting observations may enter documentation.
@@ -41,4 +42,5 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 
 ## Child DOX Index
 
-- No child AGENTS.md files are currently required; fixture subtrees inherit this contract.
+- `presentation/AGENTS.md` owns UI fixture/gallery coverage, responsive profile assertions, and local screenshot evidence boundaries.
+- Fixture subtrees otherwise inherit this contract.

@@ -21,6 +21,7 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 - Placed triggers must carry a valid `postActionLocation`; the loader rejects missing destination maps and coordinates outside the authoritative topology. Unplaced XAP programs carry no destination.
 - Standard and scenario spells use Castle's packed spell identity at the package boundary. The loader rejects duplicate packed IDs and unresolved cross-domain references before constructing content.
 - Imported Providence resource-catalog pictures, icons, sounds, Classic special-land `cicn` overlays, every map-referenced tileset, and source-backed shared Classic sounds referenced by reachable instructions are compiled as content-addressed package media. A runtime-ready managed or scenario asset with the same Classic resource identity replaces the shared-resource fallback.
+- Presentation media lookup matches normalized resource type plus numeric ID. It never falls back from CICN, ICON, or PICT to another type merely because the number matches.
 - Reject a package when a topology cell references a missing tileset or image overlay, when atlas dimensions disagree with its declared tile grid, or when tileset metadata is incomplete. JSON asset records stop at this boundary; presentation receives typed `PackageMediaAsset` values.
 - Save only at committed session boundaries. Save the whole aggregate, including VM and session interactions, post-move/random-region continuation, clock, overlays, action state, and RNG.
 - Saves may also contain a pending direct-session monster death macro; its battle, combatant, program, VM request, and RNG position validate as one continuation.
@@ -28,6 +29,7 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 - Restore failure leaves the current session untouched.
 - Save installation is temporary-write, typed readback, one-backup rotation, then same-volume rename; never expose a partially parsed envelope.
 - Infrastructure may use Godot filesystem APIs; core and scenario code may not.
+- Presentation settings schema 3 persists window mode and interface density independently from text scale, volume, reduced motion, topology diagnostics, and dungeon-view preference. Schemas 1 and 2 migrate without loss.
 - Packages requiring `realmz.scenario.gdscript-actions-v1` fail readiness until an OS-confined external host exists. No in-process or token-scanned GDScript fallback is permitted.
 - Release exports contain runtime resources plus Godot-generated export metadata only; local MCP configuration, addon code, tests, tools, docs, contract mirrors, and references are excluded.
 

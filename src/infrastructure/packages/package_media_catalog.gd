@@ -23,6 +23,16 @@ func asset_by_id(asset_id: String) -> PackageMediaAsset:
 	return null
 
 
+func asset_by_resource(resource_type: String, resource_id: int) -> PackageMediaAsset:
+	var normalized_type := resource_type.strip_edges().to_upper()
+	if normalized_type.is_empty() or resource_id == 0:
+		return null
+	for asset: PackageMediaAsset in _assets:
+		if asset.resource_id == resource_id and asset.resource_type.strip_edges().to_upper() == normalized_type:
+			return asset
+	return null
+
+
 func picture_by_resource_id(resource_id: int) -> PackageMediaAsset:
 	for asset: PackageMediaAsset in _assets:
 		if asset.resource_id == resource_id and asset.is_picture():

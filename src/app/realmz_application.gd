@@ -9,11 +9,11 @@ const CharacterVaultRepositoryScript := preload("res://src/infrastructure/charac
 const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
 const DungeonMap3DPresenterScript := preload("res://src/presentation/dungeon_map_3d_presenter.gd")
 
-@onready var _status_label: Label = $ClassicShell/TopBar/Status
+@onready var _status_label: Label = $ClassicShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $ClassicShell/SmokeAction
 @onready var _map_presenter: ClassicMapPresenter = %ExplorationMap
 @onready var _interaction_presenter: InteractionPresenter = %InteractionPanel
-@onready var _shell_presenter: ClassicShellPresenter = $ClassicShell
+@onready var _shell_presenter: ClassicApplicationShell = $ClassicShell
 @onready var _classic_shell: ClassicApplicationShell = $ClassicShell
 @onready var _audio_presenter: ClassicAudioPresenter = %ClassicAudio
 
@@ -29,6 +29,7 @@ var _dungeon_presenter: DungeonMap3DPresenter
 
 
 func _ready() -> void:
+	UiInputActions.ensure_defaults()
 	package_repository = PackageRepositoryScript.new()
 	save_repository = SaveRepositoryScript.new()
 	character_vault_repository = CharacterVaultRepositoryScript.new()
@@ -48,12 +49,20 @@ func _ready() -> void:
 	_shell_presenter.intent_submitted.connect(_submit_intent)
 	_shell_presenter.save_requested.connect(save_active_session)
 	_shell_presenter.load_requested.connect(load_active_session)
+	_shell_presenter.quit_requested.connect(_on_quit_requested)
 	_shell_presenter.topology_debug_changed.connect(_on_topology_debug_changed)
 	_shell_presenter.dungeon_3d_changed.connect(_on_dungeon_3d_changed)
 	_shell_presenter.master_volume_changed.connect(_on_master_volume_changed)
 	_shell_presenter.text_scale_changed.connect(_on_text_scale_changed)
+	_shell_presenter.ui_scale_mode_changed.connect(_on_ui_scale_mode_changed)
+	_shell_presenter.window_mode_changed.connect(_on_window_mode_changed)
 	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed)
+	_shell_presenter.layout_changed.connect(_on_shell_layout_changed)
+	_shell_presenter.route_changed.connect(presentation_coordinator.set_active_route)
 	_shell_presenter.apply_settings(_presentation_settings)
+	_apply_application_theme(_presentation_settings.text_scale)
+	_interaction_presenter.set_text_scale(_presentation_settings.text_scale)
+	_apply_window_mode(_presentation_settings.window_mode)
 	_audio_presenter.set_master_volume(_presentation_settings.master_volume)
 	_on_topology_debug_changed(_presentation_settings.topology_debug)
 	_on_dungeon_3d_changed(_presentation_settings.dungeon_3d)
@@ -73,6 +82,10 @@ func _on_smoke_action_pressed() -> void:
 	var roll: int = step.events[0].payload.get("roll", 0)
 	var current_view := session_controller.view()
 	_status_label.text = "Search committed • roll %d • day %d %02d:00" % [roll, current_view.realmz_day, current_view.realmz_hour]
+
+
+func _on_quit_requested() -> void:
+	get_tree().quit()
 
 
 func start_package(package_path: String, initial_seed: int) -> SessionStep:
@@ -98,22 +111,42 @@ func start_package(package_path: String, initial_seed: int) -> SessionStep:
 
 
 func _input(event: InputEvent) -> void:
-	if not event is InputEventKey or not event.is_pressed() or not session_controller.view().session_started:
+	if not event.is_pressed():
+		return
+	if event.is_action_pressed(&"realmz_back"):
+		if _interaction_presenter.has_blocking_request():
+			_shell_presenter.set_status("Choose a response before leaving this interaction.")
+			get_viewport().set_input_as_handled()
+			return
+		if _interaction_presenter.dismiss_passive_text() or _shell_presenter.handle_back():
+			get_viewport().set_input_as_handled()
+			return
+	if session_controller.view().pending_interaction != null:
+		return
+	if _shell_presenter.handle_route_shortcut(event):
+		get_viewport().set_input_as_handled()
+		return
+	if not session_controller.view().session_started:
 		return
 	if not _shell_presenter.accepts_exploration_input():
 		return
-	if session_controller.view().pending_interaction != null:
+	if event.is_action_pressed(&"realmz_search"):
+		_submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed(&"realmz_camp"):
+		_submit_intent(PlayerIntent.camp())
+		get_viewport().set_input_as_handled()
 		return
 	var direction := Vector2i.ZERO
-	match event.keycode:
-		KEY_UP, KEY_W:
-			direction = Vector2i.UP
-		KEY_RIGHT, KEY_D:
-			direction = Vector2i.RIGHT
-		KEY_DOWN, KEY_S:
-			direction = Vector2i.DOWN
-		KEY_LEFT, KEY_A:
-			direction = Vector2i.LEFT
+	if event.is_action_pressed(&"realmz_move_up"):
+		direction = Vector2i.UP
+	elif event.is_action_pressed(&"realmz_move_right"):
+		direction = Vector2i.RIGHT
+	elif event.is_action_pressed(&"realmz_move_down"):
+		direction = Vector2i.DOWN
+	elif event.is_action_pressed(&"realmz_move_left"):
+		direction = Vector2i.LEFT
 	if direction != Vector2i.ZERO:
 		_submit_movement(direction)
 		get_viewport().set_input_as_handled()
@@ -221,8 +254,47 @@ func _on_master_volume_changed(value: float) -> void:
 
 func _on_text_scale_changed(value: float) -> void:
 	_presentation_settings.text_scale = value
+	_apply_application_theme(value)
+	_interaction_presenter.set_text_scale(value)
 	_shell_presenter.apply_settings(_presentation_settings)
 	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_ui_scale_mode_changed(value: String) -> void:
+	_presentation_settings.ui_scale_mode = value
+	_shell_presenter.apply_settings(_presentation_settings)
+	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_window_mode_changed(value: String) -> void:
+	_presentation_settings.window_mode = value
+	_apply_window_mode(value)
+	settings_repository.save_settings(_presentation_settings)
+
+
+func _apply_window_mode(value: String) -> void:
+	var mode := DisplayServer.WINDOW_MODE_FULLSCREEN if value == PresentationSettings.BORDERLESS_FULLSCREEN else DisplayServer.WINDOW_MODE_WINDOWED
+	DisplayServer.window_set_mode(mode)
+
+
+func _apply_application_theme(text_scale: float) -> void:
+	var base_theme := load("res://src/presentation/classic_ui_theme.tres") as Theme
+	var application_theme := base_theme.duplicate(true) as Theme
+	application_theme.default_font_size = int(round(15.0 * text_scale))
+	theme = application_theme
+
+
+func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) -> void:
+	var inset := 8.0
+	var content_rect := workspace_rect.grow(-inset)
+	_map_presenter.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_map_presenter.position = content_rect.position
+	_map_presenter.size = content_rect.size
+	if _dungeon_presenter != null:
+		_dungeon_presenter.position = content_rect.position
+		_dungeon_presenter.size = content_rect.size
+	var textbox_rect := Rect2(6.0, workspace_rect.end.y + 6.0, workspace_rect.size.x - 12.0, _profile.bottom_height - 12.0)
+	_interaction_presenter.set_classic_regions(content_rect, textbox_rect)
 
 
 func _on_reduced_motion_changed(enabled: bool) -> void:

@@ -1,0 +1,26 @@
+# Purpose
+
+- Own deterministic tests and typed fixtures for presentation-only behavior.
+
+# Ownership
+
+- Responsive profile, route scenes, Classic shell composition, pointer hit-test ownership, asset/font provenance, focus/navigation, typed media collision, safe detached display, interaction identity, fixed maximized-map camera geometry, and 2D/3D projection tests.
+- `ClassicUiFixtureGallery` supplies nominal, empty, loading, error, unavailable, and oversized states for every route and interaction kind.
+- `capture_classic_ui_gallery.gd` writes representative local frames under ignored `artifacts/ui-gallery/`; it is visual evidence, not a golden-image test.
+
+# Local Contracts
+
+- Fixture facts are synthetic and cannot become gameplay or live-campaign evidence.
+- Local screenshots may prove visual layout only and remain under ignored artifact storage.
+- Test navigation must not mutate a session.
+
+# Work Guidance
+
+- Cover 800x600, 960x600, 1280x720, 1600x900, and 1920x1080 plus 100-150 percent text/interface combinations and 1x/2x original art.
+
+# Verification
+
+- Run `godot --headless --path . --script res://tests/test_runner.gd` and `tools/verify.ps1`.
+- Use MCP after `play_scene` to confirm mouse activation for campaign selection, AP Continue responses, and original-bitmap encounter actions; keyboard activation alone is insufficient pointer evidence.
+
+# Child DOX Index

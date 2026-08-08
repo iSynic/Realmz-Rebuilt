@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $presetPath = Join-Path $repoRoot "export_presets.cfg"
+$projectPath = Join-Path $repoRoot "project.godot"
 $addonConfigPath = Join-Path $repoRoot "addons\godot_mcp\plugin.cfg"
 $schemaPath = Join-Path $repoRoot "contracts\realmz2\realmz2-package.schema.json"
 $schemaHashPath = Join-Path $repoRoot "contracts\realmz2\realmz2-package.schema.sha256"
@@ -32,6 +33,15 @@ foreach ($expected in $expectedPresets.GetEnumerator()) {
             throw "Release preset $($expected.Key) must exclude $requiredExclusion"
         }
     }
+}
+
+$macOptions = [regex]::Match($preset, '(?ms)^\[preset\.2\.options\]\s*(.*?)(?=^\[preset\.\d+|\z)').Groups[1].Value
+if ($macOptions -notmatch '(?m)^binary_format/architecture="universal"$' -or $macOptions -notmatch '(?m)^texture_format/etc2_astc=true$') {
+    throw "The universal macOS release preset must enable ETC2/ASTC texture import."
+}
+$projectSettings = Get-Content -Raw -LiteralPath $projectPath
+if ($projectSettings -notmatch '(?m)^textures/vram_compression/import_etc2_astc=true$') {
+    throw "The project must import ETC2/ASTC textures for universal macOS export."
 }
 
 Write-Host "Windows, Linux, and macOS release export contracts verified."

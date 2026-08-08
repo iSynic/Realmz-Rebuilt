@@ -17,6 +17,8 @@ Own the Godot composition root and translate host input/output into the pure ses
 - The controller may call only the public `GameSession` operations.
 - Interaction UI responses enter through `GameSession.respond`; presenters never resume the VM or mutate state themselves.
 - Restore constructs and validates a replacement before swapping the active session.
+- Named `InputMap` actions are the host input boundary. Back resolves blocking/passive modals, contextual drawers, and route history before returning to exploration; pending interactions suppress route and exploration input.
+- The application applies window mode and presentation scales, but those settings never enter the session or save aggregate.
 
 ## Work Guidance
 

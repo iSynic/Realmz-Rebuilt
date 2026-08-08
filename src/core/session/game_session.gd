@@ -186,7 +186,31 @@ func view() -> GameView:
 		result.race_options.append(DefinitionOptionView.new(race.id, race.name, race.description, race.eligible_caste_ids))
 	for caste: CasteDefinition in _content.caste_definitions():
 		result.caste_options.append(DefinitionOptionView.new(caste.id, caste.name, caste.description, caste.eligible_race_ids))
+	_populate_action_availability(result)
 	return result
+
+
+func _populate_action_availability(result: GameView) -> void:
+	var blocked_by_interaction := result.pending_interaction != null
+	var party_setup := result.party_setup_available
+	var battle_active := result.combat_view != null and result.combat_view.outcome == &""
+	var ordinary_reason := "Resolve the current interaction first." if blocked_by_interaction else "Complete party setup first." if party_setup else ""
+	result.set_action_availability(&"move", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Movement is unavailable during battle." if battle_active else "")
+	result.set_action_availability(&"search", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Search is unavailable during battle." if battle_active else "")
+	result.set_action_availability(&"camp", ordinary_reason.is_empty() and not battle_active and _state.camping_allowed, ordinary_reason if not ordinary_reason.is_empty() else "Camping is unavailable during battle." if battle_active else "Camping is unavailable here." if not _state.camping_allowed else "")
+	result.set_action_availability(&"use_item", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Use the battle action flow during combat." if battle_active else "")
+	result.set_action_availability(&"cast_spell", ordinary_reason.is_empty(), ordinary_reason)
+	result.set_action_availability(&"choose_combat_action", battle_active and not blocked_by_interaction, "No battle action is currently available." if not battle_active else "Resolve the current interaction first." if blocked_by_interaction else "")
+	result.set_action_availability(&"create_party", party_setup and not blocked_by_interaction, "Resolve the current interaction first." if blocked_by_interaction else "Party creation is available only before beginning a campaign." if not party_setup else "")
+	result.set_action_availability(&"begin_adventure", party_setup and not blocked_by_interaction, "Resolve the current interaction first." if blocked_by_interaction else "The adventure has already begun." if not party_setup else "")
+	result.set_action_availability(&"import_vault_character", party_setup and not blocked_by_interaction, "Resolve the current interaction first." if blocked_by_interaction else "Vault imports are available only during party setup." if not party_setup else "")
+	for action_id: StringName in [
+		&"finalize_character", &"remove_party_member", &"equip_item", &"unequip_item", &"use_item_on_target",
+		&"drop_item", &"identify_item", &"split_item", &"join_item", &"trade_item", &"store_item",
+		&"money_action", &"service_action", &"select_spell_power", &"select_spell_target", &"combat_move",
+		&"loot_assignment", &"treasure_complete", &"level_up", &"open_journal", &"open_maps",
+	]:
+		result.set_action_availability(action_id, false, "Not implemented in the current gameplay slice.")
 
 
 func snapshot() -> SaveEnvelope:

@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted; implementation in progress.
+Accepted and implemented. ADR 0010 specifies the final responsive visual/scaling system.
 
 ## Context
 
@@ -12,9 +12,9 @@ Castle is the behavioral and workflow oracle. Existing Remake scenes and assets 
 
 ## Decision
 
-Use a scene-backed `ClassicApplicationShell` with a presentation-owned `ClassicScreenRouter` and `InteractionLayer`. Presenters consume detached `GameView` read models and emit typed intents or request-matched responses. Presentation selection, focus, tabs, scrolling, animation, audio, and gallery state never enter `GameSession`.
+Use a scene-backed `ClassicApplicationShell` with a presentation-owned `ClassicScreenRouter` and `InteractionPresenter`. Presenters consume detached `GameView` read models and emit typed intents or request-matched responses. Presentation selection, focus, menus, scrolling, animation, audio, and gallery state never enter `GameSession`.
 
-The shell preserves Classic information hierarchy and pacing while using responsive containers, keyboard focus, explicit disabled reasons, and accessibility settings. A typed-fixture gallery is the first screen-completeness gate. The old procedural shell remains as a route-comparison donor until the new shell can execute the same certified paths, then it is removed rather than exposed as a second user-facing mode.
+The shell preserves Classic information hierarchy and pacing while using responsive containers, keyboard focus, explicit disabled reasons, and accessibility settings. A typed-fixture gallery is the first screen-completeness gate. The old procedural shell was removed after route parity rather than exposed as a second user-facing mode.
 
 ## Consequences
 

@@ -5,6 +5,7 @@ signal movement_requested(direction: Vector2i)
 
 const MOUSE_REPEAT_DELAY: float = 0.28
 const MOUSE_REPEAT_INTERVAL: float = 0.11
+const DETACHED_VIEW_DIAMETER: int = 25
 
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2(0.0, 24.0)
@@ -86,16 +87,14 @@ func _draw() -> void:
 		return
 	var map_view := _view.map_view
 	var font := ThemeDB.fallback_font
-	var viewport_cells := Vector2i(
-		maxi(1, floori(size.x / cell_size)),
-		maxi(1, floori((size.y - map_origin.y) / cell_size))
-	)
+	var viewport_cells := viewport_cells_for(size, map_origin.y, cell_size)
+	var draw_origin := map_draw_origin_for(size, map_origin, cell_size, viewport_cells)
 	var camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_cells)
 	var camera_end := camera + viewport_cells
 	for cell: MapCellView in map_view.cells():
 		if cell.coordinate.x < camera.x or cell.coordinate.y < camera.y or cell.coordinate.x >= camera_end.x or cell.coordinate.y >= camera_end.y:
 			continue
-		var rect := Rect2(map_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
+		var rect := Rect2(draw_origin + Vector2(cell.coordinate - camera) * cell_size, Vector2.ONE * cell_size)
 		_draw_cell(cell, rect, map_view.level_type, map_view.dark)
 		if show_debug_facts:
 			draw_rect(rect, Color(0.22, 0.25, 0.30), false, 1.0)
@@ -108,7 +107,7 @@ func _draw() -> void:
 				draw_rect(rect.grow(-4.0), Color(0.48, 0.29, 0.58, 0.9), false, 2.0)
 			var facts := "%s%s%s" % ["M" if cell.passable else "X", "L" if cell.blocks_los else "", "R" if cell.in_random_region else ""]
 			draw_string(font, rect.position + Vector2(7, 17), facts, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.78, 0.82, 0.88))
-	_party_rect = Rect2(map_origin + Vector2(map_view.party_coordinate - camera) * cell_size, Vector2.ONE * cell_size)
+	_party_rect = Rect2(draw_origin + Vector2(map_view.party_coordinate - camera) * cell_size, Vector2.ONE * cell_size)
 	draw_circle(_party_rect.get_center(), 10.0, Color(0.92, 0.78, 0.34))
 	draw_circle(_party_rect.get_center(), 5.0, Color(0.17, 0.12, 0.06))
 	_draw_movement_cues(map_view, _party_rect)
@@ -122,6 +121,22 @@ static func camera_top_left(party_coordinate: Vector2i, map_size: Vector2i, view
 	return Vector2i(
 		clampi(party_coordinate.x - viewport_cells.x / 2, 0, maximum.x),
 		clampi(party_coordinate.y - viewport_cells.y / 2, 0, maximum.y)
+	)
+
+
+static func viewport_cells_for(control_size: Vector2, header_height: float, native_cell_size: float) -> Vector2i:
+	return Vector2i(
+		mini(DETACHED_VIEW_DIAMETER, maxi(1, floori(control_size.x / native_cell_size))),
+		mini(DETACHED_VIEW_DIAMETER, maxi(1, floori((control_size.y - header_height) / native_cell_size)))
+	)
+
+
+static func map_draw_origin_for(control_size: Vector2, minimum_origin: Vector2, native_cell_size: float, viewport_cells: Vector2i) -> Vector2:
+	var map_pixel_size := Vector2(viewport_cells) * native_cell_size
+	var available_height := maxf(control_size.y - minimum_origin.y, 0.0)
+	return Vector2(
+		maxf(minimum_origin.x, floorf((control_size.x - map_pixel_size.x) * 0.5)),
+		minimum_origin.y + maxf(0.0, floorf((available_height - map_pixel_size.y) * 0.5))
 	)
 
 

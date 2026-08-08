@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="PackedScene" path="res://src/presentation/screens/classic_route_screen.tscn" id="1_base"]
+[node name="JournalScreen" instance=ExtResource("1_base")]
+route_id = &"journal"
+title = "Maps / Notes"
+description = "Acquired maps, scenario notes, and player-facing history."

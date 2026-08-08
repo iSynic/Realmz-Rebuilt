@@ -5,7 +5,7 @@
 - Godot 4.7.1 stable, typed GDScript runtime.
 - PowerShell for local automation.
 - Godot MCP Pro addon 1.16.0 from the vendored `addons/godot_mcp` directory.
-- The Godot MCP Pro Node server kept externally (currently maintained at `F:\Godot MCP Pro\server` on the primary development machine).
+- The Godot MCP Pro Node server kept externally; configure its machine-specific absolute path through the untracked MCP configuration.
 
 The project-local `.mcp.json` contains machine-specific absolute paths and stays untracked. Do not set a fixed WebSocket port; use automatic discovery.
 
@@ -22,6 +22,14 @@ The repository also maintains an offline source-intelligence snapshot under docs
 ```
 
 The aggregate gate imports the project headlessly, validates all scripts, runs typed GDScript tests, checks forbidden core dependencies, verifies the mirrored schema and synthetic package hashes/provenance, and runs `git diff --check`.
+
+## UI verification
+
+The canonical UI contract is `docs/ui-strategy.md`. `tests/presentation/classic_ui_fixture_gallery.gd` supplies nominal, empty, loading, error, unavailable, and oversized cases for all routes and interaction kinds. Verify 800x600, 960x600, 1280x720, 1600x900, and 1920x1080, then repeat dense screens with 150 percent text and each explicit interface density. Check map dominance, roster visibility, textbox/action reachability, menu overflow, wrapping, scroll reachability, focus order/restoration, Back order, exact 1x/2x control art, and that a pending interaction blocks both map and route input.
+
+Content images must be inspected with nearest-neighbor filtering. Missing media must show its neutral diagnostic fallback rather than a guessed file. Item checks must include unidentified content to prove that identified names, descriptions, values, and curse relationships remain hidden.
+
+The committed Classic control corpus is reproducible from the tracked donor commit with `./tools/ui-assets/sync-classic-ui-assets.ps1 -SourceRepository <clean-remake-checkout>`. The importer reads Git object data, not donor working files. `./tools/ui-assets/sync-fonts.ps1` downloads the pinned OFL font bytes. `build-classic-surfaces.ps1` derives the committed slate kit from the selected SpriteCook source image. Normal verification is offline and validates committed hashes; it does not rerun network or donor imports.
 
 ## Godot MCP Pro workflow
 
@@ -41,7 +49,7 @@ Runtime operations before `play_scene` are invalid. Use CLI discovery with `node
 
 Do not run the headless verification lane while a live MCP editor session is open. MCP Pro injects editor-only autoloads and removes them when an editor process exits; serializing these lanes prevents a headless process from removing the live editor's runtime inspector settings. The MCP scene-save command can also emit Godot progress-dialog errors while handling its deferred request; restart the editor before the final clean error inspection after MCP-authored scene changes.
 
-Release presets exclude `addons/godot_mcp`, `.mcp.json`, tests, tools, docs, contract mirrors, local artifacts, and ignored reference worktrees. `tools/verify_export_contract.ps1` enforces those exclusions; Godot's generated export metadata remains part of a valid pack.
+Release presets exclude `addons/godot_mcp`, `.mcp.json`, tests, tools, docs, contract mirrors, local artifacts, and ignored reference worktrees. `tools/verify_export_contract.ps1` enforces those exclusions and the ETC2/ASTC import required by the universal macOS preset; Godot's generated export metadata remains part of a valid pack.
 
 The repository defines `Windows Desktop`, `Linux`, and `macOS` release presets. CI runs the same import, typed test, architecture, contract, and export gates on native runners; a configured matrix is not cross-platform evidence until those jobs pass.
 

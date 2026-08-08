@@ -109,6 +109,12 @@ func run() -> void:
 	var picture := PackageMediaAsset.new("fixture.picture", "Fixture", "picture", "image/png", "PICT", 128, 0, "0000000000000000000000000000000000000000000000000000000000000000", "assets/media/0000000000000000000000000000000000000000000000000000000000000000.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
 	assert_true(picture.is_picture(), "package media classifies pictures by typed MIME and resource identity")
 	assert_false(picture.is_sound(), "picture media cannot be selected by the sound presenter")
+	var icon := PackageMediaAsset.new("fixture.icon", "Fixture Icon", "icon", "image/png", "CICN", 128, 0, "1111111111111111111111111111111111111111111111111111111111111111", "assets/media/1111111111111111111111111111111111111111111111111111111111111111.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
+	var colliding_assets: Array[PackageMediaAsset] = [picture, icon]
+	var colliding_catalog := PackageMediaCatalog.new("", "", colliding_assets)
+	assert_equal(colliding_catalog.asset_by_resource("PICT", 128), picture, "exact PICT lookup cannot collide with CICN identity")
+	assert_equal(colliding_catalog.asset_by_resource("cicn", 128), icon, "exact CICN lookup is normalized and collision-free")
+	assert_true(colliding_catalog.asset_by_resource("ICON", 128) == null, "unavailable resource types do not fall back by numeric ID")
 
 	var settings_path := "user://realmz2-tests/presentation-settings.json"
 	var settings_repository := SettingsRepository.new(settings_path)
@@ -118,6 +124,8 @@ func run() -> void:
 	settings.text_scale = 1.2
 	settings.reduced_motion = true
 	settings.dungeon_3d = true
+	settings.ui_scale_mode = PresentationSettings.UI_SCALE_125
+	settings.window_mode = PresentationSettings.BORDERLESS_FULLSCREEN
 	assert_true(settings.to_data()["dungeon3d"] is bool, "dungeon presentation setting serializes as a JSON-safe boolean")
 	assert_not_null(PresentationSettings.from_data(settings.to_data()), "current presentation settings round-trip before filesystem persistence")
 	var parsed_settings_data: Dictionary = JSON.parse_string(CanonicalJson.encode(settings.to_data()))
@@ -129,9 +137,13 @@ func run() -> void:
 	assert_equal(restored_settings.text_scale, 1.2, "accessibility text scale persists")
 	assert_true(restored_settings.reduced_motion, "reduced cosmetic motion persists")
 	assert_true(restored_settings.dungeon_3d, "topology-derived dungeon presentation preference persists")
+	assert_equal(restored_settings.ui_scale_mode, PresentationSettings.UI_SCALE_125, "interface density persists independently of text scale")
+	assert_equal(restored_settings.window_mode, PresentationSettings.BORDERLESS_FULLSCREEN, "window mode persists outside gameplay state")
 	var legacy_settings := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 1, "masterVolume": 1.0, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false})
 	assert_not_null(legacy_settings, "version-one presentation settings migrate without entering gameplay state")
 	assert_false(legacy_settings.dungeon_3d, "migrated presentation settings default the optional 3D view off")
+	assert_equal(legacy_settings.ui_scale_mode, PresentationSettings.UI_SCALE_AUTO, "legacy settings migrate to automatic interface density")
+	assert_equal(legacy_settings.window_mode, PresentationSettings.WINDOWED, "legacy settings migrate to windowed mode")
 
 	var rejected := repository.load_package(TAMPERED_FIXTURE_PATH)
 	assert_false(rejected.is_ok(), "a content mutation without matching manifest hashes is rejected")

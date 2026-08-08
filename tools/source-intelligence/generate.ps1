@@ -5,7 +5,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$generatorVersion = "1.0.0"
+$generatorVersion = "1.0.1"
 $scriptDirectory = Split-Path -Parent $PSCommandPath
 $repoRoot = (Resolve-Path (Join-Path $scriptDirectory "..\..")).Path
 $outputRoot = Join-Path $repoRoot "docs\codemap"
@@ -47,7 +47,11 @@ function Test-IndexedPath {
 
 function Get-InputPaths {
     $listed = @(git -C $repoRoot ls-files --cached --others --exclude-standard)
-    return @($listed | ForEach-Object { ($_ -replace "\\", "/").Trim() } | Where-Object { Test-IndexedPath $_ } | Sort-Object -Unique)
+    return @($listed |
+        ForEach-Object { ($_ -replace "\\", "/").Trim() } |
+        Where-Object { Test-IndexedPath $_ } |
+        Where-Object { Test-Path -LiteralPath (Join-Path $repoRoot ($_ -replace "/", "\")) -PathType Leaf } |
+        Sort-Object -Unique)
 }
 
 function Get-Sha256Bytes {

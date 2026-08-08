@@ -13,22 +13,28 @@ var weight: int
 var description: String
 var value: int
 var restriction_reason: String = ""
+var icon_id: int
+var icon_resource_type: String = "CICN"
+var item_type: int
 
 
 func _init(instance: ItemInstance, definition: ItemDefinition) -> void:
 	instance_id = instance.id
-	definition_id = instance.definition_id
 	charges = instance.charges
 	equipped = instance.equipped
 	identified = instance.identified
 	if definition == null:
 		classic_id = 0
-		name = instance.definition_id
+		definition_id = ""
+		name = "Unknown item"
 		description = "Definition unavailable"
 		return
-	classic_id = definition.classic_id
-	name = definition.name
+	icon_id = definition.icon_id
+	item_type = definition.item_type
+	name = definition.name if identified else definition.unidentified_name
 	usable = definition.initial_charges > 0
 	weight = definition.instance_weight(instance.charges)
-	description = definition.description
-	value = definition.cost
+	description = definition.description if identified else "This item's properties are unknown until it is identified."
+	value = definition.cost if identified else 0
+	definition_id = definition.id if identified else ""
+	classic_id = definition.classic_id if identified else 0

@@ -14,6 +14,7 @@ Own the deterministic source-intelligence generator, validator, HTML template, a
 
 - Resolve the repository root from the script path; never commit machine-specific paths or external campaign locations.
 - Enumerate current tracked and nonignored source files while excluding generated outputs, binary archives, vendored addons, references, caches, builds, exports, and artifacts.
+- A tracked path deleted in the current working tree is not an input file; discovery fingerprints only text files that exist in the current snapshot.
 - Use exact path, symbol, line, column, file hash, and generation commit evidence for every local source relationship.
 - Never turn an ambiguous name match or dynamic dispatch into a resolved edge.
 - Stage and validate all generated outputs before replacing the existing snapshot.

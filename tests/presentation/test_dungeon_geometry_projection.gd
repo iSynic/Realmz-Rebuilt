@@ -14,6 +14,17 @@ func run() -> void:
 	assert_equal(ClassicMapPresenter.camera_top_left(Vector2i(48, 15), Vector2i(90, 90), Vector2i(16, 13)), Vector2i(40, 9), "native Classic cells center the AOGM start within the bounded map viewport")
 	assert_equal(ClassicMapPresenter.camera_top_left(Vector2i.ZERO, Vector2i(90, 90), Vector2i(16, 13)), Vector2i.ZERO, "exploration camera clamps at the north-west map boundary")
 	assert_equal(ClassicMapPresenter.camera_top_left(Vector2i(89, 89), Vector2i(90, 90), Vector2i(16, 13)), Vector2i(74, 77), "exploration camera clamps at the south-east map boundary")
+	var maximized_cells := ClassicMapPresenter.viewport_cells_for(Vector2(1780, 610), 24.0, 32.0)
+	assert_equal(maximized_cells, Vector2i(25, 18), "maximized layouts cap the camera to the detached 25-cell map window")
+	var maximized_origin := ClassicMapPresenter.map_draw_origin_for(Vector2(1780, 610), Vector2(0, 24), 32.0, maximized_cells)
+	assert_equal(maximized_origin, Vector2(490, 29), "the capped map viewport is centered in the maximized stage")
+	var first_coordinate := Vector2i(50, 15)
+	var later_coordinate := Vector2i(72, 15)
+	var first_camera := ClassicMapPresenter.camera_top_left(first_coordinate, Vector2i(90, 90), maximized_cells)
+	var later_camera := ClassicMapPresenter.camera_top_left(later_coordinate, Vector2i(90, 90), maximized_cells)
+	var first_party_rect := Rect2(maximized_origin + Vector2(first_coordinate - first_camera) * 32.0, Vector2.ONE * 32.0)
+	var later_party_rect := Rect2(maximized_origin + Vector2(later_coordinate - later_camera) * 32.0, Vector2.ONE * 32.0)
+	assert_equal(later_party_rect, first_party_rect, "overworld movement scrolls map contents without moving the maximized viewport")
 	var cells: Array[MapCellView] = [
 		_cell(Vector2i.ZERO, true, true, [&"stairs"], {&"north": &"wall", &"east": &"door", &"south": &"open", &"west": &"map-boundary"}, {&"north": false, &"east": true, &"south": true, &"west": false}),
 		_cell(Vector2i.RIGHT, true, true, [&"column"], {&"north": &"secret", &"east": &"map-boundary", &"south": &"open", &"west": &"door"}, {&"north": false, &"east": false, &"south": true, &"west": true}),

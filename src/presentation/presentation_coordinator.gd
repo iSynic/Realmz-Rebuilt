@@ -5,12 +5,13 @@ var _session_controller: GameSessionController
 var _map_presenter: ClassicMapPresenter
 var _dungeon_presenter: DungeonMap3DPresenter
 var _interaction_presenter: InteractionPresenter
-var _shell_presenter: ClassicShellPresenter
+var _shell_presenter: ClassicApplicationShell
 var _audio_presenter: ClassicAudioPresenter
 var _media: PackageMediaCatalog
+var _active_route: StringName = &"exploration"
 
 
-func bind(session_controller: GameSessionController, map_presenter: ClassicMapPresenter, dungeon_presenter: DungeonMap3DPresenter, interaction_presenter: InteractionPresenter, shell_presenter: ClassicShellPresenter, audio_presenter: ClassicAudioPresenter) -> void:
+func bind(session_controller: GameSessionController, map_presenter: ClassicMapPresenter, dungeon_presenter: DungeonMap3DPresenter, interaction_presenter: InteractionPresenter, shell_presenter: ClassicApplicationShell, audio_presenter: ClassicAudioPresenter) -> void:
 	assert(session_controller != null, "Presentation requires a session controller")
 	assert(map_presenter != null, "Presentation requires an explicit map presenter")
 	assert(dungeon_presenter != null, "Presentation requires an explicit topology-derived dungeon presenter")
@@ -40,6 +41,12 @@ func _on_step_committed(step: SessionStep) -> void:
 func set_package_media(media: PackageMediaCatalog) -> void:
 	_media = media
 	_map_presenter.set_media_catalog(media)
+	_shell_presenter.set_package_media(media)
+
+
+func set_active_route(route_id: StringName) -> void:
+	_active_route = route_id
+	_present_current_view()
 
 
 func set_dungeon_3d_enabled(enabled: bool) -> void:
@@ -51,6 +58,8 @@ func _present_current_view() -> void:
 	var game_view := _session_controller.view()
 	_map_presenter.present(game_view)
 	_dungeon_presenter.present(game_view)
-	_map_presenter.visible = not _dungeon_presenter.is_active() and game_view != null and game_view.session_started
+	var exploration_visible := _active_route == &"exploration" and game_view != null and game_view.session_started
+	_map_presenter.visible = exploration_visible and not _dungeon_presenter.is_active()
+	_dungeon_presenter.visible = exploration_visible and _dungeon_presenter.is_active()
 	_interaction_presenter.present(game_view.pending_interaction)
 	_shell_presenter.present(game_view)

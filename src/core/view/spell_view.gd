@@ -14,6 +14,8 @@ var duration_max: int
 var target_type: int
 var castable_in_combat: bool
 var castable_in_camp: bool
+var icon_id: int
+var icon_resource_type: String = "CICN"
 
 
 func _init(definition: SpellDefinition) -> void:
@@ -30,3 +32,4 @@ func _init(definition: SpellDefinition) -> void:
 	target_type = definition.target_type
 	castable_in_combat = definition.in_combat
 	castable_in_camp = definition.in_camp
+	icon_id = definition.queue_icon

@@ -33,3 +33,4 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - `gameplay-domain-evidence.md` owns Phase 4 Castle source ranges, bounded campaign-inventory provenance, and the distinction between source, runtime-unit, integration, and live-route proof.
 - `scenario-vm-evidence.md` owns Classic control-flow, nested macro, and host-boundary evidence.
 - `codemap/AGENTS.md` owns the generated source-intelligence encyclopedia, embedded source snapshot, machine graph, retrieval chunks, and evidence boundaries.
+- `ui-strategy.md` owns the canonical visual language, responsive profiles, route/screen matrix, scaling, input, accessibility, media, and fidelity boundaries.

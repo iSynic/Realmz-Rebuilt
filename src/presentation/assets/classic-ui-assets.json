@@ -1,0 +1,1448 @@
+{
+  "schema_version": 1,
+  "source_repository": "Realmz Remake",
+  "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+  "generated_by": "tools/ui-assets/sync-classic-ui-assets.ps1",
+  "assets": [
+    {
+      "id": "command.abilities",
+      "path": "res://src/presentation/assets/classic-controls/commands/abilities.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Abilities.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "76c25af5058e9a0ee1decee31308bf9c7159f72b516a9f0f9787399dd2ab1092",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.bestiary",
+      "path": "res://src/presentation/assets/classic-controls/commands/bestiary.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Bestiary.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "5ea249c931466bd1766946100885c10a4b7c510094a8be4218d9e46ca44cd3c8",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.camp",
+      "path": "res://src/presentation/assets/classic-controls/commands/camp.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Camp.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "995ae9ab0f41ee7debf0a38046da680dd5e381ec4ee2f9c654a684f075583535",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.character_swap",
+      "path": "res://src/presentation/assets/classic-controls/commands/character-swap.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_CharSwap.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "0350ece2c026c990e847bb8d81667634191eeda8de721ba9108b6e9e69a3c1bc",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.encounter",
+      "path": "res://src/presentation/assets/classic-controls/commands/encounter.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Encounter.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "4c22a63f005ed3234506bb2a1e42b3337caf4aa1a0641466c3866e3f3a73cc58",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.inventory",
+      "path": "res://src/presentation/assets/classic-controls/commands/inventory.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Items.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "fcdfda742b988f66b7970f0b5da9d90421ad2d38f1a7d897edfff9cb5f77cc0a",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.maps",
+      "path": "res://src/presentation/assets/classic-controls/commands/maps.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Minimaps.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "a2b9a8e43466d8fd1ff09efc828c3cec737cda0284528c98d0b955499054d627",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.money",
+      "path": "res://src/presentation/assets/classic-controls/commands/money.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Money.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "8fdddff35074be864d7a55759daf054aef2c17c9c30cf955327eeeeec00a0989",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.rest",
+      "path": "res://src/presentation/assets/classic-controls/commands/rest.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Rest.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "316c6cb2da11beb49db1a4233ab4888297175da7273cda431ba289083dd60311",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.save",
+      "path": "res://src/presentation/assets/classic-controls/commands/save.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Save.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "1bc8dd14c7e39eab42fd1c09792ee05c12fe4afd919eb77202c017c156c644e1",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.settings",
+      "path": "res://src/presentation/assets/classic-controls/commands/settings.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Settings.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "52a44abe48ac0eba8f15a4ed00a8af734ac1fe11eaeda6f001829826edf8d196",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.spells",
+      "path": "res://src/presentation/assets/classic-controls/commands/spells.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Spells.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "c3d0ef55ae00047a149f83f1a0cecdc0d23a63f7aa58dd6abfca02dd4d25d651",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "command.temple",
+      "path": "res://src/presentation/assets/classic-controls/commands/temple.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Button_Temple.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "01dc2a373a6f27fe8e70d639f180cfbe3edbab723715008c368ef618df0dbd56",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.category.armor",
+      "path": "res://src/presentation/assets/classic-controls/inventory/category-armor.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/ButtonBodyArmor.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "bc3588fc2cf2a7245055852c71ea9f893946c9aab837daef7edc215f27493eae",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.category.limb_armor",
+      "path": "res://src/presentation/assets/classic-controls/inventory/category-limb-armor.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/ButtonLimbArmor.png",
+      "native_width": 50,
+      "native_height": 137,
+      "sha256": "6df7823f56eebc9d6c1087f1be1c60a5e033b59713af6175acf573882b2fb4ac",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.category.magic",
+      "path": "res://src/presentation/assets/classic-controls/inventory/category-magic.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/ButtonMagic.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "327ec2fced6be71c96278dc8474cd2d389e5d5321bc3be8048b6d8454058b345",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.category.supplies",
+      "path": "res://src/presentation/assets/classic-controls/inventory/category-supplies.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/ButtonSupplies.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "3af50cb48df8ebc4a0a30c4300140ea961de8f19a81d6eea78517f7e8107ba86",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.category.weapons",
+      "path": "res://src/presentation/assets/classic-controls/inventory/category-weapons.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/ButtonWeapon.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "b6ea1d438dd8610e697edc41276cce599c9d66b48d52a72108df8dc79ea95497",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.action.drop",
+      "path": "res://src/presentation/assets/classic-controls/inventory/drop.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/ButtonDrop.png",
+      "native_width": 66,
+      "native_height": 40,
+      "sha256": "1c4d5ed54694fc18af839104e7870cc60fcfa515a7d7771bc8136be1403d088e",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.action.identify",
+      "path": "res://src/presentation/assets/classic-controls/inventory/identify.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/ButtonIdentify.png",
+      "native_width": 73,
+      "native_height": 40,
+      "sha256": "a7dc1ff80f36dfee167cd7f6336d35a78cf092d1829d46f0aec77f4b44106fa5",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.action.join",
+      "path": "res://src/presentation/assets/classic-controls/inventory/join.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/ButtonJoin.png",
+      "native_width": 50,
+      "native_height": 25,
+      "sha256": "fd293a839e6ffaa2cc814d032564cf21026b2a593fcc38c7bc3dbddeb2e114a2",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.action.show",
+      "path": "res://src/presentation/assets/classic-controls/inventory/show.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/ButtonShow.png",
+      "native_width": 74,
+      "native_height": 40,
+      "sha256": "a30a7a1e47773b2ab5acf603e335afd90880c07c6555bb97bc603a1faf879a3d",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.action.split",
+      "path": "res://src/presentation/assets/classic-controls/inventory/split.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/ButtonSplit.png",
+      "native_width": 50,
+      "native_height": 25,
+      "sha256": "7035437096cc6eec2ebf5aa167bed6ef18b36a1cf7cb4d94c32268b85d8d7312",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.action.use",
+      "path": "res://src/presentation/assets/classic-controls/inventory/use.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/ButtonUse.png",
+      "native_width": 63,
+      "native_height": 40,
+      "sha256": "3822e8a1898a66c6569f2dbf04c4e3b826a80b237569f452a878d1bf35101be6",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.marker.equipped",
+      "path": "res://src/presentation/assets/classic-controls/inventory/equipped.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/EquippedRed.png",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "3076d8df1c28e18b424a9cf5e14189597f61b42a797dcab9984e5da28e7e62e0",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "inventory.marker.trade_selection",
+      "path": "res://src/presentation/assets/classic-controls/inventory/trade-selection.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Inventory/TradeSelect.png",
+      "native_width": 20,
+      "native_height": 20,
+      "sha256": "573f0aa3512755f71bb1ae52888728e0c15a1160688fc5f2ecd3077f32c5ddd7",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Inventory/inventory_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.action.abort",
+      "path": "res://src/presentation/assets/classic-controls/spells/abort.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/AbortSpellText.png",
+      "native_width": 56,
+      "native_height": 24,
+      "sha256": "bd131b7f03c6d8d4bc32aa8a20a95a0d2573ecaad244c6fb89198aa594e9d18e",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.action.cast",
+      "path": "res://src/presentation/assets/classic-controls/spells/cast.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/CastSpellText.png",
+      "native_width": 101,
+      "native_height": 24,
+      "sha256": "42ea36f2c58902661457c5786c44b63206a7cb42d72b49c91d8ebcffc87cb4bf",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.label.power",
+      "path": "res://src/presentation/assets/classic-controls/spells/power-label.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/PowerLevelText.png",
+      "native_width": 80,
+      "native_height": 24,
+      "sha256": "be574e413b436e346717583877f388157076e2c5af8d8e153f5a289e3ea89062",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.button.background",
+      "path": "res://src/presentation/assets/classic-controls/spells/button-background.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/SpellButtonBG.png",
+      "native_width": 191,
+      "native_height": 51,
+      "sha256": "c7f2e0df057f30daee2fb26569b1b86e7860ffac4f1a9d000ef1f594af6be479",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.button.available",
+      "path": "res://src/presentation/assets/classic-controls/spells/available.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/SpellButtonIconGreen.png",
+      "native_width": 9,
+      "native_height": 9,
+      "sha256": "0ed4c92f30a6acec481b5913045b095159327373433d80e8f16e0e0403a5ec01",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.button.unavailable",
+      "path": "res://src/presentation/assets/classic-controls/spells/unavailable.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/SpellButtonIconGray.png",
+      "native_width": 9,
+      "native_height": 9,
+      "sha256": "23d5885910c17fdb7f4d741f0dc2037ba1d5546f203f98d0b4ce63cf27d438e0",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.cost.background",
+      "path": "res://src/presentation/assets/classic-controls/spells/cost-background.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/SpellCostBg.png",
+      "native_width": 212,
+      "native_height": 49,
+      "sha256": "cea86b750a439958986691f8af219f3088b932f498c283f64c9a3e7e4bb42229",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.label.level",
+      "path": "res://src/presentation/assets/classic-controls/spells/level-label.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/SpellLevelText.png",
+      "native_width": 73,
+      "native_height": 18,
+      "sha256": "490ecdcaed853938b44d307f2ea4de04089acd0164340e3350b5de5464dbc81e",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.target.self",
+      "path": "res://src/presentation/assets/classic-controls/spells/targets/self.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/TargetImages/Self.png",
+      "native_width": 64,
+      "native_height": 64,
+      "sha256": "cafd75168302023a9def6ded84995fd0584bd146aa56ada30bd30faa5e9156cb",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.target.party",
+      "path": "res://src/presentation/assets/classic-controls/spells/targets/party.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/TargetImages/Party.png",
+      "native_width": 64,
+      "native_height": 64,
+      "sha256": "4de18a5db687dcbe1f457feae5cdd82c01f43c351c4b2c2b2bcaa67f2ba137f9",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.target.all_enemy",
+      "path": "res://src/presentation/assets/classic-controls/spells/targets/all-enemy.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/TargetImages/AllEnemy.png",
+      "native_width": 64,
+      "native_height": 64,
+      "sha256": "05c2da7a6ecdb2556198640b501953a1e6919f3bf5eeab12a5840f4ab8c99823",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.target.all_friendly",
+      "path": "res://src/presentation/assets/classic-controls/spells/targets/all-friendly.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/TargetImages/AllFriendly.png",
+      "native_width": 64,
+      "native_height": 64,
+      "sha256": "8e7b92963e0450130aeb33c4d250835b0285a76f821f0c1199bc21e79114592f",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.target.everyone",
+      "path": "res://src/presentation/assets/classic-controls/spells/targets/everyone.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/TargetImages/Everyone.png",
+      "native_width": 64,
+      "native_height": 64,
+      "sha256": "519b3c21b4ab784f376298e549020335e05129bb5ddfb9cc83e6fca14e8a5f96",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "spells.target.special",
+      "path": "res://src/presentation/assets/classic-controls/spells/targets/special.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Spells/TargetImages/Special.png",
+      "native_width": 64,
+      "native_height": 64,
+      "sha256": "77c5d26e40e1a79bde98566c0156d57ecdc76fdae3d075f7c1eac86c321d7060",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Spells/spells_rect.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "encounter.action",
+      "path": "res://src/presentation/assets/classic-controls/encounter/action.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Special Encounter/ActionIcon.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "2519da07885a162e8a9d846e7293580f184938a113fff45e329a68f16cda869e",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Special Encounter/encounter_control.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "encounter.items",
+      "path": "res://src/presentation/assets/classic-controls/encounter/items.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Special Encounter/ItemsIcon.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "e942c8a31a4a21419f82e5b3eab47c00b2883d682c78497b83005ee57b4144ab",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Special Encounter/encounter_control.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "encounter.skills",
+      "path": "res://src/presentation/assets/classic-controls/encounter/skills.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Special Encounter/SkillsIcon.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "6f4e6e789a403e5d2def022fe1a3c98060421bf543ced52a2f5f5380a528ab49",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Special Encounter/encounter_control.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "encounter.speak",
+      "path": "res://src/presentation/assets/classic-controls/encounter/speak.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Special Encounter/speak_icon.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "2700c86fee3a859cd7b994755e1082cc085ae18981b046dda246a6f41998598f",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Special Encounter/encounter_control.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "encounter.stop",
+      "path": "res://src/presentation/assets/classic-controls/encounter/stop.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Special Encounter/stop_icon.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "8b298948165af1a69547933100776fde58781ca788c93e7a65208c73a97c8bee",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Special Encounter/encounter_control.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "party.selection.off",
+      "path": "res://src/presentation/assets/classic-controls/party/selection-off.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Characters Panel/CharPanelSelectOff.png",
+      "native_width": 18,
+      "native_height": 50,
+      "sha256": "0fe5495c727448153c20c8271774d3066698bdcf02a46fac441f1c49c50ff3be",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Characters Panel/CharacterSmallPanel.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "party.selection.on",
+      "path": "res://src/presentation/assets/classic-controls/party/selection-on.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Characters Panel/CharPanelSelectOn.png",
+      "native_width": 18,
+      "native_height": 50,
+      "sha256": "0b009a1d2f7766435344762fab03753bdd990727c3fcff41d24bd97cc84d81d2",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Characters Panel/CharacterSmallPanel.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "party.condition.dead",
+      "path": "res://src/presentation/assets/classic-controls/party/dead.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Characters Panel/BanDead.png",
+      "native_width": 200,
+      "native_height": 50,
+      "sha256": "c8ed115c6f45df133ac1db4410ccf24fcbb2e3d0fd447a0d3bf69f1d01822a41",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Characters Panel/CharacterSmallPanel.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "party.action.bandage",
+      "path": "res://src/presentation/assets/classic-controls/party/bandage.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Characters Panel/bandage.png",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "bb23be1a024a2e9ad7e9ce4603df71fa72253930ddeadc45bba24c02cb4e3c78",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Characters Panel/CharacterSmallPanel.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "loot.item.glow",
+      "path": "res://src/presentation/assets/classic-controls/loot/item-glow.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Looting/ItemGlow.png",
+      "native_width": 48,
+      "native_height": 48,
+      "sha256": "e57f4fb7672941bc9a57b7b9ff8fce0edb1e76fb34e90fd1d4df6aba3a2f83bc",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Looting/treasure_control.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "loot.selection",
+      "path": "res://src/presentation/assets/classic-controls/loot/selection.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/Looting/LootSelectionCircle.png",
+      "native_width": 50,
+      "native_height": 60,
+      "sha256": "4b57a6353b0d147c4a699b64125b9be88f75bc358200ca8e5bfc3999b164b197",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/Looting/treasure_control.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "torch.frame.146",
+      "path": "res://src/presentation/assets/classic-controls/torch/146.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_146.png",
+      "native_width": 16,
+      "native_height": 30,
+      "sha256": "883c6ed58c00e65731abd24a5aa217ec95f74a7e073021eeb9ca8e30c285eefa",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_button.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "torch.frame.147",
+      "path": "res://src/presentation/assets/classic-controls/torch/147.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_147.png",
+      "native_width": 16,
+      "native_height": 30,
+      "sha256": "7a20174981a05dc28596465884be6362f614b9805df6daa11f351e4c3ed60cb6",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_button.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "torch.frame.148",
+      "path": "res://src/presentation/assets/classic-controls/torch/148.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_148.png",
+      "native_width": 16,
+      "native_height": 30,
+      "sha256": "d658cc9a37f63e165ccf2cf52d6c99e7f22d5107cde8dac968f3ccdfbfd229e0",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_button.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "torch.frame.149",
+      "path": "res://src/presentation/assets/classic-controls/torch/149.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_149.png",
+      "native_width": 16,
+      "native_height": 30,
+      "sha256": "b2ef19c1777acd959ce61521590600d77d3742e2ecb37058e6f4eee77c8f2243",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_button.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "torch.frame.150",
+      "path": "res://src/presentation/assets/classic-controls/torch/150.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_150.png",
+      "native_width": 16,
+      "native_height": 30,
+      "sha256": "4521801c32c3fea108e4b845bb6b0a5a0bacde3e37496d41128d4c08fceb15ef",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_button.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "torch.frame.151",
+      "path": "res://src/presentation/assets/classic-controls/torch/151.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_151.png",
+      "native_width": 16,
+      "native_height": 30,
+      "sha256": "a58a934a2b21eb061a861db728c73a9e194846c61e15547bb59891a27be8568f",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_button.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "torch.frame.152",
+      "path": "res://src/presentation/assets/classic-controls/torch/152.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_152.png",
+      "native_width": 16,
+      "native_height": 30,
+      "sha256": "d3c04afc1e886bdb4cd1bb8d234c3e31a561788f4a99395d2e1b0aec7a78266a",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_button.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "torch.frame.153",
+      "path": "res://src/presentation/assets/classic-controls/torch/153.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_153.png",
+      "native_width": 16,
+      "native_height": 30,
+      "sha256": "03c36494e2fb6a06bf18bc2c2cd21735da22312f413d5cf064403032b444ba5d",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_button.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    },
+    {
+      "id": "torch.frame.154",
+      "path": "res://src/presentation/assets/classic-controls/torch/154.png",
+      "source_repository": "Realmz Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_154.png",
+      "native_width": 8,
+      "native_height": 15,
+      "sha256": "efcb1b42651d6f1b8d10521eb9f31870ef1481c8f7a96a66fa38b84f2cbd76be",
+      "classification": "tracked-remake-bitmap",
+      "classic_evidence": {
+        "status": "remake-scene-use",
+        "path": "src/scenes/UI/HUD/ClassicTorch/classic_torch_button.tscn",
+        "note": "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed."
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      }
+    }
+  ]
+}

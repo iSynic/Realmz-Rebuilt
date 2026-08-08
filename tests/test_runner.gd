@@ -8,6 +8,7 @@ const SUITES: Array[Script] = [
 	preload("res://tests/infrastructure/test_package_repository.gd"),
 	preload("res://tests/infrastructure/test_character_vault_repository.gd"),
 	preload("res://tests/presentation/test_dungeon_geometry_projection.gd"),
+	preload("res://tests/presentation/test_classic_ui_system.gd"),
 	preload("res://tests/scenario/test_scenario_vm.gd"),
 	preload("res://tests/integration/test_exploration_session.gd"),
 	preload("res://tests/integration/test_session_persistence.gd"),

@@ -19,6 +19,7 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 - Do not modify source-reference worktrees or commercial campaign installations.
 - Keep local absolute MCP/server configuration untracked.
 - Serialize headless verification and live MCP editor sessions because MCP Pro temporarily owns editor-only autoload settings.
+- Keep the universal macOS export preset on ETC2/ASTC texture import; `verify_export_contract.ps1` enforces the exporter requirement.
 - An action-list route step may execute its named compiled XAP/ED3 program directly when the record has no map topology. Reports must keep that distinction from placed AP reachability.
 
 ## Work Guidance
@@ -31,5 +32,5 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 
 ## Child DOX Index
 
-- No child AGENTS.md files are currently required.
 - `source-intelligence/AGENTS.md` owns deterministic source indexing, artifact generation, validation, catalog, schema, and HTML template contracts.
+- `ui-assets/AGENTS.md` owns exact-commit Classic control import, pinned font acquisition, deterministic slate derivation, and asset manifests.

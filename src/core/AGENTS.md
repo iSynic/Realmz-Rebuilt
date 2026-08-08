@@ -29,6 +29,8 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - A topology cell retains immutable presentation metadata for its base tileset/tile and optional special-land overlay asset. These facts pass through detached views but never become an alternate movement, LOS, or trigger model.
 - Random rectangles follow Castle's reverse region order, 1-in-10,000 chance scale, three ordered random-door draws, signed one-shot door state, surprise choice, and battle selection through the session RNG.
 - `GameView` and its map/cell views are detached read models for presentation and never expose mutable simulation objects.
+- Detached item/spell/monster views carry exact content icon IDs and resource types. Item views retain player-visible item type and icon while revealing identified names, descriptions, definition identity, and values only after simulation marks the instance identified.
+- `GameView` reports action availability as `enabled` plus an explicit reason. Presenters cannot infer availability from the existence of a control.
 - `MapView` carries a bounded 25×25 party-local cell projection, the complete visited-coordinate set needed by the minimap, and cardinal movement availability computed through the same topology probe as movement. It does not duplicate the full 90×90 map for every presentation revision.
 - Classic-visible Realmz behavior is the fixed ruleset. Fidelity corrections require a documented decision and source/oracle tests.
 - Campaign display metadata, restriction summaries, race/caste eligibility, and character-creation drafts are detached read models. They may explain a legal choice, but only `GameSession` and fixed Classic rules decide whether a character can enter a party.

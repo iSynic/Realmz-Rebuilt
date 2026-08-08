@@ -1,0 +1,188 @@
+[gd_resource type="Theme" load_steps=18 format=3]
+
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-raised-frame.png" id="1_raised"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-inset-frame.png" id="2_inset"]
+[ext_resource type="FontFile" path="res://src/presentation/assets/fonts/AlegreyaSans-Regular.ttf" id="3_ui"]
+[ext_resource type="FontFile" path="res://src/presentation/assets/fonts/AlegreyaSans-Bold.ttf" id="4_ui_bold"]
+[ext_resource type="FontFile" path="res://src/presentation/assets/fonts/Alegreya-Variable.ttf" id="5_narrative"]
+
+[sub_resource type="StyleBoxTexture" id="RaisedPanel"]
+texture = ExtResource("1_raised")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxTexture" id="InsetPanel"]
+texture = ExtResource("2_inset")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="ContentWell"]
+bg_color = Color(0.012, 0.016, 0.018, 0.96)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.26, 0.31, 0.32, 1)
+content_margin_left = 10.0
+content_margin_top = 8.0
+content_margin_right = 10.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxTexture" id="ButtonNormal"]
+texture = ExtResource("1_raised")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 9.0
+content_margin_top = 5.0
+content_margin_right = 9.0
+content_margin_bottom = 5.0
+modulate_color = Color(0.76, 0.79, 0.79, 1)
+
+[sub_resource type="StyleBoxTexture" id="ButtonHover"]
+texture = ExtResource("1_raised")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 9.0
+content_margin_top = 5.0
+content_margin_right = 9.0
+content_margin_bottom = 5.0
+modulate_color = Color(0.92, 0.98, 1, 1)
+
+[sub_resource type="StyleBoxTexture" id="ButtonPressed"]
+texture = ExtResource("2_inset")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 10.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 4.0
+
+[sub_resource type="StyleBoxTexture" id="ButtonDisabled"]
+texture = ExtResource("2_inset")
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 9.0
+content_margin_top = 5.0
+content_margin_right = 9.0
+content_margin_bottom = 5.0
+modulate_color = Color(0.35, 0.37, 0.37, 0.82)
+
+[sub_resource type="StyleBoxFlat" id="Focus"]
+bg_color = Color(0, 0, 0, 0)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.99, 0.89, 0.38, 1)
+expand_margin_left = 2.0
+expand_margin_top = 2.0
+expand_margin_right = 2.0
+expand_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="LineEdit"]
+bg_color = Color(0.012, 0.016, 0.018, 0.98)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.38, 0.39, 1)
+content_margin_left = 8.0
+content_margin_top = 5.0
+content_margin_right = 8.0
+content_margin_bottom = 5.0
+
+[sub_resource type="StyleBoxFlat" id="Selection"]
+bg_color = Color(0.15, 0.34, 0.4, 0.72)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.46, 0.84, 0.91, 1)
+
+[sub_resource type="StyleBoxEmpty" id="Empty"]
+
+[sub_resource type="StyleBoxFlat" id="MenuNormal"]
+bg_color = Color(0, 0, 0, 0)
+content_margin_left = 7.0
+content_margin_top = 2.0
+content_margin_right = 7.0
+content_margin_bottom = 2.0
+
+[resource]
+default_font = ExtResource("3_ui")
+default_font_size = 15
+Button/colors/font_color = Color(0.94, 0.94, 0.9, 1)
+Button/colors/font_hover_color = Color(1, 0.92, 0.45, 1)
+Button/colors/font_pressed_color = Color(1, 0.92, 0.45, 1)
+Button/colors/font_disabled_color = Color(0.47, 0.5, 0.5, 1)
+Button/fonts/font = ExtResource("3_ui")
+Button/styles/normal = SubResource("ButtonNormal")
+Button/styles/hover = SubResource("ButtonHover")
+Button/styles/pressed = SubResource("ButtonPressed")
+Button/styles/disabled = SubResource("ButtonDisabled")
+Button/styles/focus = SubResource("Focus")
+CheckButton/colors/font_color = Color(0.92, 0.92, 0.88, 1)
+CheckButton/fonts/font = ExtResource("3_ui")
+Label/colors/font_color = Color(0.91, 0.91, 0.87, 1)
+Label/fonts/font = ExtResource("3_ui")
+LineEdit/colors/font_color = Color(0.94, 0.94, 0.9, 1)
+LineEdit/colors/font_placeholder_color = Color(0.52, 0.57, 0.58, 1)
+LineEdit/fonts/font = ExtResource("3_ui")
+LineEdit/styles/normal = SubResource("LineEdit")
+LineEdit/styles/focus = SubResource("Focus")
+MenuButton/colors/font_color = Color(0.96, 0.9, 0.52, 1)
+MenuButton/colors/font_hover_color = Color(1, 0.95, 0.69, 1)
+MenuButton/fonts/font = ExtResource("4_ui_bold")
+MenuButton/styles/normal = SubResource("MenuNormal")
+MenuButton/styles/hover = SubResource("ButtonHover")
+MenuButton/styles/pressed = SubResource("ButtonPressed")
+MenuButton/styles/focus = SubResource("Focus")
+OptionButton/colors/font_color = Color(0.92, 0.92, 0.88, 1)
+OptionButton/fonts/font = ExtResource("3_ui")
+Panel/styles/panel = SubResource("RaisedPanel")
+PanelContainer/styles/panel = SubResource("RaisedPanel")
+PopupMenu/colors/font_color = Color(0.93, 0.93, 0.89, 1)
+PopupMenu/colors/font_accelerator_color = Color(0.48, 0.82, 0.89, 1)
+PopupMenu/fonts/font = ExtResource("3_ui")
+PopupMenu/styles/panel = SubResource("RaisedPanel")
+PopupMenu/styles/hover = SubResource("Selection")
+RichTextLabel/colors/default_color = Color(0.93, 0.92, 0.84, 1)
+RichTextLabel/fonts/normal_font = ExtResource("5_narrative")
+ScrollContainer/styles/panel = SubResource("Empty")
+ItemList/colors/font_color = Color(0.91, 0.91, 0.87, 1)
+ItemList/colors/font_selected_color = Color(1, 0.94, 0.58, 1)
+ItemList/fonts/font = ExtResource("3_ui")
+ItemList/styles/panel = SubResource("ContentWell")
+ItemList/styles/selected = SubResource("Selection")
+ClassicHeading/base_type = &"Label"
+ClassicHeading/colors/font_color = Color(0.98, 0.87, 0.32, 1)
+ClassicHeading/fonts/font = ExtResource("4_ui_bold")
+ClassicHeading/font_sizes/font_size = 18
+ClassicNarrative/base_type = &"RichTextLabel"
+ClassicNarrative/colors/default_color = Color(0.95, 0.93, 0.83, 1)
+ClassicNarrative/fonts/normal_font = ExtResource("5_narrative")
+ClassicNarrative/font_sizes/normal_font_size = 18
+ClassicTextWell/base_type = &"PanelContainer"
+ClassicTextWell/styles/panel = SubResource("ContentWell")
+ClassicInset/base_type = &"PanelContainer"
+ClassicInset/styles/panel = SubResource("InsetPanel")

@@ -85,6 +85,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - Keep one authoritative map topology and derive every renderer or navigation cache from it.
 - Use Scenario Actions as reusable callable definitions from normal AP and Encounter action timelines; never author executable behavior in a call-site gap.
 - Use Godot MCP Pro for editor/runtime inspection and playable-slice verification. Runtime MCP operations must follow `play_scene`.
+- Use one Classic-wide UI language: preserve the map/picture stage, right six-character roster, bottom narrative/status well, contextual original bitmap commands, and compact menu hierarchy inside responsive Realmz 2 slate frames. Keep imported pixels intact at 1x/2x, interface density independent from text scale, hidden item facts private, and unimplemented actions disabled with explicit reasons.
 - Never use `codex` or `Codex` in branch names.
 
 ## Child DOX Index

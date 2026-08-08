@@ -11,6 +11,8 @@ var level: int
 var experience: int
 var race_id: String
 var caste_id: String
+var race_name: String
+var caste_name: String
 var gender: int
 var portrait_id: String
 var combat_icon_id: String
@@ -50,6 +52,15 @@ func _init(character: CharacterState, content: RealmzContent = null) -> void:
 	experience = character.experience
 	race_id = character.race_id
 	caste_id = character.caste_id
+	race_name = race_id.replace("_", " ").replace("-", " ").capitalize()
+	caste_name = caste_id.replace("_", " ").replace("-", " ").capitalize()
+	if content != null:
+		var race := content.race_by_id(race_id)
+		var caste := content.caste_by_id(caste_id)
+		if race != null:
+			race_name = race.name
+		if caste != null:
+			caste_name = caste.name
 	gender = character.gender
 	portrait_id = character.portrait_id
 	combat_icon_id = character.combat_icon_id
