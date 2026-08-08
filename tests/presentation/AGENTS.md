@@ -4,7 +4,7 @@
 
 # Ownership
 
-- Responsive profile, route scenes, Classic shell composition, pointer hit-test ownership, asset/font provenance, focus/navigation, typed media collision, safe detached display, interaction identity, fixed maximized-map camera geometry, and 2D/3D projection tests.
+- Responsive profile, route scenes, Classic shell composition, pointer hit-test ownership, seamless/non-stretched stone surfaces, asset/font provenance, focus/navigation, typed media collision, safe detached display, interaction identity, fixed maximized-map camera geometry, and 2D/3D projection tests.
 - `ClassicUiFixtureGallery` supplies nominal, empty, loading, error, unavailable, and oversized states for every route and interaction kind.
 - `capture_classic_ui_gallery.gd` writes representative local frames under ignored `artifacts/ui-gallery/`; it is visual evidence, not a golden-image test.
 

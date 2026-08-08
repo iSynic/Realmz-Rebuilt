@@ -5,7 +5,7 @@
 [ext_resource type="PackedScene" path="res://src/presentation/interaction_presenter.tscn" id="3_uarpi"]
 [ext_resource type="PackedScene" path="res://src/presentation/classic_application_shell.tscn" id="4_shell"]
 [ext_resource type="Script" uid="uid://3njyl4c48r3i" path="res://src/presentation/classic_audio_presenter.gd" id="5_lvslj"]
-[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-charcoal-slate.png" id="6_stone"]
+[ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-charcoal-slate-tile.png" id="6_stone"]
 [ext_resource type="Theme" path="res://src/presentation/classic_ui_theme.tres" id="7_theme"]
 
 [sub_resource type="StyleBoxFlat" id="InteractionStyle"]
@@ -53,6 +53,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+texture_repeat = 2
 texture = ExtResource("6_stone")
 expand_mode = 1
 stretch_mode = 1

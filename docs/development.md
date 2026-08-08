@@ -29,7 +29,7 @@ The canonical UI contract is `docs/ui-strategy.md`. `tests/presentation/classic_
 
 Content images must be inspected with nearest-neighbor filtering. Missing media must show its neutral diagnostic fallback rather than a guessed file. Item checks must include unidentified content to prove that identified names, descriptions, values, and curse relationships remain hidden.
 
-The committed Classic control corpus is reproducible from the tracked donor commit with `./tools/ui-assets/sync-classic-ui-assets.ps1 -SourceRepository <clean-remake-checkout>`. The importer reads Git object data, not donor working files. `./tools/ui-assets/sync-fonts.ps1` downloads the pinned OFL font bytes. `build-classic-surfaces.ps1` derives the committed slate kit from the selected SpriteCook source image. Normal verification is offline and validates committed hashes; it does not rerun network or donor imports.
+The committed Classic control corpus is reproducible from the tracked donor commit with `./tools/ui-assets/sync-classic-ui-assets.ps1 -SourceRepository <clean-remake-checkout>`. The importer reads Git object data, not donor working files. `./tools/ui-assets/sync-fonts.ps1` downloads the pinned OFL font bytes. `build-classic-surfaces.ps1` imports a selected SpriteCook source image; `./tools/ui-assets/build-classic-surfaces.ps1 -RebuildFromCommittedSurface` deterministically rebuilds its seamless runtime tile and tiled frame kit offline while preserving source provenance. Normal verification is offline and validates committed hashes; it does not rerun network or donor imports.
 
 ## Godot MCP Pro workflow
 

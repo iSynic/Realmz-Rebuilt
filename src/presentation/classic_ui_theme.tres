@@ -8,6 +8,8 @@
 
 [sub_resource type="StyleBoxTexture" id="RaisedPanel"]
 texture = ExtResource("1_raised")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
 texture_margin_left = 8.0
 texture_margin_top = 8.0
 texture_margin_right = 8.0
@@ -19,6 +21,8 @@ content_margin_bottom = 8.0
 
 [sub_resource type="StyleBoxTexture" id="InsetPanel"]
 texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
 texture_margin_left = 8.0
 texture_margin_top = 8.0
 texture_margin_right = 8.0
@@ -42,6 +46,8 @@ content_margin_bottom = 8.0
 
 [sub_resource type="StyleBoxTexture" id="ButtonNormal"]
 texture = ExtResource("1_raised")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
 texture_margin_left = 8.0
 texture_margin_top = 8.0
 texture_margin_right = 8.0
@@ -54,6 +60,8 @@ modulate_color = Color(0.76, 0.79, 0.79, 1)
 
 [sub_resource type="StyleBoxTexture" id="ButtonHover"]
 texture = ExtResource("1_raised")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
 texture_margin_left = 8.0
 texture_margin_top = 8.0
 texture_margin_right = 8.0
@@ -66,6 +74,8 @@ modulate_color = Color(0.92, 0.98, 1, 1)
 
 [sub_resource type="StyleBoxTexture" id="ButtonPressed"]
 texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
 texture_margin_left = 8.0
 texture_margin_top = 8.0
 texture_margin_right = 8.0
@@ -77,6 +87,8 @@ content_margin_bottom = 4.0
 
 [sub_resource type="StyleBoxTexture" id="ButtonDisabled"]
 texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
 texture_margin_left = 8.0
 texture_margin_top = 8.0
 texture_margin_right = 8.0

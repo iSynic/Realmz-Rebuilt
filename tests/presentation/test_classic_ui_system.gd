@@ -10,6 +10,7 @@ func run() -> void:
 	_test_fixture_gallery_coverage()
 	_test_interaction_identity()
 	_test_classic_asset_catalog()
+	_test_stone_surface_tiling()
 	_test_scene_composition()
 
 
@@ -138,6 +139,46 @@ func _sha256(path: String) -> String:
 	return context.finish().hex_encode()
 
 
+func _test_stone_surface_tiling() -> void:
+	var tile_path := "res://src/presentation/assets/ui/classic-charcoal-slate-tile.png"
+	var tile_texture := load(tile_path) as Texture2D
+	var tile_image := tile_texture.get_image()
+	assert_not_null(tile_image, "the derived seamless stone tile loads")
+	assert_equal(tile_image.get_size(), Vector2i(512, 512), "the tiled surface retains the selected 512-pixel texture scale")
+	var horizontal_edges_match := true
+	var vertical_edges_match := true
+	for coordinate: int in range(tile_image.get_height()):
+		horizontal_edges_match = horizontal_edges_match and tile_image.get_pixel(0, coordinate) == tile_image.get_pixel(tile_image.get_width() - 1, coordinate)
+	for coordinate: int in range(tile_image.get_width()):
+		vertical_edges_match = vertical_edges_match and tile_image.get_pixel(coordinate, 0) == tile_image.get_pixel(coordinate, tile_image.get_height() - 1)
+	assert_true(horizontal_edges_match, "the derived stone tile has identical left and right edge pixels")
+	assert_true(vertical_edges_match, "the derived stone tile has identical top and bottom edge pixels")
+	var application_scene := load("res://src/presentation/realmz_application.tscn") as PackedScene
+	var application := application_scene.instantiate() as Control
+	var stone := application.get_node("StoneTexture") as TextureRect
+	assert_equal(stone.texture.resource_path, tile_path, "the application background uses the seamless derived tile")
+	assert_equal(int(stone.stretch_mode), 1, "the application background tiles instead of scaling")
+	assert_equal(int(stone.texture_repeat), 2, "the application background enables texture repeat sampling")
+	var stage_frame := application.get_node("ClassicShell/StageFrame") as NinePatchRect
+	assert_equal(int(stage_frame.axis_stretch_horizontal), 1, "stage-frame horizontal edges tile instead of stretching")
+	assert_equal(int(stage_frame.axis_stretch_vertical), 1, "stage-frame vertical edges tile instead of stretching")
+	application.free()
+	var ui_theme := load("res://src/presentation/classic_ui_theme.tres") as Theme
+	var tiled_styles: Array[StyleBox] = [
+		ui_theme.get_stylebox("panel", "PanelContainer"),
+		ui_theme.get_stylebox("panel", "ClassicInset"),
+		ui_theme.get_stylebox("normal", "Button"),
+		ui_theme.get_stylebox("hover", "Button"),
+		ui_theme.get_stylebox("pressed", "Button"),
+		ui_theme.get_stylebox("disabled", "Button"),
+	]
+	for style: StyleBox in tiled_styles:
+		assert_true(style is StyleBoxTexture, "stone-backed panels and buttons use texture styleboxes")
+		if style is StyleBoxTexture:
+			assert_equal(int(style.axis_stretch_horizontal), 1, "stone stylebox centers tile horizontally")
+			assert_equal(int(style.axis_stretch_vertical), 1, "stone stylebox centers tile vertically")
+
+
 func _test_scene_composition() -> void:
 	var shell_scene := load("res://src/presentation/classic_application_shell.tscn") as PackedScene
 	var shell := shell_scene.instantiate() as ClassicApplicationShell
@@ -169,4 +210,9 @@ func _test_scene_composition() -> void:
 	assert_true(ResourceLoader.exists(texture_path, "Texture2D"), "the selected low-contrast stone texture imports as a Godot texture")
 	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://src/presentation/assets/ui/spritecook-assets.json"))
 	assert_equal(manifest["selected_asset"]["asset_id"], "3f355030-0f8c-4d4e-b079-26ba8d3dbc32", "the committed texture retains selected SpriteCook provenance")
-	assert_equal(manifest["files"].size(), 3, "the selected surface and two deterministic frames ship together")
+	assert_equal(manifest["files"].size(), 4, "the selected surface, seamless tile, and two deterministic frames ship together")
+	for entry: Dictionary in manifest["files"]:
+		assert_equal(_sha256(entry["path"]), entry["sha256"], "generated stone surface hash matches its manifest: %s" % entry["path"])
+		var texture := load(entry["path"]) as Texture2D
+		assert_equal(texture.get_width(), int(entry["width"]), "generated stone surface width matches its manifest: %s" % entry["path"])
+		assert_equal(texture.get_height(), int(entry["height"]), "generated stone surface height matches its manifest: %s" % entry["path"])
