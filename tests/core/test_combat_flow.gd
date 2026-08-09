@@ -16,6 +16,8 @@ func run() -> void:
 	_test_monster_missile_does_not_impersonate_melee()
 	_test_source_backed_projectile_fire()
 	_test_source_backed_character_spell_casting()
+	_test_source_backed_monster_spell_casting()
+	_test_charm_resistance_continues_after_failed_opposed_save()
 	_test_monster_authored_attack_rows_and_target_retention()
 	_test_monster_attack_cursor_restore()
 	_test_battle_owned_fumble_and_exact_recovery()
@@ -804,6 +806,9 @@ func _test_source_backed_character_spell_casting() -> void:
 	var state := _state(character, monster, "battle.character-spell")
 	state.combat.battlefield.move_actor(monster.id, Vector2i(50, 45))
 	var content := _content([definition], [], [], [], [spell])
+	var options := rules.combat_flow.character_spell_options(state, content, character.id)
+	assert_equal(options.size(), 5, "the typed battle picker exposes only funded powers for a core-proven spell and target")
+	assert_equal([options[0].spell_id, options[0].power, options[0].cost, options[0].target_id], [spell.id, 1, 2, monster.id], "the first detached cast option carries stable spell, power, cost, and target identities")
 	var screened := rules.combat_flow.cast_spell(state, content, character.id, monster.id, spell.id, 1, ScriptedRng.new([0, 0]))
 	assert_true(screened.ok, "a funded ordinary single-target combat spell commits")
 	assert_true(screened.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("classicTier") == 2 and event.payload.get("resisted") == true), "spell resistance uses the spell ID's tier even when caster level is ten")
@@ -840,6 +845,89 @@ func _test_source_backed_character_spell_casting() -> void:
 	blocked_state.character_spellcasting_blocked = true
 	var scenario_blocked := rules.combat_flow.cast_spell(blocked_state, content, blocked_character.id, blocked_monster.id, spell.id, 1, ScriptedRng.new([]))
 	assert_equal(scenario_blocked.error_code, &"character_spellcasting_blocked", "a nonzero Classic spellcasting flag blocks rather than enables character casting")
+
+
+func _test_source_backed_monster_spell_casting() -> void:
+	var rules := RealmzRules.new()
+	var spell := SpellDefinition.new("spell.monster-fire", 1306, "Monster Fire")
+	spell.target_type = 1
+	spell.spell_class = 1
+	spell.damage_type = 1
+	spell.cost = 2
+	spell.range_min = 10
+	spell.damage_min = 4
+	spell.damage_max = 4
+	spell.duration_min = 1
+	spell.duration_max = 1
+	var slots: Array[String] = ["", spell.id, "", "", "", "", "", "", "", ""]
+	var definition := MonsterDefinition.new("monster.spell-caster", 9, "Spell Caster", 4, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), slots, [], [])
+	definition.magic_attack_count = 1
+	definition.cast_percent = 100
+	definition.missile_percent = 0
+	definition.movement_max = 0
+	var monster := MonsterState.new("monster.spell-caster.instance", definition.id, definition.name, 30, 30, 4, 1, 0, 0, 10)
+	var character := _character("character.monster-spell-target")
+	var state := _state(character, monster, "battle.monster-spell")
+	state.combat.turn_index = 1
+	var content := _content([definition], [], [], [], [spell])
+	var values: Array[int] = [0, 0, 0, 4000, 0, 0, 0, 0, 0, 32_767]
+	var rng := ScriptedRng.new(values)
+	var events: Array[DomainEvent] = []
+	rules.combat_flow._process_monster_turns(state, content, rng, events)
+	assert_equal([character.current_health, monster.spell_points], [26, 8], "an ordinary monster spell spends lowered power cost and commits damage to its selected party target")
+	assert_false(state.combat.is_guarding(monster.id), "Castle's ordinary targeted monster cast clears Guard")
+	assert_equal(state.combat.active_actor_id(), character.id, "a successful monster spell ends the monster activation")
+	var cast_events := events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster")
+	assert_equal(cast_events.size(), 1, "monster casting publishes one typed source-owned resolution event")
+	assert_equal([cast_events[0].payload.get("spellId"), cast_events[0].payload.get("power"), cast_events[0].payload.get("rangePower")], [spell.id, 1, 1], "the event distinguishes affordability power from Castle's preserved range power")
+	assert_equal(rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).begins_with("monster.spell.slot")).map(func(entry: Dictionary) -> int: return int(entry.get("result"))), [0, 1], "fixed monster spell slots consume empty-position draws before selecting the authored spell")
+
+	definition.magic_attack_count = 2
+	var multi_monster := MonsterState.new("monster.multi-spell.instance", definition.id, definition.name, 30, 30, 4, 1, 0, 0, 10)
+	var multi_target := _character("character.multi-spell-target")
+	var multi_state := _state(multi_target, multi_monster, "battle.monster-multi-spell")
+	multi_state.combat.turn_index = 1
+	var multi_turn := multi_state.combat.begin_active_turn()
+	var one_cast_values: Array[int] = [0, 4000, 0, 0, 0, 0, 0, 32_767]
+	var multi_values: Array[int] = []
+	multi_values.append_array(one_cast_values)
+	multi_values.append_array(one_cast_values)
+	var multi_events: Array[DomainEvent] = []
+	assert_equal(rules.combat_flow._process_monster_cast(multi_state, content, multi_monster, definition, multi_turn, ScriptedRng.new(multi_values), multi_events), 0, "the bounded caster completes every authored magical attack")
+	assert_equal([multi_target.current_health, multi_monster.spell_points, multi_turn.spell_cast_count, multi_turn.monster_cast_attempt_count], [22, 6, 2, 1], "two magical attacks share one attempt while committing independent slot, power, target, and resolution draws")
+	var restored_multi := GameState.from_data(JSON.parse_string(JSON.stringify(multi_state.to_data())))
+	assert_not_null(restored_multi, "monster cast and retry cursors survive central save restoration")
+	assert_equal([restored_multi.combat.active_turn.spell_cast_count, restored_multi.combat.active_turn.monster_cast_attempt_count], [2, 1], "restore cannot repeat a committed magical attack or first tryspell attempt")
+
+	definition.magic_attack_count = 1
+	definition.cast_percent = 50
+	var retry_monster := MonsterState.new("monster.retry-spell.instance", definition.id, definition.name, 30, 30, 4, 1, 0, 0, 10)
+	var retry_target := _character("character.retry-spell-target")
+	var retry_state := _state(retry_target, retry_monster, "battle.monster-retry-spell")
+	retry_state.combat.turn_index = 1
+	var retry_values: Array[int] = [0, 32_767, 0, 4000, 0, 0, 0, 0, 0, 32_767]
+	var retry_rng := ScriptedRng.new(retry_values)
+	var retry_events: Array[DomainEvent] = []
+	rules.combat_flow._process_monster_turns(retry_state, content, retry_rng, retry_events)
+	assert_equal(retry_target.current_health, 26, "a monster that initially chooses movement may retry casting after its zero-movement advance")
+	assert_equal(retry_rng.trace().filter(func(entry: Dictionary) -> bool: return entry.get("tag") == "monster.ai.cast").size(), 1, "Castle's post-movement tryspell jump does not repeat the cast-percent roll")
+
+
+func _test_charm_resistance_continues_after_failed_opposed_save() -> void:
+	var spell := SpellDefinition.new("spell.charm-resistance", 1101, "Charm")
+	spell.spell_class = 0
+	spell.damage_type = 0
+	spell.cannot = 0
+	var target := _character("character.charm-resistance")
+	target.set_save_value(0, 0)
+	target.magic_resistance = 100
+	var rng := ScriptedRng.new([32_767, 0])
+	assert_true(MagicRules.new().character_resists(4, target, spell, 1, 0, rng), "a failed charm save continues into Castle's ordinary magic-resistance check")
+	assert_equal(rng.snapshot().draw_count, 2, "charm resistance consumes the opposed save before magic resistance")
+	spell.cannot = 1
+	var bypass_rng := ScriptedRng.new([32_767])
+	assert_false(MagicRules.new().character_resists(4, target, spell, 1, 0, bypass_rng), "cannot one bypasses screens and magic resistance only after the initial charm save")
+	assert_equal(bypass_rng.snapshot().draw_count, 1, "the cannot bypass does not erase the source-ordered charm draw")
 
 
 func _test_character_half_attack_cadence_and_restore() -> void:
@@ -944,6 +1032,7 @@ func _test_monster_attack_cursor_restore() -> void:
 	legacy_turn_data.erase("physicalActionCommitted")
 	legacy_turn_data.erase("movementRemaining")
 	legacy_turn_data.erase("spellCastCount")
+	legacy_turn_data.erase("monsterCastAttemptCount")
 	var legacy_turn := CombatTurnState.from_data(legacy_turn_data)
 	assert_not_null(legacy_turn, "pre-fumble save-v3 active turns remain readable")
 	assert_false(legacy_turn.physical_action_committed, "a legacy active turn does not fabricate a prior physical action")

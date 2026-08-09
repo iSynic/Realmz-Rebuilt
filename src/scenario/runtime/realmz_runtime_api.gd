@@ -2028,6 +2028,10 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 		if destination == Vector2i(-100_000, -100_000):
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat movement requires a two-integer destination.")
 		result = _rules.combat_flow.move_character(_game_state, _content, response.payload["actorId"], destination, _rng)
+	elif response.payload["action"] == "cast_spell":
+		if response.payload.get("spellId") is not String or response.payload["spellId"].is_empty() or response.payload.get("power") is not int:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat spell casting requires a spellId string and integer power.")
+		result = _rules.combat_flow.cast_spell(_game_state, _content, response.payload["actorId"], response.payload.get("targetId", ""), response.payload["spellId"], response.payload["power"], _rng)
 	else:
 		result = _rules.combat_flow.submit_action(_game_state, _content, response.payload["actorId"], StringName(response.payload["action"]), response.payload.get("targetId", ""), _rng)
 	if not result.ok:
@@ -2368,8 +2372,14 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var movement: Array[Dictionary] = []
 	for option: CombatMoveOptionView in combat_view.movement_options:
 		movement.append({"direction": [option.direction.x, option.direction.y], "destination": [option.destination.x, option.destination.y], "cost": option.movement_cost, "enabled": option.enabled, "reasonCode": String(option.reason), "reason": option.reason_text, "retreat": option.retreats_from_battle, "forcedRetreat": option.forced_retreat})
+	var spell_casts: Array[Dictionary] = []
+	for option: CombatSpellOptionView in _rules.combat_flow.character_spell_options(_game_state, _content, combat_view.active_actor_id):
+		spell_casts.append({"spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "cost": option.cost, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health})
+	if not spell_casts.is_empty():
+		actions.append("cast_spell")
+	var spell_cast_reason := _rules.combat_flow.character_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
 	var retreat := {"enabled": combat_view.retreat_available, "reason": combat_view.retreat_unavailable_reason, "nearestEnemyRange": combat_view.nearest_enemy_range}
-	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "movement": movement})
+	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason})
 
 
 static func _combat_destination(value: Variant) -> Vector2i:

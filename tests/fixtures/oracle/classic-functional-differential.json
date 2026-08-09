@@ -1616,7 +1616,7 @@
         ],
         "authoredInputs": ["ten native monster spell slots including empty values", "number of magical attacks", "spell points and cast percentage"],
         "observation": "For each noofmagattacks iteration, combat.c calls randrange(0, 9) up to thirty times and accepts only a sampled slot above 1100. Empty positions therefore affect both selected spell identity and RNG draw count.",
-        "unresolved": ["Ordinary monster spell target selection and resolution remain disabled until the fixed-slot contract is consumed by a complete source-backed casting continuation."]
+        "unresolved": ["Area, automatic group, friendly, charmed-monster, class-nine, special-effect, nonpositive-cost, and zero-damage monster spell paths remain disabled."]
       },
       "providence": {
         "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
@@ -1627,14 +1627,15 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/content/monster_definition.gd", "symbol": "func spell_id_at(" },
-        "expectedTrace": ["validate exactly ten package positions", "retain empty native slots", "address a sampled spell by exact slot without repacking"],
+        "expectedTrace": ["validate exactly ten package positions", "retain empty native slots", "sample and retry empty positions without repacking", "resolve the bounded ordinary single-party-target spell through session-owned combat"],
         "tests": [
-          { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" }
+          { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_monster_spell_casting()" }
         ]
       },
       "decision": "compiler-defect",
       "availability": "implemented",
-      "status": "fixed-slot-contract-verified-monster-casting-still-disabled"
+      "status": "fixed-slot-contract-and-ordinary-single-party-target-casting-verified"
     },
     {
       "id": "combat.character-spell-activation",
@@ -1677,16 +1678,63 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func cast_spell(" },
-        "expectedTrace": ["reject flags, conditions, round-hit state, unknown spell, unsupported shape, cap, cost, range, or line of sight before mutation", "derive zero-based spell tier from Classic ID", "roll duration, damage, resistance, and save in Castle order", "spend spell points, two half-attacks, and twelve movement", "persist spell count and attacked targets", "retain or advance the actor from the remaining half-attack reserve"],
+        "expectedTrace": ["derive battle picker options from the same mutation-free cast probe used by execution", "reject flags, conditions, round-hit state, unknown spell, unsupported shape, cap, cost, range, or line of sight before mutation", "derive zero-based spell tier from Classic ID", "roll duration, damage, resistance, and save in Castle order", "spend spell points, two half-attacks, and twelve movement", "persist spell count and attacked targets", "retain or advance the actor from the remaining half-attack reserve"],
         "tests": [
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_character_spell_casting()" },
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_combat_magic_and_monsters(" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_spellcasting_flags(" }
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_spellcasting_flags(" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
         ]
       },
       "decision": "runtime-defect",
       "availability": "implemented",
-      "status": "ordinary-single-hostile-damage-spells-verified-other-cast-shapes-explicit"
+      "status": "ordinary-single-hostile-damage-spells-and-typed-battle-picker-verified-other-cast-shapes-explicit"
+    },
+    {
+      "id": "combat.monster-ordinary-spell-casting",
+      "domain": "combat",
+      "claim": "A Classic monster can make multiple magical attacks, samples a fixed spell slot up to thirty times per attack, establishes range from an initial power roll, lowers only cost power until affordable, samples native party-gap-monster target space up to one hundred times, clears Guard for an ordinary targeted cast, and may retry casting once after movement without a second cast-percent roll.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake models spell execution through creature/state scripts and supplied useful targeting workflow leads, but it does not establish Castle's fixed-slot, range-power, affordability-power, or post-movement retry order.",
+        "sources": [
+          { "path": "src/scripts/states/CbDecideActionState.gd", "symbol": "func on_spellcast_confirmed(" },
+          { "path": "src/scripts/states/CbAnimationState.gd", "symbol": "func after_spell_anim_finished(" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/combat.c", "symbol": "void combat(short suprise, short mode)" },
+          { "path": "src/realmz_orig/getrange.c", "symbol": "short getrange(short body, short side, short flip)" },
+          { "path": "src/realmz_orig/resist.c", "symbol": "short resist(short who)" },
+          { "path": "src/realmz_orig/resolvespell.c", "symbol": "void resolvespell(void)" }
+        ],
+        "authoredInputs": ["ten fixed spell slots", "number of magical attacks", "cast percentage", "spell points", "spell target, cost, range, class, damage, saves, resistance, and protection", "monster and party allegiance and battlefield positions"],
+        "observation": "combat.c rolls missile then cast choice, samples each spell slot up to thirty times, rolls range power before getrange, lowers affordability power without recomputing range, samples the native target space, clears movement and Guard at gocast, and repeats for noofmagattacks. A no-cast movement path may jump back to tryspell once without another cast-percent roll. resist.c continues a failed charm opposed save into screens, animated immunity, and magic resistance; cannot bypasses those later checks but not the first opposed roll.",
+        "unresolved": ["Castle subtracts a negative spell cost, which can increase monster spell points.", "Monster size increases spellrange only after getrange has already rejected out-of-range candidates.", "Target-everybody omits the Guard clear present in ordinary, all-friendly, and all-enemy casting.", "Friendly and charmed-monster targets, area/group shapes, class nine, and specials need separate source-backed continuations."]
+      },
+      "providence": {
+        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spells(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits the spell fields, monster casting counts and percentages, spell points, and exact ten-position spell arrays required by the bounded ordinary path."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _process_monster_cast(" },
+        "expectedTrace": ["consume fixed-slot draws through empty positions", "preserve initial range power while lowering only affordability power", "select a legal party target through native slot draws", "resolve duration, damage, resistance, save, and protection in source order", "clear Guard and movement on commit", "persist cast and retry cursors", "reject unresolved or anomalous branches explicitly"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_monster_spell_casting()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_charm_resistance_continues_after_failed_opposed_save()" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "ordinary-single-party-target-damage-path-verified-anomalies-and-broader-shapes-explicit"
     }
   ]
 }

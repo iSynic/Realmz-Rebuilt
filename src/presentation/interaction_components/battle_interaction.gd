@@ -34,6 +34,26 @@ func build(request: InteractionRequest) -> void:
 		var ranged: Variant = request.payload.get("rangedAttack", {})
 		var ranged_reason := String(ranged.get("reason", "Missile attacks are unavailable.") if ranged is Dictionary else "Missile attacks are unavailable.")
 		add_response("Fire missile unavailable", {}, false, ranged_reason)
+	var spell_casts: Variant = request.payload.get("spellCasts", [])
+	if action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty():
+		var spell_picker := OptionButton.new()
+		spell_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for option: Variant in spell_casts:
+			if option is Dictionary:
+				spell_picker.add_item("%s • P%d • %d SP → %s (%d/%d HP)" % [option.get("spellName", "Spell"), int(option.get("power", 1)), int(option.get("cost", 0)), option.get("targetName", "Target"), int(option.get("targetCurrentHealth", 0)), int(option.get("targetMaximumHealth", 0))])
+				spell_picker.set_item_metadata(spell_picker.item_count - 1, option.duplicate(true))
+		add_child(spell_picker)
+		var cast_button := Button.new()
+		cast_button.text = "Cast selected spell"
+		cast_button.disabled = spell_picker.item_count == 0
+		cast_button.pressed.connect(func() -> void:
+			var option: Variant = spell_picker.get_selected_metadata()
+			if option is Dictionary:
+				payload_submitted.emit({"actorId": actor_id, "action": "cast_spell", "targetId": String(option.get("targetId", "")), "spellId": String(option.get("spellId", "")), "power": int(option.get("power", 1))})
+		)
+		add_child(cast_button)
+	elif not String(request.payload.get("spellCastReason", "")).is_empty():
+		add_response("Cast unavailable", {}, false, String(request.payload.get("spellCastReason")))
 	var weapon_switch: Variant = request.payload.get("weaponSwitch", {})
 	if action_ids.has("switch_weapon") and weapon_switch is Dictionary:
 		var target_mode := String(weapon_switch.get("targetMode", "melee"))

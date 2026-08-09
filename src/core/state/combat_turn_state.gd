@@ -8,6 +8,7 @@ var target_id: String = ""
 var physical_action_committed: bool = false
 var movement_remaining: int = -1
 var spell_cast_count: int = 0
+var monster_cast_attempt_count: int = 0
 
 
 func _init(source_actor_id: String) -> void:
@@ -23,11 +24,12 @@ func to_data() -> Dictionary:
 		"physicalActionCommitted": physical_action_committed,
 		"movementRemaining": movement_remaining,
 		"spellCastCount": spell_cast_count,
+		"monsterCastAttemptCount": monster_cast_attempt_count,
 	}
 
 
 static func from_data(data: Variant) -> CombatTurnState:
-	if not data is Dictionary or data.size() not in [4, 5, 6, 7]:
+	if not data is Dictionary or data.size() not in [4, 5, 6, 7, 8]:
 		return null
 	for field: String in ["actorId", "action", "attackIndex", "targetId"]:
 		if not data.has(field):
@@ -40,6 +42,8 @@ static func from_data(data: Variant) -> CombatTurnState:
 		return null
 	if data.has("spellCastCount") and _integer(data["spellCastCount"]) < 0:
 		return null
+	if data.has("monsterCastAttemptCount") and _integer(data["monsterCastAttemptCount"]) < 0:
+		return null
 	var loaded_attack_index := _integer(data["attackIndex"])
 	if loaded_attack_index < 0 or data["action"] not in ["", "advance", "missile", "cast", "retreat"]:
 		return null
@@ -50,6 +54,7 @@ static func from_data(data: Variant) -> CombatTurnState:
 	result.physical_action_committed = bool(data.get("physicalActionCommitted", false))
 	result.movement_remaining = _integer(data.get("movementRemaining", -1))
 	result.spell_cast_count = _integer(data.get("spellCastCount", 0))
+	result.monster_cast_attempt_count = _integer(data.get("monsterCastAttemptCount", 0))
 	return result
 
 

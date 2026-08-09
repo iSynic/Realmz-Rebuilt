@@ -89,11 +89,14 @@ func resolve_monster_projectile(caster: MonsterState, projectile_item: ItemDefin
 
 func character_resists(caster_level: int, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> bool:
 	if spell.spell_class == 0:
-		return rng.draw(100, &"magic.charm-save") <= target.save_value(0) + power_level * spell.save_adjust
+		if rng.draw(100, &"magic.charm-save") <= target.save_value(0) + power_level * spell.save_adjust:
+			return true
 	if spell.damage_type < 0 and absi(spell.damage_type) != 9:
 		var direct_chance := 35 + 5 * target.level - 5 * caster_level + power_level * spell.save_adjust
 		if rng.draw(100, &"magic.direct-resist") <= direct_chance:
 			return true
+	if (spell.cannot == 1 or spell.cannot > 2) and absi(spell.spell_class) != 9:
+		return false
 	for level: int in range(cast_level, 5):
 		if target.conditions.is_active(16 + level):
 			return true
@@ -104,6 +107,34 @@ func character_resists(caster_level: int, target: CharacterState, spell: SpellDe
 			return true
 		return rng.draw(100, &"magic.missile-dodge") <= target.dodge - spell.to_hit_bonus
 	return rng.draw(100, &"magic.resistance") <= target.magic_resistance + power_level * spell.resistance_adjust
+
+
+func resolve_monster_spell(caster: MonsterState, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> SpellResolution:
+	if caster == null or target == null or spell == null or rng == null or power_level < 1:
+		return null
+	var spell_cost := spell.cost * power_level
+	if spell_cost <= 0 or caster.spell_points < spell_cost:
+		return SpellResolution.new(false, false, false, maxi(0, spell_cost), 0, 0)
+	caster.spell_points -= spell_cost
+	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"magic.monster-spell.duration")
+	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"magic.monster-spell.damage")
+	var rolled_damage := damage
+	var resisted := character_resists(caster.hit_dice, target, spell, power_level, cast_level, rng)
+	if resisted:
+		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
+	var saved := false
+	var damage_type := absi(spell.damage_type)
+	if damage_type > 0 and damage_type <= 6:
+		var save_roll := rng.draw(100, &"magic.monster-spell.damage-save")
+		saved = spell.cannot <= 1 and save_roll <= target.save_value(damage_type - 1)
+		if saved:
+			damage /= 2
+		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
+			damage /= 2
+	if rolled_damage != 0 and damage == 0:
+		damage = 1
+	target.current_health -= damage
+	return SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
 
 
 func resolve_scenario_spell(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition = null, race: RaceDefinition = null) -> SpellResolution:
@@ -199,7 +230,8 @@ func _monster_resists(caster: CharacterState, target: MonsterState, definition: 
 		var charm_chance := 35 + 4 * target.hit_dice
 		charm_chance += 5 if definition.type_flag(0) else 0
 		charm_chance += 5 if definition.type_flag(5) else 0
-		return rng.draw(100, &"magic.monster-charm") <= charm_chance + power_level * spell.save_adjust
+		if rng.draw(100, &"magic.monster-charm") <= charm_chance + power_level * spell.save_adjust:
+			return true
 	if spell.damage_type < 0 and absi(spell.damage_type) != 9:
 		var direct_chance := 35 + 5 * target.hit_dice - 5 * caster.level + power_level * spell.save_adjust
 		if rng.draw(100, &"magic.monster-direct-resist") <= direct_chance:

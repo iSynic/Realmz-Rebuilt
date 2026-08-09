@@ -22,12 +22,13 @@ func _test_battle_weapon_mode_component() -> void:
 	var request := InteractionRequest.new("battle.weapon-mode", &"combat_action", {
 		"round": 2,
 		"actorId": "character.archer",
-		"actions": ["switch_weapon", "finish", "defend", "retreat"],
+		"actions": ["switch_weapon", "cast_spell", "finish", "defend", "retreat"],
 		"weaponMode": "missile",
 		"weaponSwitch": {"enabled": true, "targetMode": "melee", "reason": ""},
 		"rangedAttack": {"enabled": false, "reason": "Missile range, line of sight, and projectile resolution are unavailable."},
 		"retreat": {"enabled": false, "reason": "An enemy is too close.", "nearestEnemyRange": 1},
 		"targets": [{"id": "monster.target", "name": "Target", "currentHealth": 5, "maximumHealth": 5}],
+		"spellCasts": [{"spellId": "spell.flame", "spellName": "Flame", "power": 2, "cost": 4, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5}],
 		"movement": [
 			{"direction": [0, -1], "destination": [45, 44], "cost": 1, "enabled": true, "reason": ""},
 			{"direction": [1, 0], "destination": [46, 45], "cost": 1, "enabled": false, "reason": "Destination occupied."},
@@ -49,6 +50,7 @@ func _test_battle_weapon_mode_component() -> void:
 	var edge_button: Button = null
 	var finish_button: Button = null
 	var escape_button: Button = null
+	var cast_button: Button = null
 	for button: Button in buttons:
 		if button.text == "Fire missile unavailable":
 			fire_button = button
@@ -62,6 +64,8 @@ func _test_battle_weapon_mode_component() -> void:
 			finish_button = button
 		elif button.text == "Escape":
 			escape_button = button
+		elif button.text == "Cast selected spell":
+			cast_button = button
 	assert_not_null(fire_button, "the unresolved ranged action remains visible instead of silently disappearing")
 	assert_true(fire_button.disabled and not fire_button.tooltip_text.is_empty(), "the disabled Fire action exposes the typed tactical blocker")
 	assert_not_null(switch_button, "the source-backed no-cost mode toggle remains available")
@@ -69,14 +73,17 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_not_null(edge_button, "the typed battle component distinguishes edge Escape from ordinary movement")
 	assert_not_null(finish_button, "the Classic Finish command remains distinct from Defend")
 	assert_true(escape_button != null and escape_button.disabled and escape_button.tooltip_text == "An enemy is too close.", "the explicit Escape control exposes the core-owned unavailable reason")
+	assert_not_null(cast_button, "the battle component exposes a core-proven spell, power, and target option")
 	switch_button.pressed.emit()
 	move_button.pressed.emit()
 	edge_button.pressed.emit()
+	cast_button.pressed.emit()
 	assert_equal(submitted, [
 		{"actorId": "character.archer", "action": "switch_weapon", "targetId": ""},
 		{"actorId": "character.archer", "action": "move", "targetId": "", "destination": [45, 44]},
 		{"actorId": "character.archer", "action": "retreat_edge", "targetId": "", "destination": [1, 45], "forced": false},
-	], "the presenter emits only the typed switch and movement responses")
+		{"actorId": "character.archer", "action": "cast_spell", "targetId": "monster.target", "spellId": "spell.flame", "power": 2},
+	], "the presenter emits typed switch, movement, and source-probed spell responses")
 	component.free()
 
 
