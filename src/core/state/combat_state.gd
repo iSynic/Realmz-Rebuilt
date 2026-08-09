@@ -20,6 +20,9 @@ var _character_weapon_modes: Dictionary = {}
 var _guarding_actor_ids: Dictionary = {}
 var _retreated_character_ids: Dictionary = {}
 var _attacked_actor_ids: Dictionary = {}
+var _spell_death_macro_queue: Array[String] = []
+var _spell_macro_actor_id: String = ""
+var _spell_macro_advances_turn: bool = false
 
 
 func _init(source_battle_id: String, initial_monsters: Array[MonsterState] = [], battle_macro_id: int = 0, initial_battlefield: BattlefieldState = null) -> void:
@@ -183,6 +186,50 @@ func attacked_actor_ids() -> Array[String]:
 	return result
 
 
+func queue_spell_death_macro(combatant_id: String) -> bool:
+	if combatant_id.is_empty() or monster_by_id(combatant_id) == null or _spell_death_macro_queue.has(combatant_id):
+		return false
+	_spell_death_macro_queue.append(combatant_id)
+	return true
+
+
+func begin_spell_death_macro_sequence(actor_id: String, advances_turn: bool) -> bool:
+	if _spell_death_macro_queue.is_empty() or actor_id.is_empty() or actor_id != active_actor_id() or not _spell_macro_actor_id.is_empty():
+		return false
+	_spell_macro_actor_id = actor_id
+	_spell_macro_advances_turn = advances_turn
+	return true
+
+
+func pending_spell_death_macro_id() -> String:
+	return "" if _spell_death_macro_queue.is_empty() else _spell_death_macro_queue[0]
+
+
+func complete_spell_death_macro(combatant_id: String) -> bool:
+	if combatant_id.is_empty() or pending_spell_death_macro_id() != combatant_id:
+		return false
+	_spell_death_macro_queue.pop_front()
+	return true
+
+
+func spell_death_macro_queue() -> Array[String]:
+	return _spell_death_macro_queue.duplicate()
+
+
+func spell_macro_actor_id() -> String:
+	return _spell_macro_actor_id
+
+
+func spell_macro_advances_turn() -> bool:
+	return _spell_macro_advances_turn
+
+
+func clear_spell_death_macro_sequence() -> void:
+	_spell_death_macro_queue.clear()
+	_spell_macro_actor_id = ""
+	_spell_macro_advances_turn = false
+
+
 func mark_character_retreated(actor_id: String) -> bool:
 	if actor_id.is_empty() or not _turn_order.has(actor_id) or monster_by_id(actor_id) != null:
 		return false
@@ -223,7 +270,7 @@ func to_data() -> Dictionary:
 	weapon_mode_ids.sort()
 	for actor_id: Variant in weapon_mode_ids:
 		weapon_modes[String(actor_id)] = _character_weapon_modes[actor_id]
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "battlefield": null if battlefield == null else battlefield.to_data()}
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "battlefield": null if battlefield == null else battlefield.to_data()}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -273,6 +320,17 @@ static func from_data(data: Variant) -> CombatState:
 		if not actor_id is String or actor_id.is_empty() or not order.has(actor_id) or result._attacked_actor_ids.has(actor_id):
 			return null
 		result._attacked_actor_ids[actor_id] = true
+	var spell_macro_queue: Variant = data.get("spellDeathMacroQueue", [])
+	var spell_macro_actor: Variant = data.get("spellMacroActorId", "")
+	var spell_macro_advances: Variant = data.get("spellMacroAdvancesTurn", false)
+	if not spell_macro_queue is Array or spell_macro_queue.size() > loaded_monsters.size() or not spell_macro_actor is String or not spell_macro_advances is bool:
+		return null
+	for combatant_id: Variant in spell_macro_queue:
+		if not combatant_id is String or combatant_id.is_empty() or result.monster_by_id(combatant_id) == null or result._spell_death_macro_queue.has(combatant_id):
+			return null
+		result._spell_death_macro_queue.append(combatant_id)
+	result._spell_macro_actor_id = spell_macro_actor
+	result._spell_macro_advances_turn = spell_macro_advances
 	var retreated_data: Variant = data.get("retreatedCharacterIds", [])
 	if not retreated_data is Array or retreated_data.size() > 6:
 		return null
@@ -318,6 +376,10 @@ static func from_data(data: Variant) -> CombatState:
 	if (result._turn_order.is_empty() and result.turn_index != 0) or (not result._turn_order.is_empty() and result.turn_index >= result._turn_order.size()):
 		return null
 	if result.active_turn != null and (result.completed or result.active_turn.actor_id != result.active_actor_id()):
+		return null
+	if result._spell_death_macro_queue.is_empty() != result._spell_macro_actor_id.is_empty() or (not result._spell_macro_actor_id.is_empty() and (result.completed or result.active_actor_id() != result._spell_macro_actor_id)):
+		return null
+	if result._spell_death_macro_queue.is_empty() and result._spell_macro_advances_turn:
 		return null
 	if result.pending_reaction != null and (result.completed or result.active_turn == null or result.active_actor_id() != result.pending_reaction.mover_id or result.active_turn.actor_id != result.pending_reaction.mover_id):
 		return null

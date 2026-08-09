@@ -62,6 +62,7 @@ func run() -> void:
 	_test_classic_selected_level_up(loaded.content)
 	_test_classic_death_macro_revival(loaded.content)
 	_test_automatic_monster_death_macro(loaded.content)
+	_test_spell_queued_death_macro(loaded.content)
 	_test_aogm_dispatch_has_no_fallback(loaded.content)
 	_test_classic_shell_domain_route(loaded.content)
 
@@ -1210,6 +1211,68 @@ func _test_automatic_monster_death_macro(content: RealmzContent) -> void:
 		resumed = restored.respond(InteractionResponse.new(resumed.interaction.request_id, &"ally_selection", {"selectedIds": resumed.interaction.payload["selectedIds"]}))
 	assert_equal(resumed.state, SessionStep.State.COMPLETED, "restored death-macro interaction resumes through GameSession")
 	assert_equal(restored._state.last_battle_outcome, &"victory", "restored direct-session battle resolves after its death macro")
+	monster_definition.death_macro = original_death_macro
+
+
+func _test_spell_queued_death_macro(content: RealmzContent) -> void:
+	var monster_definition := content.monster_by_classic_id(1)
+	var battle := content.battle_by_classic_id(0)
+	assert_not_null(monster_definition, "spell-queued death-macro fixture contains a Classic monster")
+	assert_not_null(battle, "spell-queued death-macro fixture contains a Classic battle")
+	if monster_definition == null or battle == null:
+		return
+	var original_death_macro := monster_definition.death_macro
+	monster_definition.death_macro = 321
+	var spell := SpellDefinition.new("spell.session-queued-death", 1701, "Session Queued Death")
+	spell.in_combat = true
+	spell.target_type = 1
+	spell.spell_class = 6
+	spell.damage_type = 1
+	spell.cannot = 1
+	spell.cost = 1
+	spell.range_min = 10
+	spell.damage_min = 4
+	spell.damage_max = 4
+	spell.duration_min = 1
+	spell.duration_max = 1
+	var programs: Array[ScenarioProgramDefinition] = [
+		ScenarioProgramDefinition.new("xap:321", &"extra-action-point", "321", [
+			ClassicActionDefinition.new(0, 14, 14, 1, false, []),
+		]),
+	]
+	var messages: Array[MessageDefinition] = [MessageDefinition.new(1, "The queued spell macro pauses here.")]
+	var spell_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(programs, []), messages, [], [], content.race_definitions(), content.caste_definitions(), [], [spell], [monster_definition], [battle])
+	var session := GameSession.new()
+	session.start(spell_content, 1)
+	_begin_fixture_adventure(session, spell_content)
+	var caster: CharacterState = session._state.party.characters()[0]
+	caster.set_known_spells([spell.id])
+	caster.maximum_spell_attacks = 2
+	caster.maximum_spell_points = 10
+	caster.spell_points = 10
+	caster.normal_attacks = 4
+	var started := session._rules.combat_flow.start_battle(session._state, spell_content, battle, session._rng)
+	assert_true(started.ok, "spell-queued death-macro fixture starts a battle")
+	if not started.ok:
+		monster_definition.death_macro = original_death_macro
+		return
+	var target: MonsterState = session._state.combat.monsters()[0]
+	target.current_health = 4
+	target.magic_resistance = 0
+	assert_true(_place_monster_adjacent(session._state.combat, caster.id, target.id), "spell-queued death-macro fixture establishes source-legal range")
+	var yielded := session.submit_intent(PlayerIntent.cast_spell(spell.id, caster.id, target.id, 1))
+	assert_equal(yielded.state, SessionStep.State.WAITING_FOR_INTERACTION, "a spell-triggered death macro can yield before the caster's activation advances")
+	assert_equal(yielded.interaction.kind, &"character_selection", "the queued macro crosses the ordinary typed interaction boundary")
+	assert_equal([session._state.combat.active_actor_id(), session._state.combat.spell_death_macro_queue(), target.traitor], [caster.id, [target.id], true], "the live queue retains its caster cursor and source allegiance")
+	var boundary := session.snapshot()
+	assert_not_null(boundary, "a yielding spell death-macro queue is a complete save boundary")
+	var restored := GameSession.new()
+	assert_equal(restored.restore(spell_content, boundary).state, SessionStep.State.COMPLETED, "the spell death-macro queue restores transactionally")
+	var pending := restored.view().pending_interaction
+	var resumed := restored.respond(InteractionResponse.new(pending.request_id, &"character_selection", {"characterIds": [caster.id]}))
+	assert_true(_event_has(resumed.events, &"monster_death_macro_completed"), "the restored queued macro completes before combat resumes")
+	var defeated := restored._state.combat.monster_by_id(target.id)
+	assert_equal([defeated.current_health, defeated.traitor, restored._state.combat.spell_death_macro_queue(), restored._state.combat.outcome], [0, true, [], &"victory"], "the queued host path does not invent an allegiance reset when the authored macro contains no opcode that changes it")
 	monster_definition.death_macro = original_death_macro
 
 

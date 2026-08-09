@@ -16,6 +16,7 @@ func run() -> void:
 	_test_monster_missile_does_not_impersonate_melee()
 	_test_source_backed_projectile_fire()
 	_test_source_backed_character_spell_casting()
+	_test_spell_death_macro_queue_and_restore()
 	_test_source_backed_monster_spell_casting()
 	_test_charm_resistance_continues_after_failed_opposed_save()
 	_test_monster_authored_attack_rows_and_target_retention()
@@ -845,6 +846,71 @@ func _test_source_backed_character_spell_casting() -> void:
 	blocked_state.character_spellcasting_blocked = true
 	var scenario_blocked := rules.combat_flow.cast_spell(blocked_state, content, blocked_character.id, blocked_monster.id, spell.id, 1, ScriptedRng.new([]))
 	assert_equal(scenario_blocked.error_code, &"character_spellcasting_blocked", "a nonzero Classic spellcasting flag blocks rather than enables character casting")
+
+
+func _test_spell_death_macro_queue_and_restore() -> void:
+	var rules := RealmzRules.new()
+	var spell := SpellDefinition.new("spell.queued-death", 1306, "Queued Death")
+	spell.in_combat = true
+	spell.target_type = 1
+	spell.spell_class = 1
+	spell.damage_type = 1
+	spell.cost = 2
+	spell.range_min = 10
+	spell.damage_min = 4
+	spell.damage_max = 4
+	spell.duration_min = 1
+	spell.duration_max = 1
+	var definition := _monster_definition("monster.queued-death", [])
+	definition.death_macro = 321
+	var monster := MonsterState.new("monster.queued-death.instance", definition.id, definition.name, 4, 4, 1)
+	var character := _character("character.queued-death")
+	character.set_known_spells([spell.id])
+	character.maximum_spell_attacks = 2
+	character.maximum_spell_points = 10
+	character.spell_points = 10
+	character.normal_attacks = 4
+	character.attacks_remaining = 0
+	var state := _state(character, monster, "battle.queued-death")
+	var content := _content([definition], [], [], [], [spell])
+	var cast := rules.combat_flow.cast_spell(state, content, character.id, monster.id, spell.id, 1, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	assert_true(cast.ok, "a lethal spell commits before its Castle death-macro queue is drained")
+	var request_events := cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"monster_death_macro_requested")
+	assert_equal(request_events.size(), 1, "the completed spell emits only its queue head")
+	assert_equal([request_events[0].payload.get("combatantId"), request_events[0].payload.get("queuedBySpell"), request_events[0].payload.get("resetTraitorOnComplete")], [monster.id, true, false], "spell deaths identify Castle's deferred macro and allegiance-preserving completion path")
+	assert_equal([state.combat.active_actor_id(), state.combat.spell_death_macro_queue(), state.combat.battlefield.has_actor(monster.id)], [character.id, [monster.id], true], "the active caster and corrected revival footprint survive until the queued macro completes")
+
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(restored, "the spell death-macro queue and active-caster continuation survive whole-state restoration")
+	if restored == null:
+		return
+	var restored_monster := restored.combat.monster_by_id(monster.id)
+	restored_monster.current_health = 1
+	var resumed := rules.combat_flow.continue_after_monster_death_macro(restored, content, ScriptedRng.new([]), monster.id)
+	assert_true(resumed.ok, "the restored queued spell macro completes against its exact saved combatant")
+	assert_equal([restored.combat.spell_death_macro_queue(), restored.combat.active_actor_id(), restored.combat.battlefield.has_actor(monster.id), restored_monster.traitor], [[], character.id, true, true], "a revived queued-spell target retains its position, enemy allegiance, and the caster's remaining activation")
+
+	var second_definition := _monster_definition("monster.queued-death.second", [])
+	second_definition.death_macro = 322
+	var first := MonsterState.new("monster.queue.first", definition.id, "First", 0, 4, 1)
+	var second := MonsterState.new("monster.queue.second", second_definition.id, "Second", 0, 4, 1)
+	var queue_field := _blank_battlefield()
+	queue_field.place_character(character.id, Vector2i(45, 45))
+	queue_field.place_monster(first.id, Vector2i(46, 45), 0)
+	queue_field.place_monster(second.id, Vector2i(47, 45), 0)
+	var queue_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [character]), RealmzClock.new())
+	queue_state.combat = CombatState.new("battle.queued-order", [first, second], 0, queue_field)
+	queue_state.combat.set_turn_order([character.id, first.id, second.id])
+	queue_state.combat.begin_active_turn()
+	assert_true(queue_state.combat.queue_spell_death_macro(first.id) and queue_state.combat.queue_spell_death_macro(second.id), "multiple spell deaths retain source target order")
+	assert_true(queue_state.combat.begin_spell_death_macro_sequence(character.id, false), "the queue owns its issuing spell activation")
+	var queue_content := _content([definition, second_definition])
+	var first_completed := rules.combat_flow.continue_after_monster_death_macro(queue_state, queue_content, ScriptedRng.new([]), first.id)
+	assert_true(first_completed.ok, "the first queued death macro advances only the queue cursor")
+	assert_equal([queue_state.combat.spell_death_macro_queue(), queue_state.combat.battlefield.has_actor(first.id), queue_state.combat.battlefield.has_actor(second.id)], [[second.id], false, true], "a completed dead subject is removed while the next corrected revival footprint remains")
+	assert_true(first_completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"monster_death_macro_requested" and event.payload.get("combatantId") == second.id), "the next source-ordered macro is requested before battle or turn continuation")
+	var wrong_cursor := rules.combat_flow.continue_after_monster_death_macro(queue_state, queue_content, ScriptedRng.new([]), first.id)
+	assert_equal(wrong_cursor.error_code, &"invalid_spell_death_macro_queue", "a stale response cannot skip or replay the saved queue head")
 
 
 func _test_source_backed_monster_spell_casting() -> void:

@@ -694,12 +694,17 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_spell_resolved", {"actorId": caster.id, "targetId": target.id, "spellId": spell.id, "power": power_level, "classicTier": cast_level, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic"})]
 	caster.attacks_remaining = _rules.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
-	var death_macro_requested := resolution.target_defeated and _request_monster_death_macro(target, target_definition, events)
-	_remove_defeated_position(combat, target.id, resolution.target_defeated and not death_macro_requested)
-	if not _character_can_continue(caster):
-		combat.advance_turn()
-	if death_macro_requested:
+	var death_macro_queued := resolution.target_defeated and _queue_spell_death_macro(combat, target, target_definition)
+	_remove_defeated_position(combat, target.id, resolution.target_defeated and not death_macro_queued)
+	var advances_turn := not _character_can_continue(caster)
+	if death_macro_queued:
+		if not combat.begin_spell_death_macro_sequence(caster.id, advances_turn):
+			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The spell death-macro continuation could not retain its active caster.")
+		if not _request_next_spell_death_macro(combat, content, events):
+			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The queued spell death macro references unavailable content.")
 		return CombatFlowResult.succeeded(events)
+	if advances_turn:
+		combat.advance_turn()
 	if _finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	_process_monster_turns(state, content, rng, events)
@@ -712,6 +717,8 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 	var combat := state.combat
 	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != caster_id:
 		return CombatSpellCastProbe.blocked(&"invalid_spell_turn", "The caster does not own an active combat turn.")
+	if not combat.pending_spell_death_macro_id().is_empty():
+		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
 	var caster := state.party.character_by_id(caster_id)
 	var target := combat.monster_by_id(target_id)
 	var spell := content.spell_by_id(spell_id)
@@ -783,10 +790,30 @@ func character_spell_unavailable_reason(state: GameState, content: RealmzContent
 	return probe.reason_text
 
 
-func continue_after_monster_death_macro(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
+func continue_after_monster_death_macro(state: GameState, content: RealmzContent, rng: RealmzRng, completed_combatant_id: String = "") -> CombatFlowResult:
 	if state == null or content == null or rng == null or state.combat == null:
 		return CombatFlowResult.failed(&"invalid_death_macro_continuation", "Monster death-macro continuation requires an active battle.")
 	var events: Array[DomainEvent] = []
+	if not state.combat.pending_spell_death_macro_id().is_empty():
+		var expected_id := state.combat.pending_spell_death_macro_id()
+		if completed_combatant_id.is_empty():
+			completed_combatant_id = expected_id
+		if not state.combat.complete_spell_death_macro(completed_combatant_id):
+			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The completed spell death macro does not match the saved queue cursor.")
+		var completed_monster := state.combat.monster_by_id(completed_combatant_id)
+		_remove_defeated_position(state.combat, completed_combatant_id, completed_monster != null and completed_monster.current_health <= 0)
+		if not state.combat.pending_spell_death_macro_id().is_empty():
+			if not _request_next_spell_death_macro(state.combat, content, events):
+				return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The next queued spell death macro references unavailable content.")
+			return CombatFlowResult.succeeded(events)
+		var spell_actor_id := state.combat.spell_macro_actor_id()
+		var advances_turn := state.combat.spell_macro_advances_turn()
+		if advances_turn:
+			if state.combat.active_actor_id() != spell_actor_id:
+				return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The active caster changed before the queued spell action completed.")
+		state.combat.clear_spell_death_macro_sequence()
+		if advances_turn:
+			state.combat.advance_turn()
 	_remove_all_defeated_positions(state)
 	if state.combat.pending_reaction != null:
 		var reaction := state.combat.pending_reaction
@@ -1918,6 +1945,25 @@ static func _append_monster_physical_feedback(events: Array[DomainEvent], sound_
 func _request_monster_death_macro(monster: MonsterState, definition: MonsterDefinition, events: Array[DomainEvent]) -> bool:
 	if monster == null or definition == null or definition.death_macro <= 0:
 		return false
+	_append_monster_death_macro_request(monster, definition, events, false)
+	return true
+
+
+func _queue_spell_death_macro(combat: CombatState, monster: MonsterState, definition: MonsterDefinition) -> bool:
+	return combat != null and monster != null and definition != null and definition.death_macro > 0 and combat.queue_spell_death_macro(monster.id)
+
+
+func _request_next_spell_death_macro(combat: CombatState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
+	var combatant_id := combat.pending_spell_death_macro_id() if combat != null else ""
+	var monster := combat.monster_by_id(combatant_id) if combat != null else null
+	var definition := content.monster_by_id(monster.definition_id) if monster != null and content != null else null
+	if monster == null or definition == null or definition.death_macro <= 0:
+		return false
+	_append_monster_death_macro_request(monster, definition, events, true)
+	return true
+
+
+static func _append_monster_death_macro_request(monster: MonsterState, definition: MonsterDefinition, events: Array[DomainEvent], queued_by_spell: bool) -> void:
 	events.append(DomainEvent.new(&"monster_death_macro_requested", {
 		"combatantId": monster.id,
 		"definitionId": monster.definition_id,
@@ -1925,8 +1971,9 @@ func _request_monster_death_macro(monster: MonsterState, definition: MonsterDefi
 		"programId": "xap:%d" % definition.death_macro,
 		"macroId": definition.death_macro,
 		"traitor": monster.traitor,
+		"queuedBySpell": queued_by_spell,
+		"resetTraitorOnComplete": not queued_by_spell,
 	}))
-	return true
 
 
 func _finish_if_resolved(state: GameState, content: RealmzContent, events: Array[DomainEvent]) -> bool:

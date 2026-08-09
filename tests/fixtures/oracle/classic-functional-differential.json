@@ -1735,6 +1735,56 @@
       "decision": "runtime-defect",
       "availability": "implemented",
       "status": "ordinary-single-party-target-damage-path-verified-anomalies-and-broader-shapes-explicit"
+    },
+    {
+      "id": "combat.spell-death-macro-queue",
+      "domain": "combat",
+      "claim": "Monsters killed during one spell resolution enqueue their death macros in source target order; the queue drains before battle outcome or caster advancement, survives interaction/save boundaries, and does not reset monster allegiance unless an authored opcode such as 119 explicitly does so.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake captures Classic death-macro metadata, appends death macros to a FIFO, and drains that queue before victory. Its native-combat host is useful comparative evidence but does not establish Castle's spell-scoped queue or allegiance semantics.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_combat_macro_queue.gd", "symbol": "static func enqueue_death_macro(" },
+          { "path": "src/scripts/states/CombatState.gd", "symbol": "func queue_classic_death_macro(" },
+          { "path": "src/scripts/states/CbAnimationState.gd", "symbol": "func enter(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_combat_macro_queue(" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/resolvespell.c", "symbol": "void resolvespell(void)" },
+          { "path": "src/realmz_orig/killbody.c", "symbol": "void killbody(short mon, short performque)" },
+          { "path": "src/realmz_orig/emptyque.c", "symbol": "void emptyque(void)" },
+          { "path": "src/realmz_orig/combat.c", "symbol": "void combat(short suprise, short mode)" },
+          { "path": "src/realmz_orig/getup.c", "symbol": "void getup(short skip)" },
+          { "path": "src/realmz_orig/newland.c", "symbol": "case 119:" }
+        ],
+        "authoredInputs": ["spell target sequence", "monster death macro IDs", "death-macro instructions", "monster allegiance", "revival opcode"],
+        "observation": "resolvespell calls killbody for each defeated target while inspell is active. killbody appends each death macro to todoque; combat and getup drain it through emptyque before normal progression. The queued killbody branch does not clear traiter. Opcode 119 independently revives the current macro monster and explicitly clears traiter.",
+        "unresolved": ["Castle's fixed todoque capacity is not treated as permission to drop additional valid macros; Realmz 2.0 validates its complete save-owned queue instead.", "Group spell resolution remains unavailable until duration, base damage, cost, and source target ordering are shared across targets rather than repeated per target."]
+      },
+      "providence": {
+        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits each monster's deathMacro and the referenced Extra Action Point program. Queue order and continuation state are runtime-owned, so no package change is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func continue_after_monster_death_macro(" },
+        "expectedTrace": ["commit the spell's defeated targets", "queue each positive death macro in source target order", "retain the caster activation and queue cursor", "run one nested macro and any typed interaction", "save and restore the queue, cursor, and host continuation", "remove a still-dead completed subject", "drain the next macro before battle outcome or caster advancement", "change allegiance only through an authored operation"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_spell_death_macro_queue_and_restore()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_spell_queued_death_macro(" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "single-target-queue-save-resume-and-multiple-entry-drain-verified-group-casting-remains-explicit"
     }
   ]
 }

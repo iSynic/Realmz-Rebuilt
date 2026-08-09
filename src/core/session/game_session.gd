@@ -710,6 +710,7 @@ func _start_session_death_macro(preceding_events: Array[DomainEvent]) -> Session
 		"battleId": combat.battle_id,
 		"combatantId": combatant_id,
 		"programId": program_id,
+		"resetTraitorOnComplete": bool(request.get("resetTraitorOnComplete", true)),
 	}
 	var started := _scenario_vm.start_program(program_id, {
 		"callingContext": "monster-death-macro",
@@ -743,11 +744,11 @@ func _continue_session_death_macro(events: Array[DomainEvent]) -> SessionStep:
 		_session_continuation.clear()
 		return _finish_failed(&"invalid_battle_continuation", "Monster death-macro completion lost its battle.", events)
 	var monster := combat.monster_by_id(combatant_id)
-	if monster != null:
+	if monster != null and bool(_session_continuation.get("resetTraitorOnComplete", true)):
 		monster.traitor = false
 	events.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))
 	_session_continuation.clear()
-	var continued := _rules.combat_flow.continue_after_monster_death_macro(_state, _content, _rng)
+	var continued := _rules.combat_flow.continue_after_monster_death_macro(_state, _content, _rng, combatant_id)
 	if not continued.ok:
 		return _finish_failed(continued.error_code, continued.error_message, events)
 	events.append_array(continued.events)
@@ -1118,14 +1119,23 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 		return resume_kind == "post-move" and resume_continuation is Dictionary and _valid_ready_post_move_continuation(content, state, resume_continuation)
 	if continuation.get("kind") == "combat-death-macro":
 		var death_fields: Array[String] = ["kind", "battleId", "combatantId", "programId"]
-		if continuation.size() != death_fields.size():
+		if continuation.size() not in [death_fields.size(), death_fields.size() + 1]:
 			return false
 		for field: String in death_fields:
 			if not continuation.has(field) or not continuation[field] is String or continuation[field].is_empty():
 				return false
+		if continuation.has("resetTraitorOnComplete") and not continuation["resetTraitorOnComplete"] is bool:
+			return false
 		if session_interaction != null or vm_interaction == null or state.combat == null or state.combat.battle_id != continuation["battleId"]:
 			return false
-		return state.combat.monster_by_id(continuation["combatantId"]) != null and content.scenario.program_by_id(continuation["programId"]) != null
+		var death_monster := state.combat.monster_by_id(continuation["combatantId"])
+		if death_monster == null or content.scenario.program_by_id(continuation["programId"]) == null:
+			return false
+		var queued_id := state.combat.pending_spell_death_macro_id()
+		if not queued_id.is_empty():
+			var definition := content.monster_by_id(death_monster.definition_id)
+			return queued_id == continuation["combatantId"] and not bool(continuation.get("resetTraitorOnComplete", true)) and definition != null and continuation["programId"] == "xap:%d" % definition.death_macro
+		return bool(continuation.get("resetTraitorOnComplete", true))
 	if continuation.get("kind") == "combat-ally-selection":
 		var ally_fields: Array[String] = ["kind", "battleId"]
 		if continuation.size() != ally_fields.size() or not continuation.get("battleId") is String or continuation["battleId"].is_empty():

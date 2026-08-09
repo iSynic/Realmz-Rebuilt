@@ -192,12 +192,14 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 		return {"kind": "combat-retreat-confirmation", "battleId": value["battleId"], "actorId": value["actorId"], "mode": value["mode"], "destination": value["destination"].duplicate()}
 	if value.get("kind") == "combat-death-macro":
 		var death_fields: Array[String] = ["kind", "battleId", "combatantId", "programId"]
-		if value.size() != death_fields.size():
+		if value.size() not in [death_fields.size(), death_fields.size() + 1]:
 			return null
 		for field: String in death_fields:
 			if not value.has(field) or not value[field] is String or value[field].is_empty():
 				return null
-		return {"kind": "combat-death-macro", "battleId": value["battleId"], "combatantId": value["combatantId"], "programId": value["programId"]}
+		if value.has("resetTraitorOnComplete") and not value["resetTraitorOnComplete"] is bool:
+			return null
+		return {"kind": "combat-death-macro", "battleId": value["battleId"], "combatantId": value["combatantId"], "programId": value["programId"], "resetTraitorOnComplete": bool(value.get("resetTraitorOnComplete", true))}
 	if value.get("kind") == "combat-ally-selection":
 		if value.size() != 2 or not value.get("battleId") is String or value["battleId"].is_empty():
 			return null

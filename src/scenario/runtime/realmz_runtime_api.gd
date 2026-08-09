@@ -2243,9 +2243,10 @@ func _run_combat_death_macro(source_kind: String, preceding_events: Array[Domain
 			"battleId": combat.battle_id,
 			"combatantId": combatant_id,
 			"programId": program_id,
+			"resetTraitorOnComplete": bool(request.get("resetTraitorOnComplete", true)),
 			"macroVm": vm.snapshot().to_data(),
 		}, events)
-	return _continue_after_combat_death_macro(source_kind, request_id, combatant_id, program_id, events)
+	return _continue_after_combat_death_macro(source_kind, request_id, combatant_id, program_id, events, bool(request.get("resetTraitorOnComplete", true)))
 
 
 func _resume_combat_death_macro(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -2265,21 +2266,21 @@ func _resume_combat_death_macro(continuation: Dictionary, response: InteractionR
 		var next_continuation := continuation.duplicate(true)
 		next_continuation["macroVm"] = vm.snapshot().to_data()
 		return ScenarioRuntimeOperationResult.waiting(result.interaction, next_continuation, result.events)
-	return _continue_after_combat_death_macro(String(continuation.get("sourceKind", "classic-combat")), request_id, String(continuation.get("combatantId", "")), String(continuation.get("programId", "")), result.events)
+	return _continue_after_combat_death_macro(String(continuation.get("sourceKind", "classic-combat")), request_id, String(continuation.get("combatantId", "")), String(continuation.get("programId", "")), result.events, bool(continuation.get("resetTraitorOnComplete", true)))
 
 
-func _continue_after_combat_death_macro(source_kind: String, request_id: String, combatant_id: String, program_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
+func _continue_after_combat_death_macro(source_kind: String, request_id: String, combatant_id: String, program_id: String, events: Array[DomainEvent], reset_traitor_on_complete: bool = true) -> ScenarioRuntimeOperationResult:
 	var combat := _game_state.combat
 	if combat == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Monster death-macro completion lost its battle.")
 	var monster := combat.monster_by_id(combatant_id)
-	if monster != null:
+	if monster != null and reset_traitor_on_complete:
 		monster.traitor = false
 	var committed: Array[DomainEvent] = []
 	committed.assign(events)
 	committed.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": combat.battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))
 	var previous_round := combat.round_number
-	var continued := _rules.combat_flow.continue_after_monster_death_macro(_game_state, _content, _rng)
+	var continued := _rules.combat_flow.continue_after_monster_death_macro(_game_state, _content, _rng, combatant_id)
 	if not continued.ok:
 		return ScenarioRuntimeOperationResult.failed(continued.error_code, continued.error_message)
 	committed.append_array(continued.events)
