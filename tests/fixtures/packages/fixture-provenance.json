@@ -1,14 +1,14 @@
 {
-  "fixture_id": "realmz2-synthetic-character-weapon-requirements-v3",
+  "fixture_id": "realmz2-synthetic-battle-terrain-v4",
   "evidence_label": "runtime-integration",
   "authoring": "synthetic Providence-authored data",
   "commercial_payload": false,
-  "providence_commit": "c392abecb8c948c62c66be76170131944232fcab",
-  "schema_sha256": "b011d35b0204a31ed3b3d9d17bdb71519d9e2f068105b1326dcaedb323dfd465",
-  "package_bytes": 1112153,
-  "package_sha256": "a2ce5239a7a9bf2121de788dd88804d9d27f0c9a7eb8e4fe3bdbb3c05c07513e",
-  "package_hash": "e452cd62c112bfbc13d912df6b9c0244ef3e981b74c8d7edb190faf77567baf3",
-  "negative_fixture_sha256": "30c2ca08d5e31fd1895afcca28554b83613487f65d8f2a75fa3d22cb9ea040c4",
+  "providence_commit": "76dccf3841dc4a097b561b4293bc8618105e50ad",
+  "schema_sha256": "42e8a3de0dff78efaed680581e696a76bca2e5c09124230e2f0d41a2c28844c9",
+  "package_bytes": 1220917,
+  "package_sha256": "58adb88feec343093307bd6d594bf18e12aa73996e81b844b9349201c034c623",
+  "package_hash": "6fcc05ae5414a5f686b6734891e35ab8df251a047407b1e1ade3802c87ed09b1",
+  "negative_fixture_sha256": "2d3f0617381cb3e8315dc1be61c8b53ec3e62856abe2e5f6b3be455a6e2c20b5",
   "negative_fixture_mutation": "content.json replaces Fixture Wand with Fixture Band without updating manifest integrity",
   "generator": "cargo run --manifest-path src-tauri/Cargo.toml --example export_realmz2_fixture -- <output-directory>"
 }

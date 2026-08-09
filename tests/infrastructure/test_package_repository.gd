@@ -12,13 +12,19 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "e452cd62c112bfbc13d912df6b9c0244ef3e981b74c8d7edb190faf77567baf3", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "6fcc05ae5414a5f686b6734891e35ab8df251a047407b1e1ade3802c87ed09b1", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
 	assert_true(loaded.content.campaign_definition().contact.has("email"), "campaign contact metadata is validated as a fixed shape")
 	var map := loaded.content.world.map_by_id("land:0")
 	assert_not_null(map, "the authoritative start map is constructed")
+	assert_equal(map.battle_terrain_set_id, "classic.battle-terrain.landlook.0", "land maps retain their effective Classic battle terrain identity")
+	var land_battle_terrain := loaded.content.world.battle_terrain_set_by_id(map.battle_terrain_set_id)
+	assert_not_null(land_battle_terrain, "the map battle terrain identity resolves to immutable typed content")
+	assert_equal(land_battle_terrain.tile_count(), 401, "land battle terrain contains the complete effective mapstats range")
+	assert_equal(land_battle_terrain.tile_by_id(200).solid, 17, "active landlook tile 200 overwrites the earlier global Combat Data BD tile")
+	assert_equal(land_battle_terrain.tile_by_id(201).combat_tile_at(2, 2), 201, "global combat tiles above the overlap retain their complete 3 x 3 build")
 	assert_equal(map.topology.width, 3, "fixture topology width is preserved")
 	assert_equal(map.topology.cells().size(), 9, "every topology cell is constructed exactly once")
 	assert_equal(map.topology.cell_at(Vector2i(1, 0)).trigger_ids(), ["ap.fixture.message"], "cell trigger references come from authoritative topology")
@@ -28,6 +34,10 @@ func run() -> void:
 	assert_not_null(map.random_region_by_id("land:0:randlevel:rect:0"), "random rectangles become typed map regions")
 	assert_equal(loaded.content.world.transition_from("land:0", &"east").target_map_id, "land:1", "Layout adjacency becomes an explicit transition")
 	var dungeon := loaded.content.world.map_by_id("dungeon:0")
+	assert_equal(dungeon.battle_terrain_set_id, "classic.battle-terrain.dungeon", "dungeon maps reference the shared Combat Data BD terrain set")
+	var dungeon_battle_terrain := loaded.content.world.battle_terrain_set_by_id(dungeon.battle_terrain_set_id)
+	assert_equal(dungeon_battle_terrain.tile_count(), 201, "dungeon battle terrain contains exactly Combat Data BD tiles 200 through 400")
+	assert_equal(dungeon_battle_terrain.tile_by_id(200).solid, 23, "dungeon tile 200 retains the global Combat Data BD record")
 	assert_equal(dungeon.topology.cell_at(Vector2i(1, 0)).edge(&"north").kind, &"door", "packed dungeon doors become explicit topology edges")
 	assert_equal(dungeon.topology.cell_at(Vector2i(0, 1)).edge(&"east").kind, &"secret", "packed dungeon passage directions become explicit topology edges")
 	assert_equal(loaded.content.message_by_id(1).text, "The Realmz 2.0 fixture is deterministic.", "runtime message text crosses the validating factory")
@@ -66,6 +76,7 @@ func run() -> void:
 	var fixture_zip := ZIPReader.new()
 	assert_equal(fixture_zip.open(FIXTURE_PATH), OK, "the package contract test can inspect detached fixture JSON")
 	var fixture_content: Variant = JSON.parse_string(fixture_zip.read_file("content.json").get_string_from_utf8())
+	var fixture_world: Variant = JSON.parse_string(fixture_zip.read_file("world.json").get_string_from_utf8())
 	fixture_zip.close()
 	assert_true(fixture_content is Dictionary, "the detached fixture content parses for negative contract tests")
 	if fixture_content is Dictionary:
@@ -78,6 +89,27 @@ func run() -> void:
 		invalid_monsters = fixture_content["monsters"].duplicate(true)
 		invalid_monsters[0]["attackCount"] = 2
 		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects a physical attack count beyond its supplied Classic rows")
+	assert_true(fixture_world is Dictionary, "the detached fixture world parses for independent terrain contract tests")
+	if fixture_world is Dictionary:
+		var invalid_terrain_sets: Array = fixture_world["battleTerrainSets"].duplicate(true)
+		invalid_terrain_sets[1]["tiles"].pop_back()
+		assert_true(PackageRepository.new()._construct_battle_terrain_sets(invalid_terrain_sets) == null, "the runtime rejects an incomplete effective land battle terrain range")
+		invalid_terrain_sets = fixture_world["battleTerrainSets"].duplicate(true)
+		invalid_terrain_sets[0]["tiles"][0]["combatBuild"] = [[200, 200, 200], [200, 200, 200]]
+		assert_true(PackageRepository.new()._construct_battle_terrain_sets(invalid_terrain_sets) == null, "the runtime rejects a battle terrain tile without an exact 3 x 3 combat build")
+		var terrain_sets: Array[BattleTerrainSetDefinition] = PackageRepository.new()._construct_battle_terrain_sets(fixture_world["battleTerrainSets"])
+		var terrain_sets_by_id: Dictionary = {}
+		for terrain_set: BattleTerrainSetDefinition in terrain_sets:
+			terrain_sets_by_id[terrain_set.id] = terrain_set
+		var trigger_ids: Dictionary = {}
+		for trigger_record: Variant in fixture_world["triggers"]:
+			trigger_ids[trigger_record["id"]] = true
+		var invalid_maps: Array = fixture_world["maps"].duplicate(true)
+		invalid_maps[0]["metadata"]["battleTerrainSetId"] = "classic.battle-terrain.missing"
+		assert_true(PackageRepository.new()._construct_maps(invalid_maps, trigger_ids, terrain_sets_by_id, true) == null, "the runtime rejects an unknown map battle terrain reference")
+		invalid_maps = fixture_world["maps"].duplicate(true)
+		invalid_maps[0]["metadata"]["battleTerrainSetId"] = 7
+		assert_true(PackageRepository.new()._construct_maps(invalid_maps, trigger_ids, terrain_sets_by_id, true) == null, "the runtime does not coerce a malformed battle terrain identity into a string")
 	assert_equal(loaded.content.battle_by_id("classic.battle.0").monster_slots()[0].monster_id, "classic.monster.1", "battle placements reference stable monster IDs")
 	assert_equal(loaded.content.shop_by_id("classic.shop.0").quantity(0), 2, "shop stock compiles to stable item references and quantities")
 	assert_equal(loaded.content.treasure_by_id("classic.treasure.0").item_ids()[0], "classic.item.901", "treasures use the same item identity as inventory")

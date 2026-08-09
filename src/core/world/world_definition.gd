@@ -3,13 +3,16 @@ extends RefCounted
 
 var _maps_by_id: Dictionary = {}
 var _transitions_by_source: Dictionary = {}
+var _battle_terrain_sets: Dictionary = {}
 
 
-func _init(world_maps: Array[MapDefinition], transitions: Array[MapTransition] = []) -> void:
+func _init(world_maps: Array[MapDefinition], transitions: Array[MapTransition] = [], battle_terrain_sets: Array[BattleTerrainSetDefinition] = []) -> void:
 	for map_definition: MapDefinition in world_maps:
 		_maps_by_id[map_definition.id] = map_definition
 	for transition: MapTransition in transitions:
 		_transitions_by_source[_transition_key(transition.source_map_id, transition.source_edge)] = transition
+	for terrain_set: BattleTerrainSetDefinition in battle_terrain_sets:
+		_battle_terrain_sets[terrain_set.id] = terrain_set
 
 
 func map_by_id(map_id: String) -> MapDefinition:
@@ -30,6 +33,10 @@ func map_by_type_and_index(level_type: StringName, level_index: int) -> MapDefin
 		if map.level_type == level_type and map.level_index == level_index:
 			return map
 	return null
+
+
+func battle_terrain_set_by_id(definition_id: String) -> BattleTerrainSetDefinition:
+	return _battle_terrain_sets.get(definition_id) as BattleTerrainSetDefinition
 
 
 func transition_from(map_id: String, edge: StringName) -> MapTransition:

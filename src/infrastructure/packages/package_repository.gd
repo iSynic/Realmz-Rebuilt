@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "b011d35b0204a31ed3b3d9d17bdb71519d9e2f068105b1326dcaedb323dfd465"
+const EXPECTED_SCHEMA_HASH: String = "42e8a3de0dff78efaed680581e696a76bca2e5c09124230e2f0d41a2c28844c9"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -324,7 +324,14 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 			_reject("Trigger ID '%s' is duplicated." % trigger.id)
 			return null
 		trigger_ids[trigger.id] = true
-	var maps_value: Variant = _construct_maps(world.get("maps"), trigger_ids)
+	var battle_terrain_sets_value: Variant = _construct_battle_terrain_sets(world.get("battleTerrainSets"))
+	if battle_terrain_sets_value == null:
+		return null
+	var battle_terrain_sets: Array[BattleTerrainSetDefinition] = battle_terrain_sets_value
+	var battle_terrain_sets_by_id: Dictionary = {}
+	for terrain_set: BattleTerrainSetDefinition in battle_terrain_sets:
+		battle_terrain_sets_by_id[terrain_set.id] = terrain_set
+	var maps_value: Variant = _construct_maps(world.get("maps"), trigger_ids, battle_terrain_sets_by_id, not battles.is_empty())
 	if maps_value == null:
 		return null
 	var maps: Array[MapDefinition] = maps_value
@@ -334,7 +341,7 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 	if transitions_value == null:
 		return null
 	var transitions: Array[MapTransition] = transitions_value
-	var world_definition := WorldDefinition.new(maps, transitions)
+	var world_definition := WorldDefinition.new(maps, transitions, battle_terrain_sets)
 	var start: Variant = manifest.get("start")
 	if not start is Dictionary or not start.get("mapId") is String or _integer(start.get("x")) < 0 or _integer(start.get("y")) < 0:
 		_reject("Manifest start location is malformed.")
@@ -1120,7 +1127,82 @@ func _construct_triggers(value: Variant, scenario: ScenarioDefinition) -> Varian
 	return triggers
 
 
-func _construct_maps(value: Variant, trigger_ids: Dictionary) -> Variant:
+func _construct_battle_terrain_sets(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("World battle terrain sets must be an array.")
+		return null
+	var terrain_sets: Array[BattleTerrainSetDefinition] = []
+	var set_ids: Dictionary = {}
+	for record: Variant in value:
+		if not record is Dictionary or not _exact_fields(record, ["id", "landlook", "baseTile", "tiles"]) or not record["id"] is String or record["id"].is_empty() or set_ids.has(record["id"]) or not record["tiles"] is Array:
+			_reject("Battle terrain set is malformed or duplicated.")
+			return null
+		var dungeon_set := record["landlook"] == null
+		if dungeon_set != (record["baseTile"] == null):
+			_reject("Battle terrain set '%s' has inconsistent landlook/base-tile identity." % record["id"])
+			return null
+		if not dungeon_set and (not _is_integer(record["landlook"]) or not _is_integer(record["baseTile"])):
+			_reject("Battle terrain set '%s' has non-integer landlook or base-tile identity." % record["id"])
+			return null
+		var landlook := -1 if dungeon_set else _integer(record["landlook"])
+		var base_tile := -1 if dungeon_set else _integer(record["baseTile"])
+		if not dungeon_set and (landlook < -128 or landlook > 127 or base_tile < 0 or base_tile > 400):
+			_reject("Battle terrain set '%s' has invalid landlook or base-tile identity." % record["id"])
+			return null
+		var tiles: Array[BattleTerrainTileDefinition] = []
+		var tile_ids: Dictionary = {}
+		for tile_record: Variant in record["tiles"]:
+			var tile_definition := _construct_battle_terrain_tile(tile_record)
+			if tile_definition == null or tile_ids.has(tile_definition.tile):
+				_reject("Battle terrain set '%s' contains a malformed or duplicate tile." % record["id"])
+				return null
+			tile_ids[tile_definition.tile] = true
+			tiles.append(tile_definition)
+		var terrain_set := BattleTerrainSetDefinition.new(record["id"], landlook, base_tile, tiles)
+		if dungeon_set and not terrain_set.has_complete_range(200, 400):
+			_reject("Dungeon battle terrain set '%s' must contain every Combat Data BD tile 200 through 400." % record["id"])
+			return null
+		if not dungeon_set and not terrain_set.has_complete_range(0, 400):
+			_reject("Land battle terrain set '%s' must contain every effective mapstats tile 0 through 400." % record["id"])
+			return null
+		set_ids[terrain_set.id] = true
+		terrain_sets.append(terrain_set)
+	return terrain_sets
+
+
+func _construct_battle_terrain_tile(value: Variant) -> BattleTerrainTileDefinition:
+	var fields: Array[String] = ["tile", "sound", "time", "solid", "shore", "needBoat", "isPath", "los", "flyFloat", "forest", "combatBuild"]
+	if not value is Dictionary or not _exact_fields(value, fields):
+		return null
+	var record: Dictionary = value
+	var integers_value: Variant = _validated_integer_fields(record, ["tile", "sound", "time", "solid", "needBoat", "forest"], "Battle terrain tile")
+	if integers_value == null:
+		return null
+	var integers: Dictionary = integers_value
+	if integers["tile"] < 0 or integers["tile"] > 400 or not _integers_in_range(integers, ["sound", "time", "solid", "needBoat", "forest"], -32768, 32767):
+		return null
+	for flag: String in ["shore", "isPath", "los", "flyFloat"]:
+		if not record[flag] is bool:
+			return null
+	if not record["combatBuild"] is Array or record["combatBuild"].size() != 3:
+		return null
+	var combat_build: Array = []
+	for row: Variant in record["combatBuild"]:
+		if not row is Array or row.size() != 3:
+			return null
+		var parsed_row: Array[int] = []
+		for entry: Variant in row:
+			if not _is_integer(entry):
+				return null
+			var tile_id := _integer(entry)
+			if tile_id < -32768 or tile_id > 32767:
+				return null
+			parsed_row.append(tile_id)
+		combat_build.append(parsed_row)
+	return BattleTerrainTileDefinition.new(integers["tile"], integers["sound"], integers["time"], integers["solid"], record["shore"], integers["needBoat"], record["isPath"], record["los"], record["flyFloat"], integers["forest"], combat_build)
+
+
+func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_sets: Dictionary = {}, require_battle_terrain: bool = false) -> Variant:
 	if not value is Array or value.is_empty():
 		_reject("World maps must be a non-empty array.")
 		return null
@@ -1158,15 +1240,30 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary) -> Variant:
 			coordinates[cell.coordinate] = true
 			cells.append(cell)
 		var level_index := _integer(record.get("levelIndex"))
-		if level_index < 0:
+		var level_type: Variant = record.get("levelType")
+		if level_index < 0 or not level_type is String or level_type not in ["land", "dungeon"]:
 			_reject("Map '%s' has an invalid Classic level index." % record["id"])
 			return null
 		var metadata: Variant = record.get("metadata")
-		if not metadata is Dictionary or not metadata.get("dark") is bool or not metadata.get("usesLos") is bool or metadata.get("landlook") != null and not _is_integer(metadata.get("landlook")):
+		if not metadata is Dictionary or not _exact_fields(metadata, ["dark", "usesLos", "landlook", "battleTerrainSetId"]) or not metadata.get("dark") is bool or not metadata.get("usesLos") is bool or metadata.get("landlook") != null and not _is_integer(metadata.get("landlook")):
 			_reject("Map '%s' metadata is malformed." % record["id"])
 			return null
 		var landlook := -1 if metadata["landlook"] == null else _integer(metadata["landlook"])
-		maps.append(MapDefinition.new(record["id"], record["name"], StringName(record.get("levelType", "")), level_index, MapTopology.new(width, height, cells), metadata["dark"], metadata["usesLos"], landlook, regions))
+		if metadata["battleTerrainSetId"] != null and (not metadata["battleTerrainSetId"] is String or metadata["battleTerrainSetId"].is_empty()):
+			_reject("Map '%s' battle terrain set identity is malformed." % record["id"])
+			return null
+		var terrain_set_id: String = "" if metadata["battleTerrainSetId"] == null else metadata["battleTerrainSetId"]
+		var terrain_set := battle_terrain_sets.get(terrain_set_id) as BattleTerrainSetDefinition
+		if require_battle_terrain and terrain_set == null:
+			_reject("Map '%s' does not reference a complete battle terrain set." % record["id"])
+			return null
+		if not terrain_set_id.is_empty() and terrain_set == null:
+			_reject("Map '%s' references unknown battle terrain set '%s'." % [record["id"], terrain_set_id])
+			return null
+		if terrain_set != null and ((level_type == "land" and terrain_set.landlook != landlook) or (level_type == "dungeon" and terrain_set.landlook != -1)):
+			_reject("Map '%s' references a battle terrain set for the wrong level type or landlook." % record["id"])
+			return null
+		maps.append(MapDefinition.new(record["id"], record["name"], StringName(level_type), level_index, MapTopology.new(width, height, cells), metadata["dark"], metadata["usesLos"], landlook, regions, terrain_set_id))
 	return maps
 
 

@@ -505,6 +505,50 @@
       },
       "additionalProperties": false
     },
+    "battleTerrainTile": {
+      "type": "object",
+      "required": ["tile", "sound", "time", "solid", "shore", "needBoat", "isPath", "los", "flyFloat", "forest", "combatBuild"],
+      "properties": {
+        "tile": { "type": "integer", "minimum": 0, "maximum": 400 },
+        "sound": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "time": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "solid": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "shore": { "type": "boolean" },
+        "needBoat": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "isPath": { "type": "boolean" },
+        "los": { "type": "boolean" },
+        "flyFloat": { "type": "boolean" },
+        "forest": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "combatBuild": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "items": { "type": "integer", "minimum": -32768, "maximum": 32767 }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "battleTerrainSet": {
+      "type": "object",
+      "required": ["id", "landlook", "baseTile", "tiles"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "landlook": { "type": ["integer", "null"] },
+        "baseTile": { "type": ["integer", "null"] },
+        "tiles": {
+          "type": "array",
+          "minItems": 201,
+          "maxItems": 401,
+          "items": { "$ref": "#/$defs/battleTerrainTile" }
+        }
+      },
+      "additionalProperties": false
+    },
     "cell": {
       "type": "object",
       "required": [
@@ -605,11 +649,17 @@
         "height": { "type": "integer", "minimum": 1 },
         "metadata": {
           "type": "object",
-          "required": ["dark", "usesLos", "landlook"],
+          "required": ["dark", "usesLos", "landlook", "battleTerrainSetId"],
           "properties": {
             "dark": { "type": "boolean" },
             "usesLos": { "type": "boolean" },
-            "landlook": { "type": ["integer", "null"] }
+            "landlook": { "type": ["integer", "null"] },
+            "battleTerrainSetId": {
+              "anyOf": [
+                { "$ref": "#/$defs/identifier" },
+                { "type": "null" }
+              ]
+            }
           },
           "additionalProperties": false
         },
@@ -620,10 +670,11 @@
     },
     "world": {
       "type": "object",
-      "required": ["kind", "schemaVersion", "maps", "triggers", "transitions", "landLayout", "timedEncounters"],
+      "required": ["kind", "schemaVersion", "battleTerrainSets", "maps", "triggers", "transitions", "landLayout", "timedEncounters"],
       "properties": {
         "kind": { "const": "realmz2.world" },
         "schemaVersion": { "const": 2 },
+        "battleTerrainSets": { "type": "array", "items": { "$ref": "#/$defs/battleTerrainSet" } },
         "maps": { "type": "array", "items": { "$ref": "#/$defs/map" }, "minItems": 1 },
         "triggers": { "type": "array", "items": { "$ref": "#/$defs/trigger" } },
         "transitions": { "type": "array", "items": { "$ref": "#/$defs/worldTransition" } },
