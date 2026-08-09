@@ -17,6 +17,8 @@ var icon_id: int = 0
 var surrender_percent: int = 0
 var weapon_id: String = ""
 var conditions: ConditionSet
+var _saves: Array[int] = []
+var _saves_initialized: bool = false
 
 
 func _init(instance_id: String, source_definition_id: String, display_name: String, health: int, max_health: int, hd: int = 1, dexterity: int = 1, armor_rating: int = 0, magic_resist: int = 0, spell_energy: int = 0, is_traitor: bool = true) -> void:
@@ -33,10 +35,32 @@ func _init(instance_id: String, source_definition_id: String, display_name: Stri
 	maximum_spell_points = spell_energy
 	traitor = is_traitor
 	conditions = ConditionSet.new()
+	_saves.resize(8)
+	_saves.fill(0)
+
+
+func save_value(index: int) -> int:
+	return 0 if index < 0 or index >= _saves.size() else _saves[index]
+
+
+func set_save_value(index: int, value: int) -> bool:
+	if index < 0 or index >= _saves.size() or value < -128 or value > 32767:
+		return false
+	_saves[index] = value
+	_saves_initialized = true
+	return true
+
+
+func save_values() -> Array[int]:
+	return _saves.duplicate()
+
+
+func has_runtime_saves() -> bool:
+	return _saves_initialized
 
 
 func to_data() -> Dictionary:
-	return {
+	var result := {
 		"id": id,
 		"definitionId": definition_id,
 		"name": name,
@@ -54,6 +78,9 @@ func to_data() -> Dictionary:
 		"weaponId": weapon_id,
 		"conditions": conditions.to_data(),
 	}
+	if _saves_initialized:
+		result["saves"] = _saves.duplicate()
+	return result
 
 
 static func from_data(data: Variant) -> MonsterState:
@@ -84,6 +111,14 @@ static func from_data(data: Variant) -> MonsterState:
 	if result.surrender_percent == -100_000:
 		return null
 	result.weapon_id = data["weaponId"]
+	if data.has("saves"):
+		var saves_data: Variant = data["saves"]
+		if not saves_data is Array or saves_data.size() != 8:
+			return null
+		for index: int in 8:
+			var save := _integer(saves_data[index])
+			if save == -100_000 or not result.set_save_value(index, save):
+				return null
 	result.conditions = loaded_conditions
 	return result
 

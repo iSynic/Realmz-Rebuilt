@@ -131,8 +131,7 @@ func _test_session_save_resume_boundary(content: RealmzContent) -> void:
 	var session := GameSession.new()
 	session.start(content, 1)
 	_begin_fixture_adventure(session, content)
-	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
-	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	_restore_fixture_position(session, content, "land:1", Vector2i(0, 1))
 	var waiting := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	assert_equal(waiting.state, SessionStep.State.WAITING_FOR_INTERACTION, "GameSession publishes the VM interaction after committing movement")
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "movement is committed before presentation chooses")
@@ -170,8 +169,7 @@ func _test_age_update_precedes_post_move(content: RealmzContent) -> void:
 	var source := GameSession.new()
 	source.start(content, 1)
 	_begin_fixture_adventure(source, content)
-	source.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
-	source.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	_restore_fixture_position(source, content, "land:1", Vector2i(0, 1))
 	var boundary := source.snapshot()
 	var character := boundary.game_state.party.characters()[0]
 	var race := _aging_race(content)
@@ -197,8 +195,7 @@ func _test_classic_shell_domain_route(content: RealmzContent) -> void:
 	var session := GameSession.new()
 	session.start(content, 1)
 	_begin_fixture_adventure(session, content)
-	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
-	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	_restore_fixture_position(session, content, "land:1", Vector2i(0, 1))
 	var encounter := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	assert_equal(encounter.interaction.kind, &"encounter_choice", "synthetic shell route enters the ordinary Simple Encounter picker")
 	assert_not_null(SaveEnvelope.from_data(session.snapshot().to_data()), "encounter picker is a serializable committed boundary")
@@ -1242,7 +1239,11 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
 	state.party.conditions.set_value(ConditionRules.PARTY_DRAGON_HIDE, 1)
 	var scripted_values: Array[int] = []
-	for _draw: int in hit_dice + 11:
+	# The fixture's landlook-zero field has one non-base 3 by 3 build; every
+	# other interior base cell consumes a no-rubble check before formation.
+	for _draw: int in 86 * 86 - 9:
+		scripted_values.append(32_767)
+	for _draw: int in hit_dice + 14:
 		scripted_values.append(0)
 	scripted_values.append(32_767)
 	var runtime_rng := ScriptedRng.new(scripted_values)
@@ -1516,6 +1517,13 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	character.caste_id = castes[0].id
 	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "scenario fixture imports a deterministic party member")
 	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "scenario fixture explicitly completes party setup")
+
+
+func _restore_fixture_position(session: GameSession, content: RealmzContent, map_id: String, coordinate: Vector2i) -> void:
+	var envelope := session.snapshot()
+	envelope.game_state.party.map_id = map_id
+	envelope.game_state.party.coordinate = coordinate
+	assert_equal(session.restore(content, envelope).state, SessionStep.State.COMPLETED, "scenario route position changes through the validated save boundary")
 
 
 func _runtime_api(content: RealmzContent, action_state: ScenarioActionState) -> RealmzRuntimeApi:

@@ -42,8 +42,45 @@ func build_monster(definition: MonsterDefinition, instance_id: String, traitor_o
 		stamina += int(float(realmz_day) / float(denominator))
 	var traitor := definition.traitor if traitor_override < 0 else traitor_override != 0
 	var result := MonsterState.new(instance_id, definition.id, definition.name, stamina, stamina, definition.hit_dice, agility, armor, magic_resistance, spell_points, traitor)
+	for index: int in 8:
+		result.set_save_value(index, definition.save_value(index) + (7 * difficulty if index < 6 else 0))
 	result.surrender_percent = definition.surrender_percent
 	result.weapon_id = _random_weapon(definition.random_weapon_table, instance_id, rng) if definition.random_weapon_table > 0 else definition.weapon_id
+	return result
+
+
+func build_battle_monster(definition: MonsterDefinition, instance_id: String, invert_traitor: bool, difficulty: int, realmz_day: int, rng: RealmzRng) -> MonsterState:
+	if definition == null or rng == null:
+		return null
+	# combatsetup.c places the footprint before these draws, then randomizes AC,
+	# DX, spell points, stamina, and an optional carried weapon in this order.
+	var armor := definition.armor + rng.draw(3, StringName("battle.monster.%s.armor" % instance_id)) - 2
+	var agility := maxi(1, definition.agility + rng.draw(3, StringName("battle.monster.%s.agility" % instance_id)) - 2)
+	var spell_points := definition.spell_points
+	var variation := int(float(spell_points) / 10.0)
+	spell_points += rng.draw_between(-variation, variation, StringName("battle.monster.%s.spell-points" % instance_id))
+	var stamina := definition.stamina_bonus
+	for die: int in definition.hit_dice:
+		stamina += rng.draw(8, StringName("battle.monster.%s.stamina.%d" % [instance_id, die]))
+	var magic_resistance := definition.magic_resistance
+	if magic_resistance < 99 and magic_resistance > 9:
+		magic_resistance += 3 * difficulty
+	armor -= 3 * difficulty
+	agility += difficulty
+	var multiplier := 1.0 + float(difficulty) * 0.40
+	spell_points = int(float(spell_points) * multiplier)
+	stamina = maxi(1, int(float(stamina) * multiplier))
+	var denominator := 180 - 30 * difficulty
+	if denominator > 0:
+		stamina += int(float(realmz_day) / float(denominator))
+	var traitor := definition.traitor
+	if invert_traitor:
+		traitor = not traitor
+	var result := MonsterState.new(instance_id, definition.id, definition.name, stamina, stamina, definition.hit_dice, agility, armor, magic_resistance, spell_points, traitor)
+	for index: int in 8:
+		result.set_save_value(index, definition.save_value(index) + (10 * difficulty if index < 6 else 0))
+	result.surrender_percent = definition.surrender_percent
+	result.weapon_id = _battle_random_weapon(definition.random_weapon_table, instance_id, rng) if definition.random_weapon_table > 0 else definition.weapon_id
 	return result
 
 
@@ -56,6 +93,20 @@ func _random_weapon(table_id: int, instance_id: String, rng: RealmzRng) -> Strin
 		if roll >= int(range_row[0]) and roll <= int(range_row[1]):
 			return "classic.item.%d" % int(range_row[2])
 	return ""
+
+
+func _battle_random_weapon(table_id: int, instance_id: String, rng: RealmzRng) -> String:
+	var table_index := 8 if table_id == 10 else table_id - 1
+	if table_index < 0 or table_index >= RANDOM_WEAPON_TABLES.size():
+		return ""
+	var roll := rng.draw(100, StringName("battle.monster.%s.random-weapon" % instance_id))
+	var result := ""
+	# Authored battle construction does not return from the table scan. Its
+	# overlapping roll 85 in table 2 is therefore owned by the later row.
+	for range_row: Array in RANDOM_WEAPON_TABLES[table_index]:
+		if roll >= int(range_row[0]) and roll <= int(range_row[1]):
+			result = "classic.item.%d" % int(range_row[2])
+	return result
 
 
 static func random_weapon_item_ids(table_id: int) -> Array[String]:

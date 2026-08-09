@@ -52,6 +52,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `_test_battle_owned_fumble_and_exact_recovery` records the Castle reconstruction and proves exact remaining-charge preservation across battle state, save/restore, and recipient assignment. The scenario and session-persistence tests cover opcode 122 and the post-battle interaction. The differential case is `combat.fumble-and-battle-recovery`.
 - Legacy quirk: none. No authored scenario dependency on charge replenishment is known; concrete route evidence would be required before considering a narrowly named exception.
 
+## FD-COMBAT-006 — Terminating battlefield placement
+
+- Affected rule: initial character, held-over ally, and authored-monster placement when no legal battlefield cell or complete footprint exists.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/combatsetup.c`, `combatsetup`, lines 133–189, 201–270, and 290–375. Each failed search decrements `start`, increments `stop`, and unconditionally jumps back to the same search. Once the complete 90×90 valid rectangle has been exhausted, a battlefield with no legal cell has no terminating failure branch.
+- Observable oracle behavior, determined from the complete source flow: an all-solid 90×90 field cannot place the first ordinary party member and cannot reach battle initialization or a recoverable state/RNG boundary. The synthetic source-observation fixture is `tests/fixtures/oracle/battlefield-placement-termination-correction.json`, SHA-256 `8b27b211ba21fda7f899d090dd9692390d72c04570264b606a2abcbbead97b0a`. This is `source-control-flow` evidence, not a Castle-runtime claim; deliberately running the native non-terminating case would add no useful observation.
+- Player-facing problem: malformed or adversarial terrain can hang the application during battle startup after gameplay RNG has already advanced.
+- Chosen 2.0 behavior: search the complete finite battlefield in Castle order, then fail with a stable placement error. Battle setup is transactional: no combat state is committed, and RNG generator state, draw count, scripted cursor, and preexisting trace are restored exactly.
+- Tests: `test_battlefield_builder.gd` proves impossible footprint search terminates explicitly. `test_combat_flow.gd` proves the stable error plus complete game-state and RNG rollback. The differential case is `combat.battlefield-generation-and-placement`.
+- Legacy quirk: none. A non-terminating application state is not scenario behavior that can be supported as an authored dependency.
+
 Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
 
 Each entry must include:

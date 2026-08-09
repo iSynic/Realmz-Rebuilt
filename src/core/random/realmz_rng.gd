@@ -59,6 +59,29 @@ func snapshot() -> RealmzRngState:
 	return RealmzRngState.new(_state, _draw_count)
 
 
+func checkpoint() -> Dictionary:
+	return {
+		"generatorState": _state,
+		"drawCount": _draw_count,
+		"traceSize": _trace.size(),
+		"sourcePosition": _source_position(),
+	}
+
+
+func rollback(checkpoint_data: Dictionary) -> bool:
+	if not checkpoint_data.has("generatorState") or not checkpoint_data.has("drawCount") or not checkpoint_data.has("traceSize") or not checkpoint_data.has("sourcePosition"):
+		return false
+	var generator_state := int(checkpoint_data["generatorState"])
+	var draw_count := int(checkpoint_data["drawCount"])
+	var trace_size := int(checkpoint_data["traceSize"])
+	if generator_state <= 0 or generator_state >= MODULUS or draw_count < 0 or trace_size < 0 or trace_size > _trace.size() or not _restore_source_position(checkpoint_data["sourcePosition"]):
+		return false
+	_state = generator_state
+	_draw_count = draw_count
+	_trace.resize(trace_size)
+	return true
+
+
 func restore(state: RealmzRngState) -> bool:
 	if state == null or state.generator_state <= 0 or state.generator_state >= MODULUS or state.draw_count < 0:
 		return false
@@ -80,6 +103,14 @@ func _next_raw() -> int:
 	if low_word >= 0x8000:
 		return low_word - 0x10000
 	return low_word
+
+
+func _source_position() -> Variant:
+	return null
+
+
+func _restore_source_position(value: Variant) -> bool:
+	return value == null
 
 
 static func _normalize_seed(initial_seed: int) -> int:

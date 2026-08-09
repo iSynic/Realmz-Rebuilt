@@ -16,7 +16,7 @@ func resolve_character_attack(attacker: CharacterState, equipment: CharacterComb
 	var invalid_weapon := _invalid_weapon_reason(equipment.melee_weapon)
 	if not invalid_weapon.is_empty():
 		return _blocked_character_attack(invalid_weapon)
-	var condition_roll := _roll_weapon_condition_monster(equipment.melee_weapon, defender_definition, rng)
+	var condition_roll := _roll_weapon_condition_monster(equipment.melee_weapon, defender, defender_definition, rng)
 	if condition_roll.get("blocked", false):
 		return _blocked_character_attack(StringName(condition_roll.get("reason", "invalid_weapon_condition")))
 	var type_damage := 0
@@ -220,18 +220,18 @@ static func _invalid_weapon_reason(weapon: ItemDefinition) -> StringName:
 	return &""
 
 
-func _roll_weapon_condition_monster(weapon: ItemDefinition, defender_definition: MonsterDefinition, rng: RealmzRng) -> Dictionary:
+func _roll_weapon_condition_monster(weapon: ItemDefinition, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng) -> Dictionary:
 	if weapon == null or weapon.special_1 != -10:
 		return {}
 	var result := {"index": weapon.special_3 - 20, "amount": weapon.special_5, "applies": false}
 	match weapon.special_2:
 		1:
 			var roll := rng.draw(100, &"combat.attack.weapon-condition-save")
-			var chance := _monster_save_chance(defender_definition, weapon.special_4)
+			var chance := _monster_save_chance(defender, defender_definition, weapon.special_4)
 			result["saveIndex"] = weapon.special_4
 			result["saveChance"] = chance
 			result["saveRoll"] = roll
-			result["applies"] = not _monster_saved(defender_definition, weapon.special_4, roll, chance)
+			result["applies"] = not _monster_saved(defender, defender_definition, weapon.special_4, roll, chance)
 		2:
 			var roll := rng.draw(100, &"combat.attack.weapon-condition-chance")
 			result["chance"] = weapon.special_4
@@ -321,8 +321,8 @@ func _roll_weapon_elements_monster(weapon: ItemDefinition, defender: MonsterStat
 		if protected:
 			effective = int(float(effective) / 2.0)
 		var save_roll := rng.draw(100, StringName("combat.attack.weapon-%s-save" % names[index]))
-		var save_chance := _monster_save_chance(defender_definition, save_indexes[index])
-		var saved := _monster_saved(defender_definition, save_indexes[index], save_roll, save_chance)
+		var save_chance := _monster_save_chance(defender, defender_definition, save_indexes[index])
+		var saved := _monster_saved(defender, defender_definition, save_indexes[index], save_roll, save_chance)
 		if saved:
 			effective = int(float(effective) / 2.0)
 		effects.append({"element": String(names[index]), "rolled": rolled, "saveIndex": save_indexes[index], "saveChance": save_chance, "saveRoll": save_roll, "saved": saved, "protected": protected, "amount": effective})
@@ -453,7 +453,7 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 	var invalid_weapon := _invalid_weapon_reason(attack_context.attacker_weapon)
 	if not invalid_weapon.is_empty():
 		return _blocked_monster_attack(invalid_weapon)
-	var condition_roll := _roll_weapon_condition_monster(attack_context.attacker_weapon, defender_definition, rng)
+	var condition_roll := _roll_weapon_condition_monster(attack_context.attacker_weapon, defender, defender_definition, rng)
 	if condition_roll.get("blocked", false):
 		return _blocked_monster_attack(StringName(condition_roll.get("reason", "invalid_weapon_condition")))
 	var chance := _monster_attack_base_chance(attacker, attacker_definition, attack_context)
@@ -655,8 +655,8 @@ func _apply_monster_charm_special(resolution: AttackResolution, attacker: Monste
 	resolution.special_handled = true
 	resolution.special_save_index = 0
 	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
-	resolution.special_save_chance = _monster_save_chance(defender_definition, 0)
-	resolution.special_saved = _monster_saved(defender_definition, 0, resolution.special_save_roll, resolution.special_save_chance)
+	resolution.special_save_chance = _monster_save_chance(defender, defender_definition, 0)
+	resolution.special_saved = _monster_saved(defender, defender_definition, 0, resolution.special_save_roll, resolution.special_save_chance)
 	resolution.special_allegiance_before = defender.traitor
 	resolution.special_allegiance_after = defender.traitor
 	if resolution.special_saved:
@@ -699,8 +699,8 @@ func _apply_monster_elemental_special(resolution: AttackResolution, attack: Mons
 	resolution.special_condition_after = resolution.special_condition_before
 	resolution.special_damage_rolled = rng.draw(maxi(1, attack.damage_max), &"combat.monster-attack.special-damage")
 	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
-	resolution.special_save_chance = _monster_save_chance(defender_definition, resolution.special_save_index)
-	resolution.special_saved = _monster_saved(defender_definition, resolution.special_save_index, resolution.special_save_roll, resolution.special_save_chance)
+	resolution.special_save_chance = _monster_save_chance(defender, defender_definition, resolution.special_save_index)
+	resolution.special_saved = _monster_saved(defender, defender_definition, resolution.special_save_index, resolution.special_save_roll, resolution.special_save_chance)
 	var after_save := resolution.special_damage_rolled
 	if resolution.special_saved:
 		after_save = int(float(after_save) / 2.0)
@@ -746,8 +746,8 @@ func _apply_monster_permanent_affliction(resolution: AttackResolution, defender:
 	resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
 	resolution.special_condition_after = resolution.special_condition_before
 	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
-	resolution.special_save_chance = _monster_save_chance(defender_definition, 7)
-	resolution.special_saved = _monster_saved(defender_definition, 7, resolution.special_save_roll, resolution.special_save_chance)
+	resolution.special_save_chance = _monster_save_chance(defender, defender_definition, 7)
+	resolution.special_saved = _monster_saved(defender, defender_definition, 7, resolution.special_save_roll, resolution.special_save_chance)
 	if resolution.special_saved:
 		return
 	var sentinel := -1 if resolution.special_code == 18 else 1
@@ -796,8 +796,8 @@ func _apply_monster_status_special(resolution: AttackResolution, defender: Monst
 	resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
 	resolution.special_condition_after = resolution.special_condition_before
 	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
-	resolution.special_save_chance = _monster_save_chance(defender_definition, resolution.special_save_index)
-	resolution.special_saved = _monster_saved(defender_definition, resolution.special_save_index, resolution.special_save_roll, resolution.special_save_chance)
+	resolution.special_save_chance = _monster_save_chance(defender, defender_definition, resolution.special_save_index)
+	resolution.special_saved = _monster_saved(defender, defender_definition, resolution.special_save_index, resolution.special_save_roll, resolution.special_save_chance)
 	if resolution.special_saved:
 		return
 	if resolution.special_condition_before < 0:
@@ -860,8 +860,8 @@ func _apply_monster_spell_drain(resolution: AttackResolution, attacker: MonsterS
 	resolution.special_actor_before = attacker.spell_points
 	resolution.special_actor_after = attacker.spell_points
 	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
-	resolution.special_save_chance = _monster_save_chance(defender_definition, resolution.special_save_index)
-	resolution.special_saved = _monster_saved(defender_definition, resolution.special_save_index, resolution.special_save_roll, resolution.special_save_chance)
+	resolution.special_save_chance = _monster_save_chance(defender, defender_definition, resolution.special_save_index)
+	resolution.special_saved = _monster_saved(defender, defender_definition, resolution.special_save_index, resolution.special_save_roll, resolution.special_save_chance)
 	if resolution.special_saved or defender.spell_points == 0:
 		return
 	var drained := attacker.hit_dice * 3
@@ -941,16 +941,16 @@ static func _status_save_index(special_code: int) -> int:
 	return 5
 
 
-static func _monster_save_chance(definition: MonsterDefinition, save_index: int) -> int:
+static func _monster_save_chance(monster: MonsterState, definition: MonsterDefinition, save_index: int) -> int:
 	if save_index == 7:
 		var total := 0
 		for index: int in 6:
-			total += definition.save_value(index)
+			total += monster.save_value(index) if monster.has_runtime_saves() else definition.save_value(index)
 		return int(float(total) / 6.0)
-	return definition.save_value(save_index - 1) if save_index > 0 else 0
+	return (monster.save_value(save_index - 1) if monster.has_runtime_saves() else definition.save_value(save_index - 1)) if save_index > 0 else 0
 
 
-static func _monster_saved(definition: MonsterDefinition, save_index: int, roll: int, chance: int) -> bool:
+static func _monster_saved(_monster: MonsterState, definition: MonsterDefinition, save_index: int, roll: int, chance: int) -> bool:
 	if save_index < 6 and definition.spell_immune(save_index):
 		return true
 	if save_index > 0 and roll <= chance:

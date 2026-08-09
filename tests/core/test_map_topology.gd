@@ -19,7 +19,7 @@ func run() -> void:
 	assert_true(land.topology.probe_land_entry(Vector2i.ZERO, world_state).allowed, "land entry checks the destination tile without inventing a diagonal edge")
 	assert_equal(land.topology.probe_entry(Vector2i.ZERO, Vector2i(-1, -1), world_state).reason, &"invalid_direction", "edge-based topology entry remains cardinal for dungeons and pathfinding")
 	assert_equal(land.topology.find_path(Vector2i(1, 1), Vector2i.ZERO, world_state, &"land"), [Vector2i.ZERO], "land pathfinding uses the same direct diagonal probe without corner blocking")
-	assert_equal(land.topology.visible_cells(Vector2i(1, 1), 8, world_state, false).size(), 9, "non-LOS land view derives every visible cell from topology")
+	assert_equal(land.topology.visible_cells(Vector2i(1, 1), 8, world_state, false).size(), 8100, "non-LOS land view derives every Classic map cell from topology")
 
 	var dungeon := loaded.content.world.map_by_id("dungeon:0")
 	assert_equal(dungeon.topology.probe_entry(Vector2i.ZERO, Vector2i.LEFT, world_state).reason, &"terrain_blocked", "dungeon wall blocks movement")
@@ -32,7 +32,7 @@ func run() -> void:
 	var diagonal_transition := diagonal_world.probe_movement("land:0", Vector2i.ZERO, Vector2i(-1, -1), world_state)
 	assert_true(diagonal_transition.allowed, "a diagonal land boundary probe follows the authored Layout neighbor")
 	assert_equal(diagonal_transition.target_map.id, "land:1", "diagonal Layout movement selects the diagonal map")
-	assert_equal(diagonal_transition.target_coordinate, Vector2i(2, 2), "diagonal Layout movement wraps to the opposite target corner")
+	assert_equal(diagonal_transition.target_coordinate, Vector2i(89, 89), "diagonal Layout movement wraps to the opposite target corner")
 	var secret_probe := dungeon.topology.probe_entry(Vector2i(0, 1), Vector2i.RIGHT, world_state)
 	assert_true(secret_probe.allowed, "matching directional secret passage permits entry")
 	assert_equal(secret_probe.secret_id, "dungeon:0:cell:0,1:secret:east", "secret passage returns its stable overlay identity")

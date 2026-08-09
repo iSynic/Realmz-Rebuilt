@@ -9,6 +9,7 @@ var round_number: int = 1
 var turn_index: int = 0
 var completed: bool = false
 var outcome: StringName = &"active"
+var battlefield: BattlefieldState
 var pending_monster_attack: PendingMonsterAttack
 var active_turn: CombatTurnState
 var _turn_order: Array[String] = []
@@ -17,10 +18,11 @@ var _fumbled_items: Array[ItemInstance] = []
 var _character_weapon_modes: Dictionary = {}
 
 
-func _init(source_battle_id: String, initial_monsters: Array[MonsterState] = [], battle_macro_id: int = 0) -> void:
+func _init(source_battle_id: String, initial_monsters: Array[MonsterState] = [], battle_macro_id: int = 0, initial_battlefield: BattlefieldState = null) -> void:
 	battle_id = source_battle_id
 	_monsters = initial_monsters.duplicate()
 	macro_id = battle_macro_id
+	battlefield = initial_battlefield
 
 
 func monsters() -> Array[MonsterState]:
@@ -153,7 +155,7 @@ func to_data() -> Dictionary:
 	weapon_mode_ids.sort()
 	for actor_id: Variant in weapon_mode_ids:
 		weapon_modes[String(actor_id)] = _character_weapon_modes[actor_id]
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes}
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "battlefield": null if battlefield == null else battlefield.to_data()}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -173,7 +175,12 @@ static func from_data(data: Variant) -> CombatState:
 		if monster == null:
 			return null
 		loaded_monsters.append(monster)
-	var result := CombatState.new(data["battleId"], loaded_monsters, loaded_macro)
+	var loaded_battlefield: BattlefieldState = null
+	if data.get("battlefield") != null:
+		loaded_battlefield = BattlefieldState.from_data(data["battlefield"])
+		if loaded_battlefield == null:
+			return null
+	var result := CombatState.new(data["battleId"], loaded_monsters, loaded_macro, loaded_battlefield)
 	var order: Array[String] = []
 	for entry: Variant in data["turnOrder"]:
 		if not entry is String or entry.is_empty():

@@ -23,12 +23,12 @@ func resolve_character_spell(caster: CharacterState, target: MonsterState, targe
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type <= 6:
-		saved = rng.draw(100, &"magic.damage-save") <= target_definition.save_value(damage_type - 1)
+		saved = rng.draw(100, &"magic.damage-save") <= (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1))
 		if saved and spell.cannot < 2:
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 			damage /= 2
-	var save_modifier := target_definition.save_value(damage_type - 1) if damage_type > 0 and damage_type <= 6 else 0
+	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type <= 6 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
 	target.current_health -= damage

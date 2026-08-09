@@ -1,5 +1,7 @@
 extends RealmzTestCase
 
+var _cached_battle_world: WorldDefinition
+
 
 func run() -> void:
 	_test_character_half_attack_cadence_and_restore()
@@ -97,11 +99,50 @@ func _test_character_weapon_mode_toggle_and_restore() -> void:
 	var started := rules.combat_flow.start_battle(setup_state, content, battle, RealmzRng.new(95))
 	assert_true(started.ok, "battle setup accepts a character whose only weapon is missile")
 	assert_equal(setup_state.combat.character_weapon_mode(missile_only.id), &"missile", "battle setup selects missile only when the melee slot is empty")
+	assert_not_null(setup_state.combat.battlefield, "battle setup installs the topology-derived battlefield in central combat state")
+	var setup_monster := setup_state.combat.monsters()[0]
+	assert_true(setup_state.combat.battlefield.character_position(missile_only.id).x >= 0, "the live battlefield owns the party position")
+	assert_true(setup_state.combat.battlefield.monster_position(setup_monster.id).x >= 0, "the live battlefield replaces its temporary placement key with the stable monster instance ID")
+	var setup_view := CombatView.new(setup_state.combat, setup_state.party.characters(), content, rules.inventory)
+	assert_not_null(setup_view.battlefield, "the detached combat view exposes generated battlefield state without presenting the mutable aggregate")
+	assert_equal(setup_view.battlefield.monster_footprint(setup_monster.id), BattlefieldState.footprint_cells(setup_state.combat.battlefield.monster_position(setup_monster.id), setup_state.combat.battlefield.monster_size(setup_monster.id)), "presentation receives the exact session-owned Classic footprint")
 	var legacy_combat_data := setup_state.combat.to_data()
+	var restored_battlefield_combat := CombatState.from_data(JSON.parse_string(JSON.stringify(legacy_combat_data)))
+	assert_not_null(restored_battlefield_combat, "battle terrain and actor placements survive combat-state serialization")
+	assert_equal(restored_battlefield_combat.battlefield.to_data(), setup_state.combat.battlefield.to_data(), "restored combat retains the exact generated field and footprints")
+	var mismatched_battlefield_save := setup_state.to_data()
+	mismatched_battlefield_save["combat"]["battlefield"]["mapId"] = "map.other"
+	assert_equal(GameState.from_data(mismatched_battlefield_save), null, "whole-state restore rejects a battlefield detached from the party's authoritative map")
 	legacy_combat_data.erase("characterWeaponModes")
 	var legacy_combat := CombatState.from_data(legacy_combat_data)
 	assert_not_null(legacy_combat, "pre-toggle save-v3 combat state remains readable")
 	assert_equal(legacy_combat.character_weapon_mode(missile_only.id), &"melee", "legacy combat state receives the safe melee default instead of inventing a missile selection")
+
+	var blocked_state := GameState.new(PartyState.new("map.test", Vector2i(45, 45), [_character("character.blocked-placement")]), RealmzClock.new())
+	var blocked_content := RealmzContent.new("campaign.blocked", "0".repeat(64), "blocked", "realmz-classic-1", "map.test", Vector2i(45, 45), _blocked_battle_world(), ScenarioDefinition.new([], []), [], [], [], [], [], [], [], [definition])
+	var blocked_before := blocked_state.to_data()
+	var blocked_rng := ScriptedRng.new([0, 0, 0])
+	blocked_rng.draw(10, &"battle.test.prior")
+	var blocked_rng_before := blocked_rng.snapshot().to_data()
+	var blocked_start := rules.combat_flow.start_battle(blocked_state, blocked_content, battle, blocked_rng)
+	assert_false(blocked_start.ok, "an impossible source-backed battlefield fails instead of hanging Castle's unbounded placement loop")
+	assert_equal(blocked_start.error_code, &"character_placement_failed", "bounded placement failure has an explicit stable identity")
+	assert_equal(blocked_state.to_data(), blocked_before, "failed battlefield placement leaves the complete game state unchanged")
+	assert_equal(blocked_rng.snapshot().to_data(), blocked_rng_before, "failed battlefield placement restores the exact RNG boundary")
+	assert_equal(blocked_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["battle.test.prior"], "RNG rollback removes only speculative battle setup draws")
+
+	var collision_character := _character("character.identity-collision")
+	var collision_ally := MonsterState.new("combat.monster.1", definition.id, definition.name, 10, 10, 1, 1, 0, 0, 0, false)
+	var collision_state := GameState.new(PartyState.new("map.test", Vector2i(45, 45), [collision_character]), RealmzClock.new())
+	collision_state.party.set_allies([collision_ally])
+	var collision_before := collision_state.to_data()
+	var collision_rng := RealmzRng.new(96)
+	var collision_rng_before := collision_rng.snapshot().to_data()
+	var collision_start := rules.combat_flow.start_battle(collision_state, content, battle, collision_rng)
+	assert_false(collision_start.ok, "a late stable-identity collision fails before combat is committed")
+	assert_equal(collision_start.error_code, &"invalid_battlefield_identity", "late setup failure retains its stable identity")
+	assert_equal(collision_state.to_data(), collision_before, "late setup failure rolls back the allocated instance ID and leaves ally state untouched")
+	assert_equal(collision_rng.snapshot().to_data(), collision_rng_before, "late setup failure rolls back every terrain, formation, and monster-construction draw")
 
 
 func _test_monster_missile_does_not_impersonate_melee() -> void:
@@ -340,7 +381,42 @@ func _state(character: CharacterState, monster: MonsterState, battle_id: String)
 
 
 func _content(monsters: Array[MonsterDefinition], items: Array[ItemDefinition] = []) -> RealmzContent:
-	return RealmzContent.new("campaign.cadence", "0".repeat(64), "cadence", "realmz-classic-1", "map.test", Vector2i.ZERO, WorldDefinition.new([]), ScenarioDefinition.new([], []), [], [], [], [], [], items, [], monsters)
+	return RealmzContent.new("campaign.cadence", "0".repeat(64), "cadence", "realmz-classic-1", "map.test", Vector2i(45, 45), _battle_world(), ScenarioDefinition.new([], []), [], [], [], [], [], items, [], monsters)
+
+
+func _battle_world() -> WorldDefinition:
+	if _cached_battle_world != null:
+		return _cached_battle_world
+	var cells: Array[MapCell] = []
+	var empty_ids: Array[String] = []
+	var empty_features: Array[MapFeature] = []
+	for y: int in 90:
+		for x: int in 90:
+			var coordinate := Vector2i(x, y)
+			cells.append(MapCell.new("map.test:cell:%d,%d" % [x, y], coordinate, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "", empty_ids, empty_ids, {}, empty_features))
+	var terrain_tiles: Array[BattleTerrainTileDefinition] = []
+	for tile: int in 401:
+		terrain_tiles.append(BattleTerrainTileDefinition.new(tile, 0, 0, 0, false, 0, false, false, false, 0, [[tile, tile, tile], [tile, tile, tile], [tile, tile, tile]]))
+	var terrain_set := BattleTerrainSetDefinition.new("terrain.test", 1, 1, terrain_tiles)
+	var map := MapDefinition.new("map.test", "Battle Test Map", &"land", 0, MapTopology.new(90, 90, cells), false, false, 1, [], terrain_set.id)
+	_cached_battle_world = WorldDefinition.new([map], [], [terrain_set])
+	return _cached_battle_world
+
+
+func _blocked_battle_world() -> WorldDefinition:
+	var cells: Array[MapCell] = []
+	var empty_ids: Array[String] = []
+	var empty_features: Array[MapFeature] = []
+	for y: int in 90:
+		for x: int in 90:
+			var coordinate := Vector2i(x, y)
+			cells.append(MapCell.new("map.test:blocked:%d,%d" % [x, y], coordinate, "classic.terrain.2", false, 1, false, true, false, false, false, false, false, 0, 2, "", empty_ids, empty_ids, {}, empty_features))
+	var terrain_tiles: Array[BattleTerrainTileDefinition] = []
+	for tile: int in 401:
+		terrain_tiles.append(BattleTerrainTileDefinition.new(tile, 0, 0, 2 if tile == 2 else 0, false, 0, false, false, false, 0, [[tile, tile, tile], [tile, tile, tile], [tile, tile, tile]]))
+	var terrain_set := BattleTerrainSetDefinition.new("terrain.blocked", 1, 2, terrain_tiles)
+	var map := MapDefinition.new("map.test", "Blocked Battle Test Map", &"land", 0, MapTopology.new(90, 90, cells), false, false, 1, [], terrain_set.id)
+	return WorldDefinition.new([map], [], [terrain_set])
 
 
 func _ints(count: int) -> Array[int]:

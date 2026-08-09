@@ -20,3 +20,14 @@ func _next_raw() -> int:
 		push_error("ScriptedRng values must match QuickDraw's signed 16-bit output contract.")
 		return 0
 	return raw
+
+
+func _source_position() -> Variant:
+	return _script_index
+
+
+func _restore_source_position(value: Variant) -> bool:
+	if not value is int or value < 0 or value > _scripted_values.size():
+		return false
+	_script_index = value
+	return true

@@ -13,7 +13,7 @@ func run() -> void:
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "exploration session starts")
 	_begin_fixture_adventure(session, content)
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "Providence start coordinate is authoritative")
-	assert_equal(session.view().map_view.cells().size(), 9, "GameView exposes a topology-derived map")
+	assert_equal(session.view().map_view.cells().size(), 196, "GameView exposes its bounded topology-derived window")
 	assert_true(session.view().map_view.can_move(Vector2i.UP), "the detached view exposes an authoritative passable movement direction")
 	assert_false(session.view().map_view.can_move(Vector2i.LEFT), "the detached view exposes an authoritative blocked movement direction")
 	assert_equal(session.view().map_view.visited_coordinates(), [Vector2i(1, 1)], "the minimap receives only session-owned visited coordinates")
@@ -37,11 +37,11 @@ func run() -> void:
 	_begin_fixture_adventure(diagonal_layout_session, diagonal_layout_content)
 	var diagonal_layout_step := diagonal_layout_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
 	assert_equal(diagonal_layout_session.view().party_map_id, "land:1", "diagonal boundary input follows the compiled diagonal Layout neighbor")
-	assert_equal(diagonal_layout_session.view().party_coordinate, Vector2i(2, 2), "diagonal boundary input wraps to the opposite target corner")
+	assert_equal(diagonal_layout_session.view().party_coordinate, Vector2i(89, 89), "diagonal boundary input wraps to the opposite target corner")
 	assert_true(_has_event(diagonal_layout_step, &"map_transitioned"), "diagonal Layout movement publishes the ordinary transition event")
 	var restored_diagonal_layout := GameSession.new()
 	assert_equal(restored_diagonal_layout.restore(diagonal_layout_content, SaveEnvelope.from_data(diagonal_layout_session.snapshot().to_data())).state, SessionStep.State.COMPLETED, "diagonal Layout movement restores transactionally")
-	assert_equal(restored_diagonal_layout.view().party_coordinate, Vector2i(2, 2), "save/reload retains the diagonal Layout destination")
+	assert_equal(restored_diagonal_layout.view().party_coordinate, Vector2i(89, 89), "save/reload retains the diagonal Layout destination")
 
 	var north := session.submit_intent(PlayerIntent.move(Vector2i.UP))
 	assert_equal(session.view().party_coordinate, Vector2i(1, 0), "typed movement intent commits through GameSession")
@@ -75,7 +75,7 @@ func run() -> void:
 	assert_equal(secret_entry.state, SessionStep.State.WAITING_FOR_INTERACTION, "secret AP positive text pauses before later player intents")
 	assert_equal(session.respond(InteractionResponse.new(secret_entry.interaction.request_id, &"acknowledge", {})).state, SessionStep.State.COMPLETED, "acknowledging secret AP text completes the action sequence")
 
-	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	_restore_fixture_position(session, content, "land:0", Vector2i(88, 1))
 	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	var transitioned := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	assert_equal(session.view().party_map_id, "land:1", "edge movement follows the compiled Layout transition")
@@ -268,6 +268,13 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	character.caste_id = castes[0].id
 	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
 	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "exploration fixture explicitly leaves party setup")
+
+
+func _restore_fixture_position(session: GameSession, content: RealmzContent, map_id: String, coordinate: Vector2i) -> void:
+	var envelope := session.snapshot()
+	envelope.game_state.party.map_id = map_id
+	envelope.game_state.party.coordinate = coordinate
+	assert_equal(session.restore(content, envelope).state, SessionStep.State.COMPLETED, "fixture position changes through the validated save boundary")
 
 
 func _duplicate_placed_ap_content(first_chance: int, source_content: RealmzContent) -> RealmzContent:

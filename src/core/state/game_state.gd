@@ -106,6 +106,17 @@ func next_instance_id(prefix: String) -> String:
 	return "%s.%d" % [prefix, _instance_counter]
 
 
+func instance_id_checkpoint() -> int:
+	return _instance_counter
+
+
+func rollback_instance_ids(checkpoint: int) -> bool:
+	if checkpoint < 0 or checkpoint > _instance_counter:
+		return false
+	_instance_counter = checkpoint
+	return true
+
+
 func eliminate_simple_option(encounter_id: int, option_index: int) -> bool:
 	if encounter_id < 0 or option_index < 0 or option_index > 3:
 		return false
@@ -259,6 +270,22 @@ static func from_data(data: Variant) -> GameState:
 		state.combat = CombatState.from_data(data["combat"])
 		if state.combat == null:
 			return null
+		if state.combat.battlefield != null:
+			var battlefield := state.combat.battlefield
+			if battlefield.map_id != party_state.map_id:
+				return null
+			for actor_id: Variant in battlefield.character_positions():
+				if not actor_id is String or party_state.character_by_id(actor_id) == null:
+					return null
+			for actor_id: Variant in battlefield.monster_positions():
+				if not actor_id is String or state.combat.monster_by_id(actor_id) == null:
+					return null
+			for character: CharacterState in party_state.characters():
+				if character.current_health > 0 and battlefield.character_position(character.id).x < 0:
+					return null
+			for monster: MonsterState in state.combat.monsters():
+				if monster.current_health > 0 and battlefield.monster_position(monster.id).x < 0:
+					return null
 		if state.combat.pending_monster_attack != null and party_state.character_by_id(state.combat.pending_monster_attack.target_id) == null:
 			return null
 		var owned_item_ids: Dictionary = {}

@@ -20,6 +20,7 @@ var legal_actions: Array[StringName] = []
 var targets: Array[MonsterView] = []
 var character_targets: Array[CharacterView] = []
 var monsters: Array[MonsterView] = []
+var battlefield: BattlefieldView
 
 
 func _init(combat: CombatState, characters: Array[CharacterState] = [], content: RealmzContent = null, inventory_rules: InventoryRules = null) -> void:
@@ -28,6 +29,8 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 	active_actor_id = combat.active_actor_id()
 	outcome = combat.outcome
 	turn_order = combat.turn_order()
+	if combat.battlefield != null:
+		battlefield = BattlefieldView.new(combat.battlefield)
 	for monster: MonsterState in combat.monsters():
 		var view := MonsterView.new(monster)
 		monsters.append(view)

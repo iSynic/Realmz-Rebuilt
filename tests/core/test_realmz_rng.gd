@@ -24,3 +24,11 @@ func run() -> void:
 	assert_equal(signed.draw_classic(0, "scripted.zero-range"), 1, "Castle Rand zero still consumes a draw and returns one")
 	assert_equal(signed.draw_classic(-100, "scripted.negative-range"), -98, "Castle Rand preserves signed range multiplication and C truncation")
 	assert_equal(signed.snapshot().draw_count, 2, "signed Classic ranges remain part of the serializable draw sequence")
+
+	var transactional := ScriptedRng.new([0, 32_767])
+	transactional.draw(10, "transaction.before")
+	var checkpoint := transactional.checkpoint()
+	transactional.draw(10, "transaction.speculative")
+	assert_true(transactional.rollback(checkpoint), "a failed simulation operation can restore RNG state without erasing prior trace evidence")
+	assert_equal([transactional.snapshot().draw_count, transactional.trace().map(func(entry: Dictionary) -> String: return entry["tag"])], [1, ["transaction.before"]], "rollback removes only speculative draws")
+	assert_equal(transactional.draw(10, "transaction.replayed"), 10, "ScriptedRng also restores its fixture cursor for deterministic failure tests")

@@ -4,6 +4,7 @@ extends RefCounted
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
 const MONSTER_ATTACK_DEATH_MACRO := 2
+const MAX_MONSTERS: int = 100
 const CHARACTER_FUMBLE_SOUNDS: Array[Dictionary] = [
 	{"soundId": 10121, "waitForCompletion": true},
 	{"soundId": 10123, "waitForCompletion": true},
@@ -26,6 +27,12 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		return CombatFlowResult.failed(&"invalid_battle", "Battle setup requires validated state, content, and randomness.")
 	if state.combat != null and not state.combat.completed:
 		return CombatFlowResult.failed(&"battle_already_active", "A Realmz battle is already active.")
+	var map := content.world.map_by_id(state.party.map_id)
+	if map == null or map.topology.width != 90 or map.topology.height != 90:
+		return CombatFlowResult.failed(&"invalid_battle_map", "Battle '%s' requires the party's validated 90 by 90 Classic map." % battle.id)
+	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id)
+	if terrain_set == null:
+		return CombatFlowResult.failed(&"missing_battle_terrain", "Map '%s' has no validated Classic battle-terrain catalog." % map.id)
 	var initial_weapon_modes: Dictionary = {}
 	for character: CharacterState in state.party.characters():
 		if character.current_health <= 0:
@@ -34,40 +41,89 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		if not equipment.valid:
 			return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 		initial_weapon_modes[character.id] = &"missile" if equipment.melee_weapon == null and equipment.missile_weapon != null else &"melee"
-	var authored_monsters: Array[MonsterState] = []
-	for slot: BattleMonsterSlotDefinition in battle.monster_slots():
-		var definition_id := slot.monster_id
-		var definition := content.monster_by_id(definition_id)
-		if definition == null:
-			return CombatFlowResult.failed(&"unknown_monster", "Battle '%s' references unavailable monster '%s'." % [battle.id, definition_id])
-		var instance_id := state.next_instance_id("combat.monster")
-		var monster := _rules.monsters.build_monster(definition, instance_id, -1, 0, state.clock.day(), rng)
-		if monster == null:
-			return CombatFlowResult.failed(&"invalid_monster", "Battle '%s' could not construct monster '%s'." % [battle.id, definition_id])
-		if slot.invert_traitor:
-			monster.traitor = not monster.traitor
-		authored_monsters.append(monster)
-	if authored_monsters.is_empty():
+	var ally_definitions: Dictionary = {}
+	if not state.allies_suspended:
+		for ally: MonsterState in state.party.allies():
+			if ally.current_health <= 0:
+				continue
+			var ally_definition := content.monster_by_id(ally.definition_id)
+			if ally_definition == null:
+				return CombatFlowResult.failed(&"unknown_ally", "Held-over ally '%s' references unavailable monster '%s'." % [ally.id, ally.definition_id])
+			ally_definitions[ally.id] = ally_definition
+	var authored_slots := battle.monster_slots()
+	if authored_slots.is_empty():
 		return CombatFlowResult.failed(&"empty_battle", "Battle '%s' has no viable monsters." % battle.id)
+	authored_slots.sort_custom(func(left: BattleMonsterSlotDefinition, right: BattleMonsterSlotDefinition) -> bool:
+		return left.coordinate.y < right.coordinate.y or left.coordinate.y == right.coordinate.y and left.coordinate.x < right.coordinate.x
+	)
+	var authored_definitions: Dictionary = {}
+	for slot: BattleMonsterSlotDefinition in authored_slots:
+		var definition := content.monster_by_id(slot.monster_id)
+		if definition == null:
+			return CombatFlowResult.failed(&"unknown_monster", "Battle '%s' references unavailable monster '%s'." % [battle.id, slot.monster_id])
+		authored_definitions[slot.monster_id] = definition
+
+	var rng_checkpoint := rng.checkpoint()
+	var instance_checkpoint := state.instance_id_checkpoint()
+	var battlefield_builder := BattlefieldBuilder.new()
+	var terrain_result := battlefield_builder.build_terrain(map, state.world, terrain_set, state.party.coordinate, rng)
+	if not terrain_result.is_ok():
+		return _battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, terrain_result.error_code, terrain_result.error_message)
+	var battlefield := terrain_result.battlefield
+	var formation := battlefield_builder.roll_formation(battlefield, battle, rng)
+	if formation.is_empty():
+		return _battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_battle_formation", "Battle '%s' could not derive Castle's opening formation." % battle.id)
+	var party_characters := state.party.characters()
+	for party_index: int in party_characters.size():
+		var character := party_characters[party_index]
+		if not battlefield_builder.place_character(battlefield, terrain_set, character.id, party_index, formation):
+			return _battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"character_placement_failed", "Battle '%s' has no legal battlefield cell for '%s'." % [battle.id, character.id])
+
 	var monsters: Array[MonsterState] = []
 	var consumed_allies: Array[String] = []
 	var consumed_ally_states: Array[MonsterState] = []
 	if not state.allies_suspended:
 		for ally: MonsterState in state.party.allies():
-			if ally.current_health <= 0:
+			if ally.current_health <= 0 or monsters.size() >= MAX_MONSTERS:
 				continue
+			var ally_definition: MonsterDefinition = ally_definitions[ally.id]
+			if not battlefield_builder.place_monster(battlefield, terrain_set, ally.id, Vector2i.ZERO, ally_definition.size):
+				return _battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"ally_placement_failed", "Battle '%s' has no legal battlefield footprint for ally '%s'." % [battle.id, ally.id])
 			monsters.append(ally)
 			consumed_allies.append(ally.id)
 			consumed_ally_states.append(ally)
-	monsters.append_array(authored_monsters)
-	var combat := CombatState.new(battle.id, monsters, battle.macro_id)
+	var pending_authored: Array[Dictionary] = []
+	var monster_origin: Vector2i = formation["monsterOrigin"]
+	for slot_index: int in authored_slots.size():
+		if monsters.size() + pending_authored.size() >= MAX_MONSTERS:
+			break
+		var slot: BattleMonsterSlotDefinition = authored_slots[slot_index]
+		var definition: MonsterDefinition = authored_definitions[slot.monster_id]
+		var pending_id := "pending.authored.%d" % slot_index
+		if not battlefield_builder.place_monster(battlefield, terrain_set, pending_id, monster_origin + slot.coordinate, definition.size):
+			return _battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"monster_placement_failed", "Battle '%s' has no legal battlefield footprint for authored monster at %s." % [battle.id, slot.coordinate])
+		var pending_monster := _rules.monsters.build_battle_monster(definition, pending_id, slot.invert_traitor, 0, state.clock.day(), rng)
+		if pending_monster == null:
+			return _battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_monster", "Battle '%s' could not construct monster '%s'." % [battle.id, slot.monster_id])
+		pending_authored.append({"placeholderId": pending_id, "monster": pending_monster})
+	for character: CharacterState in party_characters:
+		if character.current_health <= 0:
+			battlefield.remove_character(character.id)
+	for pending: Dictionary in pending_authored:
+		var monster: MonsterState = pending["monster"]
+		var instance_id := state.next_instance_id("combat.monster")
+		if not battlefield.replace_monster_id(pending["placeholderId"], instance_id):
+			return _battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_battlefield_identity", "Battle '%s' could not commit a stable monster identity." % battle.id)
+		monster.id = instance_id
+		monsters.append(monster)
+	var combat := CombatState.new(battle.id, monsters, battle.macro_id, battlefield)
 	combat.set_turn_order(_rules.combat.initiative_order(state.party.characters(), monsters, surprise, rng))
 	for character: CharacterState in state.party.characters():
 		if character.current_health <= 0:
 			continue
 		var initial_mode := StringName(initial_weapon_modes.get(character.id, &"melee"))
 		if not combat.set_character_weapon_mode(character.id, initial_mode):
-			return CombatFlowResult.failed(&"invalid_weapon_mode", "Battle '%s' could not initialize '%s' weapon mode." % [battle.id, character.id])
+			return _battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_weapon_mode", "Battle '%s' could not initialize '%s' weapon mode." % [battle.id, character.id])
 	for ally: MonsterState in consumed_ally_states:
 		ally.traitor = false
 	if not state.allies_suspended:
@@ -77,9 +133,15 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		character.attacks_remaining = 0
 		character.movement = character.maximum_movement
 	state.combat = combat
-	var events: Array[DomainEvent] = [DomainEvent.new(&"battle_started", {"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "surprise": surprise, "turnOrder": combat.turn_order(), "consumedAllyIds": consumed_allies})]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"battle_started", {"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "rolledDistance": battlefield.rolled_distance, "direction": battlefield.direction_degrees, "mapId": battlefield.map_id, "surprise": surprise, "turnOrder": combat.turn_order(), "consumedAllyIds": consumed_allies})]
 	_process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
+
+
+func _battle_setup_failure(state: GameState, instance_checkpoint: int, rng: RealmzRng, checkpoint: Dictionary, code: StringName, message: String) -> CombatFlowResult:
+	if state == null or not state.rollback_instance_ids(instance_checkpoint) or not rng.rollback(checkpoint):
+		return CombatFlowResult.failed(&"battle_setup_rollback_failed", "Battle setup failed and could not restore the deterministic RNG boundary.")
+	return CombatFlowResult.failed(code, message)
 
 
 func submit_action(state: GameState, content: RealmzContent, actor_id: String, action: StringName, target_id: String, rng: RealmzRng) -> CombatFlowResult:

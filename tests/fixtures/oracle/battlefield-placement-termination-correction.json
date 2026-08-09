@@ -1,0 +1,34 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-006",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/combatsetup.c",
+      "symbol": "short combatsetup(short mode, short suprise, short combatmode)",
+      "range": "133-189,201-270,290-375"
+    }
+  ],
+  "inputs": {
+    "battlefieldWidth": 90,
+    "battlefieldHeight": 90,
+    "terrain": "every battlefield cell is solid",
+    "partySize": 1,
+    "heldOverAllies": 0,
+    "authoredMonsters": 0,
+    "priorRngDrawCount": 1
+  },
+  "castleSourceObservation": {
+    "placementResult": "no terminating branch",
+    "stateCommitBoundary": "not recoverable from the placement loop",
+    "rngBoundary": "not recoverable from the placement loop",
+    "reason": "each placement search decrements start, increments stop, and unconditionally jumps back when no legal cell is found"
+  },
+  "realmz2ChosenResult": {
+    "placementResult": "explicit character_placement_failed result",
+    "stateCommitBoundary": "complete GameState remains unchanged",
+    "rngBoundary": "generator state, draw count, scripted cursor, and preexisting trace remain unchanged",
+    "searchScope": "the complete finite 90 by 90 battlefield"
+  }
+}
