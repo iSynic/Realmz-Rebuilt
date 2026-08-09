@@ -8,6 +8,7 @@ var turn_index: int = 0
 var completed: bool = false
 var outcome: StringName = &"active"
 var pending_monster_attack: PendingMonsterAttack
+var active_turn: CombatTurnState
 var _turn_order: Array[String] = []
 var _monsters: Array[MonsterState] = []
 
@@ -29,6 +30,7 @@ func turn_order() -> Array[String]:
 func set_turn_order(order: Array[String]) -> void:
 	_turn_order = order.duplicate()
 	turn_index = 0
+	active_turn = null
 
 
 func active_actor_id() -> String:
@@ -52,10 +54,24 @@ func add_monster(monster: MonsterState) -> bool:
 func advance_turn() -> void:
 	if _turn_order.is_empty():
 		return
+	active_turn = null
 	turn_index += 1
 	if turn_index >= _turn_order.size():
 		turn_index = 0
 		round_number += 1
+
+
+func begin_active_turn() -> CombatTurnState:
+	var actor_id := active_actor_id()
+	if actor_id.is_empty():
+		return null
+	if active_turn == null:
+		active_turn = CombatTurnState.new(actor_id)
+	return active_turn
+
+
+func clear_active_turn() -> void:
+	active_turn = null
 
 
 func append_turn_actor(actor_id: String) -> void:
@@ -70,7 +86,10 @@ func to_data() -> Dictionary:
 	var pending_data: Variant = null
 	if pending_monster_attack != null:
 		pending_data = pending_monster_attack.to_data()
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data}
+	var active_turn_data: Variant = null
+	if active_turn != null:
+		active_turn_data = active_turn.to_data()
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "activeTurn": active_turn_data}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -101,14 +120,28 @@ static func from_data(data: Variant) -> CombatState:
 	result.completed = data["completed"]
 	result.outcome = StringName(data["outcome"])
 	result._turn_order = order
+	var active_turn_data: Variant = data.get("activeTurn")
+	if active_turn_data != null:
+		result.active_turn = CombatTurnState.from_data(active_turn_data)
+		if result.active_turn == null:
+			return null
 	var pending_data: Variant = data.get("pendingMonsterAttack")
 	if pending_data != null:
 		result.pending_monster_attack = PendingMonsterAttack.from_data(pending_data)
 		if result.pending_monster_attack == null:
 			return null
-	if result.turn_index > result._turn_order.size():
+	if (result._turn_order.is_empty() and result.turn_index != 0) or (not result._turn_order.is_empty() and result.turn_index >= result._turn_order.size()):
+		return null
+	if result.active_turn != null and (result.completed or result.active_turn.actor_id != result.active_actor_id()):
 		return null
 	if result.pending_monster_attack != null and (result.monster_by_id(result.pending_monster_attack.actor_id) == null or result.active_actor_id() != result.pending_monster_attack.actor_id):
+		return null
+	if result.pending_monster_attack != null and result.active_turn == null:
+		result.active_turn = CombatTurnState.new(result.pending_monster_attack.actor_id)
+		result.active_turn.action = result.pending_monster_attack.action
+		result.active_turn.attack_index = 1
+		result.active_turn.target_id = result.pending_monster_attack.target_id
+	if result.pending_monster_attack != null and (result.active_turn.actor_id != result.pending_monster_attack.actor_id or result.active_turn.target_id != result.pending_monster_attack.target_id or result.active_turn.action != result.pending_monster_attack.action or result.active_turn.attack_index < 1):
 		return null
 	return result
 

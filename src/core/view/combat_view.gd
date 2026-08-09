@@ -4,6 +4,8 @@ extends RefCounted
 var battle_id: String
 var round_number: int
 var active_actor_id: String
+var attack_units_remaining: int = 0
+var movement_remaining: int = 0
 var outcome: StringName
 var turn_order: Array[String] = []
 var legal_actions: Array[StringName] = []
@@ -28,5 +30,8 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 		if monster.current_health > 0 and monster.traitor:
 			targets.append(view)
 	for character: CharacterState in characters:
+		if character.id == active_actor_id:
+			attack_units_remaining = character.attacks_remaining
+			movement_remaining = character.movement
 		if character.current_health > 0 and character.traitor:
 			character_targets.append(CharacterView.new(character, content))

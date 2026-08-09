@@ -2261,6 +2261,7 @@ static func _death_macro_request(events: Array[DomainEvent]) -> Dictionary:
 
 func _combat_request(request_id: String) -> InteractionRequest:
 	var combat := _game_state.combat
+	var actor := _game_state.party.character_by_id(combat.active_actor_id())
 	var targets: Array[Dictionary] = []
 	for monster: MonsterState in combat.monsters():
 		if monster.current_health > 0 and monster.traitor:
@@ -2268,7 +2269,7 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	for character: CharacterState in _game_state.party.characters():
 		if character.current_health > 0 and character.traitor:
 			targets.append({"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
-	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat.battle_id, "round": combat.round_number, "actorId": combat.active_actor_id(), "actions": ["attack", "defend", "retreat"], "targets": targets})
+	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat.battle_id, "round": combat.round_number, "actorId": combat.active_actor_id(), "attackUnitsRemaining": actor.attacks_remaining if actor != null else 0, "actions": ["attack", "defend", "retreat"], "targets": targets})
 
 
 func _grant_treasure(classic_treasure_id: int) -> ScenarioRuntimeOperationResult:

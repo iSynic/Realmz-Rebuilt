@@ -153,4 +153,14 @@ The later remaining-monster-specials pass completes specials 10–15 and 18–19
 - Castle's random-weapon table 2 has an overlapping roll-85 boundary with context-dependent precedence: the summon helper returns the first match, while ordinary battle setup allows the later match to overwrite it. The current single `build_monster` path cannot represent both outcomes, so this remains an explicit spawn-origin modeling defect for the tactical construction pass rather than receiving a guessed global precedence change.
 - Fumbles, reflection, missile-weapon replacement, and behind/facing derivation remain explicit tactical-state boundaries. The typed suite passes 1,823 assertions across 11 suites before aggregate closeout, and differential validation covers eighteen cases.
 
-Next rolling priority: active-turn attack half-units and cadence. Model and serialize preparation/consumption state before enabling repeated attacks, missile toggling, or the fumble preference and dropped-item queue.
+The following rolling pass closes the active-turn attack half-unit priority while retaining missile, spell, and fumble work as separate evidence cases.
+
+## Current rolling fidelity pass — active-turn physical attack cadence (implemented)
+
+- Player-controlled character melee now uses Castle's signed half-attack reserve directly. Activation carries at most one positive leftover, adds normal attacks and attack bonus, applies Speedy's source-control-flow four-unit bonus, resets movement, and spends two units plus three movement per attempt. A character with at least two units remaining keeps the same activation.
+- Monster physical AI chooses one action, draws and retains one opposed target, and executes each authored attack row in order. Its active actor, action, target, and next row are central combat state; death macros and blocking age updates resume the exact remaining sequence rather than repeating row zero or advancing early.
+- Providence schema v2 already emits race/caste attack values and monster attack count/rows. The runtime loader now rejects a count beyond the supplied rows or Classic's five-row storage, so no compiler change was required.
+- Remake's floating `MaxActions` formula grants one extra full action relative to Castle for normal values and was rejected as a donor. Castle's own zero/one-half-unit display, Speedy/Slow display discrepancy, charmed-character cadence, monster Speedy row overflow, spell/item action limits, missile replacement, and tactical movement remain explicitly unresolved.
+- The typed suite passes 1,858 assertions across 12 suites. Nineteen differential cases validate against the pinned Castle, Remake, and Providence roots.
+
+Next rolling priority: use the serialized active-turn boundary for source-backed character/monster fumbles, recovery preference, and dropped-item queue behavior. Keep missile, spell-per-activation, and ambiguous haste/display cases separate until their complete control flow is settled.

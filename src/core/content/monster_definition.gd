@@ -53,6 +53,7 @@ func _init(definition_id: String, native_id: int, display_name: String, hd: int,
 	_spells = authored_spells.duplicate()
 	_items = authored_items.duplicate()
 	_attacks = authored_attacks.duplicate()
+	attack_count = _attacks.size()
 
 
 func type_flag(index: int) -> bool:

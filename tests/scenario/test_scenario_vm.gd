@@ -1199,7 +1199,7 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	var zero3: Array[int] = []
 	zero3.resize(3)
 	zero3.fill(0)
-	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 17)]
+	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 17), MonsterAttackDefinition.new(2, 2)]
 	var monster_definition := MonsterDefinition.new("monster.age-special", 917, "Age Special", hit_dice, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], attacks)
 	monster_definition.damage_bonus = 6
 	monster_definition.traitor = true
@@ -1240,6 +1240,7 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	assert_false(_event_has(aged.events, &"combat_attack_resolved"), "ordinary damage waits behind Castle's age dialog")
 	assert_equal(character.current_health, 100, "the pre-acknowledgement combat save retains pending physical damage")
 	assert_equal(character.conditions.value(ConditionRules.POISONED), 0, "a monster weapon condition waits behind the same age-update boundary as physical damage")
+	assert_equal(state.combat.active_turn.attack_index, 1, "the age-update boundary records the already-issued first attack row")
 	var restored_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	var restored_vm_snapshot := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(vm.snapshot().to_data())))
 	var restored_rng := RealmzRng.new()
@@ -1253,10 +1254,13 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	assert_equal(resumed.interaction.kind, &"combat_action", "scenario battle resumes at the next player action")
 	assert_true(_event_has(resumed.events, &"character_age_update_acknowledged"), "the restored scenario continuation records the acknowledgement")
 	assert_true(_event_has(resumed.events, &"combat_attack_resolved"), "scenario acknowledgement commits the deferred ordinary hit")
+	var scenario_attack_events := resumed.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved")
+	assert_equal(scenario_attack_events.map(func(event: DomainEvent) -> int: return int(event.payload.get("attackIndex"))), [0, 1], "scenario restore commits the deferred row once and resumes the next authored row")
+	assert_equal(scenario_attack_events.map(func(event: DomainEvent) -> int: return int(event.payload.get("damage"))), [2, 2], "each restored row independently applies the carried weapon and Dragon Hide reduction")
 	var scenario_dragon_sound_index := _event_index_with_payload(resumed.events, &"sound_requested", "soundId", 694)
 	assert_true(scenario_dragon_sound_index >= 0 and scenario_dragon_sound_index < _event_index(resumed.events, &"combat_attack_resolved"), "restored scenario combat plays Castle's asynchronous Dragon Hide feedback before deferred damage")
-	assert_equal(restored_state.party.character_by_id(character.id).current_health, 98, "restored scenario combat applies Dragon Hide-reduced physical damage exactly once")
-	assert_equal(restored_state.party.character_by_id(character.id).conditions.value(ConditionRules.POISONED), 2, "restored scenario combat applies the pending weapon condition after the age acknowledgement")
+	assert_equal(restored_state.party.character_by_id(character.id).current_health, 96, "restored scenario combat applies the pending and remaining Dragon Hide-reduced rows exactly once each")
+	assert_equal(restored_state.party.character_by_id(character.id).conditions.value(ConditionRules.POISONED), 4, "restored scenario combat applies the monster weapon condition once for each resolved attack row")
 
 	var session := GameSession.new()
 	session.start(aging_content, 1)
@@ -1277,6 +1281,7 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	assert_equal(session_aged.interaction.kind, InteractionRequest.AGE_UPDATE, "direct combat exposes the same typed age update")
 	assert_equal(session_character.current_health, 100, "direct combat also saves before ordinary physical damage")
 	assert_equal(session_character.conditions.value(ConditionRules.POISONED), 0, "direct combat saves before its pending weapon condition")
+	assert_equal(session._state.combat.active_turn.attack_index, 1, "direct combat persists the issued attack cursor at the age boundary")
 	var boundary := SaveEnvelope.from_data(session.snapshot().to_data())
 	assert_not_null(boundary, "monster-caused age update is a complete central save boundary")
 	var restored_session := GameSession.new()
@@ -1288,8 +1293,11 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	assert_equal(restored_session._state.party.character_by_id(session_character.id).age_group, 2, "the committed age band survives direct-session restore")
 	var direct_dragon_sound_index := _event_index_with_payload(session_resumed.events, &"sound_requested", "soundId", 694)
 	assert_true(direct_dragon_sound_index >= 0 and direct_dragon_sound_index < _event_index(session_resumed.events, &"combat_attack_resolved"), "the direct save continuation retains Dragon Hide's asynchronous sound ordering")
-	assert_equal(restored_session._state.party.character_by_id(session_character.id).current_health, 98, "the restored direct continuation applies pending Dragon Hide-reduced damage exactly once")
-	assert_equal(restored_session._state.party.character_by_id(session_character.id).conditions.value(ConditionRules.POISONED), 2, "the restored direct continuation applies its pending weapon condition exactly once")
+	var direct_attack_events := session_resumed.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved")
+	assert_equal(direct_attack_events.map(func(event: DomainEvent) -> int: return int(event.payload.get("attackIndex"))), [0, 1], "the direct restore commits the pending row once and resumes the remaining authored row")
+	assert_equal(direct_attack_events.map(func(event: DomainEvent) -> int: return int(event.payload.get("damage"))), [2, 2], "the direct restore independently resolves both carried-weapon rows")
+	assert_equal(restored_session._state.party.character_by_id(session_character.id).current_health, 96, "the restored direct continuation applies the pending and remaining rows exactly once each")
+	assert_equal(restored_session._state.party.character_by_id(session_character.id).conditions.value(ConditionRules.POISONED), 4, "the restored direct continuation applies the weapon condition once to the pending row and once to the remaining row")
 
 
 func _test_monster_status_attack_flow(content: RealmzContent) -> void:

@@ -870,6 +870,61 @@
       "decision": "intentional-correction",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "combat.active-turn-attack-cadence",
+      "domain": "combat",
+      "claim": "Player-controlled character melee capacity is an integer count of half-attack units: each activation carries at most one positive leftover unit, adds normal attacks plus attack bonus, and each melee attempt costs two units. A monster chooses its action once, selects one target, and resolves its authored physical rows in order before advancing; the actor, action, target, and next row survive save and interaction boundaries.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake recognizes fractional Classic attack rates and a per-row monster weapon sequence, but converts character half-attacks to a floating MaxActions budget with an additional base action. That grants one extra action for ordinary values such as two half-attacks, so it is a useful divergence lead rather than an implementation donor.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_character_rules.gd", "symbol": "static func _classic_action_budget(" },
+          { "path": "src/Creature/Creature.gd", "symbol": "func get_apr_left()" },
+          { "path": "src/scripts/classic_runtime/classic_monster_attack_sequence.gd", "symbol": "static func weapon_for_attack(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_character_rule_profile()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/structs.h", "symbol": "struct character" },
+          { "path": "src/realmz_orig/structs.h", "symbol": "struct monster" },
+          { "path": "src/realmz_orig/combatsetup.c", "symbol": "short combatsetup(short mode, short suprise, short combatmode)" },
+          { "path": "src/realmz_orig/getup.c", "symbol": "void getup(short skip)" },
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice(void)" },
+          { "path": "src/realmz_orig/checkforenemy.c", "symbol": "short checkforenemy(short code)" },
+          { "path": "src/realmz_orig/combat.c", "symbol": "void combat(short suprise, short mode)" }
+        ],
+        "authoredInputs": ["character normal attacks and attack bonus", "character Speedy condition", "monster physical attack count and five attack rows", "monster action percentages and conditions", "combat initiative order and allegiance"],
+        "observation": "combatsetup clears the character reserve; getup normalizes any positive carry to one, clears negatives, adds normattacks plus attackbonus, and adds four for Speedy. Melee subtracts two and the outer combat loop advances only below two. Monster getup resets attacknum; checkforenemy selects one target and loops from attacknum through noofattacks, incrementing the row before each attack and retargeting only after a kill. Castle's stats display disagrees with control flow for zero or one half-attack and its Speedy/Slow display arithmetic disagrees with getup. Those edge/display cases, charmed-character cadence, monster Speedy overflow, missile replacement, spells-per-activation, and tactical movement remain unresolved rather than being generalized from this case."
+      },
+      "providence": {
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes(" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits monster attackCount and ordered attacks, race baseAttacks and maximumAttacks, and caste bonusAttacks and maximumAttacks. The runtime now rejects a physical count beyond the supplied rows or native five-row capacity; no compiler change is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func submit_action(" },
+        "expectedTrace": ["prepare active character and normalize carry", "add signed half-attack allowance", "commit one melee attempt and consume two units", "retain or advance the exact active actor", "choose one monster action", "draw and retain one target", "resolve ordered authored rows", "serialize active actor, action, target, and next row", "resume deferred age damage once and continue the remaining rows"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_half_attack_cadence_and_restore()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_monster_authored_attack_rows_and_target_retention()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_monster_attack_cursor_restore()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_aging_attack_continuations(content: RealmzContent)" },
+          { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "verified"
     }
   ]
 }

@@ -707,6 +707,9 @@ func _construct_monsters(value: Variant) -> Variant:
 			var attack_integers: Dictionary = attack_integers_value
 			attacks.append(MonsterAttackDefinition.new(attack_integers["damageMin"], attack_integers["damageMax"], attack_integers["soundOrType"], attack_integers["special"]))
 		var integers: Dictionary = integers_value
+		if integers["attackCount"] < 0 or integers["attackCount"] > 5 or integers["attackCount"] > attacks.size():
+			_reject("Monster attack count exceeds its fixed Classic attack rows.")
+			return null
 		var monster := MonsterDefinition.new(record["id"], integers["classicId"], record["name"], integers["hitDice"], integers["staminaBonus"], integers["agility"], integers["armor"], integers["magicResistance"], type_value, saves_value, immunity_value, money_value, spell_ids_value, item_ids_value, attacks)
 		monster.movement_max = integers["movementMaximum"]
 		monster.required_weapon = integers["requiredWeapon"]

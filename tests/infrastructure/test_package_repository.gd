@@ -75,6 +75,9 @@ func run() -> void:
 		invalid_monsters = fixture_content["monsters"].duplicate(true)
 		invalid_monsters[0]["requiredWeapon"] = 128
 		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime independently rejects a required-weapon value outside its signed byte")
+		invalid_monsters = fixture_content["monsters"].duplicate(true)
+		invalid_monsters[0]["attackCount"] = 2
+		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects a physical attack count beyond its supplied Classic rows")
 	assert_equal(loaded.content.battle_by_id("classic.battle.0").monster_slots()[0].monster_id, "classic.monster.1", "battle placements reference stable monster IDs")
 	assert_equal(loaded.content.shop_by_id("classic.shop.0").quantity(0), 2, "shop stock compiles to stable item references and quantities")
 	assert_equal(loaded.content.treasure_by_id("classic.treasure.0").item_ids()[0], "classic.item.901", "treasures use the same item identity as inventory")
