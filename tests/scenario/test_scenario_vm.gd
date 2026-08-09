@@ -1201,10 +1201,19 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	zero3.fill(0)
 	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 17)]
 	var monster_definition := MonsterDefinition.new("monster.age-special", 917, "Age Special", hit_dice, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], attacks)
+	monster_definition.damage_bonus = 6
 	monster_definition.traitor = true
+	var aging_weapon := ItemDefinition.new("classic.item.917", 917, "Aging Weapon")
+	aging_weapon.item_type = 2
+	aging_weapon.vs_small = 1
+	aging_weapon.special_1 = -10
+	aging_weapon.special_2 = 0
+	aging_weapon.special_3 = ConditionRules.POISONED + 20
+	aging_weapon.special_5 = 2
+	monster_definition.weapon_id = aging_weapon.id
 	var battle := BattleDefinition.new("battle.age-special", 917, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, monster_definition.id, false)])
 	var programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 2, 2, battle.classic_id, false, []), ClassicActionDefinition.new(1, 111, 111, 0, false, [])])]
-	var aging_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(programs, []), [], [], [], [race], [caste], [], [], [monster_definition], [battle])
+	var aging_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(programs, []), [], [], [], [race], [caste], [aging_weapon], [], [monster_definition], [battle])
 	var character := CharacterState.new("character.age-special", "Age Target", 100, 100)
 	character.race_id = race.id
 	character.caste_id = caste.id
@@ -1213,8 +1222,9 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	character.agility = 1
 	character.set_save_value_raw(7, 50)
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
+	state.party.conditions.set_value(ConditionRules.PARTY_DRAGON_HIDE, 1)
 	var scripted_values: Array[int] = []
-	for _draw: int in hit_dice + 9:
+	for _draw: int in hit_dice + 10:
 		scripted_values.append(0)
 	scripted_values.append(32_767)
 	var runtime_rng := ScriptedRng.new(scripted_values)
@@ -1229,6 +1239,7 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	assert_true(_event_has(aged.events, &"combat_monster_special_resolved") and _event_has(aged.events, &"character_age_changed"), "combat publishes the source-backed special and live-age transition")
 	assert_false(_event_has(aged.events, &"combat_attack_resolved"), "ordinary damage waits behind Castle's age dialog")
 	assert_equal(character.current_health, 100, "the pre-acknowledgement combat save retains pending physical damage")
+	assert_equal(character.conditions.value(ConditionRules.POISONED), 0, "a monster weapon condition waits behind the same age-update boundary as physical damage")
 	var restored_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	var restored_vm_snapshot := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(vm.snapshot().to_data())))
 	var restored_rng := RealmzRng.new()
@@ -1242,24 +1253,30 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	assert_equal(resumed.interaction.kind, &"combat_action", "scenario battle resumes at the next player action")
 	assert_true(_event_has(resumed.events, &"character_age_update_acknowledged"), "the restored scenario continuation records the acknowledgement")
 	assert_true(_event_has(resumed.events, &"combat_attack_resolved"), "scenario acknowledgement commits the deferred ordinary hit")
-	assert_equal(restored_state.party.character_by_id(character.id).current_health, 99, "restored scenario combat applies physical damage exactly once")
+	var scenario_dragon_sound_index := _event_index_with_payload(resumed.events, &"sound_requested", "soundId", 694)
+	assert_true(scenario_dragon_sound_index >= 0 and scenario_dragon_sound_index < _event_index(resumed.events, &"combat_attack_resolved"), "restored scenario combat plays Castle's asynchronous Dragon Hide feedback before deferred damage")
+	assert_equal(restored_state.party.character_by_id(character.id).current_health, 98, "restored scenario combat applies Dragon Hide-reduced physical damage exactly once")
+	assert_equal(restored_state.party.character_by_id(character.id).conditions.value(ConditionRules.POISONED), 2, "restored scenario combat applies the pending weapon condition after the age acknowledgement")
 
 	var session := GameSession.new()
 	session.start(aging_content, 1)
 	session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.from_data(character.to_data())])
+	session._state.party.conditions.set_value(ConditionRules.PARTY_DRAGON_HIDE, 1)
 	session._state.party_setup_completed = true
 	var session_character: CharacterState = session._state.party.characters()[0]
 	session_character.age_days = race.age_range(0).y * 365 + 364
 	session_character.age_group = 1
 	session_character.current_health = 100
 	var session_monster := MonsterState.new("monster.age-special.session", monster_definition.id, monster_definition.name, 10, 10, hit_dice, 100)
+	session_monster.weapon_id = aging_weapon.id
 	session._state.combat = CombatState.new(battle.id, [session_monster])
 	session._state.combat.set_turn_order([session_character.id, session_monster.id])
-	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 32_767])
+	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767])
 	var session_aged := session.submit_intent(PlayerIntent.combat_action(&"defend", session_character.id, ""))
 	assert_equal(session_aged.state, SessionStep.State.WAITING_FOR_INTERACTION, "direct session combat pauses at the monster-caused age update")
 	assert_equal(session_aged.interaction.kind, InteractionRequest.AGE_UPDATE, "direct combat exposes the same typed age update")
 	assert_equal(session_character.current_health, 100, "direct combat also saves before ordinary physical damage")
+	assert_equal(session_character.conditions.value(ConditionRules.POISONED), 0, "direct combat saves before its pending weapon condition")
 	var boundary := SaveEnvelope.from_data(session.snapshot().to_data())
 	assert_not_null(boundary, "monster-caused age update is a complete central save boundary")
 	var restored_session := GameSession.new()
@@ -1269,7 +1286,10 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	assert_equal(session_resumed.state, SessionStep.State.COMPLETED, "acknowledging restored direct monster aging resumes combat")
 	assert_equal(restored_session._state.combat.active_actor_id(), session_character.id, "direct combat resumes at the exact next actor")
 	assert_equal(restored_session._state.party.character_by_id(session_character.id).age_group, 2, "the committed age band survives direct-session restore")
-	assert_equal(restored_session._state.party.character_by_id(session_character.id).current_health, 99, "the restored direct continuation applies pending physical damage exactly once")
+	var direct_dragon_sound_index := _event_index_with_payload(session_resumed.events, &"sound_requested", "soundId", 694)
+	assert_true(direct_dragon_sound_index >= 0 and direct_dragon_sound_index < _event_index(session_resumed.events, &"combat_attack_resolved"), "the direct save continuation retains Dragon Hide's asynchronous sound ordering")
+	assert_equal(restored_session._state.party.character_by_id(session_character.id).current_health, 98, "the restored direct continuation applies pending Dragon Hide-reduced damage exactly once")
+	assert_equal(restored_session._state.party.character_by_id(session_character.id).conditions.value(ConditionRules.POISONED), 2, "the restored direct continuation applies its pending weapon condition exactly once")
 
 
 func _test_monster_status_attack_flow(content: RealmzContent) -> void:
@@ -1296,7 +1316,7 @@ func _test_monster_status_attack_flow(content: RealmzContent) -> void:
 	var monster := MonsterState.new("monster.status-flow.instance", definition.id, definition.name, 10, 10, 4, 100)
 	session._state.combat = CombatState.new(battle.id, [monster])
 	session._state.combat.set_turn_order([character.id, monster.id])
-	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 32_767, 32_767])
+	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", character.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster status attacks commit without inventing a player interaction")
 	assert_equal(character.conditions.value(ConditionRules.POISONED), 4, "the direct session owns the resulting status mutation")
@@ -1340,7 +1360,7 @@ func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
 	var monster := MonsterState.new("monster.resource-flow.instance", definition.id, definition.name, 10, 10, 4, 100, 0, 0, 2)
 	session._state.combat = CombatState.new(battle.id, [monster])
 	session._state.combat.set_turn_order([character.id, monster.id])
-	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 32_767, 32_767])
+	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", character.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster resource drains commit without inventing a player interaction")
 	assert_equal([character.spell_points, monster.spell_points, monster.maximum_spell_points], [8, 14, 2], "the direct session owns both sides of Castle's uncapped spell-point transfer")
@@ -1370,7 +1390,7 @@ func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
 	var experience_monster := MonsterState.new("monster.experience-flow.instance", experience_definition.id, experience_definition.name, 10, 20, 4, 100)
 	experience_session._state.combat = CombatState.new(experience_battle.id, [experience_monster])
 	experience_session._state.combat.set_turn_order([experience_character.id, experience_monster.id])
-	experience_session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 32_767, 32_767])
+	experience_session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var experience_resolved := experience_session.submit_intent(PlayerIntent.combat_action(&"defend", experience_character.id, ""))
 	assert_equal(experience_character.experience, -300, "the direct session subtracts Castle experience rather than altering a Remake-style level balance")
 	var experience_special_index := _event_index(experience_resolved.events, &"combat_monster_special_resolved")
@@ -1414,7 +1434,7 @@ func _test_monster_charm_and_affliction_flow(content: RealmzContent) -> void:
 	session._state.party_setup_completed = true
 	session._state.combat = CombatState.new(battle.id, [monster])
 	session._state.combat.set_turn_order([loyal.id, monster.id, victim.id])
-	session._rng = ScriptedRng.new([32_767, 32_767, 32_767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+	session._rng = ScriptedRng.new([32_767, 32_767, 32_767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", loyal.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "charm and the resulting charmed turn require no fabricated player interaction")
 	assert_true(victim.traitor, "the session owns the charmed party allegiance while battle remains active")
@@ -1532,6 +1552,13 @@ func _event_has(events: Array[DomainEvent], kind: StringName) -> bool:
 func _event_index(events: Array[DomainEvent], kind: StringName) -> int:
 	for index: int in events.size():
 		if events[index].kind == kind:
+			return index
+	return -1
+
+
+func _event_index_with_payload(events: Array[DomainEvent], kind: StringName, field: String, value: Variant) -> int:
+	for index: int in events.size():
+		if events[index].kind == kind and events[index].payload.get(field) == value:
 			return index
 	return -1
 

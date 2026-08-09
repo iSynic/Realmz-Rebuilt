@@ -60,6 +60,9 @@ func run() -> void:
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").attacks()[0].damage_max, 4, "monster attacks are typed instead of retained as native row dictionaries")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").required_weapon, 0, "monster weapon requirements remain distinct from battle placement distance")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").magic_to_hit, 0, "monster magical-plus thresholds remain an explicit field even when unrestricted")
+	var random_weapon_monster := MonsterDefinition.new("monster.random-readiness", 999, "Random Readiness", 1, 0, 1, 0, 0, [], [], [], [], [], [], [MonsterAttackDefinition.new(1, 1)])
+	random_weapon_monster.random_weapon_table = 6
+	assert_false(PackageRepository.new()._validate_rule_references([], [], loaded.content.item_definitions(), [], [random_weapon_monster], [], [], [], {}), "package readiness rejects a random monster weapon table when any possible generated item is absent")
 	var fixture_zip := ZIPReader.new()
 	assert_equal(fixture_zip.open(FIXTURE_PATH), OK, "the package contract test can inspect detached fixture JSON")
 	var fixture_content: Variant = JSON.parse_string(fixture_zip.read_file("content.json").get_string_from_utf8())

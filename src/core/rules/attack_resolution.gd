@@ -10,6 +10,8 @@ var reflected: bool
 var blocked: bool = false
 var block_reason: StringName = &""
 var physical_damage: int = 0
+var physical_damage_reduction: int = 0
+var physical_feedback_sound_id: int = 0
 var weapon_effects: Array[Dictionary] = []
 var weapon_condition_index: int = -1
 var weapon_condition_before: int = 0

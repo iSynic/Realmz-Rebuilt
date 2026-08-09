@@ -32,6 +32,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `_test_combat_magic_and_monsters` covers insufficient magical plus, both weapon families, unarmed rejection, matching and wrong specific IDs, and signed storage above 127. Package tests prove `requiredWeapon`, `magicToHit`, and battle `distance` remain distinct. The differential case is `combat.character-required-weapon-correction`.
 - Legacy quirk: none. A scenario needing Castle's impossible specific-ID comparison or unarmed sharp bypass would need concrete authored evidence before any narrowly named quirk is considered.
 
+## FD-COMBAT-004 — Negative monster physical damage
+
+- Affected rule: ordinary physical damage from an unarmed or weapon-carrying monster after its signed `damageBonus` is combined with the attack or weapon roll.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/attack.c`, `attack2`, lines 689–697 and 1201–1219, plus `src/realmz_orig/share-movecost-dialog.c`, `Rand`, lines 44–51. Providence's `src-tauri/src/realmz/combat.rs`, `parse_monsters_from_source`, preserves Data MD byte 40 as a signed value and its semantic round-trip test includes `-5`.
+- Observable oracle behavior, determined from the complete source flow: damage plus `-5` and an attack range of `1…1` produce physical damage `-4`; Castle then subtracts `-4` from stamina, healing a target from 10 to 14. The synthetic source-observation fixture is `tests/fixtures/oracle/monster-negative-damage-correction.json`, SHA-256 `7ddee339de7b80453ed49b41b65c04abcac2c3cee7329fd24ddd4ef48983982f`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: a successful hostile physical attack can heal its target solely because an authored penalty exceeds its die result. Nothing in the attack presentation identifies that result as healing, and neighboring damage paths treat the value as harm.
+- Chosen 2.0 behavior: preserve the signed bonus in accuracy and damage arithmetic, then floor the final physical component at zero before Dragon Hide and health mutation. Elemental and special damage remain independent and retain their source order.
+- Tests: `_test_monster_ordinary_attacks` proves both the signed accuracy contribution and the nonhealing chosen result. The differential case is `combat.monster-ordinary-melee`.
+- Legacy quirk: none. No authored scenario dependency on attack-driven healing is known; concrete route evidence would be required before considering a narrowly named exception.
+
 Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
 
 Each entry must include:

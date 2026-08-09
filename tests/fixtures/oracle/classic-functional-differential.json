@@ -816,6 +816,60 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "combat.monster-ordinary-melee",
+      "domain": "combat",
+      "claim": "With optional fumbles disabled, an ordinary monster melee attack derives accuracy from hit dice, damage plus, an optional carried weapon, conditions, campaign day, defender luck and armor, and evil-conditional protection; it then uses either the authored attack row or the carried weapon's physical, elemental, and target-type fields. Realmz 2.0 intentionally prevents Castle's signed negative physical total from healing the defender.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake materializes monster melee accuracy from hit dice plus damage bonus and maps the same signed damage bonus into physical damage. It also resolves monster weapon identities through its Classic item materializer, but its generic opposed-roll host does not establish Castle's percentage formula, day term, defender-luck draw, or exact weapon roll order.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_bestiary_materializer.gd", "symbol": "func _native_stats(record: Dictionary, stamina: int)" },
+          { "path": "src/scripts/classic_runtime/classic_bestiary_materializer.gd", "symbol": "func _native_inventory(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_bestiary_materializer()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack2(short mon, short chare, short attacknum)" },
+          { "path": "src/realmz_orig/share-movecost-dialog.c", "symbol": "short Rand(short range)" },
+          { "path": "src/realmz_orig/structs.h", "symbol": "struct monster" },
+          { "path": "src/realmz_orig/structs.h", "symbol": "struct itemattr" }
+        ],
+        "authoredInputs": ["monster hit dice and signed damage plus", "attack rows and optional weapon identity", "weapon damage, physical die, elements, target types, and special fields", "attacker and defender conditions", "defender luck, magical luck, armor, saves, immunities, and monster type", "Realmz day", "party Dragon Hide condition"],
+        "observation": "attack2 adds five percentage points per hit die, damage-plus point, and weapon damage point, doubles the weapon term for special 121, applies the condition table and day divided by 70, subtracts a party defender's Rand(luck plus magical luck), applies protection from evil only when the attacker is evil, and floors at ten. An unarmed hit uses the selected attack row unless its minimum is zero, in which case row zero supplies damage. An armed hit uses weapon damage plus Rand(vsSmall), followed by elemental and matching monster-type rolls. Party Dragon Hide reduces physical damage by five to a minimum of one and requests asynchronous sound 694 before condition and damage application. Castle also adds an unconditional ten attack points when the monster itself has protection from evil. With a negative signed damage plus, Castle can calculate negative physical damage and heal by subtracting it; the correction fixture records that source result. Optional fumbles, reflection, missile replacement, and behind-position derivation require additional mutable tactical state and remain outside this bounded case."
+      },
+      "providence": {
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
+        "sources": [
+          { "path": "src-tauri/src/realmz/combat.rs", "symbol": "fn parse_monsters_from_source(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves signed monster damageBonus, attacks, weaponId, randomWeaponTable, requiredWeapon, type flags, saves and immunities, plus every item field consumed by the bounded melee resolver. Runtime readiness requires every possible random-table weapon identity. No compiler or package-contract change is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_rules.gd", "symbol": "func resolve_monster_attack(" },
+        "expectedTrace": ["optional weapon-condition precheck", "party defender-luck draw", "inclusive hit roll", "optional monster required-weapon gate", "weapon or unarmed physical roll", "weapon elemental saves and protection", "matching target-type rolls", "FD-COMBAT-004 nonnegative physical floor", "existing special-attack continuation", "deferred weapon condition and Dragon Hide sound after any age update", "typed combat result and central state mutation"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_ordinary_attacks()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_aging_attack_continuations(content: RealmzContent)" },
+          { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" }
+        ]
+      },
+      "fidelityDecision": {
+        "id": "FD-COMBAT-004",
+        "fixturePath": "tests/fixtures/oracle/monster-negative-damage-correction.json",
+        "fixtureSha256": "7ddee339de7b80453ed49b41b65c04abcac2c3cee7329fd24ddd4ef48983982f"
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "verified"
     }
   ]
 }

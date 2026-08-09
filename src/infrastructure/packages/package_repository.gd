@@ -1675,6 +1675,9 @@ func _validate_rule_references(races: Array[RaceDefinition], castes: Array[Caste
 				return _reject("Monster '%s' references unavailable item '%s'." % [monster.id, item_id])
 		if not monster.weapon_id.is_empty() and not item_ids.has(monster.weapon_id):
 			return _reject("Monster '%s' references unavailable weapon '%s'." % [monster.id, monster.weapon_id])
+		for random_weapon_id: String in MonsterRules.random_weapon_item_ids(monster.random_weapon_table):
+			if not item_ids.has(random_weapon_id):
+				return _reject("Monster '%s' random weapon table %d can produce unavailable weapon '%s'." % [monster.id, monster.random_weapon_table, random_weapon_id])
 	for battle: BattleDefinition in battles:
 		for slot: BattleMonsterSlotDefinition in battle.monster_slots():
 			if not monster_ids.has(slot.monster_id):

@@ -1,6 +1,18 @@
 class_name MonsterRules
 extends RefCounted
 
+const RANDOM_WEAPON_TABLES: Array = [
+	[[0, 50, 10], [51, 60, 20], [61, 70, 71], [71, 95, 75], [96, 100, 24]],
+	[[0, 35, 65], [36, 70, 37], [71, 85, 125], [85, 94, 137], [95, 100, 138]],
+	[[0, 40, 120], [41, 60, 37], [61, 90, 125], [91, 95, 65], [96, 100, 138]],
+	[[0, 40, 81], [41, 80, 92], [81, 85, 81], [86, 93, 92], [94, 100, 136]],
+	[[0, 35, 81], [36, 70, 75], [71, 90, 81], [91, 95, 75], [96, 100, 136]],
+	[[0, 20, 37], [21, 40, 65], [41, 60, 75], [61, 80, 120], [81, 100, 120]],
+	[[0, 15, 140], [16, 30, 142], [31, 45, 120], [46, 75, 140], [76, 100, 120]],
+	[[0, 25, 92], [26, 50, 81], [51, 75, 120], [76, 90, 120], [91, 100, 120]],
+	[[0, 20, 1], [21, 40, 31], [41, 65, 75], [66, 90, 44], [91, 100, 31]],
+]
+
 
 func build_monster(definition: MonsterDefinition, instance_id: String, traitor_override: int, difficulty: int, realmz_day: int, rng: RealmzRng) -> MonsterState:
 	if definition == null or rng == null:
@@ -37,24 +49,25 @@ func build_monster(definition: MonsterDefinition, instance_id: String, traitor_o
 
 func _random_weapon(table_id: int, instance_id: String, rng: RealmzRng) -> String:
 	var table_index := 8 if table_id == 10 else table_id - 1
-	var tables: Array[Array] = [
-		[[0, 50, 10], [51, 60, 20], [61, 70, 71], [71, 95, 75], [96, 100, 24]],
-		[[0, 35, 65], [36, 70, 37], [71, 85, 125], [85, 94, 137], [95, 100, 138]],
-		[[0, 40, 120], [41, 60, 37], [61, 90, 125], [91, 95, 65], [96, 100, 138]],
-		[[0, 40, 81], [41, 80, 92], [81, 85, 81], [86, 93, 92], [94, 100, 136]],
-		[[0, 35, 81], [36, 70, 75], [71, 90, 81], [91, 95, 75], [96, 100, 136]],
-		[[0, 20, 37], [21, 40, 65], [41, 60, 75], [61, 80, 120], [81, 100, 120]],
-		[[0, 15, 140], [16, 30, 142], [31, 45, 120], [46, 75, 140], [76, 100, 120]],
-		[[0, 25, 92], [26, 50, 81], [51, 75, 120], [76, 90, 120], [91, 100, 120]],
-		[[0, 20, 1], [21, 40, 31], [41, 65, 75], [66, 90, 44], [91, 100, 31]],
-	]
-	if table_index < 0 or table_index >= tables.size():
+	if table_index < 0 or table_index >= RANDOM_WEAPON_TABLES.size():
 		return ""
 	var roll := rng.draw(100, StringName("monster.%s.random-weapon" % instance_id))
-	for range_row: Array in tables[table_index]:
+	for range_row: Array in RANDOM_WEAPON_TABLES[table_index]:
 		if roll >= int(range_row[0]) and roll <= int(range_row[1]):
 			return "classic.item.%d" % int(range_row[2])
 	return ""
+
+
+static func random_weapon_item_ids(table_id: int) -> Array[String]:
+	var table_index := 8 if table_id == 10 else table_id - 1
+	var result: Array[String] = []
+	if table_index < 0 or table_index >= RANDOM_WEAPON_TABLES.size():
+		return result
+	for range_row: Array in RANDOM_WEAPON_TABLES[table_index]:
+		var item_id := "classic.item.%d" % int(range_row[2])
+		if not result.has(item_id):
+			result.append(item_id)
+	return result
 
 
 func choose_action(monster: MonsterState, definition: MonsterDefinition, rng: RealmzRng) -> StringName:

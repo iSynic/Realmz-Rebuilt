@@ -240,6 +240,12 @@ static func _apply_weapon_condition_monster(defender: MonsterState, condition_ro
 
 
 static func _apply_weapon_condition_character(defender: CharacterState, condition_roll: Dictionary, resolution: AttackResolution) -> void:
+	_record_weapon_condition_character(defender, condition_roll, resolution)
+	if resolution.weapon_condition_index >= 0:
+		defender.conditions.set_value(resolution.weapon_condition_index, resolution.weapon_condition_after)
+
+
+static func _record_weapon_condition_character(defender: CharacterState, condition_roll: Dictionary, resolution: AttackResolution) -> void:
 	if condition_roll.is_empty() or not condition_roll.get("applies", false):
 		return
 	var index := int(condition_roll["index"])
@@ -248,7 +254,6 @@ static func _apply_weapon_condition_character(defender: CharacterState, conditio
 	resolution.weapon_condition_after = resolution.weapon_condition_before
 	if resolution.weapon_condition_before > -1:
 		resolution.weapon_condition_after += int(condition_roll["amount"])
-		defender.conditions.set_value(index, resolution.weapon_condition_after)
 
 
 static func _roll_weapon_physical(weapon: ItemDefinition, defender_definition: MonsterDefinition, rng: RealmzRng) -> int:
@@ -311,31 +316,59 @@ static func _roll_weapon_elements_character(weapon: ItemDefinition, defender: Ch
 	return total
 
 
-func resolve_monster_attack(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: CharacterState, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng, charm_save_bonus: int = 0) -> AttackResolution:
+func resolve_monster_attack(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: CharacterState, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng, charm_save_bonus: int = 0, context: MonsterAttackContext = null) -> AttackResolution:
 	if attacker == null or attacker_definition == null or defender == null or rng == null:
 		return null
-	var chance := 50 + 5 * attacker.hit_dice
+	var attack_context := context if context != null else MonsterAttackContext.new(null, 0, false, defender.luck)
+	var invalid_weapon := _invalid_weapon_reason(attack_context.attacker_weapon)
+	if not invalid_weapon.is_empty():
+		return _blocked_monster_attack(invalid_weapon)
+	var condition_roll := _roll_weapon_condition_character(attack_context.attacker_weapon, defender, rng)
+	if condition_roll.get("blocked", false):
+		return _blocked_monster_attack(StringName(condition_roll.get("reason", "invalid_weapon_condition")))
+	var chance := _monster_attack_base_chance(attacker, attacker_definition, attack_context)
 	chance += _attacker_condition_modifier(attacker.conditions)
-	chance -= defender.armor
-	chance += _defender_condition_modifier(defender.conditions)
-	chance = maxi(5, chance)
+	if attacker.conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL):
+		chance += 10
+	chance -= rng.draw_classic(attack_context.defender_luck, &"combat.monster-attack.defender-luck")
+	chance -= attack_context.defender_armor if attack_context.defender_armor >= 0 else defender.armor
+	chance += _defender_condition_modifier(defender.conditions, false)
+	if attacker_definition.type_flag(4) and defender.conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL):
+		chance -= 10
+	chance = maxi(10, chance)
 	var roll := rng.draw(100, &"combat.monster-attack.hit")
-	var hit := roll <= chance or defender.conditions.is_active(ConditionRules.HELPLESS)
+	var hit := roll <= chance or _monster_weapon_auto_hits(attack_context.attacker_weapon)
+	var helpless := defender.conditions.is_active(ConditionRules.HELPLESS)
+	if helpless:
+		hit = true
 	if not hit:
 		return AttackResolution.new(false, false, chance, roll, 0)
 	var attacks := attacker_definition.attacks()
-	var attack := MonsterAttackDefinition.new()
-	if not attacks.is_empty():
-		attack = attacks[clampi(attack_index, 0, attacks.size() - 1)]
+	var attack := _monster_attack_row(attacks, attack_index)
 	var damage := attacker_definition.damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
 	if attacker.conditions.is_active(ConditionRules.STRONG):
 		damage += 3
-	if attack.damage_max >= attack.damage_min:
+	var effects: Array[Dictionary] = []
+	var elemental_damage := 0
+	if helpless:
+		damage = defender.current_health + rng.draw(10, &"combat.monster-attack.helpless-damage")
+	elif attack_context.attacker_weapon != null:
+		damage += attack_context.attacker_weapon.damage_bonus
+		damage += rng.draw(maxi(1, attack_context.attacker_weapon.vs_small), &"combat.monster-attack.weapon-physical")
+		elemental_damage = _roll_weapon_elements_character(attack_context.attacker_weapon, defender, rng, effects)
+	else:
 		damage += rng.draw_between(attack.damage_min, attack.damage_max, &"combat.monster-attack.damage")
 	damage = maxi(0, damage)
-	if defender.conditions.is_active(ConditionRules.HELPLESS):
-		damage = defender.current_health
-	var resolution := AttackResolution.new(true, defender.current_health - damage <= 0, chance, roll, damage)
+	var resolution_physical_damage_reduction := 0
+	if attack_context.party_dragon_hide and damage > 1:
+		var damage_before_dragon_hide := damage
+		damage = maxi(1, damage - 5)
+		resolution_physical_damage_reduction = damage_before_dragon_hide - damage
+	var resolution := AttackResolution.new(true, defender.current_health - damage - elemental_damage <= 0, chance, roll, damage + elemental_damage)
+	resolution.physical_damage = damage
+	resolution.physical_damage_reduction = resolution_physical_damage_reduction
+	resolution.physical_feedback_sound_id = 694 if resolution_physical_damage_reduction > 0 else 0
+	resolution.weapon_effects = effects
 	if attack.special != 0:
 		resolution.special_code = attack.special
 		var potency_low := int(float(attacker.hit_dice) / 2.0)
@@ -363,37 +396,65 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 	elif attack.special in [18, 19]:
 		_apply_party_permanent_affliction(resolution, defender, rng)
 	resolution.damage_deferred = resolution.aging != null and resolution.aging.changed_group()
+	if resolution.damage_deferred:
+		_record_weapon_condition_character(defender, condition_roll, resolution)
+	else:
+		_apply_weapon_condition_character(defender, condition_roll, resolution)
 	if not resolution.damage_deferred and not resolution.physical_damage_skipped:
-		defender.current_health -= damage + resolution.special_damage_amount
+		defender.current_health -= damage + elemental_damage + resolution.special_damage_amount
 		resolution.killed = defender.current_health <= 0
 	return resolution
 
 
-func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng) -> AttackResolution:
+func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng, context: MonsterAttackContext = null) -> AttackResolution:
 	if attacker == null or attacker_definition == null or defender == null or defender_definition == null or rng == null:
 		return null
-	var chance := 50 + 5 * attacker.hit_dice
+	var attack_context := context if context != null else MonsterAttackContext.new()
+	var invalid_weapon := _invalid_weapon_reason(attack_context.attacker_weapon)
+	if not invalid_weapon.is_empty():
+		return _blocked_monster_attack(invalid_weapon)
+	var condition_roll := _roll_weapon_condition_monster(attack_context.attacker_weapon, defender_definition, rng)
+	if condition_roll.get("blocked", false):
+		return _blocked_monster_attack(StringName(condition_roll.get("reason", "invalid_weapon_condition")))
+	var chance := _monster_attack_base_chance(attacker, attacker_definition, attack_context)
 	chance += _attacker_condition_modifier(attacker.conditions)
+	if attacker.conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL):
+		chance += 10
 	chance -= defender.armor
-	chance += _defender_condition_modifier(defender.conditions)
-	chance = maxi(5, chance)
+	chance += _defender_condition_modifier(defender.conditions, false)
+	if attacker_definition.type_flag(4) and defender.conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL):
+		chance -= 10
+	chance = maxi(10, chance)
 	var roll := rng.draw(100, &"combat.monster-attack.hit")
-	var hit := roll <= chance or defender.conditions.is_active(ConditionRules.HELPLESS)
+	var hit := roll <= chance or _monster_weapon_auto_hits(attack_context.attacker_weapon)
+	var helpless := defender.conditions.is_active(ConditionRules.HELPLESS)
+	if helpless:
+		hit = true
 	if not hit:
 		return AttackResolution.new(false, false, chance, roll, 0)
+	var weapon_requirement := _monster_required_weapon_reason(attack_context.attacker_weapon, defender_definition)
+	if not weapon_requirement.is_empty():
+		return _blocked_monster_attack(weapon_requirement, chance, roll)
 	var attacks := attacker_definition.attacks()
-	var attack := MonsterAttackDefinition.new()
-	if not attacks.is_empty():
-		attack = attacks[clampi(attack_index, 0, attacks.size() - 1)]
+	var attack := _monster_attack_row(attacks, attack_index)
 	var damage := attacker_definition.damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
 	if attacker.conditions.is_active(ConditionRules.STRONG):
 		damage += 3
-	if attack.damage_max >= attack.damage_min:
+	var effects: Array[Dictionary] = []
+	var elemental_damage := 0
+	if helpless:
+		damage = defender.current_health
+	elif attack_context.attacker_weapon != null:
+		damage += attack_context.attacker_weapon.damage_bonus
+		damage += rng.draw(maxi(1, attack_context.attacker_weapon.vs_small), &"combat.monster-attack.weapon-physical")
+		elemental_damage = _roll_weapon_elements_monster(attack_context.attacker_weapon, defender, defender_definition, rng, effects)
+		elemental_damage += _roll_monster_weapon_type_damage(attack_context.attacker_weapon, defender_definition, rng, effects)
+	else:
 		damage += rng.draw_between(attack.damage_min, attack.damage_max, &"combat.monster-attack.damage")
 	damage = maxi(0, damage)
-	if defender.conditions.is_active(ConditionRules.HELPLESS):
-		damage = defender.current_health
-	var resolution := AttackResolution.new(true, defender.current_health - damage <= 0, chance, roll, damage)
+	var resolution := AttackResolution.new(true, defender.current_health - damage - elemental_damage <= 0, chance, roll, damage + elemental_damage)
+	resolution.physical_damage = damage
+	resolution.weapon_effects = effects
 	if attack.special != 0:
 		resolution.special_code = attack.special
 		var potency_low := int(float(attacker.hit_dice) / 2.0)
@@ -446,10 +507,73 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 		resolution.special_handled = true
 	elif attack.special in [18, 19]:
 		_apply_monster_permanent_affliction(resolution, defender, defender_definition, rng)
+	_apply_weapon_condition_monster(defender, condition_roll, resolution)
 	if not resolution.physical_damage_skipped:
-		defender.current_health -= damage + resolution.special_damage_amount
+		defender.current_health -= damage + elemental_damage + resolution.special_damage_amount
 		resolution.killed = defender.current_health <= 0
 	return resolution
+
+
+static func _blocked_monster_attack(reason: StringName, chance: int = 0, roll: int = 0) -> AttackResolution:
+	var resolution := AttackResolution.new(false, false, chance, roll, 0)
+	resolution.blocked = true
+	resolution.block_reason = reason
+	return resolution
+
+
+static func _monster_attack_base_chance(attacker: MonsterState, definition: MonsterDefinition, context: MonsterAttackContext) -> int:
+	var chance := 50 + 5 * attacker.hit_dice + 5 * definition.damage_bonus
+	chance += 20 if context.behind else 0
+	chance += int(float(context.realmz_day) / 70.0)
+	if context.attacker_weapon != null:
+		chance += 5 * context.attacker_weapon.damage_bonus
+		if context.attacker_weapon.special_1 == 121:
+			chance += 5 * context.attacker_weapon.damage_bonus
+	return chance
+
+
+static func _monster_weapon_auto_hits(weapon: ItemDefinition) -> bool:
+	return weapon != null and weapon.special_1 == 120
+
+
+static func _monster_attack_row(attacks: Array[MonsterAttackDefinition], attack_index: int) -> MonsterAttackDefinition:
+	if attacks.is_empty():
+		return MonsterAttackDefinition.new(1, 1)
+	var selected := attacks[clampi(attack_index, 0, attacks.size() - 1)]
+	if selected.damage_min == 0:
+		return attacks[0]
+	return selected
+
+
+static func _monster_required_weapon_reason(weapon: ItemDefinition, defender: MonsterDefinition) -> StringName:
+	if defender.required_weapon == 0:
+		return &""
+	if weapon == null:
+		if defender.required_weapon == -1:
+			return &"classic_blunt_weapon_required"
+		if defender.required_weapon == -2:
+			return &"classic_sharp_weapon_required"
+		return &"classic_specific_weapon_required"
+	if defender.required_weapon == -1:
+		return &"" if weapon.blunt == -1 else &"classic_blunt_weapon_required"
+	if defender.required_weapon == -2:
+		return &"" if weapon.blunt == -2 else &"classic_sharp_weapon_required"
+	var required_item_id := defender.required_weapon & 0xff
+	return &"" if weapon.classic_id == required_item_id else &"classic_specific_weapon_required"
+
+
+static func _roll_monster_weapon_type_damage(weapon: ItemDefinition, defender: MonsterDefinition, rng: RealmzRng, effects: Array[Dictionary]) -> int:
+	var total := 0
+	var ranges: Array[int] = [weapon.vs_undead, weapon.vs_demon_devil, weapon.vs_evil]
+	var names: Array[StringName] = [&"undead", &"demon-devil", &"evil"]
+	var flags: Array[int] = [1, 2, 4]
+	for index: int in 3:
+		if ranges[index] == 0 or not defender.type_flag(flags[index]):
+			continue
+		var amount := rng.draw(ranges[index], StringName("combat.monster-attack.weapon-versus-%s" % names[index]))
+		effects.append({"targetType": String(names[index]), "amount": amount})
+		total += amount
+	return total
 
 
 func _apply_party_charm_special(resolution: AttackResolution, attacker: MonsterState, defender: CharacterState, rng: RealmzRng, save_bonus: int) -> void:
