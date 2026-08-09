@@ -5,6 +5,7 @@ func run() -> void:
 	_test_arithmetic_and_ranges()
 	_test_character_creation_and_leveling()
 	_test_live_aging_and_maximum_age()
+	_test_monster_aging_attack()
 	_test_conditions_time_and_persistence()
 	_test_inventory_economy_and_treasure()
 	_test_combat_magic_and_monsters()
@@ -170,6 +171,61 @@ func _test_live_aging_and_maximum_age() -> void:
 	assert_equal([youth_result.aging.transition, clock_character.age_group], [-1, 1], "the youth special reverses one current age band")
 	assert_equal([clock_character.maximum_health, clock_character.current_health], [7, 5], "the youth special consumes Castle's one-to-three stamina loss draw")
 	assert_true(clock_character.age_days >= 3_650, "the youth special never reduces age below ten years")
+
+
+func _test_monster_aging_attack() -> void:
+	var rules := RealmzRules.new()
+	var changes := _age_changes()
+	changes[1] = PackedInt32Array([1, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0])
+	var race := RaceDefinition.new("race.monster-aging", 17, "Monster Aging", _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), [Vector2i(10, 19), Vector2i(20, 29), Vector2i(30, 39), Vector2i(40, 49), Vector2i(50, 59)], changes, 100)
+	var caste := _caste()
+	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 17)]
+	var definition := MonsterDefinition.new("monster.aging", 17, "Aging Monster", 2, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], attacks)
+	var attacker := MonsterState.new("monster.aging.instance", definition.id, definition.name, 10, 10, 2, 10)
+	var defender := CharacterState.new("character.aging-target", "Aging Target", 20, 20)
+	defender.race_id = race.id
+	defender.caste_id = caste.id
+	defender.age_days = 19 * 365 + 364
+	defender.age_group = 1
+	defender.set_save_value_raw(7, 50)
+	var rng := ScriptedRng.new([0, 0, 0, 32_767])
+	var resolution := rules.combat.resolve_monster_attack(attacker, definition, 0, defender, race, caste, rng)
+	assert_true(resolution.hit, "Castle special 17 is evaluated only after the ordinary monster attack hits")
+	assert_equal([resolution.special_code, resolution.special_potency, resolution.special_save_chance, resolution.special_save_roll], [17, 1, 50, 100], "aging attacks retain the unused potency draw before the special-save roll")
+	assert_false(resolution.special_saved, "a failed special save reaches the aging effect")
+	assert_equal(resolution.special_age_days, 2, "aging attack days truncate maxAge times one percent times damageMax times hit dice")
+	assert_not_null(resolution.aging, "a failed aging save returns the typed aging result")
+	assert_equal([defender.age_days, defender.age_group, defender.brawn, defender.save_value(0)], [20 * 365 + 1, 2, 11, 52], "the aging special applies one adjacent live-age row before returning")
+	assert_true(resolution.damage_deferred, "a changed age band defers ordinary physical damage until the Classic dialog returns")
+	assert_equal(defender.current_health, 20, "the age-update boundary precedes ordinary physical damage")
+	assert_equal(rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency", "combat.monster-attack.special-save"], "monster aging preserves Castle's observable random order")
+
+	var saved_target := CharacterState.new("character.saved-aging-target", "Saved Target", 20, 20)
+	saved_target.race_id = race.id
+	saved_target.caste_id = caste.id
+	saved_target.age_days = 19 * 365 + 364
+	saved_target.age_group = 1
+	saved_target.set_save_value_raw(7, 50)
+	var saved := rules.combat.resolve_monster_attack(attacker, definition, 0, saved_target, race, caste, ScriptedRng.new([0, 0, 0, 0]))
+	assert_true(saved.special_saved, "an inclusive save-slot-seven success negates Classic monster aging")
+	assert_equal([saved_target.age_days, saved_target.age_group], [19 * 365 + 364, 1], "a successful aging save leaves age state unchanged")
+	assert_equal(saved_target.current_health, 19, "a saved aging special has no dialog boundary and commits ordinary damage immediately")
+
+	var same_band_target := CharacterState.new("character.same-band-aging-target", "Same Band Target", 20, 20)
+	same_band_target.race_id = race.id
+	same_band_target.caste_id = caste.id
+	same_band_target.age_days = 15 * 365
+	same_band_target.age_group = 1
+	same_band_target.set_save_value_raw(7, 50)
+	var same_band := rules.combat.resolve_monster_attack(attacker, definition, 0, same_band_target, race, caste, ScriptedRng.new([0, 0, 0, 32_767]))
+	assert_true(same_band.special_applied and not same_band.damage_deferred, "failed aging that remains in the same band does not invent a dialog boundary")
+	assert_equal([same_band_target.age_days, same_band_target.age_group, same_band_target.current_health], [15 * 365 + 2, 1, 19], "same-band aging and physical damage commit in the original attack call")
+
+	var monster_target := MonsterState.new("monster.aging-target", definition.id, "Monster Target", 20, 20, 2, 10)
+	var monster_rng := ScriptedRng.new([0, 0, 0])
+	var monster_resolution := rules.combat.resolve_monster_attack_monster(attacker, definition, 0, monster_target, monster_rng)
+	assert_equal([monster_resolution.special_code, monster_resolution.special_potency, monster_target.current_health], [17, 1, 19], "monster targets consume generic special potency but receive no party-only aging effect")
+	assert_equal(monster_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency"], "monster-target special 17 stops after Castle's shared potency draw")
 
 
 func _test_conditions_time_and_persistence() -> void:

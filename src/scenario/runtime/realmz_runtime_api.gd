@@ -635,6 +635,8 @@ func resume_safe(continuation: Dictionary, response: InteractionResponse, reques
 			return ScenarioRuntimeOperationResult.completed(response.payload["index"])
 		"safe-combat":
 			return _resume_battle(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
+		"safe-combat-age-updates":
+			return _resume_combat_age_updates(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		"safe-combat-macro":
 			return _resume_battle_macro(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		"safe-combat-death-macro":
@@ -675,6 +677,8 @@ func resume_classic(continuation: Dictionary, response: InteractionResponse, req
 			return ScenarioRuntimeOperationResult.completed(true)
 		"classic-combat":
 			return _resume_battle(continuation, response, request_id)
+		"classic-combat-age-updates":
+			return _resume_combat_age_updates(continuation, response, request_id)
 		"classic-combat-macro":
 			return _resume_battle_macro(continuation, response, request_id)
 		"classic-combat-death-macro":
@@ -1981,13 +1985,13 @@ func _start_battle_definition(battle: BattleDefinition, request_id: String, sour
 			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Battle '%s' references unavailable before-message %d." % [battle.id, battle.message_before_id])
 		events.append(DomainEvent.new(&"message_shown", {"messageId": before.id, "text": before.text, "source": "classic-battle-definition"}))
 	events.append_array(result.events)
-	if not _death_macro_request(result.events).is_empty():
-		var death_source := "safe-combat" if source == "scenario-action" else "classic-combat"
-		return _run_combat_death_macro(death_source, events, request_id)
-	if result.completed:
-		var completed_source := "safe-combat" if source == "scenario-action" else "classic-combat"
-		return _finish_battle_with_allies(completed_source, request_id, events)
 	var continuation_kind := "safe-combat" if source == "scenario-action" else "classic-combat"
+	if not CharacterAgingResult.update_payloads(result.events).is_empty():
+		return _wait_for_combat_age_updates(continuation_kind, request_id, events, _game_state.combat.round_number)
+	if not _death_macro_request(result.events).is_empty():
+		return _run_combat_death_macro(continuation_kind, events, request_id)
+	if result.completed:
+		return _finish_battle_with_allies(continuation_kind, request_id, events)
 	return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), {"kind": continuation_kind, "battleId": battle.id}, events)
 
 
@@ -2000,6 +2004,8 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 	var result := _rules.combat_flow.submit_action(_game_state, _content, response.payload["actorId"], StringName(response.payload["action"]), response.payload.get("targetId", ""), _rng)
 	if not result.ok:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+	if not CharacterAgingResult.update_payloads(result.events).is_empty():
+		return _wait_for_combat_age_updates(String(continuation.get("kind", "classic-combat")), request_id, result.events, previous_round)
 	if not _death_macro_request(result.events).is_empty():
 		return _run_combat_death_macro(String(continuation.get("kind", "classic-combat")), result.events, request_id)
 	if result.completed:
@@ -2179,15 +2185,70 @@ func _continue_after_combat_death_macro(source_kind: String, request_id: String,
 	var committed: Array[DomainEvent] = []
 	committed.assign(events)
 	committed.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": combat.battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))
+	var previous_round := combat.round_number
 	var continued := _rules.combat_flow.continue_after_monster_death_macro(_game_state, _content, _rng)
 	if not continued.ok:
 		return ScenarioRuntimeOperationResult.failed(continued.error_code, continued.error_message)
 	committed.append_array(continued.events)
+	if not CharacterAgingResult.update_payloads(continued.events).is_empty():
+		return _wait_for_combat_age_updates(source_kind, request_id, committed, previous_round)
 	if not _death_macro_request(continued.events).is_empty():
 		return _run_combat_death_macro(source_kind, committed, request_id)
 	if continued.completed:
 		return _finish_battle_with_allies(source_kind, request_id, committed)
 	return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), {"kind": source_kind, "battleId": combat.battle_id}, committed)
+
+
+func _wait_for_combat_age_updates(source_kind: String, request_id: String, events: Array[DomainEvent], round_before: int) -> ScenarioRuntimeOperationResult:
+	var updates := CharacterAgingResult.update_payloads(events)
+	if updates.is_empty() or _game_state.combat == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_combat_age_update", "Monster aging did not provide a valid combat continuation.")
+	var continuation := {
+		"kind": "%s-age-updates" % source_kind,
+		"sourceKind": source_kind,
+		"battleId": _game_state.combat.battle_id,
+		"updates": updates,
+		"index": 1,
+		"roundBefore": round_before,
+	}
+	var committed: Array[DomainEvent] = []
+	committed.assign(events)
+	committed.append(CharacterAgingResult.sound_event(updates[0]))
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update(request_id, updates[0]), continuation, committed)
+
+
+func _resume_combat_age_updates(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
+	if response.kind != InteractionRequest.AGE_UPDATE or not response.payload.is_empty():
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic combat age updates require an empty acknowledgement.")
+	if _game_state.combat == null or _game_state.combat.battle_id != continuation.get("battleId") or _game_state.combat.pending_monster_attack == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The monster age-update battle is unavailable.")
+	var updates: Variant = continuation.get("updates", [])
+	var index := int(continuation.get("index", -1))
+	if not updates is Array or updates.is_empty() or index < 1 or index > updates.size():
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_continuation", "The combat age-update queue is invalid.")
+	var acknowledged: Dictionary = updates[index - 1]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"character_age_update_acknowledged", {"characterId": acknowledged.get("characterId", "")})]
+	if index < updates.size():
+		var next_payload: Dictionary = updates[index]
+		var next_continuation := continuation.duplicate(true)
+		next_continuation["index"] = index + 1
+		events.append(CharacterAgingResult.sound_event(next_payload))
+		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update(request_id, next_payload), next_continuation, events)
+	var source_kind := String(continuation.get("sourceKind", "classic-combat"))
+	var round_before := int(continuation.get("roundBefore", _game_state.combat.round_number))
+	var continued := _rules.combat_flow.continue_after_age_update(_game_state, _content, _rng)
+	if not continued.ok:
+		return ScenarioRuntimeOperationResult.failed(continued.error_code, continued.error_message)
+	events.append_array(continued.events)
+	if not CharacterAgingResult.update_payloads(continued.events).is_empty():
+		return _wait_for_combat_age_updates(source_kind, request_id, events, round_before)
+	if not _death_macro_request(continued.events).is_empty():
+		return _run_combat_death_macro(source_kind, events, request_id)
+	if continued.completed:
+		return _finish_battle_with_allies(source_kind, request_id, events)
+	if _game_state.combat.round_number > round_before and _game_state.combat.macro_id < 0:
+		return _run_battle_macro(source_kind, events, request_id)
+	return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), {"kind": source_kind, "battleId": _game_state.combat.battle_id}, events)
 
 
 static func _death_macro_request(events: Array[DomainEvent]) -> Dictionary:

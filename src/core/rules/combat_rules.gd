@@ -2,10 +2,12 @@ class_name CombatRules
 extends RefCounted
 
 var _conditions: ConditionRules
+var _characters: CharacterRules
 
 
-func _init(condition_rules: ConditionRules) -> void:
+func _init(condition_rules: ConditionRules, character_rules: CharacterRules) -> void:
 	_conditions = condition_rules
+	_characters = character_rules
 
 
 func resolve_character_attack(attacker: CharacterState, defender: MonsterState, defender_definition: MonsterDefinition, equipped_damage_bonus: int, rng: RealmzRng, realmz_day: int = 0, behind: bool = false) -> AttackResolution:
@@ -45,7 +47,7 @@ func resolve_character_attack(attacker: CharacterState, defender: MonsterState, 
 	return AttackResolution.new(true, defender.current_health <= 0, chance, roll, damage)
 
 
-func resolve_monster_attack(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: CharacterState, rng: RealmzRng) -> AttackResolution:
+func resolve_monster_attack(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: CharacterState, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng) -> AttackResolution:
 	if attacker == null or attacker_definition == null or defender == null or rng == null:
 		return null
 	var chance := 50 + 5 * attacker.hit_dice
@@ -69,8 +71,26 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 	damage = maxi(0, damage)
 	if defender.conditions.is_active(ConditionRules.HELPLESS):
 		damage = defender.current_health
-	defender.current_health -= damage
-	return AttackResolution.new(true, defender.current_health <= 0, chance, roll, damage)
+	var resolution := AttackResolution.new(true, defender.current_health - damage <= 0, chance, roll, damage)
+	if attack.special != 0:
+		resolution.special_code = attack.special
+		var potency_low := int(float(attacker.hit_dice) / 2.0)
+		resolution.special_potency = maxi(1, rng.draw_between(potency_low, attacker.hit_dice, &"combat.monster-attack.special-potency"))
+	if attack.special == 17:
+		resolution.special_save_chance = defender.save_value(7)
+		resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
+		resolution.special_saved = resolution.special_save_roll <= resolution.special_save_chance
+		if not resolution.special_saved:
+			resolution.special_applied = true
+			var age_factor := _signed_16(attack.damage_max * attacker.hit_dice)
+			resolution.special_age_days = int(float(race.max_age) * 0.01 * float(age_factor)) if race != null else 0
+			if race != null and caste != null:
+				resolution.aging = _characters.advance_age_days(defender, race, caste, resolution.special_age_days)
+	resolution.damage_deferred = resolution.aging != null and resolution.aging.changed_group()
+	if not resolution.damage_deferred:
+		defender.current_health -= damage
+		resolution.killed = defender.current_health <= 0
+	return resolution
 
 
 func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: MonsterState, rng: RealmzRng) -> AttackResolution:
@@ -97,8 +117,14 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 	damage = maxi(0, damage)
 	if defender.conditions.is_active(ConditionRules.HELPLESS):
 		damage = defender.current_health
+	var resolution := AttackResolution.new(true, defender.current_health - damage <= 0, chance, roll, damage)
+	if attack.special != 0:
+		resolution.special_code = attack.special
+		var potency_low := int(float(attacker.hit_dice) / 2.0)
+		resolution.special_potency = maxi(1, rng.draw_between(potency_low, attacker.hit_dice, &"combat.monster-attack.special-potency"))
 	defender.current_health -= damage
-	return AttackResolution.new(true, defender.current_health <= 0, chance, roll, damage)
+	resolution.killed = defender.current_health <= 0
+	return resolution
 
 
 func initiative_order(characters: Array[CharacterState], monsters: Array[MonsterState], surprise: int, rng: RealmzRng) -> Array[String]:
@@ -193,3 +219,8 @@ func _monsters_first(order: Array[String], monsters: Array[MonsterState]) -> Arr
 			last.append(id)
 	first.append_array(last)
 	return first
+
+
+static func _signed_16(value: int) -> int:
+	var wrapped := value & 0xffff
+	return wrapped - 0x10000 if wrapped >= 0x8000 else wrapped

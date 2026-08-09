@@ -438,6 +438,54 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "combat.monster-aging-special",
+      "domain": "combat",
+      "claim": "After an ordinary monster attack hits a party character, Classic special 17 consumes the generic special-potency draw, tests save slot seven, and on failure adds the truncated race-lifespan percentage encoded by attack damage maximum times monster hit dice. A crossed age band blocks combat at the ordinary age-update dialog before the next actor proceeds.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake has a dedicated Classic monster-special dispatcher and tests several save-based specials, but its supported table omits special 17 and therefore provides no monster-aging effect or continuation.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_monster_special_attack.gd", "symbol": "static func supports(special_code: int)" },
+          { "path": "src/scripts/classic_runtime/classic_monster_special_attack.gd", "symbol": "const SAVE_BY_SPECIAL" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_monster_special_attacks" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack(short chare, short mon)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "short savevs(short which, short who)" },
+          { "path": "src/realmz_orig/age.c", "symbol": "short age(int32_t age, short raceid, short currentagegroup)" },
+          { "path": "src/realmz_orig/age.c", "symbol": "void showageupdate(short who, short agegroup, short backup)" }
+        ],
+        "authoredInputs": ["monster attack damage maximum and special 17", "monster hit dice", "character save slot seven", "Data Race maxage, agerange, and agechange", "Data Caste maximum damage bonus"],
+        "observation": "attack computes ordinary damage, then every nonzero special consumes randrange(hitDice/2, hitDice). Party-target case 17 rolls savevs(7); failure reports result -48, truncates maxage * .01 * (attack damage maximum * hit dice) into age days, calls age once, and opens showageupdate only when that call changes the band. The special and dialog occur before ordinary physical damage is recorded and before attack returns. No monster-target case 17 exists."
+      },
+      "providence": {
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves each monster attack row's damageMax and special, monster hitDice, race maximumAge/ranges/change rows, and caste strength damage cap; no compiler correction is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_rules.gd", "symbol": "func resolve_monster_attack" },
+        "expectedTrace": ["ordinary hit roll", "ordinary damage roll", "special potency draw", "save-slot-seven roll", "optional age-day mutation", "optional one-band event and typed age_update", "save pending ordinary hit", "acknowledge age update", "ordinary damage commit", "resume exact next combat actor"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_aging_attack" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_aging_attack_continuations" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
     }
   ]
 }

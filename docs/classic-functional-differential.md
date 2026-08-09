@@ -17,8 +17,9 @@ The machine-readable record is `tests/fixtures/oracle/classic-functional-differe
 | `character.creation-aging-and-rng-order` | Aligned | Creation preserves Castle's discarded seventh attribute roll, cumulative race aging through the caste minimum group, first-seven-save adjustments, three special-bonus checks, and subsequent stamina/age/spell-point draw order. |
 | `character.live-aging-and-maximum-age` | Aligned | Midnight and age-changing spells mutate exact age days and invoke at most one adjacent age row. Live rows are unbounded, maximum movement floors at two, and maximum-age battle XP truncates to two thirds; `doesNotDie` does not add behavior absent from the pinned source. |
 | `character.age-update-interaction` | Aligned | Every changed band yields a dedicated typed dialog in party/target order with character/race identity, resulting band/range, fifteen applied deltas, and sound 3002. Save/resume retains the exact clock, post-move, or spell continuation. |
+| `combat.monster-aging-special` | Aligned | A hit with monster special 17 preserves Castle's damage/potency/save draw order, tests save slot seven, applies the attack-row lifespan formula and one live age operation, and pauses direct or scenario combat at a saveable age update before the next actor. |
 
-The rule, clock, spell, battle-reward, persistence, and `showageupdate` click boundary are covered. Monster attack specials that age a character remain owned by the later combat-special differential pass; this interaction pass does not imply that the combat special itself is implemented.
+The rule, clock, spell, monster-aging attack, battle-reward, persistence, and `showageupdate` click boundaries are covered. Other monster attack specials remain separate rolling combat cases and are not implied by special 17.
 
 ## Rolling gate
 

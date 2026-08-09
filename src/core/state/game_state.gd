@@ -259,6 +259,8 @@ static func from_data(data: Variant) -> GameState:
 		state.combat = CombatState.from_data(data["combat"])
 		if state.combat == null:
 			return null
+		if state.combat.pending_monster_attack != null and party_state.character_by_id(state.combat.pending_monster_attack.target_id) == null:
+			return null
 	for key: Variant in data["searchedCells"]:
 		if not key is String or key.is_empty():
 			return null

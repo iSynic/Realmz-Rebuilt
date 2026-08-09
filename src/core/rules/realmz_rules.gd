@@ -19,7 +19,7 @@ func _init() -> void:
 	conditions = ConditionRules.new()
 	inventory = InventoryRules.new()
 	economy = EconomyRules.new()
-	combat = CombatRules.new(conditions)
+	combat = CombatRules.new(conditions, characters)
 	magic = MagicRules.new(characters)
 	monsters = MonsterRules.new()
 	clock = ClockRules.new(conditions, characters)

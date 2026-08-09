@@ -35,6 +35,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - Campaign-startup integration tests begin from an empty party, preserve setup across repeated typed edits and save/restore, and prove that only explicit Begin enables gameplay. Gameplay fixtures import a deterministic synthetic member and Begin through the public session API without consuming RNG.
 - Character-rule tests distinguish racial starting-condition values, permanent caste condition-level `1`, deferred higher caste thresholds, bounded initial saves, cumulative creation aging, Castle's discarded seventh attribute draw, conditional special-bonus draws, and the resulting RNG order; keep those assertions tied to `newcharacter.c`, `age.c`, and the serialized race/caste records.
 - Live-aging tests keep `ageDays` and `ageGroup` distinct, cover one-row forward/reverse transitions, unbounded live stat/save changes, movement-floor reversal, midnight progression, haste/youth effects, maximum-age experience truncation, and legacy nested-character restore. Separate interaction tests require ordered `age_update` requests, sound 3002, exact response kinds, VM and session save/resume, and age acknowledgement before destination AP execution.
+- Monster-aging attack tests preserve Castle's hit/damage/potency/save draw order, save slot seven, truncated attack-row lifespan formula, party-only target, ordinary physical damage, one-band update, and exact direct-session and scenario-combat continuation after save/restore.
 
 ## Work Guidance
 

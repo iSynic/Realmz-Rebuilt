@@ -121,6 +121,26 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
+func continue_after_age_update(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
+	if state == null or content == null or rng == null or state.combat == null or state.combat.pending_monster_attack == null:
+		return CombatFlowResult.failed(&"invalid_age_update_continuation", "Monster age-update continuation requires an active battle.")
+	var events: Array[DomainEvent] = []
+	var combat := state.combat
+	var pending := combat.pending_monster_attack
+	var target := state.party.character_by_id(pending.target_id)
+	if target == null:
+		return CombatFlowResult.failed(&"invalid_age_update_continuation", "The pending monster attack target is unavailable.")
+	target.current_health -= pending.damage
+	var defeated := target.current_health <= 0
+	events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": pending.actor_id, "targetId": pending.target_id, "action": String(pending.action), "hit": true, "damage": pending.damage, "defeated": defeated, "chance": pending.chance, "roll": pending.roll}))
+	combat.pending_monster_attack = null
+	combat.advance_turn()
+	if _finish_if_resolved(state, content, events):
+		return CombatFlowResult.succeeded(events, true)
+	_process_monster_turns(state, content, rng, events)
+	return CombatFlowResult.succeeded(events, state.combat.completed)
+
+
 func ally_selection_payload(state: GameState, content: RealmzContent) -> Dictionary:
 	if state == null or content == null or state.combat == null or not state.combat.completed or state.allies_suspended:
 		return {}
@@ -226,7 +246,18 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 			if choice in [&"advance", &"missile"]:
 				if target_index < character_targets.size():
 					var character_target := character_targets[target_index]
-					var character_resolution := _rules.combat.resolve_monster_attack(monster, definition, 0, character_target, rng)
+					var race := content.race_by_id(character_target.race_id)
+					var caste := content.caste_by_id(character_target.caste_id)
+					var character_resolution := _rules.combat.resolve_monster_attack(monster, definition, 0, character_target, race, caste, rng)
+					var age_update_requested := false
+					if character_resolution.special_code == 17:
+						events.append(DomainEvent.new(&"combat_monster_special_resolved", {"actorId": monster.id, "targetId": character_target.id, "specialCode": character_resolution.special_code, "potency": character_resolution.special_potency, "saveChance": character_resolution.special_save_chance, "saveRoll": character_resolution.special_save_roll, "saved": character_resolution.special_saved, "applied": character_resolution.special_applied, "ageDays": character_resolution.special_age_days, "source": "classic"}))
+						if character_resolution.aging != null and character_resolution.aging.changed_group():
+							events.append(DomainEvent.new(&"character_age_changed", character_resolution.aging.event_payload(character_target, race)))
+							age_update_requested = true
+					if age_update_requested:
+						combat.pending_monster_attack = PendingMonsterAttack.new(monster.id, character_target.id, choice, character_resolution.damage, character_resolution.chance, character_resolution.roll)
+						return
 					events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": character_target.id, "action": String(choice), "hit": character_resolution.hit, "damage": character_resolution.damage, "defeated": character_resolution.killed, "chance": character_resolution.chance, "roll": character_resolution.roll}))
 				else:
 					var monster_target := monster_targets[target_index - character_targets.size()]

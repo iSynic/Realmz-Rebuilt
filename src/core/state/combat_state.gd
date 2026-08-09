@@ -7,6 +7,7 @@ var round_number: int = 1
 var turn_index: int = 0
 var completed: bool = false
 var outcome: StringName = &"active"
+var pending_monster_attack: PendingMonsterAttack
 var _turn_order: Array[String] = []
 var _monsters: Array[MonsterState] = []
 
@@ -66,7 +67,10 @@ func to_data() -> Dictionary:
 	var monster_data: Array[Dictionary] = []
 	for monster: MonsterState in _monsters:
 		monster_data.append(monster.to_data())
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data}
+	var pending_data: Variant = null
+	if pending_monster_attack != null:
+		pending_data = pending_monster_attack.to_data()
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -97,7 +101,14 @@ static func from_data(data: Variant) -> CombatState:
 	result.completed = data["completed"]
 	result.outcome = StringName(data["outcome"])
 	result._turn_order = order
+	var pending_data: Variant = data.get("pendingMonsterAttack")
+	if pending_data != null:
+		result.pending_monster_attack = PendingMonsterAttack.from_data(pending_data)
+		if result.pending_monster_attack == null:
+			return null
 	if result.turn_index > result._turn_order.size():
+		return null
+	if result.pending_monster_attack != null and (result.monster_by_id(result.pending_monster_attack.actor_id) == null or result.active_actor_id() != result.pending_monster_attack.actor_id):
 		return null
 	return result
 

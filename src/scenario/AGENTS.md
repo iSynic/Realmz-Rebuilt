@@ -32,6 +32,7 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 - Classic opcode 9 publishes the absolute `snd ` resource ID while preserving the operand sign as presentation playback metadata: positive is asynchronous and negative waits within the Classic sound queue. It never blocks or advances simulation.
 - Classic opcode 24 ends the current timeline and reports Keep Codes for the issuing placed Action Point. Without that exception, the session disables the AP after successful completion; opcode 25 remains the explicit in-program removal operation.
 - Completed battles may yield a typed `ally_selection` from the issuing combat continuation. That response rebuilds the held-over ally party under Castle body-count limits before the scenario frame continues.
+- Scenario-launched battles that trigger Classic monster aging wrap the issuing Classic or Safe combat continuation in a serializable typed age-update queue. Acknowledgement resumes remaining monster turns, battle/death macros, completion, or the next player actor without restarting the issuing scenario instruction.
 - Executable-opcode readiness is declared by `ClassicOpcodeCatalog` and checked against bounded, provenance-labelled content inventories. A declared opcode must have an explicit handler and may never fall through to dynamic dispatch or a silent no-op.
 
 ## Work Guidance

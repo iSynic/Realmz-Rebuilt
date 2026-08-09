@@ -268,6 +268,8 @@ func _cast_spell(intent: PlayerIntent) -> SessionStep:
 	var result := _rules.combat_flow.cast_spell(_state, _content, intent.actor_id, intent.secondary_target_id, intent.target_id, intent.power_level, _rng)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	if not CharacterAgingResult.update_payloads(result.events).is_empty():
+		return _finish_with_age_updates(result.events, "combat-monster-turns")
 	if not _event_payload(result.events, &"monster_death_macro_requested").is_empty():
 		return _start_session_death_macro(result.events)
 	if result.completed:
@@ -279,6 +281,8 @@ func _combat_action(intent: PlayerIntent) -> SessionStep:
 	var result := _rules.combat_flow.submit_action(_state, _content, intent.actor_id, intent.action, intent.target_id, _rng)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	if not CharacterAgingResult.update_payloads(result.events).is_empty():
+		return _finish_with_age_updates(result.events, "combat-monster-turns")
 	if not _event_payload(result.events, &"monster_death_macro_requested").is_empty():
 		return _start_session_death_macro(result.events)
 	if result.completed:
@@ -698,6 +702,8 @@ func _continue_session_death_macro(events: Array[DomainEvent]) -> SessionStep:
 	if not continued.ok:
 		return _finish_failed(continued.error_code, continued.error_message, events)
 	events.append_array(continued.events)
+	if not CharacterAgingResult.update_payloads(continued.events).is_empty():
+		return _finish_with_age_updates(events, "combat-monster-turns")
 	if not _event_payload(continued.events, &"monster_death_macro_requested").is_empty():
 		return _start_session_death_macro(events)
 	if continued.completed:
@@ -854,6 +860,8 @@ func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: String, r
 		if resume_kind == "post-move":
 			_session_continuation = resume_continuation.duplicate(true)
 			return _continue_post_move(events)
+		if resume_kind == "combat-monster-turns":
+			return _continue_after_session_combat_age_update(events)
 		return _finish_completed(events)
 	_session_continuation = {
 		"kind": "age-updates",
@@ -889,9 +897,25 @@ func _respond_session_age_update(response: InteractionResponse) -> SessionStep:
 	if resume_kind == "post-move":
 		_session_continuation = resume_continuation
 		return _continue_post_move(events)
+	if resume_kind == "combat-monster-turns":
+		return _continue_after_session_combat_age_update(events)
 	if resume_kind == "completed":
 		return _finish_completed(events)
 	return _finish_failed(&"invalid_session_continuation", "The age-update queue has no valid completion path.", events)
+
+
+func _continue_after_session_combat_age_update(events: Array[DomainEvent]) -> SessionStep:
+	var continued := _rules.combat_flow.continue_after_age_update(_state, _content, _rng)
+	if not continued.ok:
+		return _finish_failed(continued.error_code, continued.error_message, events)
+	events.append_array(continued.events)
+	if not CharacterAgingResult.update_payloads(continued.events).is_empty():
+		return _finish_with_age_updates(events, "combat-monster-turns")
+	if not _event_payload(continued.events, &"monster_death_macro_requested").is_empty():
+		return _start_session_death_macro(events)
+	if continued.completed:
+		return _finish_direct_battle(events)
+	return _finish_completed(events)
 
 
 func _session_age_update_request_id(payload: Dictionary, index: int) -> String:
@@ -933,6 +957,10 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 		_session_continuation.clear()
 		return _finish_failed(battle_result.error_code, battle_result.error_message, events)
 	events.append_array(battle_result.events)
+	if not CharacterAgingResult.update_payloads(battle_result.events).is_empty():
+		_session_interaction = null
+		_session_continuation.clear()
+		return _finish_with_age_updates(events, "combat-monster-turns")
 	if not _event_payload(battle_result.events, &"monster_death_macro_requested").is_empty():
 		_session_interaction = null
 		_session_continuation.clear()
@@ -966,6 +994,8 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 		var resume_continuation: Variant = continuation["resumeContinuation"]
 		if resume_kind == "completed":
 			return resume_continuation is Dictionary and resume_continuation.is_empty()
+		if resume_kind == "combat-monster-turns":
+			return resume_continuation is Dictionary and resume_continuation.is_empty() and state.combat != null and not state.combat.completed and state.combat.pending_monster_attack != null
 		return resume_kind == "post-move" and resume_continuation is Dictionary and _valid_ready_post_move_continuation(content, state, resume_continuation)
 	if continuation.get("kind") == "combat-death-macro":
 		var death_fields: Array[String] = ["kind", "battleId", "combatantId", "programId"]

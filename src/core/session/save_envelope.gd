@@ -166,10 +166,10 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 		var index := _integer(value["index"])
 		if not value["updates"] is Array or value["updates"].is_empty() or value["updates"].size() > 30 or index < 1 or index > value["updates"].size() or not _json_safe(value["updates"], 0):
 			return null
-		if not value["resumeKind"] is String or value["resumeKind"] not in ["completed", "post-move"] or not value["resumeContinuation"] is Dictionary:
+		if not value["resumeKind"] is String or value["resumeKind"] not in ["completed", "post-move", "combat-monster-turns"] or not value["resumeContinuation"] is Dictionary:
 			return null
 		var resume_continuation: Dictionary = {}
-		if value["resumeKind"] == "completed":
+		if value["resumeKind"] in ["completed", "combat-monster-turns"]:
 			if not value["resumeContinuation"].is_empty():
 				return null
 		else:

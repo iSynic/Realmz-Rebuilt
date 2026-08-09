@@ -27,6 +27,7 @@ func run() -> void:
 	_test_equipment_storage_save_resume(loaded.content)
 	_test_program_replacement_and_redirect(loaded.content)
 	_test_scenario_spell_opcodes(loaded.content)
+	_test_monster_aging_attack_continuations(loaded.content)
 	_test_combat_fumble_mutation(loaded.content)
 	_test_classic_encounter_break(loaded.content)
 	_test_classic_party_shift(loaded.content)
@@ -1175,6 +1176,97 @@ func _test_automatic_monster_death_macro(content: RealmzContent) -> void:
 	assert_equal(resumed.state, SessionStep.State.COMPLETED, "restored death-macro interaction resumes through GameSession")
 	assert_equal(restored._state.last_battle_outcome, &"victory", "restored direct-session battle resolves after its death macro")
 	monster_definition.death_macro = original_death_macro
+
+
+func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
+	var race := _aging_race(content)
+	var castes := content.caste_definitions()
+	assert_not_null(race, "monster-aging fixture has adjacent Classic age bands")
+	assert_false(castes.is_empty(), "monster-aging fixture has a caste for live age changes")
+	if race == null or castes.is_empty():
+		return
+	var caste: CasteDefinition = castes[0]
+	var hit_dice := maxi(1, ceili(100.0 / float(race.max_age)))
+	var zero8: Array[int] = []
+	zero8.resize(8)
+	zero8.fill(0)
+	var zero6: Array[int] = []
+	zero6.resize(6)
+	zero6.fill(0)
+	var zero3: Array[int] = []
+	zero3.resize(3)
+	zero3.fill(0)
+	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 17)]
+	var monster_definition := MonsterDefinition.new("monster.age-special", 917, "Age Special", hit_dice, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], attacks)
+	monster_definition.traitor = true
+	var battle := BattleDefinition.new("battle.age-special", 917, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, monster_definition.id, false)])
+	var programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 2, 2, battle.classic_id, false, []), ClassicActionDefinition.new(1, 111, 111, 0, false, [])])]
+	var aging_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(programs, []), [], [], [], [race], [caste], [], [], [monster_definition], [battle])
+	var character := CharacterState.new("character.age-special", "Age Target", 100, 100)
+	character.race_id = race.id
+	character.caste_id = caste.id
+	character.age_days = race.age_range(0).y * 365 + 364
+	character.age_group = 1
+	character.agility = 1
+	character.set_save_value_raw(7, 50)
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
+	var scripted_values: Array[int] = []
+	for _draw: int in hit_dice + 9:
+		scripted_values.append(0)
+	scripted_values.append(32_767)
+	var runtime_rng := ScriptedRng.new(scripted_values)
+	var api := RealmzRuntimeApi.new(aging_content, state, runtime_rng, ScenarioActionState.new())
+	var vm := ScenarioVm.new()
+	vm.configure(aging_content.scenario)
+	vm.start_program("root", {"callingContext": "action"})
+	var aged := vm.run(api)
+	assert_equal(aged.state, ScenarioVmResult.State.WAITING, "scenario combat pauses at the monster-caused age update")
+	assert_equal(aged.interaction.kind, InteractionRequest.AGE_UPDATE, "monster aging uses the ordinary typed age-update ABI")
+	assert_equal(vm.snapshot().pending_continuation.get("runtime", {}).get("kind"), "classic-combat-age-updates", "the age dialog owns the issuing Classic combat continuation")
+	assert_true(_event_has(aged.events, &"combat_monster_special_resolved") and _event_has(aged.events, &"character_age_changed"), "combat publishes the source-backed special and live-age transition")
+	assert_false(_event_has(aged.events, &"combat_attack_resolved"), "ordinary damage waits behind Castle's age dialog")
+	assert_equal(character.current_health, 100, "the pre-acknowledgement combat save retains pending physical damage")
+	var restored_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	var restored_vm_snapshot := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(vm.snapshot().to_data())))
+	var restored_rng := RealmzRng.new()
+	assert_true(restored_rng.restore(runtime_rng.snapshot()), "scenario combat aging restores its exact RNG draw boundary")
+	var restored_api := RealmzRuntimeApi.new(aging_content, restored_state, restored_rng, ScenarioActionState.new())
+	var restored_vm := ScenarioVm.new()
+	restored_vm.configure(aging_content.scenario)
+	assert_true(restored_vm.restore(restored_vm_snapshot), "scenario VM restores the nested combat age-update continuation")
+	var resumed := restored_vm.resume(InteractionResponse.new(aged.interaction.request_id, InteractionRequest.AGE_UPDATE, {}), restored_api)
+	assert_equal(resumed.state, ScenarioVmResult.State.WAITING, "acknowledging restored monster aging returns to the exact battle")
+	assert_equal(resumed.interaction.kind, &"combat_action", "scenario battle resumes at the next player action")
+	assert_true(_event_has(resumed.events, &"character_age_update_acknowledged"), "the restored scenario continuation records the acknowledgement")
+	assert_true(_event_has(resumed.events, &"combat_attack_resolved"), "scenario acknowledgement commits the deferred ordinary hit")
+	assert_equal(restored_state.party.character_by_id(character.id).current_health, 99, "restored scenario combat applies physical damage exactly once")
+
+	var session := GameSession.new()
+	session.start(aging_content, 1)
+	session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.from_data(character.to_data())])
+	session._state.party_setup_completed = true
+	var session_character: CharacterState = session._state.party.characters()[0]
+	session_character.age_days = race.age_range(0).y * 365 + 364
+	session_character.age_group = 1
+	session_character.current_health = 100
+	var session_monster := MonsterState.new("monster.age-special.session", monster_definition.id, monster_definition.name, 10, 10, hit_dice, 100)
+	session._state.combat = CombatState.new(battle.id, [session_monster])
+	session._state.combat.set_turn_order([session_character.id, session_monster.id])
+	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 32_767])
+	var session_aged := session.submit_intent(PlayerIntent.combat_action(&"defend", session_character.id, ""))
+	assert_equal(session_aged.state, SessionStep.State.WAITING_FOR_INTERACTION, "direct session combat pauses at the monster-caused age update")
+	assert_equal(session_aged.interaction.kind, InteractionRequest.AGE_UPDATE, "direct combat exposes the same typed age update")
+	assert_equal(session_character.current_health, 100, "direct combat also saves before ordinary physical damage")
+	var boundary := SaveEnvelope.from_data(session.snapshot().to_data())
+	assert_not_null(boundary, "monster-caused age update is a complete central save boundary")
+	var restored_session := GameSession.new()
+	assert_equal(restored_session.restore(aging_content, boundary).state, SessionStep.State.COMPLETED, "direct monster-aging continuation restores transactionally")
+	var restored_request := restored_session.view().pending_interaction
+	var session_resumed := restored_session.respond(InteractionResponse.new(restored_request.request_id, InteractionRequest.AGE_UPDATE, {}))
+	assert_equal(session_resumed.state, SessionStep.State.COMPLETED, "acknowledging restored direct monster aging resumes combat")
+	assert_equal(restored_session._state.combat.active_actor_id(), session_character.id, "direct combat resumes at the exact next actor")
+	assert_equal(restored_session._state.party.character_by_id(session_character.id).age_group, 2, "the committed age band survives direct-session restore")
+	assert_equal(restored_session._state.party.character_by_id(session_character.id).current_health, 99, "the restored direct continuation applies pending physical damage exactly once")
 
 
 func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:
