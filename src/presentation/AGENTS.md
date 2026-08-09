@@ -8,7 +8,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 
 - Classic-wide 2D shell and optional topology-derived 3D dungeon presenter.
 - Translation of user input to typed intents/responses.
-- `InteractionPresenter` is the dedicated Classic interaction layer. It owns modal/request identity and delegates text/choice, selection, encounter, shop, temple, bank, and battle controls to typed components that emit only the selected payload.
+- `InteractionPresenter` is the dedicated Classic interaction layer. It owns modal/request identity and delegates text/choice, selection, encounter, shop, temple, bank, battle, and one-item recovery controls to typed components that emit only the selected payload.
 - Consumption of `GameView`, domain events, and interaction requests.
 - `ClassicMapPresenter` rendering of map, minimap, and debug facts from detached map/cell views.
 - `DungeonGeometryProjection` and `DungeonMap3DPresenter` derive floor, wall, door, secret, stair, and column geometry from the same detached topology view as 2D.
@@ -42,6 +42,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - Spatial map and dungeon presenters follow that same play-stage visibility boundary. They remain hidden beneath campaign selection and party setup even when Explore is still the active route.
 - A positive Classic message replaces the complete bottom narrative region with an explicit Continue response. It uses the shell's exact bounds and open-right frame variation; inset layering may not expose the underlying textbox or command-deck corners. That surface has no redundant "Classic Textbox" heading or stage-modal minimum size. A negative Classic message uses the same narrative surface without introducing an interaction and remains until the next committed step, matching Castle's no-click path. Textbox history excludes internal event names and sound/picture request diagnostics.
 - A live age-band change uses the inset `Age Update` component, not the Chronicle or Classic textbox. The component renders only typed character/race, resulting band/range, and fifteen-delta payload facts; each current request has one Continue response and independently presents sound 3002.
+- Post-battle fumbled-item recovery uses a typed `treasure_distribution` stage component after body count. It displays exact remaining charges and rules-owned recipient availability, then emits assign or leave-behind without mutating inventory directly.
 - Scenario-picture overlays place a native-scale repeating stone backing under the complete raised bevel. Transparent frame pixels may never expose the map between the surface and bevel.
 - Classic opcode 3 carries button labels, not a question prompt. Its yes/no presenter keeps the latest source-authored Classic textbox message visible as context, while an explicit typed request prompt remains authoritative.
 - Classic sound playback rotates across four presentation-owned channels. Positive sound requests may overlap; a negative request waits for that channel's completion before the presenter drains later sound events, without introducing a simulation wait.

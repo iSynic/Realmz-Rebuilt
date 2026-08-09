@@ -925,6 +925,68 @@
       "decision": "runtime-defect",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "combat.fumble-and-battle-recovery",
+      "domain": "combat",
+      "claim": "When fumbles are enabled, character and armed-monster physical attacks consume their source-scaled fumble draw after the hit roll. A character roll from 51 through 59 drops a removable melee weapon into a twenty-entry battle queue and forces a miss; an armed-monster roll from 21 through 34 clears only the active weapon and forces a miss. Post-battle body-count selection precedes player-directed recovery. Realmz 2.0 intentionally preserves the exact dropped item instance and remaining charges rather than reconstructing definition defaults.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake has a twenty-entry battle fumble queue, retains the player's item object, and appends it to victory loot. Its player helper emits the two explicit attack/newland fumble sounds but omits dropitem's additional positive sound 655. Its opcode 122 adapter also disarms monsters even though Castle's outer initiative guard makes that nested branch unreachable; Remake is therefore a useful queue and workflow donor but not the opcode authority.",
+        "sources": [
+          { "path": "src/scripts/states/CombatState.gd", "symbol": "var classic_fumbled_items" },
+          { "path": "src/scripts/scenario_runtime/godot/scenario_godot_services.gd", "symbol": "func fumble_classic_combatant(" },
+          { "path": "src/scripts/GameGlobal.gd", "symbol": "func end_battle(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_remaining_combat_opcodes()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack(short chare, short mon)" },
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack2(short mon, short chare, short attacknum)" },
+          { "path": "src/realmz_orig/newland.c", "symbol": "case 122:" },
+          { "path": "src/realmz_orig/getbattleorder.c", "symbol": "void getbattleorder(short suprise)" },
+          { "path": "src/realmz_orig/removeitem.c", "symbol": "short removeitem(short character, short itemnum, short play, short force)" },
+          { "path": "src/realmz_orig/dropitem.c", "symbol": "void dropitem(short who, short itemid, short itemnum, short dropsound, short force)" },
+          { "path": "src/realmz_orig/booty.c", "symbol": "void booty(short mode)" },
+          { "path": "src/realmz_orig/pref.c", "symbol": "void preference(void)" }
+        ],
+        "authoredInputs": ["allow-fumbles preference", "character level and equipped melee item", "item curse relationship and remaining charges", "monster hit dice and active weapon", "opcode 122 Extra Code text and sound", "battle outcome, survivors, load, and inventory capacity"],
+        "observation": "Character attack draws Rand(1000 + 100 * level) even while unarmed; only 51-59 with an equipped removable melee item and queue capacity fumbles. A cursed item or full queue leaves the hit result intact. Successful removal calls synchronous sounds -10121 and -10123, then dropitem requests positive asynchronous sound 655. Monster attack draws Rand(600 + 50 * hit dice); only 21-34 while armed clears the active weapon and requests synchronous -10121 and -655, while authored monster item slots remain available to booty. Opcode 122 requires combat, no live spell execution, enabled fumbles, a previously committed physical action, and q[up] below 10. Because monster initiative IDs begin at 10, its nested monster branch is unreachable. Body count runs before booty; queued IDs are inserted first and remain recoverable after retreat. The player chooses a recipient subject to inventory and load limits, and fumbled items are identified. Castle stores only the item ID, so recovery reconstructs definition charges rather than the runtime remainder. Disabling fumbles reduces awarded experience by five percent.",
+        "unresolved": ["Realmz 2.0 has no source-backed gameplay-settings owner for allow-fumbles and its linked five-percent XP adjustment.", "Castle's live inspell execution guard is not equivalent to any current persisted spell-permission flag and remains unmodeled until spell activation owns that lifecycle."]
+      },
+      "providence": {
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
+        "sources": [
+          { "path": "src-tauri/src/realmz/scenario_items.rs", "symbol": "pub fn parse_scenario_items(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits stable item identity, initial charges, weight, per-charge weight, type, and cursedItemId. Fumble queues and remaining charges are mutable session state; no compiler or package-contract correction is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func cause_active_fumble(" },
+        "expectedTrace": ["physical hit roll", "source-scaled fumble draw", "bounded exact-instance queue or active monster weapon clear", "exact signed Classic fumble/drop sound sequence", "serialized battle state", "body-count interaction", "typed one-item recovery after victory, defeat, or retreat", "assign subject to capacity/load or leave behind", "battle after-message and VM/session continuation"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_combat_magic_and_monsters()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_battle_owned_fumble_and_exact_recovery()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_monster_fumble_clears_only_active_weapon()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_combat_fumble_mutation(content: RealmzContent)" },
+          { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run()" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_fixture_gallery_coverage()" }
+        ]
+      },
+      "fidelityDecision": {
+        "id": "FD-COMBAT-005",
+        "fixturePath": "tests/fixtures/oracle/fumbled-item-charge-correction.json",
+        "fixtureSha256": "c2505fd002bfdf590b3db1df4d1e3da346654bacf1da445e4d2bd2f70eb83710"
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "verified"
     }
   ]
 }

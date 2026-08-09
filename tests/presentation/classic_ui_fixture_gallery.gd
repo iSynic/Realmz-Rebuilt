@@ -10,6 +10,7 @@ const INTERACTIONS: Array[StringName] = [
 	InteractionRequest.ENCOUNTER_CHOICE,
 	InteractionRequest.CHARACTER_SELECTION,
 	InteractionRequest.ALLY_SELECTION,
+	InteractionRequest.TREASURE_DISTRIBUTION,
 	InteractionRequest.WORD_AND_ACTION,
 	InteractionRequest.SHOP,
 	InteractionRequest.TEMPLE,
@@ -79,6 +80,19 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 			payload.merge({"count": 1, "eligible": characters})
 		InteractionRequest.ALLY_SELECTION:
 			payload.merge({"maximum": 1, "selectedIds": [], "candidates": characters})
+		InteractionRequest.TREASURE_DISTRIBUTION:
+			var recovery_characters: Array[Dictionary] = []
+			for value: Dictionary in characters:
+				var recovery_character: Dictionary = value.duplicate(true)
+				recovery_character["enabled"] = true
+				recovery_character["reason"] = ""
+				recovery_characters.append(recovery_character)
+			payload.merge({
+				"mode": "fumbled-item-recovery",
+				"item": {"instanceId": "item-fumbled", "definitionId": "classic.item.6", "name": "Sting +3", "charges": 7, "identified": true},
+				"characters": recovery_characters,
+				"remaining": 1,
+			})
 		InteractionRequest.WORD_AND_ACTION:
 			payload.merge({"actions": [] if empty_values else [{"kind": "choice", "label": "Proceed", "slot": 0}, {"kind": "word", "label": "Speak"}], "characters": characters, "items": [], "spells": []})
 		InteractionRequest.SHOP:

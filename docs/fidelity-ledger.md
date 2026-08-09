@@ -42,6 +42,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `_test_monster_ordinary_attacks` proves both the signed accuracy contribution and the nonhealing chosen result. The differential case is `combat.monster-ordinary-melee`.
 - Legacy quirk: none. No authored scenario dependency on attack-driven healing is known; concrete route evidence would be required before considering a narrowly named exception.
 
+## FD-COMBAT-005 — Preserve a fumbled item's runtime charges
+
+- Affected rule: the item instance queued by a character weapon fumble and later assigned through post-battle recovery.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/attack.c`, `attack`, lines 199–238, and `src/realmz_orig/booty.c`, `booty`, lines 320–340 and 1559–1582. Castle queues only the item ID in `fumque`; booty later calls `loaditem` and writes the definition's initial `item.charge` into the recipient's new inventory slot. Its eligibility check tests only base weight with strict less-than, then adds base plus all reconstructed charge weight.
+- Observable oracle behavior, determined from the complete source flow: an item definition with 30 initial charges fumbled after seven charges remain is recovered with 30. Given base weight 2, per-charge weight 1, current load 92, and maximum 100, Castle accepts the item because 94 is below 100 and then raises load to 124. The synthetic source-observation fixture is `tests/fixtures/oracle/fumbled-item-charge-correction.json`, SHA-256 `c2505fd002bfdf590b3db1df4d1e3da346654bacf1da445e4d2bd2f70eb83710`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: dropping and recovering a charged weapon silently replenishes spent charges and may push its recipient beyond maximum load because the eligibility check ignores charge weight. It also loses any future mutable per-instance fields represented outside the definition.
+- Chosen 2.0 behavior: queue and save the exact `ItemInstance`, force it unequipped, mark it identified for the source-backed loot workflow, and transfer that same instance only when its complete current weight fits at or below the recipient's maximum load.
+- Tests: `_test_battle_owned_fumble_and_exact_recovery` records the Castle reconstruction and proves exact remaining-charge preservation across battle state, save/restore, and recipient assignment. The scenario and session-persistence tests cover opcode 122 and the post-battle interaction. The differential case is `combat.fumble-and-battle-recovery`.
+- Legacy quirk: none. No authored scenario dependency on charge replenishment is known; concrete route evidence would be required before considering a narrowly named exception.
+
 Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
 
 Each entry must include:

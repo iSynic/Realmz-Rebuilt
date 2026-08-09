@@ -261,6 +261,20 @@ static func from_data(data: Variant) -> GameState:
 			return null
 		if state.combat.pending_monster_attack != null and party_state.character_by_id(state.combat.pending_monster_attack.target_id) == null:
 			return null
+		var owned_item_ids: Dictionary = {}
+		for character: CharacterState in party_state.characters():
+			for item: ItemInstance in character.inventory():
+				if owned_item_ids.has(item.id):
+					return null
+				owned_item_ids[item.id] = true
+		for item: ItemInstance in party_state.storage():
+			if owned_item_ids.has(item.id):
+				return null
+			owned_item_ids[item.id] = true
+		for item: ItemInstance in state.combat.fumbled_items():
+			if owned_item_ids.has(item.id):
+				return null
+			owned_item_ids[item.id] = true
 	for key: Variant in data["searchedCells"]:
 		if not key is String or key.is_empty():
 			return null

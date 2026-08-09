@@ -618,15 +618,33 @@ func _test_combat_fumble_mutation(content: RealmzContent) -> void:
 	combat.set_turn_order([character.id])
 	state.combat = combat
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var granted := api.execute_safe("core.inventory.grant-item", {"characterId": character.id, "itemId": "classic.item.901", "identified": true}, "request.fumble-item")
-	assert_equal(granted.state, ScenarioRuntimeOperationResult.State.COMPLETED, "fumble fixture grants a weapon-like item")
+	var granted := api.execute_safe("core.inventory.grant-item", {"characterId": character.id, "itemId": "classic.item.6", "identified": true}, "request.fumble-item")
+	assert_equal(granted.state, ScenarioRuntimeOperationResult.State.COMPLETED, "fumble fixture grants a Classic melee weapon")
 	var instance: ItemInstance = character.inventory()[0]
+	instance.charges = 7
 	assert_true(RealmzRules.new().inventory.equip(character, instance.id, content.item_by_id(instance.definition_id)), "fumble fixture equips the item")
+	combat.begin_active_turn()
+	var premature := api.execute_classic(ClassicActionDefinition.new(0, 122, 122, 0, false, [1, -641]), "request.premature-fumble", {"combatantId": character.id})
+	assert_equal(character.inventory().size(), 1, "opcode 122 cannot fumble an item before the active turn has made a physical attack")
+	assert_false(_event_has(premature.events, &"message_shown") or _event_has(premature.events, &"sound_requested"), "the outer physical guard suppresses authored fumble text and sound with the mutation")
+	combat.active_turn.physical_action_committed = true
 	var fumbled := api.execute_classic(ClassicActionDefinition.new(0, 122, 122, 0, false, [1, 0]), "request.fumble", {"combatantId": character.id})
 	assert_equal(fumbled.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 122 resolves inside active combat")
 	assert_equal(character.inventory().size(), 0, "fumble removes the equipped item from the combatant")
-	assert_equal(party.storage().size(), 1, "fumbled item remains recoverable in session-owned party storage")
+	assert_equal(party.storage().size(), 0, "fumble does not bypass battle recovery through general party storage")
+	assert_equal(combat.fumbled_items().size(), 1, "fumbled item remains in the bounded battle recovery queue")
+	assert_equal([combat.fumbled_items()[0].definition_id, combat.fumbled_items()[0].charges], ["classic.item.6", 7], "FD-COMBAT-005 preserves the exact runtime item and remaining charges")
 	assert_true(_event_has(fumbled.events, &"combatant_fumbled"), "fumble mutation publishes its outcome")
+	var monster := MonsterState.new("fumble.monster", "classic.monster.1", "Armed Monster", 10, 10, 1)
+	monster.weapon_id = "classic.item.6"
+	var monster_combat := CombatState.new("classic.battle.0", [monster])
+	monster_combat.set_turn_order([monster.id])
+	state.combat = monster_combat
+	monster_combat.begin_active_turn().physical_action_committed = true
+	var unreachable_monster := api.execute_classic(ClassicActionDefinition.new(0, 122, 122, 0, false, [1, -641]), "request.monster-fumble", {"combatantId": monster.id})
+	assert_equal(monster.weapon_id, "classic.item.6", "opcode 122 preserves Castle's outer initiative guard and cannot disarm a monster")
+	assert_false(_event_has(unreachable_monster.events, &"message_shown") or _event_has(unreachable_monster.events, &"sound_requested"), "the unreachable monster branch cannot publish authored opcode 122 media")
+	assert_true(unreachable_monster.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_fumble_skipped" and event.payload.get("reason") == "not-party-actor"), "opcode 122 reports the source-settled party-only guard")
 
 
 func _test_classic_party_shift(content: RealmzContent) -> void:
@@ -1224,7 +1242,7 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
 	state.party.conditions.set_value(ConditionRules.PARTY_DRAGON_HIDE, 1)
 	var scripted_values: Array[int] = []
-	for _draw: int in hit_dice + 10:
+	for _draw: int in hit_dice + 11:
 		scripted_values.append(0)
 	scripted_values.append(32_767)
 	var runtime_rng := ScriptedRng.new(scripted_values)
@@ -1275,7 +1293,7 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	session_monster.weapon_id = aging_weapon.id
 	session._state.combat = CombatState.new(battle.id, [session_monster])
 	session._state.combat.set_turn_order([session_character.id, session_monster.id])
-	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767])
+	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0, 32_767])
 	var session_aged := session.submit_intent(PlayerIntent.combat_action(&"defend", session_character.id, ""))
 	assert_equal(session_aged.state, SessionStep.State.WAITING_FOR_INTERACTION, "direct session combat pauses at the monster-caused age update")
 	assert_equal(session_aged.interaction.kind, InteractionRequest.AGE_UPDATE, "direct combat exposes the same typed age update")
@@ -1324,7 +1342,7 @@ func _test_monster_status_attack_flow(content: RealmzContent) -> void:
 	var monster := MonsterState.new("monster.status-flow.instance", definition.id, definition.name, 10, 10, 4, 100)
 	session._state.combat = CombatState.new(battle.id, [monster])
 	session._state.combat.set_turn_order([character.id, monster.id])
-	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 32_767, 32_767])
+	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", character.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster status attacks commit without inventing a player interaction")
 	assert_equal(character.conditions.value(ConditionRules.POISONED), 4, "the direct session owns the resulting status mutation")
@@ -1368,7 +1386,7 @@ func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
 	var monster := MonsterState.new("monster.resource-flow.instance", definition.id, definition.name, 10, 10, 4, 100, 0, 0, 2)
 	session._state.combat = CombatState.new(battle.id, [monster])
 	session._state.combat.set_turn_order([character.id, monster.id])
-	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 32_767, 32_767])
+	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", character.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster resource drains commit without inventing a player interaction")
 	assert_equal([character.spell_points, monster.spell_points, monster.maximum_spell_points], [8, 14, 2], "the direct session owns both sides of Castle's uncapped spell-point transfer")
@@ -1398,7 +1416,7 @@ func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
 	var experience_monster := MonsterState.new("monster.experience-flow.instance", experience_definition.id, experience_definition.name, 10, 20, 4, 100)
 	experience_session._state.combat = CombatState.new(experience_battle.id, [experience_monster])
 	experience_session._state.combat.set_turn_order([experience_character.id, experience_monster.id])
-	experience_session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 32_767, 32_767])
+	experience_session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var experience_resolved := experience_session.submit_intent(PlayerIntent.combat_action(&"defend", experience_character.id, ""))
 	assert_equal(experience_character.experience, -300, "the direct session subtracts Castle experience rather than altering a Remake-style level balance")
 	var experience_special_index := _event_index(experience_resolved.events, &"combat_monster_special_resolved")
@@ -1442,7 +1460,7 @@ func _test_monster_charm_and_affliction_flow(content: RealmzContent) -> void:
 	session._state.party_setup_completed = true
 	session._state.combat = CombatState.new(battle.id, [monster])
 	session._state.combat.set_turn_order([loyal.id, monster.id, victim.id])
-	session._rng = ScriptedRng.new([32_767, 32_767, 32_767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+	session._rng = ScriptedRng.new([32_767, 32_767, 32_767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", loyal.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "charm and the resulting charmed turn require no fabricated player interaction")
 	assert_true(victim.traitor, "the session owns the charmed party allegiance while battle remains active")

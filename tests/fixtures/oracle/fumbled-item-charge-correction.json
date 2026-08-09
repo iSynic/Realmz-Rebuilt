@@ -1,0 +1,41 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-005",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/attack.c",
+      "symbol": "short attack(short chare, short mon)",
+      "range": "199-238"
+    },
+    {
+      "path": "src/realmz_orig/booty.c",
+      "symbol": "void booty(short mode)",
+      "range": "320-340,1559-1582"
+    }
+  ],
+  "inputs": {
+    "itemId": 6,
+    "definitionCharges": 30,
+    "remainingInstanceCharges": 7,
+    "baseWeight": 2,
+    "weightPerCharge": 1,
+    "recipientLoad": 92,
+    "recipientMaximumLoad": 100
+  },
+  "castleSourceObservation": {
+    "fumbleQueueRepresentation": "item ID only",
+    "recoveredCharges": 30,
+    "loadCheckWeight": 2,
+    "loadAfterAssignment": 124,
+    "assignmentAllowed": true
+  },
+  "realmz2ChosenResult": {
+    "fumbleQueueRepresentation": "exact ItemInstance",
+    "recoveredCharges": 7,
+    "loadCheckWeight": 9,
+    "loadAfterAssignment": 92,
+    "assignmentAllowed": false
+  }
+}

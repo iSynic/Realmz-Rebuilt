@@ -1,6 +1,8 @@
 class_name CombatState
 extends RefCounted
 
+const MAX_FUMBLED_ITEMS: int = 20
+
 var battle_id: String
 var macro_id: int = 0
 var round_number: int = 1
@@ -11,6 +13,7 @@ var pending_monster_attack: PendingMonsterAttack
 var active_turn: CombatTurnState
 var _turn_order: Array[String] = []
 var _monsters: Array[MonsterState] = []
+var _fumbled_items: Array[ItemInstance] = []
 
 
 func _init(source_battle_id: String, initial_monsters: Array[MonsterState] = [], battle_macro_id: int = 0) -> void:
@@ -51,6 +54,47 @@ func add_monster(monster: MonsterState) -> bool:
 	return true
 
 
+func fumbled_items() -> Array[ItemInstance]:
+	return _fumbled_items.duplicate()
+
+
+func can_queue_fumbled_item() -> bool:
+	return _fumbled_items.size() < MAX_FUMBLED_ITEMS
+
+
+func queue_fumbled_item(item: ItemInstance) -> bool:
+	if item == null or not can_queue_fumbled_item():
+		return false
+	for queued: ItemInstance in _fumbled_items:
+		if queued.id == item.id:
+			return false
+	item.equipped = false
+	_fumbled_items.append(item)
+	return true
+
+
+func requeue_fumbled_item_first(item: ItemInstance) -> bool:
+	if item == null or not can_queue_fumbled_item():
+		return false
+	for queued: ItemInstance in _fumbled_items:
+		if queued.id == item.id:
+			return false
+	item.equipped = false
+	_fumbled_items.push_front(item)
+	return true
+
+
+func remove_fumbled_item(instance_id: String) -> ItemInstance:
+	for index: int in _fumbled_items.size():
+		if _fumbled_items[index].id == instance_id:
+			return _fumbled_items.pop_at(index)
+	return null
+
+
+func clear_fumbled_items() -> void:
+	_fumbled_items.clear()
+
+
 func advance_turn() -> void:
 	if _turn_order.is_empty():
 		return
@@ -89,7 +133,10 @@ func to_data() -> Dictionary:
 	var active_turn_data: Variant = null
 	if active_turn != null:
 		active_turn_data = active_turn.to_data()
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "activeTurn": active_turn_data}
+	var fumbled_data: Array[Dictionary] = []
+	for item: ItemInstance in _fumbled_items:
+		fumbled_data.append(item.to_data())
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -120,6 +167,18 @@ static func from_data(data: Variant) -> CombatState:
 	result.completed = data["completed"]
 	result.outcome = StringName(data["outcome"])
 	result._turn_order = order
+	var loaded_fumbled_items: Array[ItemInstance] = []
+	var fumbled_ids: Dictionary = {}
+	var fumbled_data: Variant = data.get("fumbledItems", [])
+	if not fumbled_data is Array or fumbled_data.size() > MAX_FUMBLED_ITEMS:
+		return null
+	for entry: Variant in fumbled_data:
+		var item := ItemInstance.from_data(entry)
+		if item == null or item.equipped or fumbled_ids.has(item.id):
+			return null
+		fumbled_ids[item.id] = true
+		loaded_fumbled_items.append(item)
+	result._fumbled_items = loaded_fumbled_items
 	var active_turn_data: Variant = data.get("activeTurn")
 	if active_turn_data != null:
 		result.active_turn = CombatTurnState.from_data(active_turn_data)
@@ -141,6 +200,8 @@ static func from_data(data: Variant) -> CombatState:
 		result.active_turn.action = result.pending_monster_attack.action
 		result.active_turn.attack_index = 1
 		result.active_turn.target_id = result.pending_monster_attack.target_id
+	if result.pending_monster_attack != null:
+		result.active_turn.physical_action_committed = true
 	if result.pending_monster_attack != null and (result.active_turn.actor_id != result.pending_monster_attack.actor_id or result.active_turn.target_id != result.pending_monster_attack.target_id or result.active_turn.action != result.pending_monster_attack.action or result.active_turn.attack_index < 1):
 		return null
 	return result

@@ -190,6 +190,10 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 		if value.size() != 2 or not value.get("battleId") is String or value["battleId"].is_empty():
 			return null
 		return {"kind": "combat-ally-selection", "battleId": value["battleId"]}
+	if value.get("kind") == "combat-fumble-recovery":
+		if value.size() != 2 or not value.get("battleId") is String or value["battleId"].is_empty():
+			return null
+		return {"kind": "combat-fumble-recovery", "battleId": value["battleId"]}
 	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
 	if value.size() != fields.size():
 		return null

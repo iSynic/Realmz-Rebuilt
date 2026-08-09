@@ -83,6 +83,8 @@ func _component_for(kind: StringName) -> InteractionComponent:
 			return AgeUpdateInteraction.new()
 		&"character_selection", &"ally_selection":
 			return SelectionInteraction.new()
+		&"treasure_distribution":
+			return TreasureDistributionInteraction.new()
 		&"complex_encounter":
 			return EncounterInteraction.new()
 		&"shop_action":
@@ -180,6 +182,8 @@ static func _heading_for_kind(kind: StringName) -> String:
 			return "Encounter"
 		&"character_selection", &"ally_selection":
 			return "Character Selection"
+		&"treasure_distribution":
+			return "Battle Recovery"
 		&"shop_action":
 			return "Shop"
 		&"temple_action":

@@ -643,6 +643,8 @@ func resume_safe(continuation: Dictionary, response: InteractionResponse, reques
 			return _resume_combat_death_macro(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		"safe-combat-ally-selection":
 			return _resume_ally_selection(continuation, response)
+		"safe-combat-fumble-recovery":
+			return _resume_fumble_recovery(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_interaction_continuation", "Scenario Action interaction continuation is unavailable.")
 
@@ -685,6 +687,8 @@ func resume_classic(continuation: Dictionary, response: InteractionResponse, req
 			return _resume_combat_death_macro(continuation, response, request_id)
 		"classic-combat-ally-selection":
 			return _resume_ally_selection(continuation, response)
+		"classic-combat-fumble-recovery":
+			return _resume_fumble_recovery(continuation, response, request_id)
 		"classic-character-selection":
 			return _resume_character_selection(continuation, response)
 		"classic-character-ability":
@@ -2036,6 +2040,20 @@ func _finish_battle_with_allies(source_kind: String, request_id: String, events:
 			"sourceKind": source_kind,
 			"battleId": combat.battle_id,
 		}, events)
+	return _finish_battle_with_fumbles(source_kind, request_id, events)
+
+
+func _finish_battle_with_fumbles(source_kind: String, request_id: String, events: Array[DomainEvent]) -> ScenarioRuntimeOperationResult:
+	var combat := _game_state.combat
+	if combat == null or not combat.completed:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Post-battle fumbled-weapon recovery requires a completed battle.")
+	var payload := _rules.combat_flow.fumble_recovery_payload(_game_state, _content)
+	if not payload.is_empty():
+		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.new(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload), {
+			"kind": "%s-fumble-recovery" % source_kind,
+			"sourceKind": source_kind,
+			"battleId": combat.battle_id,
+		}, events)
 	var battle := _content.battle_by_id(combat.battle_id)
 	if battle != null:
 		_append_battle_after_message(battle, events)
@@ -2052,10 +2070,20 @@ func _resume_ally_selection(continuation: Dictionary, response: InteractionRespo
 		return ScenarioRuntimeOperationResult.failed(selected.error_code, selected.error_message)
 	var events: Array[DomainEvent] = []
 	events.assign(selected.events)
-	var battle := _content.battle_by_id(_game_state.combat.battle_id)
-	if battle != null:
-		_append_battle_after_message(battle, events)
-	return ScenarioRuntimeOperationResult.completed(String(_game_state.last_battle_outcome), events)
+	return _finish_battle_with_fumbles(String(continuation.get("sourceKind", "classic-combat")), String(response.request_id), events)
+
+
+func _resume_fumble_recovery(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
+	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Fumbled-weapon recovery requires a treasure-distribution response.")
+	if _game_state.combat == null or not _game_state.combat.completed or _game_state.combat.battle_id != continuation.get("battleId"):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The completed battle is unavailable for fumbled-weapon recovery.")
+	var recovered := _rules.combat_flow.apply_fumble_recovery(_game_state, _content, response.payload)
+	if not recovered.ok:
+		return ScenarioRuntimeOperationResult.failed(recovered.error_code, recovered.error_message)
+	var events: Array[DomainEvent] = []
+	events.assign(recovered.events)
+	return _finish_battle_with_fumbles(String(continuation.get("sourceKind", "classic-combat")), request_id, events)
 
 
 func _run_battle_macro(source_kind: String, preceding_events: Array[DomainEvent], request_id: String) -> ScenarioRuntimeOperationResult:

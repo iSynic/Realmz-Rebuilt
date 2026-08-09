@@ -10,7 +10,7 @@ func _init(condition_rules: ConditionRules, character_rules: CharacterRules) -> 
 	_characters = character_rules
 
 
-func resolve_character_attack(attacker: CharacterState, equipment: CharacterCombatEquipment, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng, realmz_day: int = 0, behind: bool = false) -> AttackResolution:
+func resolve_character_attack(attacker: CharacterState, equipment: CharacterCombatEquipment, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng, realmz_day: int = 0, behind: bool = false, allow_fumbles: bool = false, can_queue_fumble: bool = true) -> AttackResolution:
 	if attacker == null or equipment == null or not equipment.valid or defender == null or defender_definition == null or rng == null:
 		return null
 	var invalid_weapon := _invalid_weapon_reason(equipment.melee_weapon)
@@ -37,16 +37,19 @@ func resolve_character_attack(attacker: CharacterState, equipment: CharacterComb
 	chance = maxi(5, chance)
 	var roll := rng.draw(100, &"combat.attack.hit")
 	var hit := roll <= chance or defender.conditions.is_active(ConditionRules.HELPLESS)
+	var fumble := _character_fumble(attacker, equipment, rng, allow_fumbles, can_queue_fumble)
+	if fumble.get("fumbled", false):
+		return _fumbled_attack(chance, roll, int(fumble["roll"]))
 	var magic_requirement := _magic_weapon_requirement_reason(attacker, equipment, defender_definition, hit)
 	if not magic_requirement.is_empty():
-		return _blocked_character_attack(magic_requirement, chance, roll)
+		return _with_fumble_observation(_blocked_character_attack(magic_requirement, chance, roll), fumble)
 	var weapon_requirement := _required_weapon_reason(equipment, defender_definition, hit)
 	if not weapon_requirement.is_empty():
-		return _blocked_character_attack(weapon_requirement, chance, roll)
+		return _with_fumble_observation(_blocked_character_attack(weapon_requirement, chance, roll), fumble)
 	if equipment.melee_weapon != null and equipment.melee_weapon.special_1 == 120:
 		hit = true
 	if not hit:
-		return AttackResolution.new(false, false, chance, roll, 0)
+		return _with_fumble_observation(AttackResolution.new(false, false, chance, roll, 0), fumble)
 	var reflected := defender.conditions.is_active(ConditionRules.REFLECTING_ATTACKS) and rng.draw(100, &"combat.attack.reflect") < 34
 	var physical_damage := type_damage + equipment.effective_damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
 	if attacker.conditions.is_active(ConditionRules.STRONG):
@@ -69,6 +72,7 @@ func resolve_character_attack(attacker: CharacterState, equipment: CharacterComb
 		physical_damage = attacker.current_health
 	var total_damage := physical_damage + elemental_damage
 	var resolution := AttackResolution.new(true, false, chance, roll, total_damage, reflected)
+	_with_fumble_observation(resolution, fumble)
 	resolution.physical_damage = physical_damage
 	resolution.weapon_effects = effects
 	resolution.critical_rolls = critical_rolls
@@ -83,7 +87,7 @@ func resolve_character_attack(attacker: CharacterState, equipment: CharacterComb
 	return resolution
 
 
-func resolve_character_attack_character(attacker: CharacterState, attacker_equipment: CharacterCombatEquipment, defender: CharacterState, defender_equipment: CharacterCombatEquipment, rng: RealmzRng, behind: bool = false) -> AttackResolution:
+func resolve_character_attack_character(attacker: CharacterState, attacker_equipment: CharacterCombatEquipment, defender: CharacterState, defender_equipment: CharacterCombatEquipment, rng: RealmzRng, behind: bool = false, allow_fumbles: bool = false, can_queue_fumble: bool = true) -> AttackResolution:
 	if attacker == null or attacker_equipment == null or not attacker_equipment.valid or defender == null or defender_equipment == null or not defender_equipment.valid or rng == null:
 		return null
 	var invalid_weapon := _invalid_weapon_reason(attacker_equipment.melee_weapon)
@@ -102,10 +106,13 @@ func resolve_character_attack_character(attacker: CharacterState, attacker_equip
 	chance = maxi(5, chance)
 	var roll := rng.draw(100, &"combat.attack.hit")
 	var hit := roll <= chance or defender.conditions.is_active(ConditionRules.HELPLESS)
+	var fumble := _character_fumble(attacker, attacker_equipment, rng, allow_fumbles, can_queue_fumble)
+	if fumble.get("fumbled", false):
+		return _fumbled_attack(chance, roll, int(fumble["roll"]))
 	if attacker_equipment.melee_weapon != null and attacker_equipment.melee_weapon.special_1 == 120:
 		hit = true
 	if not hit:
-		return AttackResolution.new(false, false, chance, roll, 0)
+		return _with_fumble_observation(AttackResolution.new(false, false, chance, roll, 0), fumble)
 	var reflected := defender.conditions.is_active(ConditionRules.REFLECTING_ATTACKS) and rng.draw(100, &"combat.attack.reflect") < 34
 	var target := attacker if reflected else defender
 	var physical_damage := attacker_equipment.effective_damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
@@ -124,6 +131,7 @@ func resolve_character_attack_character(attacker: CharacterState, attacker_equip
 		physical_damage = target.current_health
 	var total_damage := physical_damage + elemental_damage
 	var resolution := AttackResolution.new(true, false, chance, roll, total_damage, reflected)
+	_with_fumble_observation(resolution, fumble)
 	resolution.physical_damage = physical_damage
 	resolution.weapon_effects = effects
 	resolution.critical_rolls = critical_rolls
@@ -137,6 +145,34 @@ static func _blocked_character_attack(reason: StringName, chance: int = 0, roll:
 	var resolution := AttackResolution.new(false, false, chance, roll, 0)
 	resolution.blocked = true
 	resolution.block_reason = reason
+	return resolution
+
+
+static func _character_fumble(attacker: CharacterState, equipment: CharacterCombatEquipment, rng: RealmzRng, allow_fumbles: bool, can_queue_fumble: bool) -> Dictionary:
+	if not allow_fumbles:
+		return {}
+	var roll := rng.draw(1000 + 100 * attacker.level, &"combat.attack.fumble")
+	if roll <= 50 or roll >= 60 or not equipment.is_armed():
+		return {"roll": roll}
+	if not equipment.melee_weapon.cursed_item_id.is_empty():
+		return {"roll": roll, "blockedReason": &"cursed_weapon"}
+	if not can_queue_fumble:
+		return {"roll": roll, "blockedReason": &"fumble_queue_full"}
+	return {"roll": roll, "fumbled": true}
+
+
+static func _fumbled_attack(chance: int, roll: int, fumble_roll: int) -> AttackResolution:
+	var resolution := AttackResolution.new(false, false, chance, roll, 0)
+	resolution.fumbled = true
+	resolution.fumble_roll = fumble_roll
+	return resolution
+
+
+static func _with_fumble_observation(resolution: AttackResolution, fumble: Dictionary) -> AttackResolution:
+	if resolution == null or fumble.is_empty():
+		return resolution
+	resolution.fumble_roll = int(fumble.get("roll", 0))
+	resolution.fumble_block_reason = StringName(fumble.get("blockedReason", &""))
 	return resolution
 
 
@@ -316,7 +352,7 @@ static func _roll_weapon_elements_character(weapon: ItemDefinition, defender: Ch
 	return total
 
 
-func resolve_monster_attack(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: CharacterState, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng, charm_save_bonus: int = 0, context: MonsterAttackContext = null) -> AttackResolution:
+func resolve_monster_attack(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: CharacterState, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng, charm_save_bonus: int = 0, context: MonsterAttackContext = null, allow_fumbles: bool = false) -> AttackResolution:
 	if attacker == null or attacker_definition == null or defender == null or rng == null:
 		return null
 	var attack_context := context if context != null else MonsterAttackContext.new(null, 0, false, defender.luck)
@@ -341,8 +377,11 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 	var helpless := defender.conditions.is_active(ConditionRules.HELPLESS)
 	if helpless:
 		hit = true
+	var fumble_roll := _monster_fumble_roll(attacker, rng, allow_fumbles)
+	if _monster_fumbled(attack_context.attacker_weapon, fumble_roll):
+		return _fumbled_attack(chance, roll, fumble_roll)
 	if not hit:
-		return AttackResolution.new(false, false, chance, roll, 0)
+		return _with_monster_fumble_roll(AttackResolution.new(false, false, chance, roll, 0), fumble_roll)
 	var attacks := attacker_definition.attacks()
 	var attack := _monster_attack_row(attacks, attack_index)
 	var damage := attacker_definition.damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
@@ -365,6 +404,7 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 		damage = maxi(1, damage - 5)
 		resolution_physical_damage_reduction = damage_before_dragon_hide - damage
 	var resolution := AttackResolution.new(true, defender.current_health - damage - elemental_damage <= 0, chance, roll, damage + elemental_damage)
+	_with_monster_fumble_roll(resolution, fumble_roll)
 	resolution.physical_damage = damage
 	resolution.physical_damage_reduction = resolution_physical_damage_reduction
 	resolution.physical_feedback_sound_id = 694 if resolution_physical_damage_reduction > 0 else 0
@@ -406,7 +446,7 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 	return resolution
 
 
-func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng, context: MonsterAttackContext = null) -> AttackResolution:
+func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng, context: MonsterAttackContext = null, allow_fumbles: bool = false) -> AttackResolution:
 	if attacker == null or attacker_definition == null or defender == null or defender_definition == null or rng == null:
 		return null
 	var attack_context := context if context != null else MonsterAttackContext.new()
@@ -430,11 +470,14 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 	var helpless := defender.conditions.is_active(ConditionRules.HELPLESS)
 	if helpless:
 		hit = true
+	var fumble_roll := _monster_fumble_roll(attacker, rng, allow_fumbles)
+	if _monster_fumbled(attack_context.attacker_weapon, fumble_roll):
+		return _fumbled_attack(chance, roll, fumble_roll)
 	if not hit:
-		return AttackResolution.new(false, false, chance, roll, 0)
+		return _with_monster_fumble_roll(AttackResolution.new(false, false, chance, roll, 0), fumble_roll)
 	var weapon_requirement := _monster_required_weapon_reason(attack_context.attacker_weapon, defender_definition)
 	if not weapon_requirement.is_empty():
-		return _blocked_monster_attack(weapon_requirement, chance, roll)
+		return _with_monster_fumble_roll(_blocked_monster_attack(weapon_requirement, chance, roll), fumble_roll)
 	var attacks := attacker_definition.attacks()
 	var attack := _monster_attack_row(attacks, attack_index)
 	var damage := attacker_definition.damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
@@ -453,6 +496,7 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 		damage += rng.draw_between(attack.damage_min, attack.damage_max, &"combat.monster-attack.damage")
 	damage = maxi(0, damage)
 	var resolution := AttackResolution.new(true, defender.current_health - damage - elemental_damage <= 0, chance, roll, damage + elemental_damage)
+	_with_monster_fumble_roll(resolution, fumble_roll)
 	resolution.physical_damage = damage
 	resolution.weapon_effects = effects
 	if attack.special != 0:
@@ -518,6 +562,20 @@ static func _blocked_monster_attack(reason: StringName, chance: int = 0, roll: i
 	var resolution := AttackResolution.new(false, false, chance, roll, 0)
 	resolution.blocked = true
 	resolution.block_reason = reason
+	return resolution
+
+
+static func _monster_fumble_roll(attacker: MonsterState, rng: RealmzRng, allow_fumbles: bool) -> int:
+	return rng.draw(600 + 50 * attacker.hit_dice, &"combat.monster-attack.fumble") if allow_fumbles else 0
+
+
+static func _monster_fumbled(weapon: ItemDefinition, roll: int) -> bool:
+	return weapon != null and roll > 20 and roll < 35
+
+
+static func _with_monster_fumble_roll(resolution: AttackResolution, roll: int) -> AttackResolution:
+	if resolution != null:
+		resolution.fumble_roll = roll
 	return resolution
 
 

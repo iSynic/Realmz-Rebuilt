@@ -4,6 +4,15 @@ extends RefCounted
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
 const MONSTER_ATTACK_DEATH_MACRO := 2
+const CHARACTER_FUMBLE_SOUNDS: Array[Dictionary] = [
+	{"soundId": 10121, "waitForCompletion": true},
+	{"soundId": 10123, "waitForCompletion": true},
+	{"soundId": 655, "waitForCompletion": false},
+]
+const MONSTER_FUMBLE_SOUNDS: Array[Dictionary] = [
+	{"soundId": 10121, "waitForCompletion": true},
+	{"soundId": 655, "waitForCompletion": true},
+]
 
 var _rules: RealmzRules
 
@@ -74,18 +83,24 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 				return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 			var monster_target := combat.monster_by_id(target_id)
 			if monster_target != null and monster_target.current_health > 0 and monster_target.traitor != actor.traitor:
+				combat.active_turn.physical_action_committed = true
 				var definition := content.monster_by_id(monster_target.definition_id)
-				var resolution := _rules.combat.resolve_character_attack(actor, equipment, monster_target, definition, rng, state.clock.day())
+				var resolution := _rules.combat.resolve_character_attack(actor, equipment, monster_target, definition, rng, state.clock.day(), false, true, combat.can_queue_fumbled_item())
+				if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
+					return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
 				events.append(_character_attack_event(actor.id, monster_target.id, &"monster", resolution))
 				monster_death_macro_requested = resolution.killed and _request_monster_death_macro(monster_target, definition, events)
 			else:
 				var character_target := state.party.character_by_id(target_id)
 				if character_target == null or character_target.id == actor.id or character_target.current_health <= 0 or character_target.traitor == actor.traitor:
 					return CombatFlowResult.failed(&"invalid_combat_target", "The selected combatant is unavailable to this allegiance.")
+				combat.active_turn.physical_action_committed = true
 				var target_equipment := _rules.inventory.combat_equipment(character_target, content.item_definitions())
 				if not target_equipment.valid:
 					return CombatFlowResult.failed(target_equipment.error_code, target_equipment.error_message)
-				var resolution := _rules.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng)
+				var resolution := _rules.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng, false, true, combat.can_queue_fumbled_item())
+				if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
+					return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
 				events.append(_character_attack_event(actor.id, character_target.id, &"character", resolution))
 			_consume_character_attack(actor)
 			if not _character_can_continue(actor):
@@ -109,6 +124,35 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 		return CombatFlowResult.succeeded(events, true)
 	_process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
+
+
+func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: String) -> CombatFlowResult:
+	if state == null or content == null or state.combat == null or state.combat.completed:
+		return CombatFlowResult.failed(&"no_active_battle", "No Realmz battle can receive a fumble operation.")
+	if actor_id.is_empty():
+		actor_id = state.combat.active_actor_id()
+	if actor_id != state.combat.active_actor_id():
+		return CombatFlowResult.failed(&"invalid_fumble_actor", "Classic opcode 122 can affect only the active physical combatant.")
+	if state.combat.active_turn == null or not state.combat.active_turn.physical_action_committed:
+		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "no-physical-action", "source": "classic"})])
+	var events: Array[DomainEvent] = []
+	var character := state.party.character_by_id(actor_id)
+	# Castle's outer q[up] < 10 guard excludes monster initiative IDs (10+).
+	# The monster branch nested below that guard is therefore unreachable.
+	if character == null:
+		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "not-party-actor", "source": "classic"})])
+	var equipment := _rules.inventory.combat_equipment(character, content.item_definitions())
+	if not equipment.valid:
+		return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
+	if not equipment.is_armed():
+		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "unarmed", "source": "classic"})])
+	if not equipment.melee_weapon.cursed_item_id.is_empty():
+		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "cursed-weapon", "source": "classic"})])
+	if not state.combat.can_queue_fumbled_item():
+		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_fumble_skipped", {"combatantId": actor_id, "reason": "queue-full", "source": "classic"})])
+	if not _commit_character_fumble(state, character, equipment, events):
+		return CombatFlowResult.failed(&"invalid_fumble_state", "The active character's melee weapon could not enter the recovery queue.")
+	return CombatFlowResult.succeeded(events)
 
 
 func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng) -> CombatFlowResult:
@@ -257,6 +301,86 @@ func apply_ally_selection(state: GameState, content: RealmzContent, selected_val
 	return CombatFlowResult.succeeded([DomainEvent.new(&"allies_selected", {"battleId": state.combat.battle_id, "allyIds": selected_ids, "maximum": payload["maximum"]})], true)
 
 
+func fumble_recovery_payload(state: GameState, content: RealmzContent) -> Dictionary:
+	if state == null or content == null or state.combat == null or not state.combat.completed:
+		return {}
+	var queued := state.combat.fumbled_items()
+	if queued.is_empty():
+		return {}
+	var item: ItemInstance = queued[0]
+	var definition := content.item_by_id(item.definition_id)
+	if definition == null:
+		return {}
+	var candidates: Array[Dictionary] = []
+	for character: CharacterState in state.party.characters():
+		var enabled := _rules.inventory.can_restore_item(character, item, definition)
+		var reason := ""
+		if character.inventory().size() >= InventoryRules.MAX_ITEMS:
+			reason = "Inventory is full."
+		elif character.carried_load + definition.instance_weight(item.charges) > character.maximum_load:
+			reason = "The item would exceed maximum load."
+		elif not enabled:
+			reason = "This character cannot receive the item."
+		candidates.append({
+			"id": character.id,
+			"name": character.name,
+			"currentHealth": character.current_health,
+			"maximumHealth": character.maximum_health,
+			"enabled": enabled,
+			"reason": reason,
+		})
+	return {
+		"mode": "fumbled-item-recovery",
+		"prompt": "Recover the fumbled weapon or leave it behind.",
+		"battleId": state.combat.battle_id,
+		"item": {
+			"instanceId": item.id,
+			"definitionId": item.definition_id,
+			"name": definition.name,
+			"charges": item.charges,
+			"identified": true,
+		},
+		"characters": candidates,
+		"remaining": queued.size(),
+	}
+
+
+func apply_fumble_recovery(state: GameState, content: RealmzContent, response_payload: Variant) -> CombatFlowResult:
+	var request_payload := fumble_recovery_payload(state, content)
+	if request_payload.is_empty() or not response_payload is Dictionary:
+		return CombatFlowResult.failed(&"invalid_fumble_recovery", "Fumbled-weapon recovery is unavailable.")
+	if not response_payload.get("action") is String or not response_payload.get("instanceId") is String or response_payload["instanceId"] != request_payload["item"]["instanceId"]:
+		return CombatFlowResult.failed(&"invalid_fumble_recovery", "Fumbled-weapon recovery must identify the pending item and action.")
+	var action: String = response_payload["action"]
+	var instance_id: String = response_payload["instanceId"]
+	if action == "discard":
+		var discarded := state.combat.remove_fumbled_item(instance_id)
+		if discarded == null:
+			return CombatFlowResult.failed(&"invalid_fumble_recovery", "The pending fumbled weapon is unavailable.")
+		return CombatFlowResult.succeeded([DomainEvent.new(&"fumbled_item_left_behind", {"battleId": state.combat.battle_id, "instanceId": discarded.id, "itemId": discarded.definition_id})])
+	if action != "assign" or not response_payload.get("characterId") is String:
+		return CombatFlowResult.failed(&"invalid_fumble_recovery", "Fumbled-weapon recovery requires an available character or discard action.")
+	var character_id: String = response_payload["characterId"]
+	var candidate: Dictionary = {}
+	for entry: Dictionary in request_payload["characters"]:
+		if entry["id"] == character_id:
+			candidate = entry
+			break
+	if candidate.is_empty() or not candidate["enabled"]:
+		return CombatFlowResult.failed(&"invalid_fumble_recovery", "The selected character cannot receive the fumbled weapon.")
+	var character := state.party.character_by_id(character_id)
+	var queued: ItemInstance = state.combat.fumbled_items()[0]
+	var definition := content.item_by_id(queued.definition_id)
+	if character == null or definition == null or not _rules.inventory.can_restore_item(character, queued, definition):
+		return CombatFlowResult.failed(&"invalid_fumble_recovery", "The selected character can no longer receive the fumbled weapon.")
+	var recovered := state.combat.remove_fumbled_item(instance_id)
+	if recovered == null or not _rules.inventory.restore_item(character, recovered, definition):
+		if recovered != null:
+			state.combat.requeue_fumbled_item_first(recovered)
+		return CombatFlowResult.failed(&"invalid_fumble_recovery", "The fumbled weapon could not be restored atomically.")
+	return CombatFlowResult.succeeded([DomainEvent.new(&"fumbled_item_recovered", {"battleId": state.combat.battle_id, "instanceId": recovered.id, "itemId": recovered.definition_id, "characterId": character.id})])
+
+
 func _prepare_character_turn(combat: CombatState, character: CharacterState) -> void:
 	if combat.active_turn != null:
 		return
@@ -335,6 +459,7 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 		active_turn.attack_index = _monster_attack_limit(definition)
 		return MONSTER_ATTACK_COMPLETED
 	active_turn.attack_index += 1
+	active_turn.physical_action_committed = true
 	var character_target := state.party.character_by_id(active_turn.target_id)
 	if character_target != null:
 		var race := content.race_by_id(character_target.race_id)
@@ -345,7 +470,9 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 		var weapon := content.item_by_id(monster.weapon_id) if not monster.weapon_id.is_empty() else null
 		var defender_armor := defender_equipment.effective_armor if defender_equipment.valid else character_target.armor
 		var attack_context := MonsterAttackContext.new(weapon, state.clock.day(), false, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
-		var resolution := _rules.combat.resolve_monster_attack(monster, definition, attack_index, character_target, race, caste, rng, charm_bonus, attack_context)
+		var resolution := _rules.combat.resolve_monster_attack(monster, definition, attack_index, character_target, race, caste, rng, charm_bonus, attack_context, true)
+		if resolution.fumbled:
+			_commit_monster_fumble(monster, events)
 		var age_update_requested := false
 		if resolution.special_handled:
 			_append_monster_special_events(events, monster.id, character_target.id, &"character", resolution)
@@ -367,7 +494,9 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 	var target_definition := content.monster_by_id(monster_target.definition_id)
 	var weapon := content.item_by_id(monster.weapon_id) if not monster.weapon_id.is_empty() else null
 	var attack_context := MonsterAttackContext.new(weapon, state.clock.day())
-	var resolution := _rules.combat.resolve_monster_attack_monster(monster, definition, attack_index, monster_target, target_definition, rng, attack_context)
+	var resolution := _rules.combat.resolve_monster_attack_monster(monster, definition, attack_index, monster_target, target_definition, rng, attack_context, true)
+	if resolution.fumbled:
+		_commit_monster_fumble(monster, events)
 	if resolution.special_handled:
 		_append_monster_special_events(events, monster.id, monster_target.id, &"monster", resolution)
 	events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": monster_target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
@@ -424,20 +553,31 @@ func _process_charmed_character_turn(state: GameState, content: RealmzContent, a
 	if not equipment.valid:
 		events.append(DomainEvent.new(&"combat_attack_blocked", {"actorId": actor.id, "reason": String(equipment.error_code), "message": equipment.error_message}))
 		return false
+	var active_turn := state.combat.begin_active_turn()
+	if active_turn == null:
+		return false
 	if target_index < character_targets.size():
 		var character_target := character_targets[target_index]
 		var target_equipment := _rules.inventory.combat_equipment(character_target, content.item_definitions())
 		if not target_equipment.valid:
 			events.append(DomainEvent.new(&"combat_attack_blocked", {"actorId": actor.id, "targetId": character_target.id, "reason": String(target_equipment.error_code), "message": target_equipment.error_message}))
 			return false
-		var resolution := _rules.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng)
+		active_turn.physical_action_committed = true
+		var resolution := _rules.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng, false, true, state.combat.can_queue_fumbled_item())
+		if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
+			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
+			return false
 		var event := _character_attack_event(actor.id, character_target.id, &"character", resolution)
 		event.payload["automatic"] = true
 		events.append(event)
 		return false
 	var monster_target := monster_targets[target_index - character_targets.size()]
 	var target_definition := content.monster_by_id(monster_target.definition_id)
-	var resolution := _rules.combat.resolve_character_attack(actor, equipment, monster_target, target_definition, rng, state.clock.day())
+	active_turn.physical_action_committed = true
+	var resolution := _rules.combat.resolve_character_attack(actor, equipment, monster_target, target_definition, rng, state.clock.day(), false, true, state.combat.can_queue_fumbled_item())
+	if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
+		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
+		return false
 	var event := _character_attack_event(actor.id, monster_target.id, &"monster", resolution)
 	event.payload["automatic"] = true
 	events.append(event)
@@ -458,12 +598,57 @@ static func _character_attack_event(actor_id: String, target_id: String, target_
 		"reflected": resolution.reflected,
 		"blocked": resolution.blocked,
 		"blockReason": String(resolution.block_reason),
+		"fumbled": resolution.fumbled,
+		"fumbleRoll": resolution.fumble_roll,
+		"fumbleBlockReason": String(resolution.fumble_block_reason),
 		"weaponEffects": resolution.weapon_effects.duplicate(true),
 		"weaponConditionIndex": resolution.weapon_condition_index,
 		"weaponConditionBefore": resolution.weapon_condition_before,
 		"weaponConditionAfter": resolution.weapon_condition_after,
 		"criticalRolls": resolution.critical_rolls.duplicate(),
 	})
+
+
+func _commit_character_fumble(state: GameState, character: CharacterState, equipment: CharacterCombatEquipment, events: Array[DomainEvent]) -> bool:
+	if state.combat == null or equipment == null or equipment.melee_weapon == null or equipment.melee_weapon_instance_id.is_empty() or not state.combat.can_queue_fumbled_item():
+		return false
+	var instance: ItemInstance = null
+	for carried: ItemInstance in character.inventory():
+		if carried.id == equipment.melee_weapon_instance_id and carried.definition_id == equipment.melee_weapon.id and carried.equipped:
+			instance = carried
+			break
+	if instance == null or not state.combat.queue_fumbled_item(instance):
+		return false
+	var removed := _rules.inventory.remove_item(character, instance.id, equipment.melee_weapon)
+	if removed == null:
+		state.combat.remove_fumbled_item(instance.id)
+		instance.equipped = true
+		return false
+	# FD-COMBAT-005 preserves the exact runtime item and its remaining charges.
+	# Castle's short-only queue reconstructs the item from its definition at booty.
+	removed.identified = true
+	_append_fumble_feedback(events, character.id, removed, true)
+	return true
+
+
+static func _commit_monster_fumble(monster: MonsterState, events: Array[DomainEvent]) -> void:
+	var weapon_id := monster.weapon_id
+	monster.weapon_id = ""
+	_append_fumble_feedback(events, monster.id, null, false, weapon_id)
+
+
+static func _append_fumble_feedback(events: Array[DomainEvent], actor_id: String, item: ItemInstance, player_weapon: bool, monster_weapon_id: String = "") -> void:
+	var sounds := CHARACTER_FUMBLE_SOUNDS if player_weapon else MONSTER_FUMBLE_SOUNDS
+	for sound: Dictionary in sounds:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound["soundId"], "waitForCompletion": sound["waitForCompletion"], "source": "classic-combat-fumble"}))
+	events.append(DomainEvent.new(&"combatant_fumbled", {
+		"combatantId": actor_id,
+		"instanceId": item.id if item != null else "",
+		"itemId": item.definition_id if item != null else monster_weapon_id,
+		"playerWeapon": player_weapon,
+		"changed": true,
+		"source": "classic",
+	}))
 
 
 func _append_monster_special_events(events: Array[DomainEvent], actor_id: String, target_id: String, target_kind: StringName, resolution: AttackResolution) -> void:

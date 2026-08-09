@@ -145,6 +145,39 @@ func run() -> void:
 	assert_false(resumed_setup.view().party_setup_available, "party setup closes only after Begin")
 	assert_equal(resumed_setup.submit_intent(PlayerIntent.remove_party_member(imported.id)).error_code, &"party_setup_closed", "party composition cannot change after Begin")
 
+	var fumble_item := content.item_by_id("classic.item.6")
+	assert_not_null(fumble_item, "the integration fixture contains a charged Classic melee weapon")
+	if fumble_item != null:
+		var fumble_session := GameSession.new()
+		fumble_session.start(content, 23)
+		var recovery_character := CharacterState.new("fixture.fumble-recipient", "Recovery Hero", 10, 10)
+		recovery_character.maximum_load = 500
+		fumble_session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [recovery_character])
+		fumble_session._state.party_setup_completed = true
+		fumble_session._state.combat = CombatState.new("classic.battle.0")
+		fumble_session._state.combat.completed = true
+		fumble_session._state.combat.outcome = &"retreated"
+		fumble_session._state.last_battle_outcome = &"retreated"
+		var dropped := ItemInstance.new("fixture.fumbled-item", fumble_item.id, 7, false, true)
+		assert_true(fumble_session._state.combat.queue_fumbled_item(dropped), "a completed retreat retains its battle-local fumbled weapon")
+		var ally_step := fumble_session._finish_direct_battle([])
+		assert_equal(ally_step.interaction.kind, InteractionRequest.ALLY_SELECTION, "the established body-count stage remains ahead of recovery")
+		var recovery_step := fumble_session.respond(InteractionResponse.new(ally_step.interaction.request_id, InteractionRequest.ALLY_SELECTION, {"selectedIds": []}))
+		assert_equal(recovery_step.state, SessionStep.State.WAITING_FOR_INTERACTION, "retreat still enters the typed fumbled-weapon recovery boundary")
+		assert_equal(recovery_step.interaction.kind, InteractionRequest.TREASURE_DISTRIBUTION, "post-battle recovery uses the dedicated treasure-distribution request")
+		var fumble_boundary := SaveEnvelope.from_data(fumble_session.snapshot().to_data())
+		assert_not_null(fumble_boundary, "the pending fumble assignment is centrally saveable")
+		var recovered_session := GameSession.new()
+		assert_equal(recovered_session.restore(content, fumble_boundary).state, SessionStep.State.COMPLETED, "the post-battle recovery request restores transactionally")
+		var restored_fumble_request := recovered_session.view().pending_interaction
+		var recovered_step := recovered_session.respond(InteractionResponse.new(restored_fumble_request.request_id, InteractionRequest.TREASURE_DISTRIBUTION, {"action": "assign", "instanceId": dropped.id, "characterId": recovery_character.id}))
+		assert_equal(recovered_step.state, SessionStep.State.COMPLETED, "assigning the final fumbled weapon completes post-battle processing")
+		var recovered_inventory := recovered_session._state.party.character_by_id(recovery_character.id).inventory()
+		assert_equal(recovered_inventory.size(), 1, "the selected recipient owns one recovered item")
+		if not recovered_inventory.is_empty():
+			assert_equal(recovered_inventory[0].to_data(), dropped.to_data(), "save/resume retains the exact recovered instance and charge count")
+		assert_true(recovered_session._state.combat.fumbled_items().is_empty(), "save/resume removes the assigned item from the battle queue")
+
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
 	var races := content.race_definitions()

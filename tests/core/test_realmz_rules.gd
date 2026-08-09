@@ -687,6 +687,29 @@ func _test_combat_magic_and_monsters() -> void:
 	assert_equal(attack.chance, 56, "attack chance combines base, equipment, luck, and armor")
 	assert_equal(attack.damage, 3, "melee damage combines the equipped magic plus and Castle's physical weapon roll")
 	assert_equal(attack.critical_rolls, [1, 1], "player melee preserves Castle's two post-damage critical draws even while critical-skill content remains unavailable")
+	defender.current_health = 5
+	var fumble := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0, 1609]), 0, false, true, true)
+	assert_true(fumble.fumbled and not fumble.hit and fumble.damage == 0, "an armed player roll from 51 through 59 fumbles and forces the attack to miss")
+	assert_equal(fumble.fumble_roll, 55, "the player fumble range uses Castle's level-scaled Rand contract")
+	assert_equal(defender.current_health, 5, "a fumbled player attack commits no damage")
+	sword.cursed_item_id = "item.cursed-replacement"
+	var cursed_fumble := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0, 1609, 0, 0, 0]), 0, false, true, true)
+	assert_false(cursed_fumble.fumbled, "a cursed melee weapon cannot leave the character on a fumble roll")
+	assert_equal(cursed_fumble.fumble_block_reason, &"cursed_weapon", "the failed cursed removal remains observable without cancelling the attack")
+	assert_true(cursed_fumble.hit and defender.current_health < 5, "Castle continues the ordinary attack when cursed removal fails")
+	sword.cursed_item_id = ""
+	defender.current_health = 5
+	var full_queue := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0, 1609, 0, 0, 0]), 0, false, true, false)
+	assert_false(full_queue.fumbled, "a full twenty-item battle queue suppresses another player fumble")
+	assert_equal(full_queue.fumble_block_reason, &"fumble_queue_full", "the queue-capacity gate has a stable diagnostic identity")
+	assert_true(full_queue.hit and defender.current_health < 5, "Castle continues the ordinary attack when its fumble queue is full")
+	sword_instance.equipped = false
+	defender.current_health = 5
+	var unarmed_rng := ScriptedRng.new([0, 0, 1609, 0, 0, 0])
+	var unarmed_fumble_roll := rules.combat.resolve_character_attack(attacker, rules.inventory.combat_equipment(attacker, _items([sword])), defender, definition, unarmed_rng, 0, false, true, true)
+	assert_false(unarmed_fumble_roll.fumbled, "an unarmed character cannot fumble despite a source-range roll")
+	assert_equal([unarmed_fumble_roll.fumble_roll, unarmed_rng.snapshot().draw_count], [55, 6], "an unarmed character still consumes the fumble draw before ordinary damage")
+	sword_instance.equipped = true
 	definition.magic_to_hit = 3
 	var magic_block := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0]))
 	assert_true(magic_block.blocked, "a hit with an insufficient weapon plus stops before damage")
@@ -716,6 +739,19 @@ func _test_combat_magic_and_monsters() -> void:
 	var monster_attack := rules.combat.resolve_monster_attack_monster(friendly, definition, 0, hostile, definition, ScriptedRng.new([0, 0]))
 	assert_true(monster_attack.hit, "opposed-traitor monsters use the same source-backed attack resolution")
 	assert_equal(hostile.current_health, 4, "friendly monster attacks mutate hostile combat state")
+	var monster_weapon := ItemDefinition.new("item.monster-fumble", 701, "Monster Fumble Blade")
+	monster_weapon.item_type = 2
+	monster_weapon.vs_small = 1
+	var monster_fumbler := MonsterState.new("monster.fumbler", definition.id, definition.name, 5, 5, 4, 8, 0)
+	var monster_fumble_target := MonsterState.new("monster.fumble-target", definition.id, definition.name, 5, 5, 1, 8, 0)
+	var monster_fumble := rules.combat.resolve_monster_attack_monster(monster_fumbler, definition, 0, monster_fumble_target, definition, ScriptedRng.new([0, 942]), MonsterAttackContext.new(monster_weapon), true)
+	assert_true(monster_fumble.fumbled and not monster_fumble.hit, "an armed monster roll from 21 through 34 fumbles and forces a miss")
+	assert_equal(monster_fumble.fumble_roll, 23, "monster fumbles use Castle's hit-dice-scaled Rand contract")
+	assert_equal(monster_fumble_target.current_health, 5, "a monster fumble commits no physical damage")
+	var unarmed_monster_rng := ScriptedRng.new([0, 942, 0])
+	var unarmed_monster_fumble_roll := rules.combat.resolve_monster_attack_monster(monster_fumbler, definition, 0, monster_fumble_target, definition, unarmed_monster_rng, MonsterAttackContext.new(), true)
+	assert_false(unarmed_monster_fumble_roll.fumbled, "an unarmed monster cannot fumble despite a source-range roll")
+	assert_equal([unarmed_monster_fumble_roll.fumble_roll, unarmed_monster_rng.snapshot().draw_count], [23, 3], "an unarmed monster still consumes the fumble draw before authored damage")
 	defender.current_health = 5
 	defender.conditions.set_value(ConditionRules.HELPLESS, -1)
 	var helpless := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 32_767, 0, 0, 0]))

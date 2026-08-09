@@ -69,6 +69,29 @@ func remove_item(character: CharacterState, instance_id: String, definition: Ite
 	return null
 
 
+func can_restore_item(character: CharacterState, item: ItemInstance, definition: ItemDefinition) -> bool:
+	if character == null or item == null or definition == null or item.definition_id != definition.id:
+		return false
+	var items := character.inventory()
+	if items.size() >= MAX_ITEMS or character.carried_load + definition.instance_weight(item.charges) > character.maximum_load:
+		return false
+	for carried: ItemInstance in items:
+		if carried.id == item.id:
+			return false
+	return true
+
+
+func restore_item(character: CharacterState, item: ItemInstance, definition: ItemDefinition) -> bool:
+	if not can_restore_item(character, item, definition):
+		return false
+	var items := character.inventory()
+	item.equipped = false
+	items.append(item)
+	character.set_inventory(items)
+	character.carried_load += definition.instance_weight(item.charges)
+	return true
+
+
 func combat_equipment(character: CharacterState, definitions: Array[ItemDefinition]) -> CharacterCombatEquipment:
 	var result := CharacterCombatEquipment.new()
 	if character == null:

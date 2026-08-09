@@ -62,6 +62,10 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 	var replacement_action_state := ScenarioActionState.from_data(save_envelope.scenario_action_state.to_data())
 	if replacement_state == null or replacement_action_state == null:
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved game or Scenario Action state is invalid.")
+	if replacement_state.combat != null:
+		for item: ItemInstance in replacement_state.combat.fumbled_items():
+			if content.item_by_id(item.definition_id) == null:
+				return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved fumble queue references unavailable item content.")
 	var replacement_rules := RealmzRules.new()
 	_normalize_age_groups(replacement_state, content, replacement_rules)
 	var replacement_vm := ScenarioVm.new()
@@ -729,6 +733,16 @@ func _finish_direct_battle(events: Array[DomainEvent]) -> SessionStep:
 		_session_continuation = {"kind": "combat-ally-selection", "battleId": _state.combat.battle_id}
 		_session_interaction = InteractionRequest.new(request_id, &"ally_selection", payload)
 		return _finish_waiting(_session_interaction, events)
+	return _finish_direct_battle_recovery(events)
+
+
+func _finish_direct_battle_recovery(events: Array[DomainEvent]) -> SessionStep:
+	var payload := _rules.combat_flow.fumble_recovery_payload(_state, _content)
+	if not payload.is_empty():
+		var request_id := "session.fumble-recovery.%d" % (_view_revision + 1)
+		_session_continuation = {"kind": "combat-fumble-recovery", "battleId": _state.combat.battle_id}
+		_session_interaction = InteractionRequest.new(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload)
+		return _finish_waiting(_session_interaction, events)
 	_append_session_battle_after_message(_state.combat.battle_id, events)
 	return _finish_completed(events)
 
@@ -828,6 +842,8 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 		return _respond_session_age_update(response)
 	if _session_continuation.get("kind") == "combat-ally-selection":
 		return _respond_session_ally_selection(response)
+	if _session_continuation.get("kind") == "combat-fumble-recovery":
+		return _respond_session_fumble_recovery(response)
 	if response.kind != &"yes_no" or not response.payload.has("accepted") or not response.payload["accepted"] is bool:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "The random encounter response must be a yes/no choice.")
 	if _session_continuation.get("randomBattleStage", "") != "surprise-choice":
@@ -934,8 +950,22 @@ func _respond_session_ally_selection(response: InteractionResponse) -> SessionSt
 	_session_continuation.clear()
 	var events: Array[DomainEvent] = []
 	events.assign(result.events)
-	_append_session_battle_after_message(_state.combat.battle_id, events)
-	return _finish_completed(events)
+	return _finish_direct_battle_recovery(events)
+
+
+func _respond_session_fumble_recovery(response: InteractionResponse) -> SessionStep:
+	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION:
+		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Fumbled-weapon recovery requires a treasure-distribution response.")
+	if _state.combat == null or not _state.combat.completed or _state.combat.battle_id != _session_continuation.get("battleId"):
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The completed battle is unavailable for fumbled-weapon recovery.")
+	var result := _rules.combat_flow.apply_fumble_recovery(_state, _content, response.payload)
+	if not result.ok:
+		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	_session_interaction = null
+	_session_continuation.clear()
+	var events: Array[DomainEvent] = []
+	events.assign(result.events)
+	return _finish_direct_battle_recovery(events)
 
 
 func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: Array[DomainEvent]) -> SessionStep:
@@ -1012,6 +1042,13 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 		if continuation.size() != ally_fields.size() or not continuation.get("battleId") is String or continuation["battleId"].is_empty():
 			return false
 		return vm_interaction == null and session_interaction != null and session_interaction.kind == &"ally_selection" and state.combat != null and state.combat.completed and state.combat.battle_id == continuation["battleId"]
+	if continuation.get("kind") == "combat-fumble-recovery":
+		var recovery_fields: Array[String] = ["kind", "battleId"]
+		if continuation.size() != recovery_fields.size() or not continuation.get("battleId") is String or continuation["battleId"].is_empty():
+			return false
+		if vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.TREASURE_DISTRIBUTION or state.combat == null or not state.combat.completed or state.combat.battle_id != continuation["battleId"] or state.combat.fumbled_items().is_empty():
+			return false
+		return session_interaction.payload == RealmzRules.new().combat_flow.fumble_recovery_payload(state, content)
 	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
 	if continuation.size() != fields.size():
 		return false
