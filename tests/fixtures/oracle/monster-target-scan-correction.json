@@ -1,0 +1,35 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-009",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/combat.c",
+      "symbol": "void combat(short suprise, short mode)",
+      "range": "388-480"
+    },
+    {
+      "path": "src/realmz_orig/structs.h",
+      "symbol": "struct monster {",
+      "range": "159-171"
+    }
+  ],
+  "inputs": {
+    "initialRandomTarget": "valid opposed combatant without line of sight",
+    "visibleTargets": [],
+    "nativeScanLimit": 110,
+    "populatedSlots": "party slots 0 through 8, gap 9, then nummon monster slots"
+  },
+  "castleSourceObservation": {
+    "fallback": "the first unseen valid random target enables sliding and scans ascending numeric combat slots",
+    "termination": "the scan tests the 110 sentinel after indexing monster entries derived from values beyond the populated roster",
+    "risk": "an all-unseen roster can read outside populated combatants and can reach an invalid target before movemonster"
+  },
+  "realmz2ChosenResult": {
+    "fallback": "retain the ascending slot scan after the first unseen valid random target",
+    "bounds": "scan only validated party, gap, and active monster slots",
+    "noVisibleTarget": "end the movement activation explicitly without reading uninitialized state",
+    "randomRetry": "bound invalid-slot random retries under the deterministic session execution limit"
+  }
+}

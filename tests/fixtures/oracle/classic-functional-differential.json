@@ -1194,6 +1194,191 @@
       "status": "verified"
     },
     {
+      "id": "combat.monster-targeting-los-and-movement",
+      "domain": "combat",
+      "claim": "A monster retains a valid visible target, sends an unseen retained target directly to Castle's ascending slot scan, or draws a new target from the authored combat-slot space and switches to that scan after the first unseen valid draw. It then takes repeated target-directed eight-direction steps, uses complete-footprint legality and maximum terrain cost, applies bounded shift.c retries, and attacks only after opposed footprints become adjacent. Tactical LOS uses Castle's fixed 128-sample geometry without allowing the presentation delay preference to change simulation.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake exposes generic creature-script target selection and movement through mutable combat Nodes. Its central range helper considers complete footprints, but CombatState chooses the minimum destination-footprint movement cost and donor scripts contain position-free range copies. These are useful workflow leads but not Castle authority.",
+        "sources": [
+          {
+            "path": "src/scripts/AIScripts_functions.gd",
+            "symbol": "static func get_range_between_creas("
+          },
+          {
+            "path": "src/scripts/states/CombatState.gd",
+            "symbol": "func on_trying_to_move_to_position("
+          },
+          {
+            "path": "src/scripts/states/CbDecideActionState.gd",
+            "symbol": "func do_ai_creature_action("
+          }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/combat.c",
+            "symbol": "void combat(short suprise, short mode)"
+          },
+          {
+            "path": "src/realmz_orig/cansee.c",
+            "symbol": "short cansee(short fromx, short fromy, short tox, short toy)"
+          },
+          {
+            "path": "src/realmz_orig/movemonster.c",
+            "symbol": "short movemonster(void)"
+          },
+          {
+            "path": "src/realmz_orig/shift.c",
+            "symbol": "void shift(short curx, short cury, short target)"
+          },
+          {
+            "path": "src/realmz_orig/checkforenemy.c",
+            "symbol": "short checkforenemy(short code)"
+          }
+        ],
+        "authoredInputs": [
+          "party and monster combat slots, allegiance, health, conditions, and retained target",
+          "battlefield anchors and complete monster footprints",
+          "terrain solid, time, sound, and LOS fields",
+          "monster movement maximum and attack rows",
+          "presentation delay-speed preference"
+        ],
+        "observation": "A monster first reuses a valid opposed target, otherwise draws Rand(10+nummon)-1 until it reaches a live opposed slot. An unseen valid target enables an ascending slot scan. cansee samples 128 center-offset points, but divides by 128 plus delayspeed, so a blocker near the target can be skipped at slower animation settings. movemonster takes the sign of the target delta, validates every footprint cell, permits large monsters to cross solid class one, charges the maximum getmovecost result, and invokes shift after a blocked or unaffordable probe for at most 21 tested directions. Its local cost is not reset between those retries, so an expensive rejected direction can prevent a cheaper shifted step. Each successful move is followed by checkforenemy; the monster selects one adjacent opposed target and executes its remaining authored rows.",
+        "unresolved": [
+          "Castle subtracts permanent Tangle value minus one from monster movement, apparently increasing movement by one; that state remains explicitly unavailable.",
+          "Castle retains maximum movement cost across shift retries; this likely defeats the intended cheaper-route search but is preserved until runtime evidence supports a named correction.",
+          "Guard and withdrawal attacks are separate serializable reaction continuations and remain disabled.",
+          "Monster retreat, battlefield-edge flight, spell-field collision, spell casting, and projectile execution remain separate boundaries."
+        ]
+      },
+      "providence": {
+        "commit": "7f3347cbe3073c2152004f0dfd0c0395efa82f30",
+        "sources": [
+          {
+            "path": "src-tauri/src/realmz2_exporter.rs",
+            "symbol": "fn runtime_monsters("
+          },
+          {
+            "path": "src-tauri/src/realmz2_exporter.rs",
+            "symbol": "fn battle_terrain_sets("
+          }
+        ],
+        "expectedRepresentation": "Schema v2 already emits movementMaximum, size, attack rows, complete battle terrain LOS/solid/time/sound facts, and stable monster identities. Target, movement remainder, position, and RNG are mutable session state; no compiler change is required."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/core/rules/combat_flow.gd",
+          "symbol": "func _process_monster_advance("
+        },
+        "expectedTrace": [
+          "consume source-ordered missile and cast decision draws",
+          "reuse, scan from an unseen retained target, or randomly select one visible opposed target in Classic slot order",
+          "query fixed deterministic 128-sample LOS",
+          "probe target-directed complete-footprint movement",
+          "consume exact bounded shift retry draws when blocked",
+          "commit position, maximum terrain cost, sound, target, and movement remainder",
+          "select one adjacent target and execute retained authored attack rows",
+          "save and restore target, position, active cursor, movement remainder, and RNG"
+        ],
+        "tests": [
+          {
+            "path": "tests/core/test_combat_flow.gd",
+            "symbol": "func _test_monster_los_targeting_and_movement("
+          },
+          {
+            "path": "tests/core/test_realmz_rules.gd",
+            "symbol": "func _test_combat_magic_and_monsters("
+          }
+        ]
+      },
+      "fidelityDecision": {
+        "id": "FD-COMBAT-008",
+        "fixturePath": "tests/fixtures/oracle/tactical-los-delay-correction.json",
+        "fixtureSha256": "529ff0b65cdda0b84e01c32c8a9ac78150af4d3c40fcb25ff3c860e3e429440c"
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "verified-reactions-disabled"
+    },
+    {
+      "id": "combat.monster-target-scan-safety",
+      "domain": "combat",
+      "claim": "Castle's ascending monster-target fallback is bounded to validated combat slots so an all-unseen roster cannot read uninitialized monster entries or pass an invalid target into movement. The target order and random-to-linear transition remain source-conformant.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake builds filtered creature arrays and therefore does not reproduce Castle's numeric 110-slot scan. Its generic collection safety is a useful implementation lead but does not establish Classic ordering.",
+        "sources": [
+          {
+            "path": "src/scripts/AIScripts_functions.gd",
+            "symbol": "static func get_closest_creas_not_of_side("
+          }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/combat.c",
+            "symbol": "void combat(short suprise, short mode)"
+          },
+          {
+            "path": "src/realmz_orig/structs.h",
+            "symbol": "struct monster {"
+          }
+        ],
+        "authoredInputs": [
+          "one or more live opposed targets",
+          "no line of sight to any opposed target",
+          "party slot count and nummon"
+        ],
+        "observation": "After the first unseen valid target, cantseeindex scans numeric slots upward while the LOS condition uses a 110 sentinel. Values beyond 9+nummon still index monster[temp-10], and the terminal path can leave target invalid before movemonster dereferences it.",
+        "unresolved": []
+      },
+      "providence": {
+        "commit": "7f3347cbe3073c2152004f0dfd0c0395efa82f30",
+        "sources": [
+          {
+            "path": "src-tauri/src/realmz2_exporter.rs",
+            "symbol": "fn runtime_monsters("
+          }
+        ],
+        "expectedRepresentation": "No package change is required. The package supplies validated immutable monster definitions; the live roster and its stable IDs are session-owned."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/core/rules/combat_flow.gd",
+          "symbol": "func _select_visible_monster_target("
+        },
+        "expectedTrace": [
+          "draw within Castle's party-gap-monster slot space until a valid opposed target is selected",
+          "switch to ascending validated slots after the first unseen valid target",
+          "return no visible target without uninitialized access",
+          "end the automatic movement activation explicitly"
+        ],
+        "tests": [
+          {
+            "path": "tests/core/test_combat_flow.gd",
+            "symbol": "func _test_monster_los_targeting_and_movement("
+          }
+        ]
+      },
+      "fidelityDecision": {
+        "id": "FD-COMBAT-009",
+        "fixturePath": "tests/fixtures/oracle/monster-target-scan-correction.json",
+        "fixtureSha256": "541e244260bbbb70a0652af7a82cb89a90f024498c2e93760272ccdcf7b4edf8"
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "verified"
+    },
+    {
       "id": "combat.tactical-placement-and-ranged-resolution",
       "domain": "combat",
       "claim": "With battlefield positions now session-owned, missile attacks still require source-backed adjacency, Euclidean range, line of sight, active type-15 or type-10 item-spell selection, resource costs, and Castle's missile-specific resistance path. Until that resolution is complete, character Fire and monster missile resolution remain disabled and must not impersonate ordinary melee.",

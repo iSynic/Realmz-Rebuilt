@@ -286,6 +286,11 @@ static func from_data(data: Variant) -> GameState:
 			for monster: MonsterState in state.combat.monsters():
 				if monster.current_health > 0 and battlefield.monster_position(monster.id).x < 0:
 					return null
+		for monster: MonsterState in state.combat.monsters():
+			if not monster.target_id.is_empty() and party_state.character_by_id(monster.target_id) == null and state.combat.monster_by_id(monster.target_id) == null:
+				return null
+		if state.combat.active_turn != null and not state.combat.active_turn.target_id.is_empty() and party_state.character_by_id(state.combat.active_turn.target_id) == null and state.combat.monster_by_id(state.combat.active_turn.target_id) == null:
+			return null
 		if state.combat.pending_monster_attack != null and party_state.character_by_id(state.combat.pending_monster_attack.target_id) == null:
 			return null
 		var owned_item_ids: Dictionary = {}

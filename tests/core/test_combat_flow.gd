@@ -5,6 +5,7 @@ var _cached_battle_world: WorldDefinition
 
 func run() -> void:
 	_test_tactical_adjacency_movement_and_restore()
+	_test_monster_los_targeting_and_movement()
 	_test_character_half_attack_cadence_and_restore()
 	_test_character_weapon_mode_toggle_and_restore()
 	_test_monster_missile_does_not_impersonate_melee()
@@ -92,11 +93,112 @@ func _test_tactical_adjacency_movement_and_restore() -> void:
 	var distant_monster := MonsterState.new("monster.distant.instance", definition.id, definition.name, 10, 10, 1)
 	var distant_state := _state(distant_character, distant_monster, "battle.distant")
 	distant_state.combat.battlefield.move_actor(distant_monster.id, Vector2i(50, 50))
-	var distant_rng := ScriptedRng.new([0, 0])
-	var no_remote_attack := rules.combat_flow.submit_action(distant_state, content, distant_character.id, &"defend", "", distant_rng)
-	assert_true(no_remote_attack.ok, "a nonadjacent monster activation remains a committed unavailable step")
-	assert_equal(distant_character.current_health, 20, "a monster no longer applies melee damage across the battlefield")
-	assert_true(no_remote_attack.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action_unavailable" and event.payload.get("reason") == "tactical-movement-not-implemented"), "missing monster pathing is reported explicitly")
+	definition.movement_max = 12
+	var distant_values: Array[int] = []
+	distant_values.resize(40)
+	distant_values.fill(0)
+	var advanced := rules.combat_flow.submit_action(distant_state, content, distant_character.id, &"defend", "", ScriptedRng.new(distant_values))
+	assert_true(advanced.ok, "a nonadjacent monster activation follows its source-backed tactical path")
+	assert_true(advanced.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved" and event.payload.get("actorId") == distant_monster.id), "monster movement is committed as explicit battlefield events")
+	assert_true(distant_character.current_health < 20, "the monster resolves melee only after reaching an adjacent footprint")
+	assert_true(rules.battlefield.are_adjacent(distant_state.combat.battlefield, distant_character.id, distant_monster.id), "automatic movement ends in source-legal melee adjacency")
+
+
+func _test_monster_los_targeting_and_movement() -> void:
+	var rules := RealmzRules.new()
+	var terrain_tiles: Array[BattleTerrainTileDefinition] = []
+	for tile_id: int in 401:
+		terrain_tiles.append(BattleTerrainTileDefinition.new(tile_id, 0, 0, 2 if tile_id == 2 else 0, false, 0, false, tile_id == 3, false, 0, [[tile_id, tile_id, tile_id], [tile_id, tile_id, tile_id], [tile_id, tile_id, tile_id]]))
+	var terrain_set := BattleTerrainSetDefinition.new("terrain.monster-path", 1, 1, terrain_tiles)
+	var battlefield := _blank_battlefield()
+	battlefield.place_monster("monster.los", Vector2i(40, 40), 0)
+	battlefield.place_character("character.los", Vector2i(50, 40))
+	assert_true(rules.battlefield.has_line_of_sight(battlefield, terrain_set, "monster.los", "character.los"), "fixed 128-sample tactical LOS sees an unobstructed target")
+	battlefield.set_terrain(Vector2i(48, 40), 3)
+	assert_false(rules.battlefield.has_line_of_sight(battlefield, terrain_set, "monster.los", "character.los"), "FD-COMBAT-008 detects a blocker near the target independently of presentation delay")
+	battlefield.set_terrain(Vector2i(48, 40), 1)
+	var target_definition := _monster_definition("monster.los-target", [])
+	var attacker := MonsterState.new("monster.los-attacker", target_definition.id, "LOS Attacker", 10, 10, 1)
+	var ally_target := MonsterState.new("monster.los-ally", target_definition.id, "LOS Ally", 10, 10, 1, 1, 0, 0, 0, false)
+	var target_character := _character("character.los-scan")
+	var target_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [target_character]), RealmzClock.new())
+	var target_field := _blank_battlefield()
+	target_field.place_monster(attacker.id, Vector2i(40, 40), 0)
+	target_field.place_monster(ally_target.id, Vector2i(40, 45), 0)
+	target_field.place_character(target_character.id, Vector2i(50, 40))
+	target_field.set_terrain(Vector2i(48, 40), 3)
+	target_state.combat = CombatState.new("battle.los-scan", [attacker, ally_target], 0, target_field)
+	target_state.combat.set_turn_order([attacker.id, ally_target.id, target_character.id])
+	var fallback_rng := ScriptedRng.new([0])
+	var fallback_target := rules.combat_flow._select_visible_monster_target(target_state, attacker, terrain_set, fallback_rng)
+	assert_equal(fallback_target, ally_target.id, "an unseen random target switches to Castle's ascending combat-slot scan")
+	assert_equal(fallback_rng.snapshot().draw_count, 1, "the deterministic fallback scan consumes no invented target draws")
+	attacker.target_id = target_character.id
+	assert_equal(rules.combat_flow._scan_visible_monster_target(target_state, attacker, terrain_set), ally_target.id, "an unseen retained target enters the ascending scan without a replacement random draw")
+	var invalid_slot_rng := ScriptedRng.new([26811, 0])
+	assert_equal(rules.combat_flow._select_visible_monster_target(target_state, attacker, terrain_set, invalid_slot_rng), ally_target.id, "invalid Classic gap slot nine rerolls before the LOS fallback scan")
+	assert_equal(invalid_slot_rng.snapshot().draw_count, 2, "target-slot rejection preserves Castle's authored-slot draw order")
+
+	battlefield.set_terrain(Vector2i(41, 40), 2)
+	var shifted := rules.battlefield.probe_monster_step_toward(battlefield, terrain_set, "monster.los", Vector2i(50, 40), 10, ScriptedRng.new([0, 0, 0]))
+	assert_true(shifted.allowed, "Castle's bounded shift retry can find an alternate monster step around a blocked direct path")
+	assert_equal(shifted.destination, Vector2i(39, 41), "the retry preserves shift.c's exact randomized direction branch")
+	battlefield.set_terrain(Vector2i(41, 40), 4)
+	terrain_tiles[4].movement_time = 16
+	var retained_cost_values: Array[int] = []
+	retained_cost_values.resize(96)
+	retained_cost_values.fill(0)
+	var retained_cost := rules.battlefield.probe_monster_step_toward(battlefield, terrain_set, "monster.los", Vector2i(50, 40), 5, ScriptedRng.new(retained_cost_values))
+	assert_false(retained_cost.allowed, "Castle retains an unaffordable direct terrain cost across shifted probes instead of finding a cheaper alternate step")
+	assert_equal(retained_cost.movement_cost, 8, "the failed monster probe reports the source-retained maximum movement cost")
+	battlefield.set_terrain(Vector2i(41, 40), 1)
+
+	var character := _character("character.monster-path")
+	character.current_health = 30
+	character.maximum_health = 30
+	var definition := _monster_definition("monster.path", [MonsterAttackDefinition.new(1, 1)])
+	definition.movement_max = 12
+	var monster := MonsterState.new("monster.path.instance", definition.id, definition.name, 20, 20, 1)
+	var state := _state(character, monster, "battle.monster-path")
+	state.combat.battlefield.move_actor(monster.id, Vector2i(50, 45))
+	var values: Array[int] = []
+	values.resize(40)
+	values.fill(0)
+	var result := rules.combat_flow.submit_action(state, _content([definition]), character.id, &"defend", "", ScriptedRng.new(values))
+	var movement_events := result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved" and event.payload.get("actorId") == monster.id)
+	assert_equal(movement_events.size(), 4, "a monster takes repeated legal steps until its footprint reaches adjacency")
+	assert_equal(state.combat.battlefield.monster_position(monster.id), Vector2i(46, 45), "target-directed movement stops at the adjacent attack cell")
+	assert_equal(monster.target_id, character.id, "Castle's selected monster target persists beyond the activation")
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(restored, "persistent monster targeting survives the central save aggregate")
+	assert_equal(restored.combat.monster_by_id(monster.id).target_id, character.id, "restore retains the exact persistent tactical target")
+	var invalid_target_data := state.to_data()
+	invalid_target_data["combat"]["monsters"][0]["targetId"] = "character.missing-target"
+	assert_equal(GameState.from_data(JSON.parse_string(JSON.stringify(invalid_target_data))), null, "restore rejects a persistent monster target outside the complete combat aggregate")
+
+	var tangled_character := _character("character.permanent-tangle")
+	var tangled_monster := MonsterState.new("monster.permanent-tangle.instance", definition.id, definition.name, 20, 20, 1)
+	tangled_monster.conditions.set_value(ConditionRules.TANGLED, -1)
+	var tangled_state := _state(tangled_character, tangled_monster, "battle.permanent-tangle")
+	tangled_state.combat.battlefield.move_actor(tangled_monster.id, Vector2i(50, 45))
+	var tangled_result := rules.combat_flow.submit_action(tangled_state, _content([definition]), tangled_character.id, &"defend", "", ScriptedRng.new([0, 0]))
+	assert_true(tangled_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action_unavailable" and event.payload.get("reason") == "permanent-tangle-movement-unresolved"), "Castle's apparent permanent-Tangle movement increase remains explicit instead of becoming gameplay")
+
+	var helpless_character := _character("character.helpless-monster")
+	var helpless_monster := MonsterState.new("monster.helpless.instance", definition.id, definition.name, 20, 20, 1)
+	helpless_monster.conditions.set_value(ConditionRules.HELPLESS, -1)
+	var helpless_state := _state(helpless_character, helpless_monster, "battle.helpless-monster")
+	var helpless_rng := ScriptedRng.new([])
+	var helpless_result := rules.combat_flow.submit_action(helpless_state, _content([definition]), helpless_character.id, &"defend", "", helpless_rng)
+	assert_true(helpless_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action" and event.payload.get("action") == "incapacitated"), "Castle skips a helpless monster before its tactical decision")
+	assert_equal(helpless_rng.snapshot().draw_count, 0, "an incapacitated monster consumes no AI or target randomness")
+
+	var speedy_character := _character("character.speedy-monster")
+	var speedy_monster := MonsterState.new("monster.speedy.instance", definition.id, definition.name, 20, 20, 1)
+	speedy_monster.conditions.set_value(ConditionRules.SPEEDY, -1)
+	var speedy_state := _state(speedy_character, speedy_monster, "battle.speedy-monster")
+	var speedy_result := rules.combat_flow.submit_action(speedy_state, _content([definition]), speedy_character.id, &"defend", "", ScriptedRng.new([0, 0]))
+	assert_true(speedy_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action_unavailable" and event.payload.get("reason") == "monster-speedy-cadence-unresolved"), "monster Speedy stays explicit until Castle's bonus-row overflow is adjudicated")
 
 
 func _test_character_weapon_mode_toggle_and_restore() -> void:
@@ -241,6 +343,7 @@ func _test_monster_missile_does_not_impersonate_melee() -> void:
 	definition.missile_percent = 100
 	var monster := MonsterState.new("monster.missile-only.instance", definition.id, definition.name, 20, 20, 1)
 	var state := _state(character, monster, "battle.monster-missile")
+	state.combat.battlefield.move_actor(monster.id, Vector2i(50, 50))
 	var result := rules.combat_flow.submit_action(state, _content([definition]), character.id, &"defend", "", ScriptedRng.new([0, 0, 0, 0]))
 	assert_true(result.ok, "an unavailable tactical missile decision returns a committed combat step")
 	assert_equal(character.current_health, 20, "the missile branch no longer applies an ordinary melee attack row")
@@ -340,13 +443,16 @@ func _test_monster_attack_cursor_restore() -> void:
 	active_turn.attack_index = 1
 	active_turn.target_id = character.id
 	active_turn.physical_action_committed = true
+	active_turn.movement_remaining = 7
 
 	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	assert_not_null(restored, "a mid-sequence monster cursor survives central state restoration")
 	assert_equal(restored.combat.active_turn.attack_index, 1, "restore does not repeat the committed first attack row")
 	assert_true(restored.combat.active_turn.physical_action_committed, "restore retains that the active monster turn already issued a physical row")
+	assert_equal(restored.combat.active_turn.movement_remaining, 7, "restore retains the source-owned monster movement remainder")
 	var legacy_turn_data := restored.combat.active_turn.to_data()
 	legacy_turn_data.erase("physicalActionCommitted")
+	legacy_turn_data.erase("movementRemaining")
 	var legacy_turn := CombatTurnState.from_data(legacy_turn_data)
 	assert_not_null(legacy_turn, "pre-fumble save-v3 active turns remain readable")
 	assert_false(legacy_turn.physical_action_committed, "a legacy active turn does not fabricate a prior physical action")

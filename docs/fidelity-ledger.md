@@ -72,6 +72,26 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `_test_automatic_monster_death_macro` covers direct and VM macro continuation, CODE 119 revival, battle completion, ally selection, and central save boundaries. The differential case is `combat.death-macro-battlefield-occupancy`.
 - Legacy quirk: none. A live but nonoccupying combatant is an internally inconsistent state, not a useful authored dependency.
 
+## FD-COMBAT-008 — Tactical LOS independent of presentation delay
+
+- Affected rule: combat line of sight used by monster target selection and later projectile targeting.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/cansee.c`, `cansee`, lines 5–52, and `src/realmz_orig/combat.c`, `combat`, lines 388–480. `cansee` always performs 128 samples but divides the segment by `128 + delayspeed`.
+- Observable oracle behavior, determined from the complete source flow: for a ten-cell horizontal segment with blocking terrain two cells before the target, delay zero reaches the blocker while delay 64 covers only two thirds of the segment and returns visible. The synthetic source-observation fixture is `tests/fixtures/oracle/tactical-los-delay-correction.json`, SHA-256 `529ff0b65cdda0b84e01c32c8a9ac78150af4d3c40fcb25ff3c860e3e429440c`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: changing animation speed can change which target a monster chooses, where it moves, and eventually whether a projectile is legal. It also violates the engine boundary that presentation settings cannot mutate simulation outcomes.
+- Chosen 2.0 behavior: retain Castle's 128 center-offset samples and occupied-field-cell behavior, but use a fixed divisor of 128. The query reads only session-owned battlefield terrain and positions.
+- Tests: `_test_monster_los_targeting_and_movement` covers open LOS, a blocker near the target, target fallback, and automatic movement. The differential case is `combat.monster-targeting-los-and-movement`.
+- Legacy quirk: none. No authored campaign can observe or require the user's animation-delay preference as a rules input.
+
+## FD-COMBAT-009 — Bounded monster target fallback
+
+- Affected rule: the ascending combat-slot scan after a monster's first randomly selected target fails line of sight.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/combat.c`, `combat`, lines 388–480, and `src/realmz_orig/structs.h`, `struct monster`, lines 159–171. The scan uses 110 as a sentinel even after values exceed the populated `10 + nummon` slot range, then indexes `monster[temp - 10]` and may pass an invalid target to `movemonster`.
+- Observable oracle behavior, determined from the complete source flow: an all-unseen opposed roster can read uninitialized or out-of-range monster state instead of reaching a valid no-target result. The synthetic source-observation fixture is `tests/fixtures/oracle/monster-target-scan-correction.json`, SHA-256 `541e244260bbbb70a0652af7a82cb89a90f024498c2e93760272ccdcf7b4edf8`. This is `source-control-flow` evidence, not a Castle-runtime claim; deliberately invoking invalid native memory adds no useful fidelity evidence.
+- Player-facing problem: ordinary blocked LOS can produce undefined target identity, invalid movement, or a crash instead of a stable skipped activation.
+- Chosen 2.0 behavior: preserve the random-to-ascending transition and Classic party/gap/monster slot ordering, but scan only validated live slots. Invalid random slots remain source-ordered retries under a deterministic execution bound; no visible target ends movement explicitly.
+- Tests: `_test_monster_los_targeting_and_movement` covers the gap-nine reroll, unseen-random-target transition, draw count, and visible fallback target. The differential case is `combat.monster-target-scan-safety`.
+- Legacy quirk: none. Out-of-range native memory is not an authored scenario behavior.
+
 Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
 
 Each entry must include:

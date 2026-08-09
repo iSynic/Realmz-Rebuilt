@@ -16,6 +16,7 @@ var traitor: bool
 var icon_id: int = 0
 var surrender_percent: int = 0
 var weapon_id: String = ""
+var target_id: String = ""
 var conditions: ConditionSet
 var _saves: Array[int] = []
 var _saves_initialized: bool = false
@@ -76,6 +77,7 @@ func to_data() -> Dictionary:
 		"iconId": icon_id,
 		"surrenderPercent": surrender_percent,
 		"weaponId": weapon_id,
+		"targetId": target_id,
 		"conditions": conditions.to_data(),
 	}
 	if _saves_initialized:
@@ -111,6 +113,10 @@ static func from_data(data: Variant) -> MonsterState:
 	if result.surrender_percent == -100_000:
 		return null
 	result.weapon_id = data["weaponId"]
+	if data.has("targetId"):
+		if not data["targetId"] is String:
+			return null
+		result.target_id = data["targetId"]
 	if data.has("saves"):
 		var saves_data: Variant = data["saves"]
 		if not saves_data is Array or saves_data.size() != 8:

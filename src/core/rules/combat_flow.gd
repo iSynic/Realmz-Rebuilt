@@ -566,6 +566,11 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 			combat.advance_turn()
 			guard -= 1
 			continue
+		if monster.conditions.is_active(ConditionRules.HELPLESS):
+			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": "incapacitated"}))
+			combat.advance_turn()
+			guard -= 1
+			continue
 		var definition := content.monster_by_id(monster.definition_id)
 		if definition == null:
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": "unavailable_definition"}))
@@ -573,20 +578,28 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 			guard -= 1
 			continue
 		var active_turn := combat.begin_active_turn()
+		if active_turn.movement_remaining < 0:
+			active_turn.movement_remaining = _monster_movement_allowance(monster, definition)
+		if active_turn.target_id.is_empty() and active_turn.attack_index == 0:
+			active_turn.target_id = monster.target_id
 		if active_turn.action.is_empty():
-			active_turn.action = _rules.monsters.choose_action(monster, definition, rng)
+			active_turn.action = _rules.monsters.choose_action(monster, definition, rng, not _hostile_adjacent_ids(state, monster.id).is_empty())
 		var attack_result := MONSTER_ATTACK_COMPLETED
 		if active_turn.action == &"advance":
-			if _hostile_adjacent_ids(state, monster.id).is_empty():
-				events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "tactical-movement-not-implemented"}))
-				active_turn.attack_index = _monster_attack_limit(definition)
+			if monster.conditions.is_active(ConditionRules.SPEEDY):
+				events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "monster-speedy-cadence-unresolved"}))
+			elif monster.conditions.value(ConditionRules.TANGLED) < 0:
+				events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "permanent-tangle-movement-unresolved"}))
 			else:
-				while active_turn.attack_index < _monster_attack_limit(definition):
-					attack_result = _resolve_monster_attack_row(state, content, monster, definition, active_turn.attack_index, active_turn, rng, events)
-					if attack_result != MONSTER_ATTACK_COMPLETED:
-						return
+				attack_result = _process_monster_advance(state, content, monster, definition, active_turn, rng, events)
+				if attack_result != MONSTER_ATTACK_COMPLETED:
+					return
 		elif active_turn.action == &"missile":
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "tactical-position-unavailable"}))
+		elif active_turn.action == &"cast":
+			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "reason": "monster-spell-resolution-not-implemented"}))
+		elif active_turn.action == &"retreat":
+			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "monster-retreat-not-implemented"}))
 		else:
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": String(active_turn.action)}))
 		combat.advance_turn()
@@ -595,10 +608,67 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 		guard -= 1
 
 
+func _process_monster_advance(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	var terrain_set := _battle_terrain_set(content, combat.battlefield)
+	if terrain_set == null:
+		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "missing-battle-terrain"}))
+		active_turn.movement_remaining = 0
+		return MONSTER_ATTACK_COMPLETED
+	var operation_guard := 512
+	while operation_guard > 0 and active_turn.attack_index < _monster_attack_limit(definition):
+		var adjacent_ids := _hostile_adjacent_ids(state, monster.id)
+		if not adjacent_ids.is_empty():
+			if (active_turn.attack_index == 0 and not active_turn.physical_action_committed) or not adjacent_ids.has(active_turn.target_id):
+				active_turn.target_id = _select_adjacent_monster_target(state, monster, rng)
+				monster.target_id = active_turn.target_id
+			while active_turn.attack_index < _monster_attack_limit(definition):
+				var attack_result := _resolve_monster_attack_row(state, content, monster, definition, active_turn.attack_index, active_turn, rng, events)
+				if attack_result != MONSTER_ATTACK_COMPLETED:
+					return attack_result
+			return MONSTER_ATTACK_COMPLETED
+		if active_turn.movement_remaining <= 0:
+			return MONSTER_ATTACK_COMPLETED
+		if _monster_target_is_available(state, monster, active_turn.target_id) and not _rules.battlefield.has_line_of_sight(combat.battlefield, terrain_set, monster.id, active_turn.target_id):
+			active_turn.target_id = _scan_visible_monster_target(state, monster, terrain_set)
+			monster.target_id = active_turn.target_id
+		elif not _monster_target_is_available(state, monster, active_turn.target_id):
+			active_turn.target_id = _select_visible_monster_target(state, monster, terrain_set, rng)
+			monster.target_id = active_turn.target_id
+		if active_turn.target_id.is_empty():
+			active_turn.movement_remaining = 0
+			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "no-visible-target"}))
+			return MONSTER_ATTACK_COMPLETED
+		var target_coordinate := combat.battlefield.actor_position(active_turn.target_id)
+		var origin := combat.battlefield.actor_position(monster.id)
+		var probe := _rules.battlefield.probe_monster_step_toward(combat.battlefield, terrain_set, monster.id, target_coordinate, active_turn.movement_remaining, rng)
+		if not probe.allowed:
+			active_turn.target_id = ""
+			monster.target_id = ""
+			active_turn.movement_remaining = 0
+			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": String(probe.reason)}))
+			return MONSTER_ATTACK_COMPLETED
+		if not combat.battlefield.move_actor(monster.id, probe.destination):
+			active_turn.movement_remaining = 0
+			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "battlefield-move-failed"}))
+			return MONSTER_ATTACK_COMPLETED
+		active_turn.movement_remaining = maxi(0, active_turn.movement_remaining - probe.movement_cost)
+		events.append(DomainEvent.new(&"combatant_moved", {"actorId": monster.id, "from": [origin.x, origin.y], "to": [probe.destination.x, probe.destination.y], "cost": probe.movement_cost, "movementRemaining": active_turn.movement_remaining, "automatic": true}))
+		var terrain := terrain_set.tile_by_id(combat.battlefield.terrain_at(probe.destination))
+		if terrain != null and terrain.sound != 0:
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": terrain.sound, "waitForCompletion": false, "source": "classic-battle-movement"}))
+		operation_guard -= 1
+	if operation_guard == 0:
+		active_turn.movement_remaining = 0
+		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "monster-movement-budget-exhausted"}))
+	return MONSTER_ATTACK_COMPLETED
+
+
 func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, attack_index: int, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
 	if not _monster_target_is_available(state, monster, active_turn.target_id) or not _rules.battlefield.are_adjacent(combat.battlefield, monster.id, active_turn.target_id):
-		active_turn.target_id = _select_monster_target(state, monster, rng)
+		active_turn.target_id = _select_adjacent_monster_target(state, monster, rng)
+		monster.target_id = active_turn.target_id
 	if active_turn.target_id.is_empty():
 		active_turn.attack_index = _monster_attack_limit(definition)
 		return MONSTER_ATTACK_COMPLETED
@@ -631,6 +701,7 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 		_remove_defeated_position(combat, character_target.id, resolution.killed)
 		if resolution.killed:
 			active_turn.target_id = ""
+			monster.target_id = ""
 		return MONSTER_ATTACK_COMPLETED
 	var monster_target := combat.monster_by_id(active_turn.target_id)
 	if monster_target == null:
@@ -647,6 +718,7 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 	events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": monster_target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
 	if resolution.killed:
 		active_turn.target_id = ""
+		monster.target_id = ""
 		var death_macro_requested := _request_monster_death_macro(monster_target, target_definition, events)
 		_remove_defeated_position(combat, monster_target.id, not death_macro_requested)
 		if death_macro_requested:
@@ -656,7 +728,7 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 	return MONSTER_ATTACK_COMPLETED
 
 
-func _select_monster_target(state: GameState, monster: MonsterState, rng: RealmzRng) -> String:
+func _select_adjacent_monster_target(state: GameState, monster: MonsterState, rng: RealmzRng) -> String:
 	var target_ids: Array[String] = []
 	var adjacent_ids := _rules.battlefield.adjacent_actor_ids(state.combat.battlefield, monster.id)
 	for character: CharacterState in state.party.characters():
@@ -670,14 +742,80 @@ func _select_monster_target(state: GameState, monster: MonsterState, rng: Realmz
 	return target_ids[rng.draw_between(0, target_ids.size() - 1, &"combat.monster-target")]
 
 
+func _select_visible_monster_target(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition, rng: RealmzRng) -> String:
+	var slot_count := 10 + state.combat.monsters().size()
+	if not _has_available_monster_target(state, monster):
+		return ""
+	for _attempt: int in 4096:
+		var slot := rng.draw_between(0, slot_count - 1, &"combat.monster-target-slot")
+		var candidate_id := _monster_target_id_for_slot(state, monster, slot)
+		if candidate_id.is_empty():
+			continue
+		if _rules.battlefield.has_line_of_sight(state.combat.battlefield, terrain_set, monster.id, candidate_id):
+			return candidate_id
+		break
+	# Castle switches from random selection to ascending combat slots after its
+	# first unseen valid target. Bound the scan to real typed slots instead of
+	# reading uninitialized native monster entries through its 110 sentinel.
+	return _scan_visible_monster_target(state, monster, terrain_set)
+
+
+func _scan_visible_monster_target(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition) -> String:
+	var slot_count := 10 + state.combat.monsters().size()
+	for slot: int in slot_count:
+		var candidate_id := _monster_target_id_for_slot(state, monster, slot)
+		if not candidate_id.is_empty() and _rules.battlefield.has_line_of_sight(state.combat.battlefield, terrain_set, monster.id, candidate_id):
+			return candidate_id
+	return ""
+
+
+func _monster_target_id_for_slot(state: GameState, monster: MonsterState, slot: int) -> String:
+	if slot >= 0 and slot < 9:
+		var characters := state.party.characters()
+		if slot >= characters.size():
+			return ""
+		var character: CharacterState = characters[slot]
+		return character.id if _monster_target_is_available(state, monster, character.id) else ""
+	if slot < 10:
+		return ""
+	var monsters := state.combat.monsters()
+	var monster_index := slot - 10
+	if monster_index < 0 or monster_index >= monsters.size():
+		return ""
+	var candidate: MonsterState = monsters[monster_index]
+	return candidate.id if _monster_target_is_available(state, monster, candidate.id) else ""
+
+
+func _has_available_monster_target(state: GameState, monster: MonsterState) -> bool:
+	for character: CharacterState in state.party.characters():
+		if _monster_target_is_available(state, monster, character.id):
+			return true
+	for candidate: MonsterState in state.combat.monsters():
+		if _monster_target_is_available(state, monster, candidate.id):
+			return true
+	return false
+
+
 func _monster_target_is_available(state: GameState, monster: MonsterState, target_id: String) -> bool:
 	if target_id.is_empty():
 		return false
 	var character := state.party.character_by_id(target_id)
 	if character != null:
-		return character.current_health > 0 and character.traitor != monster.traitor
+		return character.current_health > 0 and character.traitor != monster.traitor and state.combat.battlefield.has_actor(character.id)
 	var candidate := state.combat.monster_by_id(target_id)
-	return candidate != null and candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor
+	return candidate != null and candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor and state.combat.battlefield.has_actor(candidate.id)
+
+
+static func _monster_movement_allowance(monster: MonsterState, definition: MonsterDefinition) -> int:
+	var movement := definition.movement_max
+	var tangled := monster.conditions.value(ConditionRules.TANGLED)
+	if tangled > 0:
+		movement -= tangled
+	if monster.conditions.is_active(ConditionRules.SLOW):
+		movement = int(float(movement) / 2.0)
+	if monster.conditions.is_active(ConditionRules.SPEEDY):
+		movement *= 2
+	return maxi(0, movement)
 
 
 static func _monster_attack_limit(definition: MonsterDefinition) -> int:

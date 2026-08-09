@@ -870,6 +870,15 @@ func _test_combat_magic_and_monsters() -> void:
 	assert_equal(random_weapon_rng.snapshot().draw_count, 6, "random monster weapons consume one session-owned draw after construction variation")
 	definition.missile_percent = 100
 	assert_equal(rules.monsters.choose_action(built, definition, ScriptedRng.new([0])), &"missile", "monster AI considers missile behavior before casting")
+	definition.cast_percent = 100
+	var adjacent_choice_rng := ScriptedRng.new([0, 0])
+	assert_equal(rules.monsters.choose_action(built, definition, adjacent_choice_rng, true), &"cast", "an adjacent enemy makes Castle fall through a successful missile roll into casting")
+	assert_equal(adjacent_choice_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["monster.ai.missile", "monster.ai.cast"], "adjacent missile fallback preserves Castle's two-draw action order")
+	built.conditions.set_value(ConditionRules.STUPID, -1)
+	var blocked_cast_rng := ScriptedRng.new([0, 0])
+	assert_equal(rules.monsters.choose_action(built, definition, blocked_cast_rng, true), &"advance", "a condition-blocked cast falls through to physical action")
+	assert_equal(blocked_cast_rng.snapshot().draw_count, 2, "Castle consumes the cast-choice roll before checking the blocking condition")
+	built.conditions.set_value(ConditionRules.STUPID, 0)
 	built.current_health = 1
 	definition.run_percent = 100
 	definition.surrender_percent = 50
