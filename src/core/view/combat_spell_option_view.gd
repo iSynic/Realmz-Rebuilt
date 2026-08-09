@@ -9,9 +9,13 @@ var target_id: String
 var target_name: String
 var target_current_health: int
 var target_maximum_health: int
+var target_mode: StringName
+var area_shape: int
+var default_target_coordinate: Vector2i
+var area_offsets: Array[Vector2i]
 
 
-func _init(spell: SpellDefinition, power_level: int, target: MonsterState = null, automatic_target_label: String = "") -> void:
+func _init(spell: SpellDefinition, power_level: int, target: MonsterState = null, automatic_target_label: String = "", targeting_mode: StringName = &"combatant", shape: int = 0, default_coordinate: Vector2i = Vector2i(-100_000, -100_000), offsets: Array[Vector2i] = []) -> void:
 	spell_id = spell.id
 	spell_name = spell.name
 	power = power_level
@@ -20,3 +24,7 @@ func _init(spell: SpellDefinition, power_level: int, target: MonsterState = null
 	target_name = target.name if target != null else automatic_target_label
 	target_current_health = target.current_health if target != null else -1
 	target_maximum_health = target.maximum_health if target != null else -1
+	target_mode = targeting_mode
+	area_shape = shape
+	default_target_coordinate = default_coordinate
+	area_offsets = offsets.duplicate()

@@ -1514,7 +1514,7 @@
         "observation": "checkforenemy scans numeric party then monster slots. Code zero clears and attacks with each non-helpless guarding enemy. Code one snapshots the original hostile perimeter; code two compares that fixed trace with destination occupancy, suppresses the queue only when the mover is Invisible, clears guard state even though withdrawal does not require it, sets behind true, and stops when the mover dies. A guarding enemy being left can therefore attack once before the step and once during withdrawal. Character reactions use attack; monster reactions use attack row zero. The active monster initializes Guard at each activation, clears it on physical attack and successful spell/missile execution, and checks guards before movement and after each step. Battlefield flight also clears monster Guard. The player Guard command draws one-based Rand(100), selecting asynchronous sound 10121 only for rolls below fifty, and Finish clears movement and Guard. Character Guard otherwise persists through later ordinary actions. face and lr are rendering fields only.",
         "unresolved": [
           "Castle enters its movement submode and checks guards before the player supplies or cancels a direction. Realmz 2.0 currently submits one already-selected legal destination, so blocked or cancelled movement cannot reproduce that pre-direction reaction without a separate typed begin-movement interaction.",
-          "Retreating-monster withdrawal, possessed-character auto-guard, friendly swaps, spell-field collision, and successful monster spell/missile Guard clearing remain separate tactical continuations.",
+          "Retreating-monster withdrawal, possessed-character auto-guard, friendly swaps, spell-field collision, target-everybody Guard omission, and nonordinary spell/projectile Guard semantics remain separate tactical continuations. Later ordinary missile and spell cases implement successful Guard clearing.",
           "getup.c reads monster[q[up]].guarding even though monster initiative IDs start at ten; this apparent out-of-range status-display bug is not reproduced."
         ]
       },
@@ -1834,6 +1834,57 @@
       "decision": "runtime-defect",
       "availability": "implemented",
       "status": "player-ordinary-target-types-9-10-12-implemented-monster-group-source-anomaly-disabled"
+    },
+    {
+      "id": "combat.character-spatial-area-spells",
+      "domain": "combat",
+      "claim": "A loyal player character's ordinary target-type 3 or 4 spell selects one battlefield center, derives a fixed-size or power-sized Data AD mask, resolves intersecting participants in party-slot then monster-slot order, and shares one cast cost, duration roll, and base-damage roll across their independent defenses.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake decodes all eighteen Data AD masks and distinguishes fixed target type 3 from power-sized target type 4. Its spell-node targeting and reflection implementation are donor leads, not proof of Castle's transaction order.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_spell_area_patterns.gd", "symbol": "static func pattern(shape: int)" },
+          { "path": "src/scripts/classic_runtime/classic_spell_override.gd", "symbol": "func get_aoe(power: int, _caster)" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "Plague power selects the exact Data AD mask" },
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "Data AD hollow field preserves all source cells" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/main.c", "symbol": "fread(&spellarea, sizeof spellarea, 1, fp)" },
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "if (spellinfo.targettype > 1)" },
+          { "path": "src/realmz_orig/cast.c", "symbol": "void cast(short targetnum, short who)" },
+          { "path": "src/realmz_orig/spelltargets.c", "symbol": "short spelltargets(short targetnum, short who, short mode, short noreflect)" },
+          { "path": "src/realmz_orig/resolvespell.c", "symbol": "void resolvespell(void)" }
+        ],
+        "authoredInputs": ["target type 3 or 4", "fixed size or cast power", "Data AD mask", "battlefield center", "range and LOS", "participant footprints", "magic resistance, reflection, saves, protection, and death macros"],
+        "observation": "Castle selects one center for target types above one. spelltargets uses spellinfo.size for type 3 and powerlevel for type 4, adds any rotation index, scans the chosen 7x7 Data AD mask, deduplicates occupied field IDs into track, excludes monsters above 100 magic resistance, and calls resolvespell once. resolvespell rolls duration and base damage once before iterating party then monster slots. By contrast target type 0 allows powerlevel independent selections and cast calls spelltargets/resolvespell separately for each selection.",
+        "unresolved": ["Target type 0 is not an area transaction: each selected target rerolls resolution and remains a separate pass.", "Spell reflection consumes targeting-stage draws and can redirect an area to the caster; it remains disabled rather than approximated.", "Rotatable masks add a zero-through-three index to the authored shape instead of applying a generic transform and need an explicit orientation UI.", "Queued area fields and collision ticks remain separate persistent combat state.", "Castle can index a seven-cell mask beyond a battlefield edge; Realmz 2.0 rejects such a center instead of reproducing unsafe memory access."]
+      },
+      "providence": {
+        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "sources": [
+          { "path": "src/editor/rulesCatalog.ts", "symbol": "export const SPELL_TARGET_TYPES" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"targetType\": spell.target_type" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"size\": spell.size" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves targetType, size, canRotate, range, queueIcon, and all ordinary spell fields. Data AD is fixed engine rules data, so packages do not duplicate its native bytes or masks."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _cast_character_area_spell(" },
+        "expectedTrace": ["admit one typed battlefield center", "derive Data AD shape from fixed size or power", "reject an out-of-bounds complete mask", "validate coordinate range and LOS", "deduplicate intersecting footprints", "exclude over-100 monster magic resistance during targeting", "fail transactionally when unresolved reflection is present", "spend spell points once", "roll duration and base damage once", "resolve party then monster defenses", "queue defeated monster macros in source order", "spend two half-attacks and twelve movement once"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_fixed_area_spell()" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "player-ordinary-target-types-3-4-implemented-type-0-reflection-rotation-and-fields-explicit"
     }
   ]
 }

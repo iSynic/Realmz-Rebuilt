@@ -17,6 +17,7 @@ func run() -> void:
 	_test_source_backed_projectile_fire()
 	_test_source_backed_character_spell_casting()
 	_test_character_automatic_group_spell()
+	_test_character_fixed_area_spell()
 	_test_spell_death_macro_queue_and_restore()
 	_test_source_backed_monster_spell_casting()
 	_test_charm_resistance_continues_after_failed_opposed_save()
@@ -971,6 +972,110 @@ func _test_character_automatic_group_spell() -> void:
 	assert_equal(macro_requests.size(), 1, "only the first queued group-spell death macro is dispatched")
 	assert_equal(macro_requests[0].payload.get("combatantId"), first.id, "the queue head is the first defeated native monster slot")
 	assert_equal(rules.combat_flow._monster_spell_unavailable_reason(spell), "monster-group-spell-power-resource-anomaly", "monster group casting stays explicitly disabled instead of reproducing Castle's stale power and missing resource accounting")
+
+
+func _test_character_fixed_area_spell() -> void:
+	var rules := RealmzRules.new()
+	var pattern_counts: Array[int] = []
+	for shape: int in range(1, 19):
+		pattern_counts.append(rules.spell_areas.pattern(shape).size())
+	assert_equal(pattern_counts, [1, 2, 5, 9, 13, 25, 37, 8, 21, 14, 13, 14, 13, 28, 1, 2, 2, 4], "the fixed rules preserve all eighteen source-ordered Data AD mask sizes")
+	assert_equal(rules.spell_areas.pattern(3), [Vector2i(0, -1), Vector2i(-1, 0), Vector2i.ZERO, Vector2i(1, 0), Vector2i(0, 1)], "Data AD shape three preserves its row-major cross orientation")
+	assert_equal(rules.spell_areas.pattern(11), [Vector2i(3, -3), Vector2i(2, -2), Vector2i(3, -2), Vector2i(1, -1), Vector2i(2, -1), Vector2i.ZERO, Vector2i(1, 0), Vector2i(-1, 1), Vector2i(0, 1), Vector2i(-2, 2), Vector2i(-1, 2), Vector2i(-3, 3), Vector2i(-2, 3)], "Data AD shape eleven preserves its asymmetric diagonal rather than inventing a geometric primitive")
+	assert_false(rules.spell_areas.pattern(14).has(Vector2i.ZERO), "Data AD shape fourteen preserves its hollow center")
+	assert_equal(rules.spell_areas.pattern(18), [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(-1, 0), Vector2i.ZERO], "Data AD shape eighteen preserves its source-oriented two-by-two footprint")
+	var spell := SpellDefinition.new("spell.fixed-area", 1306, "Fixed Area")
+	spell.in_combat = true
+	spell.target_type = 3
+	spell.size = 3
+	spell.spell_class = 1
+	spell.damage_type = 1
+	spell.cannot = 1
+	spell.cost = 2
+	spell.range_min = 10
+	spell.damage_min = 4
+	spell.damage_max = 4
+	spell.power_damage_min = 2
+	spell.power_damage_max = 2
+	spell.duration_min = 1
+	spell.duration_max = 1
+	var caster := _character("character.area.caster")
+	caster.set_known_spells([spell.id])
+	caster.maximum_spell_attacks = 2
+	caster.maximum_spell_points = 20
+	caster.spell_points = 20
+	caster.normal_attacks = 4
+	var ally := _character("character.area.ally")
+	ally.current_health = 20
+	ally.maximum_health = 20
+	var first_definition := _monster_definition("monster.area.first", [])
+	first_definition.death_macro = 323
+	var immune_definition := _monster_definition("monster.area.immune", [])
+	var first := MonsterState.new("monster.area.first.instance", first_definition.id, "First", 6, 6, 1)
+	var immune := MonsterState.new("monster.area.immune.instance", immune_definition.id, "Immune", 12, 12, 1, 1, 0, 101)
+	var battlefield := _blank_battlefield()
+	battlefield.place_character(caster.id, Vector2i(40, 45))
+	battlefield.place_character(ally.id, Vector2i(45, 44))
+	battlefield.place_monster(first.id, Vector2i(44, 45), 0)
+	battlefield.place_monster(immune.id, Vector2i(46, 45), 0)
+	var state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [caster, ally]), RealmzClock.new())
+	state.combat = CombatState.new("battle.area", [first, immune], 0, battlefield)
+	state.combat.set_turn_order([caster.id, ally.id, first.id, immune.id])
+	var content := _content([first_definition, immune_definition], [], [], [], [spell])
+	var options := rules.combat_flow.character_spell_options(state, content, caster.id)
+	assert_true(options.any(func(option: CombatSpellOptionView) -> bool: return option.spell_id == spell.id and option.target_mode == &"area" and option.area_shape == 3 and option.area_offsets == rules.spell_areas.pattern(3)), "fixed area spells expose one typed center-selection descriptor instead of fabricating a combatant target")
+	var empty_caster := _character("character.area.empty-caster")
+	empty_caster.set_known_spells([spell.id])
+	empty_caster.maximum_spell_attacks = 2
+	empty_caster.maximum_spell_points = 20
+	empty_caster.spell_points = 20
+	empty_caster.normal_attacks = 4
+	var far_definition := _monster_definition("monster.area.far", [])
+	var far_monster := MonsterState.new("monster.area.far.instance", far_definition.id, "Far", 12, 12, 1)
+	var empty_battlefield := _blank_battlefield()
+	empty_battlefield.place_character(empty_caster.id, Vector2i(40, 45))
+	empty_battlefield.place_monster(far_monster.id, Vector2i(80, 80), 0)
+	var empty_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [empty_caster]), RealmzClock.new())
+	empty_state.combat = CombatState.new("battle.area.empty", [far_monster], 0, empty_battlefield)
+	empty_state.combat.set_turn_order([empty_caster.id, far_monster.id])
+	var empty_rng := ScriptedRng.new([0, 0, 0])
+	var empty_cast := rules.combat_flow.cast_spell(empty_state, _content([far_definition], [], [], [], [spell]), empty_caster.id, "", spell.id, 1, empty_rng, Vector2i(40, 40))
+	assert_true(empty_cast.ok, "a legal empty-space center still commits the one Classic area transaction")
+	assert_equal([empty_caster.spell_points, empty_rng.snapshot().draw_count], [18, 3], "an empty area still spends once and rolls shared duration plus base and power damage")
+	assert_equal(empty_cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved").size(), 0, "an empty area does not fabricate a target event")
+	var missing_center := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 1, ScriptedRng.new([]))
+	assert_false(missing_center.ok, "area execution requires an explicit battlefield center")
+	assert_equal([missing_center.error_code, caster.spell_points], [&"area_target_required", 20], "missing area coordinates fail before resource mutation")
+	var edge_probe := rules.combat_flow.probe_character_spell_cast(state, content, caster.id, "", spell.id, 1, Vector2i.ZERO)
+	assert_equal(edge_probe.reason, &"spell_area_outside_battlefield", "an unsafe Castle edge mask is rejected rather than indexing outside the battlefield")
+	spell.target_type = 0
+	var multi_probe := rules.combat_flow.probe_character_spell_cast(state, content, caster.id, "", spell.id, 1)
+	assert_equal(multi_probe.reason, &"multi_target_spell_sequence_unresolved", "target type zero remains separate because Castle rerolls once per independently selected target")
+	spell.target_type = 3
+	spell.queue_icon = 1
+	assert_equal(rules.combat_flow.probe_character_spell_cast(state, content, caster.id, "", spell.id, 1).reason, &"queued_spell_field_unresolved", "a persistent area field stays disabled instead of resolving damage while silently omitting its queued collision state")
+	assert_equal(rules.combat_flow._monster_spell_unavailable_reason(spell), "monster-queued-spell-field-unresolved", "monster casting cannot silently omit the same queued field state")
+	spell.queue_icon = 0
+	spell.can_rotate = true
+	assert_equal(rules.combat_flow.probe_character_spell_cast(state, content, caster.id, "", spell.id, 1).reason, &"rotatable_area_spell_unresolved", "rotatable spells stay disabled until their authored adjacent-mask orientation contract is implemented")
+	spell.can_rotate = false
+	ally.conditions.set_value(ConditionRules.REFLECTING_SPELLS, 1)
+	var reflection_rng := ScriptedRng.new([])
+	var reflected := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 1, reflection_rng, Vector2i(45, 45))
+	assert_equal([reflected.error_code, reflection_rng.snapshot().draw_count, caster.spell_points], [&"area_spell_reflection_unresolved", 0, 20], "unimplemented reflection fails transactionally before Castle's targeting draw or cast cost")
+	ally.conditions.set_value(ConditionRules.REFLECTING_SPELLS, 0)
+	var cast := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 1, ScriptedRng.new([0, 0, 0, 32_767, 32_767, 32_767, 32_767]), Vector2i(45, 45))
+	assert_true(cast.ok, "a fixed area resolves as one committed Classic cast")
+	assert_equal(caster.spell_points, 18, "the fixed area charges its caster once")
+	var resolved := cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")
+	assert_equal(resolved.map(func(event: DomainEvent) -> Variant: return event.payload.get("targetId")), [ally.id, first.id], "area occupants resolve in party-slot then monster-slot order while over-100 monster resistance is removed during targeting")
+	assert_equal(resolved.map(func(event: DomainEvent) -> Variant: return event.payload.get("damage")), [6, 6], "one area duration/base-damage roll feeds each selected target's independent defenses")
+	assert_equal([ally.current_health, first.current_health, immune.current_health], [14, 0, 12], "the Data AD mask affects intersecting footprints and skips source-immune monsters")
+	assert_equal(resolved[0].payload.get("areaCenter"), [45, 45], "area events retain the selected battlefield center")
+	assert_equal(resolved[0].payload.get("areaShape"), 3, "area events retain the resolved Data AD shape")
+	assert_equal(state.combat.spell_death_macro_queue(), [first.id], "area deaths enter the existing source-ordered spell macro queue")
+	spell.target_type = 4
+	assert_equal(rules.spell_areas.shape_for(spell, 5), 5, "target type four derives its Data AD shape from cast power rather than the fixed size field")
 
 
 func _test_source_backed_monster_spell_casting() -> void:

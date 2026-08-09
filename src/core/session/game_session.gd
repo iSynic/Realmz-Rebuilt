@@ -274,7 +274,7 @@ func _use_item(instance_id: String) -> SessionStep:
 
 
 func _cast_spell(intent: PlayerIntent) -> SessionStep:
-	var result := _rules.combat_flow.cast_spell(_state, _content, intent.actor_id, intent.secondary_target_id, intent.target_id, intent.power_level, _rng)
+	var result := _rules.combat_flow.cast_spell(_state, _content, intent.actor_id, intent.secondary_target_id, intent.target_id, intent.power_level, _rng, intent.target_coordinate, intent.rotation)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():

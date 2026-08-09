@@ -41,6 +41,8 @@ var secondary_target_id: String = ""
 var actor_id: String = ""
 var action: StringName = &""
 var power_level: int = 1
+var target_coordinate: Vector2i = Vector2i(-100_000, -100_000)
+var rotation: int = 0
 var party_members: Array[CharacterCreationSpec] = []
 var quantity: int = 1
 var amount: int = 0
@@ -77,6 +79,13 @@ static func cast_spell(spell_id: String, caster_id: String = "", target_combatan
 	intent.actor_id = caster_id
 	intent.secondary_target_id = target_combatant_id
 	intent.power_level = power
+	return intent
+
+
+static func cast_spell_at(spell_id: String, caster_id: String, coordinate: Vector2i, power: int = 1, area_rotation: int = 0) -> PlayerIntent:
+	var intent := cast_spell(spell_id, caster_id, "", power)
+	intent.target_coordinate = coordinate
+	intent.rotation = area_rotation
 	return intent
 
 

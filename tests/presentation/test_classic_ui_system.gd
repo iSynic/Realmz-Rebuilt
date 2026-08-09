@@ -31,6 +31,7 @@ func _test_battle_weapon_mode_component() -> void:
 		"spellCasts": [
 			{"spellId": "spell.flame", "spellName": "Flame", "power": 2, "cost": 4, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5},
 			{"spellId": "spell.wave", "spellName": "Wave", "power": 1, "cost": 3, "targetId": "", "targetName": "Everybody", "targetCurrentHealth": -1, "targetMaximumHealth": -1},
+			{"spellId": "spell.burst", "spellName": "Burst", "power": 3, "cost": 6, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 3, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]]},
 		],
 		"movement": [
 			{"direction": [0, -1], "destination": [45, 44], "cost": 1, "enabled": true, "reason": ""},
@@ -83,12 +84,20 @@ func _test_battle_weapon_mode_component() -> void:
 	move_button.pressed.emit()
 	edge_button.pressed.emit()
 	cast_button.pressed.emit()
+	spell_picker.select(2)
+	spell_picker.item_selected.emit(2)
+	var coordinate_inputs := component.find_children("*", "SpinBox", true, false)
+	assert_equal(coordinate_inputs.size(), 2, "area spell presentation exposes one typed battlefield coordinate pair")
+	(coordinate_inputs[0] as SpinBox).value = 47
+	(coordinate_inputs[1] as SpinBox).value = 43
+	cast_button.pressed.emit()
 	assert_equal(submitted, [
 		{"actorId": "character.archer", "action": "switch_weapon", "targetId": ""},
 		{"actorId": "character.archer", "action": "move", "targetId": "", "destination": [45, 44]},
 		{"actorId": "character.archer", "action": "retreat_edge", "targetId": "", "destination": [1, 45], "forced": false},
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "monster.target", "spellId": "spell.flame", "power": 2},
-	], "the presenter emits typed switch, movement, and source-probed spell responses")
+		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.burst", "power": 3, "targetCoordinate": [47, 43], "rotation": 0},
+	], "the presenter emits typed switch, movement, combatant spell, and battlefield-coordinate spell responses")
 	component.free()
 
 

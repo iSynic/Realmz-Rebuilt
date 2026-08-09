@@ -36,16 +36,32 @@ func classic_range(battlefield: BattlefieldState, first_actor_id: String, second
 	return floori(Vector2(battlefield.actor_position(second_actor_id) - battlefield.actor_position(first_actor_id)).length())
 
 
+func classic_coordinate_range(battlefield: BattlefieldState, actor_id: String, destination: Vector2i) -> int:
+	if battlefield == null or not battlefield.has_actor(actor_id) or not BattlefieldState.contains(destination):
+		return -1
+	return floori(Vector2(destination - battlefield.actor_position(actor_id)).length())
+
+
 func projectile_target_is_valid(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, first_actor_id: String, second_actor_id: String, maximum_range: int, require_line_of_sight: bool = true) -> bool:
 	var distance := classic_range(battlefield, first_actor_id, second_actor_id)
 	return distance >= 0 and distance <= maximum_range and (not require_line_of_sight or has_line_of_sight(battlefield, terrain_set, first_actor_id, second_actor_id))
 
 
+func coordinate_target_is_valid(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, destination: Vector2i, maximum_range: int, require_line_of_sight: bool = true) -> bool:
+	var distance := classic_coordinate_range(battlefield, actor_id, destination)
+	return distance >= 0 and distance <= maximum_range and (not require_line_of_sight or has_line_of_sight_to_coordinate(battlefield, terrain_set, actor_id, destination))
+
+
 func has_line_of_sight(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, to_actor_id: String) -> bool:
 	if battlefield == null or terrain_set == null or not battlefield.has_actor(from_actor_id) or not battlefield.has_actor(to_actor_id):
 		return false
+	return has_line_of_sight_to_coordinate(battlefield, terrain_set, from_actor_id, battlefield.actor_position(to_actor_id))
+
+
+func has_line_of_sight_to_coordinate(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, destination: Vector2i) -> bool:
+	if battlefield == null or terrain_set == null or not battlefield.has_actor(from_actor_id) or not BattlefieldState.contains(destination):
+		return false
 	var origin := battlefield.actor_position(from_actor_id)
-	var destination := battlefield.actor_position(to_actor_id)
 	var part := Vector2(origin * 32)
 	var step := Vector2(destination - origin) * 32.0 / 128.0
 	# FD-COMBAT-008 retains Castle's 128 center-offset samples but removes the

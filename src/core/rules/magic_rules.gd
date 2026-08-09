@@ -20,8 +20,8 @@ func resolve_character_spell(caster: CharacterState, target: MonsterState, targe
 	return _resolve_character_spell_monster_target(caster, target, target_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng)
 
 
-func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
-	if caster == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or character_targets.is_empty() and monster_targets.is_empty():
+func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false) -> GroupSpellResolution:
+	if caster == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or not allow_empty and character_targets.is_empty() and monster_targets.is_empty():
 		return null
 	for target: CharacterState in character_targets:
 		if target == null:

@@ -38,8 +38,10 @@ func build(request: InteractionRequest) -> void:
 	if action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty():
 		var spell_picker := OptionButton.new()
 		spell_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var has_area_spell := false
 		for option: Variant in spell_casts:
 			if option is Dictionary:
+				has_area_spell = has_area_spell or option.get("targetMode", "combatant") == "area"
 				var target_health := int(option.get("targetCurrentHealth", -1))
 				var target_label := String(option.get("targetName", "Target"))
 				var label := "%s • P%d • %d SP → %s" % [option.get("spellName", "Spell"), int(option.get("power", 1)), int(option.get("cost", 0)), target_label]
@@ -48,13 +50,43 @@ func build(request: InteractionRequest) -> void:
 				spell_picker.add_item(label)
 				spell_picker.set_item_metadata(spell_picker.item_count - 1, option.duplicate(true))
 		add_child(spell_picker)
+		var target_x := SpinBox.new()
+		var target_y := SpinBox.new()
+		if has_area_spell:
+			add_hint("Area center uses validated battlefield coordinates. A viewport pointer/highlight is still presentation work.")
+			var coordinate_row := HBoxContainer.new()
+			target_x.min_value = 0
+			target_x.max_value = BattlefieldState.SIZE - 1
+			target_x.prefix = "X "
+			target_y.min_value = 0
+			target_y.max_value = BattlefieldState.SIZE - 1
+			target_y.prefix = "Y "
+			coordinate_row.add_child(target_x)
+			coordinate_row.add_child(target_y)
+			add_child(coordinate_row)
+			var update_area_controls := func(index: int) -> void:
+				var selected: Variant = spell_picker.get_item_metadata(index)
+				var area_selected: bool = selected is Dictionary and selected.get("targetMode", "combatant") == "area"
+				target_x.editable = area_selected
+				target_y.editable = area_selected
+				if area_selected:
+					var coordinate: Variant = selected.get("defaultTargetCoordinate", [])
+					if coordinate is Array and coordinate.size() == 2:
+						target_x.value = int(coordinate[0])
+						target_y.value = int(coordinate[1])
+			spell_picker.item_selected.connect(update_area_controls)
+			update_area_controls.call(spell_picker.selected)
 		var cast_button := Button.new()
 		cast_button.text = "Cast selected spell"
 		cast_button.disabled = spell_picker.item_count == 0
 		cast_button.pressed.connect(func() -> void:
 			var option: Variant = spell_picker.get_selected_metadata()
 			if option is Dictionary:
-				payload_submitted.emit({"actorId": actor_id, "action": "cast_spell", "targetId": String(option.get("targetId", "")), "spellId": String(option.get("spellId", "")), "power": int(option.get("power", 1))})
+				var payload := {"actorId": actor_id, "action": "cast_spell", "targetId": String(option.get("targetId", "")), "spellId": String(option.get("spellId", "")), "power": int(option.get("power", 1))}
+				if option.get("targetMode", "combatant") == "area":
+					payload["targetCoordinate"] = [int(target_x.value), int(target_y.value)]
+					payload["rotation"] = 0
+				payload_submitted.emit(payload)
 		)
 		add_child(cast_button)
 	elif not String(request.payload.get("spellCastReason", "")).is_empty():
