@@ -250,8 +250,8 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 					var caste := content.caste_by_id(character_target.caste_id)
 					var character_resolution := _rules.combat.resolve_monster_attack(monster, definition, 0, character_target, race, caste, rng)
 					var age_update_requested := false
-					if character_resolution.special_code == 17:
-						events.append(DomainEvent.new(&"combat_monster_special_resolved", {"actorId": monster.id, "targetId": character_target.id, "specialCode": character_resolution.special_code, "potency": character_resolution.special_potency, "saveChance": character_resolution.special_save_chance, "saveRoll": character_resolution.special_save_roll, "saved": character_resolution.special_saved, "applied": character_resolution.special_applied, "ageDays": character_resolution.special_age_days, "source": "classic"}))
+					if character_resolution.special_handled:
+						_append_monster_special_events(events, monster.id, character_target.id, &"character", character_resolution)
 						if character_resolution.aging != null and character_resolution.aging.changed_group():
 							events.append(DomainEvent.new(&"character_age_changed", character_resolution.aging.event_payload(character_target, race)))
 							age_update_requested = true
@@ -261,10 +261,12 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 					events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": character_target.id, "action": String(choice), "hit": character_resolution.hit, "damage": character_resolution.damage, "defeated": character_resolution.killed, "chance": character_resolution.chance, "roll": character_resolution.roll}))
 				else:
 					var monster_target := monster_targets[target_index - character_targets.size()]
-					var monster_resolution := _rules.combat.resolve_monster_attack_monster(monster, definition, 0, monster_target, rng)
+					var target_definition := content.monster_by_id(monster_target.definition_id)
+					var monster_resolution := _rules.combat.resolve_monster_attack_monster(monster, definition, 0, monster_target, target_definition, rng)
+					if monster_resolution.special_handled:
+						_append_monster_special_events(events, monster.id, monster_target.id, &"monster", monster_resolution)
 					events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": monster_target.id, "action": String(choice), "hit": monster_resolution.hit, "damage": monster_resolution.damage, "defeated": monster_resolution.killed, "chance": monster_resolution.chance, "roll": monster_resolution.roll}))
 					if monster_resolution.killed:
-						var target_definition := content.monster_by_id(monster_target.definition_id)
 						if _request_monster_death_macro(monster_target, target_definition, events):
 							combat.advance_turn()
 							return
@@ -274,6 +276,31 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 		if _finish_if_resolved(state, content, events):
 			break
 		guard -= 1
+
+
+func _append_monster_special_events(events: Array[DomainEvent], actor_id: String, target_id: String, target_kind: StringName, resolution: AttackResolution) -> void:
+	events.append(DomainEvent.new(&"combat_monster_special_resolved", {
+		"actorId": actor_id,
+		"targetId": target_id,
+		"targetKind": String(target_kind),
+		"specialCode": resolution.special_code,
+		"potency": resolution.special_potency,
+		"saveIndex": resolution.special_save_index,
+		"saveChance": resolution.special_save_chance,
+		"saveRoll": resolution.special_save_roll,
+		"saved": resolution.special_saved,
+		"conditionIndex": resolution.special_condition_index,
+		"conditionBefore": resolution.special_condition_before,
+		"conditionAfter": resolution.special_condition_after,
+		"blocked": resolution.special_blocked,
+		"blockReason": String(resolution.special_block_reason),
+		"applied": resolution.special_applied,
+		"ageDays": resolution.special_age_days,
+		"soundId": resolution.special_sound_id,
+		"source": "classic",
+	}))
+	if resolution.special_announced and resolution.special_sound_id != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": resolution.special_sound_id, "waitForCompletion": false, "source": "classic-monster-status"}))
 
 
 func _request_monster_death_macro(monster: MonsterState, definition: MonsterDefinition, events: Array[DomainEvent]) -> bool:

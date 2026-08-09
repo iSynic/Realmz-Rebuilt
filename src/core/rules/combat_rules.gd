@@ -76,7 +76,11 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 		resolution.special_code = attack.special
 		var potency_low := int(float(attacker.hit_dice) / 2.0)
 		resolution.special_potency = maxi(1, rng.draw_between(potency_low, attacker.hit_dice, &"combat.monster-attack.special-potency"))
-	if attack.special == 17:
+	if _is_status_special(attack.special):
+		_apply_party_status_special(resolution, defender, rng)
+	elif attack.special == 17:
+		resolution.special_handled = true
+		resolution.special_save_index = 7
 		resolution.special_save_chance = defender.save_value(7)
 		resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
 		resolution.special_saved = resolution.special_save_roll <= resolution.special_save_chance
@@ -93,8 +97,8 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 	return resolution
 
 
-func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: MonsterState, rng: RealmzRng) -> AttackResolution:
-	if attacker == null or attacker_definition == null or defender == null or rng == null:
+func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng) -> AttackResolution:
+	if attacker == null or attacker_definition == null or defender == null or defender_definition == null or rng == null:
 		return null
 	var chance := 50 + 5 * attacker.hit_dice
 	chance += _attacker_condition_modifier(attacker.conditions)
@@ -122,9 +126,127 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 		resolution.special_code = attack.special
 		var potency_low := int(float(attacker.hit_dice) / 2.0)
 		resolution.special_potency = maxi(1, rng.draw_between(potency_low, attacker.hit_dice, &"combat.monster-attack.special-potency"))
+		if _is_status_special(attack.special):
+			resolution.special_handled = true
+			resolution.special_save_index = _status_save_index(attack.special)
+			resolution.special_condition_index = _status_condition_index(attack.special)
+			resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
+			resolution.special_condition_after = resolution.special_condition_before
+		elif attack.special == 17:
+			resolution.special_handled = true
+		if defender.magic_resistance > 100:
+			resolution.special_blocked = true
+			resolution.special_block_reason = &"magic_resistance"
+			resolution.hit = false
+			resolution.damage = 0
+			resolution.killed = false
+			return resolution
+	if _is_status_special(attack.special):
+		_apply_monster_status_special(resolution, defender, defender_definition, rng)
+	elif attack.special == 17:
+		resolution.special_handled = true
 	defender.current_health -= damage
 	resolution.killed = defender.current_health <= 0
 	return resolution
+
+
+func _apply_party_status_special(resolution: AttackResolution, defender: CharacterState, rng: RealmzRng) -> void:
+	resolution.special_handled = true
+	resolution.special_save_index = _status_save_index(resolution.special_code)
+	resolution.special_condition_index = _status_condition_index(resolution.special_code)
+	resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
+	resolution.special_condition_after = resolution.special_condition_before
+	resolution.special_save_chance = defender.save_value(resolution.special_save_index)
+	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
+	resolution.special_saved = resolution.special_save_roll <= resolution.special_save_chance
+	if resolution.special_saved:
+		return
+	if resolution.special_condition_before < 0:
+		resolution.special_blocked = true
+		resolution.special_block_reason = &"permanent_condition"
+		return
+	resolution.special_announced = true
+	resolution.special_sound_id = 630
+	if resolution.special_condition_before >= 30:
+		resolution.special_blocked = true
+		resolution.special_block_reason = &"party_condition_cap"
+		return
+	resolution.special_condition_after = _signed_16(resolution.special_condition_before + absi(resolution.special_potency))
+	defender.conditions.set_value(resolution.special_condition_index, resolution.special_condition_after)
+	resolution.special_applied = resolution.special_condition_after != resolution.special_condition_before
+
+
+func _apply_monster_status_special(resolution: AttackResolution, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng) -> void:
+	resolution.special_handled = true
+	resolution.special_save_index = _status_save_index(resolution.special_code)
+	resolution.special_condition_index = _status_condition_index(resolution.special_code)
+	resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
+	resolution.special_condition_after = resolution.special_condition_before
+	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
+	resolution.special_save_chance = _monster_save_chance(defender_definition, resolution.special_save_index)
+	resolution.special_saved = _monster_saved(defender_definition, resolution.special_save_index, resolution.special_save_roll, resolution.special_save_chance)
+	if resolution.special_saved:
+		return
+	if resolution.special_condition_before < 0:
+		resolution.special_blocked = true
+		resolution.special_block_reason = &"permanent_condition"
+		return
+	resolution.special_condition_after = _signed_16(resolution.special_condition_before + absi(resolution.special_potency))
+	defender.conditions.set_value(resolution.special_condition_index, resolution.special_condition_after)
+	resolution.special_applied = resolution.special_condition_after != resolution.special_condition_before
+	resolution.special_announced = true
+	resolution.special_sound_id = 684 if resolution.special_code == 16 else 630
+
+
+static func _is_status_special(special_code: int) -> bool:
+	return special_code in [1, 2, 3, 4, 5, 6, 7, 16]
+
+
+static func _status_condition_index(special_code: int) -> int:
+	match special_code:
+		1:
+			return ConditionRules.RUNS_AWAY
+		2:
+			return ConditionRules.HELPLESS
+		3:
+			return ConditionRules.CURSED
+		4:
+			return ConditionRules.STUPID
+		5:
+			return ConditionRules.SLOW
+		6:
+			return ConditionRules.POISONED
+		7:
+			return ConditionRules.CONFUSED
+		16:
+			return ConditionRules.DISEASED
+	return -1
+
+
+static func _status_save_index(special_code: int) -> int:
+	match special_code:
+		3, 5:
+			return 7
+		6, 16:
+			return 4
+	return 5
+
+
+static func _monster_save_chance(definition: MonsterDefinition, save_index: int) -> int:
+	if save_index == 7:
+		var total := 0
+		for index: int in 6:
+			total += definition.save_value(index)
+		return int(float(total) / 6.0)
+	return definition.save_value(save_index - 1) if save_index > 0 else 0
+
+
+static func _monster_saved(definition: MonsterDefinition, save_index: int, roll: int, chance: int) -> bool:
+	if save_index < 6 and definition.spell_immune(save_index):
+		return true
+	if save_index > 0 and roll <= chance:
+		return true
+	return definition.type_flag(1) and save_index in [0, 4, 5]
 
 
 func initiative_order(characters: Array[CharacterState], monsters: Array[MonsterState], surprise: int, rng: RealmzRng) -> Array[String]:

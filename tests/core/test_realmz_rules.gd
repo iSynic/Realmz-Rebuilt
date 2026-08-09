@@ -6,6 +6,7 @@ func run() -> void:
 	_test_character_creation_and_leveling()
 	_test_live_aging_and_maximum_age()
 	_test_monster_aging_attack()
+	_test_monster_status_attacks()
 	_test_conditions_time_and_persistence()
 	_test_inventory_economy_and_treasure()
 	_test_combat_magic_and_monsters()
@@ -223,9 +224,119 @@ func _test_monster_aging_attack() -> void:
 
 	var monster_target := MonsterState.new("monster.aging-target", definition.id, "Monster Target", 20, 20, 2, 10)
 	var monster_rng := ScriptedRng.new([0, 0, 0])
-	var monster_resolution := rules.combat.resolve_monster_attack_monster(attacker, definition, 0, monster_target, monster_rng)
+	var monster_resolution := rules.combat.resolve_monster_attack_monster(attacker, definition, 0, monster_target, definition, monster_rng)
 	assert_equal([monster_resolution.special_code, monster_resolution.special_potency, monster_target.current_health], [17, 1, 19], "monster targets consume generic special potency but receive no party-only aging effect")
 	assert_equal(monster_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency"], "monster-target special 17 stops after Castle's shared potency draw")
+
+
+func _test_monster_status_attacks() -> void:
+	var rules := RealmzRules.new()
+	var status_cases := {
+		1: [ConditionRules.RUNS_AWAY, 5],
+		2: [ConditionRules.HELPLESS, 5],
+		3: [ConditionRules.CURSED, 7],
+		4: [ConditionRules.STUPID, 5],
+		5: [ConditionRules.SLOW, 7],
+		6: [ConditionRules.POISONED, 4],
+		7: [ConditionRules.CONFUSED, 5],
+		16: [ConditionRules.DISEASED, 4],
+	}
+	for special_code: int in status_cases:
+		var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, special_code)]
+		var definition := MonsterDefinition.new("monster.status.%d" % special_code, special_code, "Status Monster", 4, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], attacks)
+		var attacker := MonsterState.new("monster.status.%d.instance" % special_code, definition.id, definition.name, 10, 10, 4, 10)
+		var defender := CharacterState.new("character.status.%d" % special_code, "Status Target", 20, 20)
+		defender.set_save_value_raw(status_cases[special_code][1], 50)
+		var resolution := rules.combat.resolve_monster_attack(attacker, definition, 0, defender, null, null, ScriptedRng.new([0, 0, 32_767, 32_767]))
+		assert_true(resolution.special_applied, "failed save applies Classic monster status special %d" % special_code)
+		assert_equal(defender.conditions.value(status_cases[special_code][0]), 4, "status special %d mutates its exact Classic condition slot" % special_code)
+		assert_equal([resolution.special_save_index, resolution.special_condition_index, resolution.special_sound_id], [status_cases[special_code][1], status_cases[special_code][0], 630], "status special %d reports its Castle save, condition, and party sound" % special_code)
+
+	var poison_attack: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 6)]
+	var poison_definition := MonsterDefinition.new("monster.status.poison", 906, "Poison Monster", 4, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], poison_attack)
+	var poisoner := MonsterState.new("monster.status.poison.instance", poison_definition.id, poison_definition.name, 10, 10, 4, 10)
+	var saved_target := CharacterState.new("character.status.saved", "Saved Target", 20, 20)
+	saved_target.set_save_value_raw(4, 50)
+	var saved_rng := ScriptedRng.new([0, 0, 32_767, 0])
+	var saved := rules.combat.resolve_monster_attack(poisoner, poison_definition, 0, saved_target, null, null, saved_rng)
+	assert_true(saved.special_handled and saved.special_saved and not saved.special_applied, "a successful party save handles but negates the status special")
+	assert_equal(saved_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency", "combat.monster-attack.special-save"], "party status attacks draw damage and generic potency before the save")
+
+	var permanent_target := CharacterState.new("character.status.permanent", "Permanent Target", 20, 20)
+	permanent_target.set_save_value_raw(4, 0)
+	permanent_target.conditions.set_value(ConditionRules.POISONED, -1)
+	var permanent := rules.combat.resolve_monster_attack(poisoner, poison_definition, 0, permanent_target, null, null, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	assert_equal([permanent.special_saved, permanent.special_blocked, permanent.special_block_reason, permanent.special_announced], [false, true, &"permanent_condition", false], "a failed save is still consumed before Castle's permanent-condition sentinel blocks the status")
+	assert_equal([permanent_target.conditions.value(ConditionRules.POISONED), permanent_target.current_health], [-1, 19], "a permanent status remains unchanged while ordinary physical damage still commits")
+
+	var near_cap := CharacterState.new("character.status.near-cap", "Near Cap", 20, 20)
+	near_cap.set_save_value_raw(4, 0)
+	near_cap.conditions.set_value(ConditionRules.POISONED, 29)
+	var exceeded := rules.combat.resolve_monster_attack(poisoner, poison_definition, 0, near_cap, null, null, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	assert_equal([near_cap.conditions.value(ConditionRules.POISONED), exceeded.special_condition_before, exceeded.special_condition_after], [33, 29, 33], "Castle's corrected party gate checks the starting duration rather than capping the result at thirty")
+	var capped := CharacterState.new("character.status.capped", "Capped", 20, 20)
+	capped.set_save_value_raw(4, 0)
+	capped.conditions.set_value(ConditionRules.POISONED, 30)
+	var capped_result := rules.combat.resolve_monster_attack(poisoner, poison_definition, 0, capped, null, null, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	assert_equal([capped.conditions.value(ConditionRules.POISONED), capped_result.special_applied, capped_result.special_announced, capped_result.special_block_reason], [30, false, true, &"party_condition_cap"], "a party duration already at thirty does not stack but still announces the failed special")
+
+	var target_saves := _ints_size(8, 0)
+	var target_immunities := _ints_size(6, 0)
+	var target_definition := MonsterDefinition.new("monster.status.target", 907, "Status Target", 4, 0, 10, 0, 0, _ints_size(8, 0), target_saves, target_immunities, _ints_size(3, 0), [], [], [])
+	var monster_target := MonsterState.new("monster.status.target.instance", target_definition.id, target_definition.name, 20, 20, 4, 10)
+	monster_target.conditions.set_value(ConditionRules.POISONED, 30)
+	var monster_status := rules.combat.resolve_monster_attack_monster(poisoner, poison_definition, 0, monster_target, target_definition, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	assert_equal([monster_target.conditions.value(ConditionRules.POISONED), monster_status.special_applied, monster_status.special_sound_id], [34, true, 630], "monster status durations stack without the party's thirty-round gate")
+
+	var disease_attack: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 16)]
+	var disease_definition := MonsterDefinition.new("monster.status.disease", 916, "Disease Monster", 4, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], disease_attack)
+	var diseaser := MonsterState.new("monster.status.disease.instance", disease_definition.id, disease_definition.name, 10, 10, 4, 10)
+	var diseased_monster := MonsterState.new("monster.status.disease-target", target_definition.id, target_definition.name, 20, 20, 4, 10)
+	var disease := rules.combat.resolve_monster_attack_monster(diseaser, disease_definition, 0, diseased_monster, target_definition, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	assert_equal(disease.special_sound_id, 684, "Castle uses sound 684 only when disease affects a monster target")
+
+	target_immunities[4] = 1
+	var immune_definition := MonsterDefinition.new("monster.status.immune", 908, "Immune Target", 4, 0, 10, 0, 0, _ints_size(8, 0), target_saves, target_immunities, _ints_size(3, 0), [], [], [])
+	var immune_target := MonsterState.new("monster.status.immune.instance", immune_definition.id, immune_definition.name, 20, 20, 4, 10)
+	var immune_rng := ScriptedRng.new([0, 0, 32_767, 32_767])
+	var immune := rules.combat.resolve_monster_attack_monster(poisoner, poison_definition, 0, immune_target, immune_definition, immune_rng)
+	assert_true(immune.special_saved and not immune.special_applied, "monster spell immunity uses the save-family index and negates poison")
+	assert_equal(immune_rng.snapshot().draw_count, 4, "monster immunity still consumes Castle's save roll")
+	var permanent_monster := MonsterState.new("monster.status.permanent.instance", target_definition.id, target_definition.name, 20, 20, 4, 10)
+	permanent_monster.conditions.set_value(ConditionRules.POISONED, -1)
+	var permanent_monster_result := rules.combat.resolve_monster_attack_monster(poisoner, poison_definition, 0, permanent_monster, target_definition, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	assert_equal([permanent_monster_result.special_block_reason, permanent_monster.conditions.value(ConditionRules.POISONED), permanent_monster.current_health], [&"permanent_condition", -1, 19], "the negative permanent sentinel blocks monster status mutation but not ordinary physical damage")
+
+	var stupid_attack: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 4)]
+	var stupid_definition := MonsterDefinition.new("monster.status.stupid", 904, "Stupid Monster", 4, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], stupid_attack)
+	var stupefier := MonsterState.new("monster.status.stupid.instance", stupid_definition.id, stupid_definition.name, 10, 10, 4, 10)
+	var undead_flags := _ints_size(8, 0)
+	undead_flags[1] = 1
+	var undead_definition := MonsterDefinition.new("monster.status.undead", 910, "Undead Target", 4, 0, 10, 0, 0, undead_flags, target_saves, _ints_size(6, 0), _ints_size(3, 0), [], [], [])
+	var undead_target := MonsterState.new("monster.status.undead.instance", undead_definition.id, undead_definition.name, 20, 20, 4, 10)
+	var undead_rng := ScriptedRng.new([0, 0, 32_767, 32_767])
+	var undead := rules.combat.resolve_monster_attack_monster(stupefier, stupid_definition, 0, undead_target, undead_definition, undead_rng)
+	assert_true(undead.special_saved and not undead.special_applied, "Castle's undead type flag automatically saves against mental status special 4")
+	assert_equal(undead_rng.snapshot().draw_count, 4, "the undead auto-save is evaluated after consuming the save roll")
+
+	var curse_attack: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 3)]
+	var curse_definition := MonsterDefinition.new("monster.status.curse", 903, "Curse Monster", 4, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], curse_attack)
+	var curser := MonsterState.new("monster.status.curse.instance", curse_definition.id, curse_definition.name, 10, 10, 4, 10)
+	var averaged_saves := _ints_size(8, 60)
+	var averaged_definition := MonsterDefinition.new("monster.status.average", 909, "Average Target", 4, 0, 10, 0, 0, _ints_size(8, 0), averaged_saves, _ints_size(6, 0), _ints_size(3, 0), [], [], [])
+	var averaged_target := MonsterState.new("monster.status.average.instance", averaged_definition.id, averaged_definition.name, 20, 20, 4, 10)
+	var averaged := rules.combat.resolve_monster_attack_monster(curser, curse_definition, 0, averaged_target, averaged_definition, ScriptedRng.new([0, 0, 32_767, 0]))
+	assert_equal([averaged.special_save_index, averaged.special_save_chance, averaged.special_saved], [7, 60, true], "monster special save seven uses Castle's integer average of the six authored saves")
+
+	var resistant_target := MonsterState.new("monster.status.resistant.instance", target_definition.id, target_definition.name, 20, 20, 4, 10, 0, 101)
+	var resistant_rng := ScriptedRng.new([0, 0, 32_767])
+	var resisted := rules.combat.resolve_monster_attack_monster(poisoner, poison_definition, 0, resistant_target, target_definition, resistant_rng)
+	assert_equal([resisted.hit, resisted.damage, resisted.special_condition_index, resisted.special_blocked, resisted.special_block_reason, resistant_target.current_health], [false, 0, ConditionRules.POISONED, true, &"magic_resistance", 20], "a monster target above 100 magic resistance turns the entire special attack into Castle's whiff while retaining diagnostic identity")
+	assert_equal(resistant_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency"], "the resistance whiff occurs after potency but before the monster save draw")
+
+	var restored_target := CharacterState.from_data(near_cap.to_data())
+	assert_not_null(restored_target, "a status-mutated character survives the central state serialization boundary")
+	assert_equal(restored_target.conditions.value(ConditionRules.POISONED), 33, "save restoration preserves the exact status duration")
 
 
 func _test_conditions_time_and_persistence() -> void:
@@ -315,7 +426,7 @@ func _test_combat_magic_and_monsters() -> void:
 	assert_equal(attack.damage, 2, "equipped damage is committed to the target")
 	var friendly := MonsterState.new("monster.friendly", definition.id, "Friendly", 5, 5, 1, 8, 5, 0, 0, false)
 	var hostile := MonsterState.new("monster.hostile", definition.id, "Hostile", 5, 5, 1, 8, 5, 0, 0, true)
-	var monster_attack := rules.combat.resolve_monster_attack_monster(friendly, definition, 0, hostile, ScriptedRng.new([0, 0]))
+	var monster_attack := rules.combat.resolve_monster_attack_monster(friendly, definition, 0, hostile, definition, ScriptedRng.new([0, 0]))
 	assert_true(monster_attack.hit, "opposed-traitor monsters use the same source-backed attack resolution")
 	assert_equal(hostile.current_health, 4, "friendly monster attacks mutate hostile combat state")
 	defender.conditions.set_value(ConditionRules.HELPLESS, -1)

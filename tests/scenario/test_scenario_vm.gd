@@ -28,6 +28,7 @@ func run() -> void:
 	_test_program_replacement_and_redirect(loaded.content)
 	_test_scenario_spell_opcodes(loaded.content)
 	_test_monster_aging_attack_continuations(loaded.content)
+	_test_monster_status_attack_flow(loaded.content)
 	_test_combat_fumble_mutation(loaded.content)
 	_test_classic_encounter_break(loaded.content)
 	_test_classic_party_shift(loaded.content)
@@ -1269,6 +1270,47 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	assert_equal(restored_session._state.party.character_by_id(session_character.id).current_health, 99, "the restored direct continuation applies pending physical damage exactly once")
 
 
+func _test_monster_status_attack_flow(content: RealmzContent) -> void:
+	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 6)]
+	var zero8: Array[int] = []
+	zero8.resize(8)
+	zero8.fill(0)
+	var zero6: Array[int] = []
+	zero6.resize(6)
+	zero6.fill(0)
+	var zero3: Array[int] = []
+	zero3.resize(3)
+	zero3.fill(0)
+	var definition := MonsterDefinition.new("monster.status-flow", 906, "Status Monster", 4, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], attacks)
+	definition.traitor = true
+	var battle := BattleDefinition.new("battle.status-flow", 906, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, definition.id, false)])
+	var status_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [definition], [battle])
+	var character := CharacterState.new("character.status-flow", "Status Target", 20, 20)
+	character.set_save_value_raw(4, 0)
+	var session := GameSession.new()
+	session.start(status_content, 1)
+	session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	session._state.party_setup_completed = true
+	var monster := MonsterState.new("monster.status-flow.instance", definition.id, definition.name, 10, 10, 4, 100)
+	session._state.combat = CombatState.new(battle.id, [monster])
+	session._state.combat.set_turn_order([character.id, monster.id])
+	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 32_767, 32_767])
+	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", character.id, ""))
+	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster status attacks commit without inventing a player interaction")
+	assert_equal(character.conditions.value(ConditionRules.POISONED), 4, "the direct session owns the resulting status mutation")
+	var special_index := _event_index(resolved.events, &"combat_monster_special_resolved")
+	var sound_index := _event_index(resolved.events, &"sound_requested")
+	var damage_index := _event_index(resolved.events, &"combat_attack_resolved")
+	assert_true(special_index >= 0 and sound_index > special_index and damage_index > sound_index, "combat publishes status, asynchronous sound, and physical damage in Castle order")
+	assert_equal(resolved.events[special_index].payload.get("conditionIndex"), ConditionRules.POISONED, "the status event exposes the source-owned condition identity")
+	assert_equal([resolved.events[sound_index].payload.get("soundId"), resolved.events[sound_index].payload.get("waitForCompletion")], [630, false], "party status feedback requests Castle sound 630 asynchronously")
+	var boundary := SaveEnvelope.from_data(session.snapshot().to_data())
+	assert_not_null(boundary, "a committed status attack produces a complete central save boundary")
+	var restored := GameSession.new()
+	assert_equal(restored.restore(status_content, boundary).state, SessionStep.State.COMPLETED, "status-mutated combat state restores transactionally")
+	assert_equal(restored._state.party.character_by_id(character.id).conditions.value(ConditionRules.POISONED), 4, "restored combat retains the exact status duration")
+
+
 func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:
 	for opcode: int in ClassicOpcodeCatalog.AOGM_ACTIVE_OPCODES:
 		if opcode == 39:
@@ -1348,6 +1390,13 @@ func _event_has(events: Array[DomainEvent], kind: StringName) -> bool:
 		if event.kind == kind:
 			return true
 	return false
+
+
+func _event_index(events: Array[DomainEvent], kind: StringName) -> int:
+	for index: int in events.size():
+		if events[index].kind == kind:
+			return index
+	return -1
 
 
 func _event_classic_id(events: Array[DomainEvent], kind: StringName) -> int:

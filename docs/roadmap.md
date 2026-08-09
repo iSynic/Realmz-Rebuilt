@@ -107,6 +107,15 @@ Still required for live visual acceptance and later gameplay completion:
 - Providence commit `cad17d11bd8ec798d29bf5468ed8071019f32c1f` already emits the immutable names, media identities, ranges, and change rows, so package schema v2 remains unchanged.
 - `age_update` is now a supported typed interaction with a dedicated inset presenter. Direct clock work queues updates before destination AP processing; scenario spells retain the issuing VM frame. Both forms serialize through save envelope v3, reject generic acknowledgements, and resume one ordered character at a time.
 - Monster attack special 17 now preserves Castle's generic potency and save-slot-seven draws, applies one source-backed age transition, and defers physical damage and the next actor behind the same saveable interaction in direct and scenario combat.
-- The typed suite passes 1,640 assertions across 11 suites. Differential validation covers ten cases against the pinned Castle, Remake, and Providence roots.
+- The age-update tranche landed with 1,640 assertions across 11 suites and ten validated differential cases.
 
-Remaining fidelity boundary: the dialog carries stable portrait and combat-icon IDs, but the current programmatic component does not yet draw those package media assets. Other monster attack specials remain separate rolling combat cases and are not implied by special 17.
+Remaining fidelity boundary: the dialog carries stable portrait and combat-icon IDs, but the current programmatic component does not yet draw those package media assets.
+
+## Current rolling fidelity pass — monster status attacks (implemented)
+
+- Remake's explicit status table and tests supplied the functional lead for specials 1–7 and 16, party/monster duration differences, permanent traits, and resistance. Castle `attack` and `savevs` adjudicate the details Remake's isolated helper cannot: generic potency precedes the save; save families and monster indexing remain exact; the party checks its starting duration against 30; the result may exceed 30; failed effects at 30 still report; and magic resistance above 100 turns a monster-target special into a whole-attack whiff.
+- `CombatRules` now owns all eight status mappings and branches for party and monster targets. It records exact save, condition, mutation, block, and sound facts in `AttackResolution`; `CombatFlow` publishes the special and asynchronous source sound before ordinary damage feedback. Condition state and RNG remain session-owned and save without a new continuation or `.r2save` revision.
+- Providence schema v2 already exports attack rows, hit dice, runtime magic resistance inputs, type flags, saves, and spell immunities. No compiler or package-contract change was required.
+- The typed suite passes 1,690 assertions across 11 suites. Differential validation covers eleven cases against the pinned Castle, Remake, and Providence roots.
+
+Remaining fidelity boundary: monster specials 8–15 and 18–19 still require their own rolling evidence passes; this tranche does not imply them.

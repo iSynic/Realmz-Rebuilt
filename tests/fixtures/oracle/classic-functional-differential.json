@@ -486,6 +486,50 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "combat.monster-status-specials",
+      "domain": "combat",
+      "claim": "Monster attack specials 1 through 7 and 16 preserve Castle's shared potency-before-save order, exact save and condition identities, permanent-condition sentinel, corrected party starting-duration-under-30 gate, uncapped monster stacking, target-specific sounds, and whole-attack whiff against a monster above 100 magic resistance.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake supplies an explicit eight-special mapping and tests successful saves, permanent traits, the party duration gate, uncapped monster durations, and monster magic resistance. Its helper is a functional lead rather than the authority: when duration is not injected it evaluates the save before rolling duration, unlike Castle's enclosing attack flow.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_monster_status_attack.gd", "symbol": "const STATUS_BY_SPECIAL :=" },
+          { "path": "src/scripts/classic_runtime/classic_monster_status_attack.gd", "symbol": "static func apply(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_bestiary_materializer()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack(short chare, short mon)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "short savevs(short which, short who)" }
+        ],
+        "authoredInputs": ["monster attack special and damage range", "monster hit dice and runtime magic resistance", "party and monster conditions", "party saves", "monster saves, spell immunities, and type flags"],
+        "observation": "After ordinary damage is rolled, every nonzero special consumes randrange(hitDice/2, hitDice), floored at one. Specials 1/2/4/7 use save 5; 3/5 use save 7; and 6/16 use save 4. Failed party saves affect conditions 0/1/5/29, 3/6, and 9/28 respectively only when the current value is nonnegative; the pinned correction adds potency once when the starting value is below 30, even if the result exceeds 30, and still reports the result when the starting value is already 30. Monster targets stack without that gate. Monster save 7 averages six saves; other saves honor their shifted save byte, spell immunity, and undead auto-save after consuming the roll. A monster target above 100 magic resistance jumps to whiff after potency and loses ordinary damage. Party statuses use sound 630; monster disease uses 684 and the other monster statuses use 630."
+      },
+      "providence": {
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves each attack row's damageMin, damageMax, and special plus monster hitDice, runtime magicResistance inputs, typeFlags, saves, and spellImmunities; no compiler correction is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_rules.gd", "symbol": "func resolve_monster_attack" },
+        "expectedTrace": ["ordinary hit roll", "ordinary damage roll", "generic special-potency draw", "optional target-monster resistance whiff", "source-family save roll", "permanent and duration gate", "condition mutation", "special result event", "asynchronous source sound", "ordinary damage result"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_status_attacks" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_status_attack_flow" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
     }
   ]
 }
