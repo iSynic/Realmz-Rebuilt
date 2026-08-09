@@ -179,6 +179,8 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 				combat.active_turn.physical_action_committed = true
 				var definition := content.monster_by_id(monster_target.definition_id)
 				var resolution := _rules.combat.resolve_character_attack(actor, equipment, monster_target, definition, rng, state.clock.day(), false, true, combat.can_queue_fumbled_item())
+				if resolution.total_damage() > 0:
+					combat.mark_attacked(monster_target.id)
 				if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
 					return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
 				events.append(_character_attack_event(actor.id, monster_target.id, &"monster", resolution))
@@ -193,6 +195,8 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 				if not target_equipment.valid:
 					return CombatFlowResult.failed(target_equipment.error_code, target_equipment.error_message)
 				var resolution := _rules.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng, false, true, combat.can_queue_fumbled_item())
+				if resolution.total_damage() > 0:
+					combat.mark_attacked(character_target.id)
 				if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
 					return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
 				events.append(_character_attack_event(actor.id, character_target.id, &"character", resolution))
@@ -487,6 +491,8 @@ func _resolve_character_reaction(state: GameState, content: RealmzContent, attac
 	if monster_target != null:
 		var definition := content.monster_by_id(monster_target.definition_id)
 		var resolution := _rules.combat.resolve_character_attack(attacker, equipment, monster_target, definition, rng, state.clock.day(), behind, true, combat.can_queue_fumbled_item())
+		if resolution.total_damage() > 0:
+			combat.mark_attacked(monster_target.id)
 		if resolution.fumbled and not _commit_character_fumble(state, attacker, equipment, events):
 			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
 		var event := _character_attack_event(attacker.id, monster_target.id, &"monster", resolution)
@@ -506,6 +512,8 @@ func _resolve_character_reaction(state: GameState, content: RealmzContent, attac
 		events.append(DomainEvent.new(&"combat_reaction_failed", {"actorId": attacker.id, "targetId": target_id, "reason": String(target_equipment.error_code)}))
 		return REACTION_COMPLETED
 	var resolution := _rules.combat.resolve_character_attack_character(attacker, equipment, character_target, target_equipment, rng, behind, true, combat.can_queue_fumbled_item())
+	if resolution.total_damage() > 0:
+		combat.mark_attacked(character_target.id)
 	if resolution.fumbled and not _commit_character_fumble(state, attacker, equipment, events):
 		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
 	var event := _character_attack_event(attacker.id, character_target.id, &"character", resolution)
@@ -535,6 +543,8 @@ func _resolve_monster_reaction(state: GameState, content: RealmzContent, attacke
 		var defender_armor := defender_equipment.effective_armor if defender_equipment.valid else character_target.armor
 		var context := MonsterAttackContext.new(weapon, state.clock.day(), behind, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
 		var resolution := _rules.combat.resolve_monster_attack(attacker, definition, 0, character_target, race, caste, rng, charm_bonus, context, true)
+		if resolution.total_damage() > 0:
+			combat.mark_attacked(character_target.id)
 		if resolution.fumbled:
 			_commit_monster_fumble(attacker, events)
 		if resolution.special_handled:
@@ -558,6 +568,8 @@ func _resolve_monster_reaction(state: GameState, content: RealmzContent, attacke
 	var target_definition := content.monster_by_id(monster_target.definition_id)
 	var context := MonsterAttackContext.new(weapon, state.clock.day(), behind)
 	var resolution := _rules.combat.resolve_monster_attack_monster(attacker, definition, 0, monster_target, target_definition, rng, context, true)
+	if resolution.total_damage() > 0:
+		combat.mark_attacked(monster_target.id)
 	if resolution.fumbled:
 		_commit_monster_fumble(attacker, events)
 	if resolution.special_handled:
@@ -662,26 +674,59 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 
 func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng) -> CombatFlowResult:
 	var combat := state.combat
-	if combat == null or combat.completed or combat.active_actor_id() != caster_id:
+	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != caster_id:
 		return CombatFlowResult.failed(&"invalid_spell_turn", "The caster does not own an active combat turn.")
 	var caster := state.party.character_by_id(caster_id)
 	var target := combat.monster_by_id(target_id)
 	var spell := content.spell_by_id(spell_id)
-	if caster == null or caster.traitor or target == null or target.current_health <= 0 or not target.traitor or spell == null or power_level < 1:
+	if caster == null or caster.current_health <= 0 or caster.traitor or target == null or target.current_health <= 0 or target.traitor == caster.traitor or spell == null or power_level < 1 or power_level > 7:
 		return CombatFlowResult.failed(&"invalid_spell_target", "The spell, caster, power, or target is unavailable.")
 	if not caster.known_spells().has(spell.id):
 		return CombatFlowResult.failed(&"spell_not_known", "The caster does not know '%s'." % spell.id)
+	if state.character_spellcasting_blocked:
+		return CombatFlowResult.failed(&"character_spellcasting_blocked", "Classic scenario state currently blocks character spellcasting.")
+	for condition: int in [ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS, ConditionRules.STUPID, ConditionRules.ANIMATED]:
+		if caster.conditions.is_active(condition):
+			return CombatFlowResult.failed(&"spellcasting_condition_blocked", "The caster's current Classic condition prevents spellcasting.")
+	if combat.was_attacked(caster.id):
+		return CombatFlowResult.failed(&"caster_attacked_this_round", "Castle prevents a character who has been attacked this combat round from casting.")
+	var committed_casts := combat.active_turn.spell_cast_count if combat.active_turn != null else 0
+	if caster.maximum_spell_attacks <= 0 or committed_casts >= caster.maximum_spell_attacks:
+		return CombatFlowResult.failed(&"spell_attack_limit_reached", "The caster has reached the Classic per-activation spell limit.")
+	if not spell.in_combat:
+		return CombatFlowResult.failed(&"spell_not_available_in_combat", "The selected spell is not available in combat.")
+	if spell.target_type != 1 or spell.special != 0 or absi(spell.damage_type) < 1 or absi(spell.damage_type) > 6 or absi(spell.spell_class) == 9:
+		return CombatFlowResult.failed(&"unsupported_combat_spell", "This pass supports only source-backed single-target ordinary combat spells.")
+	if spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0:
+		return CombatFlowResult.failed(&"unsupported_combat_spell", "A zero-damage spell requires its source-backed special-effect path.")
+	if spell.cost < 0 and power_level != 1:
+		return CombatFlowResult.failed(&"fixed_power_spell", "Castle fixes negative-cost spells at power one.")
+	var spell_cost := absi(spell.cost * power_level)
+	if caster.spell_points < spell_cost:
+		return CombatFlowResult.failed(&"insufficient_spell_points", "The caster lacks the spell points for this power level.")
+	var cast_level := spell.classic_tier()
+	if cast_level < 0 or cast_level > 6:
+		return CombatFlowResult.failed(&"invalid_classic_spell_tier", "The spell ID does not encode a valid Classic tier.")
+	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
+	if not projectile_target_is_valid(combat, content, caster.id, target.id, maximum_range, spell.range_min + spell.range_max > 0):
+		return CombatFlowResult.failed(&"spell_target_unavailable", "The target is outside the Classic spell range or line of sight.")
 	_prepare_character_turn(combat, caster)
 	var target_definition := content.monster_by_id(target.definition_id)
-	var resolution := _rules.magic.resolve_character_spell(caster, target, target_definition, spell, power_level, caster.level, rng)
+	if target_definition == null:
+		return CombatFlowResult.failed(&"spell_target_unavailable", "The target monster definition is unavailable.")
+	var resolution := _rules.magic.resolve_character_spell(caster, target, target_definition, spell, power_level, cast_level, rng)
 	if resolution == null or not resolution.cast:
 		return CombatFlowResult.failed(&"spell_cast_failed", "The spell could not be cast with the available spell points.")
-	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_spell_resolved", {"actorId": caster.id, "targetId": target.id, "spellId": spell.id, "power": power_level, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "duration": resolution.duration, "defeated": resolution.target_defeated})]
+	combat.active_turn.spell_cast_count += 1
+	if resolution.damage > 0:
+		combat.mark_attacked(target.id)
+	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_spell_resolved", {"actorId": caster.id, "targetId": target.id, "spellId": spell.id, "power": power_level, "classicTier": cast_level, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic"})]
 	caster.attacks_remaining = _rules.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
-	combat.advance_turn()
 	var death_macro_requested := resolution.target_defeated and _request_monster_death_macro(target, target_definition, events)
 	_remove_defeated_position(combat, target.id, resolution.target_defeated and not death_macro_requested)
+	if not _character_can_continue(caster):
+		combat.advance_turn()
 	if death_macro_requested:
 		return CombatFlowResult.succeeded(events)
 	if _finish_if_resolved(state, content, events):
@@ -731,6 +776,8 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 		target.conditions.set_value(pending.weapon_condition_index, pending.weapon_condition_after)
 	_append_monster_physical_feedback(events, pending.physical_feedback_sound_id)
 	target.current_health -= pending.damage
+	if pending.damage > 0:
+		combat.mark_attacked(target.id)
 	var defeated := target.current_health <= 0
 	_remove_defeated_position(combat, target.id, defeated)
 	var pending_attack_index := maxi(0, combat.active_turn.attack_index - 1) if combat.active_turn != null and combat.pending_reaction == null else 0
@@ -947,6 +994,8 @@ func _fire_character_projectile(state: GameState, content: RealmzContent, actor:
 	var resolution := _rules.magic.resolve_character_projectile(actor, caste, profile.item, target, profile.spell, profile.power_level, rng)
 	if resolution == null:
 		return CombatFlowResult.failed(&"unsupported_projectile_spell", "The selected projectile cannot be resolved by the source-backed missile rules.")
+	if resolution.total_damage > 0:
+		combat.mark_attacked(target.id)
 	combat.active_turn.physical_action_committed = true
 	actor.attacks_remaining = _rules.arithmetic.signed_16(actor.attacks_remaining - 2)
 	actor.movement = maxi(0, actor.movement - 12)
@@ -1203,6 +1252,8 @@ func _process_monster_projectile(state: GameState, content: RealmzContent, monst
 	if resolution == null:
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "projectile-resolution-failed", "source": "classic"}))
 		return MONSTER_ATTACK_COMPLETED
+	if resolution.total_damage > 0:
+		combat.mark_attacked(target.id)
 	events.append(DomainEvent.new(&"combat_projectile_resolved", {
 		"actorId": monster.id,
 		"targetId": target.id,
@@ -1305,6 +1356,8 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 		var defender_armor := defender_equipment.effective_armor if defender_equipment.valid else character_target.armor
 		var attack_context := MonsterAttackContext.new(weapon, state.clock.day(), false, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
 		var resolution := _rules.combat.resolve_monster_attack(monster, definition, attack_index, character_target, race, caste, rng, charm_bonus, attack_context, true)
+		if resolution.total_damage() > 0:
+			combat.mark_attacked(character_target.id)
 		if resolution.fumbled:
 			_commit_monster_fumble(monster, events)
 		var age_update_requested := false
@@ -1331,6 +1384,8 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 	var weapon := content.item_by_id(monster.weapon_id) if not monster.weapon_id.is_empty() else null
 	var attack_context := MonsterAttackContext.new(weapon, state.clock.day())
 	var resolution := _rules.combat.resolve_monster_attack_monster(monster, definition, attack_index, monster_target, target_definition, rng, attack_context, true)
+	if resolution.total_damage() > 0:
+		combat.mark_attacked(monster_target.id)
 	if resolution.fumbled:
 		_commit_monster_fumble(monster, events)
 	if resolution.special_handled:
@@ -1496,6 +1551,8 @@ func _process_charmed_character_turn(state: GameState, content: RealmzContent, a
 			return false
 		active_turn.physical_action_committed = true
 		var resolution := _rules.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng, false, true, state.combat.can_queue_fumbled_item())
+		if resolution.total_damage() > 0:
+			state.combat.mark_attacked(character_target.id)
 		if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
 			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
 			return false
@@ -1508,6 +1565,8 @@ func _process_charmed_character_turn(state: GameState, content: RealmzContent, a
 	var target_definition := content.monster_by_id(monster_target.definition_id)
 	active_turn.physical_action_committed = true
 	var resolution := _rules.combat.resolve_character_attack(actor, equipment, monster_target, target_definition, rng, state.clock.day(), false, true, state.combat.can_queue_fumbled_item())
+	if resolution.total_damage() > 0:
+		state.combat.mark_attacked(monster_target.id)
 	if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
 		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
 		return false

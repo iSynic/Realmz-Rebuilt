@@ -12,7 +12,7 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "8f1041cd21019c7c1318a99a71fc8bc00fd98ad47b8ee1624849c34f952ce469", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "04a58fbff91f4992e5a5258f1690e49bcd146f8865c7136b9c9abd285380c7f9", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -70,6 +70,8 @@ func run() -> void:
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").attacks()[0].damage_max, 4, "monster attacks are typed instead of retained as native row dictionaries")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").item_ids(), ["classic.item.901", "", "", "", "", ""], "monster item slots preserve all six native positions")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").item_id_at(1), "", "an empty native missile slot does not collapse onto the melee item")
+	assert_equal(loaded.content.monster_by_id("classic.monster.1").spell_ids().size(), 10, "monster spell slots preserve all ten native positions")
+	assert_equal(loaded.content.monster_by_id("classic.monster.1").spell_id_at(1), "", "an empty native spell slot remains selectable as an empty Castle retry")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").required_weapon, 0, "monster weapon requirements remain distinct from battle placement distance")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").magic_to_hit, 0, "monster magical-plus thresholds remain an explicit field even when unrestricted")
 	var random_weapon_monster := MonsterDefinition.new("monster.random-readiness", 999, "Random Readiness", 1, 0, 1, 0, 0, [], [], [], [], [], [], [MonsterAttackDefinition.new(1, 1)])
@@ -94,6 +96,15 @@ func run() -> void:
 		invalid_monsters = fixture_content["monsters"].duplicate(true)
 		invalid_monsters[0]["itemIds"] = ["classic.item.901"]
 		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects legacy packed monster items because they erase native slot identity")
+		var spellless_monsters: Array = fixture_content["monsters"].duplicate(true)
+		spellless_monsters[0]["spellIds"] = []
+		var normalized_spellless: Variant = PackageRepository.new()._construct_monsters(spellless_monsters)
+		assert_not_null(normalized_spellless, "an unambiguous legacy spellless monster remains loadable")
+		if normalized_spellless != null:
+			assert_equal(normalized_spellless[0].spell_ids(), ["", "", "", "", "", "", "", "", "", ""], "the loader normalizes a spellless monster to ten fixed empty slots")
+		invalid_monsters = fixture_content["monsters"].duplicate(true)
+		invalid_monsters[0]["spellIds"] = ["classic.spell.1101"]
+		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects legacy packed monster spells because they erase native slot identity")
 	assert_true(fixture_world is Dictionary, "the detached fixture world parses for independent terrain contract tests")
 	if fixture_world is Dictionary:
 		var invalid_terrain_sets: Array = fixture_world["battleTerrainSets"].duplicate(true)

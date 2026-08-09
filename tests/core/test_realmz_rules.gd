@@ -866,6 +866,20 @@ func _test_combat_magic_and_monsters() -> void:
 	assert_false(spell_result.resisted, "failed resistance reaches damage resolution")
 	assert_equal(spell_result.damage, 2, "matching elemental protection halves damage")
 	assert_equal(attacker.spell_points, 8, "spell points are mutated inside the rule operation")
+	var cannot_spell := SpellDefinition.new("spell.cannot-monster-save", 1307, "Cannot Flag")
+	cannot_spell.cost = 0
+	cannot_spell.damage_min = 4
+	cannot_spell.damage_max = 4
+	cannot_spell.damage_type = 1
+	cannot_spell.spell_class = 1
+	cannot_spell.cannot = 3
+	defender = MonsterState.new("monster.cannot-save-target", definition.id, definition.name, 8, 8, 1, 8, 0)
+	defender.set_save_value(0, 100)
+	var cannot_rng := ScriptedRng.new([0, 0, 0])
+	var cannot_result := rules.magic.resolve_character_spell(attacker, defender, definition, cannot_spell, 1, cannot_spell.classic_tier(), cannot_rng)
+	assert_false(cannot_result.saved, "savevs consumes the roll but forces the monster's save to fail when Classic cannot is greater than one")
+	assert_equal(cannot_rng.snapshot().draw_count, 3, "the forced failed save still consumes Castle's duration, damage, and save draws")
+	assert_equal(cannot_result.damage, 4, "the forced failed save leaves ordinary monster spell damage unhalved")
 	var powered := SpellDefinition.new("spell.powered", 1101, "Powered")
 	powered.damage_min = 1
 	powered.damage_max = 1

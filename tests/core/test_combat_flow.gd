@@ -15,6 +15,7 @@ func run() -> void:
 	_test_character_weapon_mode_toggle_and_restore()
 	_test_monster_missile_does_not_impersonate_melee()
 	_test_source_backed_projectile_fire()
+	_test_source_backed_character_spell_casting()
 	_test_monster_authored_attack_rows_and_target_retention()
 	_test_monster_attack_cursor_restore()
 	_test_battle_owned_fumble_and_exact_recovery()
@@ -776,6 +777,71 @@ func _test_source_backed_projectile_fire() -> void:
 	assert_equal([monster_shooter.weapon_id, unrelated.weapon_id], [melee_item.id, "item.unrelated"], "melee replacement updates the actual attacker instead of Castle's stale global monsterup")
 
 
+func _test_source_backed_character_spell_casting() -> void:
+	var rules := RealmzRules.new()
+	var spell := SpellDefinition.new("spell.combat-fire", 1306, "Combat Fire")
+	spell.in_combat = true
+	spell.target_type = 1
+	spell.spell_class = 1
+	spell.damage_type = 1
+	spell.cost = 2
+	spell.range_min = 10
+	spell.damage_min = 4
+	spell.damage_max = 4
+	spell.duration_min = 1
+	spell.duration_max = 1
+	assert_equal(spell.classic_tier(), 2, "Classic spell 1306 encodes zero-based tier two rather than caster level")
+	var character := _character("character.spell-caster")
+	character.level = 10
+	character.normal_attacks = 6
+	character.maximum_spell_attacks = 2
+	character.maximum_spell_points = 10
+	character.spell_points = 10
+	character.set_known_spells([spell.id])
+	var definition := _monster_definition("monster.spell-target", [])
+	var monster := MonsterState.new("monster.spell-target.instance", definition.id, definition.name, 30, 30, 1, 1)
+	monster.conditions.set_value(18, 1)
+	var state := _state(character, monster, "battle.character-spell")
+	state.combat.battlefield.move_actor(monster.id, Vector2i(50, 45))
+	var content := _content([definition], [], [], [], [spell])
+	var screened := rules.combat_flow.cast_spell(state, content, character.id, monster.id, spell.id, 1, ScriptedRng.new([0, 0]))
+	assert_true(screened.ok, "a funded ordinary single-target combat spell commits")
+	assert_true(screened.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("classicTier") == 2 and event.payload.get("resisted") == true), "spell resistance uses the spell ID's tier even when caster level is ten")
+	assert_equal([character.spell_points, character.attacks_remaining, character.movement, monster.current_health], [8, 5, 0, 30], "a resisted spell still spends energy, two half-attacks, and twelve movement while retaining Castle's carried half-attack")
+	assert_equal(state.combat.active_turn.spell_cast_count, 1, "the active turn owns the committed per-activation spell count")
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(restored, "a mid-activation spell count and round hit history survive save restoration")
+	assert_equal(restored.combat.active_turn.spell_cast_count, 1, "restore cannot repeat the first spell slot in the activation")
+
+	monster.conditions.set_value(18, 0)
+	var second := rules.combat_flow.cast_spell(state, content, character.id, monster.id, spell.id, 1, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	assert_true(second.ok, "the caster can use its second authored spell attack in the same activation")
+	assert_equal([character.spell_points, character.attacks_remaining, monster.current_health], [6, 3, 26], "the second cast commits ordinary damage and retains a final physical half-attack pair plus the carried half-unit")
+	assert_true(state.combat.was_attacked(monster.id), "positive spell damage marks the target attacked for Castle's same-round casting gate")
+	var capped_rng := ScriptedRng.new([])
+	var capped := rules.combat_flow.cast_spell(state, content, character.id, monster.id, spell.id, 1, capped_rng)
+	assert_false(capped.ok, "a third spell in the same activation is rejected")
+	assert_equal(capped.error_code, &"spell_attack_limit_reached", "the per-activation spell cap has a stable failure identity")
+	assert_equal(capped_rng.snapshot().draw_count, 0, "a rejected over-limit cast consumes no gameplay randomness")
+
+	var blocked_character := _character("character.spell-blocked")
+	blocked_character.maximum_spell_attacks = 1
+	blocked_character.maximum_spell_points = 10
+	blocked_character.spell_points = 10
+	blocked_character.set_known_spells([spell.id])
+	var blocked_monster := MonsterState.new("monster.spell-blocked.instance", definition.id, definition.name, 30, 30, 1, 1)
+	var blocked_state := _state(blocked_character, blocked_monster, "battle.character-spell-blocked")
+	blocked_state.combat.mark_attacked(blocked_character.id)
+	var blocked := rules.combat_flow.cast_spell(blocked_state, content, blocked_character.id, blocked_monster.id, spell.id, 1, ScriptedRng.new([]))
+	assert_equal(blocked.error_code, &"caster_attacked_this_round", "a character damaged earlier in the round cannot cast")
+	blocked_state.combat.advance_turn()
+	blocked_state.combat.advance_turn()
+	assert_false(blocked_state.combat.was_attacked(blocked_character.id), "Castle's been-attacked gate clears only when combat advances to a new round")
+	blocked_state.character_spellcasting_blocked = true
+	var scenario_blocked := rules.combat_flow.cast_spell(blocked_state, content, blocked_character.id, blocked_monster.id, spell.id, 1, ScriptedRng.new([]))
+	assert_equal(scenario_blocked.error_code, &"character_spellcasting_blocked", "a nonzero Classic spellcasting flag blocks rather than enables character casting")
+
+
 func _test_character_half_attack_cadence_and_restore() -> void:
 	var rules := RealmzRules.new()
 	var character := _character("character.fractional")
@@ -877,6 +943,7 @@ func _test_monster_attack_cursor_restore() -> void:
 	var legacy_turn_data := restored.combat.active_turn.to_data()
 	legacy_turn_data.erase("physicalActionCommitted")
 	legacy_turn_data.erase("movementRemaining")
+	legacy_turn_data.erase("spellCastCount")
 	var legacy_turn := CombatTurnState.from_data(legacy_turn_data)
 	assert_not_null(legacy_turn, "pre-fumble save-v3 active turns remain readable")
 	assert_false(legacy_turn.physical_action_committed, "a legacy active turn does not fabricate a prior physical action")

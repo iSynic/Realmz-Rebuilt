@@ -11,8 +11,8 @@ var party_in_boat: bool = false
 var party_camping: bool = false
 var priest_turning_allowed: bool = true
 var allies_suspended: bool = false
-var character_spellcasting: bool = false
-var monster_spellcasting: bool = false
+var character_spellcasting_blocked: bool = false
+var monster_spellcasting_blocked: bool = false
 var spell_charging: bool = false
 var last_move_direction: Vector2i = Vector2i.ZERO
 var active_shop_id: String = ""
@@ -232,8 +232,10 @@ func to_data() -> Dictionary:
 		"partyCamping": party_camping,
 		"priestTurningAllowed": priest_turning_allowed,
 		"alliesSuspended": allies_suspended,
-		"characterSpellcasting": character_spellcasting,
-		"monsterSpellcasting": monster_spellcasting,
+		# Save-v3 field names predate the Castle audit. Their values are blocking
+		# flags: nonzero Extra Code disables the corresponding caster group.
+		"characterSpellcasting": character_spellcasting_blocked,
+		"monsterSpellcasting": monster_spellcasting_blocked,
 		"spellCharging": spell_charging,
 		"lastMoveX": last_move_direction.x,
 		"lastMoveY": last_move_direction.y,
@@ -360,8 +362,8 @@ static func from_data(data: Variant) -> GameState:
 		for field: String in ["characterSpellcasting", "monsterSpellcasting", "spellCharging"]:
 			if data.has(field) and not data[field] is bool:
 				return null
-		state.character_spellcasting = bool(data.get("characterSpellcasting", false))
-		state.monster_spellcasting = bool(data.get("monsterSpellcasting", false))
+		state.character_spellcasting_blocked = bool(data.get("characterSpellcasting", false))
+		state.monster_spellcasting_blocked = bool(data.get("monsterSpellcasting", false))
 		state.spell_charging = bool(data.get("spellCharging", false))
 		if data.has("lastMoveX") or data.has("lastMoveY"):
 			var last_x := _signed_integer(data.get("lastMoveX"))

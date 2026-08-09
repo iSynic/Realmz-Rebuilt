@@ -1054,11 +1054,11 @@ func _test_classic_spellcasting_flags(content: RealmzContent) -> void:
 	var state := GameState.new(party, RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
 	var changed := api.execute_classic(ClassicActionDefinition.new(0, 69, 69, 1, false, [1, 0, 1, 0, 0]), "request.casting-flags")
-	assert_true(state.character_spellcasting and not state.monster_spellcasting and state.spell_charging, "Classic opcode 69 owns all three authored spellcasting flags")
+	assert_true(state.character_spellcasting_blocked and not state.monster_spellcasting_blocked and state.spell_charging, "Classic opcode 69 owns both blocking flags and the charging flag")
 	assert_true(_event_has(changed.events, &"spellcasting_flags_changed"), "spellcasting flag changes are explicit in the domain trace")
 	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	assert_not_null(round_trip, "spellcasting flags serialize in the central save aggregate")
-	assert_true(round_trip.character_spellcasting and round_trip.spell_charging, "restored spellcasting flags are exact")
+	assert_true(round_trip.character_spellcasting_blocked and round_trip.spell_charging, "restored spellcasting blocking flags are exact")
 
 
 func _test_classic_identity_selection(content: RealmzContent) -> void:

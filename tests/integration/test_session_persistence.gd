@@ -12,6 +12,8 @@ func run() -> void:
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "validated content starts synchronously")
 	_begin_fixture_adventure(session, content)
+	assert_false(session.view().availability(&"cast_spell").enabled, "the spell workspace does not expose an incomplete targetless cast intent")
+	assert_equal(session.view().availability(&"cast_spell").reason, "Field spell casting is not implemented in the current gameplay slice.", "the disabled cast control states the remaining application boundary")
 	var first_search := session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	assert_equal(first_search.state, SessionStep.State.COMPLETED, "search commits at one session boundary")
 	assert_equal(first_search.events[0].payload["roll"], 52, "the committed event records the first deterministic draw")

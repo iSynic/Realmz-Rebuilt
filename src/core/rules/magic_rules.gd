@@ -17,20 +17,25 @@ func resolve_character_spell(caster: CharacterState, target: MonsterState, targe
 	caster.spell_points -= spell_cost
 	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"magic.duration")
 	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"magic.damage")
+	var rolled_damage := damage
 	var resisted := _monster_resists(caster, target, target_definition, spell, power_level, cast_level, rng)
 	if resisted:
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type <= 6:
-		saved = rng.draw(100, &"magic.damage-save") <= (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1))
-		if saved and spell.cannot < 2:
+		var save_roll := rng.draw(100, &"magic.damage-save")
+		# savevs consumes its roll first, then forces failure when cannot > 1.
+		saved = spell.cannot <= 1 and save_roll <= (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1))
+		if saved:
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 			damage /= 2
 	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type <= 6 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
+	if rolled_damage != 0 and damage == 0:
+		damage = 1
 	target.current_health -= damage
 	return SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
 
@@ -201,6 +206,8 @@ func _monster_resists(caster: CharacterState, target: MonsterState, definition: 
 			return true
 	if spell.spell_class >= 0 and spell.spell_class < 6 and (definition.spell_immune(spell.spell_class) or target.magic_resistance > 100):
 		return true
+	if (spell.cannot == 1 or spell.cannot > 2) and absi(spell.spell_class) != 9:
+		return false
 	for level: int in range(cast_level, 5):
 		if target.conditions.is_active(16 + level):
 			return true

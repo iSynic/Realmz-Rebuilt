@@ -699,7 +699,7 @@ func _construct_monsters(value: Variant) -> Variant:
 		var saves_value: Variant = _integer_array(record["saves"], 6, "Monster saves")
 		var immunity_value: Variant = _integer_array(record["spellImmunities"], 6, "Monster spell immunities")
 		var money_value: Variant = _integer_array(record["money"], 3, "Monster wealth")
-		var spell_ids_value: Variant = _string_list(record["spellIds"], "Monster spell IDs")
+		var spell_ids_value: Variant = _fixed_or_empty_string_list(record["spellIds"], 10, 255, "Monster spell IDs")
 		var item_ids_value: Variant = _fixed_string_list(record["itemIds"], 6, 255, "Monster item IDs")
 		if type_value == null or saves_value == null or immunity_value == null or money_value == null or spell_ids_value == null or item_ids_value == null:
 			return null
@@ -1768,6 +1768,8 @@ func _validate_rule_references(races: Array[RaceDefinition], castes: Array[Caste
 				return _reject("Caste '%s' references unavailable starting item '%s'." % [caste.id, item_id])
 	for monster: MonsterDefinition in monsters:
 		for spell_id: String in monster.spell_ids():
+			if spell_id.is_empty():
+				continue
 			if not spell_ids.has(spell_id):
 				return _reject("Monster '%s' references unavailable spell '%s'." % [monster.id, spell_id])
 		for item_id: String in monster.item_ids():
@@ -2040,6 +2042,15 @@ func _fixed_string_list(value: Variant, expected_size: int, maximum_length: int,
 			return null
 		strings.append(item)
 	return strings
+
+
+func _fixed_or_empty_string_list(value: Variant, expected_size: int, maximum_length: int, label: String) -> Variant:
+	if value is Array and value.is_empty():
+		var empty_slots: Array[String] = []
+		empty_slots.resize(expected_size)
+		empty_slots.fill("")
+		return empty_slots
+	return _fixed_string_list(value, expected_size, maximum_length, label)
 
 
 func _boolean_array(value: Variant, expected_size: int, label: String) -> Variant:

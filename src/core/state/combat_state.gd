@@ -19,6 +19,7 @@ var _fumbled_items: Array[ItemInstance] = []
 var _character_weapon_modes: Dictionary = {}
 var _guarding_actor_ids: Dictionary = {}
 var _retreated_character_ids: Dictionary = {}
+var _attacked_actor_ids: Dictionary = {}
 
 
 func _init(source_battle_id: String, initial_monsters: Array[MonsterState] = [], battle_macro_id: int = 0, initial_battlefield: BattlefieldState = null) -> void:
@@ -109,6 +110,7 @@ func advance_turn() -> void:
 	if turn_index >= _turn_order.size():
 		turn_index = 0
 		round_number += 1
+		_attacked_actor_ids.clear()
 
 
 func begin_active_turn() -> CombatTurnState:
@@ -162,6 +164,25 @@ func guarding_actor_ids() -> Array[String]:
 	return result
 
 
+func mark_attacked(actor_id: String) -> bool:
+	if actor_id.is_empty() or not _turn_order.has(actor_id):
+		return false
+	_attacked_actor_ids[actor_id] = true
+	return true
+
+
+func was_attacked(actor_id: String) -> bool:
+	return bool(_attacked_actor_ids.get(actor_id, false))
+
+
+func attacked_actor_ids() -> Array[String]:
+	var result: Array[String] = []
+	for actor_id: Variant in _attacked_actor_ids:
+		result.append(String(actor_id))
+	result.sort()
+	return result
+
+
 func mark_character_retreated(actor_id: String) -> bool:
 	if actor_id.is_empty() or not _turn_order.has(actor_id) or monster_by_id(actor_id) != null:
 		return false
@@ -202,7 +223,7 @@ func to_data() -> Dictionary:
 	weapon_mode_ids.sort()
 	for actor_id: Variant in weapon_mode_ids:
 		weapon_modes[String(actor_id)] = _character_weapon_modes[actor_id]
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "battlefield": null if battlefield == null else battlefield.to_data()}
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "battlefield": null if battlefield == null else battlefield.to_data()}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -245,6 +266,13 @@ static func from_data(data: Variant) -> CombatState:
 		if not actor_id is String or actor_id.is_empty() or not order.has(actor_id) or result._guarding_actor_ids.has(actor_id):
 			return null
 		result._guarding_actor_ids[actor_id] = true
+	var attacked_data: Variant = data.get("attackedActorIds", [])
+	if not attacked_data is Array or attacked_data.size() > order.size():
+		return null
+	for actor_id: Variant in attacked_data:
+		if not actor_id is String or actor_id.is_empty() or not order.has(actor_id) or result._attacked_actor_ids.has(actor_id):
+			return null
+		result._attacked_actor_ids[actor_id] = true
 	var retreated_data: Variant = data.get("retreatedCharacterIds", [])
 	if not retreated_data is Array or retreated_data.size() > 6:
 		return null

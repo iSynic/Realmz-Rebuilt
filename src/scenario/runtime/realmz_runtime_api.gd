@@ -204,10 +204,10 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 				return ScenarioRuntimeOperationResult.completed(false)
 			if action.extra_code.size() < 3:
 				return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 69 requires a five-value Extra Code row.")
-			_game_state.character_spellcasting = action.extra_code[0] != 0
-			_game_state.monster_spellcasting = action.extra_code[1] != 0
+			_game_state.character_spellcasting_blocked = action.extra_code[0] != 0
+			_game_state.monster_spellcasting_blocked = action.extra_code[1] != 0
 			_game_state.spell_charging = action.extra_code[2] != 0
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"spellcasting_flags_changed", {"characterCasting": _game_state.character_spellcasting, "monsterCasting": _game_state.monster_spellcasting, "charging": _game_state.spell_charging, "source": "classic"})])
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"spellcasting_flags_changed", {"characterCastingBlocked": _game_state.character_spellcasting_blocked, "monsterCastingBlocked": _game_state.monster_spellcasting_blocked, "charging": _game_state.spell_charging, "source": "classic"})])
 		73:
 			return _configure_shop(action, request_id)
 		76:

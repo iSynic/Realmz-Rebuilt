@@ -76,6 +76,10 @@ func spell_ids() -> Array[String]:
 	return _spells.duplicate()
 
 
+func spell_id_at(slot: int) -> String:
+	return _spells[slot] if slot >= 0 and slot < _spells.size() else ""
+
+
 func item_ids() -> Array[String]:
 	return _items.duplicate()
 

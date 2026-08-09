@@ -215,7 +215,10 @@ func _populate_action_availability(result: GameView) -> void:
 	result.set_action_availability(&"search", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Search is unavailable during battle." if battle_active else "")
 	result.set_action_availability(&"camp", ordinary_reason.is_empty() and not battle_active and _state.camping_allowed, ordinary_reason if not ordinary_reason.is_empty() else "Camping is unavailable during battle." if battle_active else "Camping is unavailable here." if not _state.camping_allowed else "")
 	result.set_action_availability(&"use_item", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Use the battle action flow during combat." if battle_active else "")
-	result.set_action_availability(&"cast_spell", ordinary_reason.is_empty(), ordinary_reason)
+	var cast_reason := ordinary_reason
+	if cast_reason.is_empty():
+		cast_reason = "Combat spell selection is not wired into the battle interaction yet." if battle_active else "Field spell casting is not implemented in the current gameplay slice."
+	result.set_action_availability(&"cast_spell", false, cast_reason)
 	result.set_action_availability(&"choose_combat_action", battle_active and not blocked_by_interaction, "No battle action is currently available." if not battle_active else "Resolve the current interaction first." if blocked_by_interaction else "")
 	result.set_action_availability(&"create_party", party_setup and not blocked_by_interaction, "Resolve the current interaction first." if blocked_by_interaction else "Party creation is available only before beginning a campaign." if not party_setup else "")
 	result.set_action_availability(&"begin_adventure", party_setup and not blocked_by_interaction and setup_member_count > 0, "Resolve the current interaction first." if blocked_by_interaction else "The adventure has already begun." if not party_setup else "Add or import at least one character first.")

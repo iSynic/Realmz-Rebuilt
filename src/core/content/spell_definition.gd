@@ -42,3 +42,9 @@ func _init(definition_id: String, native_id: int, display_name: String, spell_de
 	classic_id = native_id
 	name = display_name
 	description = spell_description
+
+
+func classic_tier() -> int:
+	if classic_id < 1101:
+		return -1
+	return int(classic_id % 1000 / 100) - 1
