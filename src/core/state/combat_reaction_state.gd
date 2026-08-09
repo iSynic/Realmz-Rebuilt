@@ -3,6 +3,7 @@ extends RefCounted
 
 const CHARACTER_MOVE: StringName = &"character-move"
 const MONSTER_MOVE: StringName = &"monster-move"
+const MONSTER_RETREAT: StringName = &"monster-retreat"
 const MONSTER_CONTACT: StringName = &"monster-contact"
 const GUARD_BEFORE: StringName = &"guard-before"
 const WITHDRAWAL: StringName = &"withdrawal"
@@ -79,7 +80,7 @@ static func from_data(data: Variant) -> CombatReactionState:
 	for field: String in ["kind", "moverId", "origin", "destination", "movementCost", "phase", "attackerIds", "originHostileIds", "nextAttackerIndex", "moverKilled"]:
 		if not data.has(field):
 			return null
-	if not data["kind"] is String or data["kind"] not in [String(CHARACTER_MOVE), String(MONSTER_MOVE), String(MONSTER_CONTACT)] or not data["moverId"] is String or data["moverId"].is_empty() or not data["phase"] is String or data["phase"] not in [String(GUARD_BEFORE), String(WITHDRAWAL), String(GUARD_AFTER)] or not data["attackerIds"] is Array or not data["originHostileIds"] is Array or not data["moverKilled"] is bool:
+	if not data["kind"] is String or data["kind"] not in [String(CHARACTER_MOVE), String(MONSTER_MOVE), String(MONSTER_RETREAT), String(MONSTER_CONTACT)] or not data["moverId"] is String or data["moverId"].is_empty() or not data["phase"] is String or data["phase"] not in [String(GUARD_BEFORE), String(WITHDRAWAL), String(GUARD_AFTER)] or not data["attackerIds"] is Array or not data["originHostileIds"] is Array or not data["moverKilled"] is bool:
 		return null
 	var source_origin := _coordinate(data["origin"])
 	var source_destination := _coordinate(data["destination"])
@@ -90,9 +91,9 @@ static func from_data(data: Variant) -> CombatReactionState:
 		return null
 	if data["kind"] == String(MONSTER_CONTACT) and data["phase"] != String(GUARD_AFTER):
 		return null
-	if data["kind"] == String(MONSTER_MOVE) and data["phase"] not in [String(WITHDRAWAL), String(GUARD_AFTER)]:
+	if data["kind"] in [String(MONSTER_MOVE), String(MONSTER_RETREAT)] and data["phase"] not in [String(WITHDRAWAL), String(GUARD_AFTER)]:
 		return null
-	if data["kind"] != String(CHARACTER_MOVE) and not data["originHostileIds"].is_empty():
+	if data["kind"] not in [String(CHARACTER_MOVE), String(MONSTER_RETREAT)] and not data["originHostileIds"].is_empty():
 		return null
 	var attacker_ids: Array[String] = []
 	var seen: Dictionary = {}

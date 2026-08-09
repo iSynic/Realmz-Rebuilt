@@ -18,6 +18,7 @@ var _monsters: Array[MonsterState] = []
 var _fumbled_items: Array[ItemInstance] = []
 var _character_weapon_modes: Dictionary = {}
 var _guarding_actor_ids: Dictionary = {}
+var _retreated_character_ids: Dictionary = {}
 
 
 func _init(source_battle_id: String, initial_monsters: Array[MonsterState] = [], battle_macro_id: int = 0, initial_battlefield: BattlefieldState = null) -> void:
@@ -161,6 +162,25 @@ func guarding_actor_ids() -> Array[String]:
 	return result
 
 
+func mark_character_retreated(actor_id: String) -> bool:
+	if actor_id.is_empty() or not _turn_order.has(actor_id) or monster_by_id(actor_id) != null:
+		return false
+	_retreated_character_ids[actor_id] = true
+	return true
+
+
+func has_character_retreated(actor_id: String) -> bool:
+	return bool(_retreated_character_ids.get(actor_id, false))
+
+
+func retreated_character_ids() -> Array[String]:
+	var result: Array[String] = []
+	for actor_id: Variant in _retreated_character_ids:
+		result.append(String(actor_id))
+	result.sort()
+	return result
+
+
 func to_data() -> Dictionary:
 	var monster_data: Array[Dictionary] = []
 	for monster: MonsterState in _monsters:
@@ -182,7 +202,7 @@ func to_data() -> Dictionary:
 	weapon_mode_ids.sort()
 	for actor_id: Variant in weapon_mode_ids:
 		weapon_modes[String(actor_id)] = _character_weapon_modes[actor_id]
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "battlefield": null if battlefield == null else battlefield.to_data()}
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "battlefield": null if battlefield == null else battlefield.to_data()}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -225,6 +245,13 @@ static func from_data(data: Variant) -> CombatState:
 		if not actor_id is String or actor_id.is_empty() or not order.has(actor_id) or result._guarding_actor_ids.has(actor_id):
 			return null
 		result._guarding_actor_ids[actor_id] = true
+	var retreated_data: Variant = data.get("retreatedCharacterIds", [])
+	if not retreated_data is Array or retreated_data.size() > 6:
+		return null
+	for actor_id: Variant in retreated_data:
+		if not actor_id is String or actor_id.is_empty() or not order.has(actor_id) or result.monster_by_id(actor_id) != null or result._retreated_character_ids.has(actor_id):
+			return null
+		result._retreated_character_ids[actor_id] = true
 	var weapon_modes: Variant = data.get("characterWeaponModes", {})
 	if not weapon_modes is Dictionary or weapon_modes.size() > 6:
 		return null

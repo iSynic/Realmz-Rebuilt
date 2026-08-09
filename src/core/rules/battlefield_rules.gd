@@ -68,6 +68,13 @@ func probe_monster_step_toward(battlefield: BattlefieldState, terrain_set: Battl
 	return blocked
 
 
+func probe_monster_step_away(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target: Vector2i, movement_available: int, rng: RealmzRng) -> BattlefieldStepResult:
+	if battlefield == null or not battlefield.has_actor(actor_id):
+		return BattlefieldStepResult.blocked(&"invalid_actor")
+	var origin := battlefield.actor_position(actor_id)
+	return probe_monster_step_toward(battlefield, terrain_set, actor_id, origin * 2 - target, movement_available, rng)
+
+
 func probe_step(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, direction: Vector2i, movement_available: int) -> BattlefieldStepResult:
 	return _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, direction, movement_available, 0)
 

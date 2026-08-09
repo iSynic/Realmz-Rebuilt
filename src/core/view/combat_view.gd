@@ -15,6 +15,9 @@ var weapon_switch_unavailable_reason: String = "The active combatant has no alte
 var ranged_attack_unavailable_reason: String = ""
 var melee_attack_unavailable_reason: String = ""
 var equipment_error_reason: String = ""
+var retreat_available: bool = false
+var retreat_unavailable_reason: String = "Retreat is unavailable."
+var nearest_enemy_range: int = 127
 var outcome: StringName
 var turn_order: Array[String] = []
 var legal_actions: Array[StringName] = []
@@ -25,7 +28,7 @@ var monsters: Array[MonsterView] = []
 var battlefield: BattlefieldView
 
 
-func _init(combat: CombatState, characters: Array[CharacterState] = [], content: RealmzContent = null, inventory_rules: InventoryRules = null, battlefield_rules: BattlefieldRules = null) -> void:
+func _init(combat: CombatState, characters: Array[CharacterState] = [], content: RealmzContent = null, inventory_rules: InventoryRules = null, battlefield_rules: BattlefieldRules = null, combat_flow: CombatFlow = null) -> void:
 	battle_id = combat.battle_id
 	round_number = combat.round_number
 	active_actor_id = combat.active_actor_id()
@@ -55,6 +58,11 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 			active_character = character
 			break
 	if active_character != null and content != null and inventory_rules != null:
+		if combat_flow != null:
+			var retreat_probe: Variant = combat_flow.probe_character_retreat(combat, characters, active_character.id)
+			retreat_available = retreat_probe.allowed
+			retreat_unavailable_reason = retreat_probe.reason_text
+			nearest_enemy_range = retreat_probe.nearest_enemy_range
 		var equipment := inventory_rules.combat_equipment(active_character, content.item_definitions())
 		if equipment.valid:
 			weapon_mode = combat.character_weapon_mode(active_character.id)
@@ -79,8 +87,11 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 			var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
 			if terrain_set != null:
 				for direction: Vector2i in BattlefieldRules.DIRECTIONS:
+					var destination := combat.battlefield.actor_position(active_character.id) + direction
+					var edge_retreat: Variant = combat_flow.probe_edge_retreat(combat, active_character.id, destination) if combat_flow != null else null
 					var probe := battlefield_rules.probe_step(combat.battlefield, terrain_set, active_character.id, direction, active_character.movement)
-					movement_options.append(CombatMoveOptionView.new(direction, probe))
+					movement_options.append(CombatMoveOptionView.new(direction, probe, edge_retreat != null and edge_retreat.allowed, edge_retreat != null and edge_retreat.forced))
 	legal_actions.append(&"finish")
 	legal_actions.append(&"defend")
-	legal_actions.append(&"retreat")
+	if retreat_available:
+		legal_actions.append(&"retreat")

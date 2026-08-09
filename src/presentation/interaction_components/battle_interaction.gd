@@ -22,8 +22,13 @@ func build(request: InteractionRequest) -> void:
 			if option is Dictionary:
 				var destination: Variant = option.get("destination", [])
 				var direction: Variant = option.get("direction", [])
-				var label := "Move %s • %d MP" % [_direction_label(direction), int(option.get("cost", 0))]
-				add_response(label, {"actorId": actor_id, "action": "move", "targetId": "", "destination": destination}, bool(option.get("enabled", false)), String(option.get("reason", "Movement unavailable.")))
+				var edge_retreat := bool(option.get("retreat", false))
+				var label := "Leave battle %s" % _direction_label(direction) if edge_retreat else "Move %s • %d MP" % [_direction_label(direction), int(option.get("cost", 0))]
+				var action := "retreat_edge" if edge_retreat else "move"
+				var response := {"actorId": actor_id, "action": action, "targetId": "", "destination": destination}
+				if edge_retreat:
+					response["forced"] = bool(option.get("forcedRetreat", false))
+				add_response(label, response, bool(option.get("enabled", false)), String(option.get("reason", "Movement unavailable.")))
 	if weapon_mode == "missile":
 		var ranged: Variant = request.payload.get("rangedAttack", {})
 		var ranged_reason := String(ranged.get("reason", "Missile attacks are unavailable.") if ranged is Dictionary else "Missile attacks are unavailable.")
@@ -36,8 +41,10 @@ func build(request: InteractionRequest) -> void:
 		add_response("Defend", {"actorId": actor_id, "action": "defend", "targetId": ""})
 	if action_ids.has("finish"):
 		add_response("Finish turn", {"actorId": actor_id, "action": "finish", "targetId": ""})
-	if action_ids.has("retreat"):
-		add_response("Retreat", {"actorId": actor_id, "action": "retreat", "targetId": ""})
+	var retreat: Variant = request.payload.get("retreat", {})
+	var retreat_enabled := action_ids.has("retreat") and retreat is Dictionary and bool(retreat.get("enabled", false))
+	var retreat_reason := String(retreat.get("reason", "Retreat is unavailable.") if retreat is Dictionary else "Retreat is unavailable.")
+	add_response("Escape", {"actorId": actor_id, "action": "retreat", "targetId": ""}, retreat_enabled, retreat_reason)
 
 
 static func _direction_label(value: Variant) -> String:

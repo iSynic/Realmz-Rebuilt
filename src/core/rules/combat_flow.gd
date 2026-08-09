@@ -1,6 +1,8 @@
 class_name CombatFlow
 extends RefCounted
 
+const CombatRetreatProbeType = preload("res://src/core/rules/combat_retreat_probe.gd")
+
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
 const MONSTER_ATTACK_DEATH_MACRO := 2
@@ -155,7 +157,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	if combat.active_actor_id() != actor_id:
 		return CombatFlowResult.failed(&"wrong_combat_actor", "Combat action actor '%s' does not own the current turn." % actor_id)
 	var actor := state.party.character_by_id(actor_id)
-	if actor == null or actor.current_health <= 0 or actor.traitor:
+	if actor == null or actor.current_health <= 0 or actor.traitor or combat.battlefield == null or not combat.battlefield.has_actor(actor.id):
 		return CombatFlowResult.failed(&"invalid_combat_actor", "The current combat actor is unavailable.")
 	var events: Array[DomainEvent] = []
 	var monster_death_macro_requested := false
@@ -226,20 +228,81 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 			events.append(DomainEvent.new(&"combat_turn_passed", {"actorId": actor.id, "action": String(action)}))
 			combat.advance_turn()
 		&"retreat":
-			_prepare_character_turn(combat, actor)
-			combat.completed = true
-			combat.outcome = &"retreated"
-			combat.clear_active_turn()
-			state.last_battle_outcome = combat.outcome
-			_restore_party_allegiance(state, events)
-			events.append(DomainEvent.new(&"battle_completed", {"battleId": combat.battle_id, "outcome": String(combat.outcome)}))
-			return CombatFlowResult.succeeded(events, true)
+			return retreat_character(state, content, actor_id, &"explicit", Vector2i(-100_000, -100_000), rng)
 		_:
 			return CombatFlowResult.failed(&"unknown_combat_action", "Combat action '%s' is not available." % action)
 	if _finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	_process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
+
+
+func probe_character_retreat(combat: CombatState, characters: Array[CharacterState], actor_id: String):
+	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != actor_id or not combat.battlefield.has_actor(actor_id):
+		return CombatRetreatProbeType.blocked(&"invalid_combat_actor", "The active character is unavailable.")
+	var actor: CharacterState = null
+	for character: CharacterState in characters:
+		if character.id == actor_id:
+			actor = character
+			break
+	if actor == null or actor.current_health <= 0 or actor.traitor:
+		return CombatRetreatProbeType.blocked(&"invalid_combat_actor", "Only a living loyal character can retreat.")
+	var nearest_range := 127
+	var origin := combat.battlefield.actor_position(actor_id)
+	for character: CharacterState in characters:
+		if character.id != actor_id and character.current_health > 0 and character.traitor != actor.traitor and combat.battlefield.has_actor(character.id):
+			nearest_range = mini(nearest_range, floori(Vector2(combat.battlefield.actor_position(character.id) - origin).length()))
+	for monster: MonsterState in combat.monsters():
+		if monster.current_health > 0 and monster.traitor != actor.traitor and combat.battlefield.has_actor(monster.id):
+			nearest_range = mini(nearest_range, floori(Vector2(combat.battlefield.actor_position(monster.id) - origin).length()))
+	if nearest_range < 10:
+		return CombatRetreatProbeType.blocked(&"enemy_too_close", "Classic Escape requires every enemy to be at least 10 battlefield cells away.", nearest_range)
+	for condition: int in [ConditionRules.HELPLESS, ConditionRules.CONFUSED, ConditionRules.TANGLED, ConditionRules.SLOW]:
+		if actor.conditions.is_active(condition):
+			return CombatRetreatProbeType.blocked(&"retreat_condition_blocked", "This character's current condition prevents Escape.", nearest_range)
+	return CombatRetreatProbeType.permitted(nearest_range)
+
+
+func probe_edge_retreat(combat: CombatState, actor_id: String, destination: Vector2i):
+	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != actor_id or not combat.battlefield.has_actor(actor_id):
+		return CombatRetreatProbeType.blocked(&"invalid_combat_actor", "The active character is unavailable.")
+	var origin := combat.battlefield.actor_position(actor_id)
+	var direction := destination - origin
+	if direction == Vector2i.ZERO or absi(direction.x) > 1 or absi(direction.y) > 1:
+		return CombatRetreatProbeType.blocked(&"invalid_direction", "Battlefield-edge retreat requires one adjacent movement direction.")
+	if destination.x >= 2 and destination.y >= 2 and destination.x <= 87 and destination.y <= 87:
+		return CombatRetreatProbeType.blocked(&"not_battlefield_edge", "This movement does not enter Castle's retreat band.")
+	var forced := origin.x < 1 or origin.y < 1 or origin.x > 88 or origin.y > 88
+	return CombatRetreatProbeType.permitted(127, forced)
+
+
+func retreat_character(state: GameState, content: RealmzContent, actor_id: String, mode: StringName, destination: Vector2i, rng: RealmzRng) -> CombatFlowResult:
+	var combat := state.combat
+	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != actor_id:
+		return CombatFlowResult.failed(&"invalid_combat_actor", "The active character cannot retreat.")
+	var actor := state.party.character_by_id(actor_id)
+	if actor == null:
+		return CombatFlowResult.failed(&"invalid_combat_actor", "The active character cannot retreat.")
+	var probe: Variant = probe_character_retreat(combat, state.party.characters(), actor_id) if mode == &"explicit" else probe_edge_retreat(combat, actor_id, destination) if mode == &"edge" else null
+	if probe == null:
+		return CombatFlowResult.failed(&"invalid_retreat_mode", "The retreat route is unavailable.")
+	if not probe.allowed:
+		return CombatFlowResult.failed(probe.reason, probe.reason_text)
+	if not combat.mark_character_retreated(actor.id):
+		return CombatFlowResult.failed(&"invalid_retreat_state", "The active character's Escape state could not be recorded.")
+	combat.battlefield.remove_character(actor.id)
+	combat.set_guarding(actor.id, false)
+	combat.clear_active_turn()
+	actor.attacks_remaining = 0
+	actor.movement = 0
+	actor.prestige_penalty = _rules.arithmetic.signed_32(actor.prestige_penalty + 200)
+	var events: Array[DomainEvent] = [DomainEvent.new(&"combatant_retreated", {"actorId": actor.id, "mode": String(mode), "forced": probe.forced, "prestigePenalty": 200, "nearestEnemyRange": probe.nearest_enemy_range, "source": "classic"})]
+	if not _has_loyal_battlefield_character(state):
+		_complete_battle(state, content, &"retreated", events)
+		return CombatFlowResult.succeeded(events, true)
+	combat.advance_turn()
+	_process_monster_turns(state, content, rng, events)
+	return CombatFlowResult.succeeded(events, combat.completed)
 
 
 func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i, rng: RealmzRng) -> CombatFlowResult:
@@ -345,12 +408,15 @@ func _commit_reaction_move(state: GameState, content: RealmzContent, reaction: C
 		"to": [reaction.destination.x, reaction.destination.y],
 		"cost": reaction.movement_cost,
 		"movementRemaining": movement_remaining,
-		"automatic": reaction.kind == CombatReactionState.MONSTER_MOVE,
+		"automatic": reaction.kind != CombatReactionState.CHARACTER_MOVE,
 	}))
 	var terrain_set := _battle_terrain_set(content, combat.battlefield)
 	var terrain := terrain_set.tile_by_id(combat.battlefield.terrain_at(reaction.destination)) if terrain_set != null else null
 	if terrain != null and terrain.sound != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": terrain.sound, "waitForCompletion": terrain.sound < 0, "source": "classic-battle-movement"}))
+	if reaction.kind == CombatReactionState.MONSTER_RETREAT and _retreating_monster_reached_edge(state, content, reaction.mover_id, reaction.destination, events):
+		reaction.set_phase(CombatReactionState.GUARD_AFTER, [])
+		return true
 	reaction.set_phase(CombatReactionState.GUARD_AFTER, _guarding_hostiles(state, reaction.mover_id))
 	return true
 
@@ -847,6 +913,10 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 		var monster := combat.monster_by_id(actor_id)
 		if monster == null:
 			var charmed_actor := state.party.character_by_id(actor_id)
+			if charmed_actor != null and (combat.battlefield == null or not combat.battlefield.has_actor(charmed_actor.id)):
+				combat.advance_turn()
+				guard -= 1
+				continue
 			if charmed_actor == null or not charmed_actor.traitor:
 				if charmed_actor != null and charmed_actor.current_health > 0:
 					_prepare_character_turn(combat, charmed_actor)
@@ -898,7 +968,9 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 		elif active_turn.action == &"cast":
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "reason": "monster-spell-resolution-not-implemented"}))
 		elif active_turn.action == &"retreat":
-			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "monster-retreat-not-implemented"}))
+			attack_result = _process_monster_retreat(state, content, monster, definition, active_turn, rng, events)
+			if attack_result != MONSTER_ATTACK_COMPLETED:
+				return
 		else:
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": String(active_turn.action)}))
 		combat.advance_turn()
@@ -971,6 +1043,65 @@ func _process_monster_advance(state: GameState, content: RealmzContent, monster:
 		active_turn.movement_remaining = 0
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "monster-movement-budget-exhausted"}))
 	return MONSTER_ATTACK_COMPLETED
+
+
+func _process_monster_retreat(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	var terrain_set := _battle_terrain_set(content, combat.battlefield)
+	if terrain_set == null:
+		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "missing-battle-terrain"}))
+		active_turn.movement_remaining = 0
+		return MONSTER_ATTACK_COMPLETED
+	if not _monster_target_is_available(state, monster, active_turn.target_id):
+		# movemonster.c reads pos[-1] when a routed monster has no retained target.
+		# Keep that unsafe source path explicit instead of inventing a threat target.
+		active_turn.movement_remaining = 0
+		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "retreat-target-unresolved"}))
+		return MONSTER_ATTACK_COMPLETED
+	var operation_guard := 512
+	while operation_guard > 0 and active_turn.movement_remaining > 0 and monster.current_health > 0:
+		var origin := combat.battlefield.actor_position(monster.id)
+		var target_coordinate := combat.battlefield.actor_position(active_turn.target_id)
+		var probe := _rules.battlefield.probe_monster_step_away(combat.battlefield, terrain_set, monster.id, target_coordinate, active_turn.movement_remaining, rng)
+		if not probe.allowed:
+			active_turn.movement_remaining = 0
+			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": String(probe.reason)}))
+			return MONSTER_ATTACK_COMPLETED
+		combat.pending_reaction = CombatReactionState.new(CombatReactionState.MONSTER_RETREAT, monster.id, origin, probe.destination, probe.movement_cost)
+		combat.pending_reaction.set_origin_hostiles(_hostile_adjacent_ids(state, monster.id))
+		combat.pending_reaction.set_phase(CombatReactionState.WITHDRAWAL, _withdrawal_hostiles(state, combat.pending_reaction))
+		var reaction_result := _continue_pending_reaction(state, content, rng, events)
+		if reaction_result == REACTION_WAITING:
+			return MONSTER_ATTACK_WAITING
+		if reaction_result == REACTION_DEATH_MACRO:
+			return MONSTER_ATTACK_DEATH_MACRO
+		if reaction_result == REACTION_MOVER_DEFEATED:
+			return MONSTER_ATTACK_COMPLETED
+		operation_guard -= 1
+	if operation_guard == 0:
+		active_turn.movement_remaining = 0
+		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "monster-movement-budget-exhausted"}))
+	return MONSTER_ATTACK_COMPLETED
+
+
+func _retreating_monster_reached_edge(state: GameState, content: RealmzContent, monster_id: String, destination: Vector2i, events: Array[DomainEvent]) -> bool:
+	if destination.x >= 2 and destination.y >= 2 and destination.x <= 87 and destination.y <= 87:
+		return false
+	var monster := state.combat.monster_by_id(monster_id)
+	var definition := content.monster_by_id(monster.definition_id) if monster != null else null
+	if monster == null or definition == null:
+		return false
+	state.combat.set_guarding(monster.id, false)
+	state.combat.active_turn.movement_remaining = 0
+	if definition.can_summon < 0:
+		# Castle says mandatory allies cannot leave, but flips deltas only after
+		# committing the edge step. Stop safely at that observed boundary.
+		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "retreat", "reason": "mandatory-ally-edge-retreat-unresolved"}))
+		return false
+	monster.current_health = 0
+	state.combat.battlefield.remove_monster(monster.id)
+	events.append(DomainEvent.new(&"combatant_retreated", {"actorId": monster.id, "mode": "battlefield-edge", "forced": true, "source": "classic-monster"}))
+	return true
 
 
 func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, attack_index: int, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
@@ -1378,22 +1509,25 @@ func _finish_if_resolved(state: GameState, content: RealmzContent, events: Array
 	var combat := state.combat
 	var enemies_alive := false
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and character.traitor:
+		if character.current_health > 0 and character.traitor and combat.battlefield != null and combat.battlefield.has_actor(character.id):
 			enemies_alive = true
 			break
 	for monster: MonsterState in combat.monsters():
-		if monster.current_health > 0 and monster.traitor:
+		if monster.current_health > 0 and monster.traitor and combat.battlefield != null and combat.battlefield.has_actor(monster.id):
 			enemies_alive = true
 			break
-	var party_alive := false
-	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and not character.traitor:
-			party_alive = true
-			break
+	var party_alive := _has_loyal_battlefield_character(state)
 	if enemies_alive and party_alive:
 		return false
+	var outcome: StringName = &"victory" if party_alive else &"retreated" if _has_living_retreated_character(state) else &"defeat"
+	_complete_battle(state, content, outcome, events)
+	return true
+
+
+func _complete_battle(state: GameState, content: RealmzContent, outcome: StringName, events: Array[DomainEvent]) -> void:
+	var combat := state.combat
 	combat.completed = true
-	combat.outcome = &"victory" if party_alive else &"defeat"
+	combat.outcome = outcome
 	combat.clear_active_turn()
 	state.last_battle_outcome = combat.outcome
 	_restore_party_allegiance(state, events)
@@ -1405,14 +1539,31 @@ func _finish_if_resolved(state: GameState, content: RealmzContent, events: Array
 				experience += maxi(0, definition.experience)
 		var experience_by_character: Dictionary = {}
 		for character: CharacterState in state.party.characters():
-			if character.current_health > 0:
+			if character.current_health > 0 and combat.battlefield != null and combat.battlefield.has_actor(character.id):
 				var race := content.race_by_id(character.race_id)
 				var awarded := _rules.characters.battle_experience(character, race, experience)
 				character.experience += awarded
 				experience_by_character[character.id] = awarded
 		events.append(DomainEvent.new(&"battle_rewards_granted", {"experiencePerSurvivor": experience, "experienceByCharacter": experience_by_character}))
 	events.append(DomainEvent.new(&"battle_completed", {"battleId": combat.battle_id, "outcome": String(combat.outcome)}))
-	return true
+
+
+static func _has_loyal_battlefield_character(state: GameState) -> bool:
+	if state.combat == null or state.combat.battlefield == null:
+		return false
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and not character.traitor and state.combat.battlefield.has_actor(character.id):
+			return true
+	return false
+
+
+static func _has_living_retreated_character(state: GameState) -> bool:
+	if state.combat == null or state.combat.battlefield == null:
+		return false
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and not character.traitor and state.combat.has_character_retreated(character.id):
+			return true
+	return false
 
 
 func _restore_party_allegiance(state: GameState, events: Array[DomainEvent]) -> void:

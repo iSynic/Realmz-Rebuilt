@@ -1488,6 +1488,62 @@
       "decision": "runtime-defect",
       "availability": "implemented",
       "status": "verified-legal-movement-entry-substate-unresolved"
+    },
+    {
+      "id": "combat.character-and-monster-retreat",
+      "domain": "combat",
+      "claim": "Escape is a per-character action. Explicit Escape requires every enemy to be at least ten integer-truncated Euclidean cells away and rejects Helpless, traitor, Confused, Tangled, or Slow characters; acceptance removes only that character and adds exactly 200 prestige penalty. Entering the battlefield edge band prompts or forces the same removal without those explicit-command gates. Routed monsters move away from their retained target, receive source-ordered withdrawal attacks before each committed step, and leave battle after entering the edge band.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake usefully models player Escape as per-character fled_battle state and has a Classic rout edge adapter. Its player check rejects distance exactly ten, omits Castle's condition and confirmation gates, and its running creature script flees from the barycenter of all enemies rather than Castle's retained target.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/Combat_BR_Panel/combat_br_panel.gd", "symbol": "func _on_escape_button_pressed()" },
+          { "path": "src/shared_assets/CreatureScripts/runningaway.gd", "symbol": "static func decide_action(" },
+          { "path": "src/scripts/classic_runtime/classic_combat_rout_rules.gd", "symbol": "static func mark_exit_if_at_edge(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_combat_monster_rout_action()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/combat.c", "symbol": "void combat(short suprise, short mode)" },
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice(void)" },
+          { "path": "src/realmz_orig/getrange.c", "symbol": "short getrange(short body, short side, short flip)" },
+          { "path": "src/realmz_orig/checkrange-checkforitem.c", "symbol": "short checkrange(short body, short targetx, short targety)" },
+          { "path": "src/realmz_orig/movemonster.c", "symbol": "short movemonster(void)" },
+          { "path": "src/realmz_orig/checkforenemy.c", "symbol": "short checkforenemy(short code)" },
+          { "path": "src/realmz_orig/getup.c", "symbol": "void getup(short skip)" },
+          { "path": "src/realmz_orig/booty.c", "symbol": "void booty(short mode)" }
+        ],
+        "authoredInputs": ["combatant positions and complete footprints", "allegiance and character conditions", "retained monster target", "monster movement maximum and can-summon flag", "battle terrain movement and occupancy"],
+        "observation": "The Escape command stores integer Euclidean ranges and blocks only values below ten, then applies the five character gates and asks Embrace Cowardice versus Stay and Fight. Acceptance clears only that character's inbattle/position state and adds 200 to prestigepenelty; battle ends as cowardly only when no loyal inbattle character remains. Movement into coordinates below two or above eighty-seven enters Escape before terrain collision, while a character already below one or above eighty-eight is forced out. A RUNS_AWAY monster enters movemonster retreat mode, snapshots adjacent hostiles, moves away from its retained target, resolves checkforenemy code two before committing each step, and becomes a zero-stamina removed combatant after entering the edge band. Escaped living characters receive no battle experience; fled hostile monsters remain ordinary defeated reward inputs.",
+        "unresolved": [
+          "movemonster calls checkforenemy code one, which returns before selecting a target, and then indexes pos[target] even when the retained target is minus one. That unsafe source path remains disabled as retreat-target-unresolved rather than inventing a target.",
+          "For mandatory allies can-summon minus one, movemonster comments that allies cannot leave but flips movement deltas only after committing the edge position; the next loop recomputes direction. Realmz 2.0 stops the ally at that observed boundary and reports mandatory-ally-edge-retreat-unresolved rather than claiming a source-backed return step."
+        ]
+      },
+      "providence": {
+        "commit": "7f3347cbe3073c2152004f0dfd0c0395efa82f30",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document(" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits monster movement, conditions, can-summon identity, complete battle terrain, and stable combat definitions. Character conditions and runtime positions remain session state, so no compiler or package change is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func retreat_character(" },
+        "expectedTrace": ["probe exact explicit range and character gates without consuming RNG", "yield a typed saveable confirmation", "remove only the accepting character and record a 200 prestige penalty", "persist explicit escaped-character identity", "continue while a loyal battlefield character remains", "move a routed monster away from its retained target through serializable withdrawal reactions", "remove a hostile routed monster at the edge without a death macro", "leave unsafe target and mandatory-ally branches explicitly unavailable"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_and_monster_retreat()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_gameplay_capabilities_and_battle_resume(" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "verified-unsafe-target-and-mandatory-ally-boundaries-explicit"
     }
   ]
 }

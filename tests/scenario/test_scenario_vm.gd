@@ -460,6 +460,19 @@ func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> vo
 	assert_true(restored.restore(saved), "active battle VM continuation serializes at the player turn")
 	var target_id := _first_hostile_monster_id(state.combat)
 	assert_false(target_id.is_empty(), "battle continuation fixture retains an enemy after consuming its held-over ally")
+	assert_true(_place_monster_at_escape_range(state.combat, character.id, target_id), "battle continuation fixture establishes Castle's exact Escape range")
+	var retreat_prompt := restored.resume(InteractionResponse.new(waiting.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "retreat", "targetId": ""}), api)
+	assert_equal([retreat_prompt.state, retreat_prompt.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.YES_NO], "scenario combat yields the same typed Escape confirmation as direct combat")
+	assert_equal(restored.snapshot().pending_continuation.get("runtime", {}).get("kind"), "classic-combat-retreat-confirmation", "the issuing Classic frame owns the pending Escape confirmation")
+	var retreat_snapshot := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(restored.snapshot().to_data())))
+	assert_not_null(retreat_snapshot, "the nested Classic Escape confirmation is serializable")
+	var retreat_restored := ScenarioVm.new()
+	retreat_restored.configure(definition)
+	assert_true(retreat_restored.restore(retreat_snapshot), "the nested Classic Escape confirmation restores at the exact response boundary")
+	var declined := retreat_restored.resume(InteractionResponse.yes_no(retreat_prompt.interaction, false), api)
+	assert_equal([declined.state, declined.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.COMBAT], "declining Escape returns to the unchanged player combat turn")
+	restored = retreat_restored
+	waiting = declined
 	assert_true(_place_monster_adjacent(state.combat, character.id, target_id), "battle continuation fixture establishes source-legal melee adjacency")
 	var completed := restored.resume(InteractionResponse.new(waiting.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "attack", "targetId": target_id}), api)
 	var battle_events: Array[DomainEvent] = []
@@ -1572,6 +1585,20 @@ func _place_monster_adjacent(combat: CombatState, character_id: String, monster_
 			if BattlefieldRules.new().are_adjacent(combat.battlefield, character_id, monster_id):
 				return true
 			combat.battlefield.remove_monster(monster_id)
+	return false
+
+
+func _place_monster_at_escape_range(combat: CombatState, character_id: String, monster_id: String) -> bool:
+	if combat == null or combat.battlefield == null:
+		return false
+	var character_position := combat.battlefield.character_position(character_id)
+	var monster_size := combat.battlefield.monster_size(monster_id)
+	if character_position.x < 0 or monster_size < 0:
+		return false
+	combat.battlefield.remove_monster(monster_id)
+	for direction: Vector2i in [Vector2i(10, 0), Vector2i(-10, 0), Vector2i(0, 10), Vector2i(0, -10)]:
+		if combat.battlefield.place_monster(monster_id, character_position + direction, monster_size):
+			return true
 	return false
 
 

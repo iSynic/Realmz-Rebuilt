@@ -280,8 +280,14 @@ static func from_data(data: Variant) -> GameState:
 			for actor_id: Variant in battlefield.monster_positions():
 				if not actor_id is String or state.combat.monster_by_id(actor_id) == null:
 					return null
+			for actor_id: String in state.combat.retreated_character_ids():
+				if party_state.character_by_id(actor_id) == null:
+					return null
 			for character: CharacterState in party_state.characters():
-				if character.current_health > 0 and battlefield.character_position(character.id).x < 0:
+				var on_field := battlefield.character_position(character.id).x >= 0
+				if character.current_health > 0 and not on_field and not state.combat.has_character_retreated(character.id):
+					return null
+				if state.combat.has_character_retreated(character.id) and (character.current_health <= 0 or on_field):
 					return null
 			for monster: MonsterState in state.combat.monsters():
 				if monster.current_health > 0 and battlefield.monster_position(monster.id).x < 0:

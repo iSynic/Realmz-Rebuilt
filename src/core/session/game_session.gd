@@ -167,7 +167,7 @@ func view() -> GameView:
 	var members: Array[CharacterView] = []
 	for character: CharacterState in _state.party.characters():
 		members.append(CharacterView.new(character, _content))
-	var current_combat := CombatView.new(_state.combat, _state.party.characters(), _content, _rules.inventory, _rules.battlefield) if _state.combat != null else null
+	var current_combat := CombatView.new(_state.combat, _state.party.characters(), _content, _rules.inventory, _rules.battlefield, _rules.combat_flow) if _state.combat != null else null
 	var result := GameView.new(_view_revision, true, _pending_interaction(), _state.party.map_id, _state.party.coordinate, _state.clock.day(), _state.clock.hour(), _build_map_view(), members, _state.party.fatigue, _state.party.pooled_wealth.gold, current_combat)
 	result.campaign_id = _content.campaign_id
 	result.rules_version = _content.rules_version
@@ -284,6 +284,11 @@ func _cast_spell(intent: PlayerIntent) -> SessionStep:
 
 
 func _combat_action(intent: PlayerIntent) -> SessionStep:
+	if intent.action == &"retreat":
+		var retreat_probe: Variant = _rules.combat_flow.probe_character_retreat(_state.combat, _state.party.characters(), intent.actor_id)
+		if not retreat_probe.allowed:
+			return SessionStep.failed(_view_revision, retreat_probe.reason, retreat_probe.reason_text)
+		return _request_session_retreat(intent.actor_id, &"explicit", Vector2i(-100_000, -100_000))
 	var result := _rules.combat_flow.submit_action(_state, _content, intent.actor_id, intent.action, intent.target_id, _rng)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
@@ -297,7 +302,17 @@ func _combat_action(intent: PlayerIntent) -> SessionStep:
 
 
 func _combat_move(intent: PlayerIntent) -> SessionStep:
+	var edge_probe: Variant = _rules.combat_flow.probe_edge_retreat(_state.combat, intent.actor_id, intent.direction)
+	if edge_probe.allowed:
+		if not edge_probe.forced:
+			return _request_session_retreat(intent.actor_id, &"edge", intent.direction)
+		var forced_result := _rules.combat_flow.retreat_character(_state, _content, intent.actor_id, &"edge", intent.direction, _rng)
+		return _finish_combat_result(forced_result)
 	var result := _rules.combat_flow.move_character(_state, _content, intent.actor_id, intent.direction, _rng)
+	return _finish_combat_result(result)
+
+
+func _finish_combat_result(result: CombatFlowResult) -> SessionStep:
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
@@ -307,6 +322,18 @@ func _combat_move(intent: PlayerIntent) -> SessionStep:
 	if result.completed:
 		return _finish_direct_battle(result.events)
 	return _finish_completed(result.events)
+
+
+func _request_session_retreat(actor_id: String, mode: StringName, destination: Vector2i) -> SessionStep:
+	if _state.combat == null or _state.combat.active_actor_id() != actor_id:
+		return SessionStep.failed(_view_revision, &"invalid_combat_actor", "The active character cannot retreat.")
+	_session_continuation = {"kind": "combat-retreat-confirmation", "battleId": _state.combat.battle_id, "actorId": actor_id, "mode": String(mode), "destination": [destination.x, destination.y]}
+	_session_interaction = _retreat_confirmation_request("session.combat-retreat:%d" % (_view_revision + 1))
+	return _finish_waiting(_session_interaction, [])
+
+
+static func _retreat_confirmation_request(request_id: String) -> InteractionRequest:
+	return InteractionRequest.yes_no(request_id, "Will this character flee from battle?", "Embrace Cowardice", "Stay and Fight")
 
 
 func _create_party(specs: Array[CharacterCreationSpec]) -> SessionStep:
@@ -859,6 +886,8 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 		return _respond_session_ally_selection(response)
 	if _session_continuation.get("kind") == "combat-fumble-recovery":
 		return _respond_session_fumble_recovery(response)
+	if _session_continuation.get("kind") == "combat-retreat-confirmation":
+		return _respond_session_retreat(response)
 	if response.kind != &"yes_no" or not response.payload.has("accepted") or not response.payload["accepted"] is bool:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "The random encounter response must be a yes/no choice.")
 	if _session_continuation.get("randomBattleStage", "") != "surprise-choice":
@@ -883,6 +912,29 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 		return next_step
 	_session_continuation.clear()
 	return _finish_completed(events)
+
+
+func _respond_session_retreat(response: InteractionResponse) -> SessionStep:
+	if response.kind != InteractionRequest.YES_NO or response.payload.get("accepted") is not bool:
+		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Escape confirmation requires a yes/no response.")
+	if _state.combat == null or _state.combat.completed or _state.combat.battle_id != _session_continuation.get("battleId") or _state.combat.active_actor_id() != _session_continuation.get("actorId"):
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The character awaiting Escape confirmation is unavailable.")
+	var continuation := _session_continuation.duplicate(true)
+	_session_interaction = null
+	_session_continuation.clear()
+	if not response.payload["accepted"]:
+		return _finish_completed([DomainEvent.new(&"combat_retreat_declined", {"actorId": continuation["actorId"], "mode": continuation["mode"], "source": "classic"})])
+	var destination := _combat_retreat_destination(continuation["destination"])
+	if destination == Vector2i(-100_000, -100_000) and continuation["mode"] == "edge":
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The saved battlefield-edge Escape destination is invalid.")
+	var result := _rules.combat_flow.retreat_character(_state, _content, continuation["actorId"], StringName(continuation["mode"]), destination, _rng)
+	return _finish_combat_result(result)
+
+
+static func _combat_retreat_destination(value: Variant) -> Vector2i:
+	if not value is Array or value.size() != 2 or not value[0] is int or not value[1] is int:
+		return Vector2i(-100_000, -100_000)
+	return Vector2i(value[0], value[1])
 
 
 func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: String, resume_continuation: Dictionary = {}) -> SessionStep:
@@ -1018,6 +1070,25 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 
 
 static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	if continuation.get("kind") == "combat-retreat-confirmation":
+		var retreat_fields: Array[String] = ["kind", "battleId", "actorId", "mode", "destination"]
+		if continuation.size() != retreat_fields.size():
+			return false
+		for field: String in retreat_fields:
+			if not continuation.has(field):
+				return false
+		if not continuation["battleId"] is String or continuation["battleId"].is_empty() or not continuation["actorId"] is String or continuation["actorId"].is_empty() or continuation["mode"] not in ["explicit", "edge"]:
+			return false
+		var destination := _combat_retreat_destination(continuation["destination"])
+		if destination == Vector2i(-100_000, -100_000) and continuation["mode"] == "edge":
+			return false
+		if vm_interaction != null or session_interaction == null or session_interaction.to_data() != _retreat_confirmation_request(session_interaction.request_id).to_data():
+			return false
+		if state.combat == null or state.combat.completed or state.combat.battle_id != continuation["battleId"] or state.combat.active_actor_id() != continuation["actorId"]:
+			return false
+		var rules := RealmzRules.new()
+		var probe: Variant = rules.combat_flow.probe_character_retreat(state.combat, state.party.characters(), continuation["actorId"]) if continuation["mode"] == "explicit" else rules.combat_flow.probe_edge_retreat(state.combat, continuation["actorId"], destination)
+		return probe.allowed and not probe.forced
 	if continuation.get("kind") == "age-updates":
 		var age_fields: Array[String] = ["kind", "updates", "index", "resumeKind", "resumeContinuation"]
 		if continuation.size() != age_fields.size() or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.AGE_UPDATE:

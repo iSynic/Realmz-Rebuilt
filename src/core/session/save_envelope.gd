@@ -178,6 +178,18 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 				return null
 			resume_continuation = normalized_resume
 		return {"kind": "age-updates", "updates": value["updates"].duplicate(true), "index": index, "resumeKind": value["resumeKind"], "resumeContinuation": resume_continuation}
+	if value.get("kind") == "combat-retreat-confirmation":
+		var retreat_fields: Array[String] = ["kind", "battleId", "actorId", "mode", "destination"]
+		if value.size() != retreat_fields.size():
+			return null
+		for field: String in retreat_fields:
+			if not value.has(field):
+				return null
+		if not value["battleId"] is String or value["battleId"].is_empty() or not value["actorId"] is String or value["actorId"].is_empty() or not value["mode"] is String or value["mode"] not in ["explicit", "edge"]:
+			return null
+		if not value["destination"] is Array or value["destination"].size() != 2 or not value["destination"][0] is int or not value["destination"][1] is int:
+			return null
+		return {"kind": "combat-retreat-confirmation", "battleId": value["battleId"], "actorId": value["actorId"], "mode": value["mode"], "destination": value["destination"].duplicate()}
 	if value.get("kind") == "combat-death-macro":
 		var death_fields: Array[String] = ["kind", "battleId", "combatantId", "programId"]
 		if value.size() != death_fields.size():

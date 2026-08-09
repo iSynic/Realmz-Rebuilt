@@ -6,6 +6,8 @@ var _cached_battle_world: WorldDefinition
 func run() -> void:
 	_test_tactical_adjacency_movement_and_restore()
 	_test_guard_and_withdrawal_reactions()
+	_test_character_and_monster_retreat()
+	_test_guard_followups()
 	_test_guard_death_macro_revival_continuation()
 	_test_guard_age_update_restore()
 	_test_monster_los_targeting_and_movement()
@@ -45,7 +47,7 @@ func _test_tactical_adjacency_movement_and_restore() -> void:
 	assert_true(moved.ok, "a reaction-free cardinal battlefield step commits")
 	assert_equal([battlefield.character_position(character.id), character.movement], [Vector2i(46, 45), 11], "Castle cardinal movement spends the destination tile base plus one changed axis")
 	assert_true(moved.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved" and event.payload.get("cost") == 1), "movement publishes its exact committed cost")
-	var free_view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield)
+	var free_view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow)
 	assert_true(free_view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.enabled), "the detached view exposes reaction-free movement before any hostile perimeter is involved")
 	battlefield.move_actor(monster.id, Vector2i(47, 45))
 	assert_true(rules.battlefield.are_adjacent(battlefield, character.id, monster.id), "explicit fixture placement establishes diagonal melee adjacency")
@@ -60,7 +62,7 @@ func _test_tactical_adjacency_movement_and_restore() -> void:
 	assert_not_null(restored, "a mid-turn tactical position survives the central save aggregate")
 	assert_equal(restored.combat.battlefield.character_position(character.id), Vector2i(45, 44), "restore retains the exact committed battlefield coordinate")
 	assert_equal(restored.party.character_by_id(character.id).movement, 9, "restore retains remaining tactical movement")
-	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield)
+	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow)
 	assert_equal(view.targets.map(func(target: MonsterView) -> String: return target.id), [], "the detached view excludes a hostile left outside the melee perimeter")
 	assert_equal(view.movement_options.size(), 8, "the detached view exposes all eight source-backed step probes")
 	assert_true(view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.enabled), "the detached view advertises legal steps now that reactions are session-owned")
@@ -180,6 +182,153 @@ func _test_guard_and_withdrawal_reactions() -> void:
 	assert_false(moving_state.combat.is_guarding(moving_target.id), "the automatic contact reaction consumes the party guard")
 	assert_false(moving_state.combat.is_guarding(moving_monster.id), "the active monster clears its freshly initialized guard when it makes a physical attack")
 
+
+func _test_character_and_monster_retreat() -> void:
+	var rules := RealmzRules.new()
+	var definition := _monster_definition("monster.retreat", [MonsterAttackDefinition.new(1, 1)])
+	definition.movement_max = 1
+	var first := _character("character.retreat-first")
+	var second := _character("character.retreat-second")
+	var monster := MonsterState.new("monster.retreat.instance", definition.id, definition.name, 30, 30, 1)
+	var battlefield := _blank_battlefield()
+	battlefield.place_character(first.id, Vector2i(45, 45))
+	battlefield.place_character(second.id, Vector2i(44, 45))
+	battlefield.place_monster(monster.id, Vector2i(55, 45), 0)
+	var state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [first, second]), RealmzClock.new())
+	state.combat = CombatState.new("battle.character-retreat", [monster], 0, battlefield)
+	state.combat.set_turn_order([first.id, second.id, monster.id])
+	var content := _content([definition])
+
+	var exact_ten: Variant = rules.combat_flow.probe_character_retreat(state.combat, state.party.characters(), first.id)
+	assert_true(exact_ten.allowed, "Castle allows explicit Escape at an integer-truncated enemy range of exactly ten")
+	assert_equal(exact_ten.nearest_enemy_range, 10, "the retreat probe exposes Castle's exact nearest-enemy range")
+	battlefield.move_actor(monster.id, Vector2i(54, 45))
+	var too_close: Variant = rules.combat_flow.probe_character_retreat(state.combat, state.party.characters(), first.id)
+	assert_false(too_close.allowed, "explicit Escape is blocked below Castle's ten-cell threshold")
+	assert_equal(too_close.reason, &"enemy_too_close", "close-enemy rejection has a stable typed reason")
+	battlefield.move_actor(monster.id, Vector2i(55, 45))
+	for condition: int in [ConditionRules.HELPLESS, ConditionRules.CONFUSED, ConditionRules.TANGLED, ConditionRules.SLOW]:
+		first.conditions.set_value(condition, 1)
+		var blocked: Variant = rules.combat_flow.probe_character_retreat(state.combat, state.party.characters(), first.id)
+		assert_equal([blocked.allowed, blocked.reason], [false, &"retreat_condition_blocked"], "Castle's explicit Escape condition gate remains source-owned")
+		first.conditions.set_value(condition, 0)
+	first.traitor = true
+	assert_false(rules.combat_flow.probe_character_retreat(state.combat, state.party.characters(), first.id).allowed, "a traitor cannot use the party Escape command")
+	first.traitor = false
+
+	var escaped := rules.combat_flow.retreat_character(state, content, first.id, &"explicit", Vector2i(-100_000, -100_000), ScriptedRng.new([]))
+	assert_true(escaped.ok and not escaped.completed, "one character can leave while another loyal party member remains in battle")
+	assert_equal([battlefield.has_actor(first.id), battlefield.has_actor(second.id), first.current_health, first.prestige_penalty], [false, true, 30, 200], "Escape removes only the active character and applies Castle's exact prestige penalty")
+	assert_equal(state.combat.active_actor_id(), second.id, "the battle continues at the next loyal character after a partial Escape")
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(restored, "a partially escaped party survives the central save aggregate")
+	assert_equal([restored.combat.battlefield.has_actor(first.id), restored.party.character_by_id(first.id).prestige_penalty], [false, 200], "restore preserves the escaped identity and exact prestige penalty")
+	assert_true(restored.combat.has_character_retreated(first.id), "restore preserves the explicit escaped-character identity rather than accepting arbitrary missing actors")
+	var corrupt_retreat := state.to_data()
+	corrupt_retreat["combat"]["retreatedCharacterIds"].append("character.not-in-party")
+	corrupt_retreat["combat"]["turnOrder"].append("character.not-in-party")
+	assert_equal(GameState.from_data(corrupt_retreat), null, "restore rejects an escaped identity that is not owned by the party")
+	monster.conditions.set_value(ConditionRules.HELPLESS, 1)
+	var wrapped := rules.combat_flow.submit_action(state, content, second.id, &"finish", "", ScriptedRng.new([]))
+	assert_true(wrapped.ok and state.combat.active_actor_id() == second.id, "initiative skips an escaped living character when the round wraps")
+	monster.conditions.set_value(ConditionRules.HELPLESS, 0)
+
+	var session_character := _character("character.retreat-session")
+	var session_monster := MonsterState.new("monster.retreat-session", definition.id, definition.name, 30, 30, 1)
+	var session_state := _state(session_character, session_monster, "battle.retreat-session")
+	session_state.combat.battlefield.move_actor(session_monster.id, Vector2i(55, 45))
+	session_state.party_setup_completed = true
+	var session := GameSession.new()
+	assert_equal(session.start(content, 77).state, SessionStep.State.COMPLETED, "retreat confirmation fixture starts a validated session")
+	session._state = session_state
+	session._runtime_api = RealmzRuntimeApi.new(content, session_state, session._rng, session._scenario_action_state, session._rules)
+	var confirmation := session.submit_intent(PlayerIntent.combat_action(&"retreat", session_character.id))
+	assert_equal([confirmation.state, confirmation.interaction.kind, confirmation.interaction.payload.get("yesLabel"), confirmation.interaction.payload.get("noLabel")], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO, "Embrace Cowardice", "Stay and Fight"], "explicit Escape yields Castle's typed confirmation without mutating combat")
+	assert_true(session_state.combat.battlefield.has_actor(session_character.id), "the character remains in battle while confirmation is pending")
+	var confirmation_save := SaveEnvelope.from_data(session.snapshot().to_data())
+	assert_not_null(confirmation_save, "the explicit Escape confirmation is a committed central save boundary")
+	var resumed_session := GameSession.new()
+	assert_equal(resumed_session.restore(content, confirmation_save).state, SessionStep.State.COMPLETED, "the pending Escape confirmation restores transactionally")
+	var accepted := resumed_session.respond(InteractionResponse.yes_no(resumed_session._session_interaction, true))
+	assert_true(accepted.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_retreated" and event.payload.get("actorId") == session_character.id), "accepting the restored confirmation commits the same per-character Escape")
+	assert_equal([resumed_session._state.last_battle_outcome, resumed_session._state.party.character_by_id(session_character.id).prestige_penalty], [&"retreated", 200], "restored confirmation resolves the exact battle outcome and penalty once")
+
+	var forced_field := _blank_battlefield()
+	forced_field.place_character(first.id, Vector2i(0, 45))
+	forced_field.place_monster(monster.id, Vector2i(20, 45), 0)
+	var forced_combat := CombatState.new("battle.edge-retreat", [monster], 0, forced_field)
+	forced_combat.set_turn_order([first.id, monster.id])
+	first.conditions.set_value(ConditionRules.SLOW, 1)
+	var forced: Variant = rules.combat_flow.probe_edge_retreat(forced_combat, first.id, Vector2i(1, 45))
+	assert_true(forced.allowed and forced.forced, "the outermost battlefield band forces movement Escape without the explicit condition gate")
+	first.conditions.set_value(ConditionRules.SLOW, 0)
+	forced_field.move_actor(first.id, Vector2i(2, 45))
+	var prompted: Variant = rules.combat_flow.probe_edge_retreat(forced_combat, first.id, Vector2i(1, 45))
+	assert_true(prompted.allowed and not prompted.forced, "entering Castle's edge band from the interior requires confirmation")
+
+	var withdrawing_character := _character("character.retreat-guard")
+	var withdrawing_monster := MonsterState.new("monster.retreat-withdrawal", definition.id, definition.name, 30, 30, 1)
+	withdrawing_monster.target_id = withdrawing_character.id
+	withdrawing_monster.conditions.set_value(ConditionRules.RUNS_AWAY, 1)
+	var withdrawing_state := _state(withdrawing_character, withdrawing_monster, "battle.monster-retreat-withdrawal")
+	withdrawing_state.combat.turn_index = 1
+	withdrawing_state.combat.set_guarding(withdrawing_character.id, true)
+	var withdrawal_events: Array[DomainEvent] = []
+	var withdrawal_rolls: Array[int] = []
+	withdrawal_rolls.resize(20)
+	withdrawal_rolls.fill(0)
+	rules.combat_flow._process_monster_turns(withdrawing_state, content, ScriptedRng.new(withdrawal_rolls), withdrawal_events)
+	assert_true(withdrawal_events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == withdrawing_character.id and event.payload.get("action") == "withdrawal" and event.payload.get("behind") == true), "a routed monster receives Castle's withdrawal attack before its committed step")
+	assert_true(withdrawal_events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved" and event.payload.get("actorId") == withdrawing_monster.id and event.payload.get("automatic") == true), "routed-monster movement is identified as an automatic simulation action")
+	assert_equal(withdrawing_state.combat.battlefield.monster_position(withdrawing_monster.id), Vector2i(47, 45), "the routed monster moves away from its retained target")
+
+	var edge_character := _character("character.retreat-edge-target")
+	var edge_monster := MonsterState.new("monster.retreat-edge", definition.id, definition.name, 30, 30, 1)
+	edge_monster.target_id = edge_character.id
+	edge_monster.conditions.set_value(ConditionRules.RUNS_AWAY, 1)
+	var edge_state := _state(edge_character, edge_monster, "battle.monster-retreat-edge")
+	edge_state.combat.battlefield.move_actor(edge_character.id, Vector2i(10, 45))
+	edge_state.combat.battlefield.move_actor(edge_monster.id, Vector2i(2, 45))
+	edge_state.combat.turn_index = 1
+	var edge_events: Array[DomainEvent] = []
+	rules.combat_flow._process_monster_turns(edge_state, content, ScriptedRng.new([]), edge_events)
+	assert_true(edge_events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_retreated" and event.payload.get("actorId") == edge_monster.id), "a routed hostile exits after its committed step enters Castle's edge band")
+	assert_equal([edge_monster.current_health, edge_state.combat.battlefield.has_actor(edge_monster.id), edge_state.combat.outcome], [0, false, &"victory"], "hostile edge flight removes the monster and resolves the battle without a death macro")
+
+	var unresolved_character := _character("character.retreat-unresolved-target")
+	var unresolved_monster := MonsterState.new("monster.retreat-unresolved", definition.id, definition.name, 30, 30, 1)
+	unresolved_monster.conditions.set_value(ConditionRules.RUNS_AWAY, 1)
+	var unresolved_state := _state(unresolved_character, unresolved_monster, "battle.monster-retreat-unresolved")
+	unresolved_state.combat.turn_index = 1
+	var unresolved_events: Array[DomainEvent] = []
+	rules.combat_flow._process_monster_turns(unresolved_state, content, ScriptedRng.new([]), unresolved_events)
+	assert_true(unresolved_events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action_unavailable" and event.payload.get("reason") == "retreat-target-unresolved"), "Castle's unsafe pos[-1] routed-monster branch remains explicit instead of selecting an invented target")
+	assert_equal(unresolved_state.combat.battlefield.monster_position(unresolved_monster.id), Vector2i(46, 45), "the unresolved no-target branch leaves battlefield state unchanged")
+
+	var mandatory_definition := _monster_definition("monster.retreat-mandatory-ally", [])
+	mandatory_definition.movement_max = 1
+	mandatory_definition.can_summon = -1
+	var mandatory_character := _character("character.retreat-mandatory-observer")
+	var mandatory_ally := MonsterState.new("monster.retreat-mandatory-ally", mandatory_definition.id, mandatory_definition.name, 30, 30, 1, 1, 0, 0, 0, false)
+	var mandatory_enemy := MonsterState.new("monster.retreat-mandatory-enemy", definition.id, definition.name, 30, 30, 1)
+	mandatory_ally.target_id = mandatory_enemy.id
+	mandatory_ally.conditions.set_value(ConditionRules.RUNS_AWAY, 1)
+	var mandatory_field := _blank_battlefield()
+	mandatory_field.place_character(mandatory_character.id, Vector2i(40, 40))
+	mandatory_field.place_monster(mandatory_ally.id, Vector2i(2, 45), 0)
+	mandatory_field.place_monster(mandatory_enemy.id, Vector2i(10, 45), 0)
+	var mandatory_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [mandatory_character]), RealmzClock.new())
+	mandatory_state.combat = CombatState.new("battle.monster-retreat-mandatory", [mandatory_ally, mandatory_enemy], 0, mandatory_field)
+	mandatory_state.combat.set_turn_order([mandatory_ally.id, mandatory_character.id, mandatory_enemy.id])
+	var mandatory_events: Array[DomainEvent] = []
+	rules.combat_flow._process_monster_turns(mandatory_state, _content([mandatory_definition, definition]), ScriptedRng.new([]), mandatory_events)
+	assert_true(mandatory_events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action_unavailable" and event.payload.get("reason") == "mandatory-ally-edge-retreat-unresolved"), "Castle's ineffective post-commit mandatory-ally reversal remains explicitly unresolved")
+	assert_equal([mandatory_ally.current_health, mandatory_field.monster_position(mandatory_ally.id)], [30, Vector2i(1, 45)], "the mandatory ally stops alive at Castle's observed committed edge boundary")
+
+func _test_guard_followups() -> void:
+	var rules := RealmzRules.new()
+	var definition := _monster_definition("monster.reaction-followup", [MonsterAttackDefinition.new(1, 1)])
+	definition.hit_dice = 20
 	var invisible_character := _character("character.invisible-withdrawal")
 	invisible_character.conditions.set_value(ConditionRules.INVISIBLE, 1)
 	var invisible_monster := MonsterState.new("monster.invisible-withdrawal.instance", definition.id, definition.name, 30, 30, 20)
@@ -434,13 +583,14 @@ func _test_character_weapon_mode_toggle_and_restore() -> void:
 	assert_equal(state.combat.character_weapon_mode(character.id), &"missile", "the battle owns the active missile mode")
 	assert_equal([character.attacks_remaining, character.movement, state.combat.active_actor_id()], [resources_before[0], resources_before[1], character.id], "switching mode spends no attacks, movement, or turn")
 	assert_true(switched.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_weapon_mode_changed" and event.payload.get("mode") == "missile"), "the committed mode change publishes typed presentation feedback")
-	var combat_view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield)
+	var combat_view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow)
 	assert_equal(combat_view.weapon_mode, &"missile", "the detached combat view exposes the battle-owned mode")
-	assert_equal(combat_view.legal_actions, [&"switch_weapon", &"finish", &"defend", &"retreat"], "the detached view cannot advertise melee attack while missile mode is active")
+	assert_equal(combat_view.legal_actions, [&"switch_weapon", &"finish", &"defend"], "the detached view cannot advertise melee attack or illegal close-range Escape while missile mode is active")
 	assert_false(combat_view.ranged_attack_unavailable_reason.is_empty(), "the detached view carries the exact tactical ranged blocker")
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(94), ScenarioActionState.new())
 	var request := api._combat_request("request.weapon-mode")
-	assert_equal([request.payload.get("weaponMode"), request.payload.get("actions")], ["missile", ["switch_weapon", "finish", "defend", "retreat"]], "the typed interaction preserves the same legal actions as the detached view")
+	assert_equal([request.payload.get("weaponMode"), request.payload.get("actions")], ["missile", ["switch_weapon", "finish", "defend"]], "the typed interaction preserves the same legal actions as the detached view")
+	assert_equal([request.payload.get("retreat", {}).get("enabled"), request.payload.get("retreat", {}).get("nearestEnemyRange")], [false, 1], "the typed interaction explains the source-backed close-range Escape blocker")
 	assert_equal(request.payload.get("weaponSwitch", {}).get("targetMode"), "melee", "the typed switch response names its source-owned destination mode")
 	assert_false(String(request.payload.get("rangedAttack", {}).get("reason", "")).is_empty(), "the typed interaction explains why Fire is disabled")
 	var blocked := rules.combat_flow.submit_action(state, content, character.id, &"attack", monster.id, RealmzRng.new(92))
@@ -491,7 +641,7 @@ func _test_character_weapon_mode_toggle_and_restore() -> void:
 	var setup_monster := setup_state.combat.monsters()[0]
 	assert_true(setup_state.combat.battlefield.character_position(missile_only.id).x >= 0, "the live battlefield owns the party position")
 	assert_true(setup_state.combat.battlefield.monster_position(setup_monster.id).x >= 0, "the live battlefield replaces its temporary placement key with the stable monster instance ID")
-	var setup_view := CombatView.new(setup_state.combat, setup_state.party.characters(), content, rules.inventory, rules.battlefield)
+	var setup_view := CombatView.new(setup_state.combat, setup_state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow)
 	assert_not_null(setup_view.battlefield, "the detached combat view exposes generated battlefield state without presenting the mutable aggregate")
 	assert_equal(setup_view.battlefield.monster_footprint(setup_monster.id), BattlefieldState.footprint_cells(setup_state.combat.battlefield.monster_position(setup_monster.id), setup_state.combat.battlefield.monster_size(setup_monster.id)), "presentation receives the exact session-owned Classic footprint")
 	var legacy_combat_data := setup_state.combat.to_data()

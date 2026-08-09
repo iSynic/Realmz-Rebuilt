@@ -635,6 +635,8 @@ func resume_safe(continuation: Dictionary, response: InteractionResponse, reques
 			return ScenarioRuntimeOperationResult.completed(response.payload["index"])
 		"safe-combat":
 			return _resume_battle(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
+		"safe-combat-retreat-confirmation":
+			return _resume_battle_retreat(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		"safe-combat-age-updates":
 			return _resume_combat_age_updates(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		"safe-combat-macro":
@@ -679,6 +681,8 @@ func resume_classic(continuation: Dictionary, response: InteractionResponse, req
 			return ScenarioRuntimeOperationResult.completed(true)
 		"classic-combat":
 			return _resume_battle(continuation, response, request_id)
+		"classic-combat-retreat-confirmation":
+			return _resume_battle_retreat(continuation, response, request_id)
 		"classic-combat-age-updates":
 			return _resume_combat_age_updates(continuation, response, request_id)
 		"classic-combat-macro":
@@ -2006,7 +2010,20 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The pending battle is unavailable.")
 	var previous_round := _game_state.combat.round_number
 	var result: CombatFlowResult
-	if response.payload["action"] == "move":
+	if response.payload["action"] == "retreat":
+		var retreat_probe: Variant = _rules.combat_flow.probe_character_retreat(_game_state.combat, _game_state.party.characters(), response.payload["actorId"])
+		if not retreat_probe.allowed:
+			return ScenarioRuntimeOperationResult.failed(retreat_probe.reason, retreat_probe.reason_text)
+		return _wait_for_battle_retreat(continuation, response.payload["actorId"], &"explicit", Vector2i(-100_000, -100_000), request_id)
+	elif response.payload["action"] == "retreat_edge":
+		var edge_destination := _combat_destination(response.payload.get("destination"))
+		var edge_probe: Variant = _rules.combat_flow.probe_edge_retreat(_game_state.combat, response.payload["actorId"], edge_destination)
+		if not edge_probe.allowed:
+			return ScenarioRuntimeOperationResult.failed(edge_probe.reason, edge_probe.reason_text)
+		if not edge_probe.forced:
+			return _wait_for_battle_retreat(continuation, response.payload["actorId"], &"edge", edge_destination, request_id)
+		result = _rules.combat_flow.retreat_character(_game_state, _content, response.payload["actorId"], &"edge", edge_destination, _rng)
+	elif response.payload["action"] == "move":
 		var destination := _combat_destination(response.payload.get("destination"))
 		if destination == Vector2i(-100_000, -100_000):
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat movement requires a two-integer destination.")
@@ -2026,6 +2043,43 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 	if _game_state.combat.round_number > previous_round and _game_state.combat.macro_id < 0:
 		return _run_battle_macro(String(continuation.get("kind", "classic-combat")), result.events, request_id)
 	return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), continuation, result.events)
+
+
+func _wait_for_battle_retreat(continuation: Dictionary, actor_id: String, mode: StringName, destination: Vector2i, request_id: String) -> ScenarioRuntimeOperationResult:
+	var source_kind := String(continuation.get("kind", "classic-combat"))
+	var next_continuation := {"kind": "%s-retreat-confirmation" % source_kind, "sourceKind": source_kind, "battleId": _game_state.combat.battle_id, "actorId": actor_id, "mode": String(mode), "destination": [destination.x, destination.y]}
+	var request := InteractionRequest.yes_no(request_id, "Will this character flee from battle?", "Embrace Cowardice", "Stay and Fight")
+	return ScenarioRuntimeOperationResult.waiting(request, next_continuation)
+
+
+func _resume_battle_retreat(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
+	if response.kind != InteractionRequest.YES_NO or response.payload.get("accepted") is not bool:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Escape confirmation requires a yes/no response.")
+	if _game_state.combat == null or _game_state.combat.completed or _game_state.combat.battle_id != continuation.get("battleId") or _game_state.combat.active_actor_id() != continuation.get("actorId"):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The character awaiting Escape confirmation is unavailable.")
+	var source_kind := String(continuation.get("sourceKind", "classic-combat"))
+	var mode := StringName(continuation.get("mode", ""))
+	var destination := _combat_destination(continuation.get("destination"))
+	var probe: Variant = _rules.combat_flow.probe_character_retreat(_game_state.combat, _game_state.party.characters(), continuation["actorId"]) if mode == &"explicit" else _rules.combat_flow.probe_edge_retreat(_game_state.combat, continuation["actorId"], destination) if mode == &"edge" else null
+	if probe == null or not probe.allowed or probe.forced:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The saved Escape confirmation no longer represents a promptable Classic action.")
+	if not response.payload["accepted"]:
+		return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), {"kind": source_kind, "battleId": continuation["battleId"]}, [DomainEvent.new(&"combat_retreat_declined", {"actorId": continuation["actorId"], "mode": continuation["mode"], "source": "classic"})])
+	var previous_round := _game_state.combat.round_number
+	var result := _rules.combat_flow.retreat_character(_game_state, _content, continuation["actorId"], mode, destination, _rng)
+	if not result.ok:
+		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+	if not CharacterAgingResult.update_payloads(result.events).is_empty():
+		return _wait_for_combat_age_updates(source_kind, request_id, result.events, previous_round)
+	if not _death_macro_request(result.events).is_empty():
+		return _run_combat_death_macro(source_kind, result.events, request_id)
+	if result.completed:
+		var completed_events: Array[DomainEvent] = []
+		completed_events.assign(result.events)
+		return _finish_battle_with_allies(source_kind, request_id, completed_events)
+	if _game_state.combat.round_number > previous_round and _game_state.combat.macro_id < 0:
+		return _run_battle_macro(source_kind, result.events, request_id)
+	return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), {"kind": source_kind, "battleId": continuation["battleId"]}, result.events)
 
 
 func _append_battle_after_message(battle: BattleDefinition, events: Array[DomainEvent]) -> void:
@@ -2296,7 +2350,7 @@ static func _death_macro_request(events: Array[DomainEvent]) -> Dictionary:
 
 func _combat_request(request_id: String) -> InteractionRequest:
 	var combat := _game_state.combat
-	var combat_view := CombatView.new(combat, _game_state.party.characters(), _content, _rules.inventory, _rules.battlefield)
+	var combat_view := CombatView.new(combat, _game_state.party.characters(), _content, _rules.inventory, _rules.battlefield, _rules.combat_flow)
 	var actions: Array[String] = []
 	for action: StringName in combat_view.legal_actions:
 		actions.append(String(action))
@@ -2313,8 +2367,9 @@ func _combat_request(request_id: String) -> InteractionRequest:
 		targets.append({"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
 	var movement: Array[Dictionary] = []
 	for option: CombatMoveOptionView in combat_view.movement_options:
-		movement.append({"direction": [option.direction.x, option.direction.y], "destination": [option.destination.x, option.destination.y], "cost": option.movement_cost, "enabled": option.enabled, "reasonCode": String(option.reason), "reason": option.reason_text})
-	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "movement": movement})
+		movement.append({"direction": [option.direction.x, option.direction.y], "destination": [option.destination.x, option.destination.y], "cost": option.movement_cost, "enabled": option.enabled, "reasonCode": String(option.reason), "reason": option.reason_text, "retreat": option.retreats_from_battle, "forcedRetreat": option.forced_retreat})
+	var retreat := {"enabled": combat_view.retreat_available, "reason": combat_view.retreat_unavailable_reason, "nearestEnemyRange": combat_view.nearest_enemy_range}
+	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "movement": movement})
 
 
 static func _combat_destination(value: Variant) -> Vector2i:

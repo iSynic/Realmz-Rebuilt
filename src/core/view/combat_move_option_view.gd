@@ -7,15 +7,19 @@ var movement_cost: int
 var enabled: bool
 var reason: StringName
 var reason_text: String
+var retreats_from_battle: bool = false
+var forced_retreat: bool = false
 
 
-func _init(move_direction: Vector2i, result: BattlefieldStepResult) -> void:
+func _init(move_direction: Vector2i, result: BattlefieldStepResult, is_retreat: bool = false, is_forced_retreat: bool = false) -> void:
 	direction = move_direction
 	destination = result.destination
 	movement_cost = result.movement_cost
-	enabled = result.allowed
-	reason = result.reason
-	reason_text = _reason_text(result)
+	retreats_from_battle = is_retreat
+	forced_retreat = is_forced_retreat
+	enabled = result.allowed or retreats_from_battle
+	reason = &"" if retreats_from_battle else result.reason
+	reason_text = "" if retreats_from_battle else _reason_text(result)
 
 
 static func _reason_text(result: BattlefieldStepResult) -> String:
