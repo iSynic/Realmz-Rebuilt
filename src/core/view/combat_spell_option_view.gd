@@ -13,9 +13,11 @@ var target_mode: StringName
 var area_shape: int
 var default_target_coordinate: Vector2i
 var area_offsets: Array[Vector2i]
+var maximum_targets: int
+var target_candidates: Array[CombatSpellTargetView]
 
 
-func _init(spell: SpellDefinition, power_level: int, target: MonsterState = null, automatic_target_label: String = "", targeting_mode: StringName = &"combatant", shape: int = 0, default_coordinate: Vector2i = Vector2i(-100_000, -100_000), offsets: Array[Vector2i] = []) -> void:
+func _init(spell: SpellDefinition, power_level: int, target: MonsterState = null, automatic_target_label: String = "", targeting_mode: StringName = &"combatant", shape: int = 0, default_coordinate: Vector2i = Vector2i(-100_000, -100_000), offsets: Array[Vector2i] = [], maximum_target_count: int = 1, candidates: Array[CombatSpellTargetView] = []) -> void:
 	spell_id = spell.id
 	spell_name = spell.name
 	power = power_level
@@ -28,3 +30,5 @@ func _init(spell: SpellDefinition, power_level: int, target: MonsterState = null
 	area_shape = shape
 	default_target_coordinate = default_coordinate
 	area_offsets = offsets.duplicate()
+	maximum_targets = maximum_target_count
+	target_candidates = candidates.duplicate()

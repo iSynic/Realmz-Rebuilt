@@ -2035,7 +2035,15 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 		var rotation: Variant = response.payload.get("rotation", 0)
 		if not rotation is int:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat spell rotation must be an integer.")
-		result = _rules.combat_flow.cast_spell(_game_state, _content, response.payload["actorId"], response.payload.get("targetId", ""), response.payload["spellId"], response.payload["power"], _rng, target_coordinate, int(rotation))
+		var target_ids: Array[String] = []
+		var raw_target_ids: Variant = response.payload.get("targetIds", [])
+		if not raw_target_ids is Array:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Repeated combat spell targets must be an ordered array.")
+		for target_id: Variant in raw_target_ids:
+			if not target_id is String:
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Every repeated combat spell target must be a stable string ID.")
+			target_ids.append(target_id)
+		result = _rules.combat_flow.cast_spell(_game_state, _content, response.payload["actorId"], response.payload.get("targetId", ""), response.payload["spellId"], response.payload["power"], _rng, target_coordinate, int(rotation), target_ids)
 	else:
 		result = _rules.combat_flow.submit_action(_game_state, _content, response.payload["actorId"], StringName(response.payload["action"]), response.payload.get("targetId", ""), _rng)
 	if not result.ok:
@@ -2380,6 +2388,12 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var spell_casts: Array[Dictionary] = []
 	for option: CombatSpellOptionView in _rules.combat_flow.character_spell_options(_game_state, _content, combat_view.active_actor_id):
 		var spell_cast := {"spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "cost": option.cost, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
+		if option.target_mode == &"sequence":
+			spell_cast["maximumTargets"] = option.maximum_targets
+			var candidates: Array[Dictionary] = []
+			for candidate: CombatSpellTargetView in option.target_candidates:
+				candidates.append({"id": candidate.id, "kind": String(candidate.kind), "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})
+			spell_cast["targetCandidates"] = candidates
 		if option.target_mode == &"area":
 			spell_cast["areaShape"] = option.area_shape
 			spell_cast["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]

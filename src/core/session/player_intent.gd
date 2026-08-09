@@ -89,6 +89,12 @@ static func cast_spell_at(spell_id: String, caster_id: String, coordinate: Vecto
 	return intent
 
 
+static func cast_spell_at_targets(spell_id: String, caster_id: String, target_combatant_ids: Array[String], power: int = 1) -> PlayerIntent:
+	var intent := cast_spell(spell_id, caster_id, "", power)
+	intent.selected_ids = target_combatant_ids.duplicate()
+	return intent
+
+
 static func combat_action(action_kind: StringName, actor: String, target: String = "") -> PlayerIntent:
 	var intent := PlayerIntent.new(Kind.CHOOSE_COMBAT_ACTION)
 	intent.action = action_kind

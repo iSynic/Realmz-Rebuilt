@@ -4,7 +4,7 @@
     "castle": "491816ad60037394f92c428e99c004494d3c28b3",
     "remakeFunctional": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
     "remakeVm": "cdaa0d8dcc5ab81c195aa960c860bf74e7d4f40b",
-    "providence": "55c158d33800a246e15b8ee4cdb54404c472ed67"
+    "providence": "fa0297426677552080608e1b89bad4334d323465"
   },
   "cases": [
     {
@@ -35,7 +35,7 @@
         "observation": "Land input sets both axes before one destination-tile movement check. Dungeon movement follows its separate cardinal edge path."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn normalized_cell_topology" }
@@ -82,7 +82,7 @@
         "observation": "newland scans the fixed door table in order, selects the first coordinate match, and leaves the scan path after that selected record regardless of its chance result."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" }
@@ -131,7 +131,7 @@
         "observation": "Castle selects exact resource type/ID pairs. Newly opened scenario forks lead the GetResource search chain, so scenario-local resources replace stock resources with the same exact key while equal IDs in other types remain unrelated."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_assets" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn managed_replaces_catalog_resource" },
@@ -181,7 +181,7 @@
         "observation": "Castle performs presentation-producing actions in program order and blocks only at its explicit click or selection boundaries."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
         ],
@@ -228,7 +228,7 @@
         "observation": "Castle repeatedly adds and drops selected character records inside partyselect. Item 34 is the distinct Done boundary; add or drop does not leave party selection."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_campaign" }
         ],
@@ -274,7 +274,7 @@
         "observation": "NewCharacter initializes saves from the two authored bonus tables, copies race conditions first, overwrites only caste value one with -1, and later clamps saves below -99 or above 120."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
@@ -322,7 +322,7 @@
         "observation": "NewCharacter's seven-iteration attribute loop consumes but does not assign its final roll. It applies age groups 1 through minimumagegroup, re-bounds the six attributes, performs three threshold rolls with conditional 0-through-7 special indices, then rolls stamina and age. applyage adjusts age-table columns 0 through 5 and saves 0 through 6; its creation-time magic-resistance and movement changes are overwritten by the later base formulas."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" }
         ],
@@ -370,7 +370,7 @@
         "observation": "age scans the five ranges but advances or erases only one neighboring row per call. applyage changes six attributes, strength-owned hit/damage, magic resistance, maximum movement with a floor of two, and saves zero through six without creation bounds. Midnight increments age before calling age. booty multiplies a maximum-age character's share by .6666666; the pinned source stores doesnotdie but does not consult it here. Spell specials 24, 91, and 92 alter age and call age once, with youth also consuming one Rand(3) stamina loss."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
@@ -419,7 +419,7 @@
         "observation": "showageupdate renders the character identity, race, resulting Youth/Young/Prime/Adult/Senior band, that band's year range, portrait, combat icon, and fifteen nonzero changes. Rejuvenation negates the erased higher band's row. It calls sound(3002) and remains in ModalDialog until any dialog item is activated. Midnight iterates party order and spells invoke the dialog before returning to their caller."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" }
         ],
@@ -467,7 +467,7 @@
         "observation": "attack computes ordinary damage, then every nonzero special consumes randrange(hitDice/2, hitDice). Party-target case 17 rolls savevs(7); failure reports result -48, truncates maxage * .01 * (attack damage maximum * hit dice) into age days, calls age once, and opens showageupdate only when that call changes the band. The special and dialog occur before ordinary physical damage is recorded and before attack returns. No monster-target case 17 exists."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
@@ -513,7 +513,7 @@
         "observation": "After ordinary damage is rolled, every nonzero special consumes randrange(hitDice/2, hitDice), floored at one. Specials 1/2/4/7 use save 5; 3/5 use save 7; and 6/16 use save 4. Failed party saves affect conditions 0/1/5/29, 3/6, and 9/28 respectively only when the current value is nonnegative; the pinned correction adds potency once when the starting value is below 30, even if the result exceeds 30, and still reports the result when the starting value is already 30. Monster targets stack without that gate. Monster save 7 averages six saves; other saves honor their shifted save byte, spell immunity, and undead auto-save after consuming the roll. A monster target above 100 magic resistance jumps to whiff after potency and loses ordinary damage. Party statuses use sound 630; monster disease uses 684 and the other monster statuses use 630."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -559,7 +559,7 @@
         "observation": "After ordinary damage and the generic potency draw, special 8 calls savevs(6) before testing the target spell-point balance. Failure transfers min(target spell points, hit dice times three) to the attacker; the attacker is not capped to maxspellpoints and no sound is requested. Party-target special 9 calls savevs(5), subtracts staminamax times twenty from the character's int32 earned experience without a zero floor, requests sound 630, and reports result -18. There is no monster-target case 9 and therefore no save draw there. A monster target above 100 runtime magic resistance reaches whiff before either resource-special save. Ordinary physical damage follows the special when the whole attack did not whiff."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -605,7 +605,7 @@
         "observation": "After the shared potency draw, save zero includes fifty for party charm resistance. Failure copies the attacker's traiter value to the target. Monster targets always report failed Charm and clear the attacker's cached target. Charmed party actors become automatic, every target query compares allegiance, and booty clears party traiter state after battle."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -648,7 +648,7 @@
         "observation": "Each branch rolls Rand(attack maximum), then saves 1 through 5 halve with integer truncation and matching protection halves again. Party targets and monster-target fire accumulate after both halves. Monster-target cold, electrical, chemical, and mental accumulate after the save but before protection, so the pinned source reduces only the displayed temporary value. The synthetic source-observation fixture records committed eight versus displayed four for that anomalous branch."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -698,7 +698,7 @@
         "observation": "Castle identifies armed melee solely through armor slot two, while every equipped item's damage, luck, and armor contributes to derived combat values. A legal hit rolls weapon elemental ranges and saves, target-tag ranges, the physical small-target die, then two critical checks. Monster-target weapon elements incorrectly pass the attacker index to savevs; character targets pass the defender. The synthetic source fixture isolates the resulting save-identity divergence. Weapon requirements occur after the hit/fumble stage and before auto-hit; the separate required-weapon correction case owns Castle's source/manual conflicts. Fumbles and tactical legality remain unavailable rather than inferred."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
@@ -749,7 +749,7 @@
         "observation": "Battle Data BD has a separate distance byte that combatsetup randomizes for initial placement. Monster Data MD dist is the weapon-to-hit byte. Castle correctly checks -1 blunt and -2 sharp for armed attackers, but its armed guard lets all unarmed attacks bypass those restrictions. For a specific item it compares the signed monster byte to item.itemid minus 1024. The shipped Data ID stores ordinary 1..999 item IDs, byte-identically in Castle and Providence, so the comparison cannot satisfy Divinity's documented Item Number contract. The correction fixture records both defects without claiming a Castle runtime observation."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
           { "path": "src/editor/panels/combat/monsterReferenceModel.ts", "symbol": "export function monsterRequiredWeaponStoredCode(" }
@@ -799,7 +799,7 @@
         "observation": "After potency, both branches call savevs(7). Blindness failure sets condition 27 to -1 and ordinary damage follows. Petrification failure sets party condition 26 to -1 or monster condition 26 to TRUE, sets stamina to zero, and jumps to forcekill before ordinary and special damage subtraction. No sound is requested."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -845,7 +845,7 @@
         "observation": "attack2 adds five percentage points per hit die, damage-plus point, and weapon damage point, doubles the weapon term for special 121, applies the condition table and day divided by 70, subtracts a party defender's Rand(luck plus magical luck), applies protection from evil only when the attacker is evil, and floors at ten. An unarmed hit uses the selected attack row unless its minimum is zero, in which case row zero supplies damage. An armed hit uses weapon damage plus Rand(vsSmall), followed by elemental and matching monster-type rolls. Party Dragon Hide reduces physical damage by five to a minimum of one and requests asynchronous sound 694 before condition and damage application. Castle also adds an unconditional ten attack points when the monster itself has protection from evil. With a negative signed damage plus, Castle can calculate negative physical damage and heal by subtracting it; the correction fixture records that source result. Optional fumbles, reflection, missile replacement, and behind-position derivation require additional mutable tactical state and remain outside this bounded case."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz/combat.rs", "symbol": "fn parse_monsters_from_source(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" },
@@ -903,7 +903,7 @@
         "observation": "combatsetup clears the character reserve; getup normalizes any positive carry to one, clears negatives, adds normattacks plus attackbonus, and adds four for Speedy. Melee subtracts two and the outer combat loop advances only below two. Monster getup resets attacknum; checkforenemy selects one target and loops from attacknum through noofattacks, incrementing the row before each attack and retargeting only after a kill. Castle's stats display disagrees with control flow for zero or one half-attack and its Speedy/Slow display arithmetic disagrees with getup. Those edge/display cases, charmed-character cadence, monster Speedy overflow, missile replacement, spells-per-activation, and tactical movement remain unresolved rather than being generalized from this case."
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races(" },
@@ -960,7 +960,7 @@
         "unresolved": ["Realmz 2.0 has no source-backed gameplay-settings owner for allow-fumbles and its linked five-percent XP adjustment.", "Castle's live inspell execution guard is not equivalent to any current persisted spell-permission flag and remains unmodeled until spell activation owns that lifecycle."]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz/scenario_items.rs", "symbol": "pub fn parse_scenario_items(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(" }
@@ -1023,7 +1023,7 @@
         "unresolved": ["The fixed 2.0 runtime has no source-backed owner for Castle's autoweapswitch preference, so point-blank automatic switching remains unavailable."]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(" }
         ],
@@ -1069,7 +1069,7 @@
         "unresolved": ["combatmap evaluates the top tile using bottom.ispath; 2.0 preserves that draw branch until a named fidelity decision proves whether correction is needed.", "Castle saves the party-selected howhard value and applies it during authored monster construction. The construction rule accepts and tests the value, but the 2.0 session currently owns only Castle's default zero difficulty and has no user-facing or persisted difficulty setting."]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_battles(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn battle_terrain_sets(" },
@@ -1125,7 +1125,7 @@
         "unresolved": ["Monster movement, randomized shift retries, guarding reactions, friendly swaps, and withdrawal attacks require separate serializable continuations.", "cansee advances each of 128 iterations by delta divided by 128 plus the user delay-speed preference; the resulting line-of-sight endpoint appears preference-dependent and needs a controlled Castle runtime fixture before 2.0 chooses a correction."]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_battles(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn battle_terrain_sets(" },
@@ -1170,7 +1170,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_battles(" }
@@ -1257,7 +1257,7 @@
         ]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -1342,7 +1342,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -1402,7 +1402,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
         ],
@@ -1457,7 +1457,7 @@
         "unresolved": ["The automated possessed-character path omits the manual path's twelve-movement charge and needs its own typed continuation.", "The manual native UI decrements a finite charge before target cancellation; Realmz 2.0 consumes only after a valid atomic target is committed.", "Elemental and special projectiles require the remaining source-backed save and spelllist branches.", "Random item power eight is rolled before Castle opens its target picker and requires a serializable begin-fire continuation.", "Monster-on-monster projectile dodge reads stale c[charup].missile and remains disabled pending an intentional-correction decision."]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/importer.rs", "symbol": "fn ensure_reference_tile_attributes(" },
           { "path": "src-tauri/src/realmz/landlooks.rs", "symbol": "pub fn parse_combat_mapstats_data(" },
@@ -1519,7 +1519,7 @@
         ]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document(" }
@@ -1576,7 +1576,7 @@
         ]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document(" }
@@ -1619,7 +1619,7 @@
         "unresolved": ["Area, automatic group, friendly, charmed-monster, class-nine, special-effect, nonpositive-cost, and zero-damage monster spell paths remain disabled."]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
         ],
@@ -1669,7 +1669,7 @@
         "unresolved": ["Castle prepays spell points before tactical targeting and an aborted target spends three movement while refunding only about two thirds. Realmz 2.0's atomic cast intent intentionally leaves invalid targets uncommitted until a serializable begin-cast interaction is implemented.", "Area, friendly, everybody, wall, field, rotating, random-power, class-nine, item-cast, fast-spell, and special-effect paths remain disabled.", "Castle's successful monster target-type-twelve branch does not clear Guard although its targeted, all-friendly, and all-enemy branches do; no correction is chosen yet."]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spells(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
@@ -1717,7 +1717,7 @@
         "unresolved": ["Castle subtracts a negative spell cost, which can increase monster spell points.", "Monster size increases spellrange only after getrange has already rejected out-of-range candidates.", "Target-everybody omits the Guard clear present in ordinary, all-friendly, and all-enemy casting.", "Friendly and charmed-monster targets, area/group shapes, class nine, and specials need separate source-backed continuations."]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spells(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
@@ -1768,7 +1768,7 @@
         "unresolved": ["Castle's fixed todoque capacity is not treated as permission to drop additional valid macros; Realmz 2.0 validates its complete save-owned queue instead.", "Group spell resolution remains unavailable until duration, base damage, cost, and source target ordering are shared across targets rather than repeated per target."]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
         ],
@@ -1815,7 +1815,7 @@
         "unresolved": ["Monster automatic-group casting remains disabled because its observable source path depends on stale global power and missing resource accounting.", "The target-12 monster Guard omission remains undecided.", "Target type 11 also enters the player greater-than-eight branch and falls into its all-enemy else, but is outside this bounded ordinary-group case."]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src/editor/rulesCatalog.ts", "symbol": "export const SPELL_TARGET_TYPES" },
           { "path": "src/editor/browser/project.ts", "symbol": "function validateRulesRecords(" },
@@ -1866,7 +1866,7 @@
         "unresolved": ["Target type 0 is not an area transaction: each selected target rerolls resolution and remains a separate pass.", "Spell reflection consumes targeting-stage draws and can redirect an area to the caster; it remains disabled rather than approximated.", "Rotatable masks add a zero-through-three index to the authored shape instead of applying a generic transform and need an explicit orientation UI.", "Queued area fields and collision ticks remain separate persistent combat state.", "Castle can index a seven-cell mask beyond a battlefield edge; Realmz 2.0 rejects such a center instead of reproducing unsafe memory access."]
       },
       "providence": {
-        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
         "sources": [
           { "path": "src/editor/rulesCatalog.ts", "symbol": "export const SPELL_TARGET_TYPES" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"targetType\": spell.target_type" },
@@ -1885,6 +1885,64 @@
       "decision": "runtime-defect",
       "availability": "implemented",
       "status": "player-ordinary-target-types-3-4-implemented-type-0-reflection-rotation-and-fields-explicit"
+    },
+    {
+      "id": "combat.repeated-target-spells",
+      "domain": "combat",
+      "claim": "An ordinary size-zero target-type 0 spell selects up to one distinct actor per chosen power in player-selected order, charges once at that power, and rerolls duration and base damage for every selected actor; monsters choose their power and unique native targets through Castle's battle-wide bounded sampling counter.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake models Magic Darts as one creature target per power and preserves distinct Sorcerer 1108 and Enchanter 3208 identities. It supplies a targeting and identity lead, not proof of Castle's per-target roll, prepaid cost, or monster sampling lifecycle.",
+        "sources": [
+          { "path": "src/shared_assets/spells/magic_darts.gd", "symbol": "func get_target_number(" },
+          { "path": "src/shared_assets/spells/classic_magic_darts_enchanter.gd", "symbol": "classic_spell_ids = [3208]" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "Magic Darts targets once per power" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "if (spellinfo.targettype < 1)" },
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "case 't':" },
+          { "path": "src/realmz_orig/cast.c", "symbol": "void cast(short targetnum, short who)" },
+          { "path": "src/realmz_orig/spelltargets.c", "symbol": "short spelltargets(short targetnum, short who, short mode, short noreflect)" },
+          { "path": "src/realmz_orig/resolvespell.c", "symbol": "void resolvespell(void)" },
+          { "path": "src/realmz_orig/combat.c", "symbol": "if (!spellinfo.targettype)" }
+        ],
+        "authoredInputs": ["target type", "size", "power", "cost", "range and LOS", "selected native actor slots", "duration and damage ranges", "magic resistance and reflection"],
+        "observation": "For target type zero, the player receives powerlevel target slots, may cast after selecting at least one distinct party or monster actor, and retains selection order when removing entries. cast loops those selections and calls spelltargets/resolvespell separately, so duration and base damage reroll per actor while the power cost was already paid once. A monster first rolls range power, counts getrange targets, rolls target power from that count, lowers it for affordability, and samples unique native slots. The local pass variable persists across the whole battle, increments before every sample, resets only after exceeding 100, and permits a partial cast that still pays the chosen power. A monster above 100 magic resistance is removed from track after that selection's duration/base-damage rolls. Nonzero size changes type zero into open-space footprint selection.",
+        "unresolved": [
+          "Reflection can redirect a selected target to the caster after a targeting-stage draw and remains explicitly unavailable.",
+          "Nonzero-size open-space and summoning behavior is a separate implementation slice.",
+          "Monster targeting can include opposed or charmed monsters; that mixed roster path remains unavailable.",
+          "Castle prepays player spell points and refunds only part of an aborted cast; Realmz 2.0 continues to mutate only after a committed typed response and does not charge cancellation.",
+          "The battle-wide monster sample counter appears bug-like but is preserved and serialized rather than silently reset per spell."
+        ]
+      },
+      "providence": {
+        "commit": "fa0297426677552080608e1b89bad4334d323465",
+        "sources": [
+          { "path": "src/editor/rulesCatalog.ts", "symbol": "Multiple Actors / Open Spaces" },
+          { "path": "src/editor/rulesCatalog.test.ts", "symbol": "does not mislabel target type zero as open-space-only" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"targetType\": spell.target_type" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"size\": spell.size" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves numeric targetType, size, range, cost, resistance, duration, and damage fields. The editor label now states that value zero means multiple actors when size is zero and open spaces when size is nonzero; no package migration is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func cast_spell(" },
+        "expectedTrace": ["offer one ordered-selection option per spell and power", "select one through power distinct actors", "validate every actor's range and LOS before mutation", "reject unresolved reflection transactionally", "spend spell points once at chosen power", "reroll duration and base damage for each selected actor", "consume but apply no effect for an over-100 monster", "resolve and queue deaths in selected order", "for monsters roll separate range and target power", "sample unique native slots through the serialized battle-wide hundred-attempt counter", "permit a partial monster cast while charging chosen power", "spend two half-attacks and twelve movement once"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_and_monster_repeated_target_spells()" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "ordinary-size-zero-player-and-party-targeting-monster-casting-implemented-reflection-open-space-and-opposed-monster-targets-explicit"
     }
   ]
 }

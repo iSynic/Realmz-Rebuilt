@@ -32,6 +32,10 @@ func _test_battle_weapon_mode_component() -> void:
 			{"spellId": "spell.flame", "spellName": "Flame", "power": 2, "cost": 4, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5},
 			{"spellId": "spell.wave", "spellName": "Wave", "power": 1, "cost": 3, "targetId": "", "targetName": "Everybody", "targetCurrentHealth": -1, "targetMaximumHealth": -1},
 			{"spellId": "spell.burst", "spellName": "Burst", "power": 3, "cost": 6, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 3, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]]},
+			{"spellId": "spell.darts", "spellName": "Darts", "power": 3, "cost": 6, "targetId": "", "targetName": "Choose up to 3 actors", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "sequence", "maximumTargets": 3, "targetCandidates": [
+				{"id": "monster.target", "kind": "monster", "name": "Target", "currentHealth": 5, "maximumHealth": 5},
+				{"id": "character.ally", "kind": "character", "name": "Ally", "currentHealth": 8, "maximumHealth": 10},
+			]},
 		],
 		"movement": [
 			{"direction": [0, -1], "destination": [45, 44], "cost": 1, "enabled": true, "reason": ""},
@@ -55,6 +59,7 @@ func _test_battle_weapon_mode_component() -> void:
 	var finish_button: Button = null
 	var escape_button: Button = null
 	var cast_button: Button = null
+	var add_target_button: Button = null
 	for button: Button in buttons:
 		if button.text == "Fire missile unavailable":
 			fire_button = button
@@ -70,6 +75,8 @@ func _test_battle_weapon_mode_component() -> void:
 			escape_button = button
 		elif button.text == "Cast selected spell":
 			cast_button = button
+		elif button.text == "Add target":
+			add_target_button = button
 	assert_not_null(fire_button, "the unresolved ranged action remains visible instead of silently disappearing")
 	assert_true(fire_button.disabled and not fire_button.tooltip_text.is_empty(), "the disabled Fire action exposes the typed tactical blocker")
 	assert_not_null(switch_button, "the source-backed no-cost mode toggle remains available")
@@ -78,6 +85,7 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_not_null(finish_button, "the Classic Finish command remains distinct from Defend")
 	assert_true(escape_button != null and escape_button.disabled and escape_button.tooltip_text == "An enemy is too close.", "the explicit Escape control exposes the core-owned unavailable reason")
 	assert_not_null(cast_button, "the battle component exposes a core-proven spell, power, and target option")
+	assert_not_null(add_target_button, "the battle component exposes an explicit ordered repeated-target selection control")
 	var spell_picker := component.get_children().filter(func(child: Node) -> bool: return child is OptionButton)[0] as OptionButton
 	assert_equal(spell_picker.get_item_text(1), "Wave • P1 • 3 SP → Everybody", "automatic group spells render their typed label without fabricating one target's HP")
 	switch_button.pressed.emit()
@@ -91,13 +99,23 @@ func _test_battle_weapon_mode_component() -> void:
 	(coordinate_inputs[0] as SpinBox).value = 47
 	(coordinate_inputs[1] as SpinBox).value = 43
 	cast_button.pressed.emit()
+	spell_picker.select(3)
+	spell_picker.item_selected.emit(3)
+	var option_pickers := component.get_children().filter(func(child: Node) -> bool: return child is OptionButton)
+	var sequence_target_picker := option_pickers[1] as OptionButton
+	sequence_target_picker.select(1)
+	add_target_button.pressed.emit()
+	sequence_target_picker.select(0)
+	add_target_button.pressed.emit()
+	cast_button.pressed.emit()
 	assert_equal(submitted, [
 		{"actorId": "character.archer", "action": "switch_weapon", "targetId": ""},
 		{"actorId": "character.archer", "action": "move", "targetId": "", "destination": [45, 44]},
 		{"actorId": "character.archer", "action": "retreat_edge", "targetId": "", "destination": [1, 45], "forced": false},
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "monster.target", "spellId": "spell.flame", "power": 2},
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.burst", "power": 3, "targetCoordinate": [47, 43], "rotation": 0},
-	], "the presenter emits typed switch, movement, combatant spell, and battlefield-coordinate spell responses")
+		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.darts", "power": 3, "targetIds": ["character.ally", "monster.target"]},
+	], "the presenter emits typed switch, movement, combatant, battlefield-coordinate, and ordered repeated-target spell responses")
 	component.free()
 
 

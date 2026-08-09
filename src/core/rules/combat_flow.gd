@@ -673,8 +673,8 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 	return CombatFlowResult.succeeded(events)
 
 
-func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng, target_coordinate: Vector2i = Vector2i(-100_000, -100_000), rotation: int = 0) -> CombatFlowResult:
-	var probe := probe_character_spell_cast(state, content, caster_id, target_id, spell_id, power_level, target_coordinate, rotation)
+func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng, target_coordinate: Vector2i = Vector2i(-100_000, -100_000), rotation: int = 0, target_ids: Array[String] = []) -> CombatFlowResult:
+	var probe := probe_character_spell_cast(state, content, caster_id, target_id, spell_id, power_level, target_coordinate, rotation, target_ids)
 	if not probe.allowed:
 		return CombatFlowResult.failed(probe.reason, probe.reason_text)
 	var combat := state.combat
@@ -689,6 +689,18 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	_prepare_character_turn(combat, caster)
 	if spell.target_type in [9, 10, 12]:
 		return _cast_character_group_spell(state, content, caster, spell, power_level, cast_level, rng)
+	if spell.target_type == 0:
+		var selections: Array[SpellTargetSelection] = []
+		for selected_id: String in target_ids:
+			var selection := _spell_target_selection(state, content, selected_id)
+			if selection == null:
+				return CombatFlowResult.failed(&"spell_target_unavailable", "A selected repeated-spell target is unavailable.")
+			selections.append(selection)
+		_prepare_character_turn(combat, caster)
+		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng)
+		if repeated == null or not repeated.cast:
+			return CombatFlowResult.failed(&"spell_cast_failed", "The repeated-target spell could not be cast with the available spell points.")
+		return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng)
 	var target_definition := content.monster_by_id(target.definition_id)
 	if target_definition == null:
 		return CombatFlowResult.failed(&"spell_target_unavailable", "The target monster definition is unavailable.")
@@ -818,7 +830,7 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 	return CombatFlowResult.succeeded(events, combat.completed)
 
 
-func probe_character_spell_cast(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0) -> CombatSpellCastProbe:
+func probe_character_spell_cast(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = []) -> CombatSpellCastProbe:
 	if state == null or content == null:
 		return CombatSpellCastProbe.blocked(&"invalid_spell_turn", "Spell casting requires an active game session.")
 	var combat := state.combat
@@ -830,12 +842,11 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 	var spell := content.spell_by_id(spell_id)
 	if caster == null or caster.current_health <= 0 or caster.traitor or spell == null or power_level < 1 or power_level > 7:
 		return CombatSpellCastProbe.blocked(&"invalid_spell_target", "The spell, caster, power, or target is unavailable.")
-	if spell.target_type == 0:
-		return CombatSpellCastProbe.blocked(&"multi_target_spell_sequence_unresolved", "Classic target type 0 rerolls resolution for each independently selected target and remains a separate multi-target sequence.")
+	var repeated_target := spell.target_type == 0
 	var group_target := spell.target_type in [9, 10, 12]
 	var area_target := spell.target_type in [3, 4]
 	var target := combat.monster_by_id(target_id)
-	if not group_target and not area_target and (target == null or target.current_health <= 0 or target.traitor == caster.traitor):
+	if not repeated_target and not group_target and not area_target and (target == null or target.current_health <= 0 or target.traitor == caster.traitor):
 		return CombatSpellCastProbe.blocked(&"invalid_spell_target", "The spell, caster, power, or target is unavailable.")
 	if not caster.known_spells().has(spell.id):
 		return CombatSpellCastProbe.blocked(&"spell_not_known", "The caster does not know '%s'." % spell.id)
@@ -851,8 +862,10 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 		return CombatSpellCastProbe.blocked(&"spell_attack_limit_reached", "The caster has reached the Classic per-activation spell limit.")
 	if not spell.in_combat:
 		return CombatSpellCastProbe.blocked(&"spell_not_available_in_combat", "The selected spell is not available in combat.")
-	if spell.target_type not in [1, 3, 4, 9, 10, 12] or spell.special != 0 or absi(spell.damage_type) < 1 or absi(spell.damage_type) > 6 or absi(spell.spell_class) == 9:
-		return CombatSpellCastProbe.blocked(&"unsupported_combat_spell", "This pass supports source-backed single-target, fixed/power area, and automatic-group ordinary combat spells.")
+	if spell.target_type not in [0, 1, 3, 4, 9, 10, 12] or spell.special != 0 or absi(spell.damage_type) < 1 or absi(spell.damage_type) > 6 or absi(spell.spell_class) == 9:
+		return CombatSpellCastProbe.blocked(&"unsupported_combat_spell", "This pass supports source-backed repeated-target, single-target, fixed/power area, and automatic-group ordinary combat spells.")
+	if repeated_target and spell.size != 0:
+		return CombatSpellCastProbe.blocked(&"repeated_open_space_spell_unresolved", "Classic target type 0 with nonzero size selects open-space footprints for summoning or special behavior, not ordinary actors.")
 	if spell.queue_icon != 0:
 		return CombatSpellCastProbe.blocked(&"queued_spell_field_unresolved", "This spell creates a persistent Classic battlefield field whose collision lifecycle is not implemented.")
 	if area_target and spell.can_rotate:
@@ -869,7 +882,24 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 	var cast_level := spell.classic_tier()
 	if cast_level < 0 or cast_level > 6:
 		return CombatSpellCastProbe.blocked(&"invalid_classic_spell_tier", "The spell ID does not encode a valid Classic tier.")
-	if area_target:
+	if repeated_target:
+		if target_ids.size() > power_level:
+			return CombatSpellCastProbe.blocked(&"too_many_spell_targets", "A repeated-target spell may select at most one distinct actor per power level.")
+		var seen: Dictionary = {}
+		for selected_id: String in target_ids:
+			if selected_id.is_empty() or seen.has(selected_id):
+				return CombatSpellCastProbe.blocked(&"invalid_repeated_spell_targets", "Repeated spell targets must be nonempty and distinct.")
+			seen[selected_id] = true
+			var selection := _spell_target_selection(state, content, selected_id)
+			if selection == null:
+				return CombatSpellCastProbe.blocked(&"invalid_spell_target", "A selected repeated-spell actor is unavailable.")
+			if (selection.character != null and selection.character.conditions.is_active(ConditionRules.REFLECTING_SPELLS)) or (selection.monster != null and selection.monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS)):
+				return CombatSpellCastProbe.blocked(&"repeated_spell_reflection_unresolved", "A selected actor reflects spells; Classic redirection remains unresolved.")
+			if not _spell_actor_target_is_valid(state, content, caster.id, selected_id, spell, power_level):
+				return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "A selected repeated-spell actor is outside the Classic spell range or line of sight.")
+		if target_ids.is_empty() and _character_repeated_spell_candidates(state, content, caster, spell, power_level).is_empty():
+			return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "No actor is available within this repeated spell's Classic range and line of sight.")
+	elif area_target:
 		var shape := _rules.spell_areas.shape_for(spell, power_level, rotation)
 		if _rules.spell_areas.pattern(shape).is_empty():
 			return CombatSpellCastProbe.blocked(&"invalid_spell_area_shape", "The spell references an unavailable Classic Data AD area mask.")
@@ -900,6 +930,11 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 		if spell == null:
 			continue
 		for power_level: int in range(1, 8):
+			if spell.target_type == 0:
+				if probe_character_spell_cast(state, content, caster_id, "", spell.id, power_level).allowed:
+					var candidates := _character_repeated_spell_candidates(state, content, caster, spell, power_level)
+					result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], power_level, candidates))
+				continue
 			if spell.target_type in [9, 10, 12]:
 				if probe_character_spell_cast(state, content, caster_id, "", spell.id, power_level).allowed:
 					result.append(CombatSpellOptionView.new(spell, power_level, null, _group_spell_target_label(spell.target_type), &"automatic"))
@@ -913,6 +948,41 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 				if probe_character_spell_cast(state, content, caster_id, target.id, spell.id, power_level).allowed:
 					result.append(CombatSpellOptionView.new(spell, power_level, target))
 	return result
+
+
+func _character_repeated_spell_candidates(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int) -> Array[CombatSpellTargetView]:
+	var result: Array[CombatSpellTargetView] = []
+	for character: CharacterState in state.party.characters():
+		if character.current_health <= 0 or not state.combat.battlefield.has_actor(character.id) or character.conditions.is_active(ConditionRules.REFLECTING_SPELLS):
+			continue
+		if _spell_actor_target_is_valid(state, content, caster.id, character.id, spell, power_level):
+			result.append(CombatSpellTargetView.new(character.id, &"character", character.name, character.current_health, character.maximum_health))
+	for monster: MonsterState in state.combat.monsters():
+		if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id) or monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS):
+			continue
+		if _spell_actor_target_is_valid(state, content, caster.id, monster.id, spell, power_level):
+			result.append(CombatSpellTargetView.new(monster.id, &"monster", monster.name, monster.current_health, monster.maximum_health))
+	return result
+
+
+func _spell_actor_target_is_valid(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition, power_level: int) -> bool:
+	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
+	if caster_id == target_id:
+		var map := content.world.map_by_id(state.combat.battlefield.map_id)
+		var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+		return terrain_set != null and _rules.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actor_position(caster_id), maximum_range, spell.range_min + spell.range_max > 0)
+	return projectile_target_is_valid(state.combat, content, caster_id, target_id, maximum_range, spell.range_min + spell.range_max > 0)
+
+
+static func _spell_target_selection(state: GameState, content: RealmzContent, target_id: String) -> SpellTargetSelection:
+	var character := state.party.character_by_id(target_id)
+	if character != null and character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
+		return SpellTargetSelection.for_character(character)
+	var monster := state.combat.monster_by_id(target_id)
+	if monster == null or monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id):
+		return null
+	var definition := content.monster_by_id(monster.definition_id)
+	return SpellTargetSelection.for_monster(monster, definition) if definition != null else null
 
 
 static func _group_spell_target_label(target_type: int) -> String:
@@ -1425,39 +1495,59 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			return MONSTER_ATTACK_COMPLETED
 		if eligible_characters.is_empty():
 			return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
-		var cost_power := range_power
+		var cost_power := rng.draw(eligible_characters.size(), StringName("monster.spell.target-power.%d" % active_turn.spell_cast_count)) if spell.target_type == 0 else range_power
+		cost_power = mini(7, cost_power)
 		while cost_power > 0 and spell.cost * cost_power > monster.spell_points:
 			cost_power -= 1
 		if cost_power <= 0:
 			return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
-		var target: CharacterState = null
+		var selected_targets: Array[CharacterState] = []
 		var party := state.party.characters()
 		var native_target_count := 10 + state.combat.monsters().size()
-		for target_draw: int in 100:
+		var target_draw := 0
+		while selected_targets.size() < (cost_power if spell.target_type == 0 else 1):
+			state.combat.monster_spell_target_pass += 1
+			if state.combat.monster_spell_target_pass > 100:
+				state.combat.monster_spell_target_pass = 0
+				break
 			var native_target := rng.draw(native_target_count, StringName("monster.spell.target.%d.%d" % [active_turn.spell_cast_count, target_draw])) - 1
+			target_draw += 1
 			if native_target < 0 or native_target >= party.size():
 				continue
 			var candidate := party[native_target]
-			if eligible_characters.has(candidate):
-				target = candidate
-				break
-		if target == null:
+			if eligible_characters.has(candidate) and not selected_targets.has(candidate):
+				selected_targets.append(candidate)
+		if selected_targets.is_empty():
 			return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
+		if selected_targets.any(func(candidate: CharacterState) -> bool: return candidate.conditions.is_active(ConditionRules.REFLECTING_SPELLS)):
+			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "reason": "monster-spell-reflection-unresolved"}))
+			return MONSTER_ATTACK_COMPLETED
+		var target := selected_targets[0]
 		var cast_level := spell.classic_tier()
 		if cast_level < 0 or cast_level > 6:
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "reason": "invalid-classic-spell-tier"}))
 			return MONSTER_ATTACK_COMPLETED
 		state.combat.set_guarding(monster.id, false)
 		active_turn.movement_remaining = 0
-		var resolution := _rules.magic.resolve_monster_spell(monster, target, spell, cost_power, cast_level, rng)
-		if resolution == null or not resolution.cast:
+		var resolutions: GroupSpellResolution
+		if spell.target_type == 0:
+			resolutions = _rules.magic.resolve_monster_repeated_spell(monster, selected_targets, spell, cost_power, cast_level, rng)
+		else:
+			var single := _rules.magic.resolve_monster_spell(monster, target, spell, cost_power, cast_level, rng)
+			if single != null:
+				resolutions = GroupSpellResolution.new(single.cast, single.cost, single.duration, single.damage)
+				resolutions.append_target(target.id, &"character", single)
+		if resolutions == null or not resolutions.cast:
 			return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
 		active_turn.spell_cast_count += 1
 		did_cast = true
-		if resolution.damage > 0:
-			state.combat.mark_attacked(target.id)
-		events.append(DomainEvent.new(&"combat_spell_resolved", {"actorId": monster.id, "targetId": target.id, "spellId": spell.id, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster"}))
-		_remove_defeated_position(state.combat, target.id, resolution.target_defeated)
+		for index: int in resolutions.resolutions.size():
+			var resolution := resolutions.resolutions[index]
+			var resolved_target_id := resolutions.target_ids[index]
+			if resolution.damage > 0:
+				state.combat.mark_attacked(resolved_target_id)
+			events.append(DomainEvent.new(&"combat_spell_resolved", {"actorId": monster.id, "targetId": resolved_target_id, "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster"}))
+			_remove_defeated_position(state.combat, resolved_target_id, resolution.target_defeated)
 	return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
 
 
@@ -1470,7 +1560,9 @@ static func _monster_spell_unavailable_reason(spell: SpellDefinition) -> String:
 		return "monster-queued-spell-field-unresolved"
 	if spell.target_type in [9, 10, 12]:
 		return "monster-group-spell-power-resource-anomaly"
-	if spell.target_type != 1:
+	if spell.target_type == 0 and spell.size != 0:
+		return "monster-repeated-open-space-spell-unresolved"
+	if spell.target_type not in [0, 1]:
 		return "monster-spell-target-shape-unresolved"
 	if spell.special != 0:
 		return "monster-spell-special-unresolved"

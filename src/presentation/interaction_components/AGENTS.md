@@ -19,6 +19,7 @@
 # Work Guidance
 
 - Keep request-kind logic in the narrowest component and preserve payload field names exactly.
+- Repeated combat spells render core-supplied candidates, retain explicit addition order, permit one through `maximumTargets`, and emit that order as `targetIds`. Presentation cannot infer extra targets or reorder the selection.
 
 # Verification
 

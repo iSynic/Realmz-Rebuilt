@@ -39,9 +39,11 @@ func build(request: InteractionRequest) -> void:
 		var spell_picker := OptionButton.new()
 		spell_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var has_area_spell := false
+		var has_sequence_spell := false
 		for option: Variant in spell_casts:
 			if option is Dictionary:
 				has_area_spell = has_area_spell or option.get("targetMode", "combatant") == "area"
+				has_sequence_spell = has_sequence_spell or option.get("targetMode", "combatant") == "sequence"
 				var target_health := int(option.get("targetCurrentHealth", -1))
 				var target_label := String(option.get("targetName", "Target"))
 				var label := "%s • P%d • %d SP → %s" % [option.get("spellName", "Spell"), int(option.get("power", 1)), int(option.get("cost", 0)), target_label]
@@ -50,6 +52,9 @@ func build(request: InteractionRequest) -> void:
 				spell_picker.add_item(label)
 				spell_picker.set_item_metadata(spell_picker.item_count - 1, option.duplicate(true))
 		add_child(spell_picker)
+		var cast_button := Button.new()
+		cast_button.text = "Cast selected spell"
+		cast_button.disabled = spell_picker.item_count == 0
 		var target_x := SpinBox.new()
 		var target_y := SpinBox.new()
 		if has_area_spell:
@@ -76,13 +81,70 @@ func build(request: InteractionRequest) -> void:
 						target_y.value = int(coordinate[1])
 			spell_picker.item_selected.connect(update_area_controls)
 			update_area_controls.call(spell_picker.selected)
-		var cast_button := Button.new()
-		cast_button.text = "Cast selected spell"
-		cast_button.disabled = spell_picker.item_count == 0
+		var sequence_target_picker := OptionButton.new()
+		var sequence_selected_picker := OptionButton.new()
+		var sequence_add_button := Button.new()
+		var sequence_remove_button := Button.new()
+		var sequence_target_ids: Array[String] = []
+		if has_sequence_spell:
+			add_hint("Repeated spells preserve the order selected. Cast may begin after one target, up to the chosen power.")
+			sequence_target_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			sequence_selected_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			sequence_add_button.text = "Add target"
+			sequence_remove_button.text = "Remove selected target"
+			add_child(sequence_target_picker)
+			add_child(sequence_add_button)
+			add_child(sequence_selected_picker)
+			add_child(sequence_remove_button)
+			var refresh_sequence_controls := func(index: int) -> void:
+				sequence_target_ids.clear()
+				sequence_target_picker.clear()
+				sequence_selected_picker.clear()
+				var selected: Variant = spell_picker.get_item_metadata(index)
+				var sequence_selected: bool = selected is Dictionary and selected.get("targetMode", "combatant") == "sequence"
+				sequence_target_picker.visible = sequence_selected
+				sequence_selected_picker.visible = sequence_selected
+				sequence_add_button.visible = sequence_selected
+				sequence_remove_button.visible = sequence_selected
+				if sequence_selected:
+					var candidates: Variant = selected.get("targetCandidates", [])
+					if candidates is Array:
+						for candidate: Variant in candidates:
+							if candidate is Dictionary:
+								sequence_target_picker.add_item("%s • HP %d/%d" % [candidate.get("name", "Target"), int(candidate.get("currentHealth", 0)), int(candidate.get("maximumHealth", 0))])
+								sequence_target_picker.set_item_metadata(sequence_target_picker.item_count - 1, candidate.duplicate(true))
+				cast_button.disabled = spell_picker.item_count == 0 or (sequence_selected and sequence_target_ids.is_empty())
+			spell_picker.item_selected.connect(refresh_sequence_controls)
+			sequence_add_button.pressed.connect(func() -> void:
+				var option: Variant = spell_picker.get_selected_metadata()
+				var candidate: Variant = sequence_target_picker.get_selected_metadata()
+				if not option is Dictionary or not candidate is Dictionary:
+					return
+				var target_id := String(candidate.get("id", ""))
+				if target_id.is_empty() or sequence_target_ids.has(target_id) or sequence_target_ids.size() >= int(option.get("maximumTargets", 1)):
+					return
+				sequence_target_ids.append(target_id)
+				sequence_selected_picker.add_item(String(candidate.get("name", "Target")))
+				sequence_selected_picker.set_item_metadata(sequence_selected_picker.item_count - 1, target_id)
+				cast_button.disabled = false
+			)
+			sequence_remove_button.pressed.connect(func() -> void:
+				var index := sequence_selected_picker.selected
+				if index < 0 or index >= sequence_target_ids.size():
+					return
+				sequence_target_ids.remove_at(index)
+				sequence_selected_picker.remove_item(index)
+				cast_button.disabled = sequence_target_ids.is_empty()
+			)
+			refresh_sequence_controls.call(spell_picker.selected)
 		cast_button.pressed.connect(func() -> void:
 			var option: Variant = spell_picker.get_selected_metadata()
 			if option is Dictionary:
 				var payload := {"actorId": actor_id, "action": "cast_spell", "targetId": String(option.get("targetId", "")), "spellId": String(option.get("spellId", "")), "power": int(option.get("power", 1))}
+				if option.get("targetMode", "combatant") == "sequence":
+					if sequence_target_ids.is_empty():
+						return
+					payload["targetIds"] = sequence_target_ids.duplicate()
 				if option.get("targetMode", "combatant") == "area":
 					payload["targetCoordinate"] = [int(target_x.value), int(target_y.value)]
 					payload["rotation"] = 0

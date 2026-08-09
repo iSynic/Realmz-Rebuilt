@@ -18,6 +18,7 @@ func run() -> void:
 	_test_source_backed_character_spell_casting()
 	_test_character_automatic_group_spell()
 	_test_character_fixed_area_spell()
+	_test_character_and_monster_repeated_target_spells()
 	_test_spell_death_macro_queue_and_restore()
 	_test_source_backed_monster_spell_casting()
 	_test_charm_resistance_continues_after_failed_opposed_save()
@@ -1050,7 +1051,7 @@ func _test_character_fixed_area_spell() -> void:
 	assert_equal(edge_probe.reason, &"spell_area_outside_battlefield", "an unsafe Castle edge mask is rejected rather than indexing outside the battlefield")
 	spell.target_type = 0
 	var multi_probe := rules.combat_flow.probe_character_spell_cast(state, content, caster.id, "", spell.id, 1)
-	assert_equal(multi_probe.reason, &"multi_target_spell_sequence_unresolved", "target type zero remains separate because Castle rerolls once per independently selected target")
+	assert_equal(multi_probe.reason, &"repeated_open_space_spell_unresolved", "nonzero-size target type zero remains separate because Castle selects open-space footprints instead of ordinary actors")
 	spell.target_type = 3
 	spell.queue_icon = 1
 	assert_equal(rules.combat_flow.probe_character_spell_cast(state, content, caster.id, "", spell.id, 1).reason, &"queued_spell_field_unresolved", "a persistent area field stays disabled instead of resolving damage while silently omitting its queued collision state")
@@ -1107,6 +1108,7 @@ func _test_source_backed_monster_spell_casting() -> void:
 	rules.combat_flow._process_monster_turns(state, content, rng, events)
 	assert_equal([character.current_health, monster.spell_points], [26, 8], "an ordinary monster spell spends lowered power cost and commits damage to its selected party target")
 	assert_false(state.combat.is_guarding(monster.id), "Castle's ordinary targeted monster cast clears Guard")
+	assert_equal(state.combat.monster_spell_target_pass, 1, "Castle's target-sampling pass counter remains battle-owned after a successful spell")
 	assert_equal(state.combat.active_actor_id(), character.id, "a successful monster spell ends the monster activation")
 	var cast_events := events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster")
 	assert_equal(cast_events.size(), 1, "monster casting publishes one typed source-owned resolution event")
@@ -1128,7 +1130,7 @@ func _test_source_backed_monster_spell_casting() -> void:
 	assert_equal([multi_target.current_health, multi_monster.spell_points, multi_turn.spell_cast_count, multi_turn.monster_cast_attempt_count], [22, 6, 2, 1], "two magical attacks share one attempt while committing independent slot, power, target, and resolution draws")
 	var restored_multi := GameState.from_data(JSON.parse_string(JSON.stringify(multi_state.to_data())))
 	assert_not_null(restored_multi, "monster cast and retry cursors survive central save restoration")
-	assert_equal([restored_multi.combat.active_turn.spell_cast_count, restored_multi.combat.active_turn.monster_cast_attempt_count], [2, 1], "restore cannot repeat a committed magical attack or first tryspell attempt")
+	assert_equal([restored_multi.combat.active_turn.spell_cast_count, restored_multi.combat.active_turn.monster_cast_attempt_count, restored_multi.combat.monster_spell_target_pass], [2, 1, 2], "restore cannot repeat a committed magical attack, first tryspell attempt, or Castle's battle-wide target-sampling counter")
 
 	definition.magic_attack_count = 1
 	definition.cast_percent = 50
@@ -1142,6 +1144,104 @@ func _test_source_backed_monster_spell_casting() -> void:
 	rules.combat_flow._process_monster_turns(retry_state, content, retry_rng, retry_events)
 	assert_equal(retry_target.current_health, 26, "a monster that initially chooses movement may retry casting after its zero-movement advance")
 	assert_equal(retry_rng.trace().filter(func(entry: Dictionary) -> bool: return entry.get("tag") == "monster.ai.cast").size(), 1, "Castle's post-movement tryspell jump does not repeat the cast-percent roll")
+
+
+func _test_character_and_monster_repeated_target_spells() -> void:
+	var rules := RealmzRules.new()
+	var spell := SpellDefinition.new("spell.magic-darts", 3208, "Magic Darts")
+	spell.in_combat = true
+	spell.target_type = 0
+	spell.size = 0
+	spell.spell_class = 3
+	spell.damage_type = 6
+	spell.cannot = 3
+	spell.cost = 2
+	spell.range_min = 15
+	spell.duration_min = 1
+	spell.duration_max = 1
+	spell.damage_min = 1
+	spell.damage_max = 4
+	var caster := _character("character.darts.caster")
+	caster.set_known_spells([spell.id])
+	caster.maximum_spell_attacks = 2
+	caster.maximum_spell_points = 20
+	caster.spell_points = 20
+	caster.normal_attacks = 4
+	var ally := _character("character.darts.ally")
+	ally.current_health = 20
+	ally.maximum_health = 20
+	var target_definition := _monster_definition("monster.darts.target", [])
+	var immune_definition := _monster_definition("monster.darts.immune", [])
+	var target := MonsterState.new("monster.darts.target.instance", target_definition.id, "Target", 20, 20, 1)
+	var immune := MonsterState.new("monster.darts.immune.instance", immune_definition.id, "Immune", 20, 20, 1, 1, 0, 101)
+	var battlefield := _blank_battlefield()
+	battlefield.place_character(caster.id, Vector2i(45, 45))
+	battlefield.place_character(ally.id, Vector2i(44, 45))
+	battlefield.place_monster(target.id, Vector2i(46, 45), 0)
+	battlefield.place_monster(immune.id, Vector2i(47, 45), 0)
+	var state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [caster, ally]), RealmzClock.new())
+	state.combat = CombatState.new("battle.darts", [target, immune], 0, battlefield)
+	state.combat.set_turn_order([caster.id, ally.id, target.id, immune.id])
+	var content := _content([target_definition, immune_definition], [], [], [], [spell])
+	var options := rules.combat_flow.character_spell_options(state, content, caster.id)
+	var sequence_options := options.filter(func(option: CombatSpellOptionView) -> bool: return option.spell_id == spell.id and option.power == 3 and option.target_mode == &"sequence")
+	assert_equal(sequence_options.size(), 1, "target type zero exposes one ordered-selection option per spell and power")
+	assert_equal(sequence_options[0].maximum_targets, 3, "the typed option carries Castle's one-target-per-power maximum")
+	assert_equal(sequence_options[0].target_candidates.map(func(candidate: CombatSpellTargetView) -> String: return candidate.id), [caster.id, ally.id, target.id, immune.id], "the candidate list preserves party slots before monster slots without imposing allegiance")
+	var duplicate_rng := ScriptedRng.new([])
+	var duplicate := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 3, duplicate_rng, CombatFlow.INVALID_COORDINATE, 0, [target.id, target.id])
+	assert_equal([duplicate.error_code, duplicate_rng.snapshot().draw_count, caster.spell_points], [&"invalid_repeated_spell_targets", 0, 20], "duplicate selections fail before cost, turn, or RNG mutation")
+	ally.conditions.set_value(ConditionRules.REFLECTING_SPELLS, 1)
+	var reflected := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 3, ScriptedRng.new([]), CombatFlow.INVALID_COORDINATE, 0, [ally.id])
+	assert_equal([reflected.error_code, caster.spell_points], [&"repeated_spell_reflection_unresolved", 20], "unimplemented reflection remains an explicit transactional boundary")
+	ally.conditions.set_value(ConditionRules.REFLECTING_SPELLS, 0)
+	var cast_rng := ScriptedRng.new([0, 0, 32_767, 0, 32_767, 32_767, 0, 0])
+	var cast := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 3, cast_rng, CombatFlow.INVALID_COORDINATE, 0, [ally.id, target.id, immune.id])
+	assert_true(cast.ok, "an ordered actor sequence commits as one Classic target-type-zero cast")
+	assert_equal(caster.spell_points, 14, "the caster pays once for the chosen power rather than once per selected actor")
+	assert_equal(cast_rng.snapshot().draw_count, 8, "each ordinary target rerolls duration and damage while the over-100 target still consumes its two pre-resolution rolls")
+	var resolved := cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")
+	assert_equal(resolved.map(func(event: DomainEvent) -> Variant: return event.payload.get("targetId")), [ally.id, target.id], "resolution events preserve user selection order and omit Castle's over-100 immune target")
+	assert_equal(resolved.map(func(event: DomainEvent) -> Variant: return event.payload.get("damage")), [1, 4], "target type zero rerolls base damage for each selected actor instead of sharing an area roll")
+	assert_equal([ally.current_health, target.current_health, immune.current_health], [19, 16, 20], "the selected party member and monster receive their independent rolls while complete magic immunity remains unchanged")
+
+	var early_caster := _character("character.darts.early-caster")
+	early_caster.spell_points = 20
+	var early_target := _character("character.darts.early-target")
+	var early := rules.magic.resolve_character_repeated_spell(early_caster, [SpellTargetSelection.for_character(early_target)], spell, 3, spell.classic_tier(), ScriptedRng.new([0, 0, 32_767]))
+	assert_true(early != null and early.cast, "Castle permits casting before all power-count target slots are filled")
+	assert_equal(early_caster.spell_points, 14, "early casting does not refund unused target slots from the prepaid power")
+
+	var monster_slots: Array[String] = [spell.id, "", "", "", "", "", "", "", "", ""]
+	var caster_definition := MonsterDefinition.new("monster.darts.caster", 9, "Darts Caster", 4, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), monster_slots, [], [])
+	caster_definition.magic_attack_count = 1
+	var monster_caster := MonsterState.new("monster.darts.caster.instance", caster_definition.id, caster_definition.name, 30, 30, 4, 1, 0, 0, 10)
+	var first_party := _character("character.darts.first-party")
+	var second_party := _character("character.darts.second-party")
+	var monster_field := _blank_battlefield()
+	monster_field.place_character(first_party.id, Vector2i(45, 45))
+	monster_field.place_character(second_party.id, Vector2i(46, 45))
+	monster_field.place_monster(monster_caster.id, Vector2i(47, 45), 0)
+	var monster_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [first_party, second_party]), RealmzClock.new())
+	monster_state.combat = CombatState.new("battle.monster-darts", [monster_caster], 0, monster_field)
+	monster_state.combat.set_turn_order([first_party.id, second_party.id, monster_caster.id])
+	monster_state.combat.turn_index = 2
+	var monster_content := _content([caster_definition], [], [], [], [spell])
+	var repeated_values: Array[int] = [0, 0, 32_767]
+	repeated_values.append_array(_ints(100))
+	repeated_values.append_array([0, 0, 32_767])
+	var monster_rng := ScriptedRng.new(repeated_values)
+	var monster_events: Array[DomainEvent] = []
+	var monster_turn := monster_state.combat.begin_active_turn()
+	assert_equal(rules.combat_flow._process_monster_cast(monster_state, monster_content, monster_caster, caster_definition, monster_turn, monster_rng, monster_events), 0, "a monster commits a partial repeated-target cast after Castle's shared hundred-attempt target budget")
+	assert_equal([first_party.current_health, second_party.current_health, monster_caster.spell_points], [first_party.maximum_health - 1, second_party.maximum_health, 6], "the partial cast resolves one unique actor but spends the full randomly chosen power")
+	assert_equal(monster_rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).begins_with("monster.spell.target.")).size(), 100, "the retry budget is shared across the complete target sequence and counts successful samples")
+	assert_equal(monster_state.combat.monster_spell_target_pass, 0, "crossing Castle's battle-wide hundred-attempt threshold resets the counter before the partial cast")
+	assert_equal(monster_events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved").size(), 1, "partial monster selection emits only the target actually resolved")
+
+	spell.size = 1
+	assert_equal(rules.combat_flow.probe_character_spell_cast(state, content, caster.id, "", spell.id, 1).reason, &"repeated_open_space_spell_unresolved", "nonzero-size target type zero remains the separate open-space or summoning contract")
+	assert_equal(rules.combat_flow._monster_spell_unavailable_reason(spell), "monster-repeated-open-space-spell-unresolved", "monster open-space target type zero is not silently treated as actor damage")
 
 
 func _test_charm_resistance_continues_after_failed_opposed_save() -> void:
