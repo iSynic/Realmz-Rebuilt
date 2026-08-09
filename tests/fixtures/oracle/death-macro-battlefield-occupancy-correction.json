@@ -1,0 +1,35 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-007",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/killbody.c",
+      "symbol": "void killbody(short mon, short performque)",
+      "range": "87-154"
+    },
+    {
+      "path": "src/realmz_orig/newland.c",
+      "symbol": "case 119:",
+      "range": "292-307"
+    }
+  ],
+  "inputs": {
+    "combatant": "hostile monster with a death macro",
+    "defeatedHealth": 0,
+    "deathMacro": "CODE 119 revives the owning monster",
+    "battlefieldPosition": "occupied before the killing attack"
+  },
+  "castleSourceObservation": {
+    "beforeMacro": "killbody calls bodyground and bodyfield, replacing the monster's occupied battlefield cells",
+    "macroMutation": "CODE 119 sets the death-macro monster stamina to one and allegiance to friendly",
+    "afterMacro": "killbody skips its ordinary post-macro body replacement but does not restore the revived monster to battlefield occupancy"
+  },
+  "realmz2ChosenResult": {
+    "pendingMacro": "retain the defeated monster footprint until the death macro completes",
+    "stillDead": "remove the footprint before battle resolution continues",
+    "revived": "retain the original footprint with the revived health and allegiance",
+    "saveBoundary": "every resulting live combatant has one persisted battlefield footprint"
+  }
+}

@@ -62,6 +62,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_battlefield_builder.gd` proves impossible footprint search terminates explicitly. `test_combat_flow.gd` proves the stable error plus complete game-state and RNG rollback. The differential case is `combat.battlefield-generation-and-placement`.
 - Legacy quirk: none. A non-terminating application state is not scenario behavior that can be supported as an authored dependency.
 
+## FD-COMBAT-007 — Preserve battlefield occupancy through monster revival
+
+- Affected rule: battlefield occupancy while a defeated monster's death macro is pending and after CODE 119 revives that monster.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/killbody.c`, `killbody`, lines 87–154, and `src/realmz_orig/newland.c`, CODE 119, lines 292–307. `killbody` calls `bodyground` and `bodyfield` before the macro; CODE 119 changes the death-macro monster to one stamina and friendly allegiance; the return path skips later body replacement and never puts the revived monster back into field occupancy.
+- Observable oracle behavior, determined from the complete source flow: the revived monster record remains alive and retains its old `monpos`, but its battlefield cells were already restored to ground. The synthetic source-observation fixture is `tests/fixtures/oracle/death-macro-battlefield-occupancy-correction.json`, SHA-256 `b68292e8d05f5dea38af06cac226715db86c4d0c98a90fd35d59dad850b2e325`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: a living revived combatant becomes absent from adjacency and occupancy checks. In 2.0 it would also violate the central save invariant that every living battle participant has one position.
+- Chosen 2.0 behavior: retain the defeated monster's footprint while its nested death macro is pending. Remove it after completion only if the monster remains dead; retain the original footprint if the macro revives it.
+- Tests: `_test_automatic_monster_death_macro` covers direct and VM macro continuation, CODE 119 revival, battle completion, ally selection, and central save boundaries. The differential case is `combat.death-macro-battlefield-occupancy`.
+- Legacy quirk: none. A live but nonoccupying combatant is an internally inconsistent state, not a useful authored dependency.
+
 Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
 
 Each entry must include:

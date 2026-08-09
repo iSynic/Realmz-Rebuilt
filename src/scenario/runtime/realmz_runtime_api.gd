@@ -2005,7 +2005,14 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 	if _game_state.combat == null or _game_state.combat.battle_id != continuation.get("battleId"):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The pending battle is unavailable.")
 	var previous_round := _game_state.combat.round_number
-	var result := _rules.combat_flow.submit_action(_game_state, _content, response.payload["actorId"], StringName(response.payload["action"]), response.payload.get("targetId", ""), _rng)
+	var result: CombatFlowResult
+	if response.payload["action"] == "move":
+		var destination := _combat_destination(response.payload.get("destination"))
+		if destination == Vector2i(-100_000, -100_000):
+			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat movement requires a two-integer destination.")
+		result = _rules.combat_flow.move_character(_game_state, _content, response.payload["actorId"], destination)
+	else:
+		result = _rules.combat_flow.submit_action(_game_state, _content, response.payload["actorId"], StringName(response.payload["action"]), response.payload.get("targetId", ""), _rng)
 	if not result.ok:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
@@ -2289,7 +2296,7 @@ static func _death_macro_request(events: Array[DomainEvent]) -> Dictionary:
 
 func _combat_request(request_id: String) -> InteractionRequest:
 	var combat := _game_state.combat
-	var combat_view := CombatView.new(combat, _game_state.party.characters(), _content, _rules.inventory)
+	var combat_view := CombatView.new(combat, _game_state.party.characters(), _content, _rules.inventory, _rules.battlefield)
 	var actions: Array[String] = []
 	for action: StringName in combat_view.legal_actions:
 		actions.append(String(action))
@@ -2304,7 +2311,16 @@ func _combat_request(request_id: String) -> InteractionRequest:
 		targets.append({"id": monster.id, "kind": "monster", "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health})
 	for character: CharacterView in combat_view.character_targets:
 		targets.append({"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
-	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "targets": targets})
+	var movement: Array[Dictionary] = []
+	for option: CombatMoveOptionView in combat_view.movement_options:
+		movement.append({"direction": [option.direction.x, option.direction.y], "destination": [option.destination.x, option.destination.y], "cost": option.movement_cost, "enabled": option.enabled, "reasonCode": String(option.reason), "reason": option.reason_text})
+	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "movement": movement})
+
+
+static func _combat_destination(value: Variant) -> Vector2i:
+	if not value is Array or value.size() != 2 or not value[0] is int or not value[1] is int:
+		return Vector2i(-100_000, -100_000)
+	return Vector2i(value[0], value[1])
 
 
 func _grant_treasure(classic_treasure_id: int) -> ScenarioRuntimeOperationResult:

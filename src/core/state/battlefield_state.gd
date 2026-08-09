@@ -51,6 +51,54 @@ func monster_size(actor_id: String) -> int:
 	return int(_monster_sizes.get(actor_id, -1))
 
 
+func has_actor(actor_id: String) -> bool:
+	return _character_positions.has(actor_id) or _monster_positions.has(actor_id)
+
+
+func actor_ids() -> Array[String]:
+	var result: Array[String] = []
+	for actor_id: Variant in _character_positions:
+		result.append(String(actor_id))
+	for actor_id: Variant in _monster_positions:
+		result.append(String(actor_id))
+	result.sort()
+	return result
+
+
+func actor_position(actor_id: String) -> Vector2i:
+	if _character_positions.has(actor_id):
+		return _coordinate(_character_positions[actor_id])
+	return _coordinate(_monster_positions.get(actor_id))
+
+
+func actor_size(actor_id: String) -> int:
+	return int(_monster_sizes.get(actor_id, 0)) if _monster_positions.has(actor_id) else 0 if _character_positions.has(actor_id) else -1
+
+
+func actor_footprint(actor_id: String) -> Array[Vector2i]:
+	return actor_footprint_at(actor_id, actor_position(actor_id))
+
+
+func actor_footprint_at(actor_id: String, anchor: Vector2i) -> Array[Vector2i]:
+	var size := actor_size(actor_id)
+	var result: Array[Vector2i] = []
+	if size >= 0 and anchor.x >= 0:
+		result = footprint_cells(anchor, size)
+	return result
+
+
+func actor_at(coordinate: Vector2i, excluding_actor_id: String = "") -> String:
+	for actor_id: Variant in _character_positions:
+		if actor_id != excluding_actor_id and _coordinate(_character_positions[actor_id]) == coordinate:
+			return String(actor_id)
+	for actor_id: Variant in _monster_positions:
+		if actor_id == excluding_actor_id:
+			continue
+		if footprint_cells(_coordinate(_monster_positions[actor_id]), int(_monster_sizes.get(actor_id, 0))).has(coordinate):
+			return String(actor_id)
+	return ""
+
+
 func place_character(actor_id: String, coordinate: Vector2i) -> bool:
 	if actor_id.is_empty() or not contains(coordinate) or is_occupied(coordinate):
 		return false
@@ -76,6 +124,19 @@ func place_monster(actor_id: String, coordinate: Vector2i, size: int) -> bool:
 func remove_monster(actor_id: String) -> void:
 	_monster_positions.erase(actor_id)
 	_monster_sizes.erase(actor_id)
+
+
+func move_actor(actor_id: String, destination: Vector2i) -> bool:
+	if not has_actor(actor_id):
+		return false
+	for coordinate: Vector2i in actor_footprint_at(actor_id, destination):
+		if not contains(coordinate) or not actor_at(coordinate, actor_id).is_empty():
+			return false
+	if _character_positions.has(actor_id):
+		_character_positions[actor_id] = destination
+	else:
+		_monster_positions[actor_id] = destination
+	return true
 
 
 func replace_monster_id(current_id: String, replacement_id: String) -> bool:

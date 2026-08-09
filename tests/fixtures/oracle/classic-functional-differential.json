@@ -1097,6 +1097,103 @@
       "status": "verified"
     },
     {
+      "id": "combat.tactical-movement-and-melee-adjacency",
+      "domain": "combat",
+      "claim": "Reaction-free player tactical movement accepts one eight-direction destination step, charges the maximum destination-footprint terrain cost plus one point per changed axis, and exposes melee only against an opposed living footprint in the complete one-cell perimeter. A step whose old or new perimeter contains a hostile remains disabled until guarding and withdrawal reactions are serializable. A monster that is not adjacent cannot apply ordinary melee damage while its source-backed tactical movement is still unavailable.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake owns footprint-aware movement and AI pathing, making it a useful workflow lead. Its CombatState takes the minimum terrain time across a multi-cell destination while Castle takes the maximum, and two shared AI scripts calculate range without adding the actor positions. Neither divergence is imported into 2.0.",
+        "sources": [
+          { "path": "src/scripts/states/CombatState.gd", "symbol": "func on_trying_to_move_to_position(" },
+          { "path": "src/scripts/states/CbDecideActionState.gd", "symbol": "func do_ai_creature_action(" },
+          { "path": "src/scripts/AIScripts_functions.gd", "symbol": "static func get_range_between_creas(" },
+          { "path": "src/shared_assets/CreatureScripts/dumb_melee.gd", "symbol": "static func get_range_between_creas(" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice(void)" },
+          { "path": "src/realmz_orig/share-movecost-dialog.c", "symbol": "short getmovecost(short hit)" },
+          { "path": "src/realmz_orig/checkforenemy.c", "symbol": "short checkforenemy(short code)" },
+          { "path": "src/realmz_orig/movemonster.c", "symbol": "short movemonster(void)" }
+        ],
+        "authoredInputs": ["90 by 90 battlefield terrain", "terrain time and solid values", "combatant anchors and size footprints", "allegiance", "remaining movement and half-attacks"],
+        "observation": "combatchoice derives horizontal and vertical deltas independently, so party actors step in eight directions. Entering an opposed occupied footprint attacks instead of moving. getmovecost takes the maximum destination-footprint tile time divided by two minus one, floored at zero, then adds one for each changed axis. checkforenemy scans the complete one-cell perimeter around an actor footprint. movemonster uses the same footprint legality and maximum terrain cost but owns separate target-directed movement and randomized blocked-step retries.",
+        "unresolved": ["Monster movement, randomized shift retries, guarding reactions, friendly swaps, and withdrawal attacks require separate serializable continuations.", "cansee advances each of 128 iterations by delta divided by 128 plus the user delay-speed preference; the resulting line-of-sight endpoint appears preference-dependent and needs a controlled Castle runtime fixture before 2.0 chooses a correction."]
+      },
+      "providence": {
+        "commit": "7f3347cbe3073c2152004f0dfd0c0395efa82f30",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_battles(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn battle_terrain_sets(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits stable battle identity, complete battle terrain time/solid data, monster size, allegiance inputs, and the map-derived battlefield catalog. Tactical positions and remaining movement are session state, so no compiler revision is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func move_character(" },
+        "expectedTrace": ["probe one adjacent eight-direction destination", "validate every destination footprint cell", "charge maximum terrain cost plus changed axes", "compare complete hostile adjacency before and after", "reject unimplemented guarding or withdrawal reactions without mutation", "commit reaction-free position and movement synchronously", "expose adjacent melee and all eight probes in detached view and interaction", "prevent nonadjacent monster melee from mutating health"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_tactical_adjacency_movement_and_restore()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_gameplay_capabilities_and_battle_resume(" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "player-movement-and-melee-adjacency-verified-monster-movement-disabled"
+    },
+    {
+      "id": "combat.death-macro-battlefield-occupancy",
+      "domain": "combat",
+      "claim": "A defeated monster with a pending death macro retains its serialized battlefield footprint until the macro completes. The footprint is removed if the monster remains dead and retained if CODE 119 revives it, preventing a living combatant from becoming unpositioned and unsaveable.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake queues Classic death macros before final combat removal and has a dedicated Classic revival bridge. This identifies the same lifecycle boundary but remains coupled to mutable creature and combat Nodes, so it is not the 2.0 ownership model.",
+        "sources": [
+          { "path": "src/scripts/states/CbAnimationState.gd", "symbol": "queue_classic_death_macro(" },
+          { "path": "src/scripts/scenario_runtime/godot/scenario_godot_services.gd", "symbol": "func _revive_classic_combatants(" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/killbody.c", "symbol": "void killbody(short mon, short performque)" },
+          { "path": "src/realmz_orig/newland.c", "symbol": "case 119:" }
+        ],
+        "authoredInputs": ["monster death macro ID", "defeated monster position and footprint", "CODE 119 revival"],
+        "observation": "killbody replaces the defeated monster's occupied field cells before starting its death macro. CODE 119 then sets the owning monster to one stamina and friendly allegiance, but the return path skips ordinary body replacement and never restores the revived monster to battlefield occupancy. The monster record remains alive with its old monpos while the field no longer contains it.",
+        "unresolved": []
+      },
+      "providence": {
+        "commit": "7f3347cbe3073c2152004f0dfd0c0395efa82f30",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_battles(" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits deathMacro and stable battle/monster identities. Pending death-macro execution and battlefield occupancy are mutable session state; no package change is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func continue_after_monster_death_macro(" },
+        "expectedTrace": ["resolve killing attack", "retain footprint while death macro is pending", "run and serialize the nested macro", "remove still-dead footprints after completion", "retain a revived monster's original footprint", "validate and save every live combatant position"],
+        "tests": [
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_automatic_monster_death_macro(" }
+        ]
+      },
+      "fidelityDecision": {
+        "id": "FD-COMBAT-007",
+        "fixturePath": "tests/fixtures/oracle/death-macro-battlefield-occupancy-correction.json",
+        "fixtureSha256": "b68292e8d05f5dea38af06cac226715db86c4d0c98a90fd35d59dad850b2e325"
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "verified"
+    },
+    {
       "id": "combat.tactical-placement-and-ranged-resolution",
       "domain": "combat",
       "claim": "With battlefield positions now session-owned, missile attacks still require source-backed adjacency, Euclidean range, line of sight, active type-15 or type-10 item-spell selection, resource costs, and Castle's missile-specific resistance path. Until that resolution is complete, character Fire and monster missile resolution remain disabled and must not impersonate ordinary melee.",
@@ -1124,7 +1221,7 @@
         ],
         "authoredInputs": ["Data BD distance and 13 by 13 monster placement", "land tile solid and combat-build values", "combatant size and side", "missile percentage and monster item slots", "item type, spell link, damage plus, categories, and charges", "spell range, target type, class, damage type, and to-hit bonus"],
         "observation": "combat calls combatmap before combatsetup, so battlefield construction and its random terrain decoration consume gameplay RNG before direction, separation, and actor placement. A land source cell expands through its active landlook's 3 by 3 build; dungeon cells use fixed 232, 233, 234, and 252 builds. Combat Data BD is loaded into mapstats 200 through 400 before loadpixmap overwrites 0 through 200, so active landlook tile 200 wins only for land battlefields. combatsetup then draws direction and a distance bounded by Data BD distance, rotates the party formation, offsets the authored monster grid, and searches valid footprints. Character missile use blocks at point blank, tests Euclidean range and line of sight, spends two half-attacks and twelve movement, and resolves the item-backed class-nine projectile through projectile shield and missile dodge rather than generic magic resistance. A monster first rolls missile chance; only a nonadjacent valid ranged target enters the carried-item spell path, otherwise control falls through toward movement and physical attacks. attack2 replaces a missile active weapon before physical resolution.",
-        "unresolved": ["Castle manual character missile and automated character missile paths appear to disagree about the twelve-movement charge.", "attack2 uses global monsterup when replacing a ranged active weapon, which can mutate the wrong monster during a non-active opportunity attack.", "Current 2.0 melee target selection is not proximity-filtered; persisted tactical placement must gate ordinary physical attacks before combat can be certified."]
+        "unresolved": ["Castle manual character missile and automated character missile paths appear to disagree about the twelve-movement charge.", "attack2 uses global monsterup when replacing a ranged active weapon, which can mutate the wrong monster during a non-active opportunity attack.", "Castle cansee appears to make the line-of-sight endpoint depend on user delay speed; a controlled runtime fixture must settle the player-visible result before projectile LOS is implemented."]
       },
       "providence": {
         "commit": "7f3347cbe3073c2152004f0dfd0c0395efa82f30",
@@ -1186,13 +1283,13 @@
         "expectedRepresentation": "Monster size, immutable condition inputs, and complete source-backed battle terrain catalogs are emitted. Runtime combatant positions are session state, not package data; no authored facing field should be added as a substitute for movement-derived adjacency."
       },
       "realmz2": {
-        "owner": { "path": "src/core/state/combat_state.gd", "symbol": "class_name CombatState" },
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func move_character(" },
         "expectedTrace": ["snapshot source-backed hostile adjacency before movement", "validate and commit one tactical move", "snapshot adjacency after movement", "issue each Castle withdrawal attack with temporary plus twenty", "interrupt safely on mover death", "persist position and any pending attack boundary", "keep icon orientation presentation-only"],
         "tests": []
       },
       "decision": "unresolved",
       "availability": "disabled",
-      "status": "blocked-by-tactical-state"
+      "status": "movement-implemented-reactions-disabled"
     }
   ]
 }

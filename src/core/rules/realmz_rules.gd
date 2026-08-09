@@ -10,6 +10,7 @@ var combat: CombatRules
 var magic: MagicRules
 var monsters: MonsterRules
 var clock: ClockRules
+var battlefield: BattlefieldRules
 var combat_flow: CombatFlow
 
 
@@ -23,4 +24,5 @@ func _init() -> void:
 	magic = MagicRules.new(characters)
 	monsters = MonsterRules.new()
 	clock = ClockRules.new(conditions, characters)
+	battlefield = BattlefieldRules.new()
 	combat_flow = CombatFlow.new(self)

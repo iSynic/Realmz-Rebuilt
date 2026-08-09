@@ -4,6 +4,7 @@ var _cached_battle_world: WorldDefinition
 
 
 func run() -> void:
+	_test_tactical_adjacency_movement_and_restore()
 	_test_character_half_attack_cadence_and_restore()
 	_test_character_weapon_mode_toggle_and_restore()
 	_test_monster_missile_does_not_impersonate_melee()
@@ -11,6 +12,91 @@ func run() -> void:
 	_test_monster_attack_cursor_restore()
 	_test_battle_owned_fumble_and_exact_recovery()
 	_test_monster_fumble_clears_only_active_weapon()
+
+
+func _test_tactical_adjacency_movement_and_restore() -> void:
+	var rules := RealmzRules.new()
+	var character := _character("character.tactical")
+	var definition := _monster_definition("monster.tactical", [MonsterAttackDefinition.new(1, 1)])
+	var monster := MonsterState.new("monster.tactical.instance", definition.id, definition.name, 10, 10, 1)
+	var state := _state(character, monster, "battle.tactical")
+	var content := _content([definition])
+	var battlefield := state.combat.battlefield
+	assert_true(rules.battlefield.are_adjacent(battlefield, character.id, monster.id), "one-cell hostile footprints are Classic melee adjacent in all eight directions")
+	battlefield.move_actor(monster.id, Vector2i(50, 45))
+	assert_false(rules.battlefield.are_adjacent(battlefield, character.id, monster.id), "a one-cell gap is outside Castle's footprint scan")
+	var no_draws := ScriptedRng.new([])
+	var rejected := rules.combat_flow.submit_action(state, content, character.id, &"attack", monster.id, no_draws)
+	assert_false(rejected.ok, "melee cannot cross an unoccupied battlefield cell")
+	assert_equal(rejected.error_code, &"combat_target_not_adjacent", "nonadjacent melee has a stable failure identity")
+	assert_equal(no_draws.snapshot().draw_count, 0, "rejected nonadjacent melee consumes no combat randomness")
+	assert_equal(state.combat.active_turn, null, "rejected melee does not initialize mutable turn state")
+	var resources_before_invalid_move := [character.attacks_remaining, character.movement]
+	var invalid_move := rules.combat_flow.move_character(state, content, character.id, Vector2i(48, 45))
+	assert_false(invalid_move.ok, "a nonadjacent tactical step is rejected")
+	assert_equal(state.combat.active_turn, null, "rejected movement does not initialize mutable turn state")
+	assert_equal([character.attacks_remaining, character.movement], resources_before_invalid_move, "rejected movement preserves combat resources")
+
+	var moved := rules.combat_flow.move_character(state, content, character.id, Vector2i(46, 45))
+	assert_true(moved.ok, "a reaction-free cardinal battlefield step commits")
+	assert_equal([battlefield.character_position(character.id), character.movement], [Vector2i(46, 45), 11], "Castle cardinal movement spends the destination tile base plus one changed axis")
+	assert_true(moved.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved" and event.payload.get("cost") == 1), "movement publishes its exact committed cost")
+	var free_view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield)
+	assert_true(free_view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.enabled), "the detached view exposes reaction-free movement before any hostile perimeter is involved")
+	battlefield.move_actor(monster.id, Vector2i(47, 45))
+	assert_true(rules.battlefield.are_adjacent(battlefield, character.id, monster.id), "explicit fixture placement establishes diagonal melee adjacency")
+	var guard_reaction := rules.combat_flow.move_character(state, content, character.id, Vector2i(46, 44))
+	assert_false(guard_reaction.ok, "movement that remains beside an enemy stays disabled until Castle guarding state is serializable")
+	assert_equal(guard_reaction.error_code, &"guard_reaction_unavailable", "the missing guarding path is explicit rather than silently skipped")
+	var withdrawal := rules.combat_flow.move_character(state, content, character.id, Vector2i(45, 44))
+	assert_false(withdrawal.ok, "movement that leaves an adjacent enemy stays disabled until Castle withdrawal reactions are serializable")
+	assert_equal(withdrawal.error_code, &"withdrawal_attack_unavailable", "the disabled reaction path is explicit instead of silently moving")
+	assert_equal(battlefield.character_position(character.id), Vector2i(46, 45), "a rejected withdrawal leaves battlefield state unchanged")
+
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(restored, "a mid-turn tactical position survives the central save aggregate")
+	assert_equal(restored.combat.battlefield.character_position(character.id), Vector2i(46, 45), "restore retains the exact committed battlefield coordinate")
+	assert_equal(restored.party.character_by_id(character.id).movement, 11, "restore retains remaining tactical movement")
+	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield)
+	assert_equal(view.targets.map(func(target: MonsterView) -> String: return target.id), [monster.id], "the detached view exposes only adjacent hostile melee targets")
+	assert_equal(view.movement_options.size(), 8, "the detached view exposes all eight source-backed step probes")
+	assert_false(view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.enabled), "the detached view does not advertise a step that could skip guard or withdrawal reactions")
+	assert_true(view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.reason == &"guard_reaction_unavailable" and not option.reason_text.is_empty()), "guard-disabled movement carries a player-facing typed reason")
+
+	var large_field := _blank_battlefield()
+	large_field.place_character("character.large-target", Vector2i(40, 40))
+	large_field.place_monster("monster.large", Vector2i(42, 41), 3)
+	assert_true(rules.battlefield.are_adjacent(large_field, "character.large-target", "monster.large"), "adjacency measures the complete two-by-two monster footprint rather than its anchor")
+	large_field.remove_monster("monster.large")
+	large_field.place_monster("monster.large", Vector2i(43, 42), 3)
+	assert_false(rules.battlefield.are_adjacent(large_field, "character.large-target", "monster.large"), "large footprints still require a one-cell Classic neighborhood")
+	var cost_tiles: Array[BattleTerrainTileDefinition] = []
+	for tile_id: int in 401:
+		cost_tiles.append(BattleTerrainTileDefinition.new(tile_id, 0, 12 if tile_id == 3 else 8 if tile_id == 2 else 0, 0, false, 0, false, false, false, 0, [[tile_id, tile_id, tile_id], [tile_id, tile_id, tile_id], [tile_id, tile_id, tile_id]]))
+	var cost_terrain := BattleTerrainSetDefinition.new("terrain.cost", 1, 1, cost_tiles)
+	var cost_field := _blank_battlefield()
+	cost_field.place_character("character.cost", Vector2i(30, 30))
+	cost_field.set_terrain(Vector2i(31, 29), 2)
+	var diagonal_probe := rules.battlefield.probe_step(cost_field, cost_terrain, "character.cost", Vector2i(1, -1), 12)
+	assert_true(diagonal_probe.allowed, "an open diagonal destination passes the shared tactical query")
+	assert_equal(diagonal_probe.movement_cost, 5, "Castle movement charges terrain time divided by two minus one plus both changed axes")
+	cost_field.place_monster("monster.cost-large", Vector2i(35, 35), 3)
+	cost_field.set_terrain(Vector2i(36, 35), 2)
+	cost_field.set_terrain(Vector2i(35, 34), 3)
+	var large_probe := rules.battlefield.probe_step(cost_field, cost_terrain, "monster.cost-large", Vector2i(1, 0), 12)
+	assert_equal(large_probe.movement_cost, 6, "a multi-cell step uses the maximum destination-footprint terrain cost rather than Remake's minimum")
+
+	var distant_character := _character("character.distant-monster")
+	distant_character.current_health = 20
+	distant_character.maximum_health = 20
+	var distant_monster := MonsterState.new("monster.distant.instance", definition.id, definition.name, 10, 10, 1)
+	var distant_state := _state(distant_character, distant_monster, "battle.distant")
+	distant_state.combat.battlefield.move_actor(distant_monster.id, Vector2i(50, 50))
+	var distant_rng := ScriptedRng.new([0, 0])
+	var no_remote_attack := rules.combat_flow.submit_action(distant_state, content, distant_character.id, &"defend", "", distant_rng)
+	assert_true(no_remote_attack.ok, "a nonadjacent monster activation remains a committed unavailable step")
+	assert_equal(distant_character.current_health, 20, "a monster no longer applies melee damage across the battlefield")
+	assert_true(no_remote_attack.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action_unavailable" and event.payload.get("reason") == "tactical-movement-not-implemented"), "missing monster pathing is reported explicitly")
 
 
 func _test_character_weapon_mode_toggle_and_restore() -> void:
@@ -46,7 +132,7 @@ func _test_character_weapon_mode_toggle_and_restore() -> void:
 	assert_equal(state.combat.character_weapon_mode(character.id), &"missile", "the battle owns the active missile mode")
 	assert_equal([character.attacks_remaining, character.movement, state.combat.active_actor_id()], [resources_before[0], resources_before[1], character.id], "switching mode spends no attacks, movement, or turn")
 	assert_true(switched.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_weapon_mode_changed" and event.payload.get("mode") == "missile"), "the committed mode change publishes typed presentation feedback")
-	var combat_view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory)
+	var combat_view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield)
 	assert_equal(combat_view.weapon_mode, &"missile", "the detached combat view exposes the battle-owned mode")
 	assert_equal(combat_view.legal_actions, [&"switch_weapon", &"defend", &"retreat"], "the detached view cannot advertise melee attack while missile mode is active")
 	assert_false(combat_view.ranged_attack_unavailable_reason.is_empty(), "the detached view carries the exact tactical ranged blocker")
@@ -103,7 +189,7 @@ func _test_character_weapon_mode_toggle_and_restore() -> void:
 	var setup_monster := setup_state.combat.monsters()[0]
 	assert_true(setup_state.combat.battlefield.character_position(missile_only.id).x >= 0, "the live battlefield owns the party position")
 	assert_true(setup_state.combat.battlefield.monster_position(setup_monster.id).x >= 0, "the live battlefield replaces its temporary placement key with the stable monster instance ID")
-	var setup_view := CombatView.new(setup_state.combat, setup_state.party.characters(), content, rules.inventory)
+	var setup_view := CombatView.new(setup_state.combat, setup_state.party.characters(), content, rules.inventory, rules.battlefield)
 	assert_not_null(setup_view.battlefield, "the detached combat view exposes generated battlefield state without presenting the mutable aggregate")
 	assert_equal(setup_view.battlefield.monster_footprint(setup_monster.id), BattlefieldState.footprint_cells(setup_state.combat.battlefield.monster_position(setup_monster.id), setup_state.combat.battlefield.monster_size(setup_monster.id)), "presentation receives the exact session-owned Classic footprint")
 	var legacy_combat_data := setup_state.combat.to_data()
@@ -375,9 +461,19 @@ func _monster_definition(definition_id: String, attacks: Array[MonsterAttackDefi
 
 func _state(character: CharacterState, monster: MonsterState, battle_id: String) -> GameState:
 	var result := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [character]), RealmzClock.new())
-	result.combat = CombatState.new(battle_id, [monster])
+	var battlefield := _blank_battlefield()
+	battlefield.place_character(character.id, Vector2i(45, 45))
+	battlefield.place_monster(monster.id, Vector2i(46, 45), 0)
+	result.combat = CombatState.new(battle_id, [monster], 0, battlefield)
 	result.combat.set_turn_order([character.id, monster.id])
 	return result
+
+
+func _blank_battlefield() -> BattlefieldState:
+	var tiles: Array[int] = []
+	tiles.resize(BattlefieldState.CELL_COUNT)
+	tiles.fill(1)
+	return BattlefieldState.new("map.test", tiles)
 
 
 func _content(monsters: Array[MonsterDefinition], items: Array[ItemDefinition] = []) -> RealmzContent:

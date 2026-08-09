@@ -458,7 +458,9 @@ func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> vo
 	var restored := ScenarioVm.new()
 	restored.configure(definition)
 	assert_true(restored.restore(saved), "active battle VM continuation serializes at the player turn")
-	var target_id: String = waiting.interaction.payload["targets"][0]["id"]
+	var target_id := _first_hostile_monster_id(state.combat)
+	assert_false(target_id.is_empty(), "battle continuation fixture retains an enemy after consuming its held-over ally")
+	assert_true(_place_monster_adjacent(state.combat, character.id, target_id), "battle continuation fixture establishes source-legal melee adjacency")
 	var completed := restored.resume(InteractionResponse.new(waiting.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "attack", "targetId": target_id}), api)
 	var battle_events: Array[DomainEvent] = []
 	battle_events.assign(completed.events)
@@ -1144,7 +1146,8 @@ func _test_automatic_monster_death_macro(content: RealmzContent) -> void:
 	if waiting.state != ScenarioVmResult.State.WAITING:
 		monster_definition.death_macro = original_death_macro
 		return
-	var target_id: String = waiting.interaction.payload["targets"][0]["id"]
+	var target_id: String = state.combat.monsters()[0].id
+	assert_true(_place_monster_adjacent(state.combat, character.id, target_id), "death-macro fixture establishes source-legal melee adjacency")
 	var completed := vm.resume(InteractionResponse.new(waiting.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "attack", "targetId": target_id}), api)
 	var macro_events: Array[DomainEvent] = []
 	macro_events.assign(completed.events)
@@ -1177,6 +1180,7 @@ func _test_automatic_monster_death_macro(content: RealmzContent) -> void:
 	var battle_started := session._rules.combat_flow.start_battle(session._state, yielding_content, battle, session._rng)
 	assert_true(battle_started.ok, "direct session death-macro fixture starts a battle")
 	var session_target: MonsterState = session._state.combat.monsters()[0]
+	assert_true(_place_monster_adjacent(session._state.combat, session_character.id, session_target.id), "direct death-macro fixture establishes source-legal melee adjacency")
 	var yielded := session.submit_intent(PlayerIntent.combat_action(&"attack", session_character.id, session_target.id))
 	assert_equal(yielded.state, SessionStep.State.WAITING_FOR_INTERACTION, "direct session death macro can yield a typed interaction")
 	assert_equal(yielded.interaction.kind, &"character_selection", "death-macro interaction crosses the normal session host boundary")
@@ -1234,7 +1238,7 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	character.caste_id = caste.id
 	character.age_days = race.age_range(0).y * 365 + 364
 	character.age_group = 1
-	character.agility = 1
+	character.agility = 200
 	character.set_save_value_raw(7, 50)
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
 	state.party.conditions.set_value(ConditionRules.PARTY_DRAGON_HIDE, 1)
@@ -1251,7 +1255,12 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	var vm := ScenarioVm.new()
 	vm.configure(aging_content.scenario)
 	vm.start_program("root", {"callingContext": "action"})
-	var aged := vm.run(api)
+	var player_turn := vm.run(api)
+	assert_equal(player_turn.state, ScenarioVmResult.State.WAITING, "scenario combat reaches a source-positioned player turn before the monster can attack")
+	assert_equal(player_turn.interaction.kind, &"combat_action", "the aging fixture exposes the ordinary combat action boundary")
+	var generated_monster_id: String = state.combat.monsters()[0].id
+	assert_true(_place_monster_adjacent(state.combat, character.id, generated_monster_id), "aging fixture establishes source-legal monster adjacency")
+	var aged := vm.resume(InteractionResponse.new(player_turn.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "defend", "targetId": ""}), api)
 	assert_equal(aged.state, ScenarioVmResult.State.WAITING, "scenario combat pauses at the monster-caused age update")
 	assert_equal(aged.interaction.kind, InteractionRequest.AGE_UPDATE, "monster aging uses the ordinary typed age-update ABI")
 	assert_equal(vm.snapshot().pending_continuation.get("runtime", {}).get("kind"), "classic-combat-age-updates", "the age dialog owns the issuing Classic combat continuation")
@@ -1294,6 +1303,7 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	session_monster.weapon_id = aging_weapon.id
 	session._state.combat = CombatState.new(battle.id, [session_monster])
 	session._state.combat.set_turn_order([session_character.id, session_monster.id])
+	_set_adjacent_battlefield(session._state, aging_content, session_character.id, session_monster.id)
 	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0, 32_767])
 	var session_aged := session.submit_intent(PlayerIntent.combat_action(&"defend", session_character.id, ""))
 	assert_equal(session_aged.state, SessionStep.State.WAITING_FOR_INTERACTION, "direct session combat pauses at the monster-caused age update")
@@ -1343,6 +1353,7 @@ func _test_monster_status_attack_flow(content: RealmzContent) -> void:
 	var monster := MonsterState.new("monster.status-flow.instance", definition.id, definition.name, 10, 10, 4, 100)
 	session._state.combat = CombatState.new(battle.id, [monster])
 	session._state.combat.set_turn_order([character.id, monster.id])
+	_set_adjacent_battlefield(session._state, status_content, character.id, monster.id)
 	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", character.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster status attacks commit without inventing a player interaction")
@@ -1387,6 +1398,7 @@ func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
 	var monster := MonsterState.new("monster.resource-flow.instance", definition.id, definition.name, 10, 10, 4, 100, 0, 0, 2)
 	session._state.combat = CombatState.new(battle.id, [monster])
 	session._state.combat.set_turn_order([character.id, monster.id])
+	_set_adjacent_battlefield(session._state, resource_content, character.id, monster.id)
 	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", character.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster resource drains commit without inventing a player interaction")
@@ -1417,6 +1429,7 @@ func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
 	var experience_monster := MonsterState.new("monster.experience-flow.instance", experience_definition.id, experience_definition.name, 10, 20, 4, 100)
 	experience_session._state.combat = CombatState.new(experience_battle.id, [experience_monster])
 	experience_session._state.combat.set_turn_order([experience_character.id, experience_monster.id])
+	_set_adjacent_battlefield(experience_session._state, experience_content, experience_character.id, experience_monster.id)
 	experience_session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var experience_resolved := experience_session.submit_intent(PlayerIntent.combat_action(&"defend", experience_character.id, ""))
 	assert_equal(experience_character.experience, -300, "the direct session subtracts Castle experience rather than altering a Remake-style level balance")
@@ -1461,6 +1474,11 @@ func _test_monster_charm_and_affliction_flow(content: RealmzContent) -> void:
 	session._state.party_setup_completed = true
 	session._state.combat = CombatState.new(battle.id, [monster])
 	session._state.combat.set_turn_order([loyal.id, monster.id, victim.id])
+	var charm_field := _blank_battlefield(charm_content)
+	assert_true(charm_field.place_character(loyal.id, Vector2i(45, 45)), "charm fixture places its loyal actor")
+	assert_true(charm_field.place_character(victim.id, Vector2i(45, 46)), "charm fixture places its prospective traitor adjacent to the loyal actor")
+	assert_true(charm_field.place_monster(monster.id, Vector2i(46, 46), 0), "charm fixture places its monster adjacent to both party actors")
+	session._state.combat.battlefield = charm_field
 	session._rng = ScriptedRng.new([32_767, 32_767, 32_767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", loyal.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "charm and the resulting charmed turn require no fabricated player interaction")
@@ -1529,6 +1547,50 @@ func _restore_fixture_position(session: GameSession, content: RealmzContent, map
 func _runtime_api(content: RealmzContent, action_state: ScenarioActionState) -> RealmzRuntimeApi:
 	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("test", "Test", 1, 1)])
 	return RealmzRuntimeApi.new(content, GameState.new(party, RealmzClock.new()), RealmzRng.new(1), action_state)
+
+
+func _set_adjacent_battlefield(state: GameState, content: RealmzContent, character_id: String, monster_id: String) -> void:
+	var battlefield := _blank_battlefield(content)
+	assert_true(battlefield.place_character(character_id, Vector2i(45, 45)), "direct combat fixture places its party actor")
+	assert_true(battlefield.place_monster(monster_id, Vector2i(46, 45), 0), "direct combat fixture places its monster at source-legal melee adjacency")
+	state.combat.battlefield = battlefield
+
+
+func _place_monster_adjacent(combat: CombatState, character_id: String, monster_id: String) -> bool:
+	if combat == null or combat.battlefield == null:
+		return false
+	var character_position := combat.battlefield.character_position(character_id)
+	var monster_size := combat.battlefield.monster_size(monster_id)
+	if character_position.x < 0 or monster_size < 0:
+		return false
+	combat.battlefield.remove_monster(monster_id)
+	for y_offset: int in range(-3, 4):
+		for x_offset: int in range(-3, 4):
+			var anchor := character_position + Vector2i(x_offset, y_offset)
+			if not combat.battlefield.place_monster(monster_id, anchor, monster_size):
+				continue
+			if BattlefieldRules.new().are_adjacent(combat.battlefield, character_id, monster_id):
+				return true
+			combat.battlefield.remove_monster(monster_id)
+	return false
+
+
+func _first_hostile_monster_id(combat: CombatState) -> String:
+	if combat == null:
+		return ""
+	for monster: MonsterState in combat.monsters():
+		if monster.current_health > 0 and monster.traitor:
+			return monster.id
+	return ""
+
+
+func _blank_battlefield(content: RealmzContent) -> BattlefieldState:
+	var map := content.world.map_by_id(content.start_map_id)
+	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id)
+	var tiles: Array[int] = []
+	tiles.resize(BattlefieldState.CELL_COUNT)
+	tiles.fill(terrain_set.base_tile)
+	return BattlefieldState.new(map.id, tiles)
 
 
 func _aging_race(content: RealmzContent) -> RaceDefinition:

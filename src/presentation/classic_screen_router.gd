@@ -800,7 +800,7 @@ func _render_spells() -> void:
 
 func _render_combat() -> void:
 	if _view.combat_view == null:
-		_add_empty_state("No battle is active", "Battle information appears here when combat begins. Tactical movement remains unavailable until the session exposes positions.")
+		_add_empty_state("No battle is active", "Battlefield positions and tactical actions appear here when combat begins.")
 		return
 	var combat := _view.combat_view
 	_add_card("Battle %s" % combat.battle_id, "Round %d • Active %s" % [combat.round_number, combat.active_actor_id], "Outcome: %s" % ["In progress" if combat.outcome == &"" else String(combat.outcome)])
@@ -814,7 +814,8 @@ func _render_combat() -> void:
 		_apply_availability(button, &"choose_combat_action")
 		legal.add_child(button)
 	_body.add_child(legal)
-	_add_disabled_action(_body, "Tactical movement unavailable — no combat positions are exposed", &"combat_move")
+	var enabled_moves := combat.movement_options.filter(func(option: CombatMoveOptionView) -> bool: return option.enabled).size()
+	_add_card("Tactical movement", "%d of %d adjacent steps available" % [enabled_moves, combat.movement_options.size()], "Choose a source-probed step through the active Battle interaction. Withdrawal-producing steps remain disabled until their reaction sequence is implemented.")
 
 
 func _render_services() -> void:

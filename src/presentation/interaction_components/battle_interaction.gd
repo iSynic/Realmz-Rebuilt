@@ -14,6 +14,16 @@ func build(request: InteractionRequest) -> void:
 		for target: Variant in targets:
 			if target is Dictionary:
 				add_response("Attack %s • HP %d/%d" % [target.get("name", "Enemy"), int(target.get("currentHealth", 0)), int(target.get("maximumHealth", 0))], {"actorId": actor_id, "action": "attack", "targetId": String(target.get("id", ""))})
+	elif weapon_mode == "melee":
+		add_hint(String(request.payload.get("meleeAttackReason", "No adjacent melee target.")))
+	var movement: Variant = request.payload.get("movement", [])
+	if movement is Array:
+		for option: Variant in movement:
+			if option is Dictionary:
+				var destination: Variant = option.get("destination", [])
+				var direction: Variant = option.get("direction", [])
+				var label := "Move %s • %d MP" % [_direction_label(direction), int(option.get("cost", 0))]
+				add_response(label, {"actorId": actor_id, "action": "move", "targetId": "", "destination": destination}, bool(option.get("enabled", false)), String(option.get("reason", "Movement unavailable.")))
 	if weapon_mode == "missile":
 		var ranged: Variant = request.payload.get("rangedAttack", {})
 		var ranged_reason := String(ranged.get("reason", "Missile attacks are unavailable.") if ranged is Dictionary else "Missile attacks are unavailable.")
@@ -26,4 +36,14 @@ func build(request: InteractionRequest) -> void:
 		add_response("Defend", {"actorId": actor_id, "action": "defend", "targetId": ""})
 	if action_ids.has("retreat"):
 		add_response("Retreat", {"actorId": actor_id, "action": "retreat", "targetId": ""})
-	add_response("Tactical movement unavailable", {}, false, "Combat positions are not exposed by the session yet.")
+
+
+static func _direction_label(value: Variant) -> String:
+	if not value is Array or value.size() != 2:
+		return "?"
+	var direction := Vector2i(int(value[0]), int(value[1]))
+	return {
+		Vector2i(-1, -1): "NW", Vector2i(0, -1): "N", Vector2i(1, -1): "NE",
+		Vector2i(-1, 0): "W", Vector2i(1, 0): "E",
+		Vector2i(-1, 1): "SW", Vector2i(0, 1): "S", Vector2i(1, 1): "SE",
+	}.get(direction, "?")

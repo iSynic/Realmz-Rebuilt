@@ -105,7 +105,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"invalid_intent", "A typed player intent is required.")
 	if not _state.party_setup_completed and intent.kind not in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PlayerIntent.Kind.FINALIZE_CHARACTER, PlayerIntent.Kind.REMOVE_PARTY_MEMBER]:
 		return SessionStep.failed(_view_revision, &"party_setup_incomplete", "Finish party setup before beginning the adventure.")
-	if _state.combat != null and not _state.combat.completed and intent.kind not in [PlayerIntent.Kind.CAST_SPELL, PlayerIntent.Kind.CHOOSE_COMBAT_ACTION]:
+	if _state.combat != null and not _state.combat.completed and intent.kind not in [PlayerIntent.Kind.CAST_SPELL, PlayerIntent.Kind.CHOOSE_COMBAT_ACTION, PlayerIntent.Kind.COMBAT_MOVE]:
 		return SessionStep.failed(_view_revision, &"battle_in_progress", "Resolve the active battle before returning to exploration.")
 	match intent.kind:
 		PlayerIntent.Kind.MOVE:
@@ -120,6 +120,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _cast_spell(intent)
 		PlayerIntent.Kind.CHOOSE_COMBAT_ACTION:
 			return _combat_action(intent)
+		PlayerIntent.Kind.COMBAT_MOVE:
+			return _combat_move(intent)
 		PlayerIntent.Kind.CREATE_PARTY:
 			return _create_party(intent.party_members)
 		PlayerIntent.Kind.BEGIN_ADVENTURE:
@@ -165,7 +167,7 @@ func view() -> GameView:
 	var members: Array[CharacterView] = []
 	for character: CharacterState in _state.party.characters():
 		members.append(CharacterView.new(character, _content))
-	var current_combat := CombatView.new(_state.combat, _state.party.characters(), _content, _rules.inventory) if _state.combat != null else null
+	var current_combat := CombatView.new(_state.combat, _state.party.characters(), _content, _rules.inventory, _rules.battlefield) if _state.combat != null else null
 	var result := GameView.new(_view_revision, true, _pending_interaction(), _state.party.map_id, _state.party.coordinate, _state.clock.day(), _state.clock.hour(), _build_map_view(), members, _state.party.fatigue, _state.party.pooled_wealth.gold, current_combat)
 	result.campaign_id = _content.campaign_id
 	result.rules_version = _content.rules_version
@@ -291,6 +293,13 @@ func _combat_action(intent: PlayerIntent) -> SessionStep:
 		return _start_session_death_macro(result.events)
 	if result.completed:
 		return _finish_direct_battle(result.events)
+	return _finish_completed(result.events)
+
+
+func _combat_move(intent: PlayerIntent) -> SessionStep:
+	var result := _rules.combat_flow.move_character(_state, _content, intent.actor_id, intent.direction)
+	if not result.ok:
+		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
 	return _finish_completed(result.events)
 
 

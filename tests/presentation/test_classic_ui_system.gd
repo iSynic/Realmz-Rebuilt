@@ -25,8 +25,12 @@ func _test_battle_weapon_mode_component() -> void:
 		"actions": ["switch_weapon", "defend", "retreat"],
 		"weaponMode": "missile",
 		"weaponSwitch": {"enabled": true, "targetMode": "melee", "reason": ""},
-		"rangedAttack": {"enabled": false, "reason": "Battle positions, range, and line of sight are unavailable."},
+		"rangedAttack": {"enabled": false, "reason": "Missile range, line of sight, and projectile resolution are unavailable."},
 		"targets": [{"id": "monster.target", "name": "Target", "currentHealth": 5, "maximumHealth": 5}],
+		"movement": [
+			{"direction": [0, -1], "destination": [45, 44], "cost": 1, "enabled": true, "reason": ""},
+			{"direction": [1, 0], "destination": [46, 45], "cost": 1, "enabled": false, "reason": "Destination occupied."},
+		],
 	})
 	var component := BattleInteraction.new()
 	var submitted: Array[Dictionary] = []
@@ -39,16 +43,24 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_false(buttons.any(func(button: Button) -> bool: return button.text.begins_with("Attack ")), "missile mode renders no melee attack target buttons")
 	var fire_button: Button = null
 	var switch_button: Button = null
+	var move_button: Button = null
 	for button: Button in buttons:
 		if button.text == "Fire missile unavailable":
 			fire_button = button
 		elif button.text == "Switch to melee":
 			switch_button = button
+		elif button.text.begins_with("Move N "):
+			move_button = button
 	assert_not_null(fire_button, "the unresolved ranged action remains visible instead of silently disappearing")
 	assert_true(fire_button.disabled and not fire_button.tooltip_text.is_empty(), "the disabled Fire action exposes the typed tactical blocker")
 	assert_not_null(switch_button, "the source-backed no-cost mode toggle remains available")
+	assert_not_null(move_button, "the typed battle component exposes a source-probed tactical step")
 	switch_button.pressed.emit()
-	assert_equal(submitted, [{"actorId": "character.archer", "action": "switch_weapon", "targetId": ""}], "the presenter emits only the typed switch response")
+	move_button.pressed.emit()
+	assert_equal(submitted, [
+		{"actorId": "character.archer", "action": "switch_weapon", "targetId": ""},
+		{"actorId": "character.archer", "action": "move", "targetId": "", "destination": [45, 44]},
+	], "the presenter emits only the typed switch and movement responses")
 	component.free()
 
 
