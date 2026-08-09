@@ -987,6 +987,150 @@
       "decision": "intentional-correction",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "combat.character-weapon-mode-selection",
+      "domain": "combat",
+      "claim": "Classic battle state owns one melee-versus-missile toggle per party character. Battle setup prefers an equipped type-2 melee weapon, otherwise selects an equipped type-15 missile weapon, and the active character may switch modes without spending attacks, movement, or the turn. Missile mode may never fall through to the melee resolver.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake exposes separate melee, ranged, and ammunition equipment references and separate combat controls. It is useful evidence that these are distinct workflows, but it has no Castle-equivalent single battle toggle and permits dual melee weapons, so its equipment host is not a direct donor.",
+        "sources": [
+          { "path": "src/Creature/Creature.gd", "symbol": "var current_melee_weapon_instances" },
+          { "path": "src/Creature/Creature.gd", "symbol": "var current_range_weapon_instance" },
+          { "path": "src/Creature/Creature.gd", "symbol": "var current_ammo_weapon_instance" },
+          { "path": "src/scripts/states/CbMenusState.gd", "symbol": "func on_spell_picked(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/items/tests/creature_item_instance_smoke.gd", "symbol": "func _test_equipment_handoff_and_slots()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/combatsetup.c", "symbol": "short combatsetup(short mode, short suprise, short combatmode)" },
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice(void)" },
+          { "path": "src/realmz_orig/tomissle-weap.c", "symbol": "short toweap(short who)" },
+          { "path": "src/realmz_orig/tomissle-weap.c", "symbol": "short tomissle(short who)" },
+          { "path": "src/realmz_orig/wear.c", "symbol": "short wear(short character, short itemnum, short play)" }
+        ],
+        "authoredInputs": ["equipped type-2 melee slot", "equipped type-15 missile slot", "equipped type-10 ammunition slot", "item category bit twelve", "character hand-to-hand rating", "automatic weapon-switch preference"],
+        "observation": "combatsetup clears toggle, keeps melee mode when armor[2] is occupied, and selects missile mode only when melee is absent and armor[15] is occupied. The Melee control changes toggle in either direction, plays only UI feedback, and does not decrement attacks or movement. Returning to melee permits hand-to-hand with no type-2 item. wear normalizes item type by absolute value, gives types 2, 10, and 15 distinct slots, selects the newly equipped weapon mode, and requires slot 10 for category-bit-twelve bows. tomissle additionally rejects any adjacent hostile and a missile spell whose target type is not one.",
+        "unresolved": ["The fixed 2.0 runtime has no source-backed owner for Castle's autoweapswitch preference, so point-blank automatic switching remains unavailable."]
+      },
+      "providence": {
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits stable item identity, itemType, itemCategoryMasks, special fields, charges, and immutable item definitions. The active toggle is battle-owned mutable state; no compiler or package revision is required for mode selection."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func submit_action(" },
+        "expectedTrace": ["validate unique Classic equipment slots", "initialize melee unless only missile is equipped", "persist character weapon mode in battle state", "emit typed no-cost switch action", "retain attacks, movement, actor, and turn", "block melee resolution while missile mode is active", "expose the same action set through detached view and typed interaction"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_weapon_mode_toggle_and_restore()" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "verified"
+    },
+    {
+      "id": "combat.tactical-placement-and-ranged-resolution",
+      "domain": "combat",
+      "claim": "Battle distance is initial tactical separation, while missile attacks require session-owned combatant footprints, adjacency, Euclidean range, line of sight, the active type-15 or type-10 item spell, and Castle's missile-specific resistance path. Until those facts are present, character Fire and monster missile resolution remain disabled and must not impersonate ordinary melee.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake has tactical coordinates, separate ranged and ammunition items, range/targeting controls, and item-spell dispatch. Those identify the missing 2.0 application workflow but use Remake creature/action state and cannot establish Castle placement, range, or missile-save semantics.",
+        "sources": [
+          { "path": "src/Creature/Creature.gd", "symbol": "var current_range_weapon_instance" },
+          { "path": "src/scripts/states/CbMenusState.gd", "symbol": "func on_spell_picked(" },
+          { "path": "src/scripts/states/CbDecideActionState.gd", "symbol": "func _on_dir_input_received(" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/combatsetup.c", "symbol": "short combatsetup(short mode, short suprise, short combatmode)" },
+          { "path": "src/realmz_orig/combat.c", "symbol": "void combat(short suprise, short mode)" },
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice(void)" },
+          { "path": "src/realmz_orig/checkrange-checkforitem.c", "symbol": "short checkrange(short body, short targetx, short targety)" },
+          { "path": "src/realmz_orig/cansee.c", "symbol": "short cansee(short fromx, short fromy, short tox, short toy)" },
+          { "path": "src/realmz_orig/resolvespell.c", "symbol": "void resolvespell(void)" },
+          { "path": "src/realmz_orig/resist.c", "symbol": "short resist(short who)" }
+        ],
+        "authoredInputs": ["Data BD distance and 13 by 13 monster placement", "land tile solid and combat-build values", "combatant size and side", "missile percentage and monster item slots", "item type, spell link, damage plus, categories, and charges", "spell range, target type, class, damage type, and to-hit bonus"],
+        "observation": "combatsetup draws a direction and a distance bounded by Data BD distance, rotates the party formation, offsets the authored monster grid, and searches valid footprints against combat terrain. Character missile use blocks at point blank, tests Euclidean range and line of sight, spends two half-attacks and twelve movement, and resolves the item-backed class-nine projectile through projectile shield and missile dodge rather than generic magic resistance. A monster first rolls missile chance; only a nonadjacent valid ranged target enters the carried-item spell path, otherwise control falls through toward movement and physical attacks. attack2 replaces a missile active weapon before physical resolution.",
+        "unresolved": ["Castle manual character missile and automated character missile paths appear to disagree about the twelve-movement charge.", "attack2 uses global monsterup when replacing a ranged active weapon, which can mutate the wrong monster during a non-active opportunity attack.", "The exact combat-clearing terrain projection and large-monster solid-value distinctions require package data not emitted by schema v2.", "Current 2.0 melee target selection is not proximity-filtered; tactical placement must gate ordinary physical attacks before combat can be certified."]
+      },
+      "providence": {
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_battles(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn normalized_cell_topology(" }
+        ],
+        "expectedRepresentation": "Schema v2 emits battle distance, authored monster slots, monster missile percentage, item/spell facts, and flattened passability. It does not preserve the exact land solid class and three-by-three combatBuild projection needed to reconstruct Castle battle terrain and large footprints. A Providence/package correction is required before tactical placement can be implemented without approximation."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _process_monster_turns(" },
+        "expectedTrace": ["draw battle direction and bounded separation", "derive source-backed battle terrain", "place complete party and monster footprints", "persist positions and active weapon identities", "query adjacency, range, and line of sight", "resolve item-backed projectile and exact resource consumption", "serialize every tactical and RNG boundary"],
+        "tests": []
+      },
+      "decision": "unresolved",
+      "availability": "disabled",
+      "status": "blocked-by-package-topology"
+    },
+    {
+      "id": "combat.withdrawal-opportunity-not-facing",
+      "domain": "combat",
+      "claim": "Castle's positive behind value is a temporary plus-twenty opportunity-attack modifier assigned to enemies left adjacent by movement; it is not derived from character face or monster left-right rendering state. Tactical withdrawal remains disabled until combat positions and footprints are session-owned, and 2.0 must not invent back-facing or flanking bonuses from icon orientation.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake compares hostile adjacency before and after movement, which is a useful workflow lead, but gates each attacker with a once-per-round reaction_ready flag. Castle has no equivalent readiness consumption in checkforenemy code two, so Remake's reaction economy is a material divergence.",
+        "sources": [
+          { "path": "src/Creature/Creature.gd", "symbol": "var reaction_ready" },
+          { "path": "src/Creature/Creature.gd", "symbol": "func _on_before_move(" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/checkforenemy.c", "symbol": "short checkforenemy(short code)" },
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice(void)" },
+          { "path": "src/realmz_orig/movemonster.c", "symbol": "short movemonster(void)" },
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack(short chare, short mon)" },
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack2(short mon, short chare, short attacknum)" },
+          { "path": "src/realmz_orig/drawbody.c", "symbol": "void drawbody(short body, short force, short where)" }
+        ],
+        "authoredInputs": ["combatant positions and size footprints", "allegiance", "Invisible condition", "movement destination", "character face and monster left-right icon state"],
+        "observation": "checkforenemy code two snapshots every hostile occupied cell around the mover before and after movement and lets each enemy no longer adjacent issue an attack with behind set true. attack and attack2 add twenty times behind. Character face changes only when moving horizontally and selects the icon bank; monster lr is similarly changed for drawing and may turn toward an attacker. Neither rendering field derives positive behind. Negative behind values are later attack-result classifications for Sneak Attack and Major Wound, not orientation state.",
+        "unresolved": ["Exact withdrawal ordering, death interruption, Invisible suppression, and every large-footprint perimeter require the same missing tactical placement state as ranged combat."]
+      },
+      "providence": {
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document(" }
+        ],
+        "expectedRepresentation": "Monster size and immutable condition inputs are emitted, but battle terrain and runtime combatant positions are not. No facing field should be added as a substitute for the missing tactical state."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/state/combat_state.gd", "symbol": "class_name CombatState" },
+        "expectedTrace": ["snapshot source-backed hostile adjacency before movement", "validate and commit one tactical move", "snapshot adjacency after movement", "issue each Castle withdrawal attack with temporary plus twenty", "interrupt safely on mover death", "persist position and any pending attack boundary", "keep icon orientation presentation-only"],
+        "tests": []
+      },
+      "decision": "unresolved",
+      "availability": "disabled",
+      "status": "blocked-by-tactical-state"
     }
   ]
 }

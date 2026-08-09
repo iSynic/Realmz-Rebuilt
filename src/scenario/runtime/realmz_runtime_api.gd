@@ -2289,15 +2289,22 @@ static func _death_macro_request(events: Array[DomainEvent]) -> Dictionary:
 
 func _combat_request(request_id: String) -> InteractionRequest:
 	var combat := _game_state.combat
-	var actor := _game_state.party.character_by_id(combat.active_actor_id())
+	var combat_view := CombatView.new(combat, _game_state.party.characters(), _content, _rules.inventory)
+	var actions: Array[String] = []
+	for action: StringName in combat_view.legal_actions:
+		actions.append(String(action))
+	var weapon_switch := {
+		"enabled": combat_view.weapon_switch_available,
+		"targetMode": String(combat_view.weapon_switch_target_mode),
+		"reason": combat_view.weapon_switch_unavailable_reason,
+	}
+	var ranged_attack := {"enabled": false, "reason": combat_view.ranged_attack_unavailable_reason}
 	var targets: Array[Dictionary] = []
-	for monster: MonsterState in combat.monsters():
-		if monster.current_health > 0 and monster.traitor:
-			targets.append({"id": monster.id, "kind": "monster", "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health})
-	for character: CharacterState in _game_state.party.characters():
-		if character.current_health > 0 and character.traitor:
-			targets.append({"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
-	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat.battle_id, "round": combat.round_number, "actorId": combat.active_actor_id(), "attackUnitsRemaining": actor.attacks_remaining if actor != null else 0, "actions": ["attack", "defend", "retreat"], "targets": targets})
+	for monster: MonsterView in combat_view.targets:
+		targets.append({"id": monster.id, "kind": "monster", "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health})
+	for character: CharacterView in combat_view.character_targets:
+		targets.append({"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
+	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "targets": targets})
 
 
 func _grant_treasure(classic_treasure_id: int) -> ScenarioRuntimeOperationResult:

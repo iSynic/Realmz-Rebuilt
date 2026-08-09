@@ -132,6 +132,18 @@ func combat_equipment(character: CharacterState, definitions: Array[ItemDefiniti
 				return result
 			result.melee_weapon = definition
 			result.melee_weapon_instance_id = instance.id
+		elif absi(definition.item_type) == 15:
+			if result.missile_weapon != null:
+				result.reject(&"multiple_missile_weapons", "Classic combat has one missile weapon slot, but '%s' and '%s' are both equipped." % [result.missile_weapon.id, definition.id])
+				return result
+			result.missile_weapon = definition
+			result.missile_weapon_instance_id = instance.id
+		elif absi(definition.item_type) == 10:
+			if result.missile_ammunition != null:
+				result.reject(&"multiple_missile_ammunition", "Classic combat has one missile ammunition slot, but '%s' and '%s' are both equipped." % [result.missile_ammunition.id, definition.id])
+				return result
+			result.missile_ammunition = definition
+			result.missile_ammunition_instance_id = instance.id
 	if has_positive_armor and has_negative_armor:
 		result.reject(&"unsupported_equipment_order", "Classic mixed positive and negative armor modifiers require equipment-order state that is not available yet.")
 		return result

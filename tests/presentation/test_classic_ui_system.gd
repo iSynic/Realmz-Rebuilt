@@ -11,10 +11,45 @@ func run() -> void:
 	_test_fixture_gallery_coverage()
 	_test_interaction_identity()
 	_test_classic_choice_context()
+	_test_battle_weapon_mode_component()
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
 	_test_scene_composition()
+
+
+func _test_battle_weapon_mode_component() -> void:
+	var request := InteractionRequest.new("battle.weapon-mode", &"combat_action", {
+		"round": 2,
+		"actorId": "character.archer",
+		"actions": ["switch_weapon", "defend", "retreat"],
+		"weaponMode": "missile",
+		"weaponSwitch": {"enabled": true, "targetMode": "melee", "reason": ""},
+		"rangedAttack": {"enabled": false, "reason": "Battle positions, range, and line of sight are unavailable."},
+		"targets": [{"id": "monster.target", "name": "Target", "currentHealth": 5, "maximumHealth": 5}],
+	})
+	var component := BattleInteraction.new()
+	var submitted: Array[Dictionary] = []
+	component.payload_submitted.connect(func(payload: Dictionary) -> void: submitted.append(payload))
+	component.build(request)
+	var buttons: Array[Button] = []
+	for child: Node in component.get_children():
+		if child is Button:
+			buttons.append(child)
+	assert_false(buttons.any(func(button: Button) -> bool: return button.text.begins_with("Attack ")), "missile mode renders no melee attack target buttons")
+	var fire_button: Button = null
+	var switch_button: Button = null
+	for button: Button in buttons:
+		if button.text == "Fire missile unavailable":
+			fire_button = button
+		elif button.text == "Switch to melee":
+			switch_button = button
+	assert_not_null(fire_button, "the unresolved ranged action remains visible instead of silently disappearing")
+	assert_true(fire_button.disabled and not fire_button.tooltip_text.is_empty(), "the disabled Fire action exposes the typed tactical blocker")
+	assert_not_null(switch_button, "the source-backed no-cost mode toggle remains available")
+	switch_button.pressed.emit()
+	assert_equal(submitted, [{"actorId": "character.archer", "action": "switch_weapon", "targetId": ""}], "the presenter emits only the typed switch response")
+	component.free()
 
 
 func _test_route_catalog() -> void:

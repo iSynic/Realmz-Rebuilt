@@ -165,7 +165,7 @@ func view() -> GameView:
 	var members: Array[CharacterView] = []
 	for character: CharacterState in _state.party.characters():
 		members.append(CharacterView.new(character, _content))
-	var current_combat := CombatView.new(_state.combat, _state.party.characters(), _content) if _state.combat != null else null
+	var current_combat := CombatView.new(_state.combat, _state.party.characters(), _content, _rules.inventory) if _state.combat != null else null
 	var result := GameView.new(_view_revision, true, _pending_interaction(), _state.party.map_id, _state.party.coordinate, _state.clock.day(), _state.clock.hour(), _build_map_view(), members, _state.party.fatigue, _state.party.pooled_wealth.gold, current_combat)
 	result.campaign_id = _content.campaign_id
 	result.rules_version = _content.rules_version

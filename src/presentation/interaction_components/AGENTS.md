@@ -8,6 +8,7 @@
 - `InteractionPresenter` owns request identity, modal visibility, and construction of `InteractionResponse`.
 - `AgeUpdateInteraction` presents the source-backed band/range and nonzero fifteen-column age changes and emits only the empty `age_update` acknowledgement payload.
 - `TreasureDistributionInteraction` currently owns mode `fumbled-item-recovery`: it displays the exact item/charge count, legal recipients and disabled reasons, and emits only assign or leave-behind payloads for the request's instance ID.
+- `BattleInteraction` consumes the request's weapon mode and legal-action list. Its Switch response carries only actor/action/empty target; disabled Fire uses the typed ranged blocker and cannot synthesize targets or tactical facts.
 
 # Local Contracts
 

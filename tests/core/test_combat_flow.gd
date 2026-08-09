@@ -3,10 +3,123 @@ extends RealmzTestCase
 
 func run() -> void:
 	_test_character_half_attack_cadence_and_restore()
+	_test_character_weapon_mode_toggle_and_restore()
+	_test_monster_missile_does_not_impersonate_melee()
 	_test_monster_authored_attack_rows_and_target_retention()
 	_test_monster_attack_cursor_restore()
 	_test_battle_owned_fumble_and_exact_recovery()
 	_test_monster_fumble_clears_only_active_weapon()
+
+
+func _test_character_weapon_mode_toggle_and_restore() -> void:
+	var rules := RealmzRules.new()
+	var melee := ItemDefinition.new("item.mode-melee", 81, "Mode Blade")
+	melee.item_type = 2
+	melee.vs_small = 1
+	var missile := ItemDefinition.new("item.mode-missile", 82, "Mode Bow")
+	missile.item_type = 15
+	var duplicate_missile := ItemDefinition.new("item.mode-missile-duplicate", 83, "Second Bow")
+	duplicate_missile.item_type = 15
+	var character := _character("character.weapon-mode")
+	for entry: Dictionary in [
+		{"definition": melee, "instanceId": "instance.mode-melee"},
+		{"definition": missile, "instanceId": "instance.mode-missile"},
+	]:
+		var instance := rules.inventory.add_item(character, entry["definition"], entry["instanceId"], true)
+		assert_not_null(instance, "weapon-mode fixture grants each equipped weapon")
+		assert_true(rules.inventory.equip(character, entry["instanceId"], entry["definition"]), "weapon-mode fixture equips each Classic slot")
+	var equipment := rules.inventory.combat_equipment(character, [melee, missile])
+	assert_true(equipment.valid, "one melee and one missile slot form a valid Classic equipment projection")
+	assert_equal([equipment.melee_weapon.id, equipment.missile_weapon.id], [melee.id, missile.id], "combat projection distinguishes the two weapon slots")
+
+	var definition := _monster_definition("monster.mode-passive", [])
+	var monster := MonsterState.new("monster.mode-passive.instance", definition.id, definition.name, 100, 100, 1)
+	var state := _state(character, monster, "battle.weapon-mode")
+	state.combat.set_character_weapon_mode(character.id, &"melee")
+	rules.combat_flow._prepare_character_turn(state.combat, character)
+	var resources_before := [character.attacks_remaining, character.movement]
+	var content := _content([definition], [melee, missile])
+	var switched := rules.combat_flow.submit_action(state, content, character.id, &"switch_weapon", "", RealmzRng.new(91))
+	assert_true(switched.ok, "the active character can switch from melee to an equipped missile weapon")
+	assert_equal(state.combat.character_weapon_mode(character.id), &"missile", "the battle owns the active missile mode")
+	assert_equal([character.attacks_remaining, character.movement, state.combat.active_actor_id()], [resources_before[0], resources_before[1], character.id], "switching mode spends no attacks, movement, or turn")
+	assert_true(switched.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_weapon_mode_changed" and event.payload.get("mode") == "missile"), "the committed mode change publishes typed presentation feedback")
+	var combat_view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory)
+	assert_equal(combat_view.weapon_mode, &"missile", "the detached combat view exposes the battle-owned mode")
+	assert_equal(combat_view.legal_actions, [&"switch_weapon", &"defend", &"retreat"], "the detached view cannot advertise melee attack while missile mode is active")
+	assert_false(combat_view.ranged_attack_unavailable_reason.is_empty(), "the detached view carries the exact tactical ranged blocker")
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(94), ScenarioActionState.new())
+	var request := api._combat_request("request.weapon-mode")
+	assert_equal([request.payload.get("weaponMode"), request.payload.get("actions")], ["missile", ["switch_weapon", "defend", "retreat"]], "the typed interaction preserves the same legal actions as the detached view")
+	assert_equal(request.payload.get("weaponSwitch", {}).get("targetMode"), "melee", "the typed switch response names its source-owned destination mode")
+	assert_false(String(request.payload.get("rangedAttack", {}).get("reason", "")).is_empty(), "the typed interaction explains why Fire is disabled")
+	var blocked := rules.combat_flow.submit_action(state, content, character.id, &"attack", monster.id, RealmzRng.new(92))
+	assert_false(blocked.ok, "missile mode cannot fall through to the melee resolver while tactical ranged state is unavailable")
+	assert_equal(blocked.error_code, &"missile_attack_unavailable", "the disabled ranged path fails with an explicit fidelity reason")
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(restored, "the active weapon mode survives whole-state restoration")
+	assert_equal(restored.combat.character_weapon_mode(character.id), &"missile", "restore preserves the exact battle-owned toggle")
+	var returned := rules.combat_flow.submit_action(restored, content, character.id, &"switch_weapon", "", RealmzRng.new(93))
+	assert_true(returned.ok, "missile mode can always return to hand-to-hand or the melee slot")
+	assert_equal(restored.combat.character_weapon_mode(character.id), &"melee", "the second toggle restores melee mode")
+
+	var duplicate_instance := rules.inventory.add_item(character, duplicate_missile, "instance.mode-missile-duplicate", true)
+	assert_not_null(duplicate_instance, "duplicate-slot fixture grants its second missile item")
+	assert_true(rules.inventory.equip(character, duplicate_instance.id, duplicate_missile), "the generic inventory state can expose an impossible duplicate slot for validation")
+	var rejected := rules.inventory.combat_equipment(character, [melee, missile, duplicate_missile])
+	assert_false(rejected.valid, "two equipped missile weapons fail instead of selecting one by inventory order")
+	assert_equal(rejected.error_code, &"multiple_missile_weapons", "the duplicate Classic slot has a stable failure identity")
+	var invalid_character := _character("character.invalid-weapon-slots")
+	for entry: Dictionary in [
+		{"definition": missile, "instanceId": "instance.invalid-missile-a"},
+		{"definition": duplicate_missile, "instanceId": "instance.invalid-missile-b"},
+	]:
+		var invalid_instance := rules.inventory.add_item(invalid_character, entry["definition"], entry["instanceId"], true)
+		assert_not_null(invalid_instance, "invalid battle fixture grants each duplicate missile weapon")
+		assert_true(rules.inventory.equip(invalid_character, entry["instanceId"], entry["definition"]), "invalid battle fixture equips each duplicate Classic slot")
+	var invalid_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [invalid_character]), RealmzClock.new())
+	var invalid_state_before: Dictionary = invalid_state.to_data()
+	var invalid_content := _content([definition], [melee, missile, duplicate_missile])
+	var invalid_battle := BattleDefinition.new("battle.invalid-weapon-slots", 2, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, definition.id, false)])
+	var no_draws: Array[int] = []
+	var invalid_start := rules.combat_flow.start_battle(invalid_state, invalid_content, invalid_battle, ScriptedRng.new(no_draws))
+	assert_false(invalid_start.ok, "battle setup rejects duplicate Classic weapon slots before consuming setup randomness")
+	assert_equal(invalid_start.error_code, &"multiple_missile_weapons", "battle setup preserves the equipment validation error")
+	assert_equal(invalid_state.combat, null, "rejected battle setup does not install partial combat state")
+	assert_equal(invalid_state.to_data(), invalid_state_before, "rejected battle setup leaves the complete game state unchanged")
+
+	var missile_only := _character("character.missile-only")
+	var missile_only_instance := rules.inventory.add_item(missile_only, missile, "instance.missile-only", true)
+	assert_not_null(missile_only_instance, "initial-mode fixture grants its missile weapon")
+	assert_true(rules.inventory.equip(missile_only, missile_only_instance.id, missile), "initial-mode fixture equips its type-15 slot")
+	var setup_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [missile_only]), RealmzClock.new())
+	var battle := BattleDefinition.new("battle.initial-mode", 1, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, definition.id, false)])
+	var started := rules.combat_flow.start_battle(setup_state, content, battle, RealmzRng.new(95))
+	assert_true(started.ok, "battle setup accepts a character whose only weapon is missile")
+	assert_equal(setup_state.combat.character_weapon_mode(missile_only.id), &"missile", "battle setup selects missile only when the melee slot is empty")
+	var legacy_combat_data := setup_state.combat.to_data()
+	legacy_combat_data.erase("characterWeaponModes")
+	var legacy_combat := CombatState.from_data(legacy_combat_data)
+	assert_not_null(legacy_combat, "pre-toggle save-v3 combat state remains readable")
+	assert_equal(legacy_combat.character_weapon_mode(missile_only.id), &"melee", "legacy combat state receives the safe melee default instead of inventing a missile selection")
+
+
+func _test_monster_missile_does_not_impersonate_melee() -> void:
+	var rules := RealmzRules.new()
+	var character := _character("character.missile-target")
+	character.current_health = 20
+	character.maximum_health = 20
+	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(4, 4)]
+	var definition := _monster_definition("monster.missile-only", attacks)
+	definition.missile_percent = 100
+	var monster := MonsterState.new("monster.missile-only.instance", definition.id, definition.name, 20, 20, 1)
+	var state := _state(character, monster, "battle.monster-missile")
+	var result := rules.combat_flow.submit_action(state, _content([definition]), character.id, &"defend", "", ScriptedRng.new([0, 0, 0, 0]))
+	assert_true(result.ok, "an unavailable tactical missile decision returns a committed combat step")
+	assert_equal(character.current_health, 20, "the missile branch no longer applies an ordinary melee attack row")
+	assert_false(result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == monster.id), "no melee-resolution event is mislabeled as a missile")
+	assert_true(result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action_unavailable" and event.payload.get("action") == "missile" and event.payload.get("reason") == "tactical-position-unavailable"), "the disabled missile branch reports its exact missing session fact")
+	assert_equal(state.combat.active_actor_id(), character.id, "an unavailable monster missile spends exactly that monster activation without skipping the next character turn")
 
 
 func _test_character_half_attack_cadence_and_restore() -> void:

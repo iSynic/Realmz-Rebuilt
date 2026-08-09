@@ -26,10 +26,14 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		return CombatFlowResult.failed(&"invalid_battle", "Battle setup requires validated state, content, and randomness.")
 	if state.combat != null and not state.combat.completed:
 		return CombatFlowResult.failed(&"battle_already_active", "A Realmz battle is already active.")
+	var initial_weapon_modes: Dictionary = {}
 	for character: CharacterState in state.party.characters():
-		character.traitor = false
-		character.attacks_remaining = 0
-		character.movement = character.maximum_movement
+		if character.current_health <= 0:
+			continue
+		var equipment := _rules.inventory.combat_equipment(character, content.item_definitions())
+		if not equipment.valid:
+			return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
+		initial_weapon_modes[character.id] = &"missile" if equipment.melee_weapon == null and equipment.missile_weapon != null else &"melee"
 	var authored_monsters: Array[MonsterState] = []
 	for slot: BattleMonsterSlotDefinition in battle.monster_slots():
 		var definition_id := slot.monster_id
@@ -47,17 +51,31 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		return CombatFlowResult.failed(&"empty_battle", "Battle '%s' has no viable monsters." % battle.id)
 	var monsters: Array[MonsterState] = []
 	var consumed_allies: Array[String] = []
+	var consumed_ally_states: Array[MonsterState] = []
 	if not state.allies_suspended:
 		for ally: MonsterState in state.party.allies():
 			if ally.current_health <= 0:
 				continue
-			ally.traitor = false
 			monsters.append(ally)
 			consumed_allies.append(ally.id)
-		state.party.set_allies([])
+			consumed_ally_states.append(ally)
 	monsters.append_array(authored_monsters)
 	var combat := CombatState.new(battle.id, monsters, battle.macro_id)
 	combat.set_turn_order(_rules.combat.initiative_order(state.party.characters(), monsters, surprise, rng))
+	for character: CharacterState in state.party.characters():
+		if character.current_health <= 0:
+			continue
+		var initial_mode := StringName(initial_weapon_modes.get(character.id, &"melee"))
+		if not combat.set_character_weapon_mode(character.id, initial_mode):
+			return CombatFlowResult.failed(&"invalid_weapon_mode", "Battle '%s' could not initialize '%s' weapon mode." % [battle.id, character.id])
+	for ally: MonsterState in consumed_ally_states:
+		ally.traitor = false
+	if not state.allies_suspended:
+		state.party.set_allies([])
+	for character: CharacterState in state.party.characters():
+		character.traitor = false
+		character.attacks_remaining = 0
+		character.movement = character.maximum_movement
 	state.combat = combat
 	var events: Array[DomainEvent] = [DomainEvent.new(&"battle_started", {"battleId": battle.id, "classicId": battle.classic_id, "distance": battle.distance, "surprise": surprise, "turnOrder": combat.turn_order(), "consumedAllyIds": consumed_allies})]
 	_process_monster_turns(state, content, rng, events)
@@ -73,7 +91,6 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	var actor := state.party.character_by_id(actor_id)
 	if actor == null or actor.current_health <= 0 or actor.traitor:
 		return CombatFlowResult.failed(&"invalid_combat_actor", "The current combat actor is unavailable.")
-	_prepare_character_turn(combat, actor)
 	var events: Array[DomainEvent] = []
 	var monster_death_macro_requested := false
 	match action:
@@ -81,6 +98,9 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 			var equipment := _rules.inventory.combat_equipment(actor, content.item_definitions())
 			if not equipment.valid:
 				return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
+			if combat.character_weapon_mode(actor.id) == &"missile":
+				return CombatFlowResult.failed(&"missile_attack_unavailable", "Missile attacks require battle positions, range, and line-of-sight state that the session does not own yet. Switch to melee to continue.")
+			_prepare_character_turn(combat, actor)
 			var monster_target := combat.monster_by_id(target_id)
 			if monster_target != null and monster_target.current_health > 0 and monster_target.traitor != actor.traitor:
 				combat.active_turn.physical_action_committed = true
@@ -107,10 +127,24 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 				combat.advance_turn()
 			if monster_death_macro_requested:
 				return CombatFlowResult.succeeded(events)
+		&"switch_weapon":
+			var equipment := _rules.inventory.combat_equipment(actor, content.item_definitions())
+			if not equipment.valid:
+				return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
+			var current_mode := combat.character_weapon_mode(actor.id)
+			var next_mode: StringName = &"melee" if current_mode == &"missile" else &"missile"
+			if next_mode == &"missile" and equipment.missile_weapon == null:
+				return CombatFlowResult.failed(&"missile_weapon_unavailable", "The active character has no equipped Classic type-15 missile weapon.")
+			_prepare_character_turn(combat, actor)
+			if not combat.set_character_weapon_mode(actor.id, next_mode):
+				return CombatFlowResult.failed(&"invalid_weapon_mode", "The active character's battle weapon mode could not be changed.")
+			events.append(DomainEvent.new(&"combat_weapon_mode_changed", {"actorId": actor.id, "mode": String(next_mode)}))
 		&"defend", &"pass":
+			_prepare_character_turn(combat, actor)
 			events.append(DomainEvent.new(&"combat_turn_passed", {"actorId": actor.id, "action": String(action)}))
 			combat.advance_turn()
 		&"retreat":
+			_prepare_character_turn(combat, actor)
 			combat.completed = true
 			combat.outcome = &"retreated"
 			combat.clear_active_turn()
@@ -440,9 +474,7 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 				if attack_result != MONSTER_ATTACK_COMPLETED:
 					return
 		elif active_turn.action == &"missile":
-			attack_result = _resolve_monster_attack_row(state, content, monster, definition, 0, active_turn, rng, events)
-			if attack_result != MONSTER_ATTACK_COMPLETED:
-				return
+			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "tactical-position-unavailable"}))
 		else:
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": String(active_turn.action)}))
 		combat.advance_turn()
