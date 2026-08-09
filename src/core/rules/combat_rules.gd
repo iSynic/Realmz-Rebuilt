@@ -78,6 +78,8 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 		resolution.special_potency = maxi(1, rng.draw_between(potency_low, attacker.hit_dice, &"combat.monster-attack.special-potency"))
 	if _is_status_special(attack.special):
 		_apply_party_status_special(resolution, defender, rng)
+	elif _is_resource_special(attack.special):
+		_apply_party_resource_special(resolution, attacker, defender, rng)
 	elif attack.special == 17:
 		resolution.special_handled = true
 		resolution.special_save_index = 7
@@ -132,6 +134,10 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 			resolution.special_condition_index = _status_condition_index(attack.special)
 			resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
 			resolution.special_condition_after = resolution.special_condition_before
+		elif _is_resource_special(attack.special):
+			resolution.special_handled = true
+			resolution.special_save_index = _resource_save_index(attack.special)
+			resolution.special_resource = &"spell_points" if attack.special == 8 else &"experience"
 		elif attack.special == 17:
 			resolution.special_handled = true
 		if defender.magic_resistance > 100:
@@ -143,6 +149,11 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 			return resolution
 	if _is_status_special(attack.special):
 		_apply_monster_status_special(resolution, defender, defender_definition, rng)
+	elif attack.special == 8:
+		_apply_monster_spell_drain(resolution, attacker, defender, defender_definition, rng)
+	elif attack.special == 9:
+		resolution.special_blocked = true
+		resolution.special_block_reason = &"party_target_only"
 	elif attack.special == 17:
 		resolution.special_handled = true
 	defender.current_health -= damage
@@ -198,8 +209,81 @@ func _apply_monster_status_special(resolution: AttackResolution, defender: Monst
 	resolution.special_sound_id = 684 if resolution.special_code == 16 else 630
 
 
+func _apply_party_resource_special(resolution: AttackResolution, attacker: MonsterState, defender: CharacterState, rng: RealmzRng) -> void:
+	resolution.special_handled = true
+	resolution.special_save_index = _resource_save_index(resolution.special_code)
+	resolution.special_resource = &"spell_points" if resolution.special_code == 8 else &"experience"
+	resolution.special_save_chance = defender.save_value(resolution.special_save_index)
+	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
+	resolution.special_saved = resolution.special_save_roll <= resolution.special_save_chance
+	if resolution.special_code == 8:
+		resolution.special_target_before = defender.spell_points
+		resolution.special_target_after = defender.spell_points
+		resolution.special_actor_before = attacker.spell_points
+		resolution.special_actor_after = attacker.spell_points
+	else:
+		resolution.special_target_before = defender.experience
+		resolution.special_target_after = defender.experience
+	if resolution.special_saved:
+		return
+	if resolution.special_code == 8:
+		if defender.spell_points == 0:
+			return
+		var drained := attacker.hit_dice * 3
+		if drained > defender.spell_points:
+			drained = defender.spell_points
+		defender.spell_points = _signed_16(defender.spell_points - drained)
+		attacker.spell_points = _signed_16(attacker.spell_points + drained)
+		resolution.special_amount = drained
+		resolution.special_target_after = defender.spell_points
+		resolution.special_actor_after = attacker.spell_points
+		resolution.special_applied = drained != 0
+		resolution.special_announced = resolution.special_applied
+		return
+	var removed := attacker.maximum_health * 20
+	defender.experience = _signed_32(defender.experience - removed)
+	resolution.special_amount = removed
+	resolution.special_target_after = defender.experience
+	resolution.special_applied = removed != 0
+	resolution.special_announced = true
+	resolution.special_sound_id = 630
+
+
+func _apply_monster_spell_drain(resolution: AttackResolution, attacker: MonsterState, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng) -> void:
+	resolution.special_handled = true
+	resolution.special_save_index = 6
+	resolution.special_resource = &"spell_points"
+	resolution.special_target_before = defender.spell_points
+	resolution.special_target_after = defender.spell_points
+	resolution.special_actor_before = attacker.spell_points
+	resolution.special_actor_after = attacker.spell_points
+	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
+	resolution.special_save_chance = _monster_save_chance(defender_definition, resolution.special_save_index)
+	resolution.special_saved = _monster_saved(defender_definition, resolution.special_save_index, resolution.special_save_roll, resolution.special_save_chance)
+	if resolution.special_saved or defender.spell_points == 0:
+		return
+	var drained := attacker.hit_dice * 3
+	if drained > defender.spell_points:
+		drained = defender.spell_points
+	defender.spell_points = _signed_16(defender.spell_points - drained)
+	attacker.spell_points = _signed_16(attacker.spell_points + drained)
+	resolution.special_amount = drained
+	resolution.special_target_after = defender.spell_points
+	resolution.special_actor_after = attacker.spell_points
+	resolution.special_applied = drained != 0
+	resolution.special_announced = resolution.special_applied
+
+
 static func _is_status_special(special_code: int) -> bool:
 	return special_code in [1, 2, 3, 4, 5, 6, 7, 16]
+
+
+static func _is_resource_special(special_code: int) -> bool:
+	return special_code in [8, 9]
+
+
+static func _resource_save_index(special_code: int) -> int:
+	return 6 if special_code == 8 else 5
 
 
 static func _status_condition_index(special_code: int) -> int:
@@ -346,3 +430,8 @@ func _monsters_first(order: Array[String], monsters: Array[MonsterState]) -> Arr
 static func _signed_16(value: int) -> int:
 	var wrapped := value & 0xffff
 	return wrapped - 0x10000 if wrapped >= 0x8000 else wrapped
+
+
+static func _signed_32(value: int) -> int:
+	var wrapped := value & 0xffffffff
+	return wrapped - 0x100000000 if wrapped >= 0x80000000 else wrapped

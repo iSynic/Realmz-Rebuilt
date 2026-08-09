@@ -530,6 +530,52 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "combat.monster-resource-drain-specials",
+      "domain": "combat",
+      "claim": "Monster attack specials 8 and 9 preserve Castle's shared potency-before-save order and mutate the direct Realmz resources: spell drain transfers up to three spell points per attacker hit die without clamping the attacker to its maximum, while experience drain subtracts twenty times attacker maximum stamina from a party character and has no monster-target branch.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake implements both drains in its Classic monster-special dispatcher, including save families, uncapped attacker spell points, and party-only experience drain. Its experience adapter increases Remake's experience-to-next-level balance, whereas 2.0 can mutate Castle's direct earned-experience value.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_monster_special_attack.gd", "symbol": "static func _drain_spell_points(" },
+          { "path": "src/scripts/classic_runtime/classic_monster_special_attack.gd", "symbol": "static func _drain_experience(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_monster_special_attacks" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack(short chare, short mon)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "short savevs(short which, short who)" },
+          { "path": "src/realmz_orig/structs.h", "symbol": "struct monster" },
+          { "path": "src/realmz_orig/structs.h", "symbol": "struct character" }
+        ],
+        "authoredInputs": ["monster attack special", "monster hit dice and runtime maximum stamina", "party and monster spell points", "party saves", "monster saves, spell immunities, and runtime magic resistance", "party experience"],
+        "observation": "After ordinary damage and the generic potency draw, special 8 calls savevs(6) before testing the target spell-point balance. Failure transfers min(target spell points, hit dice times three) to the attacker; the attacker is not capped to maxspellpoints and no sound is requested. Party-target special 9 calls savevs(5), subtracts staminamax times twenty from the character's int32 earned experience without a zero floor, requests sound 630, and reports result -18. There is no monster-target case 9 and therefore no save draw there. A monster target above 100 runtime magic resistance reaches whiff before either resource-special save. Ordinary physical damage follows the special when the whole attack did not whiff."
+      },
+      "providence": {
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves each attack special, monster hit dice, stamina bonus, spell points, saves, spell immunities, and magic resistance. Runtime maximum stamina remains derived by the fixed MonsterRules construction path; no compiler correction is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_rules.gd", "symbol": "func _apply_party_resource_special" },
+        "expectedTrace": ["ordinary hit roll", "ordinary damage roll", "generic special-potency draw", "optional target-monster resistance whiff", "save-family roll when the target kind has a source branch", "direct resource mutation", "typed special event", "optional asynchronous sound 630 for experience drain", "ordinary damage result", "whole-session persistence"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_resource_drains" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_resource_drain_flow" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
     }
   ]
 }

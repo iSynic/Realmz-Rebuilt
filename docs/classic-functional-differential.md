@@ -19,8 +19,9 @@ The machine-readable record is `tests/fixtures/oracle/classic-functional-differe
 | `character.age-update-interaction` | Aligned | Every changed band yields a dedicated typed dialog in party/target order with character/race identity, resulting band/range, fifteen applied deltas, and sound 3002. Save/resume retains the exact clock, post-move, or spell continuation. |
 | `combat.monster-aging-special` | Aligned | A hit with monster special 17 preserves Castle's damage/potency/save draw order, tests save slot seven, applies the attack-row lifespan formula and one live age operation, and pauses direct or scenario combat at a saveable age update before the next actor. |
 | `combat.monster-status-specials` | Aligned | Specials 1–7 and 16 use Castle's exact save/condition map after the shared potency draw. Permanent conditions block after the save; party durations add once only when their starting value is below 30, monster durations remain uncapped, disease uses monster-only sound 684, and monster resistance above 100 turns the entire special attack into a miss. |
+| `combat.monster-resource-drain-specials` | Aligned | Special 8 transfers up to three spell points per attacker hit die after save six and does not cap the attacker at its normal maximum. Special 9 subtracts twenty times attacker maximum stamina from a party character's direct earned experience after save five, requests sound 630, and has no monster-target branch. |
 
-The rule, clock, spell, monster-aging/status attack, battle-reward, persistence, and `showageupdate` click boundaries are covered. Monster specials 8–15 and 18–19 remain separate rolling combat cases.
+The rule, clock, spell, monster-aging/status/resource-drain attack, battle-reward, persistence, and `showageupdate` click boundaries are covered. Monster specials 10–15 and 18–19 remain separate rolling combat cases.
 
 ## Rolling gate
 

@@ -118,4 +118,13 @@ Remaining fidelity boundary: the dialog carries stable portrait and combat-icon 
 - Providence schema v2 already exports attack rows, hit dice, runtime magic resistance inputs, type flags, saves, and spell immunities. No compiler or package-contract change was required.
 - The typed suite passes 1,690 assertions across 11 suites. Differential validation covers eleven cases against the pinned Castle, Remake, and Providence roots.
 
-Remaining fidelity boundary: monster specials 8–15 and 18–19 still require their own rolling evidence passes; this tranche does not imply them.
+Remaining fidelity boundary: monster specials 10–15 and 18–19 still require their own rolling evidence passes; this tranche does not imply them.
+
+## Current rolling fidelity pass — monster resource drains (implemented)
+
+- Remake's Classic monster-special dispatcher supplied the functional lead for spell-point and experience drains. Castle `attack`, `savevs`, and the direct struct fields resolve the important distinctions: the generic potency draw still occurs first; spell drain tests save six before checking the balance, transfers hit dice times three, and may leave the attacker above maximum; experience drain tests save five, subtracts from earned experience rather than a level-progress adapter, and has no monster-target branch.
+- `CombatRules` now owns specials 8 and 9 for party and monster targets. `AttackResolution` records the exact resource, amount, target balance, attacker balance, save, block, and sound facts; `CombatFlow` publishes those facts before ordinary damage and requests sound 630 asynchronously only for a failed experience drain.
+- Monster spell points now restore across the central state boundary when a source-backed drain has raised them above maximum. Direct negative experience, both sides of spell transfer, RNG order, empty/saved branches, monster-only applicability, events, and whole-session restoration are covered without changing `.r2save` v3.
+- Providence schema v2 already emits the attack special, hit dice, stamina bonus, spell points, saves, immunities, and magic resistance needed by the fixed runtime construction path. No Providence or package-contract change was required. The typed suite passes 1,725 assertions across 11 suites, and differential validation covers twelve cases.
+
+Remaining fidelity boundary: special 10 Charm requires a source-shaped combat-allegiance pass; elemental specials 11–15 and permanent afflictions 18–19 remain separate rolling cases.

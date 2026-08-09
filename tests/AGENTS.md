@@ -37,6 +37,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - Live-aging tests keep `ageDays` and `ageGroup` distinct, cover one-row forward/reverse transitions, unbounded live stat/save changes, movement-floor reversal, midnight progression, haste/youth effects, maximum-age experience truncation, and legacy nested-character restore. Separate interaction tests require ordered `age_update` requests, sound 3002, exact response kinds, VM and session save/resume, and age acknowledgement before destination AP execution.
 - Monster-aging attack tests preserve Castle's hit/damage/potency/save draw order, save slot seven, truncated attack-row lifespan formula, party-only target, ordinary physical damage, one-band update, and exact direct-session and scenario-combat continuation after save/restore.
 - Monster-status attack tests preserve all eight special/save/condition identities, potency-before-save ordering, save-before-permanent ordering, the party starting-duration gate and over-30 result, uncapped monster stacking, monster immunity/undead/averaged-save branches, target-specific sounds, resistance-whiff timing, ordered domain events, and committed-state restoration.
+- Monster-resource attack tests distinguish Classic's direct experience from Remake's experience-to-next-level adapter, preserve save and potency ordering, cover empty and saved balances, above-maximum spell transfer, the party-only experience branch, asynchronous sound 630, and whole-session restoration of both mutated combatants.
 
 ## Work Guidance
 

@@ -7,6 +7,7 @@ func run() -> void:
 	_test_live_aging_and_maximum_age()
 	_test_monster_aging_attack()
 	_test_monster_status_attacks()
+	_test_monster_resource_drains()
 	_test_conditions_time_and_persistence()
 	_test_inventory_economy_and_treasure()
 	_test_combat_magic_and_monsters()
@@ -337,6 +338,77 @@ func _test_monster_status_attacks() -> void:
 	var restored_target := CharacterState.from_data(near_cap.to_data())
 	assert_not_null(restored_target, "a status-mutated character survives the central state serialization boundary")
 	assert_equal(restored_target.conditions.value(ConditionRules.POISONED), 33, "save restoration preserves the exact status duration")
+
+
+func _test_monster_resource_drains() -> void:
+	var rules := RealmzRules.new()
+	var empty8 := _ints_size(8, 0)
+	var empty6 := _ints_size(6, 0)
+	var empty3 := _ints_size(3, 0)
+	var spell_attack: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 8)]
+	var spell_definition := MonsterDefinition.new("monster.resource.spell", 908, "Spell Drainer", 4, 0, 10, 0, 0, empty8, empty8, empty6, empty3, [], [], spell_attack)
+	var spell_attacker := MonsterState.new("monster.resource.spell.instance", spell_definition.id, spell_definition.name, 20, 20, 4, 10, 0, 0, 2)
+	var spell_target := CharacterState.new("character.resource.spell", "Spell Target", 20, 20)
+	spell_target.maximum_spell_points = 20
+	spell_target.spell_points = 20
+	spell_target.set_save_value_raw(6, 0)
+	var spell_rng := ScriptedRng.new([0, 0, 32_767, 32_767])
+	var spell_result := rules.combat.resolve_monster_attack(spell_attacker, spell_definition, 0, spell_target, null, null, spell_rng)
+	assert_equal([spell_result.special_code, spell_result.special_save_index, spell_result.special_saved, spell_result.special_resource], [8, 6, false, &"spell_points"], "Classic spell drain uses save slot six and identifies spell energy")
+	assert_equal([spell_result.special_amount, spell_result.special_target_before, spell_result.special_target_after], [12, 20, 8], "spell drain takes three points per attacker hit die, capped by the target balance")
+	assert_equal([spell_result.special_actor_before, spell_result.special_actor_after, spell_attacker.maximum_spell_points], [2, 14, 2], "Castle lets drained spell points raise the attacker above its normal maximum")
+	assert_equal([spell_target.spell_points, spell_target.current_health], [8, 19], "spell drain and ordinary physical damage commit in the same attack")
+	assert_equal(spell_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency", "combat.monster-attack.special-save"], "spell drain preserves Castle's shared potency-before-save order")
+	var restored_attacker := MonsterState.from_data(spell_attacker.to_data())
+	assert_not_null(restored_attacker, "a spell drainer above its normal maximum survives central combat-state serialization")
+	assert_equal([restored_attacker.spell_points, restored_attacker.maximum_spell_points], [14, 2], "restoration preserves Castle's uncapped drained spell energy")
+
+	var saved_spell_target := CharacterState.new("character.resource.spell-saved", "Saved Spell Target", 20, 20)
+	saved_spell_target.maximum_spell_points = 20
+	saved_spell_target.spell_points = 20
+	saved_spell_target.set_save_value_raw(6, 100)
+	var saved_spell := rules.combat.resolve_monster_attack(spell_attacker, spell_definition, 0, saved_spell_target, null, null, ScriptedRng.new([0, 0, 32_767, 0]))
+	assert_true(saved_spell.special_saved and not saved_spell.special_applied, "an inclusive slot-six save negates spell drain")
+	assert_equal(saved_spell_target.spell_points, 20, "saved spell drain leaves the target balance unchanged")
+	var empty_spell_target := CharacterState.new("character.resource.spell-empty", "Empty Spell Target", 20, 20)
+	empty_spell_target.set_save_value_raw(6, 0)
+	var empty_spell_rng := ScriptedRng.new([0, 0, 32_767, 32_767])
+	var empty_spell := rules.combat.resolve_monster_attack(spell_attacker, spell_definition, 0, empty_spell_target, null, null, empty_spell_rng)
+	assert_true(not empty_spell.special_saved and not empty_spell.special_applied and not empty_spell.special_announced, "a failed spell-drain save against an empty balance produces no false result announcement")
+	assert_equal(empty_spell_rng.snapshot().draw_count, 4, "Castle rolls the spell-drain save before testing whether the target has spell points")
+
+	var monster_saves := _ints_size(8, 0)
+	var monster_target_definition := MonsterDefinition.new("monster.resource.target", 909, "Spell Target Monster", 2, 0, 10, 0, 0, empty8, monster_saves, empty6, empty3, [], [], [])
+	var monster_spell_target := MonsterState.new("monster.resource.target.instance", monster_target_definition.id, monster_target_definition.name, 20, 20, 2, 10, 0, 0, 8)
+	var monster_spell_attacker := MonsterState.new("monster.resource.spell.monster-attacker", spell_definition.id, spell_definition.name, 20, 20, 4, 10, 0, 0, 2)
+	var monster_spell := rules.combat.resolve_monster_attack_monster(monster_spell_attacker, spell_definition, 0, monster_spell_target, monster_target_definition, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	assert_equal([monster_spell.special_save_index, monster_spell.special_amount, monster_spell_target.spell_points, monster_spell_attacker.spell_points], [6, 8, 0, 10], "monster spell drain uses the sixth save family and transfers the available balance")
+
+	var experience_attack: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 9)]
+	var experience_definition := MonsterDefinition.new("monster.resource.experience", 909, "Experience Drainer", 4, 0, 10, 0, 0, empty8, empty8, empty6, empty3, [], [], experience_attack)
+	var experience_attacker := MonsterState.new("monster.resource.experience.instance", experience_definition.id, experience_definition.name, 20, 20, 4, 10)
+	var experience_target := CharacterState.new("character.resource.experience", "Experience Target", 20, 20)
+	experience_target.experience = 100
+	experience_target.set_save_value_raw(5, 0)
+	var experience_result := rules.combat.resolve_monster_attack(experience_attacker, experience_definition, 0, experience_target, null, null, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	assert_equal([experience_result.special_save_index, experience_result.special_resource, experience_result.special_amount], [5, &"experience", 400], "Classic experience drain removes twenty points per attacker maximum stamina after save five")
+	assert_equal([experience_result.special_target_before, experience_result.special_target_after, experience_target.experience], [100, -300, -300], "experience drain subtracts from earned experience without a zero floor")
+	assert_equal([experience_result.special_announced, experience_result.special_sound_id], [true, 630], "a failed experience drain requests Castle result sound 630")
+	var restored_experience := CharacterState.from_data(experience_target.to_data())
+	assert_not_null(restored_experience, "negative drained experience survives the central character-state boundary")
+	assert_equal(restored_experience.experience, -300, "restoration preserves the exact drained experience value")
+	var saved_experience_target := CharacterState.new("character.resource.experience-saved", "Saved Experience Target", 20, 20)
+	saved_experience_target.experience = 100
+	saved_experience_target.set_save_value_raw(5, 100)
+	var saved_experience := rules.combat.resolve_monster_attack(experience_attacker, experience_definition, 0, saved_experience_target, null, null, ScriptedRng.new([0, 0, 32_767, 0]))
+	assert_true(saved_experience.special_saved and not saved_experience.special_applied, "an inclusive slot-five save negates experience drain")
+	assert_equal([saved_experience_target.experience, saved_experience.special_sound_id], [100, 0], "saved experience drain changes no experience and requests no result sound")
+
+	var monster_experience_target := MonsterState.new("monster.resource.experience-target", monster_target_definition.id, monster_target_definition.name, 20, 20, 2, 10)
+	var monster_experience_rng := ScriptedRng.new([0, 0, 32_767])
+	var monster_experience := rules.combat.resolve_monster_attack_monster(experience_attacker, experience_definition, 0, monster_experience_target, monster_target_definition, monster_experience_rng)
+	assert_equal([monster_experience.special_handled, monster_experience.special_block_reason, monster_experience_target.current_health], [true, &"party_target_only", 19], "experience drain has no monster-target case but ordinary physical damage still lands")
+	assert_equal(monster_experience_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency"], "monster-target experience drain stops after the shared potency draw without inventing a save")
 
 
 func _test_conditions_time_and_persistence() -> void:

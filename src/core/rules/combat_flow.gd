@@ -296,11 +296,18 @@ func _append_monster_special_events(events: Array[DomainEvent], actor_id: String
 		"blockReason": String(resolution.special_block_reason),
 		"applied": resolution.special_applied,
 		"ageDays": resolution.special_age_days,
+		"resource": String(resolution.special_resource),
+		"amount": resolution.special_amount,
+		"targetBefore": resolution.special_target_before,
+		"targetAfter": resolution.special_target_after,
+		"actorBefore": resolution.special_actor_before,
+		"actorAfter": resolution.special_actor_after,
 		"soundId": resolution.special_sound_id,
 		"source": "classic",
 	}))
 	if resolution.special_announced and resolution.special_sound_id != 0:
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": resolution.special_sound_id, "waitForCompletion": false, "source": "classic-monster-status"}))
+		var sound_source := "classic-monster-status" if resolution.special_condition_index >= 0 else "classic-monster-special"
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": resolution.special_sound_id, "waitForCompletion": false, "source": sound_source}))
 
 
 func _request_monster_death_macro(monster: MonsterState, definition: MonsterDefinition, events: Array[DomainEvent]) -> bool:

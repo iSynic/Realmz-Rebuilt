@@ -70,7 +70,7 @@ static func from_data(data: Variant) -> MonsterState:
 		if value == -100_000:
 			return null
 		values[field] = value
-	if values["hitDice"] < 0 or values["maximumHealth"] < 1 or values["currentHealth"] > values["maximumHealth"] or values["maximumSpellPoints"] < 0 or values["spellPoints"] < 0 or values["spellPoints"] > values["maximumSpellPoints"]:
+	if values["hitDice"] < 0 or values["maximumHealth"] < 1 or values["currentHealth"] > values["maximumHealth"] or values["maximumSpellPoints"] < 0 or values["maximumSpellPoints"] > 32_767 or values["spellPoints"] < -32_768 or values["spellPoints"] > 32_767:
 		return null
 	var loaded_conditions := ConditionSet.from_data(data["conditions"], ConditionSet.CHARACTER_COUNT)
 	if loaded_conditions == null:

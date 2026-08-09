@@ -29,6 +29,7 @@ func run() -> void:
 	_test_scenario_spell_opcodes(loaded.content)
 	_test_monster_aging_attack_continuations(loaded.content)
 	_test_monster_status_attack_flow(loaded.content)
+	_test_monster_resource_drain_flow(loaded.content)
 	_test_combat_fumble_mutation(loaded.content)
 	_test_classic_encounter_break(loaded.content)
 	_test_classic_party_shift(loaded.content)
@@ -1309,6 +1310,78 @@ func _test_monster_status_attack_flow(content: RealmzContent) -> void:
 	var restored := GameSession.new()
 	assert_equal(restored.restore(status_content, boundary).state, SessionStep.State.COMPLETED, "status-mutated combat state restores transactionally")
 	assert_equal(restored._state.party.character_by_id(character.id).conditions.value(ConditionRules.POISONED), 4, "restored combat retains the exact status duration")
+
+
+func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
+	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 8)]
+	var zero8: Array[int] = []
+	zero8.resize(8)
+	zero8.fill(0)
+	var zero6: Array[int] = []
+	zero6.resize(6)
+	zero6.fill(0)
+	var zero3: Array[int] = []
+	zero3.resize(3)
+	zero3.fill(0)
+	var definition := MonsterDefinition.new("monster.resource-flow", 908, "Spell Drainer", 4, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], attacks)
+	definition.traitor = true
+	definition.spell_points = 2
+	var battle := BattleDefinition.new("battle.resource-flow", 908, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, definition.id, false)])
+	var resource_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [definition], [battle])
+	var character := CharacterState.new("character.resource-flow", "Spell Target", 20, 20)
+	character.maximum_spell_points = 20
+	character.spell_points = 20
+	character.set_save_value_raw(6, 0)
+	var session := GameSession.new()
+	session.start(resource_content, 1)
+	session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	session._state.party_setup_completed = true
+	var monster := MonsterState.new("monster.resource-flow.instance", definition.id, definition.name, 10, 10, 4, 100, 0, 0, 2)
+	session._state.combat = CombatState.new(battle.id, [monster])
+	session._state.combat.set_turn_order([character.id, monster.id])
+	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 32_767, 32_767])
+	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", character.id, ""))
+	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster resource drains commit without inventing a player interaction")
+	assert_equal([character.spell_points, monster.spell_points, monster.maximum_spell_points], [8, 14, 2], "the direct session owns both sides of Castle's uncapped spell-point transfer")
+	var special_index := _event_index(resolved.events, &"combat_monster_special_resolved")
+	var damage_index := _event_index(resolved.events, &"combat_attack_resolved")
+	assert_true(special_index >= 0 and damage_index > special_index, "combat publishes the resource transfer before ordinary physical damage feedback")
+	assert_equal([resolved.events[special_index].payload.get("resource"), resolved.events[special_index].payload.get("amount"), resolved.events[special_index].payload.get("targetBefore"), resolved.events[special_index].payload.get("targetAfter"), resolved.events[special_index].payload.get("actorAfter")], ["spell_points", 12, 20, 8, 14], "the typed special event exposes the complete source-owned transfer")
+	assert_equal(_event_index(resolved.events, &"sound_requested"), -1, "spell-point drain does not invent an experience-drain sound")
+	var boundary := SaveEnvelope.from_data(session.snapshot().to_data())
+	assert_not_null(boundary, "a committed resource drain produces a complete central save boundary")
+	var restored := GameSession.new()
+	assert_equal(restored.restore(resource_content, boundary).state, SessionStep.State.COMPLETED, "resource-drained combat state restores transactionally")
+	assert_equal([restored._state.party.character_by_id(character.id).spell_points, restored._state.combat.monster_by_id(monster.id).spell_points, restored._state.combat.monster_by_id(monster.id).maximum_spell_points], [8, 14, 2], "restore retains both sides of an above-maximum spell transfer")
+
+	var experience_attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 9)]
+	var experience_definition := MonsterDefinition.new("monster.experience-flow", 909, "Experience Drainer", 4, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], experience_attacks)
+	experience_definition.traitor = true
+	var experience_battle := BattleDefinition.new("battle.experience-flow", 909, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, experience_definition.id, false)])
+	var experience_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [experience_definition], [experience_battle])
+	var experience_character := CharacterState.new("character.experience-flow", "Experience Target", 20, 20)
+	experience_character.experience = 100
+	experience_character.set_save_value_raw(5, 0)
+	var experience_session := GameSession.new()
+	experience_session.start(experience_content, 1)
+	experience_session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [experience_character])
+	experience_session._state.party_setup_completed = true
+	var experience_monster := MonsterState.new("monster.experience-flow.instance", experience_definition.id, experience_definition.name, 10, 20, 4, 100)
+	experience_session._state.combat = CombatState.new(experience_battle.id, [experience_monster])
+	experience_session._state.combat.set_turn_order([experience_character.id, experience_monster.id])
+	experience_session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 32_767, 32_767])
+	var experience_resolved := experience_session.submit_intent(PlayerIntent.combat_action(&"defend", experience_character.id, ""))
+	assert_equal(experience_character.experience, -300, "the direct session subtracts Castle experience rather than altering a Remake-style level balance")
+	var experience_special_index := _event_index(experience_resolved.events, &"combat_monster_special_resolved")
+	var experience_sound_index := _event_index(experience_resolved.events, &"sound_requested")
+	var experience_damage_index := _event_index(experience_resolved.events, &"combat_attack_resolved")
+	assert_true(experience_special_index >= 0 and experience_sound_index > experience_special_index and experience_damage_index > experience_sound_index, "experience drain publishes result, asynchronous Castle sound, and physical damage in source order")
+	assert_equal([experience_resolved.events[experience_special_index].payload.get("resource"), experience_resolved.events[experience_special_index].payload.get("amount"), experience_resolved.events[experience_sound_index].payload.get("soundId"), experience_resolved.events[experience_sound_index].payload.get("waitForCompletion")], ["experience", 400, 630, false], "experience-drain events expose the typed loss and Castle sound contract")
+	var experience_boundary := SaveEnvelope.from_data(experience_session.snapshot().to_data())
+	assert_not_null(experience_boundary, "negative experience after combat is a complete central save boundary")
+	var restored_experience_session := GameSession.new()
+	assert_equal(restored_experience_session.restore(experience_content, experience_boundary).state, SessionStep.State.COMPLETED, "experience-drained combat state restores transactionally")
+	assert_equal(restored_experience_session._state.party.character_by_id(experience_character.id).experience, -300, "whole-session restore preserves the exact drained experience")
 
 
 func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:
