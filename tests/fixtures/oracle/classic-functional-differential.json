@@ -1785,6 +1785,55 @@
       "decision": "runtime-defect",
       "availability": "implemented",
       "status": "single-target-queue-save-resume-and-multiple-entry-drain-verified-group-casting-remains-explicit"
+    },
+    {
+      "id": "combat.character-automatic-group-spells",
+      "domain": "combat",
+      "claim": "A loyal player character's ordinary target-type 9, 10, or 12 spell selects battle participants in party-slot then monster-slot order, charges and rolls duration/base damage once, applies resistance/save/protection per target, and queues defeated monsters' death macros in that same order.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake maps target types 9, 10, and 12 to all-allies, all-enemies, and everyone. Its native effect system is a workflow lead, not proof of Castle's shared roll or resource order.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_spell_override.gd", "symbol": "func _configure_targeting()" },
+          { "path": "src/scripts/classic_runtime/classic_spell_reflection.gd", "symbol": "func begin_resolution(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "Magic Aura uses Remake's all-allies targeting" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "if (spellinfo.targettype > 8)" },
+          { "path": "src/realmz_orig/resolvespell.c", "symbol": "void resolvespell(void)" },
+          { "path": "src/realmz_orig/spelltargets.c", "symbol": "short spelltargets(short targetnum, short who, short mode, short noreflect)" },
+          { "path": "src/realmz_orig/combat.c", "symbol": "if (spellinfo.targettype == 12)" }
+        ],
+        "authoredInputs": ["target type 9, 10, or 12", "caster and target allegiance", "battle participation", "cost and power", "duration and damage ranges", "resistance, saves, protection, and death macros"],
+        "observation": "The player branch builds track in party then monster slot order and invokes resolvespell once. resolvespell rolls duration and base damage before iterating track and performs defenses per target. Player cost is paid before this branch. The separate monster group branch bypasses power selection, affordability, spell-point deduction, and movement clearing; target 12 also omits the Guard clear used by 9 and 10.",
+        "unresolved": ["Monster automatic-group casting remains disabled because its observable source path depends on stale global power and missing resource accounting.", "The target-12 monster Guard omission remains undecided.", "Target type 11 also enters the player greater-than-eight branch and falls into its all-enemy else, but is outside this bounded ordinary-group case."]
+      },
+      "providence": {
+        "commit": "55c158d33800a246e15b8ee4cdb54404c472ed67",
+        "sources": [
+          { "path": "src/editor/rulesCatalog.ts", "symbol": "export const SPELL_TARGET_TYPES" },
+          { "path": "src/editor/browser/project.ts", "symbol": "function validateRulesRecords(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"targetType\": spell.target_type" }
+        ],
+        "expectedRepresentation": "The editor exposes value 12 as Everybody and accepts 0 through 12; schema v2 already emits the exact numeric targetType without a package-format change."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _cast_character_group_spell(" },
+        "expectedTrace": ["admit one automatic group cast without a fabricated target ID", "select living positioned participants by target type in party then monster order", "spend spell points once", "roll duration and base damage once", "resolve per-target resistance, save, protection, and damage", "queue defeated monster macros in source order", "spend two half-attacks and twelve movement once", "defer battle and caster progression until the death-macro queue drains"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_automatic_group_spell()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_spell_death_macro_queue_and_restore()" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "player-ordinary-target-types-9-10-12-implemented-monster-group-source-anomaly-disabled"
     }
   ]
 }

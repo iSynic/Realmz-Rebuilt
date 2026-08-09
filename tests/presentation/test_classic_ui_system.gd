@@ -28,7 +28,10 @@ func _test_battle_weapon_mode_component() -> void:
 		"rangedAttack": {"enabled": false, "reason": "Missile range, line of sight, and projectile resolution are unavailable."},
 		"retreat": {"enabled": false, "reason": "An enemy is too close.", "nearestEnemyRange": 1},
 		"targets": [{"id": "monster.target", "name": "Target", "currentHealth": 5, "maximumHealth": 5}],
-		"spellCasts": [{"spellId": "spell.flame", "spellName": "Flame", "power": 2, "cost": 4, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5}],
+		"spellCasts": [
+			{"spellId": "spell.flame", "spellName": "Flame", "power": 2, "cost": 4, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5},
+			{"spellId": "spell.wave", "spellName": "Wave", "power": 1, "cost": 3, "targetId": "", "targetName": "Everybody", "targetCurrentHealth": -1, "targetMaximumHealth": -1},
+		],
 		"movement": [
 			{"direction": [0, -1], "destination": [45, 44], "cost": 1, "enabled": true, "reason": ""},
 			{"direction": [1, 0], "destination": [46, 45], "cost": 1, "enabled": false, "reason": "Destination occupied."},
@@ -74,6 +77,8 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_not_null(finish_button, "the Classic Finish command remains distinct from Defend")
 	assert_true(escape_button != null and escape_button.disabled and escape_button.tooltip_text == "An enemy is too close.", "the explicit Escape control exposes the core-owned unavailable reason")
 	assert_not_null(cast_button, "the battle component exposes a core-proven spell, power, and target option")
+	var spell_picker := component.get_children().filter(func(child: Node) -> bool: return child is OptionButton)[0] as OptionButton
+	assert_equal(spell_picker.get_item_text(1), "Wave • P1 • 3 SP → Everybody", "automatic group spells render their typed label without fabricating one target's HP")
 	switch_button.pressed.emit()
 	move_button.pressed.emit()
 	edge_button.pressed.emit()

@@ -11,12 +11,12 @@ var target_current_health: int
 var target_maximum_health: int
 
 
-func _init(spell: SpellDefinition, power_level: int, target: MonsterState) -> void:
+func _init(spell: SpellDefinition, power_level: int, target: MonsterState = null, automatic_target_label: String = "") -> void:
 	spell_id = spell.id
 	spell_name = spell.name
 	power = power_level
 	cost = absi(spell.cost * power_level)
-	target_id = target.id
-	target_name = target.name
-	target_current_health = target.current_health
-	target_maximum_health = target.maximum_health
+	target_id = target.id if target != null else ""
+	target_name = target.name if target != null else automatic_target_label
+	target_current_health = target.current_health if target != null else -1
+	target_maximum_health = target.maximum_health if target != null else -1

@@ -17,6 +17,35 @@ func resolve_character_spell(caster: CharacterState, target: MonsterState, targe
 	caster.spell_points -= spell_cost
 	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"magic.duration")
 	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"magic.damage")
+	return _resolve_character_spell_monster_target(caster, target, target_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng)
+
+
+func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
+	if caster == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or character_targets.is_empty() and monster_targets.is_empty():
+		return null
+	for target: CharacterState in character_targets:
+		if target == null:
+			return null
+	for index: int in monster_targets.size():
+		if monster_targets[index] == null or monster_definitions[index] == null:
+			return null
+	var spell_cost := absi(spell.cost * power_level)
+	if caster.spell_points < spell_cost:
+		return GroupSpellResolution.new(false, spell_cost, 0, 0)
+	caster.spell_points -= spell_cost
+	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"magic.duration")
+	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"magic.damage")
+	var result := GroupSpellResolution.new(true, spell_cost, duration, damage)
+	for target: CharacterState in character_targets:
+		result.append_target(target.id, &"character", _resolve_character_spell_character_target(caster, target, spell, power_level, cast_level, damage, duration, rng))
+	for index: int in monster_targets.size():
+		var target := monster_targets[index]
+		var definition := monster_definitions[index]
+		result.append_target(target.id, &"monster", _resolve_character_spell_monster_target(caster, target, definition, spell, power_level, cast_level, damage, duration, 0, rng))
+	return result
+
+
+func _resolve_character_spell_monster_target(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng) -> SpellResolution:
 	var rolled_damage := damage
 	var resisted := _monster_resists(caster, target, target_definition, spell, power_level, cast_level, rng)
 	if resisted:
@@ -38,6 +67,26 @@ func resolve_character_spell(caster: CharacterState, target: MonsterState, targe
 		damage = 1
 	target.current_health -= damage
 	return SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
+
+
+func _resolve_character_spell_character_target(caster: CharacterState, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, rng: RealmzRng) -> SpellResolution:
+	var rolled_damage := damage
+	var resisted := character_resists(caster.level, target, spell, power_level, cast_level, rng)
+	if resisted:
+		return SpellResolution.new(true, true, false, 0, 0, duration)
+	var saved := false
+	var damage_type := absi(spell.damage_type)
+	if damage_type > 0 and damage_type <= 6:
+		var save_roll := rng.draw(100, &"magic.damage-save")
+		saved = spell.cannot <= 1 and save_roll <= target.save_value(damage_type - 1)
+		if saved:
+			damage /= 2
+		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
+			damage /= 2
+	if rolled_damage != 0 and damage == 0:
+		damage = 1
+	target.current_health -= damage
+	return SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= 0)
 
 
 func resolve_character_projectile(caster: CharacterState, caste: CasteDefinition, projectile_item: ItemDefinition, target: MonsterState, spell: SpellDefinition, power_level: int, rng: RealmzRng) -> ProjectileResolution:

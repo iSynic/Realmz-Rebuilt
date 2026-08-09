@@ -16,6 +16,7 @@ func run() -> void:
 	_test_monster_missile_does_not_impersonate_melee()
 	_test_source_backed_projectile_fire()
 	_test_source_backed_character_spell_casting()
+	_test_character_automatic_group_spell()
 	_test_spell_death_macro_queue_and_restore()
 	_test_source_backed_monster_spell_casting()
 	_test_charm_resistance_continues_after_failed_opposed_save()
@@ -911,6 +912,65 @@ func _test_spell_death_macro_queue_and_restore() -> void:
 	assert_true(first_completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"monster_death_macro_requested" and event.payload.get("combatantId") == second.id), "the next source-ordered macro is requested before battle or turn continuation")
 	var wrong_cursor := rules.combat_flow.continue_after_monster_death_macro(queue_state, queue_content, ScriptedRng.new([]), first.id)
 	assert_equal(wrong_cursor.error_code, &"invalid_spell_death_macro_queue", "a stale response cannot skip or replay the saved queue head")
+
+
+func _test_character_automatic_group_spell() -> void:
+	var rules := RealmzRules.new()
+	assert_true(rules.combat_flow._group_target_matches(9, false, false), "target type 9 includes a loyal participant for a loyal caster")
+	assert_false(rules.combat_flow._group_target_matches(9, true, false), "target type 9 excludes an opposed participant")
+	assert_false(rules.combat_flow._group_target_matches(10, false, false), "target type 10 excludes a friendly participant")
+	assert_true(rules.combat_flow._group_target_matches(10, true, false), "target type 10 includes an opposed participant")
+	var spell := SpellDefinition.new("spell.everybody", 1306, "Everybody")
+	spell.in_combat = true
+	spell.target_type = 12
+	spell.spell_class = 1
+	spell.damage_type = 1
+	spell.cannot = 1
+	spell.cost = 2
+	spell.damage_min = 4
+	spell.damage_max = 4
+	spell.power_damage_min = 2
+	spell.power_damage_max = 2
+	spell.duration_min = 1
+	spell.duration_max = 1
+	var caster := _character("character.group.caster")
+	caster.set_known_spells([spell.id])
+	caster.maximum_spell_attacks = 2
+	caster.maximum_spell_points = 20
+	caster.spell_points = 20
+	caster.normal_attacks = 4
+	var ally := _character("character.group.ally")
+	ally.current_health = 20
+	ally.maximum_health = 20
+	var first_definition := _monster_definition("monster.group.first", [])
+	first_definition.death_macro = 321
+	var second_definition := _monster_definition("monster.group.second", [])
+	second_definition.death_macro = 322
+	var first := MonsterState.new("monster.group.first.instance", first_definition.id, "First", 6, 6, 1)
+	var second := MonsterState.new("monster.group.second.instance", second_definition.id, "Second", 6, 6, 1)
+	var battlefield := _blank_battlefield()
+	battlefield.place_character(caster.id, Vector2i(45, 45))
+	battlefield.place_character(ally.id, Vector2i(44, 45))
+	battlefield.place_monster(first.id, Vector2i(46, 45), 0)
+	battlefield.place_monster(second.id, Vector2i(47, 45), 0)
+	var state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [caster, ally]), RealmzClock.new())
+	state.combat = CombatState.new("battle.group", [first, second], 0, battlefield)
+	state.combat.set_turn_order([caster.id, ally.id, first.id, second.id])
+	var content := _content([first_definition, second_definition], [], [], [], [spell])
+	var options := rules.combat_flow.character_spell_options(state, content, caster.id)
+	assert_true(options.any(func(option: CombatSpellOptionView) -> bool: return option.spell_id == spell.id and option.power == 1 and option.target_id.is_empty() and option.target_name == "Everybody"), "automatic group spells expose one typed picker option without fabricating a combatant target")
+	var cast := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 1, ScriptedRng.new([0, 0, 0, 32_767, 32_767, 32_767, 32_767]))
+	assert_true(cast.ok, "a player everybody spell resolves as one committed Classic cast")
+	assert_equal(caster.spell_points, 18, "the group spell charges its caster once rather than once per target")
+	var resolved := cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")
+	assert_equal(resolved.map(func(event: DomainEvent) -> Variant: return event.payload.get("targetId")), [caster.id, ally.id, first.id, second.id], "group targets resolve in Castle party-slot then monster-slot order")
+	assert_equal(resolved.map(func(event: DomainEvent) -> Variant: return event.payload.get("damage")), [6, 6, 6, 6], "one shared base and power damage roll feeds each target's independent defenses")
+	assert_equal([caster.current_health, ally.current_health, first.current_health, second.current_health], [caster.maximum_health - 6, 14, 0, 0], "everybody affects both sides without repeating the shared damage roll")
+	assert_equal(state.combat.spell_death_macro_queue(), [first.id, second.id], "spell-killed monsters enter the death-macro queue in source target order")
+	var macro_requests := cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"monster_death_macro_requested")
+	assert_equal(macro_requests.size(), 1, "only the first queued group-spell death macro is dispatched")
+	assert_equal(macro_requests[0].payload.get("combatantId"), first.id, "the queue head is the first defeated native monster slot")
+	assert_equal(rules.combat_flow._monster_spell_unavailable_reason(spell), "monster-group-spell-power-resource-anomaly", "monster group casting stays explicitly disabled instead of reproducing Castle's stale power and missing resource accounting")
 
 
 func _test_source_backed_monster_spell_casting() -> void:

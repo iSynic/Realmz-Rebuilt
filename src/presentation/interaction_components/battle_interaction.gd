@@ -40,7 +40,12 @@ func build(request: InteractionRequest) -> void:
 		spell_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		for option: Variant in spell_casts:
 			if option is Dictionary:
-				spell_picker.add_item("%s • P%d • %d SP → %s (%d/%d HP)" % [option.get("spellName", "Spell"), int(option.get("power", 1)), int(option.get("cost", 0)), option.get("targetName", "Target"), int(option.get("targetCurrentHealth", 0)), int(option.get("targetMaximumHealth", 0))])
+				var target_health := int(option.get("targetCurrentHealth", -1))
+				var target_label := String(option.get("targetName", "Target"))
+				var label := "%s • P%d • %d SP → %s" % [option.get("spellName", "Spell"), int(option.get("power", 1)), int(option.get("cost", 0)), target_label]
+				if target_health >= 0:
+					label += " (%d/%d HP)" % [target_health, int(option.get("targetMaximumHealth", 0))]
+				spell_picker.add_item(label)
 				spell_picker.set_item_metadata(spell_picker.item_count - 1, option.duplicate(true))
 		add_child(spell_picker)
 		var cast_button := Button.new()

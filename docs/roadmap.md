@@ -260,3 +260,14 @@ Next rolling priority: adjudicate the remaining spell activation boundaries in s
 - The typed suite passes 2,290 assertions across 13 suites. Group spell casting remains explicit because Castle rolls shared duration/base damage and charges once before iterating targets; invoking the single-target resolver repeatedly would alter both RNG and cost.
 
 Next rolling priority: implement source-ordered automatic all-friendly/all-enemy/everybody damage resolution over one shared cast transaction. First resolve Providence's apparent target-type inventory gap for Castle value 12 and adjudicate the target-everybody Guard omission; do not silently normalize either behavior.
+
+## Current rolling fidelity pass — Player automatic group spells
+
+- Player target types 9, 10, and 12 now use one automatic cast option and select living positioned participants in Castle party-slot then monster-slot order. The UI labels the group without fabricating a target combatant or meaningless HP total.
+- `MagicRules` spends once and rolls one duration/base-damage value before applying resistance, save, elemental protection, and damage independently to each typed target. `CombatFlow` spends two half-attacks and twelve movement once and queues defeated monsters' macros in the resulting source order.
+- Providence now exposes target value 12 as `Everybody` and accepts the source-backed 0-through-12 range. Its exporter and schema already preserved the numeric field, so no package migration or fixture regeneration is required.
+- Castle's monster group branch is not copied: it resolves before assigning the current cast power, skips affordability and spell-point deduction, leaves movement unchanged, and treats Guard differently for everybody. Realmz 2.0 reports `monster-group-spell-power-resource-anomaly` until a controlled Castle fixture or named correction determines intended behavior.
+- Target type 11 is also flagged: the player `targettype > 8` block does not special-case it and therefore reaches the all-enemy `else`. It remains outside the ordinary-group implementation rather than being silently treated as a documented target shape.
+- The focused runtime suite passes 2,305 assertions across 13 suites; the Providence browser validation test and TypeScript typecheck pass.
+
+Next rolling priority: adjudicate player area target types 0, 3, and 4 as one shared spatial spell transaction. Keep monster group power/resource semantics, target-12 Guard, target-11 fallthrough, queued fields, reflection, and specials separate until each has source-backed ownership.
