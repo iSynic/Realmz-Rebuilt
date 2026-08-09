@@ -12,7 +12,7 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "9bf53e9b0b51973114dc53d933b02c916e3f8551a8276663f4354eca47cfa2e1", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "e452cd62c112bfbc13d912df6b9c0244ef3e981b74c8d7edb190faf77567baf3", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -58,6 +58,20 @@ func run() -> void:
 	assert_equal(loaded.content.race_by_id("classic.race.0").age_change(4).size(), 15, "the complete Castle race aging table crosses the validating package boundary")
 	assert_equal(loaded.content.caste_by_id("classic.caste.0").maximum_damage_bonus(), 5, "caste strength caps retain their source field meaning")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").attacks()[0].damage_max, 4, "monster attacks are typed instead of retained as native row dictionaries")
+	assert_equal(loaded.content.monster_by_id("classic.monster.1").required_weapon, 0, "monster weapon requirements remain distinct from battle placement distance")
+	assert_equal(loaded.content.monster_by_id("classic.monster.1").magic_to_hit, 0, "monster magical-plus thresholds remain an explicit field even when unrestricted")
+	var fixture_zip := ZIPReader.new()
+	assert_equal(fixture_zip.open(FIXTURE_PATH), OK, "the package contract test can inspect detached fixture JSON")
+	var fixture_content: Variant = JSON.parse_string(fixture_zip.read_file("content.json").get_string_from_utf8())
+	fixture_zip.close()
+	assert_true(fixture_content is Dictionary, "the detached fixture content parses for negative contract tests")
+	if fixture_content is Dictionary:
+		var invalid_monsters: Array = fixture_content["monsters"].duplicate(true)
+		invalid_monsters[0]["magicToHit"] = -1
+		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime independently rejects a negative magical-plus threshold")
+		invalid_monsters = fixture_content["monsters"].duplicate(true)
+		invalid_monsters[0]["requiredWeapon"] = 128
+		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime independently rejects a required-weapon value outside its signed byte")
 	assert_equal(loaded.content.battle_by_id("classic.battle.0").monster_slots()[0].monster_id, "classic.monster.1", "battle placements reference stable monster IDs")
 	assert_equal(loaded.content.shop_by_id("classic.shop.0").quantity(0), 2, "shop stock compiles to stable item references and quantities")
 	assert_equal(loaded.content.treasure_by_id("classic.treasure.0").item_ids()[0], "classic.item.901", "treasures use the same item identity as inventory")

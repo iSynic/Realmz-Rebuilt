@@ -565,7 +565,7 @@ func _test_inventory_economy_and_treasure() -> void:
 	assert_not_null(instance, "inventory accepts a definition-backed item within capacity")
 	assert_equal(character.carried_load, 16, "item load includes charge weight")
 	assert_true(rules.inventory.equip(character, instance.id, item), "equipment mutation is owned by inventory rules")
-	assert_equal(rules.inventory.equipped_damage_bonus(character, _items([item])), 4, "equipped item damage is summed as Castle attack.c does")
+	assert_equal(rules.inventory.combat_equipment(character, _items([item])).equipped_damage_bonus, 4, "equipped item damage is summed as Castle attack.c does")
 	assert_true(rules.inventory.use_charge(character, instance.id, item), "a charged item can be used")
 	assert_equal(character.carried_load, 13, "spent charges reduce load")
 	assert_true(rules.inventory.use_charge(character, instance.id, item), "the final charge can be used")
@@ -600,18 +600,105 @@ func _test_combat_magic_and_monsters() -> void:
 	attacker.hand_to_hand = 4
 	var definition := _monster_definition()
 	var defender := MonsterState.new("monster.defender", definition.id, definition.name, 5, 5, 1, 8, 5)
-	var attack := rules.combat.resolve_character_attack(attacker, defender, definition, 2, ScriptedRng.new([0, 0]))
+	var sword := ItemDefinition.new("item.sword", 25, "Sword")
+	sword.item_type = 2
+	sword.damage_bonus = 2
+	sword.vs_small = 1
+	var sword_instance := rules.inventory.add_item(attacker, sword, "item-instance.sword", true)
+	assert_true(rules.inventory.equip(attacker, sword_instance.id, sword), "the melee fixture occupies Castle's weapon type")
+	var equipment := rules.inventory.combat_equipment(attacker, _items([sword]))
+	var attack := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0, 0, 0, 0]))
 	assert_true(attack.hit, "inclusive Realmz attack roll hits at the computed chance")
 	assert_equal(attack.chance, 56, "attack chance combines base, equipment, luck, and armor")
-	assert_equal(attack.damage, 2, "equipped damage is committed to the target")
+	assert_equal(attack.damage, 3, "melee damage combines the equipped magic plus and Castle's physical weapon roll")
+	assert_equal(attack.critical_rolls, [1, 1], "player melee preserves Castle's two post-damage critical draws even while critical-skill content remains unavailable")
+	definition.magic_to_hit = 3
+	var magic_block := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0]))
+	assert_true(magic_block.blocked, "a hit with an insufficient weapon plus stops before damage")
+	assert_equal(magic_block.block_reason, &"classic_magic_weapon_required", "magical weapon requirements have a stable source-backed failure identity")
+	definition.magic_to_hit = 0
+	definition.required_weapon = -1
+	var blunt_block := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0]))
+	assert_equal(blunt_block.block_reason, &"classic_blunt_weapon_required", "an armed non-blunt hit cannot damage a blunt-only monster")
+	sword.blunt = -1
+	var blunt_hit := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0, 0, 0, 0]))
+	assert_true(blunt_hit.hit and not blunt_hit.blocked, "an armed blunt weapon satisfies the source-backed family requirement")
+	sword.blunt = 0
+	definition.required_weapon = 26
+	var specific_block := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0]))
+	assert_equal(specific_block.block_reason, &"classic_specific_weapon_required", "the wrong specific weapon cannot satisfy the authored Item Number")
+	definition.required_weapon = 25
+	var specific_hit := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0, 0, 0, 0]))
+	assert_true(specific_hit.hit and not specific_hit.blocked, "FD-COMBAT-003 compares the authored requirement directly with the Classic item ID")
+	sword.classic_id = 147
+	definition.required_weapon = -109
+	var high_specific_hit := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 0, 0, 0, 0]))
+	assert_true(high_specific_hit.hit and not high_specific_hit.blocked, "specific Item Numbers above 127 preserve their signed-byte package representation")
+	sword.classic_id = 25
+	definition.required_weapon = 0
 	var friendly := MonsterState.new("monster.friendly", definition.id, "Friendly", 5, 5, 1, 8, 5, 0, 0, false)
 	var hostile := MonsterState.new("monster.hostile", definition.id, "Hostile", 5, 5, 1, 8, 5, 0, 0, true)
 	var monster_attack := rules.combat.resolve_monster_attack_monster(friendly, definition, 0, hostile, definition, ScriptedRng.new([0, 0]))
 	assert_true(monster_attack.hit, "opposed-traitor monsters use the same source-backed attack resolution")
 	assert_equal(hostile.current_health, 4, "friendly monster attacks mutate hostile combat state")
+	defender.current_health = 5
 	defender.conditions.set_value(ConditionRules.HELPLESS, -1)
-	var helpless := rules.combat.resolve_character_attack(attacker, defender, definition, 2, ScriptedRng.new([0, 32_767]))
+	var helpless := rules.combat.resolve_character_attack(attacker, equipment, defender, definition, ScriptedRng.new([0, 32_767, 0, 0, 0]))
 	assert_true(helpless.killed, "helpless defenders are hit and take their remaining health")
+
+	var zero_blade := ItemDefinition.new("item.zero-blade", 26, "Zero Blade")
+	zero_blade.item_type = 2
+	zero_blade.vs_small = 1
+	var armed := CharacterState.new("character.armed-zero", "Armed", 10, 10)
+	armed.luck = 1
+	armed.hand_to_hand = 20
+	var zero_instance := rules.inventory.add_item(armed, zero_blade, "item-instance.zero-blade", true)
+	rules.inventory.equip(armed, zero_instance.id, zero_blade)
+	var armed_target := MonsterState.new("monster.armed-target", definition.id, definition.name, 20, 20, 1, 8, 0)
+	var armed_attack := rules.combat.resolve_character_attack(armed, rules.inventory.combat_equipment(armed, _items([zero_blade])), armed_target, definition, ScriptedRng.new([0, 0, 0, 0, 0]))
+	assert_equal(armed_attack.damage, 1, "a real zero-plus melee weapon does not accidentally invoke hand-to-hand damage")
+
+	var ring := ItemDefinition.new("item.damage-ring", 601, "Damage Ring")
+	ring.item_type = 0
+	ring.damage_bonus = 3
+	var unarmed := CharacterState.new("character.unarmed-ring", "Unarmed", 10, 10)
+	unarmed.luck = 1
+	unarmed.hand_to_hand = 4
+	var ring_instance := rules.inventory.add_item(unarmed, ring, "item-instance.damage-ring", true)
+	rules.inventory.equip(unarmed, ring_instance.id, ring)
+	var unarmed_target := MonsterState.new("monster.unarmed-target", definition.id, definition.name, 20, 20, 1, 8, 0)
+	var unarmed_attack := rules.combat.resolve_character_attack(unarmed, rules.inventory.combat_equipment(unarmed, _items([ring])), unarmed_target, definition, ScriptedRng.new([0, 0, 32_767, 0, 0]))
+	assert_equal(unarmed_attack.damage, 7, "a nonweapon damage item contributes its bonus without suppressing the hand-to-hand roll")
+	definition.required_weapon = -2
+	var unarmed_requirement := rules.combat.resolve_character_attack(unarmed, rules.inventory.combat_equipment(unarmed, _items([ring])), unarmed_target, definition, ScriptedRng.new([0, 0]))
+	assert_equal(unarmed_requirement.block_reason, &"classic_sharp_weapon_required", "FD-COMBAT-003 does not let an unarmed attack bypass a bladed-weapon requirement")
+	definition.required_weapon = 0
+	var armor := ItemDefinition.new("item.target-armor", 201, "Target Armor")
+	armor.item_type = 4
+	armor.armor_bonus = 5
+	var character_target := CharacterState.new("character.armored-target", "Armored", 20, 20)
+	character_target.conditions.set_value(ConditionRules.PROTECTION_FROM_EVIL, 1)
+	var armor_instance := rules.inventory.add_item(character_target, armor, "item-instance.target-armor", true)
+	rules.inventory.equip(character_target, armor_instance.id, armor)
+	var versus_character := rules.combat.resolve_character_attack_character(unarmed, rules.inventory.combat_equipment(unarmed, _items([ring, armor])), character_target, rules.inventory.combat_equipment(character_target, _items([ring, armor])), ScriptedRng.new([0, 0, 0, 0, 0]))
+	assert_equal(versus_character.chance, 61, "character defense derives equipped armor without applying Castle's monster-only protection-from-evil penalty")
+
+	var second_blade := ItemDefinition.new("item.second-blade", 27, "Second Blade")
+	second_blade.item_type = 2
+	var second_instance := rules.inventory.add_item(armed, second_blade, "item-instance.second-blade", true)
+	rules.inventory.equip(armed, second_instance.id, second_blade)
+	var conflicting_equipment := rules.inventory.combat_equipment(armed, _items([zero_blade, second_blade]))
+	assert_false(conflicting_equipment.valid, "multiple equipped type-2 items fail instead of selecting a weapon by inventory accident")
+	assert_equal(conflicting_equipment.error_code, &"multiple_melee_weapons", "conflicting Classic melee slots have a stable failure identity")
+
+	var elemental_definition := MonsterDefinition.new("monster.elemental-target", 2, "Elemental Target", 2, 1, 8, 0, 0, _ints_size(8, 0), _ints([100, 0, 0, 0, 0, 0, 0, 0]), _ints_size(6, 0), _ints_size(3, 0), [], [], [MonsterAttackDefinition.new(1, 1)])
+	var elemental_target := MonsterState.new("monster.elemental-target.instance", elemental_definition.id, elemental_definition.name, 20, 20, 1, 8, 0)
+	elemental_target.conditions.set_value(ConditionRules.FIRE_PROTECTION, 1)
+	second_instance.equipped = false
+	zero_blade.heat = 8
+	var elemental_attack := rules.combat.resolve_character_attack(armed, rules.inventory.combat_equipment(armed, _items([zero_blade])), elemental_target, elemental_definition, ScriptedRng.new([0, 0, 32_767, 0, 0, 0, 0]))
+	assert_equal(elemental_attack.weapon_effects[0].get("amount"), 2, "FD-COMBAT-002 applies the monster defender's fire save after protection")
+	assert_equal(elemental_attack.damage, 3, "corrected elemental mitigation changes committed health loss as well as the detached detail")
 
 	var quick := CharacterState.new("character.quick", "Quick", 10, 10)
 	quick.agility = 15

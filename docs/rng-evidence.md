@@ -4,7 +4,7 @@
 
 ## Source/control-flow evidence
 
-At Castle commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/share-movecost-dialog.c:44` implements `Rand(range)` by calling QuickDraw `Random()`, taking the absolute signed result, and returning `1 + (raw * range) / 32768`. This proves Realmz's inclusive 1…range scaling and integer arithmetic order.
+At Castle commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/share-movecost-dialog.c:44` implements `Rand(range)` by calling QuickDraw `Random()`, taking the absolute signed result, and returning `1 + (raw * range) / 32768`. Positive ranges produce Realmz's inclusive 1…range scaling. The signed-short parameter also permits zero and negative authored/effective ranges; those still consume a draw and use C integer truncation toward zero.
 
 The same commit's `src/MemoryManager.cpp:286` documents the original signed range but deliberately supplies host random bytes in the SDL port. Castle therefore remains evidence for scaling and draw order, not for a deterministic historical seed sequence.
 
@@ -22,6 +22,7 @@ The recovered QuickDraw routine returns the signed low word of the updated seed 
 - State and draw count are session-owned and saved.
 - Every trace entry records draw index, semantic tag, range, raw value, and result.
 - `ScriptedRng` accepts signed raw values for branch-equivalent source/oracle fixtures.
+- `draw_classic` preserves Castle's signed-short range formula for source paths where zero or negative effective values are legal; the ordinary `draw` API continues to reject invalid positive-die ranges.
 - No core code may call Godot randomness or derive a seed from wall-clock time.
 
 Evidence labels: the Castle function and Macintosh references are `source-control-flow`; the seed/scaling vectors are `runtime-unit`. A separate `castle-runtime` fixture is still required before claiming an original Mac executable sequence observation.

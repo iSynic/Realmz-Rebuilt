@@ -61,12 +61,14 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	var events: Array[DomainEvent] = []
 	match action:
 		&"attack":
-			var damage_bonus := _rules.inventory.equipped_damage_bonus(actor, content.item_definitions())
+			var equipment := _rules.inventory.combat_equipment(actor, content.item_definitions())
+			if not equipment.valid:
+				return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 			var monster_target := combat.monster_by_id(target_id)
 			if monster_target != null and monster_target.current_health > 0 and monster_target.traitor != actor.traitor:
 				var definition := content.monster_by_id(monster_target.definition_id)
-				var resolution := _rules.combat.resolve_character_attack(actor, monster_target, definition, damage_bonus, rng, state.clock.day())
-				events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": actor.id, "targetId": monster_target.id, "targetKind": "monster", "hit": resolution.hit, "damage": resolution.damage, "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
+				var resolution := _rules.combat.resolve_character_attack(actor, equipment, monster_target, definition, rng, state.clock.day())
+				events.append(_character_attack_event(actor.id, monster_target.id, &"monster", resolution))
 				if resolution.killed and _request_monster_death_macro(monster_target, definition, events):
 					combat.advance_turn()
 					return CombatFlowResult.succeeded(events)
@@ -74,8 +76,11 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 				var character_target := state.party.character_by_id(target_id)
 				if character_target == null or character_target.id == actor.id or character_target.current_health <= 0 or character_target.traitor == actor.traitor:
 					return CombatFlowResult.failed(&"invalid_combat_target", "The selected combatant is unavailable to this allegiance.")
-				var resolution := _rules.combat.resolve_character_attack_character(actor, character_target, damage_bonus, rng)
-				events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": actor.id, "targetId": character_target.id, "targetKind": "character", "hit": resolution.hit, "damage": resolution.damage, "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
+				var target_equipment := _rules.inventory.combat_equipment(character_target, content.item_definitions())
+				if not target_equipment.valid:
+					return CombatFlowResult.failed(target_equipment.error_code, target_equipment.error_message)
+				var resolution := _rules.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng)
+				events.append(_character_attack_event(actor.id, character_target.id, &"character", resolution))
 		&"defend", &"pass":
 			events.append(DomainEvent.new(&"combat_turn_passed", {"actorId": actor.id, "action": String(action)}))
 		&"retreat":
@@ -309,17 +314,50 @@ func _process_charmed_character_turn(state: GameState, content: RealmzContent, a
 	if target_count == 0:
 		return false
 	var target_index := rng.draw_between(0, target_count - 1, &"combat.charmed-target")
-	var damage_bonus := _rules.inventory.equipped_damage_bonus(actor, content.item_definitions())
+	var equipment := _rules.inventory.combat_equipment(actor, content.item_definitions())
+	if not equipment.valid:
+		events.append(DomainEvent.new(&"combat_attack_blocked", {"actorId": actor.id, "reason": String(equipment.error_code), "message": equipment.error_message}))
+		return false
 	if target_index < character_targets.size():
 		var character_target := character_targets[target_index]
-		var resolution := _rules.combat.resolve_character_attack_character(actor, character_target, damage_bonus, rng)
-		events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": actor.id, "targetId": character_target.id, "action": "attack", "automatic": true, "hit": resolution.hit, "damage": resolution.damage, "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
+		var target_equipment := _rules.inventory.combat_equipment(character_target, content.item_definitions())
+		if not target_equipment.valid:
+			events.append(DomainEvent.new(&"combat_attack_blocked", {"actorId": actor.id, "targetId": character_target.id, "reason": String(target_equipment.error_code), "message": target_equipment.error_message}))
+			return false
+		var resolution := _rules.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng)
+		var event := _character_attack_event(actor.id, character_target.id, &"character", resolution)
+		event.payload["automatic"] = true
+		events.append(event)
 		return false
 	var monster_target := monster_targets[target_index - character_targets.size()]
 	var target_definition := content.monster_by_id(monster_target.definition_id)
-	var resolution := _rules.combat.resolve_character_attack(actor, monster_target, target_definition, damage_bonus, rng, state.clock.day())
-	events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": actor.id, "targetId": monster_target.id, "action": "attack", "automatic": true, "hit": resolution.hit, "damage": resolution.damage, "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
+	var resolution := _rules.combat.resolve_character_attack(actor, equipment, monster_target, target_definition, rng, state.clock.day())
+	var event := _character_attack_event(actor.id, monster_target.id, &"monster", resolution)
+	event.payload["automatic"] = true
+	events.append(event)
 	return resolution.killed and _request_monster_death_macro(monster_target, target_definition, events)
+
+
+static func _character_attack_event(actor_id: String, target_id: String, target_kind: StringName, resolution: AttackResolution) -> DomainEvent:
+	return DomainEvent.new(&"combat_attack_resolved", {
+		"actorId": actor_id,
+		"targetId": target_id,
+		"targetKind": String(target_kind),
+		"hit": resolution.hit,
+		"damage": resolution.damage,
+		"physicalDamage": resolution.physical_damage,
+		"defeated": resolution.killed,
+		"chance": resolution.chance,
+		"roll": resolution.roll,
+		"reflected": resolution.reflected,
+		"blocked": resolution.blocked,
+		"blockReason": String(resolution.block_reason),
+		"weaponEffects": resolution.weapon_effects.duplicate(true),
+		"weaponConditionIndex": resolution.weapon_condition_index,
+		"weaponConditionBefore": resolution.weapon_condition_before,
+		"weaponConditionAfter": resolution.weapon_condition_after,
+		"criticalRolls": resolution.critical_rolls.duplicate(),
+	})
 
 
 func _append_monster_special_events(events: Array[DomainEvent], actor_id: String, target_id: String, target_kind: StringName, resolution: AttackResolution) -> void:

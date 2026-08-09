@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "9d52599ed2d790d5264da5e67556b831aa66a3e1ccb79300864fe36877b4a33c"
+const EXPECTED_SCHEMA_HASH: String = "b011d35b0204a31ed3b3d9d17bdb71519d9e2f068105b1326dcaedb323dfd465"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -675,8 +675,8 @@ func _construct_monsters(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content monsters must be an array.")
 		return null
-	var fields: Array[String] = ["id", "classicId", "name", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "distance", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "money", "spellIds", "itemIds", "weaponId", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
-	var integer_fields: Array[String] = ["classicId", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "distance", "size", "attackCount", "magicAttackCount", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
+	var fields: Array[String] = ["id", "classicId", "name", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "requiredWeapon", "magicToHit", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "money", "spellIds", "itemIds", "weaponId", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
+	var integer_fields: Array[String] = ["classicId", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "requiredWeapon", "magicToHit", "size", "attackCount", "magicAttackCount", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
 	var result: Array[MonsterDefinition] = []
 	var ids: Dictionary = {}
 	for value_record: Variant in value:
@@ -685,7 +685,7 @@ func _construct_monsters(value: Variant) -> Variant:
 			return null
 		var record: Dictionary = value_record
 		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Monster definition")
-		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Monster") or not record["traitor"] is bool or not record["weaponId"] is String or not record["attacks"] is Array or _integer(record["randomWeaponTable"]) < 0 or _integer(record["randomWeaponTable"]) > 10:
+		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Monster") or not record["traitor"] is bool or not record["weaponId"] is String or not record["attacks"] is Array or _integer(record["requiredWeapon"]) < -128 or _integer(record["requiredWeapon"]) > 127 or _integer(record["magicToHit"]) < 0 or _integer(record["magicToHit"]) > 127 or _integer(record["randomWeaponTable"]) < 0 or _integer(record["randomWeaponTable"]) > 10:
 			_reject("Monster definition is malformed or duplicated.")
 			return null
 		var type_value: Variant = _integer_array(record["typeFlags"], 8, "Monster type flags")
@@ -709,7 +709,8 @@ func _construct_monsters(value: Variant) -> Variant:
 		var integers: Dictionary = integers_value
 		var monster := MonsterDefinition.new(record["id"], integers["classicId"], record["name"], integers["hitDice"], integers["staminaBonus"], integers["agility"], integers["armor"], integers["magicResistance"], type_value, saves_value, immunity_value, money_value, spell_ids_value, item_ids_value, attacks)
 		monster.movement_max = integers["movementMaximum"]
-		monster.distance = integers["distance"]
+		monster.required_weapon = integers["requiredWeapon"]
+		monster.magic_to_hit = integers["magicToHit"]
 		monster.traitor = record["traitor"]
 		monster.size = integers["size"]
 		monster.attack_count = integers["attackCount"]

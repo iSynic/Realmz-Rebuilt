@@ -10,70 +10,305 @@ func _init(condition_rules: ConditionRules, character_rules: CharacterRules) -> 
 	_characters = character_rules
 
 
-func resolve_character_attack(attacker: CharacterState, defender: MonsterState, defender_definition: MonsterDefinition, equipped_damage_bonus: int, rng: RealmzRng, realmz_day: int = 0, behind: bool = false) -> AttackResolution:
-	if attacker == null or defender == null or defender_definition == null or rng == null:
+func resolve_character_attack(attacker: CharacterState, equipment: CharacterCombatEquipment, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng, realmz_day: int = 0, behind: bool = false) -> AttackResolution:
+	if attacker == null or equipment == null or not equipment.valid or defender == null or defender_definition == null or rng == null:
 		return null
-	var chance := 50 + attacker.to_hit + (20 if behind else 0) + 5 * equipped_damage_bonus
+	var invalid_weapon := _invalid_weapon_reason(equipment.melee_weapon)
+	if not invalid_weapon.is_empty():
+		return _blocked_character_attack(invalid_weapon)
+	var condition_roll := _roll_weapon_condition_monster(equipment.melee_weapon, defender_definition, rng)
+	if condition_roll.get("blocked", false):
+		return _blocked_character_attack(StringName(condition_roll.get("reason", "invalid_weapon_condition")))
+	var type_damage := 0
+	var chance := 50 + attacker.to_hit + (20 if behind else 0) + 5 * equipment.equipped_damage_bonus
+	if equipment.melee_weapon != null and equipment.melee_weapon.special_1 == 121:
+		chance += 5 * equipment.melee_weapon.damage_bonus
 	chance += _attacker_condition_modifier(attacker.conditions)
-	chance += rng.draw(maxi(1, attacker.luck), &"combat.attack.luck")
+	if defender_definition.type_flag(4) and attacker.conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL):
+		chance += 10
+	chance += rng.draw_classic(equipment.effective_luck, &"combat.attack.luck")
 	for index: int in 8:
 		if defender_definition.type_flag(index):
 			chance += 5 * attacker.special_value(index)
-	if defender_definition.type_flag(4) and attacker.conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL):
-		chance += 10
+			type_damage += attacker.special_value(index)
 	chance -= defender.armor
-	chance += _defender_condition_modifier(defender.conditions)
-	chance -= int(float(realmz_day) / 120.0)
+	chance += _defender_condition_modifier(defender.conditions, true)
+	chance -= int(float(maxi(0, realmz_day)) / 120.0)
 	chance = maxi(5, chance)
 	var roll := rng.draw(100, &"combat.attack.hit")
 	var hit := roll <= chance or defender.conditions.is_active(ConditionRules.HELPLESS)
-	if not hit:
-		return AttackResolution.new(false, false, chance, roll, 0)
-	var reflected := false
-	if defender.conditions.is_active(ConditionRules.REFLECTING_ATTACKS) and rng.draw(100, &"combat.attack.reflect") < 34:
-		reflected = true
-	var damage := equipped_damage_bonus + attacker.damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
-	if attacker.conditions.is_active(ConditionRules.STRONG):
-		damage += 3
-	if equipped_damage_bonus == 0:
-		damage += rng.draw(maxi(1, attacker.hand_to_hand), &"combat.attack.unarmed-damage")
-	damage = maxi(0, damage)
-	if defender.conditions.is_active(ConditionRules.HELPLESS):
-		damage = defender.current_health
-	if reflected:
-		attacker.current_health -= damage
-		return AttackResolution.new(true, attacker.current_health <= 0, chance, roll, damage, true)
-	defender.current_health -= damage
-	return AttackResolution.new(true, defender.current_health <= 0, chance, roll, damage)
-
-
-func resolve_character_attack_character(attacker: CharacterState, defender: CharacterState, equipped_damage_bonus: int, rng: RealmzRng, behind: bool = false) -> AttackResolution:
-	if attacker == null or defender == null or rng == null:
-		return null
-	var chance := 50 + attacker.to_hit + (20 if behind else 0) + 5 * equipped_damage_bonus
-	chance += _attacker_condition_modifier(attacker.conditions)
-	chance += rng.draw(maxi(1, attacker.luck), &"combat.attack.luck")
-	chance -= defender.armor
-	chance += _defender_condition_modifier(defender.conditions)
-	chance = maxi(5, chance)
-	var roll := rng.draw(100, &"combat.attack.hit")
-	var hit := roll <= chance or defender.conditions.is_active(ConditionRules.HELPLESS)
+	var magic_requirement := _magic_weapon_requirement_reason(attacker, equipment, defender_definition, hit)
+	if not magic_requirement.is_empty():
+		return _blocked_character_attack(magic_requirement, chance, roll)
+	var weapon_requirement := _required_weapon_reason(equipment, defender_definition, hit)
+	if not weapon_requirement.is_empty():
+		return _blocked_character_attack(weapon_requirement, chance, roll)
+	if equipment.melee_weapon != null and equipment.melee_weapon.special_1 == 120:
+		hit = true
 	if not hit:
 		return AttackResolution.new(false, false, chance, roll, 0)
 	var reflected := defender.conditions.is_active(ConditionRules.REFLECTING_ATTACKS) and rng.draw(100, &"combat.attack.reflect") < 34
-	var damage := equipped_damage_bonus + attacker.damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
+	var physical_damage := type_damage + equipment.effective_damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
 	if attacker.conditions.is_active(ConditionRules.STRONG):
-		damage += 3
-	if equipped_damage_bonus == 0:
-		damage += rng.draw(maxi(1, attacker.hand_to_hand), &"combat.attack.unarmed-damage")
-	damage = maxi(0, damage)
-	if defender.conditions.is_active(ConditionRules.HELPLESS):
-		damage = defender.current_health
+		physical_damage += 3
+	var effects: Array[Dictionary] = []
+	var elemental_damage := 0
+	if equipment.is_armed():
+		if reflected:
+			elemental_damage = _roll_weapon_elements_character(equipment.melee_weapon, attacker, rng, effects)
+		else:
+			elemental_damage = _roll_weapon_elements_monster(equipment.melee_weapon, defender, defender_definition, rng, effects)
+		physical_damage += _roll_weapon_physical(equipment.melee_weapon, defender_definition if not reflected else null, rng)
+	else:
+		physical_damage += rng.draw(maxi(1, attacker.hand_to_hand), &"combat.attack.unarmed-damage")
+	var critical_rolls: Array[int] = [rng.draw(100, &"combat.attack.sneak-critical"), rng.draw(100, &"combat.attack.major-wound-critical")]
+	physical_damage = maxi(0, physical_damage)
+	if not reflected and defender.conditions.is_active(ConditionRules.HELPLESS):
+		physical_damage = defender.current_health
+	elif reflected and attacker.conditions.is_active(ConditionRules.HELPLESS):
+		physical_damage = attacker.current_health
+	var total_damage := physical_damage + elemental_damage
+	var resolution := AttackResolution.new(true, false, chance, roll, total_damage, reflected)
+	resolution.physical_damage = physical_damage
+	resolution.weapon_effects = effects
+	resolution.critical_rolls = critical_rolls
 	if reflected:
-		attacker.current_health -= damage
-		return AttackResolution.new(true, attacker.current_health <= 0, chance, roll, damage, true)
-	defender.current_health -= damage
-	return AttackResolution.new(true, defender.current_health <= 0, chance, roll, damage)
+		_apply_weapon_condition_character(attacker, condition_roll, resolution)
+		attacker.current_health -= total_damage
+		resolution.killed = attacker.current_health <= 0
+		return resolution
+	_apply_weapon_condition_monster(defender, condition_roll, resolution)
+	defender.current_health -= total_damage
+	resolution.killed = defender.current_health <= 0
+	return resolution
+
+
+func resolve_character_attack_character(attacker: CharacterState, attacker_equipment: CharacterCombatEquipment, defender: CharacterState, defender_equipment: CharacterCombatEquipment, rng: RealmzRng, behind: bool = false) -> AttackResolution:
+	if attacker == null or attacker_equipment == null or not attacker_equipment.valid or defender == null or defender_equipment == null or not defender_equipment.valid or rng == null:
+		return null
+	var invalid_weapon := _invalid_weapon_reason(attacker_equipment.melee_weapon)
+	if not invalid_weapon.is_empty():
+		return _blocked_character_attack(invalid_weapon)
+	var condition_roll := _roll_weapon_condition_character(attacker_equipment.melee_weapon, defender, rng)
+	if condition_roll.get("blocked", false):
+		return _blocked_character_attack(StringName(condition_roll.get("reason", "invalid_weapon_condition")))
+	var chance := 50 + attacker.to_hit + (20 if behind else 0) + 5 * attacker_equipment.equipped_damage_bonus
+	if attacker_equipment.melee_weapon != null and attacker_equipment.melee_weapon.special_1 == 121:
+		chance += 5 * attacker_equipment.melee_weapon.damage_bonus
+	chance += _attacker_condition_modifier(attacker.conditions)
+	chance += rng.draw_classic(attacker_equipment.effective_luck, &"combat.attack.luck")
+	chance -= defender_equipment.effective_armor
+	chance += _defender_condition_modifier(defender.conditions, false)
+	chance = maxi(5, chance)
+	var roll := rng.draw(100, &"combat.attack.hit")
+	var hit := roll <= chance or defender.conditions.is_active(ConditionRules.HELPLESS)
+	if attacker_equipment.melee_weapon != null and attacker_equipment.melee_weapon.special_1 == 120:
+		hit = true
+	if not hit:
+		return AttackResolution.new(false, false, chance, roll, 0)
+	var reflected := defender.conditions.is_active(ConditionRules.REFLECTING_ATTACKS) and rng.draw(100, &"combat.attack.reflect") < 34
+	var target := attacker if reflected else defender
+	var physical_damage := attacker_equipment.effective_damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
+	if attacker.conditions.is_active(ConditionRules.STRONG):
+		physical_damage += 3
+	var effects: Array[Dictionary] = []
+	var elemental_damage := 0
+	if attacker_equipment.is_armed():
+		elemental_damage = _roll_weapon_elements_character(attacker_equipment.melee_weapon, target, rng, effects)
+		physical_damage += _roll_weapon_physical(attacker_equipment.melee_weapon, null, rng)
+	else:
+		physical_damage += rng.draw(maxi(1, attacker.hand_to_hand), &"combat.attack.unarmed-damage")
+	var critical_rolls: Array[int] = [rng.draw(100, &"combat.attack.sneak-critical"), rng.draw(100, &"combat.attack.major-wound-critical")]
+	physical_damage = maxi(0, physical_damage)
+	if target.conditions.is_active(ConditionRules.HELPLESS):
+		physical_damage = target.current_health
+	var total_damage := physical_damage + elemental_damage
+	var resolution := AttackResolution.new(true, false, chance, roll, total_damage, reflected)
+	resolution.physical_damage = physical_damage
+	resolution.weapon_effects = effects
+	resolution.critical_rolls = critical_rolls
+	_apply_weapon_condition_character(target, condition_roll, resolution)
+	target.current_health -= total_damage
+	resolution.killed = target.current_health <= 0
+	return resolution
+
+
+static func _blocked_character_attack(reason: StringName, chance: int = 0, roll: int = 0) -> AttackResolution:
+	var resolution := AttackResolution.new(false, false, chance, roll, 0)
+	resolution.blocked = true
+	resolution.block_reason = reason
+	return resolution
+
+
+static func _magic_weapon_requirement_reason(attacker: CharacterState, equipment: CharacterCombatEquipment, defender: MonsterDefinition, hit: bool) -> StringName:
+	if defender.magic_to_hit <= 0:
+		return &""
+	if equipment.is_armed():
+		if hit and defender.magic_to_hit > equipment.melee_weapon.damage_bonus:
+			return &"classic_magic_weapon_required"
+		return &""
+	if defender.magic_to_hit > attacker.level / 8:
+		return &"classic_magic_weapon_required"
+	return &""
+
+
+static func _required_weapon_reason(equipment: CharacterCombatEquipment, defender: MonsterDefinition, hit: bool) -> StringName:
+	if not hit or defender.required_weapon == 0:
+		return &""
+	if not equipment.is_armed():
+		if defender.required_weapon == -1:
+			return &"classic_blunt_weapon_required"
+		if defender.required_weapon == -2:
+			return &"classic_sharp_weapon_required"
+		return &"classic_specific_weapon_required"
+	if defender.required_weapon == -1:
+		return &"" if equipment.melee_weapon.blunt == -1 else &"classic_blunt_weapon_required"
+	if defender.required_weapon == -2:
+		return &"" if equipment.melee_weapon.blunt == -2 else &"classic_sharp_weapon_required"
+	# FD-COMBAT-003: Castle's minus-1024 comparison cannot match the shipped
+	# 1..999 item IDs. Divinity defines this byte as the ordinary Item Number.
+	var required_item_id := defender.required_weapon & 0xff
+	return &"" if equipment.melee_weapon.classic_id == required_item_id else &"classic_specific_weapon_required"
+
+
+static func _invalid_weapon_reason(weapon: ItemDefinition) -> StringName:
+	if weapon == null:
+		return &""
+	if weapon.vs_small < 0 or weapon.vs_large < 0 or weapon.heat < 0 or weapon.cold < 0 or weapon.electric < 0 or weapon.vs_undead < 0 or weapon.vs_demon_devil < 0 or weapon.vs_evil < 0:
+		return &"unsupported_negative_weapon_range"
+	if weapon.special_1 == -10:
+		if weapon.special_3 < 20 or weapon.special_3 >= 60:
+			return &"invalid_weapon_condition"
+		if weapon.special_2 == 1 and (weapon.special_4 < 0 or weapon.special_4 >= 8):
+			return &"invalid_weapon_condition_save"
+	return &""
+
+
+func _roll_weapon_condition_monster(weapon: ItemDefinition, defender_definition: MonsterDefinition, rng: RealmzRng) -> Dictionary:
+	if weapon == null or weapon.special_1 != -10:
+		return {}
+	var result := {"index": weapon.special_3 - 20, "amount": weapon.special_5, "applies": false}
+	match weapon.special_2:
+		1:
+			var roll := rng.draw(100, &"combat.attack.weapon-condition-save")
+			var chance := _monster_save_chance(defender_definition, weapon.special_4)
+			result["saveIndex"] = weapon.special_4
+			result["saveChance"] = chance
+			result["saveRoll"] = roll
+			result["applies"] = not _monster_saved(defender_definition, weapon.special_4, roll, chance)
+		2:
+			var roll := rng.draw(100, &"combat.attack.weapon-condition-chance")
+			result["chance"] = weapon.special_4
+			result["roll"] = roll
+			result["applies"] = roll <= weapon.special_4
+		_:
+			result["applies"] = true
+	return result
+
+
+static func _roll_weapon_condition_character(weapon: ItemDefinition, defender: CharacterState, rng: RealmzRng) -> Dictionary:
+	if weapon == null or weapon.special_1 != -10:
+		return {}
+	var result := {"index": weapon.special_3 - 20, "amount": weapon.special_5, "applies": false}
+	match weapon.special_2:
+		1:
+			var roll := rng.draw(100, &"combat.attack.weapon-condition-save")
+			result["saveIndex"] = weapon.special_4
+			result["saveChance"] = defender.save_value(weapon.special_4)
+			result["saveRoll"] = roll
+			result["applies"] = roll > defender.save_value(weapon.special_4)
+		2:
+			var roll := rng.draw(100, &"combat.attack.weapon-condition-chance")
+			result["chance"] = weapon.special_4
+			result["roll"] = roll
+			result["applies"] = roll <= weapon.special_4
+		_:
+			result["applies"] = true
+	return result
+
+
+static func _apply_weapon_condition_monster(defender: MonsterState, condition_roll: Dictionary, resolution: AttackResolution) -> void:
+	if condition_roll.is_empty() or not condition_roll.get("applies", false):
+		return
+	var index := int(condition_roll["index"])
+	resolution.weapon_condition_index = index
+	resolution.weapon_condition_before = defender.conditions.value(index)
+	resolution.weapon_condition_after = resolution.weapon_condition_before
+	if resolution.weapon_condition_before > -1:
+		resolution.weapon_condition_after += int(condition_roll["amount"])
+		defender.conditions.set_value(index, resolution.weapon_condition_after)
+
+
+static func _apply_weapon_condition_character(defender: CharacterState, condition_roll: Dictionary, resolution: AttackResolution) -> void:
+	if condition_roll.is_empty() or not condition_roll.get("applies", false):
+		return
+	var index := int(condition_roll["index"])
+	resolution.weapon_condition_index = index
+	resolution.weapon_condition_before = defender.conditions.value(index)
+	resolution.weapon_condition_after = resolution.weapon_condition_before
+	if resolution.weapon_condition_before > -1:
+		resolution.weapon_condition_after += int(condition_roll["amount"])
+		defender.conditions.set_value(index, resolution.weapon_condition_after)
+
+
+static func _roll_weapon_physical(weapon: ItemDefinition, defender_definition: MonsterDefinition, rng: RealmzRng) -> int:
+	var damage := 0
+	if defender_definition != null:
+		if weapon.vs_undead != 0 and defender_definition.type_flag(1):
+			damage += rng.draw(maxi(1, weapon.vs_undead), &"combat.attack.weapon-versus-undead")
+		if weapon.vs_demon_devil != 0 and defender_definition.type_flag(2):
+			damage += rng.draw(maxi(1, weapon.vs_demon_devil), &"combat.attack.weapon-versus-demon-devil")
+		if weapon.vs_evil != 0 and defender_definition.type_flag(4):
+			damage += rng.draw(maxi(1, weapon.vs_evil), &"combat.attack.weapon-versus-evil")
+	# Castle's player melee path always uses the small-target weapon die, including Rand(0).
+	damage += rng.draw(maxi(1, weapon.vs_small), &"combat.attack.weapon-physical")
+	return damage
+
+
+func _roll_weapon_elements_monster(weapon: ItemDefinition, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng, effects: Array[Dictionary]) -> int:
+	var total := 0
+	var ranges: Array[int] = [weapon.heat, weapon.cold, weapon.electric]
+	var names: Array[StringName] = [&"fire", &"cold", &"electrical"]
+	var save_indexes: Array[int] = [1, 2, 3]
+	var conditions: Array[int] = [ConditionRules.FIRE_PROTECTION, ConditionRules.COLD_PROTECTION, ConditionRules.ELECTRICAL_PROTECTION]
+	for index: int in 3:
+		if ranges[index] == 0 or defender_definition.spell_immune(save_indexes[index]):
+			continue
+		var rolled := rng.draw(ranges[index], StringName("combat.attack.weapon-%s" % names[index]))
+		var effective := rolled
+		var protected := defender.conditions.is_active(conditions[index])
+		if protected:
+			effective = int(float(effective) / 2.0)
+		var save_roll := rng.draw(100, StringName("combat.attack.weapon-%s-save" % names[index]))
+		var save_chance := _monster_save_chance(defender_definition, save_indexes[index])
+		var saved := _monster_saved(defender_definition, save_indexes[index], save_roll, save_chance)
+		if saved:
+			effective = int(float(effective) / 2.0)
+		effects.append({"element": String(names[index]), "rolled": rolled, "saveIndex": save_indexes[index], "saveChance": save_chance, "saveRoll": save_roll, "saved": saved, "protected": protected, "amount": effective})
+		total += effective
+	return total
+
+
+static func _roll_weapon_elements_character(weapon: ItemDefinition, defender: CharacterState, rng: RealmzRng, effects: Array[Dictionary]) -> int:
+	var total := 0
+	var ranges: Array[int] = [weapon.heat, weapon.cold, weapon.electric]
+	var names: Array[StringName] = [&"fire", &"cold", &"electrical"]
+	var save_indexes: Array[int] = [1, 2, 3]
+	var conditions: Array[int] = [ConditionRules.FIRE_PROTECTION, ConditionRules.COLD_PROTECTION, ConditionRules.ELECTRICAL_PROTECTION]
+	for index: int in 3:
+		if ranges[index] == 0:
+			continue
+		var rolled := rng.draw(ranges[index], StringName("combat.attack.weapon-%s" % names[index]))
+		var save_roll := rng.draw(100, StringName("combat.attack.weapon-%s-save" % names[index]))
+		var save_chance := defender.save_value(save_indexes[index])
+		var saved := save_roll <= save_chance
+		var effective := int(float(rolled) / 2.0) if saved else rolled
+		var protected := defender.conditions.is_active(conditions[index])
+		if protected:
+			effective = int(float(effective) / 2.0)
+		effects.append({"element": String(names[index]), "rolled": rolled, "saveIndex": save_indexes[index], "saveChance": save_chance, "saveRoll": save_roll, "saved": saved, "protected": protected, "amount": effective})
+		total += effective
+	return total
 
 
 func resolve_monster_attack(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: CharacterState, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng, charm_save_bonus: int = 0) -> AttackResolution:
@@ -580,7 +815,7 @@ func _attacker_condition_modifier(conditions: ConditionSet) -> int:
 	return modifier
 
 
-func _defender_condition_modifier(conditions: ConditionSet) -> int:
+func _defender_condition_modifier(conditions: ConditionSet, include_protection_from_evil: bool = true) -> int:
 	var modifier := -2 * absi(conditions.value(ConditionRules.SHIELD_FROM_HITS))
 	modifier += 10 if conditions.is_active(ConditionRules.CONFUSED) else 0
 	modifier += 15 if conditions.is_active(ConditionRules.BLIND) else 0
@@ -591,7 +826,7 @@ func _defender_condition_modifier(conditions: ConditionSet) -> int:
 	modifier += absi(conditions.value(ConditionRules.TANGLED))
 	modifier += absi(conditions.value(ConditionRules.HINDERED_DEFENSE))
 	modifier -= absi(conditions.value(ConditionRules.DEFENSE_BONUS))
-	modifier -= 10 if conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL) else 0
+	modifier -= 10 if include_protection_from_evil and conditions.is_active(ConditionRules.PROTECTION_FROM_EVIL) else 0
 	return modifier
 
 

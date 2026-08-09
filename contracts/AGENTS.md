@@ -18,7 +18,7 @@ Mirror the authoritative Providence `.realmz2` schemas byte-for-byte and expose 
 ## Work Guidance
 
 - Record the matching Providence commit and schema SHA-256 when updating the mirror.
-- Schema v2 currently mirrors Providence commit `cad17d11` at SHA-256 `9d52599ed2d790d5264da5e67556b831aa66a3e1ccb79300864fe36877b4a33c`. The v2 campaign contract includes typed display metadata, restrictions, contact fields, splash identity, race/caste eligibility relationships, complete five-by-fifteen race aging tables, and eight-direction land Layout transitions.
+- Schema v2 currently mirrors Providence commit `c392abec` at SHA-256 `b011d35b0204a31ed3b3d9d17bdb71519d9e2f068105b1326dcaedb323dfd465`. The v2 contract includes typed display metadata, restrictions, race/caste eligibility and aging tables, eight-direction land Layout transitions, and bounded monster `requiredWeapon`/`magicToHit` fields separate from battle placement `distance`.
 
 ## Verification
 

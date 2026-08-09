@@ -7,6 +7,14 @@ var chance: int
 var roll: int
 var damage: int
 var reflected: bool
+var blocked: bool = false
+var block_reason: StringName = &""
+var physical_damage: int = 0
+var weapon_effects: Array[Dictionary] = []
+var weapon_condition_index: int = -1
+var weapon_condition_before: int = 0
+var weapon_condition_after: int = 0
+var critical_rolls: Array[int] = []
 var damage_deferred: bool = false
 var special_code: int = 0
 var special_potency: int = 0

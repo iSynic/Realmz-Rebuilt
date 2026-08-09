@@ -1,0 +1,51 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-003",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/attack.c",
+      "symbol": "short attack(short chare, short mon)",
+      "range": "259-282"
+    },
+    {
+      "path": "src/realmz_orig/loaditem.c",
+      "symbol": "void loaditem(short id)",
+      "range": "5-34"
+    }
+  ],
+  "shippedDataIdSha256": "a64ad1fb64933ecca45de2cbf84b9e0415337ae045c71f2c0c56770af84e80ad",
+  "divinityAuthoringObservation": "Req Weapon is the ordinary Item Number; -1 means blunt and -2 means bladed.",
+  "castleSourceObservations": [
+    {
+      "requiredWeaponStored": 25,
+      "loadedItemId": 25,
+      "comparison": "25 != 25 - 1024",
+      "blocked": true
+    },
+    {
+      "requiredWeaponStored": -2,
+      "armed": false,
+      "blocked": false
+    }
+  ],
+  "realmz2ChosenResults": [
+    {
+      "requiredWeaponStored": 25,
+      "loadedItemId": 25,
+      "blocked": false
+    },
+    {
+      "requiredWeaponStored": -109,
+      "normalizedItemNumber": 147,
+      "loadedItemId": 147,
+      "blocked": false
+    },
+    {
+      "requiredWeaponStored": -2,
+      "armed": false,
+      "blocked": true
+    }
+  ]
+}

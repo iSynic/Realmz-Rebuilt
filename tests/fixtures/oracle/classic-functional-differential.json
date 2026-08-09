@@ -4,7 +4,7 @@
     "castle": "491816ad60037394f92c428e99c004494d3c28b3",
     "remakeFunctional": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
     "remakeVm": "cdaa0d8dcc5ab81c195aa960c860bf74e7d4f40b",
-    "providence": "cad17d11bd8ec798d29bf5468ed8071019f32c1f"
+    "providence": "c392abecb8c948c62c66be76170131944232fcab"
   },
   "cases": [
     {
@@ -35,7 +35,7 @@
         "observation": "Land input sets both axes before one destination-tile movement check. Dungeon movement follows its separate cardinal edge path."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn normalized_cell_topology" }
@@ -82,7 +82,7 @@
         "observation": "newland scans the fixed door table in order, selects the first coordinate match, and leaves the scan path after that selected record regardless of its chance result."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" }
@@ -131,7 +131,7 @@
         "observation": "Castle selects exact resource type/ID pairs. Newly opened scenario forks lead the GetResource search chain, so scenario-local resources replace stock resources with the same exact key while equal IDs in other types remain unrelated."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_assets" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn managed_replaces_catalog_resource" },
@@ -181,7 +181,7 @@
         "observation": "Castle performs presentation-producing actions in program order and blocks only at its explicit click or selection boundaries."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
         ],
@@ -228,7 +228,7 @@
         "observation": "Castle repeatedly adds and drops selected character records inside partyselect. Item 34 is the distinct Done boundary; add or drop does not leave party selection."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_campaign" }
         ],
@@ -274,7 +274,7 @@
         "observation": "NewCharacter initializes saves from the two authored bonus tables, copies race conditions first, overwrites only caste value one with -1, and later clamps saves below -99 or above 120."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
@@ -322,7 +322,7 @@
         "observation": "NewCharacter's seven-iteration attribute loop consumes but does not assign its final roll. It applies age groups 1 through minimumagegroup, re-bounds the six attributes, performs three threshold rolls with conditional 0-through-7 special indices, then rolls stamina and age. applyage adjusts age-table columns 0 through 5 and saves 0 through 6; its creation-time magic-resistance and movement changes are overwritten by the later base formulas."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" }
         ],
@@ -370,7 +370,7 @@
         "observation": "age scans the five ranges but advances or erases only one neighboring row per call. applyage changes six attributes, strength-owned hit/damage, magic resistance, maximum movement with a floor of two, and saves zero through six without creation bounds. Midnight increments age before calling age. booty multiplies a maximum-age character's share by .6666666; the pinned source stores doesnotdie but does not consult it here. Spell specials 24, 91, and 92 alter age and call age once, with youth also consuming one Rand(3) stamina loss."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
@@ -419,7 +419,7 @@
         "observation": "showageupdate renders the character identity, race, resulting Youth/Young/Prime/Adult/Senior band, that band's year range, portrait, combat icon, and fifteen nonzero changes. Rejuvenation negates the erased higher band's row. It calls sound(3002) and remains in ModalDialog until any dialog item is activated. Midnight iterates party order and spells invoke the dialog before returning to their caller."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" }
         ],
@@ -467,7 +467,7 @@
         "observation": "attack computes ordinary damage, then every nonzero special consumes randrange(hitDice/2, hitDice). Party-target case 17 rolls savevs(7); failure reports result -48, truncates maxage * .01 * (attack damage maximum * hit dice) into age days, calls age once, and opens showageupdate only when that call changes the band. The special and dialog occur before ordinary physical damage is recorded and before attack returns. No monster-target case 17 exists."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
@@ -513,7 +513,7 @@
         "observation": "After ordinary damage is rolled, every nonzero special consumes randrange(hitDice/2, hitDice), floored at one. Specials 1/2/4/7 use save 5; 3/5 use save 7; and 6/16 use save 4. Failed party saves affect conditions 0/1/5/29, 3/6, and 9/28 respectively only when the current value is nonnegative; the pinned correction adds potency once when the starting value is below 30, even if the result exceeds 30, and still reports the result when the starting value is already 30. Monster targets stack without that gate. Monster save 7 averages six saves; other saves honor their shifted save byte, spell immunity, and undead auto-save after consuming the roll. A monster target above 100 magic resistance jumps to whiff after potency and loses ordinary damage. Party statuses use sound 630; monster disease uses 684 and the other monster statuses use 630."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -559,7 +559,7 @@
         "observation": "After ordinary damage and the generic potency draw, special 8 calls savevs(6) before testing the target spell-point balance. Failure transfers min(target spell points, hit dice times three) to the attacker; the attacker is not capped to maxspellpoints and no sound is requested. Party-target special 9 calls savevs(5), subtracts staminamax times twenty from the character's int32 earned experience without a zero floor, requests sound 630, and reports result -18. There is no monster-target case 9 and therefore no save draw there. A monster target above 100 runtime magic resistance reaches whiff before either resource-special save. Ordinary physical damage follows the special when the whole attack did not whiff."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -605,7 +605,7 @@
         "observation": "After the shared potency draw, save zero includes fifty for party charm resistance. Failure copies the attacker's traiter value to the target. Monster targets always report failed Charm and clear the attacker's cached target. Charmed party actors become automatic, every target query compares allegiance, and booty clears party traiter state after battle."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -648,7 +648,7 @@
         "observation": "Each branch rolls Rand(attack maximum), then saves 1 through 5 halve with integer truncation and matching protection halves again. Party targets and monster-target fire accumulate after both halves. Monster-target cold, electrical, chemical, and mental accumulate after the save but before protection, so the pinned source reduces only the displayed temporary value. The synthetic source-observation fixture records committed eight versus displayed four for that anomalous branch."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -665,6 +665,109 @@
         "id": "FD-COMBAT-001",
         "fixturePath": "tests/fixtures/oracle/monster-elemental-protection-correction.json",
         "fixtureSha256": "a5f88d1f69981c81ff8e290f8ecb51b930c68ad0ac3643cd8e1138788fb09114"
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "verified"
+    },
+    {
+      "id": "combat.character-melee-resolution",
+      "domain": "combat",
+      "claim": "A legal character melee attempt selects the equipped Classic type-2 weapon independently from its numeric damage bonus, derives combat damage, luck, and armor from every equipped item, preserves Castle's hit, weapon-die, target-tag, elemental, condition, reflection, helpless, and critical-draw order, and intentionally uses the defending monster's elemental save instead of Castle's apparent attacker-save typo.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake preserves Classic weapon dice, elemental ranges, target tags, magic-plus metadata, and equipped-stat effects through its item materializer, then adapts them to the generic melee accuracy and damage host. It is useful mapping and test evidence, but its normalized combat pipeline does not establish Castle's integer formula or RNG order.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_item_materializer.gd", "symbol": "func _native_item_fields(" },
+          { "path": "src/scripts/GameGlobal.gd", "symbol": "func calculate_melee_damage(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_item_materializer()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack(short chare, short mon)" },
+          { "path": "src/realmz_orig/wear.c", "symbol": "short wear(short character, short itemnum, short play)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "short savevs(short which, short who)" },
+          { "path": "src/realmz_orig/share-movecost-dialog.c", "symbol": "short Rand(short range)" }
+        ],
+        "authoredInputs": ["item type and equipped flag", "magic plus, luck, armor, weapon physical and elemental ranges", "target-tag bonuses and weapon special fields", "character hit modifiers, saves, conditions, and race hatred", "monster armor, types, saves, immunities, conditions, required weapon, and magical-plus threshold"],
+        "observation": "Castle identifies armed melee solely through armor slot two, while every equipped item's damage, luck, and armor contributes to derived combat values. A legal hit rolls weapon elemental ranges and saves, target-tag ranges, the physical small-target die, then two critical checks. Monster-target weapon elements incorrectly pass the attacker index to savevs; character targets pass the defender. The synthetic source fixture isolates the resulting save-identity divergence. Weapon requirements occur after the hit/fumble stage and before auto-hit; the separate required-weapon correction case owns Castle's source/manual conflicts. Fumbles and tactical legality remain unavailable rather than inferred."
+      },
+      "providence": {
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
+        ],
+        "expectedRepresentation": "Schema v2 preserves item type, damage/luck/armor modifiers, melee ranges, elemental ranges, target tags, and five special fields, plus monster requiredWeapon, magicToHit, saves, immunities, types, and conditions. Providence does not yet project character spec abilities; those critical branches remain outside this implemented case."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_rules.gd", "symbol": "func resolve_character_attack(" },
+        "expectedTrace": ["validated equipped-definition snapshot", "optional weapon-condition precheck", "signed luck and inclusive hit roll", "independent magic and required-weapon gates", "optional reflection", "weapon elements against defender saves", "target-tag and physical weapon roll", "two preserved critical draws", "helpless override", "condition and health mutation", "typed combat event"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_combat_magic_and_monsters()" }
+        ]
+      },
+      "fidelityDecision": {
+        "id": "FD-COMBAT-002",
+        "fixturePath": "tests/fixtures/oracle/character-weapon-elemental-save-correction.json",
+        "fixtureSha256": "9e5f128e0959a4d7a0ba6b1c848505d8b972ae91aac4ae30f88188753d78053f"
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "verified"
+    },
+    {
+      "id": "combat.character-required-weapon-correction",
+      "domain": "combat",
+      "claim": "Monster weapon-to-hit requirements remain distinct from battle placement distance and magical-plus thresholds. Realmz 2.0 intentionally follows Divinity's Item Number contract for specific weapons, preserves the signed-byte representation, and requires a real matching weapon for blunt, sharp, and exact-item restrictions.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake recognized the monster distance byte as a required-weapon field, mapped positive values directly to Classic item identity, kept blunt and sharp sentinels separate, and enforced the resulting metadata before its generic accuracy calculation. It is corroborating implementation evidence rather than the authority.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_bestiary_materializer.gd", "symbol": "func _native_weapon_requirements(" },
+          { "path": "src/scripts/classic_runtime/classic_monster_weapon_rules.gd", "symbol": "static func can_hit(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_bestiary_materializer()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack(short chare, short mon)" },
+          { "path": "src/realmz_orig/loaditem.c", "symbol": "void loaditem(short id)" },
+          { "path": "src/realmz_orig/structs.h", "symbol": "struct itemattr" },
+          { "path": "src/realmz_orig/structs.h", "symbol": "struct monster" }
+        ],
+        "authoredInputs": ["Data MD required-weapon signed byte", "Data MD magicToHit byte", "Data ID item number and internal itemid", "equipped weapon blunt/sharp marker"],
+        "observation": "Battle Data BD has a separate distance byte that combatsetup randomizes for initial placement. Monster Data MD dist is the weapon-to-hit byte. Castle correctly checks -1 blunt and -2 sharp for armed attackers, but its armed guard lets all unarmed attacks bypass those restrictions. For a specific item it compares the signed monster byte to item.itemid minus 1024. The shipped Data ID stores ordinary 1..999 item IDs, byte-identically in Castle and Providence, so the comparison cannot satisfy Divinity's documented Item Number contract. The correction fixture records both defects without claiming a Castle runtime observation."
+      },
+      "providence": {
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
+          { "path": "src/editor/panels/combat/monsterReferenceModel.ts", "symbol": "export function monsterRequiredWeaponStoredCode(" }
+        ],
+        "expectedRepresentation": "Schema v2 emits monster requiredWeapon and magicToHit separately from battle distance. requiredWeapon retains the exact signed byte; values other than zero, -1, and -2 normalize to the authored unsigned Item Number at the rules boundary."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_rules.gd", "symbol": "static func _required_weapon_reason(" },
+        "expectedTrace": ["luck and hit roll", "independent magical-plus gate", "signed required-weapon classification", "FD-COMBAT-003 unsigned Item Number normalization", "actual equipped weapon validation", "explicit typed block or ordinary attack continuation"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_combat_magic_and_monsters()" },
+          { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" }
+        ]
+      },
+      "fidelityDecision": {
+        "id": "FD-COMBAT-003",
+        "fixturePath": "tests/fixtures/oracle/character-required-weapon-correction.json",
+        "fixtureSha256": "9af69f4ce70579679db5d3e6d723913a8287b530c0f3c1c4b1c93e2affc2d004"
       },
       "decision": "intentional-correction",
       "availability": "implemented",
@@ -696,7 +799,7 @@
         "observation": "After potency, both branches call savevs(7). Blindness failure sets condition 27 to -1 and ordinary damage follows. Petrification failure sets party condition 26 to -1 or monster condition 26 to TRUE, sets stamina to zero, and jumps to forcekill before ordinary and special damage subtraction. No sound is requested."
       },
       "providence": {
-        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "commit": "c392abecb8c948c62c66be76170131944232fcab",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],

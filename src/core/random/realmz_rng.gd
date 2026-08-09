@@ -18,13 +18,25 @@ func draw(range_max: int, semantic_tag: StringName) -> int:
 	if range_max <= 0 or range_max > 32_767:
 		push_error("RealmzRng range must be between 1 and 32767.")
 		return 0
+	return _draw_scaled(range_max, semantic_tag)
+
+
+func draw_classic(range_value: int, semantic_tag: StringName) -> int:
+	if range_value < -32_768 or range_value > 32_767:
+		push_error("Castle Rand range must fit a signed 16-bit value.")
+		return 0
+	return _draw_scaled(range_value, semantic_tag)
+
+
+func _draw_scaled(range_value: int, semantic_tag: StringName) -> int:
 	var raw: int = _next_raw()
 	var positive_raw: int = -raw if raw < 0 else raw
-	var result: int = 1 + floori(float(positive_raw * range_max) / float(RAW_SCALE))
+	# C integer division truncates toward zero for Castle's signed Rand parameter.
+	var result: int = 1 + int(float(positive_raw * range_value) / float(RAW_SCALE))
 	_trace.append({
 		"drawIndex": _draw_count,
 		"tag": String(semantic_tag),
-		"range": range_max,
+		"range": range_value,
 		"raw": raw,
 		"result": result,
 	})

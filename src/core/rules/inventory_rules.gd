@@ -69,12 +69,53 @@ func remove_item(character: CharacterState, instance_id: String, definition: Ite
 	return null
 
 
-func equipped_damage_bonus(character: CharacterState, definitions: Array[ItemDefinition]) -> int:
+func combat_equipment(character: CharacterState, definitions: Array[ItemDefinition]) -> CharacterCombatEquipment:
+	var result := CharacterCombatEquipment.new()
+	if character == null:
+		result.reject(&"invalid_character", "Combat equipment requires a character.")
+		return result
 	var by_id: Dictionary = {}
 	for definition: ItemDefinition in definitions:
 		by_id[definition.id] = definition
-	var total := 0
+	var equipped_count := 0
+	var damage_sum := 0
+	var positive_damage_sum := 0
+	var has_negative_damage := false
+	var luck_sum := 0
+	var armor_sum := 0
+	var has_positive_armor := false
+	var has_negative_armor := false
 	for instance: ItemInstance in character.inventory():
-		if instance.equipped and by_id.has(instance.definition_id):
-			total += (by_id[instance.definition_id] as ItemDefinition).damage_bonus
-	return total
+		if not instance.equipped:
+			continue
+		if not by_id.has(instance.definition_id):
+			result.reject(&"unknown_equipped_item", "Equipped item '%s' has no immutable definition." % instance.definition_id)
+			return result
+		var definition: ItemDefinition = by_id[instance.definition_id]
+		equipped_count += 1
+		result.equipped_damage_bonus += definition.damage_bonus
+		damage_sum += definition.damage_bonus
+		if definition.damage_bonus < 0:
+			has_negative_damage = true
+		else:
+			positive_damage_sum += definition.damage_bonus
+		luck_sum += definition.luck_bonus
+		armor_sum += definition.armor_bonus
+		has_positive_armor = has_positive_armor or definition.armor_bonus > 0
+		has_negative_armor = has_negative_armor or definition.armor_bonus < 0
+		if absi(definition.item_type) == 2:
+			if result.melee_weapon != null:
+				result.reject(&"multiple_melee_weapons", "Classic combat has one melee weapon slot, but '%s' and '%s' are both equipped." % [result.melee_weapon.id, definition.id])
+				return result
+			result.melee_weapon = definition
+			result.melee_weapon_instance_id = instance.id
+	if has_positive_armor and has_negative_armor:
+		result.reject(&"unsupported_equipment_order", "Classic mixed positive and negative armor modifiers require equipment-order state that is not available yet.")
+		return result
+	if has_negative_damage and character.damage_bonus + positive_damage_sum > 110:
+		result.reject(&"unsupported_equipment_order", "Classic cap-sensitive positive and negative damage modifiers require equipment-order state that is not available yet.")
+		return result
+	result.effective_damage_bonus = mini(110, character.damage_bonus + damage_sum) if equipped_count > 0 else character.damage_bonus
+	result.effective_luck = character.luck + luck_sum
+	result.effective_armor = maxi(0, character.armor + armor_sum)
+	return result

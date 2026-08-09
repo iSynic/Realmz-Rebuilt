@@ -19,3 +19,8 @@ func run() -> void:
 	assert_equal(scripted.draw(100, "scripted.high-negative"), 100, "Castle scaling uses absolute raw output")
 	assert_equal(scripted.draw(100, "scripted.zero"), 1, "Castle Rand returns at least one")
 	assert_equal(scripted.draw(100, "scripted.high-positive"), 100, "Castle scaling reaches the requested range")
+
+	var signed := ScriptedRng.new([32_767, 32_767])
+	assert_equal(signed.draw_classic(0, "scripted.zero-range"), 1, "Castle Rand zero still consumes a draw and returns one")
+	assert_equal(signed.draw_classic(-100, "scripted.negative-range"), -98, "Castle Rand preserves signed range multiplication and C truncation")
+	assert_equal(signed.snapshot().draw_count, 2, "signed Classic ranges remain part of the serializable draw sequence")

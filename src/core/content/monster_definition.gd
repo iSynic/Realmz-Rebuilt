@@ -10,7 +10,8 @@ var agility: int
 var movement_max: int
 var armor: int
 var magic_resistance: int
-var distance: int
+var required_weapon: int
+var magic_to_hit: int
 var traitor: bool
 var size: int
 var attack_count: int

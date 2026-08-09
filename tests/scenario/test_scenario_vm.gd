@@ -1414,7 +1414,7 @@ func _test_monster_charm_and_affliction_flow(content: RealmzContent) -> void:
 	session._state.party_setup_completed = true
 	session._state.combat = CombatState.new(battle.id, [monster])
 	session._state.combat.set_turn_order([loyal.id, monster.id, victim.id])
-	session._rng = ScriptedRng.new([32_767, 32_767, 32_767, 0, 0, 0, 0, 0, 0, 0, 0])
+	session._rng = ScriptedRng.new([32_767, 32_767, 32_767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", loyal.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "charm and the resulting charmed turn require no fabricated player interaction")
 	assert_true(victim.traitor, "the session owns the charmed party allegiance while battle remains active")
