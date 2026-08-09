@@ -8,10 +8,11 @@ var outcome: StringName
 var turn_order: Array[String] = []
 var legal_actions: Array[StringName] = []
 var targets: Array[MonsterView] = []
+var character_targets: Array[CharacterView] = []
 var monsters: Array[MonsterView] = []
 
 
-func _init(combat: CombatState) -> void:
+func _init(combat: CombatState, characters: Array[CharacterState] = [], content: RealmzContent = null) -> void:
 	battle_id = combat.battle_id
 	round_number = combat.round_number
 	active_actor_id = combat.active_actor_id()
@@ -24,4 +25,8 @@ func _init(combat: CombatState) -> void:
 	for monster: MonsterState in combat.monsters():
 		var view := MonsterView.new(monster)
 		monsters.append(view)
-		targets.append(view)
+		if monster.current_health > 0 and monster.traitor:
+			targets.append(view)
+	for character: CharacterState in characters:
+		if character.current_health > 0 and character.traitor:
+			character_targets.append(CharacterView.new(character, content))

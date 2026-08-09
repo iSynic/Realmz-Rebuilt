@@ -17,6 +17,11 @@ func run() -> void:
 	if loaded != null:
 		assert_equal(loaded.state.name, "Vault Fixture", "vault state round-trips through the detached character record")
 		assert_equal(loaded.publication_metadata.get("label"), "Fixture vault character", "publication metadata remains separate from gameplay state")
+	var charmed_state := CharacterState.from_data(character.to_data())
+	charmed_state.traitor = true
+	var charmed_record := CharacterVaultRecord.new("vault-charmed-character", "realmz-classic-1", "realmz2-synthetic-fixture", "0000000000000000000000000000000000000000000000000000000000000000", charmed_state)
+	charmed_record.state.id = charmed_record.character_id
+	assert_false(repository.publish_revision(charmed_record), "battle-scoped Charm allegiance cannot leak into a reusable vault revision")
 	var records := repository.list_current_records()
 	assert_true(records.any(func(candidate: CharacterVaultRecord) -> bool: return candidate.character_id == record.character_id), "the current-revision index exposes published characters")
 	var package := PackageRepository.new().load_package(FIXTURE_PATH)

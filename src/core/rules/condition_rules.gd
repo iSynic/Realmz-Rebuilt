@@ -37,6 +37,8 @@ const HINDERED_DEFENSE := 37
 const DEFENSE_BONUS := 38
 const SILENCED := 39
 
+const PARTY_CHARM_RESISTANCE := 8
+
 
 func tick_character(character: CharacterState) -> Array[DomainEvent]:
 	var events: Array[DomainEvent] = []

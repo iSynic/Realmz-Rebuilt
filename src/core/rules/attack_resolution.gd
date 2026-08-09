@@ -30,6 +30,13 @@ var special_target_before: int = 0
 var special_target_after: int = 0
 var special_actor_before: int = 0
 var special_actor_after: int = 0
+var special_element: StringName = &""
+var special_damage_rolled: int = 0
+var special_damage_amount: int = 0
+var special_display_amount: int = 0
+var special_allegiance_before: bool = false
+var special_allegiance_after: bool = false
+var physical_damage_skipped: bool = false
 var aging: CharacterAgingResult
 
 
@@ -40,3 +47,7 @@ func _init(did_hit: bool, did_kill: bool, hit_chance: int, attack_roll: int, dea
 	roll = attack_roll
 	damage = dealt_damage
 	reflected = was_reflected
+
+
+func total_damage() -> int:
+	return 0 if physical_damage_skipped else damage + special_damage_amount

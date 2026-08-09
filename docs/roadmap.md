@@ -118,7 +118,7 @@ Remaining fidelity boundary: the dialog carries stable portrait and combat-icon 
 - Providence schema v2 already exports attack rows, hit dice, runtime magic resistance inputs, type flags, saves, and spell immunities. No compiler or package-contract change was required.
 - The typed suite passes 1,690 assertions across 11 suites. Differential validation covers eleven cases against the pinned Castle, Remake, and Providence roots.
 
-Remaining fidelity boundary: monster specials 10–15 and 18–19 still require their own rolling evidence passes; this tranche does not imply them.
+The later remaining-monster-specials pass completes specials 10–15 and 18–19; this section records only the earlier status tranche's narrower evidence.
 
 ## Current rolling fidelity pass — monster resource drains (implemented)
 
@@ -127,4 +127,12 @@ Remaining fidelity boundary: monster specials 10–15 and 18–19 still require 
 - Monster spell points now restore across the central state boundary when a source-backed drain has raised them above maximum. Direct negative experience, both sides of spell transfer, RNG order, empty/saved branches, monster-only applicability, events, and whole-session restoration are covered without changing `.r2save` v3.
 - Providence schema v2 already emits the attack special, hit dice, stamina bonus, spell points, saves, immunities, and magic resistance needed by the fixed runtime construction path. No Providence or package-contract change was required. The typed suite passes 1,725 assertions across 11 suites, and differential validation covers twelve cases.
 
-Remaining fidelity boundary: special 10 Charm requires a source-shaped combat-allegiance pass; elemental specials 11–15 and permanent afflictions 18–19 remain separate rolling cases.
+## Current rolling fidelity pass — remaining monster specials (implemented)
+
+- Special 10 now uses a persisted character allegiance field rather than a presentation trait. Party charm resistance adds fifty to save zero, undead and immunity saves remain source-ordered, charmed actors run automatically against the opposite side, battle resolution counts both character and monster allegiance, and battle cleanup restores the party's base side.
+- Specials 11–15 now preserve the generic potency draw, separate elemental damage draw, save 1–5, matching protection, integer truncation, and total health loss. `FD-COMBAT-001` deliberately corrects Castle's monster-target cold-through-mental display-only protection bug; the source observation, synthetic fixture hash, player-facing problem, and chosen-result test are recorded in `fidelity-ledger.md`.
+- Specials 18 and 19 now preserve save seven, permanent blindness, party-versus-monster stone sentinels, resistance whiffs, and petrification's force-kill path that skips ordinary physical damage after it was rolled.
+- The session emits typed special facts for element, rolled/committed/display damage, allegiance, condition, and force-kill ordering. Mid-battle Charm survives save/restore; automatic charmed turns never yield a player action request; cleanup publishes restored allegiance.
+- Providence schema v2 already carries every immutable input. No package, compiler, or `.r2save` envelope revision was required. The typed suite passes 1,775 assertions across 11 suites, including allegiance-aware hostile targeting, enemy-count participation, and rejection of battle-scoped allegiance from reusable vault records, and differential validation now covers fifteen cases.
+
+Next rolling priority: ordinary combat equipment and tactical resolution. Compare the current abstract attack path with Remake's implemented weapons/armor and Castle's complete `attack`, `attack2`, positioning, attack-count, missile, fumble, reflection, and weapon-requirement control flow before expanding tactical presentation.

@@ -49,7 +49,7 @@ static func from_data(value: Variant) -> CharacterVaultRecord:
 	if not value["characterId"] is String or value["characterId"].is_empty() or not value["revisionHash"] is String or value["revisionHash"].length() != 64 or not value["rulesVersion"] is String or value["rulesVersion"].is_empty() or not value["sourceCampaignId"] is String or not value["sourcePackageHash"] is String or value["sourcePackageHash"].length() != 64 or not value["publication"] is Dictionary or not value["sourceRevision"] is String:
 		return null
 	var state := CharacterState.from_data(value["state"])
-	if state == null or state.id != value["characterId"]:
+	if state == null or state.id != value["characterId"] or state.traitor:
 		return null
 	var result := CharacterVaultRecord.new(value["characterId"], value["rulesVersion"], value["sourceCampaignId"], value["sourcePackageHash"], state, value["sourceRevision"])
 	result.revision_hash = value["revisionHash"]

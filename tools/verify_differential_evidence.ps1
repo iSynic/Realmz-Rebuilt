@@ -86,6 +86,19 @@ foreach ($case in $ledger.cases) {
     if ($case.decision -eq "unresolved") {
         Assert-Condition ($case.availability -eq "disabled") "$caseId is unresolved but not disabled."
     }
+    if ($case.decision -eq "intentional-correction") {
+        $decision = $case.fidelityDecision
+        Assert-Condition ($null -ne $decision) "$caseId has no fidelityDecision record."
+        Assert-Condition ([string]$decision.id -match '^FD-[A-Z0-9]+-[0-9]{3}$') "$caseId has an invalid fidelity decision ID."
+        $fixturePath = [string]$decision.fixturePath
+        $fixtureHash = [string]$decision.fixtureSha256
+        Assert-Condition (-not [System.IO.Path]::IsPathRooted($fixturePath)) "$caseId has an absolute fidelity fixture path."
+        Assert-Condition ($fixtureHash -match '^[0-9a-f]{64}$') "$caseId has an invalid fidelity fixture hash."
+        $fixtureFullPath = Join-Path $repoRoot $fixturePath
+        Assert-Condition (Test-Path -LiteralPath $fixtureFullPath -PathType Leaf) "$caseId fidelity fixture does not exist."
+        $actualFixtureHash = (Get-FileHash -LiteralPath $fixtureFullPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        Assert-Condition ($actualFixtureHash -eq $fixtureHash) "$caseId fidelity fixture hash is stale."
+    }
 
     Assert-Condition ($case.remake.commit -eq $ledger.references.remakeFunctional) "$caseId has the wrong Remake commit."
     Assert-Condition ($case.castle.commit -eq $ledger.references.castle) "$caseId has the wrong Castle commit."

@@ -2264,7 +2264,10 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var targets: Array[Dictionary] = []
 	for monster: MonsterState in combat.monsters():
 		if monster.current_health > 0 and monster.traitor:
-			targets.append({"id": monster.id, "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health})
+			targets.append({"id": monster.id, "kind": "monster", "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health})
+	for character: CharacterState in _game_state.party.characters():
+		if character.current_health > 0 and character.traitor:
+			targets.append({"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
 	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat.battle_id, "round": combat.round_number, "actorId": combat.active_actor_id(), "actions": ["attack", "defend", "retreat"], "targets": targets})
 
 

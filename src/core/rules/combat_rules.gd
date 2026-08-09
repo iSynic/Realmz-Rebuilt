@@ -47,7 +47,36 @@ func resolve_character_attack(attacker: CharacterState, defender: MonsterState, 
 	return AttackResolution.new(true, defender.current_health <= 0, chance, roll, damage)
 
 
-func resolve_monster_attack(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: CharacterState, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng) -> AttackResolution:
+func resolve_character_attack_character(attacker: CharacterState, defender: CharacterState, equipped_damage_bonus: int, rng: RealmzRng, behind: bool = false) -> AttackResolution:
+	if attacker == null or defender == null or rng == null:
+		return null
+	var chance := 50 + attacker.to_hit + (20 if behind else 0) + 5 * equipped_damage_bonus
+	chance += _attacker_condition_modifier(attacker.conditions)
+	chance += rng.draw(maxi(1, attacker.luck), &"combat.attack.luck")
+	chance -= defender.armor
+	chance += _defender_condition_modifier(defender.conditions)
+	chance = maxi(5, chance)
+	var roll := rng.draw(100, &"combat.attack.hit")
+	var hit := roll <= chance or defender.conditions.is_active(ConditionRules.HELPLESS)
+	if not hit:
+		return AttackResolution.new(false, false, chance, roll, 0)
+	var reflected := defender.conditions.is_active(ConditionRules.REFLECTING_ATTACKS) and rng.draw(100, &"combat.attack.reflect") < 34
+	var damage := equipped_damage_bonus + attacker.damage_bonus + attacker.conditions.value(ConditionRules.ATTACK_BONUS)
+	if attacker.conditions.is_active(ConditionRules.STRONG):
+		damage += 3
+	if equipped_damage_bonus == 0:
+		damage += rng.draw(maxi(1, attacker.hand_to_hand), &"combat.attack.unarmed-damage")
+	damage = maxi(0, damage)
+	if defender.conditions.is_active(ConditionRules.HELPLESS):
+		damage = defender.current_health
+	if reflected:
+		attacker.current_health -= damage
+		return AttackResolution.new(true, attacker.current_health <= 0, chance, roll, damage, true)
+	defender.current_health -= damage
+	return AttackResolution.new(true, defender.current_health <= 0, chance, roll, damage)
+
+
+func resolve_monster_attack(attacker: MonsterState, attacker_definition: MonsterDefinition, attack_index: int, defender: CharacterState, race: RaceDefinition, caste: CasteDefinition, rng: RealmzRng, charm_save_bonus: int = 0) -> AttackResolution:
 	if attacker == null or attacker_definition == null or defender == null or rng == null:
 		return null
 	var chance := 50 + 5 * attacker.hit_dice
@@ -80,6 +109,10 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 		_apply_party_status_special(resolution, defender, rng)
 	elif _is_resource_special(attack.special):
 		_apply_party_resource_special(resolution, attacker, defender, rng)
+	elif attack.special == 10:
+		_apply_party_charm_special(resolution, attacker, defender, rng, charm_save_bonus)
+	elif _is_elemental_special(attack.special):
+		_apply_party_elemental_special(resolution, attack, defender, rng)
 	elif attack.special == 17:
 		resolution.special_handled = true
 		resolution.special_save_index = 7
@@ -92,9 +125,11 @@ func resolve_monster_attack(attacker: MonsterState, attacker_definition: Monster
 			resolution.special_age_days = int(float(race.max_age) * 0.01 * float(age_factor)) if race != null else 0
 			if race != null and caste != null:
 				resolution.aging = _characters.advance_age_days(defender, race, caste, resolution.special_age_days)
+	elif attack.special in [18, 19]:
+		_apply_party_permanent_affliction(resolution, defender, rng)
 	resolution.damage_deferred = resolution.aging != null and resolution.aging.changed_group()
-	if not resolution.damage_deferred:
-		defender.current_health -= damage
+	if not resolution.damage_deferred and not resolution.physical_damage_skipped:
+		defender.current_health -= damage + resolution.special_damage_amount
 		resolution.killed = defender.current_health <= 0
 	return resolution
 
@@ -140,6 +175,20 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 			resolution.special_resource = &"spell_points" if attack.special == 8 else &"experience"
 		elif attack.special == 17:
 			resolution.special_handled = true
+		elif attack.special == 10:
+			resolution.special_handled = true
+			resolution.special_save_index = 0
+			resolution.special_allegiance_before = defender.traitor
+			resolution.special_allegiance_after = defender.traitor
+		elif _is_elemental_special(attack.special):
+			resolution.special_handled = true
+			resolution.special_save_index = attack.special - 10
+			resolution.special_condition_index = _elemental_condition_index(attack.special)
+			resolution.special_element = _elemental_name(attack.special)
+		elif attack.special in [18, 19]:
+			resolution.special_handled = true
+			resolution.special_save_index = 7
+			resolution.special_condition_index = ConditionRules.BLIND if attack.special == 18 else ConditionRules.TURNED_TO_STONE
 		if defender.magic_resistance > 100:
 			resolution.special_blocked = true
 			resolution.special_block_reason = &"magic_resistance"
@@ -154,11 +203,147 @@ func resolve_monster_attack_monster(attacker: MonsterState, attacker_definition:
 	elif attack.special == 9:
 		resolution.special_blocked = true
 		resolution.special_block_reason = &"party_target_only"
+	elif attack.special == 10:
+		_apply_monster_charm_special(resolution, attacker, defender, defender_definition, rng)
+	elif _is_elemental_special(attack.special):
+		_apply_monster_elemental_special(resolution, attack, defender, defender_definition, rng)
 	elif attack.special == 17:
 		resolution.special_handled = true
-	defender.current_health -= damage
-	resolution.killed = defender.current_health <= 0
+	elif attack.special in [18, 19]:
+		_apply_monster_permanent_affliction(resolution, defender, defender_definition, rng)
+	if not resolution.physical_damage_skipped:
+		defender.current_health -= damage + resolution.special_damage_amount
+		resolution.killed = defender.current_health <= 0
 	return resolution
+
+
+func _apply_party_charm_special(resolution: AttackResolution, attacker: MonsterState, defender: CharacterState, rng: RealmzRng, save_bonus: int) -> void:
+	resolution.special_handled = true
+	resolution.special_save_index = 0
+	resolution.special_save_chance = defender.save_value(0) + save_bonus
+	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
+	resolution.special_saved = resolution.special_save_roll <= resolution.special_save_chance
+	resolution.special_allegiance_before = defender.traitor
+	resolution.special_allegiance_after = defender.traitor
+	if resolution.special_saved:
+		return
+	defender.traitor = attacker.traitor
+	resolution.special_allegiance_after = defender.traitor
+	resolution.special_applied = resolution.special_allegiance_after != resolution.special_allegiance_before
+	# Castle reports party charm only while incrementing the original loyal-party count.
+	resolution.special_announced = not resolution.special_allegiance_before
+
+
+func _apply_monster_charm_special(resolution: AttackResolution, attacker: MonsterState, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng) -> void:
+	resolution.special_handled = true
+	resolution.special_save_index = 0
+	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
+	resolution.special_save_chance = _monster_save_chance(defender_definition, 0)
+	resolution.special_saved = _monster_saved(defender_definition, 0, resolution.special_save_roll, resolution.special_save_chance)
+	resolution.special_allegiance_before = defender.traitor
+	resolution.special_allegiance_after = defender.traitor
+	if resolution.special_saved:
+		return
+	defender.traitor = attacker.traitor
+	resolution.special_allegiance_after = defender.traitor
+	resolution.special_applied = resolution.special_allegiance_after != resolution.special_allegiance_before
+	resolution.special_announced = true
+
+
+func _apply_party_elemental_special(resolution: AttackResolution, attack: MonsterAttackDefinition, defender: CharacterState, rng: RealmzRng) -> void:
+	resolution.special_handled = true
+	resolution.special_save_index = resolution.special_code - 10
+	resolution.special_condition_index = _elemental_condition_index(resolution.special_code)
+	resolution.special_element = _elemental_name(resolution.special_code)
+	resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
+	resolution.special_condition_after = resolution.special_condition_before
+	resolution.special_damage_rolled = rng.draw(maxi(1, attack.damage_max), &"combat.monster-attack.special-damage")
+	resolution.special_save_chance = defender.save_value(resolution.special_save_index)
+	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
+	resolution.special_saved = resolution.special_save_roll <= resolution.special_save_chance
+	var effective := resolution.special_damage_rolled
+	if resolution.special_saved:
+		effective = int(float(effective) / 2.0)
+	if defender.conditions.is_active(resolution.special_condition_index):
+		effective = int(float(effective) / 2.0)
+	resolution.special_amount = effective
+	resolution.special_damage_amount = effective
+	resolution.special_display_amount = effective
+	resolution.special_applied = effective != 0
+	resolution.special_announced = effective != 0
+
+
+func _apply_monster_elemental_special(resolution: AttackResolution, attack: MonsterAttackDefinition, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng) -> void:
+	resolution.special_handled = true
+	resolution.special_save_index = resolution.special_code - 10
+	resolution.special_condition_index = _elemental_condition_index(resolution.special_code)
+	resolution.special_element = _elemental_name(resolution.special_code)
+	resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
+	resolution.special_condition_after = resolution.special_condition_before
+	resolution.special_damage_rolled = rng.draw(maxi(1, attack.damage_max), &"combat.monster-attack.special-damage")
+	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
+	resolution.special_save_chance = _monster_save_chance(defender_definition, resolution.special_save_index)
+	resolution.special_saved = _monster_saved(defender_definition, resolution.special_save_index, resolution.special_save_roll, resolution.special_save_chance)
+	var after_save := resolution.special_damage_rolled
+	if resolution.special_saved:
+		after_save = int(float(after_save) / 2.0)
+	var displayed := after_save
+	if defender.conditions.is_active(resolution.special_condition_index):
+		displayed = int(float(displayed) / 2.0)
+	# FD-COMBAT-001 corrects Castle's monster-target copy/paste ordering so protection
+	# changes committed damage as well as the number reported to the player.
+	resolution.special_amount = displayed
+	resolution.special_damage_amount = displayed
+	resolution.special_display_amount = displayed
+	resolution.special_applied = resolution.special_amount != 0
+	resolution.special_announced = displayed != 0
+
+
+func _apply_party_permanent_affliction(resolution: AttackResolution, defender: CharacterState, rng: RealmzRng) -> void:
+	resolution.special_handled = true
+	resolution.special_save_index = 7
+	resolution.special_condition_index = ConditionRules.BLIND if resolution.special_code == 18 else ConditionRules.TURNED_TO_STONE
+	resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
+	resolution.special_condition_after = resolution.special_condition_before
+	resolution.special_save_chance = defender.save_value(7)
+	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
+	resolution.special_saved = resolution.special_save_roll <= resolution.special_save_chance
+	if resolution.special_saved:
+		return
+	resolution.special_condition_after = -1
+	defender.conditions.set_value(resolution.special_condition_index, -1)
+	resolution.special_applied = resolution.special_condition_after != resolution.special_condition_before
+	resolution.special_announced = true
+	if resolution.special_code == 19:
+		resolution.special_target_before = defender.current_health
+		defender.current_health = 0
+		resolution.special_target_after = 0
+		resolution.physical_damage_skipped = true
+		resolution.killed = true
+
+
+func _apply_monster_permanent_affliction(resolution: AttackResolution, defender: MonsterState, defender_definition: MonsterDefinition, rng: RealmzRng) -> void:
+	resolution.special_handled = true
+	resolution.special_save_index = 7
+	resolution.special_condition_index = ConditionRules.BLIND if resolution.special_code == 18 else ConditionRules.TURNED_TO_STONE
+	resolution.special_condition_before = defender.conditions.value(resolution.special_condition_index)
+	resolution.special_condition_after = resolution.special_condition_before
+	resolution.special_save_roll = rng.draw(100, &"combat.monster-attack.special-save")
+	resolution.special_save_chance = _monster_save_chance(defender_definition, 7)
+	resolution.special_saved = _monster_saved(defender_definition, 7, resolution.special_save_roll, resolution.special_save_chance)
+	if resolution.special_saved:
+		return
+	var sentinel := -1 if resolution.special_code == 18 else 1
+	resolution.special_condition_after = sentinel
+	defender.conditions.set_value(resolution.special_condition_index, sentinel)
+	resolution.special_applied = resolution.special_condition_after != resolution.special_condition_before
+	resolution.special_announced = true
+	if resolution.special_code == 19:
+		resolution.special_target_before = defender.current_health
+		defender.current_health = 0
+		resolution.special_target_after = 0
+		resolution.physical_damage_skipped = true
+		resolution.killed = true
 
 
 func _apply_party_status_special(resolution: AttackResolution, defender: CharacterState, rng: RealmzRng) -> void:
@@ -280,6 +465,29 @@ static func _is_status_special(special_code: int) -> bool:
 
 static func _is_resource_special(special_code: int) -> bool:
 	return special_code in [8, 9]
+
+
+static func _is_elemental_special(special_code: int) -> bool:
+	return special_code >= 11 and special_code <= 15
+
+
+static func _elemental_condition_index(special_code: int) -> int:
+	return ConditionRules.FIRE_PROTECTION + special_code - 11
+
+
+static func _elemental_name(special_code: int) -> StringName:
+	match special_code:
+		11:
+			return &"fire"
+		12:
+			return &"cold"
+		13:
+			return &"electrical"
+		14:
+			return &"chemical"
+		15:
+			return &"mental"
+	return &""
 
 
 static func _resource_save_index(special_code: int) -> int:

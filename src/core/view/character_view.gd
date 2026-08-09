@@ -39,6 +39,7 @@ var movement: int
 var maximum_movement: int
 var carried_load: int
 var maximum_load: int
+var traitor: bool
 var condition_values: Array[int]
 var save_values: Array[int]
 var items: Array[ItemView] = []
@@ -91,6 +92,7 @@ func _init(character: CharacterState, content: RealmzContent = null) -> void:
 	maximum_movement = character.maximum_movement
 	carried_load = character.carried_load
 	maximum_load = character.maximum_load
+	traitor = character.traitor
 	condition_values = character.conditions.values()
 	for index: int in 8:
 		save_values.append(character.save_value(index))

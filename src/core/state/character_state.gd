@@ -39,6 +39,7 @@ var maximum_spell_points: int = 0
 var carried_load: int = 0
 var maximum_load: int = 0
 var prestige_penalty: int = 0
+var traitor: bool = false
 var conditions: ConditionSet
 var money: WealthState
 var _saves: Array[int] = []
@@ -118,6 +119,7 @@ func to_data() -> Dictionary:
 		"normalAttacks": normal_attacks, "attackBonus": attack_bonus, "attacksRemaining": attacks_remaining, "maximumSpellAttacks": maximum_spell_attacks, "spellcasterType": spellcaster_type,
 		"spellPoints": spell_points, "maximumSpellPoints": maximum_spell_points, "load": carried_load, "maximumLoad": maximum_load,
 		"prestigePenalty": prestige_penalty,
+		"traitor": traitor,
 		"conditions": conditions.to_data(), "money": money.to_data(), "saves": _saves.duplicate(), "specials": _specials.duplicate(),
 		"inventory": item_data, "knownSpells": _known_spells.duplicate(),
 	}
@@ -225,6 +227,9 @@ static func from_data(data: Variant) -> CharacterState:
 	result.carried_load = numeric_values["load"]
 	result.maximum_load = numeric_values["maximumLoad"]
 	result.prestige_penalty = numeric_values["prestigePenalty"]
+	if data.has("traitor") and not data["traitor"] is bool:
+		return null
+	result.traitor = bool(data.get("traitor", false))
 	result.conditions = loaded_conditions
 	result.money = loaded_money
 	result._saves = saves

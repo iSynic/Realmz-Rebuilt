@@ -20,8 +20,11 @@ The machine-readable record is `tests/fixtures/oracle/classic-functional-differe
 | `combat.monster-aging-special` | Aligned | A hit with monster special 17 preserves Castle's damage/potency/save draw order, tests save slot seven, applies the attack-row lifespan formula and one live age operation, and pauses direct or scenario combat at a saveable age update before the next actor. |
 | `combat.monster-status-specials` | Aligned | Specials 1–7 and 16 use Castle's exact save/condition map after the shared potency draw. Permanent conditions block after the save; party durations add once only when their starting value is below 30, monster durations remain uncapped, disease uses monster-only sound 684, and monster resistance above 100 turns the entire special attack into a miss. |
 | `combat.monster-resource-drain-specials` | Aligned | Special 8 transfers up to three spell points per attacker hit die after save six and does not cap the attacker at its normal maximum. Special 9 subtracts twenty times attacker maximum stamina from a party character's direct earned experience after save five, requests sound 630, and has no monster-target branch. |
+| `combat.monster-charm-special` | Aligned | Special 10 uses save zero plus party charm resistance, copies attacker allegiance, gives charmed party actors automatic opposed-side turns, persists mid-battle, and restores party allegiance during battle cleanup. |
+| `combat.monster-elemental-specials` | Intentional correction | Specials 11–15 retain Castle's potency, elemental draw, save, protection, and truncation order. `FD-COMBAT-001` makes monster-target cold-through-mental protection reduce committed damage as well as the reported amount. |
+| `combat.monster-permanent-affliction-specials` | Aligned | Specials 18 and 19 use save seven. Blindness writes permanent `-1` and allows physical damage; petrification uses Castle's party/monster stone sentinels, sets health to zero, and skips the already-rolled physical commit. |
 
-The rule, clock, spell, monster-aging/status/resource-drain attack, battle-reward, persistence, and `showageupdate` click boundaries are covered. Monster specials 10–15 and 18–19 remain separate rolling combat cases.
+The rule, clock, spell, complete monster-special attack table, battle-allegiance, battle-reward, persistence, and `showageupdate` click boundaries are covered. The next rolling combat slice is ordinary weapon and armor resolution, where the current abstract combat layer still omits several Castle equipment and tactical branches.
 
 ## Rolling gate
 

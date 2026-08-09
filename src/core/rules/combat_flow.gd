@@ -13,6 +13,8 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		return CombatFlowResult.failed(&"invalid_battle", "Battle setup requires validated state, content, and randomness.")
 	if state.combat != null and not state.combat.completed:
 		return CombatFlowResult.failed(&"battle_already_active", "A Realmz battle is already active.")
+	for character: CharacterState in state.party.characters():
+		character.traitor = false
 	var authored_monsters: Array[MonsterState] = []
 	for slot: BattleMonsterSlotDefinition in battle.monster_slots():
 		var definition_id := slot.monster_id
@@ -54,27 +56,33 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	if combat.active_actor_id() != actor_id:
 		return CombatFlowResult.failed(&"wrong_combat_actor", "Combat action actor '%s' does not own the current turn." % actor_id)
 	var actor := state.party.character_by_id(actor_id)
-	if actor == null or actor.current_health <= 0:
+	if actor == null or actor.current_health <= 0 or actor.traitor:
 		return CombatFlowResult.failed(&"invalid_combat_actor", "The current combat actor is unavailable.")
 	var events: Array[DomainEvent] = []
 	match action:
 		&"attack":
-			var target := combat.monster_by_id(target_id)
-			if target == null or target.current_health <= 0 or not target.traitor:
-				return CombatFlowResult.failed(&"invalid_combat_target", "The selected monster is unavailable.")
-			var definition := content.monster_by_id(target.definition_id)
 			var damage_bonus := _rules.inventory.equipped_damage_bonus(actor, content.item_definitions())
-			var resolution := _rules.combat.resolve_character_attack(actor, target, definition, damage_bonus, rng, state.clock.day())
-			events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": actor.id, "targetId": target.id, "hit": resolution.hit, "damage": resolution.damage, "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
-			if resolution.killed and _request_monster_death_macro(target, definition, events):
-				combat.advance_turn()
-				return CombatFlowResult.succeeded(events)
+			var monster_target := combat.monster_by_id(target_id)
+			if monster_target != null and monster_target.current_health > 0 and monster_target.traitor != actor.traitor:
+				var definition := content.monster_by_id(monster_target.definition_id)
+				var resolution := _rules.combat.resolve_character_attack(actor, monster_target, definition, damage_bonus, rng, state.clock.day())
+				events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": actor.id, "targetId": monster_target.id, "targetKind": "monster", "hit": resolution.hit, "damage": resolution.damage, "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
+				if resolution.killed and _request_monster_death_macro(monster_target, definition, events):
+					combat.advance_turn()
+					return CombatFlowResult.succeeded(events)
+			else:
+				var character_target := state.party.character_by_id(target_id)
+				if character_target == null or character_target.id == actor.id or character_target.current_health <= 0 or character_target.traitor == actor.traitor:
+					return CombatFlowResult.failed(&"invalid_combat_target", "The selected combatant is unavailable to this allegiance.")
+				var resolution := _rules.combat.resolve_character_attack_character(actor, character_target, damage_bonus, rng)
+				events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": actor.id, "targetId": character_target.id, "targetKind": "character", "hit": resolution.hit, "damage": resolution.damage, "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
 		&"defend", &"pass":
 			events.append(DomainEvent.new(&"combat_turn_passed", {"actorId": actor.id, "action": String(action)}))
 		&"retreat":
 			combat.completed = true
 			combat.outcome = &"retreated"
 			state.last_battle_outcome = combat.outcome
+			_restore_party_allegiance(state, events)
 			events.append(DomainEvent.new(&"battle_completed", {"battleId": combat.battle_id, "outcome": String(combat.outcome)}))
 			return CombatFlowResult.succeeded(events, true)
 		_:
@@ -93,7 +101,7 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	var caster := state.party.character_by_id(caster_id)
 	var target := combat.monster_by_id(target_id)
 	var spell := content.spell_by_id(spell_id)
-	if caster == null or target == null or target.current_health <= 0 or not target.traitor or spell == null or power_level < 1:
+	if caster == null or caster.traitor or target == null or target.current_health <= 0 or not target.traitor or spell == null or power_level < 1:
 		return CombatFlowResult.failed(&"invalid_spell_target", "The spell, caster, power, or target is unavailable.")
 	if not caster.known_spells().has(spell.id):
 		return CombatFlowResult.failed(&"spell_not_known", "The caster does not know '%s'." % spell.id)
@@ -225,14 +233,23 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 		var actor_id := combat.active_actor_id()
 		var monster := combat.monster_by_id(actor_id)
 		if monster == null:
-			break
+			var charmed_actor := state.party.character_by_id(actor_id)
+			if charmed_actor == null or not charmed_actor.traitor:
+				break
+			if charmed_actor.current_health > 0 and _process_charmed_character_turn(state, content, charmed_actor, rng, events):
+				combat.advance_turn()
+				return
+			combat.advance_turn()
+			if _finish_if_resolved(state, content, events):
+				break
+			guard -= 1
+			continue
 		if monster.current_health > 0:
 			var definition := content.monster_by_id(monster.definition_id)
 			var character_targets: Array[CharacterState] = []
-			if monster.traitor:
-				for character: CharacterState in state.party.characters():
-					if character.current_health > 0:
-						character_targets.append(character)
+			for character: CharacterState in state.party.characters():
+				if character.current_health > 0 and character.traitor != monster.traitor:
+					character_targets.append(character)
 			var monster_targets: Array[MonsterState] = []
 			for candidate: MonsterState in combat.monsters():
 				if candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor:
@@ -248,7 +265,8 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 					var character_target := character_targets[target_index]
 					var race := content.race_by_id(character_target.race_id)
 					var caste := content.caste_by_id(character_target.caste_id)
-					var character_resolution := _rules.combat.resolve_monster_attack(monster, definition, 0, character_target, race, caste, rng)
+					var charm_bonus := 50 if state.party.conditions.is_active(ConditionRules.PARTY_CHARM_RESISTANCE) else 0
+					var character_resolution := _rules.combat.resolve_monster_attack(monster, definition, 0, character_target, race, caste, rng, charm_bonus)
 					var age_update_requested := false
 					if character_resolution.special_handled:
 						_append_monster_special_events(events, monster.id, character_target.id, &"character", character_resolution)
@@ -258,14 +276,14 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 					if age_update_requested:
 						combat.pending_monster_attack = PendingMonsterAttack.new(monster.id, character_target.id, choice, character_resolution.damage, character_resolution.chance, character_resolution.roll)
 						return
-					events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": character_target.id, "action": String(choice), "hit": character_resolution.hit, "damage": character_resolution.damage, "defeated": character_resolution.killed, "chance": character_resolution.chance, "roll": character_resolution.roll}))
+					events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": character_target.id, "action": String(choice), "hit": character_resolution.hit, "damage": character_resolution.total_damage(), "defeated": character_resolution.killed, "chance": character_resolution.chance, "roll": character_resolution.roll}))
 				else:
 					var monster_target := monster_targets[target_index - character_targets.size()]
 					var target_definition := content.monster_by_id(monster_target.definition_id)
 					var monster_resolution := _rules.combat.resolve_monster_attack_monster(monster, definition, 0, monster_target, target_definition, rng)
 					if monster_resolution.special_handled:
 						_append_monster_special_events(events, monster.id, monster_target.id, &"monster", monster_resolution)
-					events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": monster_target.id, "action": String(choice), "hit": monster_resolution.hit, "damage": monster_resolution.damage, "defeated": monster_resolution.killed, "chance": monster_resolution.chance, "roll": monster_resolution.roll}))
+					events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": monster_target.id, "action": String(choice), "hit": monster_resolution.hit, "damage": monster_resolution.total_damage(), "defeated": monster_resolution.killed, "chance": monster_resolution.chance, "roll": monster_resolution.roll}))
 					if monster_resolution.killed:
 						if _request_monster_death_macro(monster_target, target_definition, events):
 							combat.advance_turn()
@@ -276,6 +294,32 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 		if _finish_if_resolved(state, content, events):
 			break
 		guard -= 1
+
+
+func _process_charmed_character_turn(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng, events: Array[DomainEvent]) -> bool:
+	var character_targets: Array[CharacterState] = []
+	for candidate: CharacterState in state.party.characters():
+		if candidate.id != actor.id and candidate.current_health > 0 and candidate.traitor != actor.traitor:
+			character_targets.append(candidate)
+	var monster_targets: Array[MonsterState] = []
+	for candidate: MonsterState in state.combat.monsters():
+		if candidate.current_health > 0 and candidate.traitor != actor.traitor:
+			monster_targets.append(candidate)
+	var target_count := character_targets.size() + monster_targets.size()
+	if target_count == 0:
+		return false
+	var target_index := rng.draw_between(0, target_count - 1, &"combat.charmed-target")
+	var damage_bonus := _rules.inventory.equipped_damage_bonus(actor, content.item_definitions())
+	if target_index < character_targets.size():
+		var character_target := character_targets[target_index]
+		var resolution := _rules.combat.resolve_character_attack_character(actor, character_target, damage_bonus, rng)
+		events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": actor.id, "targetId": character_target.id, "action": "attack", "automatic": true, "hit": resolution.hit, "damage": resolution.damage, "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
+		return false
+	var monster_target := monster_targets[target_index - character_targets.size()]
+	var target_definition := content.monster_by_id(monster_target.definition_id)
+	var resolution := _rules.combat.resolve_character_attack(actor, monster_target, target_definition, damage_bonus, rng, state.clock.day())
+	events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": actor.id, "targetId": monster_target.id, "action": "attack", "automatic": true, "hit": resolution.hit, "damage": resolution.damage, "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
+	return resolution.killed and _request_monster_death_macro(monster_target, target_definition, events)
 
 
 func _append_monster_special_events(events: Array[DomainEvent], actor_id: String, target_id: String, target_kind: StringName, resolution: AttackResolution) -> void:
@@ -302,6 +346,13 @@ func _append_monster_special_events(events: Array[DomainEvent], actor_id: String
 		"targetAfter": resolution.special_target_after,
 		"actorBefore": resolution.special_actor_before,
 		"actorAfter": resolution.special_actor_after,
+		"element": String(resolution.special_element),
+		"damageRolled": resolution.special_damage_rolled,
+		"damageAmount": resolution.special_damage_amount,
+		"displayAmount": resolution.special_display_amount,
+		"allegianceBefore": resolution.special_allegiance_before,
+		"allegianceAfter": resolution.special_allegiance_after,
+		"physicalDamageSkipped": resolution.physical_damage_skipped,
 		"soundId": resolution.special_sound_id,
 		"source": "classic",
 	}))
@@ -327,13 +378,17 @@ func _request_monster_death_macro(monster: MonsterState, definition: MonsterDefi
 func _finish_if_resolved(state: GameState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
 	var combat := state.combat
 	var enemies_alive := false
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and character.traitor:
+			enemies_alive = true
+			break
 	for monster: MonsterState in combat.monsters():
 		if monster.current_health > 0 and monster.traitor:
 			enemies_alive = true
 			break
 	var party_alive := false
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0:
+		if character.current_health > 0 and not character.traitor:
 			party_alive = true
 			break
 	if enemies_alive and party_alive:
@@ -341,6 +396,7 @@ func _finish_if_resolved(state: GameState, content: RealmzContent, events: Array
 	combat.completed = true
 	combat.outcome = &"victory" if party_alive else &"defeat"
 	state.last_battle_outcome = combat.outcome
+	_restore_party_allegiance(state, events)
 	if combat.outcome == &"victory":
 		var experience := 0
 		for monster: MonsterState in combat.monsters():
@@ -357,3 +413,13 @@ func _finish_if_resolved(state: GameState, content: RealmzContent, events: Array
 		events.append(DomainEvent.new(&"battle_rewards_granted", {"experiencePerSurvivor": experience, "experienceByCharacter": experience_by_character}))
 	events.append(DomainEvent.new(&"battle_completed", {"battleId": combat.battle_id, "outcome": String(combat.outcome)}))
 	return true
+
+
+func _restore_party_allegiance(state: GameState, events: Array[DomainEvent]) -> void:
+	var restored_ids: Array[String] = []
+	for character: CharacterState in state.party.characters():
+		if character.traitor:
+			character.traitor = false
+			restored_ids.append(character.id)
+	if not restored_ids.is_empty():
+		events.append(DomainEvent.new(&"combat_allegiance_restored", {"characterIds": restored_ids}))

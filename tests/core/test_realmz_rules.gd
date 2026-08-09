@@ -8,6 +8,9 @@ func run() -> void:
 	_test_monster_aging_attack()
 	_test_monster_status_attacks()
 	_test_monster_resource_drains()
+	_test_monster_charm_attacks()
+	_test_monster_elemental_attacks()
+	_test_monster_permanent_afflictions()
 	_test_conditions_time_and_persistence()
 	_test_inventory_economy_and_treasure()
 	_test_combat_magic_and_monsters()
@@ -409,6 +412,111 @@ func _test_monster_resource_drains() -> void:
 	var monster_experience := rules.combat.resolve_monster_attack_monster(experience_attacker, experience_definition, 0, monster_experience_target, monster_target_definition, monster_experience_rng)
 	assert_equal([monster_experience.special_handled, monster_experience.special_block_reason, monster_experience_target.current_health], [true, &"party_target_only", 19], "experience drain has no monster-target case but ordinary physical damage still lands")
 	assert_equal(monster_experience_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency"], "monster-target experience drain stops after the shared potency draw without inventing a save")
+
+
+func _test_monster_charm_attacks() -> void:
+	var rules := RealmzRules.new()
+	var empty8 := _ints_size(8, 0)
+	var empty6 := _ints_size(6, 0)
+	var empty3 := _ints_size(3, 0)
+	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 10)]
+	var definition := MonsterDefinition.new("monster.charm", 910, "Charmer", 4, 0, 10, 0, 0, empty8, empty8, empty6, empty3, [], [], attacks)
+	var hostile := MonsterState.new("monster.charm.hostile", definition.id, definition.name, 20, 20, 4, 10, 0, 0, 0, true)
+	var character := CharacterState.new("character.charm", "Charm Target", 20, 20)
+	character.set_save_value_raw(0, 0)
+	var charm_rng := ScriptedRng.new([0, 0, 0, 0])
+	var charmed := rules.combat.resolve_monster_attack(hostile, definition, 0, character, null, null, charm_rng)
+	assert_true(character.traitor and charmed.special_applied, "failed save zero makes a loyal party character adopt the hostile attacker's allegiance")
+	assert_equal([charmed.special_save_index, charmed.special_allegiance_before, charmed.special_allegiance_after, charmed.special_announced], [0, false, true, true], "party charm exposes Castle's allegiance transition and first-charm feedback")
+	assert_equal(charm_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency", "combat.monster-attack.special-save"], "charm retains the shared potency draw before its save")
+	var restored := CharacterState.from_data(character.to_data())
+	assert_not_null(restored, "battle allegiance survives the central character serialization boundary")
+	assert_true(restored.traitor, "save restoration preserves an in-progress charmed character")
+
+	var protected := CharacterState.new("character.charm-protected", "Protected Target", 20, 20)
+	protected.set_save_value_raw(0, 0)
+	var saved := rules.combat.resolve_monster_attack(hostile, definition, 0, protected, null, null, ScriptedRng.new([0, 0, 0, 0]), 50)
+	assert_true(saved.special_saved and not protected.traitor, "party charm resistance adds fifty to save zero before the inclusive roll")
+
+	var friendly := MonsterState.new("monster.charm.friendly", definition.id, "Friendly Charmer", 20, 20, 4, 10, 0, 0, 0, false)
+	var target_definition := MonsterDefinition.new("monster.charm.target", 911, "Charm Target Monster", 2, 0, 10, 0, 0, empty8, empty8, empty6, empty3, [], [], [])
+	var monster_target := MonsterState.new("monster.charm.target.instance", target_definition.id, target_definition.name, 20, 20, 2, 10, 0, 0, 0, true)
+	var monster_charm := rules.combat.resolve_monster_attack_monster(friendly, definition, 0, monster_target, target_definition, ScriptedRng.new([0, 0, 0, 0]))
+	assert_true(not monster_target.traitor and monster_charm.special_applied, "failed monster charm adopts the attacking monster's allegiance")
+	assert_true(monster_charm.special_announced, "monster-target charm reports every failed save as Castle does")
+	var undead_flags := _ints_size(8, 0)
+	undead_flags[1] = 1
+	var undead_definition := MonsterDefinition.new("monster.charm.undead", 912, "Undead", 2, 0, 10, 0, 0, undead_flags, empty8, empty6, empty3, [], [], [])
+	var undead := MonsterState.new("monster.charm.undead.instance", undead_definition.id, undead_definition.name, 20, 20, 2, 10, 0, 0, 0, true)
+	var undead_result := rules.combat.resolve_monster_attack_monster(friendly, definition, 0, undead, undead_definition, ScriptedRng.new([0, 0, 0, 32_767]))
+	assert_true(undead_result.special_saved and undead.traitor, "undead automatically save against charm after consuming the source save roll")
+
+
+func _test_monster_elemental_attacks() -> void:
+	var rules := RealmzRules.new()
+	var correction_fixture: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://tests/fixtures/oracle/monster-elemental-protection-correction.json"))
+	assert_true(correction_fixture is Dictionary, "the elemental-protection fidelity decision has a parseable source-observation fixture")
+	assert_equal([int(correction_fixture["castleSourceObservation"]["monsterColdThroughMentalCommittedElementalDamage"]), int(correction_fixture["castleSourceObservation"]["monsterColdThroughMentalDisplayedElementalDamage"])], [8, 4], "the source fixture records Castle's committed-versus-displayed monster-target anomaly")
+	var element_cases := {
+		11: [ConditionRules.FIRE_PROTECTION, &"fire"],
+		12: [ConditionRules.COLD_PROTECTION, &"cold"],
+		13: [ConditionRules.ELECTRICAL_PROTECTION, &"electrical"],
+		14: [ConditionRules.CHEMICAL_PROTECTION, &"chemical"],
+		15: [ConditionRules.MENTAL_PROTECTION, &"mental"],
+	}
+	for special_code: int in element_cases:
+		var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 8, 0, special_code)]
+		var definition := MonsterDefinition.new("monster.element.%d" % special_code, 900 + special_code, "Elemental Monster", 4, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], attacks)
+		var attacker := MonsterState.new("monster.element.%d.instance" % special_code, definition.id, definition.name, 20, 20, 4, 10)
+		var defender := CharacterState.new("character.element.%d" % special_code, "Element Target", 20, 20)
+		defender.set_save_value_raw(special_code - 10, 100)
+		defender.conditions.set_value(element_cases[special_code][0], 1)
+		var rng := ScriptedRng.new([0, 0, 0, 32_767, 0])
+		var result := rules.combat.resolve_monster_attack(attacker, definition, 0, defender, null, null, rng)
+		assert_equal([result.special_element, result.special_damage_rolled, result.special_damage_amount, result.special_display_amount], [element_cases[special_code][1], 8, 2, 2], "elemental special %d applies save then matching protection to committed damage" % special_code)
+		assert_equal(defender.current_health, 17, "elemental special %d commits one physical plus two protected elemental damage" % special_code)
+		assert_equal(rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.monster-attack.hit", "combat.monster-attack.damage", "combat.monster-attack.special-potency", "combat.monster-attack.special-damage", "combat.monster-attack.special-save"], "elemental special %d rolls damage before its save" % special_code)
+
+	var cold_attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 8, 0, 12)]
+	var cold_definition := MonsterDefinition.new("monster.element.cold", 912, "Cold Monster", 4, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], cold_attacks)
+	var cold_attacker := MonsterState.new("monster.element.cold.attacker", cold_definition.id, cold_definition.name, 20, 20, 4, 10)
+	var protected_definition := MonsterDefinition.new("monster.element.protected", 913, "Protected Monster", 2, 0, 10, 0, 0, _ints_size(8, 0), _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], [])
+	var protected_monster := MonsterState.new("monster.element.protected.instance", protected_definition.id, protected_definition.name, 20, 20, 2, 10)
+	protected_monster.conditions.set_value(ConditionRules.COLD_PROTECTION, 1)
+	var corrected := rules.combat.resolve_monster_attack_monster(cold_attacker, cold_definition, 0, protected_monster, protected_definition, ScriptedRng.new([0, 0, 0, 32_767, 32_767]))
+	var chosen_damage: int = correction_fixture["realmz2ChosenResult"]["allProtectedTargetsCommittedElementalDamage"]
+	assert_equal([corrected.special_damage_rolled, corrected.special_damage_amount, corrected.special_display_amount, protected_monster.current_health], [8, chosen_damage, chosen_damage, 19 - chosen_damage], "FD-COMBAT-001 makes monster cold protection reduce actual damage as well as its reported amount")
+
+
+func _test_monster_permanent_afflictions() -> void:
+	var rules := RealmzRules.new()
+	var empty8 := _ints_size(8, 0)
+	var empty6 := _ints_size(6, 0)
+	var empty3 := _ints_size(3, 0)
+	var blind_attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 18)]
+	var blind_definition := MonsterDefinition.new("monster.blind", 918, "Blinder", 4, 0, 10, 0, 0, empty8, empty8, empty6, empty3, [], [], blind_attacks)
+	var blinder := MonsterState.new("monster.blind.instance", blind_definition.id, blind_definition.name, 20, 20, 4, 10)
+	var blind_target := CharacterState.new("character.blind", "Blind Target", 20, 20)
+	blind_target.set_save_value_raw(7, 0)
+	var blinded := rules.combat.resolve_monster_attack(blinder, blind_definition, 0, blind_target, null, null, ScriptedRng.new([0, 0, 0, 32_767]))
+	assert_equal([blinded.special_condition_index, blinded.special_condition_after, blind_target.conditions.value(ConditionRules.BLIND), blind_target.current_health], [ConditionRules.BLIND, -1, -1, 19], "failed special save permanently blinds a party target before ordinary damage")
+	assert_true(blinded.special_announced and blinded.special_sound_id == 0, "blindness reports its result without inventing a sound")
+
+	var stone_attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 19)]
+	var stone_definition := MonsterDefinition.new("monster.stone", 919, "Petrifier", 4, 0, 10, 0, 0, empty8, empty8, empty6, empty3, [], [], stone_attacks)
+	var petrifier := MonsterState.new("monster.stone.instance", stone_definition.id, stone_definition.name, 20, 20, 4, 10)
+	var stone_target := CharacterState.new("character.stone", "Stone Target", 20, 20)
+	stone_target.set_save_value_raw(7, 0)
+	var petrified := rules.combat.resolve_monster_attack(petrifier, stone_definition, 0, stone_target, null, null, ScriptedRng.new([0, 0, 0, 32_767]))
+	assert_equal([stone_target.current_health, stone_target.conditions.value(ConditionRules.TURNED_TO_STONE), petrified.killed, petrified.physical_damage_skipped, petrified.total_damage()], [0, -1, true, true, 0], "party petrification force-kills with Castle's permanent sentinel and skips the rolled physical damage")
+
+	var target_definition := MonsterDefinition.new("monster.affliction.target", 920, "Affliction Target", 2, 0, 10, 0, 0, empty8, empty8, empty6, empty3, [], [], [])
+	var monster_target := MonsterState.new("monster.affliction.target.instance", target_definition.id, target_definition.name, 20, 20, 2, 10)
+	var monster_stone := rules.combat.resolve_monster_attack_monster(petrifier, stone_definition, 0, monster_target, target_definition, ScriptedRng.new([0, 0, 0, 32_767]))
+	assert_equal([monster_target.current_health, monster_target.conditions.value(ConditionRules.TURNED_TO_STONE), monster_stone.killed, monster_stone.physical_damage_skipped], [0, 1, true, true], "monster petrification retains Castle's positive stone sentinel and force-kill path")
+	var resistant_target := MonsterState.new("monster.affliction.resistant", target_definition.id, target_definition.name, 20, 20, 2, 10, 0, 101)
+	var resistant := rules.combat.resolve_monster_attack_monster(petrifier, stone_definition, 0, resistant_target, target_definition, ScriptedRng.new([0, 0, 0]))
+	assert_equal([resistant.hit, resistant.special_block_reason, resistant_target.current_health], [false, &"magic_resistance", 20], "above-100 monster resistance whiffs permanent affliction and ordinary damage after potency")
 
 
 func _test_conditions_time_and_persistence() -> void:

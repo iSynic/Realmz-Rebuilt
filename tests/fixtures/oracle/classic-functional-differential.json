@@ -576,6 +576,143 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "combat.monster-charm-special",
+      "domain": "combat",
+      "claim": "Monster attack special 10 preserves Castle's shared potency-before-save order, party charm-resistance bonus, undead and immunity saves, attacker-allegiance adoption, automatic charmed party turns, opposed-allegiance targeting, battle-scoped persistence, and base-allegiance restoration at battle cleanup.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake supplies a battle-scoped Charm trait, party save bonus, undead save, faction adoption, monster-target retarget clearing, and battle-end faction restoration. Its faction/trait host is a behavioral lead rather than a 2.0 architecture donor.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_monster_special_attack.gd", "symbol": "static func _charm(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_monster_special_attacks()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack2(short mon, short chare, short attacknum)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "short savevs(short which, short who)" },
+          { "path": "src/realmz_orig/checkforenemy.c", "symbol": "short checkforenemy(short code)" },
+          { "path": "src/realmz_orig/getup.c", "symbol": "void getup(short skip)" },
+          { "path": "src/realmz_orig/booty.c", "symbol": "void booty(short mode)" }
+        ],
+        "authoredInputs": ["monster attack special and hit dice", "attacker and target traiter values", "party charm-resistance condition", "party save zero", "monster charm immunity, saves, and undead type"],
+        "observation": "After the shared potency draw, save zero includes fifty for party charm resistance. Failure copies the attacker's traiter value to the target. Monster targets always report failed Charm and clear the attacker's cached target. Charmed party actors become automatic, every target query compares allegiance, and booty clears party traiter state after battle."
+      },
+      "providence": {
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves attack special, hit dice, traitor side, saves, spell immunities, and type flags. Party conditions and battle allegiance are mutable session state; no compiler correction is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_rules.gd", "symbol": "func _apply_party_charm_special" },
+        "expectedTrace": ["ordinary hit and damage rolls", "generic potency draw", "save-zero roll with optional party bonus", "allegiance mutation", "typed special event", "opposed-allegiance automatic turn", "central save and restore", "battle-end allegiance restoration"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_charm_attacks" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_charm_and_affliction_flow" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
+    },
+    {
+      "id": "combat.monster-elemental-specials",
+      "domain": "combat",
+      "claim": "Monster attack specials 11 through 15 roll one-to-attack-maximum elemental damage after the shared potency draw, halve it for the matching save and protection, and commit the protected amount. Realmz 2.0 intentionally corrects Castle's monster-target cold-through-mental accumulation ordering so protection cannot report reduced damage without reducing health loss.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake maps specials 11 through 15 to native Fire, Ice, Electric, Chemical, and Mental weapon damage. Native resistance replaces the two Classic mitigation checks and is explicitly labeled a fidelity fallback, so it establishes identities but not Castle roll order.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_bestiary_materializer.gd", "symbol": "const ELEMENT_BY_SPECIAL_ATTACK :=" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_bestiary_materializer()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack2(short mon, short chare, short attacknum)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "short savevs(short which, short who)" }
+        ],
+        "authoredInputs": ["monster attack damage maximum and special 11 through 15", "party and monster saves", "matching elemental-protection condition", "monster spell immunities and runtime magic resistance"],
+        "observation": "Each branch rolls Rand(attack maximum), then saves 1 through 5 halve with integer truncation and matching protection halves again. Party targets and monster-target fire accumulate after both halves. Monster-target cold, electrical, chemical, and mental accumulate after the save but before protection, so the pinned source reduces only the displayed temporary value. The synthetic source-observation fixture records committed eight versus displayed four for that anomalous branch."
+      },
+      "providence": {
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves attack maximum, special identity, saves, immunities, type flags, and starting conditions; no compiler correction is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_rules.gd", "symbol": "func _apply_party_elemental_special" },
+        "expectedTrace": ["ordinary hit and damage rolls", "generic potency draw", "elemental damage draw", "source-family save", "matching protection", "typed elemental event", "physical plus corrected elemental health mutation", "central save state"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_elemental_attacks" }
+        ]
+      },
+      "fidelityDecision": {
+        "id": "FD-COMBAT-001",
+        "fixturePath": "tests/fixtures/oracle/monster-elemental-protection-correction.json",
+        "fixtureSha256": "a5f88d1f69981c81ff8e290f8ecb51b930c68ad0ac3643cd8e1138788fb09114"
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "verified"
+    },
+    {
+      "id": "combat.monster-permanent-affliction-specials",
+      "domain": "combat",
+      "claim": "Monster attack specials 18 and 19 preserve the shared potency draw and save-slot-seven ordering. Failed blindness writes permanent -1 and still commits physical damage; failed petrification writes Castle's target-specific stone sentinel, sets health to zero, and reaches force-kill without committing the previously rolled physical damage.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake applies translated permanent Blind and Petrified traits after the Classic special save and marks petrification lethal. Castle remains authoritative for the party-versus-monster stone sentinel and skipped ordinary-damage path.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_monster_special_attack.gd", "symbol": "static func _blind(target: Object, result: Dictionary)" },
+          { "path": "src/scripts/classic_runtime/classic_monster_special_attack.gd", "symbol": "static func _petrify(target: Object, result: Dictionary)" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_monster_special_attacks()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/attack.c", "symbol": "short attack2(short mon, short chare, short attacknum)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "short savevs(short which, short who)" }
+        ],
+        "authoredInputs": ["monster attack special 18 or 19", "party and monster special save", "target health", "monster runtime magic resistance"],
+        "observation": "After potency, both branches call savevs(7). Blindness failure sets condition 27 to -1 and ordinary damage follows. Petrification failure sets party condition 26 to -1 or monster condition 26 to TRUE, sets stamina to zero, and jumps to forcekill before ordinary and special damage subtraction. No sound is requested."
+      },
+      "providence": {
+        "commit": "cad17d11bd8ec798d29bf5468ed8071019f32c1f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves the attack special, target save inputs, and monster resistance inputs. Conditions and health are session state; no compiler correction is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_rules.gd", "symbol": "func _apply_party_permanent_affliction" },
+        "expectedTrace": ["ordinary hit and damage rolls", "generic potency draw", "save-slot-seven roll", "permanent condition mutation", "optional force-kill with skipped physical commit", "typed special before attack result", "whole-session persistence"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_permanent_afflictions" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_charm_and_affliction_flow" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
     }
   ]
 }

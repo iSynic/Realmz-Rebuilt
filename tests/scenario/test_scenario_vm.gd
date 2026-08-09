@@ -30,6 +30,7 @@ func run() -> void:
 	_test_monster_aging_attack_continuations(loaded.content)
 	_test_monster_status_attack_flow(loaded.content)
 	_test_monster_resource_drain_flow(loaded.content)
+	_test_monster_charm_and_affliction_flow(loaded.content)
 	_test_combat_fumble_mutation(loaded.content)
 	_test_classic_encounter_break(loaded.content)
 	_test_classic_party_shift(loaded.content)
@@ -1382,6 +1383,69 @@ func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
 	var restored_experience_session := GameSession.new()
 	assert_equal(restored_experience_session.restore(experience_content, experience_boundary).state, SessionStep.State.COMPLETED, "experience-drained combat state restores transactionally")
 	assert_equal(restored_experience_session._state.party.character_by_id(experience_character.id).experience, -300, "whole-session restore preserves the exact drained experience")
+
+
+func _test_monster_charm_and_affliction_flow(content: RealmzContent) -> void:
+	var zero8: Array[int] = []
+	zero8.resize(8)
+	zero8.fill(0)
+	var zero6: Array[int] = []
+	zero6.resize(6)
+	zero6.fill(0)
+	var zero3: Array[int] = []
+	zero3.resize(3)
+	zero3.fill(0)
+	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 10)]
+	var definition := MonsterDefinition.new("monster.charm-flow", 910, "Charmer", 4, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], attacks)
+	definition.traitor = true
+	var battle := BattleDefinition.new("battle.charm-flow", 910, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, definition.id, false)])
+	var charm_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [definition], [battle])
+	var loyal := CharacterState.new("character.charm-flow.loyal", "Loyal", 20, 20)
+	loyal.luck = 1
+	loyal.hand_to_hand = 1
+	var victim := CharacterState.new("character.charm-flow.victim", "Victim", 20, 20)
+	victim.luck = 1
+	victim.hand_to_hand = 1
+	victim.set_save_value_raw(0, 0)
+	var monster := MonsterState.new("monster.charm-flow.instance", definition.id, definition.name, 20, 20, 4, 100)
+	var session := GameSession.new()
+	session.start(charm_content, 1)
+	session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [loyal, victim])
+	session._state.party_setup_completed = true
+	session._state.combat = CombatState.new(battle.id, [monster])
+	session._state.combat.set_turn_order([loyal.id, monster.id, victim.id])
+	session._rng = ScriptedRng.new([32_767, 32_767, 32_767, 0, 0, 0, 0, 0, 0, 0, 0])
+	var resolved := session.submit_intent(PlayerIntent.combat_action(&"defend", loyal.id, ""))
+	assert_equal(resolved.state, SessionStep.State.COMPLETED, "charm and the resulting charmed turn require no fabricated player interaction")
+	assert_true(victim.traitor, "the session owns the charmed party allegiance while battle remains active")
+	assert_equal(loyal.current_health, 19, "the charmed character automatically attacks a living combatant of the opposite allegiance")
+	var special_index := _event_index(resolved.events, &"combat_monster_special_resolved")
+	assert_true(special_index >= 0, "battle flow publishes the typed charm result")
+	assert_equal([resolved.events[special_index].payload.get("allegianceBefore"), resolved.events[special_index].payload.get("allegianceAfter")], [false, true], "the charm event exposes its exact allegiance transition")
+	var automatic_index := -1
+	for index: int in resolved.events.size():
+		if resolved.events[index].kind == &"combat_attack_resolved" and resolved.events[index].payload.get("actorId") == victim.id:
+			automatic_index = index
+			assert_true(resolved.events[index].payload.get("automatic", false), "a charmed party turn is explicitly marked automatic")
+			assert_equal(resolved.events[index].payload.get("targetId"), loyal.id, "charmed targeting excludes combatants sharing the attacker's allegiance")
+	assert_true(automatic_index > special_index, "the charmed actor proceeds only after the charm attack commits")
+	assert_equal(session._state.combat.active_actor_id(), loyal.id, "automatic charm processing returns control to the next loyal party actor")
+
+	var boundary := SaveEnvelope.from_data(session.snapshot().to_data())
+	assert_not_null(boundary, "an active charm allegiance and next-turn cursor form a complete save boundary")
+	var restored := GameSession.new()
+	assert_equal(restored.restore(charm_content, boundary).state, SessionStep.State.COMPLETED, "charmed combat restores transactionally")
+	assert_true(restored._state.party.character_by_id(victim.id).traitor, "restore retains battle-scoped party allegiance")
+	restored._state.combat.monster_by_id(monster.id).current_health = 0
+	var unresolved := restored._rules.combat_flow.continue_after_monster_death_macro(restored._state, charm_content, restored._rng)
+	assert_false(unresolved.completed, "a living charmed party member remains an enemy after the original hostile monster falls")
+	var restored_view := restored.view()
+	assert_equal(restored_view.combat_view.character_targets.map(func(target: CharacterView) -> String: return target.id), [victim.id], "the detached combat view exposes the living charmed character as a hostile target")
+	restored._state.party.character_by_id(victim.id).conditions.set_value(ConditionRules.HELPLESS, -1)
+	var completed := restored._rules.combat_flow.submit_action(restored._state, charm_content, loyal.id, &"attack", victim.id, restored._rng)
+	assert_true(completed.completed and restored._state.combat.outcome == &"victory", "a loyal actor can defeat a charmed party combatant through the ordinary allegiance-aware attack contract")
+	assert_false(restored._state.party.character_by_id(victim.id).traitor, "battle cleanup restores every party character's base allegiance")
+	assert_true(_event_has(completed.events, &"combat_allegiance_restored"), "allegiance cleanup is presentation-observable")
 
 
 func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:

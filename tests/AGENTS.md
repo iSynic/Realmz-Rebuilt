@@ -38,6 +38,9 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - Monster-aging attack tests preserve Castle's hit/damage/potency/save draw order, save slot seven, truncated attack-row lifespan formula, party-only target, ordinary physical damage, one-band update, and exact direct-session and scenario-combat continuation after save/restore.
 - Monster-status attack tests preserve all eight special/save/condition identities, potency-before-save ordering, save-before-permanent ordering, the party starting-duration gate and over-30 result, uncapped monster stacking, monster immunity/undead/averaged-save branches, target-specific sounds, resistance-whiff timing, ordered domain events, and committed-state restoration.
 - Monster-resource attack tests distinguish Classic's direct experience from Remake's experience-to-next-level adapter, preserve save and potency ordering, cover empty and saved balances, above-maximum spell transfer, the party-only experience branch, asynchronous sound 630, and whole-session restoration of both mutated combatants.
+- Monster-charm tests cover save zero and party resistance, undead immunity, attacker-allegiance adoption, automatic opposed-side targeting, loyal attacks against charmed characters, mid-battle persistence, outcome participation, and battle-end restoration.
+- Monster-elemental tests cover all five save/protection identities and draw order. The synthetic `monster-elemental-protection-correction.json` fixture records Castle's monster-target display/commit anomaly separately from the `FD-COMBAT-001` chosen result; it is source-control-flow evidence, not Castle-runtime evidence.
+- Permanent-affliction tests cover blindness and petrification saves, target-specific sentinels, resistance whiffs, event order, and petrification's skipped physical commit.
 
 ## Work Guidance
 
