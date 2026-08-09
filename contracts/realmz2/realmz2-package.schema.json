@@ -113,6 +113,12 @@
       "type": "array",
       "items": { "$ref": "#/$defs/identifier" }
     },
+    "classicMonsterItemSlots": {
+      "type": "array",
+      "items": { "type": "string", "maxLength": 255 },
+      "minItems": 6,
+      "maxItems": 6
+    },
     "battleDefinition": {
       "type": "object",
       "required": ["id", "classicId", "monsterSlots", "distance", "messageBeforeId", "messageAfterId", "macroId"],
@@ -156,7 +162,7 @@
         "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 0 }, "name": { "type": "string", "minLength": 1 },
         "hitDice": { "type": "integer", "minimum": 0 }, "staminaBonus": { "type": "integer" }, "agility": { "type": "integer" }, "movementMaximum": { "type": "integer" }, "armor": { "type": "integer" }, "magicResistance": { "type": "integer" }, "requiredWeapon": { "type": "integer", "minimum": -128, "maximum": 127 }, "magicToHit": { "type": "integer", "minimum": 0, "maximum": 127 }, "traitor": { "type": "boolean" }, "size": { "type": "integer" },
         "typeFlags": { "$ref": "#/$defs/integerArray" }, "attackCount": { "type": "integer" }, "magicAttackCount": { "type": "integer" }, "attacks": { "type": "array", "items": { "$ref": "#/$defs/monsterAttackDefinition" } }, "damageBonus": { "type": "integer" }, "castPercent": { "type": "integer" }, "runPercent": { "type": "integer" }, "surrenderPercent": { "type": "integer" }, "missilePercent": { "type": "integer" }, "canSummon": { "type": "integer" },
-        "saves": { "$ref": "#/$defs/integerArray" }, "spellImmunities": { "$ref": "#/$defs/integerArray" }, "money": { "$ref": "#/$defs/integerArray" }, "spellIds": { "$ref": "#/$defs/stringArray" }, "itemIds": { "$ref": "#/$defs/stringArray" }, "weaponId": { "type": "string" }, "randomWeaponTable": { "type": "integer", "minimum": 0, "maximum": 10 }, "iconId": { "type": "integer" }, "spellPoints": { "type": "integer" }, "experience": { "type": "integer" }, "deathMacro": { "type": "integer" }
+        "saves": { "$ref": "#/$defs/integerArray" }, "spellImmunities": { "$ref": "#/$defs/integerArray" }, "money": { "$ref": "#/$defs/integerArray" }, "spellIds": { "$ref": "#/$defs/stringArray" }, "itemIds": { "$ref": "#/$defs/classicMonsterItemSlots" }, "weaponId": { "type": "string" }, "randomWeaponTable": { "type": "integer", "minimum": 0, "maximum": 10 }, "iconId": { "type": "integer" }, "spellPoints": { "type": "integer" }, "experience": { "type": "integer" }, "deathMacro": { "type": "integer" }
       },
       "additionalProperties": false
     },

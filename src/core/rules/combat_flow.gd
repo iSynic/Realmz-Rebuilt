@@ -6,6 +6,7 @@ const CombatRetreatProbeType = preload("res://src/core/rules/combat_retreat_prob
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
 const MONSTER_ATTACK_DEATH_MACRO := 2
+const MONSTER_ATTACK_FALLBACK := 3
 const REACTION_COMPLETED := 0
 const REACTION_WAITING := 1
 const REACTION_DEATH_MACRO := 2
@@ -167,7 +168,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 			if not equipment.valid:
 				return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 			if combat.character_weapon_mode(actor.id) == &"missile":
-				return CombatFlowResult.failed(&"missile_attack_unavailable", "Missile range, line of sight, and projectile resolution are not implemented yet. Switch to melee to continue.")
+				return _fire_character_projectile(state, content, actor, equipment, target_id, rng)
 			if combat.battlefield == null:
 				return CombatFlowResult.failed(&"missing_battlefield", "Melee requires the session-owned Classic battlefield.")
 			if not _rules.battlefield.are_adjacent(combat.battlefield, actor.id, target_id):
@@ -261,6 +262,45 @@ func probe_character_retreat(combat: CombatState, characters: Array[CharacterSta
 		if actor.conditions.is_active(condition):
 			return CombatRetreatProbeType.blocked(&"retreat_condition_blocked", "This character's current condition prevents Escape.", nearest_range)
 	return CombatRetreatProbeType.permitted(nearest_range)
+
+
+func character_projectile_profile(character: CharacterState, content: RealmzContent, equipment: CharacterCombatEquipment = null) -> ProjectileAttackProfile:
+	if character == null or content == null:
+		return ProjectileAttackProfile.blocked(&"invalid_combat_actor", "A projectile requires an available character and content package.")
+	var resolved_equipment := equipment if equipment != null else _rules.inventory.combat_equipment(character, content.item_definitions())
+	if not resolved_equipment.valid:
+		return ProjectileAttackProfile.blocked(resolved_equipment.error_code, resolved_equipment.error_message)
+	if resolved_equipment.missile_weapon == null:
+		return ProjectileAttackProfile.blocked(&"missile_weapon_unavailable", "The active character has no equipped Classic type-15 missile weapon.")
+	var projectile_item := resolved_equipment.missile_weapon
+	var instance_id := resolved_equipment.missile_weapon_instance_id
+	if resolved_equipment.missile_ammunition != null and resolved_equipment.missile_ammunition.special_2 > 1100:
+		projectile_item = resolved_equipment.missile_ammunition
+		instance_id = resolved_equipment.missile_ammunition_instance_id
+	var instance: ItemInstance = null
+	for candidate: ItemInstance in character.inventory():
+		if candidate.id == instance_id:
+			instance = candidate
+			break
+	if instance == null or instance.charges == 0:
+		return ProjectileAttackProfile.blocked(&"projectile_charge_unavailable", "The selected Classic projectile has no remaining charge.")
+	var spell := content.spell_by_classic_id(absi(projectile_item.special_2))
+	if spell == null:
+		return ProjectileAttackProfile.blocked(&"projectile_spell_unavailable", "Projectile item '%s' references unavailable Classic spell %d." % [projectile_item.id, absi(projectile_item.special_2)])
+	var unsupported := _projectile_spell_unavailable_reason(spell)
+	if not unsupported.is_empty():
+		return ProjectileAttackProfile.blocked(&"unsupported_projectile_spell", unsupported)
+	var power := absi(projectile_item.special_1)
+	if power == 8:
+		return ProjectileAttackProfile.blocked(&"random_projectile_power_unresolved", "This projectile rolls power before Castle opens its target picker; that serializable targeting continuation is not implemented yet.")
+	return ProjectileAttackProfile.permitted(projectile_item, instance_id, spell, power, absi(spell.range_min + spell.range_max * power))
+
+
+func projectile_target_is_valid(combat: CombatState, content: RealmzContent, actor_id: String, target_id: String, maximum_range: int, require_line_of_sight: bool = true) -> bool:
+	if combat == null or content == null or combat.battlefield == null:
+		return false
+	var terrain_set := _battle_terrain_set(content, combat.battlefield)
+	return terrain_set != null and _rules.battlefield.projectile_target_is_valid(combat.battlefield, terrain_set, actor_id, target_id, maximum_range, require_line_of_sight)
 
 
 func probe_edge_retreat(combat: CombatState, actor_id: String, destination: Vector2i):
@@ -483,6 +523,7 @@ func _resolve_monster_reaction(state: GameState, content: RealmzContent, attacke
 	var definition := content.monster_by_id(attacker.definition_id)
 	if definition == null:
 		return REACTION_COMPLETED
+	_prepare_monster_melee_weapon(attacker, definition, content)
 	var weapon := content.item_by_id(attacker.weapon_id) if not attacker.weapon_id.is_empty() else null
 	var character_target := state.party.character_by_id(target_id)
 	if character_target != null:
@@ -886,6 +927,67 @@ func apply_fumble_recovery(state: GameState, content: RealmzContent, response_pa
 	return CombatFlowResult.succeeded([DomainEvent.new(&"fumbled_item_recovered", {"battleId": state.combat.battle_id, "instanceId": recovered.id, "itemId": recovered.definition_id, "characterId": character.id})])
 
 
+func _fire_character_projectile(state: GameState, content: RealmzContent, actor: CharacterState, equipment: CharacterCombatEquipment, target_id: String, rng: RealmzRng) -> CombatFlowResult:
+	var combat := state.combat
+	var profile := character_projectile_profile(actor, content, equipment)
+	if not profile.available:
+		return CombatFlowResult.failed(profile.error_code, profile.error_message)
+	var target := combat.monster_by_id(target_id)
+	if target == null or target.current_health <= 0 or target.traitor == actor.traitor:
+		return CombatFlowResult.failed(&"invalid_projectile_target", "This source-backed projectile slice can target only a living hostile monster.")
+	if not projectile_target_is_valid(combat, content, actor.id, target.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
+		return CombatFlowResult.failed(&"projectile_target_unavailable", "The target is outside the Classic projectile range or line of sight.")
+	var definition := content.monster_by_id(target.definition_id)
+	var caste := content.caste_by_id(actor.caste_id)
+	if definition == null or caste == null:
+		return CombatFlowResult.failed(&"projectile_target_unavailable", "Projectile resolution requires the target monster and caster caste definitions.")
+	_prepare_character_turn(combat, actor)
+	if not _rules.inventory.use_charge(actor, profile.item_instance_id, profile.item):
+		return CombatFlowResult.failed(&"projectile_charge_unavailable", "The selected projectile charge could not be consumed atomically.")
+	var resolution := _rules.magic.resolve_character_projectile(actor, caste, profile.item, target, profile.spell, profile.power_level, rng)
+	if resolution == null:
+		return CombatFlowResult.failed(&"unsupported_projectile_spell", "The selected projectile cannot be resolved by the source-backed missile rules.")
+	combat.active_turn.physical_action_committed = true
+	actor.attacks_remaining = _rules.arithmetic.signed_16(actor.attacks_remaining - 2)
+	actor.movement = maxi(0, actor.movement - 12)
+	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_projectile_resolved", {
+		"actorId": actor.id,
+		"targetId": target.id,
+		"targetKind": "monster",
+		"itemId": profile.item.id,
+		"spellId": profile.spell.id,
+		"powerLevel": profile.power_level,
+		"range": _rules.battlefield.classic_range(combat.battlefield, actor.id, target.id),
+		"hitCount": resolution.hit_count,
+		"missCount": resolution.miss_count,
+		"damage": resolution.total_damage,
+		"defeated": resolution.target_defeated,
+		"source": "classic",
+	})]
+	var death_macro_requested := resolution.target_defeated and _request_monster_death_macro(target, definition, events)
+	_remove_defeated_position(combat, target.id, resolution.target_defeated and not death_macro_requested)
+	if not _character_can_continue(actor):
+		combat.advance_turn()
+	if death_macro_requested:
+		return CombatFlowResult.succeeded(events)
+	if _finish_if_resolved(state, content, events):
+		return CombatFlowResult.succeeded(events, true)
+	_process_monster_turns(state, content, rng, events)
+	return CombatFlowResult.succeeded(events, combat.completed)
+
+
+static func _projectile_spell_unavailable_reason(spell: SpellDefinition) -> String:
+	if spell.target_type != 1:
+		return "Classic projectile spell '%s' does not use a single-target picker." % spell.id
+	if absi(spell.spell_class) != 9:
+		return "Classic projectile spell '%s' is not missile class 9." % spell.id
+	if absi(spell.damage_type) != 9:
+		return "Elemental projectile spell '%s' requires its source-backed save and special-effect path." % spell.id
+	if spell.special != 0:
+		return "Projectile spell '%s' uses unresolved Classic special %d." % [spell.id, spell.special]
+	return ""
+
+
 func _prepare_character_turn(combat: CombatState, character: CharacterState) -> void:
 	if combat.active_turn != null:
 		return
@@ -964,7 +1066,16 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 				if attack_result != MONSTER_ATTACK_COMPLETED:
 					return
 		elif active_turn.action == &"missile":
-			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "tactical-position-unavailable"}))
+			attack_result = _process_monster_projectile(state, content, monster, definition, active_turn, rng, events)
+			if attack_result == MONSTER_ATTACK_FALLBACK:
+				active_turn.action = _rules.monsters.choose_action_after_missile(monster, definition, rng)
+				if active_turn.action == &"cast":
+					events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "reason": "monster-spell-resolution-not-implemented"}))
+					attack_result = MONSTER_ATTACK_COMPLETED
+				else:
+					attack_result = _process_monster_advance(state, content, monster, definition, active_turn, rng, events)
+			if attack_result != MONSTER_ATTACK_COMPLETED:
+				return
 		elif active_turn.action == &"cast":
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "reason": "monster-spell-resolution-not-implemented"}))
 		elif active_turn.action == &"retreat":
@@ -1045,6 +1156,73 @@ func _process_monster_advance(state: GameState, content: RealmzContent, monster:
 	return MONSTER_ATTACK_COMPLETED
 
 
+func _process_monster_projectile(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	var projectile_item_id := definition.item_id_at(1)
+	var projectile_item := content.item_by_id(projectile_item_id) if not projectile_item_id.is_empty() else null
+	var projectile_spell := content.spell_by_classic_id(absi(projectile_item.special_2)) if projectile_item != null else null
+	var unavailable := "Monster missile slot 1 is empty or references an unavailable item."
+	if projectile_item != null and projectile_spell == null:
+		unavailable = "Monster missile item '%s' references an unavailable Classic spell." % projectile_item.id
+	elif projectile_spell != null:
+		unavailable = _projectile_spell_unavailable_reason(projectile_spell)
+	if projectile_item == null or projectile_spell == null or not unavailable.is_empty():
+		active_turn.movement_remaining = 0
+		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": unavailable, "source": "classic"}))
+		return MONSTER_ATTACK_COMPLETED
+	var terrain_set := _battle_terrain_set(content, combat.battlefield)
+	if terrain_set == null:
+		active_turn.movement_remaining = 0
+		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "missing-battle-terrain", "source": "classic"}))
+		return MONSTER_ATTACK_COMPLETED
+	# combat.c rolls power for range and spell-point cost, then forces power 1
+	# immediately before resolving the actual missile effect.
+	var range_power := rng.draw(7, StringName("combat.monster-projectile.%s.power" % monster.id))
+	var maximum_range := absi(projectile_spell.range_min + projectile_spell.range_max * range_power)
+	var target_ids := _monster_projectile_target_ids(state, monster, terrain_set, maximum_range)
+	if target_ids.is_empty():
+		events.append(DomainEvent.new(&"combat_monster_projectile_skipped", {"actorId": monster.id, "reason": "no-character-target-in-range", "range": maximum_range, "source": "classic"}))
+		return MONSTER_ATTACK_FALLBACK
+	var cost_power := range_power
+	while cost_power > 0 and monster.spell_points < absi(projectile_spell.cost * cost_power):
+		cost_power -= 1
+	if cost_power <= 0:
+		events.append(DomainEvent.new(&"combat_monster_projectile_skipped", {"actorId": monster.id, "reason": "insufficient-spell-points", "source": "classic"}))
+		return MONSTER_ATTACK_FALLBACK
+	var spell_cost := absi(projectile_spell.cost * cost_power)
+	var target_id := target_ids[rng.draw_between(0, target_ids.size() - 1, StringName("combat.monster-projectile.%s.target" % monster.id))]
+	var target := state.party.character_by_id(target_id)
+	monster.weapon_id = projectile_item.id
+	monster.target_id = target.id
+	monster.spell_points -= spell_cost
+	active_turn.target_id = target.id
+	active_turn.movement_remaining = 0
+	active_turn.physical_action_committed = true
+	combat.set_guarding(monster.id, false)
+	var resolution := _rules.magic.resolve_monster_projectile(monster, projectile_item, target, projectile_spell, 1, rng)
+	if resolution == null:
+		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "missile", "reason": "projectile-resolution-failed", "source": "classic"}))
+		return MONSTER_ATTACK_COMPLETED
+	events.append(DomainEvent.new(&"combat_projectile_resolved", {
+		"actorId": monster.id,
+		"targetId": target.id,
+		"targetKind": "character",
+		"itemId": projectile_item.id,
+		"spellId": projectile_spell.id,
+		"rangePower": range_power,
+		"costPower": cost_power,
+		"resolutionPower": 1,
+		"range": _rules.battlefield.classic_range(combat.battlefield, monster.id, target.id),
+		"hitCount": resolution.hit_count,
+		"missCount": resolution.miss_count,
+		"damage": resolution.total_damage,
+		"defeated": resolution.target_defeated,
+		"source": "classic-monster",
+	}))
+	_remove_defeated_position(combat, target.id, resolution.target_defeated)
+	return MONSTER_ATTACK_COMPLETED
+
+
 func _process_monster_retreat(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
 	var terrain_set := _battle_terrain_set(content, combat.battlefield)
@@ -1106,6 +1284,7 @@ func _retreating_monster_reached_edge(state: GameState, content: RealmzContent, 
 
 func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, attack_index: int, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
+	_prepare_monster_melee_weapon(monster, definition, content)
 	if not _monster_target_is_available(state, monster, active_turn.target_id) or not _rules.battlefield.are_adjacent(combat.battlefield, monster.id, active_turn.target_id):
 		active_turn.target_id = _select_adjacent_monster_target(state, monster, rng)
 		monster.target_id = active_turn.target_id
@@ -1181,6 +1360,30 @@ func _select_adjacent_monster_target(state: GameState, monster: MonsterState, rn
 	if target_ids.is_empty():
 		return ""
 	return target_ids[rng.draw_between(0, target_ids.size() - 1, &"combat.monster-target")]
+
+
+func _monster_projectile_target_ids(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition, maximum_range: int) -> Array[String]:
+	var candidates: Array[String] = []
+	for character: CharacterState in state.party.characters():
+		if _monster_target_is_available(state, monster, character.id) and _rules.battlefield.projectile_target_is_valid(state.combat.battlefield, terrain_set, monster.id, character.id, maximum_range, true):
+			candidates.append(character.id)
+	# Hostile monsters normally target party slots. Castle's monster-on-monster
+	# projectile formula reads the stale global player missile statistic, so that
+	# ally/traitor branch remains explicitly disabled pending an oracle decision.
+	return candidates
+
+
+func _prepare_monster_melee_weapon(monster: MonsterState, definition: MonsterDefinition, content: RealmzContent) -> void:
+	if monster == null or definition == null or content == null or monster.weapon_id.is_empty():
+		return
+	var active_item := content.item_by_id(monster.weapon_id)
+	var active_spell := content.spell_by_classic_id(absi(active_item.special_2)) if active_item != null and active_item.special_2 != 0 else null
+	if active_spell == null or active_spell.damage_type != 9:
+		return
+	# attack2 writes this replacement through Castle's global monsterup instead
+	# of its mon argument. Apply the intended slot-0 replacement to the actual
+	# attacker so reactions cannot mutate an unrelated monster.
+	monster.weapon_id = definition.item_id_at(0)
 
 
 func _select_visible_monster_target(state: GameState, monster: MonsterState, terrain_set: BattleTerrainSetDefinition, rng: RealmzRng) -> String:

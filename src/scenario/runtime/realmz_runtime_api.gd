@@ -2359,7 +2359,7 @@ func _combat_request(request_id: String) -> InteractionRequest:
 		"targetMode": String(combat_view.weapon_switch_target_mode),
 		"reason": combat_view.weapon_switch_unavailable_reason,
 	}
-	var ranged_attack := {"enabled": false, "reason": combat_view.ranged_attack_unavailable_reason}
+	var ranged_attack := {"enabled": combat_view.weapon_mode == &"missile" and combat_view.legal_actions.has(&"attack"), "reason": combat_view.ranged_attack_unavailable_reason}
 	var targets: Array[Dictionary] = []
 	for monster: MonsterView in combat_view.targets:
 		targets.append({"id": monster.id, "kind": "monster", "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health})

@@ -13,7 +13,8 @@ func build(request: InteractionRequest) -> void:
 	if action_ids.has("attack") and targets is Array:
 		for target: Variant in targets:
 			if target is Dictionary:
-				add_response("Attack %s • HP %d/%d" % [target.get("name", "Enemy"), int(target.get("currentHealth", 0)), int(target.get("maximumHealth", 0))], {"actorId": actor_id, "action": "attack", "targetId": String(target.get("id", ""))})
+				var verb := "Fire at" if weapon_mode == "missile" else "Attack"
+				add_response("%s %s • HP %d/%d" % [verb, target.get("name", "Enemy"), int(target.get("currentHealth", 0)), int(target.get("maximumHealth", 0))], {"actorId": actor_id, "action": "attack", "targetId": String(target.get("id", ""))})
 	elif weapon_mode == "melee":
 		add_hint(String(request.payload.get("meleeAttackReason", "No adjacent melee target.")))
 	var movement: Variant = request.payload.get("movement", [])
@@ -29,7 +30,7 @@ func build(request: InteractionRequest) -> void:
 				if edge_retreat:
 					response["forced"] = bool(option.get("forcedRetreat", false))
 				add_response(label, response, bool(option.get("enabled", false)), String(option.get("reason", "Movement unavailable.")))
-	if weapon_mode == "missile":
+	if weapon_mode == "missile" and not action_ids.has("attack"):
 		var ranged: Variant = request.payload.get("rangedAttack", {})
 		var ranged_reason := String(ranged.get("reason", "Missile attacks are unavailable.") if ranged is Dictionary else "Missile attacks are unavailable.")
 		add_response("Fire missile unavailable", {}, false, ranged_reason)

@@ -76,7 +76,19 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 			elif weapon_mode == &"melee":
 				melee_attack_unavailable_reason = "No hostile battlefield footprint is adjacent."
 			else:
-				ranged_attack_unavailable_reason = "Missile range, line of sight, and projectile resolution are not implemented yet."
+				targets.clear()
+				character_targets.clear()
+				var profile := combat_flow.character_projectile_profile(active_character, content, equipment) if combat_flow != null else null
+				if profile == null or not profile.available:
+					ranged_attack_unavailable_reason = profile.error_message if profile != null else "Projectile rules are unavailable."
+				else:
+					for monster: MonsterState in combat.monsters():
+						if monster.current_health > 0 and monster.traitor != active_character.traitor and combat_flow.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
+							targets.append(MonsterView.new(monster))
+					if targets.is_empty():
+						ranged_attack_unavailable_reason = "No hostile monster is within the projectile's Classic range and line of sight."
+					else:
+						legal_actions.append(&"attack")
 			if weapon_switch_available:
 				legal_actions.append(&"switch_weapon")
 		else:

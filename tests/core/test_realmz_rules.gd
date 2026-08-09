@@ -14,6 +14,7 @@ func run() -> void:
 	_test_monster_permanent_afflictions()
 	_test_conditions_time_and_persistence()
 	_test_inventory_economy_and_treasure()
+	_test_projectile_resolution()
 	_test_combat_magic_and_monsters()
 
 
@@ -668,6 +669,37 @@ func _test_inventory_economy_and_treasure() -> void:
 	assert_equal(treasure_roll.wealth.gold, 10, "signed random treasure can reach its inclusive maximum")
 
 
+func _test_projectile_resolution() -> void:
+	var rules := RealmzRules.new()
+	var caster := CharacterState.new("character.projectile-rules", "Archer", 20, 20)
+	caster.level = 4
+	caster.missile = 20
+	var caste := _caste()
+	caste.gets_missile_bonus = true
+	var item := ItemDefinition.new("item.projectile-rules", 104, "Bow +1")
+	item.damage_bonus = 1
+	var spell := SpellDefinition.new("spell.projectile-rules", 4101, "Arrow")
+	spell.spell_class = 9
+	spell.damage_type = 9
+	spell.target_type = 1
+	spell.damage_min = 4
+	spell.damage_max = 4
+	spell.fixed_target_count = 3
+	spell.to_hit_bonus = 10
+	var target := MonsterState.new("monster.projectile-rules", "monster.projectile-rules", "Target", 30, 30, 1, 1)
+	var rng := ScriptedRng.new([0, 0, 0, 0, 0, 0])
+	var result := rules.magic.resolve_character_projectile(caster, caste, item, target, spell, 1, rng)
+	assert_not_null(result, "ordinary class-9 physical missiles use the dedicated resolver")
+	assert_equal([result.hit_count, result.miss_count, result.damage_per_hit, result.total_damage, target.current_health], [3, 0, 6, 18, 12], "Castle rolls projectile damage and caste bonus once, then reuses that damage for every fixed hit")
+	assert_equal(rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["combat.projectile.duration", "combat.projectile.damage", "combat.projectile.caste-bonus", "combat.projectile.miss.0", "combat.projectile.miss.1", "combat.projectile.miss.2"], "projectile RNG order keeps shared damage before per-hit dodge checks")
+	var shielded := MonsterState.new("monster.projectile-shield", "monster.projectile-rules", "Shielded", 30, 30, 1, 1)
+	shielded.conditions.set_value(ConditionRules.SHIELD_FROM_PROJECTILES, -1)
+	var shield_rng := ScriptedRng.new([0, 0, 0])
+	var shield_result := rules.magic.resolve_character_projectile(caster, caste, item, shielded, spell, 1, shield_rng)
+	assert_equal([shield_result.hit_count, shield_result.miss_count, shielded.current_health], [0, 1, 30], "projectile shield terminates the repeated volley before damage")
+	assert_equal(shield_rng.snapshot().draw_count, 3, "an automatic projectile-shield miss consumes no dodge roll")
+
+
 func _test_combat_magic_and_monsters() -> void:
 	var rules := RealmzRules.new()
 	var attacker := CharacterState.new("character.attacker", "Attacker", 10, 10)
@@ -874,6 +906,9 @@ func _test_combat_magic_and_monsters() -> void:
 	var adjacent_choice_rng := ScriptedRng.new([0, 0])
 	assert_equal(rules.monsters.choose_action(built, definition, adjacent_choice_rng, true), &"cast", "an adjacent enemy makes Castle fall through a successful missile roll into casting")
 	assert_equal(adjacent_choice_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["monster.ai.missile", "monster.ai.cast"], "adjacent missile fallback preserves Castle's two-draw action order")
+	var range_fallback_rng := ScriptedRng.new([0])
+	assert_equal(rules.monsters.choose_action_after_missile(built, definition, range_fallback_rng), &"cast", "an out-of-range or unaffordable missile resumes at Castle's casting choice")
+	assert_equal(range_fallback_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["monster.ai.cast"], "post-missile fallback does not repeat the missile-choice draw")
 	built.conditions.set_value(ConditionRules.STUPID, -1)
 	var blocked_cast_rng := ScriptedRng.new([0, 0])
 	assert_equal(rules.monsters.choose_action(built, definition, blocked_cast_rng, true), &"advance", "a condition-blocked cast falls through to physical action")

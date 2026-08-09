@@ -92,6 +92,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `_test_monster_los_targeting_and_movement` covers the gap-nine reroll, unseen-random-target transition, draw count, and visible fallback target. The differential case is `combat.monster-target-scan-safety`.
 - Legacy quirk: none. Out-of-range native memory is not an authored scenario behavior.
 
+## FD-COMBAT-010 — Actor-owned monster projectile replacement
+
+- Affected rule: replacing a monster's active projectile weapon before that monster performs an ordinary physical attack, including Guard and withdrawal reactions.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/attack.c`, `attack2`, lines 448–485, and `src/realmz_orig/checkforenemy.c`, `checkforenemy`, lines 93–118. `attack2` copies its actual `mon - 10` attacker into local `monst`, but the damage-type-nine replacement writes `monster[monsterup].weapon` and reads `monster[monsterup].items[0]`. A reaction calls `attack2(enemy[ttt], q[up], 0)` while `monsterup` can still identify the moving monster.
+- Observable oracle behavior, determined from the complete source flow: when the reacting attacker and global active monster differ, Castle mutates the active mover and gives the reacting attacker's local copy the mover's native slot-zero item. The synthetic source-observation fixture is `tests/fixtures/oracle/monster-projectile-weapon-replacement-correction.json`, SHA-256 `4fa9d08301311d0164a58f9e6008050808857b743c07b8c64488373cb7e8e8d6`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: one monster can unexpectedly change another monster's equipment, while a reaction resolves with a weapon the attacker never carried. The result depends on unrelated active-turn state rather than authored equipment.
+- Chosen 2.0 behavior: inspect and mutate only the actual attacking monster. If its active item links to a damage-type-nine projectile, replace it with that same monster's exact native slot-zero item; an empty slot continues unarmed. Ordinary attacks and reactions use the same actor-owned path. The surrounding source-conformant missile flow retains initial range power, lowers only unaffordable cost power, resolves at power one, and resumes the cast/movement decision when no target or affordable power remains.
+- Tests: `_test_source_backed_projectile_fire` passes the actual attacker alongside a distinct untouched monster and proves replacement reads and mutates only the supplied attacker; source inspection verifies that ordinary and reaction resolution both call the shared helper. Package tests prove all six native slots retain their positions. The differential case is `combat.monster-projectile-weapon-replacement`.
+- Legacy quirk: none. Cross-combatant mutation through stale global state is not a useful authored dependency.
+
 Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
 
 Each entry must include:

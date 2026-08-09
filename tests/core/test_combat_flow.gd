@@ -14,6 +14,7 @@ func run() -> void:
 	_test_character_half_attack_cadence_and_restore()
 	_test_character_weapon_mode_toggle_and_restore()
 	_test_monster_missile_does_not_impersonate_melee()
+	_test_source_backed_projectile_fire()
 	_test_monster_authored_attack_rows_and_target_retention()
 	_test_monster_attack_cursor_restore()
 	_test_battle_owned_fumble_and_exact_recovery()
@@ -595,7 +596,7 @@ func _test_character_weapon_mode_toggle_and_restore() -> void:
 	assert_false(String(request.payload.get("rangedAttack", {}).get("reason", "")).is_empty(), "the typed interaction explains why Fire is disabled")
 	var blocked := rules.combat_flow.submit_action(state, content, character.id, &"attack", monster.id, RealmzRng.new(92))
 	assert_false(blocked.ok, "missile mode cannot fall through to the melee resolver while tactical ranged state is unavailable")
-	assert_equal(blocked.error_code, &"missile_attack_unavailable", "the disabled ranged path fails with an explicit fidelity reason")
+	assert_equal(blocked.error_code, &"projectile_charge_unavailable", "an empty missile slot fails with the exact unavailable authored fact")
 	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	assert_not_null(restored, "the active weapon mode survives whole-state restoration")
 	assert_equal(restored.combat.character_weapon_mode(character.id), &"missile", "restore preserves the exact battle-owned toggle")
@@ -698,8 +699,81 @@ func _test_monster_missile_does_not_impersonate_melee() -> void:
 	assert_true(result.ok, "an unavailable tactical missile decision returns a committed combat step")
 	assert_equal(character.current_health, 20, "the missile branch no longer applies an ordinary melee attack row")
 	assert_false(result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == monster.id), "no melee-resolution event is mislabeled as a missile")
-	assert_true(result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action_unavailable" and event.payload.get("action") == "missile" and event.payload.get("reason") == "tactical-position-unavailable"), "the disabled missile branch reports its exact missing session fact")
+	assert_true(result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action_unavailable" and event.payload.get("action") == "missile" and String(event.payload.get("reason")).contains("slot 1")), "the disabled missile branch reports its exact missing native slot")
 	assert_equal(state.combat.active_actor_id(), character.id, "an unavailable monster missile spends exactly that monster activation without skipping the next character turn")
+
+
+func _test_source_backed_projectile_fire() -> void:
+	var rules := RealmzRules.new()
+	var spell := SpellDefinition.new("spell.projectile", 4101, "Test Arrow")
+	spell.spell_class = 9
+	spell.damage_type = 9
+	spell.target_type = 1
+	spell.range_min = 20
+	spell.range_max = 0
+	spell.damage_min = 4
+	spell.damage_max = 4
+	spell.fixed_target_count = 1
+	var bow := ItemDefinition.new("item.projectile-bow", 104, "Test Bow")
+	bow.item_type = 15
+	bow.special_1 = -1
+	bow.special_2 = spell.classic_id
+	bow.initial_charges = 2
+	bow.damage_bonus = 1
+	var caste := CasteDefinition.new("caste.test", 1, "Projectile Caste", _ints(8), _ints(6), _ints(12), _ints(40), Vector2i(1, 1), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
+	var character := _character("character.projectile")
+	character.missile = 20
+	var bow_instance := rules.inventory.add_item(character, bow, "instance.projectile-bow", true)
+	assert_not_null(bow_instance, "projectile fixture grants the charged type-15 weapon")
+	assert_true(rules.inventory.equip(character, bow_instance.id, bow), "projectile fixture equips the Classic missile slot")
+	var definition := _monster_definition("monster.projectile-target", [])
+	var monster := MonsterState.new("monster.projectile-target.instance", definition.id, definition.name, 5, 5, 1, 1)
+	var state := _state(character, monster, "battle.character-projectile")
+	state.combat.battlefield.move_actor(monster.id, Vector2i(50, 45))
+	state.combat.set_character_weapon_mode(character.id, &"missile")
+	var content := _content([definition], [bow], [], [caste], [spell])
+	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow)
+	assert_true(view.legal_actions.has(&"attack"), "a hostile monster in the source-backed 20-cell range exposes Fire")
+	assert_equal(view.targets.map(func(target: MonsterView) -> String: return target.id), [monster.id], "the detached target list uses the same range and LOS query as execution")
+	var result := rules.combat_flow.submit_action(state, content, character.id, &"attack", monster.id, ScriptedRng.new([0, 0, 0]))
+	assert_true(result.ok, "a committed ordinary class-9 projectile resolves")
+	assert_equal([bow_instance.charges, character.attacks_remaining, character.movement], [1, 1, 0], "manual fire spends one charge, two half-attacks, and twelve movement while preserving Castle's carried half-attack")
+	assert_equal(monster.current_health, 0, "projectile damage includes the missile item's magic damage bonus")
+	assert_true(result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_projectile_resolved" and event.payload.get("hitCount") == 1 and event.payload.get("damage") == 5), "projectile resolution publishes its source-backed hit and damage facts")
+
+	var missile_item := ItemDefinition.new("item.monster-missile", 157, "Monster Crossbow")
+	missile_item.item_type = 15
+	missile_item.special_2 = spell.classic_id
+	var melee_item := ItemDefinition.new("item.monster-melee", 81, "Monster Blade")
+	melee_item.item_type = 2
+	var monster_definition := MonsterDefinition.new("monster.projectile-shooter", 2, "Projectile Shooter", 1, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), [], [melee_item.id, missile_item.id, "", "", "", ""], [MonsterAttackDefinition.new(1, 1)])
+	monster_definition.missile_percent = 100
+	monster_definition.movement_max = 12
+	var monster_shooter := MonsterState.new("monster.projectile-shooter.instance", monster_definition.id, monster_definition.name, 10, 10, 1)
+	monster_shooter.weapon_id = melee_item.id
+	monster_shooter.spell_points = 2
+	spell.cost = 2
+	var monster_target := _character("character.monster-projectile-target")
+	monster_target.current_health = 20
+	monster_target.maximum_health = 20
+	monster_target.dodge = 0
+	var monster_state := _state(monster_target, monster_shooter, "battle.monster-projectile")
+	monster_state.combat.battlefield.move_actor(monster_shooter.id, Vector2i(50, 45))
+	var monster_content := _content([monster_definition], [melee_item, missile_item], [], [], [spell])
+	var monster_result := rules.combat_flow.submit_action(monster_state, monster_content, monster_target.id, &"finish", "", ScriptedRng.new([0, 5000, 0, 0, 0, 0]))
+	assert_true(monster_result.ok, "a hostile monster fires from exact native item slot 1")
+	assert_equal([monster_shooter.weapon_id, monster_target.current_health, monster_state.combat.is_guarding(monster_shooter.id)], [missile_item.id, 16, false], "monster fire equips slot 1, damages the character, and clears guard")
+	assert_true(monster_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_projectile_resolved" and event.payload.get("source") == "classic-monster" and event.payload.get("rangePower") == 2 and event.payload.get("costPower") == 1), "monster fire retains initial range power while lowering only unaffordable cost power")
+	assert_equal(monster_shooter.spell_points, 0, "monster fire spends the lowered affordable power cost")
+	spell.range_min = 0
+	var skipped_events: Array[DomainEvent] = []
+	var skipped := rules.combat_flow._process_monster_projectile(monster_state, monster_content, monster_shooter, monster_definition, CombatTurnState.new(monster_shooter.id), ScriptedRng.new([0]), skipped_events)
+	assert_equal(skipped, CombatFlow.MONSTER_ATTACK_FALLBACK, "an out-of-range missile resumes Castle's post-missile action decision")
+	assert_true(skipped_events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_projectile_skipped" and event.payload.get("reason") == "no-character-target-in-range"), "the fallback retains a diagnostic trace without pretending the activation ended")
+	var unrelated := MonsterState.new("monster.unrelated", monster_definition.id, "Unrelated", 10, 10)
+	unrelated.weapon_id = "item.unrelated"
+	rules.combat_flow._prepare_monster_melee_weapon(monster_shooter, monster_definition, monster_content)
+	assert_equal([monster_shooter.weapon_id, unrelated.weapon_id], [melee_item.id, "item.unrelated"], "melee replacement updates the actual attacker instead of Castle's stale global monsterup")
 
 
 func _test_character_half_attack_cadence_and_restore() -> void:
@@ -932,8 +1006,8 @@ func _blank_battlefield() -> BattlefieldState:
 	return BattlefieldState.new("map.test", tiles)
 
 
-func _content(monsters: Array[MonsterDefinition], items: Array[ItemDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = []) -> RealmzContent:
-	return RealmzContent.new("campaign.cadence", "0".repeat(64), "cadence", "realmz-classic-1", "map.test", Vector2i(45, 45), _battle_world(), ScenarioDefinition.new([], []), [], [], [], races, castes, items, [], monsters)
+func _content(monsters: Array[MonsterDefinition], items: Array[ItemDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = [], spells: Array[SpellDefinition] = []) -> RealmzContent:
+	return RealmzContent.new("campaign.cadence", "0".repeat(64), "cadence", "realmz-classic-1", "map.test", Vector2i(45, 45), _battle_world(), ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells, monsters)
 
 
 func _battle_world() -> WorldDefinition:

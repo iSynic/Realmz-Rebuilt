@@ -126,8 +126,13 @@ func choose_action(monster: MonsterState, definition: MonsterDefinition, rng: Re
 		return &"retreat"
 	if rng.draw(100, &"monster.ai.missile") <= definition.missile_percent and not has_adjacent_enemy:
 		return &"missile"
+	return choose_action_after_missile(monster, definition, rng)
+
+
+func choose_action_after_missile(monster: MonsterState, definition: MonsterDefinition, rng: RealmzRng) -> StringName:
 	# Castle consumes the casting-choice roll after an adjacent missile fallback,
-	# and before checking conditions that prevent the cast.
+	# an out-of-range missile, or a missile whose power cannot be afforded, and
+	# before checking conditions that prevent the cast.
 	var cast_roll := rng.draw(100, &"monster.ai.cast")
 	if cast_roll <= definition.cast_percent and not monster.conditions.is_active(ConditionRules.STUPID) and not monster.conditions.is_active(ConditionRules.CONFUSED) and not monster.conditions.is_active(ConditionRules.SILENCED) and not monster.conditions.is_active(ConditionRules.HELPLESS):
 		return &"cast"

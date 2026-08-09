@@ -28,6 +28,19 @@ func are_adjacent(battlefield: BattlefieldState, first_actor_id: String, second_
 	return _footprints_are_adjacent(battlefield.actor_footprint(first_actor_id), battlefield.actor_footprint(second_actor_id))
 
 
+func classic_range(battlefield: BattlefieldState, first_actor_id: String, second_actor_id: String) -> int:
+	if battlefield == null or first_actor_id == second_actor_id or not battlefield.has_actor(first_actor_id) or not battlefield.has_actor(second_actor_id):
+		return -1
+	# getrange.c measures actor anchors and stores sqrt() in a short, truncating
+	# the Euclidean distance before comparing it with the spell range.
+	return floori(Vector2(battlefield.actor_position(second_actor_id) - battlefield.actor_position(first_actor_id)).length())
+
+
+func projectile_target_is_valid(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, first_actor_id: String, second_actor_id: String, maximum_range: int, require_line_of_sight: bool = true) -> bool:
+	var distance := classic_range(battlefield, first_actor_id, second_actor_id)
+	return distance >= 0 and distance <= maximum_range and (not require_line_of_sight or has_line_of_sight(battlefield, terrain_set, first_actor_id, second_actor_id))
+
+
 func has_line_of_sight(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, to_actor_id: String) -> bool:
 	if battlefield == null or terrain_set == null or not battlefield.has_actor(from_actor_id) or not battlefield.has_actor(to_actor_id):
 		return false

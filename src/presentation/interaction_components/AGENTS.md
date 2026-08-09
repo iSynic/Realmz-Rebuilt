@@ -8,7 +8,7 @@
 - `InteractionPresenter` owns request identity, modal visibility, and construction of `InteractionResponse`.
 - `AgeUpdateInteraction` presents the source-backed band/range and nonzero fifteen-column age changes and emits only the empty `age_update` acknowledgement payload.
 - `TreasureDistributionInteraction` currently owns mode `fumbled-item-recovery`: it displays the exact item/charge count, legal recipients and disabled reasons, and emits only assign or leave-behind payloads for the request's instance ID.
-- `BattleInteraction` consumes the request's weapon mode, adjacent targets, legal-action list, typed Escape availability, and eight precomputed movement options. Ordinary move responses carry only the actor, `move` action, and selected destination; edge-band options emit `retreat_edge` plus the core-owned forced flag. Disabled steps, Escape, and Fire use typed reasons and cannot synthesize targets or tactical facts. Defend emits Castle's persistent Guard command, while Finish Turn is a separate response that clears Guard and remaining movement.
+- `BattleInteraction` consumes the request's weapon mode, rules-owned melee/projectile targets, legal-action list, typed Escape availability, and eight precomputed movement options. Attack responses carry only the actor, action, and selected stable target ID; ordinary move responses carry only the actor, `move` action, and selected destination; edge-band options emit `retreat_edge` plus the core-owned forced flag. Disabled steps, Escape, and Fire use typed reasons and cannot synthesize targets or tactical facts. Defend emits Castle's persistent Guard command, while Finish Turn is a separate response that clears Guard and remaining movement.
 
 # Local Contracts
 

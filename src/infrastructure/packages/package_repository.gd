@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "42e8a3de0dff78efaed680581e696a76bca2e5c09124230e2f0d41a2c28844c9"
+const EXPECTED_SCHEMA_HASH: String = "d8c59c118373b704fbf1103d7d57a76ff6e7f6144917cacdebe95cb0750d7e73"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -700,7 +700,7 @@ func _construct_monsters(value: Variant) -> Variant:
 		var immunity_value: Variant = _integer_array(record["spellImmunities"], 6, "Monster spell immunities")
 		var money_value: Variant = _integer_array(record["money"], 3, "Monster wealth")
 		var spell_ids_value: Variant = _string_list(record["spellIds"], "Monster spell IDs")
-		var item_ids_value: Variant = _string_list(record["itemIds"], "Monster item IDs")
+		var item_ids_value: Variant = _fixed_string_list(record["itemIds"], 6, 255, "Monster item IDs")
 		if type_value == null or saves_value == null or immunity_value == null or money_value == null or spell_ids_value == null or item_ids_value == null:
 			return null
 		var attacks: Array[MonsterAttackDefinition] = []
@@ -1771,7 +1771,7 @@ func _validate_rule_references(races: Array[RaceDefinition], castes: Array[Caste
 			if not spell_ids.has(spell_id):
 				return _reject("Monster '%s' references unavailable spell '%s'." % [monster.id, spell_id])
 		for item_id: String in monster.item_ids():
-			if not item_ids.has(item_id):
+			if not item_id.is_empty() and not item_ids.has(item_id):
 				return _reject("Monster '%s' references unavailable item '%s'." % [monster.id, item_id])
 		if not monster.weapon_id.is_empty() and not item_ids.has(monster.weapon_id):
 			return _reject("Monster '%s' references unavailable weapon '%s'." % [monster.id, monster.weapon_id])

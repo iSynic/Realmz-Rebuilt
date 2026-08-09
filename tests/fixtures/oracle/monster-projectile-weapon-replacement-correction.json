@@ -1,0 +1,37 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-010",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/attack.c",
+      "symbol": "short attack2(short mon, short chare, short attacknum)",
+      "range": "448-485"
+    },
+    {
+      "path": "src/realmz_orig/checkforenemy.c",
+      "symbol": "short checkforenemy(short code)",
+      "range": "93-118"
+    }
+  ],
+  "inputs": {
+    "actualAttacker": "a guarding or withdrawing monster passed as attack2 mon",
+    "activeMonster": "a different monster retained in global monsterup",
+    "actualWeapon": "an item whose linked spell has damage type 9",
+    "actualMeleeSlot": "the actual attacker's native item slot zero",
+    "activeMeleeSlot": "a different item in the global active monster's native slot zero"
+  },
+  "castleSourceObservation": {
+    "localActor": "attack2 copies monster[mon - 10] into local monst",
+    "replacement": "when monst.weapon is a projectile, attack2 writes monster[monsterup].weapon and reads monster[monsterup].items[0] instead of using mon - 10",
+    "reactionPath": "checkforenemy can call attack2 for enemy[ttt] while monsterup still identifies the moving monster",
+    "risk": "the wrong combatant is mutated and the real attacker can resolve melee with another monster's item"
+  },
+  "realmz2ChosenResult": {
+    "replacement": "read native slot zero from the actual attacking monster",
+    "mutation": "replace the actual attacker's active weapon only",
+    "missingSlot": "continue unarmed when the actual attacker has no slot-zero item",
+    "scope": "apply the same actor-owned replacement to ordinary attacks and reactions"
+  }
+}

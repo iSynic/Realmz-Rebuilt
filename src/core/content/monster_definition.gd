@@ -80,5 +80,9 @@ func item_ids() -> Array[String]:
 	return _items.duplicate()
 
 
+func item_id_at(slot: int) -> String:
+	return _items[slot] if slot >= 0 and slot < _items.size() else ""
+
+
 func attacks() -> Array[MonsterAttackDefinition]:
 	return _attacks.duplicate()
