@@ -4,6 +4,10 @@ extends RefCounted
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
 const MONSTER_ATTACK_DEATH_MACRO := 2
+const REACTION_COMPLETED := 0
+const REACTION_WAITING := 1
+const REACTION_DEATH_MACRO := 2
+const REACTION_MOVER_DEFEATED := 3
 const MAX_MONSTERS: int = 100
 const CHARACTER_FUMBLE_SOUNDS: Array[Dictionary] = [
 	{"soundId": 10121, "waitForCompletion": true},
@@ -207,8 +211,18 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 			if not combat.set_character_weapon_mode(actor.id, next_mode):
 				return CombatFlowResult.failed(&"invalid_weapon_mode", "The active character's battle weapon mode could not be changed.")
 			events.append(DomainEvent.new(&"combat_weapon_mode_changed", {"actorId": actor.id, "mode": String(next_mode)}))
-		&"defend", &"pass":
+		&"defend":
 			_prepare_character_turn(combat, actor)
+			var guard_roll := rng.draw(100, &"combat.guard-sound")
+			var guard_sound := 10121 if guard_roll < 50 else 10123
+			combat.set_guarding(actor.id, true)
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": guard_sound, "waitForCompletion": false, "source": "classic-combat-guard"}))
+			events.append(DomainEvent.new(&"combatant_guarded", {"actorId": actor.id, "roll": guard_roll, "soundId": guard_sound, "source": "classic"}))
+			combat.advance_turn()
+		&"finish", &"pass":
+			_prepare_character_turn(combat, actor)
+			actor.movement = 0
+			combat.set_guarding(actor.id, false)
 			events.append(DomainEvent.new(&"combat_turn_passed", {"actorId": actor.id, "action": String(action)}))
 			combat.advance_turn()
 		&"retreat":
@@ -228,10 +242,12 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
-func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i) -> CombatFlowResult:
+func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i, rng: RealmzRng) -> CombatFlowResult:
 	var combat := state.combat
-	if combat == null or combat.completed:
+	if combat == null or combat.completed or rng == null:
 		return CombatFlowResult.failed(&"no_active_battle", "No Realmz battle is accepting tactical movement.")
+	if combat.pending_reaction != null or combat.pending_monster_attack != null:
+		return CombatFlowResult.failed(&"combat_reaction_pending", "The previous Classic combat reaction must finish before another movement command.")
 	if combat.active_actor_id() != actor_id:
 		return CombatFlowResult.failed(&"wrong_combat_actor", "Combat movement actor '%s' does not own the current turn." % actor_id)
 	var actor := state.party.character_by_id(actor_id)
@@ -246,22 +262,266 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 	var probe := _rules.battlefield.probe_step(combat.battlefield, terrain_set, actor_id, direction, available_movement)
 	if not probe.allowed:
 		return CombatFlowResult.failed(probe.reason, _movement_failure_message(probe))
-	var adjacent_before := _hostile_adjacent_ids(state, actor_id)
-	var adjacent_after := _hostile_adjacent_ids(state, actor_id, destination)
-	for hostile_id: String in adjacent_before:
-		if not adjacent_after.has(hostile_id):
-			return CombatFlowResult.failed(&"withdrawal_attack_unavailable", "This step would leave an adjacent enemy; Castle withdrawal attacks are not implemented yet.")
-	if not adjacent_before.is_empty() or not adjacent_after.is_empty():
-		return CombatFlowResult.failed(&"guard_reaction_unavailable", "This step could trigger a guarding enemy; Castle guard reactions are not implemented yet.")
 	_prepare_character_turn(combat, actor)
-	if not combat.battlefield.move_actor(actor_id, destination):
-		return CombatFlowResult.failed(&"battlefield_move_failed", "The validated battlefield step could not be committed.")
-	actor.movement = maxi(0, actor.movement - probe.movement_cost)
-	var terrain := terrain_set.tile_by_id(combat.battlefield.terrain_at(destination))
-	var events: Array[DomainEvent] = [DomainEvent.new(&"combatant_moved", {"actorId": actor.id, "from": [origin.x, origin.y], "to": [destination.x, destination.y], "cost": probe.movement_cost, "movementRemaining": actor.movement})]
+	combat.pending_reaction = CombatReactionState.new(CombatReactionState.CHARACTER_MOVE, actor.id, origin, destination, probe.movement_cost)
+	var origin_hostiles := _hostile_adjacent_ids(state, actor.id)
+	combat.pending_reaction.set_origin_hostiles(origin_hostiles)
+	combat.pending_reaction.set_phase(CombatReactionState.GUARD_BEFORE, _guarding_actor_ids(state, origin_hostiles))
+	var events: Array[DomainEvent] = []
+	var reaction_result := _continue_pending_reaction(state, content, rng, events)
+	if reaction_result == REACTION_MOVER_DEFEATED:
+		if combat.active_actor_id() == actor.id:
+			combat.advance_turn()
+		if _finish_if_resolved(state, content, events):
+			return CombatFlowResult.succeeded(events, true)
+		_process_monster_turns(state, content, rng, events)
+	return CombatFlowResult.succeeded(events, state.combat.completed)
+
+
+func _continue_pending_reaction(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	var operation_guard := 256
+	while combat != null and combat.pending_reaction != null and operation_guard > 0:
+		var reaction := combat.pending_reaction
+		if reaction.mover_killed or not _combatant_is_alive(state, reaction.mover_id):
+			reaction.mover_killed = true
+			combat.pending_reaction = null
+			return REACTION_MOVER_DEFEATED
+		if reaction.has_next_attacker():
+			var attacker_id := reaction.take_next_attacker()
+			var attack_result := _resolve_reaction_attack(state, content, attacker_id, reaction, rng, events)
+			if attack_result != REACTION_COMPLETED:
+				if attack_result == REACTION_MOVER_DEFEATED:
+					combat.pending_reaction = null
+				return attack_result
+			operation_guard -= 1
+			continue
+		match reaction.phase:
+			CombatReactionState.GUARD_BEFORE:
+				if reaction.kind == CombatReactionState.CHARACTER_MOVE:
+					reaction.set_phase(CombatReactionState.WITHDRAWAL, _withdrawal_hostiles(state, reaction))
+				else:
+					if not _commit_reaction_move(state, content, reaction, events):
+						combat.pending_reaction = null
+						return REACTION_MOVER_DEFEATED
+			CombatReactionState.WITHDRAWAL:
+				if not _commit_reaction_move(state, content, reaction, events):
+					combat.pending_reaction = null
+					return REACTION_MOVER_DEFEATED
+			CombatReactionState.GUARD_AFTER:
+				combat.pending_reaction = null
+				return REACTION_COMPLETED
+		operation_guard -= 1
+	if operation_guard == 0:
+		events.append(DomainEvent.new(&"combat_reaction_failed", {"reason": "reaction-budget-exhausted"}))
+		if combat != null:
+			combat.pending_reaction = null
+	return REACTION_COMPLETED
+
+
+func _commit_reaction_move(state: GameState, content: RealmzContent, reaction: CombatReactionState, events: Array[DomainEvent]) -> bool:
+	var combat := state.combat
+	if combat == null or combat.battlefield == null or not _combatant_is_alive(state, reaction.mover_id) or combat.battlefield.actor_position(reaction.mover_id) != reaction.origin:
+		return false
+	var movement_remaining := 0
+	if reaction.kind == CombatReactionState.CHARACTER_MOVE:
+		if state.party.character_by_id(reaction.mover_id) == null:
+			return false
+	else:
+		if combat.active_turn == null or combat.active_turn.actor_id != reaction.mover_id:
+			return false
+	if not combat.battlefield.move_actor(reaction.mover_id, reaction.destination):
+		return false
+	if reaction.kind == CombatReactionState.CHARACTER_MOVE:
+		var character := state.party.character_by_id(reaction.mover_id)
+		character.movement = maxi(0, character.movement - reaction.movement_cost)
+		movement_remaining = character.movement
+	else:
+		combat.active_turn.movement_remaining = maxi(0, combat.active_turn.movement_remaining - reaction.movement_cost)
+		movement_remaining = combat.active_turn.movement_remaining
+	events.append(DomainEvent.new(&"combatant_moved", {
+		"actorId": reaction.mover_id,
+		"from": [reaction.origin.x, reaction.origin.y],
+		"to": [reaction.destination.x, reaction.destination.y],
+		"cost": reaction.movement_cost,
+		"movementRemaining": movement_remaining,
+		"automatic": reaction.kind == CombatReactionState.MONSTER_MOVE,
+	}))
+	var terrain_set := _battle_terrain_set(content, combat.battlefield)
+	var terrain := terrain_set.tile_by_id(combat.battlefield.terrain_at(reaction.destination)) if terrain_set != null else null
 	if terrain != null and terrain.sound != 0:
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": terrain.sound, "waitForCompletion": false, "source": "classic-battle-movement"}))
-	return CombatFlowResult.succeeded(events)
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": terrain.sound, "waitForCompletion": terrain.sound < 0, "source": "classic-battle-movement"}))
+	reaction.set_phase(CombatReactionState.GUARD_AFTER, _guarding_hostiles(state, reaction.mover_id))
+	return true
+
+
+func _resolve_reaction_attack(state: GameState, content: RealmzContent, attacker_id: String, reaction: CombatReactionState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	if not _combatant_is_alive(state, attacker_id) or _combatant_is_helpless(state, attacker_id):
+		return REACTION_COMPLETED
+	combat.set_guarding(attacker_id, false)
+	var action: StringName = &"withdrawal" if reaction.phase == CombatReactionState.WITHDRAWAL else &"guard"
+	var behind := reaction.phase == CombatReactionState.WITHDRAWAL
+	var character_attacker := state.party.character_by_id(attacker_id)
+	if character_attacker != null:
+		return _resolve_character_reaction(state, content, character_attacker, reaction.mover_id, action, behind, rng, events)
+	var monster_attacker := combat.monster_by_id(attacker_id)
+	if monster_attacker == null:
+		return REACTION_COMPLETED
+	return _resolve_monster_reaction(state, content, monster_attacker, reaction.mover_id, action, behind, rng, events)
+
+
+func _resolve_character_reaction(state: GameState, content: RealmzContent, attacker: CharacterState, target_id: String, action: StringName, behind: bool, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	var equipment := _rules.inventory.combat_equipment(attacker, content.item_definitions())
+	if not equipment.valid:
+		events.append(DomainEvent.new(&"combat_reaction_failed", {"actorId": attacker.id, "targetId": target_id, "reason": String(equipment.error_code)}))
+		return REACTION_COMPLETED
+	var monster_target := combat.monster_by_id(target_id)
+	if monster_target != null:
+		var definition := content.monster_by_id(monster_target.definition_id)
+		var resolution := _rules.combat.resolve_character_attack(attacker, equipment, monster_target, definition, rng, state.clock.day(), behind, true, combat.can_queue_fumbled_item())
+		if resolution.fumbled and not _commit_character_fumble(state, attacker, equipment, events):
+			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
+		var event := _character_attack_event(attacker.id, monster_target.id, &"monster", resolution)
+		_append_reaction_identity(event, action, behind)
+		events.append(event)
+		if resolution.killed:
+			combat.pending_reaction.mover_killed = true
+			var death_macro_requested := _request_monster_death_macro(monster_target, definition, events)
+			_remove_defeated_position(combat, monster_target.id, not death_macro_requested)
+			return REACTION_DEATH_MACRO if death_macro_requested else REACTION_MOVER_DEFEATED
+		return REACTION_COMPLETED
+	var character_target := state.party.character_by_id(target_id)
+	if character_target == null:
+		return REACTION_COMPLETED
+	var target_equipment := _rules.inventory.combat_equipment(character_target, content.item_definitions())
+	if not target_equipment.valid:
+		events.append(DomainEvent.new(&"combat_reaction_failed", {"actorId": attacker.id, "targetId": target_id, "reason": String(target_equipment.error_code)}))
+		return REACTION_COMPLETED
+	var resolution := _rules.combat.resolve_character_attack_character(attacker, equipment, character_target, target_equipment, rng, behind, true, combat.can_queue_fumbled_item())
+	if resolution.fumbled and not _commit_character_fumble(state, attacker, equipment, events):
+		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
+	var event := _character_attack_event(attacker.id, character_target.id, &"character", resolution)
+	_append_reaction_identity(event, action, behind)
+	events.append(event)
+	if resolution.killed:
+		combat.pending_reaction.mover_killed = true
+		_remove_defeated_position(combat, character_target.id, true)
+		return REACTION_MOVER_DEFEATED
+	return REACTION_COMPLETED
+
+
+func _resolve_monster_reaction(state: GameState, content: RealmzContent, attacker: MonsterState, target_id: String, action: StringName, behind: bool, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	var combat := state.combat
+	var definition := content.monster_by_id(attacker.definition_id)
+	if definition == null:
+		return REACTION_COMPLETED
+	var weapon := content.item_by_id(attacker.weapon_id) if not attacker.weapon_id.is_empty() else null
+	var character_target := state.party.character_by_id(target_id)
+	if character_target != null:
+		var race := content.race_by_id(character_target.race_id)
+		var caste := content.caste_by_id(character_target.caste_id)
+		var charm_bonus := 50 if state.party.conditions.is_active(ConditionRules.PARTY_CHARM_RESISTANCE) else 0
+		var defender_equipment := _rules.inventory.combat_equipment(character_target, content.item_definitions())
+		var defender_luck := defender_equipment.effective_luck if defender_equipment.valid else character_target.luck
+		var defender_armor := defender_equipment.effective_armor if defender_equipment.valid else character_target.armor
+		var context := MonsterAttackContext.new(weapon, state.clock.day(), behind, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
+		var resolution := _rules.combat.resolve_monster_attack(attacker, definition, 0, character_target, race, caste, rng, charm_bonus, context, true)
+		if resolution.fumbled:
+			_commit_monster_fumble(attacker, events)
+		if resolution.special_handled:
+			_append_monster_special_events(events, attacker.id, character_target.id, &"character", resolution)
+			if resolution.aging != null and resolution.aging.changed_group():
+				events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(character_target, race)))
+				combat.pending_monster_attack = PendingMonsterAttack.new(attacker.id, character_target.id, action, resolution.damage, resolution.chance, resolution.roll, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after, resolution.physical_feedback_sound_id)
+				return REACTION_WAITING
+		_append_monster_physical_feedback(events, resolution.physical_feedback_sound_id)
+		var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": character_target.id, "targetKind": "character", "action": String(action), "attackIndex": 0, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
+		_append_reaction_identity(event, action, behind)
+		events.append(event)
+		if resolution.killed:
+			combat.pending_reaction.mover_killed = true
+			_remove_defeated_position(combat, character_target.id, true)
+			return REACTION_MOVER_DEFEATED
+		return REACTION_COMPLETED
+	var monster_target := combat.monster_by_id(target_id)
+	if monster_target == null:
+		return REACTION_COMPLETED
+	var target_definition := content.monster_by_id(monster_target.definition_id)
+	var context := MonsterAttackContext.new(weapon, state.clock.day(), behind)
+	var resolution := _rules.combat.resolve_monster_attack_monster(attacker, definition, 0, monster_target, target_definition, rng, context, true)
+	if resolution.fumbled:
+		_commit_monster_fumble(attacker, events)
+	if resolution.special_handled:
+		_append_monster_special_events(events, attacker.id, monster_target.id, &"monster", resolution)
+	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": monster_target.id, "targetKind": "monster", "action": String(action), "attackIndex": 0, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
+	_append_reaction_identity(event, action, behind)
+	events.append(event)
+	if resolution.killed:
+		combat.pending_reaction.mover_killed = true
+		var death_macro_requested := _request_monster_death_macro(monster_target, target_definition, events)
+		_remove_defeated_position(combat, monster_target.id, not death_macro_requested)
+		return REACTION_DEATH_MACRO if death_macro_requested else REACTION_MOVER_DEFEATED
+	return REACTION_COMPLETED
+
+
+static func _append_reaction_identity(event: DomainEvent, action: StringName, behind: bool) -> void:
+	event.payload["action"] = String(action)
+	event.payload["reaction"] = true
+	event.payload["behind"] = behind
+	event.payload["automatic"] = true
+
+
+func _guarding_hostiles(state: GameState, mover_id: String, anchor_override: Vector2i = Vector2i(-1, -1)) -> Array[String]:
+	var result: Array[String] = []
+	for attacker_id: String in _hostile_adjacent_ids(state, mover_id, anchor_override):
+		if state.combat.is_guarding(attacker_id) and not _combatant_is_helpless(state, attacker_id):
+			result.append(attacker_id)
+	return result
+
+
+func _withdrawal_hostiles(state: GameState, reaction: CombatReactionState) -> Array[String]:
+	var result: Array[String] = []
+	if _combatant_is_invisible(state, reaction.mover_id):
+		return result
+	var after := _rules.battlefield.adjacent_actor_ids(state.combat.battlefield, reaction.mover_id, reaction.destination)
+	for attacker_id: String in reaction.origin_hostiles():
+		if not after.has(attacker_id) and not _combatant_is_helpless(state, attacker_id):
+			result.append(attacker_id)
+	return result
+
+
+func _guarding_actor_ids(state: GameState, actor_ids: Array[String]) -> Array[String]:
+	var result: Array[String] = []
+	for actor_id: String in actor_ids:
+		if state.combat.is_guarding(actor_id) and not _combatant_is_helpless(state, actor_id):
+			result.append(actor_id)
+	return result
+
+
+func _combatant_is_alive(state: GameState, actor_id: String) -> bool:
+	var character := state.party.character_by_id(actor_id)
+	if character != null:
+		return character.current_health > 0
+	var monster := state.combat.monster_by_id(actor_id) if state.combat != null else null
+	return monster != null and monster.current_health > 0
+
+
+func _combatant_is_helpless(state: GameState, actor_id: String) -> bool:
+	var character := state.party.character_by_id(actor_id)
+	if character != null:
+		return character.conditions.is_active(ConditionRules.HELPLESS)
+	var monster := state.combat.monster_by_id(actor_id) if state.combat != null else null
+	return monster != null and monster.conditions.is_active(ConditionRules.HELPLESS)
+
+
+func _combatant_is_invisible(state: GameState, actor_id: String) -> bool:
+	var character := state.party.character_by_id(actor_id)
+	if character != null:
+		return character.conditions.is_active(ConditionRules.INVISIBLE)
+	var monster := state.combat.monster_by_id(actor_id) if state.combat != null else null
+	return monster != null and monster.conditions.is_active(ConditionRules.INVISIBLE)
 
 
 func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: String) -> CombatFlowResult:
@@ -328,6 +588,21 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 		return CombatFlowResult.failed(&"invalid_death_macro_continuation", "Monster death-macro continuation requires an active battle.")
 	var events: Array[DomainEvent] = []
 	_remove_all_defeated_positions(state)
+	if state.combat.pending_reaction != null:
+		var reaction := state.combat.pending_reaction
+		var mover_id := reaction.mover_id
+		if _combatant_is_alive(state, mover_id):
+			reaction.mover_killed = false
+			var reaction_result := _continue_pending_reaction(state, content, rng, events)
+			if reaction_result == REACTION_WAITING or reaction_result == REACTION_DEATH_MACRO:
+				return CombatFlowResult.succeeded(events)
+			if reaction_result == REACTION_COMPLETED:
+				_process_monster_turns(state, content, rng, events)
+				return CombatFlowResult.succeeded(events, state.combat.completed)
+		else:
+			state.combat.pending_reaction = null
+		if state.combat.active_actor_id() == mover_id:
+			state.combat.advance_turn()
 	if state.combat.completed or _finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	_process_monster_turns(state, content, rng, events)
@@ -351,9 +626,31 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 	target.current_health -= pending.damage
 	var defeated := target.current_health <= 0
 	_remove_defeated_position(combat, target.id, defeated)
-	var pending_attack_index := maxi(0, combat.active_turn.attack_index - 1) if combat.active_turn != null else 0
-	events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": pending.actor_id, "targetId": pending.target_id, "action": String(pending.action), "attackIndex": pending_attack_index, "hit": true, "damage": pending.damage, "defeated": defeated, "chance": pending.chance, "roll": pending.roll}))
+	var pending_attack_index := maxi(0, combat.active_turn.attack_index - 1) if combat.active_turn != null and combat.pending_reaction == null else 0
+	var attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": pending.actor_id, "targetId": pending.target_id, "action": String(pending.action), "attackIndex": pending_attack_index, "hit": true, "damage": pending.damage, "defeated": defeated, "chance": pending.chance, "roll": pending.roll})
+	if combat.pending_reaction != null:
+		_append_reaction_identity(attack_event, pending.action, pending.action == &"withdrawal")
+	events.append(attack_event)
 	combat.pending_monster_attack = null
+	if combat.pending_reaction != null:
+		var reaction_kind := combat.pending_reaction.kind
+		var mover_id := combat.pending_reaction.mover_id
+		if defeated:
+			combat.pending_reaction.mover_killed = true
+		var reaction_result := _continue_pending_reaction(state, content, rng, events)
+		if reaction_result == REACTION_WAITING or reaction_result == REACTION_DEATH_MACRO:
+			return CombatFlowResult.succeeded(events)
+		if reaction_result == REACTION_MOVER_DEFEATED:
+			if combat.active_actor_id() == mover_id:
+				combat.advance_turn()
+			if _finish_if_resolved(state, content, events):
+				return CombatFlowResult.succeeded(events, true)
+			_process_monster_turns(state, content, rng, events)
+			return CombatFlowResult.succeeded(events, combat.completed)
+		if reaction_kind == CombatReactionState.CHARACTER_MOVE:
+			return CombatFlowResult.succeeded(events)
+		_process_monster_turns(state, content, rng, events)
+		return CombatFlowResult.succeeded(events, combat.completed)
 	if _finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	var monster := combat.monster_by_id(pending.actor_id)
@@ -566,6 +863,8 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 			combat.advance_turn()
 			guard -= 1
 			continue
+		if combat.active_turn == null:
+			combat.set_guarding(monster.id, true)
 		if monster.conditions.is_active(ConditionRules.HELPLESS):
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": "incapacitated"}))
 			combat.advance_turn()
@@ -615,6 +914,16 @@ func _process_monster_advance(state: GameState, content: RealmzContent, monster:
 		events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "missing-battle-terrain"}))
 		active_turn.movement_remaining = 0
 		return MONSTER_ATTACK_COMPLETED
+	var contact_origin := combat.battlefield.actor_position(monster.id)
+	combat.pending_reaction = CombatReactionState.new(CombatReactionState.MONSTER_CONTACT, monster.id, contact_origin, contact_origin, 0)
+	combat.pending_reaction.set_phase(CombatReactionState.GUARD_AFTER, _guarding_hostiles(state, monster.id))
+	var contact_result := _continue_pending_reaction(state, content, rng, events)
+	if contact_result == REACTION_WAITING:
+		return MONSTER_ATTACK_WAITING
+	if contact_result == REACTION_DEATH_MACRO:
+		return MONSTER_ATTACK_DEATH_MACRO
+	if contact_result == REACTION_MOVER_DEFEATED:
+		return MONSTER_ATTACK_COMPLETED
 	var operation_guard := 512
 	while operation_guard > 0 and active_turn.attack_index < _monster_attack_limit(definition):
 		var adjacent_ids := _hostile_adjacent_ids(state, monster.id)
@@ -648,15 +957,15 @@ func _process_monster_advance(state: GameState, content: RealmzContent, monster:
 			active_turn.movement_remaining = 0
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": String(probe.reason)}))
 			return MONSTER_ATTACK_COMPLETED
-		if not combat.battlefield.move_actor(monster.id, probe.destination):
-			active_turn.movement_remaining = 0
-			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "advance", "reason": "battlefield-move-failed"}))
+		combat.pending_reaction = CombatReactionState.new(CombatReactionState.MONSTER_MOVE, monster.id, origin, probe.destination, probe.movement_cost)
+		combat.pending_reaction.set_phase(CombatReactionState.WITHDRAWAL, [])
+		var movement_result := _continue_pending_reaction(state, content, rng, events)
+		if movement_result == REACTION_WAITING:
+			return MONSTER_ATTACK_WAITING
+		if movement_result == REACTION_DEATH_MACRO:
+			return MONSTER_ATTACK_DEATH_MACRO
+		if movement_result == REACTION_MOVER_DEFEATED:
 			return MONSTER_ATTACK_COMPLETED
-		active_turn.movement_remaining = maxi(0, active_turn.movement_remaining - probe.movement_cost)
-		events.append(DomainEvent.new(&"combatant_moved", {"actorId": monster.id, "from": [origin.x, origin.y], "to": [probe.destination.x, probe.destination.y], "cost": probe.movement_cost, "movementRemaining": active_turn.movement_remaining, "automatic": true}))
-		var terrain := terrain_set.tile_by_id(combat.battlefield.terrain_at(probe.destination))
-		if terrain != null and terrain.sound != 0:
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": terrain.sound, "waitForCompletion": false, "source": "classic-battle-movement"}))
 		operation_guard -= 1
 	if operation_guard == 0:
 		active_turn.movement_remaining = 0
@@ -674,6 +983,7 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 		return MONSTER_ATTACK_COMPLETED
 	active_turn.attack_index += 1
 	active_turn.physical_action_committed = true
+	combat.set_guarding(monster.id, false)
 	var character_target := state.party.character_by_id(active_turn.target_id)
 	if character_target != null:
 		var race := content.race_by_id(character_target.race_id)
@@ -888,15 +1198,15 @@ func _hostile_adjacent_ids(state: GameState, actor_id: String, anchor_override: 
 		if monster == null:
 			return result
 		actor_traitor = monster.traitor
-	for candidate_id: String in _rules.battlefield.adjacent_actor_ids(state.combat.battlefield, actor_id, anchor_override):
-		var candidate_character := state.party.character_by_id(candidate_id)
-		if candidate_character != null:
-			if candidate_character.current_health > 0 and candidate_character.traitor != actor_traitor:
-				result.append(candidate_id)
-			continue
-		var candidate_monster := state.combat.monster_by_id(candidate_id)
-		if candidate_monster != null and candidate_monster.current_health > 0 and candidate_monster.traitor != actor_traitor:
-			result.append(candidate_id)
+	var adjacent_ids := _rules.battlefield.adjacent_actor_ids(state.combat.battlefield, actor_id, anchor_override)
+	# Castle scans numeric combat slots: party members first, then monsters in
+	# authored runtime order. Stable IDs must not accidentally redefine reactions.
+	for candidate_character: CharacterState in state.party.characters():
+		if adjacent_ids.has(candidate_character.id) and candidate_character.current_health > 0 and candidate_character.traitor != actor_traitor:
+			result.append(candidate_character.id)
+	for candidate_monster: MonsterState in state.combat.monsters():
+		if adjacent_ids.has(candidate_monster.id) and candidate_monster.current_health > 0 and candidate_monster.traitor != actor_traitor:
+			result.append(candidate_monster.id)
 	return result
 
 
@@ -935,10 +1245,6 @@ static func _movement_failure_message(result: BattlefieldStepResult) -> String:
 			return "The destination terrain blocks this combatant."
 		&"insufficient_movement":
 			return "The step costs %d movement points." % result.movement_cost
-		&"guard_reaction_unavailable":
-			return "The step could trigger a guarding enemy; guard reactions are not implemented yet."
-		&"withdrawal_attack_unavailable":
-			return "The step would leave an adjacent enemy; withdrawal attacks are not implemented yet."
 		_:
 			return "The tactical step is unavailable: %s." % String(result.reason)
 

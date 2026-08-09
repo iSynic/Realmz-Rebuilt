@@ -30,9 +30,5 @@ static func _reason_text(result: BattlefieldStepResult) -> String:
 			return "The destination terrain is solid."
 		&"insufficient_movement":
 			return "The step costs %d movement points." % result.movement_cost
-		&"withdrawal_attack_unavailable":
-			return "The step would leave an adjacent enemy; withdrawal attacks are not implemented yet."
-		&"guard_reaction_unavailable":
-			return "The step could trigger a guarding enemy; guard reactions are not implemented yet."
 		_:
 			return "Tactical movement is unavailable: %s." % String(result.reason)

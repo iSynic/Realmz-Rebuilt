@@ -293,6 +293,23 @@ static func from_data(data: Variant) -> GameState:
 			return null
 		if state.combat.pending_monster_attack != null and party_state.character_by_id(state.combat.pending_monster_attack.target_id) == null:
 			return null
+		if state.combat.pending_reaction != null:
+			var reaction := state.combat.pending_reaction
+			var mover_character := party_state.character_by_id(reaction.mover_id)
+			var mover_monster := state.combat.monster_by_id(reaction.mover_id)
+			if (reaction.kind == CombatReactionState.CHARACTER_MOVE and mover_character == null) or (reaction.kind != CombatReactionState.CHARACTER_MOVE and mover_monster == null):
+				return null
+			for attacker_id: String in reaction.attackers():
+				if party_state.character_by_id(attacker_id) == null and state.combat.monster_by_id(attacker_id) == null:
+					return null
+			for hostile_id: String in reaction.origin_hostiles():
+				if party_state.character_by_id(hostile_id) == null and state.combat.monster_by_id(hostile_id) == null:
+					return null
+			if state.combat.battlefield == null:
+				return null
+			var expected_position := reaction.destination if reaction.phase == CombatReactionState.GUARD_AFTER and reaction.kind != CombatReactionState.MONSTER_CONTACT else reaction.origin
+			if state.combat.battlefield.actor_position(reaction.mover_id) != expected_position:
+				return null
 		var owned_item_ids: Dictionary = {}
 		for character: CharacterState in party_state.characters():
 			for item: ItemInstance in character.inventory():

@@ -34,15 +34,8 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 	if combat.battlefield != null:
 		battlefield = BattlefieldView.new(combat.battlefield)
 	var adjacent_ids: Array[String] = []
-	var hostile_ids: Dictionary = {}
 	if combat.battlefield != null and battlefield_rules != null and not active_actor_id.is_empty():
 		adjacent_ids = battlefield_rules.adjacent_actor_ids(combat.battlefield, active_actor_id)
-	for monster: MonsterState in combat.monsters():
-		if monster.current_health > 0 and monster.traitor:
-			hostile_ids[monster.id] = true
-	for character: CharacterState in characters:
-		if character.current_health > 0 and character.traitor:
-			hostile_ids[character.id] = true
 	for monster: MonsterState in combat.monsters():
 		var view := MonsterView.new(monster)
 		monsters.append(view)
@@ -85,18 +78,9 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 			var map := content.world.map_by_id(combat.battlefield.map_id)
 			var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
 			if terrain_set != null:
-				var origin := combat.battlefield.character_position(active_character.id)
 				for direction: Vector2i in BattlefieldRules.DIRECTIONS:
 					var probe := battlefield_rules.probe_step(combat.battlefield, terrain_set, active_character.id, direction, active_character.movement)
-					if probe.allowed:
-						var before := battlefield_rules.adjacent_actor_ids(combat.battlefield, active_character.id).filter(func(actor_id: String) -> bool: return hostile_ids.has(actor_id))
-						var after := battlefield_rules.adjacent_actor_ids(combat.battlefield, active_character.id, origin + direction).filter(func(actor_id: String) -> bool: return hostile_ids.has(actor_id))
-						for actor_id: String in before:
-							if not after.has(actor_id):
-								probe = BattlefieldStepResult.blocked(&"withdrawal_attack_unavailable", probe.destination)
-								break
-						if probe.allowed and (not before.is_empty() or not after.is_empty()):
-							probe = BattlefieldStepResult.blocked(&"guard_reaction_unavailable", probe.destination)
 					movement_options.append(CombatMoveOptionView.new(direction, probe))
+	legal_actions.append(&"finish")
 	legal_actions.append(&"defend")
 	legal_actions.append(&"retreat")

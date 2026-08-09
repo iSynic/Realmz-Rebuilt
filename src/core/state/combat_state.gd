@@ -11,11 +11,13 @@ var completed: bool = false
 var outcome: StringName = &"active"
 var battlefield: BattlefieldState
 var pending_monster_attack: PendingMonsterAttack
+var pending_reaction: CombatReactionState
 var active_turn: CombatTurnState
 var _turn_order: Array[String] = []
 var _monsters: Array[MonsterState] = []
 var _fumbled_items: Array[ItemInstance] = []
 var _character_weapon_modes: Dictionary = {}
+var _guarding_actor_ids: Dictionary = {}
 
 
 func _init(source_battle_id: String, initial_monsters: Array[MonsterState] = [], battle_macro_id: int = 0, initial_battlefield: BattlefieldState = null) -> void:
@@ -137,6 +139,28 @@ func character_weapon_mode(actor_id: String) -> StringName:
 	return StringName(_character_weapon_modes.get(actor_id, "melee"))
 
 
+func set_guarding(actor_id: String, guarding: bool) -> bool:
+	if actor_id.is_empty() or not _turn_order.has(actor_id):
+		return false
+	if guarding:
+		_guarding_actor_ids[actor_id] = true
+	else:
+		_guarding_actor_ids.erase(actor_id)
+	return true
+
+
+func is_guarding(actor_id: String) -> bool:
+	return bool(_guarding_actor_ids.get(actor_id, false))
+
+
+func guarding_actor_ids() -> Array[String]:
+	var result: Array[String] = []
+	for actor_id: Variant in _guarding_actor_ids:
+		result.append(String(actor_id))
+	result.sort()
+	return result
+
+
 func to_data() -> Dictionary:
 	var monster_data: Array[Dictionary] = []
 	for monster: MonsterState in _monsters:
@@ -147,6 +171,9 @@ func to_data() -> Dictionary:
 	var active_turn_data: Variant = null
 	if active_turn != null:
 		active_turn_data = active_turn.to_data()
+	var reaction_data: Variant = null
+	if pending_reaction != null:
+		reaction_data = pending_reaction.to_data()
 	var fumbled_data: Array[Dictionary] = []
 	for item: ItemInstance in _fumbled_items:
 		fumbled_data.append(item.to_data())
@@ -155,7 +182,7 @@ func to_data() -> Dictionary:
 	weapon_mode_ids.sort()
 	for actor_id: Variant in weapon_mode_ids:
 		weapon_modes[String(actor_id)] = _character_weapon_modes[actor_id]
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "battlefield": null if battlefield == null else battlefield.to_data()}
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "battlefield": null if battlefield == null else battlefield.to_data()}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -191,6 +218,13 @@ static func from_data(data: Variant) -> CombatState:
 	result.completed = data["completed"]
 	result.outcome = StringName(data["outcome"])
 	result._turn_order = order
+	var guarding_data: Variant = data.get("guardingActorIds", [])
+	if not guarding_data is Array or guarding_data.size() > order.size():
+		return null
+	for actor_id: Variant in guarding_data:
+		if not actor_id is String or actor_id.is_empty() or not order.has(actor_id) or result._guarding_actor_ids.has(actor_id):
+			return null
+		result._guarding_actor_ids[actor_id] = true
 	var weapon_modes: Variant = data.get("characterWeaponModes", {})
 	if not weapon_modes is Dictionary or weapon_modes.size() > 6:
 		return null
@@ -221,21 +255,35 @@ static func from_data(data: Variant) -> CombatState:
 		result.pending_monster_attack = PendingMonsterAttack.from_data(pending_data)
 		if result.pending_monster_attack == null:
 			return null
+	var reaction_data: Variant = data.get("pendingReaction")
+	if reaction_data != null:
+		result.pending_reaction = CombatReactionState.from_data(reaction_data)
+		if result.pending_reaction == null:
+			return null
 	if (result._turn_order.is_empty() and result.turn_index != 0) or (not result._turn_order.is_empty() and result.turn_index >= result._turn_order.size()):
 		return null
 	if result.active_turn != null and (result.completed or result.active_turn.actor_id != result.active_actor_id()):
 		return null
-	if result.pending_monster_attack != null and (result.monster_by_id(result.pending_monster_attack.actor_id) == null or result.active_actor_id() != result.pending_monster_attack.actor_id):
+	if result.pending_reaction != null and (result.completed or result.active_turn == null or result.active_actor_id() != result.pending_reaction.mover_id or result.active_turn.actor_id != result.pending_reaction.mover_id):
 		return null
-	if result.pending_monster_attack != null and result.active_turn == null:
+	if result.pending_monster_attack != null and result.monster_by_id(result.pending_monster_attack.actor_id) == null:
+		return null
+	if result.pending_monster_attack != null and result.pending_reaction == null and result.active_actor_id() != result.pending_monster_attack.actor_id:
+		return null
+	if result.pending_monster_attack != null and result.pending_reaction == null and result.active_turn == null:
 		result.active_turn = CombatTurnState.new(result.pending_monster_attack.actor_id)
 		result.active_turn.action = result.pending_monster_attack.action
 		result.active_turn.attack_index = 1
 		result.active_turn.target_id = result.pending_monster_attack.target_id
-	if result.pending_monster_attack != null:
+	if result.pending_monster_attack != null and result.pending_reaction == null:
 		result.active_turn.physical_action_committed = true
-	if result.pending_monster_attack != null and (result.active_turn.actor_id != result.pending_monster_attack.actor_id or result.active_turn.target_id != result.pending_monster_attack.target_id or result.active_turn.action != result.pending_monster_attack.action or result.active_turn.attack_index < 1):
+	if result.pending_monster_attack != null and result.pending_reaction == null and (result.active_turn.actor_id != result.pending_monster_attack.actor_id or result.active_turn.target_id != result.pending_monster_attack.target_id or result.active_turn.action != result.pending_monster_attack.action or result.active_turn.attack_index < 1):
 		return null
+	if result.pending_monster_attack != null and result.pending_reaction != null:
+		var expected_action := &"withdrawal" if result.pending_reaction.phase == CombatReactionState.WITHDRAWAL else &"guard"
+		var completed_attackers := result.pending_reaction.attackers().slice(0, result.pending_reaction.next_attacker_index)
+		if result.pending_monster_attack.target_id != result.pending_reaction.mover_id or result.pending_monster_attack.action != expected_action or not completed_attackers.has(result.pending_monster_attack.actor_id):
+			return null
 	return result
 
 

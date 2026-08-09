@@ -1434,13 +1434,15 @@
     {
       "id": "combat.withdrawal-opportunity-not-facing",
       "domain": "combat",
-      "claim": "Castle's positive behind value is a temporary plus-twenty opportunity-attack modifier assigned to enemies left adjacent by movement; it is not derived from character face or monster left-right rendering state. Tactical withdrawal remains disabled until source-backed combat movement and adjacency transitions use the session-owned footprints, and 2.0 must not invent back-facing or flanking bonuses from icon orientation.",
+      "claim": "Guard is explicit combat state rather than a once-per-round reaction budget. A legal player step checks guarding enemies before movement, lets every enemy left behind attack with a temporary plus twenty, commits movement only if the mover survives, and then checks guards at the destination. Ordinary monster movement checks party and allied guards at contact, while withdrawal remains specific to player movement and retreating monsters. Character face and monster left-right rendering state never derive the positive behind modifier.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
-        "behavior": "Remake compares hostile adjacency before and after movement, which is a useful workflow lead, but gates each attacker with a once-per-round reaction_ready flag. Castle has no equivalent readiness consumption in checkforenemy code two, so Remake's reaction economy is a material divergence.",
+        "behavior": "Remake compares hostile adjacency before and after movement and queues reactions through combat animation state. It gates opportunity attacks with a once-per-round reaction_ready flag and implements Guard as a temporary trait with a hit budget. Castle has neither economy, so only the adjacency and queue concepts are useful donors.",
         "sources": [
           { "path": "src/Creature/Creature.gd", "symbol": "var reaction_ready" },
-          { "path": "src/Creature/Creature.gd", "symbol": "func _on_before_move(" }
+          { "path": "src/Creature/Creature.gd", "symbol": "func _on_before_move(" },
+          { "path": "src/shared_assets/traits/guarding.gd", "symbol": "func _on_other_creature_walked(" },
+          { "path": "src/scripts/states/CbAnimationState.gd", "symbol": "var guarding_actions" }
         ],
         "tests": []
       },
@@ -1450,14 +1452,21 @@
         "controlFlow": [
           { "path": "src/realmz_orig/checkforenemy.c", "symbol": "short checkforenemy(short code)" },
           { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice(void)" },
+          { "path": "src/realmz_orig/combat.c", "symbol": "void combat(short suprise, short mode)" },
           { "path": "src/realmz_orig/movemonster.c", "symbol": "short movemonster(void)" },
           { "path": "src/realmz_orig/attack.c", "symbol": "short attack(short chare, short mon)" },
           { "path": "src/realmz_orig/attack.c", "symbol": "short attack2(short mon, short chare, short attacknum)" },
-          { "path": "src/realmz_orig/drawbody.c", "symbol": "void drawbody(short body, short force, short where)" }
+          { "path": "src/realmz_orig/drawbody.c", "symbol": "void drawbody(short body, short force, short where)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "void sound(short id)" },
+          { "path": "src/realmz_orig/getup.c", "symbol": "void getup(short skip)" }
         ],
-        "authoredInputs": ["combatant positions and size footprints", "allegiance", "Invisible condition", "movement destination", "character face and monster left-right icon state"],
-        "observation": "checkforenemy code two snapshots every hostile occupied cell around the mover before and after movement and lets each enemy no longer adjacent issue an attack with behind set true. attack and attack2 add twenty times behind. Character face changes only when moving horizontally and selects the icon bank; monster lr is similarly changed for drawing and may turn toward an attacker. Neither rendering field derives positive behind. Negative behind values are later attack-result classifications for Sneak Attack and Major Wound, not orientation state.",
-        "unresolved": ["Exact withdrawal ordering, death interruption, Invisible suppression, and every large-footprint perimeter require the missing tactical movement implementation."]
+        "authoredInputs": ["combatant positions, slot order, and size footprints", "allegiance", "Guarding, Helpless, and Invisible conditions", "movement destination", "character face and monster left-right icon state"],
+        "observation": "checkforenemy scans numeric party then monster slots. Code zero clears and attacks with each non-helpless guarding enemy. Code one snapshots the original hostile perimeter; code two compares that fixed trace with destination occupancy, suppresses the queue only when the mover is Invisible, clears guard state even though withdrawal does not require it, sets behind true, and stops when the mover dies. A guarding enemy being left can therefore attack once before the step and once during withdrawal. Character reactions use attack; monster reactions use attack row zero. The active monster initializes Guard at each activation, clears it on physical attack and successful spell/missile execution, and checks guards before movement and after each step. Battlefield flight also clears monster Guard. The player Guard command draws one-based Rand(100), selecting asynchronous sound 10121 only for rolls below fifty, and Finish clears movement and Guard. Character Guard otherwise persists through later ordinary actions. face and lr are rendering fields only.",
+        "unresolved": [
+          "Castle enters its movement submode and checks guards before the player supplies or cancels a direction. Realmz 2.0 currently submits one already-selected legal destination, so blocked or cancelled movement cannot reproduce that pre-direction reaction without a separate typed begin-movement interaction.",
+          "Retreating-monster withdrawal, possessed-character auto-guard, friendly swaps, spell-field collision, and successful monster spell/missile Guard clearing remain separate tactical continuations.",
+          "getup.c reads monster[q[up]].guarding even though monster initiative IDs start at ten; this apparent out-of-range status-display bug is not reproduced."
+        ]
       },
       "providence": {
         "commit": "7f3347cbe3073c2152004f0dfd0c0395efa82f30",
@@ -1469,12 +1478,16 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func move_character(" },
-        "expectedTrace": ["snapshot source-backed hostile adjacency before movement", "validate and commit one tactical move", "snapshot adjacency after movement", "issue each Castle withdrawal attack with temporary plus twenty", "interrupt safely on mover death", "persist position and any pending attack boundary", "keep icon orientation presentation-only"],
-        "tests": []
+        "expectedTrace": ["persist Guard and the original source-ordered hostile perimeter", "resolve every non-helpless guard before a legal step", "issue every original enemy no longer adjacent as a plus-twenty withdrawal attack unless the mover is Invisible", "commit movement only for a surviving mover", "resolve destination guards and ordinary monster contact guards", "save and resume age-update or death-macro interruption without replay", "keep icon orientation presentation-only"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_guard_and_withdrawal_reactions(" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_guard_age_update_restore(" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_guard_death_macro_revival_continuation(" }
+        ]
       },
-      "decision": "unresolved",
-      "availability": "disabled",
-      "status": "movement-implemented-reactions-disabled"
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "verified-legal-movement-entry-substate-unresolved"
     }
   ]
 }

@@ -22,7 +22,7 @@ func _test_battle_weapon_mode_component() -> void:
 	var request := InteractionRequest.new("battle.weapon-mode", &"combat_action", {
 		"round": 2,
 		"actorId": "character.archer",
-		"actions": ["switch_weapon", "defend", "retreat"],
+		"actions": ["switch_weapon", "finish", "defend", "retreat"],
 		"weaponMode": "missile",
 		"weaponSwitch": {"enabled": true, "targetMode": "melee", "reason": ""},
 		"rangedAttack": {"enabled": false, "reason": "Missile range, line of sight, and projectile resolution are unavailable."},
@@ -44,6 +44,7 @@ func _test_battle_weapon_mode_component() -> void:
 	var fire_button: Button = null
 	var switch_button: Button = null
 	var move_button: Button = null
+	var finish_button: Button = null
 	for button: Button in buttons:
 		if button.text == "Fire missile unavailable":
 			fire_button = button
@@ -51,10 +52,13 @@ func _test_battle_weapon_mode_component() -> void:
 			switch_button = button
 		elif button.text.begins_with("Move N "):
 			move_button = button
+		elif button.text == "Finish turn":
+			finish_button = button
 	assert_not_null(fire_button, "the unresolved ranged action remains visible instead of silently disappearing")
 	assert_true(fire_button.disabled and not fire_button.tooltip_text.is_empty(), "the disabled Fire action exposes the typed tactical blocker")
 	assert_not_null(switch_button, "the source-backed no-cost mode toggle remains available")
 	assert_not_null(move_button, "the typed battle component exposes a source-probed tactical step")
+	assert_not_null(finish_button, "the Classic Finish command remains distinct from Defend")
 	switch_button.pressed.emit()
 	move_button.pressed.emit()
 	assert_equal(submitted, [

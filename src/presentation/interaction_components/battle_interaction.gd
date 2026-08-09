@@ -34,6 +34,8 @@ func build(request: InteractionRequest) -> void:
 		add_response("Switch to %s" % target_mode, {"actorId": actor_id, "action": "switch_weapon", "targetId": ""})
 	if action_ids.has("defend"):
 		add_response("Defend", {"actorId": actor_id, "action": "defend", "targetId": ""})
+	if action_ids.has("finish"):
+		add_response("Finish turn", {"actorId": actor_id, "action": "finish", "targetId": ""})
 	if action_ids.has("retreat"):
 		add_response("Retreat", {"actorId": actor_id, "action": "retreat", "targetId": ""})
 

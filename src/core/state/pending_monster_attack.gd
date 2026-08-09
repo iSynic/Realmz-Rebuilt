@@ -55,7 +55,7 @@ static func from_data(data: Variant) -> PendingMonsterAttack:
 	var pending_damage := _integer(data["damage"])
 	var hit_chance := _integer(data["chance"])
 	var hit_roll := _integer(data["roll"])
-	if data["action"] not in ["advance", "missile"] or pending_damage < 0 or hit_roll < 1 or hit_roll > 100 or hit_chance == -100_000:
+	if data["action"] not in ["advance", "missile", "guard", "withdrawal"] or pending_damage < 0 or hit_roll < 1 or hit_roll > 100 or hit_chance == -100_000:
 		return null
 	var condition_index := _integer(data.get("weaponConditionIndex", -1))
 	var condition_before := _integer(data.get("weaponConditionBefore", 0))

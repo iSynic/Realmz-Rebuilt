@@ -297,9 +297,15 @@ func _combat_action(intent: PlayerIntent) -> SessionStep:
 
 
 func _combat_move(intent: PlayerIntent) -> SessionStep:
-	var result := _rules.combat_flow.move_character(_state, _content, intent.actor_id, intent.direction)
+	var result := _rules.combat_flow.move_character(_state, _content, intent.actor_id, intent.direction, _rng)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	if not CharacterAgingResult.update_payloads(result.events).is_empty():
+		return _finish_with_age_updates(result.events, "combat-monster-turns")
+	if not _event_payload(result.events, &"monster_death_macro_requested").is_empty():
+		return _start_session_death_macro(result.events)
+	if result.completed:
+		return _finish_direct_battle(result.events)
 	return _finish_completed(result.events)
 
 

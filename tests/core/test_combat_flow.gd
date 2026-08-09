@@ -5,6 +5,9 @@ var _cached_battle_world: WorldDefinition
 
 func run() -> void:
 	_test_tactical_adjacency_movement_and_restore()
+	_test_guard_and_withdrawal_reactions()
+	_test_guard_death_macro_revival_continuation()
+	_test_guard_age_update_restore()
 	_test_monster_los_targeting_and_movement()
 	_test_character_half_attack_cadence_and_restore()
 	_test_character_weapon_mode_toggle_and_restore()
@@ -33,12 +36,12 @@ func _test_tactical_adjacency_movement_and_restore() -> void:
 	assert_equal(no_draws.snapshot().draw_count, 0, "rejected nonadjacent melee consumes no combat randomness")
 	assert_equal(state.combat.active_turn, null, "rejected melee does not initialize mutable turn state")
 	var resources_before_invalid_move := [character.attacks_remaining, character.movement]
-	var invalid_move := rules.combat_flow.move_character(state, content, character.id, Vector2i(48, 45))
+	var invalid_move := rules.combat_flow.move_character(state, content, character.id, Vector2i(48, 45), ScriptedRng.new([]))
 	assert_false(invalid_move.ok, "a nonadjacent tactical step is rejected")
 	assert_equal(state.combat.active_turn, null, "rejected movement does not initialize mutable turn state")
 	assert_equal([character.attacks_remaining, character.movement], resources_before_invalid_move, "rejected movement preserves combat resources")
 
-	var moved := rules.combat_flow.move_character(state, content, character.id, Vector2i(46, 45))
+	var moved := rules.combat_flow.move_character(state, content, character.id, Vector2i(46, 45), ScriptedRng.new([]))
 	assert_true(moved.ok, "a reaction-free cardinal battlefield step commits")
 	assert_equal([battlefield.character_position(character.id), character.movement], [Vector2i(46, 45), 11], "Castle cardinal movement spends the destination tile base plus one changed axis")
 	assert_true(moved.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved" and event.payload.get("cost") == 1), "movement publishes its exact committed cost")
@@ -46,23 +49,21 @@ func _test_tactical_adjacency_movement_and_restore() -> void:
 	assert_true(free_view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.enabled), "the detached view exposes reaction-free movement before any hostile perimeter is involved")
 	battlefield.move_actor(monster.id, Vector2i(47, 45))
 	assert_true(rules.battlefield.are_adjacent(battlefield, character.id, monster.id), "explicit fixture placement establishes diagonal melee adjacency")
-	var guard_reaction := rules.combat_flow.move_character(state, content, character.id, Vector2i(46, 44))
-	assert_false(guard_reaction.ok, "movement that remains beside an enemy stays disabled until Castle guarding state is serializable")
-	assert_equal(guard_reaction.error_code, &"guard_reaction_unavailable", "the missing guarding path is explicit rather than silently skipped")
-	var withdrawal := rules.combat_flow.move_character(state, content, character.id, Vector2i(45, 44))
-	assert_false(withdrawal.ok, "movement that leaves an adjacent enemy stays disabled until Castle withdrawal reactions are serializable")
-	assert_equal(withdrawal.error_code, &"withdrawal_attack_unavailable", "the disabled reaction path is explicit instead of silently moving")
-	assert_equal(battlefield.character_position(character.id), Vector2i(46, 45), "a rejected withdrawal leaves battlefield state unchanged")
+	var beside_enemy := rules.combat_flow.move_character(state, content, character.id, Vector2i(46, 44), ScriptedRng.new([]))
+	assert_true(beside_enemy.ok, "movement beside a non-guarding enemy commits without fabricating a reaction")
+	var withdrawal := rules.combat_flow.move_character(state, content, character.id, Vector2i(45, 44), ScriptedRng.new([0, 0, 0, 0]))
+	assert_true(withdrawal.ok, "movement that leaves an adjacent enemy resolves Castle's withdrawal attack")
+	assert_true(withdrawal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("action") == "withdrawal" and event.payload.get("behind") == true), "withdrawal emits the source-owned plus-twenty reaction identity")
+	assert_equal(battlefield.character_position(character.id), Vector2i(45, 44), "a surviving withdrawal commits the validated destination")
 
 	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	assert_not_null(restored, "a mid-turn tactical position survives the central save aggregate")
-	assert_equal(restored.combat.battlefield.character_position(character.id), Vector2i(46, 45), "restore retains the exact committed battlefield coordinate")
-	assert_equal(restored.party.character_by_id(character.id).movement, 11, "restore retains remaining tactical movement")
+	assert_equal(restored.combat.battlefield.character_position(character.id), Vector2i(45, 44), "restore retains the exact committed battlefield coordinate")
+	assert_equal(restored.party.character_by_id(character.id).movement, 9, "restore retains remaining tactical movement")
 	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield)
-	assert_equal(view.targets.map(func(target: MonsterView) -> String: return target.id), [monster.id], "the detached view exposes only adjacent hostile melee targets")
+	assert_equal(view.targets.map(func(target: MonsterView) -> String: return target.id), [], "the detached view excludes a hostile left outside the melee perimeter")
 	assert_equal(view.movement_options.size(), 8, "the detached view exposes all eight source-backed step probes")
-	assert_false(view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.enabled), "the detached view does not advertise a step that could skip guard or withdrawal reactions")
-	assert_true(view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.reason == &"guard_reaction_unavailable" and not option.reason_text.is_empty()), "guard-disabled movement carries a player-facing typed reason")
+	assert_true(view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.enabled), "the detached view advertises legal steps now that reactions are session-owned")
 
 	var large_field := _blank_battlefield()
 	large_field.place_character("character.large-target", Vector2i(40, 40))
@@ -97,11 +98,210 @@ func _test_tactical_adjacency_movement_and_restore() -> void:
 	var distant_values: Array[int] = []
 	distant_values.resize(40)
 	distant_values.fill(0)
-	var advanced := rules.combat_flow.submit_action(distant_state, content, distant_character.id, &"defend", "", ScriptedRng.new(distant_values))
+	var advanced := rules.combat_flow.submit_action(distant_state, content, distant_character.id, &"finish", "", ScriptedRng.new(distant_values))
 	assert_true(advanced.ok, "a nonadjacent monster activation follows its source-backed tactical path")
 	assert_true(advanced.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved" and event.payload.get("actorId") == distant_monster.id), "monster movement is committed as explicit battlefield events")
 	assert_true(distant_character.current_health < 20, "the monster resolves melee only after reaching an adjacent footprint")
 	assert_true(rules.battlefield.are_adjacent(distant_state.combat.battlefield, distant_character.id, distant_monster.id), "automatic movement ends in source-legal melee adjacency")
+
+
+func _test_guard_and_withdrawal_reactions() -> void:
+	var rules := RealmzRules.new()
+	var definition := _monster_definition("monster.reaction", [MonsterAttackDefinition.new(1, 1)])
+	definition.hit_dice = 20
+	var character := _character("character.reaction")
+	character.current_health = 30
+	character.maximum_health = 30
+	var monster := MonsterState.new("monster.reaction.instance", definition.id, definition.name, 30, 30, 20)
+	var state := _state(character, monster, "battle.reaction")
+	state.combat.set_guarding(monster.id, true)
+	var reaction_values: Array[int] = []
+	reaction_values.resize(8)
+	reaction_values.fill(0)
+	var moved := rules.combat_flow.move_character(state, _content([definition]), character.id, Vector2i(44, 45), ScriptedRng.new(reaction_values))
+	assert_true(moved.ok, "a guarded withdrawal resolves through the deterministic movement boundary")
+	var attacks := moved.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("reaction") == true)
+	assert_equal(attacks.map(func(event: DomainEvent) -> String: return String(event.payload.get("action"))), ["guard", "withdrawal"], "Castle lets one guarding enemy strike before movement and again when the mover leaves its perimeter")
+	assert_equal(attacks.map(func(event: DomainEvent) -> bool: return bool(event.payload.get("behind"))), [false, true], "only the withdrawal attack receives Castle's temporary plus-twenty modifier")
+	assert_equal([character.current_health, state.combat.battlefield.character_position(character.id), state.combat.is_guarding(monster.id)], [28, Vector2i(44, 45), false], "both one-point reactions commit before the surviving mover reaches its destination and consume guard state")
+
+	var ordered_character := _character("character.ordered-reactions")
+	var first_monster := MonsterState.new("monster.z-first", definition.id, definition.name, 30, 30, 20)
+	var second_monster := MonsterState.new("monster.a-second", definition.id, definition.name, 30, 30, 20)
+	var ordered_field := _blank_battlefield()
+	ordered_field.place_character(ordered_character.id, Vector2i(45, 45))
+	ordered_field.place_monster(first_monster.id, Vector2i(46, 45), 0)
+	ordered_field.place_monster(second_monster.id, Vector2i(45, 46), 0)
+	var ordered_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [ordered_character]), RealmzClock.new())
+	ordered_state.combat = CombatState.new("battle.ordered-reactions", [first_monster, second_monster], 0, ordered_field)
+	ordered_state.combat.set_turn_order([ordered_character.id, first_monster.id, second_monster.id])
+	ordered_state.combat.set_guarding(first_monster.id, true)
+	ordered_state.combat.set_guarding(second_monster.id, true)
+	var ordered_values: Array[int] = []
+	ordered_values.resize(12)
+	ordered_values.fill(0)
+	var ordered_move := rules.combat_flow.move_character(ordered_state, _content([definition]), ordered_character.id, Vector2i(44, 45), ScriptedRng.new(ordered_values))
+	var ordered_attacks := ordered_move.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("reaction") == true)
+	assert_equal(ordered_attacks.map(func(event: DomainEvent) -> String: return String(event.payload.get("actorId"))), [first_monster.id, second_monster.id, first_monster.id], "guard and withdrawal queues use Castle combat-slot order rather than lexical stable-ID order")
+
+	var charm_definition := _monster_definition("monster.reaction-charm", [MonsterAttackDefinition.new(1, 1, 0, 10)])
+	var charmed_mover := _character("character.reaction-charmed-mover")
+	charmed_mover.set_save_value_raw(0, 0)
+	var charming_guard := MonsterState.new("monster.reaction-charming-guard", charm_definition.id, charm_definition.name, 30, 30, 20)
+	var original_enemy := MonsterState.new("monster.reaction-original-enemy", charm_definition.id, charm_definition.name, 30, 30, 20)
+	var charm_field := _blank_battlefield()
+	charm_field.place_character(charmed_mover.id, Vector2i(45, 45))
+	charm_field.place_monster(charming_guard.id, Vector2i(46, 45), 0)
+	charm_field.place_monster(original_enemy.id, Vector2i(46, 46), 0)
+	var charm_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [charmed_mover]), RealmzClock.new())
+	charm_state.combat = CombatState.new("battle.reaction-charm", [charming_guard, original_enemy], 0, charm_field)
+	charm_state.combat.set_turn_order([charmed_mover.id, charming_guard.id, original_enemy.id])
+	charm_state.combat.set_guarding(charming_guard.id, true)
+	var charm_values: Array[int] = []
+	charm_values.resize(32)
+	charm_values.fill(0)
+	var charm_move := rules.combat_flow.move_character(charm_state, _content([charm_definition]), charmed_mover.id, Vector2i(44, 45), ScriptedRng.new(charm_values))
+	assert_true(charmed_mover.traitor, "the first Guard reaction can change the mover's allegiance before withdrawal")
+	assert_true(charm_move.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == original_enemy.id and event.payload.get("action") == "withdrawal"), "withdrawal uses the fixed original hostile perimeter even after an earlier Guard changes allegiance")
+
+	var moving_target := _character("character.monster-move-guard")
+	definition.movement_max = 12
+	var moving_monster := MonsterState.new("monster.monster-move-guard.instance", definition.id, definition.name, 100, 100, 20)
+	var moving_state := _state(moving_target, moving_monster, "battle.monster-move-guard")
+	moving_state.combat.battlefield.move_actor(moving_monster.id, Vector2i(47, 45))
+	moving_state.combat.turn_index = 1
+	moving_state.combat.set_guarding(moving_target.id, true)
+	var moving_events: Array[DomainEvent] = []
+	rules.combat_flow._process_monster_turns(moving_state, _content([definition]), RealmzRng.new(73), moving_events)
+	var moved_index := moving_events.find_custom(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved" and event.payload.get("actorId") == moving_monster.id)
+	var guard_index := moving_events.find_custom(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == moving_target.id and event.payload.get("action") == "guard")
+	var own_attack_index := moving_events.find_custom(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == moving_monster.id and event.payload.get("action") == "advance")
+	assert_true(moved_index >= 0 and guard_index > moved_index and own_attack_index > guard_index, "a party guard reacts after automatic movement reaches contact and before the active monster attacks")
+	assert_false(moving_state.combat.is_guarding(moving_target.id), "the automatic contact reaction consumes the party guard")
+	assert_false(moving_state.combat.is_guarding(moving_monster.id), "the active monster clears its freshly initialized guard when it makes a physical attack")
+
+	var invisible_character := _character("character.invisible-withdrawal")
+	invisible_character.conditions.set_value(ConditionRules.INVISIBLE, 1)
+	var invisible_monster := MonsterState.new("monster.invisible-withdrawal.instance", definition.id, definition.name, 30, 30, 20)
+	var invisible_state := _state(invisible_character, invisible_monster, "battle.invisible-withdrawal")
+	var invisible_move := rules.combat_flow.move_character(invisible_state, _content([definition]), invisible_character.id, Vector2i(44, 45), ScriptedRng.new([]))
+	assert_true(invisible_move.ok, "an invisible mover can leave a hostile perimeter")
+	assert_false(invisible_move.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved"), "Castle suppresses withdrawal attacks, but not guarding attacks, for an invisible mover")
+
+	var helpless_character := _character("character.helpless-guard")
+	var helpless_monster := MonsterState.new("monster.helpless-guard.instance", definition.id, definition.name, 30, 30, 20)
+	helpless_monster.conditions.set_value(ConditionRules.HELPLESS, -1)
+	var helpless_state := _state(helpless_character, helpless_monster, "battle.helpless-guard")
+	helpless_state.combat.set_guarding(helpless_monster.id, true)
+	var helpless_move := rules.combat_flow.move_character(helpless_state, _content([definition]), helpless_character.id, Vector2i(45, 44), ScriptedRng.new([]))
+	assert_true(helpless_move.ok, "movement beside a helpless guard still commits")
+	assert_true(helpless_state.combat.is_guarding(helpless_monster.id), "Castle skips a helpless guard without consuming its guard flag")
+
+	var guard_character := _character("character.guard-command")
+	var passive_monster := MonsterState.new("monster.guard-command.instance", definition.id, definition.name, 30, 30, 20)
+	passive_monster.conditions.set_value(ConditionRules.HELPLESS, -1)
+	var guard_state := _state(guard_character, passive_monster, "battle.guard-command")
+	var guarded := rules.combat_flow.submit_action(guard_state, _content([definition]), guard_character.id, &"defend", "", ScriptedRng.new([0]))
+	assert_true(guarded.ok and guard_state.combat.is_guarding(guard_character.id), "Defend establishes battle-owned guard state")
+	assert_true(guarded.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_guarded" and event.payload.get("roll") == 1 and event.payload.get("soundId") == 10121), "Castle's one-based roll selects guard sound 10121 only below fifty")
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(guard_state.to_data())))
+	assert_not_null(restored, "guard state survives the central save aggregate")
+	assert_true(restored.combat.is_guarding(guard_character.id), "restore retains the exact guarding actor identity")
+	var finished := rules.combat_flow.submit_action(restored, _content([definition]), guard_character.id, &"finish", "", ScriptedRng.new([]))
+	assert_true(finished.ok and not restored.combat.is_guarding(guard_character.id), "Finish clears guard and movement before ending the activation")
+	assert_true(finished.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_turn_passed" and event.payload.get("action") == "finish"), "Finish publishes its source-owned command identity before the next round refreshes movement")
+
+	var high_roll_character := _character("character.guard-high-roll")
+	var high_roll_monster := MonsterState.new("monster.guard-high-roll.instance", definition.id, definition.name, 30, 30, 20)
+	high_roll_monster.conditions.set_value(ConditionRules.HELPLESS, -1)
+	var high_roll_state := _state(high_roll_character, high_roll_monster, "battle.guard-high-roll")
+	var high_guard := rules.combat_flow.submit_action(high_roll_state, _content([definition]), high_roll_character.id, &"defend", "", ScriptedRng.new([16_057]))
+	assert_true(high_guard.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_guarded" and event.payload.get("roll") == 50 and event.payload.get("soundId") == 10123), "the exact source comparison makes roll fifty choose guard sound 10123")
+
+
+func _test_guard_age_update_restore() -> void:
+	var rules := RealmzRules.new()
+	var age_ranges: Array[Vector2i] = [Vector2i(10, 19), Vector2i(20, 29), Vector2i(30, 39), Vector2i(40, 49), Vector2i(50, 59)]
+	var age_changes: Array[PackedInt32Array] = []
+	for _index: int in 5:
+		age_changes.append(PackedInt32Array(_ints(15)))
+	var limits: Array[int] = []
+	for _index: int in 6:
+		limits.append_array([1, 30])
+	var race := RaceDefinition.new("race.reaction-age", 31, "Reaction Age", _ints(8), _ints(8), _ints(6), limits, _ints(40), age_ranges, age_changes, 100)
+	var caste := CasteDefinition.new("caste.reaction-age", 31, "Reaction Age", _ints(8), _ints(6), limits, _ints(40), Vector2i(1, 1), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
+	var character := _character("character.reaction-age")
+	character.race_id = race.id
+	character.caste_id = caste.id
+	character.age_days = 19 * 365 + 364
+	character.age_group = 1
+	character.set_save_value_raw(7, 50)
+	var definition := _monster_definition("monster.reaction-age", [MonsterAttackDefinition.new(1, 1, 0, 17)])
+	definition.hit_dice = 1
+	var monster := MonsterState.new("monster.reaction-age.instance", definition.id, definition.name, 30, 30, 1)
+	var state := _state(character, monster, "battle.reaction-age")
+	state.combat.set_guarding(monster.id, true)
+	var content := _content([definition], [], [race], [caste])
+	var rng := ScriptedRng.new([0, 0, 0, 0, 0, 32_767])
+	var waiting := rules.combat_flow.move_character(state, content, character.id, Vector2i(45, 44), rng)
+	assert_true(waiting.ok and waiting.events.any(func(event: DomainEvent) -> bool: return event.kind == &"character_age_changed"), "a guarding age attack reaches the typed age-update boundary before movement")
+	assert_equal([character.current_health, state.combat.battlefield.character_position(character.id)], [30, Vector2i(45, 45)], "deferred physical damage and movement both wait behind the age acknowledgement")
+	assert_not_null(state.combat.pending_reaction, "the battle owns the interrupted reaction cursor")
+	assert_not_null(state.combat.pending_monster_attack, "the battle owns the deferred physical attack")
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(restored, "a guard reaction interrupted by aging survives whole-state restoration")
+	if restored == null:
+		return
+	assert_equal([restored.combat.pending_reaction.mover_id, restored.combat.pending_reaction.next_attacker_index, restored.combat.pending_monster_attack.action], [character.id, 1, &"guard"], "restore resumes after the already-issued guard attack without replaying it")
+	var restored_rng := RealmzRng.new()
+	assert_true(restored_rng.restore(rng.snapshot()), "the reaction fixture restores its exact RNG boundary")
+	var resumed := rules.combat_flow.continue_after_age_update(restored, content, restored_rng)
+	assert_true(resumed.ok, "acknowledging the restored age update completes the pending reaction")
+	assert_equal([restored.party.character_by_id(character.id).current_health, restored.combat.battlefield.character_position(character.id)], [29, Vector2i(45, 44)], "deferred damage commits once before the surviving mover reaches its destination")
+	assert_equal([restored.combat.pending_reaction, restored.combat.pending_monster_attack], [null, null], "the completed reaction leaves no replayable continuation")
+	assert_true(resumed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("reaction") == true and event.payload.get("action") == "guard"), "the resumed attack retains its guard identity for presentation")
+
+
+func _test_guard_death_macro_revival_continuation() -> void:
+	var rules := RealmzRules.new()
+	var invalid_contact := CombatReactionState.new(CombatReactionState.MONSTER_CONTACT, "monster.invalid-contact", Vector2i(45, 45), Vector2i(45, 45), 0).to_data()
+	invalid_contact["phase"] = "withdrawal"
+	assert_equal(CombatReactionState.from_data(invalid_contact), null, "restore rejects a stationary monster-contact record with an impossible withdrawal phase")
+	var first_guard := _character("character.revival-first-guard")
+	var second_guard := _character("character.revival-second-guard")
+	var definition := _monster_definition("monster.revival-mover", [MonsterAttackDefinition.new(1, 1)])
+	definition.death_macro = 321
+	var monster := MonsterState.new("monster.revival-mover.instance", definition.id, definition.name, 0, 30, 1)
+	var battlefield := _blank_battlefield()
+	battlefield.place_character(first_guard.id, Vector2i(44, 45))
+	battlefield.place_character(second_guard.id, Vector2i(45, 44))
+	battlefield.place_monster(monster.id, Vector2i(45, 45), 0)
+	var state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [first_guard, second_guard]), RealmzClock.new())
+	state.combat = CombatState.new("battle.revival-reaction", [monster], 0, battlefield)
+	state.combat.set_turn_order([first_guard.id, second_guard.id, monster.id])
+	state.combat.turn_index = 2
+	state.combat.active_turn = CombatTurnState.new(monster.id)
+	state.combat.active_turn.action = &"advance"
+	state.combat.active_turn.movement_remaining = 0
+	state.combat.set_guarding(first_guard.id, false)
+	state.combat.set_guarding(second_guard.id, true)
+	state.combat.pending_reaction = CombatReactionState.new(CombatReactionState.MONSTER_CONTACT, monster.id, Vector2i(45, 45), Vector2i(45, 45), 0)
+	state.combat.pending_reaction.set_phase(CombatReactionState.GUARD_AFTER, [first_guard.id, second_guard.id])
+	state.combat.pending_reaction.take_next_attacker()
+	state.combat.pending_reaction.mover_killed = true
+
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(restored, "a death-macro interruption retains the defeated mover's footprint and exact reaction cursor")
+	if restored == null:
+		return
+	# This is the state immediately after CODE 119 revives the reaction mover.
+	var restored_monster := restored.combat.monster_by_id(monster.id)
+	restored_monster.current_health = 30
+	restored_monster.conditions.set_value(ConditionRules.HELPLESS, -1)
+	var resumed := rules.combat_flow.continue_after_monster_death_macro(restored, _content([definition]), ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0]))
+	assert_true(resumed.ok, "a death macro that revives the moving monster resumes its interrupted Guard cursor")
+	assert_true(resumed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == second_guard.id and event.payload.get("action") == "guard"), "revival continues with the next source-ordered guard instead of discarding the pending reaction")
+	assert_false(resumed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == first_guard.id and event.payload.get("action") == "guard"), "revival does not replay the guard that caused the death macro")
 
 
 func _test_monster_los_targeting_and_movement() -> void:
@@ -164,7 +364,7 @@ func _test_monster_los_targeting_and_movement() -> void:
 	var values: Array[int] = []
 	values.resize(40)
 	values.fill(0)
-	var result := rules.combat_flow.submit_action(state, _content([definition]), character.id, &"defend", "", ScriptedRng.new(values))
+	var result := rules.combat_flow.submit_action(state, _content([definition]), character.id, &"finish", "", ScriptedRng.new(values))
 	var movement_events := result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved" and event.payload.get("actorId") == monster.id)
 	assert_equal(movement_events.size(), 4, "a monster takes repeated legal steps until its footprint reaches adjacency")
 	assert_equal(state.combat.battlefield.monster_position(monster.id), Vector2i(46, 45), "target-directed movement stops at the adjacent attack cell")
@@ -181,7 +381,7 @@ func _test_monster_los_targeting_and_movement() -> void:
 	tangled_monster.conditions.set_value(ConditionRules.TANGLED, -1)
 	var tangled_state := _state(tangled_character, tangled_monster, "battle.permanent-tangle")
 	tangled_state.combat.battlefield.move_actor(tangled_monster.id, Vector2i(50, 45))
-	var tangled_result := rules.combat_flow.submit_action(tangled_state, _content([definition]), tangled_character.id, &"defend", "", ScriptedRng.new([0, 0]))
+	var tangled_result := rules.combat_flow.submit_action(tangled_state, _content([definition]), tangled_character.id, &"finish", "", ScriptedRng.new([0, 0]))
 	assert_true(tangled_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action_unavailable" and event.payload.get("reason") == "permanent-tangle-movement-unresolved"), "Castle's apparent permanent-Tangle movement increase remains explicit instead of becoming gameplay")
 
 	var helpless_character := _character("character.helpless-monster")
@@ -189,7 +389,7 @@ func _test_monster_los_targeting_and_movement() -> void:
 	helpless_monster.conditions.set_value(ConditionRules.HELPLESS, -1)
 	var helpless_state := _state(helpless_character, helpless_monster, "battle.helpless-monster")
 	var helpless_rng := ScriptedRng.new([])
-	var helpless_result := rules.combat_flow.submit_action(helpless_state, _content([definition]), helpless_character.id, &"defend", "", helpless_rng)
+	var helpless_result := rules.combat_flow.submit_action(helpless_state, _content([definition]), helpless_character.id, &"finish", "", helpless_rng)
 	assert_true(helpless_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action" and event.payload.get("action") == "incapacitated"), "Castle skips a helpless monster before its tactical decision")
 	assert_equal(helpless_rng.snapshot().draw_count, 0, "an incapacitated monster consumes no AI or target randomness")
 
@@ -197,7 +397,7 @@ func _test_monster_los_targeting_and_movement() -> void:
 	var speedy_monster := MonsterState.new("monster.speedy.instance", definition.id, definition.name, 20, 20, 1)
 	speedy_monster.conditions.set_value(ConditionRules.SPEEDY, -1)
 	var speedy_state := _state(speedy_character, speedy_monster, "battle.speedy-monster")
-	var speedy_result := rules.combat_flow.submit_action(speedy_state, _content([definition]), speedy_character.id, &"defend", "", ScriptedRng.new([0, 0]))
+	var speedy_result := rules.combat_flow.submit_action(speedy_state, _content([definition]), speedy_character.id, &"finish", "", ScriptedRng.new([0, 0]))
 	assert_true(speedy_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_monster_action_unavailable" and event.payload.get("reason") == "monster-speedy-cadence-unresolved"), "monster Speedy stays explicit until Castle's bonus-row overflow is adjudicated")
 
 
@@ -236,11 +436,11 @@ func _test_character_weapon_mode_toggle_and_restore() -> void:
 	assert_true(switched.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_weapon_mode_changed" and event.payload.get("mode") == "missile"), "the committed mode change publishes typed presentation feedback")
 	var combat_view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield)
 	assert_equal(combat_view.weapon_mode, &"missile", "the detached combat view exposes the battle-owned mode")
-	assert_equal(combat_view.legal_actions, [&"switch_weapon", &"defend", &"retreat"], "the detached view cannot advertise melee attack while missile mode is active")
+	assert_equal(combat_view.legal_actions, [&"switch_weapon", &"finish", &"defend", &"retreat"], "the detached view cannot advertise melee attack while missile mode is active")
 	assert_false(combat_view.ranged_attack_unavailable_reason.is_empty(), "the detached view carries the exact tactical ranged blocker")
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(94), ScenarioActionState.new())
 	var request := api._combat_request("request.weapon-mode")
-	assert_equal([request.payload.get("weaponMode"), request.payload.get("actions")], ["missile", ["switch_weapon", "defend", "retreat"]], "the typed interaction preserves the same legal actions as the detached view")
+	assert_equal([request.payload.get("weaponMode"), request.payload.get("actions")], ["missile", ["switch_weapon", "finish", "defend", "retreat"]], "the typed interaction preserves the same legal actions as the detached view")
 	assert_equal(request.payload.get("weaponSwitch", {}).get("targetMode"), "melee", "the typed switch response names its source-owned destination mode")
 	assert_false(String(request.payload.get("rangedAttack", {}).get("reason", "")).is_empty(), "the typed interaction explains why Fire is disabled")
 	var blocked := rules.combat_flow.submit_action(state, content, character.id, &"attack", monster.id, RealmzRng.new(92))
@@ -344,7 +544,7 @@ func _test_monster_missile_does_not_impersonate_melee() -> void:
 	var monster := MonsterState.new("monster.missile-only.instance", definition.id, definition.name, 20, 20, 1)
 	var state := _state(character, monster, "battle.monster-missile")
 	state.combat.battlefield.move_actor(monster.id, Vector2i(50, 50))
-	var result := rules.combat_flow.submit_action(state, _content([definition]), character.id, &"defend", "", ScriptedRng.new([0, 0, 0, 0]))
+	var result := rules.combat_flow.submit_action(state, _content([definition]), character.id, &"finish", "", ScriptedRng.new([0, 0, 0, 0]))
 	assert_true(result.ok, "an unavailable tactical missile decision returns a committed combat step")
 	assert_equal(character.current_health, 20, "the missile branch no longer applies an ordinary melee attack row")
 	assert_false(result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == monster.id), "no melee-resolution event is mislabeled as a missile")
@@ -409,7 +609,7 @@ func _test_monster_authored_attack_rows_and_target_retention() -> void:
 	rng_values.fill(0)
 	var rng := ScriptedRng.new(rng_values)
 
-	var result := rules.combat_flow.submit_action(state, _content([definition]), character.id, &"defend", "", rng)
+	var result := rules.combat_flow.submit_action(state, _content([definition]), character.id, &"finish", "", rng)
 	assert_true(result.ok, "a three-row monster activation resolves")
 	var attacks_seen: Array[DomainEvent] = []
 	for event: DomainEvent in result.events:
@@ -538,7 +738,7 @@ func _test_monster_fumble_clears_only_active_weapon() -> void:
 	monster.weapon_id = weapon.id
 	var state := _state(character, monster, "battle.monster-fumble")
 	var values: Array[int] = [0, 0, 0, 0, 0, 942, 0, 0, 0, 0]
-	var result := rules.combat_flow.submit_action(state, _content([definition], [weapon]), character.id, &"defend", "", ScriptedRng.new(values))
+	var result := rules.combat_flow.submit_action(state, _content([definition], [weapon]), character.id, &"finish", "", ScriptedRng.new(values))
 	assert_true(result.ok, "an armed monster fumble resolves through automatic combat flow")
 	assert_equal(monster.weapon_id, "", "Castle clears the monster's active carried weapon after a fumble")
 	var monster_attacks := result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == monster.id)
@@ -582,8 +782,8 @@ func _blank_battlefield() -> BattlefieldState:
 	return BattlefieldState.new("map.test", tiles)
 
 
-func _content(monsters: Array[MonsterDefinition], items: Array[ItemDefinition] = []) -> RealmzContent:
-	return RealmzContent.new("campaign.cadence", "0".repeat(64), "cadence", "realmz-classic-1", "map.test", Vector2i(45, 45), _battle_world(), ScenarioDefinition.new([], []), [], [], [], [], [], items, [], monsters)
+func _content(monsters: Array[MonsterDefinition], items: Array[ItemDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = []) -> RealmzContent:
+	return RealmzContent.new("campaign.cadence", "0".repeat(64), "cadence", "realmz-classic-1", "map.test", Vector2i(45, 45), _battle_world(), ScenarioDefinition.new([], []), [], [], [], races, castes, items, [], monsters)
 
 
 func _battle_world() -> WorldDefinition:

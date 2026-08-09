@@ -2010,7 +2010,7 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 		var destination := _combat_destination(response.payload.get("destination"))
 		if destination == Vector2i(-100_000, -100_000):
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat movement requires a two-integer destination.")
-		result = _rules.combat_flow.move_character(_game_state, _content, response.payload["actorId"], destination)
+		result = _rules.combat_flow.move_character(_game_state, _content, response.payload["actorId"], destination, _rng)
 	else:
 		result = _rules.combat_flow.submit_action(_game_state, _content, response.payload["actorId"], StringName(response.payload["action"]), response.payload.get("targetId", ""), _rng)
 	if not result.ok:
