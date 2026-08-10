@@ -110,6 +110,14 @@ static func _integer(value: Variant) -> int:
 	return -1
 
 
+static func _signed_integer(value: Variant) -> int:
+	if value is int:
+		return value
+	if value is float and is_equal_approx(value, round(value)):
+		return int(value)
+	return -100_000
+
+
 static func _migrate(value: Variant) -> Variant:
 	if not value is Dictionary or value.get("format", "") != FORMAT:
 		return null
@@ -156,6 +164,36 @@ static func _migrate(value: Variant) -> Variant:
 static func _normalize_session_continuation(value: Dictionary) -> Variant:
 	if value.is_empty():
 		return {}
+	if value.get("kind") == "service-interaction":
+		if value.size() != 3 or not value.get("serviceId") is String or value["serviceId"].is_empty() or not value.get("runtimeContinuation") is Dictionary:
+			return null
+		var runtime: Dictionary = value["runtimeContinuation"]
+		var normalized_runtime: Dictionary = {}
+		match String(runtime.get("kind", "")):
+			"classic-shop":
+				if runtime.size() != 3 or not runtime.get("shopId") is String or runtime["shopId"].is_empty() or not runtime.get("acceptRanges") is Array:
+					return null
+				var ranges: Array[int] = []
+				for raw_range: Variant in runtime["acceptRanges"]:
+					var accepted_range := _signed_integer(raw_range)
+					if accepted_range < -32_768 or accepted_range > 32_767:
+						return null
+					ranges.append(accepted_range)
+				if ranges.size() != 4:
+					return null
+				normalized_runtime = {"kind": "classic-shop", "shopId": runtime["shopId"], "acceptRanges": ranges}
+			"classic-temple", "classic-temple-exit":
+				var cost_percent := _signed_integer(runtime.get("costPercent"))
+				if runtime.size() != 4 or cost_percent < -32_768 or cost_percent > 32_767 or not runtime.get("bankAvailable") is bool or not runtime.get("selectedCharacterId") is String or runtime["selectedCharacterId"].is_empty():
+					return null
+				normalized_runtime = {"kind": runtime["kind"], "costPercent": cost_percent, "bankAvailable": runtime["bankAvailable"], "selectedCharacterId": runtime["selectedCharacterId"]}
+			"classic-banking":
+				if runtime.size() != 1:
+					return null
+				normalized_runtime = {"kind": "classic-banking"}
+			_:
+				return null
+		return {"kind": "service-interaction", "serviceId": value["serviceId"], "runtimeContinuation": normalized_runtime}
 	if value.get("kind") == "drop-item-confirmation":
 		var drop_fields: Array[String] = ["kind", "characterId", "instanceId"]
 		if value.size() != drop_fields.size():

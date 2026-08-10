@@ -48,6 +48,7 @@ func run() -> void:
 	_test_scrolling_text_event(loaded.content)
 	_test_classic_shop_configuration(loaded.content)
 	_test_classic_shop_lifecycle(loaded.content)
+	_test_classic_temple_lifecycle(loaded.content)
 	_test_classic_priest_turning(loaded.content)
 	_test_classic_experience_loss_and_drop(loaded.content)
 	_test_classic_character_money_loss(loaded.content)
@@ -232,16 +233,43 @@ func _test_classic_shell_domain_route(content: RealmzContent) -> void:
 	assert_equal(restored_shop_session.respond(InteractionResponse.new(restored_shop_request.request_id, &"shop_action", {"action": "leave"})).state, SessionStep.State.COMPLETED, "leaving a restored shop resumes and completes the AP")
 	session = restored_shop_session
 
-	var temple := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
-	assert_equal(temple.interaction.kind, &"temple_action", "temple AP exposes a typed service request")
-	assert_true(temple.interaction.payload.get("characters") is Array, "temple request is presentation-ready without core access")
-	assert_equal(session.respond(InteractionResponse.new(temple.interaction.request_id, &"temple_action", {"action": "leave"})).state, SessionStep.State.COMPLETED, "leaving the temple resumes the AP")
+	var temple_offer := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	assert_equal(temple_offer.state, SessionStep.State.COMPLETED, "temple AP offers a contextual service without forcing presentation")
+	assert_true(session.view().services.any(func(service: ServiceView) -> bool: return service.service_kind == &"temple"), "the detached view exposes the available temple")
+	var temple := session.submit_intent(PlayerIntent.service_action("realmz.service.temple", &"enter"))
+	assert_equal(temple.interaction.kind, InteractionRequest.TEMPLE, "the player enters the offered temple through an ordinary typed intent")
+	assert_equal(temple.interaction.payload.get("services", []).size(), 9, "temple request carries all nine source-backed services")
+	var temple_save := SaveEnvelope.from_data(session.snapshot().to_data())
+	assert_not_null(temple_save, "contextual temple interaction is a committed save boundary")
+	temple_save.game_state.party.pooled_wealth.gold = 1
+	var restored_temple := GameSession.new()
+	assert_equal(restored_temple.restore(content, temple_save).state, SessionStep.State.COMPLETED, "temple service continuation restores transactionally")
+	var exit_warning := restored_temple.respond(InteractionResponse.new(restored_temple.view().pending_interaction.request_id, InteractionRequest.TEMPLE, {"action": "leave"}))
+	assert_equal(exit_warning.interaction.kind, InteractionRequest.YES_NO, "a no-bank temple does not silently discard pooled wealth on exit")
+	var exit_save := SaveEnvelope.from_data(restored_temple.snapshot().to_data())
+	assert_not_null(exit_save, "the nested pooled-wealth exit warning is a committed save boundary")
+	var exit_restored := GameSession.new()
+	assert_equal(exit_restored.restore(content, exit_save).state, SessionStep.State.COMPLETED, "the nested temple exit continuation validates transactionally")
+	var returned := exit_restored.respond(InteractionResponse.new(exit_restored.view().pending_interaction.request_id, InteractionRequest.YES_NO, {"accepted": true}))
+	assert_equal(returned.interaction.kind, InteractionRequest.TEMPLE, "accepting the warning returns to explicit wealth controls instead of inventing an allocation")
+	var shared := exit_restored.respond(InteractionResponse.new(returned.interaction.request_id, InteractionRequest.TEMPLE, {"action": "share"}))
+	assert_equal(shared.interaction.kind, InteractionRequest.TEMPLE, "Share returns to the same selected-character temple workspace")
+	var leave_after_share := exit_restored.respond(InteractionResponse.new(shared.interaction.request_id, InteractionRequest.TEMPLE, {"action": "leave"}))
+	if leave_after_share.state == SessionStep.State.WAITING_FOR_INTERACTION:
+		assert_equal(leave_after_share.interaction.kind, InteractionRequest.YES_NO, "wealth that no character can carry remains explicit after Share")
+		leave_after_share = exit_restored.respond(InteractionResponse.new(leave_after_share.interaction.request_id, InteractionRequest.YES_NO, {"accepted": false}))
+	assert_equal(leave_after_share.state, SessionStep.State.COMPLETED, "leaving after explicit distribution or discard closes only the service workspace")
+	restored_temple = exit_restored
+	session = restored_temple
 
-	var bank := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
-	assert_equal(bank.interaction.kind, &"bank_action", "bank AP exposes typed carried and deposited wealth")
+	var bank_offer := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	assert_equal(bank_offer.state, SessionStep.State.COMPLETED, "bank AP offers a contextual service without forcing presentation")
+	assert_true(session.view().services.any(func(service: ServiceView) -> bool: return service.service_kind == &"bank"), "the detached view exposes the available bank")
+	var bank := session.submit_intent(PlayerIntent.service_action("realmz.service.bank", &"enter"))
+	assert_equal(bank.interaction.kind, InteractionRequest.BANK, "the player enters the bank through the same service intent boundary")
 	assert_true(bank.interaction.payload.has("carriedGold") and bank.interaction.payload.has("bankedGold"), "bank presenter receives only detached wealth values")
 	assert_not_null(SaveEnvelope.from_data(session.snapshot().to_data()), "bank interaction is a committed save boundary")
-	assert_equal(session.respond(InteractionResponse.new(bank.interaction.request_id, &"bank_action", {"action": "leave", "amount": 0})).state, SessionStep.State.COMPLETED, "leaving the bank resumes the AP")
+	assert_equal(session.respond(InteractionResponse.new(bank.interaction.request_id, InteractionRequest.BANK, {"action": "leave", "amount": 0})).state, SessionStep.State.COMPLETED, "leaving the bank closes the service workspace")
 
 
 func _test_complex_encounter_save_resume(content: RealmzContent) -> void:
@@ -963,6 +991,43 @@ func _test_classic_shop_lifecycle(content: RealmzContent) -> void:
 	assert_equal(state.shop_buyback_quantity("classic.shop.0", resale_item.id), 0, "buyback purchase consumes the dynamic stock entry")
 	var returned_instance: ItemInstance = character.inventory()[-1]
 	assert_equal([returned_instance.definition_id, returned_instance.identified], [resale_item.id, true], "buyback stock is shop-owned and therefore identified")
+
+
+func _test_classic_temple_lifecycle(content: RealmzContent) -> void:
+	var character := CharacterState.new("temple.character", "Patient", 1, 20)
+	character.maximum_load = 10_000
+	character.money.gold = 500
+	character.carried_load = 500
+	character.conditions.set_value(TempleRules.CONDITION_POISONED, 8)
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	party.banked_wealth = WealthState.new(1_000, 2, 1)
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var offered := api.execute_classic(ClassicActionDefinition.new(0, 32, 32, 100, false, []), "request.temple-offer")
+	assert_equal(offered.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 32 offers rather than enters the temple")
+	assert_true(state.temple_available, "temple availability is session-owned")
+	assert_true(_event_has(offered.events, &"sound_requested"), "the offer publishes Castle sound 10105")
+	var bank_offer := api.execute_classic(ClassicActionDefinition.new(0, 49, 49, 0, false, []), "request.bank-offer")
+	assert_equal(bank_offer.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 49 offers rather than enters the bank")
+	var opened := api.request_available_temple("request.temple-open")
+	assert_equal(opened.state, ScenarioRuntimeOperationResult.State.WAITING, "entering the available temple yields its typed workspace")
+	assert_equal(opened.interaction.payload.get("services", []).size(), 9, "temple workspace exposes Castle's complete fixed service table")
+	assert_equal([party.banked_wealth.gold, party.pooled_wealth.gold, party.pooled_wealth.gems, party.pooled_wealth.jewelry], [0, 1_000, 2, 1], "an available bank moves all three denominations into the temple pool on entry")
+	var small := api.resume_classic(opened.continuation, InteractionResponse.new(opened.interaction.request_id, InteractionRequest.TEMPLE, {"action": "service", "serviceId": "heal-small", "characterId": character.id}), opened.interaction.request_id)
+	assert_equal(small.state, ScenarioRuntimeOperationResult.State.WAITING, "a purchased temple service returns to the same workspace")
+	assert_equal(small.interaction.payload.get("selectedCharacterId"), character.id, "the selected temple character survives request regeneration")
+	assert_true(character.current_health > 1 and character.current_health <= 9, "Heal Small Wounds commits one Castle Rand(8) result")
+	assert_equal(party.pooled_wealth.gold, 750, "temple payment spends pooled gold before personal gold")
+	assert_true(_event_has(small.events, &"temple_service_completed") and _event_has(small.events, &"sound_requested"), "service completion records the mutation and Castle click sound")
+	var poison := api.resume_classic(small.continuation, InteractionResponse.new(small.interaction.request_id, InteractionRequest.TEMPLE, {"action": "service", "serviceId": "heal-poison", "characterId": character.id}), small.interaction.request_id)
+	assert_equal(character.conditions.value(TempleRules.CONDITION_POISONED), 0, "Heal Poison clears the exact selected character condition")
+	assert_equal(party.pooled_wealth.gold, 550, "fixed-cost cures charge even when their effect is not health-based")
+	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(round_trip, "temple and bank availability serialize in the central game state")
+	assert_true(round_trip.temple_available and round_trip.bank_available, "restored service availability retains both source flags")
+	var closed := api.resume_classic(poison.continuation, InteractionResponse.new(poison.interaction.request_id, InteractionRequest.TEMPLE, {"action": "leave"}), poison.interaction.request_id)
+	assert_equal(closed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "leaving a bank-backed temple closes without another player choice")
+	assert_equal([party.pooled_wealth.gold, party.banked_wealth.gold, party.banked_wealth.gems, party.banked_wealth.jewelry], [0, 550, 2, 1], "temple exit returns all pooled denominations to the available bank")
 
 
 func _test_classic_priest_turning(content: RealmzContent) -> void:

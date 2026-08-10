@@ -6,6 +6,7 @@ var characters: CharacterRules
 var conditions: ConditionRules
 var inventory: InventoryRules
 var economy: EconomyRules
+var temple: TempleRules
 var combat: CombatRules
 var magic: MagicRules
 var monsters: MonsterRules
@@ -21,6 +22,7 @@ func _init() -> void:
 	conditions = ConditionRules.new()
 	inventory = InventoryRules.new()
 	economy = EconomyRules.new()
+	temple = TempleRules.new()
 	combat = CombatRules.new(conditions, characters)
 	magic = MagicRules.new(characters, arithmetic)
 	monsters = MonsterRules.new()

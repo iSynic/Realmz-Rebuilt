@@ -152,6 +152,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _request_drop_item(intent)
 		PlayerIntent.Kind.TRADE_ITEM:
 			return _trade_item(intent)
+		PlayerIntent.Kind.SERVICE_ACTION:
+			return _service_action(intent)
 		_:
 			return SessionStep.failed(_view_revision, &"intent_not_implemented", "This Realmz intent is not implemented in the current slice.")
 
@@ -231,8 +233,35 @@ func view() -> GameView:
 		for icon: CharacterAppearanceDefinition in _content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):
 			result.combat_icon_options.append(CharacterAppearanceOptionView.new(icon))
 	_populate_inventory_item_actions(result)
+	_populate_services(result)
 	_populate_action_availability(result)
 	return result
+
+
+func _populate_services(result: GameView) -> void:
+	if not _state.active_shop_id.is_empty():
+		var shop := _content.shop_by_id(_state.active_shop_id)
+		if shop != null:
+			var shop_view := ServiceView.new()
+			shop_view.service_id = shop.id
+			shop_view.service_kind = &"shop"
+			shop_view.title = "Shop %d" % shop.classic_id
+			shop_view.actions = [&"enter"]
+			result.services.append(shop_view)
+	if _state.temple_available:
+		var temple_view := ServiceView.new()
+		temple_view.service_id = "realmz.service.temple"
+		temple_view.service_kind = &"temple"
+		temple_view.title = "Temple"
+		temple_view.actions = [&"enter"]
+		result.services.append(temple_view)
+	if _state.bank_available:
+		var bank_view := ServiceView.new()
+		bank_view.service_id = "realmz.service.bank"
+		bank_view.service_kind = &"bank"
+		bank_view.title = "Bank"
+		bank_view.actions = [&"enter"]
+		result.services.append(bank_view)
 
 
 func _populate_action_availability(result: GameView) -> void:
@@ -266,9 +295,10 @@ func _populate_action_availability(result: GameView) -> void:
 	result.set_action_availability(&"split_item", false, ordinary_reason if not ordinary_reason.is_empty() else "Classic split-stack load behavior requires a fidelity decision.")
 	result.set_action_availability(&"join_item", false, ordinary_reason if not ordinary_reason.is_empty() else "Classic join-stack load behavior requires a fidelity decision.")
 	result.set_action_availability(&"store_item", false, "Classic has no ordinary player-stash workflow; opcode 36 equipment escrow remains scenario-owned.")
+	result.set_action_availability(&"service_action", ordinary_reason.is_empty() and not battle_active and not result.services.is_empty(), ordinary_reason if not ordinary_reason.is_empty() else "Services are unavailable during battle." if battle_active else "No shop, temple, or bank is available at this location.")
 	for action_id: StringName in [
 		&"use_item_on_target",
-		&"money_action", &"service_action", &"select_spell_power", &"select_spell_target", &"combat_move",
+		&"money_action", &"select_spell_power", &"select_spell_target", &"combat_move",
 		&"loot_assignment", &"treasure_complete", &"level_up", &"open_journal", &"open_maps",
 	]:
 		result.set_action_availability(action_id, false, "Not implemented in the current gameplay slice.")
@@ -950,6 +980,12 @@ func _move(direction: Vector2i) -> SessionStep:
 		events.append(DomainEvent.new("secret_discovered", {"secretId": probe.secret_id, "byMovement": true}))
 	var source_map_id := _state.party.map_id
 	var source_coordinate := _state.party.coordinate
+	var cleared_services := not _state.active_shop_id.is_empty() or _state.temple_available or _state.bank_available
+	if _state.bank_available:
+		_rules.economy.pool_to_bank(_state.party)
+	_state.clear_location_services()
+	if cleared_services:
+		events.append(DomainEvent.new(&"location_services_cleared", {"mapId": source_map_id, "x": source_coordinate.x, "y": source_coordinate.y}))
 	_state.party.map_id = target_map.id
 	_state.party.coordinate = target_coordinate
 	_state.last_move_direction = direction
@@ -1304,6 +1340,8 @@ func _pending_interaction() -> InteractionRequest:
 
 
 func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
+	if _session_continuation.get("kind") == "service-interaction":
+		return _respond_runtime_service(response)
 	if _session_continuation.get("kind") == "drop-item-confirmation":
 		return _respond_drop_item(response)
 	if _session_continuation.get("kind") == "character-spell-confirmation":
@@ -1342,6 +1380,50 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 		return next_step
 	_session_continuation.clear()
 	return _finish_completed(events)
+
+
+func _service_action(intent: PlayerIntent) -> SessionStep:
+	if intent.action != &"enter":
+		return SessionStep.failed(_view_revision, &"unknown_service_action", "Only entering an available service is implemented through this intent.")
+	var request_id := "service:%s:%d" % [intent.target_id, _view_revision]
+	var operation: ScenarioRuntimeOperationResult
+	if intent.target_id == "realmz.service.temple":
+		operation = _runtime_api.request_available_temple(request_id)
+	elif intent.target_id == "realmz.service.bank":
+		operation = _runtime_api.request_available_bank(request_id)
+	elif intent.target_id == _state.active_shop_id:
+		operation = _runtime_api.request_available_shop(request_id)
+	else:
+		return SessionStep.failed(_view_revision, &"service_unavailable", "The selected service is not available at this location.")
+	return _begin_runtime_service(intent.target_id, operation)
+
+
+func _begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperationResult) -> SessionStep:
+	if operation == null:
+		return _finish_failed(&"service_failed", "The selected service returned no operation result.", [])
+	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
+		return _finish_failed(operation.error_code, operation.error_message, operation.events)
+	if operation.state != ScenarioRuntimeOperationResult.State.WAITING or operation.interaction == null:
+		return _finish_failed(&"service_failed", "The selected service did not produce its required interaction.", operation.events)
+	_session_continuation = {"kind": "service-interaction", "serviceId": service_id, "runtimeContinuation": operation.continuation.duplicate(true)}
+	_session_interaction = operation.interaction
+	return _finish_waiting(_session_interaction, operation.events)
+
+
+func _respond_runtime_service(response: InteractionResponse) -> SessionStep:
+	var runtime_continuation: Variant = _session_continuation.get("runtimeContinuation")
+	if not runtime_continuation is Dictionary:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The pending service has no runtime continuation.")
+	var result := _runtime_api.resume_classic(runtime_continuation, response, response.request_id)
+	if result.state == ScenarioRuntimeOperationResult.State.FAILED:
+		return _finish_failed(result.error_code, result.error_message, result.events)
+	if result.state == ScenarioRuntimeOperationResult.State.WAITING:
+		_session_continuation["runtimeContinuation"] = result.continuation.duplicate(true)
+		_session_interaction = result.interaction
+		return _finish_waiting(_session_interaction, result.events)
+	_session_interaction = null
+	_session_continuation.clear()
+	return _finish_completed(result.events)
 
 
 func _respond_drop_item(response: InteractionResponse) -> SessionStep:
@@ -1550,6 +1632,22 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 
 
 static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	if continuation.get("kind") == "service-interaction":
+		if continuation.size() != 3 or vm_interaction != null or session_interaction == null or not continuation.get("serviceId") is String or not continuation.get("runtimeContinuation") is Dictionary:
+			return false
+		var service_id: String = continuation["serviceId"]
+		var runtime: Dictionary = continuation["runtimeContinuation"]
+		var selected_temple_character: Variant = runtime.get("selectedCharacterId")
+		match String(runtime.get("kind", "")):
+			"classic-shop":
+				return service_id == state.active_shop_id and not service_id.is_empty() and content.shop_by_id(service_id) != null and session_interaction.kind == InteractionRequest.SHOP
+			"classic-temple":
+				return service_id == "realmz.service.temple" and state.temple_available and int(runtime.get("costPercent", -100_000)) == state.temple_cost_percent and bool(runtime.get("bankAvailable", false)) == state.bank_available and selected_temple_character is String and state.party.character_by_id(String(selected_temple_character)) != null and session_interaction.kind == InteractionRequest.TEMPLE and session_interaction.payload.get("selectedCharacterId") == selected_temple_character
+			"classic-temple-exit":
+				return service_id == "realmz.service.temple" and state.temple_available and not state.bank_available and int(runtime.get("costPercent", -100_000)) == state.temple_cost_percent and not bool(runtime.get("bankAvailable", true)) and selected_temple_character is String and state.party.character_by_id(String(selected_temple_character)) != null and session_interaction.kind == InteractionRequest.YES_NO
+			"classic-banking":
+				return service_id == "realmz.service.bank" and state.bank_available and session_interaction.kind == InteractionRequest.BANK
+		return false
 	if continuation.get("kind") == "drop-item-confirmation":
 		var drop_fields: Array[String] = ["kind", "characterId", "instanceId"]
 		if continuation.size() != drop_fields.size() or vm_interaction != null or session_interaction == null:

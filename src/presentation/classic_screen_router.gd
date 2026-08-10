@@ -1376,9 +1376,16 @@ func _render_services() -> void:
 			var button := Button.new()
 			button.text = String(action).capitalize()
 			var reason := String(service.disabled_reasons.get(action, ""))
-			button.disabled = not reason.is_empty()
-			button.tooltip_text = reason
+			var availability := _view.availability(&"service_action")
+			button.disabled = not reason.is_empty() or not availability.enabled
+			button.tooltip_text = reason if not reason.is_empty() else availability.reason if not availability.enabled else "Enter %s" % service.title
+			if not button.disabled:
+				button.pressed.connect(_submit_service_action.bind(service.service_id, action))
 			_body.add_child(button)
+
+
+func _submit_service_action(service_id: String, action: StringName) -> void:
+	intent_submitted.emit(PlayerIntent.service_action(service_id, action))
 
 
 func _render_journal() -> void:

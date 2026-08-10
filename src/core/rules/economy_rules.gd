@@ -11,6 +11,59 @@ func pool_party_wealth(party: PartyState) -> void:
 		character.money = WealthState.new()
 
 
+func take_from_pool_and_character(party: PartyState, character: CharacterState, amount: int, kind: WealthState.Kind) -> bool:
+	if party == null or character == null:
+		return false
+	if amount < 0:
+		party.pooled_wealth.add(kind, -amount)
+		return true
+	if amount > party.pooled_wealth.amount(kind) + character.money.amount(kind):
+		return false
+	var from_pool := mini(amount, party.pooled_wealth.amount(kind))
+	party.pooled_wealth.add(kind, -from_pool)
+	var from_character := amount - from_pool
+	character.money.add(kind, -from_character)
+	character.carried_load = maxi(0, character.carried_load - from_character * _wealth_weight(kind))
+	return true
+
+
+func share_pooled_wealth(party: PartyState) -> void:
+	if party == null:
+		return
+	for kind: WealthState.Kind in [WealthState.Kind.JEWELRY, WealthState.Kind.GEMS, WealthState.Kind.GOLD]:
+		var assigned := true
+		while party.pooled_wealth.amount(kind) > 0 and assigned:
+			assigned = false
+			for character: CharacterState in party.characters():
+				if party.pooled_wealth.amount(kind) < 1:
+					break
+				if character.carried_load < character.maximum_load:
+					assigned = true
+					character.money.add(kind, 1)
+					character.carried_load += _wealth_weight(kind)
+					party.pooled_wealth.add(kind, -1)
+
+
+func bank_to_pool(party: PartyState) -> void:
+	if party == null:
+		return
+	for kind: WealthState.Kind in [WealthState.Kind.GOLD, WealthState.Kind.GEMS, WealthState.Kind.JEWELRY]:
+		party.pooled_wealth.add(kind, party.banked_wealth.amount(kind))
+		party.banked_wealth.set_amount(kind, 0)
+
+
+func pool_to_bank(party: PartyState) -> void:
+	if party == null:
+		return
+	for kind: WealthState.Kind in [WealthState.Kind.GOLD, WealthState.Kind.GEMS, WealthState.Kind.JEWELRY]:
+		party.banked_wealth.add(kind, party.pooled_wealth.amount(kind))
+		party.pooled_wealth.set_amount(kind, 0)
+
+
+static func _wealth_weight(kind: WealthState.Kind) -> int:
+	return 15 if kind == WealthState.Kind.JEWELRY else 1
+
+
 func take(party: PartyState, amount: int, kind: WealthState.Kind) -> bool:
 	if amount < 0:
 		return false

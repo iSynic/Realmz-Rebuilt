@@ -136,7 +136,7 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 		31:
 			return _request_character_ability(action, request_id)
 		32:
-			return _request_temple(action, request_id)
+			return _configure_temple(action)
 		33:
 			var values := action.extra_code
 			var amount := absi(action.operand_id) if values.is_empty() else absi(values[0])
@@ -172,7 +172,7 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 				return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 47 references quest %d outside 0 through 99." % quest_id)
 			return ScenarioRuntimeOperationResult.completed(_game_state.quest_value(quest_id), [DomainEvent.new(&"quest_changed", {"questId": quest_id, "value": _game_state.quest_value(quest_id)})])
 		49:
-			return _request_banking(request_id)
+			return _configure_banking()
 		50:
 			return _select_characters_by_identity(action)
 		51:
@@ -663,6 +663,34 @@ func read_action_state(state_scope: String, owner_id: String, name: String, defa
 	return _action_state.read(state_scope, owner_id, name, default_value)
 
 
+func request_available_shop(request_id: String) -> ScenarioRuntimeOperationResult:
+	var shop := _content.shop_by_id(_game_state.active_shop_id)
+	if shop == null:
+		return ScenarioRuntimeOperationResult.failed(&"shop_unavailable", "No configured Classic shop is available at this location.")
+	return _request_shop_definition(shop, request_id, _game_state.shop_accept_ranges())
+
+
+func request_available_temple(request_id: String) -> ScenarioRuntimeOperationResult:
+	if not _game_state.temple_available:
+		return ScenarioRuntimeOperationResult.failed(&"temple_unavailable", "No Classic temple is available at this location.")
+	if _game_state.bank_available:
+		_rules.economy.bank_to_pool(_game_state.party)
+	var characters := _game_state.party.characters()
+	var selected_character_id := "" if characters.is_empty() else characters[0].id
+	var continuation := {"kind": "classic-temple", "costPercent": _game_state.temple_cost_percent, "bankAvailable": _game_state.bank_available, "selectedCharacterId": selected_character_id}
+	return ScenarioRuntimeOperationResult.waiting(_temple_request(_game_state.temple_cost_percent, request_id, selected_character_id), continuation, [
+		DomainEvent.new(&"temple_opened", {"costPercent": _game_state.temple_cost_percent, "bankAvailable": _game_state.bank_available}),
+		DomainEvent.new(&"music_requested", {"musicId": 10, "source": "classic-temple"}),
+		DomainEvent.new(&"sound_requested", {"soundId": 10105, "waitForCompletion": false, "source": "classic-temple-entry"}),
+	])
+
+
+func request_available_bank(request_id: String) -> ScenarioRuntimeOperationResult:
+	if not _game_state.bank_available:
+		return ScenarioRuntimeOperationResult.failed(&"bank_unavailable", "No Classic bank is available at this location.")
+	return _request_banking(request_id)
+
+
 func resume_classic(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	match continuation.get("kind"):
 		"classic-age-updates":
@@ -703,6 +731,8 @@ func resume_classic(continuation: Dictionary, response: InteractionResponse, req
 			return _resume_shop(continuation, response, request_id)
 		"classic-temple":
 			return _resume_temple(continuation, response, request_id)
+		"classic-temple-exit":
+			return _resume_temple_exit(continuation, response, request_id)
 		"classic-banking":
 			return _resume_banking(continuation, response, request_id)
 		_:
@@ -1690,6 +1720,10 @@ func _request_shop(classic_shop_id: int, request_id: String, accept_ranges: Arra
 	var shop := _content.shop_by_classic_id(absi(classic_shop_id))
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic opcode 6 references unavailable shop %d." % classic_shop_id)
+	return _request_shop_definition(shop, request_id, accept_ranges)
+
+
+func _request_shop_definition(shop: ShopDefinition, request_id: String, accept_ranges: Array[int] = []) -> ScenarioRuntimeOperationResult:
 	return ScenarioRuntimeOperationResult.waiting(_shop_request(shop, request_id, accept_ranges), {"kind": "classic-shop", "shopId": shop.id, "acceptRanges": accept_ranges.duplicate()}, [DomainEvent.new(&"shop_opened", {"shopId": shop.id, "acceptRanges": accept_ranges.duplicate()})])
 
 
@@ -1920,33 +1954,136 @@ func _mutate_shop(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"shop_changed", {"shopId": shop.id, "inflationPercent": inflation, "stockIndex": stock_index, "quantity": _game_state.shop_quantity(shop, stock_index) if stock_index >= 0 else 0})])
 
 
-func _request_temple(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
-	return ScenarioRuntimeOperationResult.waiting(_temple_request(action.operand_id, request_id), {"kind": "classic-temple", "costPercent": action.operand_id}, [DomainEvent.new(&"temple_opened", {"costPercent": action.operand_id})])
+func _configure_temple(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if not _game_state.set_active_temple(action.operand_id):
+		return ScenarioRuntimeOperationResult.failed(&"invalid_temple_cost", "Classic opcode 32 temple cost is outside signed 16-bit range.")
+	return ScenarioRuntimeOperationResult.completed(action.operand_id, [
+		DomainEvent.new(&"temple_available", {"costPercent": action.operand_id}),
+		DomainEvent.new(&"sound_requested", {"soundId": 10105, "waitForCompletion": false, "source": "classic-temple-offer"}),
+	])
 
 
-func _temple_request(cost_percent: int, request_id: String) -> InteractionRequest:
+func _temple_request(cost_percent: int, request_id: String, selected_character_id: String = "") -> InteractionRequest:
 	var characters: Array[Dictionary] = []
 	for character: CharacterState in _game_state.party.characters():
-		characters.append({"id": character.id, "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
-	return InteractionRequest.new(request_id, &"temple_action", {"costPercent": cost_percent, "characters": characters, "actions": ["heal", "leave"]})
+		var conditions: Array[Dictionary] = []
+		for index: int in character.conditions.size():
+			if character.conditions.value(index) != 0:
+				conditions.append({"index": index, "name": _rules.temple.condition_name(index), "value": character.conditions.value(index)})
+				if conditions.size() == 5:
+					break
+		characters.append({
+			"id": character.id,
+			"name": character.name,
+			"currentHealth": character.current_health,
+			"maximumHealth": character.maximum_health,
+			"personalGold": character.money.gold,
+			"availableGold": character.money.gold + _game_state.party.pooled_wealth.gold,
+			"load": character.carried_load,
+			"maximumLoad": character.maximum_load,
+			"portraitId": character.portrait_id,
+			"conditions": conditions,
+		})
+	return InteractionRequest.new(request_id, InteractionRequest.TEMPLE, {
+		"costPercent": cost_percent,
+		"characters": characters,
+		"services": _rules.temple.service_rows(cost_percent),
+		"pooledWealth": _game_state.party.pooled_wealth.to_data(),
+		"bankAvailable": _game_state.bank_available,
+		"selectedCharacterId": selected_character_id,
+		"actions": ["service", "pool", "share", "leave"],
+	})
 
 
 func _resume_temple(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if response.kind != &"temple_action" or not response.payload.get("action") is String:
+	if response.kind != InteractionRequest.TEMPLE or not response.payload.get("action") is String:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Temple response requires an action.")
-	if response.payload["action"] == "leave":
-		return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"temple_closed")])
-	if response.payload["action"] != "heal" or not response.payload.get("characterId") is String:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_temple_action", "Temple action is unavailable.")
+	var operation: String = response.payload["action"]
+	var cost_percent := int(continuation.get("costPercent", 100))
+	var next_continuation := continuation.duplicate(true)
+	if response.payload.has("selectedCharacterId"):
+		if not response.payload["selectedCharacterId"] is String or _game_state.party.character_by_id(String(response.payload["selectedCharacterId"])) == null:
+			return ScenarioRuntimeOperationResult.failed(&"unknown_character", "The selected temple character is unavailable.")
+		next_continuation["selectedCharacterId"] = response.payload["selectedCharacterId"]
+	match operation:
+		"leave":
+			if bool(continuation.get("bankAvailable", false)):
+				_rules.economy.pool_to_bank(_game_state.party)
+				return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"temple_closed", {"pooledWealthReturnedToBank": true})])
+			if _has_pooled_wealth():
+				var prompt := "Pooled wealth remains. Return to the temple to distribute it before leaving?"
+				var request := InteractionRequest.yes_no(request_id, prompt, "Return", "Leave it behind")
+				return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-temple-exit", "costPercent": cost_percent, "bankAvailable": false, "selectedCharacterId": String(next_continuation.get("selectedCharacterId", ""))})
+			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"temple_closed", {"pooledWealthReturnedToBank": false})])
+		"pool":
+			_rules.economy.pool_party_wealth(_game_state.party)
+			return ScenarioRuntimeOperationResult.waiting(_temple_request(cost_percent, request_id, String(next_continuation.get("selectedCharacterId", ""))), next_continuation, [
+				DomainEvent.new(&"wealth_pooled", {"source": "classic-temple"}),
+				DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-temple-pool"}),
+			])
+		"share":
+			_rules.economy.share_pooled_wealth(_game_state.party)
+			return ScenarioRuntimeOperationResult.waiting(_temple_request(cost_percent, request_id, String(next_continuation.get("selectedCharacterId", ""))), next_continuation, [
+				DomainEvent.new(&"wealth_shared", {"source": "classic-temple", "remaining": _game_state.party.pooled_wealth.to_data()}),
+				DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-temple-share"}),
+			])
+		"service":
+			return _apply_temple_service(next_continuation, response, request_id)
+	return ScenarioRuntimeOperationResult.failed(&"unknown_temple_action", "Temple action '%s' is unavailable." % operation)
+
+
+func _apply_temple_service(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
+	if not response.payload.get("characterId") is String or not response.payload.get("serviceId") is String:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Temple service requires characterId and serviceId.")
 	var character := _game_state.party.character_by_id(response.payload["characterId"])
+	var service_id := StringName(response.payload["serviceId"])
 	if character == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_character", "Temple healing target is unavailable.")
-	var missing := maxi(0, character.maximum_health - character.current_health)
-	var cost := maxi(1, int(float(missing * absi(int(continuation.get("costPercent", 100)))) / 100.0)) if missing > 0 else 0
-	if cost > 0 and not _rules.economy.take(_game_state.party, cost, WealthState.Kind.GOLD):
-		return ScenarioRuntimeOperationResult.failed(&"insufficient_gold", "The party cannot afford temple healing.")
-	character.current_health = character.maximum_health
-	return ScenarioRuntimeOperationResult.waiting(_temple_request(int(continuation.get("costPercent", 100)), request_id), continuation, [DomainEvent.new(&"temple_healing_applied", {"characterId": character.id, "cost": cost, "health": character.current_health})])
+		return ScenarioRuntimeOperationResult.failed(&"unknown_character", "Temple service target is unavailable.")
+	if not TempleRules.SERVICE_IDS.has(service_id):
+		return ScenarioRuntimeOperationResult.failed(&"unknown_temple_service", "Temple service '%s' is unavailable." % service_id)
+	var cost := _rules.temple.service_cost(service_id, int(continuation.get("costPercent", 100)))
+	var next_continuation := continuation.duplicate(true)
+	next_continuation["selectedCharacterId"] = character.id
+	var events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": 10129, "waitForCompletion": false, "source": "classic-temple-service"})]
+	if cost > _game_state.party.pooled_wealth.gold + character.money.gold:
+		events.append(DomainEvent.new(&"temple_service_rejected", {"serviceId": String(service_id), "characterId": character.id, "cost": cost, "reason": "insufficient_gold"}))
+		return ScenarioRuntimeOperationResult.waiting(_temple_request(int(continuation.get("costPercent", 100)), request_id, character.id), next_continuation, events)
+	if not _rules.economy.take_from_pool_and_character(_game_state.party, character, cost, WealthState.Kind.GOLD):
+		return ScenarioRuntimeOperationResult.failed(&"temple_payment_failed", "Temple payment could not be committed after affordability validation.")
+	var result := _rules.temple.apply_service(character, service_id, _rng, _content.item_definitions())
+	if result == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_temple_service", "Temple service '%s' is unavailable." % service_id)
+	events.append(DomainEvent.new(&"temple_service_completed", result.to_event_data(character.id, cost)))
+	return ScenarioRuntimeOperationResult.waiting(_temple_request(int(continuation.get("costPercent", 100)), request_id, character.id), next_continuation, events)
+
+
+func _resume_temple_exit(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
+	if response.kind != InteractionRequest.YES_NO or response.payload.get("accepted") is not bool:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Temple exit requires a yes/no response.")
+	if response.payload["accepted"]:
+		return ScenarioRuntimeOperationResult.waiting(
+			_temple_request(int(continuation.get("costPercent", 100)), request_id, String(continuation.get("selectedCharacterId", ""))),
+			{"kind": "classic-temple", "costPercent": int(continuation.get("costPercent", 100)), "bankAvailable": false, "selectedCharacterId": String(continuation.get("selectedCharacterId", ""))},
+			[DomainEvent.new(&"temple_exit_cancelled", {"reason": "pooled_wealth"})]
+		)
+	var discarded := _game_state.party.pooled_wealth.to_data()
+	_game_state.party.pooled_wealth = WealthState.new()
+	return ScenarioRuntimeOperationResult.completed(true, [
+		DomainEvent.new(&"pooled_wealth_discarded", {"source": "classic-temple-exit", "wealth": discarded}),
+		DomainEvent.new(&"temple_closed", {"pooledWealthReturnedToBank": false}),
+	])
+
+
+func _has_pooled_wealth() -> bool:
+	return _game_state.party.pooled_wealth.gold != 0 or _game_state.party.pooled_wealth.gems != 0 or _game_state.party.pooled_wealth.jewelry != 0
+
+
+func _configure_banking() -> ScenarioRuntimeOperationResult:
+	_game_state.bank_available = true
+	return ScenarioRuntimeOperationResult.completed(true, [
+		DomainEvent.new(&"bank_available"),
+		DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-bank-offer"}),
+	])
 
 
 func _request_banking(request_id: String) -> ScenarioRuntimeOperationResult:

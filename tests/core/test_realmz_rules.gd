@@ -14,6 +14,7 @@ func run() -> void:
 	_test_monster_permanent_afflictions()
 	_test_conditions_time_and_persistence()
 	_test_inventory_economy_and_treasure()
+	_test_temple_services_and_wealth()
 	_test_projectile_resolution()
 	_test_combat_magic_and_monsters()
 
@@ -27,6 +28,54 @@ func _test_arithmetic_and_ranges() -> void:
 	var ranged := ScriptedRng.new([0, 32_767])
 	assert_equal(ranged.draw_between(-3, 3, &"rules.range.low"), -3, "Castle randrange includes its lower bound")
 	assert_equal(ranged.draw_between(-3, 3, &"rules.range.high"), 3, "Castle randrange includes its upper bound")
+
+
+func _test_temple_services_and_wealth() -> void:
+	var rules := RealmzRules.new()
+	var no_items: Array[ItemDefinition] = []
+	assert_equal(rules.temple.service_rows(100).size(), 9, "the Classic temple exposes all nine fixed services")
+	assert_equal([rules.temple.service_cost(TempleRules.HEAL_SMALL, 100), rules.temple.service_cost(TempleRules.REVIVE_DEAD, 50)], [250, 750], "temple prices scale and truncate from Castle's fixed base table")
+	var character := CharacterState.new("temple.character", "Patient", 1, 20)
+	character.maximum_load = 2000
+	character.money.gold = 500
+	character.carried_load = 500
+	var party := PartyState.new("land:0", Vector2i.ZERO, [character])
+	party.pooled_wealth.gold = 250
+	assert_true(rules.economy.take_from_pool_and_character(party, character, 600, WealthState.Kind.GOLD), "temple payment uses pooled gold before the selected character")
+	assert_equal([party.pooled_wealth.gold, character.money.gold, character.carried_load], [0, 150, 150], "selected-character temple payment removes the matching carried-gold load")
+	assert_true(rules.economy.take_from_pool_and_character(party, character, -25, WealthState.Kind.GOLD), "a negative authored Temple percentage retains Castle's signed charge behavior")
+	assert_equal(party.pooled_wealth.gold, 25, "a negative Classic temple charge adds its magnitude to the pool")
+	var healing_rng := ScriptedRng.new([0, 32_767])
+	var small := rules.temple.apply_service(character, TempleRules.HEAL_SMALL, healing_rng, no_items)
+	assert_equal([small.healing(), character.current_health], [1, 2], "Heal Small Wounds uses Castle Rand(8)")
+	var medium := rules.temple.apply_service(character, TempleRules.HEAL_MEDIUM, healing_rng, no_items)
+	assert_equal([medium.healing(), character.current_health], [18, 20], "Heal Medium Wounds uses inclusive randrange(3,24) and clamps at maximum stamina")
+	character.current_health = 5
+	character.conditions.set_value(TempleRules.CONDITION_STONE, -1)
+	var blocked := rules.temple.apply_service(character, TempleRules.HEAL_LARGE, ScriptedRng.new([]), no_items)
+	assert_false(blocked.applied, "ordinary temple healing cannot affect a petrified character")
+	assert_equal(character.current_health, 5, "petrification leaves stamina unchanged during healing")
+	var flesh := rules.temple.apply_service(character, TempleRules.RESTORE_FLESH, ScriptedRng.new([]), no_items)
+	assert_true(flesh.applied and not character.conditions.is_active(TempleRules.CONDITION_STONE), "Restore Flesh clears Castle's stone condition")
+	character.conditions.set_value(TempleRules.CONDITION_DISEASED, 12)
+	rules.temple.apply_service(character, TempleRules.HEAL_DISEASE, ScriptedRng.new([]), no_items)
+	assert_equal(character.conditions.value(TempleRules.CONDITION_DISEASED), 0, "Heal Disease clears the exact source condition")
+	var cursed_definition := ItemDefinition.new("item.temple-cursed", 880, "Cursed Blade")
+	cursed_definition.cursed_item_id = cursed_definition.id
+	var cursed_instance := ItemInstance.new("instance.temple-cursed", cursed_definition.id, 0, true, true)
+	character.set_inventory([cursed_instance])
+	character.conditions.set_value(TempleRules.CONDITION_CURSED, -1)
+	var curse := rules.temple.apply_service(character, TempleRules.REMOVE_CURSE, ScriptedRng.new([]), [cursed_definition])
+	assert_equal([character.conditions.value(TempleRules.CONDITION_CURSED), cursed_instance.equipped, curse.unequipped_item_ids], [0, false, [cursed_instance.id]], "Remove Cursed Items clears the condition and force-unequips cursed gear")
+	character.current_health = -10
+	character.set_ability_value(2, 40)
+	var revive := rules.temple.apply_service(character, TempleRules.REVIVE_DEAD, ScriptedRng.new([]), no_items)
+	assert_equal([character.current_health, character.ability_value(2), revive.applied], [-9, 38, true], "Revive Dead restores eligible dead characters at -9 stamina and subtracts two from Castle spec slot two")
+	character.current_health = -10
+	character.set_ability_value(2, 40)
+	character.conditions.set_value(TempleRules.CONDITION_STONE, -1)
+	rules.temple.apply_service(character, TempleRules.REVIVE_DEAD, ScriptedRng.new([]), no_items)
+	assert_equal([character.current_health, character.ability_value(2), character.conditions.value(TempleRules.CONDITION_STONE)], [-10, 40, 0], "Castle's anomalous stone-dead Revive path clears stone without reviving or applying the ability penalty")
 
 
 func _test_character_creation_and_leveling() -> void:

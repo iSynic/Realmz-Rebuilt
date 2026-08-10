@@ -17,6 +17,9 @@ var spell_charging: bool = false
 var last_move_direction: Vector2i = Vector2i.ZERO
 var active_shop_id: String = ""
 var _shop_accept_ranges: Array[int] = []
+var temple_available: bool = false
+var temple_cost_percent: int = 100
+var bank_available: bool = false
 var last_battle_outcome: StringName = &"none"
 var party_setup_completed: bool = false
 var character_draft: CharacterDraft
@@ -233,6 +236,22 @@ func shop_accept_ranges() -> Array[int]:
 	return _shop_accept_ranges.duplicate()
 
 
+func set_active_temple(cost_percent: int) -> bool:
+	if cost_percent < -32_768 or cost_percent > 32_767:
+		return false
+	temple_available = true
+	temple_cost_percent = cost_percent
+	return true
+
+
+func clear_location_services() -> void:
+	active_shop_id = ""
+	_shop_accept_ranges.clear()
+	temple_available = false
+	temple_cost_percent = 100
+	bank_available = false
+
+
 func to_data() -> Dictionary:
 	var searched: Array[String] = []
 	for key: Variant in _searched_cells.keys():
@@ -272,6 +291,9 @@ func to_data() -> Dictionary:
 		"lastMoveY": last_move_direction.y,
 		"activeShopId": active_shop_id,
 		"shopAcceptRanges": _shop_accept_ranges.duplicate(),
+		"templeAvailable": temple_available,
+		"templeCostPercent": temple_cost_percent,
+		"bankAvailable": bank_available,
 		"lastBattleOutcome": String(last_battle_outcome),
 		"partySetupCompleted": party_setup_completed,
 		"characterDraft": null if character_draft == null else character_draft.to_data(),
@@ -418,6 +440,15 @@ static func from_data(data: Variant) -> GameState:
 				return null
 			if String(data["activeShopId"]).is_empty() and not accept_ranges.is_empty():
 				return null
+		if data.has("templeAvailable") or data.has("templeCostPercent") or data.has("bankAvailable"):
+			if not data.get("templeAvailable") is bool or not data.get("bankAvailable") is bool:
+				return null
+			var temple_percent := _signed_integer(data.get("templeCostPercent"))
+			if temple_percent < -32_768 or temple_percent > 32_767:
+				return null
+			state.temple_available = data["templeAvailable"]
+			state.temple_cost_percent = temple_percent
+			state.bank_available = data["bankAvailable"]
 		state.last_battle_outcome = StringName(data["lastBattleOutcome"])
 		state.party_setup_completed = bool(data.get("partySetupCompleted", false))
 		if data.has("characterDraft") and data["characterDraft"] != null:

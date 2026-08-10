@@ -13,6 +13,7 @@ func run() -> void:
 	_test_classic_choice_context()
 	_test_battle_weapon_mode_component()
 	_test_shop_component()
+	_test_temple_component()
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
@@ -160,6 +161,49 @@ func _test_shop_component() -> void:
 	assert_true(identify_button.disabled and identify_button.tooltip_text.contains("20 gold"), "paid identification exposes the exact affordability blocker")
 	assert_not_null(equipped_sell, "equipped items remain visible in the sale list")
 	assert_true(equipped_sell.disabled and equipped_sell.tooltip_text.contains("Unequip"), "ordinary sale cannot bypass the equipment workflow")
+	component.free()
+
+
+func _test_temple_component() -> void:
+	var request := InteractionRequest.new("temple.fixture", InteractionRequest.TEMPLE, {
+		"costPercent": 125,
+		"selectedCharacterId": "character.two",
+		"pooledWealth": {"gold": 100, "gems": 0, "jewelry": 0},
+		"characters": [
+			{"id": "character.one", "name": "Hero", "currentHealth": 4, "maximumHealth": 12, "personalGold": 300, "availableGold": 400, "load": 20, "maximumLoad": 100, "conditions": [{"index": 9, "name": "Poisoned", "value": 3}]},
+			{"id": "character.two", "name": "Poor Hero", "currentHealth": -12, "maximumHealth": 10, "personalGold": 0, "availableGold": 100, "load": 0, "maximumLoad": 100, "conditions": []},
+		],
+		"services": [
+			{"id": "heal-small", "label": "Heal Small Wounds", "description": "Restore 1-8 stamina.", "cost": 312},
+			{"id": "revive-dead", "label": "Revive Dead", "description": "Restore an eligible dead character.", "cost": 1875},
+		],
+	})
+	var component := TempleInteraction.new()
+	var submitted: Array[Dictionary] = []
+	component.payload_submitted.connect(func(payload: Dictionary) -> void: submitted.append(payload))
+	component.build(request)
+	var buttons: Array[Button] = []
+	for child: Node in component.get_children():
+		if child is Button:
+			buttons.append(child)
+	var heal_button: Button = buttons.filter(func(button: Button) -> bool: return button.text.begins_with("Heal Small Wounds"))[0]
+	var revive_button: Button = buttons.filter(func(button: Button) -> bool: return button.text.begins_with("Revive Dead"))[0]
+	assert_true(heal_button.disabled, "the request's selected character identity is restored before affordability is rendered")
+	assert_true(revive_button.disabled and revive_button.tooltip_text.contains("1875 gold"), "unaffordable temple services remain visible with the exact blocker")
+	var picker := component.get_children().filter(func(child: Node) -> bool: return child is OptionButton)[0] as OptionButton
+	assert_equal(String(picker.get_selected_metadata()), "character.two", "the presenter preserves the save-owned selected temple character")
+	var summary := component.get_children().filter(func(child: Node) -> bool: return child is Label and child.text.contains("Poor Hero"))[0] as Label
+	assert_true(summary.text.contains("HP -12/10"), "the temple summary exposes the selected character's source health state")
+	picker.select(0)
+	picker.item_selected.emit(0)
+	assert_false(heal_button.disabled, "changing the selected character recalculates affordability from detached values")
+	heal_button.pressed.emit()
+	var pool_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Pool party wealth")[0]
+	pool_button.pressed.emit()
+	assert_equal(submitted, [
+		{"action": "service", "serviceId": "heal-small", "characterId": "character.one"},
+		{"action": "pool", "selectedCharacterId": "character.one"},
+	], "the temple presenter emits typed service and wealth responses with the current stable character identity")
 	component.free()
 
 

@@ -2475,6 +2475,62 @@
       },
       "availability": "implemented",
       "status": "ordinary-buy-sell-identify-buyback-and-save-state-verified"
+    },
+    {
+      "id": "economy.classic-temple-lifecycle",
+      "domain": "economy",
+      "claim": "Classic opcode 32 makes a contextual temple available; entering it exposes nine fixed services whose signed percentage costs are paid from pooled then selected-character gold, applies the selected source mutation even when it is a no-op, and preserves bank-backed wealth plus every pending response through the central session aggregate.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake supplies a dedicated temple workspace, the nine fixed service leads, selected-character affordability, Pool and Share controls, and bank-to-pool transfer. Its dummy caster and generic spell scripts are architecture and behavior leads only.",
+        "sources": [
+          { "path": "src/scripts/scenario_runtime/godot/scenario_godot_services.gd", "symbol": "const CLASSIC_TEMPLE_SERVICES" },
+          { "path": "src/scenes/UI/HUD/Temple/temple_rect.gd", "symbol": "func show_temple_window()" },
+          { "path": "src/scenes/UI/HUD/Temple/temple_payment.gd", "symbol": "static func balances_after_service" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/newland.c", "symbol": "case 32" },
+          { "path": "src/realmz_orig/buttonchoice.c", "symbol": "if (theControl == shopbut)" },
+          { "path": "src/realmz_orig/temple.c", "symbol": "void temple(void)" },
+          { "path": "src/realmz_orig/heal.c", "symbol": "void heal(short who, short howmuch, short show)" },
+          { "path": "src/realmz_orig/spelllist.c", "symbol": "short spelllist(short who, short special)" },
+          { "path": "src/realmz_orig/pool.c", "symbol": "void pool(void)" },
+          { "path": "src/realmz_orig/share-movecost-dialog.c", "symbol": "void share(void)" }
+        ],
+        "authoredInputs": ["opcode 32 percentage operand", "opcode 49 bank availability", "character health and conditions", "item curse identity and equipped state", "character trained ability slot two", "personal, pooled, and banked wealth"],
+        "observation": "Opcode 32 stores temple availability and a signed percentage instead of immediately opening the workspace. Temple scales base costs 250, 350, 850, 200, 750, 200, 350, 550, and 1500 through float percentage arithmetic into a short. Every selected service plays sound 10129 and charges pooled then personal gold even when healing or a cure changes nothing. Healing cannot affect stone or health below -9; cures clear conditions 28, 26, 9, and 27; remove curse clears condition 3 and force-removes cursed equipment; Revive has the unusual branch that clears Animated and Stone even when stone initially prevents health and ability mutation. A concurrently available bank moves all denominations into the pool on entry and back on exit.",
+        "unresolved": [
+          "Castle runs global macro five before temple entry. Realmz 2.0 has no source-backed global service-macro lifecycle yet, so that pre-entry hook remains explicitly unavailable.",
+          "Without banking, Castle Yes at the pooled-wealth exit warning opens its complete Swap workspace. Realmz 2.0 returns to the temple's typed Pool and Share controls rather than automatically allocating wealth; exact manual Swap remains a presentation/workflow gap.",
+          "Castle also invokes the pooled-wealth warning when ordinary movement leaves a location. That broader movement-to-Swap continuation remains outside this temple pass.",
+          "Negative signed temple percentages produce negative costs in Castle's short arithmetic. Realmz 2.0 preserves the resulting pool increase as source behavior and flags it as suspicious rather than silently clamping it."
+        ]
+      },
+      "providence": {
+        "commit": "028a587d8f99bd687d279d3abfdb74663ac4819f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "impl ClassicTimelineAction" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(project: &ProvidenceProject) -> Vec<Value>" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves the signed Classic action operand, character conditions and trained abilities, all wealth denominations, item curse identity, and equipped state. No compiler or package migration is required for the implemented temple subset."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/temple_rules.gd", "symbol": "func apply_service(" },
+        "expectedTrace": ["execute opcode 32 and expose contextual temple availability", "enter through one typed service intent", "move banked denominations to the pool when opcode 49 made banking available", "render one selected character and all nine exact-cost services", "revalidate affordability and service identity", "play sound 10129 and spend pool before personal gold", "apply the source-ordered health, condition, item, or ability mutation", "regenerate the typed temple request", "serialize service availability, wealth, state, and nested continuation", "return bank-backed pooled denominations on exit"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_temple_services_and_wealth()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_temple_lifecycle(content: RealmzContent)" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_temple_component()" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "nine-services-context-entry-wealth-save-and-presentation-verified"
     }
   ]
 }
