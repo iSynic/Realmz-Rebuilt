@@ -9,7 +9,6 @@ var round_number: int = 1
 var turn_index: int = 0
 var completed: bool = false
 var outcome: StringName = &"active"
-var monster_spell_target_pass: int = 0
 var battlefield: BattlefieldState
 var pending_monster_attack: PendingMonsterAttack
 var pending_reaction: CombatReactionState
@@ -271,7 +270,7 @@ func to_data() -> Dictionary:
 	weapon_mode_ids.sort()
 	for actor_id: Variant in weapon_mode_ids:
 		weapon_modes[String(actor_id)] = _character_weapon_modes[actor_id]
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "monsterSpellTargetPass": monster_spell_target_pass, "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "battlefield": null if battlefield == null else battlefield.to_data()}
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "battlefield": null if battlefield == null else battlefield.to_data()}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -283,8 +282,7 @@ static func from_data(data: Variant) -> CombatState:
 	var loaded_round := _integer(data["round"])
 	var loaded_turn := _integer(data["turnIndex"])
 	var loaded_macro := _signed_integer(data.get("macroId", 0))
-	var loaded_spell_target_pass := _integer(data.get("monsterSpellTargetPass", 0))
-	if not data["battleId"] is String or data["battleId"].is_empty() or loaded_macro == -100_000 or loaded_round < 1 or loaded_turn < 0 or loaded_spell_target_pass < 0 or loaded_spell_target_pass > 100 or not data["completed"] is bool or not data["outcome"] is String or not data["turnOrder"] is Array or not data["monsters"] is Array:
+	if not data["battleId"] is String or data["battleId"].is_empty() or loaded_macro == -100_000 or loaded_round < 1 or loaded_turn < 0 or not data["completed"] is bool or not data["outcome"] is String or not data["turnOrder"] is Array or not data["monsters"] is Array:
 		return null
 	var loaded_monsters: Array[MonsterState] = []
 	for entry: Variant in data["monsters"]:
@@ -307,7 +305,6 @@ static func from_data(data: Variant) -> CombatState:
 	result.turn_index = loaded_turn
 	result.completed = data["completed"]
 	result.outcome = StringName(data["outcome"])
-	result.monster_spell_target_pass = loaded_spell_target_pass
 	result._turn_order = order
 	var guarding_data: Variant = data.get("guardingActorIds", [])
 	if not guarding_data is Array or guarding_data.size() > order.size():

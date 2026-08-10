@@ -1505,10 +1505,10 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		var party := state.party.characters()
 		var native_target_count := 10 + state.combat.monsters().size()
 		var target_draw := 0
+		var target_attempts := 0
 		while selected_targets.size() < (cost_power if spell.target_type == 0 else 1):
-			state.combat.monster_spell_target_pass += 1
-			if state.combat.monster_spell_target_pass > 100:
-				state.combat.monster_spell_target_pass = 0
+			target_attempts += 1
+			if target_attempts > 100:
 				break
 			var native_target := rng.draw(native_target_count, StringName("monster.spell.target.%d.%d" % [active_turn.spell_cast_count, target_draw])) - 1
 			target_draw += 1

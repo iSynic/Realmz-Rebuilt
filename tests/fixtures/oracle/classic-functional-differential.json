@@ -1889,7 +1889,7 @@
     {
       "id": "combat.repeated-target-spells",
       "domain": "combat",
-      "claim": "An ordinary size-zero target-type 0 spell selects up to one distinct actor per chosen power in player-selected order, charges once at that power, and rerolls duration and base damage for every selected actor; monsters choose their power and unique native targets through Castle's battle-wide bounded sampling counter.",
+      "claim": "An ordinary size-zero target-type 0 spell selects up to one distinct actor per chosen power in player-selected order, charges once at that power, and rerolls duration and base damage for every selected actor; monsters choose their power and unique native targets through a per-cast bounded sampling counter under FD-COMBAT-011.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "Remake models Magic Darts as one creature target per power and preserves distinct Sorcerer 1108 and Enchanter 3208 identities. It supplies a targeting and identity lead, not proof of Castle's per-target roll, prepaid cost, or monster sampling lifecycle.",
@@ -1918,8 +1918,7 @@
           "Reflection can redirect a selected target to the caster after a targeting-stage draw and remains explicitly unavailable.",
           "Nonzero-size open-space and summoning behavior is a separate implementation slice.",
           "Monster targeting can include opposed or charmed monsters; that mixed roster path remains unavailable.",
-          "Castle prepays player spell points and refunds only part of an aborted cast; Realmz 2.0 continues to mutate only after a committed typed response and does not charge cancellation.",
-          "The battle-wide monster sample counter appears bug-like but is preserved and serialized rather than silently reset per spell."
+          "Castle prepays player spell points and refunds only part of an aborted cast; Realmz 2.0 continues to mutate only after a committed typed response and does not charge cancellation."
         ]
       },
       "providence": {
@@ -1934,13 +1933,18 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func cast_spell(" },
-        "expectedTrace": ["offer one ordered-selection option per spell and power", "select one through power distinct actors", "validate every actor's range and LOS before mutation", "reject unresolved reflection transactionally", "spend spell points once at chosen power", "reroll duration and base damage for each selected actor", "consume but apply no effect for an over-100 monster", "resolve and queue deaths in selected order", "for monsters roll separate range and target power", "sample unique native slots through the serialized battle-wide hundred-attempt counter", "permit a partial monster cast while charging chosen power", "spend two half-attacks and twelve movement once"],
+        "expectedTrace": ["offer one ordered-selection option per spell and power", "select one through power distinct actors", "validate every actor's range and LOS before mutation", "reject unresolved reflection transactionally", "spend spell points once at chosen power", "reroll duration and base damage for each selected actor", "consume but apply no effect for an over-100 monster", "resolve and queue deaths in selected order", "for monsters roll separate range and target power", "sample unique native slots through one per-cast hundred-attempt counter", "permit a partial monster cast while charging chosen power", "spend two half-attacks and twelve movement once"],
         "tests": [
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_and_monster_repeated_target_spells()" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
         ]
       },
-      "decision": "runtime-defect",
+      "fidelityDecision": {
+        "id": "FD-COMBAT-011",
+        "fixturePath": "tests/fixtures/oracle/monster-spell-target-retry-scope-correction.json",
+        "fixtureSha256": "64bef13fb08493977b393b5efb11ae97ced24e6060a3e310f19904c88f4a4cc8"
+      },
+      "decision": "intentional-correction",
       "availability": "implemented",
       "status": "ordinary-size-zero-player-and-party-targeting-monster-casting-implemented-reflection-open-space-and-opposed-monster-targets-explicit"
     }

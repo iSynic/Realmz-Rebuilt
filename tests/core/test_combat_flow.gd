@@ -1108,7 +1108,6 @@ func _test_source_backed_monster_spell_casting() -> void:
 	rules.combat_flow._process_monster_turns(state, content, rng, events)
 	assert_equal([character.current_health, monster.spell_points], [26, 8], "an ordinary monster spell spends lowered power cost and commits damage to its selected party target")
 	assert_false(state.combat.is_guarding(monster.id), "Castle's ordinary targeted monster cast clears Guard")
-	assert_equal(state.combat.monster_spell_target_pass, 1, "Castle's target-sampling pass counter remains battle-owned after a successful spell")
 	assert_equal(state.combat.active_actor_id(), character.id, "a successful monster spell ends the monster activation")
 	var cast_events := events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster")
 	assert_equal(cast_events.size(), 1, "monster casting publishes one typed source-owned resolution event")
@@ -1130,7 +1129,7 @@ func _test_source_backed_monster_spell_casting() -> void:
 	assert_equal([multi_target.current_health, multi_monster.spell_points, multi_turn.spell_cast_count, multi_turn.monster_cast_attempt_count], [22, 6, 2, 1], "two magical attacks share one attempt while committing independent slot, power, target, and resolution draws")
 	var restored_multi := GameState.from_data(JSON.parse_string(JSON.stringify(multi_state.to_data())))
 	assert_not_null(restored_multi, "monster cast and retry cursors survive central save restoration")
-	assert_equal([restored_multi.combat.active_turn.spell_cast_count, restored_multi.combat.active_turn.monster_cast_attempt_count, restored_multi.combat.monster_spell_target_pass], [2, 1, 2], "restore cannot repeat a committed magical attack, first tryspell attempt, or Castle's battle-wide target-sampling counter")
+	assert_equal([restored_multi.combat.active_turn.spell_cast_count, restored_multi.combat.active_turn.monster_cast_attempt_count], [2, 1], "restore cannot repeat a committed magical attack or first tryspell attempt")
 
 	definition.magic_attack_count = 1
 	definition.cast_percent = 50
@@ -1235,9 +1234,40 @@ func _test_character_and_monster_repeated_target_spells() -> void:
 	var monster_turn := monster_state.combat.begin_active_turn()
 	assert_equal(rules.combat_flow._process_monster_cast(monster_state, monster_content, monster_caster, caster_definition, monster_turn, monster_rng, monster_events), 0, "a monster commits a partial repeated-target cast after Castle's shared hundred-attempt target budget")
 	assert_equal([first_party.current_health, second_party.current_health, monster_caster.spell_points], [first_party.maximum_health - 1, second_party.maximum_health, 6], "the partial cast resolves one unique actor but spends the full randomly chosen power")
-	assert_equal(monster_rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).begins_with("monster.spell.target.")).size(), 100, "the retry budget is shared across the complete target sequence and counts successful samples")
-	assert_equal(monster_state.combat.monster_spell_target_pass, 0, "crossing Castle's battle-wide hundred-attempt threshold resets the counter before the partial cast")
+	assert_equal(monster_rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).begins_with("monster.spell.target.")).size(), 100, "the per-cast retry budget counts successful and rejected samples across one complete target sequence")
 	assert_equal(monster_events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved").size(), 1, "partial monster selection emits only the target actually resolved")
+
+	var reset_target := _character("character.darts.reset-target")
+	var reset_caster := MonsterState.new("monster.darts.reset-caster", caster_definition.id, caster_definition.name, 30, 30, 4, 1, 0, 0, 10)
+	var reset_field := _blank_battlefield()
+	reset_field.place_character(reset_target.id, Vector2i(45, 45))
+	reset_field.place_monster(reset_caster.id, Vector2i(47, 45), 0)
+	var reset_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [reset_target]), RealmzClock.new())
+	reset_state.combat = CombatState.new("battle.monster-darts-reset", [reset_caster], 0, reset_field)
+	reset_state.combat.set_turn_order([reset_target.id, reset_caster.id])
+	reset_state.combat.turn_index = 1
+	caster_definition.magic_attack_count = 2
+	var reset_values: Array[int] = [0, 0, 0]
+	for _sample: int in 99:
+		reset_values.append(32_767)
+	reset_values.append_array([0, 0, 0, 32_767])
+	reset_values.append_array([0, 0, 0, 0, 0, 0, 32_767])
+	var reset_rng := ScriptedRng.new(reset_values)
+	var reset_events: Array[DomainEvent] = []
+	var reset_turn := reset_state.combat.begin_active_turn()
+	assert_equal(rules.combat_flow._process_monster_cast(reset_state, monster_content, reset_caster, caster_definition, reset_turn, reset_rng, reset_events), 0, "FD-COMBAT-011 gives every monster spell cast an independent hundred-attempt target budget")
+	assert_equal([reset_turn.spell_cast_count, reset_target.current_health, reset_caster.spell_points], [2, reset_target.maximum_health - 2, 6], "a cast succeeding on its hundredth sample cannot suppress the next otherwise-valid cast")
+	assert_equal(reset_rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).begins_with("monster.spell.target.")).size(), 101, "the corrected second cast performs its own first target draw instead of tripping Castle's leaked 101st-attempt cutoff")
+	assert_false(reset_state.combat.to_data().has("monsterSpellTargetPass"), "the corrected per-cast retry guard is temporary execution state rather than save-owned battle state")
+	var stale_counter_data := reset_state.combat.to_data()
+	stale_counter_data["monsterSpellTargetPass"] = 77
+	var stale_counter_restore := CombatState.from_data(stale_counter_data)
+	assert_not_null(stale_counter_restore, "save-v3 battle data emitted by the brief battle-wide-counter implementation remains readable")
+	assert_false(stale_counter_restore.to_data().has("monsterSpellTargetPass"), "restoring stale counter data discards the accidental implementation field")
+	var correction_fixture: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://tests/fixtures/oracle/monster-spell-target-retry-scope-correction.json"))
+	assert_true(correction_fixture is Dictionary, "the monster spell-target retry decision has a parseable source-observation fixture")
+	if correction_fixture is Dictionary:
+		assert_equal([int(correction_fixture["castleSourceObservation"]["nextAttemptNumber"]), bool(correction_fixture["castleSourceObservation"]["samplesRngBeforeCutoff"]), int(correction_fixture["realmz2ChosenResult"]["nextCastFirstAttemptNumber"])], [101, false, 1], "FD-COMBAT-011 separates Castle's battle-wide leaked cutoff from the chosen per-cast retry budget")
 
 	spell.size = 1
 	assert_equal(rules.combat_flow.probe_character_spell_cast(state, content, caster.id, "", spell.id, 1).reason, &"repeated_open_space_spell_unresolved", "nonzero-size target type zero remains the separate open-space or summoning contract")

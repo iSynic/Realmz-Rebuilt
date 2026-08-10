@@ -102,6 +102,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `_test_source_backed_projectile_fire` passes the actual attacker alongside a distinct untouched monster and proves replacement reads and mutates only the supplied attacker; source inspection verifies that ordinary and reaction resolution both call the shared helper. Package tests prove all six native slots retain their positions. The differential case is `combat.monster-projectile-weapon-replacement`.
 - Legacy quirk: none. Cross-combatant mutation through stale global state is not a useful authored dependency.
 
+## FD-COMBAT-011 — Per-cast monster spell-target retry scope
+
+- Affected rule: the hundred-attempt guard used while a monster samples distinct targets for an ordinary repeated-target spell.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/combat.c`, `combat`, lines 9–12 and 209–370. Castle initializes local `pass` once when combat begins, increments it before every target sample, and resets it only after `pass > 100`; a successful selection or completed cast does not reset it.
+- Observable oracle behavior, determined from the complete source flow: after one hundred cumulative samples across earlier casts, the next cast increments `pass` to 101 and reaches the cutoff before drawing its otherwise-valid target. The synthetic source-observation fixture is `tests/fixtures/oracle/monster-spell-target-retry-scope-correction.json`, SHA-256 `64bef13fb08493977b393b5efb11ae97ced24e6060a3e310f19904c88f4a4cc8`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: an unrelated history of successful earlier casts can suppress or truncate a later legal cast. The outcome depends on an invisible function-local lifetime accident, and serializing that counter would turn Castle's transient implementation detail into durable campaign state.
+- Chosen 2.0 behavior: each monster spell cast receives its own zero-based attempt counter and may sample at most one hundred candidates. If one cast genuinely exhausts that budget after finding at least one distinct target, it retains Castle's partial-cast result and full chosen-power cost. The counter is temporary execution state and is not saved.
+- Tests: `_test_character_and_monster_repeated_target_spells` proves that a first cast may succeed on its hundredth sample and that a second cast still receives its own first sample; it also preserves the within-cast partial-result/full-cost boundary. The differential case is `combat.repeated-target-spells`.
+- Legacy quirk: none. Scenario data cannot read, write, or intentionally depend on the lifetime of Castle's local `pass` variable.
+
 Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
 
 Each entry must include:
