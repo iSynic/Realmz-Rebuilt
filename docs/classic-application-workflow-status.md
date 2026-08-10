@@ -115,7 +115,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **28**.
+Blockers: **1**. Major gaps: **27**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -124,7 +124,6 @@ Blockers: **1**. Major gaps: **28**.
 - **major** `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace. Next: Complete the detached character read model and build the full sheet tabs.
 - **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Correct the obscuring tactical layout, then exercise ordinary defeat or retreat and a reward that produces a level-up before presentation acceptance.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Create synthetic Castle fixtures for battle modes 5 and 10 and opcode 48 bonus treasure before changing the package contract.
-- **major** `classic.combat.turn-control` — The battle interaction is functional but obscures the tactical workspace during ordinary play. Next: Redesign the combat interaction layer so the battlefield, active actor, reachable cells, targets, and disabled reasons remain visible throughout the ordinary turn loop.
 - **major** `classic.exploration.camp-rest` — Camp mode now has source-backed entry/exit time, service clearing, persistence, and UI state, but held Rest and automatic movement departure are not complete. Next: Add a typed held-Rest continuation with recovery/interruption, then preserve the pre-movement departure ordering.
 - **major** `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end. Next: Trace the preference/save fields and ordinary cast handoff, then decide whether the shortcut is Classic state or presentation state.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
@@ -165,7 +164,6 @@ Blockers: **1**. Major gaps: **28**.
 - `classic.character.reorder-party` — Party order cannot be changed through a typed workflow.
 - `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace.
 - `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
-- `classic.combat.turn-control` — The battle interaction is functional but obscures the tactical workspace during ordinary play.
 - `classic.exploration.camp-rest` — Camp mode now has source-backed entry/exit time, service clearing, persistence, and UI state, but held Rest and automatic movement departure are not complete.
 - `classic.inventory.inspect-item` — Item details do not yet expose the complete Classic record and disabled-action reasons.
 - `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit.

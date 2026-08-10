@@ -6,6 +6,7 @@ const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", 
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
 	"realmz.presentation.content-addressed-media-v1",
+	"realmz.presentation.battle-atlas-v1",
 	"realmz.presentation.tileset-atlases-v1",
 	"realmz.scenario.classic-vm-v1",
 	"realmz.scenario.safe-actions-v1",
@@ -192,6 +193,8 @@ func _load_open_archive(archive: ZIPReader, source_path: String) -> PackageLoadR
 	if not _validate_document_header(content_document, "realmz2.content") or not _validate_document_header(world_document, "realmz2.world") or not _validate_document_header(scenario_document, "realmz2.scenario") or not _validate_document_header(asset_document, "realmz2.assets"):
 		return _validation_failure()
 	if not _validate_assets(asset_document, manifest["files"]):
+		return _validation_failure()
+	if not _validate_presentation_capabilities(manifest, asset_document):
 		return _validation_failure()
 	if not _validate_render_references(asset_document, world_document):
 		return _validation_failure()
@@ -1912,12 +1915,14 @@ func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
 		for optional_integer: String in ["width", "height", "durationMs", "sampleRate", "channels", "tileWidth", "tileHeight", "columns", "rows", "landlook", "baseTile"]:
 			if asset[optional_integer] != null and (not _is_integer(asset[optional_integer]) or _integer(asset[optional_integer]) < 0):
 				return _reject("Asset %s must be a non-negative integer or null." % optional_integer)
-		if asset["kind"] == "tileset":
+		if asset["kind"] in ["tileset", "battle-tileset"]:
 			for tileset_field: String in ["width", "height", "tileWidth", "tileHeight", "columns", "rows"]:
 				if asset[tileset_field] == null or _integer(asset[tileset_field]) < 1:
 					return _reject("Tileset asset '%s' has invalid %s metadata." % [asset["id"], tileset_field])
 			if not String(asset["mimeType"]).begins_with("image/") or _integer(asset["width"]) != _integer(asset["tileWidth"]) * _integer(asset["columns"]) or _integer(asset["height"]) != _integer(asset["tileHeight"]) * _integer(asset["rows"]):
 				return _reject("Tileset asset '%s' dimensions do not match its atlas grid." % asset["id"])
+		if asset["kind"] == "battle-tileset" and (asset["id"] != "classic-battle-tiles-302" or asset["mimeType"] != "image/png" or asset["resourceType"] != null or asset["resourceId"] != null or _integer(asset["width"]) != 640 or _integer(asset["height"]) != 640 or _integer(asset["tileWidth"]) != 32 or _integer(asset["tileHeight"]) != 32 or _integer(asset["columns"]) != 20 or _integer(asset["rows"]) != 20):
+			return _reject("Classic battle atlas must be the role-specific 640 by 640 PICT 302 tile grid.")
 		if not _is_integer(asset["bytes"]) or _integer(asset["bytes"]) < 0 or not asset["path"] is String or not _is_sha256(asset["sha256"]) or not files.has(asset["path"]):
 			return _reject("Asset index contains a malformed or untracked payload.")
 		if not asset["path"].begins_with("assets/media/") or files[asset["path"]]["sha256"] != asset["sha256"] or _integer(files[asset["path"]]["bytes"]) != _integer(asset["bytes"]):
@@ -1940,6 +1945,17 @@ func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
 	for resource_id: int in range(9000, 9120):
 		if not combat_icon_resource_ids.has(resource_id):
 			return _reject("Character combat-icon catalog is missing Classic cicn %d." % resource_id)
+	return true
+
+
+func _validate_presentation_capabilities(manifest: Dictionary, assets: Dictionary) -> bool:
+	var declares_battle_atlas: bool = manifest["capabilities"].has("realmz.presentation.battle-atlas-v1")
+	var battle_atlas_count := 0
+	for asset: Dictionary in assets["assets"]:
+		if asset["kind"] == "battle-tileset":
+			battle_atlas_count += 1
+	if declares_battle_atlas != (battle_atlas_count == 1):
+		return _reject("Battle-atlas capability and packaged battle artwork do not agree.")
 	return true
 
 

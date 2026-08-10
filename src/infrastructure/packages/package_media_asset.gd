@@ -58,8 +58,12 @@ func is_tileset() -> bool:
 	return kind == "tileset" and mime_type.begins_with("image/") and tile_width > 0 and tile_height > 0 and columns > 0 and rows > 0
 
 
+func is_battle_tileset() -> bool:
+	return kind == "battle-tileset" and mime_type.begins_with("image/") and tile_width == 32 and tile_height == 32 and columns == 20 and rows == 20 and width == 640 and height == 640
+
+
 func region_for(tile_id: int) -> Rect2i:
-	if not is_tileset():
+	if not is_tileset() and not is_battle_tileset():
 		return Rect2i()
 	var atlas_index := maxi(tile_id - 1, 0)
 	if atlas_index >= columns * rows:

@@ -463,3 +463,15 @@ Next application-workflow priority: choose the highest reachable remaining block
 Flagged rather than accepted: the combat interaction sheet obscures the battlefield and makes actor, terrain, route, and target state difficult to read. Ordinary missile combat, defeat, retreat, and an actual level-up remain unobserved. Castle's incidental random reward items, battle modes 5 and 10, and opcode 48 bonus treasure remain source/compiler gaps rather than inferred behavior.
 
 Next application-workflow priority: reconstruct the tactical workspace so the board and legal actions remain readable, then use the audit queue to close ordinary missile/defeat-or-retreat/level-up evidence without delaying the larger application workflows for more isolated spell formulas.
+
+## Current rolling fidelity pass — Classic tactical battlefield
+
+- Castle's battlefield art contract is composited rather than singular. `GWorldInit` seeds a 640×640 graphics world from PICT 302, `loadpixmap` overwrites the upper 640×320 with the active landlook, and `centerfield` presents an actor-centered 16×14 grid of native 32-pixel cells. `combatchoice` keeps commands outside that viewport.
+- Providence commit `4f0ea8fedea6bca2e197c4eb900b80e25eb767e8` now exports one complete content-addressed `classic-battle-tiles-302` atlas when reachable battles exist and declares `realmz.presentation.battle-atlas-v1`. The existing active-landlook atlases supply battle IDs 1–200; shared PICT 302 supplies 201–400. The runtime rejects absent, malformed, or capability-mismatched battle art before play.
+- `ClassicBattlefieldPresenter` consumes only detached `BattlefieldView` and package media. It centers and clamps the native viewport on the active actor, renders exact party/monster appearance identities, outlines the active actor and target, and displays rules-owned legal or blocked movement without answering simulation questions.
+- The typed combat component now occupies the bottom Classic control region instead of mounting a full-stage interaction sheet. Attack, eight-direction movement, item use, Guard, Finish, and Escape remain keyboard-focusable while the tactical board and party roster remain visible.
+- The regenerated audit keeps 38 Classic workflows functional and removes `GAP-COMBAT-002`; one unrelated Classic blocker remains. The new tactical workflow is synthetic functional evidence, not accepted or ordinary-campaign certification.
+
+Flagged rather than hidden: pointer-owned spatial-spell targeting still uses the interim coordinate controls, and packages exported before the new Providence checkpoint do not contain the required shared battle atlas. A fresh AOGM export and ordinary battle pass are required before this presentation can gain live evidence.
+
+Next application-workflow priority: use the remaining audit blocker and major-gap queue, with ordinary missile/defeat-or-retreat/level-up evidence and pointer-based spatial targeting scheduled as bounded combat follow-ups rather than reopening settled combat formulas.

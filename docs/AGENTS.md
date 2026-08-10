@@ -16,6 +16,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - Describe current target behavior, not a diary of implementation attempts.
 - Separate proven Castle behavior, target Realmz 2.0 behavior, and inference.
 - Every fidelity correction records source/control-flow evidence, observable oracle behavior, player-facing problem, chosen result, and tests.
+- Classic media documentation distinguishes shared resource identity from Castle's effective compositing steps; the battle viewport contract records both the active landlook and shared PICT 302 inputs.
 - Roadmap phases remain tied to their approved exit gates.
 
 ## Work Guidance

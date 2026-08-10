@@ -112,9 +112,16 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"services")
 	await _settle()
 	await _capture("wide-services-1920x1080")
+	var combat_fixture := _combat_view(gallery_view)
+	gallery_view.combat_view = combat_fixture
 	_router.open_screen(&"combat")
+	_application._battlefield_presenter.present(gallery_view)
+	_application._battlefield_presenter.visible = true
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT))
 	await _settle()
-	await _capture("wide-combat-unavailable-1920x1080")
+	await _capture("wide-combat-tactical-workspace-1920x1080")
+	_interaction.present(null)
+	gallery_view.combat_view = null
 	var settings := PresentationSettings.new()
 	settings.text_scale = 1.5
 	settings.ui_scale_mode = PresentationSettings.UI_SCALE_150
@@ -148,3 +155,40 @@ func _capture(label: String) -> void:
 		printerr("Unable to save UI gallery frame %s: %s" % [label, error_string(error)])
 	else:
 		print("CAPTURED: %s" % path)
+
+
+func _combat_view(game_view: GameView) -> CombatView:
+	var tiles: Array[int] = []
+	tiles.resize(BattlefieldState.CELL_COUNT)
+	tiles.fill(232)
+	for y: int in range(38, 53):
+		for x: int in range(36, 55):
+			tiles[y * BattlefieldState.SIZE + x] = 1 + posmod(x * 7 + y * 11, 200)
+	var battlefield := BattlefieldState.new("land:0", tiles)
+	var hero_view := game_view.party_members[0]
+	var hero := CharacterState.new(hero_view.id, hero_view.name, hero_view.current_health, hero_view.maximum_health)
+	hero.combat_icon_id = hero_view.combat_icon_id
+	hero.movement = 8
+	hero.maximum_movement = 10
+	battlefield.place_character(hero.id, Vector2i(45, 45))
+	var monster := MonsterState.new("gallery.goblin", "classic.monster.1", "Goblin Raider", 8, 10)
+	monster.icon_id = 9001
+	battlefield.place_monster(monster.id, Vector2i(47, 45), 0)
+	var combat := CombatState.new("classic.battle.gallery", [monster], 0, battlefield)
+	combat.set_turn_order([hero.id, monster.id])
+	var result := CombatView.new(combat, [hero], _application._active_content)
+	result.attack_units_remaining = 2
+	result.movement_remaining = 8
+	result.legal_actions = [&"attack", &"defend", &"finish"]
+	result.targets = [MonsterView.new(monster)]
+	result.movement_options = [
+		CombatMoveOptionView.new(Vector2i(-1, -1), BattlefieldStepResult.permitted(Vector2i(44, 44), 1)),
+		CombatMoveOptionView.new(Vector2i.UP, BattlefieldStepResult.permitted(Vector2i(45, 44), 1)),
+		CombatMoveOptionView.new(Vector2i(1, -1), BattlefieldStepResult.permitted(Vector2i(46, 44), 1)),
+		CombatMoveOptionView.new(Vector2i.LEFT, BattlefieldStepResult.permitted(Vector2i(44, 45), 1)),
+		CombatMoveOptionView.new(Vector2i.RIGHT, BattlefieldStepResult.blocked(&"occupied", Vector2i(46, 45), monster.id)),
+		CombatMoveOptionView.new(Vector2i(-1, 1), BattlefieldStepResult.permitted(Vector2i(44, 46), 2)),
+		CombatMoveOptionView.new(Vector2i.DOWN, BattlefieldStepResult.permitted(Vector2i(45, 46), 1)),
+		CombatMoveOptionView.new(Vector2i.ONE, BattlefieldStepResult.permitted(Vector2i(46, 46), 2)),
+	]
+	return result

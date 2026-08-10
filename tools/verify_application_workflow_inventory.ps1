@@ -112,9 +112,9 @@ function Get-InteractionKinds([string]$Path) {
 
 function Get-UiRoutes([string]$Path) {
     $text = Get-Content -LiteralPath $Path -Raw
-    $match = [regex]::Match($text, 'func\s+_render_screen\([\s\S]*?(?=\nfunc\s+)')
-    Assert-Condition $match.Success "Could not find _render_screen in $Path."
-    return @([regex]::Matches($match.Value, '(?m)^\s*&"([a-z-]+)":\s*$') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    $match = [regex]::Match($text, 'const\s+ROUTES:[\s\S]*?\n\]')
+    Assert-Condition $match.Success "Could not find ROUTES in $Path."
+    return @([regex]::Matches($match.Value, '"id":\s*&"([a-z-]+)"') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 }
 
 function Add-CountTable([System.Text.StringBuilder]$Builder, [object[]]$Workflows, [string]$Axis, [string[]]$Values) {
@@ -439,9 +439,9 @@ $mappedInteractions = @($inventory.boundaryCoverage.interactions | ForEach-Objec
 Assert-Condition ((($expectedInteractions | Sort-Object) -join '|') -eq (($mappedInteractions | Sort-Object) -join '|')) "Interaction coverage differs from InteractionRequest constants."
 foreach ($record in $inventory.boundaryCoverage.interactions) { Assert-WorkflowLinks $record "interaction $($record.id)"; Assert-SourceReference $record.evidence "interaction $($record.id) evidence" $repoRoot }
 
-$expectedRoutes = Get-UiRoutes (Join-Path $repoRoot "src\presentation\classic_screen_router.gd")
+$expectedRoutes = Get-UiRoutes (Join-Path $repoRoot "src\presentation\ui_route_catalog.gd")
 $mappedRoutes = @($inventory.boundaryCoverage.routes | ForEach-Object { [string]$_.id })
-Assert-Condition ((($expectedRoutes | Sort-Object) -join '|') -eq (($mappedRoutes | Sort-Object) -join '|')) "UI route coverage differs from ClassicScreenRouter."
+Assert-Condition ((($expectedRoutes | Sort-Object) -join '|') -eq (($mappedRoutes | Sort-Object) -join '|')) "UI route coverage differs from UiRouteCatalog."
 foreach ($record in $inventory.boundaryCoverage.routes) { Assert-WorkflowLinks $record "route $($record.id)"; Assert-SourceReference $record.evidence "route $($record.id) evidence" $repoRoot }
 
 $requiredOpcodes = @(1, 2, 3, 4, 5, 6, 10, 11, 26, 27, 29, 30, 31, 32, 36, 48, 49, 56, 62, 65, 107)

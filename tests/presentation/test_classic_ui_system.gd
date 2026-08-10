@@ -17,6 +17,7 @@ func run() -> void:
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
+	_test_battlefield_presenter()
 	_test_automatic_workflow_routes()
 	_test_character_creator_workflow()
 	_test_character_vault_workspace()
@@ -60,9 +61,8 @@ func _test_battle_weapon_mode_component() -> void:
 	component.payload_submitted.connect(func(payload: Dictionary) -> void: submitted.append(payload))
 	component.build(request)
 	var buttons: Array[Button] = []
-	for child: Node in component.get_children():
-		if child is Button:
-			buttons.append(child)
+	for child: Node in component.find_children("*", "Button", true, false):
+		buttons.append(child as Button)
 	assert_false(buttons.any(func(button: Button) -> bool: return button.text.begins_with("Attack ")), "missile mode renders no melee attack target buttons")
 	var fire_button: Button = null
 	var switch_button: Button = null
@@ -475,6 +475,38 @@ func _test_spatial_stage_visibility() -> void:
 	assert_false(PresentationCoordinator.should_show_spatial_stage(&"exploration", active_view, false), "full-stage campaign and party-setup overlays suppress the map beneath their shared-stone surface")
 	assert_false(PresentationCoordinator.should_show_spatial_stage(&"inventory", active_view, true), "non-Explore workspaces suppress spatial renderers")
 	assert_false(PresentationCoordinator.should_show_spatial_stage(&"exploration", GameView.new(0, false, null), true), "an inactive session cannot expose a stale map")
+	assert_false(PresentationCoordinator.should_show_battle_stage(&"combat", active_view, true), "the battle stage does not appear without detached battlefield facts")
+	var tiles: Array[int] = []
+	tiles.resize(BattlefieldState.CELL_COUNT)
+	tiles.fill(1)
+	var battlefield := BattlefieldState.new("land:0", tiles)
+	var combat := CombatState.new("classic.battle.visibility", [], 0, battlefield)
+	active_view.combat_view = CombatView.new(combat)
+	assert_true(PresentationCoordinator.should_show_battle_stage(&"combat", active_view, true), "the tactical board appears only on the active combat route")
+	assert_false(PresentationCoordinator.should_show_battle_stage(&"exploration", active_view, true), "combat facts do not replace the exploration map outside the combat route")
+	assert_false(PresentationCoordinator.should_show_battle_stage(&"combat", active_view, false), "full-stage overlays suppress the tactical board")
+
+
+func _test_battlefield_presenter() -> void:
+	var tiles: Array[int] = []
+	tiles.resize(BattlefieldState.CELL_COUNT)
+	tiles.fill(232)
+	var battlefield := BattlefieldState.new("land:0", tiles)
+	assert_true(battlefield.place_character("hero", Vector2i(45, 45)), "battlefield presenter fixture places its active character")
+	var monster := MonsterState.new("monster", "classic.monster.1", "Goblin", 4, 4)
+	assert_true(battlefield.place_monster(monster.id, Vector2i(47, 45), 0), "battlefield presenter fixture places its target")
+	var combat := CombatState.new("classic.battle.presenter", [monster], 0, battlefield)
+	combat.set_turn_order(["hero", "monster"])
+	var character := CharacterState.new("hero", "Hero", 10, 10)
+	var character_views: Array[CharacterView] = [CharacterView.new(character)]
+	var combat_view := CombatView.new(combat, [character])
+	assert_equal(ClassicBattlefieldPresenter.actor_position(combat_view, character_views, "hero"), Vector2i(45, 45), "the camera reads the active character's detached battlefield coordinate")
+	assert_equal(ClassicBattlefieldPresenter.actor_position(combat_view, character_views, "monster"), Vector2i(47, 45), "monster turns use the same detached battlefield coordinate source")
+	assert_equal(ClassicBattlefieldPresenter.actor_name(combat_view, character_views, "monster"), "Goblin", "the tactical header resolves actor names from detached combatants")
+	assert_equal(ClassicBattlefieldPresenter.viewport_cells_for(Vector2(704.0, 396.0)), Vector2i(16, 11), "the Classic tactical viewport keeps native 32-pixel cells and bounds its visible window")
+	assert_equal(ClassicBattlefieldPresenter.camera_top_left(Vector2i(45, 45), Vector2i(16, 14)), Vector2i(37, 38), "the active actor remains centered in the ordinary battlefield window")
+	assert_equal(ClassicBattlefieldPresenter.camera_top_left(Vector2i(1, 1), Vector2i(16, 14)), Vector2i.ZERO, "battlefield camera centering clamps safely at the 90 by 90 edge")
+	assert_true(ClassicBattlefieldPresenter.coordinate_is_visible(Vector2i(45, 45), Vector2i(37, 38), Vector2i(16, 14)), "the active actor lies inside its centered tactical camera")
 
 
 func _test_character_creator_workflow() -> void:
@@ -881,10 +913,12 @@ func _test_scene_composition() -> void:
 	var application_scene := load("res://src/presentation/realmz_application.tscn") as PackedScene
 	var application := application_scene.instantiate() as Control
 	assert_true(application.get_node("InteractionPanel").get_index() > application.get_node("ClassicShell").get_index(), "AP and encounter presenter controls are ordered above the shell for mouse input")
+	assert_true(application.get_node("BattlefieldMap") is ClassicBattlefieldPresenter, "the root application owns one detached tactical battlefield presenter")
 	var interaction := application.get_node("InteractionPanel") as InteractionPresenter
 	var standard_textbox_rect := RealmzApplication.classic_textbox_rect(Rect2(0.0, 28.0, 704.0, 396.0), 176.0)
 	assert_equal(standard_textbox_rect, Rect2(0.0, 424.0, 704.0, 176.0), "textbox interactions replace the complete shell bottom region without exposing an inset frame")
 	assert_true(InteractionPresenter.uses_textbox_region(InteractionRequest.acknowledge("edge-to-edge", "Continue")), "Classic acknowledgements use the edge-to-edge textbox surface")
+	assert_true(InteractionPresenter.uses_textbox_region(ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT)), "battle controls occupy the bottom Classic control region without covering the tactical board")
 	assert_false(InteractionPresenter.uses_textbox_region(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP)), "stage interactions retain their independent inset frame")
 	assert_equal(interaction.custom_minimum_size, Vector2.ZERO, "textbox interactions may shrink to the bottom-region rectangle instead of retaining a stage-modal minimum")
 	assert_equal(InteractionPresenter._heading_for_kind(&"acknowledge"), "", "ordinary narrative text does not label itself Classic Textbox")

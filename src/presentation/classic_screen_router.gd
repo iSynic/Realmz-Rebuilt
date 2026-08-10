@@ -1062,8 +1062,8 @@ func _render_screen() -> void:
 		return
 	_clear(_body)
 	_content_parent = _body
-	_body_frame.visible = not _campaign_overlay.visible and not _setup_overlay.visible and _screen_id != &"exploration"
-	if _screen_id == &"exploration":
+	_body_frame.visible = not _campaign_overlay.visible and not _setup_overlay.visible and _screen_id not in [&"exploration", &"combat"]
+	if _screen_id in [&"exploration", &"combat"]:
 		return
 	if (_view == null or not _view.session_started) and _screen_id != &"vault":
 		_add_label(_body, "No active session. Choose a validated campaign to begin.", MUTED)
@@ -1079,8 +1079,6 @@ func _render_screen() -> void:
 			_render_inventory()
 		&"spells":
 			_render_spells()
-		&"combat":
-			_render_combat()
 		&"services":
 			_render_services()
 		&"journal":
@@ -1368,26 +1366,6 @@ func _render_spells() -> void:
 		_add_empty_state("No spellbooks", "The party has no characters.")
 	elif not any_spells:
 		_add_empty_state("No known spells", "No party member currently knows a spell.")
-
-
-func _render_combat() -> void:
-	if _view.combat_view == null:
-		_add_empty_state("No battle is active", "Battlefield positions and tactical actions appear here when combat begins.")
-		return
-	var combat := _view.combat_view
-	_add_card("Battle %s" % combat.battle_id, "Round %d • Active %s" % [combat.round_number, combat.active_actor_id], "Outcome: %s" % ["In progress" if combat.outcome == &"active" else String(combat.outcome)])
-	_add_section_heading("Turn order", " → ".join(combat.turn_order))
-	for monster: MonsterView in combat.monsters:
-		_add_content_card(monster.icon_resource_type, monster.icon_id, monster.name, "Enemy" if monster.traitor else "Ally", "HP %d/%d" % [monster.current_health, monster.maximum_health])
-	var legal := HBoxContainer.new()
-	for action: StringName in combat.legal_actions:
-		var button := Button.new()
-		button.text = String(action).capitalize()
-		_apply_availability(button, &"choose_combat_action")
-		legal.add_child(button)
-	_body.add_child(legal)
-	var enabled_moves := combat.movement_options.filter(func(option: CombatMoveOptionView) -> bool: return option.enabled).size()
-	_add_card("Tactical movement", "%d of %d adjacent steps available" % [enabled_moves, combat.movement_options.size()], "Choose a source-probed step through the active Battle interaction. Withdrawal-producing steps remain disabled until their reaction sequence is implemented.")
 
 
 func _render_services() -> void:

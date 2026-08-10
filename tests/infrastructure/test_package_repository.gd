@@ -12,7 +12,7 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "d315857417ff9f6d0ca7435b500352b6824e697da3ac921bd446fe78f4cd7f12", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "343b98fc7a3d2f793cc26b587bb29ba19783a203a847976f9c40f16ed46d17b3", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -85,6 +85,18 @@ func run() -> void:
 	assert_equal([combat_icons[0].classic_resource_id, combat_icons[-1].classic_resource_id], [9000, 9119], "combat-icon identities preserve the exact Tacticals-fork CICN range")
 	assert_true(portraits[0].is_recommended_for("classic.race.1"), "the Human zero-set inconsistency resolves to the proven browseable Human portrait set")
 	assert_true(combat_icons[0].is_recommended_for("classic.race.1"), "Human tactical recommendations retain Castle's race-indexed 9000 set")
+	var battle_atlas := loaded.media.battle_tileset()
+	assert_not_null(battle_atlas, "reachable battles require the role-specific Classic PICT 302 atlas")
+	if battle_atlas != null:
+		assert_true(battle_atlas.is_battle_tileset(), "the battle atlas retains Castle's 20 by 20 grid of native 32-pixel cells")
+		assert_equal(battle_atlas.region_for(1), Rect2i(0, 0, 32, 32), "Classic battle tile one maps to the first PICT 302 cell")
+		assert_equal(battle_atlas.region_for(400), Rect2i(608, 608, 32, 32), "Classic battle tile 400 maps to the final PICT 302 cell")
+		assert_false(battle_atlas.region_for(401).has_area(), "battle terrain cannot address beyond Castle's 400 artwork cells")
+	var battle_tiles: Array[int] = []
+	battle_tiles.resize(BattlefieldState.CELL_COUNT)
+	battle_tiles.fill(232)
+	var battle_view := CombatView.new(CombatState.new("classic.battle.presentation-contract", [], 0, BattlefieldState.new("land:0", battle_tiles)), [], loaded.content)
+	assert_equal(battle_view.battlefield.upper_tileset_id, "landlook-0", "land combat identifies the active landlook atlas that Castle copies over PICT 302's upper half")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").attacks()[0].damage_max, 4, "monster attacks are typed instead of retained as native row dictionaries")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").item_ids(), ["classic.item.901", "", "", "", "", ""], "monster item slots preserve all six native positions")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").item_id_at(1), "", "an empty native missile slot does not collapse onto the melee item")
@@ -167,6 +179,11 @@ func run() -> void:
 				asset["mimeType"] = "application/octet-stream"
 				break
 		assert_false(PackageRepository.new()._validate_assets(malformed_portrait, tracked_files), "appearance assets must be decoded PNGs with usable dimensions")
+		var battle_manifest := {"capabilities": ["realmz.presentation.battle-atlas-v1"]}
+		assert_true(PackageRepository.new()._validate_presentation_capabilities(battle_manifest, fixture_assets), "the battle-atlas capability is backed by exactly one validated role-specific atlas")
+		var missing_battle_atlas: Dictionary = fixture_assets.duplicate(true)
+		missing_battle_atlas["assets"] = missing_battle_atlas["assets"].filter(func(asset: Dictionary) -> bool: return asset["kind"] != "battle-tileset")
+		assert_false(PackageRepository.new()._validate_presentation_capabilities(battle_manifest, missing_battle_atlas), "a declared battle-atlas capability cannot silently omit its artwork")
 	assert_true(fixture_world is Dictionary, "the detached fixture world parses for independent terrain contract tests")
 	if fixture_world is Dictionary:
 		var invalid_terrain_sets: Array = fixture_world["battleTerrainSets"].duplicate(true)
@@ -196,7 +213,7 @@ func run() -> void:
 	assert_equal(loaded.content.spell_by_id("classic.spell.1108").name, "Magic Darts", "standard spell names follow Castle's positive Custom Names STR# lookup")
 	assert_equal(loaded.content.spell_by_id("classic.spell.2302").name, "Destroy Magic", "standard spell labels preserve their packed Classic identity")
 	assert_not_null(loaded.media, "validated package media receives a typed catalog")
-	assert_equal(loaded.media.assets().size(), 245, "the synthetic fixture carries authored map/scenario media plus both 120-entry character-appearance catalogs")
+	assert_equal(loaded.media.assets().size(), 246, "the synthetic fixture carries authored map/scenario media, the battle atlas, and both 120-entry character-appearance catalogs")
 	assert_equal([loaded.media.assets_of_kind("portrait").size(), loaded.media.assets_of_kind("combat-icon").size()], [120, 120], "the media catalog groups appearance roles without resource-ID-only lookup")
 	var first_portrait_bytes := loaded.media.read_bytes_batch([loaded.media.assets_of_kind("portrait")[0]])
 	assert_false((first_portrait_bytes.get("realmz-portrait-257", PackedByteArray()) as PackedByteArray).is_empty(), "batch media reads validate creator thumbnails through one archive boundary")

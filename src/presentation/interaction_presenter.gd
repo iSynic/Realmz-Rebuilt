@@ -25,6 +25,9 @@ func present(request: InteractionRequest, classic_text_context: String = "") -> 
 		return
 	_set_heading(_heading_for_kind(request.kind))
 	_prompt.text = _prompt_for(request, classic_text_context)
+	if request.kind == &"combat_action":
+		_set_heading("")
+		_prompt.text = ""
 	_component = _component_for(request.kind)
 	if _component == null:
 		_set_heading("Unsupported Interaction")
@@ -139,7 +142,7 @@ func _apply_classic_region() -> void:
 
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
-	return passive_text or request != null and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice"]
+	return passive_text or request != null and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"combat_action"]
 
 
 func _add_hint(text: String) -> void:

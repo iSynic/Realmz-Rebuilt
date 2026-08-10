@@ -97,8 +97,19 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 			payload.merge({
 				"round": 1,
 				"actorId": "hero",
-				"actions": [] if empty_values else ["attack", "use_item", "finish"],
+				"actions": [] if empty_values else ["attack", "use_item", "defend", "finish"],
+				"weaponMode": "melee",
 				"targets": [] if empty_values else [{"id": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4}],
+				"movement": [] if empty_values else [
+					{"direction": [-1, -1], "destination": [44, 44], "cost": 1, "enabled": true, "reason": ""},
+					{"direction": [0, -1], "destination": [45, 44], "cost": 1, "enabled": true, "reason": ""},
+					{"direction": [1, -1], "destination": [46, 44], "cost": 1, "enabled": true, "reason": ""},
+					{"direction": [-1, 0], "destination": [44, 45], "cost": 1, "enabled": true, "reason": ""},
+					{"direction": [1, 0], "destination": [46, 45], "cost": 1, "enabled": false, "reason": "Destination occupied."},
+					{"direction": [-1, 1], "destination": [44, 46], "cost": 2, "enabled": true, "reason": ""},
+					{"direction": [0, 1], "destination": [45, 46], "cost": 1, "enabled": true, "reason": ""},
+					{"direction": [1, 1], "destination": [46, 46], "cost": 2, "enabled": true, "reason": ""},
+				],
 				"itemCasts": [] if empty_values else [{"itemInstanceId": "wand.instance", "itemId": "classic.item.41", "itemName": "Runed Wand", "charges": 3, "spellId": "classic.spell.1101", "spellName": "Flame", "power": 2, "targetId": "monster", "targetName": "Goblin", "targetCurrentHealth": 4, "targetMaximumHealth": 4, "targetMode": "combatant"}],
 				"itemCastReason": "No carried item has a supported Classic combat use." if empty_values else "",
 			})

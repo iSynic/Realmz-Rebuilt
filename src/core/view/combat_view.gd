@@ -35,7 +35,12 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 	outcome = combat.outcome
 	turn_order = combat.turn_order()
 	if combat.battlefield != null:
-		battlefield = BattlefieldView.new(combat.battlefield)
+		var upper_tileset_id := ""
+		if content != null:
+			var source_map := content.world.map_by_id(combat.battlefield.map_id)
+			if source_map != null and source_map.level_type == &"land" and source_map.landlook >= 0:
+				upper_tileset_id = "landlook-%d" % source_map.landlook
+		battlefield = BattlefieldView.new(combat.battlefield, upper_tileset_id)
 	var adjacent_ids: Array[String] = []
 	if combat.battlefield != null and battlefield_rules != null and not active_actor_id.is_empty():
 		adjacent_ids = battlefield_rules.adjacent_actor_ids(combat.battlefield, active_actor_id)

@@ -2,6 +2,7 @@ class_name BattlefieldView
 extends RefCounted
 
 var map_id: String
+var upper_tileset_id: String
 var source_origin: Vector2i
 var map_shift: Vector2i
 var party_anchor: Vector2i
@@ -13,8 +14,9 @@ var _monster_positions: Dictionary
 var _monster_sizes: Dictionary
 
 
-func _init(battlefield: BattlefieldState) -> void:
+func _init(battlefield: BattlefieldState, terrain_upper_tileset_id: String = "") -> void:
 	map_id = battlefield.map_id
+	upper_tileset_id = terrain_upper_tileset_id
 	source_origin = battlefield.source_origin
 	map_shift = battlefield.map_shift
 	party_anchor = battlefield.party_anchor

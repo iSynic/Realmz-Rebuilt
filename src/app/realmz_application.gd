@@ -12,6 +12,7 @@ const DungeonMap3DPresenterScript := preload("res://src/presentation/dungeon_map
 @onready var _status_label: Label = $ClassicShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $ClassicShell/SmokeAction
 @onready var _map_presenter: ClassicMapPresenter = %ExplorationMap
+@onready var _battlefield_presenter: ClassicBattlefieldPresenter = %BattlefieldMap
 @onready var _interaction_presenter: InteractionPresenter = %InteractionPanel
 @onready var _shell_presenter: ClassicApplicationShell = $ClassicShell
 @onready var _classic_shell: ClassicApplicationShell = $ClassicShell
@@ -41,7 +42,7 @@ func _ready() -> void:
 	add_child(session_controller)
 	add_child(presentation_coordinator)
 	add_child(_dungeon_presenter)
-	presentation_coordinator.bind(session_controller, _map_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
+	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
 	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
 	_map_presenter.movement_requested.connect(_on_map_movement_requested)
 	_shell_presenter.start_package_requested.connect(start_package)
@@ -379,6 +380,9 @@ func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) 
 	_map_presenter.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_map_presenter.position = content_rect.position
 	_map_presenter.size = content_rect.size
+	_battlefield_presenter.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_battlefield_presenter.position = content_rect.position
+	_battlefield_presenter.size = content_rect.size
 	if _dungeon_presenter != null:
 		_dungeon_presenter.position = content_rect.position
 		_dungeon_presenter.size = content_rect.size

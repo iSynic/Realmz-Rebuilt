@@ -3,6 +3,7 @@ extends Node
 
 var _session_controller: GameSessionController
 var _map_presenter: ClassicMapPresenter
+var _battlefield_presenter: ClassicBattlefieldPresenter
 var _dungeon_presenter: DungeonMap3DPresenter
 var _interaction_presenter: InteractionPresenter
 var _shell_presenter: ClassicApplicationShell
@@ -12,15 +13,17 @@ var _active_route: StringName = &"exploration"
 var _play_stage_visible := false
 
 
-func bind(session_controller: GameSessionController, map_presenter: ClassicMapPresenter, dungeon_presenter: DungeonMap3DPresenter, interaction_presenter: InteractionPresenter, shell_presenter: ClassicApplicationShell, audio_presenter: ClassicAudioPresenter) -> void:
+func bind(session_controller: GameSessionController, map_presenter: ClassicMapPresenter, battlefield_presenter: ClassicBattlefieldPresenter, dungeon_presenter: DungeonMap3DPresenter, interaction_presenter: InteractionPresenter, shell_presenter: ClassicApplicationShell, audio_presenter: ClassicAudioPresenter) -> void:
 	assert(session_controller != null, "Presentation requires a session controller")
 	assert(map_presenter != null, "Presentation requires an explicit map presenter")
+	assert(battlefield_presenter != null, "Presentation requires an explicit battlefield presenter")
 	assert(dungeon_presenter != null, "Presentation requires an explicit topology-derived dungeon presenter")
 	assert(interaction_presenter != null, "Presentation requires an explicit interaction presenter")
 	assert(shell_presenter != null, "Presentation requires an explicit Classic shell presenter")
 	assert(audio_presenter != null, "Presentation requires an explicit audio presenter")
 	_session_controller = session_controller
 	_map_presenter = map_presenter
+	_battlefield_presenter = battlefield_presenter
 	_dungeon_presenter = dungeon_presenter
 	_interaction_presenter = interaction_presenter
 	_shell_presenter = shell_presenter
@@ -48,6 +51,7 @@ func _on_step_committed(step: SessionStep) -> void:
 func set_package_media(media: PackageMediaCatalog) -> void:
 	_media = media
 	_map_presenter.set_media_catalog(media)
+	_battlefield_presenter.set_media_catalog(media)
 	_shell_presenter.set_package_media(media)
 
 
@@ -70,6 +74,7 @@ func set_dungeon_3d_enabled(enabled: bool) -> void:
 func _present_current_view(include_interaction: bool = true) -> void:
 	var game_view := _session_controller.view()
 	_map_presenter.present(game_view)
+	_battlefield_presenter.present(game_view)
 	_dungeon_presenter.present(game_view)
 	_shell_presenter.present(game_view)
 	_update_spatial_visibility(game_view)
@@ -78,13 +83,23 @@ func _present_current_view(include_interaction: bool = true) -> void:
 
 
 func _update_spatial_visibility(game_view: GameView) -> void:
-	var exploration_visible := should_show_spatial_stage(_active_route, game_view, _play_stage_visible)
+	var exploration_visible := should_show_exploration_stage(_active_route, game_view, _play_stage_visible)
+	var battle_visible := should_show_battle_stage(_active_route, game_view, _play_stage_visible)
 	_map_presenter.visible = exploration_visible and not _dungeon_presenter.is_active()
 	_dungeon_presenter.visible = exploration_visible and _dungeon_presenter.is_active()
+	_battlefield_presenter.visible = battle_visible
+
+
+static func should_show_exploration_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
+	return active_route == &"exploration" and game_view != null and game_view.session_started and play_stage_visible
 
 
 static func should_show_spatial_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
-	return active_route == &"exploration" and game_view != null and game_view.session_started and play_stage_visible
+	return should_show_exploration_stage(active_route, game_view, play_stage_visible)
+
+
+static func should_show_battle_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
+	return active_route == &"combat" and game_view != null and game_view.session_started and game_view.combat_view != null and game_view.combat_view.battlefield != null and play_stage_visible
 
 
 func _present_interaction(game_view: GameView) -> void:

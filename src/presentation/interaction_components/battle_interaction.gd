@@ -3,33 +3,53 @@ extends InteractionComponent
 
 
 func build(request: InteractionRequest) -> void:
-	add_hint("Round %d" % int(request.payload.get("round", 1)))
 	var actor_id := String(request.payload.get("actorId", ""))
 	var actions: Variant = request.payload.get("actions", [])
 	var action_ids: Array = actions if actions is Array else []
 	var weapon_mode := String(request.payload.get("weaponMode", "melee"))
-	add_hint("Weapon mode: %s" % weapon_mode.capitalize())
 	var targets: Variant = request.payload.get("targets", [])
 	if action_ids.has("attack") and targets is Array:
+		var attack_row := HFlowContainer.new()
+		attack_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		add_child(attack_row)
 		for target: Variant in targets:
 			if target is Dictionary:
 				var verb := "Fire at" if weapon_mode == "missile" else "Attack"
-				add_response("%s %s • HP %d/%d" % [verb, target.get("name", "Enemy"), int(target.get("currentHealth", 0)), int(target.get("maximumHealth", 0))], {"actorId": actor_id, "action": "attack", "targetId": String(target.get("id", ""))})
+				add_response_to(attack_row, "%s %s • HP %d/%d" % [verb, target.get("name", "Enemy"), int(target.get("currentHealth", 0)), int(target.get("maximumHealth", 0))], {"actorId": actor_id, "action": "attack", "targetId": String(target.get("id", ""))})
 	elif weapon_mode == "melee":
 		add_hint(String(request.payload.get("meleeAttackReason", "No adjacent melee target.")))
 	var movement: Variant = request.payload.get("movement", [])
 	if movement is Array:
+		var movement_by_direction: Dictionary = {}
 		for option: Variant in movement:
 			if option is Dictionary:
-				var destination: Variant = option.get("destination", [])
-				var direction: Variant = option.get("direction", [])
-				var edge_retreat := bool(option.get("retreat", false))
-				var label := "Leave battle %s" % _direction_label(direction) if edge_retreat else "Move %s • %d MP" % [_direction_label(direction), int(option.get("cost", 0))]
-				var action := "retreat_edge" if edge_retreat else "move"
-				var response := {"actorId": actor_id, "action": action, "targetId": "", "destination": destination}
-				if edge_retreat:
-					response["forced"] = bool(option.get("forcedRetreat", false))
-				add_response(label, response, bool(option.get("enabled", false)), String(option.get("reason", "Movement unavailable.")))
+				movement_by_direction[_direction_key(option.get("direction", []))] = option
+		var movement_grid := GridContainer.new()
+		movement_grid.columns = 3
+		movement_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		add_child(movement_grid)
+		for direction: Vector2i in [Vector2i(-1, -1), Vector2i.UP, Vector2i(1, -1), Vector2i.LEFT, Vector2i.ZERO, Vector2i.RIGHT, Vector2i(-1, 1), Vector2i.DOWN, Vector2i.ONE]:
+			if direction == Vector2i.ZERO:
+				var center := Label.new()
+				center.text = "Move"
+				center.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+				center.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+				movement_grid.add_child(center)
+				continue
+			var option: Variant = movement_by_direction.get(_direction_key([direction.x, direction.y]))
+			if not option is Dictionary:
+				var spacer := Control.new()
+				spacer.custom_minimum_size.y = 36.0
+				movement_grid.add_child(spacer)
+				continue
+			var destination: Variant = option.get("destination", [])
+			var edge_retreat := bool(option.get("retreat", false))
+			var label := "Leave battle %s" % _direction_label(option.get("direction", [])) if edge_retreat else "Move %s • %d MP" % [_direction_label(option.get("direction", [])), int(option.get("cost", 0))]
+			var action := "retreat_edge" if edge_retreat else "move"
+			var response := {"actorId": actor_id, "action": action, "targetId": "", "destination": destination}
+			if edge_retreat:
+				response["forced"] = bool(option.get("forcedRetreat", false))
+			add_response_to(movement_grid, label, response, bool(option.get("enabled", false)), String(option.get("reason", "Movement unavailable.")))
 	if weapon_mode == "missile" and not action_ids.has("attack"):
 		var ranged: Variant = request.payload.get("rangedAttack", {})
 		var ranged_reason := String(ranged.get("reason", "Missile attacks are unavailable.") if ranged is Dictionary else "Missile attacks are unavailable.")
@@ -155,6 +175,9 @@ func build(request: InteractionRequest) -> void:
 		add_response("Cast unavailable", {}, false, String(request.payload.get("spellCastReason")))
 	var item_casts: Variant = request.payload.get("itemCasts", [])
 	if action_ids.has("use_item") and item_casts is Array and not item_casts.is_empty():
+		var item_row := HBoxContainer.new()
+		item_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		add_child(item_row)
 		var item_picker := OptionButton.new()
 		item_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		for option: Variant in item_casts:
@@ -168,7 +191,7 @@ func build(request: InteractionRequest) -> void:
 				label += " (%d/%d HP)" % [target_health, int(option.get("targetMaximumHealth", 0))]
 			item_picker.add_item(label)
 			item_picker.set_item_metadata(item_picker.item_count - 1, option.duplicate(true))
-		add_child(item_picker)
+		item_row.add_child(item_picker)
 		var use_button := Button.new()
 		use_button.text = "Use selected item"
 		use_button.disabled = item_picker.item_count == 0
@@ -177,21 +200,24 @@ func build(request: InteractionRequest) -> void:
 			if option is Dictionary:
 				payload_submitted.emit({"actorId": actor_id, "action": "use_item", "targetId": String(option.get("targetId", "")), "itemInstanceId": String(option.get("itemInstanceId", ""))})
 		)
-		add_child(use_button)
+		item_row.add_child(use_button)
 	elif not String(request.payload.get("itemCastReason", "")).is_empty():
 		add_response("Use item unavailable", {}, false, String(request.payload.get("itemCastReason")))
 	var weapon_switch: Variant = request.payload.get("weaponSwitch", {})
+	var action_row := HFlowContainer.new()
+	action_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	add_child(action_row)
 	if action_ids.has("switch_weapon") and weapon_switch is Dictionary:
 		var target_mode := String(weapon_switch.get("targetMode", "melee"))
-		add_response("Switch to %s" % target_mode, {"actorId": actor_id, "action": "switch_weapon", "targetId": ""})
+		add_response_to(action_row, "Switch to %s" % target_mode, {"actorId": actor_id, "action": "switch_weapon", "targetId": ""})
 	if action_ids.has("defend"):
-		add_response("Defend", {"actorId": actor_id, "action": "defend", "targetId": ""})
+		add_response_to(action_row, "Defend", {"actorId": actor_id, "action": "defend", "targetId": ""})
 	if action_ids.has("finish"):
-		add_response("Finish turn", {"actorId": actor_id, "action": "finish", "targetId": ""})
+		add_response_to(action_row, "Finish turn", {"actorId": actor_id, "action": "finish", "targetId": ""})
 	var retreat: Variant = request.payload.get("retreat", {})
 	var retreat_enabled := action_ids.has("retreat") and retreat is Dictionary and bool(retreat.get("enabled", false))
 	var retreat_reason := String(retreat.get("reason", "Retreat is unavailable.") if retreat is Dictionary else "Retreat is unavailable.")
-	add_response("Escape", {"actorId": actor_id, "action": "retreat", "targetId": ""}, retreat_enabled, retreat_reason)
+	add_response_to(action_row, "Escape", {"actorId": actor_id, "action": "retreat", "targetId": ""}, retreat_enabled, retreat_reason)
 
 
 static func _direction_label(value: Variant) -> String:
@@ -203,3 +229,9 @@ static func _direction_label(value: Variant) -> String:
 		Vector2i(-1, 0): "W", Vector2i(1, 0): "E",
 		Vector2i(-1, 1): "SW", Vector2i(0, 1): "S", Vector2i(1, 1): "SE",
 	}.get(direction, "?")
+
+
+static func _direction_key(value: Variant) -> String:
+	if not value is Array or value.size() != 2:
+		return "?"
+	return "%d,%d" % [int(value[0]), int(value[1])]

@@ -9,6 +9,10 @@ func build(_request: InteractionRequest) -> void:
 
 
 func add_response(label: String, payload: Dictionary, enabled: bool = true, reason: String = "") -> Button:
+	return add_response_to(self, label, payload, enabled, reason)
+
+
+func add_response_to(parent: Container, label: String, payload: Dictionary, enabled: bool = true, reason: String = "") -> Button:
 	var button := Button.new()
 	button.text = label
 	button.custom_minimum_size.y = 36.0
@@ -16,7 +20,7 @@ func add_response(label: String, payload: Dictionary, enabled: bool = true, reas
 	button.disabled = not enabled
 	button.tooltip_text = reason
 	button.pressed.connect(func() -> void: payload_submitted.emit(payload))
-	add_child(button)
+	parent.add_child(button)
 	return button
 
 
