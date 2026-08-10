@@ -2,10 +2,12 @@ class_name MagicRules
 extends RefCounted
 
 var _characters: CharacterRules
+var _arithmetic: RealmzArithmetic
 
 
-func _init(character_rules: CharacterRules = null) -> void:
+func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArithmetic = null) -> void:
 	_characters = character_rules if character_rules != null else CharacterRules.new()
+	_arithmetic = realmz_arithmetic if realmz_arithmetic != null else RealmzArithmetic.new()
 
 
 func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
@@ -79,6 +81,8 @@ func _resolve_character_spell_monster_target(caster_level: int, target: MonsterS
 	var resisted := _monster_resists(caster_level, target, target_definition, spell, power_level, cast_level, rng)
 	if resisted:
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
+	if absi(spell.special) == 57:
+		return _heal_monster(target, damage, duration, spell_cost)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type <= 6:
@@ -103,6 +107,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 	var resisted := character_resists(caster.level, target, spell, power_level, cast_level, rng)
 	if resisted:
 		return SpellResolution.new(true, true, false, 0, 0, duration)
+	if absi(spell.special) == 57:
+		return _heal_character(target, damage, duration, 0)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type <= 6:
@@ -246,6 +252,8 @@ func _resolve_monster_spell_character_target(caster_level: int, target: Characte
 	var resisted := character_resists(caster_level, target, spell, power_level, cast_level, rng)
 	if resisted:
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
+	if absi(spell.special) == 57:
+		return _heal_character(target, damage, duration, spell_cost)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type <= 6:
@@ -266,6 +274,8 @@ func _resolve_monster_spell_monster_target(caster_level: int, target: MonsterSta
 	var resisted := _monster_resists(caster_level, target, target_definition, spell, power_level, cast_level, rng)
 	if resisted:
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
+	if absi(spell.special) == 57:
+		return _heal_monster(target, damage, duration, spell_cost)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type <= 6:
@@ -286,6 +296,20 @@ func _resolve_monster_spell_monster_target(caster_level: int, target: MonsterSta
 
 static func _selection_is_valid(selection: SpellTargetSelection) -> bool:
 	return selection != null and ((selection.kind == &"character" and selection.character != null) or (selection.kind == &"monster" and selection.monster != null and selection.monster_definition != null))
+
+
+static func _heal_character(target: CharacterState, amount: int, duration: int, spell_cost: int) -> SpellResolution:
+	if target.conditions.is_active(ConditionRules.TURNED_TO_STONE) or target.current_health <= -10:
+		return SpellResolution.new(true, false, false, spell_cost, 0, duration)
+	var before := target.current_health
+	target.current_health = mini(target.maximum_health, target.current_health + maxi(0, amount))
+	return SpellResolution.new(true, false, false, spell_cost, -(target.current_health - before), duration)
+
+
+func _heal_monster(target: MonsterState, amount: int, duration: int, spell_cost: int) -> SpellResolution:
+	var healed := maxi(0, amount)
+	target.current_health = _arithmetic.signed_16(target.current_health + healed)
+	return SpellResolution.new(true, false, false, spell_cost, -healed, duration)
 
 
 static func _selection_reflects(selection: SpellTargetSelection, rng: RealmzRng, tag: StringName) -> bool:

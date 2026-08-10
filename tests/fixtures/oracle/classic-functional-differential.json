@@ -1710,7 +1710,7 @@
         ],
         "authoredInputs": ["caste maximum spell attacks", "known spell and Classic ID", "combat and target types", "cost, power, range, line of sight, saves, resistance, and protections", "scenario spellcasting blocking flag"],
         "observation": "getup resets spellsofar for each character activation and clears beenattacked only at the new-round boundary. cancast blocks a nonzero scenario flag, five conditions, a character already attacked in the round, and the caste spell limit. loadspell2 derives zero-based tier from the spell ID. A committed target spends two half-attacks and twelve movement; control continues while attacks remain at least two. savevs consumes its roll before forcing failure when cannot exceeds one.",
-        "unresolved": ["Castle prepays spell points before tactical targeting and an aborted target spends three movement while refunding only about two thirds. Realmz 2.0's atomic cast intent intentionally leaves invalid targets uncommitted until a serializable begin-cast interaction is implemented.", "Area, friendly, everybody, wall, field, rotating, random-power, class-nine, item-cast, fast-spell, and special-effect paths remain disabled.", "Castle's successful monster target-type-twelve branch does not clear Guard although its targeted, all-friendly, and all-enemy branches do; no correction is chosen yet."]
+        "unresolved": ["Castle prepays spell points before tactical targeting and an aborted target spends three movement while refunding only about two thirds. Realmz 2.0's atomic cast intent intentionally leaves invalid targets uncommitted until a serializable begin-cast interaction is implemented.", "Area, everybody, wall, field, rotating, random-power, class-nine, item-cast, fast-spell, and special-effect paths other than the separately bounded special-57 healing branch remain disabled.", "Castle's successful monster target-type-twelve branch does not clear Guard although its targeted, all-friendly, and all-enemy branches do; no correction is chosen yet."]
       },
       "providence": {
         "commit": "1d660bb6dbab175e641f33d07e8755e8ee3be24e",
@@ -1732,7 +1732,57 @@
       },
       "decision": "runtime-defect",
       "availability": "implemented",
-      "status": "ordinary-single-hostile-damage-spells-and-typed-battle-picker-verified-other-cast-shapes-explicit"
+      "status": "ordinary-single-actor-damage-spells-and-typed-battle-picker-verified-other-cast-shapes-explicit"
+    },
+    {
+      "id": "combat.special-57-healing-and-actor-targeting",
+      "domain": "combat",
+      "claim": "A player-selected single-target combat spell may name any living party or monster actor. A source-shaped special-57 spell negates its rolled damage into healing after resistance: party healing cannot affect stone or dead characters and caps at maximum stamina, while monster healing can select a same-allegiance actor including the caster, can exceed maximum stamina, and marks the healed monster as attacked.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake has a source-labeled core-healing adapter and stock-spell characterization, providing the special-57 identity and test lead. Its creature mutation and target-picker host are not used as the 2.0 runtime contract.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_core_healing_spell.gd", "symbol": "func configure_core_healing_spell(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_healing_spells()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice(void)" },
+          { "path": "src/realmz_orig/combat.c", "symbol": "void combat(short suprise, short mode)" },
+          { "path": "src/realmz_orig/getrange.c", "symbol": "short getrange(short body, short side, short flip)" },
+          { "path": "src/realmz_orig/spelltargets.c", "symbol": "short spelltargets(short targetnum, short who, short mode, short noreflect)" },
+          { "path": "src/realmz_orig/resist.c", "symbol": "short resist(short who)" },
+          { "path": "src/realmz_orig/resolvespell.c", "symbol": "void resolvespell(void)" },
+          { "path": "src/realmz_orig/heal.c", "symbol": "void heal(short who, short howmuch, short show)" },
+          { "path": "src/realmz_orig/killbody.c", "symbol": "void killbody(short mon, short performque)" }
+        ],
+        "authoredInputs": ["single-actor target type", "special 57", "cannot value four", "class and damage type eight", "positive cost and damage range", "combatant allegiance", "stamina and maximum stamina", "stone, death, and reflection conditions"],
+        "observation": "The manual character picker scans living party slots and living monster slots without an allegiance filter. Monster getrange reverses allegiance when cannot is four and includes the caster's own monster slot. Reflection selects the effective actor before resolution. resolvespell rolls ordinary duration and damage, performs resistance, then special 57 negates damage and clears special handling. Party targets call heal, which rejects stone and dead characters, can revive an unconscious character in noncombat contexts, and caps at staminamax; combat killbody has already removed an unconscious actor from the targetable field. Monster targets subtract the negative damage directly without a maximum cap and set beenattacked even though stamina increases. Monster stamina is a signed short, so the addition retains Classic signed-16 storage semantics.",
+        "unresolved": ["Camp-time healing and its character picker are a separate application workflow.", "Specials 58 through 60 and other zero-damage effects remain disabled until their spelllist inputs and side effects are individually adjudicated.", "The package compiler currently gives standard spell records generic Realmz Spell identifiers when no project override supplies display metadata; that presentation-data defect is separate from this runtime behavior."]
+      },
+      "providence": {
+        "commit": "1d660bb6dbab175e641f33d07e8755e8ee3be24e",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spells(" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits Classic spell ID, combat/camp flags, target, special, cannot, class, damage type, cost, ranges, and power-scaled damage. No package-contract change is required for special 57."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _is_source_backed_combat_healing_spell(" },
+        "expectedTrace": ["derive party-then-monster detached actor options", "validate one source-shaped healing definition", "resolve reflection and resistance before healing", "apply party cap and death or stone exclusions", "apply uncapped signed-16 monster healing", "preserve Castle's monster attacked marker asymmetry", "publish separate signed damage and positive healing facts", "persist health, spell cost, and cast cursor"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_special_healing_and_actor_targeting()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_character_spell_casting()" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "player-actor-targeting-and-strict-combat-special-57-healing-verified-other-specials-explicit"
     },
     {
       "id": "combat.monster-ordinary-spell-casting",
@@ -1758,7 +1808,7 @@
         ],
         "authoredInputs": ["ten fixed spell slots", "number of magical attacks", "cast percentage", "spell points", "spell target, cost, range, class, damage, saves, resistance, and protection", "monster and party allegiance and battlefield positions"],
         "observation": "combat.c rolls missile then cast choice, samples each spell slot up to thirty times, rolls range power before getrange, lowers affordability power without recomputing range, samples the native target space, clears movement and Guard at gocast, and repeats for noofmagattacks. A no-cast movement path may jump back to tryspell once without another cast-percent roll. resist.c continues a failed charm opposed save into screens, animated immunity, and magic resistance; cannot bypasses those later checks but not the first opposed roll.",
-        "unresolved": ["Castle subtracts a negative spell cost, which can increase monster spell points.", "Monster size increases spellrange only after getrange has already rejected out-of-range candidates.", "Target-everybody omits the Guard clear present in ordinary, all-friendly, and all-enemy casting.", "Friendly and charmed-monster targets, area/group shapes, class nine, and specials need separate source-backed continuations."]
+        "unresolved": ["Castle subtracts a negative spell cost, which can increase monster spell points.", "Monster size increases spellrange only after getrange has already rejected out-of-range candidates.", "Target-everybody omits the Guard clear present in ordinary, all-friendly, and all-enemy casting.", "Friendly and charmed-monster targets other than the strict special-57 healing branch, area/group shapes, class nine, and other specials need separate source-backed continuations."]
       },
       "providence": {
         "commit": "1d660bb6dbab175e641f33d07e8755e8ee3be24e",
@@ -2026,7 +2076,7 @@
           "Automatic target types 9, 10, and 12 branch before the per-cell reflection test and therefore do not inherit ordinary reflection.",
           "Area targeting can encounter one actor through multiple footprint cells and intelligent monster scoring invokes spelltargets in mode true, consuming reflection RNG before the actual cast; those suspicious source effects remain disabled.",
           "Queued-field collisions pass noreflect true and remain a separate persistent-field contract.",
-          "Monster cannot value four reverses allegiance for friendly targeting and remains disabled as its own spell-targeting branch."
+          "Monster cannot value four reverses allegiance for friendly targeting; only the source-shaped special-57 healing branch is currently enabled."
         ]
       },
       "providence": {

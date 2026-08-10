@@ -16,6 +16,7 @@ func run() -> void:
 	_test_monster_missile_does_not_impersonate_melee()
 	_test_source_backed_projectile_fire()
 	_test_source_backed_character_spell_casting()
+	_test_source_backed_special_healing_and_actor_targeting()
 	_test_character_automatic_group_spell()
 	_test_character_fixed_area_spell()
 	_test_character_and_monster_repeated_target_spells()
@@ -812,8 +813,9 @@ func _test_source_backed_character_spell_casting() -> void:
 	state.combat.battlefield.move_actor(monster.id, Vector2i(50, 45))
 	var content := _content([definition], [], [], [], [spell])
 	var options := rules.combat_flow.character_spell_options(state, content, character.id)
-	assert_equal(options.size(), 5, "the typed battle picker exposes only funded powers for a core-proven spell and target")
-	assert_equal([options[0].spell_id, options[0].power, options[0].cost, options[0].target_id], [spell.id, 1, 2, monster.id], "the first detached cast option carries stable spell, power, cost, and target identities")
+	assert_equal(options.size(), 10, "the typed battle picker exposes funded powers for every live Classic actor target")
+	assert_equal([options[0].spell_id, options[0].power, options[0].cost, options[0].target_id], [spell.id, 1, 2, character.id], "the first detached cast option preserves party-slot-first Classic actor ordering")
+	assert_true(options.any(func(option: CombatSpellOptionView) -> bool: return option.spell_id == spell.id and option.power == 1 and option.target_id == monster.id), "the detached cast options retain the hostile monster after legal party targets")
 	var screened := rules.combat_flow.cast_spell(state, content, character.id, monster.id, spell.id, 1, ScriptedRng.new([0, 0]))
 	assert_true(screened.ok, "a funded ordinary single-target combat spell commits")
 	assert_true(screened.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("classicTier") == 2 and event.payload.get("resisted") == true), "spell resistance uses the spell ID's tier even when caster level is ten")
@@ -850,6 +852,85 @@ func _test_source_backed_character_spell_casting() -> void:
 	blocked_state.character_spellcasting_blocked = true
 	var scenario_blocked := rules.combat_flow.cast_spell(blocked_state, content, blocked_character.id, blocked_monster.id, spell.id, 1, ScriptedRng.new([]))
 	assert_equal(scenario_blocked.error_code, &"character_spellcasting_blocked", "a nonzero Classic spellcasting flag blocks rather than enables character casting")
+
+
+func _test_source_backed_special_healing_and_actor_targeting() -> void:
+	var rules := RealmzRules.new()
+	var healing := SpellDefinition.new("spell.heal-small-wounds", 2105, "Heal Small Wounds")
+	healing.in_combat = true
+	healing.in_camp = true
+	healing.target_type = 1
+	healing.spell_class = 8
+	healing.damage_type = 8
+	healing.cannot = 4
+	healing.special = 57
+	healing.cost = 2
+	healing.range_min = 1
+	healing.power_damage_min = 4
+	healing.power_damage_max = 4
+
+	var caster := _character("character.healing-caster")
+	caster.set_known_spells([healing.id])
+	caster.maximum_spell_attacks = 2
+	caster.maximum_spell_points = 20
+	caster.spell_points = 20
+	caster.normal_attacks = 4
+	var ally := _character("character.healing-ally")
+	ally.name = "Wounded Ally"
+	ally.current_health = 10
+	ally.maximum_health = 30
+	var hostile_definition := _monster_definition("monster.healing-hostile", [])
+	var hostile := MonsterState.new("monster.healing-hostile.instance", hostile_definition.id, "Hostile", 20, 20, 1)
+	var battlefield := _blank_battlefield()
+	battlefield.place_character(caster.id, Vector2i(45, 45))
+	battlefield.place_character(ally.id, Vector2i(44, 45))
+	battlefield.place_monster(hostile.id, Vector2i(46, 45), 0)
+	var state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [caster, ally]), RealmzClock.new())
+	state.combat = CombatState.new("battle.healing", [hostile], 0, battlefield)
+	state.combat.set_turn_order([caster.id, ally.id, hostile.id])
+	var content := _content([hostile_definition], [], [], [], [healing])
+
+	var options := rules.combat_flow.character_spell_options(state, content, caster.id).filter(func(option: CombatSpellOptionView) -> bool: return option.spell_id == healing.id and option.power == 2)
+	assert_equal(options.map(func(option: CombatSpellOptionView) -> String: return option.target_id), [caster.id, ally.id, hostile.id], "single-target player spells preserve Castle party-then-monster selection without imposing allegiance")
+	assert_equal(options.map(func(option: CombatSpellOptionView) -> String: return option.target_name), [caster.name, ally.name, hostile.name], "typed spell options expose detached names for character and monster targets")
+
+	var cast := rules.combat_flow.cast_spell(state, content, caster.id, ally.id, healing.id, 2, ScriptedRng.new([0, 0, 0, 0]))
+	assert_true(cast.ok, "special 57 commits through the ordinary typed actor-target cast boundary")
+	assert_equal([caster.spell_points, ally.current_health], [16, 18], "special 57 negates the shared damage roll into capped character healing")
+	assert_false(state.combat.was_attacked(ally.id), "healing does not set Castle's been-attacked casting gate")
+	var healing_event: DomainEvent = cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")[0]
+	assert_equal([healing_event.payload.get("targetId"), healing_event.payload.get("targetKind"), healing_event.payload.get("damage"), healing_event.payload.get("healing")], [ally.id, "character", -8, 8], "the typed result distinguishes healing from positive committed damage")
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(restored, "a committed healing cast restores through the central save aggregate")
+	assert_equal([restored.party.character_by_id(ally.id).current_health, restored.party.character_by_id(caster.id).spell_points, restored.combat.active_turn.spell_cast_count], [18, 16, 1], "restore preserves healing, cost, and the per-activation cast cursor")
+
+	var monster_slots: Array[String] = [healing.id, "", "", "", "", "", "", "", "", ""]
+	var healer_definition := MonsterDefinition.new("monster.healing-caster", 9, "Monster Healer", 4, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), monster_slots, [], [])
+	healer_definition.magic_attack_count = 1
+	var friend_definition := _monster_definition("monster.healing-friend", [])
+	var monster_healer := MonsterState.new("monster.healing-caster.instance", healer_definition.id, healer_definition.name, 10, 10, 4, 1, 0, 0, 10)
+	var monster_friend := MonsterState.new("monster.healing-friend.instance", friend_definition.id, "Monster Friend", 8, 20, 1)
+	var party_target := _character("character.healing-opponent")
+	var monster_field := _blank_battlefield()
+	monster_field.place_character(party_target.id, Vector2i(45, 45))
+	monster_field.place_monster(monster_healer.id, Vector2i(46, 45), 0)
+	monster_field.place_monster(monster_friend.id, Vector2i(47, 45), 0)
+	var monster_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [party_target]), RealmzClock.new())
+	monster_state.combat = CombatState.new("battle.monster-healing", [monster_healer, monster_friend], 0, monster_field)
+	monster_state.combat.set_turn_order([party_target.id, monster_healer.id, monster_friend.id])
+	monster_state.combat.turn_index = 1
+	var monster_content := _content([healer_definition, friend_definition], [], [], [], [healing])
+	var monster_events: Array[DomainEvent] = []
+	var monster_turn := monster_state.combat.begin_active_turn()
+	var monster_result := rules.combat_flow._process_monster_cast(monster_state, monster_content, monster_healer, healer_definition, monster_turn, ScriptedRng.new([0, 0, 30_000, 0, 0, 0]), monster_events)
+	assert_equal(monster_result, CombatFlow.MONSTER_ATTACK_COMPLETED, "a cannot-four monster spell uses the source-backed friendly target branch")
+	assert_equal([monster_healer.current_health, monster_healer.maximum_health, monster_friend.current_health, party_target.current_health], [14, 10, 8, 30], "Castle monster healing can select self, exceed maximum stamina, and cannot target an opposed party actor")
+	assert_true(monster_state.combat.was_attacked(monster_healer.id), "Castle marks a healed monster as attacked even though its negative damage increases stamina")
+	var monster_event: DomainEvent = monster_events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")[0]
+	assert_equal([monster_event.payload.get("targetId"), monster_event.payload.get("healing"), monster_healer.spell_points], [monster_healer.id, 4, 8], "monster healing publishes its effective ally target, actual gain, and paid power")
+	var restored_monster := GameState.from_data(JSON.parse_string(JSON.stringify(monster_state.to_data())))
+	assert_not_null(restored_monster, "monster special healing state restores")
+	assert_equal([restored_monster.combat.monster_by_id(monster_healer.id).current_health, restored_monster.combat.active_turn.spell_cast_count], [14, 1], "restore preserves monster overheal and the authored magic-attack cursor")
 
 
 func _test_spell_death_macro_queue_and_restore() -> void:

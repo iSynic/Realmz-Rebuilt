@@ -17,7 +17,7 @@ var maximum_targets: int
 var target_candidates: Array[CombatSpellTargetView]
 
 
-func _init(spell: SpellDefinition, power_level: int, target: MonsterState = null, automatic_target_label: String = "", targeting_mode: StringName = &"combatant", shape: int = 0, default_coordinate: Vector2i = Vector2i(-100_000, -100_000), offsets: Array[Vector2i] = [], maximum_target_count: int = 1, candidates: Array[CombatSpellTargetView] = []) -> void:
+func _init(spell: SpellDefinition, power_level: int, target: CombatSpellTargetView = null, automatic_target_label: String = "", targeting_mode: StringName = &"combatant", shape: int = 0, default_coordinate: Vector2i = Vector2i(-100_000, -100_000), offsets: Array[Vector2i] = [], maximum_target_count: int = 1, candidates: Array[CombatSpellTargetView] = []) -> void:
 	spell_id = spell.id
 	spell_name = spell.name
 	power = power_level

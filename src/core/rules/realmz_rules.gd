@@ -22,7 +22,7 @@ func _init() -> void:
 	inventory = InventoryRules.new()
 	economy = EconomyRules.new()
 	combat = CombatRules.new(conditions, characters)
-	magic = MagicRules.new(characters)
+	magic = MagicRules.new(characters, arithmetic)
 	monsters = MonsterRules.new()
 	clock = ClockRules.new(conditions, characters)
 	battlefield = BattlefieldRules.new()
