@@ -33,9 +33,9 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Castle oracle | Count |
 | --- | ---: |
-| not-required | 19 |
-| required | 9 |
-| completed | 32 |
+| not-required | 18 |
+| required | 8 |
+| completed | 34 |
 
 | Remake | Count |
 | --- | ---: |
@@ -49,8 +49,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | --- | ---: |
 | not-required | 14 |
 | missing | 0 |
-| partial | 6 |
-| complete | 40 |
+| partial | 5 |
+| complete | 41 |
 
 | simulation | Count |
 | --- | ---: |
@@ -63,14 +63,14 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | --- | ---: |
 | not-applicable | 8 |
 | absent | 4 |
-| partial | 2 |
-| verified | 46 |
+| partial | 1 |
+| verified | 47 |
 
 | presentation | Count |
 | --- | ---: |
 | absent | 6 |
-| fixture-shell | 7 |
-| functional | 47 |
+| fixture-shell | 6 |
+| functional | 48 |
 | accepted | 0 |
 
 ### Host
@@ -115,10 +115,9 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **3**. Major gaps: **29**.
+Blockers: **2**. Major gaps: **30**.
 
 - **blocker** `classic.combat.enter-battle` — Battle entry and placement are not certified through ordinary AOGM play. Next: Reach an AOGM battle through ordinary UI and compare setup, placement, save, and first actor.
-- **blocker** `classic.spellcasting.field-camp-cast` — The ordinary field/camp spell catalog and scroll workflows are not complete end to end. Next: Inventory Castle field/camp spell families and scroll state, then wire them through CAST_SPELL.
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
 - **major** `classic.character.change-appearance` — Creation catalogs exist, but active-character portrait and icon changes have no typed intent or workspace. Next: Add typed appearance-change intents and a package-catalog picker.
@@ -129,12 +128,12 @@ Blockers: **3**. Major gaps: **29**.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Create synthetic Castle fixtures for battle modes 5 and 10 and opcode 48 bonus treasure before changing the package contract.
 - **major** `classic.combat.tactical-movement` — COMBAT_MOVE is dispatched but the global availability table still describes it as unimplemented. Next: After the audit, make availability derive from the active battle view and validate ordinary movement controls.
 - **major** `classic.combat.turn-control` — The battle interaction is functional but not yet an accepted Classic tactical workspace. Next: Run the ordinary AOGM battle loop and close presentation gaps found there.
-- **major** `classic.exploration.camp-rest` — Camp toggling exists, but Classic rest duration, recovery, and interruption are not implemented as a complete workflow. Next: Trace Castle rest branches and add a typed rest request plus clock/recovery continuation.
+- **major** `classic.exploration.camp-rest` — Camp mode now has source-backed entry/exit time, service clearing, persistence, and UI state, but held Rest and automatic movement departure are not complete. Next: Add a typed held-Rest continuation with recovery/interruption, then preserve the pre-movement departure ordering.
 - **major** `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end. Next: Trace the preference/save fields and ordinary cast handoff, then decide whether the shortcut is Classic state or presentation state.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
 - **major** `classic.inventory.inspect-item` — Item details do not yet expose the complete Classic record and disabled-action reasons. Next: Complete the detached item view and item-detail panel.
 - **major** `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow. Next: Trace every items.c branch before deleting the intents or implementing a stack operation.
-- **major** `classic.inventory.use-item` — Fixed-power charged spell items now work through typed field and combat targets, exact charge/load state, sound, save/resume, and ordinary interaction controls; scrolls, door/XAP items, random-power combat targeting, spatial/repeated combat targets, and broader spell specials remain explicit. Next: Exercise an ordinary AOGM charged item, then characterize scroll, door/XAP, random-power combat, and target-abort charge behavior as separate bounded cases.
+- **major** `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit. Next: Exercise an ordinary AOGM charged item and scroll route, then characterize combat scroll, discard, case-transfer, door/XAP, random-power combat, and target-abort behavior separately.
 - **major** `classic.maps.authored-journal` — The complete authored journal entry contract and discovery state are not represented end to end. Next: Trace Castle journal records, add deterministic package fields, and wire a read-only journal view.
 - **major** `classic.maps.location-notes` — Player location notes are entirely absent and their exact save ownership is not yet traced. Next: Trace the Castle note editor and save fields before defining typed note state.
 - **major** `classic.maps.view-acquired` — Map IDs can be acquired, but the journal route explicitly lacks map viewing. Next: Finish package map display data and build a presentation-owned acquired-map viewer.
@@ -144,6 +143,7 @@ Blockers: **3**. Major gaps: **29**.
 - **major** `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification. Next: Exercise buy, sell, identify, buyback, leave, and reload in an ordinary shop.
 - **major** `classic.services.temple` — The temple lifecycle has no ordinary campaign certification. Next: Exercise representative temple mutations and no-op payment in ordinary play.
 - **major** `classic.spellcasting.combat-cast` — Combat spellcasting has extensive deterministic coverage but no ordinary campaign certification. Next: Cast representative single, group, and area spells in an ordinary AOGM battle and verify save/resume.
+- **major** `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise the field scroll workflow in ordinary AOGM play, then implement combat/discard/case-transfer branches only from their bounded differential evidence.
 - **major** `classic.startup.end-adventure` — There is no typed end-adventure boundary distinct from process quit or campaign replacement. Next: Add a committed session-close intent and confirmation workflow.
 - **major** `classic.startup.inspect-character` — Party setup cannot open a complete Classic character inspection workspace. Next: Wire the detached character view into party setup without mutating the session.
 - **major** `host.package.validation-progress` — Package loading remains perceptibly slow and lacks a real asynchronous progress workflow. Next: Move host validation orchestration off the interactive frame while keeping session construction atomic.
@@ -159,7 +159,6 @@ Blockers: **3**. Major gaps: **29**.
 - `classic.maps.location-notes` — Read and edit location notes
 - `classic.scenario.complex-interaction` — Resolve a complex or thief encounter
 - `classic.services.bank` — Use the bank
-- `classic.spellcasting.field-camp-cast` — Cast field and camp spells
 - `classic.system.preferences` — Change Classic application preferences
 
 ## Prioritized remaining-work queues
@@ -167,20 +166,20 @@ Blockers: **3**. Major gaps: **29**.
 ### aogm
 
 - `classic.combat.enter-battle` — Battle entry and placement are not certified through ordinary AOGM play.
-- `classic.spellcasting.field-camp-cast` — The ordinary field/camp spell catalog and scroll workflows are not complete end to end.
 - `classic.character.reorder-party` — Party order cannot be changed through a typed workflow.
 - `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace.
 - `classic.combat.physical-attack` — Physical combat is deeply source-tested but not certified in ordinary campaign play.
 - `classic.combat.resolve-outcome` — The ordinary victory/defeat/retreat/reward return is implemented but not accepted through a complete campaign battle.
 - `classic.combat.tactical-movement` — COMBAT_MOVE is dispatched but the global availability table still describes it as unimplemented.
 - `classic.combat.turn-control` — The battle interaction is functional but not yet an accepted Classic tactical workspace.
-- `classic.exploration.camp-rest` — Camp toggling exists, but Classic rest duration, recovery, and interruption are not implemented as a complete workflow.
+- `classic.exploration.camp-rest` — Camp mode now has source-backed entry/exit time, service clearing, persistence, and UI state, but held Rest and automatic movement departure are not complete.
 - `classic.inventory.inspect-item` — Item details do not yet expose the complete Classic record and disabled-action reasons.
-- `classic.inventory.use-item` — Fixed-power charged spell items now work through typed field and combat targets, exact charge/load state, sound, save/resume, and ordinary interaction controls; scrolls, door/XAP items, random-power combat targeting, spatial/repeated combat targets, and broader spell specials remain explicit.
+- `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit.
 - `classic.maps.view-acquired` — Map IDs can be acquired, but the journal route explicitly lacks map viewing.
 - `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification.
 - `classic.services.temple` — The temple lifecycle has no ordinary campaign certification.
 - `classic.spellcasting.combat-cast` — Combat spellcasting has extensive deterministic coverage but no ordinary campaign certification.
+- `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.startup.inspect-character` — Party setup cannot open a complete Classic character inspection workspace.
 - `host.system.save-previews` — Save/load works, but the required slot preview and mismatch/corruption library is still a shell.
 - `classic.exploration.contextual-service` — Contextual service entry is not yet demonstrated through ordinary AOGM play.

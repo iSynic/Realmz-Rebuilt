@@ -8,6 +8,7 @@ var party_map_id: String
 var party_coordinate: Vector2i
 var realmz_day: int
 var realmz_hour: int
+var realmz_minute: int
 var map_view: MapView
 var party_members: Array[CharacterView] = []
 var party_fatigue: int = 0
@@ -32,7 +33,7 @@ var money_workspace: MoneyWorkspaceView
 var action_availability: Dictionary = {}
 
 
-func _init(current_revision: int, started: bool, interaction: InteractionRequest, map_id: String = "", coordinate: Vector2i = Vector2i.ZERO, day: int = 0, hour: int = 0, current_map_view: MapView = null, members: Array[CharacterView] = [], fatigue: int = 0, gold: int = 0, current_combat: CombatView = null) -> void:
+func _init(current_revision: int, started: bool, interaction: InteractionRequest, map_id: String = "", coordinate: Vector2i = Vector2i.ZERO, day: int = 0, hour: int = 0, minute: int = 0, current_map_view: MapView = null, members: Array[CharacterView] = [], fatigue: int = 0, gold: int = 0, current_combat: CombatView = null) -> void:
 	revision = current_revision
 	session_started = started
 	pending_interaction = interaction
@@ -40,6 +41,7 @@ func _init(current_revision: int, started: bool, interaction: InteractionRequest
 	party_coordinate = coordinate
 	realmz_day = day
 	realmz_hour = hour
+	realmz_minute = minute
 	map_view = current_map_view
 	party_members = members.duplicate()
 	party_fatigue = fatigue

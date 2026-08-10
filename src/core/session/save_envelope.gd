@@ -217,6 +217,36 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 		if power < 1 or power > 7 or target_count < 1 or target_count > 6 or starting_charges < -1 or starting_charges > 32_767:
 			return null
 		return {"kind": "item-use-target-selection", "characterId": value["characterId"], "instanceId": value["instanceId"], "spellId": value["spellId"], "power": power, "targetCount": target_count, "startingCharges": starting_charges}
+	if value.get("kind") == "field-spell-target-selection":
+		var field_spell_fields: Array[String] = ["kind", "characterId", "spellId", "power", "targetCount", "startingSpellPoints"]
+		if value.size() != field_spell_fields.size():
+			return null
+		for field: String in field_spell_fields:
+			if not value.has(field):
+				return null
+		var field_power := _integer(value["power"])
+		var field_target_count := _integer(value["targetCount"])
+		var starting_spell_points := _integer(value["startingSpellPoints"])
+		if not value["characterId"] is String or value["characterId"].is_empty() or not value["spellId"] is String or value["spellId"].is_empty():
+			return null
+		if field_power < 1 or field_power > 7 or field_target_count < 1 or field_target_count > 6 or starting_spell_points < 0 or starting_spell_points > 32_767:
+			return null
+		return {"kind": "field-spell-target-selection", "characterId": value["characterId"], "spellId": value["spellId"], "power": field_power, "targetCount": field_target_count, "startingSpellPoints": starting_spell_points}
+	if value.get("kind") == "scroll-target-selection":
+		var scroll_fields: Array[String] = ["kind", "characterId", "scrollSlot", "spellId", "power", "targetCount"]
+		if value.size() != scroll_fields.size():
+			return null
+		for field: String in scroll_fields:
+			if not value.has(field):
+				return null
+		var scroll_slot := _integer(value["scrollSlot"])
+		var scroll_power := _integer(value["power"])
+		var scroll_target_count := _integer(value["targetCount"])
+		if not value["characterId"] is String or value["characterId"].is_empty() or not value["spellId"] is String or value["spellId"].is_empty():
+			return null
+		if scroll_slot < 0 or scroll_slot >= 5 or scroll_power < 1 or scroll_power > 7 or scroll_target_count < 1 or scroll_target_count > 6:
+			return null
+		return {"kind": "scroll-target-selection", "characterId": value["characterId"], "scrollSlot": scroll_slot, "spellId": value["spellId"], "power": scroll_power, "targetCount": scroll_target_count}
 	if value.get("kind") == "character-spell-confirmation":
 		var spell_fields: Array[String] = ["kind", "characterId", "remaining"]
 		if value.size() != spell_fields.size():

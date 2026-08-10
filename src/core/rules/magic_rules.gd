@@ -339,12 +339,44 @@ static func _reflect_to_monster_caster(caster: MonsterState, caster_definition: 
 	return SpellTargetSelection.for_monster(caster, caster_definition, selection.original_target_id, true)
 
 
+func resolve_field_spell(caster: CharacterState, targets: Array[CharacterState], spell: SpellDefinition, power_level: int, rng: RealmzRng, castes: Array[CasteDefinition] = [], races: Array[RaceDefinition] = [], spend_spell_points: bool = true, allow_empty: bool = false) -> GroupSpellResolution:
+	if caster == null or spell == null or rng == null or power_level < 1 or not allow_empty and targets.is_empty():
+		return null
+	if not castes.is_empty() and castes.size() != targets.size() or not races.is_empty() and races.size() != targets.size():
+		return null
+	for target: CharacterState in targets:
+		if target == null:
+			return null
+	var spell_cost := absi(spell.cost * power_level)
+	if spend_spell_points and caster.spell_points < spell_cost:
+		return GroupSpellResolution.new(false, spell_cost, 0, 0)
+	if spend_spell_points:
+		caster.spell_points -= spell_cost
+	else:
+		spell_cost = 0
+	var tag_prefix := "field-spell.%d" % spell.classic_id
+	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, StringName("%s.duration" % tag_prefix))
+	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, StringName("%s.damage" % tag_prefix))
+	var result := GroupSpellResolution.new(true, spell_cost, duration, damage)
+	for index: int in targets.size():
+		var target := targets[index]
+		var caste: CasteDefinition = null if castes.is_empty() else castes[index]
+		var race: RaceDefinition = null if races.is_empty() else races[index]
+		var resolution := _resolve_noncombat_character_effect(target, spell, power_level, 0, false, rng, caste, race, duration, damage, "%s.%s" % [tag_prefix, target.id])
+		result.append_target(target.id, &"character", resolution)
+	return result
+
+
 func resolve_scenario_spell(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition = null, race: RaceDefinition = null) -> SpellResolution:
 	if target == null or spell == null or rng == null or power_level < 0:
 		return null
 	var tag_prefix := "scenario-spell.%d.%s" % [spell.classic_id, target.id]
 	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, StringName("%s.duration" % tag_prefix))
 	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, StringName("%s.damage" % tag_prefix))
+	return _resolve_noncombat_character_effect(target, spell, power_level, extra_save_adjust, force_affect, rng, caste, race, duration, damage, tag_prefix)
+
+
+func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition, race: RaceDefinition, duration: int, damage: int, tag_prefix: String) -> SpellResolution:
 	var special := absi(spell.special)
 	var damage_type := absi(spell.damage_type)
 	var saved := false

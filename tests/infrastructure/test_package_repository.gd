@@ -12,7 +12,7 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "cbf6388091469a3114229504f7446c8d904f5cfdf2e197fb1e064950235938f0", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "d315857417ff9f6d0ca7435b500352b6824e697da3ac921bd446fe78f4cd7f12", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -64,6 +64,9 @@ func run() -> void:
 	assert_equal(loaded.content.timed_encounter_by_id(0).trigger_record_index, 0, "Timed Encounter schedules retain their Classic AP identity")
 	assert_not_null(loaded.content.scenario.action_by_id("scenario.realmz2-synthetic-fixture.after-encounter"), "compiled Scenario Actions become typed callable definitions")
 	assert_equal(loaded.content.item_by_id("classic.item.901").name, "Fixture Wand", "Providence item records become immutable runtime definitions")
+	assert_equal([loaded.content.item_by_classic_id(800).name, loaded.content.item_by_classic_id(800).item_type], ["Fixture Scroll Case", 13], "the Classic type-13 scroll case crosses the compiler boundary")
+	assert_equal([loaded.content.item_by_classic_id(806).name, loaded.content.item_by_classic_id(806).initial_charges, loaded.content.item_by_classic_id(806).weight_per_charge], ["Fixture Parchment", 3, 1], "source-backed charged parchment crosses the compiler boundary at its Classic scenario item identity")
+	assert_equal(loaded.content.spell_by_classic_id(1106).cost, -25, "Classic negative spell cost survives the package boundary as a fixed-power field spell")
 	assert_equal(loaded.content.race_definitions().size(), 30, "the package contains Castle's complete 30-record race table")
 	assert_equal(loaded.content.caste_definitions().size(), 30, "the package contains Castle's complete 30-record caste table")
 	assert_equal(loaded.content.race_by_id("classic.race.1").classic_id, 1, "race package identity preserves Castle's one-based character value")

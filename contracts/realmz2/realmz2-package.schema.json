@@ -1,6 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://realmz.app/contracts/realmz2-package.schema.json",
+  "$comment": "Canonical schema bytes use LF line endings on every platform.",
   "title": "Realmz Remake 2.0 package documents",
   "oneOf": [
     { "$ref": "#/$defs/manifest" },

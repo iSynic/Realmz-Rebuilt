@@ -45,6 +45,7 @@ var condition_values: Array[int]
 var save_values: Array[int]
 var items: Array[ItemView] = []
 var spells: Array[SpellView] = []
+var scrolls: Array[SpellScrollView] = []
 
 
 func _init(character: CharacterState, content: RealmzContent = null) -> void:
@@ -105,6 +106,9 @@ func _init(character: CharacterState, content: RealmzContent = null) -> void:
 			var definition := content.spell_by_id(spell_id)
 			if definition != null:
 				spells.append(SpellView.new(definition))
+		for index: int in character.scroll_case().size():
+			var scroll := character.scroll_at(index)
+			scrolls.append(SpellScrollView.new(index, scroll, content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null))
 
 
 func apply_equipment(equipment: CharacterCombatEquipment) -> void:

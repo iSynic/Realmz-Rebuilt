@@ -96,7 +96,7 @@ func present(game_view: GameView) -> void:
 		return
 	if previous_campaign_id != game_view.campaign_id:
 		_latest_classic_text = ""
-	_clock_label.text = "Day %d • %02d:00" % [game_view.realmz_day, game_view.realmz_hour]
+	_clock_label.text = "Day %d • %02d:%02d" % [game_view.realmz_day, game_view.realmz_hour, game_view.realmz_minute]
 	_gold_label.text = "Gold %d" % game_view.pooled_gold
 	_coordinates_label.text = "%s • %d,%d" % [game_view.party_map_id, game_view.party_coordinate.x, game_view.party_coordinate.y]
 	_fatigue_label.text = "Fatigue %d" % game_view.party_fatigue
@@ -257,6 +257,7 @@ func _apply_layout() -> void:
 func _build_menus() -> void:
 	if not is_node_ready():
 		return
+	var camp_label := "Break Camp" if _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping else "Camp"
 	_fill_menu($MenuStrip/MenuRow/InfoMenu, [
 		{"label": "About Realmz 2", "route": &"system"},
 		{"label": "Package identity and readiness", "route": &"system"},
@@ -272,7 +273,7 @@ func _build_menus() -> void:
 	_fill_menu($MenuStrip/MenuRow/AdventureMenu, [
 		{"label": "Explore", "route": &"exploration"},
 		{"label": "Search", "command": &"search", "disabled_reason": _availability_reason(&"search")},
-		{"label": "Camp", "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
+		{"label": camp_label, "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
 	])
 	_fill_menu($MenuStrip/MenuRow/CharacterMenu, [
 		{"label": "Characters", "route": &"character"},
@@ -291,7 +292,7 @@ func _build_menus() -> void:
 	var compact_entries: Array[Dictionary] = [
 		{"label": "Adventure — Explore", "route": &"exploration"},
 		{"label": "Adventure — Search", "command": &"search", "disabled_reason": _availability_reason(&"search")},
-		{"label": "Adventure — Camp", "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
+		{"label": "Adventure — %s" % camp_label, "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
 		{"label": "Character — Characters", "route": &"character"},
 		{"label": "Character — Inventory", "route": &"inventory"},
 		{"label": "Character — Spells", "route": &"spells"},
@@ -381,7 +382,7 @@ func _update_command_availability() -> void:
 		elif not availability_id.is_empty():
 			reason = _availability_reason(availability_id)
 		button.disabled = not reason.is_empty()
-		button.tooltip_text = reason if not reason.is_empty() else String(definition.get("tooltip", ""))
+		button.tooltip_text = reason if not reason.is_empty() else "Break camp" if command_id == &"camp" and _current_view.party_summary != null and _current_view.party_summary.camping else String(definition.get("tooltip", ""))
 		button.queue_redraw()
 
 
@@ -455,7 +456,8 @@ func _present_event(event: DomainEvent) -> void:
 		&"party_moved": set_status("%s • %d,%d" % [_current_view.party_map_id if _current_view != null else "Map", int(event.payload.get("x", 0)), int(event.payload.get("y", 0))])
 		&"movement_blocked": set_status("That way is blocked")
 		&"search_completed": _append_narrative("The party searches the area.")
-		&"party_camped": _append_narrative("The party camps and recovers.")
+		&"camp_mode_changed":
+			_append_narrative("The party makes camp." if bool(event.payload.get("camping", false)) else "The party breaks camp.")
 		&"character_age_changed":
 			var direction := int(event.payload.get("transition", 0))
 			var age_group := int(event.payload.get("ageGroup", 0))

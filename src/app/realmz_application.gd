@@ -83,7 +83,7 @@ func _on_smoke_action_pressed() -> void:
 		return
 	var roll: int = step.events[0].payload.get("roll", 0)
 	var current_view := session_controller.view()
-	_status_label.text = "Search committed • roll %d • day %d %02d:00" % [roll, current_view.realmz_day, current_view.realmz_hour]
+	_status_label.text = "Search committed • roll %d • day %d %02d:%02d" % [roll, current_view.realmz_day, current_view.realmz_hour, current_view.realmz_minute]
 
 
 func _on_quit_requested() -> void:

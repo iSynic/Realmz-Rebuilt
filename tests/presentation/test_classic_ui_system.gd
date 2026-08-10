@@ -19,6 +19,7 @@ func run() -> void:
 	_test_spatial_stage_visibility()
 	_test_character_creator_workflow()
 	_test_character_vault_workspace()
+	_test_field_spell_workspace()
 	_test_inventory_workspace()
 	_test_money_workspace()
 	_test_party_roster()
@@ -630,6 +631,72 @@ func _test_character_vault_workspace() -> void:
 	if restore_button != null:
 		restore_button.pressed.emit()
 	assert_equal(restore_events, [[archived.character_id, archived.revision_hash]], "recovery identifies the exact immutable revision")
+	router.free()
+
+
+func _test_field_spell_workspace() -> void:
+	var router := ClassicScreenRouter.new()
+	router._body = VBoxContainer.new()
+	router._content_parent = router._body
+	router.add_child(router._body)
+	var view := GameView.new(5, true, null)
+	view.party_summary = PartySummaryView.new()
+	view.party_summary.camping = false
+	var character := CharacterState.new("field.caster", "Aster", 12, 12)
+	character.spell_points = 12
+	character.maximum_spell_points = 12
+	var character_view := CharacterView.new(character)
+	var definition := SpellDefinition.new("classic.spell.field", 1101, "Field Bolt", "A bounded source-backed field spell.")
+	definition.cost = 2
+	definition.in_camp = true
+	var spell_view := SpellView.new(definition)
+	spell_view.power_levels = [1, 2]
+	spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", true)
+	spell_view.scroll_power_levels = [1, 2]
+	spell_view.make_scroll = ActionAvailabilityView.new(&"cast_spell", true)
+	character_view.spells.append(spell_view)
+	character.write_scroll(0, definition.id, 2)
+	character_view.scrolls = [SpellScrollView.new(0, character.scroll_at(0), definition)]
+	character_view.scrolls[0].use = ActionAvailabilityView.new(&"cast_spell", true)
+	view.party_members = [character_view]
+	view.set_action_availability(&"cast_spell", true)
+	router._view = view
+	var intents: Array[PlayerIntent] = []
+	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	router._render_spells()
+	var cast_power_two: Button = null
+	var make_power_two: Button = null
+	var use_scroll: Button = null
+	var scroll_slot_label: Label = null
+	for label: Label in router._body.find_children("*", "Label", true, false):
+		if label.text.begins_with("Slot 1"):
+			scroll_slot_label = label
+			break
+	for button: Button in router._body.find_children("*", "Button", true, false):
+		if button.text == "Cast P2 (4 SP)":
+			cast_power_two = button
+		if button.text == "Make P2 Scroll (8 SP)":
+			make_power_two = button
+		if button.text == "Use":
+			use_scroll = button
+	assert_not_null(cast_power_two, "the field spell workspace renders explicit power and cost choices")
+	assert_not_null(make_power_two, "the field spell workspace renders source-backed scroll scribing cost choices")
+	assert_not_null(use_scroll, "the field spell workspace renders the character's fixed scroll-case slots")
+	assert_not_null(scroll_slot_label, "the field spell workspace labels each fixed scroll slot")
+	if scroll_slot_label != null:
+		assert_true(scroll_slot_label.get_parent() is HBoxContainer, "scroll-slot identity and action share one fixed row instead of reflowing into narrow columns")
+		assert_equal(scroll_slot_label.size_flags_horizontal, Control.SIZE_EXPAND_FILL, "scroll-slot text receives the row's available width at the minimum viewport")
+	if cast_power_two != null:
+		cast_power_two.pressed.emit()
+	if make_power_two != null:
+		make_power_two.pressed.emit()
+	if use_scroll != null:
+		use_scroll.pressed.emit()
+	assert_equal(intents.size(), 3, "field cast, scroll scribing, and scroll use each emit one intent")
+	if intents.size() == 3:
+		assert_equal([intents[0].kind, intents[0].power_level], [PlayerIntent.Kind.CAST_SPELL, 2], "the selected field power crosses the typed intent boundary")
+		assert_equal([intents[1].action, intents[1].power_level], [&"make-scroll", 2], "scroll scribing crosses the same typed spell intent boundary")
+		assert_equal([intents[2].action, intents[2].quantity], [&"use-scroll", 0], "scroll use carries the exact fixed slot through the typed intent boundary")
 	router.free()
 
 

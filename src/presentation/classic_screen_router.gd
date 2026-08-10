@@ -1070,7 +1070,7 @@ func _render_screen() -> void:
 		return
 	match _screen_id:
 		&"exploration":
-			_add_card("Exploration", "The map presenter occupies the central Classic viewport. Use the command rail and textbox overlay for player-facing actions.", "Day %d • %02d:00" % [_view.realmz_day, _view.realmz_hour])
+			_add_card("Exploration", "The map presenter occupies the central Classic viewport. Use the command rail and textbox overlay for player-facing actions.", "Day %d • %02d:%02d" % [_view.realmz_day, _view.realmz_hour, _view.realmz_minute])
 		&"character":
 			_render_characters()
 		&"vault":
@@ -1326,6 +1326,8 @@ func _render_inventory() -> void:
 
 func _render_spells() -> void:
 	var any_spells := false
+	if _view.party_summary != null:
+		_add_section_heading("Field spellbook", "Camped" if _view.party_summary.camping else "Exploring")
 	for character: CharacterView in _view.party_members:
 		_add_section_heading(character.name, "SP %d/%d" % [character.spell_points, character.maximum_spell_points])
 		for spell: SpellView in character.spells:
@@ -1335,14 +1337,33 @@ func _render_spells() -> void:
 			var row := HFlowContainer.new()
 			row.add_theme_constant_override("h_separation", 5)
 			row.add_theme_constant_override("v_separation", 5)
-			_add_disabled_action(row, "Choose power", &"select_spell_power")
-			_add_disabled_action(row, "Choose target", &"select_spell_target")
-			_add_bitmap_intent_action(row, &"spells.action.cast", "Cast", &"cast_spell", PlayerIntent.cast_spell(spell.id, character.id))
+			if spell.power_levels.is_empty():
+				_add_item_intent_action(row, &"spells.action.cast", "Cast", spell.field_cast, PlayerIntent.cast_spell(spell.id, character.id))
+			else:
+				for power: int in spell.power_levels:
+					var cost := absi(spell.cost * power)
+					_add_item_intent_action(row, &"", "Cast P%d (%d SP)" % [power, cost], spell.field_cast, PlayerIntent.cast_spell(spell.id, character.id, "", power))
+			if spell.scroll_power_levels.is_empty():
+				_add_item_intent_action(row, &"", "Make Scroll", spell.make_scroll, PlayerIntent.make_scroll(spell.id, character.id))
+			else:
+				for power: int in spell.scroll_power_levels:
+					var scribing_cost := absi(spell.cost * power * 2)
+					_add_item_intent_action(row, &"", "Make P%d Scroll (%d SP)" % [power, scribing_cost], spell.make_scroll, PlayerIntent.make_scroll(spell.id, character.id, power))
 			var abort := _bitmap_button(&"spells.action.abort", "Abort")
 			abort.tooltip_text = "Return to exploration without casting."
 			abort.command_requested.connect(func(_command_id: StringName) -> void: open_screen(&"exploration"))
 			row.add_child(abort)
 			_body.add_child(row)
+		_add_section_heading("%s's scroll case" % character.name, "Five fixed Classic slots")
+		for scroll: SpellScrollView in character.scrolls:
+			var scroll_row := HBoxContainer.new()
+			scroll_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			scroll_row.add_theme_constant_override("separation", 8)
+			var scroll_label := _add_label(scroll_row, "Slot %d • %s%s" % [scroll.slot_index + 1, scroll.spell_name, "" if scroll.power == 0 else " • Power %d" % scroll.power], MUTED if scroll.power == 0 else Color("e0e2e5"), 13)
+			scroll_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			scroll_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			_add_item_intent_action(scroll_row, &"", "Use", scroll.use, PlayerIntent.use_scroll(character.id, scroll.slot_index))
+			_body.add_child(scroll_row)
 	if _view.party_members.is_empty():
 		_add_empty_state("No spellbooks", "The party has no characters.")
 	elif not any_spells:

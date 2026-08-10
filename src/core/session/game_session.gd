@@ -202,7 +202,7 @@ func view() -> GameView:
 		member_view.apply_equipment(_rules.inventory.combat_equipment(character, _content.item_definitions()))
 		members.append(member_view)
 	var current_combat := CombatView.new(_state.combat, _state.party.characters(), _content, _rules.inventory, _rules.battlefield, _rules.combat_flow) if _state.combat != null else null
-	var result := GameView.new(_view_revision, true, _pending_interaction(), _state.party.map_id, _state.party.coordinate, _state.clock.day(), _state.clock.hour(), _build_map_view(), members, _state.party.fatigue, _state.party.pooled_wealth.gold, current_combat)
+	var result := GameView.new(_view_revision, true, _pending_interaction(), _state.party.map_id, _state.party.coordinate, _state.clock.day(), _state.clock.hour(), _state.clock.minute(), _build_map_view(), members, _state.party.fatigue, _state.party.pooled_wealth.gold, current_combat)
 	result.campaign_id = _content.campaign_id
 	result.rules_version = _content.rules_version
 	result.party_setup_available = not _state.party_setup_completed
@@ -232,6 +232,8 @@ func view() -> GameView:
 	result.party_summary.pooled_gold = _state.party.pooled_wealth.gold
 	result.party_summary.banked_gold = _state.party.banked_wealth.gold
 	result.party_summary.fatigue = _state.party.fatigue
+	result.party_summary.light_remaining = _state.party.conditions.value(0)
+	result.party_summary.camping = _state.party_camping
 	result.party_summary.acquired_map_ids = _state.world.acquired_map_ids()
 	if result.party_setup_available:
 		for race: RaceDefinition in _content.race_definitions():
@@ -243,6 +245,7 @@ func view() -> GameView:
 		for icon: CharacterAppearanceDefinition in _content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):
 			result.combat_icon_options.append(CharacterAppearanceOptionView.new(icon))
 	_populate_inventory_item_actions(result)
+	_populate_spell_actions(result)
 	_populate_money_workspace(result)
 	_populate_services(result)
 	_populate_action_availability(result)
@@ -315,15 +318,26 @@ func _populate_action_availability(result: GameView) -> void:
 			field_item_available = true
 			break
 	var combat_item_available := battle_active and not _rules.combat_flow.character_item_spell_options(_state, _content, result.combat_view.active_actor_id).is_empty()
-	result.set_action_availability(&"move", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Movement is unavailable during battle." if battle_active else "")
-	result.set_action_availability(&"search", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Search is unavailable during battle." if battle_active else "")
-	result.set_action_availability(&"camp", ordinary_reason.is_empty() and not battle_active and _state.camping_allowed, ordinary_reason if not ordinary_reason.is_empty() else "Camping is unavailable during battle." if battle_active else "Camping is unavailable here." if not _state.camping_allowed else "")
+	result.set_action_availability(&"move", ordinary_reason.is_empty() and not battle_active and not _state.party_camping, ordinary_reason if not ordinary_reason.is_empty() else "Movement is unavailable during battle." if battle_active else "Break camp before moving; Castle's automatic departure timing is not implemented yet." if _state.party_camping else "")
+	result.set_action_availability(&"search", ordinary_reason.is_empty() and not battle_active and not _state.party_camping, ordinary_reason if not ordinary_reason.is_empty() else "Search is unavailable during battle." if battle_active else "Search is replaced by scroll scribing while camped." if _state.party_camping else "")
+	result.set_action_availability(&"camp", ordinary_reason.is_empty() and not battle_active and (_state.camping_allowed or _state.party_camping), ordinary_reason if not ordinary_reason.is_empty() else "Camping is unavailable during battle." if battle_active else "Camping is unavailable here." if not _state.camping_allowed and not _state.party_camping else "")
 	result.set_action_availability(&"use_item", not blocked_by_interaction and (combat_item_available or not battle_active and field_item_available), "Resolve the current interaction first." if blocked_by_interaction else _rules.combat_flow.character_item_spell_unavailable_reason(_state, _content, result.combat_view.active_actor_id) if battle_active else "No carried item has a supported Classic field use.")
 	result.set_action_availability(&"use_item_on_target", not blocked_by_interaction and combat_item_available, "Resolve the current interaction first." if blocked_by_interaction else _rules.combat_flow.character_item_spell_unavailable_reason(_state, _content, result.combat_view.active_actor_id) if battle_active else "Targeted combat item use is available only during battle.")
+	var field_spell_available := false
+	var field_spell_reason := "No known spell has a supported Classic field use."
+	for member: CharacterView in result.party_members:
+		for spell: SpellView in member.spells:
+			if spell.field_cast.enabled:
+				field_spell_available = true
+				break
+			if not spell.field_cast.reason.is_empty():
+				field_spell_reason = spell.field_cast.reason
+		if field_spell_available:
+			break
 	var cast_reason := ordinary_reason
 	if cast_reason.is_empty():
-		cast_reason = "Combat spell selection is not wired into the battle interaction yet." if battle_active else "Field spell casting is not implemented in the current gameplay slice."
-	result.set_action_availability(&"cast_spell", false, cast_reason)
+		cast_reason = "Combat spell selection is not wired into the battle interaction yet." if battle_active else field_spell_reason
+	result.set_action_availability(&"cast_spell", not blocked_by_interaction and (battle_active or field_spell_available), "" if not blocked_by_interaction and (battle_active or field_spell_available) else cast_reason)
 	result.set_action_availability(&"choose_combat_action", battle_active and not blocked_by_interaction, "No battle action is currently available." if not battle_active else "Resolve the current interaction first." if blocked_by_interaction else "")
 	result.set_action_availability(&"create_party", party_setup and not blocked_by_interaction, "Resolve the current interaction first." if blocked_by_interaction else "Party creation is available only before beginning a campaign." if not party_setup else "")
 	result.set_action_availability(&"begin_adventure", party_setup and not blocked_by_interaction and setup_member_count > 0 and not draft_active, "Resolve the current interaction first." if blocked_by_interaction else "The adventure has already begun." if not party_setup else "Finish or cancel the character currently being created." if draft_active else "Add or import at least one character first.")
@@ -346,6 +360,54 @@ func _populate_action_availability(result: GameView) -> void:
 		&"open_journal", &"open_maps",
 	]:
 		result.set_action_availability(action_id, false, "Not implemented in the current gameplay slice.")
+
+
+func _populate_spell_actions(result: GameView) -> void:
+	var blocked_reason := "Resolve the current interaction first." if result.pending_interaction != null else "Complete party setup first." if result.party_setup_available else ""
+	var battle_active := result.combat_view != null and result.combat_view.outcome == &""
+	for member_view: CharacterView in result.party_members:
+		var character := _state.party.character_by_id(member_view.id)
+		for spell_view: SpellView in member_view.spells:
+			var spell := _content.spell_by_id(spell_view.id)
+			if not blocked_reason.is_empty():
+				spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
+				spell_view.make_scroll = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
+				continue
+			if battle_active:
+				spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", false, "Use the tactical spell action during battle.")
+				spell_view.make_scroll = ActionAvailabilityView.new(&"cast_spell", false, "Scroll scribing is unavailable during battle.")
+				continue
+			var first_reason := ""
+			for power: int in range(1, 8):
+				var probe := _field_spell_probe(character, spell, power)
+				if probe.allowed:
+					spell_view.power_levels.append(power)
+				elif first_reason.is_empty():
+					first_reason = probe.reason
+				if spell != null and spell.cost < 0:
+					break
+			spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", not spell_view.power_levels.is_empty(), first_reason)
+			var make_reason := ""
+			for power: int in range(1, 8):
+				var make_probe := _make_scroll_probe(character, spell, power)
+				if make_probe.allowed:
+					spell_view.scroll_power_levels.append(power)
+				elif make_reason.is_empty():
+					make_reason = make_probe.reason
+				if spell != null and spell.cost < 0:
+					break
+			spell_view.make_scroll = ActionAvailabilityView.new(&"cast_spell", not spell_view.scroll_power_levels.is_empty(), make_reason)
+		for scroll_view: SpellScrollView in member_view.scrolls:
+			if not blocked_reason.is_empty():
+				scroll_view.use = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
+				continue
+			if battle_active:
+				scroll_view.use = ActionAvailabilityView.new(&"cast_spell", false, "Combat scroll targeting is not implemented yet.")
+				continue
+			var scroll := character.scroll_at(scroll_view.slot_index)
+			var scroll_spell := _content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
+			var scroll_probe := _scroll_use_probe(character, scroll_view.slot_index, scroll_spell)
+			scroll_view.use = ActionAvailabilityView.new(&"cast_spell", scroll_probe.allowed, scroll_probe.reason)
 
 
 func _populate_inventory_item_actions(result: GameView) -> void:
@@ -480,9 +542,16 @@ func scenario_trace() -> Array[Dictionary]:
 func _camp() -> SessionStep:
 	if _state.combat != null and not _state.combat.completed:
 		return SessionStep.failed(_view_revision, &"camp_during_battle", "The party cannot camp during battle.")
-	if not _state.camping_allowed:
+	if not _state.camping_allowed and not _state.party_camping:
 		return SessionStep.failed(_view_revision, &"camping_disabled", "Camping is not allowed at this location.")
-	return _finish_with_age_updates(_rules.clock.camp(_state, _content), "completed")
+	_state.party_camping = not _state.party_camping
+	var events: Array[DomainEvent] = [DomainEvent.new(&"camp_mode_changed", {"camping": _state.party_camping, "source": "classic"})]
+	if _state.party_camping:
+		_state.clear_location_services()
+	var map := _content.world.map_by_id(_state.party.map_id)
+	var time_scale := 1 if map != null and map.level_type == &"dungeon" else 5
+	events.append_array(_rules.clock.advance_minutes(_state, _content, (5 if _state.party_camping else 2) * time_scale))
+	return _finish_with_age_updates(events, "completed")
 
 
 func _use_item(intent: PlayerIntent) -> SessionStep:
@@ -589,9 +658,12 @@ func _commit_field_spell_item(character_id: String, instance_id: String, spell_i
 		return SessionStep.failed(_view_revision, &"invalid_item_use_target", "The item target selection is unavailable.")
 	if not _rules.inventory.use_charge(character, instance.id, item):
 		return SessionStep.failed(_view_revision, &"item_charge_commit_failed", "The validated item charge could not be committed.")
-	var empty_monsters: Array[MonsterState] = []
-	var empty_definitions: Array[MonsterDefinition] = []
-	var resolution := _rules.magic.resolve_character_group_spell(character, targets, empty_monsters, empty_definitions, spell, power, spell.classic_tier(), _rng, false, false)
+	var castes: Array[CasteDefinition] = []
+	var races: Array[RaceDefinition] = []
+	for target: CharacterState in targets:
+		castes.append(_content.caste_by_id(target.caste_id))
+		races.append(_content.race_by_id(target.race_id))
+	var resolution := _rules.magic.resolve_field_spell(character, targets, spell, power, _rng, castes, races, false)
 	if resolution == null or not resolution.cast:
 		return SessionStep.failed(_view_revision, &"item_spell_failed", "The item spell could not be resolved.")
 	var charges_remaining := -1
@@ -708,6 +780,12 @@ static func _drop_item_confirmation_request(request_id: String, item_name: Strin
 
 
 func _cast_spell(intent: PlayerIntent) -> SessionStep:
+	if intent.action == &"make-scroll":
+		return _make_scroll(intent)
+	if intent.action == &"use-scroll":
+		return _use_scroll(intent)
+	if _state.combat == null or _state.combat.completed:
+		return _cast_field_spell(intent)
 	var result := _rules.combat_flow.cast_spell(_state, _content, intent.actor_id, intent.secondary_target_id, intent.target_id, intent.power_level, _rng, intent.target_coordinate, intent.rotation, intent.selected_ids)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
@@ -718,6 +796,319 @@ func _cast_spell(intent: PlayerIntent) -> SessionStep:
 	if result.completed:
 		return _finish_direct_battle(result.events)
 	return _finish_completed(result.events)
+
+
+func _make_scroll(intent: PlayerIntent) -> SessionStep:
+	if _state.combat != null and not _state.combat.completed:
+		return SessionStep.failed(_view_revision, &"scroll_scribing_in_battle", "Classic scroll scribing is available only while camped.")
+	var character := _state.party.character_by_id(intent.actor_id)
+	var spell := _content.spell_by_id(intent.target_id)
+	var probe := _make_scroll_probe(character, spell, intent.power_level)
+	if not probe.allowed:
+		return SessionStep.failed(_view_revision, &"scroll_scribing_unavailable", probe.reason)
+	var slot_index := _first_empty_scroll_slot(character)
+	var parchment := _parchment_instance(character)
+	var parchment_definition: ItemDefinition = null if parchment == null else _content.item_by_id(parchment.definition_id)
+	if slot_index < 0 or parchment == null or parchment_definition == null or not _rules.inventory.use_charge(character, parchment.id, parchment_definition):
+		return SessionStep.failed(_view_revision, &"scroll_scribing_commit_failed", "The validated scroll materials could not be committed.")
+	var cost := absi(spell.cost * intent.power_level * 2)
+	character.spell_points -= cost
+	if not character.write_scroll(slot_index, spell.id, intent.power_level):
+		return SessionStep.failed(_view_revision, &"scroll_scribing_commit_failed", "The validated scroll slot could not be committed.")
+	var events: Array[DomainEvent] = [DomainEvent.new(&"scroll_created", {"characterId": character.id, "slot": slot_index, "spellId": spell.id, "power": intent.power_level, "cost": cost, "parchmentInstanceId": parchment.id, "source": "classic"})]
+	var sound_id := spell.sound_start + 600
+	if sound_id != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(sound_id), "waitForCompletion": false, "source": "classic-scroll-scribing"}))
+	return _finish_completed(events)
+
+
+func _make_scroll_probe(character: CharacterState, spell: SpellDefinition, power: int) -> InventoryActionProbe:
+	if character == null or spell == null or not character.known_spells().has(spell.id):
+		return InventoryActionProbe.block("The character does not know that spell.")
+	if not _state.party_camping:
+		return InventoryActionProbe.block("Enter camp before making a scroll.")
+	if character.current_health < 1 or character.spellcaster_type < 1:
+		return InventoryActionProbe.block("The selected character cannot scribe scrolls.")
+	if not _has_equipped_scroll_case(character):
+		return InventoryActionProbe.block("Equip a scroll case before making a scroll.")
+	if _first_empty_scroll_slot(character) < 0:
+		return InventoryActionProbe.block("The scroll case already contains five spells.")
+	if _parchment_instance(character) == null:
+		return InventoryActionProbe.block("The character has no parchment.")
+	if power < 1 or power > 7 or spell.cost < 0 and power != 1:
+		return InventoryActionProbe.block("This spell does not support the selected scroll power.")
+	if character.spell_points < absi(spell.cost * power * 2):
+		return InventoryActionProbe.block("Scribing requires twice the spell's normal spell-point cost.")
+	return InventoryActionProbe.permit()
+
+
+func _use_scroll(intent: PlayerIntent) -> SessionStep:
+	if _state.combat != null and not _state.combat.completed:
+		return SessionStep.failed(_view_revision, &"combat_scroll_unavailable", "Combat scroll targeting is not implemented yet.")
+	var character := _state.party.character_by_id(intent.actor_id)
+	var scroll := character.scroll_at(intent.quantity) if character != null else null
+	var spell := _content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
+	var probe := _scroll_use_probe(character, intent.quantity, spell)
+	if not probe.allowed:
+		return SessionStep.failed(_view_revision, &"scroll_unavailable", probe.reason)
+	var target_ids := _field_spell_target_ids(character, spell, intent)
+	var required_count := _field_spell_target_count(spell, scroll.power)
+	if target_ids.size() == required_count:
+		return _commit_field_scroll(character.id, intent.quantity, spell.id, scroll.power, target_ids)
+	if not target_ids.is_empty():
+		return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
+	_session_continuation = {"kind": "scroll-target-selection", "characterId": character.id, "scrollSlot": intent.quantity, "spellId": spell.id, "power": scroll.power, "targetCount": required_count}
+	_session_interaction = _scroll_target_request("session.scroll:%s:%d:%d" % [character.id, intent.quantity, _view_revision + 1], character, intent.quantity, spell, required_count, _state.party.characters())
+	return _finish_waiting(_session_interaction, [DomainEvent.new(&"scroll_target_requested", {"characterId": character.id, "slot": intent.quantity, "spellId": spell.id, "power": scroll.power, "targetCount": required_count, "source": "classic"})])
+
+
+func _scroll_use_probe(character: CharacterState, slot_index: int, spell: SpellDefinition) -> InventoryActionProbe:
+	if character == null or slot_index < 0 or slot_index >= 5:
+		return InventoryActionProbe.block("The scroll slot is unavailable.")
+	var scroll := character.scroll_at(slot_index)
+	if scroll == null or scroll.is_empty() or spell == null or spell.id != scroll.spell_id or scroll.power < 1 or scroll.power > 7:
+		return InventoryActionProbe.block("This scroll slot is empty or invalid.")
+	if character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
+		return InventoryActionProbe.block("The selected character cannot use a scroll.")
+	if not _has_equipped_scroll_case(character):
+		return InventoryActionProbe.block("Equip the scroll case before using its spells.")
+	if not spell.in_camp:
+		return InventoryActionProbe.block("This scroll cannot be used outside battle; Classic offers to discard it.")
+	if spell.target_type < 0 or spell.target_type > 12:
+		return InventoryActionProbe.block("This scroll has an invalid Classic field target type.")
+	if spell.target_type in [3, 7, 9] and not _state.party.allies().is_empty():
+		return InventoryActionProbe.block("This scroll also targets allied creatures; that Classic field branch is not implemented yet.")
+	if not _field_spell_effect_supported(spell):
+		return InventoryActionProbe.block("This scroll's Classic field effect is not implemented yet.")
+	return InventoryActionProbe.permit()
+
+
+func _commit_field_scroll(character_id: String, slot_index: int, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionStep:
+	var character := _state.party.character_by_id(character_id)
+	var spell := _content.spell_by_id(spell_id)
+	var probe := _scroll_use_probe(character, slot_index, spell)
+	if not probe.allowed:
+		return SessionStep.failed(_view_revision, &"scroll_unavailable", probe.reason)
+	var selected: Dictionary = {}
+	for target_id: String in requested_target_ids:
+		if target_id.is_empty() or selected.has(target_id) or _state.party.character_by_id(target_id) == null:
+			return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll target selection contains an unavailable or duplicate character.")
+		selected[target_id] = true
+	if selected.size() != _field_spell_target_count(spell, power):
+		return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll target selection has the wrong number of characters.")
+	var targets: Array[CharacterState] = []
+	var castes: Array[CasteDefinition] = []
+	var races: Array[RaceDefinition] = []
+	for member: CharacterState in _state.party.characters():
+		if selected.has(member.id):
+			targets.append(member)
+			castes.append(_content.caste_by_id(member.caste_id))
+			races.append(_content.race_by_id(member.race_id))
+	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
+	var resolution := _rules.magic.resolve_field_spell(character, targets, spell, power, _rng, castes, races, false, allow_empty)
+	if resolution == null or not resolution.cast:
+		return SessionStep.failed(_view_revision, &"scroll_spell_failed", "The scroll spell could not be resolved.")
+	if not character.clear_scroll(slot_index):
+		return SessionStep.failed(_view_revision, &"scroll_commit_failed", "The resolved scroll could not be removed from its case.")
+	var events: Array[DomainEvent] = [DomainEvent.new(&"scroll_used", {"characterId": character.id, "slot": slot_index, "spellId": spell.id, "power": power, "source": "classic"})]
+	var start_sound := spell.sound_start + 600
+	if start_sound != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(start_sound), "waitForCompletion": true, "source": "classic-scroll"}))
+	var special := absi(spell.special)
+	if special == 68:
+		_state.party.fatigue = 4
+		events.append(DomainEvent.new(&"party_fatigue_changed", {"fatigue": 4, "spellId": spell.id, "source": "classic-scroll"}))
+	elif spell.target_type == 7:
+		var condition_index := 0 if special == 50 else special
+		var next_value := power * 30 - 1 if special == 50 else maxi(_state.party.conditions.value(condition_index), resolution.duration)
+		if special != 50 or power * 30 > _state.party.conditions.value(condition_index):
+			_state.party.conditions.set_value(condition_index, next_value)
+		events.append(DomainEvent.new(&"party_condition_changed", {"condition": condition_index, "value": _state.party.conditions.value(condition_index), "spellId": spell.id, "source": "classic-scroll"}))
+	for index: int in resolution.resolutions.size():
+		var target_resolution := resolution.resolutions[index]
+		events.append(DomainEvent.new(&"scroll_spell_resolved", {"characterId": character.id, "targetId": resolution.target_ids[index], "spellId": spell.id, "power": power, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}))
+		if target_resolution.aging != null and target_resolution.aging.changed_group():
+			var target := _state.party.character_by_id(resolution.target_ids[index])
+			events.append(DomainEvent.new(&"character_age_changed", target_resolution.aging.event_payload(target, _content.race_by_id(target.race_id))))
+	if spell.target_type == 11 and spell.sound_end + 600 != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(spell.sound_end + 600), "waitForCompletion": false, "source": "classic-scroll"}))
+	if not CharacterAgingResult.update_payloads(events).is_empty():
+		return _finish_with_age_updates(events, "completed")
+	return _finish_completed(events)
+
+
+func _has_equipped_scroll_case(character: CharacterState) -> bool:
+	if character == null:
+		return false
+	for instance: ItemInstance in character.inventory():
+		var definition := _content.item_by_id(instance.definition_id)
+		if instance.equipped and definition != null and absi(definition.item_type) == 13:
+			return true
+	return false
+
+
+func _parchment_instance(character: CharacterState) -> ItemInstance:
+	if character == null:
+		return null
+	for instance: ItemInstance in character.inventory():
+		var definition := _content.item_by_id(instance.definition_id)
+		if definition != null and definition.classic_id == 806 and instance.charges != 0:
+			return instance
+	return null
+
+
+static func _first_empty_scroll_slot(character: CharacterState) -> int:
+	if character == null:
+		return -1
+	for index: int in character.scroll_case().size():
+		if character.scroll_at(index).is_empty():
+			return index
+	return -1
+
+
+static func _scroll_target_request(request_id: String, character: CharacterState, slot_index: int, spell: SpellDefinition, required_count: int, party: Array[CharacterState]) -> InteractionRequest:
+	var eligible: Array[Dictionary] = []
+	for member: CharacterState in party:
+		eligible.append({"id": member.id, "name": member.name, "currentHealth": member.current_health, "maximumHealth": member.maximum_health})
+	return InteractionRequest.new(request_id, InteractionRequest.CHARACTER_SELECTION, {"prompt": "%s uses %s from scroll slot %d. Choose %d target%s." % [character.name, spell.name, slot_index + 1, required_count, "" if required_count == 1 else "s"], "count": required_count, "eligible": eligible, "mode": "scroll-use", "scrollSlot": slot_index, "spellId": spell.id})
+
+
+func _cast_field_spell(intent: PlayerIntent) -> SessionStep:
+	var character := _state.party.character_by_id(intent.actor_id)
+	var spell := _content.spell_by_id(intent.target_id)
+	var probe := _field_spell_probe(character, spell, intent.power_level)
+	if not probe.allowed:
+		return SessionStep.failed(_view_revision, &"field_spell_unavailable", probe.reason)
+	var target_ids := _field_spell_target_ids(character, spell, intent)
+	var required_count := _field_spell_target_count(spell, intent.power_level)
+	if target_ids.size() == required_count:
+		return _commit_field_spell(character.id, spell.id, intent.power_level, target_ids)
+	if not target_ids.is_empty():
+		return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
+	_session_continuation = {"kind": "field-spell-target-selection", "characterId": character.id, "spellId": spell.id, "power": intent.power_level, "targetCount": required_count, "startingSpellPoints": character.spell_points}
+	_session_interaction = _field_spell_target_request("session.field-spell:%s:%d" % [spell.id, _view_revision + 1], character, spell, required_count, _state.party.characters())
+	return _finish_waiting(_session_interaction, [DomainEvent.new(&"field_spell_target_requested", {"characterId": character.id, "spellId": spell.id, "power": intent.power_level, "targetCount": required_count, "source": "classic"})])
+
+
+func _field_spell_probe(character: CharacterState, spell: SpellDefinition, power: int) -> InventoryActionProbe:
+	if character == null or spell == null or not character.known_spells().has(spell.id):
+		return InventoryActionProbe.block("The character does not know that spell.")
+	if _state.character_spellcasting_blocked:
+		return InventoryActionProbe.block("Classic scenario state currently blocks character spellcasting.")
+	if character.current_health < 1 or character.spell_points < 1:
+		return InventoryActionProbe.block("The character cannot cast in their current state.")
+	for condition: int in [ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS, ConditionRules.STUPID, ConditionRules.ANIMATED]:
+		if character.conditions.is_active(condition):
+			return InventoryActionProbe.block("The character's current Classic condition prevents spellcasting.")
+	if not spell.in_camp:
+		return InventoryActionProbe.block("This spell cannot be cast outside battle.")
+	if power < 1 or power > 7 or spell.cost < 0 and power != 1:
+		return InventoryActionProbe.block("This spell does not support the selected power level.")
+	if character.spell_points < absi(spell.cost * power):
+		return InventoryActionProbe.block("The character does not have enough spell points.")
+	if spell.target_type < 0 or spell.target_type > 12:
+		return InventoryActionProbe.block("This spell has an invalid Classic field target type.")
+	if spell.target_type in [3, 7, 9] and not _state.party.allies().is_empty():
+		return InventoryActionProbe.block("This spell also targets allied creatures; that Classic field branch is not implemented yet.")
+	if not _field_spell_effect_supported(spell):
+		return InventoryActionProbe.block("This spell's Classic field effect is not implemented yet.")
+	return InventoryActionProbe.permit()
+
+
+func _field_spell_effect_supported(spell: SpellDefinition) -> bool:
+	var special := absi(spell.special)
+	if spell.target_type == 7:
+		return special == 50 or special >= 1 and special < ConditionSet.PARTY_COUNT
+	if special == 68:
+		return true
+	if special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or special > 99:
+		return true
+	return special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+
+
+func _field_spell_target_ids(character: CharacterState, spell: SpellDefinition, intent: PlayerIntent) -> Array[String]:
+	if spell.target_type == 5:
+		return [character.id]
+	if spell.target_type > 2:
+		if spell.target_type == 7 or absi(spell.special) == 68:
+			return []
+		var party_ids: Array[String] = []
+		for member: CharacterState in _state.party.characters():
+			party_ids.append(member.id)
+		return party_ids
+	var values: Array[String] = intent.selected_ids.duplicate()
+	if values.is_empty() and not intent.secondary_target_id.is_empty():
+		values.append(intent.secondary_target_id)
+	return values
+
+
+func _field_spell_target_count(spell: SpellDefinition, power: int) -> int:
+	if spell.target_type == 7 or absi(spell.special) == 68:
+		return 0
+	if spell.target_type == 5:
+		return 1
+	if spell.target_type > 2:
+		return _state.party.characters().size()
+	return mini(power, _state.party.characters().size()) if spell.target_type == 0 else 1
+
+
+func _commit_field_spell(character_id: String, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionStep:
+	var character := _state.party.character_by_id(character_id)
+	var spell := _content.spell_by_id(spell_id)
+	var probe := _field_spell_probe(character, spell, power)
+	if not probe.allowed:
+		return SessionStep.failed(_view_revision, &"field_spell_unavailable", probe.reason)
+	var selected: Dictionary = {}
+	for target_id: String in requested_target_ids:
+		if target_id.is_empty() or selected.has(target_id) or _state.party.character_by_id(target_id) == null:
+			return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell target selection contains an unavailable or duplicate character.")
+		selected[target_id] = true
+	if selected.size() != _field_spell_target_count(spell, power):
+		return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell target selection has the wrong number of characters.")
+	var targets: Array[CharacterState] = []
+	var castes: Array[CasteDefinition] = []
+	var races: Array[RaceDefinition] = []
+	for member: CharacterState in _state.party.characters():
+		if selected.has(member.id):
+			targets.append(member)
+			castes.append(_content.caste_by_id(member.caste_id))
+			races.append(_content.race_by_id(member.race_id))
+	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
+	var resolution := _rules.magic.resolve_field_spell(character, targets, spell, power, _rng, castes, races, true, allow_empty)
+	if resolution == null or not resolution.cast:
+		return SessionStep.failed(_view_revision, &"field_spell_failed", "The field spell could not be resolved.")
+	var events: Array[DomainEvent] = [DomainEvent.new(&"field_spell_cast", {"characterId": character.id, "spellId": spell.id, "power": power, "cost": resolution.cost, "source": "classic"})]
+	var start_sound := spell.sound_start + 600
+	if start_sound != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(start_sound), "waitForCompletion": true, "source": "classic-field-spell"}))
+	var special := absi(spell.special)
+	if special == 68:
+		_state.party.fatigue = 4
+		events.append(DomainEvent.new(&"party_fatigue_changed", {"fatigue": 4, "spellId": spell.id, "source": "classic"}))
+	elif spell.target_type == 7:
+		var condition_index := 0 if special == 50 else special
+		var next_value := power * 30 - 1 if special == 50 else maxi(_state.party.conditions.value(condition_index), resolution.duration)
+		if special != 50 or power * 30 > _state.party.conditions.value(condition_index):
+			_state.party.conditions.set_value(condition_index, next_value)
+		events.append(DomainEvent.new(&"party_condition_changed", {"condition": condition_index, "value": _state.party.conditions.value(condition_index), "spellId": spell.id, "source": "classic"}))
+	for index: int in resolution.resolutions.size():
+		var target_resolution := resolution.resolutions[index]
+		events.append(DomainEvent.new(&"field_spell_resolved", {"characterId": character.id, "targetId": resolution.target_ids[index], "spellId": spell.id, "power": power, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}))
+		if target_resolution.aging != null and target_resolution.aging.changed_group():
+			var target := _state.party.character_by_id(resolution.target_ids[index])
+			events.append(DomainEvent.new(&"character_age_changed", target_resolution.aging.event_payload(target, _content.race_by_id(target.race_id))))
+	if spell.target_type == 11 and spell.sound_end + 600 != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(spell.sound_end + 600), "waitForCompletion": false, "source": "classic-field-spell"}))
+	if not CharacterAgingResult.update_payloads(events).is_empty():
+		return _finish_with_age_updates(events, "completed")
+	return _finish_completed(events)
+
+
+static func _field_spell_target_request(request_id: String, character: CharacterState, spell: SpellDefinition, required_count: int, party: Array[CharacterState]) -> InteractionRequest:
+	var eligible: Array[Dictionary] = []
+	for member: CharacterState in party:
+		eligible.append({"id": member.id, "name": member.name, "currentHealth": member.current_health, "maximumHealth": member.maximum_health})
+	return InteractionRequest.new(request_id, InteractionRequest.CHARACTER_SELECTION, {"prompt": "%s casts %s. Choose %d target%s." % [character.name, spell.name, required_count, "" if required_count == 1 else "s"], "count": required_count, "eligible": eligible, "mode": "field-spell", "spellId": spell.id})
 
 
 func _combat_action(intent: PlayerIntent) -> SessionStep:
@@ -865,6 +1256,9 @@ func _import_vault_character(intent: PlayerIntent) -> SessionStep:
 	for spell_id: String in imported.known_spells():
 		if _content.spell_by_id(spell_id) == null:
 			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character knows a spell unavailable in this campaign.")
+	for scroll: SpellScrollState in imported.scroll_case():
+		if not scroll.is_empty() and _content.spell_by_id(scroll.spell_id) == null:
+			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's scroll case contains a spell unavailable in this campaign.")
 	if _content.has_character_appearance_catalog():
 		var portrait := _content.appearance_by_id(imported.portrait_id) if not imported.portrait_id.is_empty() else null
 		if (portrait != null and portrait.kind != CharacterAppearanceDefinition.PORTRAIT) or (not imported.portrait_id.is_empty() and portrait == null):
@@ -1089,6 +1483,9 @@ static func _party_inventory_is_valid(content: RealmzContent, state: GameState, 
 	for character: CharacterState in state.party.characters():
 		if rules.inventory.calculated_load(character, definitions) != character.carried_load:
 			return false
+		for scroll: SpellScrollState in character.scroll_case():
+			if not scroll.is_empty() and content.spell_by_id(scroll.spell_id) == null:
+				return false
 	return true
 
 
@@ -1127,6 +1524,8 @@ func _next_party_character_id() -> String:
 
 
 func _search() -> SessionStep:
+	if _state.party_camping:
+		return SessionStep.failed(_view_revision, &"search_while_camped", "Search is replaced by scroll scribing while camped.")
 	_state.mark_searched(_state.party.map_id, _state.party.coordinate)
 	var current_map := _content.world.map_by_id(_state.party.map_id)
 	var discovered: Array[String] = []
@@ -1151,6 +1550,8 @@ func _search() -> SessionStep:
 
 
 func _move(direction: Vector2i) -> SessionStep:
+	if _state.party_camping:
+		return SessionStep.failed(_view_revision, &"movement_while_camped", "Break camp before moving; Castle's automatic departure timing is not implemented yet.")
 	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world)
 	if not movement.allowed and movement.reason == &"invalid_direction":
 		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
@@ -1549,6 +1950,10 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 		return _respond_drop_item(response)
 	if _session_continuation.get("kind") == "item-use-target-selection":
 		return _respond_item_use_target(response)
+	if _session_continuation.get("kind") == "field-spell-target-selection":
+		return _respond_field_spell_target(response)
+	if _session_continuation.get("kind") == "scroll-target-selection":
+		return _respond_scroll_target(response)
 	if _session_continuation.get("kind") == "character-spell-confirmation":
 		return _respond_character_spell_confirmation(response)
 	if _session_continuation.get("kind") == "character-vault-publication":
@@ -1613,6 +2018,64 @@ func _respond_item_use_target(response: InteractionResponse) -> SessionStep:
 	_session_continuation.clear()
 	_session_interaction = null
 	var completed := _commit_field_spell_item(character_id, instance_id, spell_id, power, target_ids)
+	if completed.state == SessionStep.State.FAILED:
+		_session_continuation = saved_continuation
+		_session_interaction = saved_interaction
+	return completed
+
+
+func _respond_field_spell_target(response: InteractionResponse) -> SessionStep:
+	if response.kind != InteractionRequest.CHARACTER_SELECTION or not response.payload.get("characterIds") is Array:
+		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Field casting requires an ordered characterIds array.")
+	var target_ids: Array[String] = []
+	for value: Variant in response.payload["characterIds"]:
+		if not value is String:
+			return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Every spell target must use a stable character ID.")
+		target_ids.append(value)
+	var expected_count := int(_session_continuation.get("targetCount", 0))
+	if target_ids.size() != expected_count:
+		return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell requires exactly %d target%s." % [expected_count, "" if expected_count == 1 else "s"])
+	var character_id := String(_session_continuation.get("characterId", ""))
+	var spell_id := String(_session_continuation.get("spellId", ""))
+	var power := int(_session_continuation.get("power", 0))
+	var character := _state.party.character_by_id(character_id)
+	if character == null or character.spell_points != int(_session_continuation.get("startingSpellPoints", -100_000)):
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The field spell awaiting a target no longer matches its committed state.")
+	var saved_continuation := _session_continuation.duplicate(true)
+	var saved_interaction := _session_interaction
+	_session_continuation.clear()
+	_session_interaction = null
+	var completed := _commit_field_spell(character_id, spell_id, power, target_ids)
+	if completed.state == SessionStep.State.FAILED:
+		_session_continuation = saved_continuation
+		_session_interaction = saved_interaction
+	return completed
+
+
+func _respond_scroll_target(response: InteractionResponse) -> SessionStep:
+	if response.kind != InteractionRequest.CHARACTER_SELECTION or not response.payload.get("characterIds") is Array:
+		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Scroll use requires an ordered characterIds array.")
+	var target_ids: Array[String] = []
+	for value: Variant in response.payload["characterIds"]:
+		if not value is String:
+			return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Every scroll target must use a stable character ID.")
+		target_ids.append(value)
+	var expected_count := int(_session_continuation.get("targetCount", 0))
+	if target_ids.size() != expected_count:
+		return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll requires exactly %d target%s." % [expected_count, "" if expected_count == 1 else "s"])
+	var character_id := String(_session_continuation.get("characterId", ""))
+	var slot_index := int(_session_continuation.get("scrollSlot", -1))
+	var spell_id := String(_session_continuation.get("spellId", ""))
+	var power := int(_session_continuation.get("power", 0))
+	var character := _state.party.character_by_id(character_id)
+	var scroll := character.scroll_at(slot_index) if character != null else null
+	if scroll == null or scroll.spell_id != spell_id or scroll.power != power:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The scroll awaiting a target no longer matches its committed state.")
+	var saved_continuation := _session_continuation.duplicate(true)
+	var saved_interaction := _session_interaction
+	_session_continuation.clear()
+	_session_interaction = null
+	var completed := _commit_field_scroll(character_id, slot_index, spell_id, power, target_ids)
 	if completed.state == SessionStep.State.FAILED:
 		_session_continuation = saved_continuation
 		_session_interaction = saved_interaction
@@ -2022,6 +2485,63 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 		var item_probe := RealmzRules.new().inventory.classic_spell_item_probe(item_character, item_instance, item_definition, item_spell, content.race_by_id(item_character.race_id), content.caste_by_id(item_character.caste_id), false)
 		var item_effect_supported := item_spell.special == 0 and absi(item_spell.damage_type) >= 1 and absi(item_spell.damage_type) <= 6 and absi(item_spell.spell_class) != 9 or absi(item_spell.special) == 57
 		return item_probe.allowed and item_effect_supported and session_interaction.to_data() == _item_target_request(session_interaction.request_id, item_character, item_instance.id, item_definition, item_spell, expected_count, state.party.characters()).to_data()
+	if continuation.get("kind") == "field-spell-target-selection":
+		var field_spell_fields: Array[String] = ["kind", "characterId", "spellId", "power", "targetCount", "startingSpellPoints"]
+		if continuation.size() != field_spell_fields.size() or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.CHARACTER_SELECTION or state.combat != null:
+			return false
+		for field: String in field_spell_fields:
+			if not continuation.has(field):
+				return false
+		if not continuation["characterId"] is String or not continuation["spellId"] is String or not continuation["power"] is int or not continuation["targetCount"] is int or not continuation["startingSpellPoints"] is int:
+			return false
+		var field_character := state.party.character_by_id(continuation["characterId"])
+		var field_spell := content.spell_by_id(continuation["spellId"])
+		var field_power: int = continuation["power"]
+		if field_character == null or field_spell == null or not field_character.known_spells().has(field_spell.id) or field_character.spell_points != continuation["startingSpellPoints"] or field_power < 1 or field_power > 7:
+			return false
+		if state.character_spellcasting_blocked or field_character.current_health < 1 or field_character.spell_points < absi(field_spell.cost * field_power) or not field_spell.in_camp or field_spell.cost < 0 and field_power != 1:
+			return false
+		for condition: int in [ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS, ConditionRules.STUPID, ConditionRules.ANIMATED]:
+			if field_character.conditions.is_active(condition):
+				return false
+		var field_special := absi(field_spell.special)
+		var supported := field_special == 68 or field_special > 0 and field_special < 41 or field_special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or field_special > 99 or field_special == 0 and absi(field_spell.damage_type) >= 1 and absi(field_spell.damage_type) < 8 and (field_spell.damage_min != 0 or field_spell.damage_max != 0 or field_spell.power_damage_min != 0 or field_spell.power_damage_max != 0)
+		var expected_field_count := mini(field_power, state.party.characters().size()) if field_spell.target_type == 0 else 1
+		if continuation["targetCount"] != expected_field_count or field_spell.target_type < 0 or field_spell.target_type > 2 or not supported:
+			return false
+		return session_interaction.to_data() == _field_spell_target_request(session_interaction.request_id, field_character, field_spell, expected_field_count, state.party.characters()).to_data()
+	if continuation.get("kind") == "scroll-target-selection":
+		var scroll_fields: Array[String] = ["kind", "characterId", "scrollSlot", "spellId", "power", "targetCount"]
+		if continuation.size() != scroll_fields.size() or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.CHARACTER_SELECTION or state.combat != null:
+			return false
+		for field: String in scroll_fields:
+			if not continuation.has(field):
+				return false
+		if not continuation["characterId"] is String or not continuation["scrollSlot"] is int or not continuation["spellId"] is String or not continuation["power"] is int or not continuation["targetCount"] is int:
+			return false
+		var scroll_character := state.party.character_by_id(continuation["characterId"])
+		var scroll_slot: int = continuation["scrollSlot"]
+		var scroll_spell := content.spell_by_id(continuation["spellId"])
+		var scroll_power: int = continuation["power"]
+		var scroll_state := scroll_character.scroll_at(scroll_slot) if scroll_character != null else null
+		if scroll_character == null or scroll_state == null or scroll_spell == null or scroll_state.spell_id != scroll_spell.id or scroll_state.power != scroll_power or scroll_power < 1 or scroll_power > 7:
+			return false
+		if scroll_character.current_health < 1 or scroll_character.conditions.is_active(ConditionRules.ANIMATED) or not scroll_spell.in_camp:
+			return false
+		var has_case := false
+		for carried: ItemInstance in scroll_character.inventory():
+			var carried_definition := content.item_by_id(carried.definition_id)
+			if carried.equipped and carried_definition != null and absi(carried_definition.item_type) == 13:
+				has_case = true
+				break
+		if not has_case:
+			return false
+		var scroll_special := absi(scroll_spell.special)
+		var scroll_supported := scroll_special == 68 or scroll_special > 0 and scroll_special < 41 or scroll_special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or scroll_special > 99 or scroll_special == 0 and absi(scroll_spell.damage_type) >= 1 and absi(scroll_spell.damage_type) < 8 and (scroll_spell.damage_min != 0 or scroll_spell.damage_max != 0 or scroll_spell.power_damage_min != 0 or scroll_spell.power_damage_max != 0)
+		var expected_scroll_count := mini(scroll_power, state.party.characters().size()) if scroll_spell.target_type == 0 else 1
+		if continuation["targetCount"] != expected_scroll_count or scroll_spell.target_type < 0 or scroll_spell.target_type > 2 or not scroll_supported:
+			return false
+		return session_interaction.to_data() == _scroll_target_request(session_interaction.request_id, scroll_character, scroll_slot, scroll_spell, expected_scroll_count, state.party.characters()).to_data()
 	if continuation.get("kind") == "character-spell-confirmation":
 		var spell_fields: Array[String] = ["kind", "characterId", "remaining"]
 		if continuation.size() != spell_fields.size() or vm_interaction != null or session_interaction == null:

@@ -1,0 +1,28 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-SPELL-001",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/castspell.c",
+      "symbol": "short castspell(void)",
+      "range": "681-715"
+    },
+    {
+      "path": "src/realmz_orig/buttonchoice.c",
+      "symbol": "short buttonchoice(void)",
+      "range": "604-625"
+    }
+  ],
+  "castleSourceObservation": {
+    "spellPointsDeductedBeforeTargetSelection": true,
+    "cancelledTargetSelectionRefundsSpellPoints": false,
+    "effectResolvedAfterCancellation": false
+  },
+  "realmz2ChosenResult": {
+    "spellPointsDeductedAfterValidTargetSelection": true,
+    "invalidOrCancelledSelectionPreservesSpellPoints": true,
+    "effectRandomnessBeginsAfterValidTargetSelection": true
+  }
+}

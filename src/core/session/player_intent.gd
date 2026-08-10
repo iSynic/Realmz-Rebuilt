@@ -94,6 +94,20 @@ static func cast_spell(spell_id: String, caster_id: String = "", target_combatan
 	return intent
 
 
+static func make_scroll(spell_id: String, caster_id: String, power: int = 1) -> PlayerIntent:
+	var intent := cast_spell(spell_id, caster_id, "", power)
+	intent.action = &"make-scroll"
+	return intent
+
+
+static func use_scroll(caster_id: String, slot_index: int, target_character_ids: Array[String] = []) -> PlayerIntent:
+	var intent := cast_spell("", caster_id)
+	intent.action = &"use-scroll"
+	intent.quantity = slot_index
+	intent.selected_ids = target_character_ids.duplicate()
+	return intent
+
+
 static func cast_spell_at(spell_id: String, caster_id: String, coordinate: Vector2i, power: int = 1, area_rotation: int = 0) -> PlayerIntent:
 	var intent := cast_spell(spell_id, caster_id, "", power)
 	intent.target_coordinate = coordinate

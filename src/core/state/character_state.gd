@@ -48,6 +48,7 @@ var _specials: Array[int] = []
 var _abilities: Array[int] = []
 var _inventory: Array[ItemInstance] = []
 var _known_spells: Array[String] = []
+var _scroll_case: Array[SpellScrollState] = []
 
 
 func _init(character_id: String, character_name: String, health: int, max_health: int) -> void:
@@ -63,6 +64,8 @@ func _init(character_id: String, character_name: String, health: int, max_health
 	_specials.fill(0)
 	_abilities.resize(15)
 	_abilities.fill(0)
+	for index: int in 5:
+		_scroll_case.append(SpellScrollState.new())
 
 
 func save_value(index: int) -> int:
@@ -121,10 +124,45 @@ func set_known_spells(spell_ids: Array[String]) -> void:
 	_known_spells = spell_ids.duplicate()
 
 
+func scroll_case() -> Array[SpellScrollState]:
+	return _scroll_case.duplicate()
+
+
+func scroll_at(index: int) -> SpellScrollState:
+	return null if index < 0 or index >= _scroll_case.size() else _scroll_case[index]
+
+
+func set_scroll_case(scrolls: Array[SpellScrollState]) -> bool:
+	if scrolls.size() != 5:
+		return false
+	for scroll: SpellScrollState in scrolls:
+		if scroll == null:
+			return false
+	_scroll_case = scrolls.duplicate()
+	return true
+
+
+func write_scroll(index: int, spell_id: String, power: int) -> bool:
+	if index < 0 or index >= _scroll_case.size() or spell_id.is_empty() or power < 1 or power > 7:
+		return false
+	_scroll_case[index] = SpellScrollState.new(spell_id, power)
+	return true
+
+
+func clear_scroll(index: int) -> bool:
+	if index < 0 or index >= _scroll_case.size():
+		return false
+	_scroll_case[index] = SpellScrollState.new()
+	return true
+
+
 func to_data() -> Dictionary:
 	var item_data: Array[Dictionary] = []
 	for item: ItemInstance in _inventory:
 		item_data.append(item.to_data())
+	var scroll_data: Array[Dictionary] = []
+	for scroll: SpellScrollState in _scroll_case:
+		scroll_data.append(scroll.to_data())
 	return {
 		"id": id, "name": name, "currentHealth": current_health, "maximumHealth": maximum_health,
 		"raceId": race_id, "casteId": caste_id, "gender": gender, "portraitId": portrait_id, "combatIconId": combat_icon_id, "level": level, "experience": experience, "ageDays": age_days, "ageGroup": age_group,
@@ -136,7 +174,7 @@ func to_data() -> Dictionary:
 		"prestigePenalty": prestige_penalty,
 		"traitor": traitor,
 		"conditions": conditions.to_data(), "money": money.to_data(), "saves": _saves.duplicate(), "specials": _specials.duplicate(), "abilities": _abilities.duplicate(),
-		"inventory": item_data, "knownSpells": _known_spells.duplicate(),
+		"inventory": item_data, "knownSpells": _known_spells.duplicate(), "scrollCase": scroll_data,
 	}
 
 
@@ -219,6 +257,19 @@ static func from_data(data: Variant) -> CharacterState:
 		if not spell_id is String or spell_id.is_empty():
 			return null
 		spells.append(spell_id)
+	var scrolls: Array[SpellScrollState] = []
+	var scroll_data: Variant = data.get("scrollCase", [])
+	if not scroll_data is Array or scroll_data.size() not in [0, 5]:
+		return null
+	if scroll_data.is_empty():
+		for index: int in 5:
+			scrolls.append(SpellScrollState.new())
+	else:
+		for value: Variant in scroll_data:
+			var scroll := SpellScrollState.from_data(value)
+			if scroll == null:
+				return null
+			scrolls.append(scroll)
 	result.race_id = data["raceId"]
 	result.caste_id = data["casteId"]
 	result.gender = numeric_values["gender"]
@@ -266,6 +317,7 @@ static func from_data(data: Variant) -> CharacterState:
 	result._abilities = abilities
 	result._inventory = items
 	result._known_spells = spells
+	result._scroll_case = scrolls
 	return result
 
 
