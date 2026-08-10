@@ -17,6 +17,7 @@ func run() -> void:
 	_test_spatial_stage_visibility()
 	_test_character_creator_workflow()
 	_test_character_vault_workspace()
+	_test_inventory_workspace()
 	_test_scene_composition()
 
 
@@ -513,6 +514,63 @@ func _test_character_vault_workspace() -> void:
 	if restore_button != null:
 		restore_button.pressed.emit()
 	assert_equal(restore_events, [[archived.character_id, archived.revision_hash]], "recovery identifies the exact immutable revision")
+	router.free()
+
+
+func _test_inventory_workspace() -> void:
+	var definition := ItemDefinition.new("classic.item.inventory-ui", 10, "Longsword", "Sword", "A balanced one-handed sword.")
+	definition.icon_id = 321
+	definition.item_type = 2
+	definition.weight = 12
+	definition.cost = 45
+	var source := CharacterState.new("inventory.ui.source", "Alis", 10, 10)
+	source.maximum_load = 100
+	source.carried_load = 12
+	source.set_inventory([ItemInstance.new("inventory.ui.item", definition.id, 0, false, true)])
+	var destination := CharacterState.new("inventory.ui.destination", "Borin", 10, 10)
+	destination.maximum_load = 100
+	var source_view := CharacterView.new(source)
+	source_view.items.clear()
+	var item_view := ItemView.new(source.inventory()[0], definition)
+	item_view.actions.equip = ActionAvailabilityView.new(&"equip_item", true)
+	item_view.actions.drop = ActionAvailabilityView.new(&"drop_item", true)
+	item_view.actions.trade = ActionAvailabilityView.new(&"trade_item", true)
+	item_view.actions.trade_targets.append(ItemTransferTargetView.new(destination.id, destination.name, true))
+	source_view.items.append(item_view)
+	var view := GameView.new(4, true, null)
+	view.party_members = [source_view, CharacterView.new(destination)]
+	var router := ClassicScreenRouter.new()
+	router._body = VBoxContainer.new()
+	router._content_parent = router._body
+	router.add_child(router._body)
+	router._view = view
+	var intents: Array[PlayerIntent] = []
+	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	router._render_inventory()
+	var buttons: Array[BaseButton] = []
+	var labels: Array[String] = []
+	for node: Node in router.find_children("*", "BaseButton", true, false):
+		buttons.append(node as BaseButton)
+	for node: Node in router.find_children("*", "Label", true, false):
+		labels.append((node as Label).text)
+	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Alis") and (button as Button).text.contains("12/100")), "inventory workspace selects a character before an item")
+	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Longsword")), "inventory workspace renders a selectable carried-item list")
+	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Equip" and not button.disabled), "an action without donor bitmap art remains visible as a labeled typed control")
+	var trade_button: BaseButton = null
+	for button: BaseButton in buttons:
+		if button is Button and (button as Button).text == "Give to Borin":
+			trade_button = button
+	assert_not_null(trade_button, "inventory workspace exposes each typed trade recipient")
+	assert_true(trade_button != null and not trade_button.disabled, "a rules-authorized trade recipient is actionable")
+	assert_false(buttons.any(func(button: BaseButton) -> bool: return (button is Button and (button as Button).text == "Store") or button.tooltip_text == "Store"), "ordinary inventory does not invent Remake's non-Classic player stash")
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("opcode 36 equipment escrow")), "the workspace explains why scenario-owned equipment escrow is not a stash")
+	assert_true(buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text.contains("use effect") and button.tooltip_text.contains("not implemented")), "unsafe item use remains visible with an exact disabled reason")
+	if trade_button != null:
+		trade_button.pressed.emit()
+	assert_equal(intents.size(), 1, "trade emits exactly one typed intent")
+	if not intents.is_empty():
+		assert_equal(intents[0].kind, PlayerIntent.Kind.TRADE_ITEM, "trade never mutates gameplay from presentation")
+		assert_equal(intents[0].secondary_target_id, destination.id, "trade intent carries the stable recipient identity")
 	router.free()
 
 

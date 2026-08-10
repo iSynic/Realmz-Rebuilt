@@ -65,7 +65,7 @@ Safe Scenario Actions compile in Providence to bounded bytecode. They use separa
 
 ## Persistence and randomness
 
-One `.r2save` envelope contains all mutable session state, including overlays, clock, equipment escrow, wealth, allies, encounter attempts/type flags, shop stock, combat active-turn facts and exact fumbled item instances, scenario-program replacements, VM frames, VM or session-owned pending interaction, post-move/random-region/AP-destination, direct combat-death-macro, post-battle ally-selection, or fumble-recovery continuation, action state, and RNG state/draw count. Installed package content is referenced by package hash and never copied into the save.
+One `.r2save` envelope contains all mutable session state, including overlays, clock, equipment escrow, wealth, allies, encounter attempts/type flags, shop stock, combat active-turn facts and exact fumbled item instances, scenario-program replacements, VM frames, VM or session-owned pending interaction, post-move/random-region/AP-destination, direct combat-death-macro, carried-item drop, post-battle ally-selection, or fumble-recovery continuation, action state, and RNG state/draw count. Installed package content is referenced by package hash and never copied into the save.
 
 Every gameplay draw uses `RealmzRng`. It owns the QuickDraw `randSeed = randSeed * 16807 mod 2147483647` transition, signed low-word return (mapping `0x8000` to zero), Castle's inclusive `1 + abs(raw) * range / 32768` scaling, draw count, and semantic trace. Presentation has a separate cosmetic RNG. Oracle tests may inject raw scripted values so Castle and the new runtime take identical branches. See `docs/rng-evidence.md` for the evidence boundary.
 

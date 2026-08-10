@@ -11,6 +11,7 @@
 
 - Workspaces reflow within `UiLayoutProfile` bounds and must remain reachable at 800x600 with 150 percent text. Compact headers stack rather than clip.
 - Screens present only detached `GameView` facts and explicit action availability.
+- Inventory selects one party member and one exact carried item before presenting actions. Trade recipient rows and every disabled explanation come from the detached item action view; the workspace cannot expose scenario-owned opcode-36 escrow as a player stash.
 
 # Work Guidance
 

@@ -107,5 +107,13 @@ func _init(character: CharacterState, content: RealmzContent = null) -> void:
 				spells.append(SpellView.new(definition))
 
 
+func apply_equipment(equipment: CharacterCombatEquipment) -> void:
+	if equipment == null or not equipment.valid:
+		return
+	damage_bonus = equipment.effective_damage_bonus
+	luck = equipment.effective_luck
+	armor = equipment.effective_armor
+
+
 static func _age_group_name(group: int) -> String:
 	return CharacterAgingResult.age_group_name(group)

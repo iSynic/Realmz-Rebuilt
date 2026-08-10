@@ -2353,6 +2353,70 @@
       },
       "availability": "implemented",
       "status": "complete-catalog-selection-save-and-vault-validation-verified"
+    },
+    {
+      "id": "inventory.carried-item-workflow",
+      "domain": "inventory",
+      "claim": "Outside an active encounter or battle, ordinary carried-item management selects one party member and one item, applies Classic race/class/category and equipment-slot rules, transfers ordinary equipped records as unequipped, rejects capacity violations, and confirms irreversible dropping without inventing a general player stash.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake demonstrates a dedicated character/item selection workspace, trade-recipient selection, equip, split, join, identify, drop, and use controls. Its separate Honest Storage scene is gated by honest_mode and is therefore an extension lead rather than proof of a Classic player stash.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/Inventory/InventoryRect.gd", "symbol": "func _on_ButtonTrade_pressed()" },
+          { "path": "src/scenes/UI/HUD/Inventory/InventoryRect.gd", "symbol": "func _on_ButtonEquip_pressed()" },
+          { "path": "src/scenes/UI/HUD/Inventory/InventoryRect.gd", "symbol": "func set_allow_honest_storage(yes : bool)" },
+          { "path": "src/scenes/UI/HUD/Storage/storage_rect.gd", "symbol": "class_name Honest_Storage" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/newcharacter.c", "symbol": "void addinitialitems(void)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "void calcw(short who)" },
+          { "path": "src/realmz_orig/items.c", "symbol": "short items(void)" },
+          { "path": "src/realmz_orig/showitems-showspecial.c", "symbol": "short canuse(short itemid, short raceid, short casteid)" },
+          { "path": "src/realmz_orig/wear.c", "symbol": "short wear(short character, short itemnum, short play)" },
+          { "path": "src/realmz_orig/removeitem.c", "symbol": "short removeitem(short character, short itemnum, short play, short force)" },
+          { "path": "src/realmz_orig/moveicon.c", "symbol": "void moveicon(void)" },
+          { "path": "src/realmz_orig/dropitem.c", "symbol": "void dropitem(short who, short itemid, short itemnum, short dropsound, short force)" },
+          { "path": "src/realmz_orig/newland.c", "symbol": "case 36: /********** Store / Give Equipment **************/" }
+        ],
+        "authoredInputs": ["caste starting item order and starting money", "item identity and type", "authored initial charges", "item category masks", "race and caste category masks", "race descriptors and caste class", "specific and descriptor restrictions", "hands and occupied slots", "curse identity", "item and charge weights", "character load and thirty-item capacity"],
+        "observation": "addinitialitems visits the caste's twenty authored slots in order, accepts a record only when its base-plus-charge weight fits, marks it identified, preserves the authored charge count, attempts wear for each accepted record, then adds starting gold to load. Its separate numitems field advances before the fit test, which can expose blank record bookkeeping; the direct model retains only accepted records. calcw derives load from gold, gems, jewelry times fifteen, and every carried item's base-plus-charge weight. canuse resolves the first set item-category bit through both race and caste masks, then applies specific identity and descriptor/class restrictions. wear enforces two ring slots, one ordinary slot per type, hand limits, and a quiver prerequisite for category-12 bows; equipping a curse identifies and locks it. Normal inventory trade enters the two-character shop-style workspace, refuses a full or overloaded recipient, accepts an equipped item, and writes the recipient record unequipped. moveicon bypasses removeitem while deleting that source record, so a curse can be dragged away and source-derived equipment fields are not explicitly reversed. Drop separately refuses equipped items and removes exact load. Castle's storage array is used by opcode 36 to strip and later restore the whole party, not as a general player-facing stash.",
+        "unresolved": [
+          "items.c split and join change stack records without updating carried load even though moveicon later transfers base plus per-charge weight; this source inconsistency remains disabled pending a fidelity decision.",
+          "Passive equipment effects beyond the already derived armor, luck, damage, and source-implemented weapon behavior remain disabled per item rather than silently applying only part of an item.",
+          "Item use and identification remain disabled until their effect and service/spell continuations are implemented; attempting use does not spend a charge."
+        ]
+      },
+      "providence": {
+        "commit": "028a587d8f99bd687d279d3abfdb74663ac4819f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(project: &ProvidenceProject) -> Vec<Value>" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"itemCategoryMaskLow\": item.item_cat0" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"weightPerCharge\": item.weight_per_charge" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits stable item identity, type, hands, category and restriction masks, curse identity, charges, weights, and all passive/special fields. No compiler change is required for the verified carried-item subset."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/inventory_rules.gd", "symbol": "func classic_equip_probe" },
+        "expectedTrace": ["materialize identified authored-charge starting records in caste order and derive carried load from personal wealth plus immutable package weights", "recompute imported vault load against target-package definitions and reject an over-limit result", "validate saved item identities and carried-load totals before transactional restore", "select a detached party member and exact item instance", "derive per-item legal actions and disabled reasons in core", "submit a typed equip, unequip, trade, or drop intent", "validate category, restrictions, slots, hands, curse, capacity, and load again inside GameSession", "commit the exact instance mutation and publish a domain event", "serialize and validate the pending drop confirmation", "render the updated detached inventory without a presentation-side rule calculation"],
+        "tests": [
+          { "path": "tests/integration/test_inventory_session.gd", "symbol": "func run()" },
+          { "path": "tests/integration/test_inventory_session.gd", "symbol": "func _test_equipment_probes" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_inventory_workspace" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-INVENTORY-001",
+        "fixturePath": "tests/fixtures/oracle/equipped-item-trade-correction.json",
+        "fixtureSha256": "465fb2d73ae1d585a932a95a9ff0562719b3bfe90159c20eef85444f7bbf4d76"
+      },
+      "availability": "implemented",
+      "status": "safe-starting-load-equip-unequip-trade-drop-and-restore-validation-verified"
     }
   ]
 }

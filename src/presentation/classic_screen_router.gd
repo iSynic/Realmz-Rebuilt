@@ -77,6 +77,8 @@ var _modal_layout_rect := Rect2(12.0, 36.0, 680.0, 556.0)
 var _campaign_layout_rect := Rect2(12.0, 36.0, 680.0, 556.0)
 var _content_parent: Container
 var _inventory_query: String = ""
+var _inventory_character_id: String = ""
+var _inventory_item_id: String = ""
 var _presented_campaign_id: String = ""
 var _appearance_textures: Dictionary = {}
 var _combat_icon_touched: bool = false
@@ -102,6 +104,8 @@ func present(view: GameView) -> void:
 		return
 	if not _presented_campaign_id.is_empty() and _presented_campaign_id != view.campaign_id:
 		_reset_creator()
+		_inventory_character_id = ""
+		_inventory_item_id = ""
 	_presented_campaign_id = view.campaign_id
 	if view.party_setup_available:
 		if _awaiting_draft_generation and view.character_draft != null:
@@ -1184,6 +1188,34 @@ func _show_vault_from_campaign() -> void:
 
 
 func _render_inventory() -> void:
+	if _view.party_members.is_empty():
+		_add_empty_state("No party inventory", "The party has no characters.")
+		return
+	var selected_character: CharacterView = null
+	for candidate: CharacterView in _view.party_members:
+		if candidate.id == _inventory_character_id:
+			selected_character = candidate
+			break
+	if selected_character == null:
+		selected_character = _view.party_members[0]
+		_inventory_character_id = selected_character.id
+		_inventory_item_id = ""
+	_add_section_heading("Whose items?", "%d party members" % _view.party_members.size())
+	var character_row := HFlowContainer.new()
+	character_row.add_theme_constant_override("h_separation", 6)
+	character_row.add_theme_constant_override("v_separation", 6)
+	for character: CharacterView in _view.party_members:
+		var character_button := Button.new()
+		character_button.text = "%s  %d/%d" % [character.name, character.carried_load, character.maximum_load]
+		character_button.button_pressed = character.id == selected_character.id
+		character_button.toggle_mode = true
+		character_button.pressed.connect(func() -> void:
+			_inventory_character_id = character.id
+			_inventory_item_id = ""
+			_render_screen()
+		)
+		character_row.add_child(character_button)
+	_body.add_child(character_row)
 	var filter_row := HBoxContainer.new()
 	filter_row.add_theme_constant_override("separation", 6)
 	var search := LineEdit.new()
@@ -1204,45 +1236,87 @@ func _render_inventory() -> void:
 	)
 	filter_row.add_child(clear_filter)
 	_body.add_child(filter_row)
-	var categories := HFlowContainer.new()
-	categories.add_theme_constant_override("h_separation", 4)
-	categories.add_theme_constant_override("v_separation", 4)
-	for category: Dictionary in [
-		{"asset": &"inventory.category.weapons", "label": "Weapons"},
-		{"asset": &"inventory.category.armor", "label": "Armor"},
-		{"asset": &"inventory.category.limb_armor", "label": "Limb armor"},
-		{"asset": &"inventory.category.magic", "label": "Magic"},
-		{"asset": &"inventory.category.supplies", "label": "Supplies"},
-	]:
-		var category_button := _bitmap_button(StringName(category["asset"]), String(category["label"]))
-		category_button.disabled = true
-		category_button.tooltip_text = "%s filtering is unavailable until the detached view supplies the canonical Classic category mapping." % category["label"]
-		categories.add_child(category_button)
-	_body.add_child(categories)
-	var any_items := false
-	for character: CharacterView in _view.party_members:
-		_add_section_heading(character.name, "%d/%d load" % [character.carried_load, character.maximum_load])
-		for item: ItemView in character.items:
-			if not _inventory_query.is_empty() and item.name.findn(_inventory_query) < 0:
-				continue
-			any_items = true
-			_add_content_card(item.icon_resource_type, item.icon_id, item.name, "%s • %s" % [character.name, "Identified" if item.identified else "Unidentified"], "%s\nCharges %d • Weight %d • Value %s" % [item.description, item.charges, item.weight, str(item.value) if item.identified else "Unknown"])
-			var actions := HFlowContainer.new()
-			actions.add_theme_constant_override("h_separation", 5)
-			actions.add_theme_constant_override("v_separation", 5)
-			_add_disabled_action(actions, "Unequip" if item.equipped else "Equip", &"unequip_item" if item.equipped else &"equip_item")
-			_add_bitmap_intent_action(actions, &"inventory.action.use", "Use", &"use_item", PlayerIntent.use_item(item.instance_id))
-			_add_bitmap_intent_action(actions, &"inventory.action.identify", "Identify", &"identify_item", PlayerIntent.item_action(PlayerIntent.Kind.IDENTIFY_ITEM, item.instance_id, character.id))
-			_add_bitmap_intent_action(actions, &"inventory.action.join", "Join", &"join_item", PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, item.instance_id, character.id))
-			_add_bitmap_intent_action(actions, &"inventory.action.split", "Split", &"split_item", PlayerIntent.item_action(PlayerIntent.Kind.SPLIT_ITEM, item.instance_id, character.id))
-			_add_bitmap_intent_action(actions, &"inventory.action.drop", "Drop", &"drop_item", PlayerIntent.item_action(PlayerIntent.Kind.DROP_ITEM, item.instance_id, character.id))
-			_add_disabled_action(actions, "Trade", &"trade_item")
-			_add_disabled_action(actions, "Store", &"store_item")
-			_body.add_child(actions)
-	if _view.party_members.is_empty():
-		_add_empty_state("No party inventory", "The party has no characters.")
-	elif not any_items:
-		_add_empty_state("Inventory is empty", "No character is carrying an item.")
+	var visible_items: Array[ItemView] = []
+	for item: ItemView in selected_character.items:
+		if _inventory_query.is_empty() or item.name.findn(_inventory_query) >= 0:
+			visible_items.append(item)
+	var selected_item: ItemView = null
+	for item: ItemView in visible_items:
+		if item.instance_id == _inventory_item_id:
+			selected_item = item
+			break
+	if selected_item == null and not visible_items.is_empty():
+		selected_item = visible_items[0]
+		_inventory_item_id = selected_item.instance_id
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 10)
+	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var item_list := VBoxContainer.new()
+	item_list.custom_minimum_size.x = 250.0
+	item_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns.add_child(item_list)
+	_add_label(item_list, "%s's carried items" % selected_character.name, GOLD, 16)
+	if visible_items.is_empty():
+		_add_label(item_list, "No items match this filter." if not _inventory_query.is_empty() else "No carried items.", MUTED)
+	for item: ItemView in visible_items:
+		var item_button := Button.new()
+		item_button.text = "%s%s  %s" % ["◆ " if item.equipped else "", item.name, "(%d)" % item.charges if item.charges > 0 else ""]
+		item_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		item_button.toggle_mode = true
+		item_button.button_pressed = item.instance_id == selected_item.instance_id
+		item_button.tooltip_text = "Equipped" if item.equipped else "Carried"
+		item_button.pressed.connect(func() -> void:
+			_inventory_item_id = item.instance_id
+			_render_screen()
+		)
+		item_list.add_child(item_button)
+	var detail := VBoxContainer.new()
+	detail.custom_minimum_size.x = 300.0
+	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail.add_theme_constant_override("separation", 6)
+	columns.add_child(detail)
+	if selected_item != null:
+		var title_row := HBoxContainer.new()
+		title_row.add_theme_constant_override("separation", 10)
+		title_row.add_child(_content_icon(selected_item.icon_resource_type, selected_item.icon_id))
+		var title_box := VBoxContainer.new()
+		title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_add_label(title_box, selected_item.name, GOLD, 20)
+		_add_label(title_box, "%s • Weight %d • Charges %d" % ["Equipped" if selected_item.equipped else "Carried", selected_item.weight, selected_item.charges], MUTED, 13)
+		title_row.add_child(title_box)
+		detail.add_child(title_row)
+		_add_label(detail, selected_item.description, Color("e0e2e5"))
+		_add_label(detail, "Value %s" % [str(selected_item.value) if selected_item.identified else "Unknown until identified"], MUTED, 13)
+		var actions := HFlowContainer.new()
+		actions.add_theme_constant_override("h_separation", 5)
+		actions.add_theme_constant_override("v_separation", 5)
+		if selected_item.equipped:
+			_add_item_intent_action(actions, &"inventory.action.equipped", "Unequip", selected_item.actions.unequip, PlayerIntent.item_action(PlayerIntent.Kind.UNEQUIP_ITEM, selected_item.instance_id, selected_character.id))
+		else:
+			_add_item_intent_action(actions, &"inventory.action.equipped", "Equip", selected_item.actions.equip, PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, selected_item.instance_id, selected_character.id))
+		_add_item_intent_action(actions, &"inventory.action.use", "Use", selected_item.actions.use, PlayerIntent.use_item(selected_item.instance_id))
+		_add_item_intent_action(actions, &"inventory.action.identify", "Identify", selected_item.actions.identify, PlayerIntent.item_action(PlayerIntent.Kind.IDENTIFY_ITEM, selected_item.instance_id, selected_character.id))
+		_add_item_intent_action(actions, &"inventory.action.join", "Join", selected_item.actions.join, PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, selected_item.instance_id, selected_character.id))
+		_add_item_intent_action(actions, &"inventory.action.split", "Split", selected_item.actions.split, PlayerIntent.item_action(PlayerIntent.Kind.SPLIT_ITEM, selected_item.instance_id, selected_character.id))
+		_add_item_intent_action(actions, &"inventory.action.drop", "Drop", selected_item.actions.drop, PlayerIntent.item_action(PlayerIntent.Kind.DROP_ITEM, selected_item.instance_id, selected_character.id))
+		detail.add_child(actions)
+		_add_label(detail, "Trade with", GOLD, 15)
+		if selected_item.actions.trade_targets.is_empty():
+			_add_label(detail, "No other party member is available.", MUTED, 13)
+		else:
+			var trade_row := HFlowContainer.new()
+			trade_row.add_theme_constant_override("h_separation", 5)
+			for target: ItemTransferTargetView in selected_item.actions.trade_targets:
+				var trade_button := Button.new()
+				trade_button.text = "Give to %s" % target.character_name
+				trade_button.disabled = not target.enabled
+				trade_button.tooltip_text = target.reason
+				if target.enabled:
+					trade_button.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.trade_item(selected_item.instance_id, selected_character.id, target.character_id)))
+				trade_row.add_child(trade_button)
+			detail.add_child(trade_row)
+		_add_label(detail, "Classic has no ordinary party stash. Scenario opcode 36 equipment escrow is automatic and does not appear here.", MUTED, 12)
+	_body.add_child(columns)
 
 
 func _render_spells() -> void:
@@ -1489,6 +1563,26 @@ func _add_bitmap_intent_action(parent: Container, asset_id: StringName, label: S
 	_apply_availability(button, action_id)
 	if not button.disabled:
 		button.command_requested.connect(func(_command_id: StringName) -> void: intent_submitted.emit(intent))
+	parent.add_child(button)
+	return button
+
+
+func _add_item_intent_action(parent: Container, asset_id: StringName, label: String, availability: ActionAvailabilityView, intent: PlayerIntent) -> BaseButton:
+	var button: BaseButton
+	if ClassicUiAssetCatalog.definition(asset_id).is_empty():
+		var text_button := Button.new()
+		text_button.text = label
+		text_button.custom_minimum_size = Vector2(64.0, 56.0)
+		button = text_button
+	else:
+		button = _bitmap_button(asset_id, label)
+	button.disabled = availability == null or not availability.enabled
+	button.tooltip_text = "Unavailable" if availability == null else availability.reason if not availability.enabled else label
+	if not button.disabled:
+		if button is ClassicBitmapButton:
+			(button as ClassicBitmapButton).command_requested.connect(func(_command_id: StringName) -> void: intent_submitted.emit(intent))
+		else:
+			button.pressed.connect(func() -> void: intent_submitted.emit(intent))
 	parent.add_child(button)
 	return button
 

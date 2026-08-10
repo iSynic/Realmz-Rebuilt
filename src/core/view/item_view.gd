@@ -16,6 +16,7 @@ var restriction_reason: String = ""
 var icon_id: int
 var icon_resource_type: String = "CICN"
 var item_type: int
+var actions := InventoryItemActionsView.new()
 
 
 func _init(instance: ItemInstance, definition: ItemDefinition) -> void:

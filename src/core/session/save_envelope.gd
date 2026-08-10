@@ -156,6 +156,14 @@ static func _migrate(value: Variant) -> Variant:
 static func _normalize_session_continuation(value: Dictionary) -> Variant:
 	if value.is_empty():
 		return {}
+	if value.get("kind") == "drop-item-confirmation":
+		var drop_fields: Array[String] = ["kind", "characterId", "instanceId"]
+		if value.size() != drop_fields.size():
+			return null
+		for field: String in drop_fields:
+			if not value.has(field) or not value[field] is String or value[field].is_empty():
+				return null
+		return {"kind": "drop-item-confirmation", "characterId": value["characterId"], "instanceId": value["instanceId"]}
 	if value.get("kind") == "character-spell-confirmation":
 		var spell_fields: Array[String] = ["kind", "characterId", "remaining"]
 		if value.size() != spell_fields.size():

@@ -107,6 +107,11 @@ func run() -> void:
 	assert_equal(restored_party.view().party_members[0].name, "Ari", "created party survives save and restore")
 	assert_equal(restored_party.view().party_members[0].age_group, saved_age_group, "save restoration preserves the exact current age group")
 	assert_equal(restored_party.submit_intent(PlayerIntent.create_party([member])).error_code, &"party_setup_closed", "party setup cannot be replayed after restore")
+	var corrupt_load_save := SaveEnvelope.from_data(party_save.to_data())
+	corrupt_load_save.game_state.party.characters()[0].carried_load += 1
+	var before_corrupt_load_restore := restored_party.snapshot().to_data()
+	assert_equal(restored_party.restore(content, corrupt_load_save).error_code, &"invalid_game_state", "restore rejects a carried-load value that does not match package item weights and personal wealth")
+	assert_equal(restored_party.snapshot().to_data(), before_corrupt_load_restore, "a rejected carried-load snapshot leaves the active session untouched")
 	var legacy_save_data := party_save.to_data()
 	legacy_save_data["gameState"]["party"]["characters"][0].erase("ageGroup")
 	var legacy_save := SaveEnvelope.from_data(legacy_save_data)
@@ -159,6 +164,12 @@ func run() -> void:
 	assert_true(restored_setup.view().party_setup_available, "finalizing a character does not implicitly leave party setup")
 	assert_equal(restored_setup.view().party_members.size(), 1, "the finalized character appears in the detached setup view")
 	assert_equal(restored_setup.view().party_members[0].items.size(), content.caste_by_id(member.caste_id).start_items().size(), "acceptance adds the caste's initial items after the spell-selection stage")
+	var finalized_character := restored_setup.snapshot().game_state.party.characters()[0]
+	var finalized_caste := content.caste_by_id(finalized_character.caste_id)
+	var first_start_item := content.item_by_id(finalized_caste.start_items()[0])
+	assert_true(finalized_character.inventory()[0].identified, "Castle starting equipment enters the finalized character already identified")
+	assert_equal(finalized_character.inventory()[0].charges, first_start_item.initial_charges, "starting equipment preserves the authored initial charge count")
+	assert_equal(finalized_character.carried_load, RealmzRules.new().inventory.calculated_load(finalized_character, content.item_definitions()), "finalization materializes exact wealth and item weight into carried load")
 	assert_true(restored_setup.view().availability(&"begin_adventure").enabled, "a nonempty setup may explicitly begin")
 
 	var advanced_session := GameSession.new()
@@ -176,12 +187,18 @@ func run() -> void:
 	var imported := CharacterState.new("vault.character.one", "Vault Hero", 12, 12)
 	imported.race_id = setup_view.race_options[0].id
 	imported.caste_id = setup_view.caste_options[0].id
+	imported.maximum_load = 100_000
+	imported.money.gold = 7
+	var imported_definition := content.item_definitions()[0]
+	imported.set_inventory([ItemInstance.new("vault.character.one.item.0", imported_definition.id, imported_definition.initial_charges, false, true)])
+	imported.carried_load = 0
 	var wrong_kind_import := CharacterState.from_data(imported.to_data())
 	wrong_kind_import.portrait_id = "realmz-combat-icon-9000"
 	assert_equal(resumed_setup.submit_intent(PlayerIntent.import_vault_character(wrong_kind_import.id, "c".repeat(64), wrong_kind_import.to_data(), "fixture-source", "b".repeat(64))).error_code, &"vault_character_ineligible", "vault import rejects a package asset used in the wrong appearance role")
 	var import_step := resumed_setup.submit_intent(PlayerIntent.import_vault_character(imported.id, "a".repeat(64), imported.to_data(), "fixture-source", "b".repeat(64)))
 	assert_equal(import_step.state, SessionStep.State.COMPLETED, "vault import adds another member without completing party setup")
 	assert_equal(resumed_setup.view().party_members.size(), 2, "created and vault characters may share one setup party")
+	assert_equal(resumed_setup._state.party.character_by_id(imported.id).carried_load, 7 + imported_definition.instance_weight(imported_definition.initial_charges), "vault import derives carried load from target-package definitions instead of trusting a stale local total")
 	assert_true(resumed_setup.view().party_setup_available, "multiple committed setup edits remain available until Begin")
 	var created_id := resumed_setup.view().party_members[0].id
 	assert_equal(resumed_setup.submit_intent(PlayerIntent.remove_party_member(created_id)).state, SessionStep.State.COMPLETED, "typed removal updates the setup party")

@@ -14,6 +14,162 @@ func can_equip(character: CharacterState, item: ItemDefinition) -> bool:
 	return true
 
 
+func classic_use_probe(character: CharacterState, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition) -> InventoryActionProbe:
+	if character == null or item == null or race == null or caste == null:
+		return InventoryActionProbe.block("The character or immutable item definition is unavailable.")
+	if not item.specific_race_id.is_empty() and item.specific_race_id != character.race_id:
+		return InventoryActionProbe.block("This item requires %s." % item.specific_race_id.replace("_", " ").capitalize())
+	if not item.specific_caste_id.is_empty() and item.specific_caste_id != character.caste_id:
+		return InventoryActionProbe.block("This item requires %s." % item.specific_caste_id.replace("_", " ").capitalize())
+	var category := _first_category(item.item_category_mask_low, item.item_category_mask_high)
+	if category < 0:
+		return InventoryActionProbe.block("This item has no Classic usability category.")
+	if not _mask_has(race.item_category_mask_low, race.item_category_mask_high, category):
+		return InventoryActionProbe.block("This race cannot use this item category.")
+	if not _mask_has(caste.item_category_mask_low, caste.item_category_mask_high, category):
+		return InventoryActionProbe.block("This class cannot use this item category.")
+	if (item.race_restrictions & race.descriptor_flags) != 0:
+		return InventoryActionProbe.block("This item's race restrictions exclude the character.")
+	if item.race_class_only != 0 and (item.race_class_only & race.descriptor_flags) != item.race_class_only:
+		return InventoryActionProbe.block("This item requires race traits the character does not have.")
+	var caste_class_index := caste.caste_class - 1
+	if caste_class_index < 0 or caste_class_index > 15:
+		return InventoryActionProbe.block("The character's Classic class group is invalid.")
+	if (item.caste_restrictions & (1 << caste_class_index)) != 0:
+		return InventoryActionProbe.block("This item's class restrictions exclude the character.")
+	if item.caste_class_only != 0 and (item.caste_class_only & (1 << caste_class_index)) == 0:
+		return InventoryActionProbe.block("This item requires another Classic class group.")
+	return InventoryActionProbe.permit()
+
+
+func classic_equip_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, party: Array[CharacterState], definitions: Array[ItemDefinition]) -> InventoryActionProbe:
+	if character == null or instance == null or item == null or instance.definition_id != item.id:
+		return InventoryActionProbe.block("The carried item is unavailable.")
+	if instance.equipped:
+		return InventoryActionProbe.block("This item is already equipped.")
+	var use_probe := classic_use_probe(character, item, race, caste)
+	if not use_probe.allowed:
+		return use_probe
+	var item_type := absi(item.item_type)
+	if item_type > 19:
+		return InventoryActionProbe.block("Classic treats this as a usable item, not wearable equipment.")
+	if item_type == 1:
+		return InventoryActionProbe.block("Classic item type 1 slot behavior is still unresolved.")
+	if not _passive_effects_supported(item):
+		return InventoryActionProbe.block("This item's passive equipment effects are not implemented yet.")
+	if item.cost < 0:
+		for member: CharacterState in party:
+			if member == character:
+				continue
+			for carried: ItemInstance in member.inventory():
+				if carried.definition_id == item.id:
+					return InventoryActionProbe.block("Only one party member may equip this unique item.")
+	var definitions_by_id := _definitions_by_id(definitions)
+	var occupied_types: Dictionary = {}
+	var used_hands := 0
+	var equipped_ring_ids: Array[int] = []
+	var has_quiver := false
+	for carried: ItemInstance in character.inventory():
+		if not carried.equipped:
+			continue
+		var equipped: ItemDefinition = definitions_by_id.get(carried.definition_id)
+		if equipped == null:
+			return InventoryActionProbe.block("An equipped item has no immutable definition.")
+		var equipped_type := absi(equipped.item_type)
+		occupied_types[equipped_type] = true
+		if equipped_type == 2:
+			used_hands += maxi(0, equipped.hands)
+		elif equipped_type == 3:
+			used_hands += 1
+		elif equipped_type == 0:
+			equipped_ring_ids.append(equipped.classic_id)
+		elif equipped_type == 10:
+			has_quiver = true
+	if item_type == 0:
+		if equipped_ring_ids.size() >= 2:
+			return InventoryActionProbe.block("Both Classic ring slots are occupied.")
+		if equipped_ring_ids.has(item.classic_id):
+			return InventoryActionProbe.block("Classic does not allow the same ring in both slots.")
+		return InventoryActionProbe.permit()
+	if item_type > 1 and occupied_types.has(item_type):
+		return InventoryActionProbe.block("The Classic equipment slot for this item is occupied.")
+	if item_type == 2 and used_hands + maxi(0, item.hands) > 2:
+		return InventoryActionProbe.block("The character does not have enough free hands.")
+	if item_type == 3 and used_hands + maxi(1, item.hands) > 2:
+		return InventoryActionProbe.block("The character does not have enough free hands for this shield.")
+	if item_type == 15 and _mask_has(item.item_category_mask_low, item.item_category_mask_high, 12) and not has_quiver:
+		return InventoryActionProbe.block("This missile weapon requires an equipped quiver.")
+	return InventoryActionProbe.permit()
+
+
+func classic_unequip_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition, definitions: Array[ItemDefinition]) -> InventoryActionProbe:
+	if character == null or instance == null or item == null or instance.definition_id != item.id:
+		return InventoryActionProbe.block("The carried item is unavailable.")
+	if not instance.equipped:
+		return InventoryActionProbe.block("This item is not equipped.")
+	if not item.cursed_item_id.is_empty():
+		return InventoryActionProbe.block("This cursed item cannot be removed.")
+	if absi(item.item_type) == 10:
+		var by_id := _definitions_by_id(definitions)
+		for carried: ItemInstance in character.inventory():
+			var definition: ItemDefinition = by_id.get(carried.definition_id)
+			if carried.equipped and definition != null and absi(definition.item_type) == 15:
+				return InventoryActionProbe.block("Unequip the missile weapon before removing its quiver.")
+	return InventoryActionProbe.permit()
+
+
+func classic_drop_probe(character: CharacterState, instance: ItemInstance) -> InventoryActionProbe:
+	if character == null or instance == null:
+		return InventoryActionProbe.block("The carried item is unavailable.")
+	if instance.equipped:
+		return InventoryActionProbe.block("Unequip this item before dropping it.")
+	return InventoryActionProbe.permit()
+
+
+func classic_trade_probe(source: CharacterState, destination: CharacterState, instance: ItemInstance, item: ItemDefinition) -> InventoryActionProbe:
+	if source == null or destination == null or source == destination or instance == null or item == null:
+		return InventoryActionProbe.block("Choose another party member.")
+	if instance.equipped and not item.cursed_item_id.is_empty():
+		return InventoryActionProbe.block("This cursed equipped item cannot be traded away.")
+	if destination.inventory().size() >= MAX_ITEMS:
+		return InventoryActionProbe.block("%s already carries 30 items." % destination.name)
+	if destination.carried_load + item.instance_weight(instance.charges) > destination.maximum_load:
+		return InventoryActionProbe.block("%s cannot carry this item's weight." % destination.name)
+	for carried: ItemInstance in destination.inventory():
+		if carried.id == instance.id:
+			return InventoryActionProbe.block("The destination already has this item instance.")
+	return InventoryActionProbe.permit()
+
+
+func equip_classic(character: CharacterState, instance: ItemInstance, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, party: Array[CharacterState], definitions: Array[ItemDefinition]) -> InventoryActionProbe:
+	var probe := classic_equip_probe(character, instance, item, race, caste, party, definitions)
+	if not probe.allowed:
+		return probe
+	instance.equipped = true
+	if not item.cursed_item_id.is_empty():
+		instance.identified = true
+	return probe
+
+
+func unequip_classic(character: CharacterState, instance: ItemInstance, item: ItemDefinition, definitions: Array[ItemDefinition]) -> InventoryActionProbe:
+	var probe := classic_unequip_probe(character, instance, item, definitions)
+	if probe.allowed:
+		instance.equipped = false
+	return probe
+
+
+func trade_classic(source: CharacterState, destination: CharacterState, instance: ItemInstance, item: ItemDefinition) -> InventoryActionProbe:
+	var probe := classic_trade_probe(source, destination, instance, item)
+	if not probe.allowed:
+		return probe
+	var removed := remove_item(source, instance.id, item)
+	if removed == null or not restore_item(destination, removed, item):
+		if removed != null:
+			restore_item(source, removed, item)
+		return InventoryActionProbe.block("The item transfer could not be committed.")
+	return probe
+
+
 func add_item(character: CharacterState, item: ItemDefinition, instance_id: String, identified: bool = false) -> ItemInstance:
 	if character == null or item == null or character.inventory().size() >= MAX_ITEMS:
 		return null
@@ -25,6 +181,19 @@ func add_item(character: CharacterState, item: ItemDefinition, instance_id: Stri
 	character.set_inventory(items)
 	character.carried_load += item.instance_weight(instance.charges)
 	return instance
+
+
+func calculated_load(character: CharacterState, definitions: Array[ItemDefinition]) -> int:
+	if character == null:
+		return -1
+	var definitions_by_id := _definitions_by_id(definitions)
+	var total := character.money.gold + character.money.gems + character.money.jewelry * 15
+	for instance: ItemInstance in character.inventory():
+		var definition: ItemDefinition = definitions_by_id.get(instance.definition_id)
+		if definition == null:
+			return -1
+		total += definition.instance_weight(instance.charges)
+	return maxi(0, total)
 
 
 func equip(character: CharacterState, instance_id: String, definition: ItemDefinition) -> bool:
@@ -153,4 +322,32 @@ func combat_equipment(character: CharacterState, definitions: Array[ItemDefiniti
 	result.effective_damage_bonus = mini(110, character.damage_bonus + damage_sum) if equipped_count > 0 else character.damage_bonus
 	result.effective_luck = character.luck + luck_sum
 	result.effective_armor = maxi(0, character.armor + armor_sum)
+	return result
+
+
+static func _passive_effects_supported(item: ItemDefinition) -> bool:
+	if item.strength_bonus != 0 or item.movement_bonus != 0 or item.magic_resistance_bonus != 0 or item.spell_point_bonus != 0:
+		return false
+	if item.special_3 != 0 or item.special_4 != 0 or item.special_1 == 122:
+		return false
+	return item.special_1 < 20 or item.special_1 >= 100
+
+
+static func _first_category(low: int, high: int) -> int:
+	for index: int in 58:
+		if _mask_has(low, high, index):
+			return index
+	return -1
+
+
+static func _mask_has(low: int, high: int, index: int) -> bool:
+	if index < 0 or index >= 64:
+		return false
+	return ((low if index < 32 else high) & (1 << (index if index < 32 else index - 32))) != 0
+
+
+static func _definitions_by_id(definitions: Array[ItemDefinition]) -> Dictionary:
+	var result: Dictionary = {}
+	for definition: ItemDefinition in definitions:
+		result[definition.id] = definition
 	return result

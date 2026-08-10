@@ -1,0 +1,36 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-INVENTORY-001",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/items.c",
+      "symbol": "short items(void)",
+      "range": "950-979"
+    },
+    {
+      "path": "src/realmz_orig/moveicon.c",
+      "symbol": "void moveicon(void)",
+      "range": "221-259,353-440,615-655"
+    },
+    {
+      "path": "src/realmz_orig/removeitem.c",
+      "symbol": "short removeitem(short character, short itemnum, short play, short force)",
+      "range": "5-102"
+    }
+  ],
+  "castleSourceObservation": {
+    "equippedOrdinaryTransferAllowed": true,
+    "recipientEquippedFlag": false,
+    "sourceRemoveItemCalled": false,
+    "equippedCurseTransferBlocked": false,
+    "sourceDerivedBonusesExplicitlyReversed": false
+  },
+  "realmz2ChosenResult": {
+    "equippedOrdinaryTransferAllowed": true,
+    "recipientEquippedFlag": false,
+    "derivedValuesFollowCurrentEquippedInstances": true,
+    "equippedCurseTransferBlocked": true
+  }
+}

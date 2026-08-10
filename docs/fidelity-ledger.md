@@ -2,6 +2,16 @@
 
 Classic-visible behavior is the default ruleset. This ledger records deliberate departures only; the absence of a decision does not authorize reinterpretation.
 
+## FD-INVENTORY-001 — Safe equipped-item trade
+
+- Affected rule: moving an equipped carried item between party members in the ordinary two-character Trade workspace.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/items.c`, `items`, lines 950–979; `moveicon.c`, `moveicon`, lines 221–259, 353–440, and 615–655; and `removeitem.c`, `removeitem`, lines 5–102. Trade copies an equipped item to the recipient with its equipped flag cleared, but deletes the source record directly instead of invoking `removeitem`. The `canuse` failure changes cursor/sound without preventing the move.
+- Observable source inconsistency: an equipped curse can bypass the ordinary curse-removal lock, and stored source-character equipment bonuses are not explicitly reversed even though the item record is gone. The synthetic source-observation fixture is `tests/fixtures/oracle/equipped-item-trade-correction.json`, SHA-256 `465fb2d73ae1d585a932a95a9ff0562719b3bfe90159c20eef85444f7bbf4d76`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: Trade can remove a supposedly locked curse and leave the source character benefiting from equipment no longer carried. Those outcomes contradict the ordinary Equip/Unequip workflow and create state that cannot be derived from current inventory.
+- Chosen 2.0 behavior: allow an equipped ordinary item to transfer and force the recipient instance unequipped, matching Castle's record outcome. Derived values always follow the current equipped instances. Reject trading an equipped cursed item, so the curse cannot bypass its source-backed removal lock.
+- Tests: `test_inventory_session.gd` verifies equipped ordinary transfer, recipient unequipped state, exact load movement, and equipped-curse rejection. The differential case is `inventory.carried-item-workflow`.
+- Legacy quirk: none. Stale derived bonuses and removable equipped curses are contradictory state, not useful authored behavior.
+
 ## FD-CHARACTER-002 — Human appearance-set zero alias
 
 - Affected rule: the initial and recommended portrait/tactical icon for a Human character whose Data Race `defaulticonset` is zero.
