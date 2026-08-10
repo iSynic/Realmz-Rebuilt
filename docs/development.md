@@ -21,7 +21,9 @@ The repository also maintains an offline source-intelligence snapshot under docs
 ./tools/verify.ps1
 ```
 
-The aggregate gate imports the project headlessly, validates all scripts, runs typed GDScript tests, checks forbidden core dependencies, verifies the mirrored schema and synthetic package hashes/provenance, and runs `git diff --check`.
+The aggregate gate imports the project headlessly, validates all scripts, runs typed GDScript tests, checks forbidden core dependencies, verifies the mirrored schema and synthetic package hashes/provenance, checks the differential ledger and application workflow inventory, and runs `git diff --check`.
+
+Regenerate the deterministic application-completeness report with `./tools/verify_application_workflow_inventory.ps1 -Write`; normal verification uses `-Check` and fails if the report is stale. Clean Castle, Remake, and Providence roots may be supplied to validate every external path and symbol against the pinned commits.
 
 For a focused characterization while iterating, append `-- --suite <path-fragment>` to the `tests/test_runner.gd` command. The filter must match at least one registered suite; release and closeout evidence still uses the complete suite.
 

@@ -13,6 +13,7 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 - `corpus_acceptance.ps1` runs package probes and optional external routes from caller-supplied campaign descriptors; it never discovers or embeds commercial paths.
 - Synthetic package provenance and fixture-byte checks used by the aggregate gate.
 - `verify_differential_evidence.ps1` validates the rolling functional-differential ledger locally and, when clean reference roots are supplied, checks the pinned external commits, paths, and symbols. Intentional corrections require a stable decision ID plus an existing hash-matched source-observation fixture.
+- `verify_application_workflow_inventory.ps1` validates the fixed Classic/host workflow denominator, every public-boundary and differential link, optional clean reference roots, and deterministic regeneration of `docs/classic-application-workflow-status.md`. Use `-Write` only to regenerate the report from the inventory and `-Check` in aggregate gates.
 
 ## Local Contracts
 

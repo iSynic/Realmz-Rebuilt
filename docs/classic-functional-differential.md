@@ -2,7 +2,9 @@
 
 Classic-visible behavior is developed through a rolling differential gate. Current Remake identifies existing functionality, mappings, tests, and likely differences. Castle source controls the behavioral decision; a controlled Castle runtime fixture is used only when complete source flow is insufficient. Providence must preserve the authored inputs, and Realmz Remake 2.0 must own the result through typed runtime boundaries.
 
-The machine-readable record is `tests/fixtures/oracle/classic-functional-differential.json`. It contains the detailed paths, symbols, commits, expected traces, tests, and decision state. This document summarizes only the current conclusions.
+The machine-readable record is `tests/fixtures/oracle/classic-functional-differential.json`. It contains the detailed paths, symbols, commits, expected traces, tests, decision state, and links to the application workflows those cases support. This document summarizes only the current conclusions.
+
+Differential cases provide depth for behavior already investigated; they are not the completeness denominator. The fixed denominator is `tests/fixtures/oracle/classic-application-workflow-inventory.json`, and its deterministic [status report](classic-application-workflow-status.md) separates complete-application gaps from route coverage, individual opcode ownership, and modern host work. Every differential case and workflow link is validated bidirectionally.
 
 ## Current cases
 

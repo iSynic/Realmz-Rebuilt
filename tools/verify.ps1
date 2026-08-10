@@ -59,6 +59,9 @@ if ($LASTEXITCODE -ne 0) { throw "Release export contract verification failed." 
 & "$PSScriptRoot\verify_differential_evidence.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Differential evidence verification failed." }
 
+& "$PSScriptRoot\verify_application_workflow_inventory.ps1" -Check
+if ($LASTEXITCODE -ne 0) { throw "Application workflow inventory verification failed." }
+
 git -C $repoRoot diff --check
 if ($LASTEXITCODE -ne 0) { throw "git diff --check failed." }
 

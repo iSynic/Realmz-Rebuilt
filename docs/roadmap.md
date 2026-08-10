@@ -2,6 +2,11 @@
 
 Status values describe current evidence, not intent. A phase completes only when its exit gate is proven.
 
+- **Architecture complete** means the approved ownership and boundary contracts exist and pass their architecture gates.
+- **Route-certified** means one bounded scripted route completed through the normal runtime; it does not prove optional branches or the surrounding application.
+- **Functionally complete** means every required axis and variant for a workflow passes the generated application audit.
+- **Live-certified** means a functionally complete workflow also has accepted presentation and the required ordinary-play or cross-platform evidence.
+
 ## Phase 0 — Foundation and tooling (completed)
 
 - Godot project and explicit composition root.
@@ -33,7 +38,9 @@ Exit evidence: the synthetic three-map fixture exercises message AP execution, t
 
 Exit evidence: the synthetic route executes AP opcode -4 to a serializable Simple Encounter request, selected result message, `CallScenarioAction`, Classic opcode 39 to an XAP, and CODE 111 return as one ordered trace. Save/reload reproduces the pending request and exact continuation. The 132-assertion runtime suite passes across seven suites; Providence passes 905 frontend tests plus its Rust exporter, typecheck, lint, architecture, module-size, production-build, and cargo-check gates. Repeated Phase 3 exports are byte-identical. MCP Pro exercised the pending-save, response, restore, repeated response, and final route state with a clean editor error inspection. Castle source/control-flow evidence and the precise proof boundary are recorded in `docs/scenario-vm-evidence.md`.
 
-## Phase 4 — Realmz gameplay domains (completed)
+## Phase 4 — Realmz gameplay domains (opcode/capability ownership gate completed)
+
+This historical gate proves that the active capabilities in the bounded fixture and AOGM inventory have source-backed owners. It is not a claim that every player-visible Realmz application workflow exists or is complete.
 
 - Implemented: direct race, caste, item, spell, monster, battle, treasure, shop, and Complex/Thief/Timed Encounter models with independently validated package construction.
 - Implemented: fixed character, condition/time, inventory/economy, combat, magic, monster, and combat-flow rules; save-owned domain state; packed standard/scenario spell identities; opcode 7/8 program mutation; opcode 36 equipment escrow; and stateful opcode 122 fumble behavior.
@@ -43,7 +50,7 @@ Exit: every active capability needed by the synthetic fixture and Assault on Gia
 
 Exit evidence: Providence commit `364755324fae1685b82bbf0c751572045ee6888d` passes its Rust library/exporter/example checks, 321 library tests, frontend typecheck, and production build. The runtime's full gate passes 452 assertions across eight suites plus schema, fixture-provenance, architecture, export-exclusion, and whitespace checks. A fresh MCP Pro editor session reported zero errors; the main scene played, exposed the expected runtime tree, accepted simulated mouse input, changed the observed status, captured a 960×600 frame, and stopped cleanly. Phase 4 domain behavior is proven by deterministic headless tests; the current minimal host does not yet expose those domain screens, which is Phase 5 work.
 
-## Phase 5 — Classic shell and first campaign (route-certified; presentation fidelity ongoing)
+## Phase 5 — Classic shell and first campaign (bounded AOGM route certified; not application completion)
 
 - Implemented: Classic-first 2D shell with campaign discovery/install, party creation, exploration HUD, character/inventory/spell views, typed encounter/combat/shop/temple/bank presenters, package pictures/audio, settings, and save/load surfaces.
 - Scope note: those are functional routes and surfaces, not a claim that the current shell reproduces the density, composition, interaction affordances, or finish of the Classic Realmz UI. Presentation fidelity remains active work even though the bounded AOGM route gate passed.
@@ -73,11 +80,13 @@ Exit: Safe packages are cross-platform deterministic, certified routes pass, 2D/
 
 Remaining exit evidence: execute the configured native-binary verify/export matrices on actual Windows, macOS, and Linux runners. The byte-identical cross-preset PCK is local packaging evidence, not proof that each native executable launches. The implementation does not claim Phase 6 certification until those jobs pass; additional campaign routes expand corpus confidence without weakening the completed AOGM and War route boundaries.
 
-## Current follow-on tranche — Classic-wide application system (implemented; live campaign acceptance pending)
+## Current follow-on tranche — Classic-wide application system (in progress)
 
 The kernel, package loader, scenario VM, and bounded campaign routes are established. The current work shifts the primary effort to reconstructing Realmz as a complete application instead of adding more scenario-driver coverage in isolation.
 
-Implemented in this tranche:
+The authoritative completeness denominator is now the generated [Classic application workflow status](classic-application-workflow-status.md), backed by `tests/fixtures/oracle/classic-application-workflow-inventory.json`. Its Classic and modern-host totals are reported separately, and its delivery states are derived from compiler, simulation, persistence, presentation, variant, and live-evidence axes. The completed items below describe delivered slices; they do not override a workflow's current audit state.
+
+Delivered so far in this in-progress tranche:
 
 - `ClassicApplicationShell` map-first composition: compact menu strip, dominant map/picture stage, persistent right roster, bottom narrative/status well, and contextual command deck over the existing typed session boundary.
 - Campaign-aware party setup with schema-v2 title/version/author/restriction metadata, Race-left/Class-right filtering, and explicit setup errors.

@@ -9,6 +9,7 @@
   "cases": [
     {
       "id": "movement.land-eight-direction",
+      "workflowIds": ["classic.exploration.travel"],
       "domain": "movement",
       "claim": "Land movement and land pathfinding use the same eight destination probes without an orthogonal corner-blocking rule; dungeon movement remains cardinal and edge-based.",
       "remake": {
@@ -57,6 +58,7 @@
     },
     {
       "id": "action-point.placed-first-match",
+      "workflowIds": ["classic.scenario.trigger-action-point"],
       "domain": "action-points",
       "claim": "A placed Action Point selects the first native record at the coordinate and does not fall through to another same-cell record when its chance fails or it is disabled.",
       "remake": {
@@ -103,6 +105,7 @@
     },
     {
       "id": "media.classic-resource-key",
+      "workflowIds": ["classic.scenario.present-message-media"],
       "domain": "media",
       "claim": "Classic media identity is the exact four-character resource type plus signed resource ID, with one deterministic effective package asset for each key.",
       "remake": {
@@ -154,6 +157,7 @@
     },
     {
       "id": "interaction.classic-staged-presentation",
+      "workflowIds": ["classic.scenario.present-message-media","classic.scenario.choose-response"],
       "domain": "interaction-pacing",
       "claim": "Completed narrative enters history, while the active Classic textbox, picture, and typed response remain staged until the required response is submitted.",
       "remake": {
@@ -201,6 +205,7 @@
     },
     {
       "id": "campaign.party-setup-commit",
+      "workflowIds": ["classic.startup.assemble-party","classic.startup.alter-party","classic.startup.begin-adventure"],
       "domain": "campaign-startup",
       "claim": "Party selection remains editable across repeated add, import, and remove operations; only the explicit Done or Begin action commits the party and enters play. Realmz 2.0 additionally treats each edit as a saveable session boundary.",
       "remake": {
@@ -249,6 +254,7 @@
     },
     {
       "id": "character.creation-starting-defenses",
+      "workflowIds": ["classic.startup.create-character"],
       "domain": "character-creation",
       "claim": "Level-one character creation combines race and caste saving-throw bonuses within Classic's -99 through 120 bounds, copies all forty racial starting-condition values, and replaces only caste condition-level one with permanent -1; higher caste values remain level-up thresholds.",
       "remake": {
@@ -294,6 +300,7 @@
     },
     {
       "id": "character.creation-aging-and-rng-order",
+      "workflowIds": ["classic.startup.create-character"],
       "domain": "character-creation",
       "claim": "Character creation consumes Castle's seventh discarded attribute roll, applies every race aging row through the caste minimum age group before final attribute bounds, adjusts only the first seven saves, performs the 80/90/95 special-bonus rolls, and then rolls stamina, age, and any spell points in source order.",
       "remake": {
@@ -342,6 +349,7 @@
     },
     {
       "id": "character.creation-draft-and-starting-spells",
+      "workflowIds": ["classic.startup.create-character"],
       "domain": "character-creation",
       "claim": "A generated level-one character owns its complete Classic roll and RNG boundary before Review. Reroll replaces that provisional state, acceptance consumes no additional creation RNG, and spellcasters choose from the first twelve character spell slots at each eligible level using costs 1, 3, 6, 10, 15, 21, and 28. Accepting unspent points requires a saveable confirmation.",
       "remake": {
@@ -393,6 +401,7 @@
     },
     {
       "id": "character.creation-start-level",
+      "workflowIds": ["classic.startup.create-character"],
       "domain": "character-creation",
       "claim": "Classic character creation offers starting levels 1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 25, and 30, then constructs from level one through the ordinary level-up path before starting spells, initial items, and the reusable-character decision.",
       "remake": {
@@ -441,6 +450,7 @@
     },
     {
       "id": "character.trained-ability-index-boundary",
+      "workflowIds": ["classic.startup.create-character"],
       "domain": "character-creation",
       "claim": "Castle stores twelve racial combat modifiers separately from fifteen character trained abilities, while Race and Caste author only fourteen trained-ability inputs. The fifteenth updatespec iteration reads neighboring struct fields rather than authored ability data.",
       "remake": {
@@ -490,6 +500,7 @@
     },
     {
       "id": "character.live-aging-and-maximum-age",
+      "workflowIds": ["classic.exploration.time-fatigue-light","classic.character.age-update"],
       "domain": "time-and-aging",
       "claim": "Each crossed midnight adds one age day; each aging operation moves at most one adjacent authored age band, applies the exact live age row without creation bounds, and maximum-age characters receive a truncated two-thirds battle-experience share. Haste, age, and youth spells use the same one-transition operation.",
       "remake": {
@@ -539,6 +550,7 @@
     },
     {
       "id": "character.age-update-interaction",
+      "workflowIds": ["classic.character.age-update"],
       "domain": "interaction-pacing",
       "claim": "Every live age-band transition opens a blocking character age update in party/target order, displays the resulting band and range plus the fifteen applied deltas, requests sound 3002, and resumes the exact clock or spell continuation only after input.",
       "remake": {
@@ -589,6 +601,7 @@
     },
     {
       "id": "combat.monster-aging-special",
+      "workflowIds": ["classic.combat.physical-attack"],
       "domain": "combat",
       "claim": "After an ordinary monster attack hits a party character, Classic special 17 consumes the generic special-potency draw, tests save slot seven, and on failure adds the truncated race-lifespan percentage encoded by attack damage maximum times monster hit dice. A crossed age band blocks combat at the ordinary age-update dialog before the next actor proceeds.",
       "remake": {
@@ -637,6 +650,7 @@
     },
     {
       "id": "combat.monster-status-specials",
+      "workflowIds": ["classic.combat.physical-attack"],
       "domain": "combat",
       "claim": "Monster attack specials 1 through 7 and 16 preserve Castle's shared potency-before-save order, exact save and condition identities, permanent-condition sentinel, corrected party starting-duration-under-30 gate, uncapped monster stacking, target-specific sounds, and whole-attack whiff against a monster above 100 magic resistance.",
       "remake": {
@@ -681,6 +695,7 @@
     },
     {
       "id": "combat.monster-resource-drain-specials",
+      "workflowIds": ["classic.combat.physical-attack"],
       "domain": "combat",
       "claim": "Monster attack specials 8 and 9 preserve Castle's shared potency-before-save order and mutate the direct Realmz resources: spell drain transfers up to three spell points per attacker hit die without clamping the attacker to its maximum, while experience drain subtracts twenty times attacker maximum stamina from a party character and has no monster-target branch.",
       "remake": {
@@ -727,6 +742,7 @@
     },
     {
       "id": "combat.monster-charm-special",
+      "workflowIds": ["classic.combat.turn-control"],
       "domain": "combat",
       "claim": "Monster attack special 10 preserves Castle's shared potency-before-save order, party charm-resistance bonus, undead and immunity saves, attacker-allegiance adoption, automatic charmed party turns, opposed-allegiance targeting, battle-scoped persistence, and base-allegiance restoration at battle cleanup.",
       "remake": {
@@ -773,6 +789,7 @@
     },
     {
       "id": "combat.monster-elemental-specials",
+      "workflowIds": ["classic.combat.physical-attack"],
       "domain": "combat",
       "claim": "Monster attack specials 11 through 15 roll one-to-attack-maximum elemental damage after the shared potency draw, halve it for the matching save and protection, and commit the protected amount. Realmz 2.0 intentionally corrects Castle's monster-target cold-through-mental accumulation ordering so protection cannot report reduced damage without reducing health loss.",
       "remake": {
@@ -820,6 +837,7 @@
     },
     {
       "id": "combat.character-melee-resolution",
+      "workflowIds": ["classic.combat.physical-attack"],
       "domain": "combat",
       "claim": "A legal character melee attempt selects the equipped Classic type-2 weapon independently from its numeric damage bonus, derives combat damage, luck, and armor from every equipped item, preserves Castle's hit, weapon-die, target-tag, elemental, condition, reflection, helpless, and critical-draw order, and intentionally uses the defending monster's elemental save instead of Castle's apparent attacker-save typo.",
       "remake": {
@@ -871,6 +889,7 @@
     },
     {
       "id": "combat.character-required-weapon-correction",
+      "workflowIds": ["classic.combat.physical-attack"],
       "domain": "combat",
       "claim": "Monster weapon-to-hit requirements remain distinct from battle placement distance and magical-plus thresholds. Realmz 2.0 intentionally follows Divinity's Item Number contract for specific weapons, preserves the signed-byte representation, and requires a real matching weapon for blunt, sharp, and exact-item restrictions.",
       "remake": {
@@ -923,6 +942,7 @@
     },
     {
       "id": "combat.monster-permanent-affliction-specials",
+      "workflowIds": ["classic.combat.physical-attack"],
       "domain": "combat",
       "claim": "Monster attack specials 18 and 19 preserve the shared potency draw and save-slot-seven ordering. Failed blindness writes permanent -1 and still commits physical damage; failed petrification writes Castle's target-specific stone sentinel, sets health to zero, and reaches force-kill without committing the previously rolled physical damage.",
       "remake": {
@@ -967,6 +987,7 @@
     },
     {
       "id": "combat.monster-ordinary-melee",
+      "workflowIds": ["classic.combat.physical-attack"],
       "domain": "combat",
       "claim": "With optional fumbles disabled, an ordinary monster melee attack derives accuracy from hit dice, damage plus, an optional carried weapon, conditions, campaign day, defender luck and armor, and evil-conditional protection; it then uses either the authored attack row or the carried weapon's physical, elemental, and target-type fields. Realmz 2.0 intentionally prevents Castle's signed negative physical total from healing the defender.",
       "remake": {
@@ -1021,6 +1042,7 @@
     },
     {
       "id": "combat.active-turn-attack-cadence",
+      "workflowIds": ["classic.combat.turn-control"],
       "domain": "combat",
       "claim": "Player-controlled character melee capacity is an integer count of half-attack units: each activation carries at most one positive leftover unit, adds normal attacks plus attack bonus, and each melee attempt costs two units. A monster chooses its action once, selects one target, and resolves its authored physical rows in order before advancing; the actor, action, target, and next row survive save and interaction boundaries.",
       "remake": {
@@ -1076,6 +1098,7 @@
     },
     {
       "id": "combat.fumble-and-battle-recovery",
+      "workflowIds": ["classic.combat.physical-attack","classic.rewards.fumble-recovery"],
       "domain": "combat",
       "claim": "When fumbles are enabled, character and armed-monster physical attacks consume their source-scaled fumble draw after the hit roll. A character roll from 51 through 59 drops a removable melee weapon into a twenty-entry battle queue and forces a miss; an armed-monster roll from 21 through 34 clears only the active weapon and forces a miss. Post-battle body-count selection precedes player-directed recovery. Realmz 2.0 intentionally preserves the exact dropped item instance and remaining charges rather than reconstructing definition defaults.",
       "remake": {
@@ -1138,6 +1161,7 @@
     },
     {
       "id": "combat.character-weapon-mode-selection",
+      "workflowIds": ["classic.combat.weapon-mode"],
       "domain": "combat",
       "claim": "Classic battle state owns one melee-versus-missile toggle per party character. Battle setup prefers an equipped type-2 melee weapon, otherwise selects an equipped type-15 missile weapon, and the active character may switch modes without spending attacks, movement, or the turn. Missile mode may never fall through to the melee resolver.",
       "remake": {
@@ -1191,6 +1215,7 @@
     },
     {
       "id": "combat.battlefield-generation-and-placement",
+      "workflowIds": ["classic.combat.enter-battle"],
       "domain": "combat",
       "claim": "Battle setup constructs the 90 by 90 tactical field from one clamped 30 by 30 live map window, consumes terrain decoration before formation, places the complete party and held-over allies before authored monsters, constructs authored monsters through combatsetup semantics, orders Data BD slots by row then column, and persists the resulting field and footprints before initiative.",
       "remake": {
@@ -1246,6 +1271,7 @@
     },
     {
       "id": "combat.tactical-movement-and-melee-adjacency",
+      "workflowIds": ["classic.combat.tactical-movement"],
       "domain": "combat",
       "claim": "Reaction-free player tactical movement accepts one eight-direction destination step, charges the maximum destination-footprint terrain cost plus one point per changed axis, and exposes melee only against an opposed living footprint in the complete one-cell perimeter. A step whose old or new perimeter contains a hostile remains disabled until guarding and withdrawal reactions are serializable. A monster that is not adjacent cannot apply ordinary melee damage while its source-backed tactical movement is still unavailable.",
       "remake": {
@@ -1295,6 +1321,7 @@
     },
     {
       "id": "combat.death-macro-battlefield-occupancy",
+      "workflowIds": ["classic.combat.resolve-outcome"],
       "domain": "combat",
       "claim": "A defeated monster with a pending death macro retains its serialized battlefield footprint until the macro completes. The footprint is removed if the monster remains dead and retained if CODE 119 revives it, preventing a living combatant from becoming unpositioned and unsaveable.",
       "remake": {
@@ -1343,6 +1370,7 @@
     },
     {
       "id": "combat.monster-targeting-los-and-movement",
+      "workflowIds": ["classic.combat.turn-control","classic.combat.tactical-movement"],
       "domain": "combat",
       "claim": "A monster retains a valid visible target, sends an unseen retained target directly to Castle's ascending slot scan, or draws a new target from the authored combat-slot space and switches to that scan after the first unseen valid draw. It then takes repeated target-directed eight-direction steps, uses complete-footprint legality and maximum terrain cost, applies bounded shift.c retries, and attacks only after opposed footprints become adjacent. Tactical LOS uses Castle's fixed 128-sample geometry without allowing the presentation delay preference to change simulation.",
       "remake": {
@@ -1455,6 +1483,7 @@
     },
     {
       "id": "combat.monster-target-scan-safety",
+      "workflowIds": ["classic.combat.turn-control","classic.combat.tactical-movement"],
       "domain": "combat",
       "claim": "Castle's ascending monster-target fallback is bounded to validated combat slots so an all-unseen roster cannot read uninitialized monster entries or pass an invalid target into movement. The target order and random-to-linear transition remain source-conformant.",
       "remake": {
@@ -1528,6 +1557,7 @@
     },
     {
       "id": "combat.monster-projectile-weapon-replacement",
+      "workflowIds": ["classic.combat.physical-attack"],
       "domain": "combat",
       "claim": "A monster entering physical resolution with a projectile weapon replaces it from that same monster's native item slot zero. Realmz 2.0 intentionally corrects Castle's stale-global write so reactions cannot mutate one monster and arm another monster with the wrong item.",
       "remake": {
@@ -1574,6 +1604,7 @@
     },
     {
       "id": "combat.tactical-placement-and-ranged-resolution",
+      "workflowIds": ["classic.combat.physical-attack"],
       "domain": "combat",
       "claim": "Ordinary physical class-nine projectiles use session-owned battlefield anchors, integer-truncated Euclidean range, Castle line of sight, exact type-15 or spell-bearing type-10 item selection, finite charges, missile dodge instead of magic resistance, and source-distinct player and monster action costs. Unsupported special, elemental, random-power, and ally-monster branches remain explicit rather than impersonating ordinary missiles or melee.",
       "remake": {
@@ -1631,6 +1662,7 @@
     },
     {
       "id": "combat.withdrawal-opportunity-not-facing",
+      "workflowIds": ["classic.combat.tactical-movement","classic.combat.guard-finish","classic.combat.retreat"],
       "domain": "combat",
       "claim": "Guard is explicit combat state rather than a once-per-round reaction budget. A legal player step checks guarding enemies before movement, lets every enemy left behind attack with a temporary plus twenty, commits movement only if the mover survives, and then checks guards at the destination. Ordinary monster movement checks party and allied guards at contact, while withdrawal remains specific to player movement and retreating monsters. Character face and monster left-right rendering state never derive the positive behind modifier.",
       "remake": {
@@ -1689,6 +1721,7 @@
     },
     {
       "id": "combat.character-and-monster-retreat",
+      "workflowIds": ["classic.combat.tactical-movement","classic.combat.retreat"],
       "domain": "combat",
       "claim": "Escape is a per-character action. Explicit Escape requires every enemy to be at least ten integer-truncated Euclidean cells away and rejects Helpless, traitor, Confused, Tangled, or Slow characters; acceptance removes only that character and adds exactly 200 prestige penalty. Entering the battlefield edge band prompts or forces the same removal without those explicit-command gates. Routed monsters move away from their retained target, receive source-ordered withdrawal attacks before each committed step, and leave battle after entering the edge band.",
       "remake": {
@@ -1745,6 +1778,7 @@
     },
     {
       "id": "combat.monster-spell-slot-selection",
+      "workflowIds": ["classic.spellcasting.combat-cast"],
       "domain": "combat",
       "claim": "A Classic monster owns ten fixed spell positions. Each magical attack samples native slot zero through nine and retries empty slots, so Providence and the runtime must preserve empty positions rather than pack non-empty spell IDs.",
       "remake": {
@@ -1787,6 +1821,7 @@
     },
     {
       "id": "combat.monster-starting-conditions",
+      "workflowIds": ["classic.combat.enter-battle"],
       "domain": "combat",
       "claim": "Every authored monster carries forty signed starting-condition bytes from Data MD into each constructed runtime monster; permanent negative conditions such as Reflecting Spells must be active before the first combat action.",
       "remake": {
@@ -1831,6 +1866,7 @@
     },
     {
       "id": "combat.character-spell-activation",
+      "workflowIds": ["classic.spellcasting.choose-power-target","classic.spellcasting.combat-cast"],
       "domain": "combat",
       "claim": "An ordinary memorized character spell is admitted only for a legal active caster, counts against a per-activation caste limit, uses the tier encoded by its Classic ID for spell screens, validates range and line of sight before mutation, spends spell points plus two half-attacks and twelve movement, and may leave the same actor active when enough half-attacks remain.",
       "remake": {
@@ -1884,6 +1920,7 @@
     },
     {
       "id": "combat.special-57-healing-and-actor-targeting",
+      "workflowIds": ["classic.spellcasting.combat-cast"],
       "domain": "combat",
       "claim": "A player-selected single-target combat spell may name any living party or monster actor. A source-shaped special-57 spell negates its rolled damage into healing after resistance: party healing cannot affect stone or dead characters and caps at maximum stamina, while monster healing can select a same-allegiance actor including the caster, can exceed maximum stamina, and marks the healed monster as attacked.",
       "remake": {
@@ -1934,6 +1971,7 @@
     },
     {
       "id": "combat.monster-ordinary-spell-casting",
+      "workflowIds": ["classic.spellcasting.combat-cast"],
       "domain": "combat",
       "claim": "A Classic monster can make multiple magical attacks, samples a fixed spell slot up to thirty times per attack, establishes range from an initial power roll, lowers only cost power until affordable, samples native party-gap-monster target space up to one hundred times, clears Guard for an ordinary targeted cast, and may retry casting once after movement without a second cast-percent roll.",
       "remake": {
@@ -1980,6 +2018,7 @@
     },
     {
       "id": "combat.spell-death-macro-queue",
+      "workflowIds": ["classic.spellcasting.combat-cast","classic.combat.resolve-outcome"],
       "domain": "combat",
       "claim": "Monsters killed during one spell resolution enqueue their death macros in source target order; the queue drains before battle outcome or caster advancement, survives interaction/save boundaries, and does not reset monster allegiance unless an authored opcode such as 119 explicitly does so.",
       "remake": {
@@ -2030,6 +2069,7 @@
     },
     {
       "id": "combat.character-automatic-group-spells",
+      "workflowIds": ["classic.spellcasting.combat-cast"],
       "domain": "combat",
       "claim": "A loyal player character's ordinary target-type 9, 10, or 12 spell selects battle participants in party-slot then monster-slot order, charges and rolls duration/base damage once, applies resistance/save/protection per target, and queues defeated monsters' death macros in that same order.",
       "remake": {
@@ -2079,6 +2119,7 @@
     },
     {
       "id": "combat.character-spatial-area-spells",
+      "workflowIds": ["classic.spellcasting.choose-power-target","classic.spellcasting.combat-cast"],
       "domain": "combat",
       "claim": "A loyal player character's ordinary target-type 3 or 4 spell selects one battlefield center, derives a fixed-size or power-sized Data AD mask, resolves intersecting participants in party-slot then monster-slot order, and shares one cast cost, duration roll, and base-damage roll across their independent defenses.",
       "remake": {
@@ -2130,6 +2171,7 @@
     },
     {
       "id": "combat.repeated-target-spells",
+      "workflowIds": ["classic.spellcasting.choose-power-target","classic.spellcasting.combat-cast"],
       "domain": "combat",
       "claim": "An ordinary size-zero target-type 0 spell selects up to one distinct actor per chosen power in player-selected order, charges once at that power, and rerolls duration and base damage for every selected actor; monsters choose their power and unique native party-gap-monster targets through a per-cast bounded sampling counter under FD-COMBAT-011.",
       "remake": {
@@ -2191,6 +2233,7 @@
     },
     {
       "id": "combat.ordinary-spell-reflection",
+      "workflowIds": ["classic.spellcasting.combat-cast"],
       "domain": "combat",
       "claim": "An ordinary single-actor or size-zero repeated spell checks the originally selected actor's Reflecting Spells condition once, redirects a successful one-through-thirty-three roll to the active caster before duration, damage, immunity, resistance, or saves, and never recursively reflects the redirected cast.",
       "remake": {
@@ -2249,6 +2292,7 @@
     },
     {
       "id": "character.profile-native-identity",
+      "workflowIds": ["classic.startup.create-character"],
       "domain": "character-creation",
       "claim": "Race and caste character values are one-based Classic identities 1 through 30, each resolves file record identity minus one, and the same identity indexes display names and race-to-caste eligibility.",
       "remake": {
@@ -2296,6 +2340,7 @@
     },
     {
       "id": "character.appearance-catalog-and-human-default",
+      "workflowIds": ["classic.startup.create-character","classic.character.change-appearance"],
       "domain": "character-creation",
       "claim": "Character creation uses the complete package-backed Classic portrait and tactical-icon catalogs with stable typed identities; Human portrait set zero aliases the first real browseable pair 257/9000 instead of Castle's unavailable literal pair 251/8994.",
       "remake": {
@@ -2356,6 +2401,7 @@
     },
     {
       "id": "inventory.carried-item-workflow",
+      "workflowIds": ["classic.inventory.manage-equipment","classic.inventory.inspect-item","classic.inventory.use-item","classic.inventory.trade-item","classic.inventory.drop-item"],
       "domain": "inventory",
       "claim": "Outside an active encounter or battle, ordinary carried-item management selects one party member and one item, applies Classic race/class/category and equipment-slot rules, transfers ordinary equipped records as unequipped, rejects capacity violations, and confirms irreversible dropping without inventing a general player stash.",
       "remake": {
@@ -2420,6 +2466,7 @@
     },
     {
       "id": "economy.classic-shop-lifecycle",
+      "workflowIds": ["classic.inventory.identify-item","classic.services.shop"],
       "domain": "economy",
       "claim": "An ordinary Classic shop exposes identified stock, purchases with pooled-then-personal gold, values sales from half base cost and remaining charges with the unidentified penalty, refuses ordinary equipped-item sales, offers fixed twenty-gold identification, and retains sold items as mutable buyback stock.",
       "remake": {
@@ -2478,6 +2525,7 @@
     },
     {
       "id": "economy.classic-temple-lifecycle",
+      "workflowIds": ["classic.services.temple"],
       "domain": "economy",
       "claim": "Classic opcode 32 makes a contextual temple available; entering it exposes nine fixed services whose signed percentage costs are paid from pooled then selected-character gold, applies the selected source mutation even when it is a no-op, and preserves bank-backed wealth plus every pending response through the central session aggregate.",
       "remake": {
