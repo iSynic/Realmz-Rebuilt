@@ -310,7 +310,7 @@ func _populate_action_availability(result: GameView) -> void:
 	var setup_member_count := _state.party.characters().size()
 	var setup_member_limit := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
 	var draft_active := _state.character_draft != null and _state.character_draft.generated_character != null
-	var battle_active := result.combat_view != null and result.combat_view.outcome == &""
+	var battle_active := result.combat_view != null and result.combat_view.outcome == &"active"
 	var ordinary_reason := "Resolve the current interaction first." if blocked_by_interaction else "Complete party setup first." if party_setup else ""
 	var field_item_available := false
 	for member: CharacterView in result.party_members:
@@ -355,8 +355,25 @@ func _populate_action_availability(result: GameView) -> void:
 	result.set_action_availability(&"store_item", false, "Classic has no ordinary player-stash workflow; opcode 36 equipment escrow remains scenario-owned.")
 	result.set_action_availability(&"service_action", ordinary_reason.is_empty() and not battle_active and not result.services.is_empty(), ordinary_reason if not ordinary_reason.is_empty() else "Services are unavailable during battle." if battle_active else "No shop, temple, or bank is available at this location.")
 	result.set_action_availability(&"money_action", ordinary_reason.is_empty() and not battle_active and result.money_workspace != null, ordinary_reason if not ordinary_reason.is_empty() else "Money management is unavailable during battle." if battle_active else "No party money workspace is available.")
+	var combat_move_enabled := false
+	var combat_move_reason := "No active battle."
+	if battle_active:
+		var combat_request_open := result.pending_interaction == null or result.pending_interaction.kind == InteractionRequest.COMBAT
+		if not combat_request_open:
+			combat_move_reason = "Resolve the current interaction first."
+		elif result.combat_view.movement_options.is_empty():
+			combat_move_reason = "The active combatant is not available for player-controlled movement."
+		else:
+			for option: CombatMoveOptionView in result.combat_view.movement_options:
+				if option.enabled:
+					combat_move_enabled = true
+					combat_move_reason = ""
+					break
+			if not combat_move_enabled:
+				combat_move_reason = "The active character has no legal tactical step."
+	result.set_action_availability(&"combat_move", combat_move_enabled, combat_move_reason)
 	for action_id: StringName in [
-		&"select_spell_power", &"select_spell_target", &"combat_move",
+		&"select_spell_power", &"select_spell_target",
 		&"open_journal", &"open_maps",
 	]:
 		result.set_action_availability(action_id, false, "Not implemented in the current gameplay slice.")
@@ -364,7 +381,7 @@ func _populate_action_availability(result: GameView) -> void:
 
 func _populate_spell_actions(result: GameView) -> void:
 	var blocked_reason := "Resolve the current interaction first." if result.pending_interaction != null else "Complete party setup first." if result.party_setup_available else ""
-	var battle_active := result.combat_view != null and result.combat_view.outcome == &""
+	var battle_active := result.combat_view != null and result.combat_view.outcome == &"active"
 	for member_view: CharacterView in result.party_members:
 		var character := _state.party.character_by_id(member_view.id)
 		for spell_view: SpellView in member_view.spells:
@@ -416,7 +433,7 @@ func _populate_inventory_item_actions(result: GameView) -> void:
 		context_reason = "Resolve the current interaction first."
 	elif result.party_setup_available:
 		context_reason = "Begin the adventure before changing carried equipment."
-	elif result.combat_view != null and result.combat_view.outcome == &"":
+	elif result.combat_view != null and result.combat_view.outcome == &"active":
 		context_reason = "Use the battle action flow during combat."
 	var party := _state.party.characters()
 	var definitions := _content.item_definitions()

@@ -17,6 +17,7 @@ func run() -> void:
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
+	_test_automatic_workflow_routes()
 	_test_character_creator_workflow()
 	_test_character_vault_workspace()
 	_test_field_spell_workspace()
@@ -899,3 +900,15 @@ func _test_scene_composition() -> void:
 		var texture := load(entry["path"]) as Texture2D
 		assert_equal(texture.get_width(), int(entry["width"]), "generated stone surface width matches its manifest: %s" % entry["path"])
 		assert_equal(texture.get_height(), int(entry["height"]), "generated stone surface height matches its manifest: %s" % entry["path"])
+
+
+func _test_automatic_workflow_routes() -> void:
+	var view := GameView.new(1, true, null)
+	view.combat_view = CombatView.new(CombatState.new("classic.battle.route"))
+	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"exploration", view), &"combat", "battle setup opens the tactical workspace")
+	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"inventory", view), &"inventory", "battle setup does not replace a workspace the player deliberately opened")
+	view.combat_view = null
+	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"combat", view), &"exploration", "completed battle cleanup returns the ordinary shell to exploration")
+	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"inventory", view), &"inventory", "ordinary non-combat workspaces remain presentation-owned")
+	view.pending_interaction = InteractionRequest.new("shop.route", InteractionRequest.SHOP, {"prompt": "Shop"})
+	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"exploration", view), &"services", "application services open their dedicated workspace")

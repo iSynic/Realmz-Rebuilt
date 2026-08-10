@@ -107,10 +107,9 @@ func present(game_view: GameView) -> void:
 	_router.present(game_view)
 	var play_regions_visible := not _router.full_stage_overlay_visible()
 	_set_play_regions_visible(play_regions_visible)
-	if game_view.combat_view != null and _router.current_screen() == &"exploration":
-		_router.open_screen(&"combat")
-	elif game_view.pending_interaction != null and game_view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK] and _router.current_screen() == &"exploration":
-		_router.open_screen(&"services")
+	var automatic_route := automatic_workflow_route(_router.current_screen(), game_view)
+	if automatic_route != _router.current_screen():
+		_router.open_screen(automatic_route)
 	_build_menus()
 	_rebuild_command_deck()
 
@@ -129,6 +128,18 @@ func present_step(step: SessionStep) -> void:
 
 func latest_classic_text() -> String:
 	return _latest_classic_text
+
+
+static func automatic_workflow_route(current_route: StringName, game_view: GameView) -> StringName:
+	if game_view == null:
+		return current_route
+	if game_view.combat_view != null and current_route == &"exploration":
+		return &"combat"
+	if game_view.combat_view == null and current_route == &"combat":
+		return &"exploration"
+	if game_view.pending_interaction != null and game_view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK] and current_route == &"exploration":
+		return &"services"
+	return current_route
 
 
 func set_package_media(media: PackageMediaCatalog) -> void:

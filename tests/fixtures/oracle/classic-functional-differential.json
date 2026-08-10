@@ -1273,7 +1273,7 @@
       "id": "combat.tactical-movement-and-melee-adjacency",
       "workflowIds": ["classic.combat.tactical-movement"],
       "domain": "combat",
-      "claim": "Reaction-free player tactical movement accepts one eight-direction destination step, charges the maximum destination-footprint terrain cost plus one point per changed axis, and exposes melee only against an opposed living footprint in the complete one-cell perimeter. A step whose old or new perimeter contains a hostile remains disabled until guarding and withdrawal reactions are serializable. A monster that is not adjacent cannot apply ordinary melee damage while its source-backed tactical movement is still unavailable.",
+      "claim": "Reaction-free player tactical movement accepts one eight-direction destination step, charges the maximum destination-footprint terrain cost plus one point per changed axis, and exposes melee only against an opposed living footprint in the complete one-cell perimeter. A step whose old or new perimeter contains a hostile remains disabled until guarding and withdrawal reactions are serializable. Detached application availability mirrors the active actor's legal probes and suppresses exploration actions throughout combat.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "Remake owns footprint-aware movement and AI pathing, making it a useful workflow lead. Its CombatState takes the minimum terrain time across a multi-cell destination while Castle takes the maximum, and two shared AI scripts calculate range without adding the actor positions. Neither divergence is imported into 2.0.",
@@ -1296,7 +1296,7 @@
         ],
         "authoredInputs": ["90 by 90 battlefield terrain", "terrain time and solid values", "combatant anchors and size footprints", "allegiance", "remaining movement and half-attacks"],
         "observation": "combatchoice derives horizontal and vertical deltas independently, so party actors step in eight directions. Entering an opposed occupied footprint attacks instead of moving. getmovecost takes the maximum destination-footprint tile time divided by two minus one, floored at zero, then adds one for each changed axis. checkforenemy scans the complete one-cell perimeter around an actor footprint. movemonster uses the same footprint legality and maximum terrain cost but owns separate target-directed movement and randomized blocked-step retries.",
-        "unresolved": ["Monster movement, randomized shift retries, guarding reactions, friendly swaps, and withdrawal attacks require separate serializable continuations.", "cansee advances each of 128 iterations by delta divided by 128 plus the user delay-speed preference; the resulting line-of-sight endpoint appears preference-dependent and needs a controlled Castle runtime fixture before 2.0 chooses a correction."]
+        "unresolved": ["cansee advances each of 128 iterations by delta divided by 128 plus the user delay-speed preference; the resulting line-of-sight endpoint appears preference-dependent and needs a controlled Castle runtime fixture before 2.0 chooses a correction."]
       },
       "providence": {
         "commit": "202c87f1b4d856ec968760ed982f6ea6eeae3204",
@@ -1309,15 +1309,16 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func move_character(" },
-        "expectedTrace": ["probe one adjacent eight-direction destination", "validate every destination footprint cell", "charge maximum terrain cost plus changed axes", "compare complete hostile adjacency before and after", "reject unimplemented guarding or withdrawal reactions without mutation", "commit reaction-free position and movement synchronously", "expose adjacent melee and all eight probes in detached view and interaction", "prevent nonadjacent monster melee from mutating health"],
+        "expectedTrace": ["probe one adjacent eight-direction destination", "validate every destination footprint cell", "charge maximum terrain cost plus changed axes", "compare complete hostile adjacency before and after", "reject unimplemented guarding or withdrawal reactions without mutation", "commit reaction-free position and movement synchronously", "expose adjacent melee and all eight probes in detached view and interaction", "derive global combat-move availability from enabled detached probes", "suppress exploration movement and Search while combat outcome is active"],
         "tests": [
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_tactical_adjacency_movement_and_restore()" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_gameplay_capabilities_and_battle_resume(" }
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_gameplay_capabilities_and_battle_resume(" },
+          { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" }
         ]
       },
       "decision": "runtime-defect",
       "availability": "implemented",
-      "status": "player-movement-and-melee-adjacency-verified-monster-movement-disabled"
+      "status": "player-movement-melee-adjacency-global-availability-and-ordinary-aogm-save-resume-verified"
     },
     {
       "id": "combat.death-macro-battlefield-occupancy",
@@ -2871,6 +2872,48 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "ordinary-victory-defeat-full-and-partial-retreat-reward-exact-once-cleanup-and-save-boundaries-verified-special-battle-modes-unresolved"
+    },
+    {
+      "id": "combat.presentation-workflow-routing",
+      "workflowIds": ["classic.combat.resolve-outcome"],
+      "domain": "combat",
+      "claim": "The application shell enters the tactical workspace when combat becomes active and returns from that workspace to exploration after terminal reward cleanup releases combat state, while preserving a different workspace deliberately opened by the player.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake's global host can open its loot workspace after combat, which is a useful sequencing lead but does not establish the 2.0 presentation ownership boundary.",
+        "sources": [
+          { "path": "src/scripts/GameGlobal.gd", "symbol": "func show_loot_menu" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/combat.c", "symbol": "void combat" },
+          { "path": "src/realmz_orig/bodycount.c", "symbol": "void bodycount" }
+        ],
+        "authoredInputs": ["battle outcome", "body-count and reward completion", "originating scenario or exploration caller"],
+        "observation": "combat retains control through body-count and reward workspaces, then returns to its caller after cleanup. Classic does not leave the player in an empty battle workspace once the battle state has been released.",
+        "unresolved": []
+      },
+      "providence": {
+        "commit": "202c87f1b4d856ec968760ed982f6ea6eeae3204",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
+        ],
+        "expectedRepresentation": "No new package field is required. Schema v2 already preserves the battle and originating scenario continuation; screen selection remains presentation-owned."
+      },
+      "realmz2": {
+        "owner": { "path": "src/presentation/classic_application_shell.gd", "symbol": "static func automatic_workflow_route(" },
+        "expectedTrace": ["open combat from exploration when a detached combat view appears", "retain the combat route throughout terminal interaction stages", "return combat to exploration when combat state is released", "preserve non-combat workspaces deliberately opened by the player", "route ordinary shop, temple, and bank requests from exploration to services"],
+        "tests": [
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_automatic_workflow_routes()" }
+        ]
+      },
+      "decision": "presentation-defect",
+      "availability": "implemented",
+      "status": "automatic-battle-entry-terminal-return-and-player-owned-route-preservation-verified"
     },
     {
       "id": "inventory.classic-spell-item-use",

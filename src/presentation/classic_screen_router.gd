@@ -1375,7 +1375,7 @@ func _render_combat() -> void:
 		_add_empty_state("No battle is active", "Battlefield positions and tactical actions appear here when combat begins.")
 		return
 	var combat := _view.combat_view
-	_add_card("Battle %s" % combat.battle_id, "Round %d • Active %s" % [combat.round_number, combat.active_actor_id], "Outcome: %s" % ["In progress" if combat.outcome == &"" else String(combat.outcome)])
+	_add_card("Battle %s" % combat.battle_id, "Round %d • Active %s" % [combat.round_number, combat.active_actor_id], "Outcome: %s" % ["In progress" if combat.outcome == &"active" else String(combat.outcome)])
 	_add_section_heading("Turn order", " → ".join(combat.turn_order))
 	for monster: MonsterView in combat.monsters:
 		_add_content_card(monster.icon_resource_type, monster.icon_id, monster.name, "Enemy" if monster.traitor else "Ally", "HP %d/%d" % [monster.current_health, monster.maximum_health])

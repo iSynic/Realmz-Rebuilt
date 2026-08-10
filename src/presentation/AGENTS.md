@@ -29,6 +29,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - Presentation never mutates gameplay state directly.
 - Animation completion never advances simulation; only genuine interaction responses resume it.
 - While an interaction is pending, exploration controls remain disabled and the presenter cannot bypass the session response path.
+- `ClassicApplicationShell` automatically enters Combat only from Exploration when a detached combat view appears and returns Combat to Exploration only after combat state is released. It preserves any different workspace deliberately opened by the player; route selection remains presentation-owned and never affects battle cleanup.
 - Full-window structural Controls such as `ClassicApplicationShell` and `ClassicScreenRouter` use `MOUSE_FILTER_IGNORE`; only concrete controls and modal surfaces participate in pointer hit testing. Scene-tree order, not visual `z_index`, owns pointer priority: router modals follow the roster/textbox within the shell, and `InteractionPresenter` follows the shell at the application root.
 - The campaign selector presents one row per campaign. Immutable package revisions are installation details, not separate campaigns; older files remain available for explicit opening and diagnostics.
 - TileMap layers, collisions, AStar structures, meshes, minimap textures, and other caches are disposable derivatives of `GameView` facts produced from topology plus overlays.

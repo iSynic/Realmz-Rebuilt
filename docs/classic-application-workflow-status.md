@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 6 | 17 | 37 | 0 |
+| classic | 60 | 6 | 16 | 38 | 0 |
 | host | 8 | 1 | 3 | 4 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -22,7 +22,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Inventory and equipment | 7 | 0 | 4 | 3 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
-| Combat | 8 | 0 | 2 | 6 | 0 |
+| Combat | 8 | 0 | 1 | 7 | 0 |
 | Rewards and progression | 5 | 0 | 1 | 4 | 0 |
 | Maps and journal | 3 | 1 | 2 | 0 | 0 |
 | Save and system | 4 | 0 | 2 | 2 | 0 |
@@ -69,8 +69,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | presentation | Count |
 | --- | ---: |
 | absent | 6 |
-| fixture-shell | 6 |
-| functional | 48 |
+| fixture-shell | 5 |
+| functional | 49 |
 | accepted | 0 |
 
 ### Host
@@ -108,26 +108,23 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Label | Classic | Host |
 | --- | ---: | ---: |
 | synthetic | 54 | 7 |
-| route-harness | 38 | 2 |
-| aogm-ordinary | 14 | 2 |
+| route-harness | 39 | 2 |
+| aogm-ordinary | 22 | 2 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
 ## Release blockers and major gaps
 
-Blockers: **2**. Major gaps: **30**.
+Blockers: **1**. Major gaps: **28**.
 
-- **blocker** `classic.combat.enter-battle` — Battle entry and placement are not certified through ordinary AOGM play. Next: Reach an AOGM battle through ordinary UI and compare setup, placement, save, and first actor.
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
 - **major** `classic.character.change-appearance` — Creation catalogs exist, but active-character portrait and icon changes have no typed intent or workspace. Next: Add typed appearance-change intents and a package-catalog picker.
 - **major** `classic.character.reorder-party` — Party order cannot be changed through a typed workflow. Next: Add a reorder intent, deterministic mutation, save test, and workspace controls.
 - **major** `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace. Next: Complete the detached character read model and build the full sheet tabs.
-- **major** `classic.combat.physical-attack` — Physical combat is deeply source-tested but not certified in ordinary campaign play. Next: Complete and save/reload a representative melee and missile exchange in AOGM.
-- **major** `classic.combat.resolve-outcome` — The ordinary victory/defeat/retreat/reward return is implemented but not accepted through a complete campaign battle. Next: Complete one ordinary AOGM battle through victory, reward, optional level-up, return, and save/reload.
+- **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Correct the obscuring tactical layout, then exercise ordinary defeat or retreat and a reward that produces a level-up before presentation acceptance.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Create synthetic Castle fixtures for battle modes 5 and 10 and opcode 48 bonus treasure before changing the package contract.
-- **major** `classic.combat.tactical-movement` — COMBAT_MOVE is dispatched but the global availability table still describes it as unimplemented. Next: After the audit, make availability derive from the active battle view and validate ordinary movement controls.
-- **major** `classic.combat.turn-control` — The battle interaction is functional but not yet an accepted Classic tactical workspace. Next: Run the ordinary AOGM battle loop and close presentation gaps found there.
+- **major** `classic.combat.turn-control` — The battle interaction is functional but obscures the tactical workspace during ordinary play. Next: Redesign the combat interaction layer so the battlefield, active actor, reachable cells, targets, and disabled reasons remain visible throughout the ordinary turn loop.
 - **major** `classic.exploration.camp-rest` — Camp mode now has source-backed entry/exit time, service clearing, persistence, and UI state, but held Rest and automatic movement departure are not complete. Next: Add a typed held-Rest continuation with recovery/interruption, then preserve the pre-movement departure ordering.
 - **major** `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end. Next: Trace the preference/save fields and ordinary cast handoff, then decide whether the shortcut is Classic state or presentation state.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
@@ -165,13 +162,10 @@ Blockers: **2**. Major gaps: **30**.
 
 ### aogm
 
-- `classic.combat.enter-battle` — Battle entry and placement are not certified through ordinary AOGM play.
 - `classic.character.reorder-party` — Party order cannot be changed through a typed workflow.
 - `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace.
-- `classic.combat.physical-attack` — Physical combat is deeply source-tested but not certified in ordinary campaign play.
-- `classic.combat.resolve-outcome` — The ordinary victory/defeat/retreat/reward return is implemented but not accepted through a complete campaign battle.
-- `classic.combat.tactical-movement` — COMBAT_MOVE is dispatched but the global availability table still describes it as unimplemented.
-- `classic.combat.turn-control` — The battle interaction is functional but not yet an accepted Classic tactical workspace.
+- `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
+- `classic.combat.turn-control` — The battle interaction is functional but obscures the tactical workspace during ordinary play.
 - `classic.exploration.camp-rest` — Camp mode now has source-backed entry/exit time, service clearing, persistence, and UI state, but held Rest and automatic movement departure are not complete.
 - `classic.inventory.inspect-item` — Item details do not yet expose the complete Classic record and disabled-action reasons.
 - `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit.
@@ -182,8 +176,10 @@ Blockers: **2**. Major gaps: **30**.
 - `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.startup.inspect-character` — Party setup cannot open a complete Classic character inspection workspace.
 - `host.system.save-previews` — Save/load works, but the required slot preview and mismatch/corruption library is still a shell.
+- `classic.combat.physical-attack` — The missile branch still lacks ordinary campaign evidence.
 - `classic.exploration.contextual-service` — Contextual service entry is not yet demonstrated through ordinary AOGM play.
 - `classic.inventory.trade-item` — Trade has no ordinary campaign observation.
+- `classic.rewards.experience-level-up` — Experience award is observed in AOGM, but an actual level-up remains fixture-only.
 - `classic.scenario.select-subject` — Picker variants are tested synthetically but not all observed in ordinary AOGM play.
 - `classic.startup.create-character` — The five-step creator has deterministic and UI tests but no recorded ordinary AOGM completion in the audit evidence.
 

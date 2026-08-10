@@ -314,6 +314,21 @@ func run() -> void:
 		var setup: CombatFlowResult = reward_session._rules.combat_flow.start_battle(reward_session._state, content, battle, reward_session._rng)
 		assert_true(setup.ok, "the terminal reward integration starts through the source-backed battle builder")
 		if setup.ok:
+			var reordered_turns: Array[String] = [reward_character.id]
+			for actor_id: String in reward_session._state.combat.turn_order():
+				if actor_id != reward_character.id:
+					reordered_turns.append(actor_id)
+			reward_session._state.combat.set_turn_order(reordered_turns)
+			reward_session._state.combat.turn_index = 0
+			reward_session._state.combat.active_turn = null
+			var tactical_view := reward_session.view()
+			assert_true(tactical_view.combat_view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.enabled), "the active fixture character has at least one core-probed tactical step")
+			assert_true(tactical_view.availability(&"combat_move").enabled, "the public combat-move action derives from the active battle view instead of the stale global fallback: %s" % tactical_view.availability(&"combat_move").reason)
+			assert_false(tactical_view.availability(&"move").enabled, "an active battle cannot advertise exploration movement through the detached application view")
+			assert_false(tactical_view.availability(&"search").enabled, "an active battle cannot advertise exploration Search through the detached application view")
+			reward_session._session_interaction = InteractionRequest.new("fixture.combat-action", InteractionRequest.COMBAT, {})
+			assert_true(reward_session.view().availability(&"combat_move").enabled, "the typed battle interaction keeps its legal movement action available: %s" % reward_session.view().availability(&"combat_move").reason)
+			reward_session._session_interaction = null
 			for monster: MonsterState in reward_session._state.combat.monsters():
 				if monster.traitor:
 					monster.current_health = 0
