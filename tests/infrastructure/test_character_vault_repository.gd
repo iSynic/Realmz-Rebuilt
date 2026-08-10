@@ -6,8 +6,8 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 func run() -> void:
 	var repository := CharacterVaultRepository.new("user://realmz2-tests/character-vault-v1")
 	var character := CharacterState.new("vault-fixture-character", "Vault Fixture", 12, 12)
-	character.race_id = "classic.race.0"
-	character.caste_id = "classic.caste.0"
+	character.race_id = "classic.race.1"
+	character.caste_id = "classic.caste.1"
 	var record := CharacterVaultRecord.new(character.id, "realmz-classic-1", "realmz2-synthetic-fixture", "0000000000000000000000000000000000000000000000000000000000000000", character, "synthetic-v1")
 	record.publication_metadata = {"label": "Fixture vault character"}
 	assert_true(repository.publish_revision(record), "vault publication uses a temporary typed write and readback")

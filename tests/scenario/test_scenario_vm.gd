@@ -1065,12 +1065,12 @@ func _test_classic_spellcasting_flags(content: RealmzContent) -> void:
 func _test_classic_identity_selection(content: RealmzContent) -> void:
 	var first := CharacterState.new("identity.first", "First", 10, 10)
 	var second := CharacterState.new("identity.second", "Second", 0, 10)
-	first.race_id = "classic.race.0"
-	second.race_id = "classic.race.0"
+	first.race_id = "classic.race.1"
+	second.race_id = "classic.race.1"
 	var party := PartyState.new(content.start_map_id, content.start_coordinate, [first, second])
 	var state := GameState.new(party, RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var selected := api.execute_classic(ClassicActionDefinition.new(0, 50, 50, 0, false, [0, 0, 0, 0, 1]), "request.select-race")
+	var selected := api.execute_classic(ClassicActionDefinition.new(0, 50, 50, 0, false, [0, 0, 1, 0, 1]), "request.select-race")
 	assert_equal(selected.value, [first.id], "Classic opcode 50 selects matching living characters by direct Realmz race identity")
 	assert_equal(state.selected_character_ids(), [first.id], "identity selection updates the shared selected-character set used by later opcodes")
 
@@ -1106,8 +1106,8 @@ func _test_classic_random_items(content: RealmzContent) -> void:
 
 func _test_classic_selected_level_up(content: RealmzContent) -> void:
 	var character := CharacterState.new("level.character", "Level", 10, 10)
-	character.race_id = "classic.race.0"
-	character.caste_id = "classic.caste.0"
+	character.race_id = "classic.race.1"
+	character.caste_id = "classic.caste.1"
 	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
 	var state := GameState.new(party, RealmzClock.new())
 	state.set_selected_character_ids([character.id])

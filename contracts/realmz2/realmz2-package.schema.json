@@ -214,7 +214,7 @@
       "type": "object",
       "required": ["id", "classicId", "name", "description", "eligibleCasteIds", "hitModifiers", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "ageRanges", "ageChanges", "maximumAge", "doesNotDie", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "canRegenerate", "defaultIconSet", "itemCategoryMasks", "descriptorFlags"],
       "properties": {
-        "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 0 }, "name": { "type": "string", "minLength": 1 }, "description": { "type": "string" }, "eligibleCasteIds": { "$ref": "#/$defs/stringArray" },
+        "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 1, "maximum": 30 }, "name": { "type": "string", "minLength": 1 }, "description": { "type": "string" }, "eligibleCasteIds": { "$ref": "#/$defs/stringArray" },
         "hitModifiers": { "$ref": "#/$defs/integerArray" }, "saveBonuses": { "$ref": "#/$defs/integerArray" }, "attributeBonuses": { "$ref": "#/$defs/integerArray" }, "attributeLimits": { "$ref": "#/$defs/integerArray" }, "conditionLevels": { "$ref": "#/$defs/integerArray" }, "ageRanges": { "type": "array", "items": { "$ref": "#/$defs/integerArray" } }, "ageChanges": { "type": "array", "minItems": 5, "maxItems": 5, "items": { "type": "array", "minItems": 15, "maxItems": 15, "items": { "type": "integer" } } },
         "maximumAge": { "type": "integer" }, "doesNotDie": { "type": "boolean" }, "baseMovement": { "type": "integer" }, "magicResistance": { "type": "integer" }, "twoHandBonus": { "type": "integer" }, "missileBonus": { "type": "integer" }, "baseAttacks": { "type": "integer" }, "maximumAttacks": { "type": "integer" }, "canRegenerate": { "type": "boolean" }, "defaultIconSet": { "type": "integer" }, "itemCategoryMasks": { "$ref": "#/$defs/integerArray" }, "descriptorFlags": { "type": "integer" }
       },
@@ -224,7 +224,7 @@
       "type": "object",
       "required": ["id", "classicId", "name", "description", "eligibleRaceIds", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "staminaDice", "strengthValues", "dodgeValues", "toHitValues", "missileValues", "handToHandValues", "spellcasterRows", "attackLevels", "startingItemIds", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "canUseMissile", "getsMissileBonus", "defaultIcon", "itemCategoryMasks"],
       "properties": {
-        "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 0 }, "name": { "type": "string", "minLength": 1 }, "description": { "type": "string" }, "eligibleRaceIds": { "$ref": "#/$defs/stringArray" },
+        "id": { "$ref": "#/$defs/identifier" }, "classicId": { "type": "integer", "minimum": 1, "maximum": 30 }, "name": { "type": "string", "minLength": 1 }, "description": { "type": "string" }, "eligibleRaceIds": { "$ref": "#/$defs/stringArray" },
         "saveBonuses": { "$ref": "#/$defs/integerArray" }, "attributeBonuses": { "$ref": "#/$defs/integerArray" }, "attributeLimits": { "$ref": "#/$defs/integerArray" }, "conditionLevels": { "$ref": "#/$defs/integerArray" }, "staminaDice": { "$ref": "#/$defs/integerArray" }, "strengthValues": { "$ref": "#/$defs/integerArray" }, "dodgeValues": { "$ref": "#/$defs/integerArray" }, "toHitValues": { "$ref": "#/$defs/integerArray" }, "missileValues": { "$ref": "#/$defs/integerArray" }, "handToHandValues": { "$ref": "#/$defs/integerArray" }, "spellcasterRows": { "type": "array", "items": { "$ref": "#/$defs/integerArray" } }, "attackLevels": { "$ref": "#/$defs/integerArray" }, "startingItemIds": { "$ref": "#/$defs/stringArray" },
         "casteClass": { "type": "integer" }, "minimumAgeGroup": { "type": "integer" }, "movementBonus": { "type": "integer" }, "magicResistanceMultiplier": { "type": "integer" }, "twoHandBonus": { "type": "integer" }, "maximumStaminaBonus": { "type": "integer" }, "bonusAttacks": { "type": "integer" }, "maximumAttacks": { "type": "integer" }, "startMoney": { "type": "integer" }, "canUseMissile": { "type": "boolean" }, "getsMissileBonus": { "type": "boolean" }, "defaultIcon": { "type": "integer" }, "itemCategoryMasks": { "$ref": "#/$defs/integerArray" }
       },
@@ -297,8 +297,8 @@
         "thiefEncounters": { "type": "array", "items": { "$ref": "#/$defs/thiefEncounter" } },
         "timedEncounters": { "type": "array", "items": { "$ref": "#/$defs/timedEncounter" } },
         "spells": { "type": "array", "items": { "$ref": "#/$defs/spellDefinition" } },
-        "races": { "type": "array", "items": { "$ref": "#/$defs/raceDefinition" } },
-        "castes": { "type": "array", "items": { "$ref": "#/$defs/casteDefinition" } }
+        "races": { "type": "array", "minItems": 30, "maxItems": 30, "items": { "$ref": "#/$defs/raceDefinition" } },
+        "castes": { "type": "array", "minItems": 30, "maxItems": 30, "items": { "$ref": "#/$defs/casteDefinition" } }
       },
       "additionalProperties": false
     },

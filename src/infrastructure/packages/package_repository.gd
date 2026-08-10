@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "dfdf733b7696f2aaa3182870e523909de51d6841e0b11b2fb0fa00b674959336"
+const EXPECTED_SCHEMA_HASH: String = "e0ebe02f52c1fb52e83ce6e91074d82f4adf5c39db7af8e7a7512dd83e5c3f62"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -516,10 +516,14 @@ func _construct_races(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content races must be an array.")
 		return null
+	if value.size() != 30:
+		_reject("Content races must contain all 30 Classic records.")
+		return null
 	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleCasteIds", "hitModifiers", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "ageRanges", "ageChanges", "maximumAge", "doesNotDie", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "canRegenerate", "defaultIconSet", "itemCategoryMasks", "descriptorFlags"]
 	var integer_fields: Array[String] = ["classicId", "maximumAge", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "defaultIconSet", "descriptorFlags"]
 	var result: Array[RaceDefinition] = []
 	var ids: Dictionary = {}
+	var classic_ids: Dictionary = {}
 	for value_record: Variant in value:
 		if not value_record is Dictionary:
 			_reject("Race definition is not an object.")
@@ -529,6 +533,11 @@ func _construct_races(value: Variant) -> Variant:
 		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Race") or not record["name"] is String or not record["description"] is String or not record["eligibleCasteIds"] is Array or not record["doesNotDie"] is bool or not record["canRegenerate"] is bool or not record["ageRanges"] is Array or record["ageRanges"].size() != 5 or not record["ageChanges"] is Array or record["ageChanges"].size() != 5:
 			_reject("Race definition is malformed or duplicated.")
 			return null
+		var classic_id: int = integers_value["classicId"]
+		if classic_id < 1 or classic_id > 30 or classic_ids.has(classic_id):
+			_reject("Race Classic IDs must uniquely cover 1 through 30.")
+			return null
+		classic_ids[classic_id] = true
 		var hit_value: Variant = _integer_array(record["hitModifiers"], 8, "Race hit modifiers")
 		var save_value: Variant = _integer_array(record["saveBonuses"], 8, "Race save bonuses")
 		var bonus_value: Variant = _integer_array(record["attributeBonuses"], 6, "Race attribute bonuses")
@@ -567,10 +576,14 @@ func _construct_castes(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content castes must be an array.")
 		return null
+	if value.size() != 30:
+		_reject("Content castes must contain all 30 Classic records.")
+		return null
 	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleRaceIds", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "staminaDice", "strengthValues", "dodgeValues", "toHitValues", "missileValues", "handToHandValues", "spellcasterRows", "attackLevels", "startingItemIds", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "canUseMissile", "getsMissileBonus", "defaultIcon", "itemCategoryMasks"]
 	var integer_fields: Array[String] = ["classicId", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "defaultIcon"]
 	var result: Array[CasteDefinition] = []
 	var ids: Dictionary = {}
+	var classic_ids: Dictionary = {}
 	for value_record: Variant in value:
 		if not value_record is Dictionary:
 			_reject("Caste definition is not an object.")
@@ -580,6 +593,11 @@ func _construct_castes(value: Variant) -> Variant:
 		if not _exact_fields(record, fields) or integers_value == null or not _definition_identity(record, ids, "Caste") or not record["name"] is String or not record["description"] is String or not record["eligibleRaceIds"] is Array or not record["canUseMissile"] is bool or not record["getsMissileBonus"] is bool or not record["spellcasterRows"] is Array or record["spellcasterRows"].size() != 4:
 			_reject("Caste definition is malformed or duplicated.")
 			return null
+		var classic_id: int = integers_value["classicId"]
+		if classic_id < 1 or classic_id > 30 or classic_ids.has(classic_id):
+			_reject("Caste Classic IDs must uniquely cover 1 through 30.")
+			return null
+		classic_ids[classic_id] = true
 		var saves_value: Variant = _integer_array(record["saveBonuses"], 8, "Caste save bonuses")
 		var bonuses_value: Variant = _integer_array(record["attributeBonuses"], 6, "Caste attribute bonuses")
 		var limits_value: Variant = _integer_array(record["attributeLimits"], 12, "Caste attribute limits")
