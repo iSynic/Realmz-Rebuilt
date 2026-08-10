@@ -473,8 +473,10 @@ func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> vo
 	assert_equal(item.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Safe Scenario Action grants a definition-backed item through the session API")
 	assert_equal(character.inventory().size(), 1, "grant-item mutates the direct Realmz inventory model")
 	var treasure := api.execute_safe("core.economy.grant-treasure", {"treasureId": "classic.treasure.0"}, "request.treasure")
-	assert_equal(treasure.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Safe Scenario Action grants deterministic treasure through the fixed rules")
+	assert_equal(treasure.state, ScenarioRuntimeOperationResult.State.WAITING, "Safe Scenario Action opens the typed Classic treasure workflow")
 	assert_equal(party.pooled_wealth.gold, 25, "treasure wealth is session-owned")
+	treasure = _drain_runtime_reward(api, treasure, true)
+	assert_equal(treasure.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Safe Scenario Action resumes after explicit treasure distribution")
 	var camped := api.execute_safe("core.party.camp", {}, "request.camp")
 	assert_equal(camped.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Safe Scenario Action camps through the same clock rules as player intent")
 	assert_equal(state.clock.total_minutes(), 480, "Scenario Action camping advances the Realmz clock")
@@ -514,8 +516,10 @@ func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> vo
 	battle_events.assign(completed.events)
 	if completed.state == ScenarioVmResult.State.WAITING and completed.interaction.kind == &"ally_selection":
 		completed = restored.resume(InteractionResponse.new(completed.interaction.request_id, &"ally_selection", {"selectedIds": completed.interaction.payload["selectedIds"]}), api)
+	completed = _drain_vm_reward(restored, api, completed)
 	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "typed combat response resolves inside the restored session VM")
 	assert_equal(state.last_battle_outcome, &"victory", "battle completion and outcome remain in GameState")
+	assert_equal(state.combat, null, "the completed reward chain releases combat before the issuing VM resumes")
 	assert_true(_event_has(battle_events, &"battle_completed"), "battle completion is published as a domain event")
 	var extra_code_battle := api.execute_classic(ClassicActionDefinition.new(0, 2, 2, 70, false, [0, 0, 0, 0, 0]), "request.extra-code-battle")
 	assert_equal(extra_code_battle.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic battle opcode accepts an authored Extra Code row")
@@ -1232,7 +1236,9 @@ func _test_classic_random_items(content: RealmzContent) -> void:
 	var rng := ScriptedRng.new([0, 0])
 	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new())
 	var granted := api.execute_classic(ClassicActionDefinition.new(0, 65, 65, 0, false, [-1, 901, 901, 0, 0]), "request.random-item")
-	assert_equal(granted.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 65 grants source-defined random items through inventory rules")
+	assert_equal(granted.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic opcode 65 opens ordinary distribution for its rolled exact item")
+	granted = _drain_runtime_reward(api, granted, false)
+	assert_equal(granted.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 65 completes after explicit assignment")
 	assert_equal(character.inventory().size(), 1, "random item becomes a direct Realmz item instance")
 	assert_equal(rng.snapshot().draw_count, 2, "random item count and inclusive item range each consume one session RNG draw")
 
@@ -1294,6 +1300,7 @@ func _test_automatic_monster_death_macro(content: RealmzContent) -> void:
 		monster_definition.death_macro = original_death_macro
 		return
 	var target_id: String = state.combat.monsters()[0].id
+	var target_monster: MonsterState = state.combat.monster_by_id(target_id)
 	assert_true(_place_monster_adjacent(state.combat, character.id, target_id), "death-macro fixture establishes source-legal melee adjacency")
 	var completed := vm.resume(InteractionResponse.new(waiting.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "attack", "targetId": target_id}), api)
 	var macro_events: Array[DomainEvent] = []
@@ -1303,11 +1310,12 @@ func _test_automatic_monster_death_macro(content: RealmzContent) -> void:
 	assert_true(_event_has(macro_events, &"monster_death_macro_completed"), "automatic death macro publishes its completion")
 	if completed.state == ScenarioVmResult.State.WAITING and completed.interaction.kind == &"ally_selection":
 		completed = vm.resume(InteractionResponse.new(completed.interaction.request_id, &"ally_selection", {"selectedIds": completed.interaction.payload["selectedIds"]}), api)
+	completed = _drain_vm_reward(vm, api, completed)
 	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "defeating a macro-bearing monster runs its XAP before battle completion")
-	var revived := state.combat.monster_by_id(target_id)
-	assert_equal(revived.current_health, 1, "death macro can revive its owning monster")
-	assert_false(revived.traitor, "Classic death-macro completion moves the monster off the enemy side")
+	assert_equal(target_monster.current_health, 1, "death macro can revive its owning monster")
+	assert_false(target_monster.traitor, "Classic death-macro completion moves the monster off the enemy side")
 	assert_equal(state.last_battle_outcome, &"victory", "battle resolution runs after the death macro commits")
+	assert_equal(state.combat, null, "the battle aggregate is released after its death macro and terminal reward return")
 
 	var yielding_programs: Array[ScenarioProgramDefinition] = [
 		ScenarioProgramDefinition.new("xap:321", &"extra-action-point", "321", [
@@ -1315,7 +1323,7 @@ func _test_automatic_monster_death_macro(content: RealmzContent) -> void:
 			ClassicActionDefinition.new(1, 119, 119, 0, false, []),
 		]),
 	]
-	var yielding_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(yielding_programs, []), messages, [], [], content.race_definitions(), content.caste_definitions(), [], [], [monster_definition], [battle])
+	var yielding_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(yielding_programs, []), messages, [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), [], [monster_definition], [battle])
 	var session := GameSession.new()
 	session.start(yielding_content, 1)
 	_begin_fixture_adventure(session, yielding_content)
@@ -1342,6 +1350,7 @@ func _test_automatic_monster_death_macro(content: RealmzContent) -> void:
 		var ally_boundary := SaveEnvelope.from_data(restored.snapshot().to_data())
 		assert_not_null(ally_boundary, "post-battle ally selection is a committed save boundary")
 		resumed = restored.respond(InteractionResponse.new(resumed.interaction.request_id, &"ally_selection", {"selectedIds": resumed.interaction.payload["selectedIds"]}))
+	resumed = _drain_session_reward(restored, resumed)
 	assert_equal(resumed.state, SessionStep.State.COMPLETED, "restored death-macro interaction resumes through GameSession")
 	assert_equal(restored._state.last_battle_outcome, &"victory", "restored direct-session battle resolves after its death macro")
 	monster_definition.death_macro = original_death_macro
@@ -1374,7 +1383,7 @@ func _test_spell_queued_death_macro(content: RealmzContent) -> void:
 		]),
 	]
 	var messages: Array[MessageDefinition] = [MessageDefinition.new(1, "The queued spell macro pauses here.")]
-	var spell_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(programs, []), messages, [], [], content.race_definitions(), content.caste_definitions(), [], [spell], [monster_definition], [battle])
+	var spell_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(programs, []), messages, [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), [spell], [monster_definition], [battle])
 	var session := GameSession.new()
 	session.start(spell_content, 1)
 	_begin_fixture_adventure(session, spell_content)
@@ -1744,6 +1753,57 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	character.caste_id = castes[0].id
 	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "scenario fixture imports a deterministic party member")
 	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "scenario fixture explicitly completes party setup")
+
+
+func _drain_runtime_reward(api: RealmzRuntimeApi, operation: ScenarioRuntimeOperationResult, safe: bool) -> ScenarioRuntimeOperationResult:
+	var current := operation
+	var guard := 100
+	while current.state == ScenarioRuntimeOperationResult.State.WAITING and current.interaction != null and current.interaction.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.LEVEL_UP] and guard > 0:
+		var response := _default_reward_response(current.interaction)
+		current = api.resume_safe(current.continuation, response, current.interaction.request_id + ".next") if safe else api.resume_classic(current.continuation, response, current.interaction.request_id + ".next")
+		guard -= 1
+	return current
+
+
+func _drain_vm_reward(vm: ScenarioVm, api: RealmzRuntimeApi, result: ScenarioVmResult) -> ScenarioVmResult:
+	var current := result
+	var guard := 100
+	while current.state == ScenarioVmResult.State.WAITING and current.interaction != null and current.interaction.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.LEVEL_UP] and guard > 0:
+		current = vm.resume(_default_reward_response(current.interaction), api)
+		guard -= 1
+	return current
+
+
+func _drain_session_reward(session: GameSession, step: SessionStep) -> SessionStep:
+	var current := step
+	var guard := 100
+	while current.state == SessionStep.State.WAITING_FOR_INTERACTION and current.interaction != null and current.interaction.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.LEVEL_UP] and guard > 0:
+		current = session.respond(_default_reward_response(current.interaction))
+		guard -= 1
+	return current
+
+
+func _default_reward_response(request: InteractionRequest) -> InteractionResponse:
+	if request.kind == InteractionRequest.LEVEL_UP:
+		if request.payload.get("mode") == "result":
+			return InteractionResponse.new(request.request_id, request.kind, {"action": "continue", "characterId": request.payload["characterId"]})
+		var selected: Array[String] = []
+		for spell: Variant in request.payload.get("spells", []):
+			if spell is Dictionary and bool(spell.get("selected", false)):
+				selected.append(String(spell.get("id", "")))
+		return InteractionResponse.new(request.request_id, request.kind, {"action": "confirm-spells", "characterId": request.payload["characterId"], "spellIds": selected})
+	if request.payload.get("mode") == "completion-confirmation":
+		return InteractionResponse.new(request.request_id, request.kind, {"action": "confirm-completion"})
+	var item: Variant = request.payload.get("item")
+	if item is Dictionary:
+		for character: Variant in request.payload.get("characters", []):
+			if character is Dictionary and bool(character.get("enabled", false)):
+				return InteractionResponse.new(request.request_id, request.kind, {"action": "assign", "instanceId": item["instanceId"], "characterId": character["id"]})
+		return InteractionResponse.new(request.request_id, request.kind, {"action": "discard", "instanceId": item["instanceId"]})
+	var wealth: Dictionary = request.payload.get("wealth", {})
+	if bool(request.payload.get("hasShareCapacity", false)) and (int(wealth.get("gold", 0)) > 0 or int(wealth.get("gems", 0)) > 0 or int(wealth.get("jewelry", 0)) > 0):
+		return InteractionResponse.new(request.request_id, request.kind, {"action": "share"})
+	return InteractionResponse.new(request.request_id, request.kind, {"action": "done"})
 
 
 func _restore_fixture_position(session: GameSession, content: RealmzContent, map_id: String, coordinate: Vector2i) -> void:

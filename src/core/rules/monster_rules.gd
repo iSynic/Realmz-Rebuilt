@@ -47,6 +47,7 @@ func build_monster(definition: MonsterDefinition, instance_id: String, traitor_o
 	_apply_starting_conditions(result, definition)
 	result.surrender_percent = definition.surrender_percent
 	result.weapon_id = _random_weapon(definition.random_weapon_table, instance_id, rng) if definition.random_weapon_table > 0 else definition.weapon_id
+	_set_runtime_loot(result, definition)
 	return result
 
 
@@ -83,7 +84,15 @@ func build_battle_monster(definition: MonsterDefinition, instance_id: String, in
 	_apply_starting_conditions(result, definition)
 	result.surrender_percent = definition.surrender_percent
 	result.weapon_id = _battle_random_weapon(definition.random_weapon_table, instance_id, rng) if definition.random_weapon_table > 0 else definition.weapon_id
+	_set_runtime_loot(result, definition)
 	return result
+
+
+static func _set_runtime_loot(monster: MonsterState, definition: MonsterDefinition) -> void:
+	var item_ids := definition.item_ids()
+	if not item_ids.is_empty() and definition.random_weapon_table > 0:
+		item_ids[0] = monster.weapon_id
+	monster.set_loot_item_ids(item_ids)
 
 
 func _apply_starting_conditions(monster: MonsterState, definition: MonsterDefinition) -> void:

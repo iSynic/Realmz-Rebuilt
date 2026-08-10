@@ -85,6 +85,8 @@ func _component_for(kind: StringName) -> InteractionComponent:
 			return SelectionInteraction.new()
 		&"treasure_distribution":
 			return TreasureDistributionInteraction.new()
+		&"level_up":
+			return LevelUpInteraction.new()
 		&"complex_encounter":
 			return EncounterInteraction.new()
 		&"shop_action":
@@ -183,7 +185,9 @@ static func _heading_for_kind(kind: StringName) -> String:
 		&"character_selection", &"ally_selection":
 			return "Character Selection"
 		&"treasure_distribution":
-			return "Battle Recovery"
+			return "Treasure"
+		&"level_up":
+			return "Level Up"
 		&"shop_action":
 			return "Shop"
 		&"temple_action":

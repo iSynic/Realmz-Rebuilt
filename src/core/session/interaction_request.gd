@@ -13,6 +13,7 @@ const ENCOUNTER_CHOICE: StringName = &"encounter_choice"
 const CHARACTER_SELECTION: StringName = &"character_selection"
 const ALLY_SELECTION: StringName = &"ally_selection"
 const TREASURE_DISTRIBUTION: StringName = &"treasure_distribution"
+const LEVEL_UP: StringName = &"level_up"
 const WORD_AND_ACTION: StringName = &"complex_encounter"
 const SHOP: StringName = &"shop_action"
 const TEMPLE: StringName = &"temple_action"
@@ -35,7 +36,7 @@ func is_supported_kind() -> bool:
 
 
 static func kind_is_supported(request_kind: StringName) -> bool:
-	return request_kind in [ACKNOWLEDGE, AGE_UPDATE, YES_NO, INDEXED_CHOICE, ENCOUNTER_CHOICE, CHARACTER_SELECTION, ALLY_SELECTION, TREASURE_DISTRIBUTION, WORD_AND_ACTION, SHOP, TEMPLE, BANK, COMBAT]
+	return request_kind in [ACKNOWLEDGE, AGE_UPDATE, YES_NO, INDEXED_CHOICE, ENCOUNTER_CHOICE, CHARACTER_SELECTION, ALLY_SELECTION, TREASURE_DISTRIBUTION, LEVEL_UP, WORD_AND_ACTION, SHOP, TEMPLE, BANK, COMBAT]
 
 
 static func acknowledge(id: String, prompt: String, message_id: int = 0) -> InteractionRequest:

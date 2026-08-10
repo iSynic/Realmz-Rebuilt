@@ -269,6 +269,16 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 		if value.size() != 2 or not value.get("battleId") is String or value["battleId"].is_empty():
 			return null
 		return {"kind": "combat-fumble-recovery", "battleId": value["battleId"]}
+	if value.get("kind") == "combat-reward":
+		if value.size() != 3 or not value.get("battleId") is String or value["battleId"].is_empty() or not value.get("runtimeContinuation") is Dictionary:
+			return null
+		var runtime: Dictionary = value["runtimeContinuation"]
+		if runtime.size() != 2 or runtime.get("kind") != "classic-reward":
+			return null
+		var reward := ClassicRewardState.from_data(runtime.get("state"))
+		if reward == null or reward.origin != &"battle" or reward.source_id != value["battleId"]:
+			return null
+		return {"kind": "combat-reward", "battleId": value["battleId"], "runtimeContinuation": {"kind": "classic-reward", "state": reward.to_data()}}
 	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
 	if value.size() != fields.size():
 		return null

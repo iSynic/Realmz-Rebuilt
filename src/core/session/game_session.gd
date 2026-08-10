@@ -66,6 +66,10 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 		for item: ItemInstance in replacement_state.combat.fumbled_items():
 			if content.item_by_id(item.definition_id) == null:
 				return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved fumble queue references unavailable item content.")
+		for monster: MonsterState in replacement_state.combat.monsters():
+			for item_id: String in monster.loot_item_ids():
+				if not item_id.is_empty() and content.item_by_id(item_id) == null:
+					return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved monster loot references unavailable item content.")
 	var replacement_rules := RealmzRules.new()
 	_normalize_age_groups(replacement_state, content, replacement_rules)
 	if not _party_inventory_is_valid(content, replacement_state, replacement_rules):
@@ -78,6 +82,8 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 	replacement_vm.configure(content.scenario)
 	if not replacement_vm.restore(save_envelope.scenario_vm):
 		return SessionStep.failed(_view_revision, &"invalid_vm_state", "The saved Scenario VM state is invalid.")
+	if not _valid_vm_reward_continuation(content, replacement_state, replacement_vm):
+		return SessionStep.failed(_view_revision, &"invalid_vm_state", "The saved Scenario VM reward continuation is invalid.")
 	var replacement_continuation := save_envelope.session_continuation.duplicate(true)
 	var replacement_session_interaction: InteractionRequest = null
 	if save_envelope.session_interaction != null:
@@ -299,7 +305,7 @@ func _populate_action_availability(result: GameView) -> void:
 	for action_id: StringName in [
 		&"use_item_on_target",
 		&"money_action", &"select_spell_power", &"select_spell_target", &"combat_move",
-		&"loot_assignment", &"treasure_complete", &"level_up", &"open_journal", &"open_maps",
+		&"open_journal", &"open_maps",
 	]:
 		result.set_action_availability(action_id, false, "Not implemented in the current gameplay slice.")
 
@@ -1245,7 +1251,21 @@ func _finish_direct_battle_recovery(events: Array[DomainEvent]) -> SessionStep:
 		_session_continuation = {"kind": "combat-fumble-recovery", "battleId": _state.combat.battle_id}
 		_session_interaction = InteractionRequest.new(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload)
 		return _finish_waiting(_session_interaction, events)
-	_append_session_battle_after_message(_state.combat.battle_id, events)
+	return _begin_direct_battle_reward(events)
+
+
+func _begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionStep:
+	var request_id := "session.battle-reward.%d" % (_view_revision + 1)
+	var operation := _runtime_api.begin_completed_battle_reward(request_id)
+	events.append_array(operation.events)
+	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
+		return _finish_failed(operation.error_code, operation.error_message, events)
+	if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
+		_session_continuation = {"kind": "combat-reward", "battleId": _state.combat.battle_id, "runtimeContinuation": operation.continuation.duplicate(true)}
+		_session_interaction = operation.interaction
+		return _finish_waiting(_session_interaction, events)
+	_session_interaction = null
+	_session_continuation.clear()
 	return _finish_completed(events)
 
 
@@ -1354,6 +1374,8 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 		return _respond_session_ally_selection(response)
 	if _session_continuation.get("kind") == "combat-fumble-recovery":
 		return _respond_session_fumble_recovery(response)
+	if _session_continuation.get("kind") == "combat-reward":
+		return _respond_session_battle_reward(response)
 	if _session_continuation.get("kind") == "combat-retreat-confirmation":
 		return _respond_session_retreat(response)
 	if response.kind != &"yes_no" or not response.payload.has("accepted") or not response.payload["accepted"] is bool:
@@ -1597,6 +1619,24 @@ func _respond_session_fumble_recovery(response: InteractionResponse) -> SessionS
 	return _finish_direct_battle_recovery(events)
 
 
+func _respond_session_battle_reward(response: InteractionResponse) -> SessionStep:
+	if _state.combat == null or not _state.combat.completed or _state.combat.battle_id != _session_continuation.get("battleId"):
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The completed battle is unavailable for reward distribution.")
+	var runtime_continuation: Variant = _session_continuation.get("runtimeContinuation")
+	if not runtime_continuation is Dictionary:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The battle reward continuation is unavailable.")
+	var result := _runtime_api.resume_classic(runtime_continuation, response, response.request_id)
+	if result.state == ScenarioRuntimeOperationResult.State.FAILED:
+		return _finish_failed(result.error_code, result.error_message, result.events)
+	if result.state == ScenarioRuntimeOperationResult.State.WAITING:
+		_session_continuation["runtimeContinuation"] = result.continuation.duplicate(true)
+		_session_interaction = result.interaction
+		return _finish_waiting(_session_interaction, result.events)
+	_session_interaction = null
+	_session_continuation.clear()
+	return _finish_completed(result.events)
+
+
 func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: Array[DomainEvent]) -> SessionStep:
 	var effective := _state.world.random_region(region)
 	if effective.battle_maximum < effective.battle_minimum:
@@ -1769,6 +1809,14 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 		if vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.TREASURE_DISTRIBUTION or state.combat == null or not state.combat.completed or state.combat.battle_id != continuation["battleId"] or state.combat.fumbled_items().is_empty():
 			return false
 		return session_interaction.payload == RealmzRules.new().combat_flow.fumble_recovery_payload(state, content)
+	if continuation.get("kind") == "combat-reward":
+		if continuation.size() != 3 or not continuation.get("battleId") is String or continuation["battleId"].is_empty() or not continuation.get("runtimeContinuation") is Dictionary:
+			return false
+		var runtime: Dictionary = continuation["runtimeContinuation"]
+		var reward := ClassicRewardState.from_data(runtime.get("state")) if runtime.size() == 2 and runtime.get("kind") == "classic-reward" else null
+		if vm_interaction != null or reward == null or reward.origin != &"battle" or reward.source_id != continuation["battleId"]:
+			return false
+		return _valid_reward_continuation(content, state, reward, session_interaction)
 	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
 	if continuation.size() != fields.size():
 		return false
@@ -1798,6 +1846,54 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 	if index < 0 or index >= continuation["triggerIds"].size() or continuation["activeTriggerId"].is_empty() or continuation["triggerIds"][index] != continuation["activeTriggerId"]:
 		return false
 	return content.trigger_by_id(continuation["activeTriggerId"]) != null
+
+
+static func _valid_vm_reward_continuation(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:
+	var snapshot := vm.snapshot()
+	if snapshot.pending_continuation.is_empty():
+		return true
+	var runtime: Variant = snapshot.pending_continuation.get("runtime")
+	if not runtime is Dictionary or runtime.get("kind") != "classic-reward":
+		return true
+	var reward := ClassicRewardState.from_data(runtime.get("state"))
+	return reward != null and _valid_reward_continuation(content, state, reward, vm.pending_request())
+
+
+static func _valid_reward_continuation(content: RealmzContent, state: GameState, reward: ClassicRewardState, request: InteractionRequest) -> bool:
+	if reward == null or request == null or reward.source_id.is_empty() or reward.origin not in [&"scenario", &"battle"]:
+		return false
+	if reward.origin == &"battle" and (state.combat == null or not state.combat.completed or not state.combat.rewards_started or state.combat.rewards_completed or state.combat.battle_id != reward.source_id):
+		return false
+	for item: ItemInstance in reward.items():
+		if content.item_by_id(item.definition_id) == null:
+			return false
+	var character_ids: Dictionary = {}
+	for character_id: Variant in reward.experience_awards():
+		character_ids[String(character_id)] = true
+	for character_id: String in reward.level_character_ids():
+		character_ids[character_id] = true
+	for character_id: String in reward.spell_character_ids():
+		character_ids[character_id] = true
+	if not reward.pending_level_result.is_empty():
+		character_ids[String(reward.pending_level_result.get("characterId", ""))] = true
+	for character_id: Variant in character_ids:
+		if String(character_id).is_empty() or state.party.character_by_id(String(character_id)) == null:
+			return false
+	if reward.phase == ClassicRewardState.ITEM_PHASE:
+		if request.kind != InteractionRequest.TREASURE_DISTRIBUTION:
+			return false
+		var expected_mode := "completion-confirmation" if reward.completion_pending else "ordinary"
+		if request.payload.get("mode") != expected_mode:
+			return false
+		var pending := reward.first_item()
+		var request_item: Variant = request.payload.get("item")
+		return request_item == null if pending == null else request_item is Dictionary and request_item.get("instanceId") == pending.id
+	if reward.phase == ClassicRewardState.LEVEL_PHASE:
+		return not reward.pending_level_result.is_empty() and request.kind == InteractionRequest.LEVEL_UP and request.payload.get("mode") == "result" and request.payload.get("characterId") == reward.pending_level_result.get("characterId")
+	if reward.phase == ClassicRewardState.SPELL_PHASE:
+		var spell_ids := reward.spell_character_ids()
+		return reward.spell_index < spell_ids.size() and request.kind == InteractionRequest.LEVEL_UP and request.payload.get("mode") == "spell-selection" and request.payload.get("characterId") == spell_ids[reward.spell_index]
+	return false
 
 
 static func _valid_age_update_payload(state: GameState, value: Variant) -> bool:

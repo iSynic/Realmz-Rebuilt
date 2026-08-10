@@ -2274,27 +2274,13 @@ func _finish_if_resolved(state: GameState, content: RealmzContent, events: Array
 	return true
 
 
-func _complete_battle(state: GameState, content: RealmzContent, outcome: StringName, events: Array[DomainEvent]) -> void:
+func _complete_battle(state: GameState, _content: RealmzContent, outcome: StringName, events: Array[DomainEvent]) -> void:
 	var combat := state.combat
 	combat.completed = true
 	combat.outcome = outcome
 	combat.clear_active_turn()
 	state.last_battle_outcome = combat.outcome
 	_restore_party_allegiance(state, events)
-	if combat.outcome == &"victory":
-		var experience := 0
-		for monster: MonsterState in combat.monsters():
-			var definition := content.monster_by_id(monster.definition_id)
-			if definition != null and monster.traitor:
-				experience += maxi(0, definition.experience)
-		var experience_by_character: Dictionary = {}
-		for character: CharacterState in state.party.characters():
-			if character.current_health > 0 and combat.battlefield != null and combat.battlefield.has_actor(character.id):
-				var race := content.race_by_id(character.race_id)
-				var awarded := _rules.characters.battle_experience(character, race, experience)
-				character.experience += awarded
-				experience_by_character[character.id] = awarded
-		events.append(DomainEvent.new(&"battle_rewards_granted", {"experiencePerSurvivor": experience, "experienceByCharacter": experience_by_character}))
 	events.append(DomainEvent.new(&"battle_completed", {"battleId": combat.battle_id, "outcome": String(combat.outcome)}))
 
 

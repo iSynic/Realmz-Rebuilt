@@ -20,6 +20,7 @@ func run() -> void:
 	_test_character_creator_workflow()
 	_test_character_vault_workspace()
 	_test_inventory_workspace()
+	_test_party_roster()
 	_test_scene_composition()
 
 
@@ -316,7 +317,7 @@ func _test_action_availability() -> void:
 
 func _test_fixture_gallery_coverage() -> void:
 	assert_equal(ClassicUiFixtureGallery.screen_cases().size(), 81, "all nine screens have nine fixture states")
-	assert_equal(ClassicUiFixtureGallery.interaction_cases().size(), 117, "all thirteen interaction kinds have nine fixture states")
+	assert_equal(ClassicUiFixtureGallery.interaction_cases().size(), 126, "all fourteen interaction kinds have nine fixture states")
 	for interaction: StringName in ClassicUiFixtureGallery.INTERACTIONS:
 		assert_true(ClassicUiFixtureGallery.request_for(interaction).is_supported_kind(), "gallery interaction %s is a supported typed request" % interaction)
 	var age_component := AgeUpdateInteraction.new()
@@ -325,11 +326,31 @@ func _test_fixture_gallery_coverage() -> void:
 	assert_true(age_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Continue"), "the blocking age update exposes one keyboard-focusable continuation")
 	age_component.free()
 	var recovery_component := TreasureDistributionInteraction.new()
-	recovery_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
+	recovery_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"))
 	assert_equal(recovery_component.get_child_count(), 3, "battle recovery renders item detail, an eligible recipient, and leave-behind action")
 	assert_true(recovery_component.get_children().any(func(child: Node) -> bool: return child is Label and child.text.contains("7 charges")), "battle recovery exposes the exact preserved charge count")
 	assert_true(recovery_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Give to Hero" and not child.disabled), "nominal battle recovery exposes its rules-authorized recipient as an active control")
 	recovery_component.free()
+	var ordinary_component := TreasureDistributionInteraction.new()
+	ordinary_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
+	assert_true(ordinary_component.get_children().any(func(child: Node) -> bool: return child is Label and child.text.contains("125 gold")), "ordinary booty exposes the detached pooled denominations")
+	assert_true(ordinary_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Give to Hero" and not child.disabled), "ordinary booty exposes rules-owned exact-item assignment")
+	assert_true(ordinary_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Done"), "ordinary booty has one typed completion path")
+	ordinary_component.free()
+	var capacity_component := TreasureDistributionInteraction.new()
+	capacity_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unavailable"))
+	assert_true(capacity_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Give to Hero" and child.disabled and child.tooltip_text.contains("full")), "capacity-blocked booty retains the core-provided disabled reason")
+	capacity_component.free()
+	var level_component := LevelUpInteraction.new()
+	level_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.LEVEL_UP))
+	assert_true(level_component.get_children().any(func(child: Node) -> bool: return child is Label and child.text.contains("level 5")), "the level result presents its committed character level")
+	assert_true(level_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Continue"), "the level result exposes one typed acknowledgement")
+	level_component.free()
+	var spell_component := LevelUpInteraction.new()
+	spell_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.LEVEL_UP, &"unidentified"))
+	assert_true(spell_component.get_children().any(func(child: Node) -> bool: return child is ItemList and child.item_count == 4), "the level spell stage renders the complete detached candidate list")
+	assert_true(spell_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Confirm spell selection"), "the spell stage exposes one typed confirmation")
+	spell_component.free()
 
 
 func _test_interaction_identity() -> void:
@@ -657,6 +678,25 @@ func _test_inventory_workspace() -> void:
 		assert_equal(intents[0].kind, PlayerIntent.Kind.TRADE_ITEM, "trade never mutates gameplay from presentation")
 		assert_equal(intents[0].secondary_target_id, destination.id, "trade intent carries the stable recipient identity")
 	router.free()
+
+
+func _test_party_roster() -> void:
+	var roster_scene := load("res://src/presentation/screens/classic_party_roster.tscn") as PackedScene
+	var roster := roster_scene.instantiate() as ClassicPartyRoster
+	roster._heading = roster.get_node("RosterColumn/Heading") as Label
+	roster._party_list = roster.get_node("RosterColumn/PartyScroll/PartyList") as VBoxContainer
+	var character := CharacterState.new("party.roster", "Mira", 10, 10)
+	character.race_id = "classic.race.1"
+	character.caste_id = "classic.caste.6"
+	var view := GameView.new(1, true, null)
+	view.party_members = [CharacterView.new(character)]
+	roster.present(view)
+	var rows := roster.find_children("*", "Button", true, false)
+	assert_equal(rows.size(), 1, "the populated roster creates one character control")
+	if not rows.is_empty():
+		var row := rows[0] as Button
+		assert_equal(row.get_theme_constant("icon_max_width"), 42, "portrait width uses the supported Button theme constant")
+	roster.free()
 
 
 func _test_scene_composition() -> void:

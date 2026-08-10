@@ -30,9 +30,6 @@ enum Kind {
 	SELECT_SPELL_POWER,
 	SELECT_SPELL_TARGET,
 	COMBAT_MOVE,
-	LOOT_ASSIGNMENT,
-	TREASURE_COMPLETE,
-	LEVEL_UP,
 	OPEN_JOURNAL,
 	OPEN_MAPS,
 }
@@ -204,24 +201,6 @@ static func combat_move(actor: String, destination: Vector2i) -> PlayerIntent:
 	var intent := PlayerIntent.new(Kind.COMBAT_MOVE)
 	intent.actor_id = actor
 	intent.direction = destination
-	return intent
-
-
-static func loot_assignment(item_id: String, character_ids: Array[String]) -> PlayerIntent:
-	var intent := PlayerIntent.new(Kind.LOOT_ASSIGNMENT)
-	intent.target_id = item_id
-	intent.selected_ids = character_ids.duplicate()
-	return intent
-
-
-static func treasure_complete() -> PlayerIntent:
-	return PlayerIntent.new(Kind.TREASURE_COMPLETE)
-
-
-static func level_up(character_id: String, choice: StringName = &"") -> PlayerIntent:
-	var intent := PlayerIntent.new(Kind.LEVEL_UP)
-	intent.target_id = character_id
-	intent.action = choice
 	return intent
 
 

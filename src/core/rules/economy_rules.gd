@@ -44,6 +44,27 @@ func share_pooled_wealth(party: PartyState) -> void:
 					party.pooled_wealth.add(kind, -1)
 
 
+func transfer_pool_to_character(party: PartyState, character: CharacterState, kind: WealthState.Kind, amount: int) -> bool:
+	if party == null or character == null or amount < 1 or party.pooled_wealth.amount(kind) < amount:
+		return false
+	var added_load := _wealth_weight(kind) * amount
+	if character.carried_load + added_load > character.maximum_load:
+		return false
+	party.pooled_wealth.add(kind, -amount)
+	character.money.add(kind, amount)
+	character.carried_load += added_load
+	return true
+
+
+func transfer_character_to_pool(party: PartyState, character: CharacterState, kind: WealthState.Kind, amount: int) -> bool:
+	if party == null or character == null or amount < 1 or character.money.amount(kind) < amount:
+		return false
+	character.money.add(kind, -amount)
+	character.carried_load = maxi(0, character.carried_load - _wealth_weight(kind) * amount)
+	party.pooled_wealth.add(kind, amount)
+	return true
+
+
 func bank_to_pool(party: PartyState) -> void:
 	if party == null:
 		return

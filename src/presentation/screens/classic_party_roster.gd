@@ -36,6 +36,7 @@ func _add_character(character: CharacterView) -> void:
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	row.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	row.add_theme_constant_override("icon_max_width", 42)
 	row.toggle_mode = true
 	row.button_pressed = character.id == _selected_character_id
 	var condition_text := _condition_summary(character.condition_values)
@@ -54,7 +55,6 @@ func _add_character(character: CharacterView) -> void:
 	var portrait := _portrait_texture(character.portrait_id)
 	if portrait != null:
 		row.icon = portrait
-		row.icon_max_width = 42
 	row.pressed.connect(func() -> void:
 		_selected_character_id = character.id
 		character_selected.emit(character.id)

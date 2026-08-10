@@ -297,7 +297,77 @@ func run() -> void:
 		assert_equal(recovered_inventory.size(), 1, "the selected recipient owns one recovered item")
 		if not recovered_inventory.is_empty():
 			assert_equal(recovered_inventory[0].to_data(), dropped.to_data(), "save/resume retains the exact recovered instance and charge count")
-		assert_true(recovered_session._state.combat.fumbled_items().is_empty(), "save/resume removes the assigned item from the battle queue")
+		assert_equal(recovered_session._state.combat, null, "save/resume releases the completed battle after the final recovery and empty reward stages")
+
+	var battle: BattleDefinition = content.battle_by_id("classic.battle.0")
+	assert_not_null(battle, "the integration fixture exposes a terminal reward battle")
+	if battle != null:
+		var reward_session := GameSession.new()
+		reward_session.start(content, 71)
+		var reward_character := CharacterState.new("fixture.reward-recipient", "Reward Hero", 20, 20)
+		reward_character.race_id = content.race_definitions()[0].id
+		reward_character.caste_id = content.caste_definitions()[0].id
+		reward_character.experience = -10_000_000
+		reward_character.maximum_load = 5_000
+		reward_session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [reward_character])
+		reward_session._state.party_setup_completed = true
+		var setup: CombatFlowResult = reward_session._rules.combat_flow.start_battle(reward_session._state, content, battle, reward_session._rng)
+		assert_true(setup.ok, "the terminal reward integration starts through the source-backed battle builder")
+		if setup.ok:
+			for monster: MonsterState in reward_session._state.combat.monsters():
+				if monster.traitor:
+					monster.current_health = 0
+			reward_session._state.combat.active_turn = null
+			reward_session._state.combat.pending_monster_attack = null
+			reward_session._state.combat.pending_reaction = null
+			reward_session._state.combat.completed = true
+			reward_session._state.combat.outcome = &"victory"
+			reward_session._state.last_battle_outcome = &"victory"
+			var terminal := reward_session._finish_direct_battle([])
+			assert_equal(terminal.interaction.kind, InteractionRequest.ALLY_SELECTION, "terminal victory retains body-count ally selection ahead of ordinary booty")
+			terminal = reward_session.respond(InteractionResponse.new(terminal.interaction.request_id, InteractionRequest.ALLY_SELECTION, {"selectedIds": []}))
+			assert_equal([terminal.state, terminal.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.TREASURE_DISTRIBUTION], "victory enters the ordinary typed booty workspace")
+			var initial_boundary := reward_session.snapshot()
+			assert_not_null(initial_boundary, "the complete direct reward aggregate validates before canonical JSON")
+			if initial_boundary == null:
+				return
+			var corrupt_reward := SaveEnvelope.from_data(initial_boundary.to_data())
+			corrupt_reward.session_continuation["runtimeContinuation"]["state"]["experienceAwards"]["fixture.missing-character"] = 1
+			var stable_reward_state := reward_session.snapshot().to_data()
+			assert_equal(reward_session.restore(content, corrupt_reward).error_code, &"invalid_session_continuation", "restore rejects a reward continuation that references a missing recipient")
+			assert_equal(reward_session.snapshot().to_data(), stable_reward_state, "a rejected reward continuation leaves the active session untouched")
+			var boundary_count := 0
+			var reward_completed := false
+			while terminal.state == SessionStep.State.WAITING_FOR_INTERACTION and boundary_count < 64:
+				var saved_boundary := SaveEnvelope.from_data(JSON.parse_string(JSON.stringify(reward_session.snapshot().to_data())))
+				assert_not_null(saved_boundary, "terminal reward boundary %d survives canonical save JSON" % boundary_count)
+				if saved_boundary == null:
+					break
+				var resumed_reward := GameSession.new()
+				var restore_step := resumed_reward.restore(content, saved_boundary)
+				assert_equal(restore_step.state, SessionStep.State.COMPLETED, "terminal reward boundary %d restores transactionally" % boundary_count)
+				if restore_step.state != SessionStep.State.COMPLETED:
+					break
+				reward_session = resumed_reward
+				var request: InteractionRequest = reward_session.view().pending_interaction
+				var payload: Dictionary
+				if request.kind == InteractionRequest.LEVEL_UP and request.payload.get("mode") == "result":
+					payload = {"action": "continue", "characterId": request.payload["characterId"]}
+				elif request.kind == InteractionRequest.LEVEL_UP:
+					payload = {"action": "confirm-spells", "characterId": request.payload["characterId"], "spellIds": []}
+				elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.payload.get("mode") == "completion-confirmation":
+					payload = {"action": "confirm-completion"}
+				elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.payload.get("item") is Dictionary:
+					payload = {"action": "discard", "instanceId": request.payload["item"]["instanceId"]}
+				else:
+					payload = {"action": "done"}
+				terminal = reward_session.respond(InteractionResponse.new(request.request_id, request.kind, payload))
+				reward_completed = reward_completed or terminal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"reward_completed")
+				boundary_count += 1
+			assert_true(boundary_count < 64, "terminal reward return is bounded")
+			assert_equal([terminal.state, reward_session._state.combat, reward_session._state.last_battle_outcome], [SessionStep.State.COMPLETED, null, &"victory"], "restored victory completes and releases the battle-owned reward chain exactly once")
+			assert_true(reward_completed, "ordinary session completion publishes the reward return event")
+			assert_equal(terminal.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "restored victory publishes one terminal battle-return event")
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:

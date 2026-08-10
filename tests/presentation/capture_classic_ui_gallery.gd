@@ -68,7 +68,16 @@ func _capture_gallery() -> void:
 	await _capture("wide-encounter-1280x720")
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
 	await _settle()
+	await _capture("wide-treasure-distribution-1280x720")
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"))
+	await _settle()
 	await _capture("wide-fumble-recovery-1280x720")
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.LEVEL_UP))
+	await _settle()
+	await _capture("wide-level-result-1280x720")
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.LEVEL_UP, &"unidentified"))
+	await _settle()
+	await _capture("wide-level-spells-1280x720")
 	_interaction.present(null)
 	var gallery_names: Array[String] = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]
 	while gallery_view.party_members.size() < 6 and not gallery_view.party_members.is_empty():

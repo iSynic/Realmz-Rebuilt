@@ -20,6 +20,7 @@ var target_id: String = ""
 var conditions: ConditionSet
 var _saves: Array[int] = []
 var _saves_initialized: bool = false
+var _loot_item_ids: Array[String] = []
 
 
 func _init(instance_id: String, source_definition_id: String, display_name: String, health: int, max_health: int, hd: int = 1, dexterity: int = 1, armor_rating: int = 0, magic_resist: int = 0, spell_energy: int = 0, is_traitor: bool = true) -> void:
@@ -60,6 +61,17 @@ func has_runtime_saves() -> bool:
 	return _saves_initialized
 
 
+func loot_item_ids() -> Array[String]:
+	return _loot_item_ids.duplicate()
+
+
+func set_loot_item_ids(values: Array[String]) -> bool:
+	if values.size() > 6:
+		return false
+	_loot_item_ids = values.duplicate()
+	return true
+
+
 func to_data() -> Dictionary:
 	var result := {
 		"id": id,
@@ -78,6 +90,7 @@ func to_data() -> Dictionary:
 		"surrenderPercent": surrender_percent,
 		"weaponId": weapon_id,
 		"targetId": target_id,
+		"lootItemIds": _loot_item_ids.duplicate(),
 		"conditions": conditions.to_data(),
 	}
 	if _saves_initialized:
@@ -113,6 +126,16 @@ static func from_data(data: Variant) -> MonsterState:
 	if result.surrender_percent == -100_000:
 		return null
 	result.weapon_id = data["weaponId"]
+	var loot_data: Variant = data.get("lootItemIds", [])
+	if not loot_data is Array or loot_data.size() > 6:
+		return null
+	var loot_ids: Array[String] = []
+	for loot_id: Variant in loot_data:
+		if not loot_id is String:
+			return null
+		loot_ids.append(loot_id)
+	if not result.set_loot_item_ids(loot_ids):
+		return null
 	if data.has("targetId"):
 		if not data["targetId"] is String:
 			return null

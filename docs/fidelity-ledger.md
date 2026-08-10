@@ -12,6 +12,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_realmz_rules.gd` covers charged, unidentified, capped-inflation, and zero-charge prices. `test_scenario_vm.gd` covers the complete ordinary shop lifecycle. The differential case is `economy.classic-shop-lifecycle`.
 - Legacy quirk: none. A non-finite conversion is not a stable authored behavior.
 
+## FD-ECONOMY-002 — Permit exact-maximum treasure load
+
+- Affected rule: ordinary treasure assignment when the exact pending item would bring a recipient to, but not beyond, maximum load.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/booty.c`, `booty`, lines 1544–1583. Castle requires `current load + item base weight < maximum load`, then commits base plus charge weight separately.
+- Observable source inconsistency: a recipient at load 90 with maximum 100 cannot receive an item weighing exactly 10, even though the resulting load would be legal. The same source check can admit a charged item whose complete weight later exceeds maximum. The synthetic source-observation fixture is `tests/fixtures/oracle/treasure-exact-load-correction.json`, SHA-256 `e163b32cd65223fcb89bb061d6c5263f54738cf315b4cd3ed087a0de6f96e2b8`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: an item is rejected at a legal capacity boundary, while another can be accepted into an overloaded state because the check and mutation use different weights.
+- Chosen 2.0 behavior: evaluate the exact pending instance, including current charges, and allow assignment when resulting load is less than or equal to maximum. A result above maximum remains unavailable with a typed reason.
+- Tests: `test_reward_workflow.gd` covers zero-capacity rejection, ordinary capacity, the exact-maximum correction, exact-instance assignment, and save/resume. The differential case is `rewards.ordinary-distribution`.
+- Legacy quirk: none. No authored scenario dependency on rejecting a legal exact-maximum assignment is known.
+
 ## FD-INVENTORY-001 — Safe equipped-item trade
 
 - Affected rule: moving an equipped carried item between party members in the ordinary two-character Trade workspace.

@@ -11,6 +11,7 @@ const INTERACTIONS: Array[StringName] = [
 	InteractionRequest.CHARACTER_SELECTION,
 	InteractionRequest.ALLY_SELECTION,
 	InteractionRequest.TREASURE_DISTRIBUTION,
+	InteractionRequest.LEVEL_UP,
 	InteractionRequest.WORD_AND_ACTION,
 	InteractionRequest.SHOP,
 	InteractionRequest.TEMPLE,
@@ -81,18 +82,9 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 		InteractionRequest.ALLY_SELECTION:
 			payload.merge({"maximum": 1, "selectedIds": [], "candidates": characters})
 		InteractionRequest.TREASURE_DISTRIBUTION:
-			var recovery_characters: Array[Dictionary] = []
-			for value: Dictionary in characters:
-				var recovery_character: Dictionary = value.duplicate(true)
-				recovery_character["enabled"] = true
-				recovery_character["reason"] = ""
-				recovery_characters.append(recovery_character)
-			payload.merge({
-				"mode": "fumbled-item-recovery",
-				"item": {"instanceId": "item-fumbled", "definitionId": "classic.item.6", "name": "Sting +3", "charges": 7, "identified": true},
-				"characters": recovery_characters,
-				"remaining": 1,
-			})
+			payload = _treasure_payload(state, long_text)
+		InteractionRequest.LEVEL_UP:
+			payload = _level_payload(state, long_text)
 		InteractionRequest.WORD_AND_ACTION:
 			payload.merge({"actions": [] if empty_values else [{"kind": "choice", "label": "Proceed", "slot": 0}, {"kind": "word", "label": "Speak"}], "characters": characters, "items": [], "spells": []})
 		InteractionRequest.SHOP:
@@ -104,3 +96,60 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 		InteractionRequest.COMBAT:
 			payload.merge({"round": 1, "actorId": "hero", "targets": [] if empty_values else [{"id": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4}]})
 	return InteractionRequest.new("fixture-%s-%s" % [kind, state], kind, payload)
+
+
+static func _treasure_payload(state: StringName, prompt: String) -> Dictionary:
+	var character_count := 6 if state in [&"oversized", &"six_member"] else 1
+	var characters: Array[Dictionary] = []
+	for index: int in character_count:
+		var capacity_blocked := state == &"unavailable" or index == character_count - 1 and state == &"oversized"
+		characters.append({
+			"id": "hero-%d" % index,
+			"name": ("An adventurer with an intentionally oversized name %d" % (index + 1)) if state == &"oversized" else "Hero" if character_count == 1 else "Hero %d" % (index + 1),
+			"enabled": not capacity_blocked,
+			"reason": "Inventory is full." if capacity_blocked else "",
+			"wealth": {"gold": 5 if index == 0 else 0, "gems": 1 if index == 1 else 0, "jewelry": 1 if index == 2 else 0},
+			"canTakeGold": not capacity_blocked,
+			"canTakeGems": not capacity_blocked,
+			"canTakeJewelry": not capacity_blocked,
+			"goldReason": "The pool has fewer than 5 gold or the character cannot carry it.",
+			"gemsReason": "The pool has no gems or the character cannot carry one.",
+			"jewelryReason": "The pool has no jewelry or the character cannot carry one.",
+		})
+	if state == &"missing_media":
+		return {
+			"prompt": prompt,
+			"mode": "fumbled-item-recovery",
+			"item": {"instanceId": "item-fumbled", "definitionId": "classic.item.6", "name": "Sting +3", "charges": 7, "identified": true},
+			"characters": characters,
+			"remaining": 1,
+		}
+	var has_item := state not in [&"empty", &"loading", &"error"]
+	var unidentified := state == &"unidentified"
+	return {
+		"prompt": prompt,
+		"mode": "ordinary",
+		"origin": "battle",
+		"sourceId": "classic.battle.0",
+		"experiencePool": 360,
+		"experienceShare": 60,
+		"wealth": {"gold": 125 if has_item else 0, "gems": 2 if has_item else 0, "jewelry": 1 if has_item else 0},
+		"item": {"instanceId": "reward.item.1", "definitionId": "classic.item.901", "name": "Unknown wand" if unidentified else "Fixture Wand", "charges": 2, "identified": not unidentified, "magical": unidentified} if has_item else null,
+		"remaining": 24 if state == &"oversized" else 1 if has_item else 0,
+		"characters": characters,
+		"hasShareCapacity": state != &"unavailable" and not characters.is_empty(),
+		"detect": {"visible": unidentified, "casters": [{"id": "hero-0", "name": "Hero 1", "spellPoints": 30, "cost": 5}] if unidentified else [], "reason": "No living caster can detect magic."},
+		"identify": {"visible": unidentified, "casters": [{"id": "hero-0", "name": "Hero 1", "spellPoints": 30, "cost": 25}] if unidentified else [], "reason": "No living caster can identify treasure."},
+	}
+
+
+static func _level_payload(state: StringName, prompt: String) -> Dictionary:
+	if state in [&"unidentified", &"oversized"]:
+		var spell_count := 36 if state == &"oversized" else 4
+		var spells: Array[Dictionary] = []
+		for index: int in spell_count:
+			spells.append({"id": "classic.spell.%d" % (1001 + index), "name": ("A spell with a deliberately extensive display name %d" % (index + 1)) if state == &"oversized" else "Spell %d" % (index + 1), "classicId": 1001 + index, "cost": 1 + index % 6, "selected": index == 0})
+		return {"prompt": prompt, "mode": "spell-selection", "characterId": "hero", "characterName": "A deliberately long spellcaster name" if state == &"oversized" else "Hero", "pointTotal": 18, "spells": spells}
+	if state in [&"empty", &"loading", &"error", &"unavailable"]:
+		return {"prompt": prompt, "mode": "result", "characterId": "", "characterName": "", "level": 0, "gains": {}}
+	return {"prompt": prompt, "mode": "result", "characterId": "hero", "characterName": "Hero", "level": 5, "gains": {"stamina": 8, "spellPoints": 3, "toHit": 2, "magicResistance": 1}}

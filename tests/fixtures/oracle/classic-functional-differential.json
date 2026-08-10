@@ -2579,6 +2579,203 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "nine-services-context-entry-wealth-save-and-presentation-verified"
+    },
+    {
+      "id": "rewards.ordinary-distribution",
+      "workflowIds": ["classic.rewards.treasure-distribution"],
+      "domain": "rewards",
+      "claim": "Ordinary authored treasure commits its money, experience, and exact item instances once, then waits through assignment, rejection, Pool, Share, denomination Swap, leave-behind confirmation, and return without a second mutation path.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake supplies a dedicated loot workspace and exact item-button assignment interactions, but its host-owned mutation and presentation coupling are implementation leads rather than authority.",
+        "sources": [
+          { "path": "src/scripts/GameGlobal.gd", "symbol": "func show_loot_menu" },
+          { "path": "src/scenes/UI/HUD/Looting/TreasureControl.gd", "symbol": "func _on_itemlootbutton_pressed" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/booty.c", "symbol": "void booty" },
+          { "path": "src/realmz_orig/updatebooty.c", "symbol": "void updatebooty" },
+          { "path": "src/realmz_orig/pool.c", "symbol": "void pool" },
+          { "path": "src/realmz_orig/share-movecost-dialog.c", "symbol": "void share" },
+          { "path": "src/realmz_orig/swap.c", "symbol": "void swap" }
+        ],
+        "authoredInputs": ["treasure item IDs", "gold, gems, and jewelry", "experience", "character item count and load", "unique-item cost sign"],
+        "observation": "booty owns one mutable reward workspace. updatebooty offers the pending items to one selected recipient at a time, Pool and Share mutate the same wealth pool, Swap transfers Classic denomination increments, and Done confirms abandonment before returning. Castle uses strict less-than maximum load for item receipt, while Realmz 2.0 deliberately allows exact maximum load; the source observation remains recorded for a named fidelity decision.",
+        "unresolved": [
+          "Two less-than-ten random checks can add parchment 806 and ration 877, including after the XP-only branch clears ordinary loot. Controlled runtime evidence is still required before reproducing or correcting those incidental drops."
+        ]
+      },
+      "providence": {
+        "commit": "028a587d8f99bd687d279d3abfdb74663ac4819f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_treasures" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn content_document" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits treasure wealth, experience, and stable item references plus complete item load, charge, uniqueness, and display fields. No compiler change is required for the implemented ordinary workspace."
+      },
+      "realmz2": {
+        "owner": { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func _begin_reward" },
+        "expectedTrace": ["roll the authored reward once", "validate every referenced item", "create exact pending instances", "commit experience and pooled wealth", "yield one typed treasure request", "revalidate each assignment or wealth action", "confirm any abandoned remainder", "serialize the complete continuation and RNG", "resume the issuing VM once"],
+        "tests": [
+          { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_ordinary_distribution_and_restore" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_fixture_gallery_coverage" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-ECONOMY-002",
+        "fixturePath": "tests/fixtures/oracle/treasure-exact-load-correction.json",
+        "fixtureSha256": "e163b32cd65223fcb89bb061d6c5263f54738cf315b4cd3ed087a0de6f96e2b8"
+      },
+      "availability": "implemented",
+      "status": "ordinary-money-item-assignment-pool-share-swap-abandonment-and-save-resume-verified-random-drops-unresolved"
+    },
+    {
+      "id": "rewards.detect-identify",
+      "workflowIds": ["classic.rewards.detect-identify-loot"],
+      "domain": "rewards",
+      "claim": "The treasure workspace offers Detect Magic for five spell points and Identify Objects for twenty-five spell points only to a living source-eligible caster, and the resulting knowledge persists with the same pending reward.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake exposes a Detect control in its treasure workspace and uses its own spell/effect host to reveal loot; it is a UI and mapping lead only.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/Looting/TreasureControl.gd", "symbol": "func _on_detect_button_pressed" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/booty.c", "symbol": "void booty" },
+          { "path": "src/realmz_orig/updatebooty.c", "symbol": "void updatebooty" },
+          { "path": "src/realmz_orig/spelllist.c", "symbol": "short spelllist" }
+        ],
+        "authoredInputs": ["spell special 63 or 48", "known spells", "current spell points", "caster conditions", "item magical and identification state"],
+        "observation": "The workspace invokes the eligible spell list directly. Detect costs five points and marks magical knowledge; Identify costs twenty-five and identifies the pending pool. No treasure-specific percentage roll is present in this source path, so unavailable casting is the failure state rather than a hidden chance roll."
+      },
+      "providence": {
+        "commit": "028a587d8f99bd687d279d3abfdb74663ac4819f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn content_document" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits spell special identity, item magic/display fields, and character spell state inputs required by the typed reward request."
+      },
+      "realmz2": {
+        "owner": { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func _apply_reward_detection" },
+        "expectedTrace": ["derive eligible casters from immutable spell definitions and current character state", "render exact costs and disabled reason", "revalidate selected caster", "spend spell points", "persist detection or identification on the reward continuation", "regenerate the same typed workspace"],
+        "tests": [
+          { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_ordinary_distribution_and_restore" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_fixture_gallery_coverage" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "detect-identify-cost-eligibility-knowledge-and-save-resume-verified"
+    },
+    {
+      "id": "rewards.experience-level-up",
+      "workflowIds": ["classic.rewards.experience-level-up"],
+      "domain": "rewards",
+      "claim": "Reward experience is divided once among source-eligible recipients, each positive recipient gains at most one level during that reward close, the exact rule transaction and RNG are staged for acknowledgement, and eligible spellcasters then confirm their known-spell selection.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake has a dedicated level-up panel and character mutation method, but does not establish Castle's reward-recipient order or one-level-per-close control flow.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/LevelUp/level_up_rect.gd", "symbol": "func levelup_character" },
+          { "path": "src/Creature/PlayerCharacter.gd", "symbol": "func level_up" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/misc.c", "symbol": "void getexp" },
+          { "path": "src/realmz_orig/levelup.c", "symbol": "short levelup" },
+          { "path": "src/realmz_orig/spellselect.c", "symbol": "void Spellselect" }
+        ],
+        "authoredInputs": ["reward experience", "recipient race and caste", "level thresholds", "attributes and combat gains", "spellcaster rows", "spell records and costs"],
+        "observation": "getexp divides the shared award once and visits eligible party records in source order. The reward caller invokes levelup once for a character whose signed experience became positive; levelup subtracts the current threshold and performs one gain transaction, leaving positive residual experience for a later reward close. Spellselect may remove known spells and accepts a valid selection with unspent points.",
+        "unresolved": [
+          "Threshold lookup clamps at the thirtieth row while the stored level can continue increasing; behavior beyond level 30 remains suspicious and is not newly generalized by this workflow."
+        ]
+      },
+      "providence": {
+        "commit": "028a587d8f99bd687d279d3abfdb74663ac4819f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn content_document" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits caste thresholds, spellcaster rows, spell records, race and caste rule inputs, and complete character state."
+      },
+      "realmz2": {
+        "owner": { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func _begin_reward_progression" },
+        "expectedTrace": ["record eligible recipients and one divided share", "commit experience exactly once", "queue positive recipients in party order", "subtract one threshold", "run the source-backed character level transaction", "serialize and acknowledge the result", "serialize and confirm spell selection", "complete and resume once"],
+        "tests": [
+          { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_experience_level_and_spell_restore" },
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func run" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_fixture_gallery_coverage" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "recipient-order-single-level-result-spell-selection-and-save-resume-verified"
+    },
+    {
+      "id": "combat.terminal-reward-chain",
+      "workflowIds": ["classic.combat.resolve-outcome"],
+      "domain": "combat",
+      "claim": "An ordinary completed battle drains the established post-combat stages, offers surviving allies and exact fumbled items, constructs and resolves rewards once, shows the after-message, releases combat once, and resumes its originating session continuation once. Defeat and full-party retreat return without victory rewards; characters who escaped before a later victory are excluded from its experience division.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake can open its loot workspace after combat, but its global host sequencing is only a lead for finding existing assets and tests.",
+        "sources": [
+          { "path": "src/scripts/GameGlobal.gd", "symbol": "func show_loot_menu" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/combat.c", "symbol": "void combat" },
+          { "path": "src/realmz_orig/bodycount.c", "symbol": "void bodycount" },
+          { "path": "src/realmz_orig/booty.c", "symbol": "void booty" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "void getexp" },
+          { "path": "src/realmz_orig/levelup.c", "symbol": "short levelup" },
+          { "path": "src/realmz_orig/partyloss.c", "symbol": "void partyloss" }
+        ],
+        "authoredInputs": ["battle outcome and mode", "monster money, experience, and items", "surviving allies", "fumbled exact instances", "after-message", "originating action continuation"],
+        "observation": "The normal victory path moves through bodycount, booty, experience and level processing before returning to the caller; defeat follows party-loss handling and full-party cowardice skips ordinary booty. Fumbled equipment is handled before ordinary loot. Experience dividers require a living, non-animated character whose inbattle flag remains set, excluding a character who escaped before a later victory. The after-message and caller return occur after the reward workspaces close.",
+        "unresolved": [
+          "Battle mode 5, mode 10, and opcode 48 bonus treasure overload source action fields that Providence and Realmz 2.0 do not yet preserve as a complete typed branch."
+        ]
+      },
+      "providence": {
+        "commit": "028a587d8f99bd687d279d3abfdb74663ac4819f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
+        ],
+        "expectedRepresentation": "Schema v2 preserves the ordinary battle, monster reward, after-message, and scenario continuation inputs. Explicit normalized ownership for all overloaded battle modes remains a compiler gap."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _finish_direct_battle" },
+        "expectedTrace": ["finish pending death macros", "stage ally selection", "stage exact fumble recovery", "prevalidate complete monster rewards", "claim reward ownership and consume reward RNG once", "resolve ordinary treasure and level stages", "append the after-message", "mark rewards complete", "clear combat and resume the saved origin once"],
+        "tests": [
+          { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_terminal_battle_rewards_once" },
+          { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "ordinary-victory-defeat-full-and-partial-retreat-reward-exact-once-cleanup-and-save-boundaries-verified-special-battle-modes-unresolved"
     }
   ]
 }
