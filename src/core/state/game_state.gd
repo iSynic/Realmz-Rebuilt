@@ -19,6 +19,7 @@ var active_shop_id: String = ""
 var _shop_accept_ranges: Array[int] = []
 var last_battle_outcome: StringName = &"none"
 var party_setup_completed: bool = false
+var character_draft: CharacterDraft
 var _searched_cells: Dictionary = {}
 var _quest_values: Dictionary = {}
 var _selected_character_ids: Array[String] = []
@@ -243,6 +244,7 @@ func to_data() -> Dictionary:
 		"shopAcceptRanges": _shop_accept_ranges.duplicate(),
 		"lastBattleOutcome": String(last_battle_outcome),
 		"partySetupCompleted": party_setup_completed,
+		"characterDraft": null if character_draft == null else character_draft.to_data(),
 		"questValues": quests,
 		"selectedCharacterIds": _selected_character_ids.duplicate(),
 		"timedEncounterOverrides": timed,
@@ -387,6 +389,10 @@ static func from_data(data: Variant) -> GameState:
 				return null
 		state.last_battle_outcome = StringName(data["lastBattleOutcome"])
 		state.party_setup_completed = bool(data.get("partySetupCompleted", false))
+		if data.has("characterDraft") and data["characterDraft"] != null:
+			state.character_draft = CharacterDraft.from_data(data["characterDraft"])
+			if state.character_draft == null:
+				return null
 		for key: Variant in data["questValues"]:
 			if not key is String or not key.is_valid_int():
 				return null
@@ -450,6 +456,8 @@ static func from_data(data: Variant) -> GameState:
 				return null
 			state._scenario_program_overrides[key] = target
 	if state.party.characters().is_empty() and (not data.has("partySetupCompleted") or state.party_setup_completed):
+		return null
+	if state.party_setup_completed and state.character_draft != null:
 		return null
 	for character: CharacterState in state.party.characters():
 		if character.traitor and (state.combat == null or state.combat.completed):

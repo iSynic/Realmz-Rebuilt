@@ -81,7 +81,7 @@ Implemented in this tranche:
 
 - `ClassicApplicationShell` map-first composition: compact menu strip, dominant map/picture stage, persistent right roster, bottom narrative/status well, and contextual command deck over the existing typed session boundary.
 - Campaign-aware party setup with schema-v2 title/version/author/restriction metadata, Race-left/Class-right filtering, and explicit setup errors.
-- Character creator foundation with the five visible stages, Classic-default appearance identities, review/spell guidance, and session-owned finalization.
+- Character creator with five separately mounted stages, session-owned generated Review state, reroll/cancel without RNG rollback, typed first-twelve-slot starting-spell selection, saveable unused-point confirmation, and finalization without a second roll.
 - Immutable `.r2char` character vault records/repository, explicit import intent, transactional persistence, archive/recovery, and target-package eligibility checks.
 - Providence schema v2 exporter plus byte-identical runtime mirror and regenerated synthetic fixtures.
 - One scene-backed component for each of the nine workspaces, with clipped scrolling and responsive stacked headers.
@@ -98,7 +98,7 @@ Still required for live visual acceptance and later gameplay completion:
 - Complete the full MCP keyboard/focus matrix. The official Godot MCP Pro 1.16.0 CLI now provides live-campaign evidence for package selection and startup, while the broader gallery remains synthetic evidence.
 - Inspect every interaction kind beside the Classic reference board; deterministic gallery coverage is broader than the currently reviewed representative frames.
 - Gameplay implementations for rewards, level-up, storage/treasure assignment, and tactical combat positions; their current controls remain explicitly unavailable.
-- Package media catalogs for portraits/combat icons and the remaining character review/spell choices.
+- Package media catalogs for portraits/combat icons, the complete higher-starting-level construction path, and explicit publication of newly created characters to the reusable vault.
 - Re-run the external AOGM ordinary-play route through the new shell; the committed gallery remains synthetic and is not live-campaign proof.
 
 ## Current rolling fidelity pass — blocking age updates (implemented)
@@ -329,3 +329,14 @@ Next rolling priority: inventory active special and zero-damage combat spells, t
 Flagged rather than guessed: Castle special 60 appears to consume the shared damage value while some authored records may use duration fields; specials 58 through 60 need individual control-flow and active-content evidence. Providence currently emits generic `Realmz Spell <id>` names for standard spell records without project overrides. Camp healing is a separate application workflow. None of these is silently inherited from special 57.
 
 Next rolling priority: correct the standard-spell display metadata at the Providence boundary, then inventory active specials 58 through 60 and class-nine effects by certified-campaign reachability before selecting another runtime branch.
+
+## Current rolling fidelity pass — Staged character creation and starting spells
+
+- Providence commit `40169270388049c355cdd133ba1a0af76a7eda64` now gives the stock spell catalog Castle's positive STR# names. The regenerated synthetic fixture and local AOGM package independently validate and are installed as immutable revisions; the compiler's existing schema-v2 race, caste, restriction, and spell fields are sufficient for this pass.
+- Character generation is no longer a one-click presentation form. A typed specification enters one complete Classic creation roll, whose provisional `CharacterState`, RNG position, and spell choices belong to `GameSession` and `.r2save` v3. Review renders that exact state; Reroll advances RNG while retaining the provisional ID; Cancel discards the state without rewinding RNG; acceptance clones the reviewed state without another roll.
+- The ordinary setup overlay mounts Identity, Race & Class, Appearance, Review, and Spells one at a time. Race remains the left-hand driver for Class. The 960×600 AOGM flow was exercised through all five pages, character addition, enabled Begin, and entry into the land map without clipped controls or the previous all-fields-at-once overflow. The external Pen.dev review board was used only as a local layout study and is not runtime or committed product evidence.
+- Castle's `cspells[7][12]` boundary prevented a pre-commit defect: Providence's fifteen resource-name entries per level are not fifteen learnable character slots. The runtime now offers only slots one through twelve, applies costs 1, 3, 6, 10, 15, 21, and 28, disables options that exceed the remaining budget, and preserves Castle's explicit confirmation when points remain. That confirmation and its response survive save/restore.
+- Castle's separate `Startlevel` path remains incomplete. It offers levels 1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 25, and 30, then invokes ordinary level-up once per additional level. The Identity page therefore exposes level one and a disabled higher-level explanation instead of silently claiming the workflow or approximating advanced characters.
+- The typed suite passes 2,633 assertions across 13 suites. Forty-three differential cases now include the aligned generated-draft/starting-spell path and the explicitly disabled higher-starting-level path.
+
+Next application-workflow priority: implement the complete source-backed higher-level character construction and then the explicit publish-to-vault decision. Portrait/combat-icon catalogs remain a coordinated Providence/display-data task; do not replace them with guessed filesystem assets.

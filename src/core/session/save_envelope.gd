@@ -156,6 +156,17 @@ static func _migrate(value: Variant) -> Variant:
 static func _normalize_session_continuation(value: Dictionary) -> Variant:
 	if value.is_empty():
 		return {}
+	if value.get("kind") == "character-spell-confirmation":
+		var spell_fields: Array[String] = ["kind", "characterId", "remaining"]
+		if value.size() != spell_fields.size():
+			return null
+		for field: String in spell_fields:
+			if not value.has(field):
+				return null
+		var remaining := _integer(value["remaining"])
+		if not value["characterId"] is String or value["characterId"].is_empty() or remaining < 1:
+			return null
+		return {"kind": "character-spell-confirmation", "characterId": value["characterId"], "remaining": remaining}
 	if value.get("kind") == "age-updates":
 		var age_fields: Array[String] = ["kind", "updates", "index", "resumeKind", "resumeContinuation"]
 		if value.size() != age_fields.size():

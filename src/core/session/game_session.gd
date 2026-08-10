@@ -68,6 +68,8 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 				return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved fumble queue references unavailable item content.")
 	var replacement_rules := RealmzRules.new()
 	_normalize_age_groups(replacement_state, content, replacement_rules)
+	if not _character_draft_is_valid(content, replacement_state, replacement_rules):
+		return SessionStep.failed(_view_revision, &"invalid_character_draft", "The saved character-creation draft is invalid for this campaign.")
 	var replacement_vm := ScenarioVm.new()
 	replacement_vm.configure(content.scenario)
 	if not replacement_vm.restore(save_envelope.scenario_vm):
@@ -103,7 +105,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"interaction_pending", "Respond to the pending interaction first.")
 	if intent == null:
 		return SessionStep.failed(_view_revision, &"invalid_intent", "A typed player intent is required.")
-	if not _state.party_setup_completed and intent.kind not in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PlayerIntent.Kind.FINALIZE_CHARACTER, PlayerIntent.Kind.REMOVE_PARTY_MEMBER]:
+	if not _state.party_setup_completed and intent.kind not in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT, PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS, PlayerIntent.Kind.FINALIZE_CHARACTER, PlayerIntent.Kind.REMOVE_PARTY_MEMBER]:
 		return SessionStep.failed(_view_revision, &"party_setup_incomplete", "Finish party setup before beginning the adventure.")
 	if _state.combat != null and not _state.combat.completed and intent.kind not in [PlayerIntent.Kind.CAST_SPELL, PlayerIntent.Kind.CHOOSE_COMBAT_ACTION, PlayerIntent.Kind.COMBAT_MOVE]:
 		return SessionStep.failed(_view_revision, &"battle_in_progress", "Resolve the active battle before returning to exploration.")
@@ -128,6 +130,12 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _begin_adventure()
 		PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
 			return _import_vault_character(intent)
+		PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT:
+			return _generate_character_draft(intent)
+		PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT:
+			return _cancel_character_draft()
+		PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS:
+			return _set_character_draft_spells(intent.selected_ids)
 		PlayerIntent.Kind.FINALIZE_CHARACTER:
 			return _finalize_character(intent)
 		PlayerIntent.Kind.REMOVE_PARTY_MEMBER:
@@ -171,7 +179,10 @@ func view() -> GameView:
 	var result := GameView.new(_view_revision, true, _pending_interaction(), _state.party.map_id, _state.party.coordinate, _state.clock.day(), _state.clock.hour(), _build_map_view(), members, _state.party.fatigue, _state.party.pooled_wealth.gold, current_combat)
 	result.campaign_id = _content.campaign_id
 	result.rules_version = _content.rules_version
-	result.party_setup_available = not _state.party_setup_completed and _pending_interaction() == null
+	result.party_setup_available = not _state.party_setup_completed
+	if _state.character_draft != null and _state.character_draft.generated_character != null:
+		result.character_draft = CharacterView.new(_state.character_draft.generated_character, _content)
+		_populate_character_draft_spells(result)
 	result.campaign_summary = CampaignSummaryView.new()
 	result.campaign_summary.campaign_id = _content.campaign_id
 	var campaign := _content.campaign_definition()
@@ -209,6 +220,7 @@ func _populate_action_availability(result: GameView) -> void:
 	var party_setup := result.party_setup_available
 	var setup_member_count := _state.party.characters().size()
 	var setup_member_limit := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
+	var draft_active := _state.character_draft != null and _state.character_draft.generated_character != null
 	var battle_active := result.combat_view != null and result.combat_view.outcome == &""
 	var ordinary_reason := "Resolve the current interaction first." if blocked_by_interaction else "Complete party setup first." if party_setup else ""
 	result.set_action_availability(&"move", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Movement is unavailable during battle." if battle_active else "")
@@ -221,9 +233,12 @@ func _populate_action_availability(result: GameView) -> void:
 	result.set_action_availability(&"cast_spell", false, cast_reason)
 	result.set_action_availability(&"choose_combat_action", battle_active and not blocked_by_interaction, "No battle action is currently available." if not battle_active else "Resolve the current interaction first." if blocked_by_interaction else "")
 	result.set_action_availability(&"create_party", party_setup and not blocked_by_interaction, "Resolve the current interaction first." if blocked_by_interaction else "Party creation is available only before beginning a campaign." if not party_setup else "")
-	result.set_action_availability(&"begin_adventure", party_setup and not blocked_by_interaction and setup_member_count > 0, "Resolve the current interaction first." if blocked_by_interaction else "The adventure has already begun." if not party_setup else "Add or import at least one character first.")
-	result.set_action_availability(&"import_vault_character", party_setup and not blocked_by_interaction and setup_member_count < setup_member_limit, "Resolve the current interaction first." if blocked_by_interaction else "Vault imports are available only during party setup." if not party_setup else "The party is full.")
-	result.set_action_availability(&"finalize_character", party_setup and not blocked_by_interaction and setup_member_count < setup_member_limit, "Resolve the current interaction first." if blocked_by_interaction else "Character creation is available only during party setup." if not party_setup else "The party is full.")
+	result.set_action_availability(&"begin_adventure", party_setup and not blocked_by_interaction and setup_member_count > 0 and not draft_active, "Resolve the current interaction first." if blocked_by_interaction else "The adventure has already begun." if not party_setup else "Finish or cancel the character currently being created." if draft_active else "Add or import at least one character first.")
+	result.set_action_availability(&"import_vault_character", party_setup and not blocked_by_interaction and setup_member_count < setup_member_limit and not draft_active, "Resolve the current interaction first." if blocked_by_interaction else "Vault imports are available only during party setup." if not party_setup else "Finish or cancel the character currently being created." if draft_active else "The party is full.")
+	result.set_action_availability(&"generate_character_draft", party_setup and not blocked_by_interaction and setup_member_count < setup_member_limit, "Resolve the current interaction first." if blocked_by_interaction else "Character creation is available only during party setup." if not party_setup else "The party is full.")
+	result.set_action_availability(&"cancel_character_draft", party_setup and not blocked_by_interaction and draft_active, "There is no generated character to cancel." if not draft_active else "Resolve the current interaction first." if blocked_by_interaction else "Character creation is available only during party setup.")
+	result.set_action_availability(&"set_character_draft_spells", party_setup and not blocked_by_interaction and draft_active, "Generate the character before choosing spells." if not draft_active else "Resolve the current interaction first." if blocked_by_interaction else "Character creation is available only during party setup.")
+	result.set_action_availability(&"finalize_character", party_setup and not blocked_by_interaction and setup_member_count < setup_member_limit and draft_active, "Resolve the current interaction first." if blocked_by_interaction else "Character creation is available only during party setup." if not party_setup else "Generate and review the character first." if not draft_active else "The party is full.")
 	result.set_action_availability(&"remove_party_member", party_setup and not blocked_by_interaction and setup_member_count > 0, "Resolve the current interaction first." if blocked_by_interaction else "Party members can be removed only during party setup." if not party_setup else "The party is empty.")
 	for action_id: StringName in [
 		&"equip_item", &"unequip_item", &"use_item_on_target",
@@ -232,6 +247,77 @@ func _populate_action_availability(result: GameView) -> void:
 		&"loot_assignment", &"treasure_complete", &"level_up", &"open_journal", &"open_maps",
 	]:
 		result.set_action_availability(action_id, false, "Not implemented in the current gameplay slice.")
+
+
+func _populate_character_draft_spells(result: GameView) -> void:
+	var character := _state.character_draft.generated_character
+	var caste := _content.caste_by_id(character.caste_id)
+	result.character_draft_spell_points_total = _rules.characters.spell_selection_total(character, caste)
+	var spent := 0
+	for spell: SpellDefinition in _character_spell_candidates(character, caste):
+		result.character_draft_spell_options.append(CharacterSpellOptionView.new(spell, _rules.characters.spell_selection_cost(spell), character.known_spells().has(spell.id)))
+	for spell_id: String in character.known_spells():
+		spent += _rules.characters.spell_selection_cost(_content.spell_by_id(spell_id))
+	result.character_draft_spell_points_remaining = maxi(0, result.character_draft_spell_points_total - spent)
+
+
+func _character_spell_candidates(character: CharacterState, caste: CasteDefinition) -> Array[SpellDefinition]:
+	var result: Array[SpellDefinition] = []
+	if character == null or caste == null or character.spellcaster_type < 1:
+		return result
+	var maximum_level := _rules.characters.maximum_spell_selection_level(caste)
+	for spell: SpellDefinition in _content.spell_definitions():
+		if int(spell.classic_id / 1000) != character.spellcaster_type:
+			continue
+		var tier := spell.classic_tier()
+		var slot := spell.classic_slot()
+		if tier >= 0 and tier < maximum_level and slot >= 1 and slot <= 12:
+			result.append(spell)
+	result.sort_custom(func(left: SpellDefinition, right: SpellDefinition) -> bool: return left.classic_id < right.classic_id)
+	return result
+
+
+func _character_draft_is_valid(content: RealmzContent, state: GameState, rules: RealmzRules) -> bool:
+	if state.character_draft == null:
+		return true
+	if state.party_setup_completed or state.character_draft.finalized or state.character_draft.generated_character == null:
+		return false
+	var draft := state.character_draft
+	var character := draft.generated_character
+	if character.name != draft.name or character.gender != draft.gender or character.race_id != draft.race_id or character.caste_id != draft.caste_id or character.portrait_id != draft.portrait_id or character.combat_icon_id != draft.combat_icon_id:
+		return false
+	var race := content.race_by_id(character.race_id)
+	var caste := content.caste_by_id(character.caste_id)
+	if race == null or caste == null:
+		return false
+	var restrictions := content.campaign_definition().restrictions
+	if restrictions.banned_races.has(race.id) or restrictions.banned_castes.has(caste.id):
+		return false
+	if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
+		return false
+	if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
+		return false
+	for current: CharacterState in state.party.characters():
+		if current.id == character.id or current.name.to_lower() == character.name.to_lower():
+			return false
+	var candidate_ids: Dictionary = {}
+	for spell: SpellDefinition in content.spell_definitions():
+		if int(spell.classic_id / 1000) == character.spellcaster_type:
+			var tier := spell.classic_tier()
+			if tier >= 0 and tier < rules.characters.maximum_spell_selection_level(caste):
+				candidate_ids[spell.id] = spell
+	var spent := 0
+	for spell_id: String in character.known_spells():
+		if not candidate_ids.has(spell_id):
+			return false
+		var spell: SpellDefinition = candidate_ids[spell_id]
+		spent += rules.characters.spell_selection_cost(spell)
+	if spent > rules.characters.spell_selection_total(character, caste):
+		return false
+	for item: ItemInstance in character.inventory():
+		if content.item_by_id(item.definition_id) == null:
+			return false
+	return true
 
 
 func snapshot() -> SaveEnvelope:
@@ -339,9 +425,15 @@ static func _retreat_confirmation_request(request_id: String) -> InteractionRequ
 	return InteractionRequest.yes_no(request_id, "Will this character flee from battle?", "Embrace Cowardice", "Stay and Fight")
 
 
+static func _character_spell_confirmation_request(request_id: String, remaining: int) -> InteractionRequest:
+	return InteractionRequest.yes_no(request_id, "%d starting-spell selection points remain. Accept this character anyway?" % remaining, "Accept character", "Choose more spells")
+
+
 func _create_party(specs: Array[CharacterCreationSpec]) -> SessionStep:
 	if _state.party_setup_completed or _pending_interaction() != null:
 		return SessionStep.failed(_view_revision, &"party_setup_closed", "Party creation is available only during party setup.")
+	if _state.character_draft != null:
+		return SessionStep.failed(_view_revision, &"character_draft_active", "Finish or cancel the character currently being created.")
 	var maximum_party_size := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
 	if specs.is_empty() or specs.size() > maximum_party_size:
 		return SessionStep.failed(_view_revision, &"invalid_party_size", "This campaign allows one through %d characters." % maximum_party_size)
@@ -369,6 +461,8 @@ func _create_party(specs: Array[CharacterCreationSpec]) -> SessionStep:
 func _begin_adventure() -> SessionStep:
 	if _state.party_setup_completed or _pending_interaction() != null:
 		return SessionStep.failed(_view_revision, &"party_setup_closed", "Party setup is no longer active.")
+	if _state.character_draft != null:
+		return SessionStep.failed(_view_revision, &"character_draft_active", "Finish or cancel the character currently being created before beginning.")
 	var characters := _state.party.characters()
 	if characters.is_empty():
 		return SessionStep.failed(_view_revision, &"empty_party", "Add or import at least one character before beginning.")
@@ -382,6 +476,8 @@ func _begin_adventure() -> SessionStep:
 func _import_vault_character(intent: PlayerIntent) -> SessionStep:
 	if _state.party_setup_completed or _pending_interaction() != null:
 		return SessionStep.failed(_view_revision, &"party_setup_closed", "Vault import is available only during party setup.")
+	if _state.character_draft != null:
+		return SessionStep.failed(_view_revision, &"character_draft_active", "Finish or cancel the character currently being created before importing from the vault.")
 	if intent.target_id.is_empty() or intent.revision_hash.is_empty() or intent.vault_state_data.is_empty():
 		return SessionStep.failed(_view_revision, &"invalid_vault_import", "A validated vault character revision is required.")
 	var imported := CharacterState.from_data(intent.vault_state_data)
@@ -419,11 +515,11 @@ func _import_vault_character(intent: PlayerIntent) -> SessionStep:
 	return _finish_completed([DomainEvent.new(&"vault_character_imported", {"characterId": imported.id, "revisionHash": intent.revision_hash, "sourceCampaignId": intent.vault_source_campaign_id})])
 
 
-func _finalize_character(intent: PlayerIntent) -> SessionStep:
+func _generate_character_draft(intent: PlayerIntent) -> SessionStep:
 	if _state.party_setup_completed or _pending_interaction() != null:
 		return SessionStep.failed(_view_revision, &"party_setup_closed", "Character creation is available only during party setup.")
 	if intent.party_members.size() != 1:
-		return SessionStep.failed(_view_revision, &"invalid_character_spec", "Finalize Character requires exactly one character draft.")
+		return SessionStep.failed(_view_revision, &"invalid_character_spec", "Generate Character requires exactly one typed specification.")
 	var maximum_party_size := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
 	var current_characters := _state.party.characters()
 	if current_characters.size() >= maximum_party_size:
@@ -435,10 +531,101 @@ func _finalize_character(intent: PlayerIntent) -> SessionStep:
 	var validation := _character_creation_error(spec, names)
 	if not validation.is_empty():
 		return SessionStep.failed(_view_revision, StringName(validation["code"]), String(validation["message"]))
-	var character := _create_character_from_spec(spec, _next_party_character_id())
-	if character == null or not _state.party.add_character(character):
+	var character_id := _state.character_draft.generated_character.id if _state.character_draft != null and _state.character_draft.generated_character != null else _next_party_character_id()
+	var character := _create_character_from_spec(spec, character_id)
+	if character == null:
 		return SessionStep.failed(_view_revision, &"character_creation_failed", "Realmz rules rejected the character draft.")
-	return _finish_completed([DomainEvent.new(&"character_finalized", {"characterId": character.id})])
+	var draft := CharacterDraft.new()
+	draft.name = spec.name
+	draft.gender = spec.gender
+	draft.race_id = spec.race_id
+	draft.caste_id = spec.caste_id
+	draft.portrait_id = spec.portrait_id
+	draft.combat_icon_id = spec.combat_icon_id
+	draft.generated_character = character
+	_state.character_draft = draft
+	return _finish_completed([DomainEvent.new(&"character_draft_generated", {"characterId": character.id, "name": character.name})])
+
+
+func _cancel_character_draft() -> SessionStep:
+	if _state.party_setup_completed or _pending_interaction() != null:
+		return SessionStep.failed(_view_revision, &"party_setup_closed", "Character creation is available only during party setup.")
+	if _state.character_draft == null:
+		return SessionStep.failed(_view_revision, &"no_character_draft", "There is no generated character to cancel.")
+	var character_id := _state.character_draft.generated_character.id if _state.character_draft.generated_character != null else ""
+	_state.character_draft = null
+	return _finish_completed([DomainEvent.new(&"character_draft_cancelled", {"characterId": character_id})])
+
+
+func _set_character_draft_spells(spell_ids: Array[String]) -> SessionStep:
+	if _state.party_setup_completed or _pending_interaction() != null:
+		return SessionStep.failed(_view_revision, &"party_setup_closed", "Spell selection is available only during character creation.")
+	if _state.character_draft == null or _state.character_draft.generated_character == null:
+		return SessionStep.failed(_view_revision, &"no_character_draft", "Generate the character before choosing spells.")
+	var character := _state.character_draft.generated_character
+	var caste := _content.caste_by_id(character.caste_id)
+	var candidates := _character_spell_candidates(character, caste)
+	var candidate_ids: Dictionary = {}
+	for spell: SpellDefinition in candidates:
+		candidate_ids[spell.id] = spell
+	var selected: Array[String] = []
+	var spent := 0
+	for spell_id: String in spell_ids:
+		if selected.has(spell_id) or not candidate_ids.has(spell_id):
+			return SessionStep.failed(_view_revision, &"invalid_character_spell", "The selected spell is not available to this character.")
+		selected.append(spell_id)
+		var spell: SpellDefinition = candidate_ids[spell_id]
+		spent += _rules.characters.spell_selection_cost(spell)
+	var total := _rules.characters.spell_selection_total(character, caste)
+	if spent > total:
+		return SessionStep.failed(_view_revision, &"character_spell_budget_exceeded", "The selected spells exceed this character's Classic selection points.")
+	character.set_known_spells(selected)
+	return _finish_completed([DomainEvent.new(&"character_draft_spells_changed", {"characterId": character.id, "spellIds": selected, "remaining": total - spent})])
+
+
+func _finalize_character(_intent: PlayerIntent) -> SessionStep:
+	if _state.party_setup_completed or _pending_interaction() != null:
+		return SessionStep.failed(_view_revision, &"party_setup_closed", "Character creation is available only during party setup.")
+	if _state.character_draft == null or _state.character_draft.generated_character == null:
+		return SessionStep.failed(_view_revision, &"no_character_draft", "Generate and review the character before finalizing it.")
+	var maximum_party_size := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
+	var current_characters := _state.party.characters()
+	if current_characters.size() >= maximum_party_size:
+		return SessionStep.failed(_view_revision, &"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
+	var draft := _state.character_draft
+	var names: Dictionary = {}
+	for current: CharacterState in current_characters:
+		names[current.name.to_lower()] = true
+	var validation := _character_creation_error(draft.to_creation_spec(), names)
+	if not validation.is_empty():
+		return SessionStep.failed(_view_revision, StringName(validation["code"]), String(validation["message"]))
+	var caste := _content.caste_by_id(draft.generated_character.caste_id)
+	var total := _rules.characters.spell_selection_total(draft.generated_character, caste)
+	var spent := 0
+	for spell_id: String in draft.generated_character.known_spells():
+		spent += _rules.characters.spell_selection_cost(_content.spell_by_id(spell_id))
+	var remaining := maxi(0, total - spent)
+	if remaining > 0:
+		var request_id := "character-spells:%s:%d" % [draft.generated_character.id, _view_revision + 1]
+		_session_continuation = {"kind": "character-spell-confirmation", "characterId": draft.generated_character.id, "remaining": remaining}
+		_session_interaction = _character_spell_confirmation_request(request_id, remaining)
+		return _finish_waiting(_session_interaction, [DomainEvent.new(&"character_spell_confirmation_requested", {"characterId": draft.generated_character.id, "remaining": remaining})])
+	return _commit_character_draft()
+
+
+func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionStep:
+	if _state.character_draft == null or _state.character_draft.generated_character == null:
+		return _finish_failed(&"no_character_draft", "The generated character is no longer available.", events)
+	var maximum_party_size := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
+	if _state.party.characters().size() >= maximum_party_size:
+		return _finish_failed(&"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size, events)
+	var draft := _state.character_draft
+	var character := CharacterState.from_data(draft.generated_character.to_data())
+	if character == null or not _state.party.add_character(character):
+		return _finish_failed(&"character_creation_failed", "Realmz rules rejected the generated character.", events)
+	_state.character_draft = null
+	events.append(DomainEvent.new(&"character_finalized", {"characterId": character.id}))
+	return _finish_completed(events)
 
 
 func _remove_party_member(character_id: String) -> SessionStep:
@@ -884,6 +1071,8 @@ func _pending_interaction() -> InteractionRequest:
 
 
 func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
+	if _session_continuation.get("kind") == "character-spell-confirmation":
+		return _respond_character_spell_confirmation(response)
 	if _session_continuation.get("kind") == "age-updates":
 		return _respond_session_age_update(response)
 	if _session_continuation.get("kind") == "combat-ally-selection":
@@ -916,6 +1105,19 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 		return next_step
 	_session_continuation.clear()
 	return _finish_completed(events)
+
+
+func _respond_character_spell_confirmation(response: InteractionResponse) -> SessionStep:
+	if response.kind != InteractionRequest.YES_NO or response.payload.get("accepted") is not bool:
+		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Starting-spell confirmation requires a yes/no response.")
+	var character_id := String(_session_continuation.get("characterId", ""))
+	if _state.character_draft == null or _state.character_draft.generated_character == null or _state.character_draft.generated_character.id != character_id:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The character awaiting starting-spell confirmation is unavailable.")
+	_session_interaction = null
+	_session_continuation.clear()
+	if not response.payload["accepted"]:
+		return _finish_completed([DomainEvent.new(&"character_spell_confirmation_declined", {"characterId": character_id})])
+	return _commit_character_draft([DomainEvent.new(&"character_spell_confirmation_accepted", {"characterId": character_id})])
 
 
 func _respond_session_retreat(response: InteractionResponse) -> SessionStep:
@@ -1074,6 +1276,25 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 
 
 static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	if continuation.get("kind") == "character-spell-confirmation":
+		var spell_fields: Array[String] = ["kind", "characterId", "remaining"]
+		if continuation.size() != spell_fields.size() or vm_interaction != null or session_interaction == null:
+			return false
+		for field: String in spell_fields:
+			if not continuation.has(field):
+				return false
+		if state.party_setup_completed or state.character_draft == null or state.character_draft.generated_character == null:
+			return false
+		var character := state.character_draft.generated_character
+		if not continuation["characterId"] is String or continuation["characterId"] != character.id or not continuation["remaining"] is int or continuation["remaining"] < 1:
+			return false
+		var rules := RealmzRules.new()
+		var caste := content.caste_by_id(character.caste_id)
+		var spent := 0
+		for spell_id: String in character.known_spells():
+			spent += rules.characters.spell_selection_cost(content.spell_by_id(spell_id))
+		var remaining := maxi(0, rules.characters.spell_selection_total(character, caste) - spent)
+		return remaining == continuation["remaining"] and session_interaction.to_data() == _character_spell_confirmation_request(session_interaction.request_id, remaining).to_data()
 	if continuation.get("kind") == "combat-retreat-confirmation":
 		var retreat_fields: Array[String] = ["kind", "battleId", "actorId", "mode", "destination"]
 		if continuation.size() != retreat_fields.size():

@@ -216,6 +216,41 @@ func recalculate_movement(character: CharacterState, race: RaceDefinition, movem
 	return character.maximum_movement
 
 
+func spell_selection_total(character: CharacterState, caste: CasteDefinition) -> int:
+	if character == null or caste == null or character.spellcaster_type < 1:
+		return 0
+	var start_level_sum := 0
+	for row: Vector3i in caste.spellcaster_rows():
+		start_level_sum += row.y
+	var relative_level := character.level - (start_level_sum - 1)
+	if relative_level < 1:
+		return 0
+	var bonus_attribute := character.judgment if character.spellcaster_type == 2 else character.knowledge
+	var total := 3 * relative_level + int(relative_level * (relative_level - 1) / 2.0)
+	if bonus_attribute > 15:
+		total += relative_level * (bonus_attribute - 15)
+	return total
+
+
+func spell_selection_cost(spell: SpellDefinition) -> int:
+	if spell == null:
+		return 0
+	var tier := spell.classic_tier()
+	if tier < 0 or tier > 6:
+		return 0
+	var level := tier + 1
+	return int(level * (level + 1) / 2.0)
+
+
+func maximum_spell_selection_level(caste: CasteDefinition) -> int:
+	if caste == null:
+		return 0
+	var result := 0
+	for row: Vector3i in caste.spellcaster_rows():
+		result += row.z
+	return clampi(result, 0, 7)
+
+
 func _configure_spellcaster(character: CharacterState, caste: CasteDefinition, rng: RealmzRng) -> void:
 	var rows := caste.spellcaster_rows()
 	for index: int in mini(3, rows.size()):

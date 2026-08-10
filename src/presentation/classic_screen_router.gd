@@ -31,6 +31,9 @@ var _setup_overlay: PanelContainer
 var _setup_body: VBoxContainer
 var _creator_scroll: ScrollContainer
 var _creator: BoxContainer
+var _creator_page: VBoxContainer
+var _creator_step_labels: Array[Label] = []
+var _race_class_columns: BoxContainer
 var _setup_campaign_label: Label
 var _setup_restriction_label: Label
 var _race_list: ItemList
@@ -43,12 +46,23 @@ var _party_list: VBoxContainer
 var _setup_message: Label
 var _review_label: Label
 var _spell_label: Label
+var _spell_list: ItemList
 var _begin_button: Button
 var _add_character_button: Button
+var _creator_back_button: Button
+var _creator_next_button: Button
+var _creator_cancel_button: Button
 var _setup_import_button: Button
 var _vault_records: Array[CharacterVaultRecord] = []
 var _selected_race_id: String = ""
 var _selected_caste_id: String = ""
+var _creator_step: int = 0
+var _draft_name: String = ""
+var _draft_gender: int = 1
+var _draft_portrait_id: String = ""
+var _draft_combat_icon_id: String = ""
+var _awaiting_draft_generation: bool = false
+var _awaiting_draft_finalization: bool = false
 var _settings: PresentationSettings = PresentationSettings.new()
 var _media: PackageMediaCatalog
 var _route_history: Array[StringName] = []
@@ -59,6 +73,7 @@ var _modal_layout_rect := Rect2(12.0, 36.0, 680.0, 556.0)
 var _campaign_layout_rect := Rect2(12.0, 36.0, 680.0, 556.0)
 var _content_parent: Container
 var _inventory_query: String = ""
+var _presented_campaign_id: String = ""
 
 
 func _ready() -> void:
@@ -77,7 +92,15 @@ func present(view: GameView) -> void:
 	if view == null or not view.session_started:
 		_body_frame.visible = false
 		return
+	if not _presented_campaign_id.is_empty() and _presented_campaign_id != view.campaign_id:
+		_reset_creator()
+	_presented_campaign_id = view.campaign_id
 	if view.party_setup_available:
+		if _awaiting_draft_generation and view.character_draft != null:
+			_awaiting_draft_generation = false
+		if _awaiting_draft_finalization and view.character_draft == null:
+			_awaiting_draft_finalization = false
+			_reset_creator()
 		_campaign_overlay.visible = false
 		_setup_overlay.visible = true
 		_body_frame.visible = false
@@ -151,10 +174,17 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2) -> voi
 	_modal_layout_rect = Rect2(12.0, top + 8.0, maxf(320.0, viewport_size.x - profile.party_width - 24.0), maxf(300.0, viewport_size.y - top - 16.0))
 	_campaign_layout_rect = ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
 	if _setup_overlay != null:
-		_creator.vertical = profile.id == UiLayoutProfile.COMPACT
+		_apply_creator_layout(profile.id)
 		_creator_scroll.custom_minimum_size.y = 140.0 if profile.id == UiLayoutProfile.COMPACT else 220.0
 	_apply_modal_layouts()
 	_render_screen()
+
+
+func _apply_creator_layout(profile_id: StringName) -> void:
+	if _creator != null:
+		_creator.vertical = profile_id == UiLayoutProfile.COMPACT
+	if _race_class_columns != null:
+		_race_class_columns.vertical = profile_id == UiLayoutProfile.COMPACT
 
 
 static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2) -> Rect2:
@@ -224,6 +254,9 @@ func handle_back() -> bool:
 			return true
 		return false
 	if _setup_overlay.visible:
+		if _creator_step > 0:
+			_creator_back()
+			return true
 		return false
 	if not _route_history.is_empty():
 		var previous: StringName = _route_history.pop_back()
@@ -348,10 +381,11 @@ func _build_setup_overlay() -> void:
 	steps.add_theme_constant_override("separation", 6)
 	steps.custom_minimum_size.y = 24.0
 	for step: String in ["1 Identity", "2 Race & Class", "3 Appearance", "4 Review", "5 Spells"]:
-		var step_label := _label(step, Color("e7d078") if step.begins_with("1") else MUTED, 13)
+		var step_label := _label(step, GOLD if step.begins_with("1") else MUTED, 13)
 		step_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		step_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		steps.add_child(step_label)
+		_creator_step_labels.append(step_label)
 	_setup_body.add_child(steps)
 	_creator_scroll = ScrollContainer.new()
 	_creator_scroll.name = "CreatorScroll"
@@ -363,86 +397,57 @@ func _build_setup_overlay() -> void:
 	_creator_scroll.follow_focus = true
 	_setup_body.add_child(_creator_scroll)
 	_creator = BoxContainer.new()
-	_creator.custom_minimum_size.y = 360.0
+	_creator.custom_minimum_size.y = 250.0
 	_creator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_creator.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_creator.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_creator.add_theme_constant_override("separation", 12)
 	_creator_scroll.add_child(_creator)
-	var left := VBoxContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	left.add_child(_label("Race", GOLD))
-	_race_list = ItemList.new()
-	_race_list.custom_minimum_size.y = 320.0
-	_race_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_race_list.item_selected.connect(_race_selected)
-	left.add_child(_race_list)
-	_creator.add_child(left)
-	var right := VBoxContainer.new()
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	right.add_child(_label("Class", GOLD))
-	_caste_list = ItemList.new()
-	_caste_list.custom_minimum_size.y = 320.0
-	_caste_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_caste_list.item_selected.connect(_caste_selected)
-	right.add_child(_caste_list)
-	_creator.add_child(right)
-	var form := VBoxContainer.new()
-	form.custom_minimum_size.x = 180.0
-	form.add_child(_label("Identity", GOLD))
-	_name_edit = LineEdit.new()
-	_name_edit.placeholder_text = "Character name"
-	form.add_child(_name_edit)
-	_gender_option = OptionButton.new()
-	_gender_option.add_item("Gender 1", 1)
-	_gender_option.add_item("Gender 2", 2)
-	form.add_child(_gender_option)
-	form.add_child(_label("Appearance", GOLD))
-	_portrait_option = OptionButton.new()
-	_portrait_option.add_item("Portrait: Classic default", 0)
-	_portrait_option.tooltip_text = "The package media catalog will provide additional portraits when available."
-	_portrait_option.item_selected.connect(func(_index: int) -> void: _update_creator_review())
-	form.add_child(_portrait_option)
-	_combat_icon_option = OptionButton.new()
-	_combat_icon_option.add_item("Combat icon: Classic default", 0)
-	_combat_icon_option.tooltip_text = "The package media catalog will provide additional combat icons when available."
-	_combat_icon_option.item_selected.connect(func(_index: int) -> void: _update_creator_review())
-	form.add_child(_combat_icon_option)
-	form.add_child(_label("Review", GOLD))
-	_review_label = _add_label(form, "Choose a race and class to review Classic starting values.", MUTED)
-	_review_label.custom_minimum_size.y = 44.0
-	form.add_child(_label("Spells", GOLD))
-	_spell_label = _add_label(form, "Spell eligibility and starting spells are finalized by Classic rules.", MUTED)
-	_spell_label.custom_minimum_size.y = 44.0
-	form.add_child(_label("Party", GOLD))
+	_creator_page = VBoxContainer.new()
+	_creator_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_creator_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_creator.add_child(_creator_page)
+	var party_column := VBoxContainer.new()
+	party_column.custom_minimum_size.x = 190.0
+	party_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	party_column.add_child(_label("Current Party", GOLD))
 	_party_list = VBoxContainer.new()
 	_party_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	form.add_child(_party_list)
-	_creator.add_child(form)
-	_setup_message = _add_label(_setup_body, "Choose a race, a class, and a name.", MUTED)
+	party_column.add_child(_party_list)
+	_creator.add_child(party_column)
+	_setup_message = _add_label(_setup_body, "Enter a name to begin creating a character.", MUTED)
 	_setup_message.custom_minimum_size.y = 32.0
 	_setup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var action_bar := HBoxContainer.new()
-	action_bar.alignment = BoxContainer.ALIGNMENT_END
+	action_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	_creator_cancel_button = Button.new()
+	_creator_cancel_button.text = "Cancel character"
+	_creator_cancel_button.pressed.connect(_cancel_creator)
+	action_bar.add_child(_creator_cancel_button)
+	action_bar.add_spacer(true)
+	_creator_back_button = Button.new()
+	_creator_back_button.text = "Back"
+	_creator_back_button.pressed.connect(_creator_back)
+	action_bar.add_child(_creator_back_button)
 	_add_character_button = Button.new()
-	_add_character_button.text = "Add character"
-	_add_character_button.pressed.connect(_add_character)
+	_add_character_button.text = "Reroll"
+	_add_character_button.pressed.connect(_reroll_character)
 	action_bar.add_child(_add_character_button)
+	_creator_next_button = Button.new()
+	_creator_next_button.text = "Continue"
+	_creator_next_button.pressed.connect(_creator_next)
+	action_bar.add_child(_creator_next_button)
 	_setup_import_button = Button.new()
 	_setup_import_button.text = "Import from vault"
 	_setup_import_button.pressed.connect(_show_vault_for_setup)
-	action_bar.add_child(_setup_import_button)
 	_setup_body.add_child(action_bar)
+	_setup_body.add_child(_setup_import_button)
 	_begin_button = Button.new()
 	_begin_button.text = "Begin adventure"
 	_begin_button.custom_minimum_size.y = 34.0
 	_begin_button.disabled = true
 	_begin_button.pressed.connect(_submit_party)
 	_setup_body.add_child(_begin_button)
-	_setup_body.move_child(_setup_message, 3)
-	_setup_body.move_child(action_bar, 4)
-	_setup_body.move_child(_begin_button, 5)
+	_render_creator_step()
 
 
 func _refresh_setup_options() -> void:
@@ -466,37 +471,296 @@ func _refresh_setup_options() -> void:
 	else:
 		_setup_campaign_label.text = "Assemble your party"
 		_setup_restriction_label.text = "No campaign metadata is available."
-	_race_list.clear()
+	_refresh_party_list()
+	var setup_count := _view.party_members.size()
+	_apply_availability(_setup_import_button, &"import_vault_character")
+	_apply_availability(_begin_button, &"begin_adventure")
+	_begin_button.text = "Begin adventure (%d/%d)" % [setup_count, _maximum_party_size()]
+	_render_creator_step()
+
+
+func _render_creator_step() -> void:
+	if _creator_page == null:
+		return
+	_clear(_creator_page)
+	_race_list = null
+	_caste_list = null
+	_race_class_columns = null
+	_name_edit = null
+	_gender_option = null
+	_portrait_option = null
+	_combat_icon_option = null
+	_review_label = null
+	_spell_label = null
+	_spell_list = null
+	for index: int in _creator_step_labels.size():
+		_creator_step_labels[index].modulate = GOLD if index == _creator_step else Color("e0e2e5") if index < _creator_step else MUTED
+	match _creator_step:
+		0:
+			_build_creator_identity()
+		1:
+			_build_creator_race_class()
+		2:
+			_build_creator_appearance()
+		3:
+			_build_creator_review()
+		4:
+			_build_creator_spells()
+	_update_creator_actions()
+
+
+func _build_creator_identity() -> void:
+	_creator_page.add_child(_label("Identity", GOLD, 20))
+	_add_label(_creator_page, "Name this character and choose the Classic gender value used by creation rules.", MUTED)
+	_name_edit = LineEdit.new()
+	_name_edit.name = "CharacterName"
+	_name_edit.placeholder_text = "Character name"
+	_name_edit.max_length = 24
+	_name_edit.text = _draft_name
+	_name_edit.text_changed.connect(func(value: String) -> void: _draft_name = value)
+	_creator_page.add_child(_name_edit)
+	_gender_option = OptionButton.new()
+	_gender_option.name = "CharacterGender"
+	_gender_option.add_item("Male", 1)
+	_gender_option.add_item("Female", 2)
+	_gender_option.select(0 if _draft_gender == 1 else 1)
+	_gender_option.item_selected.connect(func(_index: int) -> void: _draft_gender = _gender_option.get_selected_id())
+	_creator_page.add_child(_gender_option)
+	var starting_level := OptionButton.new()
+	starting_level.name = "StartingLevel"
+	starting_level.add_item("Starting level 1", 1)
+	starting_level.disabled = true
+	starting_level.tooltip_text = "Castle's higher-level creation runs the complete level-up path. That source-backed workflow is not implemented yet."
+	_creator_page.add_child(starting_level)
+	call_deferred("_focus_first", _creator_page)
+
+
+func _build_creator_race_class() -> void:
+	_creator_page.add_child(_label("Race & Class", GOLD, 20))
+	_add_label(_creator_page, "Race is chosen first and filters the classes available on the right.", MUTED)
+	var columns := BoxContainer.new()
+	_race_class_columns = columns
+	columns.vertical = _layout_profile == UiLayoutProfile.COMPACT
+	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	columns.add_theme_constant_override("separation", 12)
+	var race_column := VBoxContainer.new()
+	race_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	race_column.add_child(_label("Race", GOLD))
+	_race_list = ItemList.new()
+	_race_list.name = "RaceList"
+	_race_list.custom_minimum_size.y = 190.0
+	_race_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_race_list.item_selected.connect(_race_selected)
+	race_column.add_child(_race_list)
+	columns.add_child(race_column)
+	var caste_column := VBoxContainer.new()
+	caste_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	caste_column.add_child(_label("Class", GOLD))
+	_caste_list = ItemList.new()
+	_caste_list.name = "ClassList"
+	_caste_list.custom_minimum_size.y = 190.0
+	_caste_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_caste_list.item_selected.connect(_caste_selected)
+	caste_column.add_child(_caste_list)
+	columns.add_child(caste_column)
+	_creator_page.add_child(columns)
+	_populate_race_class_options()
+
+
+func _populate_race_class_options() -> void:
+	if _view == null or _race_list == null or _caste_list == null:
+		return
 	for option: DefinitionOptionView in _view.race_options:
 		_race_list.add_item(option.name)
 		_race_list.set_item_metadata(_race_list.item_count - 1, option.id)
 		_race_list.set_item_tooltip(_race_list.item_count - 1, option.description)
 		_race_list.set_item_disabled(_race_list.item_count - 1, _view.campaign_summary != null and _view.campaign_summary.banned_races.has(option.id))
-	_caste_list.clear()
 	for option: DefinitionOptionView in _view.caste_options:
 		_caste_list.add_item(option.name)
 		_caste_list.set_item_metadata(_caste_list.item_count - 1, option.id)
 		_caste_list.set_item_tooltip(_caste_list.item_count - 1, option.description)
 		_caste_list.set_item_disabled(_caste_list.item_count - 1, _view.campaign_summary != null and _view.campaign_summary.banned_castes.has(option.id))
-	if _race_list.item_count > 0 and (_selected_race_id.is_empty() or not _option_is_enabled(_race_list, _selected_race_id)):
+	if _selected_race_id.is_empty() or not _option_is_enabled(_race_list, _selected_race_id):
 		var first_race := _first_enabled_item(_race_list)
 		if first_race >= 0:
-			_race_list.select(first_race)
-			_race_selected(first_race)
-	else:
-		_apply_caste_filter()
-	if _caste_list.item_count > 0 and (_selected_caste_id.is_empty() or not _option_is_enabled(_caste_list, _selected_caste_id)):
+			_selected_race_id = String(_race_list.get_item_metadata(first_race))
+	_select_item_by_id(_race_list, _selected_race_id)
+	_apply_caste_filter()
+	if _selected_caste_id.is_empty() or not _option_is_enabled(_caste_list, _selected_caste_id):
 		var first_caste := _first_enabled_item(_caste_list)
 		if first_caste >= 0:
-			_caste_list.select(first_caste)
-			_caste_selected(first_caste)
-	_refresh_party_list()
-	var setup_count := _view.party_members.size()
-	_apply_availability(_add_character_button, &"finalize_character")
-	_apply_availability(_setup_import_button, &"import_vault_character")
-	_apply_availability(_begin_button, &"begin_adventure")
-	_begin_button.text = "Begin adventure (%d/%d)" % [setup_count, _maximum_party_size()]
+			_selected_caste_id = String(_caste_list.get_item_metadata(first_caste))
+	_select_item_by_id(_caste_list, _selected_caste_id)
+
+
+func _build_creator_appearance() -> void:
+	_creator_page.add_child(_label("Appearance", GOLD, 20))
+	_add_label(_creator_page, "Choose the portrait shown on character screens and the icon used in battle.", MUTED)
+	_portrait_option = OptionButton.new()
+	_portrait_option.name = "PortraitOption"
+	_portrait_option.add_item("Classic default portrait", 0)
+	_portrait_option.tooltip_text = "Additional package portrait choices will appear when their catalog is exposed by the detached view."
+	_creator_page.add_child(_portrait_option)
+	_combat_icon_option = OptionButton.new()
+	_combat_icon_option.name = "CombatIconOption"
+	_combat_icon_option.add_item("Classic default combat icon", 0)
+	_combat_icon_option.tooltip_text = "Additional package combat icons will appear when their catalog is exposed by the detached view."
+	_creator_page.add_child(_combat_icon_option)
+
+
+func _build_creator_review() -> void:
+	_creator_page.add_child(_label("Review Classic Roll", GOLD, 20))
+	_review_label = _add_label(_creator_page, "Generating the character through Classic rules…", MUTED)
+	_review_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_update_creator_review()
+
+
+func _build_creator_spells() -> void:
+	_creator_page.add_child(_label("Starting Spells", GOLD, 20))
+	_spell_label = _add_label(_creator_page, "", MUTED)
+	_spell_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	if _view == null or _view.character_draft == null:
+		_spell_label.text = "Generate and review the character before choosing spells."
+		return
+	if _view.character_draft.spellcaster_type < 1 or _view.character_draft_spell_points_total < 1:
+		_spell_label.text = "Not applicable. This character has no Classic starting-spell selection points."
+		return
+	_spell_label.text = "%d of %d selection points remain. Unspent points may be accepted, as in Classic." % [_view.character_draft_spell_points_remaining, _view.character_draft_spell_points_total]
+	_spell_list = ItemList.new()
+	_spell_list.name = "StartingSpellList"
+	_spell_list.select_mode = ItemList.SELECT_MULTI
+	_spell_list.custom_minimum_size.y = 190.0
+	_spell_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	for option: CharacterSpellOptionView in _view.character_draft_spell_options:
+		_spell_list.add_item("L%d • %s (%d)" % [option.level, option.name, option.selection_cost])
+		var index := _spell_list.item_count - 1
+		_spell_list.set_item_metadata(index, option.id)
+		_spell_list.set_item_tooltip(index, option.description)
+		if option.selected:
+			_spell_list.select(index, false)
+		elif option.selection_cost > _view.character_draft_spell_points_remaining:
+			_spell_list.set_item_disabled(index, true)
+			_spell_list.set_item_tooltip(index, "This spell costs %d points; %d remain." % [option.selection_cost, _view.character_draft_spell_points_remaining])
+	_spell_list.multi_selected.connect(_draft_spell_selection_changed)
+	_creator_page.add_child(_spell_list)
+	if _view.character_draft_spell_options.is_empty():
+		_spell_label.text = "This caster has selection points, but the package exposes no matching Classic spell records. Finalization is blocked."
+
+
+func _creator_next() -> void:
+	match _creator_step:
+		0:
+			_draft_name = _name_edit.text.strip_edges()
+			_draft_gender = _gender_option.get_selected_id()
+			if _draft_name.is_empty():
+				_setup_message.text = "Enter a character name before continuing."
+				return
+			_creator_step = 1
+		1:
+			if _selected_race_id.is_empty() or _selected_caste_id.is_empty():
+				_setup_message.text = "Choose both a race and a compatible class."
+				return
+			_creator_step = 2
+		2:
+			if _view.party_members.size() >= _maximum_party_size():
+				_setup_message.text = "This campaign allows no more than %d characters." % _maximum_party_size()
+				return
+			_draft_portrait_id = "" if _portrait_option.get_selected_id() == 0 else str(_portrait_option.get_selected_id())
+			_draft_combat_icon_id = "" if _combat_icon_option.get_selected_id() == 0 else str(_combat_icon_option.get_selected_id())
+			_creator_step = 3
+			_awaiting_draft_generation = true
+			intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
+			return
+		3:
+			if _view.character_draft == null:
+				_setup_message.text = "The Classic character roll did not complete. Review the action error before continuing."
+				return
+			_creator_step = 4
+		4:
+			if _view.character_draft == null:
+				return
+			if _view.character_draft.spellcaster_type > 0 and _view.character_draft_spell_points_total > 0 and _view.character_draft_spell_options.is_empty():
+				_setup_message.text = "Starting spells are unavailable in this package, so this caster cannot be finalized safely."
+				return
+			_awaiting_draft_finalization = true
+			intent_submitted.emit(PlayerIntent.finalize_character())
+			return
+	_setup_message.text = _creator_step_message()
+	_render_creator_step()
+
+
+func _creator_back() -> void:
+	if _creator_step <= 0:
+		return
+	if _creator_step == 3 and _view != null and _view.character_draft != null:
+		_creator_step = 2
+		intent_submitted.emit(PlayerIntent.cancel_character_draft())
+		return
+	_creator_step -= 1
+	_setup_message.text = _creator_step_message()
+	_render_creator_step()
+
+
+func _cancel_creator() -> void:
+	var had_generated_draft := _view != null and _view.character_draft != null
+	_reset_creator()
+	if had_generated_draft:
+		intent_submitted.emit(PlayerIntent.cancel_character_draft())
+	else:
+		_render_creator_step()
+
+
+func _reset_creator() -> void:
+	_creator_step = 0
+	_draft_name = ""
+	_draft_gender = 1
+	_draft_portrait_id = ""
+	_draft_combat_icon_id = ""
+	_selected_race_id = ""
+	_selected_caste_id = ""
+	_awaiting_draft_generation = false
+	_awaiting_draft_finalization = false
+	_setup_message.text = "Enter a name to begin creating another character."
+
+
+func _reroll_character() -> void:
+	if _creator_step != 3 or _view == null or _view.character_draft == null:
+		return
+	_awaiting_draft_generation = true
+	intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
+
+
+func _draft_spell_selection_changed(_index: int, _selected: bool) -> void:
+	if _spell_list == null:
+		return
+	var selected_ids: Array[String] = []
+	for item_index: int in _spell_list.item_count:
+		if _spell_list.is_selected(item_index):
+			selected_ids.append(String(_spell_list.get_item_metadata(item_index)))
+	intent_submitted.emit(PlayerIntent.set_character_draft_spells(selected_ids))
+
+
+func _character_creation_spec() -> CharacterCreationSpec:
+	return CharacterCreationSpec.new(_draft_name, _selected_race_id, _selected_caste_id, _draft_gender, _draft_portrait_id, _draft_combat_icon_id)
+
+
+func _creator_step_message() -> String:
+	return ["Enter the character's identity.", "Choose a race, then a compatible class.", "Choose the character's appearance.", "Review or reroll the generated Classic character.", "Choose starting spells, then add the character to the party."][_creator_step]
+
+
+func _update_creator_actions() -> void:
+	if _creator_back_button == null:
+		return
+	_creator_back_button.disabled = _creator_step == 0
+	_add_character_button.visible = _creator_step == 3
+	_apply_availability(_add_character_button, &"generate_character_draft")
+	_creator_next_button.text = "Add to party" if _creator_step == 4 else "Choose spells" if _creator_step == 3 else "Continue"
+	if _creator_step == 4:
+		_apply_availability(_creator_next_button, &"finalize_character")
+	else:
+		_creator_next_button.disabled = false
+		_creator_next_button.tooltip_text = ""
+	_creator_cancel_button.disabled = _creator_step == 0 and _draft_name.is_empty() and (_view == null or _view.character_draft == null)
 
 
 func _race_selected(index: int) -> void:
@@ -505,15 +769,13 @@ func _race_selected(index: int) -> void:
 	_selected_race_id = String(_race_list.get_item_metadata(index))
 	_apply_caste_filter()
 	_setup_message.text = "Race selected. Classes unavailable to this race are disabled on the right."
-	_update_creator_review()
 
 
 func _caste_selected(index: int) -> void:
 	if index < 0 or _caste_list.is_item_disabled(index):
 		return
 	_selected_caste_id = String(_caste_list.get_item_metadata(index))
-	_setup_message.text = "Class selected. Review the character before adding them."
-	_update_creator_review()
+	_setup_message.text = "Class selected. Continue to appearance when ready."
 
 
 func _apply_caste_filter() -> void:
@@ -533,8 +795,17 @@ func _apply_caste_filter() -> void:
 		_selected_caste_id = ""
 		var first_caste := _first_enabled_item(_caste_list)
 		if first_caste >= 0:
-			_caste_list.select(first_caste)
-			_caste_selected(first_caste)
+			_selected_caste_id = String(_caste_list.get_item_metadata(first_caste))
+	_select_item_by_id(_caste_list, _selected_caste_id)
+
+
+func _select_item_by_id(list: ItemList, option_id: String) -> void:
+	if list == null or option_id.is_empty():
+		return
+	for index: int in list.item_count:
+		if String(list.get_item_metadata(index)) == option_id:
+			list.select(index)
+			return
 
 
 func _option_is_enabled(list: ItemList, option_id: String) -> bool:
@@ -549,22 +820,6 @@ func _first_enabled_item(list: ItemList) -> int:
 		if not list.is_item_disabled(index):
 			return index
 	return -1
-
-
-func _add_character() -> void:
-	if _selected_race_id.is_empty() or _selected_caste_id.is_empty():
-		_setup_message.text = "Choose both a race and a class."
-		return
-	var name := _name_edit.text.strip_edges()
-	if name.is_empty():
-		name = "Adventurer %d" % (_view.party_members.size() + 1)
-	if _view.party_members.size() >= _maximum_party_size():
-		_setup_message.text = "This campaign allows no more than %d characters." % _maximum_party_size()
-		return
-	var portrait_id := "" if _portrait_option.get_selected_id() == 0 else str(_portrait_option.get_selected_id())
-	var combat_icon_id := "" if _combat_icon_option.get_selected_id() == 0 else str(_combat_icon_option.get_selected_id())
-	intent_submitted.emit(PlayerIntent.finalize_character(CharacterCreationSpec.new(name, _selected_race_id, _selected_caste_id, _gender_option.get_selected_id(), portrait_id, combat_icon_id)))
-	_name_edit.clear()
 
 
 func _refresh_party_list() -> void:
@@ -605,17 +860,11 @@ func _maximum_party_size() -> int:
 func _update_creator_review() -> void:
 	if _review_label == null:
 		return
-	var race_name := _option_name(_race_list, _selected_race_id)
-	var caste_name := _option_name(_caste_list, _selected_caste_id)
-	if race_name.is_empty() or caste_name.is_empty():
-		_review_label.text = "Choose a race and class to review Classic starting values."
-		_spell_label.text = "Spell eligibility and starting spells are finalized by Classic rules."
+	if _view == null or _view.character_draft == null:
+		_review_label.text = "The Classic character roll has not completed."
 		return
-	_review_label.text = "%s %s\nName: %s" % [race_name, caste_name, _name_edit.text.strip_edges() if _name_edit != null and not _name_edit.text.strip_edges().is_empty() else "Adventurer"]
-	var portrait_label := _portrait_option.get_item_text(_portrait_option.selected) if _portrait_option != null and _portrait_option.selected >= 0 else "Classic default"
-	var icon_label := _combat_icon_option.get_item_text(_combat_icon_option.selected) if _combat_icon_option != null and _combat_icon_option.selected >= 0 else "Classic default"
-	_review_label.text += "\n%s • %s" % [portrait_label, icon_label]
-	_spell_label.text = "Spells: Classic caste eligibility will be checked when the character is created."
+	var character := _view.character_draft
+	_review_label.text = "%s • Level %d %s %s\nHP %d/%d • SP %d/%d • Age %d (%s)\nBrawn %d • Knowledge %d • Judgment %d • Agility %d • Vitality %d • Luck %d\nArmor %d • To Hit %d • Dodge %d • Missile %d • Hand-to-Hand %d • Damage %+d\nMovement %d • Magic Resistance %d%%" % [character.name, character.level, character.race_name, character.caste_name, character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.age_years, character.age_group_name, character.brawn, character.knowledge, character.judgment, character.agility, character.vitality, character.luck, character.armor, character.to_hit, character.dodge, character.missile, character.hand_to_hand, character.damage_bonus, character.maximum_movement, character.magic_resistance]
 
 
 func _option_name(list: ItemList, option_id: String) -> String:

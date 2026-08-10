@@ -15,6 +15,7 @@ func run() -> void:
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
+	_test_character_creator_workflow()
 	_test_scene_composition()
 
 
@@ -354,6 +355,74 @@ func _test_spatial_stage_visibility() -> void:
 	assert_false(PresentationCoordinator.should_show_spatial_stage(&"exploration", active_view, false), "full-stage campaign and party-setup overlays suppress the map beneath their shared-stone surface")
 	assert_false(PresentationCoordinator.should_show_spatial_stage(&"inventory", active_view, true), "non-Explore workspaces suppress spatial renderers")
 	assert_false(PresentationCoordinator.should_show_spatial_stage(&"exploration", GameView.new(0, false, null), true), "an inactive session cannot expose a stale map")
+
+
+func _test_character_creator_workflow() -> void:
+	var router := ClassicScreenRouter.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(router)
+	router._body_frame = PanelContainer.new()
+	router.add_child(router._body_frame)
+	router._build_campaign_overlay()
+	router._build_setup_overlay()
+	var view := GameView.new(1, true, null)
+	view.campaign_id = "fixture-creator"
+	view.party_setup_available = true
+	view.campaign_summary = CampaignSummaryView.new()
+	view.campaign_summary.title = "Creator Fixture"
+	view.campaign_summary.maximum_party_size = 6
+	view.race_options = [DefinitionOptionView.new("race.human", "Human", "Adaptable.", ["caste.sorcerer"])]
+	view.caste_options = [DefinitionOptionView.new("caste.sorcerer", "Sorcerer", "Arcane caster.", ["race.human"])]
+	for action_id: StringName in [&"generate_character_draft", &"cancel_character_draft", &"set_character_draft_spells", &"finalize_character", &"import_vault_character", &"begin_adventure", &"remove_party_member"]:
+		view.set_action_availability(action_id, action_id in [&"generate_character_draft", &"import_vault_character"], "Unavailable in this fixture state.")
+	var intents: Array[PlayerIntent] = []
+	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	router.present(view)
+	assert_equal(router._creator_step, 0, "party setup opens on Identity rather than mounting all five creator pages")
+	assert_not_null(router._creator_page.get_node_or_null("CharacterName"), "Identity alone owns the character-name field")
+	var starting_level := router._creator_page.get_node_or_null("StartingLevel") as OptionButton
+	assert_not_null(starting_level, "Identity exposes the Classic starting-level boundary instead of silently omitting it")
+	assert_true(starting_level.disabled and starting_level.get_item_id(0) == 1, "only level one remains available until the source-backed higher-level pipeline is implemented")
+	assert_equal(router._creator_page.find_children("*", "ItemList", true, false).size(), 0, "Identity does not spill race, class, or spell lists into the same viewport")
+	router._draft_name = "Mira"
+	router._name_edit.text = "Mira"
+	router._creator_next()
+	assert_equal(router._creator_step, 1, "Continue advances from Identity to Race and Class")
+	assert_equal([router._race_list.get_item_text(0), router._caste_list.get_item_text(0)], ["Human", "Sorcerer"], "Race renders on the left and filters the class list on the right")
+	var compact := UiLayoutProfile.for_viewport(Vector2(800, 600), PresentationSettings.UI_SCALE_AUTO)
+	router._apply_creator_layout(compact.id)
+	assert_true(router._creator.vertical and router._race_class_columns.vertical, "compact setup stacks both the creator-party split and Race-Class columns instead of clipping them")
+	router._creator_next()
+	assert_equal(router._creator_step, 2, "Race and Class advances to the dedicated Appearance page")
+	router._creator_next()
+	assert_equal(router._creator_step, 3, "Appearance advances to Review only after requesting a core-owned roll")
+	assert_equal(intents[-1].kind, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, "Review is populated through the typed draft-generation intent")
+	var generated := CharacterState.new("party.character.1", "Mira", 8, 8)
+	generated.race_id = "race.human"
+	generated.caste_id = "caste.sorcerer"
+	generated.gender = 2
+	generated.brawn = 11
+	generated.knowledge = 17
+	generated.judgment = 14
+	generated.agility = 13
+	generated.vitality = 12
+	generated.luck = 9
+	generated.maximum_spell_points = 21
+	generated.spell_points = 21
+	generated.spellcaster_type = 1
+	view.character_draft = CharacterView.new(generated)
+	view.character_draft_spell_points_total = 4
+	view.character_draft_spell_points_remaining = 4
+	var spell := SpellDefinition.new("classic.spell.1101", 1101, "Flame")
+	view.character_draft_spell_options = [CharacterSpellOptionView.new(spell, 1, false)]
+	view.set_action_availability(&"finalize_character", true)
+	router.present(view)
+	assert_true(router._review_label.text.contains("Brawn 11") and router._review_label.text.contains("SP 21/21"), "Review renders the generated character rather than a pre-roll placeholder")
+	router._creator_next()
+	assert_equal(router._creator_step, 4, "Review advances to the dedicated starting-spell page")
+	assert_equal(router._spell_list.item_count, 1, "the spell page renders core-provided Classic options and selection costs")
+	router._creator_next()
+	assert_equal(intents[-1].kind, PlayerIntent.Kind.FINALIZE_CHARACTER, "Add to party accepts the reviewed draft without carrying another creation specification")
+	router.free()
 
 
 func _test_scene_composition() -> void:

@@ -48,3 +48,9 @@ func classic_tier() -> int:
 	if classic_id < 1101:
 		return -1
 	return int(classic_id % 1000 / 100) - 1
+
+
+func classic_slot() -> int:
+	if classic_id < 1101:
+		return -1
+	return classic_id % 100

@@ -16,6 +16,10 @@ var combat_view: CombatView
 var campaign_id: String = ""
 var rules_version: String = ""
 var party_setup_available: bool = false
+var character_draft: CharacterView
+var character_draft_spell_options: Array[CharacterSpellOptionView] = []
+var character_draft_spell_points_total: int = 0
+var character_draft_spell_points_remaining: int = 0
 var race_options: Array[DefinitionOptionView] = []
 var caste_options: Array[DefinitionOptionView] = []
 var campaign_summary: CampaignSummaryView

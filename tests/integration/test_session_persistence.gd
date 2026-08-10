@@ -123,8 +123,23 @@ func run() -> void:
 	assert_not_null(empty_setup_save, "an empty committed party-setup boundary is saveable")
 	var restored_setup := GameSession.new()
 	assert_equal(restored_setup.restore(content, empty_setup_save).state, SessionStep.State.COMPLETED, "empty party setup restores without inventing a member")
-	var finalized := restored_setup.submit_intent(PlayerIntent.finalize_character(member))
-	assert_equal(finalized.state, SessionStep.State.COMPLETED, "one typed character draft finalizes into session-owned setup state")
+	var before_generation_draws := restored_setup.snapshot().rng_state.draw_count
+	var generated := restored_setup.submit_intent(PlayerIntent.generate_character_draft(member))
+	assert_equal(generated.state, SessionStep.State.COMPLETED, "one typed specification generates a session-owned Classic character draft")
+	assert_not_null(restored_setup.view().character_draft, "the detached setup view exposes the generated character before acceptance")
+	assert_equal(restored_setup.view().party_members.size(), 0, "generation does not add the draft to the party before acceptance")
+	assert_true(restored_setup.snapshot().rng_state.draw_count > before_generation_draws, "the committed draft owns the complete Classic creation RNG consumption")
+	assert_false(restored_setup.view().availability(&"begin_adventure").enabled, "a generated draft must be accepted or cancelled before Begin")
+	var generated_save := restored_setup.snapshot()
+	var restored_draft := GameSession.new()
+	assert_equal(restored_draft.restore(content, generated_save).state, SessionStep.State.COMPLETED, "the generated Review boundary restores transactionally")
+	assert_equal(restored_draft.view().character_draft.brawn, restored_setup.view().character_draft.brawn, "restore preserves the exact rolled attributes")
+	var before_finalization_draws := restored_draft.snapshot().rng_state.draw_count
+	var finalized := restored_draft.submit_intent(PlayerIntent.finalize_character())
+	assert_equal(finalized.state, SessionStep.State.COMPLETED, "accepting the reviewed draft finalizes it into session-owned setup state")
+	restored_setup = restored_draft
+	assert_equal(restored_setup.snapshot().rng_state.draw_count, before_finalization_draws, "finalization reuses the reviewed character without rolling again")
+	assert_equal(restored_setup.view().character_draft, null, "acceptance clears the provisional character")
 	assert_true(restored_setup.view().party_setup_available, "finalizing a character does not implicitly leave party setup")
 	assert_equal(restored_setup.view().party_members.size(), 1, "the finalized character appears in the detached setup view")
 	assert_true(restored_setup.view().availability(&"begin_adventure").enabled, "a nonempty setup may explicitly begin")
@@ -146,6 +161,61 @@ func run() -> void:
 	assert_equal(resumed_setup.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "Begin explicitly commits the assembled party")
 	assert_false(resumed_setup.view().party_setup_available, "party setup closes only after Begin")
 	assert_equal(resumed_setup.submit_intent(PlayerIntent.remove_party_member(imported.id)).error_code, &"party_setup_closed", "party composition cannot change after Begin")
+
+	var reroll_session := GameSession.new()
+	reroll_session.start(content, 31)
+	assert_equal(reroll_session.submit_intent(PlayerIntent.generate_character_draft(member)).state, SessionStep.State.COMPLETED, "the first Classic roll reaches Review")
+	var first_roll_data := reroll_session.view().character_draft
+	var first_roll_draws := reroll_session.snapshot().rng_state.draw_count
+	assert_equal(reroll_session.submit_intent(PlayerIntent.generate_character_draft(member)).state, SessionStep.State.COMPLETED, "Reroll replaces the provisional character")
+	assert_true(reroll_session.snapshot().rng_state.draw_count > first_roll_draws, "Reroll advances rather than rewinds the session RNG")
+	assert_equal(reroll_session.view().character_draft.id, first_roll_data.id, "Reroll retains one provisional character identity")
+	assert_equal(reroll_session.submit_intent(PlayerIntent.cancel_character_draft()).state, SessionStep.State.COMPLETED, "Cancel discards the provisional character")
+	assert_equal(reroll_session.view().character_draft, null, "cancelled creation does not leak into party setup")
+	assert_equal(reroll_session.snapshot().rng_state.draw_count > first_roll_draws, true, "Cancel does not roll back Classic creation draws")
+
+	var spellcaster_spec := _spellcaster_creation_spec(content)
+	assert_not_null(spellcaster_spec, "the fixture exposes a source-shaped spellcasting race and class")
+	if spellcaster_spec != null:
+		var spell_session := GameSession.new()
+		spell_session.start(content, 41)
+		assert_equal(spell_session.submit_intent(PlayerIntent.generate_character_draft(spellcaster_spec)).state, SessionStep.State.COMPLETED, "a spellcaster reaches the saveable Review boundary")
+		var spell_view := spell_session.view()
+		assert_true(spell_view.character_draft_spell_points_total > 0, "Castle's getnumspells formula provides starting selection points")
+		assert_false(spell_view.character_draft_spell_options.is_empty(), "the package supplies the caster's eligible Classic spell records")
+		for option: CharacterSpellOptionView in spell_view.character_draft_spell_options:
+			assert_true(option.classic_id % 100 >= 1 and option.classic_id % 100 <= 12, "starting selection exposes only Castle's twelve cspells slots per level")
+			assert_false(option.name.begins_with("Unnamed Classic spell"), "resource-only name slots cannot become selectable character spells")
+		if not spell_view.character_draft_spell_options.is_empty():
+			var selected_spell := spell_view.character_draft_spell_options[0]
+			assert_true(selected_spell.selection_cost <= spell_view.character_draft_spell_points_total, "the first available spell fits the deterministic starting budget")
+			var spell_change := spell_session.submit_intent(PlayerIntent.set_character_draft_spells([selected_spell.id]))
+			assert_equal(spell_change.state, SessionStep.State.COMPLETED, "typed starting-spell selection mutates only the generated draft")
+			assert_equal(spell_session.view().character_draft.spells[0].id, selected_spell.id, "the detached Review view exposes the chosen spell")
+			var spell_save := spell_session.snapshot()
+			var restored_spell_session := GameSession.new()
+			assert_equal(restored_spell_session.restore(content, spell_save).state, SessionStep.State.COMPLETED, "starting-spell selection restores at the same creator boundary")
+			assert_equal(restored_spell_session.view().character_draft.spells[0].id, selected_spell.id, "restore preserves the exact selected spell")
+			var confirmation := restored_spell_session.submit_intent(PlayerIntent.finalize_character())
+			assert_equal(confirmation.state, SessionStep.State.WAITING_FOR_INTERACTION, "unspent Classic spell points require the source confirmation boundary")
+			assert_equal(confirmation.interaction.kind, InteractionRequest.YES_NO, "the unspent-point decision is a typed yes/no interaction")
+			assert_true(restored_spell_session.view().party_setup_available, "the creator remains mounted while its confirmation is pending")
+			var confirmation_save := SaveEnvelope.from_data(restored_spell_session.snapshot().to_data())
+			assert_not_null(confirmation_save, "the unspent-point continuation survives the serialized save-v3 boundary")
+			if confirmation_save == null:
+				confirmation_save = restored_spell_session.snapshot()
+			var restored_confirmation := GameSession.new()
+			var confirmation_restore := restored_confirmation.restore(content, confirmation_save)
+			assert_equal(confirmation_restore.state, SessionStep.State.COMPLETED, "the unspent-point confirmation restores transactionally: %s" % confirmation_restore.error_message)
+			var confirmation_session := restored_confirmation if confirmation_restore.state == SessionStep.State.COMPLETED else restored_spell_session
+			var declined := confirmation_session.respond(InteractionResponse.new(confirmation.interaction.request_id, InteractionRequest.YES_NO, {"accepted": false}))
+			assert_equal(declined.state, SessionStep.State.COMPLETED, "declining returns to starting-spell selection without discarding the draft")
+			assert_not_null(confirmation_session.view().character_draft, "the declined character remains available for another spell choice")
+			confirmation = confirmation_session.submit_intent(PlayerIntent.finalize_character())
+			var accepted := confirmation_session.respond(InteractionResponse.new(confirmation.interaction.request_id, InteractionRequest.YES_NO, {"accepted": true}))
+			assert_equal(accepted.state, SessionStep.State.COMPLETED, "accepting unspent points commits the reviewed character")
+			assert_equal(confirmation_session.view().party_members.size(), 1, "the accepted caster enters party setup exactly once")
+			assert_equal(confirmation_session.view().party_members[0].spells[0].id, selected_spell.id, "finalization preserves the selected starting spell")
 
 	var fumble_item := content.item_by_id("classic.item.6")
 	assert_not_null(fumble_item, "the integration fixture contains a charged Classic melee weapon")
@@ -192,6 +262,24 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	character.caste_id = castes[0].id
 	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture vault member enters party setup without consuming RNG")
 	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "fixture party explicitly begins before gameplay intents")
+
+
+func _spellcaster_creation_spec(content: RealmzContent) -> CharacterCreationSpec:
+	for caste: CasteDefinition in content.caste_definitions():
+		var caster_at_level_one := false
+		var maximum_spell_level := 0
+		for row: Vector3i in caste.spellcaster_rows():
+			caster_at_level_one = caster_at_level_one or row.y == 1
+			maximum_spell_level += row.z
+		if not caster_at_level_one or maximum_spell_level < 1:
+			continue
+		for race: RaceDefinition in content.race_definitions():
+			if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
+				continue
+			if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
+				continue
+			return CharacterCreationSpec.new("Mira", race.id, caste.id, 2)
+	return null
 
 
 func _aging_race(content: RealmzContent) -> RaceDefinition:

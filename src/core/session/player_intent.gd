@@ -11,6 +11,9 @@ enum Kind {
 	CREATE_PARTY,
 	BEGIN_ADVENTURE,
 	IMPORT_VAULT_CHARACTER,
+	GENERATE_CHARACTER_DRAFT,
+	CANCEL_CHARACTER_DRAFT,
+	SET_CHARACTER_DRAFT_SPELLS,
 	FINALIZE_CHARACTER,
 	REMOVE_PARTY_MEMBER,
 	EQUIP_ITEM,
@@ -123,11 +126,25 @@ static func import_vault_character(character_id: String, revision: String, state
 	return intent
 
 
-static func finalize_character(spec: CharacterCreationSpec) -> PlayerIntent:
-	var intent := PlayerIntent.new(Kind.FINALIZE_CHARACTER)
+static func generate_character_draft(spec: CharacterCreationSpec) -> PlayerIntent:
+	var intent := PlayerIntent.new(Kind.GENERATE_CHARACTER_DRAFT)
 	if spec != null:
 		intent.party_members = [spec]
 	return intent
+
+
+static func cancel_character_draft() -> PlayerIntent:
+	return PlayerIntent.new(Kind.CANCEL_CHARACTER_DRAFT)
+
+
+static func set_character_draft_spells(spell_ids: Array[String]) -> PlayerIntent:
+	var intent := PlayerIntent.new(Kind.SET_CHARACTER_DRAFT_SPELLS)
+	intent.selected_ids = spell_ids.duplicate()
+	return intent
+
+
+static func finalize_character() -> PlayerIntent:
+	return PlayerIntent.new(Kind.FINALIZE_CHARACTER)
 
 
 static func remove_party_member(character_id: String) -> PlayerIntent:

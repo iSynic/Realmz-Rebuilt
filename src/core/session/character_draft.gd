@@ -8,6 +8,7 @@ var caste_id: String = ""
 var portrait_id: String = ""
 var combat_icon_id: String = ""
 var finalized: bool = false
+var generated_character: CharacterState
 
 
 func to_creation_spec() -> CharacterCreationSpec:
@@ -16,6 +17,10 @@ func to_creation_spec() -> CharacterCreationSpec:
 
 func is_ready() -> bool:
 	return not name.strip_edges().is_empty() and not race_id.is_empty() and not caste_id.is_empty()
+
+
+func has_generated_character() -> bool:
+	return generated_character != null
 
 
 func to_data() -> Dictionary:
@@ -27,6 +32,7 @@ func to_data() -> Dictionary:
 		"portraitId": portrait_id,
 		"combatIconId": combat_icon_id,
 		"finalized": finalized,
+		"generatedCharacter": null if generated_character == null else generated_character.to_data(),
 	}
 
 
@@ -48,4 +54,8 @@ static func from_data(value: Variant) -> CharacterDraft:
 	result.portrait_id = value["portraitId"]
 	result.combat_icon_id = value["combatIconId"]
 	result.finalized = value["finalized"]
+	if value.has("generatedCharacter") and value["generatedCharacter"] != null:
+		result.generated_character = CharacterState.from_data(value["generatedCharacter"])
+		if result.generated_character == null:
+			return null
 	return result

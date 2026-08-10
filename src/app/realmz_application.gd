@@ -182,6 +182,16 @@ func _present_step_status(step: SessionStep) -> void:
 		return
 	for event: DomainEvent in step.events:
 		match event.kind:
+			&"character_draft_generated":
+				_status_label.text = "Classic character roll ready for review"
+			&"character_draft_spells_changed":
+				_status_label.text = "%d starting-spell points remain" % event.payload.get("remaining", 0)
+			&"character_spell_confirmation_requested":
+				_status_label.text = "%d starting-spell points remain • confirm acceptance" % event.payload.get("remaining", 0)
+			&"character_spell_confirmation_declined":
+				_status_label.text = "Choose more starting spells or accept the remaining points"
+			&"character_draft_cancelled":
+				_status_label.text = "Character creation cancelled"
 			&"character_finalized":
 				_status_label.text = "Character added to party setup"
 			&"vault_character_imported":
