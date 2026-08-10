@@ -71,6 +71,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 ## Verification
 
 - `godot --headless --path . --script res://tests/test_runner.gd` runs the typed GDScript suite.
+- A passing full-suite process must also exit without ObjectDB leak or retained-resource diagnostics; `tools/verify.ps1` treats either teardown warning as a failure.
 - `tools/verify.ps1` runs import/script checks, tests, architecture guards, and `git diff --check`.
 - Package contract coverage verifies that multiple immutable files for one campaign collapse to one current selector entry without deleting revisions.
 

@@ -21,6 +21,7 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 - Do not modify source-reference worktrees or commercial campaign installations.
 - Keep local absolute MCP/server configuration untracked.
 - Serialize headless verification and live MCP editor sessions because MCP Pro temporarily owns editor-only autoload settings.
+- The aggregate headless test gate captures process output and fails on ObjectDB leak or retained-resource teardown diagnostics, even when Godot exits zero.
 - Keep the universal macOS export preset on ETC2/ASTC texture import; `verify_export_contract.ps1` enforces the exporter requirement.
 - An action-list route step may execute its named compiled XAP/ED3 program directly when the record has no map topology. Reports must keep that distinction from placed AP reachability.
 

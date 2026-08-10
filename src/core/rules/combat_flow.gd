@@ -23,11 +23,49 @@ const MONSTER_FUMBLE_SOUNDS: Array[Dictionary] = [
 	{"soundId": 655, "waitForCompletion": true},
 ]
 
-var _rules: RealmzRules
+class RuleDependencies:
+	extends RefCounted
+
+	var arithmetic: RealmzArithmetic
+	var inventory: InventoryRules
+	var combat: CombatRules
+	var magic: MagicRules
+	var monsters: MonsterRules
+	var battlefield: BattlefieldRules
+	var spell_areas: SpellAreaRules
+
+	func _init(
+		arithmetic_rules: RealmzArithmetic,
+		inventory_rules: InventoryRules,
+		combat_rules: CombatRules,
+		magic_rules: MagicRules,
+		monster_rules: MonsterRules,
+		battlefield_rules: BattlefieldRules,
+		area_rules: SpellAreaRules,
+	) -> void:
+		arithmetic = arithmetic_rules
+		inventory = inventory_rules
+		combat = combat_rules
+		magic = magic_rules
+		monsters = monster_rules
+		battlefield = battlefield_rules
+		spell_areas = area_rules
+
+
+var _rules: RuleDependencies
 
 
 func _init(rules: RealmzRules) -> void:
-	_rules = rules
+	# Retain the stateless modules CombatFlow uses without owning its parent aggregate.
+	_rules = RuleDependencies.new(
+		rules.arithmetic,
+		rules.inventory,
+		rules.combat,
+		rules.magic,
+		rules.monsters,
+		rules.battlefield,
+		rules.spell_areas,
+	)
 
 
 func start_battle(state: GameState, content: RealmzContent, battle: BattleDefinition, rng: RealmzRng, surprise: int = 0) -> CombatFlowResult:

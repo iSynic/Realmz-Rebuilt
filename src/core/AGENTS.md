@@ -13,6 +13,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 ## Local Contracts
 
 - All classes are pure `RefCounted` or value-like data. They never extend or retain Nodes.
+- Rule modules may retain the smaller rule dependencies they use, but may not strongly retain their owning `RealmzRules` aggregate; core ownership graphs must remain acyclic so headless and host teardown release complete sessions.
 - No scenes, autoloads, filesystem/resource APIs, audio, OS services, wall-clock time, or Godot randomness.
 - JSON dictionaries stop at validating infrastructure factories. Domain state is typed and does not expose writable backing dictionaries.
 - Classic option-label records are immutable typed content distinct from ordinary messages; runtime choice resolution may query them but never mutate their source table.
