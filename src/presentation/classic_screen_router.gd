@@ -79,6 +79,7 @@ var _content_parent: Container
 var _inventory_query: String = ""
 var _inventory_character_id: String = ""
 var _inventory_item_id: String = ""
+var _money_character_id: String = ""
 var _presented_campaign_id: String = ""
 var _appearance_textures: Dictionary = {}
 var _combat_icon_touched: bool = false
@@ -106,6 +107,7 @@ func present(view: GameView) -> void:
 		_reset_creator()
 		_inventory_character_id = ""
 		_inventory_item_id = ""
+		_money_character_id = ""
 	_presented_campaign_id = view.campaign_id
 	if view.party_setup_available:
 		if _awaiting_draft_generation and view.character_draft != null:
@@ -1052,6 +1054,9 @@ func _open_typed_path() -> void:
 
 
 func _render_screen() -> void:
+	var mounted_new_route := _workspace_view == null or _workspace_view.route_id != _screen_id
+	var previous_scroll_horizontal := _body_scroll.scroll_horizontal if _body_scroll != null else 0
+	var previous_scroll_vertical := _body_scroll.scroll_vertical if _body_scroll != null else 0
 	_mount_workspace(_screen_id)
 	if _body == null:
 		return
@@ -1083,7 +1088,7 @@ func _render_screen() -> void:
 		&"system":
 			_render_system()
 	_assign_focus_keys(_body)
-	call_deferred("_restore_focus")
+	call_deferred("_restore_focus", mounted_new_route, previous_scroll_horizontal, previous_scroll_vertical)
 
 
 func _render_characters() -> void:
@@ -1365,6 +1370,8 @@ func _render_combat() -> void:
 
 
 func _render_services() -> void:
+	_render_money_workspace()
+	_add_section_heading("Location services", "%d available" % _view.services.size())
 	if _view.services.is_empty():
 		_add_empty_state("No active service", "Shops, temples, banks, storage, and treasure open here only when the session supplies a typed service interaction.")
 		for title: String in ["Shop", "Temple", "Bank", "Storage", "Treasure"]:
@@ -1382,6 +1389,72 @@ func _render_services() -> void:
 			if not button.disabled:
 				button.pressed.connect(_submit_service_action.bind(service.service_id, action))
 			_body.add_child(button)
+
+
+func _render_money_workspace() -> void:
+	_add_section_heading("Money", "Classic Pool, Share, and Swap")
+	var workspace := _view.money_workspace
+	if workspace == null:
+		_add_empty_state("Money management unavailable", "Begin the adventure before pooling or transferring wealth.")
+		return
+	_add_card("Party pool", "%d gold • %d gems • %d jewelry" % [workspace.pooled_gold, workspace.pooled_gems, workspace.pooled_jewelry], "Banked: %d gold • %d gems • %d jewelry" % [workspace.banked_gold, workspace.banked_gems, workspace.banked_jewelry])
+	var party_actions := HFlowContainer.new()
+	party_actions.add_theme_constant_override("h_separation", 5)
+	party_actions.add_theme_constant_override("v_separation", 5)
+	_add_money_intent_action(party_actions, "Pool party wealth", workspace.pool, PlayerIntent.money_action(&"pool"))
+	_add_money_intent_action(party_actions, "Share pooled wealth", workspace.share, PlayerIntent.money_action(&"share"))
+	_body.add_child(party_actions)
+	if workspace.characters.is_empty():
+		_add_empty_state("No adventurers", "A party member is required for Classic Swap.")
+		return
+	if workspace.character(_money_character_id) == null:
+		_money_character_id = workspace.characters[0].character_id
+	var selector := OptionButton.new()
+	selector.tooltip_text = "Choose the adventurer whose carried wealth will be exchanged with the party pool."
+	for character: MoneyCharacterView in workspace.characters:
+		selector.add_item("%s • Load %d/%d" % [character.name, character.carried_load, character.maximum_load])
+		selector.set_item_metadata(selector.item_count - 1, character.character_id)
+		if character.character_id == _money_character_id:
+			selector.select(selector.item_count - 1)
+	selector.item_selected.connect(func(index: int) -> void:
+		_money_character_id = String(selector.get_item_metadata(index))
+		_render_screen()
+	)
+	_body.add_child(selector)
+	var selected := workspace.character(_money_character_id)
+	_add_card(selected.name, "%d gold • %d gems • %d jewelry" % [selected.gold, selected.gems, selected.jewelry], "Carried load %d/%d" % [selected.carried_load, selected.maximum_load])
+	for transfer: MoneyTransferView in selected.transfers:
+		var denomination_label := String(transfer.denomination).capitalize()
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 5)
+		var label := _label("%s • %d per step" % [denomination_label, transfer.amount], MUTED, 14)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(label)
+		_add_money_intent_action(row, "To pool", transfer.to_pool, PlayerIntent.money_action(&"to-pool", selected.character_id, String(transfer.denomination), transfer.amount))
+		_add_money_intent_action(row, "To %s" % selected.name, transfer.to_character, PlayerIntent.money_action(&"to-character", selected.character_id, String(transfer.denomination), transfer.amount))
+		_body.add_child(row)
+	var done := Button.new()
+	done.text = "Done"
+	done.tooltip_text = "Return to exploration without another money mutation."
+	done.pressed.connect(func() -> void: open_screen(&"exploration"))
+	_body.add_child(done)
+
+
+func _add_money_intent_action(parent: Container, label: String, local_availability: ActionAvailabilityView, intent: PlayerIntent) -> Button:
+	var button := Button.new()
+	button.text = label
+	var workspace_availability := _view.availability(&"money_action")
+	button.disabled = not workspace_availability.enabled or local_availability == null or not local_availability.enabled
+	if not workspace_availability.enabled:
+		button.tooltip_text = workspace_availability.reason
+	elif local_availability == null:
+		button.tooltip_text = "This money action is unavailable."
+	elif not local_availability.enabled:
+		button.tooltip_text = local_availability.reason
+	else:
+		button.pressed.connect(func() -> void: intent_submitted.emit(intent))
+	parent.add_child(button)
+	return button
 
 
 func _submit_service_action(service_id: String, action: StringName) -> void:
@@ -1639,14 +1712,21 @@ func _store_focus() -> void:
 		_focus_keys[_screen_id] = String(owner.get_meta("focus_key"))
 
 
-func _restore_focus() -> void:
+func _restore_focus(reset_scroll_to_top: bool = false, previous_scroll_horizontal: int = 0, previous_scroll_vertical: int = 0) -> void:
 	var wanted := String(_focus_keys.get(_screen_id, ""))
+	var restored := false
 	if not wanted.is_empty():
 		var focus_match := _find_focus_key(_body, wanted)
 		if focus_match != null:
 			focus_match.grab_focus()
-			return
-	_focus_first(_body)
+			restored = true
+	if not restored:
+		_focus_first(_body)
+	if _body_scroll != null:
+		# Focus restoration runs before the rebuilt layout has settled and can
+		# otherwise force the ScrollContainer to its final focusable control.
+		_body_scroll.scroll_horizontal = 0 if reset_scroll_to_top else previous_scroll_horizontal
+		_body_scroll.scroll_vertical = 0 if reset_scroll_to_top else previous_scroll_vertical
 
 
 func _find_focus_key(parent: Node, key: String) -> Control:
@@ -1663,12 +1743,13 @@ func _focus_first(parent: Node) -> void:
 	for child: Node in parent.get_children():
 		if child is Control:
 			var control := child as Control
-			if control.visible and control.focus_mode != Control.FOCUS_NONE and not (control is BaseButton and (control as BaseButton).disabled):
+			if control.is_inside_tree() and control.visible and control.focus_mode != Control.FOCUS_NONE and not (control is BaseButton and (control as BaseButton).disabled):
 				control.grab_focus()
 				return
 		_focus_first(child)
-		var owner := get_viewport().gui_get_focus_owner()
-		if owner != null and parent.is_ancestor_of(owner):
+		var viewport := get_viewport()
+		var focus_owner := viewport.gui_get_focus_owner() if viewport != null else null
+		if focus_owner != null and parent.is_ancestor_of(focus_owner):
 			return
 
 

@@ -20,6 +20,7 @@ func run() -> void:
 	_test_character_creator_workflow()
 	_test_character_vault_workspace()
 	_test_inventory_workspace()
+	_test_money_workspace()
 	_test_party_roster()
 	_test_scene_composition()
 
@@ -686,6 +687,76 @@ func _test_inventory_workspace() -> void:
 	if not intents.is_empty():
 		assert_equal(intents[0].kind, PlayerIntent.Kind.TRADE_ITEM, "trade never mutates gameplay from presentation")
 		assert_equal(intents[0].secondary_target_id, destination.id, "trade intent carries the stable recipient identity")
+	router.free()
+
+
+func _test_money_workspace() -> void:
+	var source := CharacterState.new("money.ui.source", "Alis", 10, 10)
+	source.money = WealthState.new(10, 2, 1)
+	source.carried_load = 27
+	source.maximum_load = 100
+	var destination := CharacterState.new("money.ui.destination", "Borin", 10, 10)
+	destination.maximum_load = 100
+	var workspace := MoneyWorkspaceView.new()
+	workspace.pooled_gold = 15
+	workspace.pooled_gems = 1
+	workspace.pooled_jewelry = 1
+	workspace.banked_gold = 50
+	workspace.pool = ActionAvailabilityView.new(&"money_action", true)
+	workspace.share = ActionAvailabilityView.new(&"money_action", false, "No adventurer can carry another pooled denomination.")
+	var source_view := MoneyCharacterView.new(source)
+	source_view.transfers = [
+		MoneyTransferView.new(&"gold", 5, ActionAvailabilityView.new(&"money_action", true), ActionAvailabilityView.new(&"money_action", true)),
+		MoneyTransferView.new(&"gems", 1, ActionAvailabilityView.new(&"money_action", true), ActionAvailabilityView.new(&"money_action", true)),
+		MoneyTransferView.new(&"jewelry", 1, ActionAvailabilityView.new(&"money_action", true), ActionAvailabilityView.new(&"money_action", false, "Alis cannot carry that denomination.")),
+	]
+	var destination_view := MoneyCharacterView.new(destination)
+	workspace.characters = [source_view, destination_view]
+	var view := GameView.new(5, true, null)
+	view.money_workspace = workspace
+	view.set_action_availability(&"money_action", true)
+	view.set_action_availability(&"service_action", false, "No location service is available.")
+	var router := ClassicScreenRouter.new()
+	router._body = VBoxContainer.new()
+	router._content_parent = router._body
+	router.add_child(router._body)
+	router._view = view
+	var intents: Array[PlayerIntent] = []
+	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	router._render_services()
+	var buttons: Array[Button] = []
+	var labels: Array[String] = []
+	for node: Node in router.find_children("*", "Button", true, false):
+		buttons.append(node as Button)
+	for node: Node in router.find_children("*", "Label", true, false):
+		labels.append((node as Label).text)
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("15 gold") and text.contains("1 jewelry")), "money workspace renders every detached pooled denomination")
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("Banked: 50 gold")), "banked wealth remains visible without being merged into ordinary Swap")
+	var pool_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Pool party wealth")[0]
+	var share_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Share pooled wealth")[0]
+	assert_false(pool_button.disabled, "core-authorized Pool is actionable")
+	assert_true(share_button.disabled and share_button.tooltip_text.contains("No adventurer can carry"), "core-owned Share blocker remains visible")
+	var to_pool_buttons := buttons.filter(func(button: Button) -> bool: return button.text == "To pool")
+	var to_character_buttons := buttons.filter(func(button: Button) -> bool: return button.text == "To Alis")
+	assert_equal([to_pool_buttons.size(), to_character_buttons.size()], [3, 3], "Swap presents all three Classic denominations for the selected character")
+	assert_true(to_character_buttons[2].disabled and to_character_buttons[2].tooltip_text.contains("cannot carry"), "presentation does not recreate jewelry capacity rules")
+	pool_button.pressed.emit()
+	to_pool_buttons[0].pressed.emit()
+	to_character_buttons[0].pressed.emit()
+	assert_equal(intents.size(), 3, "money controls emit exactly one typed intent per mutation")
+	assert_equal([intents[0].kind, intents[0].action], [PlayerIntent.Kind.MONEY_ACTION, &"pool"], "Pool crosses the typed money boundary")
+	assert_equal([intents[1].action, intents[1].actor_id, intents[1].target_id, intents[1].amount], [&"to-pool", source.id, "gold", 5], "character-to-pool Swap carries stable identity and exact Classic increment")
+	assert_equal([intents[2].action, intents[2].actor_id, intents[2].target_id, intents[2].amount], [&"to-character", source.id, "gold", 5], "pool-to-character Swap carries stable identity and exact Classic increment")
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Done"), "Swap has a presentation-only cancellation path with no gameplay mutation")
+	var scroll := ScrollContainer.new()
+	scroll.scroll_horizontal = 37
+	scroll.scroll_vertical = 542
+	router._body_scroll = scroll
+	router._restore_focus(true)
+	assert_equal([scroll.scroll_horizontal, scroll.scroll_vertical], [0, 0], "a newly mounted route resets focus-driven scroll so Money remains visible at the top")
+	router._restore_focus(false, 37, 100)
+	assert_equal([scroll.scroll_horizontal, scroll.scroll_vertical], [37, 100], "a same-route money mutation preserves the player's prior scroll instead of jumping to the final control")
+	scroll.free()
 	router.free()
 
 

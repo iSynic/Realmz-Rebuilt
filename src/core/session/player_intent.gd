@@ -176,9 +176,11 @@ static func trade_item(item_id: String, from_character_id: String, to_character_
 	return intent
 
 
-static func money_action(action_kind: StringName, amount_value: int) -> PlayerIntent:
+static func money_action(action_kind: StringName, character_id: String = "", denomination: String = "", amount_value: int = 0) -> PlayerIntent:
 	var intent := PlayerIntent.new(Kind.MONEY_ACTION)
 	intent.action = action_kind
+	intent.actor_id = character_id
+	intent.target_id = denomination
 	intent.amount = maxi(0, amount_value)
 	return intent
 

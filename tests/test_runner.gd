@@ -16,6 +16,7 @@ const SUITES: Array[Script] = [
 	preload("res://tests/integration/test_exploration_session.gd"),
 	preload("res://tests/integration/test_session_persistence.gd"),
 	preload("res://tests/integration/test_inventory_session.gd"),
+	preload("res://tests/integration/test_money_workflow.gd"),
 ]
 
 

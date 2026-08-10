@@ -253,8 +253,11 @@ func _test_classic_shell_domain_route(content: RealmzContent) -> void:
 	var returned := exit_restored.respond(InteractionResponse.new(exit_restored.view().pending_interaction.request_id, InteractionRequest.YES_NO, {"accepted": true}))
 	assert_equal(returned.interaction.kind, InteractionRequest.TEMPLE, "accepting the warning returns to explicit wealth controls instead of inventing an allocation")
 	var shared := exit_restored.respond(InteractionResponse.new(returned.interaction.request_id, InteractionRequest.TEMPLE, {"action": "share"}))
-	assert_equal(shared.interaction.kind, InteractionRequest.TEMPLE, "Share returns to the same selected-character temple workspace")
-	var leave_after_share := exit_restored.respond(InteractionResponse.new(shared.interaction.request_id, InteractionRequest.TEMPLE, {"action": "leave"}))
+	assert_equal(shared.error_code, &"money_action_unavailable", "Share rejects a forged response when no character can carry the pooled denomination")
+	assert_equal(exit_restored.snapshot().game_state.party.pooled_wealth.gold, 1, "rejected temple Share preserves the pooled wealth")
+	var temple_after_rejection := exit_restored.view().pending_interaction
+	assert_equal(temple_after_rejection.kind, InteractionRequest.TEMPLE, "a rejected Share retains the same selected-character temple workspace")
+	var leave_after_share := exit_restored.respond(InteractionResponse.new(temple_after_rejection.request_id, InteractionRequest.TEMPLE, {"action": "leave"}))
 	if leave_after_share.state == SessionStep.State.WAITING_FOR_INTERACTION:
 		assert_equal(leave_after_share.interaction.kind, InteractionRequest.YES_NO, "wealth that no character can carry remains explicit after Share")
 		leave_after_share = exit_restored.respond(InteractionResponse.new(leave_after_share.interaction.request_id, InteractionRequest.YES_NO, {"accepted": false}))
@@ -457,6 +460,8 @@ func _test_classic_opcode_ownership() -> void:
 
 func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> void:
 	var character := CharacterState.new("character.rules-host", "Rules Host", 100, 100)
+	character.race_id = content.race_definitions()[0].id
+	character.caste_id = content.caste_definitions()[0].id
 	character.maximum_load = 500
 	character.agility = 30
 	character.to_hit = 100

@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 8 | 17 | 35 | 0 |
+| classic | 60 | 6 | 17 | 37 | 0 |
 | host | 8 | 1 | 3 | 4 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -21,7 +21,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Character management | 5 | 3 | 1 | 1 | 0 |
 | Inventory and equipment | 7 | 0 | 4 | 3 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
-| Services and economy | 5 | 2 | 1 | 2 | 0 |
+| Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 8 | 0 | 2 | 6 | 0 |
 | Rewards and progression | 5 | 0 | 1 | 4 | 0 |
 | Maps and journal | 3 | 1 | 2 | 0 | 0 |
@@ -34,15 +34,15 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 19 |
-| required | 11 |
-| completed | 30 |
+| required | 9 |
+| completed | 32 |
 
 | Remake | Count |
 | --- | ---: |
 | absent | 4 |
-| partial | 32 |
+| partial | 30 |
 | implemented | 19 |
-| divergent | 5 |
+| divergent | 7 |
 | not-applicable | 0 |
 
 | providence | Count |
@@ -55,22 +55,22 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | simulation | Count |
 | --- | ---: |
 | not-applicable | 2 |
-| absent | 7 |
+| absent | 5 |
 | partial | 12 |
-| complete | 39 |
+| complete | 41 |
 
 | persistence | Count |
 | --- | ---: |
 | not-applicable | 8 |
-| absent | 6 |
+| absent | 4 |
 | partial | 2 |
-| verified | 44 |
+| verified | 46 |
 
 | presentation | Count |
 | --- | ---: |
-| absent | 8 |
+| absent | 6 |
 | fixture-shell | 7 |
-| functional | 45 |
+| functional | 47 |
 | accepted | 0 |
 
 ### Host
@@ -107,7 +107,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Label | Classic | Host |
 | --- | ---: | ---: |
-| synthetic | 52 | 7 |
+| synthetic | 54 | 7 |
 | route-harness | 38 | 2 |
 | aogm-ordinary | 14 | 2 |
 | other-ordinary | 0 | 0 |
@@ -115,11 +115,9 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **5**. Major gaps: **29**.
+Blockers: **3**. Major gaps: **29**.
 
 - **blocker** `classic.combat.enter-battle` — Battle entry and placement are not certified through ordinary AOGM play. Next: Reach an AOGM battle through ordinary UI and compare setup, placement, save, and first actor.
-- **blocker** `classic.services.pool-share` — Classic Pool and Share are absent despite session wealth fields. Next: Implement source-backed denomination conservation, save tests, and controls.
-- **blocker** `classic.services.swap` — MONEY_ACTION is declared but undispatched, so Classic Swap is absent. Next: Trace Swap denominations and implement a typed money-transfer workflow.
 - **blocker** `classic.spellcasting.field-camp-cast` — The ordinary field/camp spell catalog and scroll workflows are not complete end to end. Next: Inventory Castle field/camp spell families and scroll state, then wire them through CAST_SPELL.
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -161,8 +159,6 @@ Blockers: **5**. Major gaps: **29**.
 - `classic.maps.location-notes` — Read and edit location notes
 - `classic.scenario.complex-interaction` — Resolve a complex or thief encounter
 - `classic.services.bank` — Use the bank
-- `classic.services.pool-share` — Pool and share party money
-- `classic.services.swap` — Swap money between characters
 - `classic.spellcasting.field-camp-cast` — Cast field and camp spells
 - `classic.system.preferences` — Change Classic application preferences
 
@@ -171,8 +167,6 @@ Blockers: **5**. Major gaps: **29**.
 ### aogm
 
 - `classic.combat.enter-battle` — Battle entry and placement are not certified through ordinary AOGM play.
-- `classic.services.pool-share` — Classic Pool and Share are absent despite session wealth fields.
-- `classic.services.swap` — MONEY_ACTION is declared but undispatched, so Classic Swap is absent.
 - `classic.spellcasting.field-camp-cast` — The ordinary field/camp spell catalog and scroll workflows are not complete end to end.
 - `classic.character.reorder-party` — Party order cannot be changed through a typed workflow.
 - `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace.
@@ -225,6 +219,7 @@ Blockers: **5**. Major gaps: **29**.
 - `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate.
 - `host.package.validation-progress` — Package loading remains perceptibly slow and lacks a real asynchronous progress workflow.
 - `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished.
+- `classic.services.swap` — Ordinary route navigation does not yet play Swap's Classic open and Done sounds.
 - `classic.spellcasting.choose-power-target` — SELECT_SPELL_POWER and SELECT_SPELL_TARGET are dead scaffolding beside the complete CAST_SPELL payload.
 - `classic.system.quit` — Unsaved-state quit confirmation is not an evidenced ordinary workflow.
 

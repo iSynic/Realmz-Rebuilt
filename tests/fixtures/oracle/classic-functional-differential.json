@@ -2581,6 +2581,101 @@
       "status": "nine-services-context-entry-wealth-save-and-presentation-verified"
     },
     {
+      "id": "economy.pool-share",
+      "workflowIds": ["classic.services.pool-share"],
+      "domain": "economy",
+      "claim": "Classic Pool collects every carried denomination in party order, while Share redistributes jewelry, gems, then gold one unit per character per pass and recalculates movement after each operation without overloading a recipient.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake supplies visible Pool and Share controls in its money workspace. Pool omits carried-load mutation, and Share is marked TODO and distributes through generic inventory weight without Classic denomination weights, so both are workflow leads only.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/MoneyRect/MoneyRect.gd", "symbol": "func _on_PoolButton_pressed()" },
+          { "path": "src/scenes/UI/HUD/MoneyRect/MoneyRect.gd", "symbol": "func _on_ShareButton_pressed()" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/pool.c", "symbol": "void pool(void)" },
+          { "path": "src/realmz_orig/share-movecost-dialog.c", "symbol": "void share(void)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "void movecalc(short charselect)" }
+        ],
+        "authoredInputs": ["party order", "personal and pooled gold, gems, and jewelry", "current and maximum load", "race movement and character movement bonus"],
+        "observation": "Pool moves all three personal denominations to the shared pool, subtracts gold and gems at one load each and jewelry at fifteen, clears personal balances, recalculates every character, and plays sound 128. Share processes jewelry, gems, and gold in that order, gives one unit to each character in party order per pass, recalculates movement, and plays sound 128. Its eligibility check tests only current load below maximum before adding fifteen-load jewelry, unlike Swap's complete-weight check.",
+        "unresolved": []
+      },
+      "providence": {
+        "commit": "028a587d8f99bd687d279d3abfdb74663ac4819f",
+        "sources": [],
+        "expectedRepresentation": "Pool and Share consume only mutable session wealth, party order, load, race, class, and condition state already validated by schema v2. No new authored or compiler field is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/economy_rules.gd", "symbol": "func share_pooled_wealth(" },
+        "expectedTrace": ["probe the complete action from detached session facts", "collect all personal denominations or distribute jewelry then gems then gold", "apply one- or fifteen-unit denomination load", "recalculate every party member's Classic movement", "request sound 128", "publish detached wealth and availability", "serialize the resulting wealth, load, and movement through the central save"],
+        "tests": [
+          { "path": "tests/integration/test_money_workflow.gd", "symbol": "func _test_share_capacity_correction()" },
+          { "path": "tests/integration/test_money_workflow.gd", "symbol": "func _test_session_money_workflow(content: RealmzContent)" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_money_workspace()" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-ECONOMY-003",
+        "fixturePath": "tests/fixtures/oracle/money-share-capacity-correction.json",
+        "fixtureSha256": "b5cd34bb12db32b2b2213ecac35df289ee696b18b5f44758478b0a1c49559aeb"
+      },
+      "availability": "implemented",
+      "status": "party-order-denominations-load-movement-sound-save-and-capacity-correction-verified"
+    },
+    {
+      "id": "economy.classic-swap",
+      "workflowIds": ["classic.services.swap"],
+      "domain": "economy",
+      "claim": "Ordinary Classic Swap selects one party member and moves exactly five gold or one gem or jewelry between that character and the shared pool, enforcing complete denomination load and preserving totals through Done.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake supplies a selected-character money workspace and transfer arrows, but applies a generic inventory-capacity clamp and user-selected quantities without denomination-specific Classic increments. Its exchange rates also diverge from Castle.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/MoneyRect/MoneyRect.gd", "symbol": "func _on_poolArrow_pressed(" },
+          { "path": "src/scenes/UI/HUD/MoneyRect/MoneyRect.gd", "symbol": "func _on_changeArrow_pressed(" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/buttonchoice.c", "symbol": "if (theControl == swapbut)" },
+          { "path": "src/realmz_orig/swap.c", "symbol": "void swap(void)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "void movecalc(short charselect)" }
+        ],
+        "authoredInputs": ["selected character", "personal and pooled denominations", "current and maximum load", "shop, temple, and bank availability"],
+        "observation": "The ordinary Swap command opens the same modal used by rewards and services. Character-to-pool and pool-to-character buttons repeat while held, moving five gold or one gem or jewelry per step. Pool-to-character checks the complete added load; each successful step recalculates movement and uses sound 10051 toward the character or 663 toward the pool. Done exits without another money mutation.",
+        "unresolved": [
+          "The same modal conditionally exposes money changing and imports banked wealth. Those contextual exchange and banking lifecycles remain scheduled under their own audit gaps rather than being inferred into ordinary character transfers.",
+          "Workspace-open sound 3003 and Done sound 141 are presentation polish not yet connected to route navigation."
+        ]
+      },
+      "providence": {
+        "commit": "028a587d8f99bd687d279d3abfdb74663ac4819f",
+        "sources": [],
+        "expectedRepresentation": "Ordinary Swap requires no immutable campaign field beyond the already validated character race/class state used by movement recalculation."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _money_action(intent: PlayerIntent)" },
+        "expectedTrace": ["select one detached character", "choose an exact denomination and direction", "submit one Classic increment through MONEY_ACTION", "revalidate stable character identity, pool balance, personal balance, and complete load", "move wealth and load once", "recalculate party movement", "request directional Swap sound", "publish a revised detached workspace", "save and restore complete balances and movement", "leave the workspace without mutation"],
+        "tests": [
+          { "path": "tests/integration/test_money_workflow.gd", "symbol": "func _test_session_money_workflow(content: RealmzContent)" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_money_workspace()" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "ordinary-three-denomination-character-pool-transfer-save-and-presentation-verified-contextual-exchange-and-bank-lifecycle-separate"
+    },
+    {
       "id": "rewards.ordinary-distribution",
       "workflowIds": ["classic.rewards.treasure-distribution"],
       "domain": "rewards",

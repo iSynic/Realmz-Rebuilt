@@ -2008,13 +2008,27 @@ func _resume_temple(continuation: Dictionary, response: InteractionResponse, req
 				return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-temple-exit", "costPercent": cost_percent, "bankAvailable": false, "selectedCharacterId": String(next_continuation.get("selectedCharacterId", ""))})
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"temple_closed", {"pooledWealthReturnedToBank": false})])
 		"pool":
+			var movement_error := _money_movement_context_error()
+			if not movement_error.is_empty():
+				return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", movement_error)
+			var pool_probe := _rules.economy.pool_probe(_game_state.party)
+			if not pool_probe.allowed:
+				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", pool_probe.reason)
 			_rules.economy.pool_party_wealth(_game_state.party)
+			_recalculate_party_movement()
 			return ScenarioRuntimeOperationResult.waiting(_temple_request(cost_percent, request_id, String(next_continuation.get("selectedCharacterId", ""))), next_continuation, [
 				DomainEvent.new(&"wealth_pooled", {"source": "classic-temple"}),
 				DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-temple-pool"}),
 			])
 		"share":
+			var movement_error := _money_movement_context_error()
+			if not movement_error.is_empty():
+				return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", movement_error)
+			var share_probe := _rules.economy.share_probe(_game_state.party)
+			if not share_probe.allowed:
+				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", share_probe.reason)
 			_rules.economy.share_pooled_wealth(_game_state.party)
+			_recalculate_party_movement()
 			return ScenarioRuntimeOperationResult.waiting(_temple_request(cost_percent, request_id, String(next_continuation.get("selectedCharacterId", ""))), next_continuation, [
 				DomainEvent.new(&"wealth_shared", {"source": "classic-temple", "remaining": _game_state.party.pooled_wealth.to_data()}),
 				DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-temple-share"}),
@@ -2886,16 +2900,33 @@ func _resume_reward(continuation: Dictionary, response: InteractionResponse, req
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The item being left behind is not the current reward item.")
 			events.append(DomainEvent.new(&"reward_item_left", {"instanceId": pending.id, "itemId": pending.definition_id}))
 		"pool":
+			var movement_error := _money_movement_context_error()
+			if not movement_error.is_empty():
+				return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", movement_error)
+			var pool_probe := _rules.economy.pool_probe(_game_state.party)
+			if not pool_probe.allowed:
+				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", pool_probe.reason)
 			_rules.economy.pool_party_wealth(_game_state.party)
+			_recalculate_party_movement()
 			events.append(DomainEvent.new(&"reward_wealth_pooled", _game_state.party.pooled_wealth.to_data()))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-reward-pool"}))
 		"share":
+			var movement_error := _money_movement_context_error()
+			if not movement_error.is_empty():
+				return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", movement_error)
+			var share_probe := _rules.economy.share_probe(_game_state.party)
+			if not share_probe.allowed:
+				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", share_probe.reason)
 			_rules.economy.share_pooled_wealth(_game_state.party)
+			_recalculate_party_movement()
 			events.append(DomainEvent.new(&"reward_wealth_shared", _game_state.party.pooled_wealth.to_data()))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-reward-share"}))
 		"transfer":
 			var transfer_error := _transfer_reward_wealth(response.payload)
 			if not transfer_error.is_empty():
 				return ScenarioRuntimeOperationResult.failed(StringName(transfer_error["code"]), transfer_error["message"])
 			events.append(DomainEvent.new(&"reward_wealth_transferred", response.payload))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if response.payload.get("direction") == "to-character" else 663, "waitForCompletion": false, "source": "classic-reward-swap"}))
 		"detect", "identify":
 			var detection_error := _apply_reward_detection(reward, action, response.payload)
 			if not detection_error.is_empty():
@@ -2938,6 +2969,8 @@ func _transfer_reward_wealth(payload: Dictionary) -> Dictionary:
 	if character == null or kind < 0 or amount != (5 if kind == WealthState.Kind.GOLD else 1):
 		return {"code": "invalid_interaction_response", "message": "The requested Classic wealth increment is invalid."}
 	var transferred := _rules.economy.transfer_pool_to_character(_game_state.party, character, kind as WealthState.Kind, amount) if payload["direction"] == "to-character" else _rules.economy.transfer_character_to_pool(_game_state.party, character, kind as WealthState.Kind, amount) if payload["direction"] == "to-pool" else false
+	if transferred:
+		_recalculate_party_movement()
 	return {} if transferred else {"code": "reward_transfer_unavailable", "message": "The selected wealth transfer is no longer available."}
 
 
@@ -3145,6 +3178,20 @@ static func _wealth_kind(value: String) -> int:
 		"gems": return WealthState.Kind.GEMS
 		"jewelry": return WealthState.Kind.JEWELRY
 	return -1
+
+
+func _money_movement_context_error() -> String:
+	for character: CharacterState in _game_state.party.characters():
+		if _content.race_by_id(character.race_id) == null or _content.caste_by_id(character.caste_id) == null:
+			return "Character '%s' has no package-backed race or class for Classic movement recalculation." % character.id
+	return ""
+
+
+func _recalculate_party_movement() -> void:
+	for character: CharacterState in _game_state.party.characters():
+		var race := _content.race_by_id(character.race_id)
+		var caste := _content.caste_by_id(character.caste_id)
+		_rules.characters.recalculate_movement(character, race, caste.movement_bonus)
 
 
 static func _monster_reward_experience(monster: MonsterState, definition: MonsterDefinition) -> int:

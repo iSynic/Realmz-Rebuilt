@@ -160,6 +160,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _request_drop_item(intent)
 		PlayerIntent.Kind.TRADE_ITEM:
 			return _trade_item(intent)
+		PlayerIntent.Kind.MONEY_ACTION:
+			return _money_action(intent)
 		PlayerIntent.Kind.SERVICE_ACTION:
 			return _service_action(intent)
 		_:
@@ -241,6 +243,7 @@ func view() -> GameView:
 		for icon: CharacterAppearanceDefinition in _content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):
 			result.combat_icon_options.append(CharacterAppearanceOptionView.new(icon))
 	_populate_inventory_item_actions(result)
+	_populate_money_workspace(result)
 	_populate_services(result)
 	_populate_action_availability(result)
 	return result
@@ -270,6 +273,32 @@ func _populate_services(result: GameView) -> void:
 		bank_view.title = "Bank"
 		bank_view.actions = [&"enter"]
 		result.services.append(bank_view)
+
+
+func _populate_money_workspace(result: GameView) -> void:
+	if _state.party_setup_completed == false:
+		return
+	var workspace := MoneyWorkspaceView.new()
+	workspace.pooled_gold = _state.party.pooled_wealth.gold
+	workspace.pooled_gems = _state.party.pooled_wealth.gems
+	workspace.pooled_jewelry = _state.party.pooled_wealth.jewelry
+	workspace.banked_gold = _state.party.banked_wealth.gold
+	workspace.banked_gems = _state.party.banked_wealth.gems
+	workspace.banked_jewelry = _state.party.banked_wealth.jewelry
+	var pool_probe := _rules.economy.pool_probe(_state.party)
+	workspace.pool = ActionAvailabilityView.new(&"money_action", pool_probe.allowed, pool_probe.reason)
+	var share_probe := _rules.economy.share_probe(_state.party)
+	workspace.share = ActionAvailabilityView.new(&"money_action", share_probe.allowed, share_probe.reason)
+	for character: CharacterState in _state.party.characters():
+		var character_view := MoneyCharacterView.new(character)
+		for denomination: StringName in [&"gold", &"gems", &"jewelry"]:
+			var kind := _money_kind(denomination)
+			var amount := EconomyRules.classic_transfer_increment(kind as WealthState.Kind)
+			var to_pool := _rules.economy.transfer_probe(_state.party, character, kind as WealthState.Kind, amount, false)
+			var to_character := _rules.economy.transfer_probe(_state.party, character, kind as WealthState.Kind, amount, true)
+			character_view.transfers.append(MoneyTransferView.new(denomination, amount, ActionAvailabilityView.new(&"money_action", to_pool.allowed, to_pool.reason), ActionAvailabilityView.new(&"money_action", to_character.allowed, to_character.reason)))
+		workspace.characters.append(character_view)
+	result.money_workspace = workspace
 
 
 func _populate_action_availability(result: GameView) -> void:
@@ -311,8 +340,9 @@ func _populate_action_availability(result: GameView) -> void:
 	result.set_action_availability(&"join_item", false, ordinary_reason if not ordinary_reason.is_empty() else "Classic join-stack load behavior requires a fidelity decision.")
 	result.set_action_availability(&"store_item", false, "Classic has no ordinary player-stash workflow; opcode 36 equipment escrow remains scenario-owned.")
 	result.set_action_availability(&"service_action", ordinary_reason.is_empty() and not battle_active and not result.services.is_empty(), ordinary_reason if not ordinary_reason.is_empty() else "Services are unavailable during battle." if battle_active else "No shop, temple, or bank is available at this location.")
+	result.set_action_availability(&"money_action", ordinary_reason.is_empty() and not battle_active and result.money_workspace != null, ordinary_reason if not ordinary_reason.is_empty() else "Money management is unavailable during battle." if battle_active else "No party money workspace is available.")
 	for action_id: StringName in [
-		&"money_action", &"select_spell_power", &"select_spell_target", &"combat_move",
+		&"select_spell_power", &"select_spell_target", &"combat_move",
 		&"open_journal", &"open_maps",
 	]:
 		result.set_action_availability(action_id, false, "Not implemented in the current gameplay slice.")
@@ -1603,6 +1633,73 @@ func _service_action(intent: PlayerIntent) -> SessionStep:
 	else:
 		return SessionStep.failed(_view_revision, &"service_unavailable", "The selected service is not available at this location.")
 	return _begin_runtime_service(intent.target_id, operation)
+
+
+func _money_action(intent: PlayerIntent) -> SessionStep:
+	var movement_error := _money_movement_context_error()
+	if not movement_error.is_empty():
+		return SessionStep.failed(_view_revision, &"invalid_money_context", movement_error)
+	var events: Array[DomainEvent] = []
+	match intent.action:
+		&"pool":
+			var probe := _rules.economy.pool_probe(_state.party)
+			if not probe.allowed:
+				return SessionStep.failed(_view_revision, &"money_action_unavailable", probe.reason)
+			_rules.economy.pool_party_wealth(_state.party)
+			events.append(DomainEvent.new(&"wealth_pooled", {"source": "classic-money", "wealth": _state.party.pooled_wealth.to_data()}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-money-pool"}))
+		&"share":
+			var probe := _rules.economy.share_probe(_state.party)
+			if not probe.allowed:
+				return SessionStep.failed(_view_revision, &"money_action_unavailable", probe.reason)
+			_rules.economy.share_pooled_wealth(_state.party)
+			events.append(DomainEvent.new(&"wealth_shared", {"source": "classic-money", "remaining": _state.party.pooled_wealth.to_data()}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-money-share"}))
+		&"to-pool", &"to-character":
+			var character := _state.party.character_by_id(intent.actor_id)
+			var kind := _money_kind(intent.target_id)
+			if character == null:
+				return SessionStep.failed(_view_revision, &"unknown_character", "The selected money-transfer character is unavailable.")
+			if kind < 0:
+				return SessionStep.failed(_view_revision, &"unknown_wealth_kind", "The selected denomination is unavailable.")
+			var expected_amount := EconomyRules.classic_transfer_increment(kind as WealthState.Kind)
+			if intent.amount != expected_amount:
+				return SessionStep.failed(_view_revision, &"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
+			var to_character := intent.action == &"to-character"
+			var probe := _rules.economy.transfer_probe(_state.party, character, kind as WealthState.Kind, intent.amount, to_character)
+			if not probe.allowed:
+				return SessionStep.failed(_view_revision, &"money_action_unavailable", probe.reason)
+			var transferred := _rules.economy.transfer_pool_to_character(_state.party, character, kind as WealthState.Kind, intent.amount) if to_character else _rules.economy.transfer_character_to_pool(_state.party, character, kind as WealthState.Kind, intent.amount)
+			if not transferred:
+				return SessionStep.failed(_view_revision, &"money_action_unavailable", "The selected wealth transfer is no longer available.")
+			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-money", "characterId": character.id, "direction": String(intent.action), "kind": String(intent.target_id), "amount": intent.amount}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-money-swap"}))
+		_:
+			return SessionStep.failed(_view_revision, &"unknown_money_action", "Money action '%s' is unavailable." % intent.action)
+	_recalculate_party_movement()
+	return _finish_completed(events)
+
+
+func _money_movement_context_error() -> String:
+	for character: CharacterState in _state.party.characters():
+		if _content.race_by_id(character.race_id) == null or _content.caste_by_id(character.caste_id) == null:
+			return "Character '%s' has no package-backed race or class for Classic movement recalculation." % character.id
+	return ""
+
+
+func _recalculate_party_movement() -> void:
+	for character: CharacterState in _state.party.characters():
+		var race := _content.race_by_id(character.race_id)
+		var caste := _content.caste_by_id(character.caste_id)
+		_rules.characters.recalculate_movement(character, race, caste.movement_bonus)
+
+
+static func _money_kind(value: String) -> int:
+	match value:
+		"gold": return WealthState.Kind.GOLD
+		"gems": return WealthState.Kind.GEMS
+		"jewelry": return WealthState.Kind.JEWELRY
+	return -1
 
 
 func _begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperationResult) -> SessionStep:

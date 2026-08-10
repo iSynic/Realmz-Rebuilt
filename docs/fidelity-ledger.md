@@ -22,6 +22,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_reward_workflow.gd` covers zero-capacity rejection, ordinary capacity, the exact-maximum correction, exact-instance assignment, and save/resume. The differential case is `rewards.ordinary-distribution`.
 - Legacy quirk: none. No authored scenario dependency on rejecting a legal exact-maximum assignment is known.
 
+## FD-ECONOMY-003 — Require complete denomination capacity during Share
+
+- Affected rule: Classic Share when pooled jewelry is assigned to a character with fewer than fifteen load units free.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/share-movecost-dialog.c`, `share`, lines 5–40, and `src/realmz_orig/swap.c`, `swap`, lines 129–159. Share tests only `current load < maximum load` before adding fifteen for jewelry; Swap tests the complete added weight before the same transfer.
+- Observable source inconsistency: a character at load 99 of 100 receives one jewelry through Share and becomes load 114, while the adjacent manual Swap path rejects that transfer. The synthetic source-observation fixture is `tests/fixtures/oracle/money-share-capacity-correction.json`, SHA-256 `b5cd34bb12db32b2b2213ecac35df289ee696b18b5f44758478b0a1c49559aeb`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: the one-click distribution command can create an overloaded character that the manual money command correctly identifies as unable to carry the same denomination.
+- Chosen 2.0 behavior: Share retains Castle's jewelry, gems, then gold order and one-unit-per-character passes, but assigns a denomination only when its complete weight fits at or below maximum load. Unassignable wealth remains in the pool with a typed reason.
+- Tests: `test_money_workflow.gd` records the Castle source result, verifies the corrected capacity result, covers all three denominations, source order, sounds, movement recalculation, typed intents, and save restoration. `test_classic_ui_system.gd` verifies detached disabled reasons. The differential case is `economy.pool-share`.
+- Legacy quirk: none. Overloading through Share contradicts Swap and the ordinary maximum-load invariant.
+
 ## FD-INVENTORY-001 — Safe equipped-item trade
 
 - Affected rule: moving an equipped carried item between party members in the ordinary two-character Trade workspace.

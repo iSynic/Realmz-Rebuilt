@@ -2,13 +2,25 @@ class_name EconomyRules
 extends RefCounted
 
 
-func pool_party_wealth(party: PartyState) -> void:
+func pool_party_wealth(party: PartyState) -> bool:
+	if not pool_probe(party).allowed:
+		return false
 	for character: CharacterState in party.characters():
 		party.pooled_wealth.gold += character.money.gold
 		party.pooled_wealth.gems += character.money.gems
 		party.pooled_wealth.jewelry += character.money.jewelry
 		character.carried_load = maxi(0, character.carried_load - character.money.gold - character.money.gems - character.money.jewelry * 15)
 		character.money = WealthState.new()
+	return true
+
+
+func pool_probe(party: PartyState) -> EconomyActionProbe:
+	if party == null:
+		return EconomyActionProbe.new(false, "No party is available.")
+	for character: CharacterState in party.characters():
+		if character.money.gold > 0 or character.money.gems > 0 or character.money.jewelry > 0:
+			return EconomyActionProbe.new(true)
+	return EconomyActionProbe.new(false, "No adventurer carries wealth to pool.")
 
 
 func take_from_pool_and_character(party: PartyState, character: CharacterState, amount: int, kind: WealthState.Kind) -> bool:
@@ -23,13 +35,14 @@ func take_from_pool_and_character(party: PartyState, character: CharacterState, 
 	party.pooled_wealth.add(kind, -from_pool)
 	var from_character := amount - from_pool
 	character.money.add(kind, -from_character)
-	character.carried_load = maxi(0, character.carried_load - from_character * _wealth_weight(kind))
+	character.carried_load = maxi(0, character.carried_load - from_character * wealth_weight(kind))
 	return true
 
 
-func share_pooled_wealth(party: PartyState) -> void:
-	if party == null:
-		return
+func share_pooled_wealth(party: PartyState) -> bool:
+	if not share_probe(party).allowed:
+		return false
+	var changed := false
 	for kind: WealthState.Kind in [WealthState.Kind.JEWELRY, WealthState.Kind.GEMS, WealthState.Kind.GOLD]:
 		var assigned := true
 		while party.pooled_wealth.amount(kind) > 0 and assigned:
@@ -37,19 +50,51 @@ func share_pooled_wealth(party: PartyState) -> void:
 			for character: CharacterState in party.characters():
 				if party.pooled_wealth.amount(kind) < 1:
 					break
-				if character.carried_load < character.maximum_load:
+				# FD-ECONOMY-003: Castle checks only current load here, so
+				# jewelry can overload a recipient even though Swap rejects it.
+				if character.carried_load + wealth_weight(kind) <= character.maximum_load:
 					assigned = true
+					changed = true
 					character.money.add(kind, 1)
-					character.carried_load += _wealth_weight(kind)
+					character.carried_load += wealth_weight(kind)
 					party.pooled_wealth.add(kind, -1)
+	return changed
+
+
+func share_probe(party: PartyState) -> EconomyActionProbe:
+	if party == null:
+		return EconomyActionProbe.new(false, "No party is available.")
+	if party.pooled_wealth.gold < 1 and party.pooled_wealth.gems < 1 and party.pooled_wealth.jewelry < 1:
+		return EconomyActionProbe.new(false, "The party wealth pool is empty.")
+	for kind: WealthState.Kind in [WealthState.Kind.JEWELRY, WealthState.Kind.GEMS, WealthState.Kind.GOLD]:
+		if party.pooled_wealth.amount(kind) < 1:
+			continue
+		for character: CharacterState in party.characters():
+			if character.carried_load + wealth_weight(kind) <= character.maximum_load:
+				return EconomyActionProbe.new(true)
+	return EconomyActionProbe.new(false, "No adventurer can carry another pooled denomination.")
+
+
+func transfer_probe(party: PartyState, character: CharacterState, kind: WealthState.Kind, amount: int, to_character: bool) -> EconomyActionProbe:
+	if party == null or character == null:
+		return EconomyActionProbe.new(false, "The selected adventurer is unavailable.")
+	if amount != classic_transfer_increment(kind):
+		return EconomyActionProbe.new(false, "The transfer does not use the Classic denomination increment.")
+	if to_character:
+		if party.pooled_wealth.amount(kind) < amount:
+			return EconomyActionProbe.new(false, "The party pool does not contain that amount.")
+		if character.carried_load + wealth_weight(kind) * amount > character.maximum_load:
+			return EconomyActionProbe.new(false, "%s cannot carry that denomination." % character.name)
+		return EconomyActionProbe.new(true)
+	if character.money.amount(kind) < amount:
+		return EconomyActionProbe.new(false, "%s does not carry that amount." % character.name)
+	return EconomyActionProbe.new(true)
 
 
 func transfer_pool_to_character(party: PartyState, character: CharacterState, kind: WealthState.Kind, amount: int) -> bool:
-	if party == null or character == null or amount < 1 or party.pooled_wealth.amount(kind) < amount:
+	if not transfer_probe(party, character, kind, amount, true).allowed:
 		return false
-	var added_load := _wealth_weight(kind) * amount
-	if character.carried_load + added_load > character.maximum_load:
-		return false
+	var added_load := wealth_weight(kind) * amount
 	party.pooled_wealth.add(kind, -amount)
 	character.money.add(kind, amount)
 	character.carried_load += added_load
@@ -57,10 +102,10 @@ func transfer_pool_to_character(party: PartyState, character: CharacterState, ki
 
 
 func transfer_character_to_pool(party: PartyState, character: CharacterState, kind: WealthState.Kind, amount: int) -> bool:
-	if party == null or character == null or amount < 1 or character.money.amount(kind) < amount:
+	if not transfer_probe(party, character, kind, amount, false).allowed:
 		return false
 	character.money.add(kind, -amount)
-	character.carried_load = maxi(0, character.carried_load - _wealth_weight(kind) * amount)
+	character.carried_load = maxi(0, character.carried_load - wealth_weight(kind) * amount)
 	party.pooled_wealth.add(kind, amount)
 	return true
 
@@ -81,8 +126,12 @@ func pool_to_bank(party: PartyState) -> void:
 		party.pooled_wealth.set_amount(kind, 0)
 
 
-static func _wealth_weight(kind: WealthState.Kind) -> int:
+static func wealth_weight(kind: WealthState.Kind) -> int:
 	return 15 if kind == WealthState.Kind.JEWELRY else 1
+
+
+static func classic_transfer_increment(kind: WealthState.Kind) -> int:
+	return 5 if kind == WealthState.Kind.GOLD else 1
 
 
 func take(party: PartyState, amount: int, kind: WealthState.Kind) -> bool:

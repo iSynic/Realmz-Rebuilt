@@ -1,0 +1,36 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-ECONOMY-003",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/share-movecost-dialog.c",
+      "symbol": "void share(void)",
+      "range": "5-40"
+    },
+    {
+      "path": "src/realmz_orig/swap.c",
+      "symbol": "void swap(void)",
+      "range": "129-159"
+    }
+  ],
+  "inputs": {
+    "recipientLoad": 99,
+    "recipientMaximumLoad": 100,
+    "pooledJewelry": 1,
+    "jewelryWeight": 15
+  },
+  "castleSourceObservation": {
+    "shareEligibilityExpression": "recipientLoad < recipientMaximumLoad",
+    "swapEligibilityExpression": "recipientLoad + jewelryWeight <= recipientMaximumLoad",
+    "shareAssignmentAllowed": true,
+    "shareResultingLoad": 114
+  },
+  "realmz2ChosenResult": {
+    "eligibilityExpression": "recipientLoad + denominationWeight <= recipientMaximumLoad",
+    "assignmentAllowed": false,
+    "resultingLoad": 99,
+    "remainingPooledJewelry": 1
+  }
+}
