@@ -94,7 +94,14 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 		InteractionRequest.BANK:
 			payload.merge({"carriedGold": 25, "bankedGold": 10})
 		InteractionRequest.COMBAT:
-			payload.merge({"round": 1, "actorId": "hero", "targets": [] if empty_values else [{"id": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4}]})
+			payload.merge({
+				"round": 1,
+				"actorId": "hero",
+				"actions": [] if empty_values else ["attack", "use_item", "finish"],
+				"targets": [] if empty_values else [{"id": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4}],
+				"itemCasts": [] if empty_values else [{"itemInstanceId": "wand.instance", "itemId": "classic.item.41", "itemName": "Runed Wand", "charges": 3, "spellId": "classic.spell.1101", "spellName": "Flame", "power": 2, "targetId": "monster", "targetName": "Goblin", "targetCurrentHealth": 4, "targetMaximumHealth": 4, "targetMode": "combatant"}],
+				"itemCastReason": "No carried item has a supported Classic combat use." if empty_values else "",
+			})
 	return InteractionRequest.new("fixture-%s-%s" % [kind, state], kind, payload)
 
 

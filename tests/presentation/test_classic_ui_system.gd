@@ -28,7 +28,7 @@ func _test_battle_weapon_mode_component() -> void:
 	var request := InteractionRequest.new("battle.weapon-mode", &"combat_action", {
 		"round": 2,
 		"actorId": "character.archer",
-		"actions": ["switch_weapon", "cast_spell", "finish", "defend", "retreat"],
+		"actions": ["switch_weapon", "cast_spell", "use_item", "finish", "defend", "retreat"],
 		"weaponMode": "missile",
 		"weaponSwitch": {"enabled": true, "targetMode": "melee", "reason": ""},
 		"rangedAttack": {"enabled": false, "reason": "Missile range, line of sight, and projectile resolution are unavailable."},
@@ -42,6 +42,9 @@ func _test_battle_weapon_mode_component() -> void:
 				{"id": "monster.target", "kind": "monster", "name": "Target", "currentHealth": 5, "maximumHealth": 5},
 				{"id": "character.ally", "kind": "character", "name": "Ally", "currentHealth": 8, "maximumHealth": 10},
 			]},
+		],
+		"itemCasts": [
+			{"itemInstanceId": "item.wand.instance", "itemId": "item.wand", "itemName": "Runed Wand", "charges": 3, "spellId": "spell.flame", "spellName": "Flame", "power": 2, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5, "targetMode": "combatant"},
 		],
 		"movement": [
 			{"direction": [0, -1], "destination": [45, 44], "cost": 1, "enabled": true, "reason": ""},
@@ -65,6 +68,7 @@ func _test_battle_weapon_mode_component() -> void:
 	var finish_button: Button = null
 	var escape_button: Button = null
 	var cast_button: Button = null
+	var use_item_button: Button = null
 	var add_target_button: Button = null
 	for button: Button in buttons:
 		if button.text == "Fire missile unavailable":
@@ -81,6 +85,8 @@ func _test_battle_weapon_mode_component() -> void:
 			escape_button = button
 		elif button.text == "Cast selected spell":
 			cast_button = button
+		elif button.text == "Use selected item":
+			use_item_button = button
 		elif button.text == "Add target":
 			add_target_button = button
 	assert_not_null(fire_button, "the unresolved ranged action remains visible instead of silently disappearing")
@@ -91,6 +97,7 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_not_null(finish_button, "the Classic Finish command remains distinct from Defend")
 	assert_true(escape_button != null and escape_button.disabled and escape_button.tooltip_text == "An enemy is too close.", "the explicit Escape control exposes the core-owned unavailable reason")
 	assert_not_null(cast_button, "the battle component exposes a core-proven spell, power, and target option")
+	assert_not_null(use_item_button, "the battle component exposes a core-proven charged item, power, and target option")
 	assert_not_null(add_target_button, "the battle component exposes an explicit ordered repeated-target selection control")
 	var spell_picker := component.get_children().filter(func(child: Node) -> bool: return child is OptionButton)[0] as OptionButton
 	assert_equal(spell_picker.get_item_text(1), "Wave • P1 • 3 SP → Everybody", "automatic group spells render their typed label without fabricating one target's HP")
@@ -114,6 +121,7 @@ func _test_battle_weapon_mode_component() -> void:
 	sequence_target_picker.select(0)
 	add_target_button.pressed.emit()
 	cast_button.pressed.emit()
+	use_item_button.pressed.emit()
 	assert_equal(submitted, [
 		{"actorId": "character.archer", "action": "switch_weapon", "targetId": ""},
 		{"actorId": "character.archer", "action": "move", "targetId": "", "destination": [45, 44]},
@@ -121,7 +129,8 @@ func _test_battle_weapon_mode_component() -> void:
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "monster.target", "spellId": "spell.flame", "power": 2},
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.burst", "power": 3, "targetCoordinate": [47, 43], "rotation": 0},
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.darts", "power": 3, "targetIds": ["character.ally", "monster.target"]},
-	], "the presenter emits typed switch, movement, combatant, battlefield-coordinate, and ordered repeated-target spell responses")
+		{"actorId": "character.archer", "action": "use_item", "targetId": "monster.target", "itemInstanceId": "item.wand.instance"},
+	], "the presenter emits typed switch, movement, combatant, battlefield-coordinate, ordered repeated-target spell, and charged-item responses")
 	component.free()
 
 

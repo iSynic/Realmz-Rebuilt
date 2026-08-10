@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 9 | 16 | 35 | 0 |
+| classic | 60 | 8 | 17 | 35 | 0 |
 | host | 8 | 1 | 3 | 4 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -19,7 +19,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Exploration | 6 | 1 | 1 | 4 | 0 |
 | Scenario interaction | 6 | 0 | 1 | 5 | 0 |
 | Character management | 5 | 3 | 1 | 1 | 0 |
-| Inventory and equipment | 7 | 1 | 3 | 3 | 0 |
+| Inventory and equipment | 7 | 0 | 4 | 3 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
 | Services and economy | 5 | 2 | 1 | 2 | 0 |
 | Combat | 8 | 0 | 2 | 6 | 0 |
@@ -49,28 +49,28 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | --- | ---: |
 | not-required | 14 |
 | missing | 0 |
-| partial | 7 |
-| complete | 39 |
+| partial | 6 |
+| complete | 40 |
 
 | simulation | Count |
 | --- | ---: |
 | not-applicable | 2 |
-| absent | 8 |
-| partial | 11 |
+| absent | 7 |
+| partial | 12 |
 | complete | 39 |
 
 | persistence | Count |
 | --- | ---: |
 | not-applicable | 8 |
-| absent | 7 |
+| absent | 6 |
 | partial | 2 |
-| verified | 43 |
+| verified | 44 |
 
 | presentation | Count |
 | --- | ---: |
 | absent | 8 |
-| fixture-shell | 8 |
-| functional | 44 |
+| fixture-shell | 7 |
+| functional | 45 |
 | accepted | 0 |
 
 ### Host
@@ -108,17 +108,16 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Label | Classic | Host |
 | --- | ---: | ---: |
 | synthetic | 52 | 7 |
-| route-harness | 37 | 2 |
+| route-harness | 38 | 2 |
 | aogm-ordinary | 14 | 2 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
 ## Release blockers and major gaps
 
-Blockers: **6**. Major gaps: **28**.
+Blockers: **5**. Major gaps: **29**.
 
 - **blocker** `classic.combat.enter-battle` — Battle entry and placement are not certified through ordinary AOGM play. Next: Reach an AOGM battle through ordinary UI and compare setup, placement, save, and first actor.
-- **blocker** `classic.inventory.use-item` — USE_ITEM returns an explicit unimplemented result and targeted item use is not dispatched. Next: Inventory item-effect families and implement typed target and continuation handling.
 - **blocker** `classic.services.pool-share` — Classic Pool and Share are absent despite session wealth fields. Next: Implement source-backed denomination conservation, save tests, and controls.
 - **blocker** `classic.services.swap` — MONEY_ACTION is declared but undispatched, so Classic Swap is absent. Next: Trace Swap denominations and implement a typed money-transfer workflow.
 - **blocker** `classic.spellcasting.field-camp-cast` — The ordinary field/camp spell catalog and scroll workflows are not complete end to end. Next: Inventory Castle field/camp spell families and scroll state, then wire them through CAST_SPELL.
@@ -137,6 +136,7 @@ Blockers: **6**. Major gaps: **28**.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
 - **major** `classic.inventory.inspect-item` — Item details do not yet expose the complete Classic record and disabled-action reasons. Next: Complete the detached item view and item-detail panel.
 - **major** `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow. Next: Trace every items.c branch before deleting the intents or implementing a stack operation.
+- **major** `classic.inventory.use-item` — Fixed-power charged spell items now work through typed field and combat targets, exact charge/load state, sound, save/resume, and ordinary interaction controls; scrolls, door/XAP items, random-power combat targeting, spatial/repeated combat targets, and broader spell specials remain explicit. Next: Exercise an ordinary AOGM charged item, then characterize scroll, door/XAP, random-power combat, and target-abort charge behavior as separate bounded cases.
 - **major** `classic.maps.authored-journal` — The complete authored journal entry contract and discovery state are not represented end to end. Next: Trace Castle journal records, add deterministic package fields, and wire a read-only journal view.
 - **major** `classic.maps.location-notes` — Player location notes are entirely absent and their exact save ownership is not yet traced. Next: Trace the Castle note editor and save fields before defining typed note state.
 - **major** `classic.maps.view-acquired` — Map IDs can be acquired, but the journal route explicitly lacks map viewing. Next: Finish package map display data and build a presentation-owned acquired-map viewer.
@@ -171,7 +171,6 @@ Blockers: **6**. Major gaps: **28**.
 ### aogm
 
 - `classic.combat.enter-battle` — Battle entry and placement are not certified through ordinary AOGM play.
-- `classic.inventory.use-item` — USE_ITEM returns an explicit unimplemented result and targeted item use is not dispatched.
 - `classic.services.pool-share` — Classic Pool and Share are absent despite session wealth fields.
 - `classic.services.swap` — MONEY_ACTION is declared but undispatched, so Classic Swap is absent.
 - `classic.spellcasting.field-camp-cast` — The ordinary field/camp spell catalog and scroll workflows are not complete end to end.
@@ -183,6 +182,7 @@ Blockers: **6**. Major gaps: **28**.
 - `classic.combat.turn-control` — The battle interaction is functional but not yet an accepted Classic tactical workspace.
 - `classic.exploration.camp-rest` — Camp toggling exists, but Classic rest duration, recovery, and interruption are not implemented as a complete workflow.
 - `classic.inventory.inspect-item` — Item details do not yet expose the complete Classic record and disabled-action reasons.
+- `classic.inventory.use-item` — Fixed-power charged spell items now work through typed field and combat targets, exact charge/load state, sound, save/resume, and ordinary interaction controls; scrolls, door/XAP items, random-power combat targeting, spatial/repeated combat targets, and broader spell specials remain explicit.
 - `classic.maps.view-acquired` — Map IDs can be acquired, but the journal route explicitly lacks map viewing.
 - `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification.
 - `classic.services.temple` — The temple lifecycle has no ordinary campaign certification.

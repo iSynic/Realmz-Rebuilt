@@ -9,6 +9,7 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	var content := _inventory_content(loaded.content)
+	_test_field_spell_item_use(content)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 41).state, SessionStep.State.COMPLETED, "inventory session starts")
 	var source := _character("inventory.source", "Alis", content)
@@ -45,9 +46,9 @@ func run() -> void:
 	assert_equal(carried_destination.carried_load, item.instance_weight(instance.charges), "trade adds the exact item load to the destination")
 
 	var before_use_charges := carried_destination.inventory()[0].charges
-	var rejected_use := session.submit_intent(PlayerIntent.use_item(instance.id))
-	assert_equal(rejected_use.error_code, &"item_effect_unimplemented", "an unimplemented item effect fails instead of spending a charge")
-	assert_equal(carried_destination.inventory()[0].charges, before_use_charges, "failed item use preserves charges")
+	var rejected_use := session.submit_intent(PlayerIntent.use_item(instance.id, destination.id))
+	assert_equal(rejected_use.error_code, &"item_has_no_spell_effect", "ordinary equipment does not masquerade as a charged spell item")
+	assert_equal(carried_destination.inventory()[0].charges, before_use_charges, "rejected ordinary item use preserves charges")
 
 	var drop_wait := session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.DROP_ITEM, instance.id, destination.id))
 	assert_equal(drop_wait.state, SessionStep.State.WAITING_FOR_INTERACTION, "Drop opens a typed irreversible-action confirmation")
@@ -84,6 +85,73 @@ func run() -> void:
 	var cursed_trade := restored.submit_intent(PlayerIntent.trade_item(cursed_instance.id, source.id, destination.id))
 	assert_equal(cursed_trade.error_code, &"item_cannot_trade", "FD-INVENTORY-001 prevents Castle's trade path from bypassing an equipped curse")
 	_test_equipment_probes(content)
+
+
+func _test_field_spell_item_use(content: RealmzContent) -> void:
+	var session := GameSession.new()
+	assert_equal(session.start(content, 73).state, SessionStep.State.COMPLETED, "field item-use session starts")
+	var user := _character("inventory.item-user", "Ena", content)
+	var target := _character("inventory.item-target", "Fenn", content)
+	user.current_health = 4
+	target.current_health = 5
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(user.id, "3".repeat(64), user.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item user enters party setup")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(target.id, "4".repeat(64), target.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item target enters party setup")
+	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "field item-use fixture begins")
+	var carried_user := session._state.party.character_by_id(user.id)
+	var carried_target := session._state.party.character_by_id(target.id)
+	var wand := content.item_by_id("classic.item.inventory-healing-wand")
+	var wand_instance := RealmzRules.new().inventory.add_item(carried_user, wand, "inventory.instance.healing-wand", true)
+	assert_not_null(wand_instance, "charged field spell item enters inventory")
+	wand_instance.identified = false
+	assert_true(session.view().party_members[0].items[0].actions.use.enabled, "detached inventory actions expose a source-backed field item use")
+	var load_before := carried_user.carried_load
+	var requested := session.submit_intent(PlayerIntent.use_item(wand_instance.id, carried_user.id))
+	assert_equal([requested.state, requested.interaction.kind, requested.interaction.payload.get("count")], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.CHARACTER_SELECTION, 1], "party-target item use yields one typed character selection")
+	assert_true(String(requested.interaction.payload.get("prompt", "")).contains(wand.unidentified_name) and not String(requested.interaction.payload.get("prompt", "")).contains(wand.name), "field item targeting does not reveal an unidentified item's true name")
+	assert_equal(wand_instance.charges, 2, "opening target selection does not spend a charge before a valid target commits")
+	var corrupt_power_data := session.snapshot().to_data()
+	corrupt_power_data["sessionContinuation"]["power"] = 7
+	var corrupt_power_envelope := SaveEnvelope.from_data(corrupt_power_data)
+	assert_not_null(corrupt_power_envelope, "the wire envelope accepts a structurally valid continuation before content validation")
+	var corrupt_power_restore := GameSession.new()
+	assert_equal(corrupt_power_restore.restore(content, corrupt_power_envelope).error_code, &"invalid_session_continuation", "restore rejects a fixed-power item continuation whose staged power was tampered")
+	var envelope := SaveEnvelope.from_data(session.snapshot().to_data())
+	var restored := GameSession.new()
+	assert_equal(restored.restore(content, envelope).state, SessionStep.State.COMPLETED, "pending item target selection restores transactionally")
+	var pending := restored.view().pending_interaction
+	var rejected := restored.respond(InteractionResponse.new(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": ["missing.character"]}))
+	assert_equal(rejected.error_code, &"invalid_item_use_target", "a stale or invented item target is rejected explicitly")
+	assert_equal(restored._state.party.character_by_id(carried_user.id).inventory()[0].charges, 2, "corrupt item target response spends no charge")
+	var completed := restored.respond(InteractionResponse.new(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [carried_target.id]}))
+	assert_equal(completed.state, SessionStep.State.COMPLETED, "valid item target commits the effect")
+	assert_equal(restored._state.party.character_by_id(carried_target.id).current_health, 8, "fixed-power healing item applies its source spell to the selected party member")
+	assert_equal(restored._state.party.character_by_id(carried_user.id).inventory()[0].charges, 1, "committed field item use spends exactly one positive charge")
+	assert_equal(restored._state.party.character_by_id(carried_user.id).carried_load, load_before - wand.weight_per_charge, "spent charge removes its authored per-charge load")
+	assert_true(completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 649), "field item use requests Castle item sound plus 600")
+	assert_true(completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_spell_resolved" and event.payload.get("targetId") == carried_target.id), "field item use publishes its exact committed target")
+	wand.special_1 = 8
+	restored._rng = ScriptedRng.new([32_767, 0, 0, 32_767])
+	var invalid_random_target := restored.submit_intent(PlayerIntent.use_item_on_target(wand_instance.id, carried_user.id, "missing.character"))
+	assert_equal(invalid_random_target.error_code, &"invalid_item_use_target", "an invented direct target rejects a random-power item before commit")
+	assert_equal([restored._rng.snapshot().draw_count, restored._state.party.character_by_id(carried_user.id).inventory()[0].charges], [0, 1], "rejected direct random-power targeting rolls back its staged draw and preserves the charge")
+	var random_requested := restored.submit_intent(PlayerIntent.use_item(wand_instance.id, carried_user.id))
+	assert_equal([random_requested.state, restored._session_continuation.get("power"), restored._rng.trace()[0].get("tag")], [SessionStep.State.WAITING_FOR_INTERACTION, 7, "item.use.power.inventory.instance.healing-wand"], "random-power field item rolls Castle Rand(7) once before staging its target")
+	assert_equal(restored._state.party.character_by_id(carried_user.id).inventory()[0].charges, 1, "random power selection still cannot consume the charge before a target commits")
+	var random_completed := restored.respond(InteractionResponse.new(random_requested.interaction.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [carried_target.id]}))
+	assert_equal(random_completed.state, SessionStep.State.COMPLETED, "the staged random power survives through the target response")
+	assert_true(random_completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_used" and event.payload.get("power") == 7), "the committed item event retains its one rolled power")
+	wand.special_1 = 1
+	restored._rng = RealmzRng.new(73)
+
+	var self_item := content.item_by_id("classic.item.inventory-self-tonic")
+	var self_instance := RealmzRules.new().inventory.add_item(restored._state.party.character_by_id(carried_user.id), self_item, "inventory.instance.self-tonic", true)
+	var self_completed := restored.submit_intent(PlayerIntent.use_item(self_instance.id, carried_user.id))
+	assert_equal(self_completed.state, SessionStep.State.COMPLETED, "target-type-five item applies immediately to its user")
+	assert_equal(restored._state.party.character_by_id(carried_user.id).current_health, 7, "self-target item heals only its user")
+	assert_equal(self_instance.charges, -1, "an authored infinite-charge item remains infinite after use")
+	self_instance.charges = 0
+	var empty := restored.submit_intent(PlayerIntent.use_item(self_instance.id, carried_user.id))
+	assert_equal(empty.error_code, &"item_has_no_charges", "a depleted item fails before effect or randomness")
 
 
 func _test_equipment_probes(content: RealmzContent) -> void:
@@ -162,10 +230,41 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	cursed.weight = 10
 	cursed.item_category_mask_low = 1 << 5
 	cursed.cursed_item_id = cursed.id
+	var healing_spell := SpellDefinition.new("classic.spell.inventory-heal", 1101, "Mending")
+	healing_spell.damage_min = 3
+	healing_spell.damage_max = 3
+	healing_spell.special = 57
+	healing_spell.cannot = 4
+	healing_spell.target_type = 1
+	healing_spell.in_camp = true
+	var self_spell := SpellDefinition.new("classic.spell.inventory-self-heal", 1102, "Restore Self")
+	self_spell.damage_min = 3
+	self_spell.damage_max = 3
+	self_spell.special = 57
+	self_spell.cannot = 4
+	self_spell.target_type = 5
+	self_spell.in_camp = true
+	var healing_wand := ItemDefinition.new("classic.item.inventory-healing-wand", 12, "Wand of Mending")
+	healing_wand.item_type = 21
+	healing_wand.weight = 4
+	healing_wand.initial_charges = 2
+	healing_wand.weight_per_charge = 1
+	healing_wand.item_category_mask_low = 1 << 5
+	healing_wand.special_1 = 1
+	healing_wand.special_2 = healing_spell.classic_id
+	healing_wand.sound_id = 49
+	var self_tonic := ItemDefinition.new("classic.item.inventory-self-tonic", 13, "Everfull Tonic")
+	self_tonic.item_type = 21
+	self_tonic.weight = 1
+	self_tonic.initial_charges = -1
+	self_tonic.item_category_mask_low = 1 << 5
+	self_tonic.special_1 = 1
+	self_tonic.special_2 = self_spell.classic_id
 	var races: Array[RaceDefinition] = [race]
 	var castes: Array[CasteDefinition] = [caste]
-	var items: Array[ItemDefinition] = [sword, cursed]
-	return RealmzContent.new("inventory-workflow", source.package_hash, "inventory-workflow-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], races, castes, items)
+	var items: Array[ItemDefinition] = [sword, cursed, healing_wand, self_tonic]
+	var spells: Array[SpellDefinition] = [healing_spell, self_spell]
+	return RealmzContent.new("inventory-workflow", source.package_hash, "inventory-workflow-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells)
 
 
 func _character(character_id: String, display_name: String, content: RealmzContent) -> CharacterState:

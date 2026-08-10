@@ -1,0 +1,30 @@
+class_name CombatItemOptionView
+extends RefCounted
+
+var item_instance_id: String
+var item_definition_id: String
+var item_name: String
+var charges: int
+var spell_id: String
+var spell_name: String
+var power: int
+var target_id: String
+var target_name: String
+var target_current_health: int
+var target_maximum_health: int
+var target_mode: StringName
+
+
+func _init(instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int, target: CombatSpellTargetView = null, automatic_target_label: String = "", targeting_mode: StringName = &"combatant") -> void:
+	item_instance_id = instance.id
+	item_definition_id = item.id
+	item_name = item.name if instance.identified else item.unidentified_name
+	charges = instance.charges
+	spell_id = spell.id
+	spell_name = spell.name
+	power = power_level
+	target_id = target.id if target != null else ""
+	target_name = target.name if target != null else automatic_target_label
+	target_current_health = target.current_health if target != null else -1
+	target_maximum_health = target.maximum_health if target != null else -1
+	target_mode = targeting_mode

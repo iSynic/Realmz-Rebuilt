@@ -202,6 +202,21 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 			if not value.has(field) or not value[field] is String or value[field].is_empty():
 				return null
 		return {"kind": "drop-item-confirmation", "characterId": value["characterId"], "instanceId": value["instanceId"]}
+	if value.get("kind") == "item-use-target-selection":
+		var item_fields: Array[String] = ["kind", "characterId", "instanceId", "spellId", "power", "targetCount", "startingCharges"]
+		if value.size() != item_fields.size():
+			return null
+		for field: String in item_fields:
+			if not value.has(field):
+				return null
+		var power := _integer(value["power"])
+		var target_count := _integer(value["targetCount"])
+		var starting_charges := _integer(value["startingCharges"])
+		if not value["characterId"] is String or value["characterId"].is_empty() or not value["instanceId"] is String or value["instanceId"].is_empty() or not value["spellId"] is String or value["spellId"].is_empty():
+			return null
+		if power < 1 or power > 7 or target_count < 1 or target_count > 6 or starting_charges < -1 or starting_charges > 32_767:
+			return null
+		return {"kind": "item-use-target-selection", "characterId": value["characterId"], "instanceId": value["instanceId"], "spellId": value["spellId"], "power": power, "targetCount": target_count, "startingCharges": starting_charges}
 	if value.get("kind") == "character-spell-confirmation":
 		var spell_fields: Array[String] = ["kind", "characterId", "remaining"]
 		if value.size() != spell_fields.size():

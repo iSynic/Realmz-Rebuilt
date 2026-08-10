@@ -10,13 +10,16 @@ func _init(character_rules: CharacterRules = null, realmz_arithmetic: RealmzArit
 	_arithmetic = realmz_arithmetic if realmz_arithmetic != null else RealmzArithmetic.new()
 
 
-func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
+func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true) -> GroupSpellResolution:
 	if caster == null or not _selection_is_valid(selection) or spell == null or rng == null or power_level < 1:
 		return null
 	var spell_cost := absi(spell.cost * power_level)
-	if caster.spell_points < spell_cost:
+	if spend_spell_points and caster.spell_points < spell_cost:
 		return GroupSpellResolution.new(false, spell_cost, 0, 0)
-	caster.spell_points -= spell_cost
+	if spend_spell_points:
+		caster.spell_points -= spell_cost
+	else:
+		spell_cost = 0
 	var effective := _reflect_to_character_caster(caster, selection, rng, &"magic.reflect")
 	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"magic.duration")
 	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"magic.damage")
@@ -28,7 +31,7 @@ func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTa
 	return result
 
 
-func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false) -> GroupSpellResolution:
+func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false, spend_spell_points: bool = true) -> GroupSpellResolution:
 	if caster == null or spell == null or rng == null or power_level < 1 or monster_targets.size() != monster_definitions.size() or not allow_empty and character_targets.is_empty() and monster_targets.is_empty():
 		return null
 	for target: CharacterState in character_targets:
@@ -38,9 +41,12 @@ func resolve_character_group_spell(caster: CharacterState, character_targets: Ar
 		if monster_targets[index] == null or monster_definitions[index] == null:
 			return null
 	var spell_cost := absi(spell.cost * power_level)
-	if caster.spell_points < spell_cost:
+	if spend_spell_points and caster.spell_points < spell_cost:
 		return GroupSpellResolution.new(false, spell_cost, 0, 0)
-	caster.spell_points -= spell_cost
+	if spend_spell_points:
+		caster.spell_points -= spell_cost
+	else:
+		spell_cost = 0
 	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"magic.duration")
 	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"magic.damage")
 	var result := GroupSpellResolution.new(true, spell_cost, duration, damage)
@@ -53,16 +59,19 @@ func resolve_character_group_spell(caster: CharacterState, character_targets: Ar
 	return result
 
 
-func resolve_character_repeated_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RepeatedSpellResolution:
+func resolve_character_repeated_spell(caster: CharacterState, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, spend_spell_points: bool = true) -> RepeatedSpellResolution:
 	if caster == null or spell == null or rng == null or power_level < 1 or selections.is_empty() or selections.size() > power_level:
 		return null
 	for selection: SpellTargetSelection in selections:
 		if selection == null or (selection.character == null and (selection.monster == null or selection.monster_definition == null)):
 			return null
 	var spell_cost := absi(spell.cost * power_level)
-	if caster.spell_points < spell_cost:
+	if spend_spell_points and caster.spell_points < spell_cost:
 		return RepeatedSpellResolution.new(false, spell_cost, selections.size())
-	caster.spell_points -= spell_cost
+	if spend_spell_points:
+		caster.spell_points -= spell_cost
+	else:
+		spell_cost = 0
 	var result := RepeatedSpellResolution.new(true, spell_cost, selections.size())
 	for index: int in selections.size():
 		var selection := _reflect_to_character_caster(caster, selections[index], rng, StringName("magic.repeated.reflect.%d" % index))

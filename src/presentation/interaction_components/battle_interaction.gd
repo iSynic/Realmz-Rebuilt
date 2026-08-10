@@ -153,6 +153,33 @@ func build(request: InteractionRequest) -> void:
 		add_child(cast_button)
 	elif not String(request.payload.get("spellCastReason", "")).is_empty():
 		add_response("Cast unavailable", {}, false, String(request.payload.get("spellCastReason")))
+	var item_casts: Variant = request.payload.get("itemCasts", [])
+	if action_ids.has("use_item") and item_casts is Array and not item_casts.is_empty():
+		var item_picker := OptionButton.new()
+		item_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for option: Variant in item_casts:
+			if not option is Dictionary:
+				continue
+			var charge_label := "∞" if int(option.get("charges", 0)) < 0 else str(int(option.get("charges", 0)))
+			var target_label := String(option.get("targetName", "Automatic"))
+			var label := "%s (%s) • %s P%d → %s" % [option.get("itemName", "Item"), charge_label, option.get("spellName", "Effect"), int(option.get("power", 1)), target_label]
+			var target_health := int(option.get("targetCurrentHealth", -1))
+			if target_health >= 0:
+				label += " (%d/%d HP)" % [target_health, int(option.get("targetMaximumHealth", 0))]
+			item_picker.add_item(label)
+			item_picker.set_item_metadata(item_picker.item_count - 1, option.duplicate(true))
+		add_child(item_picker)
+		var use_button := Button.new()
+		use_button.text = "Use selected item"
+		use_button.disabled = item_picker.item_count == 0
+		use_button.pressed.connect(func() -> void:
+			var option: Variant = item_picker.get_selected_metadata()
+			if option is Dictionary:
+				payload_submitted.emit({"actorId": actor_id, "action": "use_item", "targetId": String(option.get("targetId", "")), "itemInstanceId": String(option.get("itemInstanceId", ""))})
+		)
+		add_child(use_button)
+	elif not String(request.payload.get("itemCastReason", "")).is_empty():
+		add_response("Use item unavailable", {}, false, String(request.payload.get("itemCastReason")))
 	var weapon_switch: Variant = request.payload.get("weaponSwitch", {})
 	if action_ids.has("switch_weapon") and weapon_switch is Dictionary:
 		var target_mode := String(weapon_switch.get("targetMode", "melee"))

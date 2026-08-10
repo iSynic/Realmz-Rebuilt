@@ -63,9 +63,21 @@ static func move(move_direction: Vector2i) -> PlayerIntent:
 	return intent
 
 
-static func use_item(item_id: String) -> PlayerIntent:
+static func use_item(item_id: String, user_id: String = "") -> PlayerIntent:
 	var intent := PlayerIntent.new(Kind.USE_ITEM)
 	intent.target_id = item_id
+	intent.actor_id = user_id
+	return intent
+
+
+static func use_item_on_target(item_id: String, user_id: String, target_combatant_id: String = "", target_combatant_ids: Array[String] = [], coordinate: Vector2i = Vector2i(-100_000, -100_000), area_rotation: int = 0) -> PlayerIntent:
+	var intent := PlayerIntent.new(Kind.USE_ITEM_ON_TARGET)
+	intent.target_id = item_id
+	intent.actor_id = user_id
+	intent.secondary_target_id = target_combatant_id
+	intent.selected_ids = target_combatant_ids.duplicate()
+	intent.target_coordinate = coordinate
+	intent.rotation = area_rotation
 	return intent
 
 

@@ -673,6 +673,179 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 	return CombatFlowResult.succeeded(events)
 
 
+func probe_character_item_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String) -> CombatSpellCastProbe:
+	if state == null or content == null:
+		return CombatSpellCastProbe.blocked(&"invalid_item_turn", "Item use requires an active game session.")
+	var combat := state.combat
+	if combat == null or combat.completed or combat.battlefield == null or combat.active_actor_id() != caster_id:
+		return CombatSpellCastProbe.blocked(&"invalid_item_turn", "Only the active character may use an item in combat.")
+	if not combat.pending_spell_death_macro_id().is_empty():
+		return CombatSpellCastProbe.blocked(&"spell_death_macro_pending", "A spell-triggered monster death macro must complete before another combat action.")
+	var caster := state.party.character_by_id(caster_id)
+	var instance := _inventory_instance(caster, instance_id)
+	var item: ItemDefinition = null if instance == null else content.item_by_id(instance.definition_id)
+	var spell: SpellDefinition = null if item == null else content.spell_by_classic_id(item.special_2)
+	var use_probe := _rules.inventory.classic_spell_item_probe(caster, instance, item, spell, content.race_by_id(caster.race_id) if caster != null else null, content.caste_by_id(caster.caste_id) if caster != null else null, true)
+	if not use_probe.allowed:
+		return CombatSpellCastProbe.blocked(_item_use_reason_code(instance, item, spell), use_probe.reason)
+	var power_level := absi(item.special_1)
+	if power_level == 8:
+		return CombatSpellCastProbe.blocked(&"random_item_power_requires_staging", "A random-power item requires a source-backed staged targeting continuation.")
+	if spell.target_type not in [1, 2, 5, 9, 10, 12]:
+		return CombatSpellCastProbe.blocked(&"unsupported_combat_item_targeting", "This item's Classic combat target shape is not implemented yet.")
+	var healing_spell := _is_source_backed_combat_healing_spell(spell)
+	var ordinary_spell := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9
+	if not ordinary_spell and not healing_spell:
+		return CombatSpellCastProbe.blocked(&"unsupported_combat_item_effect", "This item's Classic combat spell effect is not implemented yet.")
+	if spell.queue_icon != 0:
+		return CombatSpellCastProbe.blocked(&"queued_spell_field_unresolved", "This item creates a persistent battlefield field whose collision lifecycle is not implemented.")
+	if spell.target_type in [9, 10, 12]:
+		var group_target_count := 0
+		for character: CharacterState in state.party.characters():
+			if character.current_health > 0 and combat.battlefield.has_actor(character.id) and _group_target_matches(spell.target_type, character.traitor, caster.traitor):
+				group_target_count += 1
+		for monster: MonsterState in combat.monsters():
+			if monster.current_health <= 0 or not combat.battlefield.has_actor(monster.id) or not _group_target_matches(spell.target_type, monster.traitor, caster.traitor):
+				continue
+			if content.monster_by_id(monster.definition_id) == null:
+				return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "An item spell target has no immutable monster definition.")
+			group_target_count += 1
+		if group_target_count == 0:
+			return CombatSpellCastProbe.blocked(&"invalid_item_target", "The item spell has no available group target.")
+		return CombatSpellCastProbe.permitted()
+	var effective_target_id := caster_id if spell.target_type == 5 else target_id
+	if _spell_target_selection(state, content, effective_target_id) == null:
+		return CombatSpellCastProbe.blocked(&"invalid_item_target", "The selected combatant is unavailable.")
+	if not _spell_actor_target_is_valid(state, content, caster_id, effective_target_id, spell, power_level):
+		return CombatSpellCastProbe.blocked(&"item_target_unavailable", "The target is outside the item's Classic spell range or line of sight.")
+	return CombatSpellCastProbe.permitted()
+
+
+func use_spell_item(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, rng: RealmzRng) -> CombatFlowResult:
+	var probe := probe_character_item_spell(state, content, caster_id, target_id, instance_id)
+	if not probe.allowed:
+		return CombatFlowResult.failed(probe.reason, probe.reason_text)
+	var caster := state.party.character_by_id(caster_id)
+	var instance := _inventory_instance(caster, instance_id)
+	var item := content.item_by_id(instance.definition_id)
+	var spell := content.spell_by_classic_id(item.special_2)
+	var power_level := absi(item.special_1)
+	if not _rules.inventory.use_charge(caster, instance.id, item):
+		return CombatFlowResult.failed(&"item_charge_commit_failed", "The validated item charge could not be committed.")
+	var cast_level := spell.classic_tier()
+	_prepare_character_turn(state.combat, caster)
+	var result: CombatFlowResult
+	if spell.target_type in [9, 10, 12]:
+		var character_targets: Array[CharacterState] = []
+		var monster_targets: Array[MonsterState] = []
+		var monster_definitions: Array[MonsterDefinition] = []
+		for character: CharacterState in state.party.characters():
+			if character.current_health > 0 and state.combat.battlefield.has_actor(character.id) and _group_target_matches(spell.target_type, character.traitor, caster.traitor):
+				character_targets.append(character)
+		for monster: MonsterState in state.combat.monsters():
+			if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id) or not _group_target_matches(spell.target_type, monster.traitor, caster.traitor):
+				continue
+			var definition := content.monster_by_id(monster.definition_id)
+			if definition == null:
+				return CombatFlowResult.failed(&"spell_target_unavailable", "An item spell target has no immutable monster definition.")
+			monster_targets.append(monster)
+			monster_definitions.append(definition)
+		var group := _rules.magic.resolve_character_group_spell(caster, character_targets, monster_targets, monster_definitions, spell, power_level, cast_level, rng, false, false)
+		if group == null or not group.cast:
+			return CombatFlowResult.failed(&"item_spell_failed", "The item spell could not be resolved.")
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, group, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false)
+	else:
+		var effective_target_id := caster_id if spell.target_type == 5 else target_id
+		var selection := _spell_target_selection(state, content, effective_target_id)
+		var targeted := _rules.magic.resolve_character_targeted_spell(caster, selection, spell, power_level, cast_level, rng, false)
+		if targeted == null or not targeted.cast:
+			return CombatFlowResult.failed(&"item_spell_failed", "The item spell could not be resolved.")
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false)
+	if not result.ok:
+		return result
+	var events: Array[DomainEvent] = [_item_used_event(caster_id, instance_id, item, spell, power_level, caster)]
+	var native_sound_id := item.sound_id + 600
+	if item.sound_id != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": "classic-item"}))
+	events.append_array(result.events)
+	result.events = events
+	return result
+
+
+func character_item_spell_options(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatItemOptionView]:
+	var result: Array[CombatItemOptionView] = []
+	if state == null or state.combat == null or state.combat.active_actor_id() != caster_id:
+		return result
+	var caster := state.party.character_by_id(caster_id)
+	if caster == null:
+		return result
+	for instance: ItemInstance in caster.inventory():
+		var item := content.item_by_id(instance.definition_id)
+		var spell := content.spell_by_classic_id(item.special_2) if item != null else null
+		if item == null or spell == null or absi(item.special_1) == 8:
+			continue
+		if spell.target_type in [9, 10, 12]:
+			if probe_character_item_spell(state, content, caster_id, "", instance.id).allowed:
+				result.append(CombatItemOptionView.new(instance, item, spell, absi(item.special_1), null, _group_spell_target_label(spell.target_type), &"automatic"))
+			continue
+		if spell.target_type == 5:
+			if probe_character_item_spell(state, content, caster_id, caster_id, instance.id).allowed:
+				result.append(CombatItemOptionView.new(instance, item, spell, absi(item.special_1), _spell_target_view(state, content, caster_id)))
+			continue
+		for target: CombatSpellTargetView in _character_actor_spell_candidates(state, content, caster, spell, absi(item.special_1)):
+			if probe_character_item_spell(state, content, caster_id, target.id, instance.id).allowed:
+				result.append(CombatItemOptionView.new(instance, item, spell, absi(item.special_1), target))
+	return result
+
+
+func character_item_spell_unavailable_reason(state: GameState, content: RealmzContent, caster_id: String) -> String:
+	if state == null or state.combat == null or state.combat.active_actor_id() != caster_id:
+		return "Only the active character may use an item."
+	var caster := state.party.character_by_id(caster_id)
+	if caster == null or caster.inventory().is_empty():
+		return "The active character carries no items."
+	for instance: ItemInstance in caster.inventory():
+		var item := content.item_by_id(instance.definition_id)
+		var spell := content.spell_by_classic_id(item.special_2) if item != null else null
+		if item != null and spell != null:
+			var probe := probe_character_item_spell(state, content, caster_id, caster_id if spell.target_type == 5 else "", instance.id)
+			if not probe.allowed:
+				return probe.reason_text
+	return "No carried item has a supported Classic combat use."
+
+
+static func _inventory_instance(character: CharacterState, instance_id: String) -> ItemInstance:
+	if character == null:
+		return null
+	for instance: ItemInstance in character.inventory():
+		if instance.id == instance_id:
+			return instance
+	return null
+
+
+static func _item_use_reason_code(instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition) -> StringName:
+	if instance == null or item == null:
+		return &"unknown_item_instance"
+	if instance.charges == 0:
+		return &"item_has_no_charges"
+	if item.special_2 <= 1100:
+		return &"item_has_no_spell_effect"
+	if spell == null:
+		return &"unknown_item_spell"
+	return &"item_cannot_be_used"
+
+
+static func _item_used_event(caster_id: String, instance_id: String, item: ItemDefinition, spell: SpellDefinition, power_level: int, caster: CharacterState) -> DomainEvent:
+	var remaining := -1
+	var dropped := true
+	for instance: ItemInstance in caster.inventory():
+		if instance.id == instance_id:
+			remaining = instance.charges
+			dropped = false
+			break
+	return DomainEvent.new(&"item_used", {"characterId": caster_id, "instanceId": instance_id, "itemId": item.id, "spellId": spell.id, "power": power_level, "chargesRemaining": remaining, "droppedOnEmpty": dropped, "source": "classic"})
+
+
 func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng, target_coordinate: Vector2i = Vector2i(-100_000, -100_000), rotation: int = 0, target_ids: Array[String] = []) -> CombatFlowResult:
 	var probe := probe_character_spell_cast(state, content, caster_id, target_id, spell_id, power_level, target_coordinate, rotation, target_ids)
 	if not probe.allowed:
@@ -770,9 +943,10 @@ func _cast_character_area_spell(state: GameState, content: RealmzContent, caster
 	return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, center, shape)
 
 
-func _commit_character_multi_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = Vector2i(-100_000, -100_000), shape: int = 0) -> CombatFlowResult:
+func _commit_character_multi_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, group: GroupSpellResolution, rng: RealmzRng, center: Vector2i = Vector2i(-100_000, -100_000), shape: int = 0, event_source: String = "classic", item_instance_id: String = "", count_spell_cast: bool = true) -> CombatFlowResult:
 	var combat := state.combat
-	combat.active_turn.spell_cast_count += 1
+	if count_spell_cast:
+		combat.active_turn.spell_cast_count += 1
 	caster.attacks_remaining = _rules.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
 	var events: Array[DomainEvent] = []
@@ -784,7 +958,9 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		var reflected := group.reflected_targets[index]
 		if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
 			combat.mark_attacked(resolved_target_id)
-		var payload := {"actorId": caster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic"}
+		var payload := {"actorId": caster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": event_source}
+		if not item_instance_id.is_empty():
+			payload["itemInstanceId"] = item_instance_id
 		if shape > 0:
 			payload["areaCenter"] = [center.x, center.y]
 			payload["areaShape"] = shape
@@ -944,6 +1120,16 @@ func _character_actor_spell_candidates(state: GameState, content: RealmzContent,
 		if _spell_actor_target_is_valid(state, content, caster.id, monster.id, spell, power_level):
 			result.append(CombatSpellTargetView.new(monster.id, &"monster", monster.name, monster.current_health, monster.maximum_health))
 	return result
+
+
+static func _spell_target_view(state: GameState, content: RealmzContent, target_id: String) -> CombatSpellTargetView:
+	var character := state.party.character_by_id(target_id)
+	if character != null:
+		return CombatSpellTargetView.new(character.id, &"character", character.name, character.current_health, character.maximum_health)
+	var monster := state.combat.monster_by_id(target_id) if state.combat != null else null
+	if monster != null and content.monster_by_id(monster.definition_id) != null:
+		return CombatSpellTargetView.new(monster.id, &"monster", monster.name, monster.current_health, monster.maximum_health)
+	return null
 
 
 func _spell_actor_target_is_valid(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition, power_level: int) -> bool:

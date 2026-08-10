@@ -16,6 +16,7 @@ func run() -> void:
 	_test_monster_missile_does_not_impersonate_melee()
 	_test_source_backed_projectile_fire()
 	_test_source_backed_character_spell_casting()
+	_test_source_backed_combat_spell_item_use()
 	_test_source_backed_special_healing_and_actor_targeting()
 	_test_character_automatic_group_spell()
 	_test_character_fixed_area_spell()
@@ -28,6 +29,92 @@ func run() -> void:
 	_test_monster_attack_cursor_restore()
 	_test_battle_owned_fumble_and_exact_recovery()
 	_test_monster_fumble_clears_only_active_weapon()
+
+
+func _test_source_backed_combat_spell_item_use() -> void:
+	var rules := RealmzRules.new()
+	var character := _character("character.item-caster")
+	character.normal_attacks = 4
+	character.spell_points = 0
+	character.maximum_spell_points = 0
+	character.maximum_load = 100
+	var monster_definition := _monster_definition("monster.item-target", [MonsterAttackDefinition.new(1, 1)])
+	var monster := MonsterState.new("monster.item-target.instance", monster_definition.id, "Item Target", 10, 10, 1)
+	var state := _state(character, monster, "battle.item-use")
+	var category_mask := 1 << 5
+	var empty_ranges: Array[Vector2i] = []
+	var empty_age_changes: Array[PackedInt32Array] = []
+	var race := RaceDefinition.new("race.test", 1, "Human", _ints(8), _ints(8), _ints(5), _ints(5), _ints(40), empty_ranges, empty_age_changes, 0, false, 10, 0, 0, 0, 1, 1, false, 0, category_mask, 0)
+	var caste := CasteDefinition.new("caste.test", 1, "Fighter", _ints(8), _ints(5), _ints(5), _ints(40), Vector2i(1, 1), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], [], 1, 1, 0, 1, 0, 0, 0, 1, 0, true, false, 0, category_mask, 0)
+	var spell := SpellDefinition.new("spell.item-bolt", 1101, "Item Bolt")
+	spell.damage_min = 3
+	spell.damage_max = 3
+	spell.damage_type = 1
+	spell.spell_class = 1
+	spell.cannot = 3
+	spell.target_type = 1
+	spell.in_combat = true
+	spell.range_min = 10
+	var group_spell := SpellDefinition.new("spell.item-wave", 1102, "Item Wave")
+	group_spell.damage_min = 2
+	group_spell.damage_max = 2
+	group_spell.damage_type = 1
+	group_spell.spell_class = 1
+	group_spell.cannot = 3
+	group_spell.target_type = 10
+	group_spell.in_combat = true
+	var item := ItemDefinition.new("item.combat-wand", 41, "Combat Wand")
+	item.item_type = 21
+	item.item_category_mask_low = category_mask
+	item.initial_charges = 2
+	item.weight = 2
+	item.weight_per_charge = 1
+	item.special_1 = 1
+	item.special_2 = spell.classic_id
+	item.sound_id = 49
+	var instance := rules.inventory.add_item(character, item, "item.combat-wand.instance", true)
+	var group_item := ItemDefinition.new("item.combat-wave", 42, "Wave Wand")
+	group_item.item_type = 21
+	group_item.item_category_mask_low = category_mask
+	group_item.initial_charges = 1
+	group_item.special_1 = 1
+	group_item.special_2 = group_spell.classic_id
+	var group_instance := rules.inventory.add_item(character, group_item, "item.combat-wave.instance", true)
+	var content := _content([monster_definition], [item, group_item], [race], [caste], [spell, group_spell])
+	var options := rules.combat_flow.character_item_spell_options(state, content, character.id)
+	assert_true(options.any(func(option: CombatItemOptionView) -> bool: return option.item_instance_id == instance.id and option.target_id == monster.id), "combat request options expose a legal charged item and exact target")
+	assert_true(options.any(func(option: CombatItemOptionView) -> bool: return option.item_instance_id == group_instance.id and option.target_mode == &"automatic" and option.target_name == "All Enemies"), "combat request options expose source-backed automatic group targeting without inventing an actor selection")
+	var request := RealmzRuntimeApi.new(content, state, ScriptedRng.new([]), ScenarioActionState.new())._combat_request("request.item-use")
+	assert_true(request.payload.get("actions", []).has("use_item"), "the scenario host advertises item use only when a source-probed option exists")
+	assert_true(request.payload.get("itemCasts", []).any(func(option: Dictionary) -> bool: return option.get("itemInstanceId") == instance.id and option.get("targetId") == monster.id and option.get("power") == 1), "the scenario interaction carries exact item, spell-power, and target identities")
+	var host_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 100]), ScenarioActionState.new())
+	var host_result := host_api._resume_battle({"kind": "classic-combat", "battleId": state.combat.battle_id}, InteractionResponse.new("request.item-use", InteractionRequest.COMBAT, {"actorId": character.id, "action": "use_item", "targetId": monster.id, "itemInstanceId": instance.id}), "request.item-use")
+	assert_equal(host_result.state, ScenarioRuntimeOperationResult.State.WAITING, "a typed combat item response returns to the ordinary battle interaction")
+	assert_equal([host_state.combat.monster_by_id(monster.id).current_health, host_state.party.character_by_id(character.id).inventory()[0].charges], [7, 1], "the scenario host commits the same exact target and item instance carried by its request")
+	var host_state_before_invalid := host_state.to_data()
+	var invalid_host_result := host_api._resume_battle({"kind": "classic-combat", "battleId": state.combat.battle_id}, InteractionResponse.new("request.item-use", InteractionRequest.COMBAT, {"actorId": character.id, "action": "use_item", "targetId": monster.id}), "request.item-use")
+	assert_equal(invalid_host_result.state, ScenarioRuntimeOperationResult.State.FAILED, "a malformed combat item response is rejected explicitly")
+	assert_equal(host_state.to_data(), host_state_before_invalid, "a rejected combat item response cannot consume a second charge or mutate battle state")
+	var spell_points_before := character.spell_points
+	var used := rules.combat_flow.use_spell_item(state, content, character.id, monster.id, instance.id, ScriptedRng.new([0, 0, 100]))
+	assert_true(used.ok, "active character can commit a source-backed combat spell item")
+	assert_equal([monster.current_health, instance.charges, character.spell_points], [7, 1, spell_points_before], "combat item applies damage, spends one charge, and never spends spell points")
+	assert_equal([character.movement, character.attacks_remaining], [0, 3], "successful combat item use pays Castle's twelve movement and two half-attack units without forcing an otherwise legal turn to end")
+	assert_true(used.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 649), "combat item plays its source item sound")
+	assert_true(used.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-item" and event.payload.get("itemInstanceId") == instance.id), "combat spell result retains item provenance")
+	var group_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	group_state.combat.active_turn = null
+	group_state.party.character_by_id(character.id).movement = 12
+	group_state.party.character_by_id(character.id).attacks_remaining = 2
+	var group_used := rules.combat_flow.use_spell_item(group_state, content, character.id, "", group_instance.id, ScriptedRng.new([0, 0, 100]))
+	assert_true(group_used.ok, "a fixed-power item can use Castle's automatic hostile-group target form")
+	assert_equal(group_state.combat.monster_by_id(monster.id).current_health, 5, "automatic hostile-group item use applies once to each matching live combatant")
+	instance.charges = 0
+	var rng := ScriptedRng.new([])
+	var depleted := rules.combat_flow.use_spell_item(state, content, character.id, monster.id, instance.id, rng)
+	assert_equal(depleted.error_code, &"item_has_no_charges", "depleted combat item is rejected explicitly")
+	assert_equal(rng.snapshot().draw_count, 0, "depleted combat item consumes no randomness")
 
 
 func _test_tactical_adjacency_movement_and_restore() -> void:

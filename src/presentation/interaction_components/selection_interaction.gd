@@ -13,6 +13,9 @@ func build(request: InteractionRequest) -> void:
 
 func _build_character_selection(request: InteractionRequest) -> void:
 	var required := int(request.payload.get("count", 1))
+	var prompt := String(request.payload.get("prompt", ""))
+	if not prompt.is_empty():
+		add_hint(prompt)
 	add_hint("Choose %d character%s." % [required, "" if required == 1 else "s"])
 	var eligible: Variant = request.payload.get("eligible", [])
 	if eligible is Array:

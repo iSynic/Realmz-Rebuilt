@@ -1294,7 +1294,7 @@ func _render_inventory() -> void:
 			_add_item_intent_action(actions, &"inventory.action.equipped", "Unequip", selected_item.actions.unequip, PlayerIntent.item_action(PlayerIntent.Kind.UNEQUIP_ITEM, selected_item.instance_id, selected_character.id))
 		else:
 			_add_item_intent_action(actions, &"inventory.action.equipped", "Equip", selected_item.actions.equip, PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, selected_item.instance_id, selected_character.id))
-		_add_item_intent_action(actions, &"inventory.action.use", "Use", selected_item.actions.use, PlayerIntent.use_item(selected_item.instance_id))
+		_add_item_intent_action(actions, &"inventory.action.use", "Use", selected_item.actions.use, PlayerIntent.use_item(selected_item.instance_id, selected_character.id))
 		_add_item_intent_action(actions, &"inventory.action.identify", "Identify", selected_item.actions.identify, PlayerIntent.item_action(PlayerIntent.Kind.IDENTIFY_ITEM, selected_item.instance_id, selected_character.id))
 		_add_item_intent_action(actions, &"inventory.action.join", "Join", selected_item.actions.join, PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, selected_item.instance_id, selected_character.id))
 		_add_item_intent_action(actions, &"inventory.action.split", "Split", selected_item.actions.split, PlayerIntent.item_action(PlayerIntent.Kind.SPLIT_ITEM, selected_item.instance_id, selected_character.id))
