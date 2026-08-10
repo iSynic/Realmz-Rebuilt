@@ -44,6 +44,7 @@ func build_monster(definition: MonsterDefinition, instance_id: String, traitor_o
 	var result := MonsterState.new(instance_id, definition.id, definition.name, stamina, stamina, definition.hit_dice, agility, armor, magic_resistance, spell_points, traitor)
 	for index: int in 8:
 		result.set_save_value(index, definition.save_value(index) + (7 * difficulty if index < 6 else 0))
+	_apply_starting_conditions(result, definition)
 	result.surrender_percent = definition.surrender_percent
 	result.weapon_id = _random_weapon(definition.random_weapon_table, instance_id, rng) if definition.random_weapon_table > 0 else definition.weapon_id
 	return result
@@ -79,9 +80,16 @@ func build_battle_monster(definition: MonsterDefinition, instance_id: String, in
 	var result := MonsterState.new(instance_id, definition.id, definition.name, stamina, stamina, definition.hit_dice, agility, armor, magic_resistance, spell_points, traitor)
 	for index: int in 8:
 		result.set_save_value(index, definition.save_value(index) + (10 * difficulty if index < 6 else 0))
+	_apply_starting_conditions(result, definition)
 	result.surrender_percent = definition.surrender_percent
 	result.weapon_id = _battle_random_weapon(definition.random_weapon_table, instance_id, rng) if definition.random_weapon_table > 0 else definition.weapon_id
 	return result
+
+
+func _apply_starting_conditions(monster: MonsterState, definition: MonsterDefinition) -> void:
+	var values := definition.starting_conditions()
+	for index: int in mini(values.size(), monster.conditions.size()):
+		monster.conditions.set_value(index, values[index])
 
 
 func _random_weapon(table_id: int, instance_id: String, rng: RealmzRng) -> String:

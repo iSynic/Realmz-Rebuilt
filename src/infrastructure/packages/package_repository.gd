@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "d8c59c118373b704fbf1103d7d57a76ff6e7f6144917cacdebe95cb0750d7e73"
+const EXPECTED_SCHEMA_HASH: String = "dfdf733b7696f2aaa3182870e523909de51d6841e0b11b2fb0fa00b674959336"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -682,7 +682,7 @@ func _construct_monsters(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content monsters must be an array.")
 		return null
-	var fields: Array[String] = ["id", "classicId", "name", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "requiredWeapon", "magicToHit", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "money", "spellIds", "itemIds", "weaponId", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
+	var fields: Array[String] = ["id", "classicId", "name", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "requiredWeapon", "magicToHit", "traitor", "size", "typeFlags", "attackCount", "magicAttackCount", "attacks", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "saves", "spellImmunities", "conditions", "money", "spellIds", "itemIds", "weaponId", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
 	var integer_fields: Array[String] = ["classicId", "hitDice", "staminaBonus", "agility", "movementMaximum", "armor", "magicResistance", "requiredWeapon", "magicToHit", "size", "attackCount", "magicAttackCount", "damageBonus", "castPercent", "runPercent", "surrenderPercent", "missilePercent", "canSummon", "randomWeaponTable", "iconId", "spellPoints", "experience", "deathMacro"]
 	var result: Array[MonsterDefinition] = []
 	var ids: Dictionary = {}
@@ -698,10 +698,11 @@ func _construct_monsters(value: Variant) -> Variant:
 		var type_value: Variant = _integer_array(record["typeFlags"], 8, "Monster type flags")
 		var saves_value: Variant = _integer_array(record["saves"], 6, "Monster saves")
 		var immunity_value: Variant = _integer_array(record["spellImmunities"], 6, "Monster spell immunities")
+		var conditions_value: Variant = _integer_array(record["conditions"], 40, "Monster starting conditions")
 		var money_value: Variant = _integer_array(record["money"], 3, "Monster wealth")
 		var spell_ids_value: Variant = _fixed_or_empty_string_list(record["spellIds"], 10, 255, "Monster spell IDs")
 		var item_ids_value: Variant = _fixed_string_list(record["itemIds"], 6, 255, "Monster item IDs")
-		if type_value == null or saves_value == null or immunity_value == null or money_value == null or spell_ids_value == null or item_ids_value == null:
+		if type_value == null or saves_value == null or immunity_value == null or conditions_value == null or not _array_values_in_range(conditions_value, -128, 127) or money_value == null or spell_ids_value == null or item_ids_value == null:
 			return null
 		var attacks: Array[MonsterAttackDefinition] = []
 		for attack_value: Variant in record["attacks"]:
@@ -717,7 +718,7 @@ func _construct_monsters(value: Variant) -> Variant:
 		if integers["attackCount"] < 0 or integers["attackCount"] > 5 or integers["attackCount"] > attacks.size():
 			_reject("Monster attack count exceeds its fixed Classic attack rows.")
 			return null
-		var monster := MonsterDefinition.new(record["id"], integers["classicId"], record["name"], integers["hitDice"], integers["staminaBonus"], integers["agility"], integers["armor"], integers["magicResistance"], type_value, saves_value, immunity_value, money_value, spell_ids_value, item_ids_value, attacks)
+		var monster := MonsterDefinition.new(record["id"], integers["classicId"], record["name"], integers["hitDice"], integers["staminaBonus"], integers["agility"], integers["armor"], integers["magicResistance"], type_value, saves_value, immunity_value, money_value, spell_ids_value, item_ids_value, attacks, conditions_value)
 		monster.movement_max = integers["movementMaximum"]
 		monster.required_weapon = integers["requiredWeapon"]
 		monster.magic_to_hit = integers["magicToHit"]

@@ -87,7 +87,9 @@ func _test_formation_and_footprints() -> void:
 
 func _test_battle_monster_construction_path() -> void:
 	var saves: Array[int] = [1, 2, 3, 4, 5, 6, 7, 8]
-	var definition := MonsterDefinition.new("classic.monster.77", 77, "Battle Monster", 2, 1, 10, 10, 20, _ints(8), saves, _ints(6), _ints(3), [], [], [MonsterAttackDefinition.new(1, 1)])
+	var conditions := _ints(40)
+	conditions[ConditionRules.REFLECTING_SPELLS] = -1
+	var definition := MonsterDefinition.new("classic.monster.77", 77, "Battle Monster", 2, 1, 10, 10, 20, _ints(8), saves, _ints(6), _ints(3), [], [], [MonsterAttackDefinition.new(1, 1)], conditions)
 	definition.spell_points = 10
 	definition.random_weapon_table = 2
 	var rng := ScriptedRng.new([0, 32_767, 0, 0, 0, 27_526])
@@ -97,6 +99,7 @@ func _test_battle_monster_construction_path() -> void:
 		return
 	assert_equal([monster.armor, monster.agility, monster.spell_points, monster.maximum_health, monster.magic_resistance], [6, 12, 12, 4, 23], "battle difficulty uses Castle's minus-three AC, forty-percent resources, and single resistance adjustment")
 	assert_equal(monster.save_values(), [11, 12, 13, 14, 15, 16, 7, 8], "battle setup adds ten difficulty points only to Castle's first six monster saves")
+	assert_equal(monster.conditions.value(ConditionRules.REFLECTING_SPELLS), -1, "battle construction copies every authored monster starting condition before play")
 	assert_equal(monster.weapon_id, "classic.item.137", "authored battle table 2 gives overlapping roll 85 to its later row")
 	assert_equal(rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["battle.monster.monster.battle.1.armor", "battle.monster.monster.battle.1.agility", "battle.monster.monster.battle.1.spell-points", "battle.monster.monster.battle.1.stamina.0", "battle.monster.monster.battle.1.stamina.1", "battle.monster.monster.battle.1.random-weapon"], "battle construction preserves AC, agility, spell points, health dice, and weapon draw order")
 

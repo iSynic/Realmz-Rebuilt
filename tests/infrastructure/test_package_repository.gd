@@ -12,7 +12,7 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "04a58fbff91f4992e5a5258f1690e49bcd146f8865c7136b9c9abd285380c7f9", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "11910ccc600c7b82e9c4a8176c6262b5e9eab04aefaa340b5a5c049304152aca", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -74,6 +74,7 @@ func run() -> void:
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").spell_id_at(1), "", "an empty native spell slot remains selectable as an empty Castle retry")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").required_weapon, 0, "monster weapon requirements remain distinct from battle placement distance")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").magic_to_hit, 0, "monster magical-plus thresholds remain an explicit field even when unrestricted")
+	assert_equal(loaded.content.monster_by_id("classic.monster.1").starting_conditions()[ConditionRules.REFLECTING_SPELLS], -1, "all forty authored monster starting conditions cross the validating package boundary")
 	var random_weapon_monster := MonsterDefinition.new("monster.random-readiness", 999, "Random Readiness", 1, 0, 1, 0, 0, [], [], [], [], [], [], [MonsterAttackDefinition.new(1, 1)])
 	random_weapon_monster.random_weapon_table = 6
 	assert_false(PackageRepository.new()._validate_rule_references([], [], loaded.content.item_definitions(), [], [random_weapon_monster], [], [], [], {}), "package readiness rejects a random monster weapon table when any possible generated item is absent")
@@ -96,6 +97,12 @@ func run() -> void:
 		invalid_monsters = fixture_content["monsters"].duplicate(true)
 		invalid_monsters[0]["itemIds"] = ["classic.item.901"]
 		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects legacy packed monster items because they erase native slot identity")
+		invalid_monsters = fixture_content["monsters"].duplicate(true)
+		invalid_monsters[0]["conditions"].pop_back()
+		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects a monster without all forty Classic starting conditions")
+		invalid_monsters = fixture_content["monsters"].duplicate(true)
+		invalid_monsters[0]["conditions"][ConditionRules.REFLECTING_SPELLS] = -129
+		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects a monster starting condition outside its signed byte")
 		var spellless_monsters: Array = fixture_content["monsters"].duplicate(true)
 		spellless_monsters[0]["spellIds"] = []
 		var normalized_spellless: Variant = PackageRepository.new()._construct_monsters(spellless_monsters)
