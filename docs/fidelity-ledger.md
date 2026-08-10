@@ -2,6 +2,16 @@
 
 Classic-visible behavior is the default ruleset. This ledger records deliberate departures only; the absence of a decision does not authorize reinterpretation.
 
+## FD-CHARACTER-002 — Human appearance-set zero alias
+
+- Affected rule: the initial and recommended portrait/tactical icon for a Human character whose Data Race `defaulticonset` is zero.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newcharacter.c`, `CharacterGen`; `src/realmz_orig/portrait-picklock.c`, `portrait`; `src/realmz_orig/iconpict.c`, `iconpicture`; and `src/realmz_orig/main.c`, the Portraits/Tacticals resource-fork opens. Initial creation computes portrait `251 + defaulticonset*6` and tactical `9000 - 257 + portrait`; the portrait picker applies the same zero-set offset. The browseable forks instead contain portraits 257–376 and tacticals 9000–9119. The imported Human record stores set zero, and decoded portrait 257 matches the first named Human portrait used by the functional Remake reference.
+- Observable source inconsistency: the literal Human initial values are 251 and 8994, neither of which belongs to the browseable character catalogs, while the picker/catalog pairing begins at 257/9000. This conclusion combines complete pinned source flow with direct resource inventory; it is not presented as a Castle-runtime capture.
+- Player-facing problem: preserving the literal formula would create a Human with unavailable art and would place no actual Human portraits in the recommended group.
+- Chosen 2.0 behavior: treat stored set zero as an alias of the first browseable six-portrait set. A default Human receives portrait 257 and tactical icon 9000; explicit selection uses the corresponding offset. Set one remains a valid alias for the same first portrait set, and all positive set values otherwise retain Castle's formula.
+- Tests: Providence validates the zero/set-one alias and emits exactly 120 role-labelled portraits plus 120 tactical icons. Package, session, UI, save/restore, and vault tests verify complete catalogs, stable IDs, role rejection, Human defaults, and immutable revision eligibility. The differential case is `character.appearance-catalog-and-human-default`.
+- Legacy quirk: none. Missing resources are not useful authored behavior, and no compatibility profile is introduced.
+
 ## FD-CHARACTER-001 — Bounded trained-ability records
 
 - Affected rule: initialization and level-up of the character's fifteen-slot trained-ability array.

@@ -195,10 +195,10 @@ func _load_open_archive(archive: ZIPReader, source_path: String) -> PackageLoadR
 		return _validation_failure()
 	if not _validate_render_references(asset_document, world_document):
 		return _validation_failure()
-	var runtime_content := _construct_content(manifest, content_document, world_document, scenario_document)
+	var runtime_assets := _construct_assets(asset_document)
+	var runtime_content := _construct_content(manifest, content_document, world_document, scenario_document, runtime_assets)
 	if runtime_content == null:
 		return _validation_failure()
-	var runtime_assets := _construct_assets(asset_document)
 	return PackageLoadResult.succeeded(runtime_content, PackageMediaCatalog.new(source_path, manifest["packageHash"], runtime_assets))
 
 
@@ -256,7 +256,7 @@ static func package_capability_error(capability: Variant) -> String:
 	return ""
 
 
-func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictionary, scenario: Dictionary) -> RealmzContent:
+func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictionary, scenario: Dictionary, media_assets: Array[PackageMediaAsset] = []) -> RealmzContent:
 	if not content.has("campaign") or not content["campaign"] is Dictionary or content["campaign"].get("id") != manifest["campaignId"]:
 		_reject("Content campaign identity does not match the manifest.")
 		return null
@@ -307,6 +307,7 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 	var battles: Array[BattleDefinition] = battles_value
 	var treasures: Array[TreasureDefinition] = treasures_value
 	var shops: Array[ShopDefinition] = shops_value
+	var appearance_options := _construct_character_appearance_options(media_assets, races)
 	var scenario_definition := _construct_scenario(scenario, manifest["campaignId"])
 	if scenario_definition == null:
 		return null
@@ -362,7 +363,7 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 			if destination_map == null or destination_map.topology.cell_at(trigger.post_action_location.coordinate) == null:
 				_reject("Trigger '%s' references an unavailable post-action location." % trigger.id)
 				return null
-	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters, option_labels, campaign_definition)
+	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters, option_labels, campaign_definition, appearance_options)
 
 
 func _construct_campaign_definition(value: Variant) -> CampaignDefinition:
@@ -1894,6 +1895,8 @@ func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
 		return _reject("Asset index must contain an assets array.")
 	var ids: Dictionary = {}
 	var resources: Dictionary = {}
+	var portrait_resource_ids: Dictionary = {}
+	var combat_icon_resource_ids: Dictionary = {}
 	for asset: Variant in document["assets"]:
 		if not asset is Dictionary or not _exact_fields(asset, ["id", "label", "kind", "mimeType", "resourceType", "resourceId", "bytes", "sha256", "path", "width", "height", "durationMs", "sampleRate", "channels", "tileWidth", "tileHeight", "columns", "rows", "landlook", "baseTile"]):
 			return _reject("Asset index contains a malformed record.")
@@ -1924,6 +1927,19 @@ func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
 			if resources.has(resource_key):
 				return _reject("Asset resource identities must be unique.")
 			resources[resource_key] = true
+			if asset["resourceType"] == "cicn" and asset["kind"] == "portrait":
+				portrait_resource_ids[_integer(asset["resourceId"])] = true
+			if asset["resourceType"] == "cicn" and asset["kind"] == "combat-icon":
+				combat_icon_resource_ids[_integer(asset["resourceId"])] = true
+		if asset["kind"] in ["portrait", "combat-icon"]:
+			if asset["resourceType"] != "cicn" or asset["resourceId"] == null or asset["mimeType"] != "image/png" or asset["width"] == null or _integer(asset["width"]) < 1 or asset["height"] == null or _integer(asset["height"]) < 1:
+				return _reject("Character appearance asset '%s' must be a decoded Classic cicn PNG with positive dimensions." % asset["id"])
+	for resource_id: int in range(257, 377):
+		if not portrait_resource_ids.has(resource_id):
+			return _reject("Character portrait catalog is missing Classic cicn %d." % resource_id)
+	for resource_id: int in range(9000, 9120):
+		if not combat_icon_resource_ids.has(resource_id):
+			return _reject("Character combat-icon catalog is missing Classic cicn %d." % resource_id)
 	return true
 
 
@@ -1977,6 +1993,26 @@ func _construct_assets(document: Dictionary) -> Array[PackageMediaAsset]:
 			-1 if record["baseTile"] == null else _integer(record["baseTile"]),
 		))
 	return assets
+
+
+func _construct_character_appearance_options(assets: Array[PackageMediaAsset], races: Array[RaceDefinition]) -> Array[CharacterAppearanceDefinition]:
+	var result: Array[CharacterAppearanceDefinition] = []
+	for asset: PackageMediaAsset in assets:
+		var kind := CharacterAppearanceDefinition.PORTRAIT if asset.kind == "portrait" else CharacterAppearanceDefinition.COMBAT_ICON if asset.kind == "combat-icon" else &""
+		if kind == &"":
+			continue
+		var recommended_races: Array[String] = []
+		for race: RaceDefinition in races:
+			var first_resource_id: int
+			if kind == CharacterAppearanceDefinition.PORTRAIT:
+				first_resource_id = 257 if race.default_icon_set == 0 else 251 + race.default_icon_set * 6
+			else:
+				first_resource_id = 9000 + (race.classic_id - 1) * 6
+			if asset.resource_id >= first_resource_id and asset.resource_id < first_resource_id + 6:
+				recommended_races.append(race.id)
+		result.append(CharacterAppearanceDefinition.new(asset.id, asset.label, kind, asset.resource_id, recommended_races))
+	result.sort_custom(func(left: CharacterAppearanceDefinition, right: CharacterAppearanceDefinition) -> bool: return left.classic_resource_id < right.classic_resource_id)
+	return result
 
 
 func _zip_entries(archive: ZIPReader) -> Variant:

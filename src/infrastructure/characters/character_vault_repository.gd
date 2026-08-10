@@ -34,13 +34,62 @@ func list_current_records() -> Array[CharacterVaultRecord]:
 	return result
 
 
+func list_character_ids() -> Array[String]:
+	var result: Array[String] = []
+	var directory := DirAccess.open(_root_path)
+	if directory == null:
+		return result
+	directory.list_dir_begin()
+	var entry := directory.get_next()
+	while not entry.is_empty():
+		if directory.current_is_dir() and _safe_component(entry):
+			result.append(entry)
+		entry = directory.get_next()
+	directory.list_dir_end()
+	result.sort_custom(func(left: String, right: String) -> bool: return left.naturalnocasecmp_to(right) < 0)
+	return result
+
+
+func current_revision_hash(character_id: String) -> String:
+	return _read_current_hash(character_id) if _safe_component(character_id) else ""
+
+
+func list_revisions(character_id: String, include_archived: bool = true) -> Array[CharacterVaultRecord]:
+	last_error = ""
+	var result: Array[CharacterVaultRecord] = []
+	if not _safe_component(character_id):
+		_fail("Character ID is not a portable path component.")
+		return result
+	_append_revision_records("%s/%s" % [_root_path, character_id], character_id, result)
+	if include_archived:
+		_append_revision_records("%s/%s/archive" % [_root_path, character_id], character_id, result)
+	var unique: Dictionary = {}
+	var deduplicated: Array[CharacterVaultRecord] = []
+	for record: CharacterVaultRecord in result:
+		if unique.has(record.revision_hash):
+			continue
+		unique[record.revision_hash] = true
+		deduplicated.append(record)
+	deduplicated.sort_custom(func(left: CharacterVaultRecord, right: CharacterVaultRecord) -> bool: return left.revision_hash < right.revision_hash)
+	return deduplicated
+
+
+func revision_is_archived(character_id: String, revision_hash: String) -> bool:
+	if not _safe_component(character_id) or not _safe_component(revision_hash):
+		return false
+	return FileAccess.file_exists("%s/%s/archive/%s%s" % [_root_path, character_id, revision_hash, RECORD_EXTENSION])
+
+
 func load_revision(character_id: String, revision_hash: String) -> CharacterVaultRecord:
 	last_error = ""
 	if not _safe_component(character_id) or not _safe_component(revision_hash):
 		_fail("Character and revision IDs must be portable path components.")
 		return null
 	var path := "%s/%s/%s%s" % [_root_path, character_id, revision_hash, RECORD_EXTENSION]
-	return _read_record(path)
+	var record := _read_record(path)
+	if record == null or record.character_id != character_id or record.revision_hash != revision_hash:
+		return null
+	return record
 
 
 func publish_revision(record: CharacterVaultRecord) -> bool:
@@ -98,10 +147,45 @@ func archive_character(character_id: String) -> bool:
 	var destination := "%s/%s%s" % [archive_path, current_hash, RECORD_EXTENSION]
 	if not FileAccess.file_exists(source):
 		return _fail("The current character revision is missing.")
-	var move_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(source), ProjectSettings.globalize_path(destination))
-	if move_error != OK:
-		return _fail("Could not archive the character revision (error %d)." % move_error)
-	return _delete_file("%s/%s/current.json" % [_root_path, character_id])
+	var moved := false
+	if not FileAccess.file_exists(destination):
+		var move_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(source), ProjectSettings.globalize_path(destination))
+		if move_error != OK:
+			return _fail("Could not archive the character revision (error %d)." % move_error)
+		moved = true
+	else:
+		var archived := _read_record(destination)
+		if archived == null or archived.character_id != character_id or archived.revision_hash != current_hash:
+			return _fail("The archived character revision does not match the current revision identity.")
+	if not _delete_file("%s/%s/current.json" % [_root_path, character_id]):
+		if moved:
+			DirAccess.rename_absolute(ProjectSettings.globalize_path(destination), ProjectSettings.globalize_path(source))
+		return _fail("Could not clear the current character revision index.")
+	return true
+
+
+func restore_revision(character_id: String, revision_hash: String) -> bool:
+	last_error = ""
+	if not _safe_component(character_id) or not _safe_component(revision_hash):
+		return _fail("Character and revision IDs must be portable path components.")
+	if not _read_current_hash(character_id).is_empty():
+		return _fail("Archive recovery is available only when the character has no current revision.")
+	var active_path := "%s/%s/%s%s" % [_root_path, character_id, revision_hash, RECORD_EXTENSION]
+	var archive_path := "%s/%s/archive/%s%s" % [_root_path, character_id, revision_hash, RECORD_EXTENSION]
+	var moved := false
+	if not FileAccess.file_exists(active_path):
+		if not FileAccess.file_exists(archive_path):
+			return _fail("The archived character revision is unavailable.")
+		var move_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(archive_path), ProjectSettings.globalize_path(active_path))
+		if move_error != OK:
+			return _fail("Could not restore the archived character revision (error %d)." % move_error)
+		moved = true
+	var restored := load_revision(character_id, revision_hash)
+	if restored == null or not _write_current_hash(character_id, revision_hash):
+		if moved:
+			DirAccess.rename_absolute(ProjectSettings.globalize_path(active_path), ProjectSettings.globalize_path(archive_path))
+		return _fail("The restored character revision could not be validated and indexed.")
+	return true
 
 
 func campaign_eligibility(record: CharacterVaultRecord, content: RealmzContent) -> CharacterVaultEligibility:
@@ -132,6 +216,13 @@ func campaign_eligibility(record: CharacterVaultRecord, content: RealmzContent) 
 	for spell_id: String in record.state.known_spells():
 		if content.spell_by_id(spell_id) == null:
 			result.reasons.append("Spell '%s' is not defined by this campaign." % spell_id)
+	if content.has_character_appearance_catalog():
+		var portrait := content.appearance_by_id(record.state.portrait_id) if not record.state.portrait_id.is_empty() else null
+		if not record.state.portrait_id.is_empty() and (portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT):
+			result.reasons.append("Portrait '%s' is not defined by this campaign package." % record.state.portrait_id)
+		var combat_icon := content.appearance_by_id(record.state.combat_icon_id) if not record.state.combat_icon_id.is_empty() else null
+		if not record.state.combat_icon_id.is_empty() and (combat_icon == null or combat_icon.kind != CharacterAppearanceDefinition.COMBAT_ICON):
+			result.reasons.append("Combat icon '%s' is not defined by this campaign package." % record.state.combat_icon_id)
 	if record.state.level < 1:
 		result.reasons.append("Character level is below the Classic minimum.")
 	result.eligible = result.reasons.is_empty()
@@ -187,6 +278,22 @@ func _read_record(path: String) -> CharacterVaultRecord:
 	var parsed: Variant = JSON.parse_string(file.get_as_text())
 	file.close()
 	return CharacterVaultRecord.from_data(parsed)
+
+
+func _append_revision_records(directory_path: String, character_id: String, records: Array[CharacterVaultRecord]) -> void:
+	var directory := DirAccess.open(directory_path)
+	if directory == null:
+		return
+	directory.list_dir_begin()
+	var entry := directory.get_next()
+	while not entry.is_empty():
+		if not directory.current_is_dir() and entry.ends_with(RECORD_EXTENSION):
+			var record := _read_record("%s/%s" % [directory_path, entry])
+			var expected_hash := entry.trim_suffix(RECORD_EXTENSION)
+			if record != null and record.character_id == character_id and record.revision_hash == expected_hash:
+				records.append(record)
+		entry = directory.get_next()
+	directory.list_dir_end()
 
 
 func _revision_hash(record: CharacterVaultRecord) -> String:

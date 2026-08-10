@@ -23,6 +23,8 @@ The repository also maintains an offline source-intelligence snapshot under docs
 
 The aggregate gate imports the project headlessly, validates all scripts, runs typed GDScript tests, checks forbidden core dependencies, verifies the mirrored schema and synthetic package hashes/provenance, and runs `git diff --check`.
 
+For a focused characterization while iterating, append `-- --suite <path-fragment>` to the `tests/test_runner.gd` command. The filter must match at least one registered suite; release and closeout evidence still uses the complete suite.
+
 ## UI verification
 
 The canonical UI contract is `docs/ui-strategy.md`. `tests/presentation/classic_ui_fixture_gallery.gd` supplies nominal, empty, loading, error, unavailable, and oversized cases for all routes and interaction kinds. Verify 800x600, 960x600, 1280x720, 1600x900, and 1920x1080, then repeat dense screens with 150 percent text and each explicit interface density. Check map dominance, roster visibility, textbox/action reachability, menu overflow, wrapping, scroll reachability, focus order/restoration, Back order, exact 1x/2x control art, and that a pending interaction blocks both map and route input.

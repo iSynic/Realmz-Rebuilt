@@ -34,13 +34,14 @@ func _initialize() -> void:
 		call_deferred("_quit_cleanly", 1)
 		return
 	var construction_started := Time.get_ticks_msec()
-	var content := repository._construct_content(manifest, content_document, world_document, scenario_document)
+	var runtime_assets := repository._construct_assets(asset_document)
+	var content := repository._construct_content(manifest, content_document, world_document, scenario_document, runtime_assets)
 	print("PROBE construction_ms=%d" % (Time.get_ticks_msec() - construction_started))
 	if content == null:
 		printerr("PACKAGE_REJECTED construction: %s" % repository._last_error)
 		call_deferred("_quit_cleanly", 1)
 		return
-	var media := PackageMediaCatalog.new(package_path, manifest["packageHash"], repository._construct_assets(asset_document))
+	var media := PackageMediaCatalog.new(package_path, manifest["packageHash"], runtime_assets)
 	archive.close()
 	var session := GameSession.new()
 	var session_started_at := Time.get_ticks_msec()

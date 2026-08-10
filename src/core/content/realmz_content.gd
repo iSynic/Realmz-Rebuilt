@@ -25,9 +25,11 @@ var _monsters: Dictionary = {}
 var _battles: Dictionary = {}
 var _treasures: Dictionary = {}
 var _shops: Dictionary = {}
+var _appearance_options: Dictionary = {}
+var _appearance_by_resource: Dictionary = {}
 
 
-func _init(campaign: String, package_identity: String, content_identity: String, rules: String, start_map: String, start_position: Vector2i, world_definition: WorldDefinition, scenario_definition: ScenarioDefinition, messages: Array[MessageDefinition], triggers: Array[TriggerDefinition], simple_encounters: Array[SimpleEncounterDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = [], items: Array[ItemDefinition] = [], spells: Array[SpellDefinition] = [], monsters: Array[MonsterDefinition] = [], battles: Array[BattleDefinition] = [], treasures: Array[TreasureDefinition] = [], shops: Array[ShopDefinition] = [], complex_encounters: Array[ComplexEncounterDefinition] = [], thief_encounters: Array[ThiefEncounterDefinition] = [], authored_timed_encounters: Array[TimedEncounterDefinition] = [], authored_option_labels: Array[OptionLabelDefinition] = [], campaign_definition: CampaignDefinition = null) -> void:
+func _init(campaign: String, package_identity: String, content_identity: String, rules: String, start_map: String, start_position: Vector2i, world_definition: WorldDefinition, scenario_definition: ScenarioDefinition, messages: Array[MessageDefinition], triggers: Array[TriggerDefinition], simple_encounters: Array[SimpleEncounterDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = [], items: Array[ItemDefinition] = [], spells: Array[SpellDefinition] = [], monsters: Array[MonsterDefinition] = [], battles: Array[BattleDefinition] = [], treasures: Array[TreasureDefinition] = [], shops: Array[ShopDefinition] = [], complex_encounters: Array[ComplexEncounterDefinition] = [], thief_encounters: Array[ThiefEncounterDefinition] = [], authored_timed_encounters: Array[TimedEncounterDefinition] = [], authored_option_labels: Array[OptionLabelDefinition] = [], campaign_definition: CampaignDefinition = null, appearance_options: Array[CharacterAppearanceDefinition] = []) -> void:
 	campaign_id = campaign
 	package_hash = package_identity
 	content_id = content_identity
@@ -68,6 +70,9 @@ func _init(campaign: String, package_identity: String, content_identity: String,
 		_treasures[treasure.id] = treasure
 	for shop: ShopDefinition in shops:
 		_shops[shop.id] = shop
+	for option: CharacterAppearanceDefinition in appearance_options:
+		_appearance_options[option.id] = option
+		_appearance_by_resource[_appearance_resource_key(option.kind, option.classic_resource_id)] = option
 
 
 func message_by_id(message_id: int) -> MessageDefinition:
@@ -129,6 +134,28 @@ func race_by_id(definition_id: String) -> RaceDefinition:
 
 func caste_by_id(definition_id: String) -> CasteDefinition:
 	return _castes.get(definition_id) as CasteDefinition
+
+
+func appearance_by_id(definition_id: String) -> CharacterAppearanceDefinition:
+	return _appearance_options.get(definition_id) as CharacterAppearanceDefinition
+
+
+func appearance_by_resource(kind: StringName, classic_resource_id: int) -> CharacterAppearanceDefinition:
+	return _appearance_by_resource.get(_appearance_resource_key(kind, classic_resource_id)) as CharacterAppearanceDefinition
+
+
+func appearance_definitions(kind: StringName) -> Array[CharacterAppearanceDefinition]:
+	var result: Array[CharacterAppearanceDefinition] = []
+	for value: Variant in _appearance_options.values():
+		var option := value as CharacterAppearanceDefinition
+		if option.kind == kind:
+			result.append(option)
+	result.sort_custom(func(left: CharacterAppearanceDefinition, right: CharacterAppearanceDefinition) -> bool: return left.classic_resource_id < right.classic_resource_id)
+	return result
+
+
+func has_character_appearance_catalog() -> bool:
+	return not appearance_definitions(CharacterAppearanceDefinition.PORTRAIT).is_empty() and not appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON).is_empty()
 
 
 func item_by_id(definition_id: String) -> ItemDefinition:
@@ -237,3 +264,7 @@ func spell_definitions() -> Array[SpellDefinition]:
 	for id: Variant in ids:
 		result.append(_spells[id] as SpellDefinition)
 	return result
+
+
+static func _appearance_resource_key(kind: StringName, classic_resource_id: int) -> String:
+	return "%s:%d" % [kind, classic_resource_id]

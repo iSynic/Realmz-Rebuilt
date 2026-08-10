@@ -28,17 +28,29 @@ func run() -> void:
 	assert_false(repository.publish_revision(charmed_record), "battle-scoped Charm allegiance cannot leak into a reusable vault revision")
 	var records := repository.list_current_records()
 	assert_true(records.any(func(candidate: CharacterVaultRecord) -> bool: return candidate.character_id == record.character_id), "the current-revision index exposes published characters")
+	assert_true(repository.list_character_ids().has(record.character_id), "vault enumeration includes active character identities without reading presentation state")
 	var package := PackageRepository.new().load_package(FIXTURE_PATH)
 	assert_true(package.is_ok(), "the fixture package loads for campaign eligibility checks")
 	if package.is_ok():
 		var eligibility := repository.campaign_eligibility(record, package.content)
 		assert_true(eligibility.eligible, "a matching race and class are eligible for the target campaign")
+		var wrong_role := CharacterVaultRecord.from_data(record.to_data())
+		wrong_role.state.portrait_id = "realmz-combat-icon-9000"
+		assert_false(repository.campaign_eligibility(wrong_role, package.content).eligible, "campaign eligibility rejects a known package asset used in the wrong appearance role")
+		record.state.portrait_id = "realmz-portrait-257"
+		record.state.combat_icon_id = "realmz-combat-icon-9000"
+		assert_true(repository.campaign_eligibility(record, package.content).eligible, "matching package portrait and combat-icon identities remain vault-eligible")
 	var first_revision_hash := record.revision_hash
 	character.name = "Vault Fixture Revision Two"
+	character.portrait_id = "realmz-portrait-257"
+	character.combat_icon_id = "realmz-combat-icon-9000"
 	record.state = character
 	assert_true(repository.publish_revision(record), "publishing a changed character creates a new immutable revision")
 	assert_true(record.revision_hash != first_revision_hash, "changed character state receives a distinct revision hash")
+	var second_revision_hash := record.revision_hash
 	assert_not_null(repository.load_revision(record.character_id, first_revision_hash), "older character revisions remain loadable after a new publication")
+	var revision_count_before_archive := repository.list_revisions(record.character_id).size()
+	assert_true(revision_count_before_archive >= 2, "vault history exposes both immutable revisions instead of only the current index")
 	character.race_id = "missing.race"
 	record.state = character
 	var rejected := repository.campaign_eligibility(record, package.content)
@@ -46,3 +58,12 @@ func run() -> void:
 	assert_true(not rejected.reasons.is_empty(), "vault eligibility reports an actionable reason")
 	assert_true(repository.archive_character(record.character_id), "archiving removes the current index without destructive character deletion")
 	assert_true(repository.list_current_records().all(func(candidate: CharacterVaultRecord) -> bool: return candidate.character_id != record.character_id), "archived characters leave the current vault listing")
+	assert_true(repository.current_revision_hash(record.character_id).is_empty(), "archive clears the recoverable current-revision index")
+	assert_true(repository.revision_is_archived(record.character_id, second_revision_hash), "the archived current revision remains explicitly discoverable")
+	assert_equal(repository.list_revisions(record.character_id).size(), revision_count_before_archive, "archive preserves the complete immutable history")
+	assert_true(repository.restore_revision(record.character_id, first_revision_hash), "an earlier immutable revision can be restored as current")
+	assert_equal(repository.current_revision_hash(record.character_id), first_revision_hash, "recovery indexes the exact requested revision")
+	assert_true(repository.archive_character(record.character_id), "a restored earlier revision can be archived again without deleting history")
+	assert_true(repository.restore_revision(record.character_id, second_revision_hash), "the previously archived latest revision can be recovered")
+	assert_equal(repository.current_revision_hash(record.character_id), second_revision_hash, "archive recovery moves the exact latest revision back into the active vault")
+	assert_true(repository.archive_character(record.character_id), "the test leaves the fixture character archived and recoverable")

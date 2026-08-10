@@ -207,10 +207,15 @@ func view() -> GameView:
 	result.party_summary.banked_gold = _state.party.banked_wealth.gold
 	result.party_summary.fatigue = _state.party.fatigue
 	result.party_summary.acquired_map_ids = _state.world.acquired_map_ids()
-	for race: RaceDefinition in _content.race_definitions():
-		result.race_options.append(DefinitionOptionView.new(race.id, race.name, race.description, race.eligible_caste_ids))
-	for caste: CasteDefinition in _content.caste_definitions():
-		result.caste_options.append(DefinitionOptionView.new(caste.id, caste.name, caste.description, caste.eligible_race_ids))
+	if result.party_setup_available:
+		for race: RaceDefinition in _content.race_definitions():
+			result.race_options.append(DefinitionOptionView.new(race.id, race.name, race.description, race.eligible_caste_ids))
+		for caste: CasteDefinition in _content.caste_definitions():
+			result.caste_options.append(DefinitionOptionView.new(caste.id, caste.name, caste.description, caste.eligible_race_ids))
+		for portrait: CharacterAppearanceDefinition in _content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT):
+			result.portrait_options.append(CharacterAppearanceOptionView.new(portrait))
+		for icon: CharacterAppearanceDefinition in _content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):
+			result.combat_icon_options.append(CharacterAppearanceOptionView.new(icon))
 	_populate_action_availability(result)
 	return result
 
@@ -511,6 +516,13 @@ func _import_vault_character(intent: PlayerIntent) -> SessionStep:
 	for spell_id: String in imported.known_spells():
 		if _content.spell_by_id(spell_id) == null:
 			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character knows a spell unavailable in this campaign.")
+	if _content.has_character_appearance_catalog():
+		var portrait := _content.appearance_by_id(imported.portrait_id) if not imported.portrait_id.is_empty() else null
+		if (portrait != null and portrait.kind != CharacterAppearanceDefinition.PORTRAIT) or (not imported.portrait_id.is_empty() and portrait == null):
+			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character uses a portrait unavailable in this campaign package.")
+		var combat_icon := _content.appearance_by_id(imported.combat_icon_id) if not imported.combat_icon_id.is_empty() else null
+		if (combat_icon != null and combat_icon.kind != CharacterAppearanceDefinition.COMBAT_ICON) or (not imported.combat_icon_id.is_empty() and combat_icon == null):
+			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character uses a combat icon unavailable in this campaign package.")
 	for current: CharacterState in current_characters:
 		if current.id == imported.id or current.name.to_lower() == imported.name.to_lower():
 			return SessionStep.failed(_view_revision, &"duplicate_party_member", "That vault character is already represented in the party.")
@@ -545,8 +557,8 @@ func _generate_character_draft(intent: PlayerIntent) -> SessionStep:
 	draft.starting_level = spec.starting_level
 	draft.race_id = spec.race_id
 	draft.caste_id = spec.caste_id
-	draft.portrait_id = spec.portrait_id
-	draft.combat_icon_id = spec.combat_icon_id
+	draft.portrait_id = character.portrait_id
+	draft.combat_icon_id = character.combat_icon_id
 	draft.generated_character = character
 	_state.character_draft = draft
 	return _finish_completed([DomainEvent.new(&"character_draft_generated", {"characterId": character.id, "name": character.name})])
@@ -670,18 +682,37 @@ func _character_creation_error(spec: CharacterCreationSpec, existing_names: Dict
 		return {"code": &"incompatible_race_class", "message": "The selected race cannot use that class."}
 	if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
 		return {"code": &"incompatible_class_race", "message": "The selected class is not available to that race."}
+	if _content.has_character_appearance_catalog():
+		var appearance := _resolved_character_appearance(spec, race)
+		if appearance.is_empty():
+			return {"code": &"invalid_character_appearance", "message": "The selected portrait or combat icon is unavailable in this campaign package."}
 	return {}
 
 
 func _create_character_from_spec(spec: CharacterCreationSpec, character_id: String, add_starting_items: bool = false) -> CharacterState:
-	var character := _rules.characters.create_character(character_id, spec.name, _content.race_by_id(spec.race_id), _content.caste_by_id(spec.caste_id), spec.gender, _rng, false, spec.starting_level)
+	var race := _content.race_by_id(spec.race_id)
+	var character := _rules.characters.create_character(character_id, spec.name, race, _content.caste_by_id(spec.caste_id), spec.gender, _rng, false, spec.starting_level)
 	if character == null:
 		return null
-	character.portrait_id = spec.portrait_id
-	character.combat_icon_id = spec.combat_icon_id
+	var appearance := _resolved_character_appearance(spec, race)
+	character.portrait_id = String(appearance.get("portraitId", spec.portrait_id))
+	character.combat_icon_id = String(appearance.get("combatIconId", spec.combat_icon_id))
 	if add_starting_items and not _rules.characters.add_initial_items(character, _content.caste_by_id(spec.caste_id)):
 		return null
 	return character
+
+
+func _resolved_character_appearance(spec: CharacterCreationSpec, race: RaceDefinition) -> Dictionary:
+	if not _content.has_character_appearance_catalog():
+		return {"portraitId": spec.portrait_id, "combatIconId": spec.combat_icon_id}
+	var default_portrait_resource := 257 if race.default_icon_set == 0 else 251 + race.default_icon_set * 6
+	var portrait := _content.appearance_by_id(spec.portrait_id) if not spec.portrait_id.is_empty() else _content.appearance_by_resource(CharacterAppearanceDefinition.PORTRAIT, default_portrait_resource)
+	if portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT:
+		return {}
+	var icon := _content.appearance_by_id(spec.combat_icon_id) if not spec.combat_icon_id.is_empty() else _content.appearance_by_resource(CharacterAppearanceDefinition.COMBAT_ICON, 9000 - 257 + portrait.classic_resource_id)
+	if icon == null or icon.kind != CharacterAppearanceDefinition.COMBAT_ICON:
+		return {}
+	return {"portraitId": portrait.id, "combatIconId": icon.id}
 
 
 func _next_party_character_id() -> String:

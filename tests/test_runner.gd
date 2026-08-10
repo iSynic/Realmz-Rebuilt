@@ -18,9 +18,25 @@ const SUITES: Array[Script] = [
 
 
 func _initialize() -> void:
+	var requested_suite := ""
+	var arguments := OS.get_cmdline_user_args()
+	if arguments.size() == 2 and arguments[0] == "--suite":
+		requested_suite = arguments[1]
+	elif not arguments.is_empty():
+		printerr("Usage: godot --headless --path <project> --script res://tests/test_runner.gd [-- --suite <path-fragment>]")
+		quit(2)
+		return
+	var selected_suites: Array[Script] = []
+	for suite_script: Script in SUITES:
+		if requested_suite.is_empty() or suite_script.resource_path.contains(requested_suite):
+			selected_suites.append(suite_script)
+	if selected_suites.is_empty():
+		printerr("No test suite matches '%s'." % requested_suite)
+		quit(2)
+		return
 	var assertion_count: int = 0
 	var failure_count: int = 0
-	for suite_script: Script in SUITES:
+	for suite_script: Script in selected_suites:
 		print("RUN: %s" % suite_script.resource_path)
 		var suite: RealmzTestCase = suite_script.new()
 		suite.run()
@@ -30,7 +46,7 @@ func _initialize() -> void:
 			failure_count += 1
 			printerr("FAIL %s: %s" % [suite_script.resource_path, failure])
 	if failure_count == 0:
-		print("PASS: %d assertions across %d suites" % [assertion_count, SUITES.size()])
+		print("PASS: %d assertions across %d suites" % [assertion_count, selected_suites.size()])
 		quit(0)
 	else:
 		printerr("FAILED: %d failures across %d assertions" % [failure_count, assertion_count])

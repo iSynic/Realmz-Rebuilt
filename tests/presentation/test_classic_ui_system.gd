@@ -16,6 +16,7 @@ func run() -> void:
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
 	_test_character_creator_workflow()
+	_test_character_vault_workspace()
 	_test_scene_composition()
 
 
@@ -373,6 +374,8 @@ func _test_character_creator_workflow() -> void:
 	view.campaign_summary.maximum_level = 7
 	view.race_options = [DefinitionOptionView.new("race.human", "Human", "Adaptable.", ["caste.sorcerer"])]
 	view.caste_options = [DefinitionOptionView.new("caste.sorcerer", "Sorcerer", "Arcane caster.", ["race.human"])]
+	view.portrait_options = [CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("portrait.human.1", "Human 1", CharacterAppearanceDefinition.PORTRAIT, 257, ["race.human"]))]
+	view.combat_icon_options = [CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("icon.human.1", "Human 1", CharacterAppearanceDefinition.COMBAT_ICON, 9000, ["race.human"]))]
 	for action_id: StringName in [&"generate_character_draft", &"cancel_character_draft", &"set_character_draft_spells", &"finalize_character", &"import_vault_character", &"begin_adventure", &"remove_party_member"]:
 		view.set_action_availability(action_id, action_id in [&"generate_character_draft", &"import_vault_character"], "Unavailable in this fixture state.")
 	var intents: Array[PlayerIntent] = []
@@ -399,6 +402,7 @@ func _test_character_creator_workflow() -> void:
 	router._creator_next()
 	assert_equal(router._creator_step, 3, "Appearance advances to Review only after requesting a core-owned roll")
 	assert_equal(intents[-1].kind, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, "Review is populated through the typed draft-generation intent")
+	assert_equal([intents[-1].party_members[0].portrait_id, intents[-1].party_members[0].combat_icon_id], ["portrait.human.1", "icon.human.1"], "Appearance emits stable package identities rather than filenames or numeric widget IDs")
 	assert_equal(intents[-1].party_members[0].starting_level, 3, "the selected fixed level crosses the typed intent boundary without presentation-side leveling")
 	var generated := CharacterState.new("party.character.1", "Mira", 8, 8)
 	generated.race_id = "race.human"
@@ -428,6 +432,87 @@ func _test_character_creator_workflow() -> void:
 	assert_equal(router._spell_list.item_count, 1, "the spell page renders core-provided Classic options and selection costs")
 	router._creator_next()
 	assert_equal(intents[-1].kind, PlayerIntent.Kind.FINALIZE_CHARACTER, "Add to party accepts the reviewed draft without carrying another creation specification")
+	router.free()
+
+
+func _test_character_vault_workspace() -> void:
+	var source_character := CharacterState.new("vault.hero", "Mira", 10, 10)
+	source_character.level = 3
+	source_character.race_id = "classic.race.1"
+	source_character.caste_id = "classic.caste.6"
+	var source_record := CharacterVaultRecord.new(source_character.id, "realmz-classic-1", "source-campaign", "b".repeat(64), source_character)
+	source_record.revision_hash = "a".repeat(64)
+	var source_eligibility := CharacterVaultEligibility.new()
+	source_eligibility.reasons.append("Source-backed mismatch reason")
+	var detached_revision := CharacterVaultRevisionView.from_record(source_record, source_eligibility, true, false)
+	assert_equal(detached_revision.eligibility_reasons, ["Source-backed mismatch reason"], "vault eligibility converts into a typed detached reason array")
+	var router := ClassicScreenRouter.new()
+	router._body = VBoxContainer.new()
+	router._content_parent = router._body
+	router.add_child(router._body)
+	var view := GameView.new(3, true, null)
+	view.campaign_id = "fixture-vault"
+	view.campaign_summary = CampaignSummaryView.new()
+	view.campaign_summary.title = "Vault Campaign"
+	view.set_action_availability(&"import_vault_character", true)
+	router._view = view
+	router._vault_return_to_setup = true
+	var current := CharacterVaultRevisionView.new()
+	current.character_id = "vault.hero"
+	current.revision_hash = "a".repeat(64)
+	current.name = "Mira"
+	current.level = 3
+	current.race_id = "classic.race.1"
+	current.caste_id = "classic.caste.6"
+	current.portrait_id = "realmz-portrait-257"
+	current.source_campaign_id = "source-campaign"
+	current.source_package_hash = "b".repeat(64)
+	current.publication_label = "Created after the first expedition"
+	current.is_current = true
+	current.eligible = true
+	var archived := CharacterVaultRevisionView.new()
+	archived.character_id = current.character_id
+	archived.revision_hash = "c".repeat(64)
+	archived.name = current.name
+	archived.level = 2
+	archived.race_id = current.race_id
+	archived.caste_id = current.caste_id
+	archived.source_campaign_id = current.source_campaign_id
+	archived.source_package_hash = current.source_package_hash
+	archived.archived = true
+	archived.eligibility_reasons = ["Item 'classic.item.missing' is not defined by this campaign."]
+	router.set_vault_revisions([current, archived])
+	router._render_vault()
+	var labels: Array[String] = []
+	for node: Node in router.find_children("*", "Label", true, false):
+		labels.append((node as Label).text)
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("Eligibility for Vault Campaign")), "the vault states which campaign owns the current eligibility decision")
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("classic.item.missing")), "an ineligible revision exposes its exact package mismatch")
+	var restore_events: Array[Array] = []
+	router.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: restore_events.append([character_id, revision_hash]))
+	var import_buttons: Array[Button] = []
+	var back_button: Button
+	var archive_button: Button
+	var restore_button: Button
+	for node: Node in router.find_children("*", "Button", true, false):
+		var button := node as Button
+		if button.text == "Back to party setup":
+			back_button = button
+		elif button.text == "Import this revision":
+			import_buttons.append(button)
+		elif button.text == "Archive character":
+			archive_button = button
+		elif button.text == "Restore as current":
+			restore_button = button
+	assert_equal(import_buttons.size(), 2, "each immutable revision renders its own import decision")
+	assert_not_null(back_button, "vault entry from party setup exposes a visible return action")
+	assert_true(import_buttons.any(func(button: Button) -> bool: return not button.disabled), "the current eligible revision can be imported")
+	assert_true(import_buttons.any(func(button: Button) -> bool: return button.disabled and button.tooltip_text.contains("Restore")), "archived revisions must be restored before import")
+	assert_not_null(archive_button, "the current revision exposes recoverable archive rather than delete")
+	assert_not_null(restore_button, "archived history exposes an explicit recovery action")
+	if restore_button != null:
+		restore_button.pressed.emit()
+	assert_equal(restore_events, [[archived.character_id, archived.revision_hash]], "recovery identifies the exact immutable revision")
 	router.free()
 
 

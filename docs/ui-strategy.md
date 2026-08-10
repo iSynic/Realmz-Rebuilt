@@ -9,7 +9,7 @@ Realmz 2 uses one responsive visual language whose first-screen composition is r
 - `ClassicUiAssetCatalog` resolves the committed control corpus. `src/presentation/assets/classic-ui-assets.json` records semantic ID, owning repository/commit/path, native dimensions, SHA-256, evidence, and scaling rules. Remake scene use at commit `86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61` proves command-control purpose without claiming Classic extraction. The land party marker is separately decoded from built-in CICN 186 in Castle's pinned `The Family Jewels.rsrc`; recording the owning resource fork prevents scenario-local CICN ID collisions.
 - The selected surface is SpriteCook asset `3f355030-0f8c-4d4e-b079-26ba8d3dbc32`, labelled `Realmz 2 Classic-wide charcoal slate`. `tools/ui-assets/build-classic-surfaces.ps1` preserves that production 512-pixel surface, derives a cosine-feathered 512-pixel tile whose opposite edges match exactly, and embeds the same native-scale tile in raised/inset nine-patches. Root backgrounds enable repeat sampling; panels, buttons, and frame edges use tile-axis drawing instead of stretching small center patches. The manifest records the source SHA-256 prefix and deterministic algorithm. Rejected candidates remain outside the repository.
 - Alegreya supplies narrative and headings. Alegreya Sans supplies menus, statistics, and controls. The pinned Google Fonts commit, hashes, and OFL licenses live under `src/presentation/assets/fonts/`; the runtime makes no network request.
-- Classic CICNs, ICONs, PICTs, portraits, map atlases, and scenario media remain immutable package content. The app-owned bitmap-control corpus is separate from package media.
+- Classic CICNs, ICONs, PICTs, portraits, map atlases, and scenario media remain immutable package content. Character creation receives only detached stable appearance IDs and thumbnails from the validated package catalog; it never enumerates host folders. The app-owned bitmap-control corpus is separate from package media.
 
 ## Responsive composition
 
@@ -47,7 +47,7 @@ Services and Battle open from typed session context, not as ordinary global dest
 - Battle shows the map only when positions exist. Otherwise it presents initiative, combatants, legal actions, targets, outcomes, and an explicit tactical-movement unavailable state.
 - Encounter requests remain inside the stage/textbox composition. Original Action, Items, Skills, Speak, and Stop art is used only for matching typed semantics.
 - Journal and System retain modern function inside the same slate frames, dense lists, Classic hierarchy, and keyboard model.
-- Campaign selection and party creation use the same material and typography while retaining responsive Race/Class and creator-stage behavior.
+- Campaign selection and party creation use the same material and typography while retaining responsive Race/Class and creator-stage behavior. Appearance browses the package's complete portrait and tactical catalogs, places the selected race's six recommendations first, and pairs matching portrait/tactical offsets until the player explicitly changes the tactical icon. The character vault is a reversible workspace with an explicit return to campaign selection or the owning party-setup surface; immutable earlier and archived revisions remain visible but cannot be imported until restored.
 
 Every route has its own scene-backed workspace registered in `UiRouteCatalog`. The router may retain focus, selection, filter, and Back history; it cannot mutate simulation.
 

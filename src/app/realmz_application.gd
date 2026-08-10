@@ -59,6 +59,8 @@ func _ready() -> void:
 	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed)
 	_shell_presenter.layout_changed.connect(_on_shell_layout_changed)
 	_shell_presenter.route_changed.connect(presentation_coordinator.set_active_route)
+	_shell_presenter.vault_archive_requested.connect(_archive_vault_character)
+	_shell_presenter.vault_restore_requested.connect(_restore_vault_revision)
 	_shell_presenter.apply_settings(_presentation_settings)
 	_apply_application_theme(_presentation_settings.text_scale)
 	_interaction_presenter.set_text_scale(_presentation_settings.text_scale)
@@ -68,7 +70,7 @@ func _ready() -> void:
 	_on_dungeon_3d_changed(_presentation_settings.dungeon_3d)
 	_status_label.text = "Pure session boundary online"
 	_refresh_campaigns()
-	_classic_shell.set_vault_records(character_vault_repository.list_current_records())
+	_refresh_vault_views()
 
 
 func _on_smoke_action_pressed() -> void:
@@ -102,6 +104,7 @@ func start_package(package_path: String, initial_seed: int) -> SessionStep:
 		_shell_presenter.set_status(_status_label.text, true)
 		return step
 	_active_content = package_result.content
+	_refresh_vault_views()
 	_smoke_button.text = "Search area"
 	var current_view := session_controller.view()
 	_status_label.text = "Loaded %s • %s %d,%d • seed %d" % [_active_content.campaign_id, current_view.party_map_id, current_view.party_coordinate.x, current_view.party_coordinate.y, initial_seed]
@@ -242,9 +245,48 @@ func _publish_character_revision(character_id: String) -> bool:
 	if not character_vault_repository.publish_revision(record):
 		_status_label.text = "Vault publication failed • %s" % character_vault_repository.last_error
 		return false
-	_classic_shell.set_vault_records(character_vault_repository.list_current_records())
+	_refresh_vault_views()
 	_status_label.text = "Published %s to the character vault" % character.name
 	return true
+
+
+func _refresh_vault_views() -> void:
+	var revisions: Array[CharacterVaultRevisionView] = []
+	for character_id: String in character_vault_repository.list_character_ids():
+		var current_hash := character_vault_repository.current_revision_hash(character_id)
+		var character_archived := current_hash.is_empty()
+		for record: CharacterVaultRecord in character_vault_repository.list_revisions(character_id):
+			var eligibility := character_vault_repository.campaign_eligibility(record, _active_content) if _active_content != null else null
+			revisions.append(CharacterVaultRevisionView.from_record(record, eligibility, record.revision_hash == current_hash, character_archived))
+	revisions.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool:
+		var character_order := left.character_id.naturalnocasecmp_to(right.character_id)
+		if character_order != 0:
+			return character_order < 0
+		if left.is_current != right.is_current:
+			return left.is_current
+		return left.revision_hash < right.revision_hash
+	)
+	_classic_shell.set_vault_revisions(revisions)
+
+
+func _archive_vault_character(character_id: String) -> void:
+	if not character_vault_repository.archive_character(character_id):
+		_status_label.text = "Vault archive failed • %s" % character_vault_repository.last_error
+		_shell_presenter.set_status(_status_label.text, true)
+		return
+	_refresh_vault_views()
+	_status_label.text = "Character archived • immutable revisions remain recoverable"
+	_shell_presenter.set_status(_status_label.text)
+
+
+func _restore_vault_revision(character_id: String, revision_hash: String) -> void:
+	if not character_vault_repository.restore_revision(character_id, revision_hash):
+		_status_label.text = "Vault restore failed • %s" % character_vault_repository.last_error
+		_shell_presenter.set_status(_status_label.text, true)
+		return
+	_refresh_vault_views()
+	_status_label.text = "Character revision restored as current"
+	_shell_presenter.set_status(_status_label.text)
 
 
 func save_active_session(slot_id: String) -> bool:

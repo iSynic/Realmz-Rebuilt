@@ -127,6 +127,8 @@ func run() -> void:
 	var generated := restored_setup.submit_intent(PlayerIntent.generate_character_draft(member))
 	assert_equal(generated.state, SessionStep.State.COMPLETED, "one typed specification generates a session-owned Classic character draft")
 	assert_not_null(restored_setup.view().character_draft, "the detached setup view exposes the generated character before acceptance")
+	assert_equal([restored_setup.view().portrait_options.size(), restored_setup.view().combat_icon_options.size()], [120, 120], "the detached setup view exposes both validated package appearance catalogs")
+	assert_equal([restored_setup.view().character_draft.portrait_id, restored_setup.view().character_draft.combat_icon_id], ["realmz-portrait-257", "realmz-combat-icon-9000"], "the Human zero-set correction chooses the first proven browseable portrait/tactical pair")
 	assert_equal(restored_setup.view().party_members.size(), 0, "generation does not add the draft to the party before acceptance")
 	assert_equal(restored_setup.view().character_draft.items.size(), 0, "the provisional Review state precedes Castle's post-spell addinitialitems stage")
 	assert_true(restored_setup.snapshot().rng_state.draw_count > before_generation_draws, "the committed draft owns the complete Classic creation RNG consumption")
@@ -135,6 +137,11 @@ func run() -> void:
 	var restored_draft := GameSession.new()
 	assert_equal(restored_draft.restore(content, generated_save).state, SessionStep.State.COMPLETED, "the generated Review boundary restores transactionally")
 	assert_equal(restored_draft.view().character_draft.brawn, restored_setup.view().character_draft.brawn, "restore preserves the exact rolled attributes")
+	assert_equal([restored_draft.view().character_draft.portrait_id, restored_draft.view().character_draft.combat_icon_id], ["realmz-portrait-257", "realmz-combat-icon-9000"], "save restoration preserves stable package appearance identities")
+	var invalid_appearance_session := GameSession.new()
+	invalid_appearance_session.start(content, 11)
+	var invalid_appearance_spec := CharacterCreationSpec.new("Wrong Kind", member.race_id, member.caste_id, member.gender, "realmz-combat-icon-9000", "realmz-combat-icon-9000")
+	assert_equal(invalid_appearance_session.submit_intent(PlayerIntent.generate_character_draft(invalid_appearance_spec)).error_code, &"invalid_character_appearance", "a combat icon cannot cross the typed portrait boundary")
 	var before_finalization_draws := restored_draft.snapshot().rng_state.draw_count
 	var finalized := restored_draft.submit_intent(PlayerIntent.finalize_character())
 	assert_equal(finalized.state, SessionStep.State.WAITING_FOR_INTERACTION, "accepting the reviewed draft adds it and reaches Castle's explicit reusable-character decision")
@@ -169,6 +176,9 @@ func run() -> void:
 	var imported := CharacterState.new("vault.character.one", "Vault Hero", 12, 12)
 	imported.race_id = setup_view.race_options[0].id
 	imported.caste_id = setup_view.caste_options[0].id
+	var wrong_kind_import := CharacterState.from_data(imported.to_data())
+	wrong_kind_import.portrait_id = "realmz-combat-icon-9000"
+	assert_equal(resumed_setup.submit_intent(PlayerIntent.import_vault_character(wrong_kind_import.id, "c".repeat(64), wrong_kind_import.to_data(), "fixture-source", "b".repeat(64))).error_code, &"vault_character_ineligible", "vault import rejects a package asset used in the wrong appearance role")
 	var import_step := resumed_setup.submit_intent(PlayerIntent.import_vault_character(imported.id, "a".repeat(64), imported.to_data(), "fixture-source", "b".repeat(64)))
 	assert_equal(import_step.state, SessionStep.State.COMPLETED, "vault import adds another member without completing party setup")
 	assert_equal(resumed_setup.view().party_members.size(), 2, "created and vault characters may share one setup party")

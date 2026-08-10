@@ -7,6 +7,8 @@ signal refresh_requested
 signal intent_submitted(intent: PlayerIntent)
 signal system_action_requested(action_id: StringName, value: Variant)
 signal presentation_setting_changed(setting_id: StringName, value: Variant)
+signal vault_archive_requested(character_id: String)
+signal vault_restore_requested(character_id: String, revision_hash: String)
 
 const GOLD := Color("d5b45d")
 const INK := Color("17191d")
@@ -54,7 +56,7 @@ var _creator_back_button: Button
 var _creator_next_button: Button
 var _creator_cancel_button: Button
 var _setup_import_button: Button
-var _vault_records: Array[CharacterVaultRecord] = []
+var _vault_revisions: Array[CharacterVaultRevisionView] = []
 var _selected_race_id: String = ""
 var _selected_caste_id: String = ""
 var _creator_step: int = 0
@@ -76,6 +78,10 @@ var _campaign_layout_rect := Rect2(12.0, 36.0, 680.0, 556.0)
 var _content_parent: Container
 var _inventory_query: String = ""
 var _presented_campaign_id: String = ""
+var _appearance_textures: Dictionary = {}
+var _combat_icon_touched: bool = false
+var _vault_return_to_setup: bool = false
+var _vault_return_to_campaign: bool = false
 
 
 func _ready() -> void:
@@ -144,14 +150,15 @@ func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
 	call_deferred("_refresh_campaign_layout")
 
 
-func set_vault_records(records: Array[CharacterVaultRecord]) -> void:
-	_vault_records = records.duplicate()
+func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
+	_vault_revisions = revisions.duplicate()
 	if _screen_id == &"vault":
 		_render_screen()
 
 
 func set_media_catalog(media: PackageMediaCatalog) -> void:
 	_media = media
+	_appearance_textures.clear()
 	if _view != null and _view.session_started:
 		_render_screen()
 
@@ -221,6 +228,8 @@ func _prepare_campaign_selection() -> void:
 
 
 func show_campaign_selection() -> void:
+	_vault_return_to_campaign = false
+	_vault_return_to_setup = false
 	_campaign_overlay.visible = true
 	_setup_overlay.visible = false
 	_body_frame.visible = false
@@ -238,6 +247,9 @@ func accepts_exploration_input() -> bool:
 func open_screen(screen_id: StringName) -> void:
 	if not UiRouteCatalog.has_route(screen_id):
 		return
+	if screen_id == &"vault":
+		_vault_return_to_campaign = false
+		_vault_return_to_setup = false
 	_store_focus()
 	if screen_id != _screen_id:
 		_route_history.append(_screen_id)
@@ -249,6 +261,16 @@ func open_screen(screen_id: StringName) -> void:
 
 
 func handle_back() -> bool:
+	if _screen_id == &"vault" and _vault_return_to_setup and _view != null and _view.party_setup_available:
+		_vault_return_to_setup = false
+		_screen_id = &"exploration"
+		_setup_overlay.visible = true
+		_body_frame.visible = false
+		_refresh_setup_options()
+		return true
+	if _screen_id == &"vault" and _vault_return_to_campaign:
+		show_campaign_selection()
+		return true
 	if _campaign_overlay.visible:
 		if _view != null and _view.session_started:
 			_campaign_overlay.visible = false
@@ -348,7 +370,13 @@ func _build_campaign_overlay() -> void:
 	var refresh := Button.new()
 	refresh.text = "Refresh installed packages"
 	refresh.pressed.connect(func() -> void: refresh_requested.emit())
-	column.add_child(refresh)
+	var library_actions := HBoxContainer.new()
+	library_actions.add_child(refresh)
+	var vault := Button.new()
+	vault.text = "Character vault"
+	vault.pressed.connect(_show_vault_from_campaign)
+	library_actions.add_child(vault)
+	column.add_child(library_actions)
 
 
 func _details_button(row: HBoxContainer) -> void:
@@ -607,17 +635,123 @@ func _populate_race_class_options() -> void:
 
 func _build_creator_appearance() -> void:
 	_creator_page.add_child(_label("Appearance", GOLD, 20))
-	_add_label(_creator_page, "Choose the portrait shown on character screens and the icon used in battle.", MUTED)
+	_add_label(_creator_page, "Choose the portrait shown on character screens and the icon used in battle. Castle's six race recommendations appear first.", MUTED)
+	_ensure_appearance_textures()
 	_portrait_option = OptionButton.new()
 	_portrait_option.name = "PortraitOption"
-	_portrait_option.add_item("Classic default portrait", 0)
-	_portrait_option.tooltip_text = "Additional package portrait choices will appear when their catalog is exposed by the detached view."
+	_portrait_option.fit_to_longest_item = false
+	var portrait_options := _sorted_appearance_options(_view.portrait_options if _view != null else [])
+	for option: CharacterAppearanceOptionView in portrait_options:
+		_add_appearance_option(_portrait_option, option)
+	_select_appearance_default(_portrait_option, _draft_portrait_id, true)
+	_portrait_option.item_selected.connect(_portrait_selected)
 	_creator_page.add_child(_portrait_option)
 	_combat_icon_option = OptionButton.new()
 	_combat_icon_option.name = "CombatIconOption"
-	_combat_icon_option.add_item("Classic default combat icon", 0)
-	_combat_icon_option.tooltip_text = "Additional package combat icons will appear when their catalog is exposed by the detached view."
+	_combat_icon_option.fit_to_longest_item = false
+	var combat_options := _sorted_appearance_options(_view.combat_icon_options if _view != null else [])
+	for option: CharacterAppearanceOptionView in combat_options:
+		_add_appearance_option(_combat_icon_option, option)
+	_select_appearance_default(_combat_icon_option, _draft_combat_icon_id, false)
+	_combat_icon_option.item_selected.connect(func(_index: int) -> void: _combat_icon_touched = true)
 	_creator_page.add_child(_combat_icon_option)
+	if portrait_options.is_empty() or combat_options.is_empty():
+		_add_label(_creator_page, "This package does not expose the complete Classic appearance catalog. Character generation is unavailable until the package is re-exported.", Color("ef7770"))
+
+
+func _sorted_appearance_options(source: Array[CharacterAppearanceOptionView]) -> Array[CharacterAppearanceOptionView]:
+	var result := source.duplicate()
+	result.sort_custom(func(left: CharacterAppearanceOptionView, right: CharacterAppearanceOptionView) -> bool:
+		var left_recommended := left.is_recommended_for(_selected_race_id)
+		var right_recommended := right.is_recommended_for(_selected_race_id)
+		if left_recommended != right_recommended:
+			return left_recommended
+		return left.classic_resource_id < right.classic_resource_id
+	)
+	return result
+
+
+func _add_appearance_option(control: OptionButton, option: CharacterAppearanceOptionView) -> void:
+	var prefix := "Recommended • " if option.is_recommended_for(_selected_race_id) else ""
+	var label := "%s%s • CICN %d" % [prefix, option.label, option.classic_resource_id]
+	var texture := _appearance_textures.get(option.id) as Texture2D
+	if texture != null:
+		control.add_icon_item(texture, label)
+	else:
+		control.add_item(label)
+	var index := control.item_count - 1
+	control.set_item_metadata(index, option.id)
+	control.set_item_tooltip(index, "%s character resource %d" % ["Portrait" if option.kind == CharacterAppearanceDefinition.PORTRAIT else "Combat icon", option.classic_resource_id])
+
+
+func _select_appearance_default(control: OptionButton, selected_id: String, portrait: bool) -> void:
+	if control.item_count == 0:
+		return
+	var target_id := selected_id
+	if target_id.is_empty() and portrait:
+		for index: int in control.item_count:
+			var option := _appearance_option_by_id(String(control.get_item_metadata(index)), true)
+			if option != null and option.is_recommended_for(_selected_race_id):
+				target_id = option.id
+				break
+	if target_id.is_empty() and not portrait:
+		var portrait_option := _selected_appearance(_portrait_option, true)
+		if portrait_option != null:
+			var wanted_resource_id := 9000 - 257 + portrait_option.classic_resource_id
+			for option: CharacterAppearanceOptionView in _view.combat_icon_options:
+				if option.classic_resource_id == wanted_resource_id:
+					target_id = option.id
+					break
+	for index: int in control.item_count:
+		if String(control.get_item_metadata(index)) == target_id:
+			control.select(index)
+			return
+	control.select(0)
+
+
+func _portrait_selected(_index: int) -> void:
+	if _combat_icon_touched or _combat_icon_option == null:
+		return
+	var portrait := _selected_appearance(_portrait_option, true)
+	if portrait == null:
+		return
+	var wanted_resource_id := 9000 - 257 + portrait.classic_resource_id
+	for index: int in _combat_icon_option.item_count:
+		var icon := _appearance_option_by_id(String(_combat_icon_option.get_item_metadata(index)), false)
+		if icon != null and icon.classic_resource_id == wanted_resource_id:
+			_combat_icon_option.select(index)
+			return
+
+
+func _selected_appearance(control: OptionButton, portrait: bool) -> CharacterAppearanceOptionView:
+	if control == null or control.selected < 0:
+		return null
+	return _appearance_option_by_id(String(control.get_item_metadata(control.selected)), portrait)
+
+
+func _appearance_option_by_id(option_id: String, portrait: bool) -> CharacterAppearanceOptionView:
+	var options := _view.portrait_options if portrait else _view.combat_icon_options
+	for option: CharacterAppearanceOptionView in options:
+		if option.id == option_id:
+			return option
+	return null
+
+
+func _ensure_appearance_textures() -> void:
+	if _media == null or not _appearance_textures.is_empty():
+		return
+	var assets: Array[PackageMediaAsset] = []
+	assets.append_array(_media.assets_of_kind("portrait"))
+	assets.append_array(_media.assets_of_kind("combat-icon"))
+	var payloads := _media.read_bytes_batch(assets)
+	for asset: PackageMediaAsset in assets:
+		var bytes: PackedByteArray = payloads.get(asset.id, PackedByteArray())
+		if bytes.is_empty():
+			continue
+		var image := Image.new()
+		var error := image.load_png_from_buffer(bytes)
+		if error == OK:
+			_appearance_textures[asset.id] = ImageTexture.create_from_image(image)
 
 
 func _build_creator_review() -> void:
@@ -678,8 +812,13 @@ func _creator_next() -> void:
 			if _view.party_members.size() >= _maximum_party_size():
 				_setup_message.text = "This campaign allows no more than %d characters." % _maximum_party_size()
 				return
-			_draft_portrait_id = "" if _portrait_option.get_selected_id() == 0 else str(_portrait_option.get_selected_id())
-			_draft_combat_icon_id = "" if _combat_icon_option.get_selected_id() == 0 else str(_combat_icon_option.get_selected_id())
+			var portrait := _selected_appearance(_portrait_option, true)
+			var combat_icon := _selected_appearance(_combat_icon_option, false)
+			if portrait == null or combat_icon == null:
+				_setup_message.text = "Choose a package-backed portrait and combat icon before continuing."
+				return
+			_draft_portrait_id = portrait.id
+			_draft_combat_icon_id = combat_icon.id
 			_creator_step = 3
 			_awaiting_draft_generation = true
 			intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
@@ -730,6 +869,7 @@ func _reset_creator() -> void:
 	_draft_starting_level = 1
 	_draft_portrait_id = ""
 	_draft_combat_icon_id = ""
+	_combat_icon_touched = false
 	_selected_race_id = ""
 	_selected_caste_id = ""
 	_awaiting_draft_generation = false
@@ -780,7 +920,12 @@ func _update_creator_actions() -> void:
 func _race_selected(index: int) -> void:
 	if index < 0 or _race_list.is_item_disabled(index):
 		return
-	_selected_race_id = String(_race_list.get_item_metadata(index))
+	var selected_id := String(_race_list.get_item_metadata(index))
+	if selected_id != _selected_race_id:
+		_draft_portrait_id = ""
+		_draft_combat_icon_id = ""
+		_combat_icon_touched = false
+	_selected_race_id = selected_id
 	_apply_caste_filter()
 	_setup_message.text = "Race selected. Classes unavailable to this race are disabled on the right."
 
@@ -911,7 +1056,7 @@ func _render_screen() -> void:
 	_body_frame.visible = not _campaign_overlay.visible and not _setup_overlay.visible and _screen_id != &"exploration"
 	if _screen_id == &"exploration":
 		return
-	if _view == null or not _view.session_started:
+	if (_view == null or not _view.session_started) and _screen_id != &"vault":
 		_add_label(_body, "No active session. Choose a validated campaign to begin.", MUTED)
 		return
 	match _screen_id:
@@ -952,25 +1097,89 @@ func _render_characters() -> void:
 
 
 func _render_vault() -> void:
-	if _vault_records.is_empty():
-		_add_empty_state("Character vault is empty", "No immutable .r2char revisions are installed. Vault publishing is not implemented in this gameplay slice.")
+	var back_button := Button.new()
+	back_button.text = "Back to party setup" if _vault_return_to_setup else "Back to campaigns" if _vault_return_to_campaign else "Back"
+	back_button.pressed.connect(func() -> void: handle_back())
+	_mark_focus(back_button, "vault:back")
+	_body.add_child(back_button)
+	if _vault_revisions.is_empty():
+		_add_empty_state("Character vault is empty", "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party.")
 		return
-	for record: CharacterVaultRecord in _vault_records:
-		var eligibility := "Revision %s • %s" % [record.revision_hash.left(12), record.source_campaign_id]
-		_add_card(record.state.name, eligibility, "Level %d • %s / %s" % [record.state.level, record.state.race_id, record.state.caste_id])
+	var campaign_label := _view.campaign_summary.title if _view != null and _view.campaign_summary != null else "No campaign selected"
+	_add_label(_body, "Eligibility for %s" % campaign_label, GOLD, 16)
+	var previous_character_id := ""
+	for revision: CharacterVaultRevisionView in _vault_revisions:
+		if revision.character_id != previous_character_id:
+			if not previous_character_id.is_empty():
+				_body.add_child(HSeparator.new())
+			_add_label(_body, revision.name, GOLD, 20)
+			previous_character_id = revision.character_id
+		var state_label := "Current revision" if revision.is_current else "Archived revision" if revision.archived else "Earlier revision"
+		var eligibility_label := "Eligible" if revision.eligible else "Not eligible"
+		var detail := "Level %d • %s / %s\nSource campaign %s • package %s\n%s" % [revision.level, revision.race_id, revision.caste_id, revision.source_campaign_id, revision.source_package_hash.left(12), revision.publication_label]
+		if not revision.eligibility_reasons.is_empty():
+			detail += "\n%s" % "\n".join(revision.eligibility_reasons)
+		_add_card(state_label, "%s • %s" % [eligibility_label, revision.revision_hash.left(12)], detail)
+		var actions := HBoxContainer.new()
 		var import_button := Button.new()
-		import_button.text = "Import %s" % record.state.name
-		import_button.tooltip_text = eligibility
-		_apply_availability(import_button, &"import_vault_character")
-		import_button.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.import_vault_character(record.character_id, record.revision_hash)))
-		_mark_focus(import_button, "vault:%s" % record.revision_hash)
-		_body.add_child(import_button)
+		import_button.text = "Import this revision"
+		import_button.tooltip_text = "\n".join(revision.eligibility_reasons)
+		if _view == null or not _view.session_started:
+			import_button.disabled = true
+			import_button.tooltip_text = "Choose a campaign before importing a character."
+		else:
+			_apply_availability(import_button, &"import_vault_character")
+			if not revision.eligible or revision.archived:
+				import_button.disabled = true
+				if revision.archived:
+					import_button.tooltip_text = "Restore an archived revision before importing it."
+		import_button.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.import_vault_character(revision.character_id, revision.revision_hash)))
+		_mark_focus(import_button, "vault:%s" % revision.revision_hash)
+		actions.add_child(import_button)
+		if revision.is_current:
+			var archive_button := Button.new()
+			archive_button.text = "Archive character"
+			archive_button.tooltip_text = "Remove this character from the active vault without deleting immutable history."
+			archive_button.pressed.connect(_confirm_vault_archive.bind(revision))
+			actions.add_child(archive_button)
+		elif revision.archived:
+			var restore_button := Button.new()
+			restore_button.text = "Restore as current"
+			restore_button.pressed.connect(func() -> void: vault_restore_requested.emit(revision.character_id, revision.revision_hash))
+			actions.add_child(restore_button)
+		_body.add_child(actions)
+
+
+func _confirm_vault_archive(revision: CharacterVaultRevisionView) -> void:
+	var confirmation := ConfirmationDialog.new()
+	confirmation.title = "Archive character"
+	confirmation.dialog_text = "Archive %s? Campaign saves are unchanged, and this revision can be restored later." % revision.name
+	confirmation.ok_button_text = "Archive"
+	confirmation.confirmed.connect(func() -> void: vault_archive_requested.emit(revision.character_id))
+	confirmation.visibility_changed.connect(func() -> void:
+		if not confirmation.visible:
+			confirmation.queue_free()
+	)
+	add_child(confirmation)
+	confirmation.popup_centered(Vector2i(480, 180))
 
 
 func _show_vault_for_setup() -> void:
+	_vault_return_to_setup = true
+	_vault_return_to_campaign = false
 	_setup_overlay.visible = false
 	_campaign_overlay.visible = false
 	_screen_id = &"vault"
+	_render_screen()
+
+
+func _show_vault_from_campaign() -> void:
+	_vault_return_to_campaign = true
+	_vault_return_to_setup = false
+	_campaign_overlay.visible = false
+	_setup_overlay.visible = false
+	_screen_id = &"vault"
+	_body_frame.visible = true
 	_render_screen()
 
 

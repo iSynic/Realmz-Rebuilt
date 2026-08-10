@@ -12,7 +12,7 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "7baaa825d6c0f629b09536b70876c1ed53c3081bf19595a240e30dda426a44f5", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "cbf6388091469a3114229504f7446c8d904f5cfdf2e197fb1e064950235938f0", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -75,6 +75,13 @@ func run() -> void:
 	assert_equal(loaded.content.caste_by_id("classic.caste.1").name, "Fighter", "caste display names come from the imported Realmz name table")
 	assert_equal(loaded.content.caste_by_id("classic.caste.1").maximum_damage_bonus(), 5, "caste strength caps retain their source field meaning")
 	assert_true(loaded.content.caste_by_id("classic.caste.1").initial_ability_value(13) is int and loaded.content.caste_by_id("classic.caste.1").level_ability_die(13) is int and loaded.content.caste_by_id("classic.caste.1").victory_threshold(29) is int, "caste abilities and all thirty victory thresholds cross the validating package boundary")
+	var portraits := loaded.content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT)
+	var combat_icons := loaded.content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON)
+	assert_equal([portraits.size(), combat_icons.size()], [120, 120], "the package exposes both complete browseable Classic character-appearance catalogs")
+	assert_equal([portraits[0].classic_resource_id, portraits[-1].classic_resource_id], [257, 376], "portrait identities preserve the exact Portraits-fork CICN range")
+	assert_equal([combat_icons[0].classic_resource_id, combat_icons[-1].classic_resource_id], [9000, 9119], "combat-icon identities preserve the exact Tacticals-fork CICN range")
+	assert_true(portraits[0].is_recommended_for("classic.race.1"), "the Human zero-set inconsistency resolves to the proven browseable Human portrait set")
+	assert_true(combat_icons[0].is_recommended_for("classic.race.1"), "Human tactical recommendations retain Castle's race-indexed 9000 set")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").attacks()[0].damage_max, 4, "monster attacks are typed instead of retained as native row dictionaries")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").item_ids(), ["classic.item.901", "", "", "", "", ""], "monster item slots preserve all six native positions")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").item_id_at(1), "", "an empty native missile slot does not collapse onto the melee item")
@@ -90,6 +97,7 @@ func run() -> void:
 	assert_equal(fixture_zip.open(FIXTURE_PATH), OK, "the package contract test can inspect detached fixture JSON")
 	var fixture_content: Variant = JSON.parse_string(fixture_zip.read_file("content.json").get_string_from_utf8())
 	var fixture_world: Variant = JSON.parse_string(fixture_zip.read_file("world.json").get_string_from_utf8())
+	var fixture_assets: Variant = JSON.parse_string(fixture_zip.read_file("assets/index.json").get_string_from_utf8())
 	fixture_zip.close()
 	assert_true(fixture_content is Dictionary, "the detached fixture content parses for negative contract tests")
 	if fixture_content is Dictionary:
@@ -141,6 +149,21 @@ func run() -> void:
 		invalid_monsters = fixture_content["monsters"].duplicate(true)
 		invalid_monsters[0]["spellIds"] = ["classic.spell.1101"]
 		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects legacy packed monster spells because they erase native slot identity")
+	assert_true(fixture_assets is Dictionary, "the detached fixture asset index parses for appearance-catalog contract tests")
+	if fixture_assets is Dictionary:
+		var tracked_files: Dictionary = {}
+		for asset: Dictionary in fixture_assets["assets"]:
+			tracked_files[asset["path"]] = {"bytes": asset["bytes"], "sha256": asset["sha256"]}
+		assert_true(PackageRepository.new()._validate_assets(fixture_assets, tracked_files), "the complete appearance catalogs pass independent runtime validation")
+		var missing_portrait: Dictionary = fixture_assets.duplicate(true)
+		missing_portrait["assets"] = missing_portrait["assets"].filter(func(asset: Dictionary) -> bool: return not (asset["kind"] == "portrait" and asset["resourceId"] == 257))
+		assert_false(PackageRepository.new()._validate_assets(missing_portrait, tracked_files), "a package missing one Classic portrait fails readiness rather than degrading the creator")
+		var malformed_portrait: Dictionary = fixture_assets.duplicate(true)
+		for asset: Dictionary in malformed_portrait["assets"]:
+			if asset["kind"] == "portrait":
+				asset["mimeType"] = "application/octet-stream"
+				break
+		assert_false(PackageRepository.new()._validate_assets(malformed_portrait, tracked_files), "appearance assets must be decoded PNGs with usable dimensions")
 	assert_true(fixture_world is Dictionary, "the detached fixture world parses for independent terrain contract tests")
 	if fixture_world is Dictionary:
 		var invalid_terrain_sets: Array = fixture_world["battleTerrainSets"].duplicate(true)
@@ -170,7 +193,10 @@ func run() -> void:
 	assert_equal(loaded.content.spell_by_id("classic.spell.1108").name, "Magic Darts", "standard spell names follow Castle's positive Custom Names STR# lookup")
 	assert_equal(loaded.content.spell_by_id("classic.spell.2302").name, "Destroy Magic", "standard spell labels preserve their packed Classic identity")
 	assert_not_null(loaded.media, "validated package media receives a typed catalog")
-	assert_equal(loaded.media.assets().size(), 5, "the synthetic fixture carries authored picture/sound/special-land media and both referenced map atlases")
+	assert_equal(loaded.media.assets().size(), 245, "the synthetic fixture carries authored map/scenario media plus both 120-entry character-appearance catalogs")
+	assert_equal([loaded.media.assets_of_kind("portrait").size(), loaded.media.assets_of_kind("combat-icon").size()], [120, 120], "the media catalog groups appearance roles without resource-ID-only lookup")
+	var first_portrait_bytes := loaded.media.read_bytes_batch([loaded.media.assets_of_kind("portrait")[0]])
+	assert_false((first_portrait_bytes.get("realmz-portrait-257", PackedByteArray()) as PackedByteArray).is_empty(), "batch media reads validate creator thumbnails through one archive boundary")
 	var special_land_asset := loaded.media.asset_by_id("fixture.special-land.neg-99")
 	assert_not_null(special_land_asset, "special land overlays resolve through the typed media index")
 	assert_true(special_land_asset.is_picture(), "special land overlays are presentation images")
@@ -193,7 +219,7 @@ func run() -> void:
 	assert_not_null(dungeon_tileset, "the authoritative dungeon render identity resolves to a package tileset")
 	assert_equal(dungeon_tileset.region_for(1), Rect2i(0, 0, 16, 16), "the first Classic dungeon tile resolves without an off-by-one shift")
 
-	var install_root := "user://realmz2-tests/package-install-schema-v2b"
+	var install_root := "user://realmz2-tests/package-install-schema-v2/%s" % loaded.content.package_hash
 	var installed := repository.install_package(FIXTURE_PATH, install_root)
 	assert_true(installed.is_ok(), "a validated package installs through temporary typed readback: %s" % installed.error_message)
 	if installed.is_ok():

@@ -81,8 +81,8 @@ Implemented in this tranche:
 
 - `ClassicApplicationShell` map-first composition: compact menu strip, dominant map/picture stage, persistent right roster, bottom narrative/status well, and contextual command deck over the existing typed session boundary.
 - Campaign-aware party setup with schema-v2 title/version/author/restriction metadata, Race-left/Class-right filtering, and explicit setup errors.
-- Character creator with five separately mounted stages, session-owned generated Review state, reroll/cancel without RNG rollback, typed first-twelve-slot starting-spell selection, saveable unused-point confirmation, and finalization without a second roll.
-- Immutable `.r2char` character vault records/repository, explicit import intent, transactional persistence, archive/recovery, and target-package eligibility checks.
+- Character creator with five separately mounted stages, session-owned generated Review state, reroll/cancel without RNG rollback, typed first-twelve-slot starting-spell selection, saveable unused-point confirmation, finalization without a second roll, and complete package-backed portrait/tactical selection with race recommendations.
+- Immutable `.r2char` character vault records/repository, explicit import intent, transactional persistence, complete revision history, exact target-package eligibility, confirmed archive, and exact revision recovery.
 - Providence schema v2 exporter plus byte-identical runtime mirror and regenerated synthetic fixtures.
 - One scene-backed component for each of the nine workspaces, with clipped scrolling and responsive stacked headers.
 - Typed interaction placement in the stage or Classic textbox region for text, choices, encounters, services, and combat.
@@ -98,7 +98,7 @@ Still required for live visual acceptance and later gameplay completion:
 - Complete the full MCP keyboard/focus matrix. The official Godot MCP Pro 1.16.0 CLI now provides live-campaign evidence for package selection and startup, while the broader gallery remains synthetic evidence.
 - Inspect every interaction kind beside the Classic reference board; deterministic gallery coverage is broader than the currently reviewed representative frames.
 - Gameplay implementations for rewards, level-up, storage/treasure assignment, and tactical combat positions; their current controls remain explicitly unavailable.
-- Package media catalogs for portraits/combat icons, the complete higher-starting-level construction path, and explicit publication of newly created characters to the reusable vault.
+- The complete higher-starting-level construction path and explicit publication of newly created characters to the reusable vault still need ordinary live-campaign acceptance; package-backed portrait/combat-icon catalogs and role validation are implemented.
 - Re-run the external AOGM ordinary-play route through the new shell; the committed gallery remains synthetic and is not live-campaign proof.
 
 ## Current rolling fidelity pass — blocking age updates (implemented)

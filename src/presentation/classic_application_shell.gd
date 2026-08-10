@@ -17,6 +17,8 @@ signal reduced_motion_changed(enabled: bool)
 signal layout_changed(workspace_rect: Rect2, profile: UiLayoutProfile)
 signal route_changed(route_id: StringName)
 signal play_stage_visibility_changed(visible: bool)
+signal vault_archive_requested(character_id: String)
+signal vault_restore_requested(character_id: String, revision_hash: String)
 
 const MUTED := Color("9aa4a5")
 const ERROR := Color("ef7770")
@@ -64,6 +66,8 @@ func _ready() -> void:
 	_router.start_requested.connect(func(path: String, seed: int) -> void: start_package_requested.emit(path, seed))
 	_router.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
 	_router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
+	_router.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
+	_router.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
 	_router.screen_changed.connect(_on_screen_changed)
 	_router.system_action_requested.connect(_on_system_action_requested)
 	_router.presentation_setting_changed.connect(_on_presentation_setting_changed)
@@ -201,8 +205,8 @@ func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
 	_router.set_campaigns(campaigns)
 
 
-func set_vault_records(records: Array[CharacterVaultRecord]) -> void:
-	_router.set_vault_records(records)
+func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
+	_router.set_vault_revisions(revisions)
 
 
 func show_campaign_selection() -> void:
