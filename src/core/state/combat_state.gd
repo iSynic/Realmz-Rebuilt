@@ -1,6 +1,8 @@
 class_name CombatState
 extends RefCounted
 
+const MAX_SPELL_DEATH_MACROS := 100
+
 const MAX_FUMBLED_ITEMS: int = 20
 
 var battle_id: String
@@ -187,7 +189,7 @@ func attacked_actor_ids() -> Array[String]:
 
 
 func queue_spell_death_macro(combatant_id: String) -> bool:
-	if combatant_id.is_empty() or monster_by_id(combatant_id) == null or _spell_death_macro_queue.has(combatant_id):
+	if combatant_id.is_empty() or monster_by_id(combatant_id) == null or _spell_death_macro_queue.size() >= MAX_SPELL_DEATH_MACROS:
 		return false
 	_spell_death_macro_queue.append(combatant_id)
 	return true
@@ -323,10 +325,10 @@ static func from_data(data: Variant) -> CombatState:
 	var spell_macro_queue: Variant = data.get("spellDeathMacroQueue", [])
 	var spell_macro_actor: Variant = data.get("spellMacroActorId", "")
 	var spell_macro_advances: Variant = data.get("spellMacroAdvancesTurn", false)
-	if not spell_macro_queue is Array or spell_macro_queue.size() > loaded_monsters.size() or not spell_macro_actor is String or not spell_macro_advances is bool:
+	if not spell_macro_queue is Array or spell_macro_queue.size() > MAX_SPELL_DEATH_MACROS or not spell_macro_actor is String or not spell_macro_advances is bool:
 		return null
 	for combatant_id: Variant in spell_macro_queue:
-		if not combatant_id is String or combatant_id.is_empty() or result.monster_by_id(combatant_id) == null or result._spell_death_macro_queue.has(combatant_id):
+		if not combatant_id is String or combatant_id.is_empty() or result.monster_by_id(combatant_id) == null:
 			return null
 		result._spell_death_macro_queue.append(combatant_id)
 	result._spell_macro_actor_id = spell_macro_actor

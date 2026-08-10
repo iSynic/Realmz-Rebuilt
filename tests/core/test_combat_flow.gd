@@ -19,6 +19,7 @@ func run() -> void:
 	_test_character_automatic_group_spell()
 	_test_character_fixed_area_spell()
 	_test_character_and_monster_repeated_target_spells()
+	_test_ordinary_spell_reflection_and_opposed_monster_targets()
 	_test_spell_death_macro_queue_and_restore()
 	_test_source_backed_monster_spell_casting()
 	_test_charm_resistance_continues_after_failed_opposed_save()
@@ -914,6 +915,21 @@ func _test_spell_death_macro_queue_and_restore() -> void:
 	assert_true(first_completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"monster_death_macro_requested" and event.payload.get("combatantId") == second.id), "the next source-ordered macro is requested before battle or turn continuation")
 	var wrong_cursor := rules.combat_flow.continue_after_monster_death_macro(queue_state, queue_content, ScriptedRng.new([]), first.id)
 	assert_equal(wrong_cursor.error_code, &"invalid_spell_death_macro_queue", "a stale response cannot skip or replay the saved queue head")
+	var limit_field := _blank_battlefield()
+	limit_field.place_character(character.id, Vector2i(45, 45))
+	limit_field.place_monster(first.id, Vector2i(46, 45), 0)
+	var limit_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [character]), RealmzClock.new())
+	limit_state.combat = CombatState.new("battle.queued-limit", [first], 0, limit_field)
+	limit_state.combat.set_turn_order([character.id, first.id])
+	limit_state.combat.begin_active_turn()
+	var filled_record_queue := true
+	for _index: int in CombatState.MAX_SPELL_DEATH_MACROS:
+		filled_record_queue = filled_record_queue and limit_state.combat.queue_spell_death_macro(first.id)
+	assert_true(filled_record_queue, "Castle's fixed todoque permits one hundred ordered records including duplicate subjects")
+	assert_false(limit_state.combat.queue_spell_death_macro(first.id), "the safe runtime rejects a record beyond Castle's fixed queue instead of overflowing memory")
+	assert_true(limit_state.combat.begin_spell_death_macro_sequence(character.id, false), "the full record queue retains its issuing actor")
+	var restored_limit := GameState.from_data(JSON.parse_string(JSON.stringify(limit_state.to_data())))
+	assert_equal(restored_limit.combat.spell_death_macro_queue().size(), CombatState.MAX_SPELL_DEATH_MACROS, "save restoration preserves the complete bounded record queue")
 
 
 func _test_character_automatic_group_spell() -> void:
@@ -1191,8 +1207,8 @@ func _test_character_and_monster_repeated_target_spells() -> void:
 	var duplicate := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 3, duplicate_rng, CombatFlow.INVALID_COORDINATE, 0, [target.id, target.id])
 	assert_equal([duplicate.error_code, duplicate_rng.snapshot().draw_count, caster.spell_points], [&"invalid_repeated_spell_targets", 0, 20], "duplicate selections fail before cost, turn, or RNG mutation")
 	ally.conditions.set_value(ConditionRules.REFLECTING_SPELLS, 1)
-	var reflected := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 3, ScriptedRng.new([]), CombatFlow.INVALID_COORDINATE, 0, [ally.id])
-	assert_equal([reflected.error_code, caster.spell_points], [&"repeated_spell_reflection_unresolved", 20], "unimplemented reflection remains an explicit transactional boundary")
+	var reflecting_options := rules.combat_flow.character_spell_options(state, content, caster.id).filter(func(option: CombatSpellOptionView) -> bool: return option.spell_id == spell.id and option.power == 3 and option.target_mode == &"sequence")
+	assert_true(reflecting_options[0].target_candidates.any(func(candidate: CombatSpellTargetView) -> bool: return candidate.id == ally.id), "a reflecting actor remains a legal Classic selection instead of disappearing from the picker")
 	ally.conditions.set_value(ConditionRules.REFLECTING_SPELLS, 0)
 	var cast_rng := ScriptedRng.new([0, 0, 32_767, 0, 32_767, 32_767, 0, 0])
 	var cast := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 3, cast_rng, CombatFlow.INVALID_COORDINATE, 0, [ally.id, target.id, immune.id])
@@ -1272,6 +1288,194 @@ func _test_character_and_monster_repeated_target_spells() -> void:
 	spell.size = 1
 	assert_equal(rules.combat_flow.probe_character_spell_cast(state, content, caster.id, "", spell.id, 1).reason, &"repeated_open_space_spell_unresolved", "nonzero-size target type zero remains the separate open-space or summoning contract")
 	assert_equal(rules.combat_flow._monster_spell_unavailable_reason(spell), "monster-repeated-open-space-spell-unresolved", "monster open-space target type zero is not silently treated as actor damage")
+
+
+func _test_ordinary_spell_reflection_and_opposed_monster_targets() -> void:
+	var rules := RealmzRules.new()
+	var spell := SpellDefinition.new("spell.reflection-bolt", 1306, "Reflection Bolt")
+	spell.in_combat = true
+	spell.target_type = 1
+	spell.spell_class = 1
+	spell.damage_type = 1
+	spell.cannot = 3
+	spell.cost = 2
+	spell.range_min = 15
+	spell.duration_min = 1
+	spell.duration_max = 1
+	spell.damage_min = 4
+	spell.damage_max = 4
+
+	var player_caster := _character("character.reflection-caster")
+	player_caster.set_known_spells([spell.id])
+	player_caster.maximum_spell_attacks = 2
+	player_caster.maximum_spell_points = 20
+	player_caster.spell_points = 20
+	player_caster.normal_attacks = 4
+	var reflecting_definition := _monster_definition("monster.reflecting-target", [])
+	var reflecting_monster := MonsterState.new("monster.reflecting-target.instance", reflecting_definition.id, "Reflector", 20, 20, 1)
+	reflecting_monster.conditions.set_value(ConditionRules.REFLECTING_SPELLS, -1)
+	var player_state := _state(player_caster, reflecting_monster, "battle.player-spell-reflection")
+	var player_content := _content([reflecting_definition], [], [], [], [spell])
+	var reflected_rng := ScriptedRng.new([0, 0, 0, 0])
+	var reflected := rules.combat_flow.cast_spell(player_state, player_content, player_caster.id, reflecting_monster.id, spell.id, 1, reflected_rng)
+	assert_true(reflected.ok, "a selected reflecting monster resolves through the ordinary spell path")
+	var reflected_event: DomainEvent = reflected.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")[0]
+	assert_equal([reflecting_monster.current_health, player_caster.current_health, player_caster.spell_points], [20, 26, 18], "a successful one-through-thirty-three reflection leaves the selected monster untouched and damages the original caster")
+	assert_equal([reflected_event.payload.get("selectedTargetId"), reflected_event.payload.get("targetId"), reflected_event.payload.get("targetKind"), reflected_event.payload.get("reflected")], [reflecting_monster.id, player_caster.id, "character", true], "the typed event preserves both the authored selection and Castle's effective redirected target")
+	assert_equal(reflected_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["magic.reflect", "magic.duration", "magic.damage", "magic.damage-save"], "single-target reflection precedes duration, damage, and target defenses")
+
+	var failed_caster := _character("character.failed-reflection-caster")
+	failed_caster.set_known_spells([spell.id])
+	failed_caster.maximum_spell_attacks = 2
+	failed_caster.spell_points = 20
+	failed_caster.normal_attacks = 4
+	var failed_monster := MonsterState.new("monster.failed-reflection-target", reflecting_definition.id, "Failed Reflector", 20, 20, 1)
+	failed_monster.conditions.set_value(ConditionRules.REFLECTING_SPELLS, 1)
+	var failed_state := _state(failed_caster, failed_monster, "battle.failed-spell-reflection")
+	var failed_rng := ScriptedRng.new([32_767, 0, 0, 0])
+	var not_reflected := rules.combat_flow.cast_spell(failed_state, player_content, failed_caster.id, failed_monster.id, spell.id, 1, failed_rng)
+	var direct_event: DomainEvent = not_reflected.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")[0]
+	assert_equal([failed_caster.current_health, failed_monster.current_health, direct_event.payload.get("targetId"), direct_event.payload.get("reflected")], [30, 16, failed_monster.id, false], "a roll of one hundred fails reflection and preserves the original target")
+
+	var repeated_spell := SpellDefinition.new("spell.reflection-darts", 3208, "Reflection Darts")
+	repeated_spell.in_combat = true
+	repeated_spell.target_type = 0
+	repeated_spell.size = 0
+	repeated_spell.spell_class = 3
+	repeated_spell.damage_type = 6
+	repeated_spell.cannot = 3
+	repeated_spell.cost = 2
+	repeated_spell.range_min = 15
+	repeated_spell.duration_min = 1
+	repeated_spell.duration_max = 1
+	repeated_spell.damage_min = 2
+	repeated_spell.damage_max = 2
+	var repeated_caster := _character("character.repeated-reflection-caster")
+	repeated_caster.set_known_spells([repeated_spell.id])
+	repeated_caster.maximum_spell_attacks = 2
+	repeated_caster.spell_points = 20
+	repeated_caster.normal_attacks = 4
+	var repeated_ally := _character("character.repeated-reflector")
+	repeated_ally.conditions.set_value(ConditionRules.REFLECTING_SPELLS, 1)
+	var repeated_target_definition := _monster_definition("monster.repeated-ordinary", [])
+	var repeated_target := MonsterState.new("monster.repeated-ordinary.instance", repeated_target_definition.id, "Ordinary Target", 20, 20, 1)
+	var repeated_field := _blank_battlefield()
+	repeated_field.place_character(repeated_caster.id, Vector2i(45, 45))
+	repeated_field.place_character(repeated_ally.id, Vector2i(44, 45))
+	repeated_field.place_monster(repeated_target.id, Vector2i(46, 45), 0)
+	var repeated_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [repeated_caster, repeated_ally]), RealmzClock.new())
+	repeated_state.combat = CombatState.new("battle.repeated-reflection", [repeated_target], 0, repeated_field)
+	repeated_state.combat.set_turn_order([repeated_caster.id, repeated_ally.id, repeated_target.id])
+	var repeated_content := _content([repeated_target_definition], [], [], [], [repeated_spell])
+	var repeated_rng := ScriptedRng.new([0, 0, 0, 0, 0, 0, 0])
+	var repeated_result := rules.combat_flow.cast_spell(repeated_state, repeated_content, repeated_caster.id, "", repeated_spell.id, 2, repeated_rng, CombatFlow.INVALID_COORDINATE, 0, [repeated_ally.id, repeated_target.id])
+	var repeated_events := repeated_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")
+	assert_equal(repeated_events.map(func(event: DomainEvent) -> Variant: return [event.payload.get("selectedTargetId"), event.payload.get("targetId"), event.payload.get("reflected")]), [[repeated_ally.id, repeated_caster.id, true], [repeated_target.id, repeated_target.id, false]], "each repeated selection independently records reflection without changing source order")
+	assert_equal(repeated_rng.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["magic.repeated.reflect.0", "magic.repeated.duration.0", "magic.repeated.damage.0", "magic.damage-save", "magic.repeated.duration.1", "magic.repeated.damage.1", "magic.damage-save"], "each selected actor completes reflection and resolution before the next repeated target begins")
+
+	var monster_slots: Array[String] = [spell.id, "", "", "", "", "", "", "", "", ""]
+	var caster_definition := MonsterDefinition.new("monster.opposed-caster", 9, "Opposed Caster", 4, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), monster_slots, [], [])
+	caster_definition.magic_attack_count = 1
+	var opposed_definition := _monster_definition("monster.opposed-target", [])
+	var monster_caster := MonsterState.new("monster.opposed-caster.instance", caster_definition.id, caster_definition.name, 30, 30, 4, 1, 0, 0, 10)
+	var party_target := _character("character.opposed-slot-zero")
+	var opposed_monster := MonsterState.new("monster.opposed-target.instance", opposed_definition.id, "Opposed Monster", 20, 20, 1, 1, 0, 0, 0, false)
+	var opposed_field := _blank_battlefield()
+	opposed_field.place_character(party_target.id, Vector2i(45, 45))
+	opposed_field.place_monster(monster_caster.id, Vector2i(47, 45), 0)
+	opposed_field.place_monster(opposed_monster.id, Vector2i(46, 45), 0)
+	var opposed_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [party_target]), RealmzClock.new())
+	opposed_state.combat = CombatState.new("battle.opposed-monster-spell", [monster_caster, opposed_monster], 0, opposed_field)
+	opposed_state.combat.set_turn_order([party_target.id, monster_caster.id, opposed_monster.id])
+	opposed_state.combat.turn_index = 1
+	var opposed_content := _content([caster_definition, opposed_definition], [], [], [], [spell])
+	var opposed_events: Array[DomainEvent] = []
+	var opposed_rng := ScriptedRng.new([0, 0, 32_767, 0, 0, 0])
+	assert_equal(rules.combat_flow._process_monster_cast(opposed_state, opposed_content, monster_caster, caster_definition, opposed_state.combat.begin_active_turn(), opposed_rng, opposed_events), CombatFlow.MONSTER_ATTACK_COMPLETED, "a monster can select an opposed monster through Castle's native target space")
+	var opposed_event: DomainEvent = opposed_events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")[0]
+	assert_equal([party_target.current_health, opposed_monster.current_health, opposed_event.payload.get("targetId"), opposed_event.payload.get("targetKind")], [30, 16, opposed_monster.id, "monster"], "native slot eleven resolves against monster index one rather than falling through the party-slot gap")
+
+	var reflecting_opponent := MonsterState.new("monster.opposed-reflector.instance", opposed_definition.id, "Opposed Reflector", 20, 20, 1, 1, 0, 0, 0, false)
+	reflecting_opponent.conditions.set_value(ConditionRules.REFLECTING_SPELLS, -1)
+	var reflecting_caster := MonsterState.new("monster.reflected-caster.instance", caster_definition.id, caster_definition.name, 30, 30, 4, 1, 0, 0, 10)
+	var reflection_field := _blank_battlefield()
+	reflection_field.place_character(party_target.id, Vector2i(45, 45))
+	reflection_field.place_monster(reflecting_caster.id, Vector2i(47, 45), 0)
+	reflection_field.place_monster(reflecting_opponent.id, Vector2i(46, 45), 0)
+	var monster_reflection_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [party_target]), RealmzClock.new())
+	monster_reflection_state.combat = CombatState.new("battle.monster-spell-reflection", [reflecting_caster, reflecting_opponent], 0, reflection_field)
+	monster_reflection_state.combat.set_turn_order([party_target.id, reflecting_caster.id, reflecting_opponent.id])
+	monster_reflection_state.combat.turn_index = 1
+	var monster_reflection_events: Array[DomainEvent] = []
+	var monster_reflection_rng := ScriptedRng.new([0, 0, 32_767, 0, 0, 0, 0])
+	rules.combat_flow._process_monster_cast(monster_reflection_state, opposed_content, reflecting_caster, caster_definition, monster_reflection_state.combat.begin_active_turn(), monster_reflection_rng, monster_reflection_events)
+	var monster_reflection_event: DomainEvent = monster_reflection_events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")[0]
+	assert_equal([reflecting_opponent.current_health, reflecting_caster.current_health, monster_reflection_event.payload.get("selectedTargetId"), monster_reflection_event.payload.get("targetId"), monster_reflection_event.payload.get("reflected")], [20, 26, reflecting_opponent.id, reflecting_caster.id, true], "an opposed monster's reflection redirects once to the active monster caster")
+	var immune_caster := MonsterState.new("monster.immune-reflected-caster.instance", caster_definition.id, caster_definition.name, 30, 30, 4, 1, 0, 101, 10)
+	var reflected_to_immune := rules.magic.resolve_monster_targeted_spell(immune_caster, caster_definition, SpellTargetSelection.for_monster(reflecting_opponent, opposed_definition), spell, 1, spell.classic_tier(), ScriptedRng.new([0, 0, 0]))
+	assert_equal([reflected_to_immune.resolutions.size(), reflected_to_immune.target_ids[0], reflected_to_immune.reflected_targets[0], reflected_to_immune.resolutions[0].resisted, immune_caster.current_health], [1, immune_caster.id, true, true, 30], "reflection bypasses only the original target's above-100 targeting exclusion; the effective monster caster then resists during resolution")
+
+	var macro_definition := _monster_definition("monster.spell-macro-target", [])
+	macro_definition.death_macro = 77
+	var macro_target := MonsterState.new("monster.spell-macro-target.instance", macro_definition.id, "Macro Target", 3, 3, 1, 1, 0, 0, 0, false)
+	var macro_caster := MonsterState.new("monster.spell-macro-caster.instance", caster_definition.id, caster_definition.name, 30, 30, 4, 1, 0, 0, 10)
+	var macro_field := _blank_battlefield()
+	macro_field.place_character(party_target.id, Vector2i(45, 45))
+	macro_field.place_monster(macro_caster.id, Vector2i(47, 45), 0)
+	macro_field.place_monster(macro_target.id, Vector2i(46, 45), 0)
+	var macro_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [party_target]), RealmzClock.new())
+	macro_state.combat = CombatState.new("battle.monster-spell-macro", [macro_caster, macro_target], 0, macro_field)
+	macro_state.combat.set_turn_order([party_target.id, macro_caster.id, macro_target.id])
+	macro_state.combat.turn_index = 1
+	var macro_content := _content([caster_definition, macro_definition], [], [], [], [spell])
+	var macro_events: Array[DomainEvent] = []
+	var macro_result := rules.combat_flow._process_monster_cast(macro_state, macro_content, macro_caster, caster_definition, macro_state.combat.begin_active_turn(), ScriptedRng.new([0, 0, 32_767, 0, 0, 0]), macro_events)
+	assert_equal(macro_result, CombatFlow.MONSTER_ATTACK_DEATH_MACRO, "a monster spell pauses for an opposed monster's death macro")
+	assert_equal([macro_state.combat.pending_spell_death_macro_id(), macro_state.combat.spell_macro_actor_id(), macro_state.combat.spell_macro_advances_turn()], [macro_target.id, macro_caster.id, true], "the serialized spell queue retains the monster caster and completed activation")
+	var restored_macro := GameState.from_data(JSON.parse_string(JSON.stringify(macro_state.to_data())))
+	assert_equal([restored_macro.combat.pending_spell_death_macro_id(), restored_macro.combat.spell_macro_actor_id()], [macro_target.id, macro_caster.id], "save restoration preserves the opposed-monster spell death-macro boundary")
+	var low_energy_slots: Array[String] = [spell.id, "", "", "", "", "", "", "", "", ""]
+	var low_energy_definition := MonsterDefinition.new("monster.low-energy-macro-caster", 11, "Low-energy Macro Caster", 4, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), low_energy_slots, [], [])
+	low_energy_definition.magic_attack_count = 2
+	var low_energy_caster := MonsterState.new("monster.low-energy-macro-caster.instance", low_energy_definition.id, low_energy_definition.name, 30, 30, 4, 1, 0, 0, 2)
+	var low_energy_target := MonsterState.new("monster.low-energy-macro-target.instance", macro_definition.id, "Low-energy Macro Target", 3, 3, 1, 1, 0, 0, 0, false)
+	var low_energy_field := _blank_battlefield()
+	low_energy_field.place_character(party_target.id, Vector2i(45, 45))
+	low_energy_field.place_monster(low_energy_caster.id, Vector2i(47, 45), 0)
+	low_energy_field.place_monster(low_energy_target.id, Vector2i(46, 45), 0)
+	var low_energy_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [party_target]), RealmzClock.new())
+	low_energy_state.combat = CombatState.new("battle.low-energy-macro", [low_energy_caster, low_energy_target], 0, low_energy_field)
+	low_energy_state.combat.set_turn_order([party_target.id, low_energy_caster.id, low_energy_target.id])
+	low_energy_state.combat.turn_index = 1
+	var low_energy_events: Array[DomainEvent] = []
+	var low_energy_result := rules.combat_flow._process_monster_cast(low_energy_state, _content([low_energy_definition, macro_definition], [], [], [], [spell]), low_energy_caster, low_energy_definition, low_energy_state.combat.begin_active_turn(), ScriptedRng.new([0, 0, 32_767, 0, 0, 0, 0, 0]), low_energy_events)
+	assert_equal([low_energy_result, low_energy_state.combat.active_turn.spell_cast_count, low_energy_state.combat.pending_spell_death_macro_id()], [CombatFlow.MONSTER_ATTACK_DEATH_MACRO, 1, low_energy_target.id], "a later unaffordable magic attack cannot bypass a death macro queued by the committed first cast")
+
+	var self_macro_slots: Array[String] = [spell.id, "", "", "", "", "", "", "", "", ""]
+	var self_macro_definition := MonsterDefinition.new("monster.self-reflecting-caster", 12, "Self-reflecting Caster", 4, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), self_macro_slots, [], [])
+	self_macro_definition.magic_attack_count = 2
+	self_macro_definition.death_macro = 88
+	var self_macro_caster := MonsterState.new("monster.self-reflecting-caster.instance", self_macro_definition.id, self_macro_definition.name, 3, 3, 4, 1, 0, 0, 20)
+	var self_macro_target := MonsterState.new("monster.self-reflecting-target.instance", opposed_definition.id, "Self-reflecting Target", 20, 20, 1, 1, 0, 0, 0, false)
+	self_macro_target.conditions.set_value(ConditionRules.REFLECTING_SPELLS, 1)
+	var self_macro_field := _blank_battlefield()
+	self_macro_field.place_character(party_target.id, Vector2i(45, 45))
+	self_macro_field.place_monster(self_macro_caster.id, Vector2i(47, 45), 0)
+	self_macro_field.place_monster(self_macro_target.id, Vector2i(46, 45), 0)
+	var self_macro_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [party_target]), RealmzClock.new())
+	self_macro_state.combat = CombatState.new("battle.self-reflection-macro", [self_macro_caster, self_macro_target], 0, self_macro_field)
+	self_macro_state.combat.set_turn_order([party_target.id, self_macro_caster.id, self_macro_target.id])
+	self_macro_state.combat.turn_index = 1
+	var self_macro_events: Array[DomainEvent] = []
+	var self_macro_rng := ScriptedRng.new([0, 0, 32_767, 0, 0, 0, 0, 0, 0, 32_767, 0, 0, 0, 0])
+	var self_macro_result := rules.combat_flow._process_monster_cast(self_macro_state, _content([self_macro_definition, opposed_definition], [], [], [], [spell]), self_macro_caster, self_macro_definition, self_macro_state.combat.begin_active_turn(), self_macro_rng, self_macro_events)
+	assert_equal([self_macro_result, self_macro_state.combat.active_turn.spell_cast_count, self_macro_caster.current_health, self_macro_target.current_health], [CombatFlow.MONSTER_ATTACK_DEATH_MACRO, 2, -5, 20], "Castle's noofmagattacks loop completes after the first reflected cast kills its monster caster")
+	assert_equal([self_macro_state.combat.spell_death_macro_queue(), self_macro_state.combat.spell_macro_actor_id(), self_macro_state.combat.battlefield.has_actor(self_macro_caster.id)], [[self_macro_caster.id, self_macro_caster.id], self_macro_caster.id, true], "each post-death reflected hit queues another Castle macro record while retaining the dead caster's anchor")
+	var restored_self_macro := GameState.from_data(JSON.parse_string(JSON.stringify(self_macro_state.to_data())))
+	assert_equal([restored_self_macro.combat.active_turn.spell_cast_count, restored_self_macro.combat.spell_death_macro_queue(), restored_self_macro.combat.spell_macro_advances_turn()], [2, [self_macro_caster.id, self_macro_caster.id], true], "save restoration cannot repeat the post-death casts or deduplicate Castle's queued records")
+	var first_self_macro := rules.combat_flow.continue_after_monster_death_macro(restored_self_macro, _content([self_macro_definition, opposed_definition], [], [], [], [spell]), ScriptedRng.new([]), self_macro_caster.id)
+	assert_true(first_self_macro.ok, "the first duplicate caster macro completes through the ordinary continuation")
+	assert_equal([restored_self_macro.combat.spell_death_macro_queue(), restored_self_macro.combat.battlefield.has_actor(self_macro_caster.id)], [[self_macro_caster.id], true], "a still-dead duplicate subject retains occupancy until its final queued macro record")
 
 
 func _test_charm_resistance_continues_after_failed_opposed_save() -> void:

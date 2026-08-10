@@ -701,33 +701,13 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 		if repeated == null or not repeated.cast:
 			return CombatFlowResult.failed(&"spell_cast_failed", "The repeated-target spell could not be cast with the available spell points.")
 		return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng)
-	var target_definition := content.monster_by_id(target.definition_id)
-	if target_definition == null:
+	var selection := _spell_target_selection(state, content, target.id)
+	if selection == null:
 		return CombatFlowResult.failed(&"spell_target_unavailable", "The target monster definition is unavailable.")
-	var resolution := _rules.magic.resolve_character_spell(caster, target, target_definition, spell, power_level, cast_level, rng)
-	if resolution == null or not resolution.cast:
+	var targeted := _rules.magic.resolve_character_targeted_spell(caster, selection, spell, power_level, cast_level, rng)
+	if targeted == null or not targeted.cast:
 		return CombatFlowResult.failed(&"spell_cast_failed", "The spell could not be cast with the available spell points.")
-	combat.active_turn.spell_cast_count += 1
-	if resolution.damage > 0:
-		combat.mark_attacked(target.id)
-	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_spell_resolved", {"actorId": caster.id, "targetId": target.id, "spellId": spell.id, "power": power_level, "classicTier": cast_level, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic"})]
-	caster.attacks_remaining = _rules.arithmetic.signed_16(caster.attacks_remaining - 2)
-	caster.movement = maxi(0, caster.movement - 12)
-	var death_macro_queued := resolution.target_defeated and _queue_spell_death_macro(combat, target, target_definition)
-	_remove_defeated_position(combat, target.id, resolution.target_defeated and not death_macro_queued)
-	var advances_turn := not _character_can_continue(caster)
-	if death_macro_queued:
-		if not combat.begin_spell_death_macro_sequence(caster.id, advances_turn):
-			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The spell death-macro continuation could not retain its active caster.")
-		if not _request_next_spell_death_macro(combat, content, events):
-			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The queued spell death macro references unavailable content.")
-		return CombatFlowResult.succeeded(events)
-	if advances_turn:
-		combat.advance_turn()
-	if _finish_if_resolved(state, content, events):
-		return CombatFlowResult.succeeded(events, true)
-	_process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, state.combat.completed)
+	return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng)
 
 
 func _cast_character_group_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> CombatFlowResult:
@@ -800,10 +780,12 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 	for index: int in group.resolutions.size():
 		var resolution := group.resolutions[index]
 		var resolved_target_id := group.target_ids[index]
+		var selected_target_id := group.selected_target_ids[index]
 		var target_kind := group.target_kinds[index]
+		var reflected := group.reflected_targets[index]
 		if resolution.damage > 0:
 			combat.mark_attacked(resolved_target_id)
-		var payload := {"actorId": caster.id, "targetId": resolved_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic"}
+		var payload := {"actorId": caster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic"}
 		if shape > 0:
 			payload["areaCenter"] = [center.x, center.y]
 			payload["areaShape"] = shape
@@ -893,8 +875,6 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 			var selection := _spell_target_selection(state, content, selected_id)
 			if selection == null:
 				return CombatSpellCastProbe.blocked(&"invalid_spell_target", "A selected repeated-spell actor is unavailable.")
-			if (selection.character != null and selection.character.conditions.is_active(ConditionRules.REFLECTING_SPELLS)) or (selection.monster != null and selection.monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS)):
-				return CombatSpellCastProbe.blocked(&"repeated_spell_reflection_unresolved", "A selected actor reflects spells; Classic redirection remains unresolved.")
 			if not _spell_actor_target_is_valid(state, content, caster.id, selected_id, spell, power_level):
 				return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "A selected repeated-spell actor is outside the Classic spell range or line of sight.")
 		if target_ids.is_empty() and _character_repeated_spell_candidates(state, content, caster, spell, power_level).is_empty():
@@ -953,12 +933,12 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 func _character_repeated_spell_candidates(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int) -> Array[CombatSpellTargetView]:
 	var result: Array[CombatSpellTargetView] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health <= 0 or not state.combat.battlefield.has_actor(character.id) or character.conditions.is_active(ConditionRules.REFLECTING_SPELLS):
+		if character.current_health <= 0 or not state.combat.battlefield.has_actor(character.id):
 			continue
 		if _spell_actor_target_is_valid(state, content, caster.id, character.id, spell, power_level):
 			result.append(CombatSpellTargetView.new(character.id, &"character", character.name, character.current_health, character.maximum_health))
 	for monster: MonsterState in state.combat.monsters():
-		if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id) or monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS):
+		if monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id):
 			continue
 		if _spell_actor_target_is_valid(state, content, caster.id, monster.id, spell, power_level):
 			result.append(CombatSpellTargetView.new(monster.id, &"monster", monster.name, monster.current_health, monster.maximum_health))
@@ -1024,7 +1004,8 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 		if not state.combat.complete_spell_death_macro(completed_combatant_id):
 			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The completed spell death macro does not match the saved queue cursor.")
 		var completed_monster := state.combat.monster_by_id(completed_combatant_id)
-		_remove_defeated_position(state.combat, completed_combatant_id, completed_monster != null and completed_monster.current_health <= 0)
+		var same_subject_remains := state.combat.spell_death_macro_queue().has(completed_combatant_id)
+		_remove_defeated_position(state.combat, completed_combatant_id, completed_monster != null and completed_monster.current_health <= 0 and not same_subject_remains)
 		if not state.combat.pending_spell_death_macro_id().is_empty():
 			if not _request_next_spell_death_macro(state.combat, content, events):
 				return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The next queued spell death macro references unavailable content.")
@@ -1472,38 +1453,51 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 				break
 		if not sampled_id.is_empty() and spell == null:
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": sampled_id, "spellSlot": sampled_slot, "reason": "unknown-monster-spell-definition"}))
+			if did_cast:
+				break
 			return MONSTER_ATTACK_COMPLETED
 		if spell == null:
-			return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
+			if did_cast:
+				break
+			return MONSTER_ATTACK_FALLBACK
 		var unavailable := _monster_spell_unavailable_reason(spell)
 		if not unavailable.is_empty():
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "spellSlot": sampled_slot, "reason": unavailable}))
+			if did_cast:
+				break
 			return MONSTER_ATTACK_COMPLETED
 		var range_power := rng.draw(7, StringName("monster.spell.range-power.%d" % active_turn.spell_cast_count))
 		var maximum_range := absi(spell.range_min + spell.range_max * range_power)
-		var eligible_characters: Array[CharacterState] = []
-		for character: CharacterState in state.party.characters():
+		var eligible_targets: Dictionary = {}
+		var party := state.party.characters()
+		for party_index: int in party.size():
+			var character := party[party_index]
 			if character.current_health > 0 and character.traitor != monster.traitor and state.combat.battlefield.has_actor(character.id) and projectile_target_is_valid(state.combat, content, monster.id, character.id, maximum_range, spell.range_min + spell.range_max > 0):
-				eligible_characters.append(character)
-		var opposed_monster_in_range := false
-		for candidate: MonsterState in state.combat.monsters():
+				eligible_targets[party_index] = SpellTargetSelection.for_character(character)
+		var battle_monsters := state.combat.monsters()
+		for monster_index: int in battle_monsters.size():
+			var candidate := battle_monsters[monster_index]
 			if candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor and state.combat.battlefield.has_actor(candidate.id) and projectile_target_is_valid(state.combat, content, monster.id, candidate.id, maximum_range, spell.range_min + spell.range_max > 0):
-				opposed_monster_in_range = true
+				var target_definition := content.monster_by_id(candidate.definition_id)
+				if target_definition == null:
+					events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "targetId": candidate.id, "reason": "unknown-monster-target-definition"}))
+					return MONSTER_ATTACK_COMPLETED
+				eligible_targets[10 + monster_index] = SpellTargetSelection.for_monster(candidate, target_definition)
+		if eligible_targets.is_empty():
+			if did_cast:
 				break
-		if opposed_monster_in_range:
-			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "reason": "monster-spell-charmed-monster-target-unresolved"}))
-			return MONSTER_ATTACK_COMPLETED
-		if eligible_characters.is_empty():
-			return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
-		var cost_power := rng.draw(eligible_characters.size(), StringName("monster.spell.target-power.%d" % active_turn.spell_cast_count)) if spell.target_type == 0 else range_power
+			return MONSTER_ATTACK_FALLBACK
+		var cost_power := rng.draw(eligible_targets.size(), StringName("monster.spell.target-power.%d" % active_turn.spell_cast_count)) if spell.target_type == 0 else range_power
 		cost_power = mini(7, cost_power)
 		while cost_power > 0 and spell.cost * cost_power > monster.spell_points:
 			cost_power -= 1
 		if cost_power <= 0:
-			return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
-		var selected_targets: Array[CharacterState] = []
-		var party := state.party.characters()
-		var native_target_count := 10 + state.combat.monsters().size()
+			if did_cast:
+				break
+			return MONSTER_ATTACK_FALLBACK
+		var selected_targets: Array[SpellTargetSelection] = []
+		var selected_target_ids: Dictionary = {}
+		var native_target_count := 10 + battle_monsters.size()
 		var target_draw := 0
 		var target_attempts := 0
 		while selected_targets.size() < (cost_power if spell.target_type == 0 else 1):
@@ -1512,42 +1506,63 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 				break
 			var native_target := rng.draw(native_target_count, StringName("monster.spell.target.%d.%d" % [active_turn.spell_cast_count, target_draw])) - 1
 			target_draw += 1
-			if native_target < 0 or native_target >= party.size():
+			var candidate := eligible_targets.get(native_target) as SpellTargetSelection
+			if candidate == null or selected_target_ids.has(candidate.id):
 				continue
-			var candidate := party[native_target]
-			if eligible_characters.has(candidate) and not selected_targets.has(candidate):
-				selected_targets.append(candidate)
+			selected_targets.append(candidate)
+			selected_target_ids[candidate.id] = true
 		if selected_targets.is_empty():
-			return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
-		if selected_targets.any(func(candidate: CharacterState) -> bool: return candidate.conditions.is_active(ConditionRules.REFLECTING_SPELLS)):
-			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "reason": "monster-spell-reflection-unresolved"}))
-			return MONSTER_ATTACK_COMPLETED
-		var target := selected_targets[0]
+			if did_cast:
+				break
+			return MONSTER_ATTACK_FALLBACK
 		var cast_level := spell.classic_tier()
 		if cast_level < 0 or cast_level > 6:
 			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "reason": "invalid-classic-spell-tier"}))
+			if did_cast:
+				break
 			return MONSTER_ATTACK_COMPLETED
 		state.combat.set_guarding(monster.id, false)
 		active_turn.movement_remaining = 0
 		var resolutions: GroupSpellResolution
 		if spell.target_type == 0:
-			resolutions = _rules.magic.resolve_monster_repeated_spell(monster, selected_targets, spell, cost_power, cast_level, rng)
+			resolutions = _rules.magic.resolve_monster_repeated_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
 		else:
-			var single := _rules.magic.resolve_monster_spell(monster, target, spell, cost_power, cast_level, rng)
-			if single != null:
-				resolutions = GroupSpellResolution.new(single.cast, single.cost, single.duration, single.damage)
-				resolutions.append_target(target.id, &"character", single)
+			resolutions = _rules.magic.resolve_monster_targeted_spell(monster, definition, selected_targets[0], spell, cost_power, cast_level, rng)
 		if resolutions == null or not resolutions.cast:
-			return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
+			if did_cast:
+				break
+			return MONSTER_ATTACK_FALLBACK
 		active_turn.spell_cast_count += 1
 		did_cast = true
 		for index: int in resolutions.resolutions.size():
 			var resolution := resolutions.resolutions[index]
 			var resolved_target_id := resolutions.target_ids[index]
+			var selected_target_id := resolutions.selected_target_ids[index]
+			var target_kind := resolutions.target_kinds[index]
+			var reflected := resolutions.reflected_targets[index]
 			if resolution.damage > 0:
 				state.combat.mark_attacked(resolved_target_id)
-			events.append(DomainEvent.new(&"combat_spell_resolved", {"actorId": monster.id, "targetId": resolved_target_id, "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster"}))
-			_remove_defeated_position(state.combat, resolved_target_id, resolution.target_defeated)
+			events.append(DomainEvent.new(&"combat_spell_resolved", {"actorId": monster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster"}))
+			if not resolution.target_defeated:
+				continue
+			if target_kind == &"character":
+				_remove_defeated_position(state.combat, resolved_target_id, true)
+			else:
+				var defeated_monster := state.combat.monster_by_id(resolved_target_id)
+				var defeated_definition := content.monster_by_id(defeated_monster.definition_id) if defeated_monster != null else null
+				var queued := _queue_spell_death_macro(state.combat, defeated_monster, defeated_definition)
+				if not queued and defeated_definition != null and defeated_definition.death_macro > 0:
+					events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "targetId": resolved_target_id, "reason": "spell-death-macro-queue-limit"}))
+				# Castle's noofmagattacks loop continues after reflection kills the caster;
+				# retain its anchor until the complete spell sequence and queued macros finish.
+				_remove_defeated_position(state.combat, resolved_target_id, not queued and resolved_target_id != monster.id)
+	if not state.combat.pending_spell_death_macro_id().is_empty():
+		if not state.combat.begin_spell_death_macro_sequence(monster.id, true) or not _request_next_spell_death_macro(state.combat, content, events):
+			events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "reason": "invalid-spell-death-macro-queue"}))
+			return MONSTER_ATTACK_COMPLETED
+		return MONSTER_ATTACK_DEATH_MACRO
+	if monster.current_health <= 0:
+		_remove_defeated_position(state.combat, monster.id, true)
 	return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
 
 

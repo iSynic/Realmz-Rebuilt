@@ -861,7 +861,8 @@ func _test_combat_magic_and_monsters() -> void:
 	attacker.spell_points = 10
 	defender = MonsterState.new("monster.spell-target", definition.id, definition.name, 8, 8, 1, 8, 0)
 	defender.conditions.set_value(ConditionRules.FIRE_PROTECTION, 1)
-	var spell_result := rules.magic.resolve_character_spell(attacker, defender, definition, spell, 1, 1, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	var spell_group := rules.magic.resolve_character_targeted_spell(attacker, SpellTargetSelection.for_monster(defender, definition), spell, 1, 1, ScriptedRng.new([0, 0, 32_767, 32_767]))
+	var spell_result := spell_group.resolutions[0]
 	assert_true(spell_result.cast, "a funded spell commits its cost")
 	assert_false(spell_result.resisted, "failed resistance reaches damage resolution")
 	assert_equal(spell_result.damage, 2, "matching elemental protection halves damage")
@@ -876,7 +877,8 @@ func _test_combat_magic_and_monsters() -> void:
 	defender = MonsterState.new("monster.cannot-save-target", definition.id, definition.name, 8, 8, 1, 8, 0)
 	defender.set_save_value(0, 100)
 	var cannot_rng := ScriptedRng.new([0, 0, 0])
-	var cannot_result := rules.magic.resolve_character_spell(attacker, defender, definition, cannot_spell, 1, cannot_spell.classic_tier(), cannot_rng)
+	var cannot_group := rules.magic.resolve_character_targeted_spell(attacker, SpellTargetSelection.for_monster(defender, definition), cannot_spell, 1, cannot_spell.classic_tier(), cannot_rng)
+	var cannot_result := cannot_group.resolutions[0]
 	assert_false(cannot_result.saved, "savevs consumes the roll but forces the monster's save to fail when Classic cannot is greater than one")
 	assert_equal(cannot_rng.snapshot().draw_count, 3, "the forced failed save still consumes Castle's duration, damage, and save draws")
 	assert_equal(cannot_result.damage, 4, "the forced failed save leaves ordinary monster spell damage unhalved")

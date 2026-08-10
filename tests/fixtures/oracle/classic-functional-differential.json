@@ -1933,7 +1933,7 @@
     {
       "id": "combat.repeated-target-spells",
       "domain": "combat",
-      "claim": "An ordinary size-zero target-type 0 spell selects up to one distinct actor per chosen power in player-selected order, charges once at that power, and rerolls duration and base damage for every selected actor; monsters choose their power and unique native targets through a per-cast bounded sampling counter under FD-COMBAT-011.",
+      "claim": "An ordinary size-zero target-type 0 spell selects up to one distinct actor per chosen power in player-selected order, charges once at that power, and rerolls duration and base damage for every selected actor; monsters choose their power and unique native party-gap-monster targets through a per-cast bounded sampling counter under FD-COMBAT-011.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "Remake models Magic Darts as one creature target per power and preserves distinct Sorcerer 1108 and Enchanter 3208 identities. It supplies a targeting and identity lead, not proof of Castle's per-target roll, prepaid cost, or monster sampling lifecycle.",
@@ -1957,11 +1957,9 @@
           { "path": "src/realmz_orig/combat.c", "symbol": "if (!spellinfo.targettype)" }
         ],
         "authoredInputs": ["target type", "size", "power", "cost", "range and LOS", "selected native actor slots", "duration and damage ranges", "magic resistance and reflection"],
-        "observation": "For target type zero, the player receives powerlevel target slots, may cast after selecting at least one distinct party or monster actor, and retains selection order when removing entries. cast loops those selections and calls spelltargets/resolvespell separately, so duration and base damage reroll per actor while the power cost was already paid once. A monster first rolls range power, counts getrange targets, rolls target power from that count, lowers it for affordability, and samples unique native slots. The local pass variable persists across the whole battle, increments before every sample, resets only after exceeding 100, and permits a partial cast that still pays the chosen power. A monster above 100 magic resistance is removed from track after that selection's duration/base-damage rolls. Nonzero size changes type zero into open-space footprint selection.",
+        "observation": "For target type zero, the player receives powerlevel target slots, may cast after selecting at least one distinct party or monster actor, and retains selection order when removing entries. cast loops those selections and calls spelltargets/resolvespell separately, so duration and base damage reroll per actor while the power cost was already paid once. A monster first rolls range power, counts getrange targets across party slots, slot nine's gap, and monster slots ten onward, rolls target power from that count, lowers it for affordability, and samples unique native slots. The local pass variable persists across the whole battle, increments before every sample, resets only after exceeding 100, and permits a partial cast that still pays the chosen power. A monster above 100 magic resistance is removed from track after that selection's duration/base-damage rolls. Nonzero size changes type zero into open-space footprint selection.",
         "unresolved": [
-          "Reflection can redirect a selected target to the caster after a targeting-stage draw and remains explicitly unavailable.",
           "Nonzero-size open-space and summoning behavior is a separate implementation slice.",
-          "Monster targeting can include opposed or charmed monsters; that mixed roster path remains unavailable.",
           "Castle prepays player spell points and refunds only part of an aborted cast; Realmz 2.0 continues to mutate only after a committed typed response and does not charge cancellation."
         ]
       },
@@ -1977,9 +1975,10 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func cast_spell(" },
-        "expectedTrace": ["offer one ordered-selection option per spell and power", "select one through power distinct actors", "validate every actor's range and LOS before mutation", "reject unresolved reflection transactionally", "spend spell points once at chosen power", "reroll duration and base damage for each selected actor", "consume but apply no effect for an over-100 monster", "resolve and queue deaths in selected order", "for monsters roll separate range and target power", "sample unique native slots through one per-cast hundred-attempt counter", "permit a partial monster cast while charging chosen power", "spend two half-attacks and twelve movement once"],
+        "expectedTrace": ["offer one ordered-selection option per spell and power", "select one through power distinct actors", "validate every actor's range and LOS before mutation", "spend spell points once at chosen power", "for each selected reflector roll once and optionally replace the effective target with the caster", "reroll duration and base damage for each selected actor", "consume but apply no effect for an over-100 unreflected monster", "resolve and queue deaths in selected order", "for monsters roll separate range and target power", "sample unique native party-gap-monster slots through one per-cast hundred-attempt counter", "permit a partial monster cast while charging chosen power", "spend two half-attacks and twelve movement once"],
         "tests": [
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_and_monster_repeated_target_spells()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_ordinary_spell_reflection_and_opposed_monster_targets()" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
         ]
       },
@@ -1990,7 +1989,65 @@
       },
       "decision": "intentional-correction",
       "availability": "implemented",
-      "status": "ordinary-size-zero-player-and-party-targeting-monster-casting-implemented-reflection-open-space-and-opposed-monster-targets-explicit"
+      "status": "ordinary-size-zero-player-and-native-mixed-targeting-monster-casting-implemented-open-space-explicit"
+    },
+    {
+      "id": "combat.ordinary-spell-reflection",
+      "domain": "combat",
+      "claim": "An ordinary single-actor or size-zero repeated spell checks the originally selected actor's Reflecting Spells condition once, redirects a successful one-through-thirty-three roll to the active caster before duration, damage, immunity, resistance, or saves, and never recursively reflects the redirected cast.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake has a dedicated Classic reflection adapter that treats rolls through 33 as successful, suppresses recursive reflection on the redirected cast, and orders reflection before resistance. It is a useful behavior and test donor, but its queued recast host is not the 2.0 architecture.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_spell_reflection.gd", "symbol": "static func begin_resolution(spell: Object, suppress_reflection: bool)" },
+          { "path": "src/scripts/classic_runtime/classic_spell_reflection.gd", "symbol": "static func should_reflect(spell: Object, roll: int)" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "a roll of 33 reflects a Classic spell" },
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "Classic reflection resolves before magic resistance" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/combat.c", "symbol": "targetsleft = getrange(monsterup + 10, monster[monsterup].traiter, spellinfo.cannot)" },
+          { "path": "src/realmz_orig/getrange.c", "symbol": "short getrange(short body, short side, short flip)" },
+          { "path": "src/realmz_orig/cast.c", "symbol": "void cast(short targetnum, short who)" },
+          { "path": "src/realmz_orig/spelltargets.c", "symbol": "short spelltargets(short targetnum, short who, short mode, short noreflect)" },
+          { "path": "src/realmz_orig/resolvespell.c", "symbol": "void resolvespell(void)" },
+          { "path": "src/realmz_orig/resist.c", "symbol": "short resist(short who)" },
+          { "path": "src/realmz_orig/killbody.c", "symbol": "if ((macro) || (inspell))" },
+          { "path": "src/realmz_orig/getup.c", "symbol": "emptyque();" }
+        ],
+        "authoredInputs": ["target type zero or one", "selected party or monster native slot", "caster turn slot", "Reflecting Spells condition", "monster magic resistance", "spell duration, damage, resistance, save, and protection fields"],
+        "observation": "For ordinary non-missile actor targeting, spelltargets tests the selected party or monster condition and Rand(100) below 34 before the selected monster's above-100 magic-resistance exclusion. Success tracks q[up], the active caster, instead of the selected actor. resolvespell then rolls and resolves only the effective tracked target, so the caster may still resist or save; the original actor is not also affected. cast invokes this independently for every target-type-zero selection. Monster getrange and target sampling include opposed party actors and opposed monsters in native slots ten onward. If reflection kills a monster caster, killbody queues its macro while inspell remains true; combat.c does not test caster stamina between noofmagattacks iterations, and getup drains the queue only after that spell loop completes. Monster damage calls killbody whenever stamina is nonpositive, not only on the transition, so another reflected hit appends another record for the same caster to Castle's fixed 100-entry todoque.",
+        "unresolved": [
+          "Automatic target types 9, 10, and 12 branch before the per-cell reflection test and therefore do not inherit ordinary reflection.",
+          "Area targeting can encounter one actor through multiple footprint cells and intelligent monster scoring invokes spelltargets in mode true, consuming reflection RNG before the actual cast; those suspicious source effects remain disabled.",
+          "Queued-field collisions pass noreflect true and remain a separate persistent-field contract.",
+          "Monster cannot value four reverses allegiance for friendly targeting and remains disabled as its own spell-targeting branch."
+        ]
+      },
+      "providence": {
+        "commit": "b045a6317712f95932b7334490ecd8f756d43e5b",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"targetType\": spell.target_type" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"conditions\": monster.conditions" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves ordinary target type, spell resolution fields, and all forty signed monster starting conditions. Reflection is runtime condition behavior and requires no new package field."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/magic_rules.gd", "symbol": "func resolve_character_targeted_spell(" },
+        "expectedTrace": ["validate the selected actor and range before mutation", "spend the committed cast cost once", "draw reflection only when the original target has Reflecting Spells", "replace the effective target with the active caster on results one through thirty-three", "roll duration and damage after target redirection", "apply immunity, resistance, save, protection, damage, and one record-based death macro to the effective target", "complete the monster's authored magic-attack count before draining reflected-caster macros", "preserve duplicate subject records up to Castle's 100-entry queue bound", "retain subject occupancy until its final duplicate record completes", "publish selected and effective target identities", "serialize the complete monster death-macro continuation with the active caster"],
+        "tests": [
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_ordinary_spell_reflection_and_opposed_monster_targets()" },
+          { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "all forty authored monster starting conditions cross the validating package boundary" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "ordinary-single-and-repeated-reflection-plus-opposed-monster-targeting-verified"
     }
   ]
 }

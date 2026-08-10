@@ -8,16 +8,22 @@ func _init(character_rules: CharacterRules = null) -> void:
 	_characters = character_rules if character_rules != null else CharacterRules.new()
 
 
-func resolve_character_spell(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> SpellResolution:
-	if caster == null or target == null or target_definition == null or spell == null or rng == null or power_level < 1:
+func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
+	if caster == null or not _selection_is_valid(selection) or spell == null or rng == null or power_level < 1:
 		return null
 	var spell_cost := absi(spell.cost * power_level)
 	if caster.spell_points < spell_cost:
-		return SpellResolution.new(false, false, false, spell_cost, 0, 0)
+		return GroupSpellResolution.new(false, spell_cost, 0, 0)
 	caster.spell_points -= spell_cost
+	var effective := _reflect_to_character_caster(caster, selection, rng, &"magic.reflect")
 	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"magic.duration")
 	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"magic.damage")
-	return _resolve_character_spell_monster_target(caster, target, target_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng)
+	var result := GroupSpellResolution.new(true, spell_cost, duration, damage)
+	if not effective.reflected and effective.kind == &"monster" and effective.monster.magic_resistance > 100:
+		return result
+	var resolution := _resolve_character_selection(caster, effective, spell, power_level, cast_level, damage, duration, spell_cost, rng)
+	result.append_target(effective.id, effective.kind, resolution, effective.original_target_id, effective.reflected)
+	return result
 
 
 func resolve_character_group_spell(caster: CharacterState, character_targets: Array[CharacterState], monster_targets: Array[MonsterState], monster_definitions: Array[MonsterDefinition], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_empty: bool = false) -> GroupSpellResolution:
@@ -41,7 +47,7 @@ func resolve_character_group_spell(caster: CharacterState, character_targets: Ar
 	for index: int in monster_targets.size():
 		var target := monster_targets[index]
 		var definition := monster_definitions[index]
-		result.append_target(target.id, &"monster", _resolve_character_spell_monster_target(caster, target, definition, spell, power_level, cast_level, damage, duration, 0, rng))
+		result.append_target(target.id, &"monster", _resolve_character_spell_monster_target(caster.level, target, definition, spell, power_level, cast_level, damage, duration, 0, rng))
 	return result
 
 
@@ -57,22 +63,20 @@ func resolve_character_repeated_spell(caster: CharacterState, selections: Array[
 	caster.spell_points -= spell_cost
 	var result := RepeatedSpellResolution.new(true, spell_cost, selections.size())
 	for index: int in selections.size():
-		var selection := selections[index]
+		var selection := _reflect_to_character_caster(caster, selections[index], rng, StringName("magic.repeated.reflect.%d" % index))
 		var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, StringName("magic.repeated.duration.%d" % index))
 		var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, StringName("magic.repeated.damage.%d" % index))
-		if selection.kind == &"monster" and selection.monster.magic_resistance > 100:
-			result.exclude_target(selection.id)
+		if not selection.reflected and selection.kind == &"monster" and selection.monster.magic_resistance > 100:
+			result.exclude_target(selection.original_target_id)
 			continue
-		if selection.kind == &"character":
-			result.append_target(selection.id, selection.kind, _resolve_character_spell_character_target(caster, selection.character, spell, power_level, cast_level, damage, duration, rng))
-		else:
-			result.append_target(selection.id, selection.kind, _resolve_character_spell_monster_target(caster, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, 0, rng))
+		var resolution := _resolve_character_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng)
+		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, selection.reflected)
 	return result
 
 
-func _resolve_character_spell_monster_target(caster: CharacterState, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng) -> SpellResolution:
+func _resolve_character_spell_monster_target(caster_level: int, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng) -> SpellResolution:
 	var rolled_damage := damage
-	var resisted := _monster_resists(caster, target, target_definition, spell, power_level, cast_level, rng)
+	var resisted := _monster_resists(caster_level, target, target_definition, spell, power_level, cast_level, rng)
 	if resisted:
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
 	var saved := false
@@ -183,23 +187,69 @@ func character_resists(caster_level: int, target: CharacterState, spell: SpellDe
 	return rng.draw(100, &"magic.resistance") <= target.magic_resistance + power_level * spell.resistance_adjust
 
 
-func resolve_monster_spell(caster: MonsterState, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> SpellResolution:
-	if caster == null or target == null or spell == null or rng == null or power_level < 1:
+func resolve_monster_targeted_spell(caster: MonsterState, caster_definition: MonsterDefinition, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> GroupSpellResolution:
+	if caster == null or caster_definition == null or not _selection_is_valid(selection) or spell == null or rng == null or power_level < 1:
 		return null
 	var spell_cost := spell.cost * power_level
 	if spell_cost <= 0 or caster.spell_points < spell_cost:
-		return SpellResolution.new(false, false, false, maxi(0, spell_cost), 0, 0)
+		return GroupSpellResolution.new(false, maxi(0, spell_cost), 0, 0)
 	caster.spell_points -= spell_cost
+	var effective := _reflect_to_monster_caster(caster, caster_definition, selection, rng, &"magic.monster-spell.reflect")
 	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"magic.monster-spell.duration")
 	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"magic.monster-spell.damage")
+	var result := GroupSpellResolution.new(true, spell_cost, duration, damage)
+	if not effective.reflected and effective.kind == &"monster" and effective.monster.magic_resistance > 100:
+		return result
+	var resolution := _resolve_monster_selection(caster, effective, spell, power_level, cast_level, damage, duration, spell_cost, rng, &"magic.monster-spell.damage-save")
+	result.append_target(effective.id, effective.kind, resolution, effective.original_target_id, effective.reflected)
+	return result
+
+
+func resolve_monster_repeated_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RepeatedSpellResolution:
+	if caster == null or caster_definition == null or spell == null or rng == null or power_level < 1 or selections.is_empty() or selections.size() > power_level:
+		return null
+	for selection: SpellTargetSelection in selections:
+		if not _selection_is_valid(selection):
+			return null
+	var spell_cost := spell.cost * power_level
+	if spell_cost <= 0 or caster.spell_points < spell_cost:
+		return RepeatedSpellResolution.new(false, maxi(0, spell_cost), selections.size())
+	caster.spell_points -= spell_cost
+	var result := RepeatedSpellResolution.new(true, spell_cost, selections.size())
+	for index: int in selections.size():
+		var selection := _reflect_to_monster_caster(caster, caster_definition, selections[index], rng, StringName("magic.monster-repeated.reflect.%d" % index))
+		var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, StringName("magic.monster-repeated.duration.%d" % index))
+		var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, StringName("magic.monster-repeated.damage.%d" % index))
+		if not selection.reflected and selection.kind == &"monster" and selection.monster.magic_resistance > 100:
+			result.exclude_target(selection.original_target_id)
+			continue
+		var save_tag := StringName("magic.monster-repeated.damage-save.%d" % index)
+		var resolution := _resolve_monster_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, save_tag)
+		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, selection.reflected)
+	return result
+
+
+func _resolve_character_selection(caster: CharacterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng) -> SpellResolution:
+	if selection.kind == &"character":
+		return _resolve_character_spell_character_target(caster, selection.character, spell, power_level, cast_level, damage, duration, rng)
+	return _resolve_character_spell_monster_target(caster.level, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng)
+
+
+func _resolve_monster_selection(caster: MonsterState, selection: SpellTargetSelection, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName) -> SpellResolution:
+	if selection.kind == &"character":
+		return _resolve_monster_spell_character_target(caster.hit_dice, selection.character, spell, power_level, cast_level, damage, duration, spell_cost, rng, save_tag)
+	return _resolve_monster_spell_monster_target(caster.hit_dice, selection.monster, selection.monster_definition, spell, power_level, cast_level, damage, duration, spell_cost, rng, save_tag)
+
+
+func _resolve_monster_spell_character_target(caster_level: int, target: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName) -> SpellResolution:
 	var rolled_damage := damage
-	var resisted := character_resists(caster.hit_dice, target, spell, power_level, cast_level, rng)
+	var resisted := character_resists(caster_level, target, spell, power_level, cast_level, rng)
 	if resisted:
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type <= 6:
-		var save_roll := rng.draw(100, &"magic.monster-spell.damage-save")
+		var save_roll := rng.draw(100, save_tag)
 		saved = spell.cannot <= 1 and save_roll <= target.save_value(damage_type - 1)
 		if saved:
 			damage /= 2
@@ -211,40 +261,49 @@ func resolve_monster_spell(caster: MonsterState, target: CharacterState, spell: 
 	return SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
 
 
-func resolve_monster_repeated_spell(caster: MonsterState, targets: Array[CharacterState], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RepeatedSpellResolution:
-	if caster == null or spell == null or rng == null or power_level < 1 or targets.is_empty() or targets.size() > power_level:
-		return null
-	for target: CharacterState in targets:
-		if target == null:
-			return null
-	var spell_cost := spell.cost * power_level
-	if spell_cost <= 0 or caster.spell_points < spell_cost:
-		return RepeatedSpellResolution.new(false, maxi(0, spell_cost), targets.size())
-	caster.spell_points -= spell_cost
-	var result := RepeatedSpellResolution.new(true, spell_cost, targets.size())
-	for index: int in targets.size():
-		var target := targets[index]
-		var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, StringName("magic.monster-repeated.duration.%d" % index))
-		var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, StringName("magic.monster-repeated.damage.%d" % index))
-		var rolled_damage := damage
-		var resisted := character_resists(caster.hit_dice, target, spell, power_level, cast_level, rng)
-		if resisted:
-			result.append_target(target.id, &"character", SpellResolution.new(true, true, false, 0, 0, duration))
-			continue
-		var saved := false
-		var damage_type := absi(spell.damage_type)
-		if damage_type > 0 and damage_type <= 6:
-			var save_roll := rng.draw(100, StringName("magic.monster-repeated.damage-save.%d" % index))
-			saved = spell.cannot <= 1 and save_roll <= target.save_value(damage_type - 1)
-			if saved:
-				damage /= 2
-			if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
-				damage /= 2
-		if rolled_damage != 0 and damage == 0:
-			damage = 1
-		target.current_health -= damage
-		result.append_target(target.id, &"character", SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= 0))
-	return result
+func _resolve_monster_spell_monster_target(caster_level: int, target: MonsterState, target_definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, damage: int, duration: int, spell_cost: int, rng: RealmzRng, save_tag: StringName) -> SpellResolution:
+	var rolled_damage := damage
+	var resisted := _monster_resists(caster_level, target, target_definition, spell, power_level, cast_level, rng)
+	if resisted:
+		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
+	var saved := false
+	var damage_type := absi(spell.damage_type)
+	if damage_type > 0 and damage_type <= 6:
+		var save_roll := rng.draw(100, save_tag)
+		saved = spell.cannot <= 1 and save_roll <= (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1))
+		if saved:
+			damage /= 2
+		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
+			damage /= 2
+	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type <= 6 else 0
+	if save_modifier < 0:
+		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
+	if rolled_damage != 0 and damage == 0:
+		damage = 1
+	target.current_health -= damage
+	return SpellResolution.new(true, false, saved, spell_cost, damage, duration, target.current_health <= 0)
+
+
+static func _selection_is_valid(selection: SpellTargetSelection) -> bool:
+	return selection != null and ((selection.kind == &"character" and selection.character != null) or (selection.kind == &"monster" and selection.monster != null and selection.monster_definition != null))
+
+
+static func _selection_reflects(selection: SpellTargetSelection, rng: RealmzRng, tag: StringName) -> bool:
+	if selection.kind == &"character":
+		return selection.character.conditions.is_active(ConditionRules.REFLECTING_SPELLS) and rng.draw(100, tag) < 34
+	return selection.monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS) and rng.draw(100, tag) < 34
+
+
+static func _reflect_to_character_caster(caster: CharacterState, selection: SpellTargetSelection, rng: RealmzRng, tag: StringName) -> SpellTargetSelection:
+	if not _selection_reflects(selection, rng, tag):
+		return selection
+	return SpellTargetSelection.for_character(caster, selection.original_target_id, true)
+
+
+static func _reflect_to_monster_caster(caster: MonsterState, caster_definition: MonsterDefinition, selection: SpellTargetSelection, rng: RealmzRng, tag: StringName) -> SpellTargetSelection:
+	if not _selection_reflects(selection, rng, tag):
+		return selection
+	return SpellTargetSelection.for_monster(caster, caster_definition, selection.original_target_id, true)
 
 
 func resolve_scenario_spell(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition = null, race: RaceDefinition = null) -> SpellResolution:
@@ -335,7 +394,7 @@ func resolve_scenario_spell(target: CharacterState, spell: SpellDefinition, powe
 	return result
 
 
-func _monster_resists(caster: CharacterState, target: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> bool:
+func _monster_resists(caster_level: int, target: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> bool:
 	if spell.spell_class == 0:
 		var charm_chance := 35 + 4 * target.hit_dice
 		charm_chance += 5 if definition.type_flag(0) else 0
@@ -343,7 +402,7 @@ func _monster_resists(caster: CharacterState, target: MonsterState, definition: 
 		if rng.draw(100, &"magic.monster-charm") <= charm_chance + power_level * spell.save_adjust:
 			return true
 	if spell.damage_type < 0 and absi(spell.damage_type) != 9:
-		var direct_chance := 35 + 5 * target.hit_dice - 5 * caster.level + power_level * spell.save_adjust
+		var direct_chance := 35 + 5 * target.hit_dice - 5 * caster_level + power_level * spell.save_adjust
 		if rng.draw(100, &"magic.monster-direct-resist") <= direct_chance:
 			return true
 	if spell.spell_class >= 0 and spell.spell_class < 6 and (definition.spell_immune(spell.spell_class) or target.magic_resistance > 100):
