@@ -33,7 +33,7 @@ func strength_bonuses(brawn: int, maximum_damage_bonus: int) -> StrengthResult:
 	return StrengthResult.new(hit, damage)
 
 
-func create_character(character_id: String, character_name: String, race: RaceDefinition, caste: CasteDefinition, gender: int, rng: RealmzRng) -> CharacterState:
+func create_character(character_id: String, character_name: String, race: RaceDefinition, caste: CasteDefinition, gender: int, rng: RealmzRng, include_initial_items: bool = true) -> CharacterState:
 	if race == null or caste == null or rng == null:
 		return null
 	var attributes: Array[int] = []
@@ -114,12 +114,20 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 			starting_condition = -1
 		result.conditions.set_value(index, starting_condition)
 	_configure_spellcaster(result, caste, rng)
+	if include_initial_items:
+		add_initial_items(result, caste)
+	return result
+
+
+func add_initial_items(character: CharacterState, caste: CasteDefinition) -> bool:
+	if character == null or caste == null or not character.inventory().is_empty():
+		return false
 	var items: Array[ItemInstance] = []
 	for index: int in caste.start_items().size():
 		var item_id := caste.start_items()[index]
-		items.append(ItemInstance.new("%s.item.%d" % [character_id, index], item_id))
-	result.set_inventory(items)
-	return result
+		items.append(ItemInstance.new("%s.item.%d" % [character.id, index], item_id))
+	character.set_inventory(items)
+	return true
 
 
 func infer_age_group(age_days: int, race: RaceDefinition) -> int:

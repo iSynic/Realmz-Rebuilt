@@ -444,7 +444,7 @@ func _create_party(specs: Array[CharacterCreationSpec]) -> SessionStep:
 		var validation := _character_creation_error(spec, names)
 		if not validation.is_empty():
 			return SessionStep.failed(_view_revision, StringName(validation["code"]), String(validation["message"]))
-		var character := _create_character_from_spec(spec, "party.character.%d" % (index + 1))
+		var character := _create_character_from_spec(spec, "party.character.%d" % (index + 1), true)
 		if character == null:
 			return SessionStep.failed(_view_revision, &"character_creation_failed", "Realmz rules rejected a party member.")
 		names[spec.name.to_lower()] = true
@@ -621,7 +621,7 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionStep:
 		return _finish_failed(&"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size, events)
 	var draft := _state.character_draft
 	var character := CharacterState.from_data(draft.generated_character.to_data())
-	if character == null or not _state.party.add_character(character):
+	if character == null or not _rules.characters.add_initial_items(character, _content.caste_by_id(character.caste_id)) or not _state.party.add_character(character):
 		return _finish_failed(&"character_creation_failed", "Realmz rules rejected the generated character.", events)
 	_state.character_draft = null
 	events.append(DomainEvent.new(&"character_finalized", {"characterId": character.id}))
@@ -658,12 +658,14 @@ func _character_creation_error(spec: CharacterCreationSpec, existing_names: Dict
 	return {}
 
 
-func _create_character_from_spec(spec: CharacterCreationSpec, character_id: String) -> CharacterState:
-	var character := _rules.characters.create_character(character_id, spec.name, _content.race_by_id(spec.race_id), _content.caste_by_id(spec.caste_id), spec.gender, _rng)
+func _create_character_from_spec(spec: CharacterCreationSpec, character_id: String, add_starting_items: bool = false) -> CharacterState:
+	var character := _rules.characters.create_character(character_id, spec.name, _content.race_by_id(spec.race_id), _content.caste_by_id(spec.caste_id), spec.gender, _rng, false)
 	if character == null:
 		return null
 	character.portrait_id = spec.portrait_id
 	character.combat_icon_id = spec.combat_icon_id
+	if add_starting_items and not _rules.characters.add_initial_items(character, _content.caste_by_id(spec.caste_id)):
+		return null
 	return character
 
 
