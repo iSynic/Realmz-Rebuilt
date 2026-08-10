@@ -82,13 +82,25 @@ func _test_character_creation_and_leveling() -> void:
 	created.vitality = 18
 	created.level = 1
 	created.missile = 2
-	var level_result := rules.characters.level_up(created, race, caste, ScriptedRng.new([0, 32_767, 0]))
+	var level_result := rules.characters.level_up(created, race, caste, ScriptedRng.new([0, 0, 32_767, 0]))
 	assert_equal(created.level, 2, "level-up commits the next Realmz level")
 	assert_equal(created.normal_attacks, 2, "caste attack-level unlocks participate in the attack cap")
 	assert_equal(created.missile, 3, "missile improvement is a Castle-scaled die")
 	assert_equal(level_result.stamina_gained, 10, "level stamina includes the capped vitality bonus")
 	assert_equal(level_result.magic_resistance_gained, 1, "the inclusive level resistance check is deterministic")
 	assert_equal(created.to_hit, -8, "level to-hit growth mutates the character aggregate")
+
+	var progression_race := _progression_race()
+	var progression_caste := _progression_caste()
+	var progression_rng := ScriptedRng.new(_ints_size(20, 0))
+	var advanced := rules.characters.create_character("character.advanced", "Advanced", progression_race, progression_caste, 1, progression_rng, false, 3)
+	assert_not_null(advanced, "Castle's fixed level-three choice constructs through two ordinary level-up operations")
+	assert_equal([advanced.level, advanced.prestige_penalty, advanced.experience], [3, 40, -12_345], "advanced creation retains Castle's target level, quadratic prestige penalty, and caste victory threshold")
+	assert_equal([advanced.maximum_health, advanced.current_health, advanced.two_hand], [3, 3, 100], "advanced creation accumulates level stamina and preserves the clamped race-plus-caste two-hand statistic")
+	assert_equal([advanced.special_value(0), advanced.ability_value(0), advanced.ability_value(3), advanced.ability_value(14)], [7, 16, 6, 0], "racial combat modifiers remain separate from initialized and leveled trained abilities, while the invalid fifteenth source field stays zero")
+	assert_equal(advanced.conditions.value(4), -1, "a caste level threshold replaces an existing non-permanent racial duration with Castle's permanent sentinel")
+	assert_equal(progression_rng.snapshot().draw_count, 20, "level-three creation consumes the level-one roll followed by both complete ordinary level-up RNG sequences")
+	assert_equal(progression_rng.trace().filter(func(entry: Dictionary) -> bool: return entry["tag"] == "character.level.registration-check").size(), 2, "each intervening Castle level consumes its registration-era compatibility draw")
 
 
 func _test_live_aging_and_maximum_age() -> void:
@@ -946,6 +958,34 @@ func _race() -> RaceDefinition:
 func _caste(minimum_age_group: int = 1) -> CasteDefinition:
 	var spellcasters: Array[Vector3i] = []
 	return CasteDefinition.new("caste.test", 1, "Test Caste", _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), _ints_size(40, 0), Vector2i(8, 8), Vector2i(10, 2), Vector2i(0, 1), Vector2i(2, 6), Vector2i(4, 1), spellcasters, _ints([2]), _strings(["item.start"]), 0, minimum_age_group, 0, 1, 0, 3, 0, 3, 12, true, false, 0, 0, 0, Vector2i(0, 5))
+
+
+func _progression_race() -> RaceDefinition:
+	var hit_modifiers := _ints_size(8, 0)
+	hit_modifiers[0] = 7
+	var ability_bonuses := _ints_size(14, 0)
+	ability_bonuses[0] = 2
+	ability_bonuses[5] = 1
+	var attribute_bonuses := _ints_size(6, 0)
+	attribute_bonuses[0] = 15
+	attribute_bonuses[3] = 17
+	var conditions := _ints_size(40, 0)
+	conditions[4] = 6
+	return RaceDefinition.new("race.progression", 2, "Progression Race", hit_modifiers, _ints_size(8, 0), attribute_bonuses, _attribute_limits(), conditions, [Vector2i(18, 18), Vector2i(25, 25), Vector2i(35, 35), Vector2i(50, 50), Vector2i(70, 70)], _age_changes(), 100, false, 10, 0, 70, 0, 1, 3, false, 0, 0, 0, 0, "", [], ability_bonuses)
+
+
+func _progression_caste() -> CasteDefinition:
+	var conditions := _ints_size(40, 0)
+	conditions[4] = 2
+	var initial_abilities := _ints_size(14, 0)
+	initial_abilities[0] = 10
+	initial_abilities[3] = 5
+	initial_abilities[5] = 20
+	var level_abilities := _ints_size(14, 0)
+	level_abilities[0] = 4
+	var victory := _ints_size(30, 0)
+	victory[2] = 12_345
+	return CasteDefinition.new("caste.progression", 2, "Progression Caste", _ints_size(8, 0), _ints_size(6, 0), _attribute_limits(), conditions, Vector2i(1, 1), Vector2i(0, 1), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], [], 0, 1, 0, 1, 50, 0, 0, 3, 0, true, false, 0, 0, 0, Vector2i(0, 8), "", [], initial_abilities, level_abilities, victory)
 
 
 func _age_changes() -> Array[PackedInt32Array]:

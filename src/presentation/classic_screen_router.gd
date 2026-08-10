@@ -40,6 +40,7 @@ var _race_list: ItemList
 var _caste_list: ItemList
 var _name_edit: LineEdit
 var _gender_option: OptionButton
+var _starting_level_option: OptionButton
 var _portrait_option: OptionButton
 var _combat_icon_option: OptionButton
 var _party_list: VBoxContainer
@@ -59,6 +60,7 @@ var _selected_caste_id: String = ""
 var _creator_step: int = 0
 var _draft_name: String = ""
 var _draft_gender: int = 1
+var _draft_starting_level: int = 1
 var _draft_portrait_id: String = ""
 var _draft_combat_icon_id: String = ""
 var _awaiting_draft_generation: bool = false
@@ -482,6 +484,7 @@ func _refresh_setup_options() -> void:
 func _render_creator_step() -> void:
 	if _creator_page == null:
 		return
+	_setup_message.text = _creator_step_message()
 	_clear(_creator_page)
 	_race_list = null
 	_caste_list = null
@@ -526,12 +529,21 @@ func _build_creator_identity() -> void:
 	_gender_option.select(0 if _draft_gender == 1 else 1)
 	_gender_option.item_selected.connect(func(_index: int) -> void: _draft_gender = _gender_option.get_selected_id())
 	_creator_page.add_child(_gender_option)
-	var starting_level := OptionButton.new()
-	starting_level.name = "StartingLevel"
-	starting_level.add_item("Starting level 1", 1)
-	starting_level.disabled = true
-	starting_level.tooltip_text = "Castle's higher-level creation runs the complete level-up path. That source-backed workflow is not implemented yet."
-	_creator_page.add_child(starting_level)
+	_starting_level_option = OptionButton.new()
+	_starting_level_option.name = "StartingLevel"
+	var maximum_level := _view.campaign_summary.maximum_level if _view != null and _view.campaign_summary != null else 0
+	for level: int in CharacterRules.STARTING_LEVELS:
+		if maximum_level > 0 and level > maximum_level:
+			continue
+		_starting_level_option.add_item("Starting level %d" % level, level)
+	var selected_index := _starting_level_option.get_item_index(_draft_starting_level)
+	if selected_index < 0:
+		selected_index = 0
+		_draft_starting_level = _starting_level_option.get_item_id(0)
+	_starting_level_option.select(selected_index)
+	_starting_level_option.item_selected.connect(func(_index: int) -> void: _draft_starting_level = _starting_level_option.get_selected_id())
+	_starting_level_option.tooltip_text = "Castle offers fixed starting levels and runs every intervening ordinary level-up roll. Campaign level restrictions remove unavailable choices."
+	_creator_page.add_child(_starting_level_option)
 	call_deferred("_focus_first", _creator_page)
 
 
@@ -652,6 +664,7 @@ func _creator_next() -> void:
 		0:
 			_draft_name = _name_edit.text.strip_edges()
 			_draft_gender = _gender_option.get_selected_id()
+			_draft_starting_level = _starting_level_option.get_selected_id()
 			if _draft_name.is_empty():
 				_setup_message.text = "Enter a character name before continuing."
 				return
@@ -714,6 +727,7 @@ func _reset_creator() -> void:
 	_creator_step = 0
 	_draft_name = ""
 	_draft_gender = 1
+	_draft_starting_level = 1
 	_draft_portrait_id = ""
 	_draft_combat_icon_id = ""
 	_selected_race_id = ""
@@ -741,7 +755,7 @@ func _draft_spell_selection_changed(_index: int, _selected: bool) -> void:
 
 
 func _character_creation_spec() -> CharacterCreationSpec:
-	return CharacterCreationSpec.new(_draft_name, _selected_race_id, _selected_caste_id, _draft_gender, _draft_portrait_id, _draft_combat_icon_id)
+	return CharacterCreationSpec.new(_draft_name, _selected_race_id, _selected_caste_id, _draft_gender, _draft_portrait_id, _draft_combat_icon_id, _draft_starting_level)
 
 
 func _creator_step_message() -> String:
@@ -864,7 +878,7 @@ func _update_creator_review() -> void:
 		_review_label.text = "The Classic character roll has not completed."
 		return
 	var character := _view.character_draft
-	_review_label.text = "%s • Level %d %s %s\nHP %d/%d • SP %d/%d • Age %d (%s)\nBrawn %d • Knowledge %d • Judgment %d • Agility %d • Vitality %d • Luck %d\nArmor %d • To Hit %d • Dodge %d • Missile %d • Hand-to-Hand %d • Damage %+d\nMovement %d • Magic Resistance %d%%" % [character.name, character.level, character.race_name, character.caste_name, character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.age_years, character.age_group_name, character.brawn, character.knowledge, character.judgment, character.agility, character.vitality, character.luck, character.armor, character.to_hit, character.dodge, character.missile, character.hand_to_hand, character.damage_bonus, character.maximum_movement, character.magic_resistance]
+	_review_label.text = "%s • Level %d %s %s\nHP %d/%d • SP %d/%d • Age %d (%s)\nBrawn %d • Knowledge %d • Judgment %d • Agility %d • Vitality %d • Luck %d\nArmor %d • To Hit %d • Dodge %d • Missile %d • Two-Hand %d • Hand-to-Hand %d • Damage %+d\nMovement %d • Magic Resistance %d%%" % [character.name, character.level, character.race_name, character.caste_name, character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.age_years, character.age_group_name, character.brawn, character.knowledge, character.judgment, character.agility, character.vitality, character.luck, character.armor, character.to_hit, character.dodge, character.missile, character.two_hand, character.hand_to_hand, character.damage_bonus, character.maximum_movement, character.magic_resistance]
 
 
 func _option_name(list: ItemList, option_id: String) -> String:
@@ -928,7 +942,7 @@ func _render_characters() -> void:
 		_add_empty_state("No characters", "Begin a campaign or import an eligible vault character.")
 		return
 	for character: CharacterView in _view.party_members:
-		var detail := "HP %d/%d • SP %d/%d • Armor %d • Move %d/%d\nAge %d • %s • Level %d\nBrawn %d • Knowledge %d • Judgment %d • Agility %d • Vitality %d • Luck %d\nTo hit %d • Dodge %d • Missile %d • Hand to hand %d • Magic resistance %d\nLoad %d/%d • Experience %d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.armor, character.movement, character.maximum_movement, character.age_years, character.age_group_name, character.level, character.brawn, character.knowledge, character.judgment, character.agility, character.vitality, character.luck, character.to_hit, character.dodge, character.missile, character.hand_to_hand, character.magic_resistance, character.carried_load, character.maximum_load, character.experience]
+		var detail := "HP %d/%d • SP %d/%d • Armor %d • Move %d/%d\nAge %d • %s • Level %d\nBrawn %d • Knowledge %d • Judgment %d • Agility %d • Vitality %d • Luck %d\nTo hit %d • Dodge %d • Missile %d • Two hand %d • Hand to hand %d • Magic resistance %d\nLoad %d/%d • Experience %d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.armor, character.movement, character.maximum_movement, character.age_years, character.age_group_name, character.level, character.brawn, character.knowledge, character.judgment, character.agility, character.vitality, character.luck, character.to_hit, character.dodge, character.missile, character.two_hand, character.hand_to_hand, character.magic_resistance, character.carried_load, character.maximum_load, character.experience]
 		_add_card(character.name, "Level %d • %s / %s" % [character.level, character.race_name, character.caste_name], detail)
 		var conditions: Array[String] = []
 		for index: int in character.condition_values.size():

@@ -3,6 +3,7 @@ extends RefCounted
 
 var name: String = ""
 var gender: int = 1
+var starting_level: int = 1
 var race_id: String = ""
 var caste_id: String = ""
 var portrait_id: String = ""
@@ -12,7 +13,7 @@ var generated_character: CharacterState
 
 
 func to_creation_spec() -> CharacterCreationSpec:
-	return CharacterCreationSpec.new(name, race_id, caste_id, gender, portrait_id, combat_icon_id)
+	return CharacterCreationSpec.new(name, race_id, caste_id, gender, portrait_id, combat_icon_id, starting_level)
 
 
 func is_ready() -> bool:
@@ -27,6 +28,7 @@ func to_data() -> Dictionary:
 	return {
 		"name": name,
 		"gender": gender,
+		"startingLevel": starting_level,
 		"raceId": race_id,
 		"casteId": caste_id,
 		"portraitId": portrait_id,
@@ -49,6 +51,12 @@ static func from_data(value: Variant) -> CharacterDraft:
 	var result := CharacterDraft.new()
 	result.name = value["name"]
 	result.gender = value["gender"]
+	var starting_level_value: Variant = value.get("startingLevel", 1)
+	if not starting_level_value is int:
+		return null
+	result.starting_level = starting_level_value
+	if not CharacterRules.STARTING_LEVELS.has(result.starting_level):
+		return null
 	result.race_id = value["raceId"]
 	result.caste_id = value["casteId"]
 	result.portrait_id = value["portraitId"]

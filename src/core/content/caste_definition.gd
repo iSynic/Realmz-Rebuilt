@@ -33,9 +33,12 @@ var _hand_to_hand: Vector2i
 var _spellcasters: Array[Vector3i]
 var _attack_levels: Array[int]
 var _start_items: Array[String]
+var _initial_ability_values: Array[int]
+var _level_ability_dice: Array[int]
+var _victory_thresholds: Array[int]
 
 
-func _init(definition_id: String, native_id: int, display_name: String, save_bonuses: Array[int], attribute_bonuses: Array[int], attribute_limits: Array[int], condition_levels: Array[int], stamina_dice: Vector2i, to_hit_values: Vector2i, dodge_values: Vector2i, missile_values: Vector2i, hand_to_hand_values: Vector2i, authored_spellcaster_rows: Array[Vector3i] = [], authored_attack_levels: Array[int] = [], starting_items: Array[String] = [], class_id: int = 0, minimum_age: int = 1, move_bonus: int = 0, magic_multiplier: int = 1, two_hand: int = 0, max_stamina_bonus: int = 0, extra_attacks: int = 0, max_attack_count: int = 1, money: int = 0, uses_missile: bool = true, missile_bonus_enabled: bool = false, icon: int = 0, item_mask_low: int = 0, item_mask_high: int = 0, strength_values: Vector2i = Vector2i(0, 8), display_description: String = "", allowed_races: Array[String] = []) -> void:
+func _init(definition_id: String, native_id: int, display_name: String, save_bonuses: Array[int], attribute_bonuses: Array[int], attribute_limits: Array[int], condition_levels: Array[int], stamina_dice: Vector2i, to_hit_values: Vector2i, dodge_values: Vector2i, missile_values: Vector2i, hand_to_hand_values: Vector2i, authored_spellcaster_rows: Array[Vector3i] = [], authored_attack_levels: Array[int] = [], starting_items: Array[String] = [], class_id: int = 0, minimum_age: int = 1, move_bonus: int = 0, magic_multiplier: int = 1, two_hand: int = 0, max_stamina_bonus: int = 0, extra_attacks: int = 0, max_attack_count: int = 1, money: int = 0, uses_missile: bool = true, missile_bonus_enabled: bool = false, icon: int = 0, item_mask_low: int = 0, item_mask_high: int = 0, strength_values: Vector2i = Vector2i(0, 8), display_description: String = "", allowed_races: Array[String] = [], initial_ability_values: Array[int] = [], level_ability_dice: Array[int] = [], victory_thresholds: Array[int] = []) -> void:
 	id = definition_id
 	classic_id = native_id
 	name = display_name
@@ -54,6 +57,9 @@ func _init(definition_id: String, native_id: int, display_name: String, save_bon
 	_spellcasters = authored_spellcaster_rows.duplicate()
 	_attack_levels = authored_attack_levels.duplicate()
 	_start_items = starting_items.duplicate()
+	_initial_ability_values = initial_ability_values.duplicate()
+	_level_ability_dice = level_ability_dice.duplicate()
+	_victory_thresholds = victory_thresholds.duplicate()
 	caste_class = class_id
 	minimum_age_group = minimum_age
 	movement_bonus = move_bonus
@@ -144,6 +150,18 @@ func attack_levels() -> Array[int]:
 
 func start_items() -> Array[String]:
 	return _start_items.duplicate()
+
+
+func initial_ability_value(index: int) -> int:
+	return _at(_initial_ability_values, index)
+
+
+func level_ability_die(index: int) -> int:
+	return _at(_level_ability_dice, index)
+
+
+func victory_threshold(index: int) -> int:
+	return _at(_victory_thresholds, index)
 
 
 static func _at(values: Array[int], index: int, fallback: int = 0) -> int:

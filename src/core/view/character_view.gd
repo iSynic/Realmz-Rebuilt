@@ -30,6 +30,7 @@ var armor: int
 var to_hit: int
 var dodge: int
 var missile: int
+var two_hand: int
 var hand_to_hand: int
 var damage_bonus: int
 var magic_resistance: int
@@ -83,6 +84,7 @@ func _init(character: CharacterState, content: RealmzContent = null) -> void:
 	to_hit = character.to_hit
 	dodge = character.dodge
 	missile = character.missile
+	two_hand = character.two_hand
 	hand_to_hand = character.hand_to_hand
 	damage_bonus = character.damage_bonus
 	magic_resistance = character.magic_resistance

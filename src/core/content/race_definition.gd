@@ -20,6 +20,7 @@ var item_category_mask_low: int
 var item_category_mask_high: int
 var descriptor_flags: int
 var _hit_modifiers: Array[int]
+var _ability_bonuses: Array[int]
 var _save_bonuses: Array[int]
 var _attribute_bonuses: Array[int]
 var _attribute_limits: Array[int]
@@ -28,13 +29,14 @@ var _age_ranges: Array[Vector2i]
 var _age_changes: Array[PackedInt32Array]
 
 
-func _init(definition_id: String, native_id: int, display_name: String, hit_modifiers: Array[int], save_bonuses: Array[int], attribute_bonuses: Array[int], attribute_limits: Array[int], condition_levels: Array[int], age_ranges: Array[Vector2i], age_changes: Array[PackedInt32Array], maximum_age: int = 0, immortal: bool = false, movement: int = 10, magic_resist: int = 0, two_hand: int = 0, missile: int = 0, attacks: int = 1, max_attacks: int = 1, regenerates: bool = false, icon_set: int = 0, item_mask_low: int = 0, item_mask_high: int = 0, descriptors: int = 0, display_description: String = "", allowed_castes: Array[String] = []) -> void:
+func _init(definition_id: String, native_id: int, display_name: String, hit_modifiers: Array[int], save_bonuses: Array[int], attribute_bonuses: Array[int], attribute_limits: Array[int], condition_levels: Array[int], age_ranges: Array[Vector2i], age_changes: Array[PackedInt32Array], maximum_age: int = 0, immortal: bool = false, movement: int = 10, magic_resist: int = 0, two_hand: int = 0, missile: int = 0, attacks: int = 1, max_attacks: int = 1, regenerates: bool = false, icon_set: int = 0, item_mask_low: int = 0, item_mask_high: int = 0, descriptors: int = 0, display_description: String = "", allowed_castes: Array[String] = [], ability_bonuses: Array[int] = []) -> void:
 	id = definition_id
 	classic_id = native_id
 	name = display_name
 	description = display_description
 	eligible_caste_ids = allowed_castes.duplicate()
 	_hit_modifiers = hit_modifiers.duplicate()
+	_ability_bonuses = ability_bonuses.duplicate()
 	_save_bonuses = save_bonuses.duplicate()
 	_attribute_bonuses = attribute_bonuses.duplicate()
 	_attribute_limits = attribute_limits.duplicate()
@@ -58,6 +60,10 @@ func _init(definition_id: String, native_id: int, display_name: String, hit_modi
 
 func hit_modifier(index: int) -> int:
 	return _at(_hit_modifiers, index)
+
+
+func ability_bonus(index: int) -> int:
+	return _at(_ability_bonuses, index)
 
 
 func save_bonus(index: int) -> int:

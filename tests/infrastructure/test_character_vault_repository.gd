@@ -5,9 +5,11 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 
 func run() -> void:
 	var repository := CharacterVaultRepository.new("user://realmz2-tests/character-vault-v1")
-	var character := CharacterState.new("vault-fixture-character", "Vault Fixture", 12, 12)
+	var character := CharacterState.new("party.character.1", "Vault Fixture", 12, 12)
 	character.race_id = "classic.race.1"
 	character.caste_id = "classic.caste.1"
+	character.two_hand = 24
+	character.set_ability_value(4, 63)
 	var record := CharacterVaultRecord.new(character.id, "realmz-classic-1", "realmz2-synthetic-fixture", "0000000000000000000000000000000000000000000000000000000000000000", character, "synthetic-v1")
 	record.publication_metadata = {"label": "Fixture vault character"}
 	assert_true(repository.publish_revision(record), "vault publication uses a temporary typed write and readback")
@@ -16,7 +18,9 @@ func run() -> void:
 	assert_not_null(loaded, "published character revisions can be loaded by stable identity")
 	if loaded != null:
 		assert_equal(loaded.state.name, "Vault Fixture", "vault state round-trips through the detached character record")
+		assert_equal([loaded.state.two_hand, loaded.state.ability_value(4)], [24, 63], "vault revisions preserve the source-owned combat statistic and trained abilities separately")
 		assert_equal(loaded.publication_metadata.get("label"), "Fixture vault character", "publication metadata remains separate from gameplay state")
+	assert_false(CharacterVaultRepository.new("user://realmz2-tests/character-vault-invalid").publish_revision(CharacterVaultRecord.new("..", "realmz-classic-1", "realmz2-synthetic-fixture", "0".repeat(64), CharacterState.new("..", "Invalid", 1, 1))), "portable dotted character IDs do not permit traversal components")
 	var charmed_state := CharacterState.from_data(character.to_data())
 	charmed_state.traitor = true
 	var charmed_record := CharacterVaultRecord.new("vault-charmed-character", "realmz-classic-1", "realmz2-synthetic-fixture", "0000000000000000000000000000000000000000000000000000000000000000", charmed_state)

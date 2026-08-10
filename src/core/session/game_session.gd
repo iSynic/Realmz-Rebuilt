@@ -429,6 +429,10 @@ static func _character_spell_confirmation_request(request_id: String, remaining:
 	return InteractionRequest.yes_no(request_id, "%d starting-spell selection points remain. Accept this character anyway?" % remaining, "Accept character", "Choose more spells")
 
 
+static func _character_vault_confirmation_request(request_id: String, character_name: String) -> InteractionRequest:
+	return InteractionRequest.yes_no(request_id, "Publish %s as a reusable character-vault revision?" % character_name, "Publish to vault", "Keep in this party only")
+
+
 func _create_party(specs: Array[CharacterCreationSpec]) -> SessionStep:
 	if _state.party_setup_completed or _pending_interaction() != null:
 		return SessionStep.failed(_view_revision, &"party_setup_closed", "Party creation is available only during party setup.")
@@ -538,6 +542,7 @@ func _generate_character_draft(intent: PlayerIntent) -> SessionStep:
 	var draft := CharacterDraft.new()
 	draft.name = spec.name
 	draft.gender = spec.gender
+	draft.starting_level = spec.starting_level
 	draft.race_id = spec.race_id
 	draft.caste_id = spec.caste_id
 	draft.portrait_id = spec.portrait_id
@@ -625,7 +630,11 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionStep:
 		return _finish_failed(&"character_creation_failed", "Realmz rules rejected the generated character.", events)
 	_state.character_draft = null
 	events.append(DomainEvent.new(&"character_finalized", {"characterId": character.id}))
-	return _finish_completed(events)
+	var request_id := "character-vault:%s:%d" % [character.id, _view_revision + 1]
+	_session_continuation = {"kind": "character-vault-publication", "characterId": character.id}
+	_session_interaction = _character_vault_confirmation_request(request_id, character.name)
+	events.append(DomainEvent.new(&"character_vault_confirmation_requested", {"characterId": character.id}))
+	return _finish_waiting(_session_interaction, events)
 
 
 func _remove_party_member(character_id: String) -> SessionStep:
@@ -638,8 +647,12 @@ func _remove_party_member(character_id: String) -> SessionStep:
 
 
 func _character_creation_error(spec: CharacterCreationSpec, existing_names: Dictionary) -> Dictionary:
-	if spec == null or spec.name.is_empty() or spec.name.length() > 24 or spec.gender not in [1, 2]:
+	if spec == null:
+		return {"code": &"invalid_character_spec", "message": "A character specification is required."}
+	if spec.name.is_empty() or spec.name.length() > 24 or spec.gender not in [1, 2]:
 		return {"code": &"invalid_character_spec", "message": "Every party member requires a valid name and gender."}
+	if not CharacterRules.STARTING_LEVELS.has(spec.starting_level):
+		return {"code": &"invalid_starting_level", "message": "Starting level must be one of Castle's fixed character-creation choices."}
 	if existing_names.has(spec.name.to_lower()):
 		return {"code": &"duplicate_character_name", "message": "Party member names must be unique."}
 	var race := _content.race_by_id(spec.race_id)
@@ -651,6 +664,8 @@ func _character_creation_error(spec: CharacterCreationSpec, existing_names: Dict
 		return {"code": &"restricted_race", "message": "This campaign does not allow the selected race."}
 	if restrictions.banned_castes.has(caste.id):
 		return {"code": &"restricted_caste", "message": "This campaign does not allow the selected class."}
+	if restrictions.maximum_level > 0 and spec.starting_level > restrictions.maximum_level:
+		return {"code": &"restricted_starting_level", "message": "This campaign allows characters only through level %d." % restrictions.maximum_level}
 	if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
 		return {"code": &"incompatible_race_class", "message": "The selected race cannot use that class."}
 	if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
@@ -659,7 +674,7 @@ func _character_creation_error(spec: CharacterCreationSpec, existing_names: Dict
 
 
 func _create_character_from_spec(spec: CharacterCreationSpec, character_id: String, add_starting_items: bool = false) -> CharacterState:
-	var character := _rules.characters.create_character(character_id, spec.name, _content.race_by_id(spec.race_id), _content.caste_by_id(spec.caste_id), spec.gender, _rng, false)
+	var character := _rules.characters.create_character(character_id, spec.name, _content.race_by_id(spec.race_id), _content.caste_by_id(spec.caste_id), spec.gender, _rng, false, spec.starting_level)
 	if character == null:
 		return null
 	character.portrait_id = spec.portrait_id
@@ -1075,6 +1090,8 @@ func _pending_interaction() -> InteractionRequest:
 func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 	if _session_continuation.get("kind") == "character-spell-confirmation":
 		return _respond_character_spell_confirmation(response)
+	if _session_continuation.get("kind") == "character-vault-publication":
+		return _respond_character_vault_publication(response)
 	if _session_continuation.get("kind") == "age-updates":
 		return _respond_session_age_update(response)
 	if _session_continuation.get("kind") == "combat-ally-selection":
@@ -1120,6 +1137,20 @@ func _respond_character_spell_confirmation(response: InteractionResponse) -> Ses
 	if not response.payload["accepted"]:
 		return _finish_completed([DomainEvent.new(&"character_spell_confirmation_declined", {"characterId": character_id})])
 	return _commit_character_draft([DomainEvent.new(&"character_spell_confirmation_accepted", {"characterId": character_id})])
+
+
+func _respond_character_vault_publication(response: InteractionResponse) -> SessionStep:
+	if response.kind != InteractionRequest.YES_NO or response.payload.get("accepted") is not bool:
+		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Character-vault publication requires a yes/no response.")
+	var character_id := String(_session_continuation.get("characterId", ""))
+	var character := _state.party.character_by_id(character_id)
+	if _state.party_setup_completed or character == null:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The character awaiting vault publication is unavailable.")
+	_session_interaction = null
+	_session_continuation.clear()
+	if response.payload["accepted"]:
+		return _finish_completed([DomainEvent.new(&"character_publication_requested", {"characterId": character_id})])
+	return _finish_completed([DomainEvent.new(&"character_publication_declined", {"characterId": character_id})])
 
 
 func _respond_session_retreat(response: InteractionResponse) -> SessionStep:
@@ -1297,6 +1328,14 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			spent += rules.characters.spell_selection_cost(content.spell_by_id(spell_id))
 		var remaining := maxi(0, rules.characters.spell_selection_total(character, caste) - spent)
 		return remaining == continuation["remaining"] and session_interaction.to_data() == _character_spell_confirmation_request(session_interaction.request_id, remaining).to_data()
+	if continuation.get("kind") == "character-vault-publication":
+		if continuation.size() != 2 or vm_interaction != null or session_interaction == null or state.party_setup_completed:
+			return false
+		var character_id: Variant = continuation.get("characterId")
+		if not character_id is String or character_id.is_empty():
+			return false
+		var character := state.party.character_by_id(character_id)
+		return character != null and session_interaction.to_data() == _character_vault_confirmation_request(session_interaction.request_id, character.name).to_data()
 	if continuation.get("kind") == "combat-retreat-confirmation":
 		var retreat_fields: Array[String] = ["kind", "battleId", "actorId", "mode", "destination"]
 		if continuation.size() != retreat_fields.size():

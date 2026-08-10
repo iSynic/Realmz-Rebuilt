@@ -370,6 +370,7 @@ func _test_character_creator_workflow() -> void:
 	view.campaign_summary = CampaignSummaryView.new()
 	view.campaign_summary.title = "Creator Fixture"
 	view.campaign_summary.maximum_party_size = 6
+	view.campaign_summary.maximum_level = 7
 	view.race_options = [DefinitionOptionView.new("race.human", "Human", "Adaptable.", ["caste.sorcerer"])]
 	view.caste_options = [DefinitionOptionView.new("caste.sorcerer", "Sorcerer", "Arcane caster.", ["race.human"])]
 	for action_id: StringName in [&"generate_character_draft", &"cancel_character_draft", &"set_character_draft_spells", &"finalize_character", &"import_vault_character", &"begin_adventure", &"remove_party_member"]:
@@ -381,7 +382,9 @@ func _test_character_creator_workflow() -> void:
 	assert_not_null(router._creator_page.get_node_or_null("CharacterName"), "Identity alone owns the character-name field")
 	var starting_level := router._creator_page.get_node_or_null("StartingLevel") as OptionButton
 	assert_not_null(starting_level, "Identity exposes the Classic starting-level boundary instead of silently omitting it")
-	assert_true(starting_level.disabled and starting_level.get_item_id(0) == 1, "only level one remains available until the source-backed higher-level pipeline is implemented")
+	assert_equal([starting_level.get_item_id(0), starting_level.get_item_id(1), starting_level.get_item_id(2), starting_level.get_item_id(3)], [1, 3, 5, 7], "Identity exposes Castle's fixed choices only through the campaign's maximum level")
+	assert_false(starting_level.disabled, "source-backed higher-level creation is an ordinary selectable campaign workflow")
+	starting_level.select(starting_level.get_item_index(3))
 	assert_equal(router._creator_page.find_children("*", "ItemList", true, false).size(), 0, "Identity does not spill race, class, or spell lists into the same viewport")
 	router._draft_name = "Mira"
 	router._name_edit.text = "Mira"
@@ -396,6 +399,7 @@ func _test_character_creator_workflow() -> void:
 	router._creator_next()
 	assert_equal(router._creator_step, 3, "Appearance advances to Review only after requesting a core-owned roll")
 	assert_equal(intents[-1].kind, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, "Review is populated through the typed draft-generation intent")
+	assert_equal(intents[-1].party_members[0].starting_level, 3, "the selected fixed level crosses the typed intent boundary without presentation-side leveling")
 	var generated := CharacterState.new("party.character.1", "Mira", 8, 8)
 	generated.race_id = "race.human"
 	generated.caste_id = "caste.sorcerer"
@@ -409,6 +413,7 @@ func _test_character_creator_workflow() -> void:
 	generated.maximum_spell_points = 21
 	generated.spell_points = 21
 	generated.spellcaster_type = 1
+	generated.two_hand = 34
 	view.character_draft = CharacterView.new(generated)
 	view.character_draft_spell_points_total = 4
 	view.character_draft_spell_points_remaining = 4
@@ -416,7 +421,8 @@ func _test_character_creator_workflow() -> void:
 	view.character_draft_spell_options = [CharacterSpellOptionView.new(spell, 1, false)]
 	view.set_action_availability(&"finalize_character", true)
 	router.present(view)
-	assert_true(router._review_label.text.contains("Brawn 11") and router._review_label.text.contains("SP 21/21"), "Review renders the generated character rather than a pre-roll placeholder")
+	assert_true(router._review_label.text.contains("Brawn 11") and router._review_label.text.contains("SP 21/21") and router._review_label.text.contains("Two-Hand 34"), "Review renders the generated character and its source-owned combat statistics rather than a pre-roll placeholder")
+	assert_equal(router._setup_message.text, "Review or reroll the generated Classic character.", "the setup guidance advances with the asynchronously populated Review page")
 	router._creator_next()
 	assert_equal(router._creator_step, 4, "Review advances to the dedicated starting-spell page")
 	assert_equal(router._spell_list.item_count, 1, "the spell page renders core-provided Classic options and selection costs")

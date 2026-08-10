@@ -23,6 +23,7 @@ var luck: int = 10
 var to_hit: int = 0
 var dodge: int = 20
 var missile: int = 0
+var two_hand: int = 0
 var hand_to_hand: int = 1
 var damage_bonus: int = 0
 var armor: int = 0
@@ -44,6 +45,7 @@ var conditions: ConditionSet
 var money: WealthState
 var _saves: Array[int] = []
 var _specials: Array[int] = []
+var _abilities: Array[int] = []
 var _inventory: Array[ItemInstance] = []
 var _known_spells: Array[String] = []
 
@@ -59,6 +61,8 @@ func _init(character_id: String, character_name: String, health: int, max_health
 	_saves.fill(50)
 	_specials.resize(12)
 	_specials.fill(0)
+	_abilities.resize(15)
+	_abilities.fill(0)
 
 
 func save_value(index: int) -> int:
@@ -90,6 +94,17 @@ func set_special_value(index: int, value: int) -> bool:
 	return true
 
 
+func ability_value(index: int) -> int:
+	return 0 if index < 0 or index >= _abilities.size() else _abilities[index]
+
+
+func set_ability_value(index: int, value: int) -> bool:
+	if index < 0 or index >= _abilities.size():
+		return false
+	_abilities[index] = clampi(value, -32_768, 32_767)
+	return true
+
+
 func inventory() -> Array[ItemInstance]:
 	return _inventory.duplicate()
 
@@ -114,13 +129,13 @@ func to_data() -> Dictionary:
 		"id": id, "name": name, "currentHealth": current_health, "maximumHealth": maximum_health,
 		"raceId": race_id, "casteId": caste_id, "gender": gender, "portraitId": portrait_id, "combatIconId": combat_icon_id, "level": level, "experience": experience, "ageDays": age_days, "ageGroup": age_group,
 		"attributes": [brawn, knowledge, judgment, agility, vitality, luck],
-		"toHit": to_hit, "dodge": dodge, "missile": missile, "handToHand": hand_to_hand, "damageBonus": damage_bonus,
+		"toHit": to_hit, "dodge": dodge, "missile": missile, "twoHand": two_hand, "handToHand": hand_to_hand, "damageBonus": damage_bonus,
 		"armor": armor, "magicResistance": magic_resistance, "movement": movement, "maximumMovement": maximum_movement,
 		"normalAttacks": normal_attacks, "attackBonus": attack_bonus, "attacksRemaining": attacks_remaining, "maximumSpellAttacks": maximum_spell_attacks, "spellcasterType": spellcaster_type,
 		"spellPoints": spell_points, "maximumSpellPoints": maximum_spell_points, "load": carried_load, "maximumLoad": maximum_load,
 		"prestigePenalty": prestige_penalty,
 		"traitor": traitor,
-		"conditions": conditions.to_data(), "money": money.to_data(), "saves": _saves.duplicate(), "specials": _specials.duplicate(),
+		"conditions": conditions.to_data(), "money": money.to_data(), "saves": _saves.duplicate(), "specials": _specials.duplicate(), "abilities": _abilities.duplicate(),
 		"inventory": item_data, "knownSpells": _known_spells.duplicate(),
 	}
 
@@ -153,7 +168,7 @@ static func from_data(data: Variant) -> CharacterState:
 		if value == -100_000:
 			return null
 		numeric_values[field] = value
-	for field: String in ["attackBonus", "maximumSpellAttacks", "prestigePenalty"]:
+	for field: String in ["attackBonus", "maximumSpellAttacks", "prestigePenalty", "twoHand"]:
 		var value := _signed_integer(data.get(field, 0))
 		if value == -100_000:
 			return null
@@ -165,6 +180,7 @@ static func from_data(data: Variant) -> CharacterState:
 	var attributes: Array[int] = []
 	var saves: Array[int] = []
 	var specials: Array[int] = []
+	var abilities: Array[int] = []
 	for value: Variant in data["attributes"]:
 		var parsed := _signed_integer(value)
 		if parsed == -100_000:
@@ -180,6 +196,18 @@ static func from_data(data: Variant) -> CharacterState:
 		if parsed == -100_000:
 			return null
 		specials.append(parsed)
+	var ability_data: Variant = data.get("abilities", [])
+	if not ability_data is Array or ability_data.size() not in [0, 15]:
+		return null
+	if ability_data.is_empty():
+		abilities.resize(15)
+		abilities.fill(0)
+	else:
+		for value: Variant in ability_data:
+			var parsed := _signed_integer(value)
+			if parsed == -100_000:
+				return null
+			abilities.append(parsed)
 	var items: Array[ItemInstance] = []
 	for item_data: Variant in data["inventory"]:
 		var item := ItemInstance.from_data(item_data)
@@ -211,6 +239,7 @@ static func from_data(data: Variant) -> CharacterState:
 	result.to_hit = numeric_values["toHit"]
 	result.dodge = numeric_values["dodge"]
 	result.missile = numeric_values["missile"]
+	result.two_hand = numeric_values["twoHand"]
 	result.hand_to_hand = numeric_values["handToHand"]
 	result.damage_bonus = numeric_values["damageBonus"]
 	result.armor = numeric_values["armor"]
@@ -234,6 +263,7 @@ static func from_data(data: Variant) -> CharacterState:
 	result.money = loaded_money
 	result._saves = saves
 	result._specials = specials
+	result._abilities = abilities
 	result._inventory = items
 	result._known_spells = spells
 	return result

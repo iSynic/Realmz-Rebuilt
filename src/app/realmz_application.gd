@@ -194,6 +194,12 @@ func _present_step_status(step: SessionStep) -> void:
 				_status_label.text = "Character creation cancelled"
 			&"character_finalized":
 				_status_label.text = "Character added to party setup"
+			&"character_vault_confirmation_requested":
+				_status_label.text = "Character added • choose whether to publish a reusable vault revision"
+			&"character_publication_requested":
+				_publish_character_revision(String(event.payload.get("characterId", "")))
+			&"character_publication_declined":
+				_status_label.text = "Character kept in this campaign party only"
 			&"vault_character_imported":
 				_status_label.text = "Vault character added to party setup"
 			&"party_member_removed":
@@ -213,6 +219,32 @@ func _present_step_status(step: SessionStep) -> void:
 			_status_label.text = "Scenario text • continue when ready"
 		else:
 			_status_label.text = String(step.interaction.payload.get("prompt", "Choose an option"))
+
+
+func _publish_character_revision(character_id: String) -> bool:
+	if _active_content == null or character_id.is_empty():
+		_status_label.text = "Vault publication failed • no active character or campaign"
+		return false
+	var boundary := session_controller.session().snapshot()
+	if boundary == null:
+		_status_label.text = "Vault publication failed • the session is not at a committed boundary"
+		return false
+	var source_character := boundary.game_state.party.character_by_id(character_id)
+	if source_character == null:
+		_status_label.text = "Vault publication failed • the character is unavailable"
+		return false
+	var character := CharacterState.from_data(source_character.to_data())
+	if character == null:
+		_status_label.text = "Vault publication failed • the character state is invalid"
+		return false
+	var record := CharacterVaultRecord.new(character.id, _active_content.rules_version, _active_content.campaign_id, _active_content.package_hash, character)
+	record.publication_metadata = {"name": character.name, "level": character.level, "source": "character-creation"}
+	if not character_vault_repository.publish_revision(record):
+		_status_label.text = "Vault publication failed • %s" % character_vault_repository.last_error
+		return false
+	_classic_shell.set_vault_records(character_vault_repository.list_current_records())
+	_status_label.text = "Published %s to the character vault" % character.name
+	return true
 
 
 func save_active_session(slot_id: String) -> bool:

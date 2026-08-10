@@ -2,6 +2,21 @@ class_name CharacterRules
 extends RefCounted
 
 const ATTRIBUTE_COUNT: int = 6
+const STARTING_LEVELS: Array[int] = [1, 3, 5, 7, 9, 11, 13, 15, 17, 20, 25, 30]
+const ABILITY_ATTRIBUTE_VALUES: Array[int] = [3, 4, 5, 6, 7, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30]
+const STRENGTH_ABILITY_MODIFIERS := {
+	0: [-5, -4, -3, -2, -1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 4, 4],
+	3: [-5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+	5: [-75, -60, -45, -30, -15, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70],
+	7: [-10, -8, -6, -4, -2, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28],
+	9: [-75, -60, -45, -30, -15, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70],
+}
+const AGILITY_ABILITY_MODIFIERS := {
+	0: [-5, -4, -3, -2, -1, 1, 1, 2, 2, 3, 3, 4, 4, 4, 5, 5, 5, 5, 5],
+	5: [-20, -15, -10, -5, -2, 5, 8, 11, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65],
+	7: [-25, -20, -15, -10, -5, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70],
+	11: [-25, -20, -15, -10, -5, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70],
+}
 
 
 func strength_bonuses(brawn: int, maximum_damage_bonus: int) -> StrengthResult:
@@ -33,8 +48,8 @@ func strength_bonuses(brawn: int, maximum_damage_bonus: int) -> StrengthResult:
 	return StrengthResult.new(hit, damage)
 
 
-func create_character(character_id: String, character_name: String, race: RaceDefinition, caste: CasteDefinition, gender: int, rng: RealmzRng, include_initial_items: bool = true) -> CharacterState:
-	if race == null or caste == null or rng == null:
+func create_character(character_id: String, character_name: String, race: RaceDefinition, caste: CasteDefinition, gender: int, rng: RealmzRng, include_initial_items: bool = true, starting_level: int = 1) -> CharacterState:
+	if race == null or caste == null or rng == null or not STARTING_LEVELS.has(starting_level):
 		return null
 	var attributes: Array[int] = []
 	for index: int in ATTRIBUTE_COUNT:
@@ -79,6 +94,8 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 	result.race_id = race.id
 	result.caste_id = caste.id
 	result.gender = gender
+	result.prestige_penalty = 10 * (starting_level - 1) * (starting_level - 1)
+	result.experience = -caste.victory_threshold(starting_level - 1)
 	result.age_group = age_group_count
 	result.brawn = attributes[0]
 	result.knowledge = attributes[1]
@@ -94,6 +111,7 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 	if result.agility > 14:
 		result.armor -= 2 * (14 - result.agility)
 	result.magic_resistance = int(float(result.knowledge + result.judgment) / 10.0) * caste.magic_resistance_multiplier + race.magic_resistance
+	result.two_hand = clampi(race.two_hand_bonus + caste.two_hand_bonus, 0, 100)
 	result.missile = race.missile_bonus + caste.initial_missile() if caste.can_use_missile else 0
 	result.hand_to_hand = caste.initial_hand_to_hand()
 	result.maximum_movement = race.base_movement + caste.movement_bonus
@@ -113,7 +131,11 @@ func create_character(character_id: String, character_name: String, race: RaceDe
 		if caste.condition_level(index) == 1:
 			starting_condition = -1
 		result.conditions.set_value(index, starting_condition)
-	_configure_spellcaster(result, caste, rng)
+	_configure_spellcaster(result, caste, rng, starting_level)
+	_initialize_abilities(result, race, caste)
+	for _index: int in starting_level - 1:
+		if level_up(result, race, caste, rng) == null:
+			return null
 	if include_initial_items:
 		add_initial_items(result, caste)
 	return result
@@ -183,6 +205,9 @@ func level_up(character: CharacterState, race: RaceDefinition, caste: CasteDefin
 	if character == null or race == null or caste == null or rng == null:
 		return null
 	character.level += 1
+	# Castle consumes this registration-era roll even though the open-source
+	# registration branch no longer changes the character.
+	rng.draw(100, &"character.level.registration-check")
 	character.normal_attacks = race.base_attacks + caste.bonus_attacks
 	for required_level: int in caste.attack_levels():
 		if required_level > 0 and required_level <= character.level:
@@ -191,12 +216,14 @@ func level_up(character: CharacterState, race: RaceDefinition, caste: CasteDefin
 	character.attacks_remaining = character.normal_attacks
 	for index: int in ConditionSet.CHARACTER_COUNT:
 		if caste.condition_level(index) == character.level:
-			character.conditions.add(index, -1)
+			var current_condition := character.conditions.value(index)
+			character.conditions.set_value(index, -1 if current_condition > -1 else current_condition - 1)
 	character.to_hit += caste.level_to_hit()
 	character.dodge += caste.level_dodge()
 	character.hand_to_hand += caste.level_hand_to_hand()
 	if caste.level_missile() > 0:
 		character.missile += rng.draw(caste.level_missile(), &"character.level.missile")
+	character.spellcaster_type = _level_spellcaster_type(caste)
 	var spell_gain := _level_spell_points(character, caste, rng)
 	character.spell_points += spell_gain
 	character.maximum_spell_points += spell_gain
@@ -206,6 +233,18 @@ func level_up(character: CharacterState, race: RaceDefinition, caste: CasteDefin
 	character.maximum_health += stamina_gain
 	var magic_gain := 1 if rng.draw(100, &"character.level.magic-resistance") <= character.judgment + character.knowledge + character.vitality else 0
 	character.magic_resistance += magic_gain
+	for index: int in 14:
+		var ability_die := caste.level_ability_die(index)
+		if ability_die > 0:
+			character.set_ability_value(index, character.ability_value(index) + rng.draw(ability_die, StringName("character.level.ability.%d" % index)))
+	for index: int in 12:
+		character.set_ability_value(index, clampi(character.ability_value(index), 0, 100))
+	character.dodge = clampi(character.dodge, 0, 100)
+	character.missile = clampi(character.missile, 0, 100)
+	character.magic_resistance = clampi(character.magic_resistance, 0, 100)
+	character.two_hand = clampi(character.two_hand, 0, 100)
+	character.damage_bonus = clampi(character.damage_bonus, 0, 200)
+	character.hand_to_hand = clampi(character.hand_to_hand, 0, 200)
 	return LevelUpResult.new(stamina_gain, spell_gain, caste.level_to_hit(), magic_gain)
 
 
@@ -259,7 +298,7 @@ func maximum_spell_selection_level(caste: CasteDefinition) -> int:
 	return clampi(result, 0, 7)
 
 
-func _configure_spellcaster(character: CharacterState, caste: CasteDefinition, rng: RealmzRng) -> void:
+func _configure_spellcaster(character: CharacterState, caste: CasteDefinition, rng: RealmzRng, effective_starting_level: int = 1) -> void:
 	var rows := caste.spellcaster_rows()
 	for index: int in mini(3, rows.size()):
 		var row := rows[index]
@@ -267,12 +306,41 @@ func _configure_spellcaster(character: CharacterState, caste: CasteDefinition, r
 			continue
 		character.spellcaster_type = index + 1
 		character.maximum_spell_attacks = 1
-		if character.level >= row.y:
+		if effective_starting_level >= row.y:
 			match character.spellcaster_type:
 				1: character.maximum_spell_points = 4 + character.knowledge + rng.draw(maxi(1, character.judgment), &"character.create.spell-points")
 				2: character.maximum_spell_points = 4 + character.judgment + rng.draw(maxi(1, character.knowledge), &"character.create.spell-points")
 				3: character.maximum_spell_points = 10 + rng.draw(maxi(1, character.judgment + character.knowledge), &"character.create.spell-points")
 	character.spell_points = character.maximum_spell_points
+
+
+func _initialize_abilities(character: CharacterState, race: RaceDefinition, caste: CasteDefinition) -> void:
+	for index: int in 14:
+		var initial_value := caste.initial_ability_value(index)
+		var ability := initial_value + race.ability_bonus(index) if initial_value != 0 else 0
+		ability += _ability_attribute_modifier(STRENGTH_ABILITY_MODIFIERS, index, character.brawn) if initial_value != 0 else 0
+		ability += _ability_attribute_modifier(AGILITY_ABILITY_MODIFIERS, index, character.agility) if initial_value != 0 else 0
+		character.set_ability_value(index, ability)
+	for index: int in 12:
+		character.set_ability_value(index, clampi(character.ability_value(index), 0, 100))
+
+
+func _ability_attribute_modifier(table: Dictionary, ability_index: int, attribute: int) -> int:
+	if not table.has(ability_index):
+		return 0
+	var value_index := ABILITY_ATTRIBUTE_VALUES.find(attribute)
+	if value_index < 0:
+		return 0
+	var values: Array = table[ability_index]
+	return int(values[value_index])
+
+
+func _level_spellcaster_type(caste: CasteDefinition) -> int:
+	var rows := caste.spellcaster_rows()
+	for index: int in mini(3, rows.size()):
+		if rows[index].y > 0:
+			return index + 1
+	return 0
 
 
 func _apply_age_change(character: CharacterState, race: RaceDefinition, caste: CasteDefinition, age_group: int, direction: int) -> void:

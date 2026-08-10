@@ -167,6 +167,10 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 		if not value["characterId"] is String or value["characterId"].is_empty() or remaining < 1:
 			return null
 		return {"kind": "character-spell-confirmation", "characterId": value["characterId"], "remaining": remaining}
+	if value.get("kind") == "character-vault-publication":
+		if value.size() != 2 or not value.get("characterId") is String or value["characterId"].is_empty():
+			return null
+		return {"kind": "character-vault-publication", "characterId": value["characterId"]}
 	if value.get("kind") == "age-updates":
 		var age_fields: Array[String] = ["kind", "updates", "index", "resumeKind", "resumeContinuation"]
 		if value.size() != age_fields.size():

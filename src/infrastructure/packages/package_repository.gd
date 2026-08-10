@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "e0ebe02f52c1fb52e83ce6e91074d82f4adf5c39db7af8e7a7512dd83e5c3f62"
+const EXPECTED_SCHEMA_HASH: String = "040f50ab9bd67a98a626176de876848b135fb449263fcd989664652a65bc7acd"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -519,7 +519,7 @@ func _construct_races(value: Variant) -> Variant:
 	if value.size() != 30:
 		_reject("Content races must contain all 30 Classic records.")
 		return null
-	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleCasteIds", "hitModifiers", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "ageRanges", "ageChanges", "maximumAge", "doesNotDie", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "canRegenerate", "defaultIconSet", "itemCategoryMasks", "descriptorFlags"]
+	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleCasteIds", "hitModifiers", "abilityBonuses", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "ageRanges", "ageChanges", "maximumAge", "doesNotDie", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "canRegenerate", "defaultIconSet", "itemCategoryMasks", "descriptorFlags"]
 	var integer_fields: Array[String] = ["classicId", "maximumAge", "baseMovement", "magicResistance", "twoHandBonus", "missileBonus", "baseAttacks", "maximumAttacks", "defaultIconSet", "descriptorFlags"]
 	var result: Array[RaceDefinition] = []
 	var ids: Dictionary = {}
@@ -539,12 +539,13 @@ func _construct_races(value: Variant) -> Variant:
 			return null
 		classic_ids[classic_id] = true
 		var hit_value: Variant = _integer_array(record["hitModifiers"], 8, "Race hit modifiers")
+		var abilities_value: Variant = _integer_array(record["abilityBonuses"], 14, "Race ability bonuses")
 		var save_value: Variant = _integer_array(record["saveBonuses"], 8, "Race save bonuses")
 		var bonus_value: Variant = _integer_array(record["attributeBonuses"], 6, "Race attribute bonuses")
 		var limits_value: Variant = _integer_array(record["attributeLimits"], 12, "Race attribute limits")
 		var conditions_value: Variant = _integer_array(record["conditionLevels"], 40, "Race condition levels")
 		var masks_value: Variant = _integer_array(record["itemCategoryMasks"], 2, "Race item masks")
-		if hit_value == null or save_value == null or bonus_value == null or limits_value == null or conditions_value == null or masks_value == null:
+		if hit_value == null or abilities_value == null or save_value == null or bonus_value == null or limits_value == null or conditions_value == null or masks_value == null:
 			return null
 		var ages: Array[Vector2i] = []
 		for row: Variant in record["ageRanges"]:
@@ -568,7 +569,7 @@ func _construct_races(value: Variant) -> Variant:
 				_reject("Race eligibility IDs must be non-empty strings.")
 				return null
 			eligible_castes.append(caste_id)
-		result.append(RaceDefinition.new(record["id"], integers["classicId"], record["name"], hit_value, save_value, bonus_value, limits_value, conditions_value, ages, age_changes, integers["maximumAge"], record["doesNotDie"], integers["baseMovement"], integers["magicResistance"], integers["twoHandBonus"], integers["missileBonus"], integers["baseAttacks"], integers["maximumAttacks"], record["canRegenerate"], integers["defaultIconSet"], masks[0], masks[1], integers["descriptorFlags"], record["description"], eligible_castes))
+		result.append(RaceDefinition.new(record["id"], integers["classicId"], record["name"], hit_value, save_value, bonus_value, limits_value, conditions_value, ages, age_changes, integers["maximumAge"], record["doesNotDie"], integers["baseMovement"], integers["magicResistance"], integers["twoHandBonus"], integers["missileBonus"], integers["baseAttacks"], integers["maximumAttacks"], record["canRegenerate"], integers["defaultIconSet"], masks[0], masks[1], integers["descriptorFlags"], record["description"], eligible_castes, abilities_value))
 	return result
 
 
@@ -579,7 +580,7 @@ func _construct_castes(value: Variant) -> Variant:
 	if value.size() != 30:
 		_reject("Content castes must contain all 30 Classic records.")
 		return null
-	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleRaceIds", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "staminaDice", "strengthValues", "dodgeValues", "toHitValues", "missileValues", "handToHandValues", "spellcasterRows", "attackLevels", "startingItemIds", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "canUseMissile", "getsMissileBonus", "defaultIcon", "itemCategoryMasks"]
+	var fields: Array[String] = ["id", "classicId", "name", "description", "eligibleRaceIds", "initialAbilityValues", "levelAbilityDice", "victoryThresholds", "saveBonuses", "attributeBonuses", "attributeLimits", "conditionLevels", "staminaDice", "strengthValues", "dodgeValues", "toHitValues", "missileValues", "handToHandValues", "spellcasterRows", "attackLevels", "startingItemIds", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "canUseMissile", "getsMissileBonus", "defaultIcon", "itemCategoryMasks"]
 	var integer_fields: Array[String] = ["classicId", "casteClass", "minimumAgeGroup", "movementBonus", "magicResistanceMultiplier", "twoHandBonus", "maximumStaminaBonus", "bonusAttacks", "maximumAttacks", "startMoney", "defaultIcon"]
 	var result: Array[CasteDefinition] = []
 	var ids: Dictionary = {}
@@ -598,6 +599,9 @@ func _construct_castes(value: Variant) -> Variant:
 			_reject("Caste Classic IDs must uniquely cover 1 through 30.")
 			return null
 		classic_ids[classic_id] = true
+		var initial_abilities_value: Variant = _integer_array(record["initialAbilityValues"], 14, "Caste initial ability values")
+		var level_abilities_value: Variant = _integer_array(record["levelAbilityDice"], 14, "Caste level ability dice")
+		var victory_value: Variant = _integer_array(record["victoryThresholds"], 30, "Caste victory thresholds")
 		var saves_value: Variant = _integer_array(record["saveBonuses"], 8, "Caste save bonuses")
 		var bonuses_value: Variant = _integer_array(record["attributeBonuses"], 6, "Caste attribute bonuses")
 		var limits_value: Variant = _integer_array(record["attributeLimits"], 12, "Caste attribute limits")
@@ -611,7 +615,7 @@ func _construct_castes(value: Variant) -> Variant:
 		var attacks_value: Variant = _integer_array(record["attackLevels"], 10, "Caste attack levels")
 		var masks_value: Variant = _integer_array(record["itemCategoryMasks"], 2, "Caste item masks")
 		var start_items_value: Variant = _string_list(record["startingItemIds"], "Caste starting item IDs")
-		if saves_value == null or bonuses_value == null or limits_value == null or conditions_value == null or stamina_value == null or strength_value == null or dodge_value == null or to_hit_value == null or missile_value == null or hand_value == null or attacks_value == null or masks_value == null or start_items_value == null:
+		if initial_abilities_value == null or level_abilities_value == null or victory_value == null or saves_value == null or bonuses_value == null or limits_value == null or conditions_value == null or stamina_value == null or strength_value == null or dodge_value == null or to_hit_value == null or missile_value == null or hand_value == null or attacks_value == null or masks_value == null or start_items_value == null:
 			return null
 		var spellcasters: Array[Vector3i] = []
 		for row: Variant in record["spellcasterRows"]:
@@ -634,7 +638,7 @@ func _construct_castes(value: Variant) -> Variant:
 				_reject("Caste eligibility IDs must be non-empty strings.")
 				return null
 			eligible_races.append(race_id)
-		result.append(CasteDefinition.new(record["id"], integers["classicId"], record["name"], saves_value, bonuses_value, limits_value, conditions_value, Vector2i(stamina[0], stamina[1]), Vector2i(to_hit[0], to_hit[1]), Vector2i(dodge[0], dodge[1]), Vector2i(missile[0], missile[1]), Vector2i(hand[0], hand[1]), spellcasters, attacks_value, start_items_value, integers["casteClass"], integers["minimumAgeGroup"], integers["movementBonus"], integers["magicResistanceMultiplier"], integers["twoHandBonus"], integers["maximumStaminaBonus"], integers["bonusAttacks"], integers["maximumAttacks"], integers["startMoney"], record["canUseMissile"], record["getsMissileBonus"], integers["defaultIcon"], masks[0], masks[1], Vector2i(strength[0], strength[1]), record["description"], eligible_races))
+		result.append(CasteDefinition.new(record["id"], integers["classicId"], record["name"], saves_value, bonuses_value, limits_value, conditions_value, Vector2i(stamina[0], stamina[1]), Vector2i(to_hit[0], to_hit[1]), Vector2i(dodge[0], dodge[1]), Vector2i(missile[0], missile[1]), Vector2i(hand[0], hand[1]), spellcasters, attacks_value, start_items_value, integers["casteClass"], integers["minimumAgeGroup"], integers["movementBonus"], integers["magicResistanceMultiplier"], integers["twoHandBonus"], integers["maximumStaminaBonus"], integers["bonusAttacks"], integers["maximumAttacks"], integers["startMoney"], record["canUseMissile"], record["getsMissileBonus"], integers["defaultIcon"], masks[0], masks[1], Vector2i(strength[0], strength[1]), record["description"], eligible_races, initial_abilities_value, level_abilities_value, victory_value))
 	return result
 
 

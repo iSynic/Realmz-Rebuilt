@@ -41,8 +41,9 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 ## Work Guidance
 
 - Keep installed immutable content separate from mutable session state.
-- `CharacterVaultRepository` owns immutable `.r2char` revisions under `user://characters/<character-id>/`. Reads are untrusted and typed; publishing uses temporary write/readback, one-backup rotation, and atomic replacement. Archive is the only removal operation.
+- `CharacterVaultRepository` owns immutable `.r2char` revisions under `user://characters/<character-id>/`. Reads are untrusted and typed; publishing uses temporary write/readback, one-backup rotation, and atomic replacement. Archive is the only removal operation. Stable IDs may contain interior dots but every path component rejects traversal names, separators, rooted paths, and nonportable characters.
 - Character-vault records reject battle-scoped character allegiance. A charmed character may exist only inside an active central combat save and must be restored to its base side before publication.
+- Vault records retain the complete detached character, including separate racial combat modifiers, trained abilities, two-hand, inventory, and known spells. Older records missing additive nested fields use the same typed character defaults as save restoration.
 - Vault eligibility is calculated against the target package's stable race, caste, level, item, and spell identities. Missing definitions and authored restrictions produce explicit reasons; import never strips or substitutes content.
 - Return typed validation errors suitable for readiness/error screens.
 

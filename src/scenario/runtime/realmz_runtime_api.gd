@@ -926,7 +926,7 @@ func _resume_thief_encounter(encounter: ComplexEncounterDefinition, continuation
 			flags[action_index] = true
 		return _spring_thief_trap(encounter, thief_encounter, continuation, character, flags, request_id)
 	var modifiers := thief_encounter.modifiers()
-	var chance := clampi(character.special_value(action_index) + modifiers[action_index], 0, 100)
+	var chance := clampi(character.ability_value(action_index) + modifiers[action_index], 0, 100)
 	if action_index in [2, 4, 6, 7]:
 		chance = mini(chance, 90)
 	var succeeded := _rng.draw(100, &"classic.thief-encounter") <= chance
@@ -1090,7 +1090,7 @@ func _resume_character_ability(continuation: Dictionary, response: InteractionRe
 	var check_index := int(values[0])
 	var modifier := int(values[1])
 	var attribute_check := int(values[2]) != 0
-	var check_value := _character_attribute(character, check_index) if attribute_check else character.special_value(check_index)
+	var check_value := _character_attribute(character, check_index) if attribute_check else character.ability_value(check_index)
 	var roll := _rng.draw(25 if attribute_check else 100, &"classic.character-ability")
 	var passed := roll - modifier < check_value if attribute_check else roll <= check_value + modifier
 	var target_id := int(values[3] if passed else values[4])
@@ -1115,7 +1115,7 @@ func _filter_character_selection(action: ClassicActionDefinition) -> ScenarioRun
 	var attribute_check := int(values[3]) != 0
 	var check_index := absi(int(values[0]))
 	for character: CharacterState in candidates:
-		var check_value := _character_attribute(character, check_index) if attribute_check else character.special_value(check_index)
+		var check_value := _character_attribute(character, check_index) if attribute_check else character.ability_value(check_index)
 		var roll := _rng.draw(25 if attribute_check else 100, &"classic.filter-character")
 		var passed := roll - int(values[1]) < check_value if attribute_check else roll <= check_value + int(values[1])
 		if passed != (int(values[0]) < 0):

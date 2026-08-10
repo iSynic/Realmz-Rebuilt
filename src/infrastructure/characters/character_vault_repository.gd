@@ -205,11 +205,11 @@ func _delete_file(path: String) -> bool:
 
 
 func _safe_component(value: String) -> bool:
-	if value.is_empty() or value.length() > 128:
+	if value.is_empty() or value.length() > 128 or value in [".", ".."] or value.begins_with(".") or value.ends_with("."):
 		return false
 	for index: int in value.length():
 		var code := value.unicode_at(index)
-		if not ((code >= 48 and code <= 57) or (code >= 65 and code <= 90) or (code >= 97 and code <= 122) or code == 45 or code == 95):
+		if not ((code >= 48 and code <= 57) or (code >= 65 and code <= 90) or (code >= 97 and code <= 122) or code in [45, 46, 95]):
 			return false
 	return true
 

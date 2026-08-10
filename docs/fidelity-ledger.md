@@ -2,6 +2,16 @@
 
 Classic-visible behavior is the default ruleset. This ledger records deliberate departures only; the absence of a decision does not authorize reinterpretation.
 
+## FD-CHARACTER-001 — Bounded trained-ability records
+
+- Affected rule: initialization and level-up of the character's fifteen-slot trained-ability array.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/updatespec.c`, `updatespec`, lines 49–97, and `src/realmz_orig/structs.h`, lines 60, 94, and 314. `character.spec` has fifteen slots, but both race and caste `specialability` records have only fourteen. The initialization and level-up loops nevertheless run through slot fourteen, reading beyond both authored arrays; the neighboring twelve-slot `character.special` array is a separate racial combat-modifier field.
+- Observable oracle behavior, determined from the complete source flow: the fifteenth iteration aliases adjacent struct storage and can conditionally add or roll a value that is not an authored trained ability. Its value and RNG effect depend on unrelated record fields rather than a defined file-format slot. The synthetic source-observation fixture is `tests/fixtures/oracle/character-ability-index-boundary-correction.json`, SHA-256 `31715ad5796826ed192f2eb8ecad905dc6ea07ad0d068dcbdc2cb35d9b6f118c`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: changing an unrelated race/caste field can alter a hidden ability or consume an extra gameplay draw during character creation and every level-up. Conflating `special` with `spec` would also make racial combat modifiers double as thief/application skills.
+- Chosen 2.0 behavior: preserve fifteen trained-ability slots in character/save state, import and evaluate only the fourteen authored race/caste values, and hold slot fourteen at zero without a draw. Keep the twelve racial combat modifiers in their independent `specials` field. Strength/Dexterity modifiers and clamps retain Castle's authored fourteen-slot behavior.
+- Tests: `_test_character_creation_and_leveling` verifies exact level-three values, draw count, the zero unauthored slot, the separate racial modifiers, victory threshold, condition threshold, and two-hand statistic. Package tests reject ability arrays of the wrong length. The differential case is `character.trained-ability-index-boundary`.
+- Legacy quirk: none. Adjacent-struct reads are not authored scenario data and cannot be represented portably.
+
 ## FD-COMBAT-001 — Monster-target elemental protection
 
 - Affected rule: monster attack specials 12 through 15 against another monster carrying the matching elemental-protection condition.
