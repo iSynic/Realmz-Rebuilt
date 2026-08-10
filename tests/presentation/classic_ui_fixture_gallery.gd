@@ -96,7 +96,7 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 		InteractionRequest.WORD_AND_ACTION:
 			payload.merge({"actions": [] if empty_values else [{"kind": "choice", "label": "Proceed", "slot": 0}, {"kind": "word", "label": "Speak"}], "characters": characters, "items": [], "spells": []})
 		InteractionRequest.SHOP:
-			payload.merge({"inflationPercent": 100, "characters": characters, "stock": [] if empty_values else [{"index": 0, "name": "Potion", "buyPrice": 10, "quantity": 1}]})
+			payload.merge({"inflationPercent": 100, "partyGold": 25, "identifyPrice": 20, "characters": characters, "stock": [] if empty_values else [{"stockKey": "base:0", "index": 0, "name": "Potion", "buyPrice": 10, "quantity": 1, "canBuy": true, "buyReason": ""}]})
 		InteractionRequest.TEMPLE:
 			payload["characters"] = characters
 		InteractionRequest.BANK:

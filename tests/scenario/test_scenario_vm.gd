@@ -47,6 +47,7 @@ func run() -> void:
 	_test_classic_party_mode(loaded.content)
 	_test_scrolling_text_event(loaded.content)
 	_test_classic_shop_configuration(loaded.content)
+	_test_classic_shop_lifecycle(loaded.content)
 	_test_classic_priest_turning(loaded.content)
 	_test_classic_experience_loss_and_drop(loaded.content)
 	_test_classic_character_money_loss(loaded.content)
@@ -223,8 +224,13 @@ func _test_classic_shell_domain_route(content: RealmzContent) -> void:
 	var shop := session.submit_intent(PlayerIntent.move(Vector2i.DOWN))
 	assert_equal(shop.interaction.kind, &"shop_action", "shop AP exposes typed stock, party, and leave actions")
 	assert_true(shop.interaction.payload.get("stock") is Array and shop.interaction.payload.get("characters") is Array, "shop request carries detached purchase and sale read models")
-	assert_not_null(SaveEnvelope.from_data(session.snapshot().to_data()), "shop interaction serializes through the same VM frame")
-	assert_equal(session.respond(InteractionResponse.new(shop.interaction.request_id, &"shop_action", {"action": "leave"})).state, SessionStep.State.COMPLETED, "leaving the shop resumes and completes the AP")
+	var shop_save := SaveEnvelope.from_data(session.snapshot().to_data())
+	assert_not_null(shop_save, "shop interaction serializes through the same VM frame")
+	var restored_shop_session := GameSession.new()
+	assert_equal(restored_shop_session.restore(content, shop_save).state, SessionStep.State.COMPLETED, "shop request and continuation restore transactionally")
+	var restored_shop_request := restored_shop_session.view().pending_interaction
+	assert_equal(restored_shop_session.respond(InteractionResponse.new(restored_shop_request.request_id, &"shop_action", {"action": "leave"})).state, SessionStep.State.COMPLETED, "leaving a restored shop resumes and completes the AP")
+	session = restored_shop_session
 
 	var temple := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal(temple.interaction.kind, &"temple_action", "temple AP exposes a typed service request")
@@ -895,6 +901,68 @@ func _test_classic_shop_configuration(content: RealmzContent) -> void:
 	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	assert_not_null(round_trip, "active shop and restrictions serialize in the central save aggregate")
 	assert_equal(round_trip.shop_accept_ranges(), state.shop_accept_ranges(), "restored shop restrictions are exact")
+
+
+func _test_classic_shop_lifecycle(content: RealmzContent) -> void:
+	var stocked_item := content.item_by_id("classic.item.901")
+	var resale_item := content.item_by_id("classic.item.1")
+	var equipped_item := content.item_by_id("classic.item.2")
+	assert_not_null(stocked_item, "shop fixture contains its authored charged stock")
+	assert_not_null(resale_item, "shop fixture contains an unstocked resale item")
+	assert_not_null(equipped_item, "shop fixture contains an equipped sale guard item")
+	if stocked_item == null or resale_item == null or equipped_item == null:
+		return
+	var character := CharacterState.new("shop.character", "Merchant", 10, 10)
+	character.maximum_load = 100_000
+	var resale_instance := ItemInstance.new("shop.resale", resale_item.id, resale_item.initial_charges, false, false)
+	var equipped_instance := ItemInstance.new("shop.equipped", equipped_item.id, equipped_item.initial_charges, true, true)
+	character.set_inventory([resale_instance, equipped_instance])
+	character.carried_load = resale_item.instance_weight(resale_instance.charges) + equipped_item.instance_weight(equipped_instance.charges)
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	party.pooled_wealth.gold = 1_000
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var opened := api.execute_classic(ClassicActionDefinition.new(0, 6, 6, 0, false, []), "request.shop-lifecycle")
+	assert_equal(opened.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic shop entry yields one typed service workspace")
+	assert_equal(opened.interaction.payload["partyGold"], 1_000, "shop request exposes total payable party gold")
+	var resale_view: Dictionary = opened.interaction.payload["characters"][0]["inventory"][0]
+	assert_equal(resale_view["name"], resale_item.unidentified_name, "shop inventory does not leak an unidentified item's true name")
+	assert_equal(resale_view["sellPrice"], 0, "the one-fiftieth unidentified penalty may reduce low-value sale offers to zero")
+	var bought := api.resume_classic(opened.continuation, InteractionResponse.new(opened.interaction.request_id, &"shop_action", {"action": "buy", "stockKey": "base:0", "characterId": character.id}), opened.interaction.request_id)
+	assert_equal(bought.state, ScenarioRuntimeOperationResult.State.WAITING, "buying returns to the same shop interaction")
+	var bought_instance := character.inventory()[-1]
+	assert_equal([bought_instance.definition_id, bought_instance.identified], [stocked_item.id, true], "shop stock enters inventory identified with authored charges")
+	assert_equal(state.shop_quantity(content.shop_by_classic_id(0), 0), 1, "purchase decrements mutable base stock")
+	var identified := api.resume_classic(bought.continuation, InteractionResponse.new(bought.interaction.request_id, &"shop_action", {"action": "identify", "characterId": character.id, "instanceId": resale_instance.id}), bought.interaction.request_id)
+	assert_equal(identified.state, ScenarioRuntimeOperationResult.State.WAITING, "paid identification returns to the shop")
+	assert_true(resale_instance.identified, "paid identification marks the exact selected instance")
+	assert_equal(state.party.pooled_wealth.gold, 887, "shop purchase and fixed twenty-gold identification charge commit once")
+	assert_true(_event_has(identified.events, &"sound_requested"), "paid identification requests Castle sound 683 through presentation")
+	var equipped_sale := api.resume_classic(identified.continuation, InteractionResponse.new(identified.interaction.request_id, &"shop_action", {"action": "sell", "characterId": character.id, "instanceId": equipped_instance.id}), identified.interaction.request_id)
+	assert_equal(equipped_sale.error_code, &"equipped_item", "ordinary shop sale cannot bypass equipment removal")
+	assert_true(character.inventory().has(equipped_instance), "a rejected equipped sale leaves inventory unchanged")
+	var sold := api.resume_classic(identified.continuation, InteractionResponse.new(identified.interaction.request_id, &"shop_action", {"action": "sell", "characterId": character.id, "instanceId": resale_instance.id}), identified.interaction.request_id)
+	assert_equal(sold.state, ScenarioRuntimeOperationResult.State.WAITING, "selling returns to the same shop interaction")
+	assert_equal(state.shop_buyback_quantity("classic.shop.0", resale_item.id), 1, "an unstocked sale becomes save-owned buyback stock")
+	assert_equal(state.party.pooled_wealth.gold, 889, "identified sale adds Castle's half-cost offer to pooled gold")
+	var serialized: Variant = JSON.parse_string(JSON.stringify(state.to_data()))
+	var restored: GameState = GameState.from_data(serialized)
+	assert_not_null(restored, "dynamic shop buyback stock serializes in the central game state")
+	assert_equal(restored.shop_buyback_quantity("classic.shop.0", resale_item.id), 1, "shop buyback quantity restores exactly")
+	var save_session := GameSession.new()
+	assert_equal(save_session.start(content, 1).state, SessionStep.State.COMPLETED, "shop-state validation fixture starts")
+	var valid_save := save_session.snapshot()
+	valid_save.game_state.set_shop_buyback_quantity("classic.shop.0", resale_item.id, 1)
+	assert_equal(GameSession.new().restore(content, valid_save).state, SessionStep.State.COMPLETED, "whole-session restore accepts package-backed buyback stock")
+	var invalid_save := SaveEnvelope.from_data(valid_save.to_data())
+	assert_not_null(invalid_save, "valid buyback envelope detaches before corruption")
+	invalid_save.game_state.set_shop_buyback_quantity("classic.shop.0", "missing.item", 1)
+	assert_equal(GameSession.new().restore(content, invalid_save).error_code, &"invalid_game_state", "whole-session restore rejects buyback stock with an unavailable item identity")
+	var bought_back := api.resume_classic(sold.continuation, InteractionResponse.new(sold.interaction.request_id, &"shop_action", {"action": "buy", "stockKey": "buyback:%s" % resale_item.id, "characterId": character.id}), sold.interaction.request_id)
+	assert_equal(bought_back.state, ScenarioRuntimeOperationResult.State.WAITING, "a sold unstocked item can be bought back through typed stock identity")
+	assert_equal(state.shop_buyback_quantity("classic.shop.0", resale_item.id), 0, "buyback purchase consumes the dynamic stock entry")
+	var returned_instance: ItemInstance = character.inventory()[-1]
+	assert_equal([returned_instance.definition_id, returned_instance.identified], [resale_item.id, true], "buyback stock is shop-owned and therefore identified")
 
 
 func _test_classic_priest_turning(content: RealmzContent) -> void:

@@ -1,0 +1,34 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-ECONOMY-001",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/moveicon.c",
+      "symbol": "void moveicon(void)",
+      "range": "129-170"
+    },
+    {
+      "path": "src/realmz_orig/moveicon.c",
+      "symbol": "void itemcost(short mode)",
+      "range": "5-24"
+    }
+  ],
+  "inputs": {
+    "baseCost": 101,
+    "authoredCharges": 0,
+    "currentCharges": 0,
+    "shopInflationPercent": 100,
+    "identified": true
+  },
+  "castleSourceObservation": {
+    "halvedCost": 50,
+    "conditionExpression": "0.0 / 0.0",
+    "resultingShortConversion": "undefined-or-platform-dependent"
+  },
+  "realmz2ChosenResult": {
+    "unchargedConditionMultiplier": 1.0,
+    "salePrice": 50
+  }
+}

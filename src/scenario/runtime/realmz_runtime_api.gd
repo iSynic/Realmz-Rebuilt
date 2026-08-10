@@ -1701,15 +1701,58 @@ func _shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Arra
 		var item := _content.item_by_id(item_ids[index])
 		if item == null:
 			continue
-		stock.append({"index": index, "itemId": item.id, "name": item.name, "quantity": _game_state.shop_quantity(shop, index), "buyPrice": _shop_item_price(item, shop, false), "sellPrice": _shop_item_price(item, shop, true)})
+		stock.append(_shop_stock_view(item, "base:%d" % index, index, _game_state.shop_quantity(shop, index), shop))
+	var buyback_items := _game_state.shop_buyback_items(shop.id)
+	var buyback_ids: Array = buyback_items.keys()
+	buyback_ids.sort_custom(func(left: Variant, right: Variant) -> bool:
+		var left_item := _content.item_by_id(String(left))
+		var right_item := _content.item_by_id(String(right))
+		return left_item != null and right_item != null and left_item.classic_id < right_item.classic_id
+	)
+	for item_id: Variant in buyback_ids:
+		if item_ids.has(String(item_id)):
+			continue
+		var item := _content.item_by_id(String(item_id))
+		if item != null:
+			stock.append(_shop_stock_view(item, "buyback:%s" % item.id, -1, int(buyback_items[item_id]), shop))
+	var party_gold := _rules.economy.available(_game_state.party, WealthState.Kind.GOLD)
 	for character: CharacterState in _game_state.party.characters():
 		var inventory: Array[Dictionary] = []
 		for instance: ItemInstance in character.inventory():
 			var definition := _content.item_by_id(instance.definition_id)
 			if definition != null:
-				inventory.append({"instanceId": instance.id, "itemId": definition.id, "name": definition.name, "sellPrice": _shop_item_price(definition, shop, true), "canSell": _shop_accepts_item(definition, accept_ranges)})
+				var can_sell := not instance.equipped and _shop_accepts_item(definition, accept_ranges)
+				var sell_reason := ""
+				if instance.equipped:
+					sell_reason = "Unequip this item before selling it."
+				elif not _shop_accepts_item(definition, accept_ranges):
+					sell_reason = "This shop does not accept this item."
+				var can_identify := not instance.identified and party_gold >= 20
+				var identify_reason := ""
+				if instance.identified:
+					identify_reason = "This item is already identified."
+				elif party_gold < 20:
+					identify_reason = "Identification costs 20 gold."
+				inventory.append({
+					"instanceId": instance.id,
+					"itemId": definition.id,
+					"name": definition.name if instance.identified else definition.unidentified_name,
+					"identified": instance.identified,
+					"equipped": instance.equipped,
+					"charges": instance.charges,
+					"sellPrice": _rules.economy.shop_sell_price(definition, instance, _game_state.shop_inflation(shop)),
+					"canSell": can_sell,
+					"sellReason": sell_reason,
+					"canIdentify": can_identify,
+					"identifyReason": identify_reason,
+				})
 		characters.append({"id": character.id, "name": character.name, "inventory": inventory})
-	return InteractionRequest.new(request_id, &"shop_action", {"shopId": shop.id, "inflationPercent": _game_state.shop_inflation(shop), "stock": stock, "characters": characters, "acceptRanges": accept_ranges.duplicate(), "actions": ["buy", "sell", "leave"]})
+	return InteractionRequest.new(request_id, &"shop_action", {"shopId": shop.id, "inflationPercent": _game_state.shop_inflation(shop), "partyGold": party_gold, "identifyPrice": 20, "stock": stock, "characters": characters, "acceptRanges": accept_ranges.duplicate(), "actions": ["buy", "sell", "identify", "leave"]})
+
+
+func _shop_stock_view(item: ItemDefinition, stock_key: String, stock_index: int, quantity: int, shop: ShopDefinition) -> Dictionary:
+	var price := _rules.economy.shop_buy_price(item, _game_state.shop_inflation(shop))
+	return {"stockKey": stock_key, "index": stock_index, "itemId": item.id, "name": item.name, "quantity": quantity, "buyPrice": price, "canBuy": quantity > 0 and _rules.economy.available(_game_state.party, WealthState.Kind.GOLD) >= price, "buyReason": "Out of stock." if quantity < 1 else "The party cannot afford this item." if _rules.economy.available(_game_state.party, WealthState.Kind.GOLD) < price else ""}
 
 
 func _resume_shop(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -1724,24 +1767,27 @@ func _resume_shop(continuation: Dictionary, response: InteractionResponse, reque
 	var events: Array[DomainEvent] = []
 	match operation:
 		"buy":
-			if not _whole_number(response.payload.get("stockIndex")) or not response.payload.get("characterId") is String:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop buy requires stockIndex and characterId.")
-			var stock_index := int(response.payload["stockIndex"])
-			var item_ids := shop.item_ids()
-			if stock_index < 0 or stock_index >= item_ids.size() or _game_state.shop_quantity(shop, stock_index) < 1:
+			if not response.payload.get("characterId") is String:
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop buy requires stock identity and characterId.")
+			var stock_entry := _resolve_shop_stock(shop, response.payload)
+			if stock_entry.is_empty() or int(stock_entry.get("quantity", 0)) < 1:
 				return ScenarioRuntimeOperationResult.failed(&"shop_item_unavailable", "The selected shop item is out of stock.")
 			var character := _game_state.party.character_by_id(response.payload["characterId"])
-			var item := _content.item_by_id(item_ids[stock_index])
+			var item := stock_entry.get("item") as ItemDefinition
 			if character == null or item == null or character.inventory().size() >= InventoryRules.MAX_ITEMS or character.carried_load + item.instance_weight(item.initial_charges) > character.maximum_load:
 				return ScenarioRuntimeOperationResult.failed(&"inventory_full", "The selected character cannot carry this item.")
-			var price := _shop_item_price(item, shop, false)
+			var price := _rules.economy.shop_buy_price(item, _game_state.shop_inflation(shop))
 			if not _rules.economy.take(_game_state.party, price, WealthState.Kind.GOLD):
 				return ScenarioRuntimeOperationResult.failed(&"insufficient_gold", "The party cannot afford this item.")
-			var instance := _rules.inventory.add_item(character, item, _game_state.next_instance_id("shop.item"), false)
+			var instance := _rules.inventory.add_item(character, item, _game_state.next_instance_id("shop.item"), true)
 			if instance == null:
 				_game_state.party.pooled_wealth.gold += price
 				return ScenarioRuntimeOperationResult.failed(&"inventory_full", "The item could not be added after purchase validation.")
-			_game_state.set_shop_quantity(shop, stock_index, _game_state.shop_quantity(shop, stock_index) - 1)
+			if stock_entry.get("kind") == "base":
+				var stock_index := int(stock_entry["index"])
+				_game_state.set_shop_quantity(shop, stock_index, _game_state.shop_quantity(shop, stock_index) - 1)
+			else:
+				_game_state.set_shop_buyback_quantity(shop.id, item.id, int(stock_entry["quantity"]) - 1)
 			events.append(DomainEvent.new(&"shop_item_bought", {"shopId": shop.id, "itemId": item.id, "instanceId": instance.id, "characterId": character.id, "price": price}))
 		"sell":
 			if not response.payload.get("characterId") is String or not response.payload.get("instanceId") is String:
@@ -1757,21 +1803,74 @@ func _resume_shop(continuation: Dictionary, response: InteractionResponse, reque
 			if instance == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_item_instance", "The sold item instance is unavailable.")
 			var item := _content.item_by_id(instance.definition_id)
+			if item == null:
+				return ScenarioRuntimeOperationResult.failed(&"unknown_item", "The sold item definition is unavailable.")
+			if instance.equipped:
+				return ScenarioRuntimeOperationResult.failed(&"equipped_item", "Unequip this item before selling it.")
 			var accept_ranges: Array[int] = []
 			for value: Variant in continuation.get("acceptRanges", []):
 				accept_ranges.append(int(value))
 			if not _shop_accepts_item(item, accept_ranges):
 				return ScenarioRuntimeOperationResult.failed(&"shop_rejects_item", "This shop does not accept the selected item.")
-			var price := _shop_item_price(item, shop, true)
-			_rules.inventory.remove_item(character, instance.id, item)
+			var price := _rules.economy.shop_sell_price(item, instance, _game_state.shop_inflation(shop))
+			if _rules.inventory.remove_item(character, instance.id, item) == null:
+				return ScenarioRuntimeOperationResult.failed(&"shop_sale_failed", "The selected item could not be removed.")
 			_game_state.party.pooled_wealth.gold += price
+			var base_index := shop.item_ids().find(item.id)
+			if base_index >= 0:
+				_game_state.set_shop_quantity(shop, base_index, _game_state.shop_quantity(shop, base_index) + 1)
+			else:
+				_game_state.set_shop_buyback_quantity(shop.id, item.id, _game_state.shop_buyback_quantity(shop.id, item.id) + 1)
 			events.append(DomainEvent.new(&"shop_item_sold", {"shopId": shop.id, "itemId": item.id, "instanceId": instance.id, "characterId": character.id, "price": price}))
+		"identify":
+			if not response.payload.get("characterId") is String or not response.payload.get("instanceId") is String:
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop identification requires characterId and instanceId.")
+			var character := _game_state.party.character_by_id(response.payload["characterId"])
+			if character == null:
+				return ScenarioRuntimeOperationResult.failed(&"unknown_character", "The identification character is unavailable.")
+			var instance: ItemInstance = null
+			for candidate: ItemInstance in character.inventory():
+				if candidate.id == response.payload["instanceId"]:
+					instance = candidate
+					break
+			if instance == null:
+				return ScenarioRuntimeOperationResult.failed(&"unknown_item_instance", "The identification item is unavailable.")
+			if instance.identified:
+				return ScenarioRuntimeOperationResult.failed(&"already_identified", "This item is already identified.")
+			if not _rules.economy.take(_game_state.party, 20, WealthState.Kind.GOLD):
+				return ScenarioRuntimeOperationResult.failed(&"insufficient_gold", "Identification costs 20 gold.")
+			instance.identified = true
+			events.append(DomainEvent.new(&"item_identified", {"shopId": shop.id, "instanceId": instance.id, "characterId": character.id, "price": 20, "source": "classic-shop"}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 683, "waitForCompletion": false, "source": "classic-shop-identify"}))
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_shop_action", "Shop action '%s' is unavailable." % operation)
 	var ranges: Array[int] = []
 	for value: Variant in continuation.get("acceptRanges", []):
 		ranges.append(int(value))
 	return ScenarioRuntimeOperationResult.waiting(_shop_request(shop, request_id, ranges), continuation, events)
+
+
+func _resolve_shop_stock(shop: ShopDefinition, payload: Dictionary) -> Dictionary:
+	var stock_key := String(payload.get("stockKey", ""))
+	if stock_key.begins_with("base:"):
+		var index_text := stock_key.trim_prefix("base:")
+		if not index_text.is_valid_int():
+			return {}
+		var index := index_text.to_int()
+		var item_ids := shop.item_ids()
+		if index < 0 or index >= item_ids.size():
+			return {}
+		return {"kind": "base", "index": index, "item": _content.item_by_id(item_ids[index]), "quantity": _game_state.shop_quantity(shop, index)}
+	if stock_key.begins_with("buyback:"):
+		var item_id := stock_key.trim_prefix("buyback:")
+		var quantity := _game_state.shop_buyback_quantity(shop.id, item_id)
+		return {} if quantity < 1 else {"kind": "buyback", "index": -1, "item": _content.item_by_id(item_id), "quantity": quantity}
+	if _whole_number(payload.get("stockIndex")):
+		var index := int(payload["stockIndex"])
+		var item_ids := shop.item_ids()
+		if index >= 0 and index < item_ids.size():
+			return {"kind": "base", "index": index, "item": _content.item_by_id(item_ids[index]), "quantity": _game_state.shop_quantity(shop, index)}
+	return {}
 
 
 func _configure_shop(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -1793,9 +1892,12 @@ static func _shop_accepts_item(item: ItemDefinition, accept_ranges: Array[int]) 
 		return accept_ranges.is_empty()
 	if accept_ranges.size() != 4:
 		return false
-	var first := accept_ranges[0] <= item.classic_id and item.classic_id <= accept_ranges[1]
-	var second := accept_ranges[2] <= item.classic_id and item.classic_id <= accept_ranges[3]
-	return first or second
+	var failures := 0
+	if accept_ranges[0] != 0 and not (accept_ranges[0] <= item.classic_id and item.classic_id <= accept_ranges[1]):
+		failures += 1
+	if accept_ranges[2] != 0 and not (accept_ranges[2] <= item.classic_id and item.classic_id <= accept_ranges[3]):
+		failures += 1
+	return failures < 2
 
 
 func _mutate_shop(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -1816,13 +1918,6 @@ func _mutate_shop(action: ClassicActionDefinition) -> ScenarioRuntimeOperationRe
 			return ScenarioRuntimeOperationResult.failed(&"shop_item_unavailable", "Classic shop mutation item is not stocked by the shop.")
 		_game_state.set_shop_quantity(shop, stock_index, _game_state.shop_quantity(shop, stock_index) + action.extra_code[3])
 	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"shop_changed", {"shopId": shop.id, "inflationPercent": inflation, "stockIndex": stock_index, "quantity": _game_state.shop_quantity(shop, stock_index) if stock_index >= 0 else 0})])
-
-
-func _shop_item_price(item: ItemDefinition, shop: ShopDefinition, selling: bool) -> int:
-	var multiplier := _game_state.shop_inflation(shop)
-	if selling:
-		multiplier = mini(multiplier, 100)
-	return mini(32_000, int(float(absi(item.cost) * multiplier) / 100.0))
 
 
 func _request_temple(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:

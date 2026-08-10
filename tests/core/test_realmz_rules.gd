@@ -674,7 +674,18 @@ func _test_inventory_economy_and_treasure() -> void:
 	var shop := ShopDefinition.new("shop.test", 1, _strings([item.id]), _ints([1]), 150)
 	item.cost = 30_000
 	assert_equal(rules.economy.item_price(item, shop), 32_000, "buy prices retain Castle's 32000 cap")
-	assert_equal(rules.economy.item_price(item, shop, true), 30_000, "sell price never uses inflation above 100 percent")
+	assert_equal(rules.economy.item_price(item, shop, true), 15_000, "shop sale halves base cost and never uses inflation above 100 percent")
+	var worn_instance := ItemInstance.new("item-instance.priced-wand", item.id, 1, false, true)
+	assert_equal(rules.economy.shop_sell_price(item, worn_instance, 150), 7_500, "charged-item sale value uses Castle's current-to-authored charge ratio after halving")
+	worn_instance.charges = -1
+	assert_equal(rules.economy.shop_sell_price(item, worn_instance, 150), 7_500, "Castle's later absolute-cost step preserves a negative current-charge ratio as positive value")
+	worn_instance.charges = 1
+	worn_instance.identified = false
+	assert_equal(rules.economy.shop_sell_price(item, worn_instance, 150), 150, "unidentified shop sales retain Castle's one-fiftieth penalty")
+	var uncharged := ItemDefinition.new("item.uncharged", 2, "Uncharged")
+	uncharged.cost = 101
+	uncharged.initial_charges = 0
+	assert_equal(rules.economy.shop_sell_price(uncharged, ItemInstance.new("item-instance.uncharged", uncharged.id, 0, false, true), 100), 50, "zero-charge definitions retain full condition instead of Castle's undefined 0/0 conversion")
 	var treasure := TreasureDefinition.new("treasure.test", 1, _strings([item.id]), -5, -10, 2, 0)
 	var treasure_roll := rules.economy.roll_treasure(treasure, ScriptedRng.new([0, 32_767]))
 	assert_equal(treasure_roll.experience, 1, "negative treasure values encode a one-to-absolute-value roll")

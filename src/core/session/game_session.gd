@@ -70,6 +70,8 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 	_normalize_age_groups(replacement_state, content, replacement_rules)
 	if not _party_inventory_is_valid(content, replacement_state, replacement_rules):
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved party inventory or carried load is invalid for this package.")
+	if not _shop_state_is_valid(content, replacement_state):
+		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved shop state references unavailable package content.")
 	if not _character_draft_is_valid(content, replacement_state, replacement_rules):
 		return SessionStep.failed(_view_revision, &"invalid_character_draft", "The saved character-creation draft is invalid for this campaign.")
 	var replacement_vm := ScenarioVm.new()
@@ -868,6 +870,20 @@ static func _party_inventory_is_valid(content: RealmzContent, state: GameState, 
 	for character: CharacterState in state.party.characters():
 		if rules.inventory.calculated_load(character, definitions) != character.carried_load:
 			return false
+	return true
+
+
+static func _shop_state_is_valid(content: RealmzContent, state: GameState) -> bool:
+	if content == null or state == null:
+		return false
+	if not state.active_shop_id.is_empty() and content.shop_by_id(state.active_shop_id) == null:
+		return false
+	for shop_id: Variant in state.shop_buyback_overrides():
+		if content.shop_by_id(String(shop_id)) == null:
+			return false
+		for item_id: Variant in state.shop_buyback_overrides()[shop_id]:
+			if content.item_by_id(String(item_id)) == null:
+				return false
 	return true
 
 

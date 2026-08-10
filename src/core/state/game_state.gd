@@ -28,6 +28,7 @@ var _instance_counter: int = 0
 var _eliminated_simple_options: Dictionary = {}
 var _shop_overrides: Dictionary = {}
 var _shop_inflation_overrides: Dictionary = {}
+var _shop_buyback_overrides: Dictionary = {}
 var _encounter_attempts: Dictionary = {}
 var _thief_encounter_type_flags: Dictionary = {}
 var _scenario_program_overrides: Dictionary = {}
@@ -180,6 +181,35 @@ func set_shop_quantity(shop: ShopDefinition, stock_index: int, quantity: int) ->
 	return true
 
 
+func shop_buyback_quantity(shop_id: String, item_id: String) -> int:
+	var shop_items: Variant = _shop_buyback_overrides.get(shop_id, {})
+	return int(shop_items.get(item_id, 0)) if shop_items is Dictionary else 0
+
+
+func set_shop_buyback_quantity(shop_id: String, item_id: String, quantity: int) -> bool:
+	if shop_id.is_empty() or item_id.is_empty() or quantity < 0 or quantity > 32_767:
+		return false
+	var shop_items: Dictionary = (_shop_buyback_overrides.get(shop_id, {}) as Dictionary).duplicate()
+	if quantity == 0:
+		shop_items.erase(item_id)
+	else:
+		shop_items[item_id] = quantity
+	if shop_items.is_empty():
+		_shop_buyback_overrides.erase(shop_id)
+	else:
+		_shop_buyback_overrides[shop_id] = shop_items
+	return true
+
+
+func shop_buyback_items(shop_id: String) -> Dictionary:
+	var items: Variant = _shop_buyback_overrides.get(shop_id, {})
+	return items.duplicate() if items is Dictionary else {}
+
+
+func shop_buyback_overrides() -> Dictionary:
+	return _sorted_nested_dictionary(_shop_buyback_overrides)
+
+
 func shop_inflation(shop: ShopDefinition) -> int:
 	return int(_shop_inflation_overrides.get(shop.id, shop.inflation_percent))
 
@@ -252,6 +282,7 @@ func to_data() -> Dictionary:
 		"eliminatedSimpleOptions": _sorted_string_keys(_eliminated_simple_options),
 		"shopOverrides": _sorted_dictionary(_shop_overrides),
 		"shopInflationOverrides": _sorted_dictionary(_shop_inflation_overrides),
+		"shopBuybackOverrides": _sorted_nested_dictionary(_shop_buyback_overrides),
 		"encounterAttempts": _sorted_dictionary(_encounter_attempts),
 		"thiefEncounterTypeFlags": _sorted_dictionary(_thief_encounter_type_flags),
 		"scenarioProgramOverrides": _sorted_dictionary(_scenario_program_overrides),
@@ -431,6 +462,19 @@ static func from_data(data: Variant) -> GameState:
 			if not key is String or key.is_empty() or inflation < 0 or inflation > 32_767:
 				return null
 			state._shop_inflation_overrides[key] = inflation
+		if data.has("shopBuybackOverrides"):
+			if not data["shopBuybackOverrides"] is Dictionary:
+				return null
+			for shop_id: Variant in data["shopBuybackOverrides"]:
+				var shop_items: Variant = data["shopBuybackOverrides"][shop_id]
+				if not shop_id is String or shop_id.is_empty() or not shop_items is Dictionary:
+					return null
+				for item_id: Variant in shop_items:
+					var quantity := _integer(shop_items[item_id])
+					if not item_id is String or item_id.is_empty() or quantity < 1 or quantity > 32_767:
+						return null
+					if not state.set_shop_buyback_quantity(shop_id, item_id, quantity):
+						return null
 		if not data["encounterAttempts"] is Dictionary or not data["thiefEncounterTypeFlags"] is Dictionary:
 			return null
 		for key: Variant in data["encounterAttempts"]:
@@ -499,4 +543,14 @@ static func _sorted_dictionary(source: Dictionary) -> Dictionary:
 	keys.sort()
 	for key: Variant in keys:
 		result[key] = source[key]
+	return result
+
+
+static func _sorted_nested_dictionary(source: Dictionary) -> Dictionary:
+	var result: Dictionary = {}
+	var keys: Array = source.keys()
+	keys.sort()
+	for key: Variant in keys:
+		if source[key] is Dictionary:
+			result[key] = _sorted_dictionary(source[key])
 	return result

@@ -12,6 +12,7 @@ func run() -> void:
 	_test_interaction_identity()
 	_test_classic_choice_context()
 	_test_battle_weapon_mode_component()
+	_test_shop_component()
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
@@ -119,6 +120,46 @@ func _test_battle_weapon_mode_component() -> void:
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.burst", "power": 3, "targetCoordinate": [47, 43], "rotation": 0},
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.darts", "power": 3, "targetIds": ["character.ally", "monster.target"]},
 	], "the presenter emits typed switch, movement, combatant, battlefield-coordinate, and ordered repeated-target spell responses")
+	component.free()
+
+
+func _test_shop_component() -> void:
+	var request := InteractionRequest.new("shop.fixture", InteractionRequest.SHOP, {
+		"partyGold": 19,
+		"inflationPercent": 125,
+		"identifyPrice": 20,
+		"characters": [{"id": "character.one", "name": "Hero", "inventory": [
+			{"instanceId": "item.unknown", "name": "Runed wand", "sellPrice": 0, "identified": false, "canSell": true, "sellReason": "", "canIdentify": false, "identifyReason": "Identification costs 20 gold."},
+			{"instanceId": "item.equipped", "name": "Sword", "sellPrice": 25, "identified": true, "canSell": false, "sellReason": "Unequip this item before selling it.", "canIdentify": false, "identifyReason": "This item is already identified."},
+		]}],
+		"stock": [{"stockKey": "buyback:classic.item.5", "index": -1, "name": "Dagger", "buyPrice": 40, "quantity": 1, "canBuy": false, "buyReason": "The party cannot afford this item."}],
+	})
+	var component := ShopInteraction.new()
+	component.build(request)
+	var buttons: Array[Button] = []
+	for child: Node in component.get_children():
+		if child is Button:
+			buttons.append(child)
+	var buy_button: Button = null
+	var unknown_sell: Button = null
+	var identify_button: Button = null
+	var equipped_sell: Button = null
+	for button: Button in buttons:
+		if button.text.begins_with("Dagger"):
+			buy_button = button
+		elif button.text.begins_with("Sell Runed wand"):
+			unknown_sell = button
+		elif button.text.begins_with("Identify Runed wand"):
+			identify_button = button
+		elif button.text.begins_with("Sell Sword"):
+			equipped_sell = button
+	assert_not_null(buy_button, "shop buyback stock renders through the typed component")
+	assert_true(buy_button.disabled and buy_button.tooltip_text.contains("afford"), "unaffordable stock exposes its core-owned reason")
+	assert_not_null(unknown_sell, "unidentified inventory uses the player-knowable item name")
+	assert_not_null(identify_button, "unknown items expose paid shop identification")
+	assert_true(identify_button.disabled and identify_button.tooltip_text.contains("20 gold"), "paid identification exposes the exact affordability blocker")
+	assert_not_null(equipped_sell, "equipped items remain visible in the sale list")
+	assert_true(equipped_sell.disabled and equipped_sell.tooltip_text.contains("Unequip"), "ordinary sale cannot bypass the equipment workflow")
 	component.free()
 
 

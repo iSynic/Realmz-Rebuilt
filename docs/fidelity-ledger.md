@@ -2,6 +2,16 @@
 
 Classic-visible behavior is the default ruleset. This ledger records deliberate departures only; the absence of a decision does not authorize reinterpretation.
 
+## FD-ECONOMY-001 — Zero-charge shop valuation
+
+- Affected rule: shop sale value for an item definition whose authored charge count is zero.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/moveicon.c`, `moveicon`, lines 129–170, and `itemcost`, lines 5–24. Sale integer-halves absolute cost, divides current charges by authored charges as floating point, multiplies the halved cost by that ratio, applies sale inflation capped at 100 percent, and divides unidentified value by fifty.
+- Observable source inconsistency: authored zero charges with current zero charges evaluates `0.0 / 0.0` and converts the resulting non-finite value through the signed item-cost field. That conversion is undefined or platform-dependent. The synthetic source-observation fixture is `tests/fixtures/oracle/shop-zero-charge-valuation-correction.json`, SHA-256 `a8d5977ba170e174a552666d1a6338a9d28e31dc37505541cd9ec5c7957db952`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: the same uncharged item can receive an unstable, nonsensical, or platform-dependent sale offer even though charge condition does not apply to it.
+- Chosen 2.0 behavior: a definition with nonpositive authored charges retains a condition multiplier of one. Positive authored charges preserve Castle's current/authored ratio and truncation order; all later inflation and unidentified penalties remain unchanged.
+- Tests: `test_realmz_rules.gd` covers charged, unidentified, capped-inflation, and zero-charge prices. `test_scenario_vm.gd` covers the complete ordinary shop lifecycle. The differential case is `economy.classic-shop-lifecycle`.
+- Legacy quirk: none. A non-finite conversion is not a stable authored behavior.
+
 ## FD-INVENTORY-001 — Safe equipped-item trade
 
 - Affected rule: moving an equipped carried item between party members in the ordinary two-character Trade workspace.

@@ -2417,6 +2417,64 @@
       },
       "availability": "implemented",
       "status": "safe-starting-load-equip-unequip-trade-drop-and-restore-validation-verified"
+    },
+    {
+      "id": "economy.classic-shop-lifecycle",
+      "domain": "economy",
+      "claim": "An ordinary Classic shop exposes identified stock, purchases with pooled-then-personal gold, values sales from half base cost and remaining charges with the unidentified penalty, refuses ordinary equipped-item sales, offers fixed twenty-gold identification, and retains sold items as mutable buyback stock.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake supplies a dedicated shop workspace with purchase, sale, category or buyback restocking, equipment guards, and paid-identification controls. Its generic buy and sell rates do not establish Classic charge or unidentified valuation.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/Inventory/ShopRect.gd", "symbol": "func purchase_item(" },
+          { "path": "src/scenes/UI/HUD/Inventory/ShopRect.gd", "symbol": "func sell_item(owner: Creature, item: ItemInstance) -> Dictionary" },
+          { "path": "src/scenes/UI/HUD/Inventory/ShopInventoryContainerShop.gd", "symbol": "func _can_drop_data(_pos: Vector2, data: Variant) -> bool" },
+          { "path": "src/scenes/UI/HUD/Inventory/InventoryRect.gd", "symbol": "func _on_ButtonidentiPay_pressed()" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/moveicon.c", "symbol": "void itemcost(short mode)" },
+          { "path": "src/realmz_orig/moveicon.c", "symbol": "void moveicon(void)" },
+          { "path": "src/realmz_orig/items.c", "symbol": "short items(void)" },
+          { "path": "src/realmz_orig/getselection.c", "symbol": "short getselection(short tempid)" }
+        ],
+        "authoredInputs": ["shop inflation", "five native 200-slot stock categories", "item cost", "authored and current charges", "identified and equipped flags", "configured accepted item ranges"],
+        "observation": "Shop stock is always identified. Purchase price is absolute cost times inflation with a 32000 cap; purchases consume pooled then selected-character gold, install authored charges, and decrement stock. Sale first integer-halves absolute cost, multiplies by current/authored charge ratio, applies inflation capped at 100 percent, then divides an unidentified result by fifty. Ordinary selection prevents equipped sale. A sale adds pooled gold and increments the first matching native category slot or fills its first empty slot. Paid identification spends twenty gold on one selected instance and plays sound 683.",
+        "unresolved": [
+          "A definition with zero authored and current charges evaluates 0.0/0.0 before assigning the result through a short; FD-ECONOMY-001 defines a portable result.",
+          "Providence schema v2 preserves occupied stock order but not empty native slot indices, so exact first-empty visual ordering cannot yet be reconstructed. Player-visible buyback identity and quantity are retained in normalized save-owned stock.",
+          "Castle's one-configured-range rejection counter accepts every item; Realmz 2.0 preserves that control flow until authored use proves a correction is required."
+        ]
+      },
+      "providence": {
+        "commit": "028a587d8f99bd687d279d3abfdb74663ac4819f",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(project: &ProvidenceProject) -> Vec<Value>" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_shops(project: &ProvidenceProject, reachability: &RuntimeReachability) -> Vec<Value>" }
+        ],
+        "expectedRepresentation": "Schema v2 already emits item costs, authored charges, weights, identified and unidentified names, shop inflation, occupied stock identity, quantity, and order. No compiler change is required for pricing, paid identification, or normalized buyback state; native empty-slot provenance remains a compiler gap."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/economy_rules.gd", "symbol": "func shop_sell_price(" },
+        "expectedTrace": ["enter a typed shop continuation", "render identified immutable and save-owned buyback stock", "render only player-knowable carried-item identity", "revalidate buyer capacity or seller equipment and accepted ranges", "take pooled-then-personal gold or add sale gold to the pool", "create an identified purchased instance or remove the exact sold instance", "mutate base or normalized buyback stock", "identify one exact instance for twenty gold and request sound 683", "regenerate the typed shop request", "serialize interaction, stock, wealth, inventory, and identification state"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_inventory_economy_and_treasure()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_shop_lifecycle(content: RealmzContent)" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_shop_component()" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-ECONOMY-001",
+        "fixturePath": "tests/fixtures/oracle/shop-zero-charge-valuation-correction.json",
+        "fixtureSha256": "a8d5977ba170e174a552666d1a6338a9d28e31dc37505541cd9ec5c7957db952"
+      },
+      "availability": "implemented",
+      "status": "ordinary-buy-sell-identify-buyback-and-save-state-verified"
     }
   ]
 }
