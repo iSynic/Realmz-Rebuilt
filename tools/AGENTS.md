@@ -21,12 +21,12 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 - Tools must resolve the repository root from their own path and avoid machine-specific committed paths.
 - Do not modify source-reference worktrees or commercial campaign installations.
 - Keep local absolute MCP/server configuration untracked.
-- Serialize headless verification and live MCP editor sessions because MCP Pro temporarily owns editor-only autoload settings.
+- The vendored MCP plugin must skip initialization in headless editor processes so verification cannot claim or remove a live interactive editor's temporary runtime-service autoloads.
 - The aggregate headless test gate captures process output and fails on ObjectDB leak or retained-resource teardown diagnostics, even when Godot exits zero.
 - Keep the universal macOS export preset on ETC2/ASTC texture import; `verify_export_contract.ps1` enforces the exporter requirement.
 - An action-list route step may execute its named compiled XAP/ED3 program directly when the record has no map topology. Reports must keep that distinction from placed AP reachability.
 - Tier 2 report regeneration is allowed only when the authoritative workflow inventory changed; never use `-Write` for an unrelated workflow edit and never hand-edit the generated status report.
-- Tier 3 runs `verify.ps1` once per workflow batch, plus source-intelligence validation/regeneration, clean-reference evidence validation, relevant Providence full checks, and one coherent MCP walkthrough. Keep these lanes serialized with live MCP sessions.
+- Tier 3 runs `verify.ps1` once per workflow batch, plus source-intelligence validation/regeneration, clean-reference evidence validation, relevant Providence full checks, and one coherent MCP walkthrough.
 
 ## Work Guidance
 

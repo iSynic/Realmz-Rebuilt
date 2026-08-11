@@ -19,7 +19,7 @@ Use the lowest tier that covers the changed boundary:
 
 - **Tier 1 — focused behavior:** run only the affected test suite or suites. Do not run the aggregate gate, source intelligence/codemap, MCP, or unrelated routes. Every meaningful change still receives a DOX review; update a contract only when its durable behavior or ownership changed.
 - **Tier 2 — focused workflow:** run the affected suites, the architecture check when product source changed, the differential and application-workflow inventory validators, scope/local-path checks, `git diff --check`, and the applicable DOX review. Regenerate `docs/classic-application-workflow-status.md` only when its authoritative inventory changed. Do not run the aggregate gate or MCP by default.
-- **Tier 3 — batch closeout:** once per batch, run the full `tools/verify.ps1` gate, source-intelligence validation/regeneration, clean-reference evidence validation, relevant Providence full checks, and one coherent MCP walkthrough. Serialize headless and MCP lanes.
+- **Tier 3 — batch closeout:** once per batch, run the full `tools/verify.ps1` gate, source-intelligence validation/regeneration, clean-reference evidence validation, relevant Providence full checks, and one coherent MCP walkthrough.
 
 Move directly to Tier 3 for package or schema changes; save, migration, or continuation changes; RNG or VM changes; topology changes; terminal combat or reward sequencing; and composition-root ownership changes. CI remains comprehensive regardless of the local tier.
 
@@ -69,7 +69,7 @@ For interaction slices, inspect the pending request ID before responding, save w
 
 Runtime operations before `play_scene` are invalid. Use CLI discovery with `node <server>/build/cli.js --help` when MCP tools are not exposed in the current client.
 
-Do not run the headless verification lane while a live MCP editor session is open. MCP Pro injects editor-only autoloads and removes them when an editor process exits; serializing these lanes prevents a headless process from removing the live editor's runtime inspector settings. The MCP scene-save command can also emit Godot progress-dialog errors while handling its deferred request; restart the editor before the final clean error inspection after MCP-authored scene changes.
+The vendored MCP plugin does not initialize in a headless editor process. This keeps headless verification from claiming and removing the live editor's temporary runtime-service autoloads, so focused and aggregate checks may run while the MCP editor remains open. The MCP scene-save command can still emit Godot progress-dialog errors while handling its deferred request; restart the editor before the final clean error inspection after MCP-authored scene changes.
 
 Release presets exclude `addons/godot_mcp`, `.mcp.json`, tests, tools, docs, contract mirrors, local artifacts, and ignored reference worktrees. `tools/verify_export_contract.ps1` enforces those exclusions and the ETC2/ASTC import required by the universal macOS preset; Godot's generated export metadata remains part of a valid pack.
 

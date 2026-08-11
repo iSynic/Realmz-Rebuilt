@@ -20,8 +20,15 @@ var status_panel: Control
 var auto_dismiss_dialogs: bool = false
 # Track which autoloads THIS session injected (vs project-owned)
 var _session_injected_autoloads: Array[String] = []
+var _headless_editor_session: bool = false
 
 func _enter_tree() -> void:
+	_headless_editor_session = DisplayServer.get_name() == "headless"
+	if _headless_editor_session:
+		# Headless verification can run beside the interactive editor. It must not
+		# reclaim and later remove that editor's temporary runtime autoloads.
+		return
+
 	_register_project_settings()
 
 	# Create command router
@@ -54,6 +61,9 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
+	if _headless_editor_session:
+		return
+
 	# Remove MCP autoloads and clean up temp files
 	_remove_autoloads()
 	_cleanup_temp_files()
