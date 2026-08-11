@@ -532,3 +532,12 @@ Next application-workflow priority: return to the audit's AOGM queue. The adjace
 Flagged rather than hidden: Castle's bank is visually the generic Swap modal, while 2.0 keeps a separately labelled Bank command for discoverability. This does not alter the source mutation sequence. Money-changing rates, the no-bank pooled-wealth departure warning, and ordinary-campaign bank acceptance remain separate workflow gaps.
 
 Next batch priority: finish the coherent service-workflow closeout through one ordinary AOGM contextual service route, then return to the regenerated major-gap queue rather than reopening isolated economy formulas.
+
+### Ordinary Swap lifecycle audio
+
+- A deliberate ordinary Services-route entry now requests Castle's Swap-button sound 141, stops existing channels before modal sound 3003, and leaving that route through Done, Back, a menu, or a shortcut requests sound 141. Repeated rerenders and same-route mutations do not replay the sequence.
+- The lifecycle remains presentation-owned. Pool, Share, and exact transfers still use `MONEY_ACTION`; opening or closing the workspace does not create gameplay state, consume RNG, or alter saves.
+- The shared Services route suppresses ordinary Swap audio when it was opened to host a typed Shop, Temple, or Bank interaction. Those workflows retain their own source-backed entry and exit events.
+- Focused Tier 2 verification covers the route state machine and the existing audio presenter path. This closes `GAP-SVC-006`; contextual money-changing rates remain separate.
+
+Flagged preference boundary: Castle persists `reducesound` and uses it to suppress modal ambience such as sound 3003 while retaining button, transfer, and Done sounds. Realmz 2.0's default-audio sequence is source-shaped, but the preference itself is now tracked as `GAP-SYS-003` until modal sounds are comprehensively classified.

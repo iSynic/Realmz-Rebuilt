@@ -9,12 +9,15 @@ signal system_action_requested(action_id: StringName, value: Variant)
 signal presentation_setting_changed(setting_id: StringName, value: Variant)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
+signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool)
 
 const GOLD := Color("d5b45d")
 const INK := Color("17191d")
 const PANEL := Color("272b31")
 const PANEL_DARK := Color("1d2025")
 const MUTED := Color("9aa0a8")
+const SWAP_OPEN_SOUND_ID: int = 3003
+const SWAP_DONE_SOUND_ID: int = 141
 
 var _view: GameView
 var _campaigns: Array[PackageDiscoveryResult] = []
@@ -89,6 +92,7 @@ var _appearance_textures: Dictionary = {}
 var _combat_icon_touched: bool = false
 var _vault_return_to_setup: bool = false
 var _vault_return_to_campaign: bool = false
+var _ordinary_money_workspace_open: bool = false
 
 
 func _ready() -> void:
@@ -270,6 +274,7 @@ func open_screen(screen_id: StringName) -> void:
 	_screen_id = screen_id
 	_campaign_overlay.visible = false
 	_setup_overlay.visible = false
+	_sync_ordinary_money_workspace_audio(screen_id)
 	screen_changed.emit(screen_id)
 	_render_screen()
 
@@ -299,15 +304,30 @@ func handle_back() -> bool:
 	if not _route_history.is_empty():
 		var previous: StringName = _route_history.pop_back()
 		_screen_id = previous
+		_sync_ordinary_money_workspace_audio(previous)
 		screen_changed.emit(previous)
 		_render_screen()
 		return true
 	if _screen_id != &"exploration":
 		_screen_id = &"exploration"
+		_sync_ordinary_money_workspace_audio(_screen_id)
 		screen_changed.emit(_screen_id)
 		_render_screen()
 		return true
 	return false
+
+
+func _sync_ordinary_money_workspace_audio(screen_id: StringName) -> void:
+	var service_interaction_open := _view != null and _view.pending_interaction != null and _view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK]
+	var should_be_open := screen_id == &"services" and _view != null and _view.session_started and not service_interaction_open
+	if should_be_open == _ordinary_money_workspace_open:
+		return
+	_ordinary_money_workspace_open = should_be_open
+	if should_be_open:
+		presentation_sound_requested.emit(SWAP_DONE_SOUND_ID, false, false)
+		presentation_sound_requested.emit(SWAP_OPEN_SOUND_ID, false, true)
+	else:
+		presentation_sound_requested.emit(SWAP_DONE_SOUND_ID, false, false)
 
 
 func current_screen() -> StringName:

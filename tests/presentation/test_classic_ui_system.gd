@@ -15,6 +15,7 @@ func run() -> void:
 	_test_shop_component()
 	_test_temple_component()
 	_test_bank_component()
+	_test_money_workspace_audio()
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
@@ -267,6 +268,36 @@ func _test_bank_component() -> void:
 		{"action": "leave"},
 	], "bank presenter emits exact typed Swap and Done responses")
 	component.free()
+
+
+func _test_money_workspace_audio() -> void:
+	var router := ClassicScreenRouter.new()
+	var view := GameView.new(1, true, null)
+	router._view = view
+	var sounds: Array[Dictionary] = []
+	router.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void: sounds.append({"soundId": sound_id, "waitForCompletion": wait_for_completion, "stopExisting": stop_existing}))
+	router._sync_ordinary_money_workspace_audio(&"services")
+	router._sync_ordinary_money_workspace_audio(&"services")
+	router._sync_ordinary_money_workspace_audio(&"exploration")
+	assert_equal(sounds, [
+		{"soundId": 141, "waitForCompletion": false, "stopExisting": false},
+		{"soundId": 3003, "waitForCompletion": false, "stopExisting": true},
+		{"soundId": 141, "waitForCompletion": false, "stopExisting": false},
+	], "ordinary Swap route requests the source button, quiet-and-open, and Done sequence without duplicates")
+	view.pending_interaction = InteractionRequest.new("shop.audio", InteractionRequest.SHOP, {"prompt": "Shop"})
+	router._sync_ordinary_money_workspace_audio(&"services")
+	assert_equal(sounds.size(), 3, "a Services route opened for a typed location service does not masquerade as ordinary Swap")
+	var audio := ClassicAudioPresenter.new()
+	var observed: Array[int] = []
+	audio.sound_observed.connect(func(sound_id: int) -> void: observed.append(sound_id))
+	audio._processing_sounds = true
+	audio._pending_sounds.append({"stream": null, "waitForCompletion": true})
+	audio.present_sound(3003, null, false, true)
+	assert_equal([audio.last_sound_id, observed], [3003, [3003]], "presentation-owned workspace audio uses the same explicit audio presenter path as session events")
+	assert_false(audio._processing_sounds, "quiet-and-open cancels an in-flight wait state instead of deadlocking the sound queue")
+	assert_true(audio._pending_sounds.is_empty(), "quiet-and-open discards pre-modal queued sounds")
+	audio.free()
+	router.free()
 
 
 func _test_route_catalog() -> void:

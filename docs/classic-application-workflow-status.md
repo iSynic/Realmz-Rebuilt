@@ -219,8 +219,8 @@ Blockers: **1**. Major gaps: **28**.
 - `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate.
 - `host.package.validation-progress` — Package loading remains perceptibly slow and lacks a real asynchronous progress workflow.
 - `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished.
-- `classic.services.swap` — Ordinary route navigation does not yet play Swap's Classic open and Done sounds.
 - `classic.spellcasting.choose-power-target` — SELECT_SPELL_POWER and SELECT_SPELL_TARGET are dead scaffolding beside the complete CAST_SPELL payload.
+- `classic.system.preferences` — Classic's reduced-sound preference is not represented.
 - `classic.system.quit` — Unsaved-state quit confirmation is not an evidenced ordinary workflow.
 
 ## Coverage caveats

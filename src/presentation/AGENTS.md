@@ -61,6 +61,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - Scenario-picture overlays place a native-scale repeating stone backing under the complete raised bevel. Transparent frame pixels may never expose the map between the surface and bevel.
 - Classic opcode 3 carries button labels, not a question prompt. Its yes/no presenter keeps the latest source-authored Classic textbox message visible as context, while an explicit typed request prompt remains authoritative.
 - Classic sound playback rotates across four presentation-owned channels. Positive sound requests may overlap; a negative request waits for that channel's completion before the presenter drains later sound events, without introducing a simulation wait.
+- Ordinary Swap route entry and exit are presentation-owned lifecycle audio: one deliberate Services-route entry requests button sound 141, stops existing channels before modal sound 3003, and leaving requests sound 141. Same-route rerenders do not replay them, and a Services route opened for a typed Shop, Temple, or Bank interaction is not treated as ordinary Swap. Pool, Share, and transfer sounds remain simulation events.
 - Cosmetic RNG cannot enter saves, replays, oracle traces, or simulation decisions.
 
 ## Work Guidance

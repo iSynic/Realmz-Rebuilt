@@ -10,9 +10,14 @@
       "observation": "Opcode 49 enables banking and does not open a separate amount-transfer workspace."
     },
     {
+      "path": "src/realmz_orig/buttonchoice.c",
+      "symbol": "if (theControl == swapbut)",
+      "observation": "The ordinary Swap button requests sound 141 before entering the modal."
+    },
+    {
       "path": "src/realmz_orig/swap.c",
       "symbol": "void swap(void)",
-      "observation": "Opening Swap while banking is available moves all banked gold, gems, and jewelry into the shared pool; transfers use five gold or one gem or jewelry; Done performs no bank mutation."
+      "observation": "Opening Swap quiets every sound channel, requests sound 3003 unless reduced sound is enabled, and while banking is available moves all banked gold, gems, and jewelry into the shared pool; transfers use five gold or one gem or jewelry; Done requests sound 141 and performs no bank mutation."
     },
     {
       "path": "src/realmz_orig/moveparty.c",
@@ -27,7 +32,8 @@
   ],
   "expectedTrace": [
     "enable banking",
-    "open Swap",
+    "request button sound 141",
+    "quiet existing channels and request modal sound 3003",
     "move all banked denominations to the pool once",
     "perform Pool, Share, or exact character transfers",
     "close Swap without re-banking",

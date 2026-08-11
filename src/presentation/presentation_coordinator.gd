@@ -30,6 +30,7 @@ func bind(session_controller: GameSessionController, map_presenter: ClassicMapPr
 	_audio_presenter = audio_presenter
 	_session_controller.step_committed.connect(_on_step_committed)
 	_shell_presenter.play_stage_visibility_changed.connect(set_play_stage_visible)
+	_shell_presenter.presentation_sound_requested.connect(_on_presentation_sound_requested)
 	_present_current_view()
 
 
@@ -46,6 +47,10 @@ func _on_step_committed(step: SessionStep) -> void:
 	_present_interaction(game_view)
 	if game_view.pending_interaction == null and not passive_classic_text.is_empty():
 		_interaction_presenter.present_passive_classic_text(passive_classic_text)
+
+
+func _on_presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void:
+	_audio_presenter.present_sound(sound_id, _media, wait_for_completion, stop_existing)
 
 
 func set_package_media(media: PackageMediaCatalog) -> void:

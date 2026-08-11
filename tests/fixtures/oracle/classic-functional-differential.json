@@ -2635,7 +2635,7 @@
     },
     {
       "id": "economy.classic-swap",
-      "workflowIds": ["classic.services.swap"],
+      "workflowIds": ["classic.services.swap", "classic.system.preferences"],
       "domain": "economy",
       "claim": "Ordinary Classic Swap selects one party member and moves exactly five gold or one gem or jewelry between that character and the shared pool, enforcing complete denomination load and preserving totals through Done.",
       "remake": {
@@ -2656,10 +2656,10 @@
           { "path": "src/realmz_orig/misc.c", "symbol": "void movecalc(short charselect)" }
         ],
         "authoredInputs": ["selected character", "personal and pooled denominations", "current and maximum load", "shop, temple, and bank availability"],
-        "observation": "The ordinary Swap command opens the same modal used by rewards and services. Character-to-pool and pool-to-character buttons repeat while held, moving five gold or one gem or jewelry per step. Pool-to-character checks the complete added load; each successful step recalculates movement and uses sound 10051 toward the character or 663 toward the pool. Done exits without another money mutation.",
+        "observation": "The ordinary Swap button requests sound 141 before entering the same modal used by rewards and services. The modal quiets every existing channel and then requests sound 3003 unless reduced sound is enabled. Character-to-pool and pool-to-character buttons repeat while held, moving five gold or one gem or jewelry per step. Pool-to-character checks the complete added load; each successful step recalculates movement and uses sound 10051 toward the character or 663 toward the pool. Done requests sound 141 and exits without another money mutation.",
         "unresolved": [
           "The same modal conditionally exposes money changing and imports banked wealth. Banking is owned by economy.classic-bank-swap; contextual exchange rates remain scheduled separately rather than being inferred into ordinary character transfers.",
-          "Workspace-open sound 3003 and Done sound 141 are presentation polish not yet connected to route navigation."
+          "Castle's persisted reducesound preference suppresses modal sound 3003 while retaining button, transfer, and Done sounds. Realmz 2.0 does not yet expose that preference; default-audio behavior is implemented and the missing preference remains tracked under classic.system.preferences."
         ]
       },
       "providence": {
@@ -2669,15 +2669,16 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _money_action(intent: PlayerIntent)" },
-        "expectedTrace": ["select one detached character", "choose an exact denomination and direction", "submit one Classic increment through MONEY_ACTION", "revalidate stable character identity, pool balance, personal balance, and complete load", "move wealth and load once", "recalculate party movement", "request directional Swap sound", "publish a revised detached workspace", "save and restore complete balances and movement", "leave the workspace without mutation"],
+        "expectedTrace": ["select one detached character", "choose an exact denomination and direction", "submit one Classic increment through MONEY_ACTION", "revalidate stable character identity, pool balance, personal balance, and complete load", "move wealth and load once", "recalculate party movement", "request directional Swap sound", "publish a revised detached workspace", "save and restore complete balances and movement", "request presentation-owned button sound 141, stop existing channels, and request modal sound 3003 on ordinary workspace entry", "leave the workspace without mutation and request presentation-owned Done sound 141"],
         "tests": [
           { "path": "tests/integration/test_money_workflow.gd", "symbol": "func _test_session_money_workflow(content: RealmzContent)" },
-          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_money_workspace()" }
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_money_workspace()" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_money_workspace_audio()" }
         ]
       },
       "decision": "aligned",
       "availability": "implemented",
-      "status": "ordinary-three-denomination-character-pool-transfer-save-and-presentation-verified-contextual-exchange-separate"
+      "status": "ordinary-three-denomination-character-pool-transfer-save-presentation-and-lifecycle-audio-verified-contextual-exchange-separate"
     },
     {
       "id": "economy.classic-bank-swap",
@@ -2698,12 +2699,13 @@
         "evidence": "source-control-flow",
         "controlFlow": [
           { "path": "src/realmz_orig/newland.c", "symbol": "case 49" },
+          { "path": "src/realmz_orig/buttonchoice.c", "symbol": "if (theControl == swapbut)" },
           { "path": "src/realmz_orig/swap.c", "symbol": "void swap(void)" },
           { "path": "src/realmz_orig/moveparty.c", "symbol": "void moveparty(short forward)" },
           { "path": "src/realmz_orig/checkmoneypool.c", "symbol": "void checkmoneypool(void)" }
         ],
         "authoredInputs": ["opcode 49 availability", "banked gold, gems, and jewelry", "pooled and personal denominations", "selected character", "current and maximum load", "location departure"],
-        "observation": "Opcode 49 sets bank availability and returns to exploration. Opening Swap while that flag is set adds all three bank balances to the shared pool and zeros the bank. Pool, Share, and repeated exact five-gold or one-gem/jewelry transfers then use the ordinary modal. Done plays sound 141 and performs no bank mutation. A forward move or pooled-wealth cleanup returns every remaining pooled denomination to the bank, clears the pool, and disables bank availability.",
+        "observation": "Opcode 49 sets bank availability and returns to exploration. Choosing Swap requests button sound 141; the modal quiets existing channels, requests sound 3003, adds all three bank balances to the shared pool, and zeros the bank. Pool, Share, and repeated exact five-gold or one-gem/jewelry transfers then use the ordinary modal. Done plays sound 141 and performs no bank mutation. A forward move or pooled-wealth cleanup returns every remaining pooled denomination to the bank, clears the pool, and disables bank availability.",
         "unresolved": ["Castle's bank is the ordinary Swap modal rather than a separately labelled amount-transfer screen; Realmz 2.0 keeps a contextual Bank command so the workflow is discoverable while preserving the source mutations and ordering."]
       },
       "providence": {

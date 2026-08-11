@@ -2093,7 +2093,8 @@ func _request_banking(request_id: String) -> ScenarioRuntimeOperationResult:
 	_rules.economy.bank_to_pool(_game_state.party)
 	return ScenarioRuntimeOperationResult.waiting(_bank_request(request_id), {"kind": "classic-banking"}, [
 		DomainEvent.new(&"bank_opened", {"pooledWealth": _game_state.party.pooled_wealth.to_data()}),
-		DomainEvent.new(&"sound_requested", {"soundId": 3003, "waitForCompletion": false, "source": "classic-bank-swap-open"}),
+		DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-bank-swap-button"}),
+		DomainEvent.new(&"sound_requested", {"soundId": 3003, "waitForCompletion": false, "stopExisting": true, "source": "classic-bank-swap-open"}),
 	])
 
 
