@@ -32,6 +32,7 @@ var _host_interaction: InteractionRequest
 
 
 func _ready() -> void:
+	get_tree().set_auto_accept_quit(false)
 	UiInputActions.ensure_defaults()
 	package_repository = PackageRepositoryScript.new()
 	save_repository = SaveRepositoryScript.new()
@@ -92,8 +93,20 @@ func _on_smoke_action_pressed() -> void:
 	_status_label.text = "Search committed • roll %d • day %d %02d:%02d" % [roll, current_view.realmz_day, current_view.realmz_hour, current_view.realmz_minute]
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_on_quit_requested()
+
+
 func _on_quit_requested() -> void:
-	get_tree().quit()
+	if _host_interaction != null:
+		return
+	var current_view := session_controller.view()
+	var combat_view := current_view.combat_view
+	var in_combat := combat_view != null and combat_view.outcome == &"active"
+	_host_interaction = ApplicationLifecycleScript.quit_application_request(current_view.session_started, in_combat)
+	presentation_coordinator.present_host_interaction(_host_interaction)
+	_shell_presenter.set_status("Confirm whether to quit Realmz 2.")
 
 
 func _on_end_adventure_requested() -> void:
@@ -217,7 +230,15 @@ func _respond_host_interaction(response: InteractionResponse) -> void:
 		_shell_presenter.set_status("The lifecycle response was invalid.", true)
 		presentation_coordinator.present_host_interaction(_host_interaction)
 		return
-	var result := ApplicationLifecycleScript.execute(
+	var operation := StringName(_host_interaction.payload.get("operation", &""))
+	if operation == &"quit-application":
+		_respond_quit_interaction(action)
+		return
+	if operation != &"end-adventure":
+		_shell_presenter.set_status("The lifecycle operation was invalid.", true)
+		presentation_coordinator.present_host_interaction(_host_interaction)
+		return
+	var result := ApplicationLifecycleScript.execute_end_adventure(
 		action,
 		func() -> bool: return save_active_session("quick"),
 		func() -> SessionStep: return session_controller.close()
@@ -242,6 +263,26 @@ func _respond_host_interaction(response: InteractionResponse) -> void:
 		presentation_coordinator.present_host_interaction(_host_interaction)
 		return
 	_complete_closed_session()
+
+
+func _respond_quit_interaction(action: StringName) -> void:
+	var has_active_session := session_controller.view().session_started
+	var result_state := ApplicationLifecycleScript.execute_quit(
+		action,
+		func() -> bool: return save_active_session("quick") if has_active_session else false,
+		func() -> void: get_tree().quit()
+	)
+	if result_state == &"cancelled":
+		_host_interaction = null
+		presentation_coordinator.refresh()
+		_shell_presenter.set_status("Quit cancelled.")
+		return
+	if result_state == &"save-failed":
+		presentation_coordinator.present_host_interaction(_host_interaction)
+		return
+	if result_state != &"quit-requested":
+		_shell_presenter.set_status("Quit failed • the application remains open.", true)
+		presentation_coordinator.present_host_interaction(_host_interaction)
 
 
 func _complete_closed_session() -> void:

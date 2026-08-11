@@ -33,16 +33,16 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Castle oracle | Count |
 | --- | ---: |
-| not-required | 12 |
+| not-required | 11 |
 | required | 9 |
-| completed | 39 |
+| completed | 40 |
 
 | Remake | Count |
 | --- | ---: |
 | absent | 4 |
 | partial | 31 |
-| implemented | 15 |
-| divergent | 10 |
+| implemented | 14 |
+| divergent | 11 |
 | not-applicable | 0 |
 
 | providence | Count |
@@ -61,9 +61,9 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | persistence | Count |
 | --- | ---: |
-| not-applicable | 7 |
+| not-applicable | 6 |
 | absent | 2 |
-| partial | 2 |
+| partial | 3 |
 | verified | 49 |
 
 | presentation | Count |
@@ -217,7 +217,7 @@ Blockers: **1**. Major gaps: **25**.
 - `classic.spellcasting.choose-power-target` — SELECT_SPELL_POWER and SELECT_SPELL_TARGET are dead scaffolding beside the complete CAST_SPELL payload.
 - `classic.startup.end-adventure` — Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
 - `classic.system.preferences` — Classic's reduced-sound preference is not represented.
-- `classic.system.quit` — Unsaved-state quit confirmation is not an evidenced ordinary workflow.
+- `classic.system.quit` — Typed Quit choices and host transaction ordering are characterized, but the real window-close notification and save-repository failure path lack composition-root proof.
 
 ## Coverage caveats
 

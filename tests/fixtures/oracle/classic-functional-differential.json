@@ -3810,6 +3810,53 @@
       "decision": "compiler-defect",
       "availability": "disabled",
       "status": "data-md2-and-map-name-records-absent-from-schema-v2-opcode-29-land-level-substitution-and-viewer-disabled"
+    },
+    {
+      "id": "application.quit-lifecycle",
+      "workflowIds": ["classic.system.quit"],
+      "domain": "application",
+      "claim": "Process Quit is distinct from End Adventure: outside combat it may save before termination, during combat it cannot save and a negative response cancels, it never runs the scenario Global quit macro, and Realmz 2 uses one explicit confirmation path for both its menu and the window close request.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake's main-menu Quit Game button calls SceneTree.quit immediately without confirmation, save ordering, or a window-close guard. Its in-game Return to Main Menu confirmation is a different mutable-global workflow.",
+        "sources": [
+          { "path": "src/scenes/UI/Main Menu/QuitButton.gd", "symbol": "func _on_Button_pressed()" },
+          { "path": "src/scenes/UI/HUD/Settings/SettingsRect.gd", "symbol": "func _return_to_main_menu" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "short DoQuitRealmz(void)" },
+          { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "void DoFreeBeforeQuit(void)" },
+          { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "short HandleMenuChoice" }
+        ],
+        "authoredInputs": ["active-combat flag", "background flag", "question response", "active party"],
+        "observation": "File menu case 6 calls DoQuitRealmz and exits only when it returns true. Outside combat, question(1) Yes saves and No skips save, but either response continues quitting. During combat, question(10) No cancels and Yes quits without saving. The path performs application cleanup and standalone character writes, but unlike End Adventure it never loads or executes Global macro slot 2.",
+        "unresolved": ["The exact question text is held in native resources not established by the pinned source tree.", "Castle's background-mode branch bypasses both questions; Realmz 2 does not reproduce that unsafe modal-state shortcut.", "Realmz 2 intentionally does not reproduce implicit standalone Character Files writes because vault publication is explicit and immutable."]
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [],
+        "expectedRepresentation": "No package field or lifecycle hook is required. Process Quit is host-owned and must not execute the scenario Global quit macro."
+      },
+      "realmz2": {
+        "owner": { "path": "src/app/application_lifecycle.gd", "symbol": "static func quit_application_request" },
+        "expectedTrace": ["disable Godot's automatic quit acceptance", "route menu Quit and NOTIFICATION_WM_CLOSE_REQUEST to one host-owned typed request", "offer save only for an active noncombat session", "validate request identity, kind, and declared action", "keep the application open after Cancel or save failure", "request process termination only after the accepted save or explicit no-save action", "never mutate GameSession or run a scenario lifecycle hook"],
+        "tests": [
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_lifecycle_interaction" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-APPLICATION-002",
+        "fixturePath": "tests/fixtures/oracle/quit-cancel-correction.json",
+        "fixtureSha256": "8e7f590cf65176ef35ee6ecca2317b681ad216f6308967ba2640177e1a51094c"
+      },
+      "availability": "implemented",
+      "status": "menu-and-window-close-share-save-no-save-cancel-guard-root-level-runtime-proof-pending"
     }
   ]
 }
