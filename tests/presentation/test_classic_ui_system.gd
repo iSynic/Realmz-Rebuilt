@@ -1185,7 +1185,12 @@ func _test_character_sheet_workspace() -> void:
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Appearance"), "the sheet exposes the separate Classic portrait and tactical-icon workspace")
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Race, Class & Aging"), "the sheet exposes source-backed definitions and all five age bands")
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Lifetime Record"), "the missing prestige record remains visible rather than silently omitted")
-	var record_button := buttons.filter(func(button: Button) -> bool: return button.text == "Lifetime Record")[0] as Button
+	var equipment_button := buttons.filter(func(button: Button) -> bool: return button.text == "Equipment")[0] as Button
+	equipment_button.pressed.emit()
+	var equipment_heading_detail := sheet.find_child("HeadingDetail", true, false) as Label
+	assert_not_null(equipment_heading_detail, "the equipment heading exposes its slot-count detail")
+	assert_equal(equipment_heading_detail.size_flags_horizontal, Control.SIZE_EXPAND_FILL, "heading details reserve horizontal space instead of collapsing into one-character columns at 960x600")
+	var record_button := sheet.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Lifetime Record")[0] as Button
 	record_button.pressed.emit()
 	var labels := sheet.find_children("*", "Label", true, false)
 	assert_true(labels.any(func(label: Label) -> bool: return label.text.to_lower().contains("lifetime combat history")), "the Record tab explains why Castle prestige cannot yet be calculated")

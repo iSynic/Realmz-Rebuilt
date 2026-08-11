@@ -430,6 +430,9 @@ func _add_heading(parent: Container, title: String, detail: String = "") -> void
 	row.add_child(heading)
 	if not detail.is_empty():
 		var note := _label(detail, MUTED, 13)
+		note.name = "HeadingDetail"
+		note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		note.size_flags_stretch_ratio = 0.75
 		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		row.add_child(note)
