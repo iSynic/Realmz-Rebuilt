@@ -88,6 +88,8 @@ When the user requests a durable behavior change, record it here or in the relev
 - Use Godot MCP Pro for editor/runtime inspection and playable-slice verification. Runtime MCP operations must follow `play_scene`.
 - Use one Classic-wide UI language: preserve the map/picture stage, right six-character roster, bottom narrative/status well, contextual original bitmap commands, and compact menu hierarchy inside responsive Realmz 2 slate frames. Keep imported pixels intact at 1x/2x, interface density independent from text scale, hidden item facts private, and unimplemented actions disabled with explicit reasons.
 - Never use `codex` or `Codex` in branch names.
+- Group normal player-visible work into coherent batches of 3–5 related workflows, with one focused-verified commit per workflow. Use the risk-tiered delivery and delegation policy in `docs/development.md`; CI remains comprehensive.
+- Sol retains the critical path, architecture and fidelity adjudication, high-risk boundaries, cross-cutting integration, final review/tests/commit, and user conclusions. When a concrete suitable sidecar exists, delegate it under the bounded Luna rules in `docs/development.md`; Luna agents do not commit or push.
 
 ## Child DOX Index
 

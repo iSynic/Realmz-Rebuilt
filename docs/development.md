@@ -11,6 +11,22 @@ The project-local `.mcp.json` contains machine-specific absolute paths and stays
 
 The project uses `application/config/use_custom_user_dir` with the stable name `RealmzRemake2`. This keeps Godot 4.7.1 and MCP Pro 1.16.0 on the same file-IPC `user://` path and gives save repositories a predictable root.
 
+## Risk-tiered delivery and delegation
+
+Normal player-visible work is planned as a coherent batch of 3–5 related workflows. Each workflow has one focused-verified commit. In the roadmap, a rolling pass means this workflow batch; the roadmap does not create a new rolling pass for a tiny edit, and a tiny edit does not pay the batch closeout gate by itself.
+
+Use the lowest tier that covers the changed boundary:
+
+- **Tier 1 — focused behavior:** run only the affected test suite or suites. Do not run the aggregate gate, source intelligence/codemap, MCP, or unrelated routes. Every meaningful change still receives a DOX review; update a contract only when its durable behavior or ownership changed.
+- **Tier 2 — focused workflow:** run the affected suites, the architecture check when product source changed, the differential and application-workflow inventory validators, scope/local-path checks, `git diff --check`, and the applicable DOX review. Regenerate `docs/classic-application-workflow-status.md` only when its authoritative inventory changed. Do not run the aggregate gate or MCP by default.
+- **Tier 3 — batch closeout:** once per batch, run the full `tools/verify.ps1` gate, source-intelligence validation/regeneration, clean-reference evidence validation, relevant Providence full checks, and one coherent MCP walkthrough. Serialize headless and MCP lanes.
+
+Move directly to Tier 3 for package or schema changes; save, migration, or continuation changes; RNG or VM changes; topology changes; terminal combat or reward sequencing; and composition-root ownership changes. CI remains comprehensive regardless of the local tier.
+
+At batch start, Sol identifies the critical path and any suitable sidecars. If suitable sidecars exist, use no more than two `gpt-5.6-luna` agents at `xhigh`, each with a detailed self-contained prompt and a disjoint write scope. Luna may perform bounded archaeology, settled regression tests, isolated UI or fixture implementation, mechanical evidence/DOX work, review, and parallel verification. Sol retains architecture, ambiguous Castle/fidelity adjudication, high-risk boundaries, the critical path, cross-cutting integration, final review/tests/commit, and final conclusions.
+
+Every Luna prompt states the objective; repository and base; DOX requirements; read and write scope; settled interfaces and evidence; non-goals; tests; ambiguity handling; and final-report format. Luna must not commit or push, modify references, broaden scope, or make fidelity decisions unless explicitly authorized. Sol reviews every result, and Luna evidence never upgrades audit status without Sol validation.
+
 ## Source intelligence
 
 The repository also maintains an offline source-intelligence snapshot under docs/codemap/. It embeds exact local source and documentation text, source spans, DOX ownership, tests, flows, retrieval chunks, and conservative resolved/unknown relationships. Open docs/codemap/codemap.html directly for the browser encyclopedia, or consume intelligence.json and chunks.jsonl from an agent. Use ./tools/source-intelligence/validate.ps1 for the read-only artifact check. The aggregate gate regenerates it automatically; local verification leaves regenerated files for review and CI fails if the committed snapshot is stale.
@@ -25,7 +41,9 @@ The aggregate gate imports the project headlessly, validates all scripts, runs t
 
 Regenerate the deterministic application-completeness report with `./tools/verify_application_workflow_inventory.ps1 -Write`; normal verification uses `-Check` and fails if the report is stale. Clean Castle, Remake, and Providence roots may be supplied to validate every external path and symbol against the pinned commits.
 
-For a focused characterization while iterating, append `-- --suite <path-fragment>` to the `tests/test_runner.gd` command. The filter must match at least one registered suite; release and closeout evidence still uses the complete suite.
+For Tier 1 focused characterization, run `godot --headless --path . --script res://tests/test_runner.gd -- --suite <path-fragment>`; repeat `--suite <path-fragment>` to select several suites in one process. Every supplied filter must match, and a suite runs only once when filters overlap. For Tier 2, use `./tools/verify_workflow.ps1 -Suite @("<fragment-a>", "<fragment-b>")`; it performs the focused suites, conditional architecture check, differential/inventory checks, scope checks, and whitespace check. Clean-reference roots are a Tier 3 input. Release and Tier 3 closeout evidence uses the complete suite.
+
+The Tier 2 helper is not a substitute for the batch closeout gate. Do not add unrelated suites, invoke MCP, or regenerate source-intelligence artifacts merely to make a focused workflow appear comprehensive.
 
 ## UI verification
 

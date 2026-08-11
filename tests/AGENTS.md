@@ -24,6 +24,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - `aogm-ordinary` records only the variants directly observed through ordinary UI. A workflow may retain that label while unresolved variants, presentation acceptance, or other-campaign proof remain gaps; the label never implies certification by itself.
 - `tools/route_acceptance.gd` is a generic local harness. Certified route JSON, campaign packages, and emitted reports stay outside this repository when they contain or identify commercial campaign content.
 - Direct ED3/XAP route checkpoints may name a compiled program explicitly; this proves that macro's ordinary VM behavior, not map reachability for an unplaced record.
+- Verification follows the delivery tier: Tier 1 runs only the affected suite or suites; Tier 2 adds the applicable architecture, differential, inventory, scope, and DOX checks; Tier 3 closes the workflow batch with the complete local gate and its required evidence. Do not widen a focused test run to unrelated routes without a Tier 3 reason.
 - Post-battle tests preserve Castle's distinction between consumed held-over allies and the subsequent `bodycount()` survivor selection; route defaults must use the request's source-backed preselection rather than silently retaining all friendlies.
 - Presentation tests compare 2D topology facts with the 3D geometry projection. Local MCP screenshots are visual evidence only and remain outside the repository.
 - The Classic UI fixture gallery covers every route and interaction kind in nominal, empty, loading, error, unavailable, oversized, missing-media, unidentified, and six-member states. It verifies profile boundaries, scale migration, safe hidden-item display, explicit availability, and request identity; screenshots remain local visual evidence.
@@ -75,10 +76,12 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - Keep failures deterministic and include stable IDs and draw indices in diagnostics.
 - Add save/reload coverage at every interaction boundary.
 - Active-character appearance tests cover complete detached catalogs, independent role mutation, wrong-role rejection, RNG/time stability, canonical save restoration, corrupt-role transactional rejection, and explicit vault non-ownership.
+- Report the exact suite fragments used for focused verification. A passing Luna result is input to Sol's review, not an audit-status upgrade; unresolved or ambiguous Castle behavior remains explicit until Sol adjudicates it.
+- When test categories, fixture provenance, evidence labels, or copyright boundaries change, update this contract in the same documentation pass. Do not hand-edit the generated workflow status report or codemap.
 
 ## Verification
 
-- `godot --headless --path . --script res://tests/test_runner.gd` runs the typed GDScript suite.
+- `godot --headless --path . --script res://tests/test_runner.gd` runs the complete typed GDScript suite; repeated `-- --suite <fragment> --suite <fragment>` arguments select the union of matching suites for Tier 1 or Tier 2.
 - A passing full-suite process must also exit without ObjectDB leak or retained-resource diagnostics; `tools/verify.ps1` treats either teardown warning as a failure.
 - `tools/verify.ps1` runs import/script checks, tests, architecture guards, and `git diff --check`.
 - Package contract coverage verifies that multiple immutable files for one campaign collapse to one current selector entry without deleting revisions.

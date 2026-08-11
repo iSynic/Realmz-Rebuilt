@@ -18,11 +18,14 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - Every fidelity correction records source/control-flow evidence, observable oracle behavior, player-facing problem, chosen result, and tests.
 - Classic media documentation distinguishes shared resource identity from Castle's effective compositing steps; the battle viewport contract records both the active landlook and shared PICT 302 inputs.
 - Roadmap phases remain tied to their approved exit gates.
+- `docs/development.md` is the operational source of truth for risk tiers, workflow batches, Luna delegation, and delivery evidence; `roadmap.md` records the current and future batch interpretation without rewriting historical evidence.
+- The risk-tiered delivery policy is an operating contract, not an ADR. Add an ADR only when a separate non-local architectural boundary changes.
 
 ## Work Guidance
 
 - Keep prose practical and concrete about data flow, ownership, invariants, and verification.
 - Add an ADR when changing a non-local architectural boundary.
+- Keep generated workflow status and source-intelligence artifacts derived from their inventory/generator; do not hand-edit them as part of a documentation pass.
 
 ## Verification
 

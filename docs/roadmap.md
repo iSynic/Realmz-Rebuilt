@@ -86,6 +86,8 @@ The kernel, package loader, scenario VM, and bounded campaign routes are establi
 
 The authoritative completeness denominator is now the generated [Classic application workflow status](classic-application-workflow-status.md), backed by `tests/fixtures/oracle/classic-application-workflow-inventory.json`. Its Classic and modern-host totals are reported separately, and its delivery states are derived from compiler, simulation, persistence, presentation, variant, and live-evidence axes. The completed items below describe delivered slices; they do not override a workflow's current audit state.
 
+Current and future work in this tranche follows the risk-tiered delivery policy in `docs/development.md`: group 3–5 related player-visible workflows into one batch, give each workflow one focused-verified commit, and run the Tier 3 closeout once for the batch. A rolling pass therefore names a coherent workflow batch, not a tiny edit or product-side adjustment. Historical rolling-pass sections below retain their original evidence statements; only current and future planning uses this batch definition. Package/schema, save/migration/continuation, RNG, VM, topology, terminal combat/reward sequencing, and composition-root changes move directly to Tier 3.
+
 Delivered so far in this in-progress tranche:
 
 - `ClassicApplicationShell` map-first composition: compact menu strip, dominant map/picture stage, persistent right roster, bottom narrative/status well, and contextual command deck over the existing typed session boundary.
@@ -257,7 +259,7 @@ Next rolling priority: source-own the ordinary spell-casting activation and targ
 - Cross-function review found and corrected a prior 2.0 resistance defect: a failed charm opposed save must continue into magic screens, Animated immunity, and magic resistance. Castle's `cannot` bypass occurs after that first draw; it does not erase it.
 - The typed suite passes 2,263 assertions across 13 suites. Thirty-three differential cases distinguish the implemented ordinary player and monster subsets from explicitly disabled anomalous and broader spell shapes.
 
-Next rolling priority: adjudicate the remaining spell activation boundaries in small source-owned slices—automatic all-friendly/all-enemy/everybody targets, area targeting, specials, class nine, item/fast/random-power casting, and active spell presentation pacing. Before implementing them, resolve or explicitly retain Castle's target-everybody Guard omission, negative-cost monster SP increase, post-`getrange` size bonus, and pre-paid player target cancellation.
+Next rolling priority: within the next workflow batch, adjudicate the remaining spell activation boundaries in bounded source-owned slices—automatic all-friendly/all-enemy/everybody targets, area targeting, specials, class nine, item/fast/random-power casting, and active spell presentation pacing. Tier 3 closes the batch once; a small branch does not create a new Tier 3 closeout. Before implementing them, resolve or explicitly retain Castle's target-everybody Guard omission, negative-cost monster SP increase, post-`getrange` size bonus, and pre-paid player target cancellation.
 
 ## Current rolling fidelity pass — Spell death-macro queue
 

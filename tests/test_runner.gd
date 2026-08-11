@@ -22,23 +22,47 @@ const SUITES: Array[Script] = [
 	preload("res://tests/integration/test_party_order_workflow.gd"),
 	preload("res://tests/integration/test_character_appearance_workflow.gd"),
 ]
+const USAGE: String = "Usage: godot --headless --path <project> --script res://tests/test_runner.gd [-- --suite <path-fragment> ...]"
 
 
 func _initialize() -> void:
-	var requested_suite := ""
+	var requested_fragments: Array[String] = []
 	var arguments := OS.get_cmdline_user_args()
-	if arguments.size() == 2 and arguments[0] == "--suite":
-		requested_suite = arguments[1]
-	elif not arguments.is_empty():
-		printerr("Usage: godot --headless --path <project> --script res://tests/test_runner.gd [-- --suite <path-fragment>]")
-		quit(2)
-		return
+	var argument_index: int = 0
+	while argument_index < arguments.size():
+		var argument: String = arguments[argument_index]
+		if argument != "--suite" or argument_index + 1 >= arguments.size():
+			printerr(USAGE)
+			quit(2)
+			return
+		var fragment: String = arguments[argument_index + 1]
+		if fragment.is_empty() or fragment.begins_with("--"):
+			printerr(USAGE)
+			quit(2)
+			return
+		requested_fragments.append(fragment)
+		argument_index += 2
+	for fragment: String in requested_fragments:
+		var fragment_matches_suite: bool = false
+		for suite_script: Script in SUITES:
+			if suite_script.resource_path.contains(fragment):
+				fragment_matches_suite = true
+				break
+		if not fragment_matches_suite:
+			printerr("No test suite matches filter '%s'." % fragment)
+			quit(2)
+			return
 	var selected_suites: Array[Script] = []
 	for suite_script: Script in SUITES:
-		if requested_suite.is_empty() or suite_script.resource_path.contains(requested_suite):
+		if requested_fragments.is_empty():
 			selected_suites.append(suite_script)
+			continue
+		for fragment: String in requested_fragments:
+			if suite_script.resource_path.contains(fragment):
+				selected_suites.append(suite_script)
+				break
 	if selected_suites.is_empty():
-		printerr("No test suite matches '%s'." % requested_suite)
+		printerr("No test suite matches the requested filters.")
 		quit(2)
 		return
 	var assertion_count: int = 0
