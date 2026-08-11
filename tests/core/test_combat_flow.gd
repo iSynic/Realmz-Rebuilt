@@ -1011,6 +1011,17 @@ func _test_source_backed_character_spell_casting() -> void:
 	assert_equal(options.size(), 10, "the typed battle picker exposes funded powers for every live Classic actor target")
 	assert_equal([options[0].spell_id, options[0].power, options[0].cost, options[0].target_id], [spell.id, 1, 2, character.id], "the first detached cast option preserves party-slot-first Classic actor ordering")
 	assert_true(options.any(func(option: CombatSpellOptionView) -> bool: return option.spell_id == spell.id and option.power == 1 and option.target_id == monster.id), "the detached cast options retain the hostile monster after legal party targets")
+	var host_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(host_state, "the ordinary actor-target spell restores before its typed battle response")
+	if host_state != null:
+		host_state.combat.monster_by_id(monster.id).conditions.set_value(18, 0)
+		var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 32_767, 32_767]), ScenarioActionState.new())
+		var host_request := host_api._combat_request("request.spell-single")
+		assert_true(host_request.payload.get("spellCasts", []).any(func(option: Dictionary) -> bool: return option.get("spellId") == spell.id and option.get("power") == 1 and option.get("targetId") == monster.id and option.get("targetMode") == "combatant"), "the runtime request exposes the core-proven single-target cast")
+		var host_cast := host_api._resume_battle({"kind": "classic-combat", "battleId": host_state.combat.battle_id}, InteractionResponse.new(host_request.request_id, InteractionRequest.COMBAT, {"actorId": character.id, "action": "cast_spell", "targetId": monster.id, "spellId": spell.id, "power": 1}), host_request.request_id)
+		assert_equal(host_cast.state, ScenarioRuntimeOperationResult.State.WAITING, "the typed single-target cast returns to the active battle request")
+		assert_true(host_cast.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == monster.id), "the typed single-target response reaches the ordinary spell resolver")
+		assert_equal([host_state.party.character_by_id(character.id).spell_points, host_state.combat.monster_by_id(monster.id).current_health], [8, 26], "the restored typed cast commits one cost and one target result")
 	var screened := rules.combat_flow.cast_spell(state, content, character.id, monster.id, spell.id, 1, ScriptedRng.new([0, 0]))
 	assert_true(screened.ok, "a funded ordinary single-target combat spell commits")
 	assert_true(screened.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("classicTier") == 2 and event.payload.get("resisted") == true), "spell resistance uses the spell ID's tier even when caster level is ten")
@@ -1253,6 +1264,19 @@ func _test_character_automatic_group_spell() -> void:
 	var content := _content([first_definition, second_definition], [], [], [], [spell])
 	var options := rules.combat_flow.character_spell_options(state, content, caster.id)
 	assert_true(options.any(func(option: CombatSpellOptionView) -> bool: return option.spell_id == spell.id and option.power == 1 and option.target_id.is_empty() and option.target_name == "Everybody"), "automatic group spells expose one typed picker option without fabricating a combatant target")
+	var host_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(host_state, "the automatic group spell restores before its typed targetless response")
+	if host_state != null:
+		host_state.combat.monster_by_id(first.id).maximum_health = 20
+		host_state.combat.monster_by_id(first.id).current_health = 20
+		host_state.combat.monster_by_id(second.id).maximum_health = 20
+		host_state.combat.monster_by_id(second.id).current_health = 20
+		var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 0, 32_767, 32_767, 32_767, 32_767]), ScenarioActionState.new())
+		var host_request := host_api._combat_request("request.spell-group")
+		assert_true(host_request.payload.get("spellCasts", []).any(func(option: Dictionary) -> bool: return option.get("spellId") == spell.id and option.get("power") == 1 and option.get("targetId") == "" and option.get("targetMode") == "automatic"), "the runtime request preserves the targetless automatic-group ABI")
+		var host_cast := host_api._resume_battle({"kind": "classic-combat", "battleId": host_state.combat.battle_id}, InteractionResponse.new(host_request.request_id, InteractionRequest.COMBAT, {"actorId": caster.id, "action": "cast_spell", "targetId": "", "spellId": spell.id, "power": 1}), host_request.request_id)
+		assert_equal(host_cast.state, ScenarioRuntimeOperationResult.State.WAITING, "the typed automatic-group cast returns to the active battle request")
+		assert_equal(host_cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved").map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), [caster.id, ally.id, first.id, second.id], "the targetless response preserves Castle party-then-monster order through the host boundary")
 	var cast := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 1, ScriptedRng.new([0, 0, 0, 32_767, 32_767, 32_767, 32_767]))
 	assert_true(cast.ok, "a player everybody spell resolves as one committed Classic cast")
 	assert_equal(caster.spell_points, 18, "the group spell charges its caster once rather than once per target")
@@ -1317,6 +1341,17 @@ func _test_character_fixed_area_spell() -> void:
 	var content := _content([first_definition, immune_definition], [], [], [], [spell])
 	var options := rules.combat_flow.character_spell_options(state, content, caster.id)
 	assert_true(options.any(func(option: CombatSpellOptionView) -> bool: return option.spell_id == spell.id and option.target_mode == &"area" and option.area_shape == 3 and option.area_offsets == rules.spell_areas.pattern(3)), "fixed area spells expose one typed center-selection descriptor instead of fabricating a combatant target")
+	var host_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(host_state, "the fixed-area spell restores before its typed battlefield-coordinate response")
+	if host_state != null:
+		host_state.combat.monster_by_id(first.id).maximum_health = 20
+		host_state.combat.monster_by_id(first.id).current_health = 20
+		var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 0, 32_767, 32_767, 32_767, 32_767]), ScenarioActionState.new())
+		var host_request := host_api._combat_request("request.spell-area")
+		assert_true(host_request.payload.get("spellCasts", []).any(func(option: Dictionary) -> bool: return option.get("spellId") == spell.id and option.get("power") == 1 and option.get("targetMode") == "area" and option.get("areaShape") == 3), "the runtime request carries the rules-owned Data AD shape")
+		var host_cast := host_api._resume_battle({"kind": "classic-combat", "battleId": host_state.combat.battle_id}, InteractionResponse.new(host_request.request_id, InteractionRequest.COMBAT, {"actorId": caster.id, "action": "cast_spell", "targetId": "", "spellId": spell.id, "power": 1, "targetCoordinate": [45, 45], "rotation": 0}), host_request.request_id)
+		assert_equal(host_cast.state, ScenarioRuntimeOperationResult.State.WAITING, "the typed fixed-area cast returns to the active battle request")
+		assert_equal(host_cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved").map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), [ally.id, first.id], "the coordinate response retains core-owned area membership and target order")
 	var empty_caster := _character("character.area.empty-caster")
 	empty_caster.set_known_spells([spell.id])
 	empty_caster.maximum_spell_attacks = 2

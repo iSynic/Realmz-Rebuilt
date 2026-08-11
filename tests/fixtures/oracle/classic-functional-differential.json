@@ -1957,7 +1957,7 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func cast_spell(" },
-        "expectedTrace": ["derive battle picker options from the same mutation-free cast probe used by execution", "reject flags, conditions, round-hit state, unknown spell, unsupported shape, cap, cost, range, or line of sight before mutation", "derive zero-based spell tier from Classic ID", "roll duration, damage, resistance, and save in Castle order", "spend spell points, two half-attacks, and twelve movement", "persist spell count and attacked targets", "retain or advance the actor from the remaining half-attack reserve"],
+        "expectedTrace": ["restore the active battle before the typed response", "derive battle picker options from the same mutation-free cast probe used by execution", "return only stable spell, power, and actor target identity through the host", "reject flags, conditions, round-hit state, unknown spell, unsupported shape, cap, cost, range, or line of sight before mutation", "derive zero-based spell tier from Classic ID", "roll duration, damage, resistance, and save in Castle order", "spend spell points, two half-attacks, and twelve movement", "persist spell count and attacked targets", "return to the same battle request while the actor can continue", "retain or advance the actor from the remaining half-attack reserve"],
         "tests": [
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_character_spell_casting()" },
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_combat_magic_and_monsters(" },
@@ -1967,7 +1967,7 @@
       },
       "decision": "runtime-defect",
       "availability": "implemented",
-      "status": "ordinary-single-actor-damage-spells-and-typed-battle-picker-verified-other-cast-shapes-explicit"
+      "status": "ordinary-single-actor-damage-spells-and-restored-typed-battle-response-verified-other-cast-shapes-explicit"
     },
     {
       "id": "combat.special-57-healing-and-actor-targeting",
@@ -2158,7 +2158,7 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _cast_character_group_spell(" },
-        "expectedTrace": ["admit one automatic group cast without a fabricated target ID", "select living positioned participants by target type in party then monster order", "spend spell points once", "roll duration and base damage once", "resolve per-target resistance, save, protection, and damage", "queue defeated monster macros in source order", "spend two half-attacks and twelve movement once", "defer battle and caster progression until the death-macro queue drains"],
+        "expectedTrace": ["restore the active battle before the typed response", "admit one automatic group cast without a fabricated target ID", "return only stable spell and power identity through the host", "select living positioned participants by target type in party then monster order", "spend spell points once", "roll duration and base damage once", "resolve per-target resistance, save, protection, and damage", "queue defeated monster macros in source order", "spend two half-attacks and twelve movement once", "return to the same battle request when no death macro is pending", "defer battle and caster progression until the death-macro queue drains"],
         "tests": [
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_automatic_group_spell()" },
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_spell_death_macro_queue_and_restore()" }
@@ -2166,7 +2166,7 @@
       },
       "decision": "runtime-defect",
       "availability": "implemented",
-      "status": "player-ordinary-target-types-9-10-12-implemented-monster-group-source-anomaly-disabled"
+      "status": "player-ordinary-target-types-9-10-12-and-restored-targetless-host-response-implemented-monster-group-source-anomaly-disabled"
     },
     {
       "id": "combat.character-spatial-area-spells",
@@ -2210,7 +2210,7 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _cast_character_area_spell(" },
-        "expectedTrace": ["admit one typed battlefield center", "derive Data AD shape from fixed size or power", "reject an out-of-bounds complete mask", "validate coordinate range and LOS", "deduplicate intersecting footprints", "exclude over-100 monster magic resistance during targeting", "fail transactionally when unresolved reflection is present", "spend spell points once", "roll duration and base damage once", "resolve party then monster defenses", "queue defeated monster macros in source order", "spend two half-attacks and twelve movement once"],
+        "expectedTrace": ["restore the active battle before the typed response", "admit one typed battlefield center", "expose the rules-owned Data AD shape and default coordinate", "return only the chosen coordinate and rotation through the host", "derive Data AD shape from fixed size or power", "reject an out-of-bounds complete mask", "validate coordinate range and LOS", "deduplicate intersecting footprints", "exclude over-100 monster magic resistance during targeting", "fail transactionally when unresolved reflection is present", "spend spell points once", "roll duration and base damage once", "resolve party then monster defenses", "queue defeated monster macros in source order", "spend two half-attacks and twelve movement once", "return to the same battle request when no death macro is pending"],
         "tests": [
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_fixed_area_spell()" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
@@ -2218,7 +2218,7 @@
       },
       "decision": "runtime-defect",
       "availability": "implemented",
-      "status": "player-ordinary-target-types-3-4-implemented-type-0-reflection-rotation-and-fields-explicit"
+      "status": "player-ordinary-target-types-3-4-and-restored-coordinate-host-response-implemented-type-0-reflection-rotation-and-fields-explicit"
     },
     {
       "id": "combat.repeated-target-spells",
