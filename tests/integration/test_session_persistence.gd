@@ -324,6 +324,21 @@ func run() -> void:
 			var tactical_view := reward_session.view()
 			assert_true(tactical_view.combat_view.movement_options.any(func(option: CombatMoveOptionView) -> bool: return option.enabled), "the active fixture character has at least one core-probed tactical step")
 			assert_true(tactical_view.availability(&"combat_move").enabled, "the public combat-move action derives from the active battle view instead of the stale global fallback: %s" % tactical_view.availability(&"combat_move").reason)
+			assert_false(tactical_view.availability(&"cast_spell").enabled, "the combat spell action remains disabled when the active character has no core-proven cast option")
+			assert_equal(tactical_view.availability(&"cast_spell").reason, "No legal Classic combat spell is available.", "the disabled combat spell action no longer claims its typed picker is unwired")
+			reward_character.maximum_spell_attacks = 2
+			reward_character.maximum_spell_points = 100
+			reward_character.spell_points = 100
+			var legal_combat_spell: SpellDefinition = null
+			for spell: SpellDefinition in content.spell_definitions():
+				reward_character.set_known_spells([spell.id])
+				if not reward_session._rules.combat_flow.character_spell_options(reward_session._state, content, reward_character.id).is_empty():
+					legal_combat_spell = spell
+					break
+			assert_not_null(legal_combat_spell, "the integration fixture contains at least one core-proven combat spell option")
+			if legal_combat_spell != null:
+				var spell_ready_view := reward_session.view()
+				assert_true(spell_ready_view.availability(&"cast_spell").enabled, "the public combat spell action is enabled only when core supplies at least one legal spell, power, and target option: %s" % spell_ready_view.availability(&"cast_spell").reason)
 			assert_false(tactical_view.availability(&"move").enabled, "an active battle cannot advertise exploration movement through the detached application view")
 			assert_false(tactical_view.availability(&"search").enabled, "an active battle cannot advertise exploration Search through the detached application view")
 			reward_session._session_interaction = InteractionRequest.new("fixture.combat-action", InteractionRequest.COMBAT, {})

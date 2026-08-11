@@ -350,10 +350,16 @@ func _populate_action_availability(result: GameView) -> void:
 				field_spell_reason = spell.field_cast.reason
 		if field_spell_available:
 			break
+	var combat_spell_available := battle_active and not _rules.combat_flow.character_spell_options(_state, _content, result.combat_view.active_actor_id).is_empty()
+	var cast_enabled := not blocked_by_interaction and (combat_spell_available or not battle_active and field_spell_available)
 	var cast_reason := ordinary_reason
-	if cast_reason.is_empty():
-		cast_reason = "Combat spell selection is not wired into the battle interaction yet." if battle_active else field_spell_reason
-	result.set_action_availability(&"cast_spell", not blocked_by_interaction and (battle_active or field_spell_available), "" if not blocked_by_interaction and (battle_active or field_spell_available) else cast_reason)
+	if cast_reason.is_empty() and battle_active:
+		cast_reason = _rules.combat_flow.character_spell_unavailable_reason(_state, _content, result.combat_view.active_actor_id)
+		if cast_reason.is_empty():
+			cast_reason = "No legal Classic combat spell is available."
+	elif cast_reason.is_empty():
+		cast_reason = field_spell_reason
+	result.set_action_availability(&"cast_spell", cast_enabled, "" if cast_enabled else cast_reason)
 	result.set_action_availability(&"choose_combat_action", battle_active and not blocked_by_interaction, "No battle action is currently available." if not battle_active else "Resolve the current interaction first." if blocked_by_interaction else "")
 	result.set_action_availability(&"create_party", party_setup and not blocked_by_interaction, "Resolve the current interaction first." if blocked_by_interaction else "Party creation is available only before beginning a campaign." if not party_setup else "")
 	result.set_action_availability(&"begin_adventure", party_setup and not blocked_by_interaction and setup_member_count > 0 and not draft_active, "Resolve the current interaction first." if blocked_by_interaction else "The adventure has already begun." if not party_setup else "Finish or cancel the character currently being created." if draft_active else "Add or import at least one character first.")
