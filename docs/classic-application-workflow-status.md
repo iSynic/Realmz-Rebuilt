@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 6 | 16 | 38 | 0 |
+| classic | 60 | 6 | 18 | 36 | 0 |
 | host | 8 | 1 | 3 | 4 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -16,8 +16,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Domain | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Startup and party | 8 | 1 | 1 | 6 | 0 |
-| Exploration | 6 | 1 | 1 | 4 | 0 |
-| Scenario interaction | 6 | 0 | 1 | 5 | 0 |
+| Exploration | 6 | 1 | 2 | 3 | 0 |
+| Scenario interaction | 6 | 0 | 2 | 4 | 0 |
 | Character management | 5 | 3 | 1 | 1 | 0 |
 | Inventory and equipment | 7 | 0 | 4 | 3 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
@@ -34,8 +34,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 18 |
-| required | 8 |
-| completed | 34 |
+| required | 11 |
+| completed | 31 |
 
 | Remake | Count |
 | --- | ---: |
@@ -56,8 +56,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | --- | ---: |
 | not-applicable | 2 |
 | absent | 5 |
-| partial | 12 |
-| complete | 41 |
+| partial | 14 |
+| complete | 39 |
 
 | persistence | Count |
 | --- | ---: |
@@ -115,7 +115,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **27**.
+Blockers: **1**. Major gaps: **29**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -124,8 +124,9 @@ Blockers: **1**. Major gaps: **27**.
 - **major** `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace. Next: Complete the detached character read model and build the full sheet tabs.
 - **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Correct the obscuring tactical layout, then exercise ordinary defeat or retreat and a reward that produces a level-up before presentation acceptance.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Create synthetic Castle fixtures for battle modes 5 and 10 and opcode 48 bonus treasure before changing the package contract.
-- **major** `classic.exploration.camp-rest` — Camp mode now has source-backed entry/exit time, service clearing, persistence, and UI state, but held Rest and automatic movement departure are not complete. Next: Add a typed held-Rest continuation with recovery/interruption, then preserve the pre-movement departure ordering.
+- **major** `classic.exploration.camp-rest` — Ordinary Camp, held Rest pulses, random interruption, and automatic movement departure are source-shaped and saveable, but timed midnight interruption and two suspicious Castle recovery/order branches remain unresolved. Next: Resolve the timed scheduler and poisoned-recovery behavior with controlled Castle fixtures, then add a serializable midnight continuation without changing the verified ordinary Camp/Rest path.
 - **major** `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end. Next: Trace the preference/save fields and ordinary cast handoff, then decide whether the shortcut is Classic state or presentation state.
+- **major** `classic.exploration.time-fatigue-light` — The clock imports timed-encounter definitions but does not dispatch them when their scheduled day is reached. Next: Implement the resolved timed-encounter ordering as a serializable clock continuation after the Castle location-gate fixture settles the suspicious y-coordinate test.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
 - **major** `classic.inventory.inspect-item` — Item details do not yet expose the complete Classic record and disabled-action reasons. Next: Complete the detached item view and item-detail panel.
 - **major** `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow. Next: Trace every items.c branch before deleting the intents or implementing a stack operation.
@@ -135,6 +136,7 @@ Blockers: **1**. Major gaps: **27**.
 - **major** `classic.maps.view-acquired` — Map IDs can be acquired, but the journal route explicitly lacks map viewing. Next: Finish package map display data and build a presentation-owned acquired-map viewer.
 - **major** `classic.rewards.treasure-distribution` — Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced. Next: Use controlled Castle RNG fixtures for ordinary, XP-only, and bonus-treasure battle rewards before implementing or correcting the random drops.
 - **major** `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
+- **major** `classic.scenario.random-timed-encounter` — Random rectangles execute through the session, but scheduled timed encounters have no clock-owned dispatcher. Next: Settle Castle's suspicious recx/recy gate and repeated midnight scan with a controlled fixture, then implement one save-owned scheduler and encounter resumption path.
 - **major** `classic.services.bank` — Banking transfers only gold although session state stores more Classic wealth denominations. Next: Trace the bank path and add an oracle fixture before expanding or limiting denominations.
 - **major** `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification. Next: Exercise buy, sell, identify, buyback, leave, and reload in an ordinary shop.
 - **major** `classic.services.temple` — The temple lifecycle has no ordinary campaign certification. Next: Exercise representative temple mutations and no-op payment in ordinary play.
@@ -148,12 +150,15 @@ Blockers: **1**. Major gaps: **27**.
 
 ## Oracle-required unknowns
 
+- `classic.exploration.camp-rest` — Camp and rest
 - `classic.exploration.fast-spell` — Cast a numeric fast spell
+- `classic.exploration.time-fatigue-light` — Observe time, fatigue, and light
 - `classic.inventory.identify-item` — Identify an item
 - `classic.inventory.manage-equipment` — Equip and unequip carried items
 - `classic.inventory.use-item` — Use an item
 - `classic.maps.location-notes` — Read and edit location notes
 - `classic.scenario.complex-interaction` — Resolve a complex or thief encounter
+- `classic.scenario.random-timed-encounter` — Enter a random or timed encounter
 - `classic.services.bank` — Use the bank
 - `classic.system.preferences` — Change Classic application preferences
 
@@ -164,10 +169,12 @@ Blockers: **1**. Major gaps: **27**.
 - `classic.character.reorder-party` — Party order cannot be changed through a typed workflow.
 - `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace.
 - `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
-- `classic.exploration.camp-rest` — Camp mode now has source-backed entry/exit time, service clearing, persistence, and UI state, but held Rest and automatic movement departure are not complete.
+- `classic.exploration.camp-rest` — Ordinary Camp, held Rest pulses, random interruption, and automatic movement departure are source-shaped and saveable, but timed midnight interruption and two suspicious Castle recovery/order branches remain unresolved.
+- `classic.exploration.time-fatigue-light` — The clock imports timed-encounter definitions but does not dispatch them when their scheduled day is reached.
 - `classic.inventory.inspect-item` — Item details do not yet expose the complete Classic record and disabled-action reasons.
 - `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit.
 - `classic.maps.view-acquired` — Map IDs can be acquired, but the journal route explicitly lacks map viewing.
+- `classic.scenario.random-timed-encounter` — Random rectangles execute through the session, but scheduled timed encounters have no clock-owned dispatcher.
 - `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification.
 - `classic.services.temple` — The temple lifecycle has no ordinary campaign certification.
 - `classic.spellcasting.combat-cast` — Combat spellcasting has extensive deterministic coverage but no ordinary campaign certification.

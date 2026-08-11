@@ -397,6 +397,7 @@ func _test_classic_asset_catalog() -> void:
 		assert_false(bool(entry["rendering"]["source_pixels_modified"]), "Classic source pixels are never repainted")
 	assert_equal(ids.size(), manifest["assets"].size(), "Classic semantic asset IDs are unique")
 	assert_not_null(ClassicUiAssetCatalog.texture(&"command.camp"), "runtime asset catalog resolves the Camp bitmap")
+	assert_not_null(ClassicUiAssetCatalog.texture(&"command.rest"), "runtime asset catalog resolves the separate held-Rest bitmap")
 	var party_marker := ClassicUiAssetCatalog.definition(ClassicMapPresenter.PARTY_MARKER_ASSET_ID)
 	assert_not_null(ClassicUiAssetCatalog.texture(ClassicMapPresenter.PARTY_MARKER_ASSET_ID), "the land presenter resolves the built-in mounted Classic party CICN")
 	assert_equal(ClassicUiAssetCatalog.native_size(ClassicMapPresenter.PARTY_MARKER_ASSET_ID), Vector2i(32, 32), "the mounted party CICN retains its native map-cell dimensions")

@@ -5,6 +5,7 @@ enum Kind {
 	MOVE,
 	SEARCH,
 	CAMP,
+	REST,
 	USE_ITEM,
 	CAST_SPELL,
 	CHOOSE_COMBAT_ACTION,
@@ -83,6 +84,10 @@ static func use_item_on_target(item_id: String, user_id: String, target_combatan
 
 static func camp() -> PlayerIntent:
 	return PlayerIntent.new(Kind.CAMP)
+
+
+static func rest() -> PlayerIntent:
+	return PlayerIntent.new(Kind.REST)
 
 
 static func cast_spell(spell_id: String, caster_id: String = "", target_combatant_id: String = "", power: int = 1) -> PlayerIntent:

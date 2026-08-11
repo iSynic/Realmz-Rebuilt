@@ -63,6 +63,10 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 	if replacement_state == null or replacement_action_state == null:
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved game or Scenario Action state is invalid.")
 	if replacement_state.combat != null:
+		if not replacement_state.combat.return_continuation.is_empty():
+			var battle_return: Dictionary = replacement_state.combat.return_continuation
+			if battle_return.get("kind") != "post-clock" or battle_return.get("resumeKind") != "move" or not _valid_post_time_continuation(content, replacement_state, battle_return, null, null):
+				return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved battle return references an unavailable exploration continuation.")
 		for item: ItemInstance in replacement_state.combat.fumbled_items():
 			if content.item_by_id(item.definition_id) == null:
 				return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved fumble queue references unavailable item content.")
@@ -126,6 +130,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _search()
 		PlayerIntent.Kind.CAMP:
 			return _camp()
+		PlayerIntent.Kind.REST:
+			return _rest()
 		PlayerIntent.Kind.USE_ITEM:
 			return _use_item(intent)
 		PlayerIntent.Kind.USE_ITEM_ON_TARGET:
@@ -189,7 +195,7 @@ func respond(response: InteractionResponse) -> SessionStep:
 	if not _session_continuation.is_empty():
 		if _session_continuation.get("kind") == "combat-death-macro":
 			return _continue_session_death_macro(events)
-		return _continue_post_move(events)
+		return _continue_exploration_continuation(events)
 	return _finish_completed(events)
 
 
@@ -318,9 +324,10 @@ func _populate_action_availability(result: GameView) -> void:
 			field_item_available = true
 			break
 	var combat_item_available := battle_active and not _rules.combat_flow.character_item_spell_options(_state, _content, result.combat_view.active_actor_id).is_empty()
-	result.set_action_availability(&"move", ordinary_reason.is_empty() and not battle_active and not _state.party_camping, ordinary_reason if not ordinary_reason.is_empty() else "Movement is unavailable during battle." if battle_active else "Break camp before moving; Castle's automatic departure timing is not implemented yet." if _state.party_camping else "")
+	result.set_action_availability(&"move", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Movement is unavailable during battle." if battle_active else "")
 	result.set_action_availability(&"search", ordinary_reason.is_empty() and not battle_active and not _state.party_camping, ordinary_reason if not ordinary_reason.is_empty() else "Search is unavailable during battle." if battle_active else "Search is replaced by scroll scribing while camped." if _state.party_camping else "")
 	result.set_action_availability(&"camp", ordinary_reason.is_empty() and not battle_active and (_state.camping_allowed or _state.party_camping), ordinary_reason if not ordinary_reason.is_empty() else "Camping is unavailable during battle." if battle_active else "Camping is unavailable here." if not _state.camping_allowed and not _state.party_camping else "")
+	result.set_action_availability(&"rest", ordinary_reason.is_empty() and not battle_active and _state.party_camping, ordinary_reason if not ordinary_reason.is_empty() else "Rest is unavailable during battle." if battle_active else "Make camp before resting.")
 	result.set_action_availability(&"use_item", not blocked_by_interaction and (combat_item_available or not battle_active and field_item_available), "Resolve the current interaction first." if blocked_by_interaction else _rules.combat_flow.character_item_spell_unavailable_reason(_state, _content, result.combat_view.active_actor_id) if battle_active else "No carried item has a supported Classic field use.")
 	result.set_action_availability(&"use_item_on_target", not blocked_by_interaction and combat_item_available, "Resolve the current interaction first." if blocked_by_interaction else _rules.combat_flow.character_item_spell_unavailable_reason(_state, _content, result.combat_view.active_actor_id) if battle_active else "Targeted combat item use is available only during battle.")
 	var field_spell_available := false
@@ -566,9 +573,33 @@ func _camp() -> SessionStep:
 	if _state.party_camping:
 		_state.clear_location_services()
 	var map := _content.world.map_by_id(_state.party.map_id)
-	var time_scale := 1 if map != null and map.level_type == &"dungeon" else 5
-	events.append_array(_rules.clock.advance_minutes(_state, _content, (5 if _state.party_camping else 2) * time_scale))
-	return _finish_with_age_updates(events, "completed")
+	if map == null:
+		return _finish_failed(&"unknown_map", "The current map is unavailable for Camp.", events)
+	var time_scale := _classic_time_scale(map)
+	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, 5 if _state.party_camping else 2, time_scale))
+	if not _state.party_camping:
+		return _finish_with_age_updates(events, "completed")
+	_set_post_time_continuation(map, "completed")
+	return _finish_with_age_updates(events, "post-clock", _session_continuation)
+
+
+func _rest() -> SessionStep:
+	if _state.combat != null and not _state.combat.completed:
+		return SessionStep.failed(_view_revision, &"rest_during_battle", "The party cannot rest during battle.")
+	if not _state.party_camping:
+		return SessionStep.failed(_view_revision, &"rest_outside_camp", "Make camp before resting.")
+	var map := _content.world.map_by_id(_state.party.map_id)
+	if map == null:
+		return SessionStep.failed(_view_revision, &"unknown_map", "The current map is unavailable for Rest.")
+	var previous_fatigue := _state.party.fatigue
+	_rules.clock.change_fatigue(_state.party, -2)
+	var events: Array[DomainEvent] = [
+		DomainEvent.new(&"fatigue_changed", {"previous": previous_fatigue, "current": _state.party.fatigue, "reason": "rest", "source": "classic"}),
+	]
+	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, 5, _classic_time_scale(map)))
+	events.append(DomainEvent.new(&"party_rested", {"timeclicks": 5, "mapId": map.id, "source": "classic"}))
+	_set_post_time_continuation(map, "completed")
+	return _finish_with_age_updates(events, "post-clock", _session_continuation)
 
 
 func _use_item(intent: PlayerIntent) -> SessionStep:
@@ -1568,17 +1599,46 @@ func _search() -> SessionStep:
 
 func _move(direction: Vector2i) -> SessionStep:
 	if _state.party_camping:
-		return SessionStep.failed(_view_revision, &"movement_while_camped", "Break camp before moving; Castle's automatic departure timing is not implemented yet.")
+		return _depart_camp_and_move(direction)
+	return _commit_move(direction)
+
+
+func _depart_camp_and_move(direction: Vector2i) -> SessionStep:
+	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world)
+	if not movement.allowed and movement.reason == &"invalid_direction":
+		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
+	var map := _content.world.map_by_id(_state.party.map_id)
+	if map == null:
+		return SessionStep.failed(_view_revision, &"unknown_map", "The current map is unavailable for camp departure.")
+	_state.party_camping = false
+	var events: Array[DomainEvent] = [
+		DomainEvent.new(&"camp_mode_changed", {"camping": false, "source": "classic-movement"}),
+		DomainEvent.new(&"camp_departed_for_movement", {"mapId": map.id, "x": _state.party.coordinate.x, "y": _state.party.coordinate.y, "direction": [direction.x, direction.y], "source": "classic"}),
+	]
+	var timeclicks := 2 if map.level_type == &"dungeon" else 15
+	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, timeclicks, _classic_time_scale(map)))
+	_set_post_time_continuation(map, "move", direction)
+	return _finish_with_age_updates(events, "post-clock", _session_continuation)
+
+
+func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> SessionStep:
 	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world)
 	if not movement.allowed and movement.reason == &"invalid_direction":
 		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
 	if not movement.allowed:
-		return _movement_blocked(movement.reason)
+		var blocked := _movement_blocked(movement.reason)
+		if preceding_events.is_empty():
+			return blocked
+		var events: Array[DomainEvent] = []
+		events.assign(preceding_events)
+		events.append_array(blocked.events)
+		return _finish_completed(events)
 	var target_map := movement.target_map
 	var target_coordinate := movement.target_coordinate
 	var transition := movement.transition
 	var probe := movement.topology_result
 	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
 	if not probe.door_id.is_empty() and not _state.world.door_is_open(probe.door_id):
 		_state.world.open_door(probe.door_id)
 		events.append(DomainEvent.new("door_opened", {"doorId": probe.door_id}))
@@ -1603,6 +1663,54 @@ func _move(direction: Vector2i) -> SessionStep:
 		events.append(DomainEvent.new("map_transitioned", {"transitionId": transition.id, "sourceMapId": source_map_id, "targetMapId": target_map.id}))
 	_set_post_move_continuation(target_map, target_coordinate)
 	return _finish_with_age_updates(events, "post-move", _session_continuation)
+
+
+func _classic_time_scale(map: MapDefinition) -> int:
+	return 1 if map != null and map.level_type == &"dungeon" else 5
+
+
+func _set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO) -> void:
+	var cell := map.topology.cell_at(_state.party.coordinate)
+	_session_continuation = {
+		"kind": "post-clock",
+		"mapId": map.id,
+		"x": _state.party.coordinate.x,
+		"y": _state.party.coordinate.y,
+		"randomRegionIds": [] if cell == null else cell.random_rect_ids(),
+		"randomRegionIndex": -1 if cell == null else cell.random_rect_ids().size() - 1,
+		"activeRandomProgramId": "",
+		"activeRandomRegionId": "",
+		"randomBattleStage": "",
+		"resumeKind": resume_kind,
+		"directionX": direction.x,
+		"directionY": direction.y,
+	}
+
+
+func _continue_post_time(events: Array[DomainEvent]) -> SessionStep:
+	var map := _content.world.map_by_id(String(_session_continuation.get("mapId", "")))
+	if map == null or _state.party.map_id != map.id or _state.party.coordinate != Vector2i(int(_session_continuation.get("x", -1)), int(_session_continuation.get("y", -1))):
+		_session_continuation.clear()
+		return _finish_failed(&"invalid_session_continuation", "Post-clock exploration continuation is unavailable.", events)
+	var active_program_id := String(_session_continuation.get("activeRandomProgramId", ""))
+	if not active_program_id.is_empty():
+		_session_continuation["activeRandomProgramId"] = ""
+		return _complete_post_time(events)
+	var random_step := _continue_random_regions(map, events)
+	if random_step != null:
+		return random_step
+	return _complete_post_time(events)
+
+
+func _complete_post_time(events: Array[DomainEvent]) -> SessionStep:
+	var resume_kind := String(_session_continuation.get("resumeKind", ""))
+	var direction := Vector2i(int(_session_continuation.get("directionX", 0)), int(_session_continuation.get("directionY", 0)))
+	_session_continuation.clear()
+	if resume_kind == "move":
+		return _commit_move(direction, events)
+	if resume_kind == "completed":
+		return _finish_completed(events)
+	return _finish_failed(&"invalid_session_continuation", "Post-clock exploration continuation has no valid completion path.", events)
 
 
 func _set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, destination_depth: int = 0) -> void:
@@ -1711,6 +1819,14 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 		return random_step
 	_session_continuation.clear()
 	return _finish_completed(events)
+
+
+func _continue_exploration_continuation(events: Array[DomainEvent]) -> SessionStep:
+	if _session_continuation.get("kind") == "post-clock":
+		return _continue_post_time(events)
+	if _session_continuation.get("kind") == "post-move":
+		return _continue_post_move(events)
+	return _finish_failed(&"invalid_session_continuation", "The completed scenario has no valid exploration continuation.", events)
 
 
 func _apply_trigger_destination(trigger: TriggerDefinition, events: Array[DomainEvent], allow_destination: bool) -> bool:
@@ -1856,6 +1972,8 @@ func _finish_direct_battle_recovery(events: Array[DomainEvent]) -> SessionStep:
 
 
 func _begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionStep:
+	var return_continuation: Dictionary = _state.combat.return_continuation.duplicate(true)
+	var battle_outcome := _state.combat.outcome
 	var request_id := "session.battle-reward.%d" % (_view_revision + 1)
 	var operation := _runtime_api.begin_completed_battle_reward(request_id)
 	events.append_array(operation.events)
@@ -1867,7 +1985,14 @@ func _begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionStep:
 		return _finish_waiting(_session_interaction, events)
 	_session_interaction = null
 	_session_continuation.clear()
-	return _finish_completed(events)
+	return _finish_after_direct_battle(events, return_continuation, battle_outcome)
+
+
+func _finish_after_direct_battle(events: Array[DomainEvent], return_continuation: Dictionary, battle_outcome: StringName) -> SessionStep:
+	if return_continuation.is_empty() or battle_outcome == &"defeat" or not _events_have(events, &"battle_returned"):
+		return _finish_completed(events)
+	_session_continuation = return_continuation.duplicate(true)
+	return _continue_post_time(events)
 
 
 func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) -> SessionStep:
@@ -1918,8 +2043,7 @@ func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) ->
 						return _finish_failed(&"invalid_teleport", "Destination trigger recheck references an unavailable map.", events)
 					_set_post_move_continuation(requested_map, _state.party.coordinate, 1)
 					return _continue_post_move(events)
-				_session_continuation.clear()
-				return _finish_completed(events)
+				return _complete_random_program(events)
 			if effective.battle_minimum != 0 and not _state.party.conditions.is_active(7):
 				var good_surprise_roll := _rng.draw(100, StringName("random-region.%s.good-surprise" % region.id))
 				if good_surprise_roll < region.option:
@@ -1939,6 +2063,14 @@ func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) ->
 		if region.only:
 			break
 	return null
+
+
+func _complete_random_program(events: Array[DomainEvent]) -> SessionStep:
+	if _session_continuation.get("kind") == "post-clock":
+		_session_continuation["activeRandomProgramId"] = ""
+		return _complete_post_time(events)
+	_session_continuation.clear()
+	return _finish_completed(events)
 
 
 func _finish_completed(events: Array[DomainEvent]) -> SessionStep:
@@ -2002,11 +2134,15 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 		return _start_random_battle(region, 1, events)
 	_session_continuation["randomRegionIndex"] = int(_session_continuation["randomRegionIndex"]) - 1
 	if region.only:
+		if _session_continuation.get("kind") == "post-clock":
+			return _complete_post_time(events)
 		_session_continuation.clear()
 		return _finish_completed(events)
 	var next_step := _continue_random_regions(map, events)
 	if next_step != null:
 		return next_step
+	if _session_continuation.get("kind") == "post-clock":
+		return _complete_post_time(events)
 	_session_continuation.clear()
 	return _finish_completed(events)
 
@@ -2289,6 +2425,9 @@ func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: String, r
 		if resume_kind == "post-move":
 			_session_continuation = resume_continuation.duplicate(true)
 			return _continue_post_move(events)
+		if resume_kind == "post-clock":
+			_session_continuation = resume_continuation.duplicate(true)
+			return _continue_post_time(events)
 		if resume_kind == "combat-monster-turns":
 			return _continue_after_session_combat_age_update(events)
 		return _finish_completed(events)
@@ -2326,6 +2465,9 @@ func _respond_session_age_update(response: InteractionResponse) -> SessionStep:
 	if resume_kind == "post-move":
 		_session_continuation = resume_continuation
 		return _continue_post_move(events)
+	if resume_kind == "post-clock":
+		_session_continuation = resume_continuation
+		return _continue_post_time(events)
 	if resume_kind == "combat-monster-turns":
 		return _continue_after_session_combat_age_update(events)
 	if resume_kind == "completed":
@@ -2387,6 +2529,8 @@ func _respond_session_battle_reward(response: InteractionResponse) -> SessionSte
 	var runtime_continuation: Variant = _session_continuation.get("runtimeContinuation")
 	if not runtime_continuation is Dictionary:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The battle reward continuation is unavailable.")
+	var return_continuation: Dictionary = _state.combat.return_continuation.duplicate(true)
+	var battle_outcome := _state.combat.outcome
 	var result := _runtime_api.resume_classic(runtime_continuation, response, response.request_id)
 	if result.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return _finish_failed(result.error_code, result.error_message, result.events)
@@ -2396,7 +2540,7 @@ func _respond_session_battle_reward(response: InteractionResponse) -> SessionSte
 		return _finish_waiting(_session_interaction, result.events)
 	_session_interaction = null
 	_session_continuation.clear()
-	return _finish_completed(result.events)
+	return _finish_after_direct_battle(result.events, return_continuation, battle_outcome)
 
 
 func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: Array[DomainEvent]) -> SessionStep:
@@ -2418,6 +2562,9 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 		_session_continuation.clear()
 		return _finish_failed(battle_result.error_code, battle_result.error_message, events)
 	events.append_array(battle_result.events)
+	if _state.combat != null and _session_continuation.get("kind") == "post-clock":
+		_session_continuation["randomRegionIndex"] = -1 if region.only else int(_session_continuation.get("randomRegionIndex", 0)) - 1
+		_state.combat.return_continuation = _session_continuation.duplicate(true)
 	if not CharacterAgingResult.update_payloads(battle_result.events).is_empty():
 		_session_interaction = null
 		_session_continuation.clear()
@@ -2628,6 +2775,8 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			return resume_continuation is Dictionary and resume_continuation.is_empty()
 		if resume_kind == "combat-monster-turns":
 			return resume_continuation is Dictionary and resume_continuation.is_empty() and state.combat != null and not state.combat.completed and state.combat.pending_monster_attack != null
+		if resume_kind == "post-clock":
+			return resume_continuation is Dictionary and _valid_post_time_continuation(content, state, resume_continuation, vm_interaction, null)
 		return resume_kind == "post-move" and resume_continuation is Dictionary and _valid_ready_post_move_continuation(content, state, resume_continuation)
 	if continuation.get("kind") == "combat-death-macro":
 		var death_fields: Array[String] = ["kind", "battleId", "combatantId", "programId"]
@@ -2668,6 +2817,8 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 		if vm_interaction != null or reward == null or reward.origin != &"battle" or reward.source_id != continuation["battleId"]:
 			return false
 		return _valid_reward_continuation(content, state, reward, session_interaction)
+	if continuation.get("kind") == "post-clock":
+		return _valid_post_time_continuation(content, state, continuation, vm_interaction, session_interaction)
 	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
 	if continuation.size() != fields.size():
 		return false
@@ -2697,6 +2848,36 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 	if index < 0 or index >= continuation["triggerIds"].size() or continuation["activeTriggerId"].is_empty() or continuation["triggerIds"][index] != continuation["activeTriggerId"]:
 		return false
 	return content.trigger_by_id(continuation["activeTriggerId"]) != null
+
+
+static func _valid_post_time_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var fields: Array[String] = ["kind", "mapId", "x", "y", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "resumeKind", "directionX", "directionY"]
+	if continuation.size() != fields.size():
+		return false
+	for field: String in fields:
+		if not continuation.has(field):
+			return false
+	if not continuation["mapId"] is String or not continuation["x"] is int or not continuation["y"] is int or not continuation["randomRegionIds"] is Array or not continuation["randomRegionIndex"] is int or not continuation["activeRandomProgramId"] is String or not continuation["activeRandomRegionId"] is String or not continuation["randomBattleStage"] is String or not continuation["resumeKind"] is String or continuation["resumeKind"] not in ["completed", "move"] or not continuation["directionX"] is int or not continuation["directionY"] is int:
+		return false
+	var map := content.world.map_by_id(continuation["mapId"])
+	var coordinate := Vector2i(continuation["x"], continuation["y"])
+	var cell: MapCell = null if map == null else map.topology.cell_at(coordinate)
+	var direction := Vector2i(continuation["directionX"], continuation["directionY"])
+	if cell == null or state.party.map_id != map.id or state.party.coordinate != coordinate or continuation["randomRegionIds"] != cell.random_rect_ids() or continuation["randomRegionIndex"] < -1 or continuation["randomRegionIndex"] >= continuation["randomRegionIds"].size() or direction.x < -1 or direction.x > 1 or direction.y < -1 or direction.y > 1:
+		return false
+	if continuation["resumeKind"] == "completed" and direction != Vector2i.ZERO:
+		return false
+	if continuation["resumeKind"] == "move" and direction == Vector2i.ZERO:
+		return false
+	if session_interaction != null:
+		if vm_interaction != null or continuation["activeRandomProgramId"] != "" or continuation["randomBattleStage"] != "surprise-choice" or session_interaction.kind != InteractionRequest.YES_NO:
+			return false
+		var active_region_id: String = continuation["activeRandomRegionId"]
+		var random_index: int = continuation["randomRegionIndex"]
+		return random_index >= 0 and continuation["randomRegionIds"][random_index] == active_region_id and map.random_region_by_id(active_region_id) != null
+	if vm_interaction != null:
+		return continuation["randomBattleStage"] == "" and continuation["activeRandomRegionId"] == "" and not continuation["activeRandomProgramId"].is_empty() and content.scenario.program_by_id(continuation["activeRandomProgramId"]) != null
+	return continuation["randomBattleStage"] == "" and continuation["activeRandomRegionId"] == "" and continuation["activeRandomProgramId"] == ""
 
 
 static func _valid_vm_reward_continuation(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:

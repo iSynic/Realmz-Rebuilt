@@ -23,6 +23,7 @@ signal vault_restore_requested(character_id: String, revision_hash: String)
 const MUTED := Color("9aa4a5")
 const ERROR := Color("ef7770")
 const TEXT := Color("d8d9d2")
+const HELD_COMMAND_INTERVAL := 0.22
 
 @onready var _menu_strip: PanelContainer = %MenuStrip
 @onready var _menu_row: HBoxContainer = %MenuRow
@@ -57,12 +58,18 @@ var _latest_classic_text: String = ""
 var _simulation_buttons: Dictionary = {}
 var _menu_actions: Dictionary = {}
 var _menus_connected: Dictionary = {}
+var _held_command: StringName = &""
+var _held_command_timer: Timer
 
 
 func _ready() -> void:
 	# The shell is structural; only its concrete controls should participate in
 	# GUI hit testing. A full-window PASS control masks earlier root siblings.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_held_command_timer = Timer.new()
+	_held_command_timer.wait_time = HELD_COMMAND_INTERVAL
+	_held_command_timer.timeout.connect(_on_held_command_timeout)
+	add_child(_held_command_timer)
 	_router.start_requested.connect(func(path: String, seed: int) -> void: start_package_requested.emit(path, seed))
 	_router.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
 	_router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
@@ -82,6 +89,8 @@ func _ready() -> void:
 func present(game_view: GameView) -> void:
 	var previous_campaign_id := _current_view.campaign_id if _current_view != null and _current_view.session_started else ""
 	_current_view = game_view
+	if not _held_command.is_empty() and (game_view == null or game_view.pending_interaction != null or not game_view.availability(_held_command).enabled):
+		_stop_held_command()
 	if game_view == null or not game_view.session_started:
 		_latest_classic_text = ""
 		_package_status.text = "No campaign"
@@ -285,6 +294,7 @@ func _build_menus() -> void:
 		{"label": "Explore", "route": &"exploration"},
 		{"label": "Search", "command": &"search", "disabled_reason": _availability_reason(&"search")},
 		{"label": camp_label, "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
+		{"label": "Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
 	])
 	_fill_menu($MenuStrip/MenuRow/CharacterMenu, [
 		{"label": "Characters", "route": &"character"},
@@ -304,6 +314,7 @@ func _build_menus() -> void:
 		{"label": "Adventure — Explore", "route": &"exploration"},
 		{"label": "Adventure — Search", "command": &"search", "disabled_reason": _availability_reason(&"search")},
 		{"label": "Adventure — %s" % camp_label, "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
+		{"label": "Adventure — Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
 		{"label": "Character — Characters", "route": &"character"},
 		{"label": "Character — Inventory", "route": &"inventory"},
 		{"label": "Character — Spells", "route": &"spells"},
@@ -363,14 +374,22 @@ func _rebuild_command_deck() -> void:
 		if not asset_id.is_empty() and ClassicUiAssetCatalog.texture(asset_id) != null:
 			var bitmap := ClassicBitmapButton.new()
 			bitmap.configure(definition, _profile.bitmap_scale)
-			bitmap.command_requested.connect(_activate_command)
+			if bool(definition.get("hold_repeat", false)):
+				bitmap.button_down.connect(_begin_held_command.bind(StringName(definition["id"])))
+				bitmap.button_up.connect(_stop_held_command)
+			else:
+				bitmap.command_requested.connect(_activate_command)
 			button = bitmap
 		else:
 			var text_button := Button.new()
 			text_button.text = String(definition.get("label", "Command"))
 			text_button.custom_minimum_size = Vector2(54.0, 54.0)
 			text_button.tooltip_text = String(definition.get("tooltip", ""))
-			text_button.pressed.connect(_activate_command.bind(StringName(definition["id"])))
+			if bool(definition.get("hold_repeat", false)):
+				text_button.button_down.connect(_begin_held_command.bind(StringName(definition["id"])))
+				text_button.button_up.connect(_stop_held_command)
+			else:
+				text_button.pressed.connect(_activate_command.bind(StringName(definition["id"])))
 			button = text_button
 		button.set_meta("focus_key", "command:%s" % definition["id"])
 		_command_grid.add_child(button)
@@ -401,11 +420,35 @@ func _activate_command(command_id: StringName) -> void:
 	match command_id:
 		&"search": intent_submitted.emit(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 		&"camp": intent_submitted.emit(PlayerIntent.camp())
+		&"rest": intent_submitted.emit(PlayerIntent.rest())
 		&"inventory": _router.open_screen(&"inventory")
 		&"spells": _router.open_screen(&"spells")
 		&"maps": _router.open_screen(&"journal")
 		&"settings": _router.open_screen(&"system")
 		&"save": save_requested.emit("quick")
+
+
+func _begin_held_command(command_id: StringName) -> void:
+	_held_command = command_id
+	_activate_command(command_id)
+	if not _held_command.is_empty():
+		_held_command_timer.start()
+
+
+func _stop_held_command() -> void:
+	_held_command = &""
+	if _held_command_timer != null:
+		_held_command_timer.stop()
+
+
+func _on_held_command_timeout() -> void:
+	if _held_command.is_empty() or not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		_stop_held_command()
+		return
+	if _current_view == null or _current_view.pending_interaction != null or not _current_view.availability(_held_command).enabled:
+		_stop_held_command()
+		return
+	_activate_command(_held_command)
 
 
 func _on_screen_changed(screen_id: StringName) -> void:

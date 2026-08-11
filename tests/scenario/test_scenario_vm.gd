@@ -482,10 +482,6 @@ func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> vo
 	assert_equal(party.pooled_wealth.gold, 25, "treasure wealth is session-owned")
 	treasure = _drain_runtime_reward(api, treasure, true)
 	assert_equal(treasure.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Safe Scenario Action resumes after explicit treasure distribution")
-	var camped := api.execute_safe("core.party.camp", {}, "request.camp")
-	assert_equal(camped.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Safe Scenario Action camps through the same clock rules as player intent")
-	assert_equal(state.clock.total_minutes(), 480, "Scenario Action camping advances the Realmz clock")
-
 	var program := ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 2, 2, 0, false, [])])
 	var definition := ScenarioDefinition.new([program], [])
 	var vm := ScenarioVm.new()

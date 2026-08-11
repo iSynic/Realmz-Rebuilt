@@ -6,7 +6,6 @@ const SUPPORTED_SAFE_CAPABILITIES: Array[String] = [
 	"core.economy.grant-treasure",
 	"core.economy.take-gold",
 	"core.inventory.grant-item",
-	"core.party.camp",
 	"core.presentation.choice",
 	"core.presentation.text",
 	"core.state.read",
@@ -547,12 +546,6 @@ func resolve_program_id(program_id: String) -> String:
 
 func execute_safe(capability: String, arguments: Dictionary, request_id: String) -> ScenarioRuntimeOperationResult:
 	match capability:
-		"core.party.camp":
-			if not arguments.is_empty():
-				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Camp does not accept arguments.")
-			if not _game_state.camping_allowed or _game_state.combat != null and not _game_state.combat.completed:
-				return ScenarioRuntimeOperationResult.failed(&"camping_unavailable", "The party cannot camp in the current state.")
-			return _with_age_update_interactions(ScenarioRuntimeOperationResult.completed(true, _rules.clock.camp(_game_state, _content)), request_id, "safe-age-updates")
 		"core.time.advance":
 			if not _whole_number(arguments.get("minutes")) or int(arguments["minutes"]) < 0:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Advance Time requires non-negative integer minutes.")

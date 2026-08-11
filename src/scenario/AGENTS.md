@@ -18,6 +18,7 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 - `RealmzRuntimeApi` is the single VM boundary and delegates source-backed work to typed domain executors under `runtime/operations`; those executors cannot bypass `GameState`, `RealmzRules`, or the session RNG.
 - Classic GOSUB depth is 20. Safe Action call depth is 32, program size 4,096 nodes, arrays 256 entries, and execution 65,536 steps.
 - Unknown instructions, IDs, capabilities, actions, and response shapes fail explicitly.
+- Safe Scenario Actions may request explicit elapsed minutes through the time capability, but they do not expose the player-facing Camp/Rest workflow as a capability. Camp mode, held Rest pulses, random interruption, and movement departure remain session-owned typed intents and continuations.
 - Packages cannot override `realmz.*`; campaign actions use `scenario.<campaign>.*`.
 - A Scenario Action call is an ordinary AP/Encounter timeline entry. Authoring gaps and behavior anchors are not runtime concepts.
 - Runtime instruction forms are preserved `ClassicAction` records and typed `CallScenarioAction` records. Safe bytecode is compiler output, never Providence editor state.

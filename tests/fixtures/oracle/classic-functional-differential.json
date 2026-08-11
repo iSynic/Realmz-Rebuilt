@@ -3068,7 +3068,7 @@
       "id": "exploration.camp-mode",
       "workflowIds": ["classic.exploration.camp-rest"],
       "domain": "exploration",
-      "claim": "Camp is a persistent exploration mode, not an eight-hour rest command: entering clears location services and advances five scaled time clicks, explicit exit advances two, and Search becomes scroll scribing while camped.",
+      "claim": "Camp is a persistent exploration mode, not an eight-hour rest command: entry and exit have distinct time costs, held Rest applies one five-timeclick pulse at a time, and movement leaves camp through a separate pre-movement clock and interruption path.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "Remake distinguishes Camp from held Rest, preserves Classic entry/exit/movement-exit timeclick counts, changes the map icon, and checks random encounters, but routes through GameGlobal and NodeAccess.",
@@ -3086,13 +3086,18 @@
         "evidence": "source-control-flow",
         "controlFlow": [
           { "path": "src/realmz_orig/buttonchoice.c", "symbol": "short buttonchoice" },
-          { "path": "src/realmz_orig/textbox-time.c", "symbol": "short timeclick" }
+          { "path": "src/realmz_orig/threed.c", "symbol": "void threed" },
+          { "path": "src/realmz_orig/textbox-time.c", "symbol": "short timeclick" },
+          { "path": "src/realmz_orig/reduce.c", "symbol": "void reduce" },
+          { "path": "src/realmz_orig/checkrange-checkforitem.c", "symbol": "short checkforitem" },
+          { "path": "src/realmz_orig/heal.c", "symbol": "void heal" }
         ],
-        "authoredInputs": ["camp permission", "indoor/land base scale", "active shop and temple state", "party fatigue and recovery state"],
-        "observation": "The Camp control toggles incamp, clears location services, and calls timeclick(3,false) plus timeclick(2,true) on entry or timeclick(2,false) on explicit exit. The held Rest control is a separate loop that reduces fatigue by two and advances five time clicks per tick. Selecting movement while camped first clears camp and advances a distinct 15-timeclick departure path before ordinary movement.",
+        "authoredInputs": ["camp permission", "indoor/land base scale", "active shop and temple state", "party fatigue and recovery state", "item 877 charges", "random rectangles and battles"],
+        "observation": "The Camp control toggles incamp, clears location services, and calls timeclick(3,false) plus timeclick(2,true) on entry or timeclick(2,false) on explicit exit. Each held Rest iteration subtracts two fatigue before the same five time clicks. Hour crossings reduce conditions, add one fatigue, and restore spell points; noon and midnight recover health and consume one usable item-877 charge per injured character. Land movement while camped clears camp and advances fifteen time clicks before ordinary movement; dungeon movement uses two. A random battle may interrupt this clock path and returns to the caller before movement continues.",
         "unresolved": [
-          "Held Rest recovery, hourly/half-day recovery, ration use, and random/timed interruption still require a serializable workflow.",
-          "Automatic movement departure must preserve the source order of its 15 time clicks, possible age/encounter interruption, and the later movement commit; 2.0 currently requires explicit Break Camp rather than inventing that continuation."
+          "Timed encounters are scanned during the midnight path but Realmz 2.0 does not yet dispatch them; their exact continuation ordering is tracked separately.",
+          "Castle adds the signed Poisoned condition value to half-day healing, which appears capable of increasing healing for ordinary positive poison durations and requires a controlled fixture or named correction.",
+          "Castle performs age UI, timed scanning, and half-day recovery inside the per-timeclick midnight path; 2.0's aggregate clock transaction preserves resulting state but not yet every interruption boundary."
         ]
       },
       "providence": {
@@ -3104,14 +3109,59 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _camp" },
-        "expectedTrace": ["validate combat and camp permission", "toggle session-owned camp mode", "clear location services on entry", "advance five scaled time clicks on entry or two on explicit exit", "publish mode and clock events", "persist the exact mode and clock"],
+        "expectedTrace": ["validate combat and camp permission", "toggle session-owned camp mode and clear location services", "advance the source-scaled Camp entry or exit cost", "on Rest subtract two fatigue before advancing five time clicks", "apply hourly condition, fatigue, spell-point, and half-day health/ration work", "scan source-ordered random rectangles", "persist age, random choice, battle, and post-time movement continuations", "resume the requested movement once after an interrupting battle returns"],
         "tests": [
           { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" }
         ]
       },
       "decision": "aligned",
       "availability": "implemented",
-      "status": "camp-toggle-entry-exit-time-service-clearing-and-save-verified-rest-and-automatic-movement-departure-unresolved"
+      "status": "ordinary-camp-rest-hourly-half-day-random-interruption-and-automatic-departure-save-verified-timed-and-suspicious-poison-midnight-order-unresolved"
+    },
+    {
+      "id": "exploration.timed-encounter-dispatch",
+      "workflowIds": ["classic.exploration.camp-rest", "classic.exploration.time-fatigue-light", "classic.scenario.random-timed-encounter"],
+      "domain": "exploration",
+      "claim": "Crossing midnight scans authored timed encounters in source order, advances a matching record's next day, applies chance, item, quest, map, rectangle, and coordinate gates, dispatches its Action Point, and resumes the remaining midnight work through a saveable continuation.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake has a dedicated day-crossing scheduler, persisted scan cursor, effective runtime overrides, and deferred dispatch through ClassicCampaignSession, but its host ownership and interpretations are donor evidence only.",
+        "sources": [
+          { "path": "src/scripts/GameGlobal.gd", "symbol": "func _advance_classic_timed_encounters" },
+          { "path": "src/scripts/classic_runtime/classic_timed_encounter_scheduler.gd", "symbol": "class_name ClassicTimedEncounterScheduler" },
+          { "path": "src/scripts/classic_runtime/classic_campaign_session.gd", "symbol": "func _drain_timed_encounter_scans" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/textbox-time.c", "symbol": "short timeclick" },
+          { "path": "src/realmz_orig/newland.c", "symbol": "short newland" }
+        ],
+        "authoredInputs": ["day", "increment", "percent", "door", "level type and index", "random rectangle", "x and y", "required item", "required quest"],
+        "observation": "At midnight Castle ages characters, then scans CTD3 from the saved index for records on the new day. It advances the encountered record by its increment before chance and eligibility checks, writes the mutated record, performs half-day recovery, then dispatches a matching door through newland and loops back to scan the rest of that day before the later random-rectangle check.",
+        "unresolved": [
+          "The source guards both x and y comparisons with dotime.recx > -1; the second guard may be a typo for recy and requires a runtime fixture before 2.0 chooses literal or corrected behavior.",
+          "The exact repeated-dispatch and health-recovery behavior around goto continueday is suspicious and requires a controlled multi-record fixture."
+        ]
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" }
+        ],
+        "expectedRepresentation": "Schema v2 preserves ordered timed-encounter records, trigger identity, date mutation fields, chance, and every authored eligibility gate."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/time_rules.gd", "symbol": "func advance_classic_field_time" },
+        "expectedTrace": ["cross a midnight boundary", "scan effective timed records in Castle order", "persist record-day mutation and scan cursor before dispatch", "consume only source-required RNG", "yield through the authored trigger and typed interactions", "resume remaining timed records, half-day recovery, and eligible random rectangles once"],
+        "tests": []
+      },
+      "decision": "unresolved",
+      "availability": "disabled",
+      "status": "package-records-and-runtime-mutations-present-clock-dispatch-and-suspicious-coordinate-repeated-scan-semantics-unresolved"
     },
     {
       "id": "spell.scroll-case-scribe-use",

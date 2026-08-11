@@ -18,7 +18,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 - Interaction UI responses enter through `GameSession.respond`; presenters never resume the VM or mutate state themselves.
 - A committed `character_publication_requested` event is the only creator-to-vault write boundary. `RealmzApplication` snapshots the already-finalized session character and asks `CharacterVaultRepository` to publish an immutable revision; rejected/declined interactions and ordinary campaign mutations perform no vault write.
 - Restore constructs and validates a replacement before swapping the active session.
-- Named `InputMap` actions are the host input boundary. Land movement binds the complete keypad compass, including 7/9/1/3 diagonals; the host suppresses those diagonals on dungeon maps before creating a typed intent. Back resolves blocking/passive modals, contextual drawers, and route history before returning to exploration; pending interactions suppress route and exploration input.
+- Named `InputMap` actions are the host input boundary. Land movement binds the complete keypad compass, including 7/9/1/3 diagonals; the host suppresses those diagonals on dungeon maps before creating a typed intent. Camp and Rest are separate typed commands; held Rest repeat cadence is presentation-owned and emits one Rest intent per pulse. Back resolves blocking/passive modals, contextual drawers, and route history before returning to exploration; pending interactions suppress route and exploration input.
 - The application applies window mode and presentation scales, but those settings never enter the session or save aggregate.
 
 ## Work Guidance

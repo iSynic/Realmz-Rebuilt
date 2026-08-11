@@ -142,6 +142,10 @@ func _input(event: InputEvent) -> void:
 		_submit_intent(PlayerIntent.camp())
 		get_viewport().set_input_as_handled()
 		return
+	if event.is_action_pressed(&"realmz_rest"):
+		_submit_intent(PlayerIntent.rest())
+		get_viewport().set_input_as_handled()
+		return
 	var direction := UiInputActions.movement_direction(event)
 	if direction != Vector2i.ZERO:
 		_submit_movement(direction)

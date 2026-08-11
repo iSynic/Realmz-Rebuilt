@@ -12,6 +12,7 @@ const DEFINITIONS: Array[Dictionary] = [
 	{"id": &"realmz_move_up_left", "keys": [KEY_KP_7]},
 	{"id": &"realmz_search", "keys": [KEY_F]},
 	{"id": &"realmz_camp", "keys": [KEY_C]},
+	{"id": &"realmz_rest", "keys": [KEY_R]},
 	{"id": &"realmz_back", "keys": [KEY_ESCAPE]},
 	{"id": &"ui_screen_explore", "keys": [KEY_1]},
 	{"id": &"ui_screen_characters", "keys": [KEY_2]},

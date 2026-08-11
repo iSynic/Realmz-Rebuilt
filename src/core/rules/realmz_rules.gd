@@ -26,7 +26,7 @@ func _init() -> void:
 	combat = CombatRules.new(conditions, characters)
 	magic = MagicRules.new(characters, arithmetic)
 	monsters = MonsterRules.new()
-	clock = ClockRules.new(conditions, characters)
+	clock = ClockRules.new(conditions, characters, inventory)
 	battlefield = BattlefieldRules.new()
 	spell_areas = SpellAreaRules.new()
 	combat_flow = CombatFlow.new(self)

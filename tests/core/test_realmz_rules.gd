@@ -676,11 +676,6 @@ func _test_conditions_time_and_persistence() -> void:
 	assert_equal(party.conditions.value(0), 0, "party conditions decay through the same fixed owner")
 	assert_true(events.size() >= 4, "condition ticks publish domain observations")
 	assert_equal(rules.clock.change_fatigue(party, 500), 135, "fatigue is clamped to Castle's upper bound")
-	rules.clock.camp(state, null, 8)
-	assert_equal(party.fatigue, 4, "camping returns fatigue to Castle's lower bound")
-	assert_equal(state.clock.total_minutes(), 480, "camping advances only the session-owned Realmz clock")
-	assert_equal(character.spell_points, character.maximum_spell_points, "camping restores available spell energy")
-
 	state.combat = CombatState.new("battle.test", _monsters([MonsterState.new("monster.saved", "monster.test", "Saved Monster", 3, 6)]))
 	var parsed: Variant = JSON.parse_string(JSON.stringify(state.to_data()))
 	var restored := GameState.from_data(parsed)

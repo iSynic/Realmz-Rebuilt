@@ -272,7 +272,7 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 		var index := _integer(value["index"])
 		if not value["updates"] is Array or value["updates"].is_empty() or value["updates"].size() > 30 or index < 1 or index > value["updates"].size() or not _json_safe(value["updates"], 0):
 			return null
-		if not value["resumeKind"] is String or value["resumeKind"] not in ["completed", "post-move", "combat-monster-turns"] or not value["resumeContinuation"] is Dictionary:
+		if not value["resumeKind"] is String or value["resumeKind"] not in ["completed", "post-move", "post-clock", "combat-monster-turns"] or not value["resumeContinuation"] is Dictionary:
 			return null
 		var resume_continuation: Dictionary = {}
 		if value["resumeKind"] in ["completed", "combat-monster-turns"]:
@@ -280,7 +280,7 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 				return null
 		else:
 			var normalized_resume: Variant = _normalize_session_continuation(value["resumeContinuation"])
-			if not normalized_resume is Dictionary or normalized_resume.get("kind") != "post-move":
+			if not normalized_resume is Dictionary or normalized_resume.get("kind") != value["resumeKind"]:
 				return null
 			resume_continuation = normalized_resume
 		return {"kind": "age-updates", "updates": value["updates"].duplicate(true), "index": index, "resumeKind": value["resumeKind"], "resumeContinuation": resume_continuation}
@@ -324,6 +324,32 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 		if reward == null or reward.origin != &"battle" or reward.source_id != value["battleId"]:
 			return null
 		return {"kind": "combat-reward", "battleId": value["battleId"], "runtimeContinuation": {"kind": "classic-reward", "state": reward.to_data()}}
+	if value.get("kind") == "post-clock":
+		var time_fields: Array[String] = ["kind", "mapId", "x", "y", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "resumeKind", "directionX", "directionY"]
+		if value.size() != time_fields.size():
+			return null
+		for field: String in time_fields:
+			if not value.has(field):
+				return null
+		var time_x := _integer(value["x"])
+		var time_y := _integer(value["y"])
+		var time_random_index := _integer(value["randomRegionIndex"])
+		var direction_x := _signed_integer(value["directionX"])
+		var direction_y := _signed_integer(value["directionY"])
+		if not value["mapId"] is String or value["mapId"].is_empty() or time_x < 0 or time_y < 0 or not value["randomRegionIds"] is Array or time_random_index < -1 or not value["activeRandomProgramId"] is String or not value["activeRandomRegionId"] is String or not value["randomBattleStage"] is String or value["randomBattleStage"] not in ["", "surprise-choice"] or not value["resumeKind"] is String or value["resumeKind"] not in ["completed", "move"] or direction_x < -1 or direction_x > 1 or direction_y < -1 or direction_y > 1:
+			return null
+		if value["resumeKind"] == "completed" and (direction_x != 0 or direction_y != 0):
+			return null
+		if value["resumeKind"] == "move" and Vector2i(direction_x, direction_y) == Vector2i.ZERO:
+			return null
+		var time_region_ids: Array[String] = []
+		for region_id: Variant in value["randomRegionIds"]:
+			if not region_id is String or region_id.is_empty():
+				return null
+			time_region_ids.append(region_id)
+		if time_random_index >= time_region_ids.size() or value["randomBattleStage"] == "surprise-choice" and value["activeRandomRegionId"].is_empty():
+			return null
+		return {"kind": "post-clock", "mapId": value["mapId"], "x": time_x, "y": time_y, "randomRegionIds": time_region_ids, "randomRegionIndex": time_random_index, "activeRandomProgramId": value["activeRandomProgramId"], "activeRandomRegionId": value["activeRandomRegionId"], "randomBattleStage": value["randomBattleStage"], "resumeKind": value["resumeKind"], "directionX": direction_x, "directionY": direction_y}
 	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
 	if value.size() != fields.size():
 		return null

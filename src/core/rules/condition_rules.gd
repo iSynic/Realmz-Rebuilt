@@ -67,4 +67,7 @@ func tick_party(party: PartyState) -> Array[DomainEvent]:
 		events.append(DomainEvent.new(&"party_condition_expired", {"condition": index}))
 	for character: CharacterState in party.characters():
 		events.append_array(tick_character(character))
+	for ally: MonsterState in party.allies():
+		for index: int in ally.conditions.decay_positive():
+			events.append(DomainEvent.new(&"ally_condition_expired", {"allyId": ally.id, "condition": index}))
 	return events
