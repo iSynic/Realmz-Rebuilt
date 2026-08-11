@@ -3265,6 +3265,54 @@
       "decision": "compiler-defect",
       "availability": "implemented",
       "status": "shared-battle-atlas-landlook-composition-detached-camera-and-nonobscuring-controls-verified"
+    },
+    {
+      "id": "character.party-order-workflow",
+      "workflowIds": ["classic.character.reorder-party"],
+      "domain": "character",
+      "claim": "Party Order commits one complete permutation of the current stable character identities, preserves every character-owned field, consumes no RNG or time, persists array order, and makes cancellation a no-mutation presentation action.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake can drag-swap character buttons while assembling a selected party and can replace active membership through a reusable-character roster. These are partial interaction leads, not Castle's always-available whole-party ordering workspace.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/CharSwapRect.gd", "symbol": "func _on_OKButton_pressed" },
+          { "path": "src/scenes/UI/Party Selection/CharPickButton.gd", "symbol": "func _drop_data" },
+          { "path": "src/scenes/UI/Party Selection/CharPickRect.gd", "symbol": "func _selected_party" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "short HandleMenuChoice" },
+          { "path": "src/realmz_orig/save-direction-order.c", "symbol": "void order(void)" },
+          { "path": "src/realmz_orig/getchoice.c", "symbol": "short getchoice" }
+        ],
+        "authoredInputs": ["current party count", "current character slot order", "track permutation"],
+        "observation": "The Character menu calls order(), which asks getchoice to assign every current member a unique ordinal and then writes complete character structs into the selected slots before rebuilding derived spell arrays. The abort key clears every track entry, but order() ignores that result and still indexes c[track[t] - 1], producing an apparent c[-1] write."
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [],
+        "expectedRepresentation": "No immutable package field is required; party order is mutable session and save state."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _reorder_party" },
+        "expectedTrace": ["stage presentation-only slot moves", "validate every current stable identity exactly once", "commit one PartyState permutation", "publish previous and current order", "persist the character array order", "cancel without mutation"],
+        "tests": [
+          { "path": "tests/integration/test_party_order_workflow.gd", "symbol": "func run" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_party_order_workspace" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-CHARACTER-003",
+        "fixturePath": "tests/fixtures/oracle/party-order-abort-correction.json",
+        "fixtureSha256": "d2357c2cea351d69c97643a311e2e14475d390a29f031d9d74647e31a46301ec"
+      },
+      "availability": "implemented",
+      "status": "full-permutation-state-preservation-save-restore-and-safe-cancel-verified"
     }
   ]
 }

@@ -24,6 +24,7 @@ func run() -> void:
 	_test_field_spell_workspace()
 	_test_inventory_workspace()
 	_test_money_workspace()
+	_test_party_order_workspace()
 	_test_party_roster()
 	_test_scene_composition()
 
@@ -858,6 +859,77 @@ func _test_money_workspace() -> void:
 	router._restore_focus(false, 37, 100)
 	assert_equal([scroll.scroll_horizontal, scroll.scroll_vertical], [37, 100], "a same-route money mutation preserves the player's prior scroll instead of jumping to the final control")
 	scroll.free()
+	router.free()
+
+
+func _test_party_order_workspace() -> void:
+	var alis := CharacterState.new("party.order.alis", "Alis", 10, 10)
+	alis.level = 2
+	alis.caste_id = "fighter"
+	var borin := CharacterState.new("party.order.borin", "Borin", 12, 12)
+	borin.level = 3
+	borin.caste_id = "priest"
+	var cerys := CharacterState.new("party.order.cerys", "Cerys", 8, 8)
+	cerys.level = 4
+	cerys.caste_id = "sorcerer"
+	var view := GameView.new(8, true, null)
+	view.campaign_id = "party-order-fixture"
+	view.party_members = [CharacterView.new(alis), CharacterView.new(borin), CharacterView.new(cerys)]
+	view.set_action_availability(&"reorder_party", true)
+	var router := ClassicScreenRouter.new()
+	var workspace := (load("res://src/presentation/screens/character_screen.tscn") as PackedScene).instantiate() as ClassicRouteScreen
+	workspace.scroll = workspace.get_node("WorkspaceColumn/ScreenBodyScroll") as ScrollContainer
+	workspace.body = workspace.get_node("WorkspaceColumn/ScreenBodyScroll/ScreenBody") as VBoxContainer
+	workspace._header = workspace.get_node("WorkspaceColumn/WorkspaceHeader") as BoxContainer
+	router._workspace_view = workspace
+	router._body_frame = workspace
+	router._body_scroll = workspace.scroll
+	router._body = workspace.body
+	router.add_child(workspace)
+	router._campaign_overlay = PanelContainer.new()
+	router._setup_overlay = PanelContainer.new()
+	router.add_child(router._campaign_overlay)
+	router.add_child(router._setup_overlay)
+	router._screen_id = &"character"
+	var intents: Array[PlayerIntent] = []
+	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	router.present(view)
+	assert_equal(router._party_order_draft_ids, [alis.id, borin.id, cerys.id], "the Party Order workspace starts from detached session order")
+	var buttons: Array[Button] = []
+	for node: Node in router.find_children("*", "Button", true, false):
+		buttons.append(node as Button)
+	var first_down: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Move Down" and not button.disabled)[0]
+	first_down.pressed.emit()
+	assert_equal(router._party_order_draft_ids, [borin.id, alis.id, cerys.id], "Move Down changes presentation-owned draft order only")
+	assert_equal(intents.size(), 0, "staging a slot move cannot mutate the session")
+	buttons.clear()
+	for node: Node in router.find_children("*", "Button", true, false):
+		buttons.append(node as Button)
+	var cancel: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Cancel Order Changes")[0]
+	assert_false(cancel.disabled, "a changed draft exposes safe cancellation")
+	cancel.pressed.emit()
+	assert_equal(router._party_order_draft_ids, [alis.id, borin.id, cerys.id], "Cancel restores detached order without reproducing Castle's cleared-track write")
+	assert_equal(intents.size(), 0, "Cancel emits no gameplay intent")
+	buttons.clear()
+	for node: Node in router.find_children("*", "Button", true, false):
+		buttons.append(node as Button)
+	first_down = buttons.filter(func(button: Button) -> bool: return button.text == "Move Down" and not button.disabled)[0]
+	first_down.pressed.emit()
+	buttons.clear()
+	for node: Node in router.find_children("*", "Button", true, false):
+		buttons.append(node as Button)
+	var apply: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Apply Party Order")[0]
+	assert_false(apply.disabled, "a changed complete permutation can be applied")
+	apply.pressed.emit()
+	assert_equal(intents.size(), 1, "Apply emits exactly one typed mutation")
+	assert_equal([intents[0].kind, intents[0].selected_ids], [PlayerIntent.Kind.REORDER_PARTY, [borin.id, alis.id, cerys.id]], "the presenter emits the complete stable-ID permutation")
+	view.set_action_availability(&"reorder_party", false, "Party order is unavailable during battle.")
+	router.present(view)
+	buttons.clear()
+	for node: Node in router.find_children("*", "Button", true, false):
+		buttons.append(node as Button)
+	var blocked_move: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Move Down")[0]
+	assert_true(blocked_move.disabled and blocked_move.tooltip_text.contains("battle"), "unavailable Party Order remains visible with the core-owned reason")
 	router.free()
 
 

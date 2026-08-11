@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 6 | 18 | 36 | 0 |
+| classic | 60 | 5 | 18 | 37 | 0 |
 | host | 8 | 1 | 3 | 4 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -18,7 +18,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Startup and party | 8 | 1 | 1 | 6 | 0 |
 | Exploration | 6 | 1 | 2 | 3 | 0 |
 | Scenario interaction | 6 | 0 | 2 | 4 | 0 |
-| Character management | 5 | 3 | 1 | 1 | 0 |
+| Character management | 5 | 2 | 1 | 2 | 0 |
 | Inventory and equipment | 7 | 0 | 4 | 3 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
@@ -33,15 +33,15 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Castle oracle | Count |
 | --- | ---: |
-| not-required | 18 |
+| not-required | 17 |
 | required | 11 |
-| completed | 31 |
+| completed | 32 |
 
 | Remake | Count |
 | --- | ---: |
 | absent | 4 |
-| partial | 30 |
-| implemented | 19 |
+| partial | 31 |
+| implemented | 18 |
 | divergent | 7 |
 | not-applicable | 0 |
 
@@ -55,22 +55,22 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | simulation | Count |
 | --- | ---: |
 | not-applicable | 2 |
-| absent | 5 |
+| absent | 4 |
 | partial | 14 |
-| complete | 39 |
+| complete | 40 |
 
 | persistence | Count |
 | --- | ---: |
 | not-applicable | 8 |
-| absent | 4 |
+| absent | 3 |
 | partial | 1 |
-| verified | 47 |
+| verified | 48 |
 
 | presentation | Count |
 | --- | ---: |
-| absent | 6 |
+| absent | 5 |
 | fixture-shell | 5 |
-| functional | 49 |
+| functional | 50 |
 | accepted | 0 |
 
 ### Host
@@ -107,7 +107,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Label | Classic | Host |
 | --- | ---: | ---: |
-| synthetic | 54 | 7 |
+| synthetic | 55 | 7 |
 | route-harness | 39 | 2 |
 | aogm-ordinary | 22 | 2 |
 | other-ordinary | 0 | 0 |
@@ -115,12 +115,11 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **29**.
+Blockers: **1**. Major gaps: **28**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
 - **major** `classic.character.change-appearance` — Creation catalogs exist, but active-character portrait and icon changes have no typed intent or workspace. Next: Add typed appearance-change intents and a package-catalog picker.
-- **major** `classic.character.reorder-party` — Party order cannot be changed through a typed workflow. Next: Add a reorder intent, deterministic mutation, save test, and workspace controls.
 - **major** `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace. Next: Complete the detached character read model and build the full sheet tabs.
 - **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Correct the obscuring tactical layout, then exercise ordinary defeat or retreat and a reward that produces a level-up before presentation acceptance.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Create synthetic Castle fixtures for battle modes 5 and 10 and opcode 48 bonus treasure before changing the package contract.
@@ -166,7 +165,6 @@ Blockers: **1**. Major gaps: **29**.
 
 ### aogm
 
-- `classic.character.reorder-party` — Party order cannot be changed through a typed workflow.
 - `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace.
 - `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
 - `classic.exploration.camp-rest` — Ordinary Camp, held Rest pulses, random interruption, and automatic movement departure are source-shaped and saveable, but timed midnight interruption and two suspicious Castle recovery/order branches remain unresolved.

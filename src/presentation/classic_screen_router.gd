@@ -80,6 +80,8 @@ var _inventory_query: String = ""
 var _inventory_character_id: String = ""
 var _inventory_item_id: String = ""
 var _money_character_id: String = ""
+var _party_order_source_ids: Array[String] = []
+var _party_order_draft_ids: Array[String] = []
 var _presented_campaign_id: String = ""
 var _appearance_textures: Dictionary = {}
 var _combat_icon_touched: bool = false
@@ -108,6 +110,8 @@ func present(view: GameView) -> void:
 		_inventory_character_id = ""
 		_inventory_item_id = ""
 		_money_character_id = ""
+		_party_order_source_ids.clear()
+		_party_order_draft_ids.clear()
 	_presented_campaign_id = view.campaign_id
 	if view.party_setup_available:
 		if _awaiting_draft_generation and view.character_draft != null:
@@ -1093,6 +1097,7 @@ func _render_characters() -> void:
 	if _view.party_members.is_empty():
 		_add_empty_state("No characters", "Begin a campaign or import an eligible vault character.")
 		return
+	_render_party_order()
 	for character: CharacterView in _view.party_members:
 		var detail := "HP %d/%d • SP %d/%d • Armor %d • Move %d/%d\nAge %d • %s • Level %d\nBrawn %d • Knowledge %d • Judgment %d • Agility %d • Vitality %d • Luck %d\nTo hit %d • Dodge %d • Missile %d • Two hand %d • Hand to hand %d • Magic resistance %d\nLoad %d/%d • Experience %d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.armor, character.movement, character.maximum_movement, character.age_years, character.age_group_name, character.level, character.brawn, character.knowledge, character.judgment, character.agility, character.vitality, character.luck, character.to_hit, character.dodge, character.missile, character.two_hand, character.hand_to_hand, character.magic_resistance, character.carried_load, character.maximum_load, character.experience]
 		_add_card(character.name, "Level %d • %s / %s" % [character.level, character.race_name, character.caste_name], detail)
@@ -1101,6 +1106,88 @@ func _render_characters() -> void:
 			if character.condition_values[index] != 0:
 				conditions.append("%d:%d" % [index, character.condition_values[index]])
 		_add_label(_body, "Conditions: %s" % ["None" if conditions.is_empty() else ", ".join(conditions)], MUTED, 13)
+
+
+func _render_party_order() -> void:
+	var current_ids: Array[String] = []
+	var characters_by_id: Dictionary = {}
+	for character: CharacterView in _view.party_members:
+		current_ids.append(character.id)
+		characters_by_id[character.id] = character
+	if current_ids != _party_order_source_ids:
+		_party_order_source_ids = current_ids.duplicate()
+		_party_order_draft_ids = current_ids.duplicate()
+	else:
+		var seen_draft_ids: Dictionary = {}
+		var valid_draft := _party_order_draft_ids.size() == current_ids.size()
+		for character_id: String in _party_order_draft_ids:
+			if seen_draft_ids.has(character_id) or not characters_by_id.has(character_id):
+				valid_draft = false
+				break
+			seen_draft_ids[character_id] = true
+		if not valid_draft:
+			_party_order_draft_ids = current_ids.duplicate()
+	_add_section_heading("Party Order", "Selection and battle formation use this order")
+	var availability := _view.availability(&"reorder_party")
+	for index: int in _party_order_draft_ids.size():
+		var character: CharacterView = characters_by_id[_party_order_draft_ids[index]]
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var label := _label("%d. %s • Level %d %s" % [index + 1, character.name, character.level, character.caste_name], Color("e0e2e5"), 14)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(label)
+		var move_up := Button.new()
+		move_up.text = "Move Up"
+		move_up.disabled = not availability.enabled or index == 0
+		move_up.tooltip_text = availability.reason if not availability.enabled else "Already first." if index == 0 else "Move %s one slot earlier." % character.name
+		if not move_up.disabled:
+			move_up.pressed.connect(_move_party_order_draft.bind(index, -1))
+		row.add_child(move_up)
+		var move_down := Button.new()
+		move_down.text = "Move Down"
+		move_down.disabled = not availability.enabled or index == _party_order_draft_ids.size() - 1
+		move_down.tooltip_text = availability.reason if not availability.enabled else "Already last." if index == _party_order_draft_ids.size() - 1 else "Move %s one slot later." % character.name
+		if not move_down.disabled:
+			move_down.pressed.connect(_move_party_order_draft.bind(index, 1))
+		row.add_child(move_down)
+		_body.add_child(row)
+	var actions := HBoxContainer.new()
+	actions.add_theme_constant_override("separation", 6)
+	var apply := Button.new()
+	apply.text = "Apply Party Order"
+	apply.disabled = not availability.enabled or _party_order_draft_ids == current_ids
+	apply.tooltip_text = availability.reason if not availability.enabled else "Choose a different order first." if _party_order_draft_ids == current_ids else "Commit this complete party permutation."
+	if not apply.disabled:
+		apply.pressed.connect(_submit_party_order)
+	actions.add_child(apply)
+	var cancel := Button.new()
+	cancel.text = "Cancel Order Changes"
+	cancel.disabled = _party_order_draft_ids == current_ids
+	cancel.tooltip_text = "The displayed order already matches the session." if cancel.disabled else "Discard the staged order without changing the party."
+	if not cancel.disabled:
+		cancel.pressed.connect(_cancel_party_order_draft)
+	actions.add_child(cancel)
+	_body.add_child(actions)
+	_body.add_child(HSeparator.new())
+
+
+func _move_party_order_draft(index: int, offset: int) -> void:
+	var destination := index + offset
+	if index < 0 or index >= _party_order_draft_ids.size() or destination < 0 or destination >= _party_order_draft_ids.size():
+		return
+	var moved_character_id: String = _party_order_draft_ids[index]
+	_party_order_draft_ids[index] = _party_order_draft_ids[destination]
+	_party_order_draft_ids[destination] = moved_character_id
+	_render_screen()
+
+
+func _cancel_party_order_draft() -> void:
+	_party_order_draft_ids = _party_order_source_ids.duplicate()
+	_render_screen()
+
+
+func _submit_party_order() -> void:
+	intent_submitted.emit(PlayerIntent.reorder_party(_party_order_draft_ids))
 
 
 func _render_vault() -> void:

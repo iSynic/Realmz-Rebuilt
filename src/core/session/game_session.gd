@@ -158,6 +158,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _finalize_character(intent)
 		PlayerIntent.Kind.REMOVE_PARTY_MEMBER:
 			return _remove_party_member(intent.target_id)
+		PlayerIntent.Kind.REORDER_PARTY:
+			return _reorder_party(intent.selected_ids)
 		PlayerIntent.Kind.EQUIP_ITEM:
 			return _equip_item(intent)
 		PlayerIntent.Kind.UNEQUIP_ITEM:
@@ -354,6 +356,7 @@ func _populate_action_availability(result: GameView) -> void:
 	result.set_action_availability(&"set_character_draft_spells", party_setup and not blocked_by_interaction and draft_active, "Generate the character before choosing spells." if not draft_active else "Resolve the current interaction first." if blocked_by_interaction else "Character creation is available only during party setup.")
 	result.set_action_availability(&"finalize_character", party_setup and not blocked_by_interaction and setup_member_count < setup_member_limit and draft_active, "Resolve the current interaction first." if blocked_by_interaction else "Character creation is available only during party setup." if not party_setup else "Generate and review the character first." if not draft_active else "The party is full.")
 	result.set_action_availability(&"remove_party_member", party_setup and not blocked_by_interaction and setup_member_count > 0, "Resolve the current interaction first." if blocked_by_interaction else "Party members can be removed only during party setup." if not party_setup else "The party is empty.")
+	result.set_action_availability(&"reorder_party", not party_setup and not blocked_by_interaction and not battle_active and setup_member_count > 1, "Resolve the current interaction first." if blocked_by_interaction else "Begin the adventure before changing party order." if party_setup else "Party order is unavailable during battle." if battle_active else "At least two party members are required.")
 	for action_id: StringName in [&"equip_item", &"unequip_item", &"drop_item", &"trade_item"]:
 		result.set_action_availability(action_id, ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Inventory changes are unavailable during battle." if battle_active else "")
 	result.set_action_availability(&"identify_item", false, ordinary_reason if not ordinary_reason.is_empty() else "Identification is available only from a shop, temple, or the Identify spell.")
@@ -1451,6 +1454,18 @@ func _remove_party_member(character_id: String) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"unknown_party_member", "The selected character is not in the setup party.")
 	_state.set_selected_character_ids([])
 	return _finish_completed([DomainEvent.new(&"party_member_removed", {"characterId": character_id})])
+
+
+func _reorder_party(character_ids: Array[String]) -> SessionStep:
+	var current := _state.party.characters()
+	if current.size() < 2:
+		return SessionStep.failed(_view_revision, &"party_order_unavailable", "At least two party members are required to change party order.")
+	var previous_ids: Array[String] = []
+	for character: CharacterState in current:
+		previous_ids.append(character.id)
+	if not _state.party.reorder_characters(character_ids):
+		return SessionStep.failed(_view_revision, &"invalid_party_order", "Party Order requires every current character exactly once.")
+	return _finish_completed([DomainEvent.new(&"party_reordered", {"previousCharacterIds": previous_ids, "characterIds": character_ids.duplicate(), "source": "classic"})])
 
 
 func _character_creation_error(spec: CharacterCreationSpec, existing_names: Dictionary) -> Dictionary:

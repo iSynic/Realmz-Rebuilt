@@ -297,7 +297,8 @@ func _build_menus() -> void:
 		{"label": "Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
 	])
 	_fill_menu($MenuStrip/MenuRow/CharacterMenu, [
-		{"label": "Characters", "route": &"character"},
+		{"label": "Party Order", "route": &"character"},
+		{"label": "Character Sheets", "route": &"character"},
 		{"label": "Inventory", "route": &"inventory"},
 		{"label": "Spells", "route": &"spells"},
 		{"label": "Vault", "route": &"vault"},
@@ -315,7 +316,8 @@ func _build_menus() -> void:
 		{"label": "Adventure — Search", "command": &"search", "disabled_reason": _availability_reason(&"search")},
 		{"label": "Adventure — %s" % camp_label, "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
 		{"label": "Adventure — Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
-		{"label": "Character — Characters", "route": &"character"},
+		{"label": "Character — Party Order", "route": &"character"},
+		{"label": "Character — Character Sheets", "route": &"character"},
 		{"label": "Character — Inventory", "route": &"inventory"},
 		{"label": "Character — Spells", "route": &"spells"},
 		{"label": "Character — Vault", "route": &"vault"},

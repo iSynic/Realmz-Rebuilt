@@ -488,3 +488,12 @@ Next application-workflow priority: use the remaining audit blocker and major-ga
 Flagged rather than copied: Castle adds its signed Poisoned condition value to half-day healing, which appears to increase healing for ordinary positive poison durations. Its timed-encounter location code also guards the y comparison with `recx`, and the `continueday` loop may repeat recovery around multiple records. Timed records are preserved by Providence and mutable in 2.0, but no clock dispatcher is claimed until controlled Castle fixtures settle those branches and the exact age/timed/recovery interruption order.
 
 Next application-workflow priority: follow the regenerated audit queue. Timed midnight dispatch is now visible as its own major gap rather than being hidden inside “time complete”; ordinary AOGM Camp/Rest acceptance and the remaining scroll branches remain separate evidence tasks.
+
+## Current rolling fidelity pass — Party Order
+
+- Completed the AOGM-reachable `classic.character.reorder-party` workflow through Castle/Remake comparison, typed simulation, central persistence, and the Character workspace.
+- Party order is now one complete stable-ID permutation. Duplicate, unknown, omitted, solo, setup, pending-interaction, and battle requests cannot partially mutate the party; accepted requests preserve complete character state and consume no RNG or time.
+- Move Up and Move Down are presentation-owned draft operations. Apply emits one typed intent, while Cancel safely discards the draft under `FD-CHARACTER-003` instead of copying Castle's apparent abort-time out-of-bounds write.
+- The generated audit moves Character management from three missing workflows to two and reports 37 functional Classic workflows, 28 major gaps, one release blocker, and 63 differential cases. Evidence remains synthetic rather than ordinary-play certification.
+
+Next application-workflow priority: use the same Character workspace to close `classic.character.view-sheet`, including the missing disabled/dead and long-content states, before moving to the separate active-character appearance picker.

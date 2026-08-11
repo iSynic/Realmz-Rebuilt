@@ -52,6 +52,23 @@ func remove_character(character_id: String) -> bool:
 	return false
 
 
+func reorder_characters(character_ids: Array[String]) -> bool:
+	if character_ids.size() != _characters.size():
+		return false
+	var by_id: Dictionary = {}
+	for character: CharacterState in _characters:
+		by_id[character.id] = character
+	var seen: Dictionary = {}
+	var reordered: Array[CharacterState] = []
+	for character_id: String in character_ids:
+		if character_id.is_empty() or seen.has(character_id) or not by_id.has(character_id):
+			return false
+		seen[character_id] = true
+		reordered.append(by_id[character_id])
+	_characters = reordered
+	return true
+
+
 func allies() -> Array[MonsterState]:
 	return _allies.duplicate()
 
