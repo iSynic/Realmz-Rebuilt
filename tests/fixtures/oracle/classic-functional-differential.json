@@ -2681,6 +2681,55 @@
       "status": "ordinary-three-denomination-character-pool-transfer-save-presentation-and-lifecycle-audio-verified-contextual-exchange-separate"
     },
     {
+      "id": "economy.pooled-wealth-departure",
+      "workflowIds": ["classic.exploration.travel", "classic.services.swap"],
+      "domain": "economy",
+      "claim": "When a party with no active bank attempts ordinary exploration movement with wealth still pooled, Classic asks whether to distribute it. Declining clears the pool and continues; accepting opens Swap, clears the remainder on Done, and then continues the ordinary movement caller.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake warns with a replacement sound on one exploration-state entry and clears the pool on the next entry. It does not present Castle's yes/no choice, typed Swap distribution, or distinct continue-versus-cancel outcomes.",
+        "sources": [
+          { "path": "src/scripts/states/ExAnim.gd", "symbol": "func enter(" },
+          { "path": "src/scenes/UI/HUD/MoneyRect/MoneyRect.gd", "symbol": "func _on_poolArrow_pressed(" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/buttonchoice.c", "symbol": "short buttonchoice(short skipin)" },
+          { "path": "src/realmz_orig/checkmoneypool.c", "symbol": "void checkmoneypool(void)" },
+          { "path": "src/realmz_orig/moveparty.c", "symbol": "void moveparty(short forward)" },
+          { "path": "src/realmz_orig/threed.c", "symbol": "makemove:" },
+          { "path": "src/realmz_orig/question.c", "symbol": "short question(short stringnum)" },
+          { "path": "src/realmz_orig/swap.c", "symbol": "void swap(void)" }
+        ],
+        "authoredInputs": ["pooled gold, gems, and jewelry", "bank availability", "original movement direction", "destination passability", "party wealth and load"],
+        "observation": "The land movement loop calls checkmoneypool before reading and testing a destination; dungeon movement calls it after nonzero-direction/fatigue checks but before wall handling. With no bank, question 6 quiets all channels and requests sound 20005. No clears all pooled denominations and the caller continues. Yes opens Swap directly, which quiets channels and requests sound 3003 unless reduced sound is enabled; after Done sound 141, all remaining pool values are cleared and ordinary land/dungeon processing continues. moveparty contains a separate internal fallback whose Yes branch returns before coordinate mutation, but ordinary callers normally clear the pool before reaching it.",
+        "unresolved": [
+          "The exact STR# 135 question-6 text is not present in the pinned source tree. Realmz 2.0 labels its prompt as a synthetic reconstruction until an authoritative resource or controlled runtime observation supplies the wording.",
+          "Castle advances tile-specific time on several blocked land/dungeon paths after pool cleanup; Realmz 2.0's broader blocked-movement timing remains a separate exploration gap rather than being inferred into this economy continuation."
+        ]
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [],
+        "expectedRepresentation": "No immutable package field is required. Pool balances, bank availability, movement direction, and the typed continuation are mutable session/save state."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _respond_pooled_wealth_departure(response: InteractionResponse)" },
+        "expectedTrace": ["reject an invalid direction before opening a question", "warn before camp departure and before resolving a valid blocked or open destination", "request question sound 20005", "serialize the exact direction and yes/no request", "decline by clearing the pool and resolving that direction once", "accept by opening typed pooled-wealth distribution with sound 3003", "revalidate Pool, Share, exact transfer identity, denomination, increment, balance, and load", "issue a fresh request identity after every committed transfer", "serialize warning, empty or nonempty distribution, and post-mutation stages", "Done requests sound 141, clears the remainder, and resumes the saved ordinary movement"],
+        "tests": [
+          { "path": "tests/integration/test_money_workflow.gd", "symbol": "func _test_pooled_wealth_departure(content: RealmzContent)" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_bank_component()" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "warning-before-camp-and-passability-banked-blocked-decline-or-accept-continue-save-and-replay-safety-verified"
+    },
+    {
       "id": "economy.classic-bank-swap",
       "workflowIds": ["classic.services.bank"],
       "domain": "economy",

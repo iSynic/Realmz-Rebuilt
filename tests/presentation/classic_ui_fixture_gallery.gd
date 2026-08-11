@@ -16,6 +16,7 @@ const INTERACTIONS: Array[StringName] = [
 	InteractionRequest.SHOP,
 	InteractionRequest.TEMPLE,
 	InteractionRequest.BANK,
+	InteractionRequest.POOLED_WEALTH_DEPARTURE,
 	InteractionRequest.COMBAT,
 ]
 
@@ -91,8 +92,9 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 			payload.merge({"inflationPercent": 100, "partyGold": 25, "identifyPrice": 20, "characters": characters, "stock": [] if empty_values else [{"stockKey": "base:0", "index": 0, "name": "Potion", "buyPrice": 10, "quantity": 1, "canBuy": true, "buyReason": ""}]})
 		InteractionRequest.TEMPLE:
 			payload["characters"] = characters
-		InteractionRequest.BANK:
+		InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE:
 			payload.merge({
+				"mode": "departure" if kind == InteractionRequest.POOLED_WEALTH_DEPARTURE else "bank",
 				"selectedCharacterId": "hero",
 				"pooledWealth": {"gold": 25, "gems": 2, "jewelry": 1},
 				"bankedWealth": {"gold": 0, "gems": 0, "jewelry": 0},

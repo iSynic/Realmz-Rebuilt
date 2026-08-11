@@ -1668,12 +1668,31 @@ func _search() -> SessionStep:
 
 
 func _move(direction: Vector2i) -> SessionStep:
+	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world)
+	if not movement.allowed and movement.reason == &"invalid_direction":
+		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
+	if _state.bank_available and _has_pooled_wealth(_state.party):
+		var banked := _state.party.pooled_wealth.to_data()
+		_rules.economy.pool_to_bank(_state.party)
+		_state.bank_available = false
+		return _move_after_pooled_wealth(direction, [DomainEvent.new(&"pooled_wealth_banked_before_movement", {"wealth": banked, "direction": [direction.x, direction.y]})])
+	if not _state.bank_available and _has_pooled_wealth(_state.party):
+		_session_continuation = {"kind": "pooled-wealth-departure", "stage": "warning", "directionX": direction.x, "directionY": direction.y}
+		_session_interaction = _pooled_wealth_departure_warning("pooled-wealth-departure:%d" % (_view_revision + 1))
+		return _finish_waiting(_session_interaction, [
+			DomainEvent.new(&"pooled_wealth_departure_warning", {"wealth": _state.party.pooled_wealth.to_data(), "direction": [direction.x, direction.y]}),
+			DomainEvent.new(&"sound_requested", {"soundId": 20005, "waitForCompletion": false, "stopExisting": true, "source": "classic-pooled-wealth-departure-question"}),
+		])
+	return _move_after_pooled_wealth(direction)
+
+
+func _move_after_pooled_wealth(direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> SessionStep:
 	if _state.party_camping:
-		return _depart_camp_and_move(direction)
-	return _commit_move(direction)
+		return _depart_camp_and_move(direction, preceding_events)
+	return _commit_move(direction, preceding_events)
 
 
-func _depart_camp_and_move(direction: Vector2i) -> SessionStep:
+func _depart_camp_and_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> SessionStep:
 	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world)
 	if not movement.allowed and movement.reason == &"invalid_direction":
 		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
@@ -1681,10 +1700,10 @@ func _depart_camp_and_move(direction: Vector2i) -> SessionStep:
 	if map == null:
 		return SessionStep.failed(_view_revision, &"unknown_map", "The current map is unavailable for camp departure.")
 	_state.party_camping = false
-	var events: Array[DomainEvent] = [
-		DomainEvent.new(&"camp_mode_changed", {"camping": false, "source": "classic-movement"}),
-		DomainEvent.new(&"camp_departed_for_movement", {"mapId": map.id, "x": _state.party.coordinate.x, "y": _state.party.coordinate.y, "direction": [direction.x, direction.y], "source": "classic"}),
-	]
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	events.append(DomainEvent.new(&"camp_mode_changed", {"camping": false, "source": "classic-movement"}))
+	events.append(DomainEvent.new(&"camp_departed_for_movement", {"mapId": map.id, "x": _state.party.coordinate.x, "y": _state.party.coordinate.y, "direction": [direction.x, direction.y], "source": "classic"}))
 	var timeclicks := 2 if map.level_type == &"dungeon" else 15
 	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, timeclicks, _classic_time_scale(map)))
 	_set_post_time_continuation(map, "move", direction)
@@ -2163,6 +2182,8 @@ func _pending_interaction() -> InteractionRequest:
 
 
 func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
+	if _session_continuation.get("kind") == "pooled-wealth-departure":
+		return _respond_pooled_wealth_departure(response)
 	if _session_continuation.get("kind") == "service-interaction":
 		return _respond_runtime_service(response)
 	if _session_continuation.get("kind") == "drop-item-confirmation":
@@ -2215,6 +2236,124 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 		return _complete_post_time(events)
 	_session_continuation.clear()
 	return _finish_completed(events)
+
+
+func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionStep:
+	var stage := String(_session_continuation.get("stage", ""))
+	var direction := Vector2i(int(_session_continuation.get("directionX", 0)), int(_session_continuation.get("directionY", 0)))
+	if stage == "warning":
+		if response.kind != InteractionRequest.YES_NO or not response.payload.get("accepted") is bool:
+			return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Pooled-wealth departure requires a yes/no response.")
+		if response.payload["accepted"]:
+			_session_continuation["stage"] = "distribution"
+			_session_interaction = _pooled_wealth_departure_distribution_request("pooled-wealth-departure:%d" % (_view_revision + 1))
+			return _finish_waiting(_session_interaction, [
+				DomainEvent.new(&"pooled_wealth_distribution_opened", {"wealth": _state.party.pooled_wealth.to_data()}),
+				DomainEvent.new(&"sound_requested", {"soundId": 3003, "waitForCompletion": false, "stopExisting": true, "source": "classic-pooled-wealth-departure"}),
+			])
+		var discarded := _state.party.pooled_wealth.to_data()
+		_state.party.pooled_wealth = WealthState.new()
+		_session_interaction = null
+		_session_continuation.clear()
+		return _move_after_pooled_wealth(direction, [DomainEvent.new(&"pooled_wealth_left_behind", {"wealth": discarded, "movementContinues": true})])
+	if stage != "distribution" or response.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or not response.payload.get("action") is String:
+		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Pooled-wealth distribution requires a typed money action.")
+	var action: String = response.payload["action"]
+	var selected_character_id := String(response.payload.get("characterId", response.payload.get("selectedCharacterId", "")))
+	if not selected_character_id.is_empty() and _state.party.character_by_id(selected_character_id) == null:
+		return SessionStep.failed(_view_revision, &"unknown_money_target", "The selected pooled-wealth character is unavailable.")
+	var events: Array[DomainEvent] = []
+	if action == "leave":
+		var discarded := _state.party.pooled_wealth.to_data()
+		_state.party.pooled_wealth = WealthState.new()
+		_session_interaction = null
+		_session_continuation.clear()
+		return _move_after_pooled_wealth(direction, [
+			DomainEvent.new(&"pooled_wealth_left_behind", {"wealth": discarded, "movementContinues": true}),
+			DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-done"}),
+		])
+	match action:
+		"pool":
+			var probe := _rules.economy.pool_probe(_state.party)
+			if not probe.allowed:
+				return SessionStep.failed(_view_revision, &"money_action_unavailable", probe.reason)
+			_rules.economy.pool_party_wealth(_state.party)
+			_recalculate_party_movement()
+			events.append(DomainEvent.new(&"wealth_pooled", {"source": "classic-pooled-wealth-departure", "wealth": _state.party.pooled_wealth.to_data()}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-pool"}))
+		"share":
+			var probe := _rules.economy.share_probe(_state.party)
+			if not probe.allowed:
+				return SessionStep.failed(_view_revision, &"money_action_unavailable", probe.reason)
+			_rules.economy.share_pooled_wealth(_state.party)
+			_recalculate_party_movement()
+			events.append(DomainEvent.new(&"wealth_shared", {"source": "classic-pooled-wealth-departure", "remaining": _state.party.pooled_wealth.to_data()}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-share"}))
+		"to-pool", "to-character":
+			if not response.payload.get("characterId") is String or not response.payload.get("denomination") is String or not response.payload.get("amount") is int:
+				return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Pooled-wealth Swap requires character, denomination, and amount.")
+			var character := _state.party.character_by_id(response.payload["characterId"])
+			var kind := _money_kind(response.payload["denomination"])
+			var amount := int(response.payload["amount"])
+			if character == null or kind < 0:
+				return SessionStep.failed(_view_revision, &"unknown_money_target", "The selected pooled-wealth transfer is unavailable.")
+			if amount != EconomyRules.classic_transfer_increment(kind as WealthState.Kind):
+				return SessionStep.failed(_view_revision, &"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
+			var to_character := action == "to-character"
+			var probe := _rules.economy.transfer_probe(_state.party, character, kind as WealthState.Kind, amount, to_character)
+			if not probe.allowed:
+				return SessionStep.failed(_view_revision, &"money_action_unavailable", probe.reason)
+			var transferred := _rules.economy.transfer_pool_to_character(_state.party, character, kind as WealthState.Kind, amount) if to_character else _rules.economy.transfer_character_to_pool(_state.party, character, kind as WealthState.Kind, amount)
+			if not transferred:
+				return SessionStep.failed(_view_revision, &"money_action_unavailable", "The selected pooled-wealth transfer is no longer available.")
+			_recalculate_party_movement()
+			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-pooled-wealth-departure", "characterId": character.id, "direction": action, "kind": response.payload["denomination"], "amount": amount}))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-swap"}))
+		_:
+			return SessionStep.failed(_view_revision, &"unknown_money_action", "Pooled-wealth action '%s' is unavailable." % action)
+	_session_interaction = _pooled_wealth_departure_distribution_request("pooled-wealth-departure:%d" % (_view_revision + 1), selected_character_id)
+	return _finish_waiting(_session_interaction, events)
+
+
+static func _pooled_wealth_departure_warning(request_id: String) -> InteractionRequest:
+	return InteractionRequest.yes_no(request_id, "The party still has wealth in the shared pool. Distribute it before leaving?", "Distribute", "Leave it behind")
+
+
+func _pooled_wealth_departure_distribution_request(request_id: String, selected_character_id: String = "") -> InteractionRequest:
+	return _pooled_wealth_departure_distribution_request_for_state(_state, request_id, selected_character_id)
+
+
+static func _pooled_wealth_departure_distribution_request_for_state(state: GameState, request_id: String, selected_character_id: String = "") -> InteractionRequest:
+	var economy := EconomyRules.new()
+	var characters: Array[Dictionary] = []
+	for character: CharacterState in state.party.characters():
+		var transfers: Array[Dictionary] = []
+		for denomination: String in ["gold", "gems", "jewelry"]:
+			var kind := _money_kind(denomination)
+			var amount := EconomyRules.classic_transfer_increment(kind as WealthState.Kind)
+			var to_pool := economy.transfer_probe(state.party, character, kind as WealthState.Kind, amount, false)
+			var to_character := economy.transfer_probe(state.party, character, kind as WealthState.Kind, amount, true)
+			transfers.append({"denomination": denomination, "amount": amount, "toPool": _economy_action_payload(to_pool), "toCharacter": _economy_action_payload(to_character)})
+		characters.append({"id": character.id, "name": character.name, "wealth": character.money.to_data(), "load": character.carried_load, "maximumLoad": character.maximum_load, "transfers": transfers})
+	if state.party.character_by_id(selected_character_id) == null and not characters.is_empty():
+		selected_character_id = characters[0]["id"]
+	return InteractionRequest.new(request_id, InteractionRequest.POOLED_WEALTH_DEPARTURE, {
+		"mode": "departure",
+		"selectedCharacterId": selected_character_id,
+		"pooledWealth": state.party.pooled_wealth.to_data(),
+		"bankedWealth": state.party.banked_wealth.to_data(),
+		"pool": _economy_action_payload(economy.pool_probe(state.party)),
+		"share": _economy_action_payload(economy.share_probe(state.party)),
+		"characters": characters,
+	})
+
+
+static func _economy_action_payload(probe: EconomyActionProbe) -> Dictionary:
+	return {"enabled": probe != null and probe.allowed, "reason": "" if probe != null and probe.allowed else "Action availability is unavailable." if probe == null else probe.reason}
+
+
+static func _has_pooled_wealth(party: PartyState) -> bool:
+	return party != null and (party.pooled_wealth.gold != 0 or party.pooled_wealth.gems != 0 or party.pooled_wealth.jewelry != 0)
 
 
 func _respond_item_use_target(response: InteractionResponse) -> SessionStep:
@@ -2651,6 +2790,30 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 
 
 static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	if continuation.get("kind") == "pooled-wealth-departure":
+		var departure_fields: Array[String] = ["kind", "stage", "directionX", "directionY"]
+		if continuation.size() != departure_fields.size() or vm_interaction != null or session_interaction == null or state.party == null or state.bank_available:
+			return false
+		for field: String in departure_fields:
+			if not continuation.has(field):
+				return false
+		if not continuation["stage"] is String or not continuation["directionX"] is int or not continuation["directionY"] is int:
+			return false
+		var departure_direction := Vector2i(continuation["directionX"], continuation["directionY"])
+		var departure_probe := content.world.probe_movement(state.party.map_id, state.party.coordinate, departure_direction, state.world)
+		if not departure_probe.allowed and departure_probe.reason == &"invalid_direction":
+			return false
+		match String(continuation["stage"]):
+			"warning":
+				return _has_pooled_wealth(state.party) and session_interaction.to_data() == _pooled_wealth_departure_warning(session_interaction.request_id).to_data()
+			"distribution":
+				if session_interaction.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or session_interaction.payload.get("mode") != "departure" or not session_interaction.payload.get("selectedCharacterId") is String:
+					return false
+				var selected_character_id: String = session_interaction.payload["selectedCharacterId"]
+				if state.party.character_by_id(selected_character_id) == null:
+					return false
+				return session_interaction.to_data() == _pooled_wealth_departure_distribution_request_for_state(state, session_interaction.request_id, selected_character_id).to_data()
+		return false
 	if continuation.get("kind") == "service-interaction":
 		if continuation.size() != 3 or vm_interaction != null or session_interaction == null or not continuation.get("serviceId") is String or not continuation.get("runtimeContinuation") is Dictionary:
 			return false

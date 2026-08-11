@@ -8,12 +8,16 @@ var _transfer_rows: VBoxContainer
 
 
 func build(request: InteractionRequest) -> void:
+	var departure_mode: bool = request.kind == InteractionRequest.POOLED_WEALTH_DEPARTURE or String(request.payload.get("mode", "")) == "departure"
 	var pooled := request.payload.get("pooledWealth", {}) as Dictionary
 	var banked := request.payload.get("bankedWealth", {}) as Dictionary
-	add_hint("Bank-backed Swap")
+	add_hint("Distribute pooled wealth before leaving" if departure_mode else "Bank-backed Swap")
 	add_hint("Pool: %d gold • %d gems • %d jewelry" % [int(pooled.get("gold", 0)), int(pooled.get("gems", 0)), int(pooled.get("jewelry", 0))])
-	add_hint("Deposited until departure: %d gold • %d gems • %d jewelry" % [int(banked.get("gold", 0)), int(banked.get("gems", 0)), int(banked.get("jewelry", 0))])
-	add_hint("Opening the bank moves deposited wealth into the pool. Done closes Swap; leaving the location returns the remaining pool to the bank.")
+	if departure_mode:
+		add_hint("Done leaves any unassigned wealth behind, then continues this movement attempt.")
+	else:
+		add_hint("Deposited until departure: %d gold • %d gems • %d jewelry" % [int(banked.get("gold", 0)), int(banked.get("gems", 0)), int(banked.get("jewelry", 0))])
+		add_hint("Opening the bank moves deposited wealth into the pool. Done closes Swap; leaving the location returns the remaining pool to the bank.")
 	var characters: Variant = request.payload.get("characters", [])
 	if characters is Array:
 		for character: Variant in characters:

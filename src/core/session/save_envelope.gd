@@ -164,6 +164,18 @@ static func _migrate(value: Variant) -> Variant:
 static func _normalize_session_continuation(value: Dictionary) -> Variant:
 	if value.is_empty():
 		return {}
+	if value.get("kind") == "pooled-wealth-departure":
+		var departure_fields: Array[String] = ["kind", "stage", "directionX", "directionY"]
+		if value.size() != departure_fields.size():
+			return null
+		for field: String in departure_fields:
+			if not value.has(field):
+				return null
+		var departure_x := _signed_integer(value["directionX"])
+		var departure_y := _signed_integer(value["directionY"])
+		if not value["stage"] is String or value["stage"] not in ["warning", "distribution"] or departure_x < -1 or departure_x > 1 or departure_y < -1 or departure_y > 1 or Vector2i(departure_x, departure_y) == Vector2i.ZERO:
+			return null
+		return {"kind": "pooled-wealth-departure", "stage": value["stage"], "directionX": departure_x, "directionY": departure_y}
 	if value.get("kind") == "service-interaction":
 		if value.size() != 3 or not value.get("serviceId") is String or value["serviceId"].is_empty() or not value.get("runtimeContinuation") is Dictionary:
 			return null

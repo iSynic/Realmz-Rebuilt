@@ -2,15 +2,35 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const CORRECTION_PATH: String = "res://tests/fixtures/oracle/money-share-capacity-correction.json"
+const DEPARTURE_OBSERVATION_PATH: String = "res://tests/fixtures/oracle/classic-pooled-wealth-departure-source-observation.json"
 
 
 func run() -> void:
 	_test_share_capacity_correction()
+	_test_pooled_departure_source_observation()
 	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
 	assert_true(loaded.is_ok(), "money workflow starts from the validated package fixture")
 	if not loaded.is_ok():
 		return
 	_test_session_money_workflow(loaded.content)
+	_test_pooled_wealth_departure(loaded.content)
+
+
+func _test_pooled_departure_source_observation() -> void:
+	var fixture: Variant = JSON.parse_string(FileAccess.get_file_as_string(DEPARTURE_OBSERVATION_PATH))
+	assert_true(fixture is Dictionary, "pooled-wealth departure source observation parses")
+	if not fixture is Dictionary:
+		return
+	assert_equal(fixture.get("caseId"), "economy.pooled-wealth-departure", "the source observation remains linked to its differential case")
+	var branches: Array = fixture.get("branches", [])
+	assert_equal(branches.size(), 2, "the source observation owns both no-bank choices")
+	if branches.size() == 2:
+		assert_true(String(branches[0].get("outcome", "")).contains("continue"), "declining distribution continues ordinary movement")
+		assert_true(String(branches[1].get("outcome", "")).contains("continue"), "accepted distribution continues the ordinary caller")
+	var moveparty_source := (fixture.get("sources", []) as Array).filter(func(source: Dictionary) -> bool: return String(source.get("path", "")).ends_with("moveparty.c"))
+	assert_equal(moveparty_source.size(), 1, "the observation distinguishes the internal moveparty fallback")
+	if moveparty_source.size() == 1:
+		assert_true(String(moveparty_source[0].get("observation", "")).contains("fallback"), "the internal early-return path is not generalized to ordinary travel")
 
 
 func _test_share_capacity_correction() -> void:
@@ -99,6 +119,124 @@ func _test_session_money_workflow(content: RealmzContent) -> void:
 	var final_restore := GameSession.new()
 	assert_equal(final_restore.restore(content, SaveEnvelope.from_data(restored.snapshot().to_data())).state, SessionStep.State.COMPLETED, "shared personal wealth restores transactionally")
 	assert_equal(final_restore._state.party.to_data(), restored._state.party.to_data(), "save restoration preserves complete pooled, personal, load, and movement state")
+
+
+func _test_pooled_wealth_departure(content: RealmzContent) -> void:
+	var blocked_session := _departure_session(content, 109)
+	if blocked_session == null:
+		return
+	var invalid := blocked_session.submit_intent(PlayerIntent.move(Vector2i(2, 0)))
+	assert_equal(invalid.error_code, &"invalid_direction", "an invalid direction fails before the pooled-wealth warning")
+	assert_equal(blocked_session._state.party.pooled_wealth.gold, 10, "invalid movement preserves pooled wealth")
+	var blocked_warning := blocked_session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	assert_equal([blocked_warning.state, blocked_warning.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO], "a no-bank movement attempt warns before resolving a blocked destination")
+	assert_equal(blocked_session.view().party_coordinate, Vector2i(1, 1), "the warning commits no movement")
+	assert_equal(blocked_session._state.party.pooled_wealth.gold, 10, "the warning commits no wealth loss")
+	assert_true(blocked_warning.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 20005 and event.payload.get("stopExisting") == true), "the pooled-wealth question requests Castle's quiet-and-question sound")
+	var warning_save_data := blocked_session.snapshot().to_data()
+	var invalid_direction_data: Dictionary = warning_save_data.duplicate(true)
+	invalid_direction_data["sessionContinuation"]["directionX"] = 2
+	assert_equal(SaveEnvelope.from_data(invalid_direction_data), null, "the save envelope rejects an out-of-range pooled-departure direction")
+	var forged_request_data: Dictionary = warning_save_data.duplicate(true)
+	forged_request_data["sessionInteraction"]["payload"]["prompt"] = "Forged prompt"
+	var forged_request_envelope := SaveEnvelope.from_data(forged_request_data)
+	assert_not_null(forged_request_envelope, "a JSON-safe forged request reaches semantic restore validation")
+	if forged_request_envelope != null:
+		var forged_request_session := GameSession.new()
+		assert_equal(forged_request_session.restore(content, forged_request_envelope).error_code, &"invalid_session_continuation", "restore rejects a request that does not match its pooled-departure continuation")
+	var blocked_restored := GameSession.new()
+	assert_equal(blocked_restored.restore(content, SaveEnvelope.from_data(warning_save_data)).state, SessionStep.State.COMPLETED, "the warning restores through the central save aggregate")
+	var blocked_decline := blocked_restored.respond(InteractionResponse.yes_no(blocked_restored.view().pending_interaction, false))
+	assert_equal(blocked_restored._state.party.pooled_wealth.gold, 0, "declining distribution clears the abandoned pool")
+	assert_equal(blocked_restored.view().party_coordinate, Vector2i(1, 1), "declining continues into the original blocked movement result")
+	assert_true(blocked_decline.events.any(func(event: DomainEvent) -> bool: return event.kind == &"movement_blocked"), "the blocked destination is resolved only after the no-bank choice")
+
+	var distribute_session := _departure_session(content, 110)
+	if distribute_session == null:
+		return
+	var distribution_warning := distribute_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
+	var warning_restored := GameSession.new()
+	assert_equal(warning_restored.restore(content, SaveEnvelope.from_data(distribute_session.snapshot().to_data())).state, SessionStep.State.COMPLETED, "an allowed movement warning restores before its response")
+	var distribution := warning_restored.respond(InteractionResponse.yes_no(warning_restored.view().pending_interaction, true))
+	assert_equal([distribution.state, distribution.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.POOLED_WEALTH_DEPARTURE], "accepting the warning opens typed pooled-wealth distribution")
+	assert_equal(warning_restored.view().party_coordinate, Vector2i(1, 1), "opening Swap pauses the pending movement until distribution ends")
+	assert_true(distribution.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 3003 and event.payload.get("stopExisting") == true), "direct Castle Swap entry quiets existing audio and requests sound 3003")
+	var distribution_restored := GameSession.new()
+	assert_equal(distribution_restored.restore(content, SaveEnvelope.from_data(warning_restored.snapshot().to_data())).state, SessionStep.State.COMPLETED, "the pooled distribution workspace restores transactionally")
+	var request := distribution_restored.view().pending_interaction
+	var character_id: String = distribution_restored._state.party.characters()[0].id
+	var forged := distribution_restored.respond(InteractionResponse.new(request.request_id, InteractionRequest.POOLED_WEALTH_DEPARTURE, {"action": "to-character", "characterId": character_id, "denomination": "gold", "amount": 1}))
+	assert_equal(forged.error_code, &"invalid_money_increment", "a forged non-Classic transfer fails without closing the restored workspace")
+	assert_equal(distribution_restored._state.party.pooled_wealth.gold, 10, "the rejected transfer preserves exact pooled wealth")
+	request = distribution_restored.view().pending_interaction
+	var transfer_response := InteractionResponse.new(request.request_id, InteractionRequest.POOLED_WEALTH_DEPARTURE, {"action": "to-character", "characterId": character_id, "denomination": "gold", "amount": 5})
+	var transferred := distribution_restored.respond(transfer_response)
+	assert_equal(transferred.state, SessionStep.State.WAITING_FOR_INTERACTION, "an exact Swap transfer keeps the distribution workspace active")
+	assert_equal([distribution_restored._state.party.pooled_wealth.gold, distribution_restored._state.party.character_by_id(character_id).money.gold], [5, 5], "the departure Swap transfers one exact Classic increment")
+	assert_true(transferred.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 10051), "pool-to-character departure Swap requests Castle sound 10051")
+	assert_equal(distribution_restored.respond(transfer_response).error_code, &"interaction_mismatch", "a response from the prior distribution revision cannot replay a committed transfer")
+	request = distribution_restored.view().pending_interaction
+	var shared := distribution_restored.respond(InteractionResponse.new(request.request_id, InteractionRequest.POOLED_WEALTH_DEPARTURE, {"action": "share"}))
+	assert_equal(shared.state, SessionStep.State.WAITING_FOR_INTERACTION, "Share may drain the pool while keeping the source modal open for Done")
+	assert_equal(distribution_restored._state.party.pooled_wealth.to_data(), {"gold": 0, "gems": 0, "jewelry": 0}, "departure Share processes jewelry, gems, and gold from the same pooled workspace")
+	var mutation_restored := GameSession.new()
+	assert_equal(mutation_restored.restore(content, SaveEnvelope.from_data(distribution_restored.snapshot().to_data())).state, SessionStep.State.COMPLETED, "an empty post-Share pool and its still-pending Done workspace restore together")
+	request = mutation_restored.view().pending_interaction
+	var done := mutation_restored.respond(InteractionResponse.new(request.request_id, InteractionRequest.POOLED_WEALTH_DEPARTURE, {"action": "leave"}))
+	assert_equal(done.state, SessionStep.State.COMPLETED, "Done closes Swap and resumes the ordinary movement path")
+	assert_equal(mutation_restored._state.party.pooled_wealth.gold, 0, "Done leaves no pooled remainder after Share")
+	assert_equal(mutation_restored.view().party_coordinate, Vector2i.ZERO, "ordinary checkmoneypool resumes the original movement after Swap closes")
+	assert_true(done.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 141), "Done requests Castle's Swap-close sound")
+
+	var continue_session := _departure_session(content, 111)
+	if continue_session == null:
+		return
+	var continue_warning := continue_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
+	var continued := continue_session.respond(InteractionResponse.yes_no(continue_warning.interaction, false))
+	assert_equal(continued.state, SessionStep.State.COMPLETED, "declining distribution resolves the original allowed movement")
+	assert_equal(continue_session.view().party_coordinate, Vector2i.ZERO, "declining continues through the saved diagonal direction exactly once")
+	assert_equal(continue_session._state.party.pooled_wealth.gold, 0, "continued movement leaves no pooled wealth behind")
+
+	var bank_session := _departure_session(content, 112)
+	if bank_session == null:
+		return
+	bank_session._state.bank_available = true
+	var banked_block := bank_session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
+	assert_equal(banked_block.state, SessionStep.State.COMPLETED, "bank-backed pooled wealth resolves without a question before a blocked attempt")
+	assert_equal(bank_session._state.party.pooled_wealth.to_data(), {"gold": 0, "gems": 0, "jewelry": 0}, "pre-movement banking clears every pooled denomination")
+	assert_equal(bank_session._state.party.banked_wealth.to_data(), {"gold": 10, "gems": 1, "jewelry": 1}, "pre-movement banking preserves all denominations")
+	assert_false(bank_session._state.bank_available, "pre-movement banking disables the location bank even when the destination is blocked")
+	assert_true(banked_block.events.any(func(event: DomainEvent) -> bool: return event.kind == &"movement_blocked"), "the blocked destination resolves after banking")
+
+	var camp_session := _departure_session(content, 113)
+	if camp_session == null:
+		return
+	assert_equal(camp_session.submit_intent(PlayerIntent.camp()).state, SessionStep.State.COMPLETED, "departure ordering fixture enters camp")
+	var camp_clock := [camp_session.view().realmz_day, camp_session.view().realmz_hour, camp_session.view().realmz_minute]
+	var camp_warning := camp_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
+	assert_equal(camp_warning.state, SessionStep.State.WAITING_FOR_INTERACTION, "camp movement resolves pooled wealth before camp departure")
+	assert_true(camp_session._state.party_camping, "the pooled warning has not yet cleared camp state")
+	assert_equal([camp_session.view().realmz_day, camp_session.view().realmz_hour, camp_session.view().realmz_minute], camp_clock, "the pooled warning has not yet advanced camp-departure time")
+	var camp_departure := camp_session.respond(InteractionResponse.yes_no(camp_warning.interaction, false))
+	var camp_event_kinds: Array[StringName] = []
+	for event: DomainEvent in camp_departure.events:
+		camp_event_kinds.append(event.kind)
+	assert_true(camp_event_kinds.find(&"pooled_wealth_left_behind") < camp_event_kinds.find(&"camp_mode_changed"), "pool cleanup precedes camp clearing in the committed event trace")
+	assert_false(camp_session._state.party_camping, "declining distribution resumes the source camp-departure path")
+
+
+func _departure_session(content: RealmzContent, seed: int) -> GameSession:
+	var pair := _playable_pair(content)
+	assert_equal(pair.size(), 2, "departure workflow fixture supplies a compatible race and class")
+	if pair.size() != 2:
+		return null
+	var session := GameSession.new()
+	assert_equal(session.start(content, seed).state, SessionStep.State.COMPLETED, "pooled-wealth departure session starts")
+	var character := _character("money.departure.%d" % seed, "Traveler", pair[0] as RaceDefinition, pair[1] as CasteDefinition, WealthState.new(10, 1, 1))
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "d".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "departure character enters party setup")
+	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "departure fixture begins the adventure")
+	assert_equal(session.submit_intent(PlayerIntent.money_action(&"pool")).state, SessionStep.State.COMPLETED, "departure fixture enters movement with pooled wealth")
+	return session
 
 
 func _playable_pair(content: RealmzContent) -> Array:

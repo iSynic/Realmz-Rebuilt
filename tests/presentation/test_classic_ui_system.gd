@@ -269,6 +269,24 @@ func _test_bank_component() -> void:
 	], "bank presenter emits exact typed Swap and Done responses")
 	component.free()
 
+	var departure_request := InteractionRequest.new("departure.fixture", InteractionRequest.POOLED_WEALTH_DEPARTURE, request.payload.merged({"mode": "departure"}, true))
+	var departure_component := BankInteraction.new()
+	var departure_payloads: Array[Dictionary] = []
+	departure_component.payload_submitted.connect(func(payload: Dictionary) -> void: departure_payloads.append(payload))
+	departure_component.build(departure_request)
+	var departure_labels: Array[String] = []
+	for node: Node in departure_component.find_children("*", "Label", true, false):
+		departure_labels.append((node as Label).text)
+	assert_true(departure_labels.any(func(text: String) -> bool: return text.contains("Distribute pooled wealth before leaving")), "pooled departure renders its distinct Classic workflow heading")
+	assert_true(departure_labels.any(func(text: String) -> bool: return text.contains("continues this movement attempt")), "pooled departure explains the ordinary checkmoneypool Done outcome")
+	assert_false(departure_labels.any(func(text: String) -> bool: return text.contains("Deposited until departure")), "pooled departure does not present bank-only state as part of no-bank Swap")
+	var departure_done := departure_component.find_children("*", "Button", true, false).filter(func(button: Node) -> bool: return (button as Button).text == "Done")[0] as Button
+	departure_done.pressed.emit()
+	assert_equal(departure_payloads, [{"action": "leave"}], "pooled departure emits the same exact typed Done payload as Swap")
+	var typed_response := InteractionPresenter.response_for(departure_request, departure_payloads[0])
+	assert_equal([typed_response.request_id, typed_response.kind, typed_response.payload], ["departure.fixture", InteractionRequest.POOLED_WEALTH_DEPARTURE, {"action": "leave"}], "pooled departure preserves request identity through the typed presenter boundary")
+	departure_component.free()
+
 
 func _test_money_workspace_audio() -> void:
 	var router := ClassicScreenRouter.new()
@@ -409,7 +427,7 @@ func _test_action_availability() -> void:
 
 func _test_fixture_gallery_coverage() -> void:
 	assert_equal(ClassicUiFixtureGallery.screen_cases().size(), 81, "all nine screens have nine fixture states")
-	assert_equal(ClassicUiFixtureGallery.interaction_cases().size(), 126, "all fourteen interaction kinds have nine fixture states")
+	assert_equal(ClassicUiFixtureGallery.interaction_cases().size(), 135, "all fifteen interaction kinds have nine fixture states")
 	for interaction: StringName in ClassicUiFixtureGallery.INTERACTIONS:
 		assert_true(ClassicUiFixtureGallery.request_for(interaction).is_supported_kind(), "gallery interaction %s is a supported typed request" % interaction)
 	var age_component := AgeUpdateInteraction.new()

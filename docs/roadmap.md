@@ -396,7 +396,7 @@ Next application-workflow priority: reconstruct the nine Classic temple services
 - The temple workspace is a typed character-first interaction: it displays health, personal and pooled affordability, load, the first five conditions, all nine prices/descriptions, and explicit disabled states. Service selection, insufficient funds, Pool, Share, bank-backed exit, and nested no-bank exit confirmation all remain saveable session continuations.
 - Providence schema v2 already preserves the signed action operand, conditions, trained abilities, wealth, curse identity, and equipped state. No package or compiler migration is required. The differential ledger now contains 48 validated cases.
 
-Flagged boundaries: Castle invokes global macro 5 before temple entry; that application hook is not yet implemented. Castle's Yes branch at the no-bank pooled-wealth warning opens the complete manual Swap workspace; 2.0 safely returns to its Pool/Share controls and requires an explicit No before wealth is discarded, but this is still a workflow gap rather than full parity. Castle also performs a pooled-wealth check while leaving a location, which is not yet attached to movement. Negative temple percentages are source-valid but likely an authoring/input defect and should be revisited only with scenario evidence.
+Flagged boundaries: Castle invokes global macro 5 before temple entry; that application hook is not yet implemented. The no-bank pooled-wealth departure gap recorded during this temple pass is now closed by the later typed Swap continuation. Negative temple percentages are source-valid but likely an authoring/input defect and should be revisited only with scenario evidence.
 
 The application workflow audit selected ordinary treasure and terminal battle return as the next complete tranche. The implementation below closes the default reward path while retaining Castle's special battle modes and incidental random drops as explicit evidence gaps.
 
@@ -529,7 +529,7 @@ Next application-workflow priority: return to the audit's AOGM queue. The adjace
 - Providence schema v2 needs no change. Opcode 49 is already compiled and all banked, pooled, and personal denominations are mutable session state.
 - The regenerated audit reports 37 functional Classic workflows, 28 major gaps, one host release blocker, and 66 bidirectionally linked differential cases. Bank-backed Swap is functional from source, simulation, persistence, and presentation evidence; it is not certified because no ordinary campaign bank route has been exercised. Shop and Temple moved from functional to partial after the audit exposed their missing global application hooks; that count correction is evidence hygiene, not a regression in their implemented subsets.
 
-Flagged rather than hidden: Castle's bank is visually the generic Swap modal, while 2.0 keeps a separately labelled Bank command for discoverability. This does not alter the source mutation sequence. Money-changing rates, the no-bank pooled-wealth departure warning, and ordinary-campaign bank acceptance remain separate workflow gaps.
+Flagged rather than hidden: Castle's bank is visually the generic Swap modal, while 2.0 keeps a separately labelled Bank command for discoverability. This does not alter the source mutation sequence. Money-changing rates and ordinary-campaign bank acceptance remain separate workflow gaps; the no-bank pooled-wealth departure workflow is completed in the following pass.
 
 Next batch priority: finish the coherent service-workflow closeout through one ordinary AOGM contextual service route, then return to the regenerated major-gap queue rather than reopening isolated economy formulas.
 
@@ -541,3 +541,16 @@ Next batch priority: finish the coherent service-workflow closeout through one o
 - Focused Tier 2 verification covers the route state machine and the existing audio presenter path. This closes `GAP-SVC-006`; contextual money-changing rates remain separate.
 
 Flagged preference boundary: Castle persists `reducesound` and uses it to suppress modal ambience such as sound 3003 while retaining button, transfer, and Done sounds. Realmz 2.0's default-audio sequence is source-shaped, but the preference itself is now tracked as `GAP-SYS-003` until modal sounds are comprehensively classified.
+
+### No-bank pooled-wealth departure
+
+- Castle resolves a nonempty no-bank money pool before destination passability. Realmz 2.0 now yields one save-owned yes/no warning for every valid direction, including a direction that will later be blocked; malformed directions still fail before opening the warning.
+- The question requests Castle sound 20005 after stopping existing audio. Declining clears all three pooled denominations and resolves the original direction exactly once. Accepting opens typed Swap with sound 3003; Pool, Share, exact transfers, and their unavailable reasons remain core-owned.
+- Done requests sound 141, clears any remaining pool, and resumes the saved ordinary movement exactly once. Declining does the same after clearing the pool. Warning, distribution, empty-pool, and post-transfer states restore transactionally through the existing `.r2save` v3 continuation envelope; forged directions, stale response IDs, and mismatched request payloads are rejected.
+- `classic-pooled-wealth-departure-source-observation.json` records the pinned control flow. The exact STR# 135 question-6 wording is absent from the source tree, so the current prompt is explicitly synthetic and remains eligible for replacement by an authoritative resource/runtime observation.
+- Providence schema v2 needs no change because this workflow consumes only mutable session state. Remake's one-entry warning/next-entry clearing behavior is recorded as divergent rather than ported.
+- Castle's separate internal `moveparty` fallback returns before coordinate mutation after accepted distribution, but ordinary land and dungeon callers invoke `checkmoneypool` earlier and continue. The ordinary application workflow follows those callers rather than substituting the fallback.
+- The audit now records `GAP-EXP-006`: Castle advances tile-specific time on several blocked land and dungeon attempts, while 2.0 currently publishes `movement_blocked` without that downstream time/random processing. That is a distinct major movement gap requiring its own archaeology and fixture.
+- The regenerated audit reports 36 functional Classic workflows, 29 major gaps, one host release blocker, and 67 bidirectionally linked differential cases. The completed pooled-wealth variant remains inside Travel and Swap; Travel becomes partial because the newly evidenced blocked-time variant is unresolved.
+
+This is the third focused workflow commit in the service/money batch. Batch closeout now requires one aggregate verification, one coherent MCP walkthrough, and one final source-intelligence regeneration.

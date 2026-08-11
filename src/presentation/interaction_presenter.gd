@@ -96,7 +96,7 @@ func _component_for(kind: StringName) -> InteractionComponent:
 			return ShopInteraction.new()
 		&"temple_action":
 			return TempleInteraction.new()
-		&"bank_action":
+		&"bank_action", &"pooled_wealth_departure":
 			return BankInteraction.new()
 		&"combat_action":
 			return BattleInteraction.new()
@@ -197,6 +197,8 @@ static func _heading_for_kind(kind: StringName) -> String:
 			return "Temple"
 		&"bank_action":
 			return "Bank"
+		&"pooled_wealth_departure":
+			return "Pooled Wealth"
 		&"combat_action":
 			return "Battle"
 	return _title_for_kind(kind)
