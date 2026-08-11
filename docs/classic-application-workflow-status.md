@@ -109,7 +109,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | --- | ---: | ---: |
 | synthetic | 57 | 7 |
 | route-harness | 39 | 2 |
-| aogm-ordinary | 22 | 2 |
+| aogm-ordinary | 22 | 3 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
@@ -216,7 +216,6 @@ Blockers: **1**. Major gaps: **24**.
 - `classic.startup.end-adventure` — Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
 - `classic.system.preferences` — Classic's reduced-sound preference is not represented.
 - `classic.system.quit` — Typed Quit choices and host transaction ordering are characterized, but the real window-close notification and save-repository failure path lack composition-root proof.
-- `host.package.validation-progress` — Asynchronous validation, progress, cancellation, and teardown are proven synthetically but not yet exercised through the running application root.
 
 ## Coverage caveats
 
