@@ -18,42 +18,38 @@ func build(request: InteractionRequest) -> void:
 				add_response_to(attack_row, "%s %s • HP %d/%d" % [verb, target.get("name", "Enemy"), int(target.get("currentHealth", 0)), int(target.get("maximumHealth", 0))], {"actorId": actor_id, "action": "attack", "targetId": String(target.get("id", ""))})
 	elif weapon_mode == "melee":
 		add_hint(String(request.payload.get("meleeAttackReason", "No adjacent melee target.")))
+	if weapon_mode == "missile" and not action_ids.has("attack"):
+		var ranged: Variant = request.payload.get("rangedAttack", {})
+		var ranged_reason := String(ranged.get("reason", "Missile attacks are unavailable.") if ranged is Dictionary else "Missile attacks are unavailable.")
+		add_response("Fire missile unavailable", {}, false, ranged_reason)
+	_add_primary_action_row(request, actor_id, action_ids)
 	var movement: Variant = request.payload.get("movement", [])
 	if movement is Array:
 		var movement_by_direction: Dictionary = {}
 		for option: Variant in movement:
 			if option is Dictionary:
 				movement_by_direction[_direction_key(option.get("direction", []))] = option
-		var movement_grid := GridContainer.new()
-		movement_grid.columns = 3
-		movement_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		add_child(movement_grid)
-		for direction: Vector2i in [Vector2i(-1, -1), Vector2i.UP, Vector2i(1, -1), Vector2i.LEFT, Vector2i.ZERO, Vector2i.RIGHT, Vector2i(-1, 1), Vector2i.DOWN, Vector2i.ONE]:
-			if direction == Vector2i.ZERO:
-				var center := Label.new()
-				center.text = "Move"
-				center.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-				center.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-				movement_grid.add_child(center)
-				continue
+		var movement_row := HFlowContainer.new()
+		movement_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		add_child(movement_row)
+		for direction: Vector2i in [Vector2i(-1, -1), Vector2i.UP, Vector2i(1, -1), Vector2i.LEFT, Vector2i.RIGHT, Vector2i(-1, 1), Vector2i.DOWN, Vector2i.ONE]:
 			var option: Variant = movement_by_direction.get(_direction_key([direction.x, direction.y]))
 			if not option is Dictionary:
-				var spacer := Control.new()
-				spacer.custom_minimum_size.y = 36.0
-				movement_grid.add_child(spacer)
 				continue
 			var destination: Variant = option.get("destination", [])
 			var edge_retreat := bool(option.get("retreat", false))
-			var label := "Leave battle %s" % _direction_label(option.get("direction", [])) if edge_retreat else "Move %s • %d MP" % [_direction_label(option.get("direction", [])), int(option.get("cost", 0))]
+			var direction_label := _direction_label(option.get("direction", []))
+			var label := "Leave %s" % direction_label if edge_retreat else "%s • %d MP" % [direction_label, int(option.get("cost", 0))]
+			var full_label := "Leave battle %s" % direction_label if edge_retreat else "Move %s • %d MP" % [direction_label, int(option.get("cost", 0))]
 			var action := "retreat_edge" if edge_retreat else "move"
 			var response := {"actorId": actor_id, "action": action, "targetId": "", "destination": destination}
 			if edge_retreat:
 				response["forced"] = bool(option.get("forcedRetreat", false))
-			add_response_to(movement_grid, label, response, bool(option.get("enabled", false)), String(option.get("reason", "Movement unavailable.")))
-	if weapon_mode == "missile" and not action_ids.has("attack"):
-		var ranged: Variant = request.payload.get("rangedAttack", {})
-		var ranged_reason := String(ranged.get("reason", "Missile attacks are unavailable.") if ranged is Dictionary else "Missile attacks are unavailable.")
-		add_response("Fire missile unavailable", {}, false, ranged_reason)
+			var enabled := bool(option.get("enabled", false))
+			var reason := String(option.get("reason", "Movement unavailable."))
+			var button := add_response_to(movement_row, label, response, enabled, reason)
+			if enabled:
+				button.tooltip_text = full_label
 	var spell_casts: Variant = request.payload.get("spellCasts", [])
 	if action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty():
 		var spell_picker := OptionButton.new()
@@ -203,6 +199,9 @@ func build(request: InteractionRequest) -> void:
 		item_row.add_child(use_button)
 	elif not String(request.payload.get("itemCastReason", "")).is_empty():
 		add_response("Use item unavailable", {}, false, String(request.payload.get("itemCastReason")))
+
+
+func _add_primary_action_row(request: InteractionRequest, actor_id: String, action_ids: Array) -> void:
 	var weapon_switch: Variant = request.payload.get("weaponSwitch", {})
 	var action_row := HFlowContainer.new()
 	action_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL

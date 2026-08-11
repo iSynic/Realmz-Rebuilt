@@ -120,6 +120,9 @@ func _capture_gallery() -> void:
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT))
 	await _settle()
 	await _capture("wide-combat-tactical-workspace-1920x1080")
+	await _resize(Vector2i(960, 600))
+	await _settle()
+	await _capture("standard-combat-tactical-workspace-960x600")
 	_interaction.present(null)
 	gallery_view.combat_view = null
 	var settings := PresentationSettings.new()

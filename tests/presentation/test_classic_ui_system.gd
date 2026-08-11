@@ -82,9 +82,9 @@ func _test_battle_weapon_mode_component() -> void:
 			fire_button = button
 		elif button.text == "Switch to melee":
 			switch_button = button
-		elif button.text.begins_with("Move N "):
+		elif button.text.begins_with("N "):
 			move_button = button
-		elif button.text == "Leave battle W":
+		elif button.text == "Leave W":
 			edge_button = button
 		elif button.text == "Finish turn":
 			finish_button = button
@@ -101,11 +101,14 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_not_null(switch_button, "the source-backed no-cost mode toggle remains available")
 	assert_not_null(move_button, "the typed battle component exposes a source-probed tactical step")
 	assert_not_null(edge_button, "the typed battle component distinguishes edge Escape from ordinary movement")
+	assert_equal(move_button.tooltip_text, "Move N • 1 MP", "compact movement labels retain their complete directional and movement-point meaning")
+	assert_equal(edge_button.tooltip_text, "Leave battle W", "compact edge movement retains its complete battle-exit meaning")
 	assert_not_null(finish_button, "the Classic Finish command remains distinct from Defend")
 	assert_true(escape_button != null and escape_button.disabled and escape_button.tooltip_text == "An enemy is too close.", "the explicit Escape control exposes the core-owned unavailable reason")
 	assert_not_null(cast_button, "the battle component exposes a core-proven spell, power, and target option")
 	assert_not_null(use_item_button, "the battle component exposes a core-proven charged item, power, and target option")
 	assert_not_null(add_target_button, "the battle component exposes an explicit ordered repeated-target selection control")
+	assert_true(finish_button.get_parent().get_index() < move_button.get_parent().get_index(), "primary turn controls precede the compact movement chooser in the bottom command deck")
 	var spell_picker := component.get_children().filter(func(child: Node) -> bool: return child is OptionButton)[0] as OptionButton
 	assert_equal(spell_picker.get_item_text(1), "Wave • P1 • 3 SP → Everybody", "automatic group spells render their typed label without fabricating one target's HP")
 	switch_button.pressed.emit()
