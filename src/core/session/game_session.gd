@@ -1718,10 +1718,10 @@ func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []
 		var blocked := _movement_blocked(movement.reason)
 		if preceding_events.is_empty():
 			return blocked
-		var events: Array[DomainEvent] = []
-		events.assign(preceding_events)
-		events.append_array(blocked.events)
-		return _finish_completed(events)
+		var blocked_events: Array[DomainEvent] = []
+		blocked_events.assign(preceding_events)
+		blocked_events.append_array(blocked.events)
+		return _finish_completed(blocked_events)
 	var target_map := movement.target_map
 	var target_coordinate := movement.target_coordinate
 	var transition := movement.transition
