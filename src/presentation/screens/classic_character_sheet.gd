@@ -1,0 +1,347 @@
+class_name ClassicCharacterSheet
+extends VBoxContainer
+
+signal character_selected(character_id: String)
+signal tab_changed(tab_id: StringName)
+
+const GOLD := Color("d5b45d")
+const MUTED := Color("9aa0a8")
+const GOOD := Color("75c889")
+const BAD := Color("ef7770")
+const TABS: Array[Dictionary] = [
+	{"id": &"overview", "label": "Overview"},
+	{"id": &"conditions", "label": "Conditions & Saves"},
+	{"id": &"equipment", "label": "Equipment"},
+	{"id": &"abilities", "label": "Abilities"},
+	{"id": &"spells", "label": "Spells"},
+	{"id": &"background", "label": "Race, Class & Aging"},
+	{"id": &"record", "label": "Lifetime Record"},
+]
+
+var _characters: Array[CharacterView] = []
+var _selected_character_id: String = ""
+var _active_tab: StringName = &"overview"
+var _textures: Dictionary = {}
+var _text_scale: float = 1.0
+var _content: VBoxContainer
+
+
+func present(characters: Array[CharacterView], initial_character_id: String = "", textures: Dictionary = {}, text_scale: float = 1.0, initial_tab: StringName = &"overview") -> void:
+	_characters = characters.duplicate()
+	_textures = textures
+	_text_scale = clampf(text_scale, 1.0, 1.5)
+	_active_tab = initial_tab if _tab_exists(initial_tab) else &"overview"
+	_selected_character_id = initial_character_id
+	if _selected_character() == null and not _characters.is_empty():
+		_selected_character_id = _characters[0].id
+	_rebuild()
+
+
+func selected_character_id() -> String:
+	return _selected_character_id
+
+
+func active_tab() -> StringName:
+	return _active_tab
+
+
+func _rebuild() -> void:
+	_clear(self)
+	add_theme_constant_override("separation", 8)
+	if _characters.is_empty():
+		_add_label(self, "No characters are available for inspection.", MUTED)
+		return
+	_build_character_picker()
+	var character := _selected_character()
+	_build_identity(character)
+	_build_tabs()
+	_content = VBoxContainer.new()
+	_content.name = "CharacterSheetContent"
+	_content.add_theme_constant_override("separation", 8)
+	add_child(_content)
+	match _active_tab:
+		&"conditions":
+			_build_conditions(character)
+		&"equipment":
+			_build_equipment(character)
+		&"abilities":
+			_build_abilities(character)
+		&"spells":
+			_build_spells(character)
+		&"background":
+			_build_background(character)
+		&"record":
+			_build_record(character)
+		_:
+			_build_overview(character)
+
+
+func _build_character_picker() -> void:
+	var picker := HFlowContainer.new()
+	picker.name = "CharacterPicker"
+	picker.add_theme_constant_override("h_separation", 6)
+	picker.add_theme_constant_override("v_separation", 6)
+	for character: CharacterView in _characters:
+		var button := Button.new()
+		button.text = character.name
+		button.toggle_mode = true
+		button.button_pressed = character.id == _selected_character_id
+		button.tooltip_text = "View %s without changing session state." % character.name
+		button.pressed.connect(_select_character.bind(character.id))
+		picker.add_child(button)
+	add_child(picker)
+
+
+func _build_identity(character: CharacterView) -> void:
+	var frame := PanelContainer.new()
+	frame.theme_type_variation = &"ClassicInset"
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	frame.add_child(row)
+	row.add_child(_appearance(character.portrait_id, character.name.left(1), "Portrait"))
+	var identity := VBoxContainer.new()
+	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	identity.add_theme_constant_override("separation", 2)
+	row.add_child(identity)
+	_add_label(identity, character.name, GOLD, 22)
+	_add_label(identity, "Level %d %s %s • %s • Age %d (%s)" % [character.level, character.race_name, character.caste_name, character.gender_name, character.age_years, character.age_group_name])
+	_add_label(identity, "HP %d/%d • SP %d/%d • Load %d/%d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.carried_load, character.maximum_load], BAD if character.current_health <= 0 else Color("e0e2e5"))
+	row.add_child(_appearance(character.combat_icon_id, "⚔", "Combat icon"))
+	add_child(frame)
+
+
+func _build_tabs() -> void:
+	var tabs := HFlowContainer.new()
+	tabs.name = "CharacterSheetTabs"
+	tabs.add_theme_constant_override("h_separation", 4)
+	tabs.add_theme_constant_override("v_separation", 4)
+	for tab: Dictionary in TABS:
+		var button := Button.new()
+		button.text = String(tab["label"])
+		button.toggle_mode = true
+		button.button_pressed = StringName(tab["id"]) == _active_tab
+		button.pressed.connect(_select_tab.bind(StringName(tab["id"])))
+		tabs.add_child(button)
+	add_child(tabs)
+
+
+func _build_overview(character: CharacterView) -> void:
+	_add_heading(_content, "Attributes")
+	_add_metrics(_content, [
+		_metric("Brawn", character.brawn), _metric("Knowledge", character.knowledge), _metric("Judgment", character.judgment),
+		_metric("Agility", character.agility), _metric("Vitality", character.vitality), _metric("Luck", character.luck),
+	])
+	_add_heading(_content, "Combat and resources")
+	_add_metrics(_content, [
+		_metric("Attack Bonus", character.attack_bonus), _metric("Defense Bonus", character.defense_bonus), _metric("Base To Hit", character.to_hit), _metric("Armor", character.armor),
+		_metric("Dodge", character.dodge), _metric("Missile", character.missile),
+		_metric("Two-Hand", character.two_hand), _metric("Hand-to-Hand", character.hand_to_hand), _metric("Damage Bonus", character.damage_bonus),
+		_metric("Magic Resistance", character.magic_resistance), _metric("Attacks / Round", 0, character.attacks_per_round),
+		_metric("Movement", character.movement, "%d / %d" % [character.movement, character.maximum_movement]), _metric("Experience", character.experience),
+	])
+	_add_heading(_content, "Personal wealth")
+	_add_metrics(_content, [_metric("Gold", character.gold), _metric("Gems", character.gems), _metric("Jewelry", character.jewelry)])
+
+
+func _build_conditions(character: CharacterView) -> void:
+	_add_heading(_content, "Conditions")
+	if character.conditions.is_empty():
+		_add_label(_content, "No active conditions.", MUTED)
+	else:
+		_add_metric_views(_content, character.conditions)
+	_add_heading(_content, "Saving throws", "Castle displays all eight DRVs")
+	_add_metric_views(_content, character.saving_throws)
+
+
+func _build_equipment(character: CharacterView) -> void:
+	_add_heading(_content, "Equipment and carried items", "%d of 30 slots" % character.items.size())
+	if character.items.is_empty():
+		_add_label(_content, "This character carries no items.", MUTED)
+		return
+	for item: ItemView in character.items:
+		var state: Array[String] = ["Equipped" if item.equipped else "Carried", "Identified" if item.identified else "Unidentified"]
+		if item.charges != 0:
+			state.append("%d charges" % item.charges)
+		_add_card(_content, item.name, " • ".join(state), "%d weight • value %d\n%s" % [item.weight, item.value, item.description])
+
+
+func _build_abilities(character: CharacterView) -> void:
+	_add_heading(_content, "Special modifiers", "Bonuses against Castle monster types")
+	if character.special_modifiers.is_empty():
+		_add_label(_content, "No active special modifiers.", MUTED)
+	else:
+		_add_metric_views(_content, character.special_modifiers)
+	_add_heading(_content, "Special abilities")
+	if character.abilities.is_empty():
+		_add_label(_content, "No active special abilities.", MUTED)
+	else:
+		_add_metric_views(_content, character.abilities)
+
+
+func _build_spells(character: CharacterView) -> void:
+	_add_heading(_content, "Known spells", "%d spell points available" % character.spell_points)
+	if character.spells.is_empty():
+		_add_label(_content, "This character knows no spells.", MUTED)
+	else:
+		for spell: SpellView in character.spells:
+			_add_card(_content, spell.name, "Class %d • Cost %d • Range %d–%d" % [spell.spell_class, spell.cost, spell.range_min, spell.range_max], spell.description)
+	_add_heading(_content, "Scroll case", "%d fixed Classic slots" % character.scrolls.size())
+	for scroll: SpellScrollView in character.scrolls:
+		var empty := scroll.spell_id.is_empty()
+		_add_label(_content, "Slot %d • %s" % [scroll.slot_index + 1, "Empty" if empty else "%s • Power %d" % [scroll.spell_name, scroll.power]], MUTED if empty else Color("e0e2e5"))
+
+
+func _build_background(character: CharacterView) -> void:
+	_add_heading(_content, character.race_name)
+	_add_label(_content, character.race_description if not character.race_description.is_empty() else "No race description is present in this package.", MUTED)
+	_add_metric_views(_content, character.race_traits)
+	_add_heading(_content, character.caste_name)
+	_add_label(_content, character.caste_description if not character.caste_description.is_empty() else "No class description is present in this package.", MUTED)
+	_add_metric_views(_content, character.caste_traits)
+	_add_heading(_content, "Aging", "Viewing this table never mutates the character")
+	for band: CharacterAgeBandView in character.age_bands:
+		var changes: Array[String] = []
+		for change: CharacterMetricView in band.changes:
+			if change.value != 0:
+				changes.append("%s %+d" % [change.name, change.value])
+		_add_card(_content, "%s%s" % ["Current • " if band.active else "", band.name], "Ages %d–%d" % [band.minimum_age, band.maximum_age], "No changes" if changes.is_empty() else " • ".join(changes))
+
+
+func _build_record(character: CharacterView) -> void:
+	_add_heading(_content, "Lifetime combat record and prestige")
+	if not character.record_available:
+		_add_label(_content, character.record_unavailable_reason, BAD)
+		_add_label(_content, "Castle derives prestige from hits, misses, damage, kills, deaths, knockouts, spells, turns, destroyed foes, and penalties. Showing zero would be misleading.", MUTED)
+
+
+func _select_character(character_id: String) -> void:
+	if character_id == _selected_character_id:
+		return
+	_selected_character_id = character_id
+	character_selected.emit(character_id)
+	_rebuild()
+
+
+func _select_tab(tab_id: StringName) -> void:
+	if tab_id == _active_tab:
+		return
+	_active_tab = tab_id
+	tab_changed.emit(tab_id)
+	_rebuild()
+
+
+func _selected_character() -> CharacterView:
+	for character: CharacterView in _characters:
+		if character.id == _selected_character_id:
+			return character
+	return null
+
+
+func _tab_exists(tab_id: StringName) -> bool:
+	for tab: Dictionary in TABS:
+		if StringName(tab["id"]) == tab_id:
+			return true
+	return false
+
+
+func _appearance(asset_id: String, fallback_text: String, role: String) -> PanelContainer:
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = Vector2(68, 68)
+	var texture := _textures.get(asset_id) as Texture2D
+	if texture != null:
+		var image := TextureRect.new()
+		image.texture = texture
+		image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		image.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		image.tooltip_text = role
+		frame.add_child(image)
+	else:
+		var fallback := _label(fallback_text if not fallback_text.is_empty() else "?", MUTED, 18)
+		fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		fallback.tooltip_text = "%s media unavailable." % role
+		frame.add_child(fallback)
+	return frame
+
+
+func _add_metrics(parent: Container, metrics: Array[CharacterMetricView]) -> void:
+	_add_metric_views(parent, metrics)
+
+
+func _add_metric_views(parent: Container, metrics: Array[CharacterMetricView]) -> void:
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 3)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for metric: CharacterMetricView in metrics:
+		var name_label := _label(metric.name, MUTED, 14)
+		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if not metric.detail.is_empty():
+			name_label.tooltip_text = metric.detail
+		grid.add_child(name_label)
+		var value_text := metric.detail if metric.value in [0, 1] and metric.detail in ["Yes", "No"] else "%+d" % metric.value if metric.value > 0 else str(metric.value)
+		if not metric.detail.is_empty() and metric.name in ["Attacks / Round", "Movement"]:
+			value_text = metric.detail
+		elif metric.detail == "Permanent":
+			value_text = "Permanent"
+		var value_label := _label(value_text, GOOD if metric.value > 0 else BAD if metric.value < 0 else Color("e0e2e5"), 14)
+		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		if not metric.detail.is_empty():
+			value_label.tooltip_text = metric.detail
+		grid.add_child(value_label)
+	parent.add_child(grid)
+
+
+func _metric(metric_name: String, value: int, detail: String = "") -> CharacterMetricView:
+	return CharacterMetricView.new(StringName(metric_name.to_lower().replace(" ", "-")), 0, metric_name, value, detail)
+
+
+func _add_heading(parent: Container, title: String, detail: String = "") -> void:
+	var row := HBoxContainer.new()
+	var heading := _label(title, GOLD, 18)
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(heading)
+	if not detail.is_empty():
+		var note := _label(detail, MUTED, 13)
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		row.add_child(note)
+	parent.add_child(row)
+
+
+func _add_card(parent: Container, title: String, subtitle: String, detail: String) -> void:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = &"ClassicInset"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	panel.add_child(box)
+	_add_label(box, title, GOLD, 16)
+	_add_label(box, subtitle, Color("e0e2e5"), 14)
+	if not detail.is_empty():
+		_add_label(box, detail, MUTED, 13)
+	parent.add_child(panel)
+
+
+func _label(text: String, color: Color = Color.WHITE, font_size: int = 15) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_font_size_override("font_size", int(round(float(font_size) * _text_scale)))
+	return label
+
+
+func _add_label(parent: Container, text: String, color: Color = Color.WHITE, font_size: int = 15) -> Label:
+	var label := _label(text, color, font_size)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	parent.add_child(label)
+	return label
+
+
+func _clear(parent: Node) -> void:
+	for child: Node in parent.get_children():
+		parent.remove_child(child)
+		child.queue_free()

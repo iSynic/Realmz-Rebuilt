@@ -497,3 +497,13 @@ Next application-workflow priority: follow the regenerated audit queue. Timed mi
 - The generated audit moves Character management from three missing workflows to two and reports 37 functional Classic workflows, 28 major gaps, one release blocker, and 63 differential cases. Evidence remains synthetic rather than ordinary-play certification.
 
 Next application-workflow priority: use the same Character workspace to close `classic.character.view-sheet`, including the missing disabled/dead and long-content states, before moving to the separate active-character appearance picker.
+
+## Current rolling fidelity pass — Classic character inspection
+
+- Reconstructed the Character workspace around Castle's complete inspection family instead of extending the old summary cards. Seven presentation-owned tabs expose overview, conditions and saves, equipment, abilities, spells, race/class/aging, and the lifetime record from detached `CharacterView` data.
+- Added source-backed names for all forty condition slots, eight saves, eight documented monster-special categories, known trained abilities, three personal wealth denominations, attacks-per-round display, race/caste descriptions and traits, and all five age rows. Disabled/dead and long-content states are covered by the typed presentation fixture.
+- `FD-CHARACTER-004` corrects Castle's view-time Aging mutation: the active age row is derived for display without changing the session-owned current age group. Providence schema v2 already preserves the required race/caste and aging metadata, so no compiler change is required.
+- Lifetime prestige remains explicitly unavailable because Realmz 2.0 does not yet track Castle's lifetime combat-history counters. Several ability labels sourced from absent native STR# resources remain honest generic slot labels. Both are audit gaps, not silent defaults.
+- The regenerated audit reports 60 Classic workflows, 8 host workflows, 1 blocker, 28 major gaps, 37 functional Classic workflows, and 64 bidirectionally linked differential cases. Character-sheet presentation is functional, but the workflow remains partial until lifetime history is owned.
+
+Next application-workflow priority: select the next reachable gap from the generated queue. Active-character appearance change is the adjacent absent workflow; lifetime history should be scheduled only with the combat/magic mutation audit it requires.

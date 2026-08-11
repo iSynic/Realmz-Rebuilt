@@ -33,16 +33,16 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Castle oracle | Count |
 | --- | ---: |
-| not-required | 17 |
+| not-required | 16 |
 | required | 11 |
-| completed | 32 |
+| completed | 33 |
 
 | Remake | Count |
 | --- | ---: |
 | absent | 4 |
 | partial | 31 |
-| implemented | 18 |
-| divergent | 7 |
+| implemented | 17 |
+| divergent | 8 |
 | not-applicable | 0 |
 
 | providence | Count |
@@ -69,8 +69,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | presentation | Count |
 | --- | ---: |
 | absent | 5 |
-| fixture-shell | 5 |
-| functional | 50 |
+| fixture-shell | 4 |
+| functional | 51 |
 | accepted | 0 |
 
 ### Host
@@ -120,7 +120,7 @@ Blockers: **1**. Major gaps: **28**.
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
 - **major** `classic.character.change-appearance` — Creation catalogs exist, but active-character portrait and icon changes have no typed intent or workspace. Next: Add typed appearance-change intents and a package-catalog picker.
-- **major** `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace. Next: Complete the detached character read model and build the full sheet tabs.
+- **major** `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
 - **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Correct the obscuring tactical layout, then exercise ordinary defeat or retreat and a reward that produces a level-up before presentation acceptance.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Create synthetic Castle fixtures for battle modes 5 and 10 and opcode 48 bonus treasure before changing the package contract.
 - **major** `classic.exploration.camp-rest` — Ordinary Camp, held Rest pulses, random interruption, and automatic movement departure are source-shaped and saveable, but timed midnight interruption and two suspicious Castle recovery/order branches remain unresolved. Next: Resolve the timed scheduler and poisoned-recovery behavior with controlled Castle fixtures, then add a serializable midnight continuation without changing the verified ordinary Camp/Rest path.
@@ -165,7 +165,6 @@ Blockers: **1**. Major gaps: **28**.
 
 ### aogm
 
-- `classic.character.view-sheet` — The character route is not yet the complete Classic inspection workspace.
 - `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
 - `classic.exploration.camp-rest` — Ordinary Camp, held Rest pulses, random interruption, and automatic movement departure are source-shaped and saveable, but timed midnight interruption and two suspicious Castle recovery/order branches remain unresolved.
 - `classic.exploration.time-fatigue-light` — The clock imports timed-encounter definitions but does not dispatch them when their scheduled day is reached.
@@ -200,6 +199,7 @@ Blockers: **1**. Major gaps: **28**.
 
 - `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete.
 - `classic.character.change-appearance` — Creation catalogs exist, but active-character portrait and icon changes have no typed intent or workspace.
+- `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately.
 - `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end.
 - `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end.
 - `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified.
@@ -210,6 +210,7 @@ Blockers: **1**. Major gaps: **28**.
 - `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented.
 - `classic.services.bank` — Banking transfers only gold although session state stores more Classic wealth denominations.
 - `classic.startup.end-adventure` — There is no typed end-adventure boundary distinct from process quit or campaign replacement.
+- `classic.character.view-sheet` — Several nonzero Classic ability slots lack verified display names.
 - `classic.system.preferences` — Classic's editable stock spell/race/caste names are not represented and may conflict with immutable package content.
 
 ### polish

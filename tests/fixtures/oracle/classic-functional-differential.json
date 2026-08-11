@@ -3313,6 +3313,61 @@
       },
       "availability": "implemented",
       "status": "full-permutation-state-preservation-save-restore-and-safe-cancel-verified"
+    },
+    {
+      "id": "character.classic-sheet-inspection",
+      "workflowIds": ["classic.character.view-sheet"],
+      "domain": "character",
+      "claim": "Character inspection presents Castle's identity, attributes, combat statistics, personal wealth, conditions, saves, equipment, spells, special modifiers and abilities, race and caste definitions, and five aging bands from detached state without mutating the character.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake's creature panel presents a useful summary layout for generic statistics, resistances, tags, and lore, but it does not reproduce Castle's character inspection substates and reads host gameplay objects directly.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/Characters Panel/creature_info_panel.gd", "symbol": "func populate(cdata)" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/viewcharacter.c", "symbol": "void viewcharacter(short view, short mode)" },
+          { "path": "src/realmz_orig/showstats.c", "symbol": "void ShowStats(short showprestige)" },
+          { "path": "src/realmz_orig/showcondition.c", "symbol": "short showcondition(short start, short stop, short type, short showonly, short who)" },
+          { "path": "src/realmz_orig/showitems-showspecial.c", "symbol": "void showspecial(void)" },
+          { "path": "src/realmz_orig/race.c", "symbol": "void Race(short mode)" },
+          { "path": "src/realmz_orig/class.c", "symbol": "void Caste(short mode)" }
+        ],
+        "authoredInputs": ["complete character record", "race definition and five age rows", "caste definition", "item and spell identities", "portrait and combat icon resources"],
+        "observation": "Castle's main sheet and modal branches expose the complete bounded inspection set. Its Aging branch derives the highlighted row from age but also writes currentagegroup while merely viewing the table.",
+        "unresolved": [
+          "Castle prestige depends on lifetime hits, misses, damage, kills, deaths, knockouts, turns, spells, destroyed foes, and penalty counters that Realmz 2.0 does not yet track.",
+          "Several ability names live only in unavailable native STR# resources; their exact slots and values are preserved with explicit generic labels rather than guessed names."
+        ]
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races(project: &ProvidenceProject)" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes(project: &ProvidenceProject)" }
+        ],
+        "expectedRepresentation": "Schema v2 preserves race and caste descriptions, complete class traits, all five age ranges and change rows, character appearance identities, items, and spells required by inspection."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/view/character_view.gd", "symbol": "class_name CharacterView" },
+        "expectedTrace": ["construct immutable named character metrics from session state and package definitions", "derive the display-only active age band without changing CharacterState", "render each Classic inspection subworkspace through presentation-owned tabs", "keep lifetime prestige visibly unavailable until every source counter has a mutation owner"],
+        "tests": [
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_character_sheet_workspace()" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-CHARACTER-004",
+        "fixturePath": "tests/fixtures/oracle/character-age-inspection-correction.json",
+        "fixtureSha256": "509b0a796568adfc543724b692fa61819d630826f398783f733825123b777c68"
+      },
+      "availability": "implemented",
+      "status": "detached-seven-tab-inspection-and-nonmutating-age-highlight-verified-lifetime-prestige-and-unknown-native-ability-labels-explicit"
     }
   ]
 }

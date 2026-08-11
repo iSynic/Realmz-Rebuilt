@@ -82,6 +82,8 @@ var _inventory_item_id: String = ""
 var _money_character_id: String = ""
 var _party_order_source_ids: Array[String] = []
 var _party_order_draft_ids: Array[String] = []
+var _character_sheet_character_id: String = ""
+var _character_sheet_tab: StringName = &"overview"
 var _presented_campaign_id: String = ""
 var _appearance_textures: Dictionary = {}
 var _combat_icon_touched: bool = false
@@ -112,6 +114,8 @@ func present(view: GameView) -> void:
 		_money_character_id = ""
 		_party_order_source_ids.clear()
 		_party_order_draft_ids.clear()
+		_character_sheet_character_id = ""
+		_character_sheet_tab = &"overview"
 	_presented_campaign_id = view.campaign_id
 	if view.party_setup_available:
 		if _awaiting_draft_generation and view.character_draft != null:
@@ -1098,14 +1102,14 @@ func _render_characters() -> void:
 		_add_empty_state("No characters", "Begin a campaign or import an eligible vault character.")
 		return
 	_render_party_order()
-	for character: CharacterView in _view.party_members:
-		var detail := "HP %d/%d • SP %d/%d • Armor %d • Move %d/%d\nAge %d • %s • Level %d\nBrawn %d • Knowledge %d • Judgment %d • Agility %d • Vitality %d • Luck %d\nTo hit %d • Dodge %d • Missile %d • Two hand %d • Hand to hand %d • Magic resistance %d\nLoad %d/%d • Experience %d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.armor, character.movement, character.maximum_movement, character.age_years, character.age_group_name, character.level, character.brawn, character.knowledge, character.judgment, character.agility, character.vitality, character.luck, character.to_hit, character.dodge, character.missile, character.two_hand, character.hand_to_hand, character.magic_resistance, character.carried_load, character.maximum_load, character.experience]
-		_add_card(character.name, "Level %d • %s / %s" % [character.level, character.race_name, character.caste_name], detail)
-		var conditions: Array[String] = []
-		for index: int in character.condition_values.size():
-			if character.condition_values[index] != 0:
-				conditions.append("%d:%d" % [index, character.condition_values[index]])
-		_add_label(_body, "Conditions: %s" % ["None" if conditions.is_empty() else ", ".join(conditions)], MUTED, 13)
+	_ensure_appearance_textures()
+	var sheet := ClassicCharacterSheet.new()
+	sheet.name = "ClassicCharacterSheet"
+	sheet.present(_view.party_members, _character_sheet_character_id, _appearance_textures, _settings.text_scale, _character_sheet_tab)
+	_character_sheet_character_id = sheet.selected_character_id()
+	sheet.character_selected.connect(func(character_id: String) -> void: _character_sheet_character_id = character_id)
+	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _character_sheet_tab = tab_id)
+	_body.add_child(sheet)
 
 
 func _render_party_order() -> void:

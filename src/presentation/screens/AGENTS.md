@@ -16,6 +16,7 @@
 - The Services workspace always exposes ordinary money management after party setup, even when no location service is active. It selects one detached party member and renders all three denomination transfers without deriving balance, increment, or capacity rules.
 - Newly mounted route screens begin at the top after keyboard focus is restored; same-route rerenders restore their prior offset only after focus restoration, and scroll state must not leak across workspaces.
 - Exploration and Combat share the shell's spatial stage rather than mounting explanatory body cards. Combat controls stay in the bottom interaction region so the actor-centered battlefield and persistent roster remain visible.
+- The Character workspace uses `ClassicCharacterSheet` for presentation-owned character and tab selection. It renders detached overview, conditions/saves, equipment, abilities, spells, race/class/aging, and lifetime-record availability without emitting gameplay mutations or inventing missing prestige history.
 
 # Work Guidance
 

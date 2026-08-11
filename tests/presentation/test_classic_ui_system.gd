@@ -25,6 +25,7 @@ func run() -> void:
 	_test_inventory_workspace()
 	_test_money_workspace()
 	_test_party_order_workspace()
+	_test_character_sheet_workspace()
 	_test_party_roster()
 	_test_scene_composition()
 
@@ -931,6 +932,93 @@ func _test_party_order_workspace() -> void:
 	var blocked_move: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Move Down")[0]
 	assert_true(blocked_move.disabled and blocked_move.tooltip_text.contains("battle"), "unavailable Party Order remains visible with the core-owned reason")
 	router.free()
+
+
+func _test_character_sheet_workspace() -> void:
+	var character := CharacterState.new("character.sheet", "A Character Name Long Enough To Exercise Responsive Wrapping", -10, 18)
+	character.level = 7
+	character.experience = 12_345
+	character.age_days = 37 * 365
+	character.age_group = 3
+	character.race_id = "classic.race.1"
+	character.caste_id = "classic.caste.2"
+	character.gender = 2
+	character.brawn = 17
+	character.knowledge = 14
+	character.judgment = 13
+	character.agility = 16
+	character.vitality = 15
+	character.luck = 12
+	character.to_hit = 28
+	character.dodge = 31
+	character.missile = 24
+	character.two_hand = 9
+	character.hand_to_hand = 4
+	character.damage_bonus = 3
+	character.armor = 42
+	character.magic_resistance = 11
+	character.normal_attacks = 2
+	character.attack_bonus = 1
+	character.spell_points = 9
+	character.maximum_spell_points = 22
+	character.maximum_movement = 14
+	character.carried_load = 63
+	character.maximum_load = 120
+	character.money.gold = 77
+	character.money.gems = 2
+	character.money.jewelry = 1
+	character.conditions.set_value(ConditionRules.TANGLED, 4)
+	character.conditions.set_value(ConditionRules.SHIELD_FROM_HITS, 2)
+	character.conditions.set_value(9, 3)
+	character.conditions.set_value(ConditionRules.STRONG, 1)
+	character.conditions.set_value(26, -1)
+	character.conditions.set_value(ConditionRules.HINDERED_ATTACKS, 3)
+	character.conditions.set_value(ConditionRules.HINDERED_DEFENSE, 2)
+	character.conditions.set_value(ConditionRules.DEFENSE_BONUS, 5)
+	character.set_save_value(0, 61)
+	character.set_special_value(1, -2)
+	character.set_ability_value(4, 35)
+	character.set_ability_value(13, 18)
+	var changes: Array[PackedInt32Array] = []
+	for band_index: int in 5:
+		var row := PackedInt32Array()
+		row.resize(15)
+		row.fill(0)
+		row[band_index] = band_index + 1
+		changes.append(row)
+	var race := RaceDefinition.new(character.race_id, 1, "Human", [], [], [], [], [], [Vector2i(10, 19), Vector2i(20, 29), Vector2i(30, 39), Vector2i(40, 49), Vector2i(50, 59)], changes, 90, false, 12, 5, 3, 4, 2, 5, true, 0, 0, 0, 0, "A long source-backed race description used to prove wrapping.")
+	var caste := CasteDefinition.new(character.caste_id, 2, "Fighter", [], [], [], [], Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], [], 1, 2, 1, 2, 3, 4, 1, 5, 0, true, true, 0, 0, 0, Vector2i.ZERO, "A source-backed class description.")
+	var content := RealmzContent.new("character-sheet", "0".repeat(64), "sheet", "realmz-classic-1", "", Vector2i.ZERO, WorldDefinition.new([]), ScenarioDefinition.new([], []), [], [], [], [race], [caste])
+	var character_view := CharacterView.new(character, content)
+	assert_equal([character_view.gender_name, character_view.attacks_per_round, character_view.attack_bonus, character_view.defense_bonus, character_view.gold, character_view.gems, character_view.jewelry], ["Female", "3/2", 36, 45, 77, 2, 1], "the detached sheet preserves Castle identity, computed display bonuses, attack cadence, and three personal money denominations")
+	assert_true(character_view.conditions.any(func(metric: CharacterMetricView) -> bool: return metric.name == "Poisoned"), "conditions use Castle names instead of leaking raw slots into presentation")
+	assert_true(character_view.conditions.any(func(metric: CharacterMetricView) -> bool: return metric.name == "Turned to Stone" and metric.detail == "Permanent"), "signed permanent conditions remain explicit")
+	assert_equal([character_view.saving_throws.size(), character_view.saving_throws[0].name, character_view.saving_throws[0].value], [8, "Charm", 61], "all eight Classic saving throws are detached with stable labels")
+	assert_equal([character_view.special_modifiers[0].name, character_view.special_modifiers[0].value, character_view.abilities[0].name, character_view.abilities[1].name], ["Undead", -2, "Detect Secret", "Turn Undead"], "source-backed special and ability identities remain distinct")
+	assert_equal([character_view.age_bands.size(), character_view.age_bands[2].active, character_view.age_bands[2].changes[2].value], [5, true, 3], "the read model derives the active age band without mutating session state")
+	assert_equal(character.age_group, 3, "opening character details cannot reproduce Castle's inspection-time age-group write")
+	assert_false(character_view.record_available, "untracked lifetime prestige history remains explicitly unavailable")
+	assert_true(character_view.record_unavailable_reason.to_lower().contains("lifetime combat history"), "the prestige gap has a concrete player-facing reason")
+	var sheet := ClassicCharacterSheet.new()
+	var selections: Array[String] = []
+	sheet.character_selected.connect(func(character_id: String) -> void: selections.append(character_id))
+	sheet.present([character_view], character_view.id, {}, 1.0)
+	var buttons: Array[Button] = []
+	for node: Node in sheet.find_children("*", "Button", true, false):
+		buttons.append(node as Button)
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Overview"), "the sheet exposes a bounded overview tab")
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Conditions & Saves"), "the sheet exposes conditions and all saves without raw indices")
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Equipment"), "the sheet retains the Classic equipment subworkspace")
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Abilities"), "the sheet retains source special and ability values")
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Spells"), "the sheet exposes known spells and scroll slots")
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Race, Class & Aging"), "the sheet exposes source-backed definitions and all five age bands")
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Lifetime Record"), "the missing prestige record remains visible rather than silently omitted")
+	var record_button := buttons.filter(func(button: Button) -> bool: return button.text == "Lifetime Record")[0] as Button
+	record_button.pressed.emit()
+	var labels := sheet.find_children("*", "Label", true, false)
+	assert_true(labels.any(func(label: Label) -> bool: return label.text.to_lower().contains("lifetime combat history")), "the Record tab explains why Castle prestige cannot yet be calculated")
+	assert_equal(selections.size(), 0, "tab navigation is presentation-owned and cannot mutate the session")
+	sheet.free()
 
 
 func _test_party_roster() -> void:

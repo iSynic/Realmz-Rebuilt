@@ -24,6 +24,7 @@
 
 - Run `godot --headless --path . --script res://tests/test_runner.gd` and `tools/verify.ps1`.
 - Party Order presentation fixtures use the real Character route workspace. They prove local move/cancel staging, one typed Apply intent, and visible core-owned disabled reasons without creating test-only gameplay mutation paths.
+- Character-sheet fixtures cover disabled/dead and long identity content, named conditions and eight saves, personal wealth, special modifiers and abilities, race/caste metadata, all five age bands, mutation-free `FD-CHARACTER-004` highlighting, and an explicit unavailable lifetime record. Tab and inspected-character selection remain presentation-only.
 - Use MCP after `play_scene` to confirm mouse activation for campaign selection, AP Continue responses, and original-bitmap encounter actions; keyboard activation alone is insufficient pointer evidence.
 
 # Child DOX Index

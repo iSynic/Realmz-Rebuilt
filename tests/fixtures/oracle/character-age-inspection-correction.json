@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-CHARACTER-004",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/viewcharacter.c",
+      "symbol": "void viewcharacter(short view, short mode)",
+      "range": "269-280"
+    }
+  ],
+  "inputs": {
+    "ageDays": 13505,
+    "persistedCurrentAgeGroup": 2,
+    "raceAgeRanges": [[10, 19], [20, 29], [30, 39], [40, 49], [50, 59]],
+    "action": "view-aging-table"
+  },
+  "castleSourceObservation": {
+    "derivedAgeYears": 37,
+    "highlightedAgeGroup": 3,
+    "stateWrite": "c[view].currentagegroup = t + 1",
+    "classification": "view-only inspection mutates gameplay state"
+  },
+  "realmz2ChosenResult": {
+    "highlightedAgeGroup": 3,
+    "persistedCurrentAgeGroup": 2,
+    "stateMutation": false,
+    "reason": "The active row is derived for display while live age transitions remain owned by source-backed clock and spell rules."
+  }
+}
