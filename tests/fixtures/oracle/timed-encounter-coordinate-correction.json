@@ -1,0 +1,36 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-EXPLORATION-001",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/textbox-time.c",
+      "symbol": "short timeclick",
+      "range": "253-289"
+    },
+    {
+      "path": "src/realmz_orig/moveparty.c",
+      "symbol": "void moveparty",
+      "range": "37-71"
+    },
+    {
+      "path": "src/realmz_orig/threed.c",
+      "symbol": "void threed",
+      "range": "493-556"
+    }
+  ],
+  "castleSourceObservation": {
+    "yRequirementGuard": "recx > -1",
+    "landSuccessfulMoveCoordinate": "committed party coordinate plus the retained movement delta",
+    "dungeonSuccessfulMoveCoordinate": "source floor coordinate before movement commits"
+  },
+  "playerFacingProblem": "A timed encounter authored for the party's location can ignore a y-only requirement or test a neighboring cell instead of the cell the player occupies after the action.",
+  "realmz2ChosenResult": {
+    "yRequirementGuard": "recy > -1",
+    "blockedLandAttemptCoordinate": "attempted destination",
+    "successfulMoveCoordinate": "committed destination",
+    "campAndRestCoordinate": "current party coordinate",
+    "campDepartureCoordinate": "attempted destination"
+  }
+}

@@ -337,7 +337,7 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 			return null
 		return {"kind": "combat-reward", "battleId": value["battleId"], "runtimeContinuation": {"kind": "classic-reward", "state": reward.to_data()}}
 	if value.get("kind") == "post-clock":
-		var time_fields: Array[String] = ["kind", "mapId", "x", "y", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "resumeKind", "directionX", "directionY"]
+		var time_fields: Array[String] = ["kind", "mapId", "x", "y", "timedDay", "timedEncounterIndex", "activeTimedProgramId", "midnightRecoveryPending", "timedCheckX", "timedCheckY", "checkRandom", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "resumeKind", "directionX", "directionY"]
 		if value.size() != time_fields.size():
 			return null
 		for field: String in time_fields:
@@ -345,12 +345,16 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 				return null
 		var time_x := _integer(value["x"])
 		var time_y := _integer(value["y"])
+		var timed_day := _integer(value["timedDay"])
+		var timed_index := _integer(value["timedEncounterIndex"])
+		var timed_x := _signed_integer(value["timedCheckX"])
+		var timed_y := _signed_integer(value["timedCheckY"])
 		var time_random_index := _integer(value["randomRegionIndex"])
 		var direction_x := _signed_integer(value["directionX"])
 		var direction_y := _signed_integer(value["directionY"])
-		if not value["mapId"] is String or value["mapId"].is_empty() or time_x < 0 or time_y < 0 or not value["randomRegionIds"] is Array or time_random_index < -1 or not value["activeRandomProgramId"] is String or not value["activeRandomRegionId"] is String or not value["randomBattleStage"] is String or value["randomBattleStage"] not in ["", "surprise-choice"] or not value["resumeKind"] is String or value["resumeKind"] not in ["completed", "move"] or direction_x < -1 or direction_x > 1 or direction_y < -1 or direction_y > 1:
+		if not value["mapId"] is String or value["mapId"].is_empty() or time_x < 0 or time_y < 0 or timed_day < 0 or timed_index < 0 or not value["activeTimedProgramId"] is String or not value["midnightRecoveryPending"] is bool or timed_x < -1 or timed_y < -1 or not value["checkRandom"] is bool or not value["randomRegionIds"] is Array or time_random_index < -1 or not value["activeRandomProgramId"] is String or not value["activeRandomRegionId"] is String or not value["randomBattleStage"] is String or value["randomBattleStage"] not in ["", "surprise-choice"] or not value["resumeKind"] is String or value["resumeKind"] not in ["completed", "move", "post-move"] or direction_x < -1 or direction_x > 1 or direction_y < -1 or direction_y > 1:
 			return null
-		if value["resumeKind"] == "completed" and (direction_x != 0 or direction_y != 0):
+		if value["resumeKind"] in ["completed", "post-move"] and (direction_x != 0 or direction_y != 0):
 			return null
 		if value["resumeKind"] == "move" and Vector2i(direction_x, direction_y) == Vector2i.ZERO:
 			return null
@@ -361,7 +365,7 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 			time_region_ids.append(region_id)
 		if time_random_index >= time_region_ids.size() or value["randomBattleStage"] == "surprise-choice" and value["activeRandomRegionId"].is_empty():
 			return null
-		return {"kind": "post-clock", "mapId": value["mapId"], "x": time_x, "y": time_y, "randomRegionIds": time_region_ids, "randomRegionIndex": time_random_index, "activeRandomProgramId": value["activeRandomProgramId"], "activeRandomRegionId": value["activeRandomRegionId"], "randomBattleStage": value["randomBattleStage"], "resumeKind": value["resumeKind"], "directionX": direction_x, "directionY": direction_y}
+		return {"kind": "post-clock", "mapId": value["mapId"], "x": time_x, "y": time_y, "timedDay": timed_day, "timedEncounterIndex": timed_index, "activeTimedProgramId": value["activeTimedProgramId"], "midnightRecoveryPending": value["midnightRecoveryPending"], "timedCheckX": timed_x, "timedCheckY": timed_y, "checkRandom": value["checkRandom"], "randomRegionIds": time_region_ids, "randomRegionIndex": time_random_index, "activeRandomProgramId": value["activeRandomProgramId"], "activeRandomRegionId": value["activeRandomRegionId"], "randomBattleStage": value["randomBattleStage"], "resumeKind": value["resumeKind"], "directionX": direction_x, "directionY": direction_y}
 	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
 	if value.size() != fields.size():
 		return null

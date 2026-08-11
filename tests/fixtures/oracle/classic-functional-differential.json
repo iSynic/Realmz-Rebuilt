@@ -3289,11 +3289,7 @@
           { "path": "src/realmz_orig/newland.c", "symbol": "short newland" }
         ],
         "authoredInputs": ["day", "increment", "percent", "door", "level type and index", "random rectangle", "x and y", "required item", "required quest"],
-        "observation": "At midnight Castle ages characters, then scans CTD3 from the saved index for records on the new day. It advances the encountered record by its increment before chance and eligibility checks, writes the mutated record, performs half-day recovery, then dispatches a matching door through newland and loops back to scan the rest of that day before the later random-rectangle check.",
-        "unresolved": [
-          "The source guards both x and y comparisons with dotime.recx > -1; the second guard may be a typo for recy and requires a runtime fixture before 2.0 chooses literal or corrected behavior.",
-          "The exact repeated-dispatch and health-recovery behavior around goto continueday is suspicious and requires a controlled multi-record fixture."
-        ]
+        "observation": "At midnight Castle ages characters, then scans CTD3 from the saved index for records on the new day. It advances the encountered record by its increment before chance and eligibility checks, writes the mutated record, performs half-day recovery, then dispatches a matching door through newland and loops back to scan the rest of that day before the later random-rectangle check. The y comparison is guarded by recx, successful land movement retains its delta after committing, and dungeon time advances before the floor coordinate commits."
       },
       "providence": {
         "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
@@ -3303,13 +3299,68 @@
         "expectedRepresentation": "Schema v2 preserves ordered timed-encounter records, trigger identity, date mutation fields, chance, and every authored eligibility gate."
       },
       "realmz2": {
-        "owner": { "path": "src/core/rules/time_rules.gd", "symbol": "func advance_classic_field_time" },
-        "expectedTrace": ["cross a midnight boundary", "scan effective timed records in Castle order", "persist record-day mutation and scan cursor before dispatch", "consume only source-required RNG", "yield through the authored trigger and typed interactions", "resume remaining timed records, half-day recovery, and eligible random rectangles once"],
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _continue_timed_encounters" },
+        "expectedTrace": ["cross a midnight boundary", "scan effective timed records in Castle order", "persist record-day mutation and scan cursor before dispatch", "consume the chance draw before item, quest, map, rectangle, and corrected coordinate gates", "perform one pending half-day recovery before the first dispatch or after an ineligible scan", "yield through the authored trigger and typed interactions", "resume remaining timed records and eligible random rectangles once"],
+        "tests": [
+          { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" },
+          { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-EXPLORATION-001",
+        "fixturePath": "tests/fixtures/oracle/timed-encounter-coordinate-correction.json",
+        "fixtureSha256": "44307c14bd74900c64c8455d64258c83bd62561785cd4a2113bc62f8288c032d"
+      },
+      "availability": "implemented",
+      "status": "midnight-scan-gates-rng-record-mutation-vm-yield-and-save-resume-verified-with-semantic-coordinate-correction"
+    },
+    {
+      "id": "exploration.timed-midnight-recovery",
+      "workflowIds": ["classic.exploration.camp-rest", "classic.exploration.time-fatigue-light", "classic.scenario.random-timed-encounter"],
+      "domain": "exploration",
+      "claim": "Half-day health and ration recovery occurs once per crossed midnight after timed eligibility is evaluated and cannot replay across a timed interaction save boundary.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake separates its timed scheduler from its health recovery and does not establish Castle's repeated continueday behavior as authoritative.",
+        "sources": [
+          { "path": "src/scripts/GameGlobal.gd", "symbol": "func _advance_classic_timed_encounters" },
+          { "path": "src/scripts/classic_runtime/classic_rest.gd", "symbol": "class_name ClassicRest" }
+        ],
         "tests": []
       },
-      "decision": "unresolved",
-      "availability": "disabled",
-      "status": "package-records-and-runtime-mutations-present-clock-dispatch-and-suspicious-coordinate-repeated-scan-semantics-unresolved"
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/textbox-time.c", "symbol": "short timeclick" }
+        ],
+        "authoredInputs": ["number of eligible timed records", "party health", "Iron Rations"],
+        "observation": "Each dispatched timed record returns through goto continueday above the half-day recovery block, so two eligible records can heal and consume rations twice during one midnight."
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" }
+        ],
+        "expectedRepresentation": "No additional package field is required; the correction concerns runtime ordering of preserved timed records."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _apply_pending_midnight_recovery" },
+        "expectedTrace": ["defer midnight recovery while the timed scan begins", "advance and check matching records", "clear the recovery flag and recover once before the first dispatch", "serialize the cleared flag with any pending interaction", "recover once after the scan when no record dispatches"],
+        "tests": [
+          { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" },
+          { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-EXPLORATION-002",
+        "fixturePath": "tests/fixtures/oracle/timed-encounter-recovery-correction.json",
+        "fixtureSha256": "f4eaf862e0285338153b014d71645ae85ffae6f706c0e2fb80b40de1b660165b"
+      },
+      "availability": "implemented",
+      "status": "one-midnight-recovery-before-dispatch-or-after-ineligible-scan-save-resume-verified"
     },
     {
       "id": "spell.scroll-case-scribe-use",

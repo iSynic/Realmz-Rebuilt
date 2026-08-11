@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-EXPLORATION-002",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/textbox-time.c",
+      "symbol": "short timeclick",
+      "range": "219-321,369-371"
+    }
+  ],
+  "inputs": {
+    "eligibleTimedRecordsAtMidnight": 2,
+    "injuredPartyMember": true,
+    "availableIronRations": 2
+  },
+  "castleSourceObservation": {
+    "controlFlow": "each dispatched record returns to continueday above the recovery block",
+    "halfDayRecoveryCount": 2,
+    "rationConsumptionCanDependOnTimedRecordCount": true
+  },
+  "playerFacingProblem": "Adding an unrelated timed encounter can grant another recovery pulse and consume another ration during the same midnight.",
+  "realmz2ChosenResult": {
+    "halfDayRecoveryCount": 1,
+    "ordering": "after eligibility scanning reaches the first dispatch, or after the scan if no record dispatches",
+    "saveResume": "the pending recovery flag clears before a timed interaction can yield"
+  }
+}

@@ -194,6 +194,9 @@ func respond(response: InteractionResponse) -> SessionStep:
 	var events: Array[DomainEvent] = []
 	events.append_array(result.events)
 	if result.state == ScenarioVmResult.State.WAITING:
+		if _session_continuation.get("kind") == "post-clock" and not String(_session_continuation.get("activeTimedProgramId", "")).is_empty() and not _rebase_post_time_location():
+			_session_continuation.clear()
+			return _finish_failed(&"invalid_timed_encounter_location", "The timed encounter moved the party to an unavailable location.", events)
 		return _finish_waiting(result.interaction, events)
 	if result.state == ScenarioVmResult.State.FAILED:
 		_session_continuation.clear()
@@ -586,10 +589,14 @@ func _camp() -> SessionStep:
 	if map == null:
 		return _finish_failed(&"unknown_map", "The current map is unavailable for Camp.", events)
 	var time_scale := _classic_time_scale(map)
-	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, 5 if _state.party_camping else 2, time_scale))
+	var previous_day := _state.clock.day()
+	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, 5 if _state.party_camping else 2, time_scale, true))
 	if not _state.party_camping:
-		return _finish_with_age_updates(events, "completed")
-	_set_post_time_continuation(map, "completed")
+		if _state.clock.day() == previous_day:
+			return _finish_with_age_updates(events, "completed")
+		_set_post_time_continuation(map, "completed", Vector2i.ZERO, false, _state.clock.day(), _state.party.coordinate)
+		return _finish_with_age_updates(events, "post-clock", _session_continuation)
+	_set_post_time_continuation(map, "completed", Vector2i.ZERO, true, _state.clock.day() if _state.clock.day() != previous_day else 0, _state.party.coordinate)
 	return _finish_with_age_updates(events, "post-clock", _session_continuation)
 
 
@@ -606,9 +613,10 @@ func _rest() -> SessionStep:
 	var events: Array[DomainEvent] = [
 		DomainEvent.new(&"fatigue_changed", {"previous": previous_fatigue, "current": _state.party.fatigue, "reason": "rest", "source": "classic"}),
 	]
-	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, 5, _classic_time_scale(map)))
+	var previous_day := _state.clock.day()
+	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, 5, _classic_time_scale(map), true))
 	events.append(DomainEvent.new(&"party_rested", {"timeclicks": 5, "mapId": map.id, "source": "classic"}))
-	_set_post_time_continuation(map, "completed")
+	_set_post_time_continuation(map, "completed", Vector2i.ZERO, true, _state.clock.day() if _state.clock.day() != previous_day else 0, _state.party.coordinate)
 	return _finish_with_age_updates(events, "post-clock", _session_continuation)
 
 
@@ -1705,8 +1713,9 @@ func _depart_camp_and_move(direction: Vector2i, preceding_events: Array[DomainEv
 	events.append(DomainEvent.new(&"camp_mode_changed", {"camping": false, "source": "classic-movement"}))
 	events.append(DomainEvent.new(&"camp_departed_for_movement", {"mapId": map.id, "x": _state.party.coordinate.x, "y": _state.party.coordinate.y, "direction": [direction.x, direction.y], "source": "classic"}))
 	var timeclicks := 2 if map.level_type == &"dungeon" else 15
-	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, timeclicks, _classic_time_scale(map)))
-	_set_post_time_continuation(map, "move", direction)
+	var previous_day := _state.clock.day()
+	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, timeclicks, _classic_time_scale(map), true))
+	_set_post_time_continuation(map, "move", direction, true, _state.clock.day() if _state.clock.day() != previous_day else 0, _state.party.coordinate + direction)
 	return _finish_with_age_updates(events, "post-clock", _session_continuation)
 
 
@@ -1720,8 +1729,9 @@ func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []
 		blocked_events.append(DomainEvent.new(&"movement_blocked", {"reason": String(movement.reason)}))
 		var attempt_cost := _blocked_land_attempt_cost(movement)
 		if attempt_cost > 0:
-			blocked_events.append_array(_rules.clock.advance_classic_field_time(_state, _content, attempt_cost, _classic_time_scale(movement.source_map)))
-			_set_post_time_continuation(movement.source_map, "completed")
+			var previous_day := _state.clock.day()
+			blocked_events.append_array(_rules.clock.advance_classic_field_time(_state, _content, attempt_cost, _classic_time_scale(movement.source_map), true))
+			_set_post_time_continuation(movement.source_map, "completed", Vector2i.ZERO, true, _state.clock.day() if _state.clock.day() != previous_day else 0, movement.target_coordinate)
 			return _finish_with_age_updates(blocked_events, "post-clock", _session_continuation)
 		return _finish_completed(blocked_events)
 	var target_map := movement.target_map
@@ -1749,11 +1759,12 @@ func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []
 	_state.last_move_direction = direction
 	_state.world.mark_visited(target_map.id, target_coordinate)
 	events.append(DomainEvent.new("party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": target_coordinate.x, "y": target_coordinate.y}))
-	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, probe.target_cell.movement_cost, _classic_time_scale(target_map)))
+	var previous_day := _state.clock.day()
+	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, probe.target_cell.movement_cost, _classic_time_scale(target_map), true))
 	if transition != null:
 		events.append(DomainEvent.new("map_transitioned", {"transitionId": transition.id, "sourceMapId": source_map_id, "targetMapId": target_map.id}))
-	_set_post_move_continuation(target_map, target_coordinate)
-	return _finish_with_age_updates(events, "post-move", _session_continuation)
+	_set_post_time_continuation(target_map, "post-move", Vector2i.ZERO, false, _state.clock.day() if _state.clock.day() != previous_day else 0, target_coordinate)
+	return _finish_with_age_updates(events, "post-clock", _session_continuation)
 
 
 func _classic_time_scale(map: MapDefinition) -> int:
@@ -1768,13 +1779,20 @@ func _blocked_land_attempt_cost(movement: WorldMovementResult) -> int:
 	return maxi(0, movement.topology_result.target_cell.movement_cost)
 
 
-func _set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO) -> void:
+func _set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> void:
 	var cell := map.topology.cell_at(_state.party.coordinate)
 	_session_continuation = {
 		"kind": "post-clock",
 		"mapId": map.id,
 		"x": _state.party.coordinate.x,
 		"y": _state.party.coordinate.y,
+		"timedDay": timed_day,
+		"timedEncounterIndex": 0,
+		"activeTimedProgramId": "",
+		"midnightRecoveryPending": timed_day > 0,
+		"timedCheckX": timed_coordinate.x,
+		"timedCheckY": timed_coordinate.y,
+		"checkRandom": check_random,
 		"randomRegionIds": [] if cell == null else cell.random_rect_ids(),
 		"randomRegionIndex": -1 if cell == null else cell.random_rect_ids().size() - 1,
 		"activeRandomProgramId": "",
@@ -1787,17 +1805,31 @@ func _set_post_time_continuation(map: MapDefinition, resume_kind: String, direct
 
 
 func _continue_post_time(events: Array[DomainEvent]) -> SessionStep:
+	var active_timed_program_id := String(_session_continuation.get("activeTimedProgramId", ""))
+	if not active_timed_program_id.is_empty() and not _rebase_post_time_location():
+		_session_continuation.clear()
+		return _finish_failed(&"invalid_timed_encounter_location", "The completed timed encounter left the party at an unavailable location.", events)
 	var map := _content.world.map_by_id(String(_session_continuation.get("mapId", "")))
 	if map == null or _state.party.map_id != map.id or _state.party.coordinate != Vector2i(int(_session_continuation.get("x", -1)), int(_session_continuation.get("y", -1))):
 		_session_continuation.clear()
 		return _finish_failed(&"invalid_session_continuation", "Post-clock exploration continuation is unavailable.", events)
+	if not active_timed_program_id.is_empty():
+		_session_continuation["activeTimedProgramId"] = ""
+	var timed_step := _continue_timed_encounters(events)
+	if timed_step != null:
+		return timed_step
+	map = _content.world.map_by_id(String(_session_continuation.get("mapId", "")))
+	if map == null:
+		_session_continuation.clear()
+		return _finish_failed(&"invalid_timed_encounter_location", "Timed encounter continuation references an unavailable map.", events)
 	var active_program_id := String(_session_continuation.get("activeRandomProgramId", ""))
 	if not active_program_id.is_empty():
 		_session_continuation["activeRandomProgramId"] = ""
 		return _complete_post_time(events)
-	var random_step := _continue_random_regions(map, events)
-	if random_step != null:
-		return random_step
+	if bool(_session_continuation.get("checkRandom", false)) and _session_continuation.get("resumeKind") != "post-move":
+		var random_step := _continue_random_regions(map, events)
+		if random_step != null:
+			return random_step
 	return _complete_post_time(events)
 
 
@@ -1807,9 +1839,126 @@ func _complete_post_time(events: Array[DomainEvent]) -> SessionStep:
 	_session_continuation.clear()
 	if resume_kind == "move":
 		return _commit_move(direction, events)
+	if resume_kind == "post-move":
+		var map := _content.world.map_by_id(_state.party.map_id)
+		_set_post_move_continuation(map, _state.party.coordinate)
+		return _continue_post_move(events)
 	if resume_kind == "completed":
 		return _finish_completed(events)
 	return _finish_failed(&"invalid_session_continuation", "Post-clock exploration continuation has no valid completion path.", events)
+
+
+func _continue_timed_encounters(events: Array[DomainEvent]) -> SessionStep:
+	var timed_day := int(_session_continuation.get("timedDay", 0))
+	if timed_day <= 0:
+		return null
+	var encounters := _content.timed_encounters()
+	while int(_session_continuation.get("timedEncounterIndex", 0)) < encounters.size():
+		var index := int(_session_continuation["timedEncounterIndex"])
+		var encounter := encounters[index]
+		_session_continuation["timedEncounterIndex"] = index + 1
+		var effective := _state.timed_encounter_override(encounter.id)
+		var effective_day := int(effective.get("day", encounter.day))
+		if effective_day != timed_day:
+			continue
+		var increment := int(effective.get("increment", encounter.increment))
+		effective["day"] = effective_day + increment
+		_state.set_timed_encounter_override(encounter.id, effective)
+		events.append(DomainEvent.new(&"timed_encounter_advanced", {"encounterId": encounter.id, "day": effective_day, "nextDay": effective["day"], "source": "classic-midnight"}))
+		var chance := int(effective.get("percent", encounter.chance_percent))
+		var roll := _rng.draw(100, StringName("timed-encounter.%d" % encounter.id))
+		var map := _content.world.map_by_id(_state.party.map_id)
+		if map == null:
+			_session_continuation.clear()
+			return _finish_failed(&"invalid_timed_encounter_location", "Timed encounter eligibility references an unavailable map.", events)
+		var eligible := roll <= chance and _timed_encounter_requirements_met(encounter, map)
+		events.append(DomainEvent.new(&"timed_encounter_checked", {"encounterId": encounter.id, "roll": roll, "chancePercent": chance, "eligible": eligible}))
+		if not eligible:
+			continue
+		_apply_pending_midnight_recovery(events)
+		var trigger := _content.trigger_by_map_record(map.id, encounter.trigger_record_index)
+		if trigger == null:
+			_session_continuation.clear()
+			return _finish_failed(&"unknown_timed_encounter_trigger", "Timed Encounter %d references unavailable Action Point record %d on map '%s'." % [encounter.id, encounter.trigger_record_index, map.id], events)
+		_session_continuation["activeTimedProgramId"] = trigger.program_id
+		events.append(DomainEvent.new(&"timed_encounter_triggered", {"encounterId": encounter.id, "triggerId": trigger.id, "programId": trigger.program_id}))
+		var started := _scenario_vm.start_program(trigger.program_id, {"callingContext": "action", "triggerId": trigger.id, "mapId": map.id, "x": _session_continuation["timedCheckX"], "y": _session_continuation["timedCheckY"], "timedEncounterId": encounter.id})
+		if started.state == ScenarioVmResult.State.FAILED:
+			_session_continuation.clear()
+			return _finish_failed(started.error_code, started.error_message, events)
+		var result := _scenario_vm.run(_runtime_api)
+		events.append_array(result.events)
+		if result.state == ScenarioVmResult.State.WAITING:
+			if not _rebase_post_time_location():
+				_session_continuation.clear()
+				return _finish_failed(&"invalid_timed_encounter_location", "The timed encounter moved the party to an unavailable location.", events)
+			return _finish_waiting(result.interaction, events)
+		if result.state == ScenarioVmResult.State.FAILED:
+			_session_continuation.clear()
+			return _finish_failed(result.error_code, result.error_message, events)
+		_session_continuation["activeTimedProgramId"] = ""
+		if not _rebase_post_time_location():
+			_session_continuation.clear()
+			return _finish_failed(&"invalid_timed_encounter_location", "The completed timed encounter left the party at an unavailable location.", events)
+	_apply_pending_midnight_recovery(events)
+	_session_continuation["timedDay"] = 0
+	return null
+
+
+func _apply_pending_midnight_recovery(events: Array[DomainEvent]) -> void:
+	if not bool(_session_continuation.get("midnightRecoveryPending", false)):
+		return
+	_session_continuation["midnightRecoveryPending"] = false
+	events.append_array(_rules.clock.restore_half_day_health(_state.party, _content))
+
+
+func _rebase_post_time_location() -> bool:
+	var map := _content.world.map_by_id(_state.party.map_id)
+	var cell: MapCell = null if map == null else map.topology.cell_at(_state.party.coordinate)
+	if cell == null:
+		return false
+	_session_continuation["mapId"] = map.id
+	_session_continuation["x"] = _state.party.coordinate.x
+	_session_continuation["y"] = _state.party.coordinate.y
+	_session_continuation["timedCheckX"] = _state.party.coordinate.x
+	_session_continuation["timedCheckY"] = _state.party.coordinate.y
+	_session_continuation["randomRegionIds"] = cell.random_rect_ids()
+	_session_continuation["randomRegionIndex"] = cell.random_rect_ids().size() - 1
+	return true
+
+
+func _timed_encounter_requirements_met(encounter: TimedEncounterDefinition, map: MapDefinition) -> bool:
+	if encounter.required_item_id > 0 and not _party_has_classic_item(encounter.required_item_id):
+		return false
+	if encounter.required_quest_id > -1 and not _state.quest_is_set(encounter.required_quest_id):
+		return false
+	if encounter.location_kind == TimedEncounterDefinition.LocationKind.ANY:
+		return true
+	if encounter.location_kind == TimedEncounterDefinition.LocationKind.LAND and map.level_type != &"land" or encounter.location_kind == TimedEncounterDefinition.LocationKind.DUNGEON and map.level_type != &"dungeon":
+		return false
+	if map.level_index != encounter.required_level:
+		return false
+	var coordinate := Vector2i(int(_session_continuation.get("timedCheckX", -1)), int(_session_continuation.get("timedCheckY", -1)))
+	if encounter.required_random_rectangle > -1:
+		var region := map.random_region_by_index(encounter.required_random_rectangle)
+		if region == null or not region.bounds.has_point(coordinate):
+			return false
+	if encounter.required_x > -1 and coordinate.x != encounter.required_x:
+		return false
+	if encounter.required_y > -1 and coordinate.y != encounter.required_y:
+		return false
+	return true
+
+
+func _party_has_classic_item(classic_item_id: int) -> bool:
+	var definition := _content.item_by_classic_id(classic_item_id)
+	if definition == null:
+		return false
+	for character: CharacterState in _state.party.characters():
+		for item: ItemInstance in character.inventory():
+			if item.definition_id == definition.id:
+				return true
+	return false
 
 
 func _set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, destination_depth: int = 0) -> void:
@@ -3090,13 +3239,13 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 
 
 static func _valid_post_time_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
-	var fields: Array[String] = ["kind", "mapId", "x", "y", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "resumeKind", "directionX", "directionY"]
+	var fields: Array[String] = ["kind", "mapId", "x", "y", "timedDay", "timedEncounterIndex", "activeTimedProgramId", "midnightRecoveryPending", "timedCheckX", "timedCheckY", "checkRandom", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "resumeKind", "directionX", "directionY"]
 	if continuation.size() != fields.size():
 		return false
 	for field: String in fields:
 		if not continuation.has(field):
 			return false
-	if not continuation["mapId"] is String or not continuation["x"] is int or not continuation["y"] is int or not continuation["randomRegionIds"] is Array or not continuation["randomRegionIndex"] is int or not continuation["activeRandomProgramId"] is String or not continuation["activeRandomRegionId"] is String or not continuation["randomBattleStage"] is String or not continuation["resumeKind"] is String or continuation["resumeKind"] not in ["completed", "move"] or not continuation["directionX"] is int or not continuation["directionY"] is int:
+	if not continuation["mapId"] is String or not continuation["x"] is int or not continuation["y"] is int or not continuation["timedDay"] is int or continuation["timedDay"] < 0 or not continuation["timedEncounterIndex"] is int or continuation["timedEncounterIndex"] < 0 or continuation["timedEncounterIndex"] > content.timed_encounters().size() or not continuation["activeTimedProgramId"] is String or not continuation["midnightRecoveryPending"] is bool or not continuation["timedCheckX"] is int or not continuation["timedCheckY"] is int or not continuation["checkRandom"] is bool or not continuation["randomRegionIds"] is Array or not continuation["randomRegionIndex"] is int or not continuation["activeRandomProgramId"] is String or not continuation["activeRandomRegionId"] is String or not continuation["randomBattleStage"] is String or not continuation["resumeKind"] is String or continuation["resumeKind"] not in ["completed", "move", "post-move"] or not continuation["directionX"] is int or not continuation["directionY"] is int:
 		return false
 	var map := content.world.map_by_id(continuation["mapId"])
 	var coordinate := Vector2i(continuation["x"], continuation["y"])
@@ -3104,7 +3253,7 @@ static func _valid_post_time_continuation(content: RealmzContent, state: GameSta
 	var direction := Vector2i(continuation["directionX"], continuation["directionY"])
 	if cell == null or state.party.map_id != map.id or state.party.coordinate != coordinate or continuation["randomRegionIds"] != cell.random_rect_ids() or continuation["randomRegionIndex"] < -1 or continuation["randomRegionIndex"] >= continuation["randomRegionIds"].size() or direction.x < -1 or direction.x > 1 or direction.y < -1 or direction.y > 1:
 		return false
-	if continuation["resumeKind"] == "completed" and direction != Vector2i.ZERO:
+	if continuation["resumeKind"] in ["completed", "post-move"] and direction != Vector2i.ZERO:
 		return false
 	if continuation["resumeKind"] == "move" and direction == Vector2i.ZERO:
 		return false
@@ -3115,8 +3264,10 @@ static func _valid_post_time_continuation(content: RealmzContent, state: GameSta
 		var random_index: int = continuation["randomRegionIndex"]
 		return random_index >= 0 and continuation["randomRegionIds"][random_index] == active_region_id and map.random_region_by_id(active_region_id) != null
 	if vm_interaction != null:
+		if not continuation["activeTimedProgramId"].is_empty():
+			return continuation["activeRandomProgramId"].is_empty() and content.scenario.program_by_id(continuation["activeTimedProgramId"]) != null
 		return continuation["randomBattleStage"] == "" and continuation["activeRandomRegionId"] == "" and not continuation["activeRandomProgramId"].is_empty() and content.scenario.program_by_id(continuation["activeRandomProgramId"]) != null
-	return continuation["randomBattleStage"] == "" and continuation["activeRandomRegionId"] == "" and continuation["activeRandomProgramId"] == ""
+	return continuation["randomBattleStage"] == "" and continuation["activeRandomRegionId"] == "" and continuation["activeRandomProgramId"] == "" and continuation["activeTimedProgramId"] == ""
 
 
 static func _valid_vm_reward_continuation(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:

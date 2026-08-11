@@ -36,7 +36,7 @@ func advance_minutes(state: GameState, content: RealmzContent, minutes: int, con
 	return events
 
 
-func advance_classic_field_time(state: GameState, content: RealmzContent, timeclicks: int, minutes_per_timeclick: int) -> Array[DomainEvent]:
+func advance_classic_field_time(state: GameState, content: RealmzContent, timeclicks: int, minutes_per_timeclick: int, defer_midnight_recovery: bool = false) -> Array[DomainEvent]:
 	var clicks := maxi(0, timeclicks)
 	var scale := clampi(minutes_per_timeclick, 1, 5)
 	var previous_minutes := state.clock.total_minutes()
@@ -50,9 +50,13 @@ func advance_classic_field_time(state: GameState, content: RealmzContent, timecl
 		change_fatigue(state.party, 1)
 		events.append(DomainEvent.new(&"fatigue_changed", {"previous": previous_fatigue, "current": state.party.fatigue, "reason": "hour-boundary", "source": "classic"}))
 		events.append_array(_restore_spell_points(state.party))
-		if hour_boundary % 12 == 0:
+		if hour_boundary % 12 == 0 and not (defer_midnight_recovery and hour_boundary % 24 == 0):
 			events.append_array(_restore_half_day_health(state.party, content))
 	return events
+
+
+func restore_half_day_health(party: PartyState, content: RealmzContent) -> Array[DomainEvent]:
+	return _restore_half_day_health(party, content)
 
 
 func _restore_spell_points(party: PartyState) -> Array[DomainEvent]:

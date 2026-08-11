@@ -2,6 +2,8 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const CORRECTION_PATH: String = "res://tests/fixtures/oracle/scroll-target-cancel-consumption-correction.json"
+const TIMED_COORDINATE_CORRECTION_PATH: String = "res://tests/fixtures/oracle/timed-encounter-coordinate-correction.json"
+const TIMED_RECOVERY_CORRECTION_PATH: String = "res://tests/fixtures/oracle/timed-encounter-recovery-correction.json"
 
 
 func run() -> void:
@@ -10,6 +12,16 @@ func run() -> void:
 	if correction is Dictionary:
 		assert_true(correction["castleSourceObservation"]["validScrollClearedBeforeTargetSelection"], "the fixture records Castle's premature scroll consumption")
 		assert_true(correction["realmz2ChosenResult"]["invalidOrCancelledSelectionPreservesScroll"], "the fixture records the selected transactional scroll correction")
+	var timed_coordinate_correction: Variant = JSON.parse_string(FileAccess.get_file_as_string(TIMED_COORDINATE_CORRECTION_PATH))
+	assert_true(timed_coordinate_correction is Dictionary, "the timed-coordinate fidelity decision is parseable")
+	if timed_coordinate_correction is Dictionary:
+		assert_equal(timed_coordinate_correction["castleSourceObservation"]["yRequirementGuard"], "recx > -1", "the fixture records Castle's y-gate typo")
+		assert_equal(timed_coordinate_correction["realmz2ChosenResult"]["successfulMoveCoordinate"], "committed destination", "the fixture records the semantic destination correction")
+	var timed_recovery_correction: Variant = JSON.parse_string(FileAccess.get_file_as_string(TIMED_RECOVERY_CORRECTION_PATH))
+	assert_true(timed_recovery_correction is Dictionary, "the timed-recovery fidelity decision is parseable")
+	if timed_recovery_correction is Dictionary:
+		assert_equal(timed_recovery_correction["castleSourceObservation"]["halfDayRecoveryCount"], 2, "the fixture records Castle's repeated recovery path")
+		assert_equal(timed_recovery_correction["realmz2ChosenResult"]["halfDayRecoveryCount"], 1, "the fixture records one recovery per midnight")
 	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
 	assert_true(loaded.is_ok(), "scroll/camp workflow starts from the validated package fixture")
 	if not loaded.is_ok():
@@ -51,6 +63,15 @@ func run() -> void:
 	assert_not_null(camp_save, "camp mode is a committed save boundary")
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, camp_save).state, SessionStep.State.COMPLETED, "camp mode restores transactionally")
+	var gate_map := content.world.map_by_id(restored._state.party.map_id)
+	restored._session_continuation = {"timedCheckX": restored._state.party.coordinate.x, "timedCheckY": restored._state.party.coordinate.y}
+	var exact_gate := TimedEncounterDefinition.new(10, 2, 1, 100, 7, gate_map.level_index, -1, restored._state.party.coordinate.x, restored._state.party.coordinate.y, 800, 4, TimedEncounterDefinition.LocationKind.LAND)
+	assert_false(restored._timed_encounter_requirements_met(exact_gate, gate_map), "a required quest blocks an otherwise exact timed location")
+	restored._state.set_quest_value(4, 1)
+	assert_true(restored._timed_encounter_requirements_met(exact_gate, gate_map), "item, quest, level, x, and y gates admit their exact authored location")
+	var y_only_gate := TimedEncounterDefinition.new(11, 2, 1, 100, 7, gate_map.level_index, -1, -1, restored._state.party.coordinate.y + 1, -1, -1, TimedEncounterDefinition.LocationKind.LAND)
+	assert_false(restored._timed_encounter_requirements_met(y_only_gate, gate_map), "a y-only timed requirement is enforced instead of inheriting Castle's recx guard typo")
+	restored._session_continuation.clear()
 	active_caster = restored._state.party.character_by_id(caster.id)
 	active_target = restored._state.party.character_by_id(target.id)
 	restored._state.random_encounters_enabled = false
@@ -105,6 +126,56 @@ func run() -> void:
 	var rest_restored := GameSession.new()
 	assert_equal(rest_restored.restore(content, rest_save).state, SessionStep.State.COMPLETED, "Rest recovery and its exact ration charge restore transactionally")
 	assert_equal(rest_restored._state.party.character_by_id(caster.id).inventory()[-1].charges, 1, "save/reload does not replay the recovery draw or consume another ration")
+
+	var timed_session := GameSession.new()
+	assert_equal(timed_session.restore(content, camp_save).state, SessionStep.State.COMPLETED, "the timed-midnight fixture starts from the saved camp boundary")
+	timed_session._state.random_encounters_enabled = false
+	var timed_caster := timed_session._state.party.character_by_id(caster.id)
+	var timed_target := timed_session._state.party.character_by_id(target.id)
+	timed_target.current_health = timed_target.maximum_health
+	timed_caster.level = 6
+	timed_caster.maximum_health = 20
+	timed_caster.current_health = 5
+	var midnight_ration := ItemInstance.new("scroll.midnight-rations.instance", "classic.item.iron-rations", 2, false, true)
+	var timed_items := timed_caster.inventory()
+	timed_items.append(midnight_ration)
+	timed_caster.set_inventory(timed_items)
+	timed_caster.carried_load += content.item_by_id(midnight_ration.definition_id).instance_weight(midnight_ration.charges)
+	timed_session._state.clock.set_total_minutes(RealmzClock.MINUTES_PER_DAY - 10)
+	timed_session._rng = ScriptedRng.new([0])
+	var timed := timed_session.submit_intent(PlayerIntent.rest())
+	assert_equal([timed.state, timed.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE], "crossing midnight dispatches the eligible timed Action Point before returning to camp")
+	assert_equal(timed_session._state.timed_encounter_override(0).get("day"), 5, "the timed record advances by its increment before its interaction yields")
+	assert_true(_has_event(timed, &"timed_encounter_triggered"), "the timed dispatch has an explicit domain trace")
+	assert_true(_event_position(timed, &"timed_encounter_checked") < _event_position(timed, &"rest_ration_consumed"), "midnight eligibility is settled before Castle's half-day recovery")
+	assert_equal([timed_caster.current_health, midnight_ration.charges], [7, 1], "midnight recovery runs exactly once immediately before the first eligible dispatch")
+	assert_equal(timed_session.rng_trace()[-1]["tag"], "timed-encounter.0", "the timed chance draw is centralized and semantically tagged")
+	var timed_restored := GameSession.new()
+	assert_equal(timed_restored.restore(content, SaveEnvelope.from_data(timed_session.snapshot().to_data())).state, SessionStep.State.COMPLETED, "the timed interaction and scan cursor restore transactionally")
+	var timed_request := timed_restored.view().pending_interaction
+	var timed_completed := timed_restored.respond(InteractionResponse.new(timed_request.request_id, InteractionRequest.ACKNOWLEDGE, {}))
+	assert_equal(timed_completed.state, SessionStep.State.COMPLETED, "acknowledging the timed Action Point resumes and completes the midnight scan")
+	assert_equal(timed_restored._state.timed_encounter_override(0).get("day"), 5, "save/resume does not advance the same timed record twice")
+	assert_equal([timed_restored._state.party.character_by_id(caster.id).current_health, timed_restored._state.party.character_by_id(caster.id).inventory()[-1].charges], [7, 1], "save/resume does not repeat midnight recovery")
+	assert_equal(timed_restored.snapshot().session_continuation, {}, "the completed timed scan leaves no stale continuation")
+
+	var ineligible_timed := GameSession.new()
+	assert_equal(ineligible_timed.restore(content, camp_save).state, SessionStep.State.COMPLETED, "the ineligible timed-event characterization starts from the same camp boundary")
+	ineligible_timed._state.random_encounters_enabled = false
+	var ineligible_caster := ineligible_timed._state.party.character_by_id(caster.id)
+	var ineligible_target := ineligible_timed._state.party.character_by_id(target.id)
+	ineligible_target.current_health = ineligible_target.maximum_health
+	ineligible_caster.level = 6
+	ineligible_caster.maximum_health = 20
+	ineligible_caster.current_health = 5
+	ineligible_timed._state.set_timed_encounter_override(0, {"day": 2, "percent": 0})
+	ineligible_timed._state.clock.set_total_minutes(RealmzClock.MINUTES_PER_DAY - 10)
+	ineligible_timed._rng = ScriptedRng.new([0])
+	var ineligible_result := ineligible_timed.submit_intent(PlayerIntent.rest())
+	assert_equal(ineligible_result.state, SessionStep.State.COMPLETED, "an ineligible timed event does not invent an interaction")
+	assert_equal(ineligible_timed._state.timed_encounter_override(0).get("day"), 5, "a failed chance still advances the timed record before continuing the scan")
+	assert_equal(ineligible_caster.current_health, 6, "midnight recovery still runs once after a scan with no eligible dispatch")
+	assert_true(_event_position(ineligible_result, &"timed_encounter_checked") < _event_position(ineligible_result, &"health_recovered"), "an ineligible timed scan still precedes midnight recovery")
 
 	var interrupted_session := GameSession.new()
 	assert_equal(interrupted_session.restore(content, camp_save).state, SessionStep.State.COMPLETED, "the interrupted-Rest fixture starts from the saved camp boundary")
@@ -262,7 +333,13 @@ func _scroll_content(source: RealmzContent) -> RealmzContent:
 	var spells: Array[SpellDefinition] = [healing, fixed]
 	var monsters: Array[MonsterDefinition] = [source.monster_by_classic_id(1)]
 	var battles: Array[BattleDefinition] = [source.battle_by_classic_id(0), source.battle_by_classic_id(1)]
-	return RealmzContent.new("scroll-camp-workflow", source.package_hash, "scroll-camp-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells, monsters, battles)
+	var timed_program := ScenarioProgramDefinition.new("trigger:timed-midnight", &"trigger", "timed-midnight", [ClassicActionDefinition.new(0, 1, 1, 777, false, [])])
+	var timed_trigger := TriggerDefinition.new("timed-midnight", timed_program.id, source.start_map_id, source.start_coordinate, true, 100, null, 7)
+	var timed_encounter := TimedEncounterDefinition.new(0, 2, 3, 100, 7, -1, -1, -1, -1, 0, -1, TimedEncounterDefinition.LocationKind.ANY)
+	var messages: Array[MessageDefinition] = [MessageDefinition.new(777, "Midnight finds the party.")]
+	var triggers: Array[TriggerDefinition] = [timed_trigger]
+	var timed_encounters: Array[TimedEncounterDefinition] = [timed_encounter]
+	return RealmzContent.new("scroll-camp-workflow", source.package_hash, "scroll-camp-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([timed_program], []), messages, triggers, [], races, castes, items, spells, monsters, battles, [], [], [], [], timed_encounters)
 
 
 func _character(character_id: String, display_name: String, content: RealmzContent) -> CharacterState:
@@ -287,6 +364,13 @@ func _events(step: SessionStep, kind: StringName) -> Array[DomainEvent]:
 		if event.kind == kind:
 			result.append(event)
 	return result
+
+
+func _event_position(step: SessionStep, kind: StringName) -> int:
+	for index: int in step.events.size():
+		if step.events[index].kind == kind:
+			return index
+	return -1
 
 
 func _drain_battle_return(session: GameSession, step: SessionStep) -> SessionStep:
