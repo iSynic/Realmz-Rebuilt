@@ -1833,7 +1833,7 @@ func _render_journal() -> void:
 		_add_empty_state("The journal is empty", "No journal records were supplied by the current session.")
 	else:
 		for entry: JournalEntryView in _view.journal_entries:
-			_add_card(entry.title, "Day %d • %s" % [entry.day, entry.map_id], entry.text)
+			_add_card("Journal entry %d" % entry.message_id, "Authored scenario message", entry.text)
 	_add_disabled_action(_body, "Open Classic journal", &"open_journal")
 	_add_disabled_action(_body, "Open acquired maps", &"open_maps")
 

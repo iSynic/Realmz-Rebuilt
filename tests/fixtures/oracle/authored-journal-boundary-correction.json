@@ -1,0 +1,50 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-MAPS-002",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/variables.h",
+      "symbol": "extern Boolean notes[3000];",
+      "observation": "Castle declares exactly 3,000 persisted authored-journal discovery flags."
+    },
+    {
+      "path": "src/realmz_orig/textbox-time.c",
+      "symbol": "notes[abs(index)] = TRUE;",
+      "observation": "A positive Data SD2 textbox records its absolute message index when the player presses N or Auto Note is enabled."
+    },
+    {
+      "path": "src/realmz_orig/handlemenuchoice.c",
+      "symbol": "if (journalindex2 > 5999)",
+      "observation": "The journal browser clamps its cursor to 5,999 even though its discovery array has only 3,000 elements and the adjacent scan loop tests notes before proving the cursor is in range."
+    },
+    {
+      "path": "src/realmz_orig/save-direction-order.c",
+      "symbol": "fwrite(&notes, sizeof notes, 1, fp);",
+      "observation": "The 3,000 discovery flags are playthrough-owned save state."
+    },
+    {
+      "path": "src/realmz_orig/loadsavedgame.c",
+      "symbol": "fread(&notes, sizeof notes, 1, fp);",
+      "observation": "Castle restores the complete fixed discovery table from the game save."
+    }
+  ],
+  "castleSourceObservation": {
+    "discovery": "Authored journal entries are Data SD2 message identities recorded from interactive source text, not chronological copies of event text.",
+    "order": "Previous and next scan the discovery flags by numeric message index.",
+    "anomaly": "The browser's 5,999 clamp and test ordering permit indexing beyond the 3,000-element discovery array. Runtime behavior at that boundary is unsafe and is not a valid authored contract."
+  },
+  "realmz2ChosenResult": {
+    "capacity": 3000,
+    "validMessageIds": "0 through 2999",
+    "recording": "Only an explicit Take note response from a positive Classic textbox records the immutable source message ID; negative no-click text does not fabricate a player action.",
+    "ordering": "Detached journal entries are sorted by numeric source message ID.",
+    "restore": "Reject duplicates, out-of-range IDs, and IDs absent from the installed package before replacing the active session.",
+    "cursor": "Journal browsing position remains presentation-owned and is not persisted; no out-of-bounds native cursor behavior is reproduced."
+  },
+  "unresolved": [
+    "Auto Note is a separate preferences workflow and is not enabled implicitly.",
+    "A controlled Castle runtime fixture is still required for empty and maximum-length Data SD2 display behavior."
+  ]
+}

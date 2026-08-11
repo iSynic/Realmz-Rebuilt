@@ -17,4 +17,8 @@ func build(request: InteractionRequest) -> void:
 			add_response(String(request.payload.get("yesLabel", "Yes")), {"accepted": true})
 			add_response(String(request.payload.get("noLabel", "No")), {"accepted": false})
 		&"acknowledge":
+			if bool(request.payload.get("journalEligible", false)) and not bool(request.payload.get("journalRecorded", false)):
+				add_response("Take note", {"takeNote": true})
+			elif bool(request.payload.get("journalRecorded", false)):
+				add_hint("Already recorded in the journal.")
 			add_response("Continue", {})

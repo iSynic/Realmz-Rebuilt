@@ -1,6 +1,8 @@
 class_name GameState
 extends RefCounted
 
+const JOURNAL_MESSAGE_CAPACITY: int = 3000
+
 var party: PartyState
 var clock: RealmzClock
 var world: WorldState
@@ -35,6 +37,7 @@ var _shop_buyback_overrides: Dictionary = {}
 var _encounter_attempts: Dictionary = {}
 var _thief_encounter_type_flags: Dictionary = {}
 var _scenario_program_overrides: Dictionary = {}
+var _journal_message_ids: Dictionary = {}
 
 
 func _init(party_state: PartyState, realmz_clock: RealmzClock, world_state: WorldState = null) -> void:
@@ -70,6 +73,29 @@ func adjust_quest_value(quest_id: int, amount: int) -> int:
 	if not set_quest_value(quest_id, quest_value(quest_id) + amount):
 		return 0
 	return quest_value(quest_id)
+
+
+func record_journal_message(message_id: int) -> bool:
+	if not journal_message_id_is_valid(message_id):
+		return false
+	_journal_message_ids[message_id] = true
+	return true
+
+
+func journal_message_is_recorded(message_id: int) -> bool:
+	return _journal_message_ids.has(message_id)
+
+
+func journal_message_ids() -> Array[int]:
+	var result: Array[int] = []
+	for value: Variant in _journal_message_ids.keys():
+		result.append(int(value))
+	result.sort()
+	return result
+
+
+static func journal_message_id_is_valid(message_id: int) -> bool:
+	return message_id >= 0 and message_id < JOURNAL_MESSAGE_CAPACITY
 
 
 func selected_character_ids() -> Array[String]:
@@ -308,6 +334,7 @@ func to_data() -> Dictionary:
 		"encounterAttempts": _sorted_dictionary(_encounter_attempts),
 		"thiefEncounterTypeFlags": _sorted_dictionary(_thief_encounter_type_flags),
 		"scenarioProgramOverrides": _sorted_dictionary(_scenario_program_overrides),
+		"journalMessageIds": journal_message_ids(),
 	}
 
 
@@ -530,6 +557,14 @@ static func from_data(data: Variant) -> GameState:
 			if not key is String or key.is_empty() or not target is String or target.is_empty():
 				return null
 			state._scenario_program_overrides[key] = target
+		if data.has("journalMessageIds"):
+			if not data["journalMessageIds"] is Array:
+				return null
+			for value: Variant in data["journalMessageIds"]:
+				var message_id := _integer(value)
+				if not journal_message_id_is_valid(message_id) or state.journal_message_is_recorded(message_id):
+					return null
+				state._journal_message_ids[message_id] = true
 	if state.party.characters().is_empty() and (not data.has("partySetupCompleted") or state.party_setup_completed):
 		return null
 	if state.party_setup_completed and state.character_draft != null:

@@ -33,14 +33,14 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Castle oracle | Count |
 | --- | ---: |
-| not-required | 11 |
-| required | 9 |
+| not-required | 10 |
+| required | 10 |
 | completed | 40 |
 
 | Remake | Count |
 | --- | ---: |
-| absent | 4 |
-| partial | 31 |
+| absent | 5 |
+| partial | 30 |
 | implemented | 14 |
 | divergent | 11 |
 | not-applicable | 0 |
@@ -49,28 +49,28 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | --- | ---: |
 | not-required | 13 |
 | missing | 1 |
-| partial | 7 |
-| complete | 39 |
+| partial | 6 |
+| complete | 40 |
 
 | simulation | Count |
 | --- | ---: |
 | not-applicable | 2 |
 | absent | 1 |
-| partial | 16 |
-| complete | 41 |
+| partial | 15 |
+| complete | 42 |
 
 | persistence | Count |
 | --- | ---: |
 | not-applicable | 6 |
 | absent | 1 |
-| partial | 3 |
-| verified | 50 |
+| partial | 2 |
+| verified | 51 |
 
 | presentation | Count |
 | --- | ---: |
 | absent | 2 |
-| fixture-shell | 2 |
-| functional | 56 |
+| fixture-shell | 1 |
+| functional | 57 |
 | accepted | 0 |
 
 ### Host
@@ -115,7 +115,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **24**.
+Blockers: **1**. Major gaps: **23**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -127,7 +127,6 @@ Blockers: **1**. Major gaps: **24**.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
 - **major** `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow. Next: Trace every items.c branch before deleting the intents or implementing a stack operation.
 - **major** `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit. Next: Exercise an ordinary AOGM charged item and scroll route, then characterize combat scroll, discard, case-transfer, door/XAP, random-power combat, and target-abort behavior separately.
-- **major** `classic.maps.authored-journal` — The complete authored journal entry contract and discovery state are not represented end to end. Next: Trace Castle journal records, add deterministic package fields, and wire a read-only journal view.
 - **major** `classic.maps.location-notes` — Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` — Realmz 2 packages omit Castle's player-map records and map-menu names. Next: Add typed player-map records and names to the Realmz 2 package, include referenced PICT/CICN/scrolling-text media, then correct opcode 29 to acquire/display that stable record ID.
 - **major** `classic.maps.view-acquired` — The Journal route cannot browse or render acquired player maps. Next: After the package/runtime prerequisite lands, build a presentation-owned browser for picture, scrolling-text, land-crop, dungeon-crop, marker, note, and current-party variants.
@@ -150,6 +149,7 @@ Blockers: **1**. Major gaps: **24**.
 - `classic.inventory.identify-item` — Identify an item
 - `classic.inventory.manage-equipment` — Equip and unequip carried items
 - `classic.inventory.use-item` — Use an item
+- `classic.maps.authored-journal` — Read the authored journal
 - `classic.maps.location-notes` — Read and edit location notes
 - `classic.scenario.complex-interaction` — Resolve a complex or thief encounter
 - `classic.scenario.random-timed-encounter` — Enter a random or timed encounter
@@ -182,6 +182,7 @@ Blockers: **1**. Major gaps: **24**.
 - `classic.character.age-update` — Age updates have no ordinary-campaign observation because the trigger is rare.
 - `classic.combat.retreat` — Retreat variants lack ordinary-campaign evidence.
 - `classic.exploration.travel` — Dungeon and boat variants lack ordinary campaign certification.
+- `classic.maps.authored-journal` — Authored journal discovery and browsing have synthetic proof only.
 - `classic.maps.location-notes` — Location-note creation, editing, removal, and restoration have synthetic proof only.
 - `classic.scenario.present-message-media` — Only AOGM's opening media sequence has ordinary-play evidence.
 - `classic.services.bank` — The complete bank-backed Swap lifecycle has no ordinary campaign certification.
@@ -197,7 +198,6 @@ Blockers: **1**. Major gaps: **24**.
 - `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end.
 - `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified.
 - `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow.
-- `classic.maps.authored-journal` — The complete authored journal entry contract and discovery state are not represented end to end.
 - `classic.maps.location-notes` — Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
 - `classic.rewards.treasure-distribution` — Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced.
 - `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented.
@@ -206,6 +206,7 @@ Blockers: **1**. Major gaps: **24**.
 - `classic.startup.end-adventure` — Providence parses Classic Global macro slot 2 but schema v2 does not associate that hook with its compiled program, so End Adventure cannot run authored quit behavior before closing.
 - `classic.character.view-sheet` — Several nonzero Classic ability slots lack verified display names.
 - `classic.combat.tactical-movement` — Realmz 2.0 requires an explicit switch from missile to melee before hostile collision, while Castle can perform that switch through its Auto Weapon Switch preference.
+- `classic.maps.authored-journal` — Castle's Auto Note preference and unsafe journal cursor boundary remain outside the verified authored-journal subset.
 - `classic.maps.location-notes` — Castle's two dialog exit labels and exact cancellation semantics are not established by source alone.
 - `classic.services.shop` — Normalized shop stock omits native empty-slot provenance.
 - `classic.system.preferences` — Classic's editable stock spell/race/caste names are not represented and may conflict with immutable package content.

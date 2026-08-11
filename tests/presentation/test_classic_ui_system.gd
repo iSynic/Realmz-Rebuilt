@@ -120,6 +120,10 @@ func _test_location_note_workspace() -> void:
 		view.current_location_note,
 		LocationNoteView.new("land:0", "Giant Mountain", &"land", 0, Vector2i(12, 8), "A safe campsite.", 0, 1),
 	]
+	view.journal_entries = [
+		JournalEntryView.new(4, "The road bends toward the mountain."),
+		JournalEntryView.new(19, "A long authored entry remains readable. " + "Detail ".repeat(40)),
+	]
 	view.set_action_availability(&"set_location_note", true)
 	view.set_action_availability(&"open_journal", false, "Authored journal entries are unavailable in this fixture.")
 	view.set_action_availability(&"open_maps", false, "Player-map definitions are unavailable in this fixture.")
@@ -155,6 +159,8 @@ func _test_location_note_workspace() -> void:
 	for node: Node in router.find_children("*", "Label", true, false):
 		labels.append((node as Label).text)
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("A safe campsite.")), "saved location notes remain readable while only the current record is editable")
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("Journal entry 4")), "the Journal route labels authored records by their stable source message identity")
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("A long authored entry")), "long authored journal text remains present in the scrollable workspace")
 	router.free()
 
 
@@ -718,6 +724,16 @@ func _test_classic_choice_context() -> void:
 	assert_equal(InteractionPresenter._prompt_for(classic_request, ""), "Choose Yes or No to continue.", "a context-free Classic choice explains the required decision without presenting button labels as a prompt")
 	var explicit_request := InteractionRequest.yes_no("explicit-choice", "Enter battle?", "Fight", "Avoid")
 	assert_equal(InteractionPresenter._prompt_for(explicit_request, "Stale textbox text"), "Enter battle?", "an explicit typed prompt remains authoritative over prior Classic textbox context")
+	var journal_request := InteractionRequest.new("journal-text", InteractionRequest.ACKNOWLEDGE, {"prompt": "A source message", "journalEligible": true, "journalRecorded": false})
+	var journal_component := TextChoiceInteraction.new()
+	var journal_payloads: Array[Dictionary] = []
+	journal_component.payload_submitted.connect(func(payload: Dictionary) -> void: journal_payloads.append(payload))
+	journal_component.build(journal_request)
+	var journal_buttons: Array[Node] = journal_component.find_children("*", "Button", true, false)
+	assert_equal(journal_buttons.map(func(button: Button) -> String: return button.text), ["Take note", "Continue"], "eligible Classic text offers source-shaped journal discovery before ordinary continuation")
+	(journal_buttons[0] as Button).pressed.emit()
+	assert_equal(journal_payloads, [{"takeNote": true}], "Take note emits only the typed acknowledgement selection")
+	journal_component.free()
 
 
 func _test_classic_asset_catalog() -> void:

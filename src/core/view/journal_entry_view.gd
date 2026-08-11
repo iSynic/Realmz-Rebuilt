@@ -1,8 +1,10 @@
 class_name JournalEntryView
 extends RefCounted
 
-var id: String = ""
-var title: String = ""
-var text: String = ""
-var day: int = 0
-var map_id: String = ""
+var message_id: int
+var text: String
+
+
+func _init(source_message_id: int, source_text: String) -> void:
+	message_id = source_message_id
+	text = source_text

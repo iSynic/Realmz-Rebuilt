@@ -84,6 +84,8 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved shop state references unavailable package content.")
 	if not _location_notes_are_valid(content, replacement_state):
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved location notes reference unavailable maps, cells, or invalid Classic note data.")
+	if not _journal_messages_are_valid(content, replacement_state):
+		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved journal references unavailable or unrepresentable Classic messages.")
 	if not _character_draft_is_valid(content, replacement_state, replacement_rules):
 		return SessionStep.failed(_view_revision, &"invalid_character_draft", "The saved character-creation draft is invalid for this campaign.")
 	var replacement_vm := ScenarioVm.new()
@@ -275,6 +277,10 @@ func view() -> GameView:
 	result.party_summary.light_remaining = _state.party.conditions.value(0)
 	result.party_summary.camping = _state.party_camping
 	result.party_summary.acquired_map_ids = _state.world.acquired_map_ids()
+	for message_id: int in _state.journal_message_ids():
+		var journal_message := _content.message_by_id(message_id)
+		if journal_message != null:
+			result.journal_entries.append(JournalEntryView.new(message_id, journal_message.text))
 	var current_map := _content.world.map_by_id(_state.party.map_id)
 	if current_map != null:
 		var current_note := _state.world.location_note_at(current_map.id, _state.party.coordinate)
@@ -1722,6 +1728,13 @@ func _current_location_note_darkness(map: MapDefinition) -> int:
 	if map == null or map.level_type == &"dungeon" or not _state.world.map_is_dark(map):
 		return 0
 	return clampi(int(_state.party.conditions.value(0) / 30) + 1, 1, 255)
+
+
+static func _journal_messages_are_valid(content: RealmzContent, state: GameState) -> bool:
+	for message_id: int in state.journal_message_ids():
+		if not GameState.journal_message_id_is_valid(message_id) or content.message_by_id(message_id) == null:
+			return false
+	return true
 
 
 func _resolved_character_appearance(spec: CharacterCreationSpec, race: RaceDefinition) -> Dictionary:

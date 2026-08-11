@@ -49,7 +49,14 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 1 references unavailable message %d." % action.operand_id)
 			var event := DomainEvent.new(&"message_shown", {"messageId": message_id, "text": message.text, "source": "classic", "classicClick": action.operand_id > 0})
 			if action.operand_id > 0:
-				var request := InteractionRequest.new(request_id, &"acknowledge", {"prompt": message.text, "messageId": message_id, "presentation": "classic-textbox"})
+				var journal_eligible := GameState.journal_message_id_is_valid(message_id)
+				var request := InteractionRequest.new(request_id, &"acknowledge", {
+					"prompt": message.text,
+					"messageId": message_id,
+					"presentation": "classic-textbox",
+					"journalEligible": journal_eligible,
+					"journalRecorded": journal_eligible and _game_state.journal_message_is_recorded(message_id),
+				})
 				return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-textbox", "messageId": message_id}, [event])
 			return ScenarioRuntimeOperationResult.completed(null, [event])
 		4:
@@ -685,7 +692,23 @@ func resume_classic(continuation: Dictionary, response: InteractionResponse, req
 		"classic-textbox":
 			if response.kind != &"acknowledge":
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic textbox response must acknowledge the displayed message.")
-			return ScenarioRuntimeOperationResult.completed(true)
+			for key: Variant in response.payload:
+				if key != "takeNote":
+					return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic textbox acknowledgement contains an unknown field.")
+			if response.payload.has("takeNote") and not response.payload["takeNote"] is bool:
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic textbox take-note selection must be boolean.")
+			if not bool(response.payload.get("takeNote", false)):
+				return ScenarioRuntimeOperationResult.completed(true)
+			var message_id := int(continuation.get("messageId", -1))
+			if not GameState.journal_message_id_is_valid(message_id):
+				return ScenarioRuntimeOperationResult.failed(&"journal_message_unrepresentable", "Classic message %d cannot be stored in the 3,000-entry journal flag table." % message_id)
+			var already_recorded := _game_state.journal_message_is_recorded(message_id)
+			if not _game_state.record_journal_message(message_id):
+				return ScenarioRuntimeOperationResult.failed(&"journal_record_failed", "Classic message %d could not be recorded in the journal." % message_id)
+			var events: Array[DomainEvent] = []
+			if not already_recorded:
+				events.append(DomainEvent.new(&"journal_entry_recorded", {"messageId": message_id}))
+			return ScenarioRuntimeOperationResult.completed(true, events)
 		"classic-combat":
 			return _resume_battle(continuation, response, request_id)
 		"classic-combat-retreat-confirmation":
