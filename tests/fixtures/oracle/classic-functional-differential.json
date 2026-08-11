@@ -3241,12 +3241,8 @@
           { "path": "src/realmz_orig/heal.c", "symbol": "void heal" }
         ],
         "authoredInputs": ["camp permission", "indoor/land base scale", "active shop and temple state", "party fatigue and recovery state", "item 877 charges", "random rectangles and battles"],
-        "observation": "The Camp control toggles incamp, clears location services, and calls timeclick(3,false) plus timeclick(2,true) on entry or timeclick(2,false) on explicit exit. Each held Rest iteration subtracts two fatigue before the same five time clicks. Hour crossings reduce conditions, add one fatigue, and restore spell points; noon and midnight recover health and consume one usable item-877 charge per injured character. Land movement while camped clears camp and advances fifteen time clicks before ordinary movement; dungeon movement uses two. A random battle may interrupt this clock path and returns to the caller before movement continues.",
-        "unresolved": [
-          "Timed encounters are scanned during the midnight path but Realmz 2.0 does not yet dispatch them; their exact continuation ordering is tracked separately.",
-          "Castle adds the signed Poisoned condition value to half-day healing, which appears capable of increasing healing for ordinary positive poison durations and requires a controlled fixture or named correction.",
-          "Castle performs age UI, timed scanning, and half-day recovery inside the per-timeclick midnight path; 2.0's aggregate clock transaction preserves resulting state but not yet every interruption boundary."
-        ]
+        "observation": "The Camp control toggles incamp, clears location services, and calls timeclick(3,false) plus timeclick(2,true) on entry or timeclick(2,false) on explicit exit. Each held Rest iteration subtracts two fatigue before the same five time clicks. At an hour crossing, reduce() applies positive Poisoned damage before decrementing the condition; noon and midnight then add the remaining Poisoned value to base recovery. For Poisoned p > 0, the combined boundary is therefore base recovery minus one rather than a poison-derived healing bonus. Hour crossings also add one fatigue and restore spell points; half-day recovery consumes one usable item-877 charge per injured character. Land movement while camped clears camp and advances fifteen time clicks before ordinary movement; dungeon movement uses two. Random and timed encounters may interrupt this clock path and resume through the owning continuation.",
+        "unresolved": []
       },
       "providence": {
         "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
@@ -3257,14 +3253,14 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _camp" },
-        "expectedTrace": ["validate combat and camp permission", "toggle session-owned camp mode and clear location services", "advance the source-scaled Camp entry or exit cost", "on Rest subtract two fatigue before advancing five time clicks", "apply hourly condition, fatigue, spell-point, and half-day health/ration work", "scan source-ordered random rectangles", "persist age, random choice, battle, and post-time movement continuations", "resume the requested movement once after an interrupting battle returns"],
+        "expectedTrace": ["validate combat and camp permission", "toggle session-owned camp mode and clear location services", "advance the source-scaled Camp entry or exit cost", "on Rest subtract two fatigue before advancing five time clicks", "apply hourly poison damage and positive-condition decay before fatigue and spell-point recovery", "apply half-day health/ration work using the post-decay Poisoned value", "scan source-ordered timed encounters before one midnight recovery and later random rectangles", "persist age, timed, random choice, battle, and post-time movement continuations", "resume the requested movement once after an interrupting battle returns"],
         "tests": [
           { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" }
         ]
       },
       "decision": "aligned",
       "availability": "implemented",
-      "status": "ordinary-camp-rest-hourly-half-day-random-interruption-and-automatic-departure-save-verified-timed-and-suspicious-poison-midnight-order-unresolved"
+      "status": "ordinary-camp-rest-hourly-half-day-timed-random-interruption-and-automatic-departure-save-verified"
     },
     {
       "id": "exploration.timed-encounter-dispatch",

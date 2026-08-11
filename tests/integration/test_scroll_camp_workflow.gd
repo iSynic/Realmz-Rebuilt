@@ -127,6 +127,25 @@ func run() -> void:
 	assert_equal(rest_restored.restore(content, rest_save).state, SessionStep.State.COMPLETED, "Rest recovery and its exact ration charge restore transactionally")
 	assert_equal(rest_restored._state.party.character_by_id(caster.id).inventory()[-1].charges, 1, "save/reload does not replay the recovery draw or consume another ration")
 
+	var poisoned_session := GameSession.new()
+	assert_equal(poisoned_session.restore(content, camp_save).state, SessionStep.State.COMPLETED, "the poisoned half-day characterization starts from the committed camp boundary")
+	poisoned_session._state.random_encounters_enabled = false
+	var poisoned_caster := poisoned_session._state.party.character_by_id(caster.id)
+	var poisoned_target := poisoned_session._state.party.character_by_id(target.id)
+	poisoned_target.current_health = poisoned_target.maximum_health
+	poisoned_caster.level = 6
+	poisoned_caster.maximum_health = 20
+	poisoned_caster.current_health = 10
+	poisoned_caster.conditions.set_value(ConditionRules.POISONED, 3)
+	poisoned_session._state.clock.set_total_minutes(710)
+	var poisoned_noon := poisoned_session.submit_intent(PlayerIntent.rest())
+	assert_equal(poisoned_noon.state, SessionStep.State.COMPLETED, "a poisoned Rest pulse crosses noon through the ordinary committed clock path")
+	assert_equal(poisoned_caster.conditions.value(ConditionRules.POISONED), 2, "the hourly reduction decays positive Poisoned before half-day recovery")
+	assert_equal(poisoned_caster.current_health, 10, "Castle's signed recovery term offsets the prior poison damage without creating net bonus health")
+	assert_true(_event_position(poisoned_noon, &"condition_damaged") < _event_position(poisoned_noon, &"health_recovered"), "poison damage is observable before half-day recovery")
+	assert_equal(_events(poisoned_noon, &"condition_damaged")[0].payload.get("amount"), 3, "the hourly tick damages by the pre-decay poison value")
+	assert_equal(_events(poisoned_noon, &"health_recovered")[0].payload.get("amount"), 3, "half-day recovery uses the decayed poison value plus the unrationed level recovery")
+
 	var timed_session := GameSession.new()
 	assert_equal(timed_session.restore(content, camp_save).state, SessionStep.State.COMPLETED, "the timed-midnight fixture starts from the saved camp boundary")
 	timed_session._state.random_encounters_enabled = false

@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 5 | 17 | 38 | 0 |
+| classic | 60 | 5 | 16 | 39 | 0 |
 | host | 8 | 1 | 3 | 4 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -16,7 +16,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Domain | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Startup and party | 8 | 1 | 0 | 7 | 0 |
-| Exploration | 6 | 1 | 3 | 2 | 0 |
+| Exploration | 6 | 1 | 2 | 3 | 0 |
 | Scenario interaction | 6 | 0 | 2 | 4 | 0 |
 | Character management | 5 | 1 | 1 | 3 | 0 |
 | Inventory and equipment | 7 | 0 | 3 | 4 | 0 |
@@ -34,8 +34,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 13 |
-| required | 11 |
-| completed | 36 |
+| required | 10 |
+| completed | 37 |
 
 | Remake | Count |
 | --- | ---: |
@@ -56,8 +56,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | --- | ---: |
 | not-applicable | 2 |
 | absent | 3 |
-| partial | 16 |
-| complete | 39 |
+| partial | 15 |
+| complete | 40 |
 
 | persistence | Count |
 | --- | ---: |
@@ -115,14 +115,13 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **28**.
+Blockers: **1**. Major gaps: **27**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
 - **major** `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
 - **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Correct the obscuring tactical layout, then exercise ordinary defeat or retreat and a reward that produces a level-up before presentation acceptance.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Create synthetic Castle fixtures for battle modes 5 and 10 and opcode 48 bonus treasure before changing the package contract.
-- **major** `classic.exploration.camp-rest` — Camp, held Rest pulses, timed and random interruption, and automatic movement departure are source-shaped and saveable; Castle's signed Poisoned recovery term remains suspicious. Next: Resolve poisoned half-day recovery with a controlled signed-condition fixture before changing the verified Camp/Rest continuation.
 - **major** `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end. Next: Trace the preference/save fields and ordinary cast handoff, then decide whether the shortcut is Classic state or presentation state.
 - **major** `classic.exploration.time-fatigue-light` — Timed dispatch is now saveable, but Castle's hourly fatigue and torch decay contain suspicious control-flow that has not been adjudicated. Next: Characterize hourly fatigue and generic-plus-specific torch decay with controlled state before changing the current deterministic clock rules.
 - **major** `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved. Next: Use controlled fixtures for zero/negative land tiles, boat/shore cancellation, special dungeon wall bits, and attempted-coordinate timed gates before broadening the topology result.
@@ -149,7 +148,6 @@ Blockers: **1**. Major gaps: **28**.
 
 ## Oracle-required unknowns
 
-- `classic.exploration.camp-rest` — Camp and rest
 - `classic.exploration.fast-spell` — Cast a numeric fast spell
 - `classic.exploration.time-fatigue-light` — Observe time, fatigue, and light
 - `classic.exploration.travel` — Travel on land and in dungeons
@@ -166,7 +164,6 @@ Blockers: **1**. Major gaps: **28**.
 ### aogm
 
 - `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
-- `classic.exploration.camp-rest` — Camp, held Rest pulses, timed and random interruption, and automatic movement departure are source-shaped and saveable; Castle's signed Poisoned recovery term remains suspicious.
 - `classic.exploration.time-fatigue-light` — Timed dispatch is now saveable, but Castle's hourly fatigue and torch decay contain suspicious control-flow that has not been adjudicated.
 - `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved.
 - `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit.
