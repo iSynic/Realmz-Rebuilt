@@ -59,6 +59,9 @@ var _creator_back_button: Button
 var _creator_next_button: Button
 var _creator_cancel_button: Button
 var _setup_import_button: Button
+var _setup_inspection_overlay: PanelContainer
+var _setup_inspection_body: VBoxContainer
+var _setup_inspection_character_id: String = ""
 var _vault_revisions: Array[CharacterVaultRevisionView] = []
 var _selected_race_id: String = ""
 var _selected_caste_id: String = ""
@@ -92,6 +95,7 @@ var _appearance_textures: Dictionary = {}
 var _combat_icon_touched: bool = false
 var _vault_return_to_setup: bool = false
 var _vault_return_to_campaign: bool = false
+var _vault_inspection_revision_hash: String = ""
 var _ordinary_money_workspace_open: bool = false
 
 
@@ -131,6 +135,8 @@ func present(view: GameView) -> void:
 		_setup_overlay.visible = true
 		_body_frame.visible = false
 		_refresh_setup_options()
+		if not _setup_inspection_character_id.is_empty():
+			_render_setup_character_inspection()
 		call_deferred("_apply_modal_layouts")
 		call_deferred("_focus_first", _setup_overlay)
 		return
@@ -280,6 +286,13 @@ func open_screen(screen_id: StringName) -> void:
 
 
 func handle_back() -> bool:
+	if _setup_overlay.visible and _setup_inspection_overlay != null and _setup_inspection_overlay.visible:
+		_close_setup_character_inspection()
+		return true
+	if _screen_id == &"vault" and not _vault_inspection_revision_hash.is_empty():
+		_vault_inspection_revision_hash = ""
+		_refresh_vault_workspace()
+		return true
 	if _screen_id == &"vault" and _vault_return_to_setup and _view != null and _view.party_setup_available:
 		_vault_return_to_setup = false
 		_screen_id = &"exploration"
@@ -511,7 +524,21 @@ func _build_setup_overlay() -> void:
 	_begin_button.disabled = true
 	_begin_button.pressed.connect(_submit_party)
 	_setup_body.add_child(_begin_button)
+	_build_setup_character_inspection()
 	_render_creator_step()
+
+
+func _build_setup_character_inspection() -> void:
+	_setup_inspection_overlay = PanelContainer.new()
+	_setup_inspection_overlay.name = "PartySetupCharacterInspection"
+	_setup_inspection_overlay.theme_type_variation = &"ClassicSharedStone"
+	_setup_inspection_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_setup_inspection_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	_setup_inspection_overlay.visible = false
+	_setup_overlay.add_child(_setup_inspection_overlay)
+	_setup_inspection_body = VBoxContainer.new()
+	_setup_inspection_body.add_theme_constant_override("separation", 8)
+	_setup_inspection_overlay.add_child(_setup_inspection_body)
 
 
 func _refresh_setup_options() -> void:
@@ -1026,12 +1053,85 @@ func _refresh_party_list() -> void:
 			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			label.modulate = Color("e0e2e5")
 			row.add_child(label)
+			var inspect_button := Button.new()
+			inspect_button.text = "Inspect"
+			inspect_button.tooltip_text = "Open %s's complete character record without changing party state." % character.name
+			inspect_button.pressed.connect(_inspect_setup_character.bind(character.id))
+			row.add_child(inspect_button)
 			var remove_button := Button.new()
 			remove_button.text = "Remove"
 			_apply_availability(remove_button, &"remove_party_member")
 			remove_button.pressed.connect(_remove_setup_character.bind(character.id))
 			row.add_child(remove_button)
 			_party_list.add_child(row)
+
+
+func _inspect_setup_character(character_id: String) -> void:
+	_setup_inspection_character_id = character_id
+	_character_sheet_character_id = character_id
+	_character_sheet_tab = &"overview"
+	_render_setup_character_inspection()
+
+
+func _render_setup_character_inspection() -> void:
+	if _setup_inspection_overlay == null or _setup_inspection_body == null or _view == null:
+		return
+	var inspected: CharacterView = null
+	for character: CharacterView in _view.party_members:
+		if character.id == _setup_inspection_character_id:
+			inspected = character
+			break
+	if inspected == null:
+		_close_setup_character_inspection()
+		return
+	_clear(_setup_inspection_body)
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	var back := Button.new()
+	back.name = "BackToPartySetup"
+	back.text = "Back to party setup"
+	back.pressed.connect(_close_setup_character_inspection)
+	header.add_child(back)
+	var heading := _label("Inspect %s" % inspected.name, GOLD, 20)
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(heading)
+	_setup_inspection_body.add_child(header)
+	var scroll := ScrollContainer.new()
+	scroll.name = "CharacterInspectionScroll"
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.follow_focus = true
+	_setup_inspection_body.add_child(scroll)
+	_ensure_appearance_textures()
+	var sheet := ClassicCharacterSheet.new()
+	sheet.name = "PartySetupCharacterSheet"
+	sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sheet.present(
+		_view.party_members,
+		_setup_inspection_character_id,
+		_appearance_textures,
+		_settings.text_scale,
+		_character_sheet_tab,
+		_view.portrait_options,
+		_view.combat_icon_options,
+		ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are available after beginning the adventure.")
+	)
+	sheet.character_selected.connect(func(character_id: String) -> void:
+		_setup_inspection_character_id = character_id
+		_character_sheet_character_id = character_id
+	)
+	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _character_sheet_tab = tab_id)
+	scroll.add_child(sheet)
+	_setup_inspection_overlay.visible = true
+	call_deferred("_focus_first", _setup_inspection_overlay)
+
+
+func _close_setup_character_inspection() -> void:
+	_setup_inspection_character_id = ""
+	if _setup_inspection_overlay != null:
+		_setup_inspection_overlay.visible = false
+	call_deferred("_focus_first", _setup_overlay)
 
 
 func _remove_setup_character(character_id: String) -> void:
@@ -1222,6 +1322,9 @@ func _submit_party_order() -> void:
 
 
 func _render_vault() -> void:
+	if not _vault_inspection_revision_hash.is_empty():
+		_render_vault_character_inspection()
+		return
 	var back_button := Button.new()
 	back_button.text = "Back to party setup" if _vault_return_to_setup else "Back to campaigns" if _vault_return_to_campaign else "Back"
 	back_button.pressed.connect(func() -> void: handle_back())
@@ -1246,6 +1349,13 @@ func _render_vault() -> void:
 			detail += "\n%s" % "\n".join(revision.eligibility_reasons)
 		_add_card(state_label, "%s • %s" % [eligibility_label, revision.revision_hash.left(12)], detail)
 		var actions := HBoxContainer.new()
+		var inspect_button := Button.new()
+		inspect_button.text = "Inspect character"
+		inspect_button.disabled = revision.character == null
+		inspect_button.tooltip_text = "Open the complete detached character record before deciding whether to import this revision." if not inspect_button.disabled else "This vault revision has no valid character record."
+		if not inspect_button.disabled:
+			inspect_button.pressed.connect(_inspect_vault_character.bind(revision.revision_hash))
+		actions.add_child(inspect_button)
 		var import_button := Button.new()
 		import_button.text = "Import this revision"
 		import_button.tooltip_text = "\n".join(revision.eligibility_reasons)
@@ -1273,6 +1383,67 @@ func _render_vault() -> void:
 			restore_button.pressed.connect(func() -> void: vault_restore_requested.emit(revision.character_id, revision.revision_hash))
 			actions.add_child(restore_button)
 		_body.add_child(actions)
+
+
+func _inspect_vault_character(revision_hash: String) -> void:
+	_vault_inspection_revision_hash = revision_hash
+	_character_sheet_tab = &"overview"
+	_refresh_vault_workspace()
+
+
+func _refresh_vault_workspace() -> void:
+	if _body == null:
+		return
+	var previous_horizontal := _body_scroll.scroll_horizontal if _body_scroll != null else 0
+	var previous_vertical := _body_scroll.scroll_vertical if _body_scroll != null else 0
+	_clear(_body)
+	_render_vault()
+	_assign_focus_keys(_body)
+	if _body_scroll != null:
+		call_deferred("_restore_focus", false, previous_horizontal, previous_vertical)
+
+
+func _render_vault_character_inspection() -> void:
+	var revision: CharacterVaultRevisionView = null
+	for candidate: CharacterVaultRevisionView in _vault_revisions:
+		if candidate.revision_hash == _vault_inspection_revision_hash:
+			revision = candidate
+			break
+	if revision == null or revision.character == null:
+		_vault_inspection_revision_hash = ""
+		_render_vault()
+		return
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	var back := Button.new()
+	back.text = "Back to character vault"
+	back.pressed.connect(func() -> void:
+		_vault_inspection_revision_hash = ""
+		_refresh_vault_workspace()
+	)
+	header.add_child(back)
+	var heading := _label("Inspect %s" % revision.name, GOLD, 20)
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(heading)
+	_body.add_child(header)
+	var eligibility := "Eligible for this campaign" if revision.eligible else "Not eligible for this campaign"
+	var reasons := "" if revision.eligibility_reasons.is_empty() else "\n%s" % "\n".join(revision.eligibility_reasons)
+	_add_label(_body, "%s%s" % [eligibility, reasons], Color("75c889") if revision.eligible else Color("ef7770"), 13)
+	_ensure_appearance_textures()
+	var sheet := ClassicCharacterSheet.new()
+	sheet.name = "VaultCharacterSheet"
+	sheet.present(
+		[revision.character],
+		revision.character.id,
+		_appearance_textures,
+		_settings.text_scale,
+		_character_sheet_tab,
+		_view.portrait_options if _view != null else [],
+		_view.combat_icon_options if _view != null else [],
+		ActionAvailabilityView.new(&"change_character_appearance", false, "Vault inspection never changes a stored revision.")
+	)
+	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _character_sheet_tab = tab_id)
+	_body.add_child(sheet)
 
 
 func _confirm_vault_archive(revision: CharacterVaultRevisionView) -> void:

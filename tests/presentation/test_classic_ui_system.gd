@@ -626,11 +626,22 @@ func _test_character_creator_workflow() -> void:
 	view.caste_options = [DefinitionOptionView.new("caste.sorcerer", "Sorcerer", "Arcane caster.", ["race.human"])]
 	view.portrait_options = [CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("portrait.human.1", "Human 1", CharacterAppearanceDefinition.PORTRAIT, 257, ["race.human"]))]
 	view.combat_icon_options = [CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("icon.human.1", "Human 1", CharacterAppearanceDefinition.COMBAT_ICON, 9000, ["race.human"]))]
+	var setup_member := CharacterState.new("party.setup.inspection", "Iris", 9, 9)
+	setup_member.race_id = "race.human"
+	setup_member.caste_id = "caste.sorcerer"
+	view.party_members = [CharacterView.new(setup_member)]
 	for action_id: StringName in [&"generate_character_draft", &"cancel_character_draft", &"set_character_draft_spells", &"finalize_character", &"import_vault_character", &"begin_adventure", &"remove_party_member"]:
 		view.set_action_availability(action_id, action_id in [&"generate_character_draft", &"import_vault_character"], "Unavailable in this fixture state.")
 	var intents: Array[PlayerIntent] = []
 	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
 	router.present(view)
+	var inspect_setup := router._party_list.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Inspect")[0] as Button
+	inspect_setup.pressed.emit()
+	assert_true(router._setup_inspection_overlay.visible, "party setup can open a complete detached character inspection surface before play")
+	assert_not_null(router._setup_inspection_overlay.find_child("PartySetupCharacterSheet", true, false), "setup inspection reuses the complete Classic character sheet instead of a second summary path")
+	assert_equal(intents.size(), 0, "opening and browsing setup inspection cannot mutate the session")
+	assert_true(router.handle_back(), "Back closes setup character inspection before leaving party setup")
+	assert_false(router._setup_inspection_overlay.visible, "closing inspection restores the creator and party assembly surface")
 	assert_equal(router._creator_step, 0, "party setup opens on Identity rather than mounting all five creator pages")
 	assert_not_null(router._creator_page.get_node_or_null("CharacterName"), "Identity alone owns the character-name field")
 	var starting_level := router._creator_page.get_node_or_null("StartingLevel") as OptionButton
@@ -720,6 +731,7 @@ func _test_character_vault_workspace() -> void:
 	current.publication_label = "Created after the first expedition"
 	current.is_current = true
 	current.eligible = true
+	current.character = CharacterView.new(source_character)
 	var archived := CharacterVaultRevisionView.new()
 	archived.character_id = current.character_id
 	archived.revision_hash = "c".repeat(64)
@@ -731,6 +743,7 @@ func _test_character_vault_workspace() -> void:
 	archived.source_package_hash = current.source_package_hash
 	archived.archived = true
 	archived.eligibility_reasons = ["Item 'classic.item.missing' is not defined by this campaign."]
+	archived.character = CharacterView.new(source_character)
 	router.set_vault_revisions([current, archived])
 	router._render_vault()
 	var labels: Array[String] = []
@@ -741,6 +754,7 @@ func _test_character_vault_workspace() -> void:
 	var restore_events: Array[Array] = []
 	router.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: restore_events.append([character_id, revision_hash]))
 	var import_buttons: Array[Button] = []
+	var inspect_buttons: Array[Button] = []
 	var back_button: Button
 	var archive_button: Button
 	var restore_button: Button
@@ -750,16 +764,26 @@ func _test_character_vault_workspace() -> void:
 			back_button = button
 		elif button.text == "Import this revision":
 			import_buttons.append(button)
+		elif button.text == "Inspect character":
+			inspect_buttons.append(button)
 		elif button.text == "Archive character":
 			archive_button = button
 		elif button.text == "Restore as current":
 			restore_button = button
 	assert_equal(import_buttons.size(), 2, "each immutable revision renders its own import decision")
+	assert_equal(inspect_buttons.size(), 2, "eligible and ineligible vault revisions both expose mutation-free inspection")
 	assert_not_null(back_button, "vault entry from party setup exposes a visible return action")
 	assert_true(import_buttons.any(func(button: Button) -> bool: return not button.disabled), "the current eligible revision can be imported")
 	assert_true(import_buttons.any(func(button: Button) -> bool: return button.disabled and button.tooltip_text.contains("Restore")), "archived revisions must be restored before import")
 	assert_not_null(archive_button, "the current revision exposes recoverable archive rather than delete")
 	assert_not_null(restore_button, "archived history exposes an explicit recovery action")
+	inspect_buttons[-1].pressed.emit()
+	assert_not_null(router._body.find_child("VaultCharacterSheet", true, false), "vault inspection reuses the complete detached character sheet")
+	var inspection_labels := router._body.find_children("*", "Label", true, false)
+	assert_true(inspection_labels.any(func(label: Label) -> bool: return label.text.contains("Not eligible") or label.text.contains("classic.item.missing")), "ineligible inspection keeps exact campaign mismatch reasons visible")
+	var inspection_back := router._body.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Back to character vault")[0] as Button
+	inspection_back.pressed.emit()
+	assert_true(router._body.find_children("*", "Button", true, false).any(func(button: Button) -> bool: return button.text == "Inspect character"), "Back returns from vault inspection to the revision list")
 	if restore_button != null:
 		restore_button.pressed.emit()
 	assert_equal(restore_events, [[archived.character_id, archived.revision_hash]], "recovery identifies the exact immutable revision")

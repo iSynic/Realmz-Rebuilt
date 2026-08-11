@@ -3417,7 +3417,7 @@
     },
     {
       "id": "character.classic-sheet-inspection",
-      "workflowIds": ["classic.character.view-sheet"],
+      "workflowIds": ["classic.startup.inspect-character", "classic.character.view-sheet"],
       "domain": "character",
       "claim": "Character inspection presents Castle's identity, attributes, combat statistics, personal wealth, conditions, saves, equipment, spells, special modifiers and abilities, race and caste definitions, and five aging bands from detached state without mutating the character.",
       "remake": {

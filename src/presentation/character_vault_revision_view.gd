@@ -16,9 +16,10 @@ var is_current: bool
 var archived: bool
 var eligible: bool
 var eligibility_reasons: Array[String] = []
+var character: CharacterView
 
 
-static func from_record(record: CharacterVaultRecord, eligibility: CharacterVaultEligibility, current: bool, is_archived: bool) -> CharacterVaultRevisionView:
+static func from_record(record: CharacterVaultRecord, eligibility: CharacterVaultEligibility, current: bool, is_archived: bool, content: RealmzContent = null) -> CharacterVaultRevisionView:
 	var result := CharacterVaultRevisionView.new()
 	result.character_id = record.character_id
 	result.revision_hash = record.revision_hash
@@ -34,6 +35,7 @@ static func from_record(record: CharacterVaultRecord, eligibility: CharacterVaul
 	result.is_current = current
 	result.archived = is_archived
 	result.eligible = eligibility != null and eligibility.eligible
+	result.character = CharacterView.new(record.state, content)
 	if eligibility == null:
 		result.eligibility_reasons.append("Choose a campaign to calculate import eligibility.")
 	else:

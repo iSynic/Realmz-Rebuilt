@@ -23,6 +23,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - Identity exposes Castle's fixed starting levels filtered by the campaign maximum. Presentation submits the selected level and renders the resulting session-owned draft; it never synthesizes an advanced character or calculates progression. Reroll and acceptance emit typed intents; the unspent-spell and vault-publication confirmations are session-owned interactions, not local dialog shortcuts.
 - The vault workspace renders detached immutable revision history and exact eligibility reasons. Archive/recovery signals cross to the host repository; presentation never opens, moves, rewrites, or deletes `.r2char` files.
 - Finalized and imported setup members render only from `GameView`; Add, Remove, and Begin emit typed intents. The presenter does not retain a parallel party array or infer that a committed setup edit has begun the adventure.
+- Party setup and campaign-aware vault browsing reuse `ClassicCharacterSheet` for complete mutation-free inspection before import or Begin. Eligible and ineligible revisions keep their exact target-campaign reasons visible; inspection never changes or republishes a vault revision.
 - Cosmetic-only animation and randomness.
 
 ## Local Contracts

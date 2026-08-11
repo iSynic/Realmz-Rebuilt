@@ -262,7 +262,7 @@ func _refresh_vault_views() -> void:
 		var character_archived := current_hash.is_empty()
 		for record: CharacterVaultRecord in character_vault_repository.list_revisions(character_id):
 			var eligibility := character_vault_repository.campaign_eligibility(record, _active_content) if _active_content != null else null
-			revisions.append(CharacterVaultRevisionView.from_record(record, eligibility, record.revision_hash == current_hash, character_archived))
+			revisions.append(CharacterVaultRevisionView.from_record(record, eligibility, record.revision_hash == current_hash, character_archived, _active_content))
 	revisions.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool:
 		var character_order := left.character_id.naturalnocasecmp_to(right.character_id)
 		if character_order != 0:

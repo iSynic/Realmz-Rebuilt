@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 4 | 20 | 36 | 0 |
+| classic | 60 | 4 | 19 | 37 | 0 |
 | host | 8 | 1 | 3 | 4 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -15,7 +15,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Domain | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Startup and party | 8 | 1 | 1 | 6 | 0 |
+| Startup and party | 8 | 1 | 0 | 7 | 0 |
 | Exploration | 6 | 1 | 3 | 2 | 0 |
 | Scenario interaction | 6 | 0 | 2 | 4 | 0 |
 | Character management | 5 | 1 | 1 | 3 | 0 |
@@ -69,8 +69,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | presentation | Count |
 | --- | ---: |
 | absent | 4 |
-| fixture-shell | 4 |
-| functional | 52 |
+| fixture-shell | 3 |
+| functional | 53 |
 | accepted | 0 |
 
 ### Host
@@ -115,7 +115,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **29**.
+Blockers: **1**. Major gaps: **28**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -143,7 +143,6 @@ Blockers: **1**. Major gaps: **29**.
 - **major** `classic.spellcasting.combat-cast` — Combat spellcasting has extensive deterministic coverage but no ordinary campaign certification. Next: Cast representative single, group, and area spells in an ordinary AOGM battle and verify save/resume.
 - **major** `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise the field scroll workflow in ordinary AOGM play, then implement combat/discard/case-transfer branches only from their bounded differential evidence.
 - **major** `classic.startup.end-adventure` — There is no typed end-adventure boundary distinct from process quit or campaign replacement. Next: Add a committed session-close intent and confirmation workflow.
-- **major** `classic.startup.inspect-character` — Party setup cannot open a complete Classic character inspection workspace. Next: Wire the detached character view into party setup without mutating the session.
 - **major** `host.package.validation-progress` — Package loading remains perceptibly slow and lacks a real asynchronous progress workflow. Next: Move host validation orchestration off the interactive frame while keeping session construction atomic.
 - **major** `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 - **major** `host.system.save-previews` — Save/load works, but the required slot preview and mismatch/corruption library is still a shell. Next: Build the read-only save index and preview view before changing repository semantics.
@@ -178,7 +177,6 @@ Blockers: **1**. Major gaps: **29**.
 - `classic.services.temple` — The implemented temple subset has no ordinary campaign certification.
 - `classic.spellcasting.combat-cast` — Combat spellcasting has extensive deterministic coverage but no ordinary campaign certification.
 - `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit.
-- `classic.startup.inspect-character` — Party setup cannot open a complete Classic character inspection workspace.
 - `host.system.save-previews` — Save/load works, but the required slot preview and mismatch/corruption library is still a shell.
 - `classic.combat.physical-attack` — The missile branch still lacks ordinary campaign evidence.
 - `classic.exploration.contextual-service` — Contextual service entry is not yet demonstrated through ordinary AOGM play.

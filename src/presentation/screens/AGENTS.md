@@ -17,6 +17,7 @@
 - Newly mounted route screens begin at the top after keyboard focus is restored; same-route rerenders restore their prior offset only after focus restoration, and scroll state must not leak across workspaces.
 - Exploration and Combat share the shell's spatial stage rather than mounting explanatory body cards. Combat controls stay in the bottom interaction region so the actor-centered battlefield and persistent roster remain visible.
 - The Character workspace uses `ClassicCharacterSheet` for presentation-owned character and tab selection. It renders detached overview, conditions/saves, equipment, abilities, spells, race/class/aging, and lifetime-record availability without emitting gameplay mutations or inventing missing prestige history.
+- Party setup and vault revision inspection reuse that same complete sheet. Setup inspection is a full-stage child surface with an explicit Back action; vault inspection retains the selected revision's eligibility reasons and cannot apply appearance changes.
 - Its Appearance tab previews package-backed portraits and tactical icons independently. Apply emits the exact character, role, and appearance IDs; Discard resets local state and never publishes to the character vault.
 
 # Work Guidance
