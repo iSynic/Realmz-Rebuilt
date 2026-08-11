@@ -1700,7 +1700,7 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func submit_action(" },
-        "expectedTrace": ["select the exact equipped missile weapon or spell-bearing ammunition", "measure truncated Euclidean anchor range and Castle line of sight", "roll damage once and repeat per-hit dodge against the same target", "spend one committed charge, two half-attacks, and twelve player movement", "roll monster range power separately, lower only unaffordable cost power, retain initial range, resolve at power one, and fall through from no target or zero affordable power without repeating the missile-choice draw", "replace a missile weapon from native slot zero on the actual melee attacker"],
+        "expectedTrace": ["select the exact equipped missile weapon or spell-bearing ammunition", "switch through the typed battle request without spending the active turn", "restore battle state and RNG before the committed Fire response", "measure truncated Euclidean anchor range and Castle line of sight", "roll damage once and repeat per-hit dodge against the same target", "spend one committed charge, two half-attacks, and twelve player movement", "return to the same typed battle boundary when combat remains active", "roll monster range power separately, lower only unaffordable cost power, retain initial range, resolve at power one, and fall through from no target or zero affordable power without repeating the missile-choice draw", "replace a missile weapon from native slot zero on the actual melee attacker"],
         "tests": [
           { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" },
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_projectile_resolution(" },
@@ -1709,7 +1709,7 @@
       },
       "decision": "runtime-defect",
       "availability": "implemented",
-      "status": "ordinary-physical-projectiles-verified-special-and-stale-global-branches-explicit"
+      "status": "ordinary-physical-projectiles-and-restored-typed-fire-verified-special-and-stale-global-branches-explicit"
     },
     {
       "id": "combat.withdrawal-opportunity-not-facing",

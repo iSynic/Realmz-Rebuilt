@@ -909,6 +909,36 @@ func _test_source_backed_projectile_fire() -> void:
 	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow)
 	assert_true(view.legal_actions.has(&"attack"), "a hostile monster in the source-backed 20-cell range exposes Fire")
 	assert_equal(view.targets.map(func(target: MonsterView) -> String: return target.id), [monster.id], "the detached target list uses the same range and LOS query as execution")
+
+	var host_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(host_state, "the missile-ready battle restores before the typed host exchange")
+	if host_state != null:
+		var host_character := host_state.party.character_by_id(character.id)
+		var host_monster := host_state.combat.monster_by_id(monster.id)
+		host_character.normal_attacks = 4
+		host_monster.maximum_health = 20
+		host_monster.current_health = 20
+		host_state.combat.set_character_weapon_mode(host_character.id, &"melee")
+		var switch_rng := ScriptedRng.new([])
+		var switch_api := RealmzRuntimeApi.new(content, host_state, switch_rng, ScenarioActionState.new())
+		var melee_request := switch_api._combat_request("request.projectile-switch")
+		assert_equal(melee_request.payload.get("weaponSwitch", {}).get("targetMode"), "missile", "the typed melee request offers the source-backed missile mode")
+		var switched := switch_api._resume_battle({"kind": "classic-combat", "battleId": host_state.combat.battle_id}, InteractionResponse.new(melee_request.request_id, InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "switch_weapon", "targetId": ""}), melee_request.request_id)
+		assert_equal(switched.state, ScenarioRuntimeOperationResult.State.WAITING, "switching weapon mode returns to the same typed battle boundary")
+		assert_equal(switched.interaction.payload.get("weaponMode"), "missile", "the resumed request exposes missile mode without spending the turn")
+		assert_equal(switched.interaction.payload.get("targets", []).map(func(target: Dictionary) -> String: return String(target.get("id"))), [host_monster.id], "the resumed Fire picker contains only the core-proven hostile target")
+		var restored_host_state := GameState.from_data(JSON.parse_string(JSON.stringify(host_state.to_data())))
+		var restored_host_rng := RealmzRng.new()
+		assert_not_null(restored_host_state, "the switched missile state survives the central game-state serialization boundary")
+		assert_true(restored_host_rng.restore(switch_rng.snapshot()), "the missile exchange restores its exact pre-Fire RNG state")
+		if restored_host_state != null:
+			var restored_api := RealmzRuntimeApi.new(content, restored_host_state, restored_host_rng, ScenarioActionState.new())
+			var fired := restored_api._resume_battle({"kind": "classic-combat", "battleId": restored_host_state.combat.battle_id}, InteractionResponse.new(switched.interaction.request_id, InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "attack", "targetId": host_monster.id}), switched.interaction.request_id)
+			assert_equal(fired.state, ScenarioRuntimeOperationResult.State.WAITING, "restored Fire resolves and returns to the ordinary battle interaction")
+			assert_true(fired.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_projectile_resolved" and event.payload.get("actorId") == host_character.id and event.payload.get("targetId") == host_monster.id), "the typed restored response reaches the source-backed projectile resolver")
+			var restored_character := restored_host_state.party.character_by_id(host_character.id)
+			var restored_bow: ItemInstance = restored_character.inventory().filter(func(instance: ItemInstance) -> bool: return instance.id == bow_instance.id)[0]
+			assert_equal([restored_bow.charges, restored_character.attacks_remaining, restored_character.movement], [1, 3, 0], "typed Fire commits one charge, two half-attack units, and twelve movement after restoration")
 	var result := rules.combat_flow.submit_action(state, content, character.id, &"attack", monster.id, ScriptedRng.new([0, 0, 0]))
 	assert_true(result.ok, "a committed ordinary class-9 projectile resolves")
 	assert_equal([bow_instance.charges, character.attacks_remaining, character.movement], [1, 1, 0], "manual fire spends one charge, two half-attacks, and twelve movement while preserving Castle's carried half-attack")
