@@ -256,7 +256,7 @@ func run() -> void:
 		for candidate: PackageDiscoveryResult in discovered:
 			if candidate.package_hash == loaded.content.package_hash:
 				matching_installations += 1
-				assert_true(candidate.ready, "discovery reports manifest integrity and capability readiness without constructing the campaign")
+				assert_true(candidate.ready, "discovery reports manifest/schema/capability availability without hashing or constructing the campaign")
 		assert_equal(matching_installations, 1, "discovery returns the immutable package identity exactly once")
 		var duplicate := FileAccess.open(duplicate_path, FileAccess.WRITE)
 		assert_not_null(duplicate, "the campaign-discovery fixture can create a second immutable revision path")
@@ -322,14 +322,14 @@ func run() -> void:
 	assert_contains(rejected.error_message, "failed size or SHA-256", "hash rejection reports the violated boundary")
 	var fixture_discovery := repository.discover_packages(["res://tests/fixtures/packages"])
 	var discovered_valid := false
-	var discovered_tampered := false
+	var discovered_tampered_metadata := false
 	for candidate: PackageDiscoveryResult in fixture_discovery:
 		if candidate.path == FIXTURE_PATH:
 			discovered_valid = candidate.ready
 		elif candidate.path == TAMPERED_FIXTURE_PATH:
-			discovered_tampered = not candidate.ready and candidate.error_message.contains("failed size or SHA-256")
+			discovered_tampered_metadata = candidate.ready
 	assert_true(discovered_valid, "manifest-only discovery accepts the intact fixture without typed content construction")
-	assert_true(discovered_tampered, "manifest-only discovery still rejects stale content hashes")
+	assert_true(discovered_tampered_metadata, "manifest-only discovery defers payload hashing until the package is selected for play")
 
 	var sandbox_error := PackageRepository.package_capability_error("realmz.scenario.gdscript-actions-v1")
 	assert_contains(sandbox_error, "no secure external host", "the manifest readiness path rejects deferred GDScript backends at the security boundary")

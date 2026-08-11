@@ -13,7 +13,8 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 ## Local Contracts
 
 - Treat package and save data as untrusted until all structural, hash, reference, limit, topology, and capability checks pass.
-- Discovery verifies manifest/schema/capability and complete archive size/hash integrity without parsing and constructing every campaign. Starting a package performs the complete typed validation; unchanged immutable packages may reuse an in-memory result keyed by canonical path, modification time, and byte count.
+- Discovery reads the ZIP inventory and verifies manifest/schema/capability metadata without hashing payload bytes or constructing every campaign. Selecting a package performs complete file-integrity and typed-content validation before play; unchanged immutable packages may reuse an in-memory result keyed by canonical path, modification time, and byte count.
+- Long package validation and installation run in a host-owned worker with detached, mutex-protected progress and cooperative cancellation between integrity items. The worker may use infrastructure adapters only; it never accesses Nodes, presenters, or the active session, and shutdown joins it before process exit.
 - Generic package discovery retains every immutable revision for diagnostics. Installed-campaign discovery exposes only the most recently installed valid revision for each campaign and leaves older content-hash files untouched.
 - Validate Classic opcode support, Scenario Action namespaces, caller contexts, typed arguments, Safe bytecode limits, and every program/action reference before constructing content.
 - Verify deterministic ZIP inventory/order, canonical manifest package hash, schema hash, and every file hash before parsing runtime documents.

@@ -4,6 +4,8 @@ extends Control
 const GameSessionControllerScript := preload("res://src/app/game_session_controller.gd")
 const PresentationCoordinatorScript := preload("res://src/presentation/presentation_coordinator.gd")
 const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
+const PackageInstallTaskScript := preload("res://src/infrastructure/packages/package_install_task.gd")
+const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
 const SaveRepositoryScript := preload("res://src/infrastructure/saves/save_repository.gd")
 const CharacterVaultRepositoryScript := preload("res://src/infrastructure/characters/character_vault_repository.gd")
 const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
@@ -29,12 +31,16 @@ var _active_content: RealmzContent
 var _presentation_settings: PresentationSettings
 var _dungeon_presenter: DungeonMap3DPresenter
 var _host_interaction: InteractionRequest
+var _package_install_task: RefCounted
+var _pending_package_seed: int = 1
+var _last_package_operation_key: String = ""
 
 
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
 	UiInputActions.ensure_defaults()
 	package_repository = PackageRepositoryScript.new()
+	_package_install_task = PackageInstallTaskScript.new()
 	save_repository = SaveRepositoryScript.new()
 	character_vault_repository = CharacterVaultRepositoryScript.new()
 	settings_repository = SettingsRepositoryScript.new()
@@ -48,7 +54,8 @@ func _ready() -> void:
 	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
 	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
 	_map_presenter.movement_requested.connect(_on_map_movement_requested)
-	_shell_presenter.start_package_requested.connect(start_package)
+	_shell_presenter.start_package_requested.connect(_begin_package_start)
+	_shell_presenter.cancel_package_requested.connect(_cancel_package_start)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
 	_shell_presenter.intent_submitted.connect(_submit_intent)
 	_shell_presenter.save_requested.connect(save_active_session)
@@ -78,6 +85,32 @@ func _ready() -> void:
 	_status_label.text = "Pure session boundary online"
 	_refresh_campaigns()
 	_refresh_vault_views()
+	set_process(true)
+
+
+func _process(_delta: float) -> void:
+	if _package_install_task == null:
+		return
+	var operation: RefCounted = _package_install_task.snapshot()
+	var operation_key := "%s:%s:%d:%d:%s" % [operation.state, operation.phase, operation.completed, operation.total, operation.message]
+	if operation_key != _last_package_operation_key:
+		_last_package_operation_key = operation_key
+		_shell_presenter.set_package_operation(operation)
+		_shell_presenter.set_status(operation.message, operation.state == PackageOperationStatusScript.FAILED)
+	if operation.is_running() or operation.state == PackageOperationStatusScript.IDLE:
+		return
+	var installation: PackageInstallResult = _package_install_task.take_result()
+	_shell_presenter.set_package_operation(PackageOperationStatusScript.new())
+	_last_package_operation_key = ""
+	if operation.state == PackageOperationStatusScript.CANCELLED:
+		_shell_presenter.set_status("Package validation cancelled.")
+		return
+	_complete_package_install(installation, _pending_package_seed)
+
+
+func _exit_tree() -> void:
+	if _package_install_task != null:
+		_package_install_task.shutdown()
 
 
 func _on_smoke_action_pressed() -> void:
@@ -127,19 +160,49 @@ func _on_end_adventure_requested() -> void:
 
 
 func start_package(package_path: String, initial_seed: int) -> SessionStep:
+	if session_controller.view().session_started:
+		return SessionStep.failed(session_controller.view().revision, &"session_already_started", "End the active adventure before starting another campaign.")
 	var installation := package_repository.install_package(package_path)
+	return _complete_package_install(installation, initial_seed)
+
+
+func _begin_package_start(package_path: String, initial_seed: int) -> void:
+	if session_controller.view().session_started:
+		_shell_presenter.set_status("End the active adventure before starting another campaign.", true)
+		return
+	if _package_install_task.snapshot().is_running():
+		return
+	_pending_package_seed = initial_seed
+	if not _package_install_task.start(package_path):
+		_shell_presenter.set_status(_package_install_task.snapshot().message, true)
+		return
+	_shell_presenter.set_package_operation(_package_install_task.snapshot())
+	_shell_presenter.set_status("Preparing package validation…")
+
+
+func _cancel_package_start() -> void:
+	if _package_install_task != null:
+		_package_install_task.cancel()
+
+
+func _complete_package_install(installation: PackageInstallResult, initial_seed: int) -> SessionStep:
+	if installation == null:
+		_status_label.text = "Package rejected • package operation returned no result"
+		_shell_presenter.set_status(_status_label.text, true)
+		return SessionStep.failed(0, &"package_operation_failed", "Package operation returned no result.")
 	if not installation.is_ok():
 		_status_label.text = "Package rejected • %s" % installation.error_message
 		_shell_presenter.set_status(_status_label.text, true)
 		return SessionStep.failed(0, installation.error_code, installation.error_message)
 	var package_result := installation.package
-	presentation_coordinator.set_package_media(package_result.media)
 	var step := session_controller.start(package_result.content, initial_seed)
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Session start failed • %s" % step.error_message
 		_shell_presenter.set_status(_status_label.text, true)
 		return step
 	_active_content = package_result.content
+	presentation_coordinator.set_package_media(package_result.media)
+	presentation_coordinator.refresh()
 	_refresh_save_previews()
 	_refresh_vault_views()
 	_smoke_button.text = "Search area"
@@ -270,7 +333,7 @@ func _respond_quit_interaction(action: StringName) -> void:
 	var result_state := ApplicationLifecycleScript.execute_quit(
 		action,
 		func() -> bool: return save_active_session("quick") if has_active_session else false,
-		func() -> void: get_tree().quit()
+		_quit_application
 	)
 	if result_state == &"cancelled":
 		_host_interaction = null
@@ -283,6 +346,12 @@ func _respond_quit_interaction(action: StringName) -> void:
 	if result_state != &"quit-requested":
 		_shell_presenter.set_status("Quit failed • the application remains open.", true)
 		presentation_coordinator.present_host_interaction(_host_interaction)
+
+
+func _quit_application() -> void:
+	if _package_install_task != null:
+		_package_install_task.shutdown()
+	get_tree().quit()
 
 
 func _complete_closed_session() -> void:
@@ -453,6 +522,8 @@ func _refresh_save_previews() -> void:
 
 
 func _refresh_campaigns() -> void:
+	if _package_install_task != null and _package_install_task.snapshot().is_running():
+		return
 	_shell_presenter.set_campaigns(package_repository.discover_campaigns(["user://packages"]))
 
 

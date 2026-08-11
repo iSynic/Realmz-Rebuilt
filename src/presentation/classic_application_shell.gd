@@ -2,6 +2,7 @@ class_name ClassicApplicationShell
 extends Control
 
 signal start_package_requested(path: String, seed: int)
+signal cancel_package_requested
 signal refresh_campaigns_requested
 signal intent_submitted(intent: PlayerIntent)
 signal save_requested(slot_id: String)
@@ -75,6 +76,7 @@ func _ready() -> void:
 	_held_command_timer.timeout.connect(_on_held_command_timeout)
 	add_child(_held_command_timer)
 	_router.start_requested.connect(func(path: String, seed: int) -> void: start_package_requested.emit(path, seed))
+	_router.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
 	_router.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
 	_router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
 	_router.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
@@ -232,6 +234,10 @@ func set_status(text: String, is_error: bool = false) -> void:
 
 func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
 	_router.set_campaigns(campaigns)
+
+
+func set_package_operation(status: RefCounted) -> void:
+	_router.set_package_operation(status)
 
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:

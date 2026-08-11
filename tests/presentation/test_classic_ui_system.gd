@@ -1,6 +1,7 @@
 extends RealmzTestCase
 
 const SaveSlotPreviewScript := preload("res://src/infrastructure/saves/save_slot_preview.gd")
+const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
 const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
 
@@ -35,7 +36,32 @@ func run() -> void:
 	_test_character_sheet_workspace()
 	_test_party_roster()
 	_test_scene_composition()
+	_test_package_operation_presentation()
 	_test_save_preview_workspace()
+
+
+func _test_package_operation_presentation() -> void:
+	var router := ClassicScreenRouter.new()
+	router._campaign_list = VBoxContainer.new()
+	router.add_child(router._campaign_list)
+	var cancel_count: Array[int] = [0]
+	router.cancel_package_requested.connect(func() -> void: cancel_count[0] += 1)
+	var status := PackageOperationStatusScript.new(&"running", &"validating-integrity", 2, 5, "Validating package files 2 of 5…")
+	assert_equal(status.progress_ratio(), 0.4, "package operation progress is detached and bounded")
+	router.set_package_operation(status)
+	var operation_label := router.find_child("PackageOperationStatus", true, false) as Label
+	var progress := router.find_child("PackageOperationProgress", true, false) as ProgressBar
+	var cancel := router.find_child("CancelPackageOperation", true, false) as Button
+	assert_not_null(operation_label, "campaign library exposes active package validation status")
+	assert_equal(operation_label.text, status.message, "campaign library renders the worker-owned progress message")
+	assert_not_null(progress, "campaign library exposes package validation progress")
+	assert_equal([progress.value, progress.max_value], [2.0, 5.0], "package progress renders detached completed and total units")
+	assert_not_null(cancel, "active package validation exposes an explicit Cancel action")
+	cancel.pressed.emit()
+	assert_equal(cancel_count[0], 1, "package Cancel crosses one host signal without mutating a session")
+	router.set_package_operation(PackageOperationStatusScript.new())
+	assert_equal(router.find_child("CancelPackageOperation", true, false), null, "completed package work removes the transient Cancel action")
+	router.free()
 
 
 func _test_save_preview_workspace() -> void:

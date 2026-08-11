@@ -27,26 +27,34 @@ var _last_error: String = ""
 var _loaded_packages: Dictionary = {}
 
 
-func load_package(path: String) -> PackageLoadResult:
+func load_package(path: String, progress_callback: Callable = Callable(), cancel_callback: Callable = Callable()) -> PackageLoadResult:
 	_last_error = ""
+	if _cancel_requested(cancel_callback):
+		return PackageLoadResult.failed(&"package_cancelled", "Package operation cancelled.")
+	_report_progress(progress_callback, &"opening", 0, 1)
 	var cache_key := _package_cache_key(path)
 	if _loaded_packages.has(cache_key):
+		_report_progress(progress_callback, &"complete", 1, 1)
 		return _loaded_packages[cache_key] as PackageLoadResult
 	var archive := ZIPReader.new()
 	var open_error := archive.open(path)
 	if open_error != OK:
 		return PackageLoadResult.failed("package_open_failed", "Could not open package '%s' (error %d)." % [path, open_error])
-	var result := _load_open_archive(archive, path)
+	var result := _load_open_archive(archive, path, progress_callback, cancel_callback)
 	archive.close()
 	if result.is_ok():
 		_loaded_packages[cache_key] = result
+		_report_progress(progress_callback, &"complete", 1, 1)
 	return result
 
 
-func install_package(source_path: String, install_root: String = "user://packages") -> PackageInstallResult:
-	var source := load_package(source_path)
+func install_package(source_path: String, install_root: String = "user://packages", progress_callback: Callable = Callable(), cancel_callback: Callable = Callable()) -> PackageInstallResult:
+	_report_progress(progress_callback, &"validating-source", 0, 1)
+	var source := load_package(source_path, progress_callback, cancel_callback)
 	if not source.is_ok():
 		return PackageInstallResult.failed(source.error_code, source.error_message)
+	if _cancel_requested(cancel_callback):
+		return PackageInstallResult.failed(&"package_cancelled", "Package operation cancelled.")
 	if not _safe_path_component(source.content.campaign_id):
 		return PackageInstallResult.failed("campaign_path_unsafe", "Campaign ID cannot be used as a portable installation path.")
 	var campaign_root := install_root.trim_suffix("/").path_join(source.content.campaign_id)
@@ -56,11 +64,14 @@ func install_package(source_path: String, install_root: String = "user://package
 	var target_path := campaign_root.path_join("%s.realmz2" % source.content.package_hash)
 	if FileAccess.file_exists(target_path):
 		if _same_package_path(source_path, target_path):
+			_report_progress(progress_callback, &"complete", 1, 1)
 			return PackageInstallResult.succeeded(target_path, source)
-		var existing := load_package(target_path)
+		var existing := load_package(target_path, progress_callback, cancel_callback)
 		if existing.is_ok() and existing.content.package_hash == source.content.package_hash:
+			_report_progress(progress_callback, &"complete", 1, 1)
 			return PackageInstallResult.succeeded(target_path, existing)
 		return PackageInstallResult.failed("package_install_collision", "An invalid package already occupies the immutable installation path.")
+	_report_progress(progress_callback, &"copying-package", 0, 1)
 	var temporary_path := target_path + ".installing"
 	if FileAccess.file_exists(temporary_path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
@@ -73,9 +84,15 @@ func install_package(source_path: String, install_root: String = "user://package
 	temporary.store_buffer(source_bytes)
 	temporary.flush()
 	temporary.close()
-	var verified := load_package(temporary_path)
+	if _cancel_requested(cancel_callback):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
+		return PackageInstallResult.failed(&"package_cancelled", "Package operation cancelled.")
+	_report_progress(progress_callback, &"validating-install", 0, 1)
+	var verified := load_package(temporary_path, progress_callback, cancel_callback)
 	if not verified.is_ok() or verified.content.package_hash != source.content.package_hash:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
+		if verified.error_code == &"package_cancelled":
+			return PackageInstallResult.failed(verified.error_code, verified.error_message)
 		return PackageInstallResult.failed("package_install_readback_failed", "Temporary package installation failed typed readback validation.")
 	var rename_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary_path), ProjectSettings.globalize_path(target_path))
 	if rename_error != OK:
@@ -83,6 +100,7 @@ func install_package(source_path: String, install_root: String = "user://package
 		return PackageInstallResult.failed("package_install_commit_failed", "Could not atomically install the verified package (error %d)." % rename_error)
 	var installed := PackageLoadResult.succeeded(verified.content, PackageMediaCatalog.new(target_path, verified.content.package_hash, verified.media.assets()))
 	_loaded_packages[_package_cache_key(target_path)] = installed
+	_report_progress(progress_callback, &"complete", 1, 1)
 	return PackageInstallResult.succeeded(target_path, installed)
 
 
@@ -137,7 +155,7 @@ func _inspect_package(path: String) -> PackageDiscoveryResult:
 	var entries: Array[String] = []
 	entries.assign(entries_value)
 	var manifest: Dictionary = manifest_value
-	if not _validate_manifest(manifest, archive, entries):
+	if not _validate_manifest_structure(manifest, entries):
 		archive.close()
 		return PackageDiscoveryResult.new(path, false, "", "", "", _last_error if not _last_error.is_empty() else "Package manifest is invalid.")
 	archive.close()
@@ -167,7 +185,7 @@ func _same_package_path(left: String, right: String) -> bool:
 	return ProjectSettings.globalize_path(left).simplify_path().to_lower() == ProjectSettings.globalize_path(right).simplify_path().to_lower()
 
 
-func _load_open_archive(archive: ZIPReader, source_path: String) -> PackageLoadResult:
+func _load_open_archive(archive: ZIPReader, source_path: String, progress_callback: Callable = Callable(), cancel_callback: Callable = Callable()) -> PackageLoadResult:
 	var archive_entries_value: Variant = _zip_entries(archive)
 	var archive_entries: Array[String] = []
 	if archive_entries_value != null:
@@ -178,8 +196,9 @@ func _load_open_archive(archive: ZIPReader, source_path: String) -> PackageLoadR
 	if manifest_value == null:
 		return _validation_failure()
 	var manifest: Dictionary = manifest_value
-	if not _validate_manifest(manifest, archive, archive_entries):
+	if not _validate_manifest(manifest, archive, archive_entries, progress_callback, cancel_callback):
 		return _validation_failure()
+	_report_progress(progress_callback, &"constructing-content", 0, 1)
 	var content_value: Variant = _read_document(archive, "content.json")
 	var world_value: Variant = _read_document(archive, "world.json")
 	var scenario_value: Variant = _read_document(archive, "scenario.json")
@@ -205,7 +224,26 @@ func _load_open_archive(archive: ZIPReader, source_path: String) -> PackageLoadR
 	return PackageLoadResult.succeeded(runtime_content, PackageMediaCatalog.new(source_path, manifest["packageHash"], runtime_assets))
 
 
-func _validate_manifest(manifest: Dictionary, archive: ZIPReader, archive_entries: Array[String]) -> bool:
+func _validate_manifest(manifest: Dictionary, archive: ZIPReader, archive_entries: Array[String], progress_callback: Callable = Callable(), cancel_callback: Callable = Callable()) -> bool:
+	if not _validate_manifest_structure(manifest, archive_entries):
+		return false
+	var file_paths: Array[String] = []
+	file_paths.assign(manifest["files"].keys())
+	file_paths.sort()
+	for file_index: int in file_paths.size():
+		if _cancel_requested(cancel_callback):
+			return _reject("Package operation cancelled.")
+		var file_path := file_paths[file_index]
+		_report_progress(progress_callback, &"validating-integrity", file_index, file_paths.size())
+		var integrity: Dictionary = manifest["files"][file_path]
+		var bytes := archive.read_file(file_path)
+		if bytes.size() != _integer(integrity["bytes"]) or _sha256(bytes) != integrity["sha256"]:
+			return _reject("Package file '%s' failed size or SHA-256 validation." % file_path)
+	_report_progress(progress_callback, &"validating-integrity", file_paths.size(), file_paths.size())
+	return true
+
+
+func _validate_manifest_structure(manifest: Dictionary, archive_entries: Array[String]) -> bool:
 	var required_fields: Array[String] = ["kind", "format", "formatVersion", "schemaVersion", "schemaHash", "campaignId", "contentId", "engine", "start", "capabilities", "files", "packageHash"]
 	if not _has_fields(manifest, required_fields, "manifest"):
 		return false
@@ -237,9 +275,6 @@ func _validate_manifest(manifest: Dictionary, archive: ZIPReader, archive_entrie
 		var integrity: Variant = manifest["files"][file_path]
 		if not integrity is Dictionary or not integrity.has("bytes") or not integrity.has("sha256") or not _is_sha256(integrity["sha256"]):
 			return _reject("File integrity record for '%s' is malformed." % file_path)
-		var bytes := archive.read_file(file_path)
-		if bytes.size() != _integer(integrity["bytes"]) or _sha256(bytes) != integrity["sha256"]:
-			return _reject("Package file '%s' failed size or SHA-256 validation." % file_path)
 		expected_entries.append(file_path)
 	expected_entries.sort()
 	if archive_entries != expected_entries:
@@ -2272,4 +2307,15 @@ func _reject(message: String) -> bool:
 
 
 func _validation_failure() -> PackageLoadResult:
+	if _last_error == "Package operation cancelled.":
+		return PackageLoadResult.failed(&"package_cancelled", _last_error)
 	return PackageLoadResult.failed("package_validation_failed", _last_error if not _last_error.is_empty() else "Package validation failed.")
+
+
+func _report_progress(callback: Callable, phase: StringName, completed: int, total: int) -> void:
+	if callback.is_valid():
+		callback.call(phase, completed, total)
+
+
+func _cancel_requested(callback: Callable) -> bool:
+	return callback.is_valid() and bool(callback.call())

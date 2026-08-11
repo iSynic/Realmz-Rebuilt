@@ -7,7 +7,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | classic | 60 | 4 | 17 | 39 | 0 |
-| host | 8 | 1 | 2 | 5 | 0 |
+| host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
@@ -99,8 +99,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | presentation | Count |
 | --- | ---: |
 | absent | 1 |
-| fixture-shell | 1 |
-| functional | 6 |
+| fixture-shell | 0 |
+| functional | 7 |
 | accepted | 0 |
 
 ### Live evidence labels
@@ -115,7 +115,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **25**.
+Blockers: **1**. Major gaps: **24**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -141,7 +141,6 @@ Blockers: **1**. Major gaps: **25**.
 - **major** `classic.spellcasting.combat-cast` — Combat spellcasting has extensive deterministic coverage but no ordinary campaign certification. Next: Cast representative single, group, and area spells in an ordinary AOGM battle and verify save/resume.
 - **major** `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise the field scroll workflow in ordinary AOGM play, then implement combat/discard/case-transfer branches only from their bounded differential evidence.
 - **major** `classic.startup.end-adventure` — Providence parses Classic Global macro slot 2 but schema v2 does not associate that hook with its compiled program, so End Adventure cannot run authored quit behavior before closing. Next: Add deterministic lifecycle-hook mapping to Providence and the mirrored package contract, then execute Global quit macro slot 2 through a serializable session continuation before close.
-- **major** `host.package.validation-progress` — Package loading remains perceptibly slow and lacks a real asynchronous progress workflow. Next: Move host validation orchestration off the interactive frame while keeping session construction atomic.
 - **major** `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
 ## Oracle-required unknowns
@@ -212,12 +211,12 @@ Blockers: **1**. Major gaps: **25**.
 ### polish
 
 - `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate.
-- `host.package.validation-progress` — Package loading remains perceptibly slow and lacks a real asynchronous progress workflow.
 - `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished.
 - `classic.spellcasting.choose-power-target` — SELECT_SPELL_POWER and SELECT_SPELL_TARGET are dead scaffolding beside the complete CAST_SPELL payload.
 - `classic.startup.end-adventure` — Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
 - `classic.system.preferences` — Classic's reduced-sound preference is not represented.
 - `classic.system.quit` — Typed Quit choices and host transaction ordering are characterized, but the real window-close notification and save-repository failure path lack composition-root proof.
+- `host.package.validation-progress` — Asynchronous validation, progress, cancellation, and teardown are proven synthetically but not yet exercised through the running application root.
 
 ## Coverage caveats
 

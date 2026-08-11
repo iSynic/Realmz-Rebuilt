@@ -2,9 +2,11 @@ class_name ClassicScreenRouter
 extends Control
 
 const SaveSlotPreviewScript := preload("res://src/infrastructure/saves/save_slot_preview.gd")
+const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
 
 signal screen_changed(screen_id: StringName)
 signal start_requested(package_path: String, seed: int)
+signal cancel_package_requested
 signal refresh_requested
 signal intent_submitted(intent: PlayerIntent)
 signal system_action_requested(action_id: StringName, value: Variant)
@@ -100,6 +102,7 @@ var _vault_return_to_campaign: bool = false
 var _vault_inspection_revision_hash: String = ""
 var _ordinary_money_workspace_open: bool = false
 var _save_previews: Array = []
+var _package_operation_status: RefCounted = PackageOperationStatusScript.new()
 
 
 func _ready() -> void:
@@ -151,9 +154,43 @@ func present(view: GameView) -> void:
 func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
 	_campaigns = campaigns.duplicate()
 	_campaigns.sort_custom(_campaign_precedes)
+	_render_campaign_list()
+
+
+func set_package_operation(status: RefCounted) -> void:
+	_package_operation_status = status if status != null else PackageOperationStatusScript.new()
+	_render_campaign_list()
+
+
+func _render_campaign_list() -> void:
 	_clear(_campaign_list)
+	if _package_operation_status.is_running():
+		var operation_row := HBoxContainer.new()
+		operation_row.name = "PackageOperationRow"
+		operation_row.custom_minimum_size = Vector2(0, 52)
+		var operation_label := Label.new()
+		operation_label.name = "PackageOperationStatus"
+		operation_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		operation_label.text = _package_operation_status.message
+		operation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		operation_row.add_child(operation_label)
+		var progress := ProgressBar.new()
+		progress.name = "PackageOperationProgress"
+		progress.custom_minimum_size = Vector2(150, 0)
+		progress.show_percentage = _package_operation_status.total > 0
+		progress.indeterminate = _package_operation_status.total <= 0
+		progress.max_value = maxf(1.0, float(_package_operation_status.total))
+		progress.value = clampf(float(_package_operation_status.completed), 0.0, progress.max_value)
+		operation_row.add_child(progress)
+		var cancel := Button.new()
+		cancel.name = "CancelPackageOperation"
+		cancel.text = "Cancel"
+		cancel.pressed.connect(func() -> void: cancel_package_requested.emit())
+		operation_row.add_child(cancel)
+		_campaign_list.add_child(operation_row)
 	if _campaigns.is_empty():
-		_add_label(_campaign_list, "No installed packages. Open a Providence .realmz2 export.", MUTED)
+		if not _package_operation_status.is_running():
+			_add_label(_campaign_list, "No installed packages. Open a Providence .realmz2 export.", MUTED)
 		call_deferred("_refresh_campaign_layout")
 		return
 	for campaign: PackageDiscoveryResult in _campaigns:
@@ -162,13 +199,13 @@ func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
 		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var label := Label.new()
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		label.text = "%s\n%s" % [_display_name(campaign), "Ready • %s" % campaign.rules_version if campaign.ready else "Rejected • %s" % campaign.error_message]
+		label.text = "%s\n%s" % [_display_name(campaign), "Available • validates before play" if campaign.ready else "Rejected • %s" % campaign.error_message]
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		label.tooltip_text = campaign.path
 		row.add_child(label)
 		var action := Button.new()
 		action.text = "Play" if campaign.ready else "Details"
-		action.disabled = not campaign.ready
+		action.disabled = not campaign.ready or _package_operation_status.is_running()
 		action.pressed.connect(_campaign_pressed.bind(campaign))
 		row.add_child(action)
 		_campaign_list.add_child(row)
