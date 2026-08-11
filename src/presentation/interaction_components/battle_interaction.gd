@@ -16,7 +16,7 @@ func build(request: InteractionRequest) -> void:
 			if target is Dictionary:
 				var verb := "Fire at" if weapon_mode == "missile" else "Attack"
 				add_response_to(attack_row, "%s %s • HP %d/%d" % [verb, target.get("name", "Enemy"), int(target.get("currentHealth", 0)), int(target.get("maximumHealth", 0))], {"actorId": actor_id, "action": "attack", "targetId": String(target.get("id", ""))})
-	elif weapon_mode == "melee":
+	elif weapon_mode == "melee" and not String(request.payload.get("meleeAttackReason", "")).is_empty():
 		add_hint(String(request.payload.get("meleeAttackReason", "No adjacent melee target.")))
 	if weapon_mode == "missile" and not action_ids.has("attack"):
 		var ranged: Variant = request.payload.get("rangedAttack", {})
@@ -38,9 +38,10 @@ func build(request: InteractionRequest) -> void:
 				continue
 			var destination: Variant = option.get("destination", [])
 			var edge_retreat := bool(option.get("retreat", false))
+			var attack_target_id := String(option.get("attackTargetId", ""))
 			var direction_label := _direction_label(option.get("direction", []))
-			var label := "Leave %s" % direction_label if edge_retreat else "%s • %d MP" % [direction_label, int(option.get("cost", 0))]
-			var full_label := "Leave battle %s" % direction_label if edge_retreat else "Move %s • %d MP" % [direction_label, int(option.get("cost", 0))]
+			var label := "Leave %s" % direction_label if edge_retreat else "Attack %s" % direction_label if not attack_target_id.is_empty() else "%s • %d MP" % [direction_label, int(option.get("cost", 0))]
+			var full_label := "Leave battle %s" % direction_label if edge_retreat else "Attack %s to the %s • %d MP" % [option.get("attackTargetName", "hostile"), direction_label, int(option.get("cost", 0))] if not attack_target_id.is_empty() else "Move %s • %d MP" % [direction_label, int(option.get("cost", 0))]
 			var action := "retreat_edge" if edge_retreat else "move"
 			var response := {"actorId": actor_id, "action": action, "targetId": "", "destination": destination}
 			if edge_retreat:

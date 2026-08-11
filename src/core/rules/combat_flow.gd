@@ -406,10 +406,17 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 	var direction := destination - origin
 	var available_movement := actor.maximum_movement if combat.active_turn == null else actor.movement
 	var probe := _rules.battlefield.probe_step(combat.battlefield, terrain_set, actor_id, direction, available_movement)
-	if not probe.allowed:
+	var contact_target_id := _hostile_contact_target_id(state, actor.id, probe.occupant_id) if probe.reason == &"occupied" else ""
+	if not contact_target_id.is_empty() and combat.character_weapon_mode(actor.id) != &"melee":
+		return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an occupied hostile footprint.")
+	if not probe.allowed and contact_target_id.is_empty():
 		return CombatFlowResult.failed(probe.reason, _movement_failure_message(probe))
+	if not contact_target_id.is_empty():
+		var equipment := _rules.inventory.combat_equipment(actor, content.item_definitions())
+		if not equipment.valid:
+			return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	_prepare_character_turn(combat, actor)
-	combat.pending_reaction = CombatReactionState.new(CombatReactionState.CHARACTER_MOVE, actor.id, origin, destination, probe.movement_cost)
+	combat.pending_reaction = CombatReactionState.new(CombatReactionState.CHARACTER_MOVE, actor.id, origin, destination, 3 if not contact_target_id.is_empty() else probe.movement_cost)
 	var origin_hostiles := _hostile_adjacent_ids(state, actor.id)
 	combat.pending_reaction.set_origin_hostiles(origin_hostiles)
 	combat.pending_reaction.set_phase(CombatReactionState.GUARD_BEFORE, _guarding_actor_ids(state, origin_hostiles))
@@ -445,6 +452,15 @@ func _continue_pending_reaction(state: GameState, content: RealmzContent, rng: R
 		match reaction.phase:
 			CombatReactionState.GUARD_BEFORE:
 				if reaction.kind == CombatReactionState.CHARACTER_MOVE:
+					var contact_target_id := _hostile_contact_target_id(state, reaction.mover_id, reaction.destination)
+					if not contact_target_id.is_empty():
+						combat.pending_reaction = null
+						var contact_result := submit_action(state, content, reaction.mover_id, &"attack", contact_target_id, rng)
+						if not contact_result.ok:
+							events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": contact_target_id, "reason": String(contact_result.error_code)}))
+							return REACTION_COMPLETED
+						events.append_array(contact_result.events)
+						return REACTION_COMPLETED
 					reaction.set_phase(CombatReactionState.WITHDRAWAL, _withdrawal_hostiles(state, reaction))
 				else:
 					if not _commit_reaction_move(state, content, reaction, events):
@@ -2293,6 +2309,26 @@ func _hostile_adjacent_ids(state: GameState, actor_id: String, anchor_override: 
 		if adjacent_ids.has(candidate_monster.id) and candidate_monster.current_health > 0 and candidate_monster.traitor != actor_traitor:
 			result.append(candidate_monster.id)
 	return result
+
+
+func _hostile_contact_target_id(state: GameState, actor_id: String, destination_or_target: Variant) -> String:
+	if state == null or state.combat == null or state.combat.battlefield == null:
+		return ""
+	var candidate_id := ""
+	if destination_or_target is String:
+		candidate_id = destination_or_target
+	elif destination_or_target is Vector2i:
+		candidate_id = state.combat.battlefield.actor_at(destination_or_target, actor_id)
+	if candidate_id.is_empty():
+		return ""
+	var actor := state.party.character_by_id(actor_id)
+	if actor == null or actor.current_health <= 0:
+		return ""
+	var monster := state.combat.monster_by_id(candidate_id)
+	if monster != null:
+		return candidate_id if monster.current_health > 0 and monster.traitor != actor.traitor else ""
+	var character := state.party.character_by_id(candidate_id)
+	return candidate_id if character != null and character.current_health > 0 and character.traitor != actor.traitor else ""
 
 
 static func _remove_defeated_position(combat: CombatState, actor_id: String, defeated: bool) -> void:

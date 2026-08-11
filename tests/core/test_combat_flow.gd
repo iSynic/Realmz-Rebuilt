@@ -5,6 +5,7 @@ var _cached_battle_world: WorldDefinition
 
 func run() -> void:
 	_test_tactical_adjacency_movement_and_restore()
+	_test_player_collision_initiates_melee()
 	_test_guard_and_withdrawal_reactions()
 	_test_character_and_monster_retreat()
 	_test_guard_followups()
@@ -29,6 +30,58 @@ func run() -> void:
 	_test_monster_attack_cursor_restore()
 	_test_battle_owned_fumble_and_exact_recovery()
 	_test_monster_fumble_clears_only_active_weapon()
+
+
+func _test_player_collision_initiates_melee() -> void:
+	var rules := RealmzRules.new()
+	var character := _character("character.collision-melee")
+	character.normal_attacks = 4
+	var definition := _monster_definition("monster.collision-melee", [MonsterAttackDefinition.new(1, 1)])
+	var monster := MonsterState.new("monster.collision-melee.instance", definition.id, definition.name, 30, 30, 1)
+	var state := _state(character, monster, "battle.collision-melee")
+	var content := _content([definition])
+	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow)
+	var east: CombatMoveOptionView = view.movement_options.filter(func(option: CombatMoveOptionView) -> bool: return option.direction == Vector2i.RIGHT)[0]
+	assert_true(east.enabled, "Castle's occupied-direction input remains an available player command")
+	assert_equal(east.attack_target_id, monster.id, "the detached movement option identifies the hostile footprint attacked by that direction")
+	assert_false(view.legal_actions.has(&"attack"), "melee is initiated by hostile collision rather than a separate Classic Attack command")
+	assert_true(view.targets.is_empty(), "melee does not leak a second target-picker path alongside the directional command")
+	var request := RealmzRuntimeApi.new(content, state, ScriptedRng.new([]), ScenarioActionState.new())._combat_request("request.collision-melee")
+	var east_request: Dictionary = request.payload.get("movement", []).filter(func(option: Dictionary) -> bool: return option.get("direction") == [1, 0])[0]
+	assert_equal([east_request.get("enabled"), east_request.get("attackTargetId")], [true, monster.id], "the typed combat request preserves the source-owned collision target")
+	var result := rules.combat_flow.move_character(state, content, character.id, Vector2i(46, 45), ScriptedRng.new([0, 0, 0, 0, 0, 0]))
+	assert_true(result.ok, "moving into an opposed occupied footprint resolves melee")
+	assert_equal(state.combat.battlefield.character_position(character.id), Vector2i(45, 45), "collision melee does not move the attacker into the target footprint")
+	assert_equal([character.movement, character.attacks_remaining], [9, 3], "collision melee spends Castle's three movement and two half-attack units while preserving the carried half-attack")
+	assert_true(result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == character.id and event.payload.get("targetId") == monster.id), "collision melee publishes the ordinary physical attack result")
+	var host_character := _character("character.collision-host")
+	host_character.normal_attacks = 4
+	var host_monster := MonsterState.new("monster.collision-host.instance", definition.id, definition.name, 30, 30, 1)
+	var host_state := _state(host_character, host_monster, "battle.collision-host")
+	var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new(_ints(24)), ScenarioActionState.new())
+	var host_result := host_api._resume_battle({"kind": "classic-combat", "battleId": host_state.combat.battle_id}, InteractionResponse.new("request.collision-host", InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "move", "targetId": "", "destination": [46, 45]}), "request.collision-host")
+	assert_equal(host_result.state, ScenarioRuntimeOperationResult.State.WAITING, "the scenario-owned combat interaction returns collision melee to the same battle request")
+	assert_true(host_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == host_character.id and event.payload.get("targetId") == host_monster.id), "the ordinary typed movement response reaches the collision-melee owner")
+
+	var guarded_character := _character("character.collision-guarded")
+	guarded_character.normal_attacks = 4
+	var guarded_monster := MonsterState.new("monster.collision-guarded.instance", definition.id, definition.name, 30, 30, 1)
+	var guarded_state := _state(guarded_character, guarded_monster, "battle.collision-guarded")
+	guarded_state.combat.set_guarding(guarded_monster.id, true)
+	var guarded_result := rules.combat_flow.move_character(guarded_state, content, guarded_character.id, Vector2i(46, 45), ScriptedRng.new(_ints(24)))
+	var guarded_events := guarded_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved")
+	assert_true(guarded_result.ok, "collision melee survives the source-ordered Guard-before-contact path")
+	assert_equal(guarded_events.map(func(event: DomainEvent) -> String: return String(event.payload.get("actorId"))), [guarded_monster.id, guarded_character.id], "a guarding hostile strikes before the mover's collision melee")
+	assert_equal(guarded_state.combat.battlefield.character_position(guarded_character.id), Vector2i(45, 45), "guarded collision melee still leaves the attacker in its original footprint")
+
+	var missile_character := _character("character.collision-missile")
+	var missile_monster := MonsterState.new("monster.collision-missile.instance", definition.id, definition.name, 30, 30, 1)
+	var missile_state := _state(missile_character, missile_monster, "battle.collision-missile")
+	missile_state.combat.set_character_weapon_mode(missile_character.id, &"missile")
+	var missile_rng := ScriptedRng.new([])
+	var missile_collision := rules.combat_flow.move_character(missile_state, content, missile_character.id, Vector2i(46, 45), missile_rng)
+	assert_equal(missile_collision.error_code, &"melee_weapon_mode_required", "an occupied direction cannot silently fire or reinterpret the active missile weapon")
+	assert_equal(missile_rng.snapshot().draw_count, 0, "rejected missile-mode collision consumes no combat randomness")
 
 
 func _test_source_backed_combat_spell_item_use() -> void:
@@ -506,6 +559,31 @@ func _test_guard_age_update_restore() -> void:
 	assert_equal([restored.party.character_by_id(character.id).current_health, restored.combat.battlefield.character_position(character.id)], [29, Vector2i(45, 44)], "deferred damage commits once before the surviving mover reaches its destination")
 	assert_equal([restored.combat.pending_reaction, restored.combat.pending_monster_attack], [null, null], "the completed reaction leaves no replayable continuation")
 	assert_true(resumed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("reaction") == true and event.payload.get("action") == "guard"), "the resumed attack retains its guard identity for presentation")
+
+	var contact_character := _character("character.reaction-age-contact")
+	contact_character.race_id = race.id
+	contact_character.caste_id = caste.id
+	contact_character.age_days = 19 * 365 + 364
+	contact_character.age_group = 1
+	contact_character.normal_attacks = 4
+	contact_character.set_save_value_raw(7, 50)
+	var contact_monster := MonsterState.new("monster.reaction-age-contact.instance", definition.id, definition.name, 30, 30, 1)
+	var contact_state := _state(contact_character, contact_monster, "battle.reaction-age-contact")
+	contact_state.combat.set_guarding(contact_monster.id, true)
+	var contact_values: Array[int] = [0, 0, 0, 0, 0, 32_767]
+	contact_values.append_array(_ints(24))
+	var contact_rng := ScriptedRng.new(contact_values)
+	var contact_waiting := rules.combat_flow.move_character(contact_state, content, contact_character.id, Vector2i(46, 45), contact_rng)
+	assert_true(contact_waiting.ok and contact_waiting.events.any(func(event: DomainEvent) -> bool: return event.kind == &"character_age_changed"), "Guard pauses collision melee at the same typed age-update boundary")
+	var contact_restored := GameState.from_data(JSON.parse_string(JSON.stringify(contact_state.to_data())))
+	assert_not_null(contact_restored, "the occupied collision destination survives the pending Guard continuation")
+	if contact_restored != null:
+		var contact_restored_rng := RealmzRng.new()
+		assert_true(contact_restored_rng.restore(contact_rng.snapshot()), "collision melee restores the exact post-Guard RNG boundary")
+		var contact_resumed := rules.combat_flow.continue_after_age_update(contact_restored, content, contact_restored_rng)
+		assert_true(contact_resumed.ok, "acknowledging Guard resumes the deferred collision melee")
+		assert_equal(contact_restored.combat.battlefield.character_position(contact_character.id), Vector2i(45, 45), "restored collision melee attacks without committing movement")
+		assert_true(contact_resumed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == contact_character.id and event.payload.get("targetId") == contact_monster.id), "restored collision melee resolves exactly once after Guard acknowledgement")
 
 
 func _test_guard_death_macro_revival_continuation() -> void:

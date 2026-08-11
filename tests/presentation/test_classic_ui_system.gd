@@ -143,6 +143,27 @@ func _test_battle_weapon_mode_component() -> void:
 	], "the presenter emits typed switch, movement, combatant, battlefield-coordinate, ordered repeated-target spell, and charged-item responses")
 	component.free()
 
+	var melee_request := InteractionRequest.new("battle.collision-melee", &"combat_action", {
+		"actorId": "character.fighter",
+		"actions": ["finish", "defend"],
+		"weaponMode": "melee",
+		"meleeAttackReason": "",
+		"targets": [{"id": "monster.contact", "name": "Ogre", "currentHealth": 12, "maximumHealth": 12}],
+		"movement": [{"direction": [1, 0], "destination": [46, 45], "cost": 3, "enabled": true, "reason": "", "attackTargetId": "monster.contact", "attackTargetName": "Ogre"}],
+	})
+	var melee_component := BattleInteraction.new()
+	var melee_submitted: Array[Dictionary] = []
+	melee_component.payload_submitted.connect(func(payload: Dictionary) -> void: melee_submitted.append(payload))
+	melee_component.build(melee_request)
+	var melee_buttons: Array[Node] = melee_component.find_children("*", "Button", true, false)
+	var collision_button: Button = melee_buttons.filter(func(button: Button) -> bool: return button.text == "Attack E")[0]
+	assert_not_null(collision_button, "melee renders the hostile occupied direction as the attack command")
+	assert_equal(collision_button.tooltip_text, "Attack Ogre to the E • 3 MP", "collision melee exposes its target, direction, and source-owned movement cost")
+	assert_false(melee_buttons.any(func(button: Button) -> bool: return button.text.begins_with("Attack Ogre")), "melee does not duplicate Castle's collision command with a separate target button")
+	collision_button.pressed.emit()
+	assert_equal(melee_submitted, [{"actorId": "character.fighter", "action": "move", "targetId": "", "destination": [46, 45]}], "collision melee remains a typed directional response and lets the core resolve occupancy")
+	melee_component.free()
+
 
 func _test_shop_component() -> void:
 	var request := InteractionRequest.new("shop.fixture", InteractionRequest.SHOP, {

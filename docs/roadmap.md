@@ -599,3 +599,10 @@ Flagged rather than copied: Castle's successful land path checks one tile beyond
 - The current audit reports 40 functional Classic workflows, one host release blocker, and 71 bidirectionally linked differential cases. This visual evidence is a synthetic fixture walkthrough, not ordinary AOGM certification.
 
 Next batch priority: use the regenerated audit queue to choose 3–5 adjacent application workflows. Preserve the unresolved movement/Swap observations—ordinary callers continue movement after distribution, while the direct `moveparty(1)` fallback returns—and settle them only in the dedicated source-backed workflow that owns movement resumption.
+
+## Current workflow batch — AOGM combat commands and return
+
+- The first workflow corrects ordinary melee input. Castle maps keypad, keyboard, and battlefield clicks into a directional `movelook` command; an opposed occupied destination runs Guard first, spends three movement and two half-attack units, attacks, and does not move. Its Target control is the charged missile/item path, not a generic melee picker.
+- Realmz 2.0 now carries the hostile identity on the detached directional option, emits the ordinary typed move response, resolves contact in `CombatFlow`, and removes the duplicate melee target row. The Guard/age-update continuation restores and resolves the contact attack exactly once.
+- Castle's optional Auto Weapon Switch preference can redirect a physical missile collision to melee. The current 2.0 workflow requires an explicit switch and tracks that difference as a minor parity decision instead of silently choosing a setting policy.
+- The remaining batch workflows are ordinary missile Fire, representative combat spell responses, and Escape/edge retreat. Their supported rules already have broad synthetic coverage; this batch adds the missing typed-boundary and ordinary-play proof before the terminal battle/reward Tier 3 closeout.

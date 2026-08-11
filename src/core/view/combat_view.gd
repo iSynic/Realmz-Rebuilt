@@ -76,11 +76,7 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 			weapon_switch_available = weapon_mode == &"missile" or equipment.missile_weapon != null
 			weapon_switch_target_mode = &"melee" if weapon_mode == &"missile" else &"missile"
 			weapon_switch_unavailable_reason = "" if weapon_switch_available else "The active character has no equipped Classic type-15 missile weapon."
-			if weapon_mode == &"melee" and (not targets.is_empty() or not character_targets.is_empty()):
-				legal_actions.append(&"attack")
-			elif weapon_mode == &"melee":
-				melee_attack_unavailable_reason = "No hostile battlefield footprint is adjacent."
-			else:
+			if weapon_mode != &"melee":
 				targets.clear()
 				character_targets.clear()
 				var profile := combat_flow.character_projectile_profile(active_character, content, equipment) if combat_flow != null else null
@@ -103,12 +99,46 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 			var map := content.world.map_by_id(combat.battlefield.map_id)
 			var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
 			if terrain_set != null:
+				var contact_attack_available := false
 				for direction: Vector2i in BattlefieldRules.DIRECTIONS:
 					var destination := combat.battlefield.actor_position(active_character.id) + direction
 					var edge_retreat: Variant = combat_flow.probe_edge_retreat(combat, active_character.id, destination) if combat_flow != null else null
 					var probe := battlefield_rules.probe_step(combat.battlefield, terrain_set, active_character.id, direction, active_character.movement)
-					movement_options.append(CombatMoveOptionView.new(direction, probe, edge_retreat != null and edge_retreat.allowed, edge_retreat != null and edge_retreat.forced))
+					var contact_target_id := ""
+					var contact_target_name := ""
+					if weapon_mode == &"melee" and probe.reason == &"occupied" and _is_hostile_target(combat, characters, active_character, probe.occupant_id):
+						contact_target_id = probe.occupant_id
+						contact_target_name = _target_name(combat, characters, contact_target_id)
+						contact_attack_available = true
+					movement_options.append(CombatMoveOptionView.new(direction, probe, edge_retreat != null and edge_retreat.allowed, edge_retreat != null and edge_retreat.forced, contact_target_id, contact_target_name))
+				if weapon_mode == &"melee" and not contact_attack_available:
+					melee_attack_unavailable_reason = "No hostile battlefield footprint is adjacent."
+				if weapon_mode == &"melee":
+					targets.clear()
+					character_targets.clear()
 	legal_actions.append(&"finish")
 	legal_actions.append(&"defend")
 	if retreat_available:
 		legal_actions.append(&"retreat")
+
+
+static func _is_hostile_target(combat: CombatState, characters: Array[CharacterState], actor: CharacterState, target_id: String) -> bool:
+	if target_id.is_empty() or actor == null:
+		return false
+	var monster := combat.monster_by_id(target_id)
+	if monster != null:
+		return monster.current_health > 0 and monster.traitor != actor.traitor
+	for character: CharacterState in characters:
+		if character.id == target_id:
+			return character.current_health > 0 and character.traitor != actor.traitor
+	return false
+
+
+static func _target_name(combat: CombatState, characters: Array[CharacterState], target_id: String) -> String:
+	var monster := combat.monster_by_id(target_id)
+	if monster != null:
+		return monster.name
+	for character: CharacterState in characters:
+		if character.id == target_id:
+			return character.name
+	return target_id

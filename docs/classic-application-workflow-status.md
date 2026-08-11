@@ -34,8 +34,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 13 |
-| required | 10 |
-| completed | 37 |
+| required | 9 |
+| completed | 38 |
 
 | Remake | Count |
 | --- | ---: |
@@ -115,14 +115,13 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **27**.
+Blockers: **1**. Major gaps: **26**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
 - **major** `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
 - **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Create synthetic Castle fixtures for battle modes 5 and 10 and opcode 48 bonus treasure before changing the package contract.
-- **major** `classic.combat.tactical-movement` — Castle initiates ordinary player melee by moving into an opposed occupied footprint, while Realmz 2.0 currently separates movement from an explicit Attack response. Next: Use a controlled Castle interaction fixture to compare movement-into-hostile and Target-command input, costs, feedback, and cancellation before changing the typed combat response contract.
 - **major** `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end. Next: Trace the preference/save fields and ordinary cast handoff, then decide whether the shortcut is Classic state or presentation state.
 - **major** `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved. Next: Use controlled fixtures for zero/negative land tiles, boat/shore cancellation, special dungeon wall bits, and attempted-coordinate timed gates before broadening the topology result.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
@@ -148,7 +147,6 @@ Blockers: **1**. Major gaps: **27**.
 
 ## Oracle-required unknowns
 
-- `classic.combat.tactical-movement` — Move on the tactical battlefield
 - `classic.exploration.fast-spell` — Cast a numeric fast spell
 - `classic.exploration.travel` — Travel on land and in dungeons
 - `classic.inventory.identify-item` — Identify an item
@@ -164,7 +162,6 @@ Blockers: **1**. Major gaps: **27**.
 ### aogm
 
 - `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
-- `classic.combat.tactical-movement` — Castle initiates ordinary player melee by moving into an opposed occupied footprint, while Realmz 2.0 currently separates movement from an explicit Attack response.
 - `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved.
 - `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit.
 - `classic.maps.view-acquired` — Realmz 2 packages omit Castle's player-map records and map-menu names.
@@ -209,6 +206,7 @@ Blockers: **1**. Major gaps: **27**.
 - `classic.services.temple` — Realmz 2.0 packages omit Castle's global Temple macro hook.
 - `classic.startup.end-adventure` — There is no typed end-adventure boundary distinct from process quit or campaign replacement.
 - `classic.character.view-sheet` — Several nonzero Classic ability slots lack verified display names.
+- `classic.combat.tactical-movement` — Realmz 2.0 requires an explicit switch from missile to melee before hostile collision, while Castle can perform that switch through its Auto Weapon Switch preference.
 - `classic.services.shop` — Normalized shop stock omits native empty-slot provenance.
 - `classic.system.preferences` — Classic's editable stock spell/race/caste names are not represented and may conflict with immutable package content.
 
