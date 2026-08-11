@@ -16,7 +16,7 @@ var _textbox_rect := Rect2(8.0, 424.0, 696.0, 168.0)
 var _passive_text: bool = false
 
 
-func present(request: InteractionRequest, classic_text_context: String = "") -> void:
+func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: PackageMediaCatalog = null) -> void:
 	_request = request
 	_passive_text = false
 	_clear_options()
@@ -27,10 +27,12 @@ func present(request: InteractionRequest, classic_text_context: String = "") -> 
 		return
 	_set_heading(_heading_for_kind(request.kind))
 	_prompt.text = _prompt_for(request, classic_text_context)
+	if request.payload.get("presentation") == "player-map":
+		_prompt.text = ""
 	if request.kind == &"combat_action":
 		_set_heading("")
 		_prompt.text = ""
-	_component = _component_for(request.kind)
+	_component = _component_for(request, game_view, media)
 	if _component == null:
 		_set_heading("Unsupported Interaction")
 		_prompt.text = "Unsupported Realmz interaction: %s" % String(request.kind)
@@ -80,8 +82,12 @@ func set_text_scale(value: float) -> void:
 	_prompt.add_theme_font_size_override("font_size", int(round(20.0 * value)))
 
 
-func _component_for(kind: StringName) -> InteractionComponent:
-	match kind:
+func _component_for(request: InteractionRequest, game_view: GameView, media: PackageMediaCatalog) -> InteractionComponent:
+	if request.kind == InteractionRequest.ACKNOWLEDGE and request.payload.get("presentation") == "player-map":
+		var player_map := PlayerMapInteraction.new()
+		player_map.configure(game_view, media)
+		return player_map
+	match request.kind:
 		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice":
 			return TextChoiceInteraction.new()
 		&"age_update":
@@ -146,7 +152,7 @@ func _apply_classic_region() -> void:
 
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
-	return passive_text or request != null and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"combat_action"]
+	return passive_text or request != null and request.payload.get("presentation") != "player-map" and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"combat_action"]
 
 
 func _add_hint(text: String) -> void:

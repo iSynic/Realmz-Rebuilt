@@ -683,16 +683,68 @@
     },
     "world": {
       "type": "object",
-      "required": ["kind", "schemaVersion", "battleTerrainSets", "maps", "triggers", "transitions", "landLayout", "timedEncounters"],
+      "required": ["kind", "schemaVersion", "battleTerrainSets", "maps", "playerMaps", "triggers", "transitions", "landLayout", "timedEncounters"],
       "properties": {
         "kind": { "const": "realmz2.world" },
         "schemaVersion": { "const": 2 },
         "battleTerrainSets": { "type": "array", "items": { "$ref": "#/$defs/battleTerrainSet" } },
         "maps": { "type": "array", "items": { "$ref": "#/$defs/map" }, "minItems": 1 },
+        "playerMaps": { "type": "array", "items": { "$ref": "#/$defs/playerMap" }, "maxItems": 20 },
         "triggers": { "type": "array", "items": { "$ref": "#/$defs/trigger" } },
         "transitions": { "type": "array", "items": { "$ref": "#/$defs/worldTransition" } },
         "landLayout": {},
         "timedEncounters": { "type": "array", "items": { "$ref": "#/$defs/timedEncounter" } }
+      },
+      "additionalProperties": false
+    },
+    "playerMapRect": {
+      "type": "object",
+      "required": ["top", "left", "bottom", "right"],
+      "properties": {
+        "top": { "type": "integer" },
+        "left": { "type": "integer" },
+        "bottom": { "type": "integer" },
+        "right": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "playerMapMarker": {
+      "type": "object",
+      "required": ["classicIconId", "iconAssetId", "x", "y"],
+      "properties": {
+        "classicIconId": { "type": "integer" },
+        "iconAssetId": { "$ref": "#/$defs/identifier" },
+        "x": { "type": "integer" },
+        "y": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "playerMap": {
+      "type": "object",
+      "required": ["id", "classicId", "name", "unavailableName", "mode", "mapId", "start", "iconSize", "pictureAssetId", "scrollingTextAssetId", "partyMarkerAssetId", "pictureRect", "markers", "note"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "classicId": { "type": "integer", "minimum": 0, "maximum": 19 },
+        "name": { "type": "string", "minLength": 1 },
+        "unavailableName": { "type": "string" },
+        "mode": { "enum": ["scrolling-text", "picture", "land-crop", "dungeon-crop"] },
+        "mapId": { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        "start": {
+          "type": "object",
+          "required": ["x", "y"],
+          "properties": {
+            "x": { "type": "integer" },
+            "y": { "type": "integer" }
+          },
+          "additionalProperties": false
+        },
+        "iconSize": { "type": "integer", "minimum": 1 },
+        "pictureAssetId": { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        "scrollingTextAssetId": { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        "partyMarkerAssetId": { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        "pictureRect": { "$ref": "#/$defs/playerMapRect" },
+        "markers": { "type": "array", "items": { "$ref": "#/$defs/playerMapMarker" }, "maxItems": 10 },
+        "note": { "type": "string" }
       },
       "additionalProperties": false
     },

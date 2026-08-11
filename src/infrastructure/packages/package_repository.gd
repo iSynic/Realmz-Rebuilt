@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "56b70255779a8a7dfadcda80ec16c86fba15ce269c31f974db840f74dff49861"
+const EXPECTED_SCHEMA_HASH: String = "2f9b23f5b5c4c2b056226b945746bf6941436accdbbacc52b6af8507c511d855"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -374,13 +374,19 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 	if maps_value == null:
 		return null
 	var maps: Array[MapDefinition] = maps_value
+	var player_maps_value: Variant = _construct_player_maps(world.get("playerMaps"), maps, media_assets)
+	if player_maps_value == null:
+		return null
+	var player_maps: Array[PlayerMapDefinition] = player_maps_value
 	if not _validate_random_region_references(maps, scenario_definition, battles):
 		return null
 	var transitions_value: Variant = _construct_transitions(world.get("transitions"), maps)
 	if transitions_value == null:
 		return null
 	var transitions: Array[MapTransition] = transitions_value
-	var world_definition := WorldDefinition.new(maps, transitions, battle_terrain_sets)
+	var world_definition := WorldDefinition.new(maps, transitions, battle_terrain_sets, player_maps)
+	if not _validate_player_map_opcode_references(scenario_definition, world_definition):
+		return null
 	var start: Variant = manifest.get("start")
 	if not start is Dictionary or not start.get("mapId") is String or _integer(start.get("x")) < 0 or _integer(start.get("y")) < 0:
 		_reject("Manifest start location is malformed.")
@@ -1327,6 +1333,108 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_set
 			return null
 		maps.append(MapDefinition.new(record["id"], record["name"], StringName(level_type), level_index, MapTopology.new(width, height, cells), metadata["dark"], metadata["usesLos"], landlook, regions, terrain_set_id))
 	return maps
+
+
+func _construct_player_maps(value: Variant, maps: Array[MapDefinition], media_assets: Array[PackageMediaAsset]) -> Variant:
+	if not value is Array or value.size() > 20:
+		_reject("World player maps must be an array of no more than twenty records.")
+		return null
+	var maps_by_id: Dictionary = {}
+	for map: MapDefinition in maps:
+		maps_by_id[map.id] = map
+	var assets_by_id: Dictionary = {}
+	for asset: PackageMediaAsset in media_assets:
+		assets_by_id[asset.id] = asset
+	var result: Array[PlayerMapDefinition] = []
+	var ids: Dictionary = {}
+	var classic_ids: Dictionary = {}
+	var fields: Array[String] = ["id", "classicId", "name", "unavailableName", "mode", "mapId", "start", "iconSize", "pictureAssetId", "scrollingTextAssetId", "partyMarkerAssetId", "pictureRect", "markers", "note"]
+	var modes: Array[String] = ["scrolling-text", "picture", "land-crop", "dungeon-crop"]
+	for value_record: Variant in value:
+		if not value_record is Dictionary:
+			_reject("Player-map definition is not an object.")
+			return null
+		var record: Dictionary = value_record
+		if not _exact_fields(record, fields) or not record["id"] is String or record["id"].is_empty() or ids.has(record["id"]) or not _is_integer(record["classicId"]) or not record["name"] is String or record["name"].is_empty() or not record["unavailableName"] is String or not record["mode"] is String or record["mode"] not in modes or not _is_integer(record["iconSize"]) or _integer(record["iconSize"]) <= 0 or not record["note"] is String:
+			_reject("Player-map definition is malformed or duplicated.")
+			return null
+		var classic_id := _integer(record["classicId"])
+		if classic_id < 0 or classic_id > 19 or classic_ids.has(classic_id):
+			_reject("Player-map Classic ID must be unique and between 0 and 19.")
+			return null
+		if not record["start"] is Dictionary or not _exact_fields(record["start"], ["x", "y"]) or not _is_integer(record["start"]["x"]) or not _is_integer(record["start"]["y"]):
+			_reject("Player-map start coordinate is malformed.")
+			return null
+		if not record["pictureRect"] is Dictionary or not _exact_fields(record["pictureRect"], ["top", "left", "bottom", "right"]):
+			_reject("Player-map picture rectangle is malformed.")
+			return null
+		for field: String in ["top", "left", "bottom", "right"]:
+			if not _is_integer(record["pictureRect"][field]):
+				_reject("Player-map picture rectangle is malformed.")
+				return null
+		var mode := StringName(record["mode"])
+		var map_id := "" if record["mapId"] == null else String(record["mapId"])
+		var picture_asset_id := "" if record["pictureAssetId"] == null else String(record["pictureAssetId"])
+		var scrolling_text_asset_id := "" if record["scrollingTextAssetId"] == null else String(record["scrollingTextAssetId"])
+		var party_marker_asset_id := "" if record["partyMarkerAssetId"] == null else String(record["partyMarkerAssetId"])
+		var party_marker_asset := assets_by_id.get(party_marker_asset_id) as PackageMediaAsset
+		if record["mapId"] != null and (not record["mapId"] is String or map_id.is_empty()) or record["pictureAssetId"] != null and (not record["pictureAssetId"] is String or picture_asset_id.is_empty()) or record["scrollingTextAssetId"] != null and (not record["scrollingTextAssetId"] is String or scrolling_text_asset_id.is_empty()) or record["partyMarkerAssetId"] != null and (not record["partyMarkerAssetId"] is String or party_marker_asset_id.is_empty()):
+			_reject("Player-map content references are malformed.")
+			return null
+		var crop := mode in [PlayerMapDefinition.LAND_CROP, PlayerMapDefinition.DUNGEON_CROP]
+		if crop:
+			var source_map := maps_by_id.get(map_id) as MapDefinition
+			var expected_type := &"dungeon" if mode == PlayerMapDefinition.DUNGEON_CROP else &"land"
+			if source_map == null or source_map.level_type != expected_type or not picture_asset_id.is_empty() or not scrolling_text_asset_id.is_empty():
+				_reject("Player-map crop references an unavailable or wrong-kind topology map.")
+				return null
+		if mode == PlayerMapDefinition.PICTURE:
+			var picture_map := maps_by_id.get(map_id) as MapDefinition
+			if picture_map == null or not _player_map_asset_matches(assets_by_id.get(picture_asset_id), "PICT") or not _player_map_asset_matches(party_marker_asset, "cicn") or party_marker_asset.resource_id != 138 or not scrolling_text_asset_id.is_empty():
+				_reject("Picture-backed player map references unavailable PICT media.")
+				return null
+		elif mode == PlayerMapDefinition.SCROLLING_TEXT:
+			if not map_id.is_empty() or not _player_map_asset_matches(assets_by_id.get(scrolling_text_asset_id), "TEXT") or not picture_asset_id.is_empty() or not party_marker_asset_id.is_empty():
+				_reject("Scrolling player map references unavailable TEXT media.")
+				return null
+		elif not _player_map_asset_matches(party_marker_asset, "cicn") or party_marker_asset.resource_id != 138:
+			_reject("Player-map crop references unavailable current-party cicn media.")
+			return null
+		var markers_value: Variant = record["markers"]
+		if not markers_value is Array or markers_value.size() > 10 or not crop and not markers_value.is_empty():
+			_reject("Player-map markers are malformed or attached outside a crop map.")
+			return null
+		var markers: Array[PlayerMapMarkerDefinition] = []
+		for marker_value: Variant in markers_value:
+			if not marker_value is Dictionary or not _exact_fields(marker_value, ["classicIconId", "iconAssetId", "x", "y"]) or not _is_integer(marker_value["classicIconId"]) or not marker_value["iconAssetId"] is String or marker_value["iconAssetId"].is_empty() or not _is_integer(marker_value["x"]) or not _is_integer(marker_value["y"]):
+				_reject("Player-map marker is malformed.")
+				return null
+			var marker_asset := assets_by_id.get(marker_value["iconAssetId"]) as PackageMediaAsset
+			if not _player_map_asset_matches(marker_asset, "cicn") or marker_asset.resource_id != _integer(marker_value["classicIconId"]):
+				_reject("Player-map marker does not match its exact cicn resource identity.")
+				return null
+			markers.append(PlayerMapMarkerDefinition.new(_integer(marker_value["classicIconId"]), marker_value["iconAssetId"], Vector2i(_integer(marker_value["x"]), _integer(marker_value["y"]))))
+		ids[record["id"]] = true
+		classic_ids[classic_id] = true
+		var rect: Dictionary = record["pictureRect"]
+		result.append(PlayerMapDefinition.new(record["id"], classic_id, record["name"], record["unavailableName"], mode, map_id, Vector2i(_integer(record["start"]["x"]), _integer(record["start"]["y"])), _integer(record["iconSize"]), picture_asset_id, scrolling_text_asset_id, party_marker_asset_id, Rect2i(_integer(rect["left"]), _integer(rect["top"]), _integer(rect["right"]) - _integer(rect["left"]), _integer(rect["bottom"]) - _integer(rect["top"])), markers, record["note"]))
+	result.sort_custom(func(left: PlayerMapDefinition, right: PlayerMapDefinition) -> bool: return left.classic_id < right.classic_id)
+	return result
+
+
+func _player_map_asset_matches(value: Variant, resource_type: String) -> bool:
+	return value is PackageMediaAsset and value.resource_type == resource_type
+
+
+func _validate_player_map_opcode_references(scenario: ScenarioDefinition, world: WorldDefinition) -> bool:
+	for program_id: String in scenario.program_ids():
+		var program := scenario.program_by_id(program_id)
+		for index: int in range(program.instruction_count()):
+			var instruction: Variant = program.instruction_at(index)
+			if instruction is ClassicActionDefinition and instruction.opcode == 29 and world.player_map_by_classic_id(absi(instruction.operand_id)) == null:
+				_reject("Scenario program '%s' references unavailable player-map record %d." % [program.id, absi(instruction.operand_id)])
+				return false
+	return true
 
 
 func _construct_cell(record: Variant, width: int, height: int, trigger_ids: Dictionary, region_ids: Dictionary) -> MapCell:

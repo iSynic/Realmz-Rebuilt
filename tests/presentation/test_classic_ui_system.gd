@@ -4,6 +4,7 @@ const SaveSlotPreviewScript := preload("res://src/infrastructure/saves/save_slot
 const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
 const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
+const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 
 
 func run() -> void:
@@ -39,6 +40,7 @@ func run() -> void:
 	_test_package_operation_presentation()
 	_test_save_preview_workspace()
 	_test_location_note_workspace()
+	_test_player_map_workspace()
 
 
 func _test_package_operation_presentation() -> void:
@@ -161,6 +163,70 @@ func _test_location_note_workspace() -> void:
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("A safe campsite.")), "saved location notes remain readable while only the current record is editable")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Journal entry 4")), "the Journal route labels authored records by their stable source message identity")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("A long authored entry")), "long authored journal text remains present in the scrollable workspace")
+	router.free()
+
+
+func _test_player_map_workspace() -> void:
+	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
+	assert_true(loaded.is_ok(), "the player-map presentation fixture loads through the independent package boundary")
+	if not loaded.is_ok():
+		return
+	var definition := loaded.content.world.player_map_by_classic_id(1)
+	var session := GameSession.new()
+	assert_equal(session.start(loaded.content, 1).state, SessionStep.State.COMPLETED, "the player-map view fixture starts from validated content")
+	session._state.world.acquire_map(definition.id)
+	var view := session.view()
+	assert_equal([view.acquired_player_maps.size(), view.acquired_player_maps[0].id, view.acquired_player_maps[0].cells.size()], [1, definition.id, 100], "the detached player-map view derives its 320-pixel crop from authoritative topology")
+	assert_equal(view.player_map_menu_entries.size(), 4, "the detached menu retains every package player-map slot, not only acquired definitions")
+	var router := ClassicScreenRouter.new()
+	router._body = VBoxContainer.new()
+	router._content_parent = router._body
+	router.add_child(router._body)
+	router._view = view
+	router._media = loaded.media
+	router._render_journal()
+	assert_not_null(router.find_child("AcquiredMapChooser", true, false), "the Journal route exposes a presentation-owned acquired-map chooser")
+	var map_buttons: Array[Node] = router.find_child("AcquiredMapChooser", true, false).find_children("*", "Button", true, false)
+	assert_equal(map_buttons.size(), 4, "Maps/Notes retains acquired and unavailable package menu slots")
+	assert_true(map_buttons.any(func(button: Node) -> bool: return (button as Button).disabled and (button as Button).text == "Dungeon map unavailable"), "unacquired slots use their separate Classic unavailable name and cannot open")
+	assert_not_null(router.find_child("PlayerMapCanvas", true, false), "the selected crop renders through the dedicated player-map canvas")
+	var note := router.find_child("PlayerMapNote", true, false) as Label
+	assert_not_null(note, "non-scrolling maps retain their authored note")
+	if note != null:
+		assert_contains(note.text, "deterministic map", "the displayed note comes from immutable player-map content")
+	var immediate := PlayerMapInteraction.new()
+	immediate.configure(view, loaded.media)
+	var payloads: Array[Dictionary] = []
+	immediate.payload_submitted.connect(func(payload: Dictionary) -> void: payloads.append(payload))
+	immediate.build(InteractionRequest.new("player-map.immediate", InteractionRequest.ACKNOWLEDGE, {"presentation": "player-map", "playerMapId": definition.id}))
+	assert_not_null(immediate.find_child("ImmediatePlayerMap", true, false), "negative opcode 29 uses the same typed presenter as Journal browsing")
+	var continue_button := immediate.find_children("*", "Button", true, false).filter(func(button: Node) -> bool: return (button as Button).text == "Continue")[0] as Button
+	continue_button.pressed.emit()
+	assert_equal(payloads, [{}], "the immediate player-map stage emits only the empty acknowledgement accepted by the VM")
+	for player_map_definition: PlayerMapDefinition in loaded.content.world.player_maps():
+		session._state.world.acquire_map(player_map_definition.id)
+	var complete_view := session.view()
+	var views_by_mode: Dictionary = {}
+	for player_map_view: PlayerMapView in complete_view.acquired_player_maps:
+		views_by_mode[player_map_view.mode] = player_map_view
+	assert_equal(views_by_mode.keys().size(), 4, "the fixture exercises land crop, dungeon crop, picture, and scrolling-text read models")
+	var picture_view := views_by_mode[PlayerMapDefinition.PICTURE] as PlayerMapView
+	assert_equal(picture_view.picture_rect, Rect2i(36, 24, 240, 160), "picture-backed maps preserve their authored destination rectangle")
+	assert_true(picture_view.party_marker_visible, "picture-backed maps retain source playable-map identity for Castle's party marker")
+	var picture_canvas := PlayerMapCanvas.new()
+	picture_canvas.present(picture_view, loaded.media)
+	assert_not_null(picture_canvas._texture_for(picture_view.picture_asset_id), "required player-map PICT media decodes through its exact package asset")
+	var dungeon_view := views_by_mode[PlayerMapDefinition.DUNGEON_CROP] as PlayerMapView
+	assert_equal([dungeon_view.map_id, dungeon_view.cells.size()], ["dungeon:0", 100], "dungeon crop facts derive from the same authoritative topology as exploration")
+	var scrolling_view := views_by_mode[PlayerMapDefinition.SCROLLING_TEXT] as PlayerMapView
+	var scrolling_presenter := PlayerMapPresenter.new()
+	scrolling_presenter.present(scrolling_view, loaded.media)
+	assert_not_null(scrolling_presenter.find_child("PlayerMapScrollingText", true, false), "scrolling maps use their dedicated text stage")
+	assert_contains((scrolling_presenter.find_child("PlayerMapScrollingText", true, false) as RichTextLabel).text, "turns north", "the exact packaged TEXT resource decodes into the scrolling map stage")
+	assert_true(scrolling_presenter.find_child("PlayerMapNote", true, false) == null, "Castle's scrolling map path skips the ordinary map note")
+	scrolling_presenter.free()
+	picture_canvas.free()
+	immediate.free()
 	router.free()
 
 

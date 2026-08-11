@@ -12,7 +12,7 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "343b98fc7a3d2f793cc26b587bb29ba19783a203a847976f9c40f16ed46d17b3", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "05121f98d5a4746d39e1a7ed02d7c4aa1333385a343c1c8bdeba0748a3305d08", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -20,6 +20,14 @@ func run() -> void:
 	var map := loaded.content.world.map_by_id("land:0")
 	assert_not_null(map, "the authoritative start map is constructed")
 	assert_equal(map.battle_terrain_set_id, "classic.battle-terrain.landlook.0", "land maps retain their effective Classic battle terrain identity")
+	var player_map := loaded.content.world.player_map_by_classic_id(1)
+	assert_not_null(player_map, "Data MD2 player-map records become immutable typed content")
+	assert_equal([player_map.id, player_map.mode, player_map.map_id, player_map.icon_size], ["classic.player-map.1", PlayerMapDefinition.LAND_CROP, "land:0", 32], "player-map identity, mode, topology source, and divisor preserve the compiler contract")
+	assert_equal([player_map.party_marker_asset_id, loaded.media.asset_by_id(player_map.party_marker_asset_id).resource_type, loaded.media.asset_by_id(player_map.party_marker_asset_id).resource_id], ["realmz-player-map-cicn-138", "cicn", 138], "the current-party marker resolves through exact Classic type-plus-ID media")
+	assert_equal(player_map.markers().map(func(marker: PlayerMapMarkerDefinition) -> int: return marker.classic_icon_id), [137, 139, 140], "authored player-map markers retain their source order and exact CICN identities")
+	for marker: PlayerMapMarkerDefinition in player_map.markers():
+		assert_equal(loaded.media.asset_by_id(marker.icon_asset_id).resource_id, marker.classic_icon_id, "each player-map marker resolves to the matching Classic resource ID")
+	assert_equal([loaded.content.world.player_map_by_classic_id(2).mode, loaded.content.world.player_map_by_classic_id(3).mode, loaded.content.world.player_map_by_classic_id(4).mode], [PlayerMapDefinition.DUNGEON_CROP, PlayerMapDefinition.PICTURE, PlayerMapDefinition.SCROLLING_TEXT], "the package covers all four Castle player-map display modes")
 	var land_battle_terrain := loaded.content.world.battle_terrain_set_by_id(map.battle_terrain_set_id)
 	assert_not_null(land_battle_terrain, "the map battle terrain identity resolves to immutable typed content")
 	assert_equal(land_battle_terrain.tile_count(), 401, "land battle terrain contains the complete effective mapstats range")
@@ -186,6 +194,27 @@ func run() -> void:
 		assert_false(PackageRepository.new()._validate_presentation_capabilities(battle_manifest, missing_battle_atlas), "a declared battle-atlas capability cannot silently omit its artwork")
 	assert_true(fixture_world is Dictionary, "the detached fixture world parses for independent terrain contract tests")
 	if fixture_world is Dictionary:
+		var fixture_maps: Array[MapDefinition] = []
+		for map_id: String in loaded.content.world.map_ids():
+			fixture_maps.append(loaded.content.world.map_by_id(map_id))
+		var fixture_player_maps: Variant = PackageRepository.new()._construct_player_maps(fixture_world["playerMaps"], fixture_maps, loaded.media.assets())
+		assert_not_null(fixture_player_maps, "the detached player-map contract reconstructs through the independent validating factory")
+		var invalid_player_maps: Array = fixture_world["playerMaps"].duplicate(true)
+		invalid_player_maps[0]["classicId"] = 20
+		assert_true(PackageRepository.new()._construct_player_maps(invalid_player_maps, fixture_maps, loaded.media.assets()) == null, "the runtime rejects Castle's unchecked twentieth player-map index before it can address beyond the save table")
+		invalid_player_maps = fixture_world["playerMaps"].duplicate(true)
+		invalid_player_maps[0]["iconSize"] = 0
+		assert_true(PackageRepository.new()._construct_player_maps(invalid_player_maps, fixture_maps, loaded.media.assets()) == null, "the runtime rejects Castle's zero player-map divisor before presentation")
+		invalid_player_maps = fixture_world["playerMaps"].duplicate(true)
+		invalid_player_maps[0]["partyMarkerAssetId"] = "realmz-portrait-257"
+		assert_true(PackageRepository.new()._construct_player_maps(invalid_player_maps, fixture_maps, loaded.media.assets()) == null, "the runtime rejects a player-map marker that is not exact cicn 138")
+		invalid_player_maps = fixture_world["playerMaps"].duplicate(true)
+		invalid_player_maps[0]["markers"] = [{"classicIconId": 137, "iconAssetId": "realmz-player-map-cicn-138", "x": 1, "y": 1}]
+		assert_true(PackageRepository.new()._construct_player_maps(invalid_player_maps, fixture_maps, loaded.media.assets()) == null, "the runtime rejects a crop marker whose package asset does not match its authored cicn identity")
+		var missing_map_program := ScenarioProgramDefinition.new("player-map.missing", &"trigger", "player-map.missing", [ClassicActionDefinition.new(0, 29, 29, 19, false, [])])
+		var missing_map_scenario := ScenarioDefinition.new([missing_map_program], [])
+		var fixture_world_definition := WorldDefinition.new(fixture_maps, [], [], fixture_player_maps)
+		assert_false(PackageRepository.new()._validate_player_map_opcode_references(missing_map_scenario, fixture_world_definition), "package readiness rejects opcode 29 when its Data MD2 identity is unavailable")
 		var invalid_terrain_sets: Array = fixture_world["battleTerrainSets"].duplicate(true)
 		invalid_terrain_sets[1]["tiles"].pop_back()
 		assert_true(PackageRepository.new()._construct_battle_terrain_sets(invalid_terrain_sets) == null, "the runtime rejects an incomplete effective land battle terrain range")
@@ -213,7 +242,7 @@ func run() -> void:
 	assert_equal(loaded.content.spell_by_id("classic.spell.1108").name, "Magic Darts", "standard spell names follow Castle's positive Custom Names STR# lookup")
 	assert_equal(loaded.content.spell_by_id("classic.spell.2302").name, "Destroy Magic", "standard spell labels preserve their packed Classic identity")
 	assert_not_null(loaded.media, "validated package media receives a typed catalog")
-	assert_equal(loaded.media.assets().size(), 246, "the synthetic fixture carries authored map/scenario media, the battle atlas, and both 120-entry character-appearance catalogs")
+	assert_equal(loaded.media.assets().size(), 252, "the synthetic fixture carries authored map/scenario media, player-map media and markers, the battle atlas, and both 120-entry character-appearance catalogs")
 	assert_equal([loaded.media.assets_of_kind("portrait").size(), loaded.media.assets_of_kind("combat-icon").size()], [120, 120], "the media catalog groups appearance roles without resource-ID-only lookup")
 	var first_portrait_bytes := loaded.media.read_bytes_batch([loaded.media.assets_of_kind("portrait")[0]])
 	assert_false((first_portrait_bytes.get("realmz-portrait-257", PackedByteArray()) as PackedByteArray).is_empty(), "batch media reads validate creator thumbnails through one archive boundary")

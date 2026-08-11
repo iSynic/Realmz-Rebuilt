@@ -86,6 +86,8 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved location notes reference unavailable maps, cells, or invalid Classic note data.")
 	if not _journal_messages_are_valid(content, replacement_state):
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved journal references unavailable or unrepresentable Classic messages.")
+	if not _acquired_player_maps_are_valid(content, replacement_state):
+		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved acquired maps reference unavailable package content.")
 	if not _character_draft_is_valid(content, replacement_state, replacement_rules):
 		return SessionStep.failed(_view_revision, &"invalid_character_draft", "The saved character-creation draft is invalid for this campaign.")
 	var replacement_vm := ScenarioVm.new()
@@ -94,6 +96,8 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 		return SessionStep.failed(_view_revision, &"invalid_vm_state", "The saved Scenario VM state is invalid.")
 	if not _valid_vm_reward_continuation(content, replacement_state, replacement_vm):
 		return SessionStep.failed(_view_revision, &"invalid_vm_state", "The saved Scenario VM reward continuation is invalid.")
+	if not _valid_player_map_vm_continuation(content, replacement_state, replacement_vm):
+		return SessionStep.failed(_view_revision, &"invalid_vm_state", "The saved Scenario VM player-map continuation is invalid.")
 	var replacement_continuation := save_envelope.session_continuation.duplicate(true)
 	var replacement_session_interaction: InteractionRequest = null
 	if save_envelope.session_interaction != null:
@@ -277,6 +281,12 @@ func view() -> GameView:
 	result.party_summary.light_remaining = _state.party.conditions.value(0)
 	result.party_summary.camping = _state.party_camping
 	result.party_summary.acquired_map_ids = _state.world.acquired_map_ids()
+	for definition: PlayerMapDefinition in _content.world.player_maps():
+		var acquired := _state.world.has_map(definition.id)
+		var player_map_view := _build_player_map_view(definition) if acquired else PlayerMapView.new(definition, [], false, Vector2i.ZERO, false)
+		result.player_map_menu_entries.append(player_map_view)
+		if acquired:
+			result.acquired_player_maps.append(player_map_view)
 	for message_id: int in _state.journal_message_ids():
 		var journal_message := _content.message_by_id(message_id)
 		if journal_message != null:
@@ -440,9 +450,10 @@ func _populate_action_availability(result: GameView) -> void:
 	result.set_action_availability(&"combat_move", combat_move_enabled, combat_move_reason)
 	for action_id: StringName in [
 		&"select_spell_power", &"select_spell_target",
-		&"open_journal", &"open_maps",
+		&"open_journal",
 	]:
 		result.set_action_availability(action_id, false, "Not implemented in the current gameplay slice.")
+	result.set_action_availability(&"open_maps", not result.player_map_menu_entries.is_empty(), "This campaign supplies no player-map records." if result.player_map_menu_entries.is_empty() else "")
 
 
 func _populate_spell_actions(result: GameView) -> void:
@@ -1733,6 +1744,15 @@ func _current_location_note_darkness(map: MapDefinition) -> int:
 static func _journal_messages_are_valid(content: RealmzContent, state: GameState) -> bool:
 	for message_id: int in state.journal_message_ids():
 		if not GameState.journal_message_id_is_valid(message_id) or content.message_by_id(message_id) == null:
+			return false
+	return true
+
+
+static func _acquired_player_maps_are_valid(content: RealmzContent, state: GameState) -> bool:
+	if content == null or state == null:
+		return false
+	for player_map_id: String in state.world.acquired_map_ids():
+		if content.world.player_map_by_id(player_map_id) == null:
 			return false
 	return true
 
@@ -3389,6 +3409,18 @@ static func _valid_vm_reward_continuation(content: RealmzContent, state: GameSta
 	return reward != null and _valid_reward_continuation(content, state, reward, vm.pending_request())
 
 
+static func _valid_player_map_vm_continuation(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:
+	var snapshot := vm.snapshot()
+	if snapshot.pending_continuation.is_empty():
+		return true
+	var runtime: Variant = snapshot.pending_continuation.get("runtime")
+	if not runtime is Dictionary or runtime.get("kind") != "classic-player-map":
+		return true
+	var request := vm.pending_request()
+	var player_map_id := String(runtime.get("playerMapId", ""))
+	return request != null and request.kind == InteractionRequest.ACKNOWLEDGE and request.payload.get("presentation") == "player-map" and request.payload.get("playerMapId") == player_map_id and request.payload.size() == 3 and content.world.player_map_by_id(player_map_id) != null and state.world.has_map(player_map_id)
+
+
 static func _valid_reward_continuation(content: RealmzContent, state: GameState, reward: ClassicRewardState, request: InteractionRequest) -> bool:
 	if reward == null or request == null or reward.source_id.is_empty() or reward.origin not in [&"scenario", &"battle"]:
 		return false
@@ -3491,6 +3523,24 @@ func _build_map_view() -> MapView:
 		var probe := _probe_movement(direction)
 		movement_options[direction_name] = {"allowed": probe.allowed, "reason": String(probe.reason)}
 	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, _state.party.coordinate, cells, _state.world.map_is_dark(map), _state.world.visited_coordinates(map.id), movement_options)
+
+
+func _build_player_map_view(definition: PlayerMapDefinition) -> PlayerMapView:
+	var cells: Array[MapCellView] = []
+	var source_map: MapDefinition = _content.world.map_by_id(definition.map_id) if not definition.map_id.is_empty() else null
+	if definition.mode in [PlayerMapDefinition.LAND_CROP, PlayerMapDefinition.DUNGEON_CROP] and source_map != null:
+		var tile_count := ceili(320.0 / float(definition.icon_size))
+		for y: int in range(definition.start.y, definition.start.y + tile_count):
+			for x: int in range(definition.start.x, definition.start.x + tile_count):
+				var cell := source_map.topology.cell_at(Vector2i(x, y))
+				if cell != null:
+					cells.append(_build_cell_view(source_map, cell, true))
+	var show_party := false
+	if source_map != null and source_map.id == _state.party.map_id and definition.mode != PlayerMapDefinition.SCROLLING_TEXT:
+		var visible_tiles := 320 / definition.icon_size
+		var marker_bounds := Rect2i(definition.start - Vector2i.ONE, Vector2i(visible_tiles + 1, visible_tiles + 1))
+		show_party = marker_bounds.has_point(_state.party.coordinate)
+	return PlayerMapView.new(definition, cells, show_party, _state.party.coordinate, true)
 
 
 func _build_cell_view(map: MapDefinition, cell: MapCell, is_visible: bool) -> MapCellView:

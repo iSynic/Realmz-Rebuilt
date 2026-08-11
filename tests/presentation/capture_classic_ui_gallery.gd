@@ -2,6 +2,7 @@ extends SceneTree
 
 const FIXTURE_PATH := "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const OUTPUT_ROOT := "res://artifacts/ui-gallery"
+const CHARACTER_VIEW_SCRIPT := preload("res://src/core/view/character_view.gd")
 
 var _application: RealmzApplication
 var _shell: ClassicApplicationShell
@@ -43,9 +44,10 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("standard-acknowledge-edge-to-edge-960x600")
 	_interaction.present(null)
-	var gallery_view := _application.session_controller.view()
+	var gallery_view: Variant = _application.session_controller.view()
 	if not gallery_view.party_members.is_empty():
-		var definition := _application._active_content.item_by_id("classic.item.901")
+		var active_content: Variant = _application.get("_active_content")
+		var definition: Variant = active_content.item_by_id("classic.item.901")
 		if definition != null:
 			for index: int in 18:
 				gallery_view.party_members[0].items.append(ItemView.new(ItemInstance.new("gallery-item-%d" % index, definition.id, maxi(1, definition.initial_charges), false, index % 3 != 0), definition))
@@ -81,12 +83,12 @@ func _capture_gallery() -> void:
 	_interaction.present(null)
 	var gallery_names: Array[String] = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]
 	while gallery_view.party_members.size() < 6 and not gallery_view.party_members.is_empty():
-		var member_index := gallery_view.party_members.size()
+		var member_index: int = int(gallery_view.party_members.size())
 		var member_state := CharacterState.new("gallery-member-%d" % member_index, gallery_names[member_index], 8 + member_index, 10 + member_index)
 		member_state.race_id = gallery_view.party_members[0].race_id
 		member_state.caste_id = gallery_view.party_members[0].caste_id
 		member_state.armor = member_index
-		gallery_view.party_members.append(CharacterView.new(member_state, _application._active_content))
+		gallery_view.party_members.append(CHARACTER_VIEW_SCRIPT.new(member_state, _application.get("_active_content")))
 	_shell.present(gallery_view)
 	await _resize(Vector2i(960, 600))
 	_router.open_screen(&"exploration")
@@ -160,7 +162,7 @@ func _capture(label: String) -> void:
 		print("CAPTURED: %s" % path)
 
 
-func _combat_view(game_view: GameView) -> CombatView:
+func _combat_view(game_view: Variant) -> CombatView:
 	var tiles: Array[int] = []
 	tiles.resize(BattlefieldState.CELL_COUNT)
 	tiles.fill(232)
@@ -168,7 +170,7 @@ func _combat_view(game_view: GameView) -> CombatView:
 		for x: int in range(36, 55):
 			tiles[y * BattlefieldState.SIZE + x] = 1 + posmod(x * 7 + y * 11, 200)
 	var battlefield := BattlefieldState.new("land:0", tiles)
-	var hero_view := game_view.party_members[0]
+	var hero_view: Variant = game_view.party_members[0]
 	var hero := CharacterState.new(hero_view.id, hero_view.name, hero_view.current_health, hero_view.maximum_health)
 	hero.combat_icon_id = hero_view.combat_icon_id
 	hero.movement = 8
@@ -179,7 +181,7 @@ func _combat_view(game_view: GameView) -> CombatView:
 	battlefield.place_monster(monster.id, Vector2i(47, 45), 0)
 	var combat := CombatState.new("classic.battle.gallery", [monster], 0, battlefield)
 	combat.set_turn_order([hero.id, monster.id])
-	var result := CombatView.new(combat, [hero], _application._active_content)
+	var result := CombatView.new(combat, [hero], _application.get("_active_content"))
 	result.attack_units_remaining = 2
 	result.movement_remaining = 8
 	result.legal_actions = [&"defend", &"finish"]

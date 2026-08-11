@@ -20,6 +20,7 @@
 - The Character workspace uses `ClassicCharacterSheet` for presentation-owned character and tab selection. It renders detached overview, conditions/saves, equipment, abilities, spells, race/class/aging, and lifetime-record availability without emitting gameplay mutations or inventing missing prestige history.
 - Party setup and vault revision inspection reuse that same complete sheet. Setup inspection is a full-stage child surface with an explicit Back action; vault inspection retains the selected revision's eligibility reasons and cannot apply appearance changes.
 - Its Appearance tab previews package-backed portraits and tactical icons independently. Apply emits the exact character, role, and appearance IDs; Discard resets local state and never publishes to the character vault.
+- `PlayerMapPresenter` and `PlayerMapCanvas` consume only detached `PlayerMapView` plus package media. They may render exact PICT/TEXT assets, topology crop cells, markers, note, and current-party marker eligibility, but they never acquire a map, query mutable topology, or answer simulation questions. The Maps/Notes selector preserves source slots and disables unavailable entries instead of hiding them.
 
 # Work Guidance
 

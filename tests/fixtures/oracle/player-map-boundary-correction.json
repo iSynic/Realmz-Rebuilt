@@ -1,0 +1,63 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-MAPS-003",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/variables.h",
+      "symbol": "extern char killparty, charnum, head, currentshop, quest[128], commandkey, cl, cr, charselectnew, map[20];",
+      "observation": "Castle allocates exactly twenty player-map acquisition flags."
+    },
+    {
+      "path": "src/realmz_orig/newland.c",
+      "symbol": "map[abs(id)] = TRUE;",
+      "observation": "Opcode 29 writes the absolute authored ID without checking it against the twenty-byte array."
+    },
+    {
+      "path": "src/realmz_orig/misc.c",
+      "symbol": "if (map[t - 1])",
+      "observation": "The Maps/Notes menu reads record slots zero through nineteen while iterating visible menu entries one through twenty."
+    },
+    {
+      "path": "src/realmz_orig/save-direction-order.c",
+      "symbol": "fwrite(&map, sizeof(char), 20, fp);",
+      "observation": "Only twenty acquisition bytes are persisted."
+    },
+    {
+      "path": "src/realmz_orig/loadsavedgame.c",
+      "symbol": "fread(&map, sizeof(char), 20, fp);",
+      "observation": "Only those twenty acquisition bytes are restored."
+    },
+    {
+      "path": "src/realmz_orig/mapstuff.c",
+      "symbol": "temp = 320 / themap.iconsize;",
+      "observation": "The player-map renderer divides by the authored iconSize without first proving it is positive."
+    }
+  ],
+  "castleSourceObservation": {
+    "recordIdentity": "IDs zero through nineteen address the twenty saved player-map records; ID twenty writes beyond Castle's acquisition table.",
+    "iconSize": "A zero iconSize reaches integer division in both crop sizing and current-party marker bounds.",
+    "result": "Both malformed authored values enter undefined native behavior rather than a stable player-visible rule."
+  },
+  "realmz2ChosenResult": {
+    "recordIdentity": "Providence and the independent runtime loader reject Classic player-map IDs outside zero through nineteen.",
+    "iconSize": "Providence and the independent runtime loader reject iconSize values less than one before content construction or presentation.",
+    "state": "No rejected record can create acquisition state, a VM continuation, or a save entry.",
+    "compatibility": "No legacy quirk is provided unless an authored scenario and controlled Castle fixture establish a player-visible dependency on either unsafe value."
+  },
+  "tests": [
+    {
+      "path": "src-tauri/src/realmz2_exporter.rs",
+      "symbol": "fn player_map_id_outside_castle_save_table_fails_readiness"
+    },
+    {
+      "path": "src-tauri/src/realmz2_exporter.rs",
+      "symbol": "fn zero_player_map_icon_size_fails_readiness"
+    },
+    {
+      "path": "tests/infrastructure/test_package_repository.gd",
+      "symbol": "func run"
+    }
+  ]
+}

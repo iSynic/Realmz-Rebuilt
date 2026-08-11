@@ -4,15 +4,20 @@ extends RefCounted
 var _maps_by_id: Dictionary = {}
 var _transitions_by_source: Dictionary = {}
 var _battle_terrain_sets: Dictionary = {}
+var _player_maps_by_id: Dictionary = {}
+var _player_maps_by_classic_id: Dictionary = {}
 
 
-func _init(world_maps: Array[MapDefinition], transitions: Array[MapTransition] = [], battle_terrain_sets: Array[BattleTerrainSetDefinition] = []) -> void:
+func _init(world_maps: Array[MapDefinition], transitions: Array[MapTransition] = [], battle_terrain_sets: Array[BattleTerrainSetDefinition] = [], player_map_definitions: Array[PlayerMapDefinition] = []) -> void:
 	for map_definition: MapDefinition in world_maps:
 		_maps_by_id[map_definition.id] = map_definition
 	for transition: MapTransition in transitions:
 		_transitions_by_source[_transition_key(transition.source_map_id, transition.source_edge)] = transition
 	for terrain_set: BattleTerrainSetDefinition in battle_terrain_sets:
 		_battle_terrain_sets[terrain_set.id] = terrain_set
+	for player_map: PlayerMapDefinition in player_map_definitions:
+		_player_maps_by_id[player_map.id] = player_map
+		_player_maps_by_classic_id[player_map.classic_id] = player_map
 
 
 func map_by_id(map_id: String) -> MapDefinition:
@@ -37,6 +42,22 @@ func map_by_type_and_index(level_type: StringName, level_index: int) -> MapDefin
 
 func battle_terrain_set_by_id(definition_id: String) -> BattleTerrainSetDefinition:
 	return _battle_terrain_sets.get(definition_id) as BattleTerrainSetDefinition
+
+
+func player_map_by_id(definition_id: String) -> PlayerMapDefinition:
+	return _player_maps_by_id.get(definition_id) as PlayerMapDefinition
+
+
+func player_map_by_classic_id(classic_id: int) -> PlayerMapDefinition:
+	return _player_maps_by_classic_id.get(classic_id) as PlayerMapDefinition
+
+
+func player_maps() -> Array[PlayerMapDefinition]:
+	var result: Array[PlayerMapDefinition] = []
+	for value: Variant in _player_maps_by_classic_id.values():
+		result.append(value as PlayerMapDefinition)
+	result.sort_custom(func(left: PlayerMapDefinition, right: PlayerMapDefinition) -> bool: return left.classic_id < right.classic_id)
+	return result
 
 
 func transition_from(map_id: String, edge: StringName) -> MapTransition:

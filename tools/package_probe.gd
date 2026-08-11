@@ -1,5 +1,8 @@
 extends SceneTree
 
+const PACKAGE_REPOSITORY_SCRIPT := preload("res://src/infrastructure/packages/package_repository.gd")
+const GAME_SESSION_SCRIPT := preload("res://src/core/session/game_session.gd")
+
 
 func _initialize() -> void:
 	var arguments := OS.get_cmdline_user_args()
@@ -8,7 +11,7 @@ func _initialize() -> void:
 		call_deferred("_quit_cleanly", 2)
 		return
 	var package_path: String = arguments[0]
-	var repository := PackageRepository.new()
+	var repository := PACKAGE_REPOSITORY_SCRIPT.new()
 	var archive := ZIPReader.new()
 	var started_at := Time.get_ticks_msec()
 	var open_error := archive.open(package_path)
@@ -35,7 +38,7 @@ func _initialize() -> void:
 		return
 	var construction_started := Time.get_ticks_msec()
 	var runtime_assets := repository._construct_assets(asset_document)
-	var content := repository._construct_content(manifest, content_document, world_document, scenario_document, runtime_assets)
+	var content: Variant = repository.call("_construct_content", manifest, content_document, world_document, scenario_document, runtime_assets)
 	print("PROBE construction_ms=%d" % (Time.get_ticks_msec() - construction_started))
 	if content == null:
 		printerr("PACKAGE_REJECTED construction: %s" % repository._last_error)
@@ -43,9 +46,9 @@ func _initialize() -> void:
 		return
 	var media := PackageMediaCatalog.new(package_path, manifest["packageHash"], runtime_assets)
 	archive.close()
-	var session := GameSession.new()
+	var session := GAME_SESSION_SCRIPT.new()
 	var session_started_at := Time.get_ticks_msec()
-	var step := session.start(content, 1)
+	var step: Variant = session.call("start", content, 1)
 	var session_start_ms := Time.get_ticks_msec() - session_started_at
 	if step.state == SessionStep.State.FAILED:
 		printerr("SESSION_REJECTED %s: %s" % [step.error_code, step.error_message])

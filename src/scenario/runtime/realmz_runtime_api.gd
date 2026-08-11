@@ -129,7 +129,7 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 		28:
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"map_redraw_requested", {"source": "classic"})])
 		29:
-			return ScenarioRuntimeOperationResult.failed(&"player_map_contract_unavailable", "Classic opcode 29 references a Data MD2 player-map record. This Realmz 2 package contract does not carry player-map definitions yet.")
+			return _acquire_player_map(action, request_id)
 		30:
 			return _filter_character_selection(action)
 		31:
@@ -709,6 +709,13 @@ func resume_classic(continuation: Dictionary, response: InteractionResponse, req
 			if not already_recorded:
 				events.append(DomainEvent.new(&"journal_entry_recorded", {"messageId": message_id}))
 			return ScenarioRuntimeOperationResult.completed(true, events)
+		"classic-player-map":
+			if response.kind != &"acknowledge" or not response.payload.is_empty():
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic player-map display requires an empty acknowledgement response.")
+			var player_map_id := String(continuation.get("playerMapId", ""))
+			if _content.world.player_map_by_id(player_map_id) == null or not _game_state.world.has_map(player_map_id):
+				return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic player-map continuation references unavailable acquired content.")
+			return ScenarioRuntimeOperationResult.completed(true)
 		"classic-combat":
 			return _resume_battle(continuation, response, request_id)
 		"classic-combat-retreat-confirmation":
@@ -741,6 +748,21 @@ func resume_classic(continuation: Dictionary, response: InteractionResponse, req
 			return _resume_banking(continuation, response, request_id)
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_interaction_continuation", "Classic interaction continuation is unavailable.")
+
+
+func _acquire_player_map(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
+	var classic_id := absi(action.operand_id)
+	var definition := _content.world.player_map_by_classic_id(classic_id)
+	if definition == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_player_map", "Classic opcode 29 references unavailable player-map record %d." % classic_id)
+	var already_acquired: bool = _game_state.world.has_map(definition.id)
+	_game_state.world.acquire_map(definition.id)
+	var events: Array[DomainEvent] = [DomainEvent.new(&"player_map_acquired", {"playerMapId": definition.id, "classicId": definition.classic_id, "name": definition.name, "alreadyAcquired": already_acquired, "source": "classic"})]
+	if action.operand_id >= 0:
+		events.append(DomainEvent.new(&"message_shown", {"text": "You gain a map, to view the map use Maps/Notes in the Menu.", "source": "classic-player-map"}))
+		return ScenarioRuntimeOperationResult.completed(definition.id, events)
+	var request := InteractionRequest.new(request_id, &"acknowledge", {"prompt": definition.name, "presentation": "player-map", "playerMapId": definition.id})
+	return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-player-map", "playerMapId": definition.id}, events)
 
 
 func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, request_id: String, continuation_kind: String) -> ScenarioRuntimeOperationResult:

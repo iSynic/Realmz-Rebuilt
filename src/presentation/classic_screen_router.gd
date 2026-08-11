@@ -90,6 +90,7 @@ var _inventory_query: String = ""
 var _inventory_character_id: String = ""
 var _inventory_item_id: String = ""
 var _money_character_id: String = ""
+var _selected_player_map_id: String = ""
 var _party_order_source_ids: Array[String] = []
 var _party_order_draft_ids: Array[String] = []
 var _character_sheet_character_id: String = ""
@@ -126,6 +127,7 @@ func present(view: GameView) -> void:
 		_inventory_character_id = ""
 		_inventory_item_id = ""
 		_money_character_id = ""
+		_selected_player_map_id = ""
 		_party_order_source_ids.clear()
 		_party_order_draft_ids.clear()
 		_character_sheet_character_id = ""
@@ -1823,11 +1825,40 @@ func _render_journal() -> void:
 	_add_section_heading("Location notes", "Saved with this adventure")
 	_render_location_note_editor()
 	_add_section_heading("Acquired maps", "%d available" % _view.party_summary.acquired_map_ids.size() if _view.party_summary != null else "0 available")
-	if _view.party_summary == null or _view.party_summary.acquired_map_ids.is_empty():
-		_add_empty_state("No acquired maps", "Maps appear only after the session records their acquisition.")
+	if _view.player_map_menu_entries.is_empty():
+		_add_empty_state("No player-map records", "This campaign supplies no Maps/Notes entries.")
 	else:
-		for map_id: String in _view.party_summary.acquired_map_ids:
-			_add_card(map_id, "Acquired map", "Map viewing is not implemented in the current gameplay slice.")
+		var selected: PlayerMapView
+		for player_map: PlayerMapView in _view.acquired_player_maps:
+			if player_map.id == _selected_player_map_id:
+				selected = player_map
+				break
+		if selected == null and not _view.acquired_player_maps.is_empty():
+			selected = _view.acquired_player_maps[0]
+			_selected_player_map_id = selected.id
+		var chooser := GridContainer.new()
+		chooser.name = "AcquiredMapChooser"
+		chooser.columns = 2
+		chooser.add_theme_constant_override("h_separation", 6)
+		chooser.add_theme_constant_override("v_separation", 4)
+		for player_map: PlayerMapView in _view.player_map_menu_entries:
+			var button := Button.new()
+			button.text = player_map.name if player_map.acquired else player_map.unavailable_name
+			button.toggle_mode = true
+			button.disabled = not player_map.acquired
+			button.tooltip_text = "Map not acquired." if button.disabled else player_map.name
+			button.button_pressed = selected != null and player_map.id == selected.id
+			if not button.disabled:
+				button.pressed.connect(_select_player_map.bind(player_map.id))
+			chooser.add_child(button)
+		_body.add_child(chooser)
+		if selected == null:
+			_add_empty_state("No acquired maps", "Maps remain unavailable until the session records their acquisition.")
+		else:
+			var presenter := PlayerMapPresenter.new()
+			presenter.name = "AcquiredPlayerMap"
+			presenter.present(selected, _media)
+			_body.add_child(presenter)
 	_add_section_heading("Journal entries", "%d entries" % _view.journal_entries.size())
 	if _view.journal_entries.is_empty():
 		_add_empty_state("The journal is empty", "No journal records were supplied by the current session.")
@@ -1835,7 +1866,11 @@ func _render_journal() -> void:
 		for entry: JournalEntryView in _view.journal_entries:
 			_add_card("Journal entry %d" % entry.message_id, "Authored scenario message", entry.text)
 	_add_disabled_action(_body, "Open Classic journal", &"open_journal")
-	_add_disabled_action(_body, "Open acquired maps", &"open_maps")
+
+
+func _select_player_map(player_map_id: String) -> void:
+	_selected_player_map_id = player_map_id
+	_render_screen()
 
 
 func _render_location_note_editor() -> void:
