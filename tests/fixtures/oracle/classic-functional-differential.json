@@ -1817,7 +1817,7 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func retreat_character(" },
-        "expectedTrace": ["probe exact explicit range and character gates without consuming RNG", "yield a typed saveable confirmation", "remove only the accepting character and record a 200 prestige penalty", "persist explicit escaped-character identity", "continue while a loyal battlefield character remains", "move a routed monster away from its retained target through serializable withdrawal reactions", "remove a hostile routed monster at the edge without a death macro", "leave unsafe target and mandatory-ally branches explicitly unavailable"],
+        "expectedTrace": ["probe exact explicit range and character gates without consuming RNG", "yield a typed saveable confirmation", "restore the issuing Classic VM frame and combat/RNG state at that response boundary", "remove only the accepting character and record a 200 prestige penalty", "persist explicit escaped-character identity", "continue through the typed combat request while a loyal battlefield character remains", "route an interior-to-edge directional response through the same confirmation and commit path", "move a routed monster away from its retained target through serializable withdrawal reactions", "remove a hostile routed monster at the edge without a death macro", "leave unsafe target and mandatory-ally branches explicitly unavailable"],
         "tests": [
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_and_monster_retreat()" },
           { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_gameplay_capabilities_and_battle_resume(" }
@@ -1825,7 +1825,7 @@
       },
       "decision": "runtime-defect",
       "availability": "implemented",
-      "status": "verified-unsafe-target-and-mandatory-ally-boundaries-explicit"
+      "status": "explicit-and-edge-host-responses-plus-restored-vm-acceptance-verified-unsafe-target-and-mandatory-ally-boundaries-explicit"
     },
     {
       "id": "combat.monster-spell-slot-selection",

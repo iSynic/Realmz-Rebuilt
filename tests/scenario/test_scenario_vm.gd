@@ -489,7 +489,13 @@ func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> vo
 	character.to_hit = 100
 	character.damage_bonus = 30
 	character.luck = 1
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	var companion := CharacterState.new("character.rules-companion", "Rules Companion", 100, 100)
+	companion.race_id = character.race_id
+	companion.caste_id = character.caste_id
+	companion.maximum_load = 500
+	companion.agility = 20
+	companion.luck = 1
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character, companion])
 	var ally_definition := content.monster_by_classic_id(1)
 	assert_not_null(ally_definition, "battle fixture contains an ally-capable Classic monster")
 	var ally := MonsterState.new("ally.battle-participant", ally_definition.id, "Battle Ally", 20, 20, 1, 1, 0, 0, 0, false)
@@ -529,6 +535,21 @@ func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> vo
 	var retreat_restored := ScenarioVm.new()
 	retreat_restored.configure(definition)
 	assert_true(retreat_restored.restore(retreat_snapshot), "the nested Classic Escape confirmation restores at the exact response boundary")
+	var accepted_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	var accepted_rng := RealmzRng.new()
+	assert_not_null(accepted_state, "the scenario battle state restores beside its pending Escape continuation")
+	assert_true(accepted_rng.restore(api._rng.snapshot()), "the accepted Escape branch restores the exact scenario-combat RNG boundary")
+	if accepted_state != null:
+		var accepted_vm := ScenarioVm.new()
+		accepted_vm.configure(definition)
+		assert_true(accepted_vm.restore(retreat_snapshot), "the accepted Escape branch restores the same issuing Classic frame")
+		var accepted_api := RealmzRuntimeApi.new(content, accepted_state, accepted_rng, ScenarioActionState.new(), RealmzRules.new())
+		var accepted_retreat := accepted_vm.resume(InteractionResponse.yes_no(retreat_prompt.interaction, true), accepted_api)
+		assert_equal([accepted_retreat.state, accepted_retreat.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.COMBAT], "accepting restored Escape returns to combat while another loyal character remains")
+		assert_true(accepted_retreat.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_retreated" and event.payload.get("actorId") == character.id), "the restored VM response commits the exact escaping character once")
+		assert_false(accepted_state.combat.battlefield.has_actor(character.id), "the accepted character leaves the battlefield without removing its companion")
+		assert_true(accepted_state.combat.battlefield.has_actor(companion.id), "the remaining loyal character keeps the scenario battle active")
+		assert_equal(accepted_state.party.character_by_id(character.id).prestige_penalty, 200, "the accepted VM branch applies Castle's prestige penalty once")
 	var declined := retreat_restored.resume(InteractionResponse.yes_no(retreat_prompt.interaction, false), api)
 	assert_equal([declined.state, declined.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.COMBAT], "declining Escape returns to the unchanged player combat turn")
 	restored = retreat_restored
@@ -1824,7 +1845,8 @@ func _test_monster_charm_and_affliction_flow(content: RealmzContent) -> void:
 	var unresolved := restored._rules.combat_flow.continue_after_monster_death_macro(restored._state, charm_content, restored._rng)
 	assert_false(unresolved.completed, "a living charmed party member remains an enemy after the original hostile monster falls")
 	var restored_view := restored.view()
-	assert_equal(restored_view.combat_view.character_targets.map(func(target: CharacterView) -> String: return target.id), [victim.id], "the detached combat view exposes the living charmed character as a hostile target")
+	var charmed_contacts := restored_view.combat_view.movement_options.filter(func(option: CombatMoveOptionView) -> bool: return option.attack_target_id == victim.id)
+	assert_equal(charmed_contacts.size(), 1, "the detached combat view exposes the living charmed character through its occupied direction")
 	restored._state.party.character_by_id(victim.id).conditions.set_value(ConditionRules.HELPLESS, -1)
 	var completed := restored._rules.combat_flow.submit_action(restored._state, charm_content, loyal.id, &"attack", victim.id, restored._rng)
 	assert_true(completed.completed and restored._state.combat.outcome == &"victory", "a loyal actor can defeat a charmed party combatant through the ordinary allegiance-aware attack contract")
