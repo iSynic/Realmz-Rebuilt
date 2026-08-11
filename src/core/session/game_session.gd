@@ -1715,12 +1715,14 @@ func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []
 	if not movement.allowed and movement.reason == &"invalid_direction":
 		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
 	if not movement.allowed:
-		var blocked := _movement_blocked(movement.reason)
-		if preceding_events.is_empty():
-			return blocked
 		var blocked_events: Array[DomainEvent] = []
 		blocked_events.assign(preceding_events)
-		blocked_events.append_array(blocked.events)
+		blocked_events.append(DomainEvent.new(&"movement_blocked", {"reason": String(movement.reason)}))
+		var attempt_cost := _blocked_land_attempt_cost(movement)
+		if attempt_cost > 0:
+			blocked_events.append_array(_rules.clock.advance_classic_field_time(_state, _content, attempt_cost, _classic_time_scale(movement.source_map)))
+			_set_post_time_continuation(movement.source_map, "completed")
+			return _finish_with_age_updates(blocked_events, "post-clock", _session_continuation)
 		return _finish_completed(blocked_events)
 	var target_map := movement.target_map
 	var target_coordinate := movement.target_coordinate
@@ -1747,7 +1749,7 @@ func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []
 	_state.last_move_direction = direction
 	_state.world.mark_visited(target_map.id, target_coordinate)
 	events.append(DomainEvent.new("party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": target_coordinate.x, "y": target_coordinate.y}))
-	events.append_array(_rules.clock.advance_minutes(_state, _content, probe.target_cell.movement_cost))
+	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, probe.target_cell.movement_cost, _classic_time_scale(target_map)))
 	if transition != null:
 		events.append(DomainEvent.new("map_transitioned", {"transitionId": transition.id, "sourceMapId": source_map_id, "targetMapId": target_map.id}))
 	_set_post_move_continuation(target_map, target_coordinate)
@@ -1756,6 +1758,14 @@ func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []
 
 func _classic_time_scale(map: MapDefinition) -> int:
 	return 1 if map != null and map.level_type == &"dungeon" else 5
+
+
+func _blocked_land_attempt_cost(movement: WorldMovementResult) -> int:
+	if movement == null or movement.source_map == null or movement.source_map.level_type != &"land" or _state.party_in_boat:
+		return 0
+	if movement.reason not in [&"terrain_blocked", &"secret_hidden"] or movement.topology_result == null or movement.topology_result.target_cell == null:
+		return 0
+	return maxi(0, movement.topology_result.target_cell.movement_cost)
 
 
 func _set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO) -> void:
@@ -1936,10 +1946,6 @@ func _finalize_completed_trigger(trigger: TriggerDefinition, events: Array[Domai
 		return
 	_state.world.disable_trigger(trigger.id)
 	events.append(DomainEvent.new(&"trigger_disabled", {"triggerId": trigger.id, "source": "classic-default-one-shot"}))
-
-
-func _movement_blocked(reason: StringName) -> SessionStep:
-	return _finish_completed([DomainEvent.new("movement_blocked", {"reason": String(reason)})])
 
 
 static func _events_have(events: Array[DomainEvent], kind: StringName) -> bool:

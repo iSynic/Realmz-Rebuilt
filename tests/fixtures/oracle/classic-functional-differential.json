@@ -57,6 +57,50 @@
       "status": "verified"
     },
     {
+      "id": "movement.blocked-attempt-time",
+      "workflowIds": ["classic.exploration.travel"],
+      "domain": "movement",
+      "claim": "Successful and ordinary blocked land movement treat the authored tile cost as a count of five-minute Classic timeclicks; a blocked attempt leaves party coordinates unchanged and performs post-time random checks at the committed cell, while an ordinary solid dungeon wall consumes no movement time.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "The exploration animation calls pass_time only inside the allowed-movement branch, so ordinary blocked tiles do not reproduce Castle's land timing.",
+        "sources": [
+          { "path": "src/scripts/states/ExAnim.gd", "symbol": "func enter(" },
+          { "path": "src/scripts/classic_runtime/classic_map_bridge.gd", "symbol": "func resolve_movement" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/buttonchoice.c", "symbol": "short buttonchoice" },
+          { "path": "src/realmz_orig/textbox-time.c", "symbol": "short timeclick" },
+          { "path": "src/realmz_orig/threed.c", "symbol": "makemove:" }
+        ],
+        "authoredInputs": ["destination land tile", "mapstats time", "land/dungeon mode", "boat state", "current random rectangles"],
+        "observation": "For an ordinary nonzero land direction, buttonchoice plays the attempted tile sound and calls timeclick with that tile's time even when the solid tile prevented moveparty. timeclick later checks random rectangles at the committed party coordinate. In threed, an ordinary solid wall takes the wall-sound branch without timeclick. Boat/shore cancellation, zero or negative land cells, and special dungeon wall bits follow distinct branches and remain explicit variants."
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn normalized_cell_topology" }
+        ],
+        "expectedRepresentation": "Each normalized cell retains its exact Classic timeclick count and passability facts; the runtime applies the land or dungeon scale, so no additional package field is required for the bounded ordinary branches."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _blocked_land_attempt_cost" },
+        "expectedTrace": ["destination probe", "movement or movement_blocked", "authored timeclick count", "land/dungeon scale", "hour-boundary rules", "current-cell random checks"],
+        "tests": [
+          { "path": "tests/core/test_map_topology.gd", "symbol": "func run" },
+          { "path": "tests/integration/test_exploration_session.gd", "symbol": "func run" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified"
+    },
+    {
       "id": "action-point.placed-first-match",
       "workflowIds": ["classic.scenario.trigger-action-point"],
       "domain": "action-points",

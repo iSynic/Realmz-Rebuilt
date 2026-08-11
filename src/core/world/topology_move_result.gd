@@ -17,7 +17,8 @@ static func permitted(cell: MapCell, linked_door_id: String = "", linked_secret_
 	return result
 
 
-static func blocked(block_reason: StringName) -> TopologyMoveResult:
+static func blocked(block_reason: StringName, cell: MapCell = null) -> TopologyMoveResult:
 	var result := TopologyMoveResult.new()
 	result.reason = block_reason
+	result.target_cell = cell
 	return result

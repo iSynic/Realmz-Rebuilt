@@ -46,10 +46,10 @@ func probe_land_entry(coordinate: Vector2i, world_state: WorldState) -> Topology
 	if cell == null:
 		return TopologyMoveResult.blocked(&"outside_map")
 	if not cell.passable:
-		return TopologyMoveResult.blocked(&"terrain_blocked")
+		return TopologyMoveResult.blocked(&"terrain_blocked", cell)
 	var cell_secret := cell.feature_by_kind(&"secret")
 	if cell_secret != null and cell_secret.orientation.is_empty() and not world_state.secret_is_discovered(cell_secret.id, cell_secret.initial_state == &"revealed"):
-		return TopologyMoveResult.blocked(&"secret_hidden")
+		return TopologyMoveResult.blocked(&"secret_hidden", cell)
 	return TopologyMoveResult.permitted(cell)
 
 
