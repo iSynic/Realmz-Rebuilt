@@ -1579,6 +1579,20 @@ func _render_inventory() -> void:
 		detail.add_child(title_row)
 		_add_label(detail, selected_item.description, Color("e0e2e5"))
 		_add_label(detail, "Value %s" % [str(selected_item.value) if selected_item.identified else "Unknown until identified"], MUTED, 13)
+		if not selected_item.facts.is_empty():
+			_add_label(detail, "Classic record", GOLD, 15)
+			var facts := GridContainer.new()
+			facts.columns = 2
+			facts.add_theme_constant_override("h_separation", 14)
+			facts.add_theme_constant_override("v_separation", 3)
+			for fact: ItemFactView in selected_item.facts:
+				_add_label(facts, fact.label, MUTED, 13)
+				_add_label(facts, fact.value, Color("e0e2e5"), 13)
+			detail.add_child(facts)
+		for property: String in selected_item.properties:
+			_add_label(detail, "• %s" % property, Color("e0e2e5"), 13)
+		for restriction: String in selected_item.restrictions:
+			_add_label(detail, restriction, Color("dca9a9"), 13)
 		var actions := HFlowContainer.new()
 		actions.add_theme_constant_override("h_separation", 5)
 		actions.add_theme_constant_override("v_separation", 5)
@@ -1592,6 +1606,16 @@ func _render_inventory() -> void:
 		_add_item_intent_action(actions, &"inventory.action.split", "Split", selected_item.actions.split, PlayerIntent.item_action(PlayerIntent.Kind.SPLIT_ITEM, selected_item.instance_id, selected_character.id))
 		_add_item_intent_action(actions, &"inventory.action.drop", "Drop", selected_item.actions.drop, PlayerIntent.item_action(PlayerIntent.Kind.DROP_ITEM, selected_item.instance_id, selected_character.id))
 		detail.add_child(actions)
+		var disabled_actions: Array[String] = []
+		var action_labels: Array[String] = ["Equip", "Unequip", "Use", "Identify", "Join", "Split", "Drop", "Trade"]
+		var action_views: Array[ActionAvailabilityView] = [selected_item.actions.equip, selected_item.actions.unequip, selected_item.actions.use, selected_item.actions.identify, selected_item.actions.join, selected_item.actions.split, selected_item.actions.drop, selected_item.actions.trade]
+		for index: int in action_views.size():
+			if action_views[index] != null and not action_views[index].enabled and not action_views[index].reason.is_empty():
+				disabled_actions.append("%s — %s" % [action_labels[index], action_views[index].reason])
+		if not disabled_actions.is_empty():
+			_add_label(detail, "Unavailable actions", GOLD, 14)
+			for reason: String in disabled_actions:
+				_add_label(detail, reason, MUTED, 12)
 		_add_label(detail, "Trade with", GOLD, 15)
 		if selected_item.actions.trade_targets.is_empty():
 			_add_label(detail, "No other party member is available.", MUTED, 13)

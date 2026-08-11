@@ -91,6 +91,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 
 ## Work Guidance
 
+- `ItemView` resolves Castle-visible Describe facts before crossing the session boundary. Unworn cursed records use their native `iscurse` decoy definition for text and statistics while retaining the original icon; wearing reveals the original record. Presentation must not infer this link or receive the hidden original identity through visible fields.
 - Prefer small domain modules behind a fixed `RealmzRules` facade; do not add registries or profile selectors.
 - Keep character, condition/time, inventory/economy, combat, magic, and monster behavior in their owned rule modules. Opcode handlers adapt Classic records to these rules instead of duplicating formulas.
 - Preserve 16-bit and 32-bit arithmetic semantics explicitly where Castle behavior depends on them.

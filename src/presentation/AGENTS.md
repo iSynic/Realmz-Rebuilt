@@ -67,6 +67,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 
 ## Work Guidance
 
+- Inventory inspection renders detached Classic record facts and explicit disabled-action reasons. It must not reconstruct bonuses, restrictions, or curse-decoy behavior from package definitions.
 - Put tweakable visual values in scene/inspector properties.
 - Use MCP to inspect scene trees, properties, errors, runtime state, interactions, and screenshots.
 

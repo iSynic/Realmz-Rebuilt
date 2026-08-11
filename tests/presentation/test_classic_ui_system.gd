@@ -413,6 +413,39 @@ func _test_safe_item_display() -> void:
 	assert_equal(known.name, "Improvement", "identified items expose their identified name")
 	assert_contains(known.description, "random attribute", "identified items expose their description")
 	assert_equal(known.definition_id, definition.id, "identified items expose their stable definition identity")
+	definition.hands = 1
+	definition.damage_bonus = 2
+	definition.vs_small = 6
+	definition.magic_resistance_bonus = 5
+	definition.heat = 4
+	definition.special_1 = 121
+	known = ItemView.new(ItemInstance.new("item-607", definition.id, 1, false, true), definition)
+	assert_true(known.facts.any(func(fact: ItemFactView) -> bool: return fact.label == "Damage" and fact.value == "3–8"), "identified Describe facts preserve Castle's damage-range convention")
+	assert_true(known.facts.any(func(fact: ItemFactView) -> bool: return fact.label == "Magic resistance" and fact.value == "+5"), "identified Describe facts expose source-backed magical modifiers")
+	assert_true(known.properties.any(func(property: String) -> bool: return property.contains("special damage")), "identified Describe facts expose Castle's special-damage notice")
+	assert_true(known.properties.any(func(property: String) -> bool: return property.contains("to-hit bonus")), "identified Describe facts expose Castle's penetration-weapon explanation")
+	var still_hidden := ItemView.new(ItemInstance.new("item-607", definition.id, 1, false, false), definition)
+	assert_false(still_hidden.facts.any(func(fact: ItemFactView) -> bool: return fact.label == "Magic resistance"), "unidentified Describe facts do not reveal identified-only modifiers")
+	assert_true(still_hidden.facts.any(func(fact: ItemFactView) -> bool: return fact.label == "Damage"), "Castle's always-visible damage range remains visible before identification")
+	var decoy := ItemDefinition.new("classic.item.608", 608, "Fine Blade", "Sword", "A finely balanced sword.")
+	decoy.icon_id = 999
+	decoy.damage_bonus = 1
+	decoy.vs_small = 4
+	var cursed := ItemDefinition.new("classic.item.609", 609, "Cursed Blade", "Sword", "The revealed blade drains its bearer.")
+	cursed.icon_id = 555
+	cursed.damage_bonus = -2
+	cursed.vs_small = 8
+	cursed.cursed_item_id = decoy.id
+	var content := RealmzContent.new("item-display", "0".repeat(64), "item-display", "realmz-classic-1", "", Vector2i.ZERO, WorldDefinition.new([]), ScenarioDefinition.new([], []), [], [], [], [], [], [decoy, cursed])
+	var bearer := CharacterState.new("item-display.character", "Bearer", 10, 10)
+	bearer.set_inventory([ItemInstance.new("item-display.curse", cursed.id, 0, false, true)])
+	var concealed := CharacterView.new(bearer, content).items[0]
+	assert_equal([concealed.name, concealed.icon_id, concealed.definition_id], [decoy.name, cursed.icon_id, decoy.id], "an unworn cursed item uses Castle's linked decoy record while retaining the original icon")
+	assert_false(concealed.curse_revealed, "the detached view does not disclose an unworn curse")
+	bearer.inventory()[0].equipped = true
+	var revealed := CharacterView.new(bearer, content).items[0]
+	assert_equal([revealed.name, revealed.icon_id, revealed.definition_id], [cursed.name, cursed.icon_id, cursed.id], "wearing a cursed item reveals the original record Castle actually applies")
+	assert_true(revealed.curse_revealed and revealed.properties.any(func(property: String) -> bool: return property.contains("cannot be removed")), "a revealed curse explains its source-backed removal restriction")
 
 
 func _test_action_availability() -> void:
@@ -862,6 +895,8 @@ func _test_inventory_workspace() -> void:
 	definition.item_type = 2
 	definition.weight = 12
 	definition.cost = 45
+	definition.damage_bonus = 2
+	definition.vs_small = 6
 	var source := CharacterState.new("inventory.ui.source", "Alis", 10, 10)
 	source.maximum_load = 100
 	source.carried_load = 12
@@ -872,6 +907,7 @@ func _test_inventory_workspace() -> void:
 	source_view.items.clear()
 	var item_view := ItemView.new(source.inventory()[0], definition)
 	item_view.actions.equip = ActionAvailabilityView.new(&"equip_item", true)
+	item_view.actions.use = ActionAvailabilityView.new(&"use_item", false, "This item's use effect is not implemented.")
 	item_view.actions.drop = ActionAvailabilityView.new(&"drop_item", true)
 	item_view.actions.trade = ActionAvailabilityView.new(&"trade_item", true)
 	item_view.actions.trade_targets.append(ItemTransferTargetView.new(destination.id, destination.name, true))
@@ -903,6 +939,9 @@ func _test_inventory_workspace() -> void:
 	assert_true(trade_button != null and not trade_button.disabled, "a rules-authorized trade recipient is actionable")
 	assert_false(buttons.any(func(button: BaseButton) -> bool: return (button is Button and (button as Button).text == "Store") or button.tooltip_text == "Store"), "ordinary inventory does not invent Remake's non-Classic player stash")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("opcode 36 equipment escrow")), "the workspace explains why scenario-owned equipment escrow is not a stash")
+	assert_true(labels.any(func(text: String) -> bool: return text == "Classic record"), "inventory inspection presents the source-backed item record as a distinct section")
+	assert_true(labels.any(func(text: String) -> bool: return text == "Damage"), "inventory inspection presents Castle's damage record")
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("Use — This item's use effect is not implemented")), "disabled item actions remain readable without relying on hover tooltips")
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text.contains("use effect") and button.tooltip_text.contains("not implemented")), "unsafe item use remains visible with an exact disabled reason")
 	if trade_button != null:
 		trade_button.pressed.emit()

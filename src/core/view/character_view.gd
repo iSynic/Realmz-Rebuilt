@@ -163,7 +163,11 @@ func _init(character: CharacterState, content: RealmzContent = null) -> void:
 			var detail := "The original label is not recoverable from the pinned source tree; the Classic slot and value are preserved." if ABILITY_NAMES[index].begins_with("Classic ability") else ""
 			abilities.append(CharacterMetricView.new(StringName("ability-%d" % index), index, ABILITY_NAMES[index], amount, detail))
 	for item: ItemInstance in character.inventory():
-		items.append(ItemView.new(item, null if content == null else content.item_by_id(item.definition_id)))
+		var definition := null if content == null else content.item_by_id(item.definition_id)
+		var presentation_definition: ItemDefinition = definition
+		if definition != null and not item.equipped and not definition.cursed_item_id.is_empty():
+			presentation_definition = content.item_by_id(definition.cursed_item_id)
+		items.append(ItemView.new(item, definition, presentation_definition, content))
 	if content != null:
 		for spell_id: String in character.known_spells():
 			var definition := content.spell_by_id(spell_id)

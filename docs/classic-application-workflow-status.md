@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 4 | 19 | 37 | 0 |
+| classic | 60 | 4 | 18 | 38 | 0 |
 | host | 8 | 1 | 3 | 4 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -19,7 +19,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Exploration | 6 | 1 | 3 | 2 | 0 |
 | Scenario interaction | 6 | 0 | 2 | 4 | 0 |
 | Character management | 5 | 1 | 1 | 3 | 0 |
-| Inventory and equipment | 7 | 0 | 4 | 3 | 0 |
+| Inventory and equipment | 7 | 0 | 3 | 4 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
 | Services and economy | 5 | 0 | 2 | 3 | 0 |
 | Combat | 8 | 0 | 1 | 7 | 0 |
@@ -33,9 +33,9 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Castle oracle | Count |
 | --- | ---: |
-| not-required | 15 |
+| not-required | 14 |
 | required | 11 |
-| completed | 34 |
+| completed | 35 |
 
 | Remake | Count |
 | --- | ---: |
@@ -69,8 +69,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | presentation | Count |
 | --- | ---: |
 | absent | 4 |
-| fixture-shell | 3 |
-| functional | 53 |
+| fixture-shell | 2 |
+| functional | 54 |
 | accepted | 0 |
 
 ### Host
@@ -115,7 +115,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **28**.
+Blockers: **1**. Major gaps: **27**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -127,7 +127,6 @@ Blockers: **1**. Major gaps: **28**.
 - **major** `classic.exploration.time-fatigue-light` — The clock imports timed-encounter definitions but does not dispatch them when their scheduled day is reached. Next: Implement the resolved timed-encounter ordering as a serializable clock continuation after the Castle location-gate fixture settles the suspicious y-coordinate test.
 - **major** `classic.exploration.travel` — Blocked movement does not yet reproduce Castle's tile-specific time and downstream random/timed processing. Next: Trace land terrain and dungeon wall branches into timeclick with controlled fixtures, then add one topology-owned blocked-attempt result and saveable post-time continuation without changing coordinate state.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
-- **major** `classic.inventory.inspect-item` — Item details do not yet expose the complete Classic record and disabled-action reasons. Next: Complete the detached item view and item-detail panel.
 - **major** `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow. Next: Trace every items.c branch before deleting the intents or implementing a stack operation.
 - **major** `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit. Next: Exercise an ordinary AOGM charged item and scroll route, then characterize combat scroll, discard, case-transfer, door/XAP, random-power combat, and target-abort behavior separately.
 - **major** `classic.maps.authored-journal` — The complete authored journal entry contract and discovery state are not represented end to end. Next: Trace Castle journal records, add deterministic package fields, and wire a read-only journal view.
@@ -169,7 +168,6 @@ Blockers: **1**. Major gaps: **28**.
 - `classic.exploration.camp-rest` — Ordinary Camp, held Rest pulses, random interruption, and automatic movement departure are source-shaped and saveable, but timed midnight interruption and two suspicious Castle recovery/order branches remain unresolved.
 - `classic.exploration.time-fatigue-light` — The clock imports timed-encounter definitions but does not dispatch them when their scheduled day is reached.
 - `classic.exploration.travel` — Blocked movement does not yet reproduce Castle's tile-specific time and downstream random/timed processing.
-- `classic.inventory.inspect-item` — Item details do not yet expose the complete Classic record and disabled-action reasons.
 - `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit.
 - `classic.maps.view-acquired` — Map IDs can be acquired, but the journal route explicitly lacks map viewing.
 - `classic.scenario.random-timed-encounter` — Random rectangles execute through the session, but scheduled timed encounters have no clock-owned dispatcher.
