@@ -3673,6 +3673,96 @@
       "status": "independent-session-owned-portrait-and-tactical-selection-preview-discard-save-and-role-validation-verified"
     },
     {
+      "id": "application.end-adventure-lifecycle",
+      "workflowIds": ["classic.startup.end-adventure"],
+      "domain": "application",
+      "claim": "End Adventure is a distinct committed lifecycle: outside combat it may save before teardown, in combat it cannot save, then it runs the authored Global quit hook, releases the active party once, and returns to campaign selection without quitting the process.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake has a confirmed Return to Main Menu operation that clears its mutable party and presentation state, but it does not preserve Castle's optional save, combat branch, Global quit macro, or explicit session aggregate boundary.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/Settings/SettingsRect.gd", "symbol": "func _return_to_main_menu" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "short HandleMenuChoice" }
+        ],
+        "authoredInputs": ["active-combat flag", "optional Save response", "active party", "Global macro slot 2", "scenario selection state"],
+        "observation": "Game menu case 3 optionally saves outside battle; in battle a negative confirmation cancels and an accepted confirmation cannot save. The path then saves standalone characters, executes nonzero Global macro slot 2, and calls partyloss(0) to return to scenario selection.",
+        "unresolved": ["The exact question text is held in native resources not established by the pinned source tree.", "Realmz 2.0 intentionally does not reproduce Castle's implicit standalone Character Files writes because vault publication is explicit and immutable."]
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [
+          { "path": "src-tauri/src/realmz/scenario.rs", "symbol": "pub fn parse_global_macro_hooks" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
+        ],
+        "expectedRepresentation": "Providence parses source-backed Global slot 2 as Quit and includes its referenced program in reachability, but scenario.json does not serialize the lifecycle-hook-to-program mapping. Schema v2 therefore cannot identify the authored program at runtime."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func close" },
+        "expectedTrace": ["open one host-owned typed confirmation without changing the gameplay save", "keep noncombat gameplay interactions modal while permitting the active combat command boundary", "offer save only outside active combat", "write and validate the committed snapshot before a save-and-end close", "keep the active session after cancellation or save failure", "close the session aggregate exactly once", "clear package presentation identity and return to campaign selection", "remain explicitly partial until Global quit macro slot 2 can execute before close"],
+        "tests": [
+          { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_lifecycle_interaction" }
+        ]
+      },
+      "decision": "compiler-defect",
+      "availability": "implemented",
+      "status": "typed-save-discard-combat-cancel-and-exact-once-session-close-implemented-global-quit-hook-mapping-missing"
+    },
+    {
+      "id": "application.end-adventure-cancel-guard",
+      "workflowIds": ["classic.startup.end-adventure"],
+      "domain": "application",
+      "claim": "Outside combat, End Adventure separates save, discard, and cancel into three explicit host choices; a failed save or Cancel leaves the complete active session untouched, and the host prompt itself never enters a gameplay save.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake's Settings panel separates Main Menu confirmation from cancellation, but its accepted branch clears mutable global state directly and has no transactional save-and-close sequence.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/Settings/SettingsRect.gd", "symbol": "func _return_to_main_menu" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "short HandleMenuChoice" }
+        ],
+        "authoredInputs": ["active-combat flag", "question response", "save result"],
+        "observation": "Outside combat, question(1) Yes invokes save and No skips save, but both continue teardown; there is no distinct cancel branch. During combat, question(10) No cancels and Yes ends without saving.",
+        "unresolved": []
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [
+          { "path": "src-tauri/src/realmz/scenario.rs", "symbol": "pub fn parse_global_macro_hooks" }
+        ],
+        "expectedRepresentation": "No package data is required for the host-owned safety choice; lifecycle hook mapping remains owned by the adjacent compiler-defect case."
+      },
+      "realmz2": {
+        "owner": { "path": "src/app/application_lifecycle.gd", "symbol": "static func end_adventure_request" },
+        "expectedTrace": ["construct explicit context-correct choices", "validate request identity, kind, and declared action", "leave GameSession and .r2save unchanged while the prompt is open", "restore the underlying gameplay interaction after Cancel", "retain the active session when the save repository rejects the write"],
+        "tests": [
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_lifecycle_interaction" },
+          { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-APPLICATION-001",
+        "fixturePath": "tests/fixtures/oracle/end-adventure-cancel-correction.json",
+        "fixtureSha256": "eef6c2d3a900c133e4cb7d28a9155a7b55f1917286103f93184f9a5d74789ded"
+      },
+      "availability": "implemented",
+      "status": "explicit-save-discard-cancel-and-save-failure-close-suppression-characterized-root-failure-injection-pending"
+    },
+    {
       "id": "maps.acquired-map-display",
       "workflowIds": ["classic.maps.view-acquired"],
       "domain": "maps",

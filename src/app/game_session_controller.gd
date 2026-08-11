@@ -39,6 +39,13 @@ func restore(content: RealmzContent, envelope: SaveEnvelope) -> SessionStep:
 	return step
 
 
+func close() -> SessionStep:
+	var step := _session.close()
+	_current_view = _session.view()
+	step_committed.emit(step)
+	return step
+
+
 func submit_intent(intent: PlayerIntent) -> SessionStep:
 	var step: SessionStep = _session.submit_intent(intent)
 	_current_view = _session.view()

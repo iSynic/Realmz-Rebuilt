@@ -114,6 +114,27 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 	return SessionStep.completed(_view_revision, [DomainEvent.new("session_restored")])
 
 
+func close() -> SessionStep:
+	if not _started:
+		return SessionStep.failed(_view_revision, &"session_not_started", "There is no active session to close.")
+	var pending := _pending_interaction()
+	if (_scenario_vm.is_active() and pending == null) or (pending != null and pending.kind != InteractionRequest.COMBAT):
+		return SessionStep.failed(_view_revision, &"session_not_committed", "The session can close only at a committed boundary.")
+	var campaign_id := _content.campaign_id
+	_session_continuation.clear()
+	_session_interaction = null
+	_runtime_api = null
+	_scenario_vm = null
+	_scenario_action_state = null
+	_rules = null
+	_rng = null
+	_state = null
+	_content = null
+	_started = false
+	_view_revision += 1
+	return SessionStep.completed(_view_revision, [DomainEvent.new(&"session_ended", {"campaignId": campaign_id})])
+
+
 func submit_intent(intent: PlayerIntent) -> SessionStep:
 	if not _started:
 		return SessionStep.failed(_view_revision, &"session_not_started", "Start or restore the session first.")

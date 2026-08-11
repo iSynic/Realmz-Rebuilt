@@ -20,6 +20,7 @@ const TEMPLE: StringName = &"temple_action"
 const BANK: StringName = &"bank_action"
 const POOLED_WEALTH_DEPARTURE: StringName = &"pooled_wealth_departure"
 const COMBAT: StringName = &"combat_action"
+const SESSION_LIFECYCLE: StringName = &"session_lifecycle"
 
 
 func _init(id: String, request_kind: StringName, request_payload: Dictionary = {}) -> void:
@@ -37,7 +38,7 @@ func is_supported_kind() -> bool:
 
 
 static func kind_is_supported(request_kind: StringName) -> bool:
-	return request_kind in [ACKNOWLEDGE, AGE_UPDATE, YES_NO, INDEXED_CHOICE, ENCOUNTER_CHOICE, CHARACTER_SELECTION, ALLY_SELECTION, TREASURE_DISTRIBUTION, LEVEL_UP, WORD_AND_ACTION, SHOP, TEMPLE, BANK, POOLED_WEALTH_DEPARTURE, COMBAT]
+	return request_kind in [ACKNOWLEDGE, AGE_UPDATE, YES_NO, INDEXED_CHOICE, ENCOUNTER_CHOICE, CHARACTER_SELECTION, ALLY_SELECTION, TREASURE_DISTRIBUTION, LEVEL_UP, WORD_AND_ACTION, SHOP, TEMPLE, BANK, POOLED_WEALTH_DEPARTURE, COMBAT, SESSION_LIFECYCLE]
 
 
 static func acknowledge(id: String, prompt: String, message_id: int = 0) -> InteractionRequest:

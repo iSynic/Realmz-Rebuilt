@@ -76,6 +76,14 @@ func set_dungeon_3d_enabled(enabled: bool) -> void:
 	_present_current_view()
 
 
+func refresh() -> void:
+	_present_current_view()
+
+
+func present_host_interaction(request: InteractionRequest) -> void:
+	_interaction_presenter.present(request, _shell_presenter.latest_classic_text())
+
+
 func _present_current_view(include_interaction: bool = true) -> void:
 	var game_view := _session_controller.view()
 	_map_presenter.present(game_view)

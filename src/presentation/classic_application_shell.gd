@@ -8,6 +8,7 @@ signal save_requested(slot_id: String)
 signal load_requested(slot_id: String)
 signal load_backup_requested(slot_id: String)
 signal refresh_saves_requested
+signal end_adventure_requested
 signal quit_requested
 signal topology_debug_changed(enabled: bool)
 signal dungeon_3d_changed(enabled: bool)
@@ -295,7 +296,7 @@ func _build_menus() -> void:
 		{"label": "Campaigns…", "system": &"campaigns"},
 		{"label": "Quick Save", "system": &"save", "disabled_reason": _session_reason()},
 		{"label": "Quick Load", "system": &"load", "disabled_reason": _session_reason()},
-		{"label": "Return to Selection", "system": &"campaigns"},
+		{"label": "End Adventure…", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
 		{"label": "Quit", "system": &"quit"},
 	])
 	_fill_menu($MenuStrip/MenuRow/AdventureMenu, [
@@ -332,6 +333,7 @@ func _build_menus() -> void:
 		{"label": "Maps / Notes", "route": &"journal"},
 		{"label": "Game — Quick Save", "system": &"save", "disabled_reason": _session_reason()},
 		{"label": "Game — Quick Load", "system": &"load", "disabled_reason": _session_reason()},
+		{"label": "Game — End Adventure", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
 		{"label": "Game — Campaigns", "system": &"campaigns"},
 		{"label": "Preferences", "route": &"system"},
 		{"label": "Info / Diagnostics", "route": &"system"},
@@ -481,6 +483,7 @@ func _on_system_action_requested(action_id: StringName, value: Variant) -> void:
 		&"load": load_requested.emit("quick" if value == null else String(value))
 		&"load_backup": load_backup_requested.emit("quick" if value == null else String(value))
 		&"refresh_saves": refresh_saves_requested.emit()
+		&"end_adventure": end_adventure_requested.emit()
 		&"campaigns": show_campaign_selection()
 		&"quit": quit_requested.emit()
 
@@ -554,6 +557,15 @@ func _availability_reason(action_id: StringName) -> String:
 
 func _session_reason() -> String:
 	return "" if _current_view != null and _current_view.session_started else "Begin a campaign first."
+
+
+func _end_adventure_reason() -> String:
+	var session_reason := _session_reason()
+	if not session_reason.is_empty():
+		return session_reason
+	if _current_view.pending_interaction != null and _current_view.pending_interaction.kind != InteractionRequest.COMBAT:
+		return "Resolve the current interaction first."
+	return ""
 
 
 func _decode_image(asset: PackageMediaAsset, bytes: PackedByteArray) -> Image:

@@ -1,6 +1,8 @@
 class_name InteractionPresenter
 extends PanelContainer
 
+const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
+
 signal response_submitted(response: InteractionResponse)
 
 @onready var _prompt: Label = %InteractionPrompt
@@ -100,6 +102,8 @@ func _component_for(kind: StringName) -> InteractionComponent:
 			return BankInteraction.new()
 		&"combat_action":
 			return BattleInteraction.new()
+		&"session_lifecycle":
+			return LifecycleInteractionScript.new()
 	return null
 
 
@@ -201,6 +205,8 @@ static func _heading_for_kind(kind: StringName) -> String:
 			return "Pooled Wealth"
 		&"combat_action":
 			return "Battle"
+		&"session_lifecycle":
+			return "Adventure"
 	return _title_for_kind(kind)
 
 

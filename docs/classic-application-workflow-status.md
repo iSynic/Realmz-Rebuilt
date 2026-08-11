@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 5 | 16 | 39 | 0 |
+| classic | 60 | 4 | 17 | 39 | 0 |
 | host | 8 | 1 | 2 | 5 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -15,7 +15,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Domain | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Startup and party | 8 | 1 | 0 | 7 | 0 |
+| Startup and party | 8 | 0 | 1 | 7 | 0 |
 | Exploration | 6 | 1 | 1 | 4 | 0 |
 | Scenario interaction | 6 | 0 | 2 | 4 | 0 |
 | Character management | 5 | 1 | 1 | 3 | 0 |
@@ -33,44 +33,44 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Castle oracle | Count |
 | --- | ---: |
-| not-required | 13 |
+| not-required | 12 |
 | required | 9 |
-| completed | 38 |
+| completed | 39 |
 
 | Remake | Count |
 | --- | ---: |
 | absent | 4 |
-| partial | 30 |
-| implemented | 16 |
+| partial | 31 |
+| implemented | 15 |
 | divergent | 10 |
 | not-applicable | 0 |
 
 | providence | Count |
 | --- | ---: |
-| not-required | 14 |
+| not-required | 13 |
 | missing | 1 |
-| partial | 6 |
+| partial | 7 |
 | complete | 39 |
 
 | simulation | Count |
 | --- | ---: |
 | not-applicable | 2 |
-| absent | 3 |
-| partial | 15 |
+| absent | 2 |
+| partial | 16 |
 | complete | 40 |
 
 | persistence | Count |
 | --- | ---: |
-| not-applicable | 8 |
+| not-applicable | 7 |
 | absent | 2 |
-| partial | 1 |
+| partial | 2 |
 | verified | 49 |
 
 | presentation | Count |
 | --- | ---: |
-| absent | 4 |
+| absent | 3 |
 | fixture-shell | 2 |
-| functional | 54 |
+| functional | 55 |
 | accepted | 0 |
 
 ### Host
@@ -107,7 +107,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Label | Classic | Host |
 | --- | ---: | ---: |
-| synthetic | 56 | 7 |
+| synthetic | 57 | 7 |
 | route-harness | 39 | 2 |
 | aogm-ordinary | 22 | 2 |
 | other-ordinary | 0 | 0 |
@@ -140,7 +140,7 @@ Blockers: **1**. Major gaps: **25**.
 - **major** `classic.services.temple` — Realmz 2.0 packages omit Castle's global Temple macro hook. Next: Preserve global application hooks in Providence schema v2 and run the Temple hook through the session-owned VM before opening the service.
 - **major** `classic.spellcasting.combat-cast` — Combat spellcasting has extensive deterministic coverage but no ordinary campaign certification. Next: Cast representative single, group, and area spells in an ordinary AOGM battle and verify save/resume.
 - **major** `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise the field scroll workflow in ordinary AOGM play, then implement combat/discard/case-transfer branches only from their bounded differential evidence.
-- **major** `classic.startup.end-adventure` — There is no typed end-adventure boundary distinct from process quit or campaign replacement. Next: Add a committed session-close intent and confirmation workflow.
+- **major** `classic.startup.end-adventure` — Providence parses Classic Global macro slot 2 but schema v2 does not associate that hook with its compiled program, so End Adventure cannot run authored quit behavior before closing. Next: Add deterministic lifecycle-hook mapping to Providence and the mirrored package contract, then execute Global quit macro slot 2 through a serializable session continuation before close.
 - **major** `host.package.validation-progress` — Package loading remains perceptibly slow and lacks a real asynchronous progress workflow. Next: Move host validation orchestration off the interactive frame while keeping session construction atomic.
 - **major** `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
@@ -176,6 +176,7 @@ Blockers: **1**. Major gaps: **25**.
 - `classic.rewards.experience-level-up` — Experience award is observed in AOGM, but an actual level-up remains fixture-only.
 - `classic.scenario.select-subject` — Picker variants are tested synthetically but not all observed in ordinary AOGM play.
 - `classic.startup.create-character` — The five-step creator has deterministic and UI tests but no recorded ordinary AOGM completion in the audit evidence.
+- `classic.startup.end-adventure` — End Adventure has synthetic interaction and teardown proof but no ordinary AOGM acceptance.
 
 ### other-campaign
 
@@ -202,7 +203,7 @@ Blockers: **1**. Major gaps: **25**.
 - `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented.
 - `classic.services.shop` — Realmz 2.0 packages omit Castle's global Shop macro hook.
 - `classic.services.temple` — Realmz 2.0 packages omit Castle's global Temple macro hook.
-- `classic.startup.end-adventure` — There is no typed end-adventure boundary distinct from process quit or campaign replacement.
+- `classic.startup.end-adventure` — Providence parses Classic Global macro slot 2 but schema v2 does not associate that hook with its compiled program, so End Adventure cannot run authored quit behavior before closing.
 - `classic.character.view-sheet` — Several nonzero Classic ability slots lack verified display names.
 - `classic.combat.tactical-movement` — Realmz 2.0 requires an explicit switch from missile to melee before hostile collision, while Castle can perform that switch through its Auto Weapon Switch preference.
 - `classic.services.shop` — Normalized shop stock omits native empty-slot provenance.
@@ -214,6 +215,7 @@ Blockers: **1**. Major gaps: **25**.
 - `host.package.validation-progress` — Package loading remains perceptibly slow and lacks a real asynchronous progress workflow.
 - `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished.
 - `classic.spellcasting.choose-power-target` — SELECT_SPELL_POWER and SELECT_SPELL_TARGET are dead scaffolding beside the complete CAST_SPELL payload.
+- `classic.startup.end-adventure` — Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
 - `classic.system.preferences` — Classic's reduced-sound preference is not represented.
 - `classic.system.quit` — Unsaved-state quit confirmation is not an evidenced ordinary workflow.
 

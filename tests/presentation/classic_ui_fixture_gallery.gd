@@ -18,6 +18,7 @@ const INTERACTIONS: Array[StringName] = [
 	InteractionRequest.BANK,
 	InteractionRequest.POOLED_WEALTH_DEPARTURE,
 	InteractionRequest.COMBAT,
+	InteractionRequest.SESSION_LIFECYCLE,
 ]
 
 class FixtureCase extends RefCounted:
@@ -125,6 +126,19 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 				],
 				"itemCasts": [] if empty_values else [{"itemInstanceId": "wand.instance", "itemId": "classic.item.41", "itemName": "Runed Wand", "charges": 3, "spellId": "classic.spell.1101", "spellName": "Flame", "power": 2, "targetId": "monster", "targetName": "Goblin", "targetCurrentHealth": 4, "targetMaximumHealth": 4, "targetMode": "combatant"}],
 				"itemCastReason": "No carried item has a supported Classic combat use." if empty_values else "",
+			})
+		InteractionRequest.SESSION_LIFECYCLE:
+			var lifecycle_options: Array[Dictionary] = []
+			if not empty_values:
+				lifecycle_options.assign([
+					{"action": "save-and-end", "label": "Save and end adventure"},
+					{"action": "end-without-saving", "label": "End adventure without saving"},
+					{"action": "cancel", "label": "Cancel"},
+				])
+			payload.merge({
+				"operation": "end-adventure",
+				"inCombat": false,
+				"options": lifecycle_options,
 			})
 	return InteractionRequest.new("fixture-%s-%s" % [kind, state], kind, payload)
 

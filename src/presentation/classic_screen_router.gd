@@ -1815,6 +1815,12 @@ func _render_system() -> void:
 	campaigns.text = "Campaign library"
 	campaigns.pressed.connect(func() -> void: system_action_requested.emit(&"campaigns", null))
 	save_row.add_child(campaigns)
+	var end_adventure := Button.new()
+	end_adventure.text = "End adventure"
+	end_adventure.disabled = _view.pending_interaction != null and _view.pending_interaction.kind != InteractionRequest.COMBAT
+	end_adventure.tooltip_text = "Resolve the current interaction first." if end_adventure.disabled else "Close this campaign session without quitting Realmz 2."
+	end_adventure.pressed.connect(func() -> void: system_action_requested.emit(&"end_adventure", null))
+	save_row.add_child(end_adventure)
 	var refresh_saves := Button.new()
 	refresh_saves.text = "Refresh saves"
 	refresh_saves.pressed.connect(func() -> void: system_action_requested.emit(&"refresh_saves", null))

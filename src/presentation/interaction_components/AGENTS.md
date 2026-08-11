@@ -6,6 +6,7 @@
 
 - Components translate an existing request payload into controls and emit the exact response payload selected by the player.
 - `InteractionPresenter` owns request identity, modal visibility, and construction of `InteractionResponse`.
+- `LifecycleInteraction` renders only the host-supplied End Adventure operations and emits one declared action identity. It does not save, close a session, infer combat state, or reuse scenario-choice semantics.
 - `AgeUpdateInteraction` presents the source-backed band/range and nonzero fifteen-column age changes and emits only the empty `age_update` acknowledgement payload.
 - `TreasureDistributionInteraction` owns `fumbled-item-recovery`, `ordinary`, and `completion-confirmation`. Fumble mode emits only exact-instance assign/leave payloads. Ordinary mode renders pending item/knowledge, pooled wealth, legal recipients and reasons, Pool/Share, exact denomination transfers, Detect/Identify caster choices, and Done. Completion mode explicitly confirms or cancels abandonment.
 - `LevelUpInteraction` owns `result` and `spell-selection`. It acknowledges the exact character result or returns one validated set of stable spell IDs; it never rolls, applies gains, computes eligibility, or changes character state.

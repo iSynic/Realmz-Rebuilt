@@ -8,6 +8,7 @@ const SaveRepositoryScript := preload("res://src/infrastructure/saves/save_repos
 const CharacterVaultRepositoryScript := preload("res://src/infrastructure/characters/character_vault_repository.gd")
 const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
 const DungeonMap3DPresenterScript := preload("res://src/presentation/dungeon_map_3d_presenter.gd")
+const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
 
 @onready var _status_label: Label = $ClassicShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $ClassicShell/SmokeAction
@@ -27,6 +28,7 @@ var settings_repository: SettingsRepository
 var _active_content: RealmzContent
 var _presentation_settings: PresentationSettings
 var _dungeon_presenter: DungeonMap3DPresenter
+var _host_interaction: InteractionRequest
 
 
 func _ready() -> void:
@@ -52,6 +54,7 @@ func _ready() -> void:
 	_shell_presenter.load_requested.connect(load_active_session)
 	_shell_presenter.load_backup_requested.connect(load_backup_session)
 	_shell_presenter.refresh_saves_requested.connect(_refresh_save_previews)
+	_shell_presenter.end_adventure_requested.connect(_on_end_adventure_requested)
 	_shell_presenter.quit_requested.connect(_on_quit_requested)
 	_shell_presenter.topology_debug_changed.connect(_on_topology_debug_changed)
 	_shell_presenter.dungeon_3d_changed.connect(_on_dungeon_3d_changed)
@@ -93,6 +96,23 @@ func _on_quit_requested() -> void:
 	get_tree().quit()
 
 
+func _on_end_adventure_requested() -> void:
+	if not session_controller.view().session_started:
+		_shell_presenter.show_campaign_selection()
+		return
+	var pending := session_controller.view().pending_interaction
+	if pending != null and pending.kind != InteractionRequest.COMBAT:
+		_shell_presenter.set_status("Resolve the current interaction before ending the adventure.", true)
+		return
+	if _host_interaction != null:
+		return
+	var combat_view := session_controller.view().combat_view
+	var in_combat := combat_view != null and combat_view.outcome == &"active"
+	_host_interaction = ApplicationLifecycleScript.end_adventure_request(in_combat)
+	presentation_coordinator.present_host_interaction(_host_interaction)
+	_shell_presenter.set_status("Choose how to end the active adventure.")
+
+
 func start_package(package_path: String, initial_seed: int) -> SessionStep:
 	var installation := package_repository.install_package(package_path)
 	if not installation.is_ok():
@@ -128,6 +148,8 @@ func _input(event: InputEvent) -> void:
 		if _interaction_presenter.dismiss_passive_text() or _shell_presenter.handle_back():
 			get_viewport().set_input_as_handled()
 			return
+	if _host_interaction != null:
+		return
 	if session_controller.view().pending_interaction != null:
 		return
 	if _shell_presenter.handle_route_shortcut(event):
@@ -182,8 +204,56 @@ func _submit_intent(intent: PlayerIntent) -> SessionStep:
 
 
 func _on_interaction_response_submitted(response: InteractionResponse) -> void:
+	if _host_interaction != null:
+		_respond_host_interaction(response)
+		return
 	var step := session_controller.respond(response)
 	_present_step_status(step)
+
+
+func _respond_host_interaction(response: InteractionResponse) -> void:
+	var action := ApplicationLifecycleScript.response_action(_host_interaction, response)
+	if action.is_empty():
+		_shell_presenter.set_status("The lifecycle response was invalid.", true)
+		presentation_coordinator.present_host_interaction(_host_interaction)
+		return
+	var result := ApplicationLifecycleScript.execute(
+		action,
+		func() -> bool: return save_active_session("quick"),
+		func() -> SessionStep: return session_controller.close()
+	)
+	var result_state := StringName(result.get("state", &"invalid"))
+	if result_state == &"cancelled":
+		_host_interaction = null
+		presentation_coordinator.refresh()
+		_shell_presenter.set_status("Adventure continues.")
+		return
+	if result_state == &"save-failed":
+		presentation_coordinator.present_host_interaction(_host_interaction)
+		return
+	if result_state == &"close-failed":
+		var failed_step: SessionStep = result.get("step")
+		var error_message := failed_step.error_message if failed_step != null else "The session close operation is unavailable."
+		_shell_presenter.set_status("End Adventure failed • %s" % error_message, true)
+		presentation_coordinator.present_host_interaction(_host_interaction)
+		return
+	if result_state != &"closed":
+		_shell_presenter.set_status("The lifecycle response was invalid.", true)
+		presentation_coordinator.present_host_interaction(_host_interaction)
+		return
+	_complete_closed_session()
+
+
+func _complete_closed_session() -> void:
+	_host_interaction = null
+	_active_content = null
+	presentation_coordinator.set_package_media(null)
+	_refresh_save_previews()
+	_refresh_vault_views()
+	_refresh_campaigns()
+	_shell_presenter.show_campaign_selection()
+	_status_label.text = "Adventure ended • choose a campaign"
+	_shell_presenter.set_status(_status_label.text)
 
 
 func _present_step_status(step: SessionStep) -> void:

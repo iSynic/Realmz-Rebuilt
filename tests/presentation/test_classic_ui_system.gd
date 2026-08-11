@@ -1,6 +1,8 @@
 extends RealmzTestCase
 
 const SaveSlotPreviewScript := preload("res://src/infrastructure/saves/save_slot_preview.gd")
+const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
+const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
 
 
 func run() -> void:
@@ -12,6 +14,7 @@ func run() -> void:
 	_test_action_availability()
 	_test_fixture_gallery_coverage()
 	_test_interaction_identity()
+	_test_lifecycle_interaction()
 	_test_classic_choice_context()
 	_test_battle_weapon_mode_component()
 	_test_shop_component()
@@ -534,7 +537,7 @@ func _test_action_availability() -> void:
 
 func _test_fixture_gallery_coverage() -> void:
 	assert_equal(ClassicUiFixtureGallery.screen_cases().size(), 81, "all nine screens have nine fixture states")
-	assert_equal(ClassicUiFixtureGallery.interaction_cases().size(), 135, "all fifteen interaction kinds have nine fixture states")
+	assert_equal(ClassicUiFixtureGallery.interaction_cases().size(), 144, "all sixteen interaction kinds have nine fixture states")
 	for interaction: StringName in ClassicUiFixtureGallery.INTERACTIONS:
 		assert_true(ClassicUiFixtureGallery.request_for(interaction).is_supported_kind(), "gallery interaction %s is a supported typed request" % interaction)
 	var age_component := AgeUpdateInteraction.new()
@@ -576,6 +579,41 @@ func _test_interaction_identity() -> void:
 	assert_equal(response.request_id, request.request_id, "interaction response preserves request identity")
 	assert_equal(response.kind, request.kind, "interaction response preserves request kind")
 	assert_equal(response.payload, {"accepted": true}, "interaction response preserves the exact selected payload")
+
+
+func _test_lifecycle_interaction() -> void:
+	var request := ApplicationLifecycleScript.end_adventure_request(false)
+	assert_equal([request.kind, request.payload["inCombat"], request.payload["options"].size()], [InteractionRequest.SESSION_LIFECYCLE, false, 3], "field End Adventure exposes explicit save, discard, and cancel operations")
+	assert_not_null(InteractionRequest.from_data(request.to_data()), "the typed lifecycle request retains the established interaction wire shape")
+	var component := LifecycleInteractionScript.new()
+	var submitted: Array[Dictionary] = []
+	component.payload_submitted.connect(func(payload: Dictionary) -> void: submitted.append(payload))
+	component.build(request)
+	var buttons: Array[Button] = []
+	for node: Node in component.find_children("*", "Button", true, false):
+		buttons.append(node as Button)
+	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and end adventure", "End adventure without saving", "Cancel"], "the dedicated presenter does not reinterpret lifecycle choices as scenario options")
+	buttons[2].pressed.emit()
+	assert_equal(submitted, [{"action": &"cancel"}], "Cancel emits one typed host response")
+	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.new(request.request_id, request.kind, submitted[0])), &"cancel", "the host accepts only an action declared by its request")
+	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.new(request.request_id, request.kind, {"action": "invented"})), &"", "undeclared lifecycle actions fail explicitly")
+	assert_false(ApplicationLifecycleScript.allows_close(&"save-and-end", false), "a rejected save cannot close the active session")
+	assert_true(ApplicationLifecycleScript.allows_close(&"save-and-end", true), "a validated save permits the requested close")
+	assert_true(ApplicationLifecycleScript.allows_close(&"end-without-saving"), "explicit discard permits close without a repository write")
+	assert_false(ApplicationLifecycleScript.allows_close(&"cancel"), "Cancel never closes the active session")
+	var operation_order: Array[String] = []
+	var failed_save := ApplicationLifecycleScript.execute(&"save-and-end", func() -> bool: operation_order.append("save"); return false, func() -> SessionStep: operation_order.append("close"); return SessionStep.completed(1))
+	assert_equal([failed_save["state"], operation_order], [&"save-failed", ["save"]], "save failure suppresses close instead of tearing down the active session")
+	operation_order.clear()
+	var discarded := ApplicationLifecycleScript.execute(&"end-without-saving", func() -> bool: operation_order.append("save"); return true, func() -> SessionStep: operation_order.append("close"); return SessionStep.completed(2))
+	assert_equal([discarded["state"], operation_order], [&"closed", ["close"]], "explicit discard closes once without touching the save repository")
+	operation_order.clear()
+	var cancelled := ApplicationLifecycleScript.execute(&"cancel", func() -> bool: operation_order.append("save"); return true, func() -> SessionStep: operation_order.append("close"); return SessionStep.completed(3))
+	assert_equal([cancelled["state"], operation_order], [&"cancelled", []], "Cancel invokes neither persistence nor session teardown")
+	component.free()
+	var combat_request := ApplicationLifecycleScript.end_adventure_request(true)
+	assert_equal(combat_request.payload["options"].size(), 2, "battle End Adventure never offers an invalid combat save")
+	assert_false(combat_request.payload["options"].any(func(option: Dictionary) -> bool: return StringName(option["action"]) == &"save-and-end"), "battle End Adventure follows Castle's no-save branch")
 
 
 func _test_classic_choice_context() -> void:
