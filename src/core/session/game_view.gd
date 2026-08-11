@@ -28,6 +28,8 @@ var combat_icon_options: Array[CharacterAppearanceOptionView] = []
 var campaign_summary: CampaignSummaryView
 var party_summary: PartySummaryView
 var journal_entries: Array[JournalEntryView] = []
+var location_notes: Array[LocationNoteView] = []
+var current_location_note: LocationNoteView
 var services: Array[ServiceView] = []
 var money_workspace: MoneyWorkspaceView
 var action_availability: Dictionary = {}

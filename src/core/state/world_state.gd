@@ -10,6 +10,7 @@ var _trigger_chances: Dictionary = {}
 var _acquired_maps: Dictionary = {}
 var _random_regions: Dictionary = {}
 var _map_darkness: Dictionary = {}
+var _location_notes: Dictionary = {}
 
 
 func terrain_for(map_id: String, cell: MapCell) -> String:
@@ -78,6 +79,52 @@ func acquired_map_ids() -> Array[String]:
 	return result
 
 
+func upsert_location_note(note: LocationNoteState) -> bool:
+	if note == null or not note.is_structurally_valid():
+		return false
+	for current: LocationNoteState in location_notes_for_kind(note.map_kind):
+		if current.record_ordinal == note.record_ordinal and current.id() != note.id():
+			return false
+	_location_notes[note.id()] = note
+	return true
+
+
+func remove_location_note(map_id: String, coordinate: Vector2i) -> bool:
+	return _location_notes.erase(LocationNoteState.key_for(map_id, coordinate))
+
+
+func location_note_at(map_id: String, coordinate: Vector2i) -> LocationNoteState:
+	return _location_notes.get(LocationNoteState.key_for(map_id, coordinate)) as LocationNoteState
+
+
+func location_notes() -> Array[LocationNoteState]:
+	var result: Array[LocationNoteState] = []
+	for value: Variant in _location_notes.values():
+		result.append(value as LocationNoteState)
+	result.sort_custom(func(left: LocationNoteState, right: LocationNoteState) -> bool:
+		return String(left.map_kind) < String(right.map_kind) or left.map_kind == right.map_kind and left.record_ordinal < right.record_ordinal
+	)
+	return result
+
+
+func location_notes_for_kind(map_kind: StringName) -> Array[LocationNoteState]:
+	var result: Array[LocationNoteState] = []
+	for note: LocationNoteState in location_notes():
+		if note.map_kind == map_kind:
+			result.append(note)
+	return result
+
+
+func next_location_note_ordinal(map_kind: StringName) -> int:
+	var used: Dictionary = {}
+	for note: LocationNoteState in location_notes_for_kind(map_kind):
+		used[note.record_ordinal] = true
+	for ordinal: int in LocationNoteState.MAX_NOTES_PER_MAP_KIND:
+		if not used.has(ordinal):
+			return ordinal
+	return -1
+
+
 func set_random_region(region: RandomRegionState) -> void:
 	if region != null and not region.id.is_empty():
 		_random_regions[region.id] = region
@@ -127,6 +174,9 @@ func to_data() -> Dictionary:
 	random_region_ids.sort()
 	for region_id: Variant in random_region_ids:
 		random_regions.append((_random_regions[region_id] as RandomRegionState).to_data())
+	var location_notes_data: Array[Dictionary] = []
+	for note: LocationNoteState in location_notes():
+		location_notes_data.append(note.to_data())
 	return {
 		"terrainOverrides": _sorted_dictionary(_terrain_overrides),
 		"doorStates": _sorted_dictionary(_door_states),
@@ -137,6 +187,7 @@ func to_data() -> Dictionary:
 		"acquiredMaps": _sorted_keys(_acquired_maps),
 		"randomRegions": random_regions,
 		"mapDarkness": _sorted_dictionary(_map_darkness),
+		"locationNotes": location_notes_data,
 	}
 
 
@@ -184,6 +235,14 @@ static func from_data(data: Variant) -> WorldState:
 			if not key is String or key.is_empty() or not data["mapDarkness"][key] is bool:
 				return null
 			state._map_darkness[key] = data["mapDarkness"][key]
+	if data.has("locationNotes"):
+		if not data["locationNotes"] is Array:
+			return null
+		for entry: Variant in data["locationNotes"]:
+			var note := LocationNoteState.from_data(entry)
+			if note == null or state._location_notes.has(note.id()):
+				return null
+			state._location_notes[note.id()] = note
 	return state
 
 

@@ -82,6 +82,8 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved party appearance references unavailable package content.")
 	if not _shop_state_is_valid(content, replacement_state):
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved shop state references unavailable package content.")
+	if not _location_notes_are_valid(content, replacement_state):
+		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved location notes reference unavailable maps, cells, or invalid Classic note data.")
 	if not _character_draft_is_valid(content, replacement_state, replacement_rules):
 		return SessionStep.failed(_view_revision, &"invalid_character_draft", "The saved character-creation draft is invalid for this campaign.")
 	var replacement_vm := ScenarioVm.new()
@@ -197,6 +199,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _money_action(intent)
 		PlayerIntent.Kind.SERVICE_ACTION:
 			return _service_action(intent)
+		PlayerIntent.Kind.SET_LOCATION_NOTE:
+			return _set_location_note(intent.text_value)
 		_:
 			return SessionStep.failed(_view_revision, &"intent_not_implemented", "This Realmz intent is not implemented in the current slice.")
 
@@ -271,6 +275,14 @@ func view() -> GameView:
 	result.party_summary.light_remaining = _state.party.conditions.value(0)
 	result.party_summary.camping = _state.party_camping
 	result.party_summary.acquired_map_ids = _state.world.acquired_map_ids()
+	var current_map := _content.world.map_by_id(_state.party.map_id)
+	if current_map != null:
+		var current_note := _state.world.location_note_at(current_map.id, _state.party.coordinate)
+		result.current_location_note = LocationNoteView.new(current_map.id, current_map.name, current_map.level_type, current_map.level_index, _state.party.coordinate, current_note.text if current_note != null else "", current_note.darkness_value if current_note != null else _current_location_note_darkness(current_map), current_note.record_ordinal if current_note != null else -1, true)
+		for note: LocationNoteState in _state.world.location_notes_for_kind(current_map.level_type):
+			var note_map := _content.world.map_by_id(note.map_id)
+			if note_map != null:
+				result.location_notes.append(LocationNoteView.new(note.map_id, note_map.name, note.map_kind, note.level_index, note.coordinate, note.text, note.darkness_value, note.record_ordinal, note.map_id == _state.party.map_id and note.coordinate == _state.party.coordinate))
 	if result.party_setup_available:
 		for race: RaceDefinition in _content.race_definitions():
 			result.race_options.append(DefinitionOptionView.new(race.id, race.name, race.description, race.eligible_caste_ids))
@@ -402,6 +414,7 @@ func _populate_action_availability(result: GameView) -> void:
 	result.set_action_availability(&"store_item", false, "Classic has no ordinary player-stash workflow; opcode 36 equipment escrow remains scenario-owned.")
 	result.set_action_availability(&"service_action", ordinary_reason.is_empty() and not battle_active and not result.services.is_empty(), ordinary_reason if not ordinary_reason.is_empty() else "Services are unavailable during battle." if battle_active else "No shop, temple, or bank is available at this location.")
 	result.set_action_availability(&"money_action", ordinary_reason.is_empty() and not battle_active and result.money_workspace != null, ordinary_reason if not ordinary_reason.is_empty() else "Money management is unavailable during battle." if battle_active else "No party money workspace is available.")
+	result.set_action_availability(&"set_location_note", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Location notes are unavailable during battle." if battle_active else "")
 	var combat_move_enabled := false
 	var combat_move_reason := "No active battle."
 	if battle_active:
@@ -842,6 +855,36 @@ func _trade_item(intent: PlayerIntent) -> SessionStep:
 	if not probe.allowed:
 		return SessionStep.failed(_view_revision, &"item_cannot_trade", probe.reason)
 	return _finish_completed([DomainEvent.new(&"item_traded", {"fromCharacterId": source.id, "toCharacterId": destination.id, "instanceId": instance.id, "itemId": definition.id})])
+
+
+func _set_location_note(text: String) -> SessionStep:
+	var map := _content.world.map_by_id(_state.party.map_id)
+	if map == null or map.topology.cell_at(_state.party.coordinate) == null:
+		return SessionStep.failed(_view_revision, &"location_note_unavailable", "The current map location is unavailable.")
+	if not LocationNoteState.text_is_valid(text):
+		return SessionStep.failed(_view_revision, &"location_note_too_long", "Classic location notes are limited to 255 encoded bytes.")
+	var existing := _state.world.location_note_at(map.id, _state.party.coordinate)
+	var darkness_value := _current_location_note_darkness(map)
+	if existing == null and not text.is_empty() and _state.world.next_location_note_ordinal(map.level_type) < 0:
+		return SessionStep.failed(_view_revision, &"location_note_capacity", "The Classic location-note file for this map type is full.")
+	if existing != null and existing.text == text and existing.darkness_value == darkness_value or existing == null and text.is_empty():
+		return SessionStep.failed(_view_revision, &"location_note_unchanged", "Change or clear the current location note before saving.")
+	var committed := false
+	if text.is_empty():
+		committed = _state.world.remove_location_note(map.id, _state.party.coordinate)
+	else:
+		var ordinal := existing.record_ordinal if existing != null else _state.world.next_location_note_ordinal(map.level_type)
+		committed = _state.world.upsert_location_note(LocationNoteState.new(map.id, map.level_type, map.level_index, _state.party.coordinate, text, darkness_value, ordinal))
+	if not committed:
+		return SessionStep.failed(_view_revision, &"invalid_location_note", "The location note could not be committed.")
+	var event_kind: StringName = &"location_note_removed" if text.is_empty() else &"location_note_updated"
+	return _finish_completed([DomainEvent.new(event_kind, {
+		"mapId": map.id,
+		"x": _state.party.coordinate.x,
+		"y": _state.party.coordinate.y,
+		"textBytes": text.to_utf8_buffer().size(),
+		"source": "classic",
+	})])
 
 
 func _request_drop_item(intent: PlayerIntent) -> SessionStep:
@@ -1654,6 +1697,31 @@ static func _shop_state_is_valid(content: RealmzContent, state: GameState) -> bo
 			if content.item_by_id(String(item_id)) == null:
 				return false
 	return true
+
+
+static func _location_notes_are_valid(content: RealmzContent, state: GameState) -> bool:
+	if content == null or state == null:
+		return false
+	var counts: Dictionary = {}
+	var ordinals: Dictionary = {}
+	for note: LocationNoteState in state.world.location_notes():
+		var map := content.world.map_by_id(note.map_id)
+		if map == null or map.level_type != note.map_kind or map.level_index != note.level_index or note.native_location_id != LocationNoteState.native_id_for(map.level_index, note.coordinate) or map.topology.cell_at(note.coordinate) == null or note.text.is_empty() or not LocationNoteState.text_is_valid(note.text):
+			return false
+		counts[note.map_kind] = int(counts.get(note.map_kind, 0)) + 1
+		var ordinal_key := "%s:%d" % [String(note.map_kind), note.record_ordinal]
+		if ordinals.has(ordinal_key):
+			return false
+		ordinals[ordinal_key] = true
+		if int(counts[note.map_kind]) > LocationNoteState.MAX_NOTES_PER_MAP_KIND:
+			return false
+	return true
+
+
+func _current_location_note_darkness(map: MapDefinition) -> int:
+	if map == null or map.level_type == &"dungeon" or not _state.world.map_is_dark(map):
+		return 0
+	return clampi(int(_state.party.conditions.value(0) / 30) + 1, 1, 255)
 
 
 func _resolved_character_appearance(spec: CharacterCreationSpec, race: RaceDefinition) -> Dictionary:

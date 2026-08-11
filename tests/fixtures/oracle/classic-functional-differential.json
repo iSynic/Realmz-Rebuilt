@@ -3812,6 +3812,53 @@
       "status": "data-md2-and-map-name-records-absent-from-schema-v2-opcode-29-land-level-substitution-and-viewer-disabled"
     },
     {
+      "id": "maps.location-notes",
+      "workflowIds": ["classic.maps.location-notes"],
+      "domain": "maps",
+      "claim": "Classic location notes are playthrough-owned records split into land and dungeon streams. Only the note at the party's current location is editable, records browse in source-file order, empty text removes a note, and Realmz 2.0 bounds each stream to Castle's 501 searchable record ordinals rather than reproducing Castle's append-beyond-search defect.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "The functional Remake checkpoint has no equivalent player-authored location-note store or workflow. Its journal and player-map components are not donors for this state boundary.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/structs.h", "symbol": "struct note {" },
+          { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "if ((fp = MyrFopen(\":Data Files:DN\", \"r+b\")) == NULL)" },
+          { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "if (notenum > 500)" },
+          { "path": "src/realmz_orig/save-direction-order.c", "symbol": "Data D1" },
+          { "path": "src/realmz_orig/loadsavedgame.c", "symbol": "Data C1" }
+        ],
+        "authoredInputs": ["current land or dungeon level and coordinate", "separate WN and DN record streams", "Str255 text", "computed native location ID", "land darkness and torch value", "source record ordinal"],
+        "observation": "Maps/Notes opens WN on land or DN in a dungeon, computes the current location ID as 10000 * level + x * 90 + y, and scans records in file order. Only the original current-location record can be edited while previous and next browse the same stream. Empty text clears the record ID and map marker. Land records retain a darkness/torch value used when revisiting the note; dungeon records store zero. Save and load copy the two working streams independently. The scan accepts ordinals zero through 500, then appends without a capacity guard, allowing records beyond its own searchable range.",
+        "unresolved": ["Native dialog resource labels for exit items 1 and 3 are not established, so Realmz 2.0 labels its non-mutating local action Revert draft rather than claiming exact Classic Cancel behavior.", "Exact native struct padding and byte encoding require a controlled binary fixture; Realmz 2.0 persists typed state and does not claim native note-file compatibility.", "The visual recentering and darkness reproduction used while browsing a historical note remain presentation gaps."]
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [],
+        "expectedRepresentation": "No package field is required. Player location notes are mutable GameSession state keyed to validated immutable map definitions and are never Providence-authored content."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _set_location_note" },
+        "expectedTrace": ["validate the current package map and topology cell", "enforce the 255-byte text boundary", "select the separate land or dungeon stream", "preserve or allocate the first free source ordinal", "capture map level, native location ID, and darkness metadata", "commit current-location text or remove the record without RNG or clock movement", "serialize the complete typed record in world overlays", "validate map identity, ordinal uniqueness, bounds, and topology transactionally on restore", "detach only the current map-kind stream in source order", "keep unsaved draft reversion presentation-owned"],
+        "tests": [
+          { "path": "tests/integration/test_exploration_session.gd", "symbol": "func _test_location_notes" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_location_note_workspace" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-MAPS-001",
+        "fixturePath": "tests/fixtures/oracle/location-note-record-boundary-correction.json",
+        "fixtureSha256": "7509284150f96bc51a1c5a362d1cab36df9c467b92ecd9af29fc53f0adf2a4be"
+      },
+      "availability": "implemented",
+      "status": "current-location-edit-read-remove-order-and-save-restore-implemented-native-dialog-labels-browsed-map-recentering-and-runtime-oracle-pending"
+    },
+    {
       "id": "application.quit-lifecycle",
       "workflowIds": ["classic.system.quit"],
       "domain": "application",

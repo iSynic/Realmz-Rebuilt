@@ -18,6 +18,7 @@ func run() -> void:
 	assert_false(session.view().map_view.can_move(Vector2i.LEFT), "the detached view exposes an authoritative blocked movement direction")
 	assert_equal(session.view().map_view.visited_coordinates(), [Vector2i(1, 1)], "the minimap receives only session-owned visited coordinates")
 	assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).overlay_asset_id, "fixture.special-land.neg-99", "the detached presentation view retains the validated special-land overlay identity")
+	_test_location_notes(content)
 	var diagonal_session := GameSession.new()
 	assert_equal(diagonal_session.start(content, 1).state, SessionStep.State.COMPLETED, "a dedicated land-diagonal session starts")
 	_begin_fixture_adventure(diagonal_session, content)
@@ -261,6 +262,82 @@ func _message_ids(step: SessionStep) -> Array[int]:
 		if event.kind == &"message_shown":
 			ids.append(int(event.payload.get("messageId", -1)))
 	return ids
+
+
+func _test_location_notes(content: RealmzContent) -> void:
+	var session := GameSession.new()
+	assert_equal(session.start(content, 17).state, SessionStep.State.COMPLETED, "a dedicated location-note session starts")
+	_begin_fixture_adventure(session, content)
+	var original_coordinate := session._state.party.coordinate
+	var initial_view := session.view()
+	assert_not_null(initial_view.current_location_note, "the detached view identifies the party's current mapped location")
+	assert_equal(initial_view.current_location_note.text, "", "a location without a saved note exposes an empty editor value")
+	assert_true(initial_view.location_notes.is_empty(), "a new adventure begins without player-authored location notes")
+	assert_true(initial_view.availability(&"set_location_note").enabled, "the core exposes location-note editing at an ordinary exploration boundary")
+	var rng_before := session.rng_trace().size()
+	var clock_before := session._state.clock.total_minutes()
+	var created := session.submit_intent(PlayerIntent.set_location_note("The road narrows beside the old stones."))
+	assert_equal(created.state, SessionStep.State.COMPLETED, "saving a current-location note commits synchronously")
+	assert_true(_has_event(created, &"location_note_updated"), "location-note creation publishes one explicit domain event")
+	assert_equal(session.view().current_location_note.text, "The road narrows beside the old stones.", "the current-location view reflects the committed note")
+	assert_equal(session.view().location_notes.size(), 1, "the detached journal list exposes the committed note")
+	assert_equal([session.view().location_notes[0].record_ordinal, session.view().location_notes[0].level_type], [0, &"land"], "the first land note preserves Castle's separate source-record order")
+	assert_equal([session.rng_trace().size(), session._state.clock.total_minutes()], [rng_before, clock_before], "editing a location note consumes no gameplay RNG or time")
+	var unchanged := session.submit_intent(PlayerIntent.set_location_note("The road narrows beside the old stones."))
+	assert_equal(unchanged.error_code, &"location_note_unchanged", "an unchanged note is rejected without a false committed revision")
+	var dark_envelope := session.snapshot()
+	dark_envelope.game_state.world.set_map_darkness("land:0", true)
+	dark_envelope.game_state.party.conditions.set_value(0, 60)
+	assert_equal(session.restore(content, dark_envelope).state, SessionStep.State.COMPLETED, "the fixture can establish a source-shaped dark land-note boundary")
+	var darkness_refresh := session.submit_intent(PlayerIntent.set_location_note("The road narrows beside the old stones."))
+	assert_equal(darkness_refresh.state, SessionStep.State.COMPLETED, "saving unchanged text may refresh Castle's saved darkness metadata")
+	assert_equal(session.view().current_location_note.darkness_value, 3, "a dark land note retains Castle's torch-derived darkness value")
+	var too_long := session.submit_intent(PlayerIntent.set_location_note("é".repeat(128)))
+	assert_equal(too_long.error_code, &"location_note_too_long", "the core enforces Castle's 255-byte note field at the typed boundary")
+	assert_equal(session.view().current_location_note.text, "The road narrows beside the old stones.", "an oversized note cannot replace committed text")
+	var second_land_coordinate := original_coordinate + Vector2i(1, 0)
+	assert_not_null(content.world.map_by_id("land:0").topology.cell_at(second_land_coordinate), "the fixture provides a second land-note cell")
+	_restore_fixture_position(session, content, "land:0", second_land_coordinate)
+	assert_equal(session.submit_intent(PlayerIntent.set_location_note("The lower road.")).state, SessionStep.State.COMPLETED, "a second land note commits at a different current location")
+	assert_equal([session.view().location_notes[0].record_ordinal, session.view().location_notes[1].record_ordinal], [0, 1], "land notes browse in source-record order rather than coordinate order")
+	_restore_fixture_position(session, content, "dungeon:0", Vector2i(1, 1))
+	assert_equal(session.submit_intent(PlayerIntent.set_location_note("Dungeon entrance.")).state, SessionStep.State.COMPLETED, "a dungeon note commits into its independent record stream")
+	assert_equal([session.view().location_notes.size(), session.view().location_notes[0].record_ordinal, session.view().location_notes[0].level_type], [1, 0, &"dungeon"], "the detached browser exposes only the current map-kind stream")
+	_restore_fixture_position(session, content, "land:0", original_coordinate)
+	var saved := SaveEnvelope.from_data(JSON.parse_string(JSON.stringify(session.snapshot().to_data())))
+	assert_not_null(saved, "location-note state survives canonical save-envelope serialization")
+	var restored := GameSession.new()
+	assert_equal(restored.restore(content, saved).state, SessionStep.State.COMPLETED, "location-note state restores transactionally")
+	assert_equal(restored.view().location_notes[0].text, "The road narrows beside the old stones.", "restored views retain the exact note text")
+	assert_equal([restored.view().location_notes.size(), restored.view().location_notes[1].text], [2, "The lower road."], "restore retains separate stream order without exposing dungeon records on land")
+	var cleared := restored.submit_intent(PlayerIntent.set_location_note(""))
+	assert_true(_has_event(cleared, &"location_note_removed"), "saving empty text removes the current location note")
+	assert_equal([restored.view().location_notes.size(), restored.view().location_notes[0].record_ordinal], [1, 1], "clearing a note frees its record without renumbering later source records")
+
+	var capacity_seed := GameSession.new()
+	assert_equal(capacity_seed.start(content, 18).state, SessionStep.State.COMPLETED, "a dedicated capacity session starts")
+	_begin_fixture_adventure(capacity_seed, content)
+	var capacity_envelope := capacity_seed.snapshot()
+	var added: int = 0
+	for y: int in 90:
+		for x: int in 90:
+			var coordinate := Vector2i(x, y)
+			if coordinate == capacity_envelope.game_state.party.coordinate:
+				continue
+			capacity_envelope.game_state.world.upsert_location_note(LocationNoteState.new("land:0", &"land", 0, coordinate, "Note %d" % added, 0, added))
+			added += 1
+			if added == LocationNoteState.MAX_NOTES_PER_MAP_KIND:
+				break
+		if added == LocationNoteState.MAX_NOTES_PER_MAP_KIND:
+			break
+	var capacity_session := GameSession.new()
+	assert_equal(capacity_session.restore(content, capacity_envelope).state, SessionStep.State.COMPLETED, "the corrected bounded Classic location-note file restores at exact capacity")
+	var capacity_rejection := capacity_session.submit_intent(PlayerIntent.set_location_note("One note too many"))
+	assert_equal(capacity_rejection.error_code, &"location_note_capacity", "a new note cannot reproduce Castle's append-beyond-scan record defect")
+	var duplicate_ordinal := LocationNoteState.new("land:0", &"land", 0, capacity_envelope.game_state.party.coordinate, "Corrupt duplicate ordinal", 0, 0)
+	capacity_envelope.game_state.world._location_notes[duplicate_ordinal.id()] = duplicate_ordinal
+	var corrupt_capacity := GameSession.new()
+	assert_equal(corrupt_capacity.restore(content, capacity_envelope).error_code, &"invalid_game_state", "restore rejects duplicate source ordinals transactionally")
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:

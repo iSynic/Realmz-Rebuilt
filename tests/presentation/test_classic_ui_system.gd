@@ -38,6 +38,7 @@ func run() -> void:
 	_test_scene_composition()
 	_test_package_operation_presentation()
 	_test_save_preview_workspace()
+	_test_location_note_workspace()
 
 
 func _test_package_operation_presentation() -> void:
@@ -108,6 +109,52 @@ func _test_save_preview_workspace() -> void:
 	current_load.pressed.emit()
 	backup_load.pressed.emit()
 	assert_equal(actions, [{"action": &"load", "value": "quick"}, {"action": &"load_backup", "value": "quick"}], "current and backup previews emit distinct host operations")
+	router.free()
+
+
+func _test_location_note_workspace() -> void:
+	var view := GameView.new(4, true, null)
+	view.party_summary = PartySummaryView.new()
+	view.current_location_note = LocationNoteView.new("land:0", "Giant Mountain", &"land", 0, Vector2i(49, 15), "Watch the ridge.", 0, 0, true)
+	view.location_notes = [
+		view.current_location_note,
+		LocationNoteView.new("land:0", "Giant Mountain", &"land", 0, Vector2i(12, 8), "A safe campsite.", 0, 1),
+	]
+	view.set_action_availability(&"set_location_note", true)
+	view.set_action_availability(&"open_journal", false, "Authored journal entries are unavailable in this fixture.")
+	view.set_action_availability(&"open_maps", false, "Player-map definitions are unavailable in this fixture.")
+	var router := ClassicScreenRouter.new()
+	router._body = VBoxContainer.new()
+	router._content_parent = router._body
+	router.add_child(router._body)
+	router._view = view
+	var intents: Array[PlayerIntent] = []
+	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	router._render_journal()
+	var editor := router.find_child("CurrentLocationNoteText", true, false) as TextEdit
+	var save := router.find_child("SaveLocationNote", true, false) as Button
+	var cancel := router.find_child("CancelLocationNoteEdit", true, false) as Button
+	assert_not_null(editor, "the Journal route exposes a multiline current-location note editor")
+	assert_equal(editor.text, "Watch the ridge.", "the editor begins from detached committed note text")
+	assert_true(save.disabled, "an unchanged note cannot emit a redundant mutation")
+	editor.text = "Watch the ridge after sundown."
+	editor.text_changed.emit()
+	assert_false(save.disabled, "changing the local draft enables the typed save action")
+	save.pressed.emit()
+	assert_equal(intents.size(), 1, "saving a location note emits one typed intent")
+	assert_equal([intents[0].kind, intents[0].text_value], [PlayerIntent.Kind.SET_LOCATION_NOTE, "Watch the ridge after sundown."], "the presenter submits only detached text through the settled intent boundary")
+	editor.text = "Unsaved change"
+	editor.text_changed.emit()
+	cancel.pressed.emit()
+	assert_equal(editor.text, "Watch the ridge.", "Revert draft restores the last committed note without touching simulation")
+	assert_equal(intents.size(), 1, "Revert draft remains presentation-owned")
+	editor.text = "é".repeat(128)
+	editor.text_changed.emit()
+	assert_true(save.disabled, "the note editor prevents an oversized UTF-8 payload before submission")
+	var labels: Array[String] = []
+	for node: Node in router.find_children("*", "Label", true, false):
+		labels.append((node as Label).text)
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("A safe campsite.")), "saved location notes remain readable while only the current record is editable")
 	router.free()
 
 

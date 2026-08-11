@@ -1820,6 +1820,8 @@ func _submit_service_action(service_id: String, action: StringName) -> void:
 
 
 func _render_journal() -> void:
+	_add_section_heading("Location notes", "Saved with this adventure")
+	_render_location_note_editor()
 	_add_section_heading("Acquired maps", "%d available" % _view.party_summary.acquired_map_ids.size() if _view.party_summary != null else "0 available")
 	if _view.party_summary == null or _view.party_summary.acquired_map_ids.is_empty():
 		_add_empty_state("No acquired maps", "Maps appear only after the session records their acquisition.")
@@ -1834,6 +1836,64 @@ func _render_journal() -> void:
 			_add_card(entry.title, "Day %d • %s" % [entry.day, entry.map_id], entry.text)
 	_add_disabled_action(_body, "Open Classic journal", &"open_journal")
 	_add_disabled_action(_body, "Open acquired maps", &"open_maps")
+
+
+func _render_location_note_editor() -> void:
+	var current := _view.current_location_note
+	if current == null:
+		_add_empty_state("No mapped location", "A location note can be edited only while the party occupies a validated map cell.")
+		return
+	var panel := PanelContainer.new()
+	panel.name = "CurrentLocationNote"
+	panel.theme_type_variation = &"ClassicInset"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	panel.add_child(column)
+	_add_label(column, "Current location • %s %d,%d" % [current.map_name, current.coordinate.x, current.coordinate.y], Color("e7d078"), 17)
+	_add_label(column, "Only the note at the party's current location can be edited. Saved notes below remain readable.", MUTED)
+	var editor := TextEdit.new()
+	editor.name = "CurrentLocationNoteText"
+	editor.custom_minimum_size = Vector2(0, 96)
+	editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	editor.placeholder_text = "Write a location note…"
+	editor.text = current.text
+	column.add_child(editor)
+	var count_label := Label.new()
+	count_label.name = "LocationNoteByteCount"
+	column.add_child(count_label)
+	var actions := HBoxContainer.new()
+	column.add_child(actions)
+	var save := Button.new()
+	save.name = "SaveLocationNote"
+	save.text = "Save note"
+	actions.add_child(save)
+	var revert := Button.new()
+	revert.name = "CancelLocationNoteEdit"
+	revert.text = "Revert draft"
+	actions.add_child(revert)
+	var availability := _view.availability(&"set_location_note")
+	var refresh := func() -> void:
+		var byte_count := editor.text.to_utf8_buffer().size()
+		count_label.text = "%d / %d encoded bytes" % [byte_count, LocationNoteState.MAX_TEXT_BYTES]
+		count_label.modulate = Color("d96f6f") if byte_count > LocationNoteState.MAX_TEXT_BYTES else MUTED
+		save.disabled = not availability.enabled or editor.text == current.text or byte_count > LocationNoteState.MAX_TEXT_BYTES
+		save.tooltip_text = availability.reason if not availability.enabled else "Change the note before saving." if editor.text == current.text else "Classic location notes are limited to 255 encoded bytes." if byte_count > LocationNoteState.MAX_TEXT_BYTES else ""
+		revert.disabled = editor.text == current.text
+	editor.text_changed.connect(refresh)
+	save.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.set_location_note(editor.text)))
+	revert.pressed.connect(func() -> void:
+		editor.text = current.text
+		refresh.call()
+	)
+	refresh.call()
+	_content_parent.add_child(panel)
+	_add_section_heading("Saved %s notes" % String(current.level_type).capitalize(), "%d notes • source order" % _view.location_notes.size())
+	if _view.location_notes.is_empty():
+		_add_empty_state("No location notes", "Write a note at the current location to create the first record.")
+		return
+	for note: LocationNoteView in _view.location_notes:
+		_add_card(note.map_name, "Record %d • %s • %d,%d%s" % [note.record_ordinal + 1, String(note.level_type).capitalize(), note.coordinate.x, note.coordinate.y, " • current" if note.current else ""], note.text)
 
 
 func _render_system() -> void:

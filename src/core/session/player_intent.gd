@@ -35,6 +35,7 @@ enum Kind {
 	COMBAT_MOVE,
 	OPEN_JOURNAL,
 	OPEN_MAPS,
+	SET_LOCATION_NOTE,
 }
 
 var kind: Kind
@@ -54,6 +55,7 @@ var selected_ids: Array[String] = []
 var vault_state_data: Dictionary = {}
 var vault_source_campaign_id: String = ""
 var vault_source_package_hash: String = ""
+var text_value: String = ""
 
 
 func _init(intent_kind: Kind) -> void:
@@ -259,3 +261,9 @@ static func open_journal() -> PlayerIntent:
 
 static func open_maps() -> PlayerIntent:
 	return PlayerIntent.new(Kind.OPEN_MAPS)
+
+
+static func set_location_note(text: String) -> PlayerIntent:
+	var intent := PlayerIntent.new(Kind.SET_LOCATION_NOTE)
+	intent.text_value = text
+	return intent
