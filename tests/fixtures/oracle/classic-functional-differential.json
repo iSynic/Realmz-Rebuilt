@@ -3525,6 +3525,55 @@
       },
       "availability": "implemented",
       "status": "independent-session-owned-portrait-and-tactical-selection-preview-discard-save-and-role-validation-verified"
+    },
+    {
+      "id": "maps.acquired-map-display",
+      "workflowIds": ["classic.maps.view-acquired"],
+      "domain": "maps",
+      "claim": "Classic opcode 29 grants one of twenty player-map records by record index and optionally displays it immediately; Maps/Notes later browses only acquired records and renders each Data MD2 picture, scrolling-text record, or land/dungeon crop with authored markers, note, and an eligible current-party marker.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake already separates player-map records from playable levels, validates them in the campaign bundle, handles signed opcode 29 against the record ID, exposes acquired records in source order, and renders decoded media or topology-derived crops. Its dictionary host is a donor lead, not the target boundary.",
+        "sources": [
+          { "path": "src/scripts/scenario_runtime/handlers/classic_opcode_runtime.gd", "symbol": "func _execute_player_map(signed_map_id: int)" },
+          { "path": "src/scripts/classic_runtime/classic_campaign_session.gd", "symbol": "func acquired_player_map_entries()" },
+          { "path": "src/scripts/classic_runtime/classic_player_map_renderer.gd", "symbol": "static func render(" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/classic_campaign_ui_smoke.gd", "symbol": "func _test_acquired_player_map_browser()" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/newland.c", "symbol": "case 29: /******* Give/Display Map *******/" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "void updatemapmenu(void)" },
+          { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "short HandleMenuChoice" },
+          { "path": "src/realmz_orig/mapstuff.c", "symbol": "void showmap(short mapnumber)" }
+        ],
+        "authoredInputs": ["signed opcode 29 ID", "twenty saved acquisition flags", "STR# -102 acquired names", "STR# -101 unavailable names", "340-byte Data MD2 record", "ten CICN marker triples", "crop start and icon size", "land/dungeon level", "PICT ID", "signed scrolling-text show ID", "optional picture rectangle", "note"],
+        "observation": "Opcode 29 sets map[abs(id)] and updates the matching Maps/Notes menu entry; a negative ID also calls showmap immediately. The menu uses twenty acquisition flags and separate acquired/unavailable STR# name lists. showmap reads Data MD2 by player-map record index. Negative show invokes scrolling text; nonzero pictid draws a PICT in the authored rectangle; otherwise it temporarily loads the referenced land or dungeon level and renders a crop. It then overlays up to ten CICNs, conditionally overlays party marker 138 when the current position lies in the matching map crop, presents the note, and restores the exploration view.",
+        "unresolved": ["Castle indexes map[abs(id)] even though the saved array is zero-based and menu slot t reads map[t - 1]. ID 20 would write one byte out of bounds, while ID 0 corresponds to the first record. The package/runtime correction must validate the authored range and record a fidelity decision if shipped content depends on the apparent ID-20 overflow."]
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [
+          { "path": "src-tauri/src/realmz/maps.rs", "symbol": "pub fn parse_map_records(buffer: &[u8]) -> Vec<MapRecord>" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document(" }
+        ],
+        "expectedRepresentation": "Providence already parses every Data MD2 field and map-name resource evidence, but Realmz 2 world.json omits player-map records entirely. Schema v2 must add stable typed player-map definitions and deterministic referenced PICT, CICN, and scrolling-text assets without conflating them with playable MapDefinition topology."
+      },
+      "realmz2": {
+        "owner": { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "29:" },
+        "expectedTrace": ["resolve the signed operand against an immutable player-map record rather than a land level", "validate the bounded Classic record identity", "acquire its stable ID once", "persist the acquisition flag", "publish an immediate typed display event for negative operands", "detach acquired definitions and current-position eligibility", "browse and render from exact type-plus-ID media or authoritative topology", "leave viewing presentation-owned and mutation-free"],
+        "tests": [
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_player_map_contract_guard" }
+        ]
+      },
+      "decision": "compiler-defect",
+      "availability": "disabled",
+      "status": "data-md2-and-map-name-records-absent-from-schema-v2-opcode-29-land-level-substitution-and-viewer-disabled"
     }
   ]
 }

@@ -42,6 +42,7 @@ func run() -> void:
 	_test_classic_misc_branch(loaded.content)
 	_test_classic_party_backup(loaded.content)
 	_test_classic_map_darkness(loaded.content)
+	_test_classic_player_map_contract_guard(loaded.content)
 	_test_classic_teleport_and_recheck(loaded.content)
 	_test_classic_quest_values(loaded.content)
 	_test_registration_marker(loaded.content)
@@ -878,6 +879,16 @@ func _test_classic_map_darkness(content: RealmzContent) -> void:
 	assert_true(round_trip.map_is_dark(map), "restored map darkness overrides immutable map metadata")
 	var unchanged := api.execute_classic(ClassicActionDefinition.new(0, 106, 106, 0, false, [2, 1, 0, 0, 0]), "request.dark-unchanged")
 	assert_equal(unchanged.directive.get("kind"), "finish", "opcode 106 can discontinue the issuing script when darkness already matches")
+
+
+func _test_classic_player_map_contract_guard(content: RealmzContent) -> void:
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [])
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var result := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, -1, false, []), "request.player-map")
+	assert_equal(result.state, ScenarioRuntimeOperationResult.State.FAILED, "opcode 29 cannot substitute a playable land level for an absent Data MD2 player-map record")
+	assert_equal(result.error_code, &"player_map_contract_unavailable", "the missing package contract fails with a specific readiness boundary")
+	assert_true(state.world.acquired_map_ids().is_empty(), "rejected player-map acquisition cannot persist a false playable-map identity")
 
 
 func _test_classic_teleport_and_recheck(content: RealmzContent) -> void:

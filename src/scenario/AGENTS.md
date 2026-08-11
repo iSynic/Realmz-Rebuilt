@@ -49,6 +49,7 @@ Own the serializable Scenario VM, Classic instructions, Safe Scenario Actions, c
 - Scenario-launched Escape yields a `yes_no` request owned by the issuing Classic or Safe combat continuation. Decline returns to the unchanged active turn; acceptance commits the core's per-character Escape and then resumes battle, body count, fumble recovery, and the issuing VM frame in their ordinary order. The nested confirmation must survive VM/save restoration without replaying the combat action.
 - Scenario-launched combat responses preserve repeated-spell `targetIds` as an ordered array of stable actor IDs. The runtime validates the complete response shape and passes it to the same core probe used by direct-session casting; it never sorts, deduplicates, or resolves targets in the host.
 - Executable-opcode readiness is declared by `ClassicOpcodeCatalog` and checked against bounded, provenance-labelled content inventories. A declared opcode must have an explicit handler and may never fall through to dynamic dispatch or a silent no-op.
+- Opcode 29 targets one of Castle's twenty `Data MD2` player-map records, not a playable land level. Until schema v2 carries those definitions and exact media references, execution fails explicitly without recording a false acquired-map identity.
 
 ## Work Guidance
 

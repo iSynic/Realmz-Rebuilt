@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 4 | 18 | 38 | 0 |
+| classic | 60 | 5 | 17 | 38 | 0 |
 | host | 8 | 1 | 3 | 4 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -24,7 +24,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Services and economy | 5 | 0 | 2 | 3 | 0 |
 | Combat | 8 | 0 | 1 | 7 | 0 |
 | Rewards and progression | 5 | 0 | 1 | 4 | 0 |
-| Maps and journal | 3 | 1 | 2 | 0 | 0 |
+| Maps and journal | 3 | 2 | 1 | 0 | 0 |
 | Save and system | 4 | 0 | 2 | 2 | 0 |
 
 ## Completion axes
@@ -33,23 +33,23 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Castle oracle | Count |
 | --- | ---: |
-| not-required | 14 |
+| not-required | 13 |
 | required | 11 |
-| completed | 35 |
+| completed | 36 |
 
 | Remake | Count |
 | --- | ---: |
 | absent | 4 |
-| partial | 31 |
-| implemented | 15 |
+| partial | 30 |
+| implemented | 16 |
 | divergent | 10 |
 | not-applicable | 0 |
 
 | providence | Count |
 | --- | ---: |
 | not-required | 14 |
-| missing | 0 |
-| partial | 7 |
+| missing | 1 |
+| partial | 6 |
 | complete | 39 |
 
 | simulation | Count |
@@ -115,7 +115,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **27**.
+Blockers: **1**. Major gaps: **28**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -131,7 +131,8 @@ Blockers: **1**. Major gaps: **27**.
 - **major** `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit. Next: Exercise an ordinary AOGM charged item and scroll route, then characterize combat scroll, discard, case-transfer, door/XAP, random-power combat, and target-abort behavior separately.
 - **major** `classic.maps.authored-journal` — The complete authored journal entry contract and discovery state are not represented end to end. Next: Trace Castle journal records, add deterministic package fields, and wire a read-only journal view.
 - **major** `classic.maps.location-notes` — Player location notes are entirely absent and their exact save ownership is not yet traced. Next: Trace the Castle note editor and save fields before defining typed note state.
-- **major** `classic.maps.view-acquired` — Map IDs can be acquired, but the journal route explicitly lacks map viewing. Next: Finish package map display data and build a presentation-owned acquired-map viewer.
+- **major** `classic.maps.view-acquired` — Realmz 2 packages omit Castle's player-map records and map-menu names. Next: Add typed player-map records and names to the Realmz 2 package, include referenced PICT/CICN/scrolling-text media, then correct opcode 29 to acquire/display that stable record ID.
+- **major** `classic.maps.view-acquired` — The Journal route cannot browse or render acquired player maps. Next: After the package/runtime prerequisite lands, build a presentation-owned browser for picture, scrolling-text, land-crop, dungeon-crop, marker, note, and current-party variants.
 - **major** `classic.rewards.treasure-distribution` — Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced. Next: Use controlled Castle RNG fixtures for ordinary, XP-only, and bonus-treasure battle rewards before implementing or correcting the random drops.
 - **major** `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
 - **major** `classic.scenario.random-timed-encounter` — Random rectangles execute through the session, but scheduled timed encounters have no clock-owned dispatcher. Next: Settle Castle's suspicious recx/recy gate and repeated midnight scan with a controlled fixture, then implement one save-owned scheduler and encounter resumption path.
@@ -169,7 +170,8 @@ Blockers: **1**. Major gaps: **27**.
 - `classic.exploration.time-fatigue-light` — The clock imports timed-encounter definitions but does not dispatch them when their scheduled day is reached.
 - `classic.exploration.travel` — Blocked movement does not yet reproduce Castle's tile-specific time and downstream random/timed processing.
 - `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit.
-- `classic.maps.view-acquired` — Map IDs can be acquired, but the journal route explicitly lacks map viewing.
+- `classic.maps.view-acquired` — Realmz 2 packages omit Castle's player-map records and map-menu names.
+- `classic.maps.view-acquired` — The Journal route cannot browse or render acquired player maps.
 - `classic.scenario.random-timed-encounter` — Random rectangles execute through the session, but scheduled timed encounters have no clock-owned dispatcher.
 - `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification.
 - `classic.services.temple` — The implemented temple subset has no ordinary campaign certification.

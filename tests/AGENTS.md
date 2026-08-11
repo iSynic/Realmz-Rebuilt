@@ -77,6 +77,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - Keep failures deterministic and include stable IDs and draw indices in diagnostics.
 - Add save/reload coverage at every interaction boundary.
 - Active-character appearance tests cover complete detached catalogs, independent role mutation, wrong-role rejection, RNG/time stability, canonical save restoration, corrupt-role transactional rejection, and explicit vault non-ownership.
+- Player-map characterization distinguishes `Data MD2` record identity from playable map topology. Until the package contract lands, opcode 29 must reject without mutating acquired-map state; tests may not bless the previous land-level substitution.
 - Report the exact suite fragments used for focused verification. A passing Luna result is input to Sol's review, not an audit-status upgrade; unresolved or ambiguous Castle behavior remains explicit until Sol adjudicates it.
 - When test categories, fixture provenance, evidence labels, or copyright boundaries change, update this contract in the same documentation pass. Do not hand-edit the generated workflow status report or codemap.
 

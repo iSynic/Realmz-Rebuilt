@@ -122,11 +122,7 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 		28:
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"map_redraw_requested", {"source": "classic"})])
 		29:
-			var map := _content.world.map_by_type_and_index(&"land", absi(action.operand_id))
-			if map == null:
-				return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 29 references unavailable land map %d." % action.operand_id)
-			_game_state.world.acquire_map(map.id)
-			return ScenarioRuntimeOperationResult.completed(map.id, [DomainEvent.new(&"map_acquired", {"mapId": map.id, "display": action.operand_id < 0})])
+			return ScenarioRuntimeOperationResult.failed(&"player_map_contract_unavailable", "Classic opcode 29 references a Data MD2 player-map record. This Realmz 2 package contract does not carry player-map definitions yet.")
 		30:
 			return _filter_character_selection(action)
 		31:
