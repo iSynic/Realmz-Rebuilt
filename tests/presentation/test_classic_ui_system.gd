@@ -29,6 +29,7 @@ func run() -> void:
 	_test_battlefield_presenter()
 	_test_automatic_workflow_routes()
 	_test_character_creator_workflow()
+	_test_begin_adventure_closes_setup_vault()
 	_test_character_vault_workspace()
 	_test_field_spell_workspace()
 	_test_inventory_workspace()
@@ -1016,6 +1017,54 @@ func _test_character_creator_workflow() -> void:
 	assert_equal(router._spell_list.item_count, 1, "the spell page renders core-provided Classic options and selection costs")
 	router._creator_next()
 	assert_equal(intents[-1].kind, PlayerIntent.Kind.FINALIZE_CHARACTER, "Add to party accepts the reviewed draft without carrying another creation specification")
+	router.free()
+
+
+func _test_begin_adventure_closes_setup_vault() -> void:
+	var router := ClassicScreenRouter.new()
+	var setup_view := GameView.new(1, true, null)
+	setup_view.campaign_id = "fixture-setup-route"
+	setup_view.party_setup_available = true
+	setup_view.campaign_summary = CampaignSummaryView.new()
+	setup_view.campaign_summary.title = "Setup Route Fixture"
+	setup_view.party_members = [CharacterView.new(CharacterState.new("party.route.hero", "Klang", 12, 12))]
+	setup_view.set_action_availability(&"import_vault_character", true)
+	router._view = setup_view
+	router._screen_id = &"vault"
+	router._vault_return_to_setup = true
+	router._route_history = [&"exploration"]
+	router._campaign_overlay = PanelContainer.new()
+	router._setup_overlay = PanelContainer.new()
+	router.add_child(router._campaign_overlay)
+	router.add_child(router._setup_overlay)
+	var exploration_workspace := ClassicRouteScreen.new()
+	exploration_workspace.route_id = &"exploration"
+	exploration_workspace.scroll = ScrollContainer.new()
+	exploration_workspace.body = VBoxContainer.new()
+	exploration_workspace.add_child(exploration_workspace.scroll)
+	exploration_workspace.scroll.add_child(exploration_workspace.body)
+	router.add_child(exploration_workspace)
+	router._workspace_view = exploration_workspace
+	router._body_frame = exploration_workspace
+	router._body_scroll = exploration_workspace.scroll
+	router._body = exploration_workspace.body
+	router._setup_message = Label.new()
+	router._setup_overlay.add_child(router._setup_message)
+	assert_equal(router.current_screen(), &"vault", "party setup may open the character vault before play")
+	assert_true(router._vault_return_to_setup, "the setup vault retains its setup-only return destination before Begin")
+
+	var active_view := GameView.new(2, true, null)
+	active_view.campaign_id = setup_view.campaign_id
+	active_view.campaign_summary = setup_view.campaign_summary
+	active_view.party_members = setup_view.party_members
+	assert_true(ClassicScreenRouter._party_setup_completed(setup_view, active_view), "the router recognizes the committed Begin Adventure view transition")
+	router.present(active_view)
+	assert_equal(router.current_screen(), &"exploration", "completing party setup dismisses the setup-only vault and opens exploration")
+	assert_false(router.full_stage_overlay_visible(), "no setup or campaign overlay survives the Begin Adventure boundary")
+	assert_false(router._vault_return_to_setup, "the completed setup cannot retain a stale Back to party setup destination")
+	assert_true(router._route_history.is_empty(), "setup-only route history cannot reopen the vault after the adventure begins")
+	assert_true(router.accepts_exploration_input(), "the newly active campaign accepts exploration input immediately")
+	assert_false(ClassicScreenRouter._party_setup_completed(active_view, active_view), "ordinary active-session refreshes do not force the player out of a deliberately opened workspace")
 	router.free()
 
 

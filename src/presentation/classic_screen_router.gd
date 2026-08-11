@@ -118,6 +118,7 @@ func _ready() -> void:
 
 
 func present(view: GameView) -> void:
+	var completed_party_setup := _party_setup_completed(_view, view)
 	_view = view
 	if view == null or not view.session_started:
 		_body_frame.visible = false
@@ -148,9 +149,31 @@ func present(view: GameView) -> void:
 		call_deferred("_apply_modal_layouts")
 		call_deferred("_focus_first", _setup_overlay)
 		return
+	if completed_party_setup:
+		_finish_party_setup_navigation()
 	_setup_overlay.visible = false
 	_campaign_overlay.visible = false
 	_render_screen()
+
+
+static func _party_setup_completed(previous_view: GameView, next_view: GameView) -> bool:
+	return previous_view != null and previous_view.party_setup_available and next_view != null and next_view.session_started and not next_view.party_setup_available
+
+
+func _finish_party_setup_navigation() -> void:
+	_vault_return_to_setup = false
+	_vault_return_to_campaign = false
+	_vault_inspection_revision_hash = ""
+	_setup_inspection_character_id = ""
+	if _setup_inspection_overlay != null:
+		_setup_inspection_overlay.visible = false
+	_reset_creator()
+	_route_history.clear()
+	if _screen_id == &"exploration":
+		return
+	_screen_id = &"exploration"
+	_sync_ordinary_money_workspace_audio(_screen_id)
+	screen_changed.emit(_screen_id)
 
 
 func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
