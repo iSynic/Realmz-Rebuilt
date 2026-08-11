@@ -967,6 +967,8 @@ func _test_character_sheet_workspace() -> void:
 	character.money.gold = 77
 	character.money.gems = 2
 	character.money.jewelry = 1
+	character.portrait_id = "portrait.257"
+	character.combat_icon_id = "combat-icon.9000"
 	character.conditions.set_value(ConditionRules.TANGLED, 4)
 	character.conditions.set_value(ConditionRules.SHIELD_FROM_HITS, 2)
 	character.conditions.set_value(9, 3)
@@ -1001,8 +1003,18 @@ func _test_character_sheet_workspace() -> void:
 	assert_true(character_view.record_unavailable_reason.to_lower().contains("lifetime combat history"), "the prestige gap has a concrete player-facing reason")
 	var sheet := ClassicCharacterSheet.new()
 	var selections: Array[String] = []
+	var appearance_changes: Array[Dictionary] = []
 	sheet.character_selected.connect(func(character_id: String) -> void: selections.append(character_id))
-	sheet.present([character_view], character_view.id, {}, 1.0)
+	sheet.appearance_change_requested.connect(func(character_id: String, appearance_kind: StringName, appearance_id: String) -> void: appearance_changes.append({"characterId": character_id, "kind": appearance_kind, "appearanceId": appearance_id}))
+	var portrait_options: Array[CharacterAppearanceOptionView] = [
+		CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("portrait.257", "Portrait 257", CharacterAppearanceDefinition.PORTRAIT, 257, [character.race_id])),
+		CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("portrait.258", "Portrait 258 with a deliberately long package label", CharacterAppearanceDefinition.PORTRAIT, 258, [character.race_id])),
+	]
+	var icon_options: Array[CharacterAppearanceOptionView] = [
+		CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("combat-icon.9000", "Combat icon 9000", CharacterAppearanceDefinition.COMBAT_ICON, 9000, [character.race_id])),
+		CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("combat-icon.9001", "Combat icon 9001", CharacterAppearanceDefinition.COMBAT_ICON, 9001, [character.race_id])),
+	]
+	sheet.present([character_view], character_view.id, {}, 1.0, &"overview", portrait_options, icon_options, ActionAvailabilityView.new(&"change_character_appearance", true))
 	var buttons: Array[Button] = []
 	for node: Node in sheet.find_children("*", "Button", true, false):
 		buttons.append(node as Button)
@@ -1011,6 +1023,7 @@ func _test_character_sheet_workspace() -> void:
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Equipment"), "the sheet retains the Classic equipment subworkspace")
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Abilities"), "the sheet retains source special and ability values")
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Spells"), "the sheet exposes known spells and scroll slots")
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Appearance"), "the sheet exposes the separate Classic portrait and tactical-icon workspace")
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Race, Class & Aging"), "the sheet exposes source-backed definitions and all five age bands")
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Lifetime Record"), "the missing prestige record remains visible rather than silently omitted")
 	var record_button := buttons.filter(func(button: Button) -> bool: return button.text == "Lifetime Record")[0] as Button
@@ -1018,6 +1031,25 @@ func _test_character_sheet_workspace() -> void:
 	var labels := sheet.find_children("*", "Label", true, false)
 	assert_true(labels.any(func(label: Label) -> bool: return label.text.to_lower().contains("lifetime combat history")), "the Record tab explains why Castle prestige cannot yet be calculated")
 	assert_equal(selections.size(), 0, "tab navigation is presentation-owned and cannot mutate the session")
+	var appearance_button := sheet.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Appearance")[0] as Button
+	appearance_button.pressed.emit()
+	var portrait_picker := sheet.find_child("PortraitPicker", true, false) as OptionButton
+	assert_not_null(portrait_picker, "the Appearance tab mounts a package-backed portrait picker")
+	assert_equal(portrait_picker.item_count, 2, "the picker exposes every detached portrait option")
+	portrait_picker.select(1)
+	portrait_picker.item_selected.emit(1)
+	assert_equal(appearance_changes.size(), 0, "previewing a portrait remains presentation-only")
+	var apply_portrait := sheet.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Apply Portrait")[0] as Button
+	assert_false(apply_portrait.disabled, "a changed portrait enables the explicit commit action")
+	apply_portrait.pressed.emit()
+	assert_equal(appearance_changes, [{"characterId": character_view.id, "kind": CharacterAppearanceDefinition.PORTRAIT, "appearanceId": "portrait.258"}], "Apply emits one typed stable-ID portrait request")
+	var icon_picker := sheet.find_child("CombaticonPicker", true, false) as OptionButton
+	assert_not_null(icon_picker, "the Appearance tab keeps combat-icon selection independent")
+	icon_picker.select(1)
+	icon_picker.item_selected.emit(1)
+	var discard := sheet.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Discard Appearance Changes")[0] as Button
+	discard.pressed.emit()
+	assert_equal(appearance_changes.size(), 1, "Discard restores local previews without emitting another mutation")
 	sheet.free()
 
 

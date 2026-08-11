@@ -3,6 +3,7 @@ extends VBoxContainer
 
 signal character_selected(character_id: String)
 signal tab_changed(tab_id: StringName)
+signal appearance_change_requested(character_id: String, appearance_kind: StringName, appearance_id: String)
 
 const GOLD := Color("d5b45d")
 const MUTED := Color("9aa0a8")
@@ -14,6 +15,7 @@ const TABS: Array[Dictionary] = [
 	{"id": &"equipment", "label": "Equipment"},
 	{"id": &"abilities", "label": "Abilities"},
 	{"id": &"spells", "label": "Spells"},
+	{"id": &"appearance", "label": "Appearance"},
 	{"id": &"background", "label": "Race, Class & Aging"},
 	{"id": &"record", "label": "Lifetime Record"},
 ]
@@ -24,16 +26,25 @@ var _active_tab: StringName = &"overview"
 var _textures: Dictionary = {}
 var _text_scale: float = 1.0
 var _content: VBoxContainer
+var _portrait_options: Array[CharacterAppearanceOptionView] = []
+var _combat_icon_options: Array[CharacterAppearanceOptionView] = []
+var _appearance_availability: ActionAvailabilityView = ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are unavailable.")
+var _draft_portrait_id: String = ""
+var _draft_combat_icon_id: String = ""
 
 
-func present(characters: Array[CharacterView], initial_character_id: String = "", textures: Dictionary = {}, text_scale: float = 1.0, initial_tab: StringName = &"overview") -> void:
+func present(characters: Array[CharacterView], initial_character_id: String = "", textures: Dictionary = {}, text_scale: float = 1.0, initial_tab: StringName = &"overview", portrait_options: Array[CharacterAppearanceOptionView] = [], combat_icon_options: Array[CharacterAppearanceOptionView] = [], appearance_availability: ActionAvailabilityView = null) -> void:
 	_characters = characters.duplicate()
 	_textures = textures
 	_text_scale = clampf(text_scale, 1.0, 1.5)
+	_portrait_options = portrait_options.duplicate()
+	_combat_icon_options = combat_icon_options.duplicate()
+	_appearance_availability = appearance_availability if appearance_availability != null else ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are unavailable.")
 	_active_tab = initial_tab if _tab_exists(initial_tab) else &"overview"
 	_selected_character_id = initial_character_id
 	if _selected_character() == null and not _characters.is_empty():
 		_selected_character_id = _characters[0].id
+	_sync_appearance_draft()
 	_rebuild()
 
 
@@ -68,6 +79,8 @@ func _rebuild() -> void:
 			_build_abilities(character)
 		&"spells":
 			_build_spells(character)
+		&"appearance":
+			_build_appearance(character)
 		&"background":
 			_build_background(character)
 		&"record":
@@ -192,6 +205,116 @@ func _build_spells(character: CharacterView) -> void:
 		_add_label(_content, "Slot %d • %s" % [scroll.slot_index + 1, "Empty" if empty else "%s • Power %d" % [scroll.spell_name, scroll.power]], MUTED if empty else Color("e0e2e5"))
 
 
+func _build_appearance(character: CharacterView) -> void:
+	_add_heading(_content, "Portrait and combat icon", "Each Classic identity changes independently")
+	_add_label(_content, "Choose a package-backed image, preview it here, then apply that one role. Discard leaves the campaign session unchanged; vault publication remains a separate explicit action.", MUTED, 13)
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 14)
+	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns.add_child(_appearance_picker(character, CharacterAppearanceDefinition.PORTRAIT, _portrait_options, _draft_portrait_id, "Portrait"))
+	columns.add_child(_appearance_picker(character, CharacterAppearanceDefinition.COMBAT_ICON, _combat_icon_options, _draft_combat_icon_id, "Combat icon"))
+	_content.add_child(columns)
+	if not _appearance_availability.enabled:
+		_add_label(_content, _appearance_availability.reason, BAD, 13)
+	var actions := HFlowContainer.new()
+	actions.add_theme_constant_override("h_separation", 6)
+	actions.add_theme_constant_override("v_separation", 6)
+	var apply_portrait := Button.new()
+	apply_portrait.text = "Apply Portrait"
+	apply_portrait.disabled = not _appearance_availability.enabled or _draft_portrait_id == character.portrait_id
+	apply_portrait.tooltip_text = _appearance_availability.reason if not _appearance_availability.enabled else "Choose a different portrait first." if _draft_portrait_id == character.portrait_id else "Commit this portrait to the campaign session."
+	if not apply_portrait.disabled:
+		apply_portrait.pressed.connect(_apply_appearance.bind(CharacterAppearanceDefinition.PORTRAIT, _draft_portrait_id))
+	actions.add_child(apply_portrait)
+	var apply_icon := Button.new()
+	apply_icon.text = "Apply Combat Icon"
+	apply_icon.disabled = not _appearance_availability.enabled or _draft_combat_icon_id == character.combat_icon_id
+	apply_icon.tooltip_text = _appearance_availability.reason if not _appearance_availability.enabled else "Choose a different combat icon first." if _draft_combat_icon_id == character.combat_icon_id else "Commit this tactical icon to the campaign session."
+	if not apply_icon.disabled:
+		apply_icon.pressed.connect(_apply_appearance.bind(CharacterAppearanceDefinition.COMBAT_ICON, _draft_combat_icon_id))
+	actions.add_child(apply_icon)
+	var discard := Button.new()
+	discard.text = "Discard Appearance Changes"
+	discard.disabled = _draft_portrait_id == character.portrait_id and _draft_combat_icon_id == character.combat_icon_id
+	discard.tooltip_text = "The preview already matches the session." if discard.disabled else "Restore both previews without changing the session."
+	if not discard.disabled:
+		discard.pressed.connect(_discard_appearance_draft)
+	actions.add_child(discard)
+	_content.add_child(actions)
+
+
+func _appearance_picker(character: CharacterView, kind: StringName, options: Array[CharacterAppearanceOptionView], selected_id: String, title: String) -> VBoxContainer:
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 6)
+	_add_label(column, title, GOLD, 16)
+	column.add_child(_appearance(selected_id, character.name.left(1) if kind == CharacterAppearanceDefinition.PORTRAIT else "⚔", "%s preview" % title))
+	var picker := OptionButton.new()
+	picker.name = "%sPicker" % title.replace(" ", "")
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.fit_to_longest_item = false
+	picker.clip_text = true
+	picker.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var ordered := _recommended_first(options, character.race_id)
+	var selected_index := -1
+	for option: CharacterAppearanceOptionView in ordered:
+		var recommended := option.is_recommended_for(character.race_id)
+		var item_label := "%s%s • %d" % ["Recommended • " if recommended else "", option.label, option.classic_resource_id]
+		var texture := _textures.get(option.id) as Texture2D
+		if texture != null:
+			picker.add_icon_item(texture, item_label)
+		else:
+			picker.add_item(item_label)
+		var index := picker.item_count - 1
+		picker.set_item_metadata(index, option.id)
+		if option.id == selected_id:
+			selected_index = index
+	picker.select(selected_index)
+	picker.disabled = not _appearance_availability.enabled or options.is_empty()
+	picker.tooltip_text = _appearance_availability.reason if not _appearance_availability.enabled else "Browse all %d package-backed %s choices; Castle recommendations appear first." % [options.size(), title.to_lower()]
+	if not picker.disabled:
+		picker.item_selected.connect(_select_appearance_option.bind(picker, kind))
+	column.add_child(picker)
+	return column
+
+
+func _recommended_first(options: Array[CharacterAppearanceOptionView], race_id: String) -> Array[CharacterAppearanceOptionView]:
+	var result: Array[CharacterAppearanceOptionView] = []
+	for option: CharacterAppearanceOptionView in options:
+		if option.is_recommended_for(race_id):
+			result.append(option)
+	for option: CharacterAppearanceOptionView in options:
+		if not option.is_recommended_for(race_id):
+			result.append(option)
+	return result
+
+
+func _select_appearance_option(index: int, picker: OptionButton, kind: StringName) -> void:
+	if index < 0 or index >= picker.item_count:
+		return
+	var selected_id := String(picker.get_item_metadata(index))
+	if kind == CharacterAppearanceDefinition.PORTRAIT:
+		_draft_portrait_id = selected_id
+	else:
+		_draft_combat_icon_id = selected_id
+	_rebuild()
+
+
+func _apply_appearance(kind: StringName, appearance_id: String) -> void:
+	appearance_change_requested.emit(_selected_character_id, kind, appearance_id)
+
+
+func _discard_appearance_draft() -> void:
+	_sync_appearance_draft()
+	_rebuild()
+
+
+func _sync_appearance_draft() -> void:
+	var character := _selected_character()
+	_draft_portrait_id = "" if character == null else character.portrait_id
+	_draft_combat_icon_id = "" if character == null else character.combat_icon_id
+
+
 func _build_background(character: CharacterView) -> void:
 	_add_heading(_content, character.race_name)
 	_add_label(_content, character.race_description if not character.race_description.is_empty() else "No race description is present in this package.", MUTED)
@@ -219,6 +342,7 @@ func _select_character(character_id: String) -> void:
 	if character_id == _selected_character_id:
 		return
 	_selected_character_id = character_id
+	_sync_appearance_draft()
 	character_selected.emit(character_id)
 	_rebuild()
 

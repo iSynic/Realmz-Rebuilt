@@ -78,6 +78,8 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 	_normalize_age_groups(replacement_state, content, replacement_rules)
 	if not _party_inventory_is_valid(content, replacement_state, replacement_rules):
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved party inventory or carried load is invalid for this package.")
+	if not _party_appearance_is_valid(content, replacement_state):
+		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved party appearance references unavailable package content.")
 	if not _shop_state_is_valid(content, replacement_state):
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved shop state references unavailable package content.")
 	if not _character_draft_is_valid(content, replacement_state, replacement_rules):
@@ -160,6 +162,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _remove_party_member(intent.target_id)
 		PlayerIntent.Kind.REORDER_PARTY:
 			return _reorder_party(intent.selected_ids)
+		PlayerIntent.Kind.CHANGE_CHARACTER_APPEARANCE:
+			return _change_character_appearance(intent)
 		PlayerIntent.Kind.EQUIP_ITEM:
 			return _equip_item(intent)
 		PlayerIntent.Kind.UNEQUIP_ITEM:
@@ -248,10 +252,10 @@ func view() -> GameView:
 			result.race_options.append(DefinitionOptionView.new(race.id, race.name, race.description, race.eligible_caste_ids))
 		for caste: CasteDefinition in _content.caste_definitions():
 			result.caste_options.append(DefinitionOptionView.new(caste.id, caste.name, caste.description, caste.eligible_race_ids))
-		for portrait: CharacterAppearanceDefinition in _content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT):
-			result.portrait_options.append(CharacterAppearanceOptionView.new(portrait))
-		for icon: CharacterAppearanceDefinition in _content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):
-			result.combat_icon_options.append(CharacterAppearanceOptionView.new(icon))
+	for portrait: CharacterAppearanceDefinition in _content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT):
+		result.portrait_options.append(CharacterAppearanceOptionView.new(portrait))
+	for icon: CharacterAppearanceDefinition in _content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):
+		result.combat_icon_options.append(CharacterAppearanceOptionView.new(icon))
 	_populate_inventory_item_actions(result)
 	_populate_spell_actions(result)
 	_populate_money_workspace(result)
@@ -357,6 +361,9 @@ func _populate_action_availability(result: GameView) -> void:
 	result.set_action_availability(&"finalize_character", party_setup and not blocked_by_interaction and setup_member_count < setup_member_limit and draft_active, "Resolve the current interaction first." if blocked_by_interaction else "Character creation is available only during party setup." if not party_setup else "Generate and review the character first." if not draft_active else "The party is full.")
 	result.set_action_availability(&"remove_party_member", party_setup and not blocked_by_interaction and setup_member_count > 0, "Resolve the current interaction first." if blocked_by_interaction else "Party members can be removed only during party setup." if not party_setup else "The party is empty.")
 	result.set_action_availability(&"reorder_party", not party_setup and not blocked_by_interaction and not battle_active and setup_member_count > 1, "Resolve the current interaction first." if blocked_by_interaction else "Begin the adventure before changing party order." if party_setup else "Party order is unavailable during battle." if battle_active else "At least two party members are required.")
+	var appearance_available := not party_setup and not blocked_by_interaction and not battle_active and setup_member_count > 0 and _content.has_character_appearance_catalog()
+	var appearance_reason := "Resolve the current interaction first." if blocked_by_interaction else "Begin the adventure before changing appearance." if party_setup else "Appearance changes are unavailable during battle." if battle_active else "No party member is available." if setup_member_count == 0 else "This package does not contain the complete Classic portrait and combat-icon catalogs." if not _content.has_character_appearance_catalog() else ""
+	result.set_action_availability(&"change_character_appearance", appearance_available, appearance_reason)
 	for action_id: StringName in [&"equip_item", &"unequip_item", &"drop_item", &"trade_item"]:
 		result.set_action_availability(action_id, ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Inventory changes are unavailable during battle." if battle_active else "")
 	result.set_action_availability(&"identify_item", false, ordinary_reason if not ordinary_reason.is_empty() else "Identification is available only from a shop, temple, or the Identify spell.")
@@ -1468,6 +1475,37 @@ func _reorder_party(character_ids: Array[String]) -> SessionStep:
 	return _finish_completed([DomainEvent.new(&"party_reordered", {"previousCharacterIds": previous_ids, "characterIds": character_ids.duplicate(), "source": "classic"})])
 
 
+func _change_character_appearance(intent: PlayerIntent) -> SessionStep:
+	if not _state.party_setup_completed:
+		return SessionStep.failed(_view_revision, &"appearance_change_unavailable", "Begin the adventure before changing appearance.")
+	if _state.combat != null and not _state.combat.completed:
+		return SessionStep.failed(_view_revision, &"appearance_change_unavailable", "Appearance changes are unavailable during battle.")
+	if not _content.has_character_appearance_catalog():
+		return SessionStep.failed(_view_revision, &"appearance_change_unavailable", "This package does not contain the complete Classic portrait and combat-icon catalogs.")
+	var character := _state.party.character_by_id(intent.actor_id)
+	if character == null:
+		return SessionStep.failed(_view_revision, &"unknown_party_member", "The selected character is not in the active party.")
+	if intent.action not in [CharacterAppearanceDefinition.PORTRAIT, CharacterAppearanceDefinition.COMBAT_ICON]:
+		return SessionStep.failed(_view_revision, &"invalid_appearance_kind", "Choose either a portrait or a combat icon.")
+	var appearance := _content.appearance_by_id(intent.target_id)
+	if appearance == null or appearance.kind != intent.action:
+		return SessionStep.failed(_view_revision, &"invalid_character_appearance", "The selected appearance is unavailable for that role.")
+	var previous_id := character.portrait_id if intent.action == CharacterAppearanceDefinition.PORTRAIT else character.combat_icon_id
+	if previous_id == appearance.id:
+		return SessionStep.failed(_view_revision, &"appearance_unchanged", "Choose a different appearance before applying the change.")
+	if intent.action == CharacterAppearanceDefinition.PORTRAIT:
+		character.portrait_id = appearance.id
+	else:
+		character.combat_icon_id = appearance.id
+	return _finish_completed([DomainEvent.new(&"character_appearance_changed", {
+		"characterId": character.id,
+		"appearanceKind": String(intent.action),
+		"previousAppearanceId": previous_id,
+		"appearanceId": appearance.id,
+		"source": "classic-character-menu",
+	})])
+
+
 func _character_creation_error(spec: CharacterCreationSpec, existing_names: Dictionary) -> Dictionary:
 	if spec == null:
 		return {"code": &"invalid_character_spec", "message": "A character specification is required."}
@@ -1548,6 +1586,23 @@ static func _party_inventory_is_valid(content: RealmzContent, state: GameState, 
 			return false
 		for scroll: SpellScrollState in character.scroll_case():
 			if not scroll.is_empty() and content.spell_by_id(scroll.spell_id) == null:
+				return false
+	return true
+
+
+static func _party_appearance_is_valid(content: RealmzContent, state: GameState) -> bool:
+	if content == null or state == null:
+		return false
+	if not content.has_character_appearance_catalog():
+		return true
+	for character: CharacterState in state.party.characters():
+		if not character.portrait_id.is_empty():
+			var portrait := content.appearance_by_id(character.portrait_id)
+			if portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT:
+				return false
+		if not character.combat_icon_id.is_empty():
+			var icon := content.appearance_by_id(character.combat_icon_id)
+			if icon == null or icon.kind != CharacterAppearanceDefinition.COMBAT_ICON:
 				return false
 	return true
 

@@ -74,6 +74,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 
 - Keep failures deterministic and include stable IDs and draw indices in diagnostics.
 - Add save/reload coverage at every interaction boundary.
+- Active-character appearance tests cover complete detached catalogs, independent role mutation, wrong-role rejection, RNG/time stability, canonical save restoration, corrupt-role transactional rejection, and explicit vault non-ownership.
 
 ## Verification
 

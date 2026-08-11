@@ -3368,6 +3368,59 @@
       },
       "availability": "implemented",
       "status": "detached-seven-tab-inspection-and-nonmutating-age-highlight-verified-lifetime-prestige-and-unknown-native-ability-labels-explicit"
+    },
+    {
+      "id": "character.active-appearance-change",
+      "workflowIds": ["classic.character.change-appearance"],
+      "domain": "character",
+      "claim": "An active party member's portrait and tactical icon are changed independently from complete typed package catalogs; browsing and discard are presentation-only, Apply commits one stable-ID session mutation, save/restore revalidates both roles, and reusable vault revisions are never rewritten implicitly.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake supplies a creator-only portrait grid and direct mutable-character texture assignment, but has no evidenced active-party appearance workflow and enumerates host files rather than typed package identities.",
+        "sources": [
+          { "path": "src/scenes/UI/Main Menu/NewCharacterPanel.gd", "symbol": "func fillIconsPortraitsChoices" },
+          { "path": "src/scenes/UI/Main Menu/NewCharacterPanel.gd", "symbol": "func _on_portrait_button_pressed" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "short HandleMenuChoice" },
+          { "path": "src/realmz_orig/modify-cancast.c", "symbol": "void modify(short mode)" },
+          { "path": "src/realmz_orig/portrait-picklock.c", "symbol": "void portrait(short mode)" },
+          { "path": "src/realmz_orig/iconpict.c", "symbol": "void iconpicture(short mode)" }
+        ],
+        "authoredInputs": ["active party character", "Data Race defaulticonset", "character one-based race", "portrait cicn 257-376", "tactical cicn 9000-9119"],
+        "observation": "The Character menu exposes separate portrait and icon commands. portrait recommends six entries from Data Race defaulticonset; iconpicture recommends six entries from the character's one-based race. Closing either picker copies characterl into the active party slot. modify then rewrites the standalone Character Files record, coupling campaign mutation to reusable-character publication without an explicit rollback boundary.",
+        "unresolved": ["No Castle runtime fixture was required because the complete menu, picker, active-slot write, and standalone-file write path is explicit in the pinned source."]
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_shared_character_appearance_assets" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn validate_character_appearance_catalogs" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" }
+        ],
+        "expectedRepresentation": "Schema v2 preserves all 120 portraits, all 120 tactical icons, exact role and resource identity, and each race's Classic ID and defaultIconSet. No compiler change is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _change_character_appearance" },
+        "expectedTrace": ["present complete detached package catalogs", "sort each role by its source-backed race recommendation", "stage independent presentation previews", "discard without a session call or Apply one exact stable-ID role mutation", "publish previous and current appearance identity", "consume no RNG or time", "persist both IDs", "reject missing or wrong-role identities on restore", "leave immutable vault revisions unchanged"],
+        "tests": [
+          { "path": "tests/integration/test_character_appearance_workflow.gd", "symbol": "func run" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_character_sheet_workspace" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-CHARACTER-005",
+        "fixturePath": "tests/fixtures/oracle/active-character-appearance-ownership-correction.json",
+        "fixtureSha256": "93d8cb1d1691489b37c0da79da8e4c00027a633672a6b495cde9da2929b6df2b"
+      },
+      "availability": "implemented",
+      "status": "independent-session-owned-portrait-and-tactical-selection-preview-discard-save-and-role-validation-verified"
     }
   ]
 }

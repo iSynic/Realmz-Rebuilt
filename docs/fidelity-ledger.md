@@ -52,6 +52,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: Providence validates the zero/set-one alias and emits exactly 120 role-labelled portraits plus 120 tactical icons. Package, session, UI, save/restore, and vault tests verify complete catalogs, stable IDs, role rejection, Human defaults, and immutable revision eligibility. The differential case is `character.appearance-catalog-and-human-default`.
 - Legacy quirk: none. Missing resources are not useful authored behavior, and no compatibility profile is introduced.
 
+## FD-CHARACTER-005 — Active appearance ownership boundary
+
+- Affected workflow: changing an active party member's portrait or tactical icon from the Character menu.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/handlemenuchoice.c`, `HandleMenuChoice`; `modify-cancast.c`, `modify`; `portrait-picklock.c`, `portrait`; and `iconpict.c`, `iconpicture`. Castle exposes separate commands, recommends portraits by Data Race `defaulticonset`, recommends tactical icons by one-based character race, copies the selected identity into the active party slot when the picker closes, and then rewrites the standalone Character Files record.
+- Observable source inconsistency: a campaign-local appearance edit implicitly overwrites reusable external character state, and the picker has no explicit staged rollback boundary. The synthetic source-observation fixture is `tests/fixtures/oracle/active-character-appearance-ownership-correction.json`, SHA-256 `93d8cb1d1691489b37c0da79da8e4c00027a633672a6b495cde9da2929b6df2b`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: merely browsing or closing an appearance picker can blur campaign state and reusable-character publication, making Cancel semantics and cross-campaign ownership unclear.
+- Chosen 2.0 behavior: preserve separate portrait and tactical-icon catalogs and their distinct Castle recommendation formulas. Preview is presentation-owned, Apply commits exactly one stable-ID role to the session, Discard commits nothing, and vault publication remains a separately confirmed immutable revision.
+- Tests: `test_character_appearance_workflow.gd` verifies exact independent mutations, event identity, RNG/time stability, wrong-role and unknown-character rejection, save restoration, corrupt-role rejection, explicit empty-media preservation without substitution, and transactional restore. `test_classic_ui_system.gd` verifies catalog preview, explicit Apply, and no-op Discard. The differential case is `character.active-appearance-change`.
+- Legacy quirk: none. Implicit external-file overwrite conflicts with the central session and explicit vault-revision architecture and is not campaign-authored behavior.
+
 ## FD-CHARACTER-001 — Bounded trained-ability records
 
 - Affected rule: initialization and level-up of the character's fifteen-slot trained-ability array.

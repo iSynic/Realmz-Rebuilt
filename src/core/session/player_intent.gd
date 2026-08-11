@@ -18,6 +18,7 @@ enum Kind {
 	FINALIZE_CHARACTER,
 	REMOVE_PARTY_MEMBER,
 	REORDER_PARTY,
+	CHANGE_CHARACTER_APPEARANCE,
 	EQUIP_ITEM,
 	UNEQUIP_ITEM,
 	USE_ITEM_ON_TARGET,
@@ -185,6 +186,14 @@ static func remove_party_member(character_id: String) -> PlayerIntent:
 static func reorder_party(character_ids: Array[String]) -> PlayerIntent:
 	var intent := PlayerIntent.new(Kind.REORDER_PARTY)
 	intent.selected_ids = character_ids.duplicate()
+	return intent
+
+
+static func change_character_appearance(character_id_value: String, appearance_kind: StringName, appearance_id: String) -> PlayerIntent:
+	var intent := PlayerIntent.new(Kind.CHANGE_CHARACTER_APPEARANCE)
+	intent.actor_id = character_id_value
+	intent.action = appearance_kind
+	intent.target_id = appearance_id
 	return intent
 
 

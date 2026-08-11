@@ -1105,11 +1105,18 @@ func _render_characters() -> void:
 	_ensure_appearance_textures()
 	var sheet := ClassicCharacterSheet.new()
 	sheet.name = "ClassicCharacterSheet"
-	sheet.present(_view.party_members, _character_sheet_character_id, _appearance_textures, _settings.text_scale, _character_sheet_tab)
+	sheet.present(_view.party_members, _character_sheet_character_id, _appearance_textures, _settings.text_scale, _character_sheet_tab, _view.portrait_options, _view.combat_icon_options, _view.availability(&"change_character_appearance"))
 	_character_sheet_character_id = sheet.selected_character_id()
 	sheet.character_selected.connect(func(character_id: String) -> void: _character_sheet_character_id = character_id)
 	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _character_sheet_tab = tab_id)
+	sheet.appearance_change_requested.connect(_submit_character_appearance)
 	_body.add_child(sheet)
+
+
+func _submit_character_appearance(character_id: String, appearance_kind: StringName, appearance_id: String) -> void:
+	_character_sheet_character_id = character_id
+	_character_sheet_tab = &"appearance"
+	intent_submitted.emit(PlayerIntent.change_character_appearance(character_id, appearance_kind, appearance_id))
 
 
 func _render_party_order() -> void:

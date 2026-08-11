@@ -496,14 +496,24 @@ Next application-workflow priority: follow the regenerated audit queue. Timed mi
 - Move Up and Move Down are presentation-owned draft operations. Apply emits one typed intent, while Cancel safely discards the draft under `FD-CHARACTER-003` instead of copying Castle's apparent abort-time out-of-bounds write.
 - The generated audit moves Character management from three missing workflows to two and reports 37 functional Classic workflows, 28 major gaps, one release blocker, and 63 differential cases. Evidence remains synthetic rather than ordinary-play certification.
 
-Next application-workflow priority: use the same Character workspace to close `classic.character.view-sheet`, including the missing disabled/dead and long-content states, before moving to the separate active-character appearance picker.
+That pass handed off to `classic.character.view-sheet`; the subsequent inspection and appearance passes below supersede this historical next-step note.
 
 ## Current rolling fidelity pass — Classic character inspection
 
-- Reconstructed the Character workspace around Castle's complete inspection family instead of extending the old summary cards. Seven presentation-owned tabs expose overview, conditions and saves, equipment, abilities, spells, race/class/aging, and the lifetime record from detached `CharacterView` data.
+- Reconstructed the Character workspace around Castle's complete inspection family instead of extending the old summary cards. Seven inspection tabs expose overview, conditions and saves, equipment, abilities, spells, race/class/aging, and the lifetime record from detached `CharacterView` data; the following appearance pass adds an eighth workflow tab.
 - Added source-backed names for all forty condition slots, eight saves, eight documented monster-special categories, known trained abilities, three personal wealth denominations, attacks-per-round display, race/caste descriptions and traits, and all five age rows. Disabled/dead and long-content states are covered by the typed presentation fixture.
 - `FD-CHARACTER-004` corrects Castle's view-time Aging mutation: the active age row is derived for display without changing the session-owned current age group. Providence schema v2 already preserves the required race/caste and aging metadata, so no compiler change is required.
 - Lifetime prestige remains explicitly unavailable because Realmz 2.0 does not yet track Castle's lifetime combat-history counters. Several ability labels sourced from absent native STR# resources remain honest generic slot labels. Both are audit gaps, not silent defaults.
 - The regenerated audit reports 60 Classic workflows, 8 host workflows, 1 blocker, 28 major gaps, 37 functional Classic workflows, and 64 bidirectionally linked differential cases. Character-sheet presentation is functional, but the workflow remains partial until lifetime history is owned.
 
-Next application-workflow priority: select the next reachable gap from the generated queue. Active-character appearance change is the adjacent absent workflow; lifetime history should be scheduled only with the combat/magic mutation audit it requires.
+That pass handed off to active-character appearance change, completed in the following rolling pass. Lifetime history remains scheduled with the combat/magic mutation audit it requires.
+
+## Current rolling fidelity pass — Active character appearance
+
+- Completed `classic.character.change-appearance` through Castle/Remake comparison, existing Providence schema-v2 content, typed simulation, central persistence, and the Character workspace.
+- Castle's two commands remain independent: portrait recommendations use Data Race `defaulticonset`, while tactical-icon recommendations use the one-based race slot. The runtime exposes all 120 options for each exact package role and does not auto-pair an active character's other identity.
+- `FD-CHARACTER-005` corrects ownership rather than visual behavior. Castle writes both the campaign slot and standalone character file when a picker closes; 2.0 stages previews locally, applies one stable-ID role through `GameSession`, discards without mutation, and leaves vault publication explicit.
+- Restore now rejects unknown or wrong-role portrait/icon IDs before replacing an active session. Accepted changes consume no RNG or game time and persist through the unchanged `.r2save` v3 character fields.
+- The regenerated audit reports 38 functional Classic workflows, 27 major gaps, one release blocker, and 65 bidirectionally linked differential cases. Evidence is synthetic; presentation is not yet ordinary-play accepted.
+
+Next application-workflow priority: return to the audit's AOGM queue. The adjacent Character gaps are either party-setup inspection or lifetime combat history; the former is bounded UI work, while the latter requires broader combat/magic counter ownership and should not be filled from guessed zeros.
