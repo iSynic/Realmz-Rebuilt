@@ -50,6 +50,8 @@ func _ready() -> void:
 	_shell_presenter.intent_submitted.connect(_submit_intent)
 	_shell_presenter.save_requested.connect(save_active_session)
 	_shell_presenter.load_requested.connect(load_active_session)
+	_shell_presenter.load_backup_requested.connect(load_backup_session)
+	_shell_presenter.refresh_saves_requested.connect(_refresh_save_previews)
 	_shell_presenter.quit_requested.connect(_on_quit_requested)
 	_shell_presenter.topology_debug_changed.connect(_on_topology_debug_changed)
 	_shell_presenter.dungeon_3d_changed.connect(_on_dungeon_3d_changed)
@@ -105,6 +107,7 @@ func start_package(package_path: String, initial_seed: int) -> SessionStep:
 		_shell_presenter.set_status(_status_label.text, true)
 		return step
 	_active_content = package_result.content
+	_refresh_save_previews()
 	_refresh_vault_views()
 	_smoke_button.text = "Search area"
 	var current_view := session_controller.view()
@@ -302,23 +305,40 @@ func save_active_session(slot_id: String) -> bool:
 	var saved := save_repository.save(_active_content.campaign_id, slot_id, session_controller.session().snapshot())
 	_status_label.text = "Saved %s" % slot_id if saved else "Save failed • %s" % save_repository.last_error
 	_shell_presenter.set_status(_status_label.text, not saved)
+	if saved:
+		_refresh_save_previews()
 	return saved
 
 
 func load_active_session(slot_id: String) -> SessionStep:
+	return _load_session_record(slot_id, false)
+
+
+func load_backup_session(slot_id: String) -> SessionStep:
+	return _load_session_record(slot_id, true)
+
+
+func _load_session_record(slot_id: String, backup: bool) -> SessionStep:
 	if _active_content == null:
 		_status_label.text = "Load failed • no package loaded"
 		_shell_presenter.set_status(_status_label.text, true)
 		return SessionStep.failed(0, "no_package_loaded", "Load a package before restoring a save.")
-	var envelope := save_repository.load(_active_content.campaign_id, slot_id, _active_content.package_hash)
+	var envelope := save_repository.load_backup(_active_content.campaign_id, slot_id, _active_content.package_hash) if backup else save_repository.load(_active_content.campaign_id, slot_id, _active_content.package_hash)
 	if envelope == null:
 		_status_label.text = "Load failed • %s" % save_repository.last_error
 		_shell_presenter.set_status(_status_label.text, true)
 		return SessionStep.failed(session_controller.view().revision, "save_load_failed", save_repository.last_error)
 	var step := session_controller.restore(_active_content, envelope)
-	_status_label.text = "Loaded save %s" % slot_id if step.state != SessionStep.State.FAILED else "Load failed • %s" % step.error_message
+	_status_label.text = "Loaded %s %s" % ["backup" if backup else "save", slot_id] if step.state != SessionStep.State.FAILED else "Load failed • %s" % step.error_message
 	_shell_presenter.set_status(_status_label.text, step.state == SessionStep.State.FAILED)
 	return step
+
+
+func _refresh_save_previews() -> void:
+	var previews: Array = []
+	if _active_content != null:
+		previews = save_repository.list_previews(_active_content.campaign_id, _active_content.package_hash)
+	_shell_presenter.set_save_previews(previews)
 
 
 func _refresh_campaigns() -> void:

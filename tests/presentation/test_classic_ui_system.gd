@@ -1,5 +1,7 @@
 extends RealmzTestCase
 
+const SaveSlotPreviewScript := preload("res://src/infrastructure/saves/save_slot_preview.gd")
+
 
 func run() -> void:
 	_test_route_catalog()
@@ -30,6 +32,54 @@ func run() -> void:
 	_test_character_sheet_workspace()
 	_test_party_roster()
 	_test_scene_composition()
+	_test_save_preview_workspace()
+
+
+func _test_save_preview_workspace() -> void:
+	var view := GameView.new(3, true, null)
+	view.campaign_id = "preview-campaign"
+	view.rules_version = "realmz-classic-1"
+	var current := SaveSlotPreviewScript.new("quick", SaveSlotPreviewScript.PRIMARY, SaveSlotPreviewScript.VALID)
+	current.rules_version = view.rules_version
+	current.package_hash = "1".repeat(64)
+	current.realmz_day = 2
+	current.realmz_hour = 7
+	current.realmz_minute = 15
+	current.map_id = "land:4"
+	current.coordinate = Vector2i(12, 9)
+	current.character_names = ["Mira", "Borin"]
+	current.can_load = true
+	var backup := SaveSlotPreviewScript.new("quick", SaveSlotPreviewScript.BACKUP, SaveSlotPreviewScript.VALID)
+	backup.rules_version = view.rules_version
+	backup.can_load = true
+	var corrupt := SaveSlotPreviewScript.new("broken", SaveSlotPreviewScript.PRIMARY, SaveSlotPreviewScript.CORRUPT)
+	corrupt.error_message = "This save is corrupt or uses an unsupported schema."
+	var router := ClassicScreenRouter.new()
+	router._body = VBoxContainer.new()
+	router._content_parent = router._body
+	router.add_child(router._body)
+	router._view = view
+	router._save_previews = [current, backup, corrupt]
+	var actions: Array[Dictionary] = []
+	router.system_action_requested.connect(func(action: StringName, value: Variant) -> void: actions.append({"action": action, "value": value}))
+	router._render_system()
+	var buttons: Array[Button] = []
+	var labels: Array[String] = []
+	for node: Node in router.find_children("*", "Button", true, false):
+		buttons.append(node as Button)
+	for node: Node in router.find_children("*", "Label", true, false):
+		labels.append((node as Label).text)
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("Day 2") and text.contains("land:4 12,9")), "valid save previews expose detached time and location facts")
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("Mira, Borin")), "valid save previews expose detached party identity")
+	var current_load := buttons.filter(func(button: Button) -> bool: return button.text == "Load save")[0] as Button
+	var backup_load := buttons.filter(func(button: Button) -> bool: return button.text == "Load backup")[0] as Button
+	var disabled_loads := buttons.filter(func(button: Button) -> bool: return button.text == "Load save" and button.disabled)
+	assert_equal(disabled_loads.size(), 1, "corrupt records remain visible with a disabled operation")
+	assert_true(disabled_loads[0].tooltip_text.contains("corrupt"), "the corrupt record exposes an exact reason")
+	current_load.pressed.emit()
+	backup_load.pressed.emit()
+	assert_equal(actions, [{"action": &"load", "value": "quick"}, {"action": &"load_backup", "value": "quick"}], "current and backup previews emit distinct host operations")
+	router.free()
 
 
 func _test_battle_weapon_mode_component() -> void:

@@ -88,6 +88,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - A passing full-suite process must also exit without ObjectDB leak or retained-resource diagnostics; `tools/verify.ps1` treats either teardown warning as a failure.
 - `tools/verify.ps1` runs import/script checks, tests, architecture guards, and `git diff --check`.
 - Package contract coverage verifies that multiple immutable files for one campaign collapse to one current selector entry without deleting revisions.
+- Save-preview coverage indexes current and backup records independently, exposes corrupt and package-mismatched records without enabling them, and proves that loading a backup returns the exact prior committed boundary.
 
 ## Child DOX Index
 

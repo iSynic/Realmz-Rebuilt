@@ -1,6 +1,8 @@
 class_name SaveRepository
 extends RefCounted
 
+const SaveSlotPreviewScript := preload("res://src/infrastructure/saves/save_slot_preview.gd")
+
 var _root_path: String
 var last_error: String = ""
 
@@ -53,18 +55,90 @@ func save(campaign_id: String, slot_id: String, envelope: SaveEnvelope) -> bool:
 
 
 func load(campaign_id: String, slot_id: String, expected_package_hash: String) -> SaveEnvelope:
+	return _load_path(campaign_id, slot_id, expected_package_hash, false)
+
+
+func load_backup(campaign_id: String, slot_id: String, expected_package_hash: String) -> SaveEnvelope:
+	return _load_path(campaign_id, slot_id, expected_package_hash, true)
+
+
+func list_previews(campaign_id: String, expected_package_hash: String) -> Array:
+	last_error = ""
+	var previews: Array = []
+	if not _safe_component(campaign_id):
+		_fail("Campaign ID must be a portable path component.")
+		return previews
+	var campaign_path := "%s/%s" % [_root_path, campaign_id]
+	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(campaign_path)):
+		return previews
+	for file_name: String in DirAccess.get_files_at(campaign_path):
+		var source: StringName = SaveSlotPreviewScript.PRIMARY
+		var slot_id := ""
+		if file_name.ends_with(".r2save.bak"):
+			source = SaveSlotPreviewScript.BACKUP
+			slot_id = file_name.trim_suffix(".r2save.bak")
+		elif file_name.ends_with(".r2save"):
+			slot_id = file_name.trim_suffix(".r2save")
+		else:
+			continue
+		if not _safe_component(slot_id):
+			continue
+		previews.append(_preview_for_path(campaign_path.path_join(file_name), slot_id, source, campaign_id, expected_package_hash))
+	previews.sort_custom(func(left: RefCounted, right: RefCounted) -> bool:
+		if left.slot_id != right.slot_id:
+			return left.slot_id.naturalnocasecmp_to(right.slot_id) < 0
+		return left.source == SaveSlotPreviewScript.PRIMARY and right.source == SaveSlotPreviewScript.BACKUP
+	)
+	return previews
+
+
+func _load_path(campaign_id: String, slot_id: String, expected_package_hash: String, backup: bool) -> SaveEnvelope:
 	last_error = ""
 	if not _safe_component(campaign_id) or not _safe_component(slot_id):
 		_fail("Campaign and slot IDs must be portable path components.")
 		return null
-	var envelope := _read_envelope("%s/%s/%s.r2save" % [_root_path, campaign_id, slot_id])
+	var suffix := ".r2save.bak" if backup else ".r2save"
+	var envelope := _read_envelope("%s/%s/%s%s" % [_root_path, campaign_id, slot_id, suffix])
 	if envelope == null:
-		_fail("Save file is missing, corrupt, or uses an unsupported schema.")
+		_fail("Save backup is missing, corrupt, or uses an unsupported schema." if backup else "Save file is missing, corrupt, or uses an unsupported schema.")
 		return null
 	if envelope.campaign_id != campaign_id or envelope.package_hash != expected_package_hash:
 		_fail("Save package identity does not match the installed campaign.")
 		return null
 	return envelope
+
+
+func _preview_for_path(path: String, slot_id: String, source: StringName, expected_campaign_id: String, expected_package_hash: String) -> RefCounted:
+	var envelope := _read_envelope(path)
+	if envelope == null:
+		var corrupt := SaveSlotPreviewScript.new(slot_id, source, SaveSlotPreviewScript.CORRUPT)
+		corrupt.modified_unix = int(FileAccess.get_modified_time(path))
+		corrupt.error_message = "This save is corrupt or uses an unsupported schema."
+		return corrupt
+	var status: StringName = SaveSlotPreviewScript.VALID
+	var error_message := ""
+	if envelope.campaign_id != expected_campaign_id:
+		status = SaveSlotPreviewScript.CAMPAIGN_MISMATCH
+		error_message = "This save belongs to campaign '%s'." % envelope.campaign_id
+	elif envelope.package_hash != expected_package_hash:
+		status = SaveSlotPreviewScript.PACKAGE_MISMATCH
+		error_message = "This save was created for a different immutable package revision."
+	var preview := SaveSlotPreviewScript.new(slot_id, source, status)
+	preview.campaign_id = envelope.campaign_id
+	preview.package_hash = envelope.package_hash
+	preview.rules_version = envelope.rules_version
+	preview.view_revision = envelope.view_revision
+	preview.modified_unix = int(FileAccess.get_modified_time(path))
+	preview.realmz_day = envelope.game_state.clock.day()
+	preview.realmz_hour = envelope.game_state.clock.hour()
+	preview.realmz_minute = envelope.game_state.clock.minute()
+	preview.map_id = envelope.game_state.party.map_id
+	preview.coordinate = envelope.game_state.party.coordinate
+	for character: CharacterState in envelope.game_state.party.characters():
+		preview.character_names.append(character.name)
+	preview.error_message = error_message
+	preview.can_load = status == SaveSlotPreviewScript.VALID
+	return preview
 
 
 func _read_envelope(path: String) -> SaveEnvelope:

@@ -33,6 +33,7 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 - Save only at committed session boundaries. Save the whole aggregate, including VM and session interactions, post-move/random-region continuation, clock, overlays, action state, and RNG.
 - Saves may also contain a pending direct-session monster death macro; its battle, combatant, program, VM request, and RNG position validate as one continuation.
 - Write a temporary save, read and validate it, rotate one backup, then atomically replace the slot.
+- Save browsing enumerates primary and backup records as detached previews. It classifies structural corruption and campaign/package identity mismatches without exposing paths or mutable envelopes; an enabled preview is still fully validated through replacement-session restore before becoming active.
 - Restore failure leaves the current session untouched.
 - Save installation is temporary-write, typed readback, one-backup rotation, then same-volume rename; never expose a partially parsed envelope.
 - Infrastructure may use Godot filesystem APIs; core and scenario code may not.

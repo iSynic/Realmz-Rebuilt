@@ -1,6 +1,8 @@
 class_name ClassicScreenRouter
 extends Control
 
+const SaveSlotPreviewScript := preload("res://src/infrastructure/saves/save_slot_preview.gd")
+
 signal screen_changed(screen_id: StringName)
 signal start_requested(package_path: String, seed: int)
 signal refresh_requested
@@ -97,6 +99,7 @@ var _vault_return_to_setup: bool = false
 var _vault_return_to_campaign: bool = false
 var _vault_inspection_revision_hash: String = ""
 var _ordinary_money_workspace_open: bool = false
+var _save_previews: Array = []
 
 
 func _ready() -> void:
@@ -177,6 +180,12 @@ func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 	_vault_revisions = revisions.duplicate()
 	if _screen_id == &"vault":
+		_render_screen()
+
+
+func set_save_previews(previews: Array) -> void:
+	_save_previews = previews.duplicate()
+	if _screen_id == &"system" and _view != null and _view.session_started:
 		_render_screen()
 
 
@@ -1806,7 +1815,31 @@ func _render_system() -> void:
 	campaigns.text = "Campaign library"
 	campaigns.pressed.connect(func() -> void: system_action_requested.emit(&"campaigns", null))
 	save_row.add_child(campaigns)
+	var refresh_saves := Button.new()
+	refresh_saves.text = "Refresh saves"
+	refresh_saves.pressed.connect(func() -> void: system_action_requested.emit(&"refresh_saves", null))
+	save_row.add_child(refresh_saves)
 	_body.add_child(save_row)
+	_add_section_heading("Save slots", "%d record%s" % [_save_previews.size(), "" if _save_previews.size() == 1 else "s"])
+	if _save_previews.is_empty():
+		_add_empty_state("No saves for this campaign", "Quick save creates the first validated slot.")
+	else:
+		for preview: RefCounted in _save_previews:
+			var party_text: String = ", ".join(preview.character_names) if not preview.character_names.is_empty() else "No party members"
+			var detail: String = preview.error_message
+			if preview.status == SaveSlotPreviewScript.VALID:
+				detail = "Day %d • %02d:%02d • %s %d,%d\n%s\nPackage %s" % [preview.realmz_day, preview.realmz_hour, preview.realmz_minute, preview.map_id, preview.coordinate.x, preview.coordinate.y, party_text, preview.package_hash.left(12)]
+			var card := VBoxContainer.new()
+			_add_card_to(card, "%s • %s" % [preview.slot_id, preview.source_label()], "%s • %s" % [preview.status_label(), preview.rules_version if not preview.rules_version.is_empty() else "Unknown rules"], detail)
+			var load_preview := Button.new()
+			load_preview.text = "Load backup" if preview.source == SaveSlotPreviewScript.BACKUP else "Load save"
+			load_preview.disabled = not preview.can_load
+			load_preview.tooltip_text = preview.error_message if not preview.can_load else "Restore this validated %s record." % preview.source_label().to_lower()
+			if preview.can_load:
+				var action: StringName = &"load_backup" if preview.source == SaveSlotPreviewScript.BACKUP else &"load"
+				load_preview.pressed.connect(func() -> void: system_action_requested.emit(action, preview.slot_id))
+			card.add_child(load_preview)
+			_body.add_child(card)
 	_add_section_heading("Display", "Interface scale and text size are independent")
 	var ui_scale := OptionButton.new()
 	for entry: Dictionary in [{"label": "UI scale: Auto", "id": PresentationSettings.UI_SCALE_AUTO}, {"label": "UI scale: 100%", "id": PresentationSettings.UI_SCALE_100}, {"label": "UI scale: 125%", "id": PresentationSettings.UI_SCALE_125}, {"label": "UI scale: 150%", "id": PresentationSettings.UI_SCALE_150}]:
@@ -1847,6 +1880,10 @@ func _render_system() -> void:
 
 
 func _add_card(title: String, subtitle: String, detail: String) -> void:
+	_add_card_to(_content_parent, title, subtitle, detail)
+
+
+func _add_card_to(parent: Container, title: String, subtitle: String, detail: String) -> void:
 	var panel := PanelContainer.new()
 	panel.theme_type_variation = &"ClassicInset"
 	panel.custom_minimum_size.x = 280.0
@@ -1858,7 +1895,7 @@ func _add_card(title: String, subtitle: String, detail: String) -> void:
 	_add_label(box, subtitle, Color("e0e2e5"))
 	if not detail.is_empty():
 		_add_label(box, detail, MUTED)
-	_content_parent.add_child(panel)
+	parent.add_child(panel)
 
 
 func _add_content_card(resource_type: String, icon_id: int, title: String, subtitle: String, detail: String) -> void:

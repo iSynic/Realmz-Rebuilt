@@ -27,6 +27,7 @@
 - Character-sheet fixtures cover disabled/dead and long identity content, named conditions and eight saves, personal wealth, special modifiers and abilities, race/caste metadata, all five age bands, mutation-free `FD-CHARACTER-004` highlighting, and an explicit unavailable lifetime record. Tab and inspected-character selection remain presentation-only.
 - Party-setup inspection fixtures cover assembled members plus eligible and ineligible vault revisions, exact eligibility reasons, the shared complete sheet, and mutation-free Back navigation.
 - Inventory workspace fixtures cover identified and unidentified fact visibility, Castle's concealed/revealed curse decoy, source-backed detail fields, and inline disabled-action reasons.
+- System workspace fixtures cover detached current and backup save facts, distinct load operations, and disabled corrupt-record reasons without reading host files.
 - Appearance fixtures cover both exact package roles, recommendation-first browsing, presentation-only preview, one typed Apply request, no-op Discard, long labels, and visible core-owned unavailable reasons.
 - Use MCP after `play_scene` to confirm mouse activation for campaign selection, AP Continue responses, and original-bitmap encounter actions; keyboard activation alone is insufficient pointer evidence.
 

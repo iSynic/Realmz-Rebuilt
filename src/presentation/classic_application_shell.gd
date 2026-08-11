@@ -6,6 +6,8 @@ signal refresh_campaigns_requested
 signal intent_submitted(intent: PlayerIntent)
 signal save_requested(slot_id: String)
 signal load_requested(slot_id: String)
+signal load_backup_requested(slot_id: String)
+signal refresh_saves_requested
 signal quit_requested
 signal topology_debug_changed(enabled: bool)
 signal dungeon_3d_changed(enabled: bool)
@@ -123,6 +125,10 @@ func present(game_view: GameView) -> void:
 		_router.open_screen(automatic_route)
 	_build_menus()
 	_rebuild_command_deck()
+
+
+func set_save_previews(previews: Array) -> void:
+	_router.set_save_previews(previews)
 
 
 func present_step(step: SessionStep) -> void:
@@ -473,6 +479,8 @@ func _on_system_action_requested(action_id: StringName, value: Variant) -> void:
 	match action_id:
 		&"save": save_requested.emit("quick" if value == null else String(value))
 		&"load": load_requested.emit("quick" if value == null else String(value))
+		&"load_backup": load_backup_requested.emit("quick" if value == null else String(value))
+		&"refresh_saves": refresh_saves_requested.emit()
 		&"campaigns": show_campaign_selection()
 		&"quit": quit_requested.emit()
 
