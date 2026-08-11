@@ -3263,6 +3263,55 @@
       "status": "ordinary-camp-rest-hourly-half-day-timed-random-interruption-and-automatic-departure-save-verified"
     },
     {
+      "id": "exploration.hourly-fatigue-and-light",
+      "workflowIds": ["classic.exploration.time-fatigue-light"],
+      "domain": "exploration",
+      "claim": "Each genuine field-time hour adds one bounded fatigue point and reduces every positive party condition once; Torch Lit is then reduced once more, so a light value greater than one loses two points per hour while values never become negative.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake models hourly fatigue separately and gives ClassicLight an explicit loss of two condition points per hourly reduction, citing reduce.c's generic and torch-specific passes.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_light.gd", "symbol": "class_name ClassicLight" },
+          { "path": "src/scripts/classic_runtime/classic_rest.gd", "symbol": "static func fatigue_after_time" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/classic_rest_smoke.gd", "symbol": "func _test_boundary_and_fatigue_rules" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/textbox-time.c", "symbol": "short timeclick" },
+          { "path": "src/realmz_orig/reduce.c", "symbol": "void reduce" },
+          { "path": "src/realmz_orig/updatefat.c", "symbol": "void updatefat" },
+          { "path": "src/realmz_orig/resolvespell.c", "symbol": "void resolvespell" },
+          { "path": "src/realmz_orig/tickcheck.c-updatetorch.c", "symbol": "void updatetorch" }
+        ],
+        "authoredInputs": ["map base scale", "elapsed timeclicks", "party fatigue", "party conditions", "light spell power"],
+        "observation": "timeclick enters the reduction block only when minutes cross a real hour. Its `if (timeclick)` expression tests the function symbol and is always true, but the surrounding hour guard makes the result an unconditional one-point fatigue increase at each hour. reduce decrements all ten positive party conditions and then decrements Torch Lit again when it remains positive. Light special 50 initializes that counter to 30 times power minus one, making the second decrement part of its distinct duration scale. If a torch begins an hour at exactly two, state reaches zero but Castle's incremental redraw guards can leave stale torch art until another redraw; that presentation artifact is not gameplay state."
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spells" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" }
+        ],
+        "expectedRepresentation": "Schema v2 preserves signed spell fields, special 50, power, and map time scale; fatigue and active light remain mutable session state."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/time_rules.gd", "symbol": "func advance_classic_field_time" },
+        "expectedTrace": ["cross a genuine hour boundary", "apply generic positive party-condition decay", "apply one additional positive Torch Lit decrement", "publish torch expiration once when state reaches zero", "add one fatigue within bounds", "derive detached light display from authoritative party state"],
+        "tests": [
+          { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_conditions_time_and_persistence" },
+          { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" }
+        ]
+      },
+      "decision": "runtime-defect",
+      "availability": "implemented",
+      "status": "hourly-fatigue-generic-condition-and-double-torch-decay-source-and-integration-verified"
+    },
+    {
       "id": "exploration.timed-encounter-dispatch",
       "workflowIds": ["classic.exploration.camp-rest", "classic.exploration.time-fatigue-light", "classic.scenario.random-timed-encounter"],
       "domain": "exploration",

@@ -658,6 +658,19 @@ func _test_monster_permanent_afflictions() -> void:
 
 func _test_conditions_time_and_persistence() -> void:
 	var rules := RealmzRules.new()
+	var torch_party := PartyState.new("map.test", Vector2i.ZERO, [])
+	torch_party.conditions.set_value(ConditionRules.PARTY_TORCH_LIT, 3)
+	var torch_events := rules.conditions.tick_party(torch_party)
+	assert_equal(torch_party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 1, "Torch Lit receives Castle's generic and torch-specific hourly decrements")
+	assert_false(torch_events.any(func(event: DomainEvent) -> bool: return event.kind == &"party_condition_expired"), "a positive torch remainder does not publish expiration")
+	torch_party.conditions.set_value(ConditionRules.PARTY_TORCH_LIT, 2)
+	torch_events = rules.conditions.tick_party(torch_party)
+	assert_equal(torch_party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 0, "a two-point torch expires after the two source-ordered decrements")
+	assert_equal(torch_events.filter(func(event: DomainEvent) -> bool: return event.kind == &"party_condition_expired" and event.payload.get("condition") == ConditionRules.PARTY_TORCH_LIT).size(), 1, "torch expiration publishes once when the specific decrement reaches zero")
+	torch_party.conditions.set_value(ConditionRules.PARTY_TORCH_LIT, 1)
+	torch_events = rules.conditions.tick_party(torch_party)
+	assert_equal(torch_party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 0, "a one-point torch expires in the generic pass without becoming negative")
+	assert_equal(torch_events.filter(func(event: DomainEvent) -> bool: return event.kind == &"party_condition_expired" and event.payload.get("condition") == ConditionRules.PARTY_TORCH_LIT).size(), 1, "generic-pass torch expiration is not duplicated")
 	var character := CharacterState.new("character.conditions", "Conditions", 5, 10)
 	character.maximum_spell_points = 10
 	character.spell_points = 5

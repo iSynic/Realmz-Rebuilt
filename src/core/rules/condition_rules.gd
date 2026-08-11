@@ -39,6 +39,7 @@ const SILENCED := 39
 
 const PARTY_DRAGON_HIDE := 2
 const PARTY_CHARM_RESISTANCE := 8
+const PARTY_TORCH_LIT := 0
 
 
 func tick_character(character: CharacterState) -> Array[DomainEvent]:
@@ -65,6 +66,12 @@ func tick_party(party: PartyState) -> Array[DomainEvent]:
 	var events: Array[DomainEvent] = []
 	for index: int in party.conditions.decay_positive():
 		events.append(DomainEvent.new(&"party_condition_expired", {"condition": index}))
+	# Castle reduces every positive party condition once, then reduces Torch Lit
+	# once more. Values already expired by the shared pass are not decremented again.
+	if party.conditions.value(PARTY_TORCH_LIT) > 0:
+		party.conditions.add(PARTY_TORCH_LIT, -1)
+		if party.conditions.value(PARTY_TORCH_LIT) == 0:
+			events.append(DomainEvent.new(&"party_condition_expired", {"condition": PARTY_TORCH_LIT}))
 	for character: CharacterState in party.characters():
 		events.append_array(tick_character(character))
 	for ally: MonsterState in party.allies():

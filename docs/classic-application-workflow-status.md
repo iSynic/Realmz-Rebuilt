@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 5 | 16 | 39 | 0 |
+| classic | 60 | 5 | 15 | 40 | 0 |
 | host | 8 | 1 | 3 | 4 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -16,7 +16,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Domain | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Startup and party | 8 | 1 | 0 | 7 | 0 |
-| Exploration | 6 | 1 | 2 | 3 | 0 |
+| Exploration | 6 | 1 | 1 | 4 | 0 |
 | Scenario interaction | 6 | 0 | 2 | 4 | 0 |
 | Character management | 5 | 1 | 1 | 3 | 0 |
 | Inventory and equipment | 7 | 0 | 3 | 4 | 0 |
@@ -34,8 +34,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 13 |
-| required | 10 |
-| completed | 37 |
+| required | 9 |
+| completed | 38 |
 
 | Remake | Count |
 | --- | ---: |
@@ -56,8 +56,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | --- | ---: |
 | not-applicable | 2 |
 | absent | 3 |
-| partial | 15 |
-| complete | 40 |
+| partial | 14 |
+| complete | 41 |
 
 | persistence | Count |
 | --- | ---: |
@@ -115,7 +115,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **27**.
+Blockers: **1**. Major gaps: **26**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -123,7 +123,6 @@ Blockers: **1**. Major gaps: **27**.
 - **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Correct the obscuring tactical layout, then exercise ordinary defeat or retreat and a reward that produces a level-up before presentation acceptance.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Create synthetic Castle fixtures for battle modes 5 and 10 and opcode 48 bonus treasure before changing the package contract.
 - **major** `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end. Next: Trace the preference/save fields and ordinary cast handoff, then decide whether the shortcut is Classic state or presentation state.
-- **major** `classic.exploration.time-fatigue-light` — Timed dispatch is now saveable, but Castle's hourly fatigue and torch decay contain suspicious control-flow that has not been adjudicated. Next: Characterize hourly fatigue and generic-plus-specific torch decay with controlled state before changing the current deterministic clock rules.
 - **major** `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved. Next: Use controlled fixtures for zero/negative land tiles, boat/shore cancellation, special dungeon wall bits, and attempted-coordinate timed gates before broadening the topology result.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
 - **major** `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow. Next: Trace every items.c branch before deleting the intents or implementing a stack operation.
@@ -149,7 +148,6 @@ Blockers: **1**. Major gaps: **27**.
 ## Oracle-required unknowns
 
 - `classic.exploration.fast-spell` — Cast a numeric fast spell
-- `classic.exploration.time-fatigue-light` — Observe time, fatigue, and light
 - `classic.exploration.travel` — Travel on land and in dungeons
 - `classic.inventory.identify-item` — Identify an item
 - `classic.inventory.manage-equipment` — Equip and unequip carried items
@@ -164,7 +162,6 @@ Blockers: **1**. Major gaps: **27**.
 ### aogm
 
 - `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
-- `classic.exploration.time-fatigue-light` — Timed dispatch is now saveable, but Castle's hourly fatigue and torch decay contain suspicious control-flow that has not been adjudicated.
 - `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved.
 - `classic.inventory.use-item` — Fixed-power charged items and field scroll scribing/use now preserve exact targets, charges/load, five-slot state, sound, save/resume, and transactional cancellation; combat scrolls, discard, case transfer, door/XAP items, random-power combat, spatial/repeated targets, and broader specials remain explicit.
 - `classic.maps.view-acquired` — Realmz 2 packages omit Castle's player-map records and map-menu names.

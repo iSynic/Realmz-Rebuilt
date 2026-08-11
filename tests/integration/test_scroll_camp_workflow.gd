@@ -101,11 +101,13 @@ func run() -> void:
 	rest_caster.current_health = 5
 	rest_caster.spell_points = 0
 	rest_session._state.party.fatigue = 80
+	rest_session._state.party.conditions.set_value(ConditionRules.PARTY_TORCH_LIT, 3)
 	rest_session._state.clock.set_total_minutes(50)
 	var rested := rest_session.submit_intent(PlayerIntent.rest())
 	assert_equal(rested.state, SessionStep.State.COMPLETED, "one typed Rest intent commits one held-control pulse")
 	assert_equal(rest_session._state.clock.total_minutes(), 75, "one outdoor Rest pulse advances five five-minute time clicks")
 	assert_equal(rest_session._state.party.fatigue, 79, "Rest removes two fatigue before the crossed hour adds one")
+	assert_equal(rest_session._state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 1, "the crossed hour applies Castle's generic and torch-specific light decrements")
 	assert_equal(rest_caster.spell_points, 3, "the crossed hour restores half the character level in spell points")
 	assert_equal(rest_caster.current_health, 5, "an ordinary hour boundary does not restore health")
 	assert_true(_has_event(rested, &"party_rested"), "Rest publishes a committed workflow event")
