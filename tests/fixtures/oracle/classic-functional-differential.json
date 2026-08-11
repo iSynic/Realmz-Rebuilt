@@ -2469,7 +2469,7 @@
       "id": "economy.classic-shop-lifecycle",
       "workflowIds": ["classic.inventory.identify-item","classic.services.shop"],
       "domain": "economy",
-      "claim": "An ordinary Classic shop exposes identified stock, purchases with pooled-then-personal gold, values sales from half base cost and remaining charges with the unidentified penalty, refuses ordinary equipped-item sales, offers fixed twenty-gold identification, and retains sold items as mutable buyback stock.",
+      "claim": "An ordinary Classic shop exposes identified stock, purchases with pooled-then-personal gold, values sales from half base cost and remaining charges with the unidentified penalty, refuses ordinary equipped-item sales, offers fixed twenty-gold identification, retains sold items as mutable buyback stock, and imports then returns every banked denomination when banking is concurrently available.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "Remake supplies a dedicated shop workspace with purchase, sale, category or buyback restocking, equipment guards, and paid-identification controls. Its generic buy and sell rates do not establish Classic charge or unidentified valuation.",
@@ -2488,12 +2488,15 @@
           { "path": "src/realmz_orig/moveicon.c", "symbol": "void itemcost(short mode)" },
           { "path": "src/realmz_orig/moveicon.c", "symbol": "void moveicon(void)" },
           { "path": "src/realmz_orig/items.c", "symbol": "short items(void)" },
-          { "path": "src/realmz_orig/getselection.c", "symbol": "short getselection(short tempid)" }
+          { "path": "src/realmz_orig/getselection.c", "symbol": "short getselection(short tempid)" },
+          { "path": "src/realmz_orig/save-direction-order.c", "symbol": "short seeshop(short mode)" },
+          { "path": "src/realmz_orig/choice.c", "symbol": "short choice(" }
         ],
         "authoredInputs": ["shop inflation", "five native 200-slot stock categories", "item cost", "authored and current charges", "identified and equipped flags", "configured accepted item ranges"],
-        "observation": "Shop stock is always identified. Purchase price is absolute cost times inflation with a 32000 cap; purchases consume pooled then selected-character gold, install authored charges, and decrement stock. Sale first integer-halves absolute cost, multiplies by current/authored charge ratio, applies inflation capped at 100 percent, then divides an unidentified result by fifty. Ordinary selection prevents equipped sale. A sale adds pooled gold and increments the first matching native category slot or fills its first empty slot. Paid identification spends twenty gold on one selected instance and plays sound 683.",
+        "observation": "Shop stock is always identified. Purchase price is absolute cost times inflation with a 32000 cap; purchases consume pooled then selected-character gold, install authored charges, and decrement stock. Sale first integer-halves absolute cost, multiplies by current/authored charge ratio, applies inflation capped at 100 percent, then divides an unidentified result by fifty. Ordinary selection prevents equipped sale. A sale adds pooled gold and increments the first matching native category slot or fills its first empty slot. Paid identification spends twenty gold on one selected instance and plays sound 683. When banking is available, shop entry moves all banked gold, gems, and jewelry into the shared pool and shop exit returns the complete remaining pool to the bank.",
         "unresolved": [
           "A definition with zero authored and current charges evaluates 0.0/0.0 before assigning the result through a short; FD-ECONOMY-001 defines a portable result.",
+          "Castle runs global Shop macro slot four before contextual shop entry. Providence schema v2 does not emit native Global hooks, so that authored pre-entry behavior remains unavailable.",
           "Providence schema v2 preserves occupied stock order but not empty native slot indices, so exact first-empty visual ordering cannot yet be reconstructed. Player-visible buyback identity and quantity are retained in normalized save-owned stock.",
           "Castle's one-configured-range rejection counter accepts every item; Realmz 2.0 preserves that control flow until authored use proves a correction is required."
         ]
@@ -2504,11 +2507,11 @@
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(project: &ProvidenceProject) -> Vec<Value>" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_shops(project: &ProvidenceProject, reachability: &RuntimeReachability) -> Vec<Value>" }
         ],
-        "expectedRepresentation": "Schema v2 already emits item costs, authored charges, weights, identified and unidentified names, shop inflation, occupied stock identity, quantity, and order. No compiler change is required for pricing, paid identification, or normalized buyback state; native empty-slot provenance remains a compiler gap."
+        "expectedRepresentation": "Schema v2 already emits item costs, authored charges, weights, identified and unidentified names, shop inflation, occupied stock identity, quantity, and order. No compiler change is required for pricing, paid identification, or normalized buyback state. Native global Shop macro identity and empty-slot provenance remain compiler gaps."
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/economy_rules.gd", "symbol": "func shop_sell_price(" },
-        "expectedTrace": ["enter a typed shop continuation", "render identified immutable and save-owned buyback stock", "render only player-knowable carried-item identity", "revalidate buyer capacity or seller equipment and accepted ranges", "take pooled-then-personal gold or add sale gold to the pool", "create an identified purchased instance or remove the exact sold instance", "mutate base or normalized buyback stock", "identify one exact instance for twenty gold and request sound 683", "regenerate the typed shop request", "serialize interaction, stock, wealth, inventory, and identification state"],
+        "expectedTrace": ["enter a typed shop continuation", "move all banked denominations into the pool when banking is available", "render identified immutable and save-owned buyback stock", "render only player-knowable carried-item identity", "revalidate buyer capacity or seller equipment and accepted ranges", "take pooled-then-personal gold or add sale gold to the pool", "create an identified purchased instance or remove the exact sold instance", "mutate base or normalized buyback stock", "identify one exact instance for twenty gold and request sound 683", "regenerate the typed shop request", "serialize interaction, stock, wealth, inventory, and identification state", "return the complete remaining pool to the bank on bank-backed shop exit"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_inventory_economy_and_treasure()" },
           { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_shop_lifecycle(content: RealmzContent)" },
@@ -2655,7 +2658,7 @@
         "authoredInputs": ["selected character", "personal and pooled denominations", "current and maximum load", "shop, temple, and bank availability"],
         "observation": "The ordinary Swap command opens the same modal used by rewards and services. Character-to-pool and pool-to-character buttons repeat while held, moving five gold or one gem or jewelry per step. Pool-to-character checks the complete added load; each successful step recalculates movement and uses sound 10051 toward the character or 663 toward the pool. Done exits without another money mutation.",
         "unresolved": [
-          "The same modal conditionally exposes money changing and imports banked wealth. Those contextual exchange and banking lifecycles remain scheduled under their own audit gaps rather than being inferred into ordinary character transfers.",
+          "The same modal conditionally exposes money changing and imports banked wealth. Banking is owned by economy.classic-bank-swap; contextual exchange rates remain scheduled separately rather than being inferred into ordinary character transfers.",
           "Workspace-open sound 3003 and Done sound 141 are presentation polish not yet connected to route navigation."
         ]
       },
@@ -2674,7 +2677,54 @@
       },
       "decision": "aligned",
       "availability": "implemented",
-      "status": "ordinary-three-denomination-character-pool-transfer-save-and-presentation-verified-contextual-exchange-and-bank-lifecycle-separate"
+      "status": "ordinary-three-denomination-character-pool-transfer-save-and-presentation-verified-contextual-exchange-separate"
+    },
+    {
+      "id": "economy.classic-bank-swap",
+      "workflowIds": ["classic.services.bank"],
+      "domain": "economy",
+      "claim": "Classic opcode 49 enables bank-backed Swap: opening it moves all banked gold, gems, and jewelry into the shared pool once; Pool, Share, and exact character transfers operate through the ordinary Swap rules; Done closes only the modal; and location departure returns the complete remaining pool to the bank and disables banking.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake supplies a money workspace with Pool, Share, selected-character transfers, and bank-related presentation leads. Its generic quantities and host-owned workflow do not establish Castle bank import, Done, or departure semantics.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/MoneyRect/MoneyRect.gd", "symbol": "func _on_poolArrow_pressed(" },
+          { "path": "src/scenes/UI/HUD/MoneyRect/MoneyRect.gd", "symbol": "func _on_changeArrow_pressed(" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/newland.c", "symbol": "case 49" },
+          { "path": "src/realmz_orig/swap.c", "symbol": "void swap(void)" },
+          { "path": "src/realmz_orig/moveparty.c", "symbol": "void moveparty(short forward)" },
+          { "path": "src/realmz_orig/checkmoneypool.c", "symbol": "void checkmoneypool(void)" }
+        ],
+        "authoredInputs": ["opcode 49 availability", "banked gold, gems, and jewelry", "pooled and personal denominations", "selected character", "current and maximum load", "location departure"],
+        "observation": "Opcode 49 sets bank availability and returns to exploration. Opening Swap while that flag is set adds all three bank balances to the shared pool and zeros the bank. Pool, Share, and repeated exact five-gold or one-gem/jewelry transfers then use the ordinary modal. Done plays sound 141 and performs no bank mutation. A forward move or pooled-wealth cleanup returns every remaining pooled denomination to the bank, clears the pool, and disables bank availability.",
+        "unresolved": ["Castle's bank is the ordinary Swap modal rather than a separately labelled amount-transfer screen; Realmz 2.0 keeps a contextual Bank command so the workflow is discoverable while preserving the source mutations and ordering."]
+      },
+      "providence": {
+        "commit": "4f0ea8fedea6bca2e197c4eb900b80e25eb767e8",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
+        ],
+        "expectedRepresentation": "Schema v2 already preserves opcode 49 and the session save owns all three banked, pooled, and personal denominations. No immutable compiler field or package migration is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func _resume_banking(" },
+        "expectedTrace": ["execute opcode 49 and expose contextual bank availability", "enter through one typed service intent", "move every banked denomination to the pool once", "render detached Pool, Share, selected-character, exact-increment, balance, load, and reason facts", "revalidate and commit one typed money response", "request source sounds for open, Pool or Share, transfer direction, and Done", "serialize the bank interaction and complete wealth state without a second drain", "close Done without re-banking", "return all remaining pooled denominations and disable banking on location departure"],
+        "tests": [
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_bank_swap_lifecycle(content: RealmzContent)" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent)" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_bank_component()" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "all-denomination-open-pool-share-swap-done-save-and-departure-return-verified"
     },
     {
       "id": "rewards.ordinary-distribution",

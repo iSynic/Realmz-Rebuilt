@@ -519,3 +519,16 @@ That pass handed off to active-character appearance change, completed in the fol
 - The regenerated audit reports 38 functional Classic workflows, 27 major gaps, one release blocker, and 65 bidirectionally linked differential cases. Evidence is synthetic; presentation is not yet ordinary-play accepted.
 
 Next application-workflow priority: return to the audit's AOGM queue. The adjacent Character gaps are either party-setup inspection or lifetime combat history; the former is bounded UI work, while the latter requires broader combat/magic counter ownership and should not be filled from guessed zeros.
+
+## Current rolling fidelity pass — Classic bank-backed Swap
+
+- Castle does not implement banking as arbitrary gold deposits and withdrawals. Opcode 49 enables a location context; opening the ordinary Swap modal moves every banked gold, gem, and jewelry record into the shared pool once. Pool, Share, and character transfers retain their ordinary rules, and Done closes only the modal.
+- Realmz 2.0 now presents that workflow through the typed contextual Bank command. The request contains detached pooled, banked, personal, load, exact-increment, and unavailable-reason facts. Responses may Pool, Share, transfer five gold or one gem/jewelry, or finish; the presenter owns no legality or mutation.
+- Bank entry and every response survive the existing central save boundary without a second bank drain. Done requests Castle sound 141 and leaves banking active. A source-legal location departure returns the complete remaining pool to the bank, clears the pool, and disables the contextual service exactly once.
+- The same archaeology exposed a related shop defect: Castle shop entry imports all banked denominations and shop exit returns the complete remainder. The runtime now does both without changing the shop continuation or `.r2save` v3 envelope.
+- Providence schema v2 needs no change. Opcode 49 is already compiled and all banked, pooled, and personal denominations are mutable session state.
+- The regenerated audit reports 37 functional Classic workflows, 28 major gaps, one host release blocker, and 66 bidirectionally linked differential cases. Bank-backed Swap is functional from source, simulation, persistence, and presentation evidence; it is not certified because no ordinary campaign bank route has been exercised. Shop and Temple moved from functional to partial after the audit exposed their missing global application hooks; that count correction is evidence hygiene, not a regression in their implemented subsets.
+
+Flagged rather than hidden: Castle's bank is visually the generic Swap modal, while 2.0 keeps a separately labelled Bank command for discoverability. This does not alter the source mutation sequence. Money-changing rates, the no-bank pooled-wealth departure warning, and ordinary-campaign bank acceptance remain separate workflow gaps.
+
+Next batch priority: finish the coherent service-workflow closeout through one ordinary AOGM contextual service route, then return to the regenerated major-gap queue rather than reopening isolated economy formulas.

@@ -14,6 +14,7 @@ func run() -> void:
 	_test_battle_weapon_mode_component()
 	_test_shop_component()
 	_test_temple_component()
+	_test_bank_component()
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
@@ -219,6 +220,52 @@ func _test_temple_component() -> void:
 		{"action": "service", "serviceId": "heal-small", "characterId": "character.one"},
 		{"action": "pool", "selectedCharacterId": "character.one"},
 	], "the temple presenter emits typed service and wealth responses with the current stable character identity")
+	component.free()
+
+
+func _test_bank_component() -> void:
+	var request := InteractionRequest.new("bank.fixture", InteractionRequest.BANK, {
+		"selectedCharacterId": "character.one",
+		"pooledWealth": {"gold": 35, "gems": 2, "jewelry": 1},
+		"bankedWealth": {"gold": 0, "gems": 0, "jewelry": 0},
+		"pool": {"enabled": true, "reason": ""},
+		"share": {"enabled": false, "reason": "No adventurer can carry another pooled denomination."},
+		"characters": [{
+			"id": "character.one",
+			"name": "Hero",
+			"wealth": {"gold": 10, "gems": 1, "jewelry": 0},
+			"load": 11,
+			"maximumLoad": 20,
+			"transfers": [
+				{"denomination": "gold", "amount": 5, "toPool": {"enabled": true, "reason": ""}, "toCharacter": {"enabled": true, "reason": ""}},
+				{"denomination": "gems", "amount": 1, "toPool": {"enabled": true, "reason": ""}, "toCharacter": {"enabled": true, "reason": ""}},
+				{"denomination": "jewelry", "amount": 1, "toPool": {"enabled": false, "reason": "Hero does not carry that amount."}, "toCharacter": {"enabled": false, "reason": "Hero cannot carry that denomination."}},
+			],
+		}],
+	})
+	var component := BankInteraction.new()
+	var submitted: Array[Dictionary] = []
+	component.payload_submitted.connect(func(payload: Dictionary) -> void: submitted.append(payload))
+	component.build(request)
+	var buttons: Array[Button] = []
+	for node: Node in component.find_children("*", "Button", true, false):
+		buttons.append(node as Button)
+	var labels: Array[String] = []
+	for node: Node in component.find_children("*", "Label", true, false):
+		labels.append((node as Label).text)
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("35 gold") and text.contains("2 gems") and text.contains("1 jewelry")), "bank workspace renders every pooled denomination")
+	var share_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Share pooled wealth")[0]
+	assert_true(share_button.disabled and share_button.tooltip_text.contains("can carry"), "bank workspace displays the core-owned Share blocker")
+	var to_character: Array[Button] = buttons.filter(func(button: Button) -> bool: return button.text == "To Hero")
+	assert_equal(to_character.size(), 3, "bank-backed Swap exposes all three Classic denomination transfers")
+	assert_true(to_character[2].disabled and to_character[2].tooltip_text.contains("cannot carry"), "bank presentation does not duplicate jewelry capacity rules")
+	to_character[0].pressed.emit()
+	var leave_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Done")[0]
+	leave_button.pressed.emit()
+	assert_equal(submitted, [
+		{"action": "to-character", "characterId": "character.one", "denomination": "gold", "amount": 5},
+		{"action": "leave"},
+	], "bank presenter emits exact typed Swap and Done responses")
 	component.free()
 
 

@@ -2,6 +2,7 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const AOGM_OPCODE_INVENTORY_PATH: String = "res://tests/fixtures/oracle/aogm-active-opcode-inventory.json"
+const BANK_SOURCE_OBSERVATION_PATH: String = "res://tests/fixtures/oracle/classic-bank-swap-source-observation.json"
 
 
 func run() -> void:
@@ -49,6 +50,7 @@ func run() -> void:
 	_test_classic_shop_configuration(loaded.content)
 	_test_classic_shop_lifecycle(loaded.content)
 	_test_classic_temple_lifecycle(loaded.content)
+	_test_classic_bank_swap_lifecycle(loaded.content)
 	_test_classic_priest_turning(loaded.content)
 	_test_classic_experience_loss_and_drop(loaded.content)
 	_test_classic_character_money_loss(loaded.content)
@@ -268,11 +270,29 @@ func _test_classic_shell_domain_route(content: RealmzContent) -> void:
 	var bank_offer := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal(bank_offer.state, SessionStep.State.COMPLETED, "bank AP offers a contextual service without forcing presentation")
 	assert_true(session.view().services.any(func(service: ServiceView) -> bool: return service.service_kind == &"bank"), "the detached view exposes the available bank")
+	session._state.party.pooled_wealth = WealthState.new(10, 0, 0)
+	session._state.party.banked_wealth = WealthState.new(25, 2, 1)
 	var bank := session.submit_intent(PlayerIntent.service_action("realmz.service.bank", &"enter"))
 	assert_equal(bank.interaction.kind, InteractionRequest.BANK, "the player enters the bank through the same service intent boundary")
-	assert_true(bank.interaction.payload.has("carriedGold") and bank.interaction.payload.has("bankedGold"), "bank presenter receives only detached wealth values")
-	assert_not_null(SaveEnvelope.from_data(session.snapshot().to_data()), "bank interaction is a committed save boundary")
-	assert_equal(session.respond(InteractionResponse.new(bank.interaction.request_id, InteractionRequest.BANK, {"action": "leave", "amount": 0})).state, SessionStep.State.COMPLETED, "leaving the bank closes the service workspace")
+	assert_true(bank.interaction.payload.get("pooledWealth") is Dictionary and bank.interaction.payload.get("bankedWealth") is Dictionary and bank.interaction.payload.get("characters") is Array, "bank presenter receives only detached wealth and transfer facts")
+	assert_equal(session._state.party.pooled_wealth.to_data(), {"gold": 35, "gems": 2, "jewelry": 1}, "entering the bank drains every deposited denomination into the shared pool")
+	var bank_save := SaveEnvelope.from_data(session.snapshot().to_data())
+	assert_not_null(bank_save, "bank interaction is a committed save boundary")
+	var restored_bank := GameSession.new()
+	assert_equal(restored_bank.restore(content, bank_save).state, SessionStep.State.COMPLETED, "pending bank-backed Swap restores transactionally")
+	assert_equal([restored_bank._state.party.pooled_wealth.to_data(), restored_bank._state.party.banked_wealth.to_data()], [{"gold": 35, "gems": 2, "jewelry": 1}, {"gold": 0, "gems": 0, "jewelry": 0}], "restore does not drain banked wealth a second time")
+	assert_equal(restored_bank.respond(InteractionResponse.new(restored_bank.view().pending_interaction.request_id, InteractionRequest.BANK, {"action": "leave"})).state, SessionStep.State.COMPLETED, "Done closes the restored bank workspace")
+	assert_equal([restored_bank._state.party.pooled_wealth.gold, restored_bank._state.party.banked_wealth.gold], [35, 0], "Done preserves pooled bank wealth until location departure")
+	var departure_direction := Vector2i.ZERO
+	for direction: Vector2i in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i(1, -1), Vector2i(1, 1), Vector2i(-1, 1), Vector2i(-1, -1)]:
+		if content.world.probe_movement(restored_bank._state.party.map_id, restored_bank._state.party.coordinate, direction, restored_bank._state.world).allowed:
+			departure_direction = direction
+			break
+	assert_true(departure_direction != Vector2i.ZERO, "bank route has a source-legal location departure")
+	if departure_direction != Vector2i.ZERO:
+		restored_bank.submit_intent(PlayerIntent.move(departure_direction))
+		assert_false(restored_bank._state.bank_available, "location departure disables the contextual bank")
+		assert_equal([restored_bank._state.party.pooled_wealth.to_data(), restored_bank._state.party.banked_wealth.to_data()], [{"gold": 0, "gems": 0, "jewelry": 0}, {"gold": 35, "gems": 2, "jewelry": 1}], "location departure returns every remaining pooled denomination to the bank")
 
 
 func _test_complex_encounter_save_resume(content: RealmzContent) -> void:
@@ -996,6 +1016,15 @@ func _test_classic_shop_lifecycle(content: RealmzContent) -> void:
 	assert_equal(state.shop_buyback_quantity("classic.shop.0", resale_item.id), 0, "buyback purchase consumes the dynamic stock entry")
 	var returned_instance: ItemInstance = character.inventory()[-1]
 	assert_equal([returned_instance.definition_id, returned_instance.identified], [resale_item.id, true], "buyback stock is shop-owned and therefore identified")
+	party.banked_wealth = WealthState.new(50, 2, 1)
+	assert_equal(api.execute_classic(ClassicActionDefinition.new(0, 49, 49, 0, false, []), "request.shop-bank-offer").state, ScenarioRuntimeOperationResult.State.COMPLETED, "shop bank fixture enables the source banking context")
+	var banked_shop := api.execute_classic(ClassicActionDefinition.new(0, 6, 6, 0, false, []), "request.shop-bank-open")
+	assert_equal(banked_shop.state, ScenarioRuntimeOperationResult.State.WAITING, "a shop opened in banking context remains a typed service workspace")
+	assert_equal(party.banked_wealth.to_data(), {"gold": 0, "gems": 0, "jewelry": 0}, "bank-backed shop entry moves all deposited denominations into the payable pool")
+	var shop_pool_before_close := party.pooled_wealth.to_data()
+	var banked_shop_closed := api.resume_classic(banked_shop.continuation, InteractionResponse.new(banked_shop.interaction.request_id, InteractionRequest.SHOP, {"action": "leave"}), banked_shop.interaction.request_id)
+	assert_equal(banked_shop_closed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "leaving a bank-backed shop closes normally")
+	assert_equal([party.pooled_wealth.to_data(), party.banked_wealth.to_data()], [{"gold": 0, "gems": 0, "jewelry": 0}, shop_pool_before_close], "bank-backed shop exit returns the complete remaining pool to the bank")
 
 
 func _test_classic_temple_lifecycle(content: RealmzContent) -> void:
@@ -1033,6 +1062,61 @@ func _test_classic_temple_lifecycle(content: RealmzContent) -> void:
 	var closed := api.resume_classic(poison.continuation, InteractionResponse.new(poison.interaction.request_id, InteractionRequest.TEMPLE, {"action": "leave"}), poison.interaction.request_id)
 	assert_equal(closed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "leaving a bank-backed temple closes without another player choice")
 	assert_equal([party.pooled_wealth.gold, party.banked_wealth.gold, party.banked_wealth.gems, party.banked_wealth.jewelry], [0, 550, 2, 1], "temple exit returns all pooled denominations to the available bank")
+
+
+func _test_classic_bank_swap_lifecycle(content: RealmzContent) -> void:
+	var observation: Variant = JSON.parse_string(FileAccess.get_file_as_string(BANK_SOURCE_OBSERVATION_PATH))
+	assert_true(observation is Dictionary and observation.get("evidence") == "source-control-flow", "Classic bank characterization is tied to the pinned Castle source observation")
+	var race: RaceDefinition = null
+	var caste: CasteDefinition = null
+	for candidate_caste: CasteDefinition in content.caste_definitions():
+		for candidate_race: RaceDefinition in content.race_definitions():
+			if not candidate_race.eligible_caste_ids.is_empty() and not candidate_race.eligible_caste_ids.has(candidate_caste.id):
+				continue
+			if not candidate_caste.eligible_race_ids.is_empty() and not candidate_caste.eligible_race_ids.has(candidate_race.id):
+				continue
+			race = candidate_race
+			caste = candidate_caste
+			break
+		if race != null:
+			break
+	assert_not_null(race, "bank fixture finds package-backed character rules for movement recalculation")
+	if race == null or caste == null:
+		return
+	var character := CharacterState.new("bank.character", "Depositor", 10, 10)
+	character.race_id = race.id
+	character.caste_id = caste.id
+	character.maximum_load = 500
+	character.money = WealthState.new(5, 1, 0)
+	character.carried_load = 6
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
+	party.pooled_wealth = WealthState.new(10, 0, 0)
+	party.banked_wealth = WealthState.new(25, 2, 1)
+	var state := GameState.new(party, RealmzClock.new())
+	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var offered := api.execute_classic(ClassicActionDefinition.new(0, 49, 49, 0, false, []), "request.bank-offer")
+	assert_equal(offered.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 49 makes banking available without opening a transfer dialog")
+	var opened := api.request_available_bank("request.bank-open")
+	assert_equal(opened.state, ScenarioRuntimeOperationResult.State.WAITING, "the bank command opens the typed Classic Swap workspace")
+	assert_equal(party.banked_wealth.to_data(), {"gold": 0, "gems": 0, "jewelry": 0}, "opening bank-backed Swap drains every deposited denomination exactly once")
+	assert_equal(party.pooled_wealth.to_data(), {"gold": 35, "gems": 2, "jewelry": 1}, "banked wealth joins the existing shared pool without loss")
+	assert_equal(opened.interaction.payload.get("pooledWealth"), party.pooled_wealth.to_data(), "the presenter receives all detached pooled denominations")
+	assert_equal(opened.interaction.payload.get("characters", []).size(), 1, "bank-backed Swap exposes typed character transfer facts")
+	var transfer := api.resume_classic(opened.continuation, InteractionResponse.new(opened.interaction.request_id, InteractionRequest.BANK, {"action": "to-character", "characterId": character.id, "denomination": "gold", "amount": 5}), opened.interaction.request_id)
+	assert_equal(transfer.state, ScenarioRuntimeOperationResult.State.WAITING, "bank-backed Swap moves one exact Classic denomination increment")
+	assert_equal([party.pooled_wealth.gold, character.money.gold], [30, 10], "bank-backed Swap preserves gold totals")
+	assert_true(transfer.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 10051), "bank-backed pool-to-character transfer requests Castle sound 10051")
+	var forged := api.resume_classic(transfer.continuation, InteractionResponse.new(transfer.interaction.request_id, InteractionRequest.BANK, {"action": "to-character", "characterId": character.id, "denomination": "gold", "amount": 1}), transfer.interaction.request_id)
+	assert_equal(forged.error_code, &"invalid_money_increment", "bank-backed Swap rejects arbitrary gold amounts")
+	assert_equal([party.pooled_wealth.gold, character.money.gold], [30, 10], "rejected bank transfer mutates no wealth")
+	var closed := api.resume_classic(transfer.continuation, InteractionResponse.new(transfer.interaction.request_id, InteractionRequest.BANK, {"action": "leave"}), transfer.interaction.request_id)
+	assert_equal(closed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Done closes only the bank-backed Swap workspace")
+	assert_true(closed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 141), "bank-backed Swap Done requests Castle sound 141")
+	assert_true(state.bank_available, "Done preserves the source banking context until location departure")
+	assert_equal([party.pooled_wealth.gold, party.banked_wealth.gold], [30, 0], "Done does not prematurely return the shared pool to the bank")
+	var reopened := api.request_available_bank("request.bank-reopen")
+	assert_equal(reopened.state, ScenarioRuntimeOperationResult.State.WAITING, "the contextual bank command can reopen Swap before departure")
+	assert_equal([party.pooled_wealth.gold, party.banked_wealth.gold], [30, 0], "reopening does not duplicate already-drained bank wealth")
 
 
 func _test_classic_priest_turning(content: RealmzContent) -> void:

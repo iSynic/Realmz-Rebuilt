@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 4 | 18 | 38 | 0 |
+| classic | 60 | 4 | 19 | 37 | 0 |
 | host | 8 | 1 | 3 | 4 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -21,7 +21,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Character management | 5 | 1 | 1 | 3 | 0 |
 | Inventory and equipment | 7 | 0 | 4 | 3 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
-| Services and economy | 5 | 0 | 1 | 4 | 0 |
+| Services and economy | 5 | 0 | 2 | 3 | 0 |
 | Combat | 8 | 0 | 1 | 7 | 0 |
 | Rewards and progression | 5 | 0 | 1 | 4 | 0 |
 | Maps and journal | 3 | 1 | 2 | 0 | 0 |
@@ -34,8 +34,8 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 15 |
-| required | 11 |
-| completed | 34 |
+| required | 10 |
+| completed | 35 |
 
 | Remake | Count |
 | --- | ---: |
@@ -49,15 +49,15 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | --- | ---: |
 | not-required | 14 |
 | missing | 0 |
-| partial | 5 |
-| complete | 41 |
+| partial | 7 |
+| complete | 39 |
 
 | simulation | Count |
 | --- | ---: |
 | not-applicable | 2 |
 | absent | 3 |
-| partial | 14 |
-| complete | 41 |
+| partial | 15 |
+| complete | 40 |
 
 | persistence | Count |
 | --- | ---: |
@@ -115,7 +115,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **27**.
+Blockers: **1**. Major gaps: **28**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -135,9 +135,10 @@ Blockers: **1**. Major gaps: **27**.
 - **major** `classic.rewards.treasure-distribution` — Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced. Next: Use controlled Castle RNG fixtures for ordinary, XP-only, and bonus-treasure battle rewards before implementing or correcting the random drops.
 - **major** `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
 - **major** `classic.scenario.random-timed-encounter` — Random rectangles execute through the session, but scheduled timed encounters have no clock-owned dispatcher. Next: Settle Castle's suspicious recx/recy gate and repeated midnight scan with a controlled fixture, then implement one save-owned scheduler and encounter resumption path.
-- **major** `classic.services.bank` — Banking transfers only gold although session state stores more Classic wealth denominations. Next: Trace the bank path and add an oracle fixture before expanding or limiting denominations.
 - **major** `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification. Next: Exercise buy, sell, identify, buyback, leave, and reload in an ordinary shop.
-- **major** `classic.services.temple` — The temple lifecycle has no ordinary campaign certification. Next: Exercise representative temple mutations and no-op payment in ordinary play.
+- **major** `classic.services.shop` — Realmz 2.0 packages omit Castle's global Shop macro hook. Next: Preserve global application hooks in Providence schema v2 and run the Shop hook through the session-owned VM before opening the service.
+- **major** `classic.services.temple` — The implemented temple subset has no ordinary campaign certification. Next: After hook support, exercise representative temple mutations and no-op payment in ordinary play.
+- **major** `classic.services.temple` — Realmz 2.0 packages omit Castle's global Temple macro hook. Next: Preserve global application hooks in Providence schema v2 and run the Temple hook through the session-owned VM before opening the service.
 - **major** `classic.spellcasting.combat-cast` — Combat spellcasting has extensive deterministic coverage but no ordinary campaign certification. Next: Cast representative single, group, and area spells in an ordinary AOGM battle and verify save/resume.
 - **major** `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise the field scroll workflow in ordinary AOGM play, then implement combat/discard/case-transfer branches only from their bounded differential evidence.
 - **major** `classic.startup.end-adventure` — There is no typed end-adventure boundary distinct from process quit or campaign replacement. Next: Add a committed session-close intent and confirmation workflow.
@@ -157,7 +158,6 @@ Blockers: **1**. Major gaps: **27**.
 - `classic.maps.location-notes` — Read and edit location notes
 - `classic.scenario.complex-interaction` — Resolve a complex or thief encounter
 - `classic.scenario.random-timed-encounter` — Enter a random or timed encounter
-- `classic.services.bank` — Use the bank
 - `classic.system.preferences` — Change Classic application preferences
 
 ## Prioritized remaining-work queues
@@ -172,7 +172,7 @@ Blockers: **1**. Major gaps: **27**.
 - `classic.maps.view-acquired` — Map IDs can be acquired, but the journal route explicitly lacks map viewing.
 - `classic.scenario.random-timed-encounter` — Random rectangles execute through the session, but scheduled timed encounters have no clock-owned dispatcher.
 - `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification.
-- `classic.services.temple` — The temple lifecycle has no ordinary campaign certification.
+- `classic.services.temple` — The implemented temple subset has no ordinary campaign certification.
 - `classic.spellcasting.combat-cast` — Combat spellcasting has extensive deterministic coverage but no ordinary campaign certification.
 - `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.startup.inspect-character` — Party setup cannot open a complete Classic character inspection workspace.
@@ -190,6 +190,7 @@ Blockers: **1**. Major gaps: **27**.
 - `classic.combat.retreat` — Retreat variants lack ordinary-campaign evidence.
 - `classic.exploration.travel` — Dungeon and boat variants lack ordinary campaign certification.
 - `classic.scenario.present-message-media` — Only AOGM's opening media sequence has ordinary-play evidence.
+- `classic.services.bank` — The complete bank-backed Swap lifecycle has no ordinary campaign certification.
 - `classic.startup.select-scenario` — Only AOGM has ordinary campaign-selection evidence in 2.0.
 - `host.package.discover-install` — Only AOGM package installation has ordinary evidence.
 - `host.vault.import-publish` — Cross-campaign reuse is tested but has no ordinary AOGM-to-War evidence.
@@ -206,9 +207,11 @@ Blockers: **1**. Major gaps: **27**.
 - `classic.maps.location-notes` — Player location notes are entirely absent and their exact save ownership is not yet traced.
 - `classic.rewards.treasure-distribution` — Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced.
 - `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented.
-- `classic.services.bank` — Banking transfers only gold although session state stores more Classic wealth denominations.
+- `classic.services.shop` — Realmz 2.0 packages omit Castle's global Shop macro hook.
+- `classic.services.temple` — Realmz 2.0 packages omit Castle's global Temple macro hook.
 - `classic.startup.end-adventure` — There is no typed end-adventure boundary distinct from process quit or campaign replacement.
 - `classic.character.view-sheet` — Several nonzero Classic ability slots lack verified display names.
+- `classic.services.shop` — Normalized shop stock omits native empty-slot provenance.
 - `classic.system.preferences` — Classic's editable stock spell/race/caste names are not represented and may conflict with immutable package content.
 
 ### polish

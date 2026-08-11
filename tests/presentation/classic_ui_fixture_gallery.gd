@@ -92,7 +92,18 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 		InteractionRequest.TEMPLE:
 			payload["characters"] = characters
 		InteractionRequest.BANK:
-			payload.merge({"carriedGold": 25, "bankedGold": 10})
+			payload.merge({
+				"selectedCharacterId": "hero",
+				"pooledWealth": {"gold": 25, "gems": 2, "jewelry": 1},
+				"bankedWealth": {"gold": 0, "gems": 0, "jewelry": 0},
+				"pool": {"enabled": not empty_values, "reason": "No adventurer carries wealth to pool." if empty_values else ""},
+				"share": {"enabled": not empty_values and state != &"capacity-blocked", "reason": "No adventurer can carry another pooled denomination." if state == &"capacity-blocked" else "The party wealth pool is empty." if empty_values else ""},
+				"characters": [] if empty_values else [{"id": "hero", "name": characters[0].get("name", "Hero"), "wealth": {"gold": 5, "gems": 1, "jewelry": 0}, "load": 6, "maximumLoad": 20, "transfers": [
+					{"denomination": "gold", "amount": 5, "toPool": {"enabled": true, "reason": ""}, "toCharacter": {"enabled": true, "reason": ""}},
+					{"denomination": "gems", "amount": 1, "toPool": {"enabled": true, "reason": ""}, "toCharacter": {"enabled": true, "reason": ""}},
+					{"denomination": "jewelry", "amount": 1, "toPool": {"enabled": false, "reason": "The character carries no jewelry."}, "toCharacter": {"enabled": state != &"capacity-blocked", "reason": "The character cannot carry that denomination." if state == &"capacity-blocked" else ""}},
+				]}],
+			})
 		InteractionRequest.COMBAT:
 			payload.merge({
 				"round": 1,
