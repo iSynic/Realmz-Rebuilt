@@ -24,7 +24,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | `classic.combat.physical-attack` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.spellcasting.combat-cast` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.combat.retreat` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary | GAP-REWARD-002 |
+| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
@@ -194,7 +194,6 @@ Blockers: **1**. Major gaps: **20**.
 - `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.exploration.contextual-service` — Contextual service entry is not yet demonstrated through ordinary AOGM play.
 - `classic.inventory.trade-item` — Trade has no ordinary campaign observation.
-- `classic.rewards.experience-level-up` — Experience award is observed in AOGM, but an actual level-up remains fixture-only.
 - `classic.scenario.select-subject` — Picker variants are tested synthetically but not all observed in ordinary AOGM play.
 - `classic.startup.create-character` — The five-step creator has deterministic and UI tests but no recorded ordinary AOGM completion in the audit evidence.
 - `classic.startup.end-adventure` — End Adventure has synthetic interaction and teardown proof but no ordinary AOGM acceptance.
