@@ -22,7 +22,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.combat.physical-attack` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.spellcasting.combat-cast` | certification | aogm-certification | aogm-ordinary | GAP-SPELL-003 |
+| `classic.spellcasting.combat-cast` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.combat.retreat` | certification | aogm-certification | aogm-ordinary | GAP-COMBAT-005 |
 | `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary | GAP-REWARD-002 |
 
@@ -143,7 +143,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **21**.
+Blockers: **1**. Major gaps: **20**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -164,7 +164,6 @@ Blockers: **1**. Major gaps: **21**.
 - **major** `classic.scenario.random-timed-encounter` — Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture. Next: Add a synthetic timed AP that changes map or coordinate, yields, applies any source-owned AP destination semantics, resumes the remaining scan, and performs the final random check at the resulting location.
 - **major** `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification. Next: Exercise buy, sell, identify, buyback, leave, and reload in an ordinary shop.
 - **major** `classic.services.temple` — The implemented temple subset has no ordinary campaign certification. Next: Exercise representative temple mutations and no-op payment in ordinary play.
-- **major** `classic.spellcasting.combat-cast` — Single-target and area combat spells have ordinary AOGM evidence, but the automatic-group branch remains uncertified. Next: Cast one representative automatic-group spell in ordinary AOGM play, then accept the complete responsive command-deck presentation.
 - **major** `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise the field scroll workflow in ordinary AOGM play, then implement combat/discard/case-transfer branches only from their bounded differential evidence.
 - **major** `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
@@ -192,7 +191,6 @@ Blockers: **1**. Major gaps: **21**.
 - `classic.scenario.random-timed-encounter` — Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture.
 - `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification.
 - `classic.services.temple` — The implemented temple subset has no ordinary campaign certification.
-- `classic.spellcasting.combat-cast` — Single-target and area combat spells have ordinary AOGM evidence, but the automatic-group branch remains uncertified.
 - `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.exploration.contextual-service` — Contextual service entry is not yet demonstrated through ordinary AOGM play.
 - `classic.inventory.trade-item` — Trade has no ordinary campaign observation.
