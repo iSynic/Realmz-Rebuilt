@@ -19,7 +19,7 @@ var _combat_rect := Rect2(0.0, 424.0, 960.0, 176.0)
 var _passive_text: bool = false
 
 
-func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: PackageMediaCatalog = null) -> void:
+func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
 	_request = request
 	_passive_text = false
 	_reset_interaction_scroll()
@@ -109,7 +109,7 @@ func set_text_scale(value: float) -> void:
 	_prompt.add_theme_font_size_override("font_size", int(round(20.0 * value)))
 
 
-func _component_for(request: InteractionRequest, game_view: GameView, media: PackageMediaCatalog) -> InteractionComponent:
+func _component_for(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> InteractionComponent:
 	if request.kind == InteractionRequest.ACKNOWLEDGE and request.payload.get("presentation") == "player-map":
 		var player_map := PlayerMapInteraction.new()
 		player_map.configure(game_view, media)

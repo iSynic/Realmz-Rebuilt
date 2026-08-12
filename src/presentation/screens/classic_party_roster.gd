@@ -8,11 +8,11 @@ const MUTED := Color("9da8aa")
 @onready var _party_list: VBoxContainer = %PartyList
 @onready var _heading: Label = %Heading
 
-var _media: PackageMediaCatalog
+var _media: ClassicMediaCatalog
 var _selected_character_id: String = ""
 
 
-func set_media_catalog(media: PackageMediaCatalog) -> void:
+func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
 
 

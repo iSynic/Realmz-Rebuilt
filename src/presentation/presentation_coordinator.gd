@@ -8,7 +8,8 @@ var _dungeon_presenter: DungeonMap3DPresenter
 var _interaction_presenter: InteractionPresenter
 var _shell_presenter: ClassicApplicationShell
 var _audio_presenter: ClassicAudioPresenter
-var _media: PackageMediaCatalog
+var _media: ClassicMediaCatalog
+var _application_media := ApplicationMediaCatalog.new()
 var _active_route: StringName = &"exploration"
 var _play_stage_visible := false
 
@@ -31,6 +32,7 @@ func bind(session_controller: GameSessionController, map_presenter: ClassicMapPr
 	_session_controller.step_committed.connect(_on_step_committed)
 	_shell_presenter.play_stage_visibility_changed.connect(set_play_stage_visible)
 	_shell_presenter.presentation_sound_requested.connect(_on_presentation_sound_requested)
+	set_package_media(null)
 	_present_current_view()
 
 
@@ -54,13 +56,13 @@ func _on_presentation_sound_requested(sound_id: int, wait_for_completion: bool, 
 
 
 func set_package_media(media: PackageMediaCatalog) -> void:
-	_media = media
-	_map_presenter.set_media_catalog(media)
-	_battlefield_presenter.set_media_catalog(media)
-	_shell_presenter.set_package_media(media)
+	_media = ClassicMediaCatalog.new(media, _application_media)
+	_map_presenter.set_media_catalog(_media)
+	_battlefield_presenter.set_media_catalog(_media)
+	_shell_presenter.set_package_media(_media)
 
 
-func package_media() -> PackageMediaCatalog:
+func package_media() -> ClassicMediaCatalog:
 	return _media
 
 

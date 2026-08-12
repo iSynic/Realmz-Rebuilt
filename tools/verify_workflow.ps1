@@ -32,6 +32,9 @@ if ($suiteFragments.Count -eq 0 -and $caseFragments.Count -gt 0) {
 
 & "$PSScriptRoot\run_tests.ps1" -Suite $suiteFragments -Case $caseFragments -TimeoutSeconds $TimeoutSeconds -GodotPath $GodotPath
 
+& "$PSScriptRoot\ui-assets\verify-classic-application-media.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Classic application media verification failed." }
+
 $changedPaths = @(
     git -C $repoRoot status --porcelain=v1 --untracked-files=all |
         ForEach-Object {

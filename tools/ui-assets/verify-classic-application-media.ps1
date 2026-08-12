@@ -1,0 +1,47 @@
+$ErrorActionPreference = "Stop"
+
+$toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
+$manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-application-media.json"
+if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+    throw "Classic application media manifest is missing"
+}
+$manifest = Get-Content -Raw -LiteralPath $manifestPath | ConvertFrom-Json
+if ($manifest.schema_version -ne 1 -or $manifest.lookup -ne "scenario-first-application-fallback") {
+    throw "Classic application media manifest contract is unsupported"
+}
+if ($manifest.source_commit -ne "491816ad60037394f92c428e99c004494d3c28b3" -or $manifest.license -ne "CC-BY-NC-SA-4.0" -or [string]::IsNullOrWhiteSpace($manifest.copyright) -or [string]::IsNullOrWhiteSpace($manifest.modification)) {
+    throw "Classic application media provenance or license metadata is incomplete"
+}
+$ids = @{}
+$keys = @{}
+foreach ($asset in $manifest.assets) {
+    if ($ids.ContainsKey($asset.id)) {
+        throw "Duplicate application media asset ID: $($asset.id)"
+    }
+    $ids[$asset.id] = $true
+    $key = "$($asset.resource_type):$($asset.resource_id)"
+    if ($keys.ContainsKey($key)) {
+        throw "Duplicate application media resource key: $key"
+    }
+    $keys[$key] = $true
+    if (-not $asset.path.StartsWith("res://")) {
+        throw "Application media path is not project-relative: $($asset.path)"
+    }
+    $relativePath = $asset.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar
+    $path = Join-Path $repoRoot $relativePath
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "Application media file is missing: $($asset.path)"
+    }
+    if ((Get-Item -LiteralPath $path).Length -ne $asset.bytes) {
+        throw "Application media byte count does not match: $($asset.id)"
+    }
+    $sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
+    if ($sha256 -ne $asset.sha256) {
+        throw "Application media hash does not match: $($asset.id)"
+    }
+}
+if ($manifest.assets.Count -ne 142) {
+    throw "Expected the complete 142-resource built-in sound catalog; found $($manifest.assets.Count)"
+}
+Write-Host "Classic application media verified: $($manifest.assets.Count) assets."

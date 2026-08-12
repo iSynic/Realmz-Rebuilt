@@ -47,6 +47,9 @@ Invoke-GodotGate "Godot project import/script validation" @("--headless", "--pat
 Invoke-GodotGate "Main scene smoke launch" @("--headless", "--path", $repoRoot, "--quit-after", "5")
 Invoke-GodotGate -Label "Headless test suite" -GodotArguments @("--headless", "--path", $repoRoot, "--script", "res://tests/test_runner.gd") -RejectTeardownLeaks
 
+& "$PSScriptRoot\ui-assets\verify-classic-application-media.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Classic application media verification failed." }
+
 & "$PSScriptRoot\verify_architecture.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Architecture boundary verification failed." }
 

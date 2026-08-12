@@ -25,7 +25,7 @@ func _ready() -> void:
 	_apply_volume()
 
 
-func present_events(events: Array[DomainEvent], media: PackageMediaCatalog) -> void:
+func present_events(events: Array[DomainEvent], media: ClassicMediaCatalog) -> void:
 	for event: DomainEvent in events:
 		if event.kind != &"sound_requested":
 			continue
@@ -39,8 +39,7 @@ func present_events(events: Array[DomainEvent], media: PackageMediaCatalog) -> v
 		if asset == null:
 			last_media_diagnostic = media.resolution_diagnostic("snd ", last_sound_id, "classic-sound")
 			continue
-		var bytes := media.read_bytes(asset)
-		var stream := _decode_stream(asset, bytes)
+		var stream := media.audio_stream_by_resource("snd ", last_sound_id)
 		last_media_diagnostic = media.resolution_diagnostic("snd ", last_sound_id, "classic-sound", "decoded" if stream != null else "decode-failed")
 		if stream == null:
 			continue
@@ -48,7 +47,7 @@ func present_events(events: Array[DomainEvent], media: PackageMediaCatalog) -> v
 	_drain_sound_queue()
 
 
-func present_sound(sound_id: int, media: PackageMediaCatalog, wait_for_completion: bool = false, stop_existing: bool = false) -> void:
+func present_sound(sound_id: int, media: ClassicMediaCatalog, wait_for_completion: bool = false, stop_existing: bool = false) -> void:
 	present_events([DomainEvent.new(&"sound_requested", {"soundId": sound_id, "waitForCompletion": wait_for_completion, "stopExisting": stop_existing, "source": "classic-presentation-workspace"})], media)
 
 
@@ -106,17 +105,3 @@ func _stop_all() -> void:
 	_pending_sounds.clear()
 	for player: AudioStreamPlayer in _players:
 		player.stop()
-
-
-func _decode_stream(asset: PackageMediaAsset, bytes: PackedByteArray) -> AudioStream:
-	if bytes.is_empty():
-		return null
-	var mime := asset.mime_type.to_lower()
-	var extension := asset.path.get_extension().to_lower()
-	if mime == "audio/wav" or mime == "audio/x-wav" or extension == "wav":
-		return AudioStreamWAV.load_from_buffer(bytes)
-	if mime in ["audio/mpeg", "audio/mp3"] or extension == "mp3":
-		return AudioStreamMP3.load_from_buffer(bytes)
-	if mime in ["audio/ogg", "audio/vorbis"] or extension == "ogg":
-		return AudioStreamOggVorbis.load_from_buffer(bytes)
-	return null

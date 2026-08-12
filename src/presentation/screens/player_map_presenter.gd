@@ -2,7 +2,7 @@ class_name PlayerMapPresenter
 extends VBoxContainer
 
 
-func present(view: PlayerMapView, media: PackageMediaCatalog) -> void:
+func present(view: PlayerMapView, media: ClassicMediaCatalog) -> void:
 	for child: Node in get_children():
 		remove_child(child)
 		child.queue_free()

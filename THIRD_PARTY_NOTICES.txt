@@ -1,0 +1,16 @@
+Realmz Rebuilt third-party notices
+
+Integrated Classic Realmz media
+Realmz copyright 1994 by Tim Phillips.
+Source: The Family Jewels resource fork in Realmz Castle Realmz,
+commit 491816ad60037394f92c428e99c004494d3c28b3.
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+SPDX identifier: CC-BY-NC-SA-4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Modifications: Macintosh snd resources were decoded to mono WAV files for Godot
+playback. Source sample rates below 8000 Hz were deterministically resampled to
+8000 Hz because the Godot WAV importer does not accept those original rates.
+
+Per-resource source and output hashes are recorded in
+src/presentation/assets/classic-application-media.json.

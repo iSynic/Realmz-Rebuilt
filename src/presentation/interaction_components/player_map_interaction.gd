@@ -2,10 +2,10 @@ class_name PlayerMapInteraction
 extends InteractionComponent
 
 var _view: GameView
-var _media: PackageMediaCatalog
+var _media: ClassicMediaCatalog
 
 
-func configure(game_view: GameView, media: PackageMediaCatalog) -> void:
+func configure(game_view: GameView, media: ClassicMediaCatalog) -> void:
 	_view = game_view
 	_media = media
 

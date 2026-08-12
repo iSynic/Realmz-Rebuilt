@@ -14,7 +14,7 @@ const PARTY_MARKER_ASSET_ID: StringName = &"map.party.right"
 @export var show_debug_facts: bool = false
 
 var _view: GameView
-var _media: PackageMediaCatalog
+var _media: ClassicMediaCatalog
 var _atlas_assets: Dictionary = {}
 var _atlas_textures: Dictionary = {}
 var _overlay_textures: Dictionary = {}
@@ -63,7 +63,7 @@ func present(game_view: GameView) -> void:
 	queue_redraw()
 
 
-func set_media_catalog(media: PackageMediaCatalog) -> void:
+func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
 	_atlas_assets.clear()
 	_atlas_textures.clear()

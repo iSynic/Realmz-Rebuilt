@@ -50,6 +50,19 @@ func asset_by_resource(resource_type: String, resource_id: int) -> PackageMediaA
 	return _assets_by_resource.get(_resource_key(resource_type, resource_id)) as PackageMediaAsset
 
 
+func resource_status(resource_type: String, resource_id: int) -> StringName:
+	if resource_type.is_empty():
+		return &"missing"
+	var key := _resource_key(resource_type, resource_id)
+	if _ambiguous_resource_keys.has(key):
+		return &"ambiguous"
+	return &"resolved" if _assets_by_resource.has(key) else &"missing"
+
+
+func owns_asset(asset: PackageMediaAsset) -> bool:
+	return asset != null and _assets.has(asset)
+
+
 func tileset_by_id(tileset_id: String) -> PackageMediaAsset:
 	var asset := asset_by_id(tileset_id)
 	return asset if asset != null and asset.is_tileset() else null

@@ -4,7 +4,7 @@ extends Control
 const MAP_SIZE: int = 320
 
 var _view: PlayerMapView
-var _media: PackageMediaCatalog
+var _media: ClassicMediaCatalog
 var _textures: Dictionary = {}
 
 
@@ -13,7 +13,7 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func present(view: PlayerMapView, media: PackageMediaCatalog) -> void:
+func present(view: PlayerMapView, media: ClassicMediaCatalog) -> void:
 	_view = view
 	_media = media
 	_textures.clear()

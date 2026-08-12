@@ -7,6 +7,7 @@ $schemaPath = Join-Path $repoRoot "contracts\realmz2\realmz2-package.schema.json
 $schemaHashPath = Join-Path $repoRoot "contracts\realmz2\realmz2-package.schema.sha256"
 $fixtureRoot = Join-Path $repoRoot "tests\fixtures\packages"
 $fixtureManifestPath = Join-Path $fixtureRoot "fixture-provenance.json"
+$noticePath = Join-Path $repoRoot "THIRD_PARTY_NOTICES.txt"
 
 if (-not (Test-Path -LiteralPath $presetPath)) {
     throw "export_presets.cfg is required."
@@ -32,6 +33,21 @@ foreach ($expected in $expectedPresets.GetEnumerator()) {
         if (-not $body.Contains($requiredExclusion)) {
             throw "Release preset $($expected.Key) must exclude $requiredExclusion"
         }
+    }
+    foreach ($requiredBundledFile in @("THIRD_PARTY_NOTICES.txt", "src/presentation/assets/classic-application-media.json", "src/presentation/assets/classic-media/**")) {
+        if ($body -notmatch ('(?m)^include_filter="[^"]*' + [regex]::Escape($requiredBundledFile) + '[^"]*"$')) {
+            throw "Release preset $($expected.Key) must include $requiredBundledFile"
+        }
+    }
+}
+
+if (-not (Test-Path -LiteralPath $noticePath -PathType Leaf)) {
+    throw "The release must carry THIRD_PARTY_NOTICES.txt."
+}
+$notice = Get-Content -Raw -LiteralPath $noticePath
+foreach ($requiredNotice in @("Realmz copyright 1994 by Tim Phillips", "CC-BY-NC-SA", "491816ad60037394f92c428e99c004494d3c28b3", "decoded to mono WAV")) {
+    if (-not $notice.Contains($requiredNotice)) {
+        throw "THIRD_PARTY_NOTICES.txt is missing required integrated-media provenance: $requiredNotice"
     }
 }
 

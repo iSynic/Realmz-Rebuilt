@@ -10,7 +10,7 @@ const MAX_VISIBLE_COLUMNS: int = 16
 const MAX_VISIBLE_ROWS: int = 14
 
 var _view: GameView
-var _media: PackageMediaCatalog
+var _media: ClassicMediaCatalog
 var _atlas_asset: PackageMediaAsset
 var _atlas_texture: Texture2D
 var _upper_atlas_id: String = ""
@@ -47,7 +47,7 @@ func present(game_view: GameView) -> void:
 	queue_redraw()
 
 
-func set_media_catalog(media: PackageMediaCatalog) -> void:
+func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
 	_atlas_asset = null
 	_atlas_texture = null

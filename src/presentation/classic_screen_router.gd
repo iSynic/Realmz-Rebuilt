@@ -78,7 +78,7 @@ var _draft_combat_icon_id: String = ""
 var _awaiting_draft_generation: bool = false
 var _awaiting_draft_finalization: bool = false
 var _settings: PresentationSettings = PresentationSettings.new()
-var _media: PackageMediaCatalog
+var _media: ClassicMediaCatalog
 var _route_history: Array[StringName] = []
 var _focus_keys: Dictionary = {}
 var _workspace_rect := Rect2(220.0, 100.0, 512.0, 430.0)
@@ -251,7 +251,7 @@ func set_save_previews(previews: Array) -> void:
 		_render_screen()
 
 
-func set_media_catalog(media: PackageMediaCatalog) -> void:
+func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
 	_appearance_textures.clear()
 	if _view != null and _view.session_started:

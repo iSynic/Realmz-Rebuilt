@@ -24,6 +24,7 @@ func run() -> void:
 	_test_temple_component()
 	_test_bank_component()
 	_test_money_workspace_audio()
+	_test_classic_application_media()
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
@@ -188,6 +189,7 @@ func _test_player_map_workspace() -> void:
 	assert_true(loaded.is_ok(), "the player-map presentation fixture loads through the independent package boundary")
 	if not loaded.is_ok():
 		return
+	var media := ClassicMediaCatalog.new(loaded.media, ApplicationMediaCatalog.new())
 	var definition := loaded.content.world.player_map_by_classic_id(1)
 	var session := GameSession.new()
 	assert_equal(session.start(loaded.content, 1).state, SessionStep.State.COMPLETED, "the player-map view fixture starts from validated content")
@@ -200,7 +202,7 @@ func _test_player_map_workspace() -> void:
 	router._content_parent = router._body
 	router.add_child(router._body)
 	router._view = view
-	router._media = loaded.media
+	router._media = media
 	router._render_journal()
 	assert_not_null(router.find_child("AcquiredMapChooser", true, false), "the Journal route exposes a presentation-owned acquired-map chooser")
 	var map_buttons: Array[Node] = router.find_child("AcquiredMapChooser", true, false).find_children("*", "Button", true, false)
@@ -212,7 +214,7 @@ func _test_player_map_workspace() -> void:
 	if note != null:
 		assert_contains(note.text, "deterministic map", "the displayed note comes from immutable player-map content")
 	var immediate := PlayerMapInteraction.new()
-	immediate.configure(view, loaded.media)
+	immediate.configure(view, media)
 	var payloads: Array[Dictionary] = []
 	immediate.payload_submitted.connect(func(payload: Dictionary) -> void: payloads.append(payload))
 	immediate.build(InteractionRequest.new("player-map.immediate", InteractionRequest.ACKNOWLEDGE, {"presentation": "player-map", "playerMapId": definition.id}))
@@ -231,13 +233,13 @@ func _test_player_map_workspace() -> void:
 	assert_equal(picture_view.picture_rect, Rect2i(36, 24, 240, 160), "picture-backed maps preserve their authored destination rectangle")
 	assert_true(picture_view.party_marker_visible, "picture-backed maps retain source playable-map identity for Castle's party marker")
 	var picture_canvas := PlayerMapCanvas.new()
-	picture_canvas.present(picture_view, loaded.media)
+	picture_canvas.present(picture_view, media)
 	assert_not_null(picture_canvas._texture_for(picture_view.picture_asset_id), "required player-map PICT media decodes through its exact package asset")
 	var dungeon_view := views_by_mode[PlayerMapDefinition.DUNGEON_CROP] as PlayerMapView
 	assert_equal([dungeon_view.map_id, dungeon_view.cells.size()], ["dungeon:0", 100], "dungeon crop facts derive from the same authoritative topology as exploration")
 	var scrolling_view := views_by_mode[PlayerMapDefinition.SCROLLING_TEXT] as PlayerMapView
 	var scrolling_presenter := PlayerMapPresenter.new()
-	scrolling_presenter.present(scrolling_view, loaded.media)
+	scrolling_presenter.present(scrolling_view, media)
 	assert_not_null(scrolling_presenter.find_child("PlayerMapScrollingText", true, false), "scrolling maps use their dedicated text stage")
 	assert_contains((scrolling_presenter.find_child("PlayerMapScrollingText", true, false) as RichTextLabel).text, "turns north", "the exact packaged TEXT resource decodes into the scrolling map stage")
 	assert_true(scrolling_presenter.find_child("PlayerMapNote", true, false) == null, "Castle's scrolling map path skips the ordinary map note")
@@ -581,6 +583,29 @@ func _test_money_workspace_audio() -> void:
 	assert_true(audio._pending_sounds.is_empty(), "quiet-and-open discards pre-modal queued sounds")
 	audio.free()
 	router.free()
+
+
+func _test_classic_application_media() -> void:
+	var application_media := ApplicationMediaCatalog.new()
+	assert_true(application_media.is_valid(), "the complete versioned Classic application media manifest loads independently of a campaign package")
+	assert_equal(application_media.assets().size(), 142, "the application catalog owns the complete pinned built-in sound set")
+	var built_in := application_media.asset_by_resource("snd ", 147)
+	assert_not_null(built_in, "a built-in interface sound resolves by its exact Classic resource type and ID")
+	assert_true(application_media.asset_by_resource("SND ", 147) == null, "application media preserves Classic resource type case")
+	assert_not_null(application_media.audio_stream(built_in), "a committed application WAV loads through Godot's resource importer")
+
+	var package_override := PackageMediaAsset.new("scenario-snd-147", "Scenario sound 147", "sound", "audio/wav", "snd ", 147, 0, "1".repeat(64), "assets/media/scenario-147.wav", 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1)
+	var layered := ClassicMediaCatalog.new(PackageMediaCatalog.new("", "package-hash", [package_override]), application_media)
+	assert_equal(layered.asset_by_resource("snd ", 147), package_override, "an exact scenario resource overrides the application fallback like Castle's later-opened resource fork")
+	var override_diagnostic := layered.resolution_diagnostic("snd ", 147, "test-sound")
+	assert_equal([override_diagnostic["sourceOwner"], override_diagnostic["resolvedAssetId"]], ["scenario-package", package_override.id], "resolution diagnostics expose scenario ownership without numeric-ID guessing")
+	var fallback_diagnostic := layered.resolution_diagnostic("snd ", 30005, "test-sound")
+	assert_equal([fallback_diagnostic["sourceOwner"], fallback_diagnostic["resolvedAssetId"]], ["classic-application", "realmz-application-snd-30005"], "an absent scenario key resolves through the application catalog with explicit ownership")
+
+	var duplicate_override := PackageMediaAsset.new("scenario-snd-147-duplicate", "Duplicate scenario sound 147", "sound", "audio/wav", "snd ", 147, 0, "2".repeat(64), "assets/media/scenario-147-duplicate.wav", 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1)
+	var ambiguous := ClassicMediaCatalog.new(PackageMediaCatalog.new("", "package-hash", [package_override, duplicate_override]), application_media)
+	assert_true(ambiguous.asset_by_resource("snd ", 147) == null, "an ambiguous scenario key never falls through to a plausible built-in sound")
+	assert_equal([ambiguous.resolution_diagnostic("snd ", 147, "test-sound")["status"], ambiguous.resolution_diagnostic("snd ", 147, "test-sound")["sourceOwner"]], ["ambiguous", "scenario-package"], "developer diagnostics preserve malformed package ambiguity")
 
 
 func _test_route_catalog() -> void:

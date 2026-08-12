@@ -57,7 +57,7 @@ var _current_view: GameView
 var last_picture_media_diagnostic: Dictionary = {}
 var _presentation_settings := PresentationSettings.new()
 var _profile: UiLayoutProfile
-var _media: PackageMediaCatalog
+var _media: ClassicMediaCatalog
 var _selected_character_id: String = ""
 var _latest_classic_text: String = ""
 var _simulation_buttons: Dictionary = {}
@@ -164,13 +164,13 @@ static func automatic_workflow_route(current_route: StringName, game_view: GameV
 	return current_route
 
 
-func set_package_media(media: PackageMediaCatalog) -> void:
+func set_package_media(media: ClassicMediaCatalog) -> void:
 	_media = media
 	_party_roster.set_media_catalog(media)
 	_router.set_media_catalog(media)
 
 
-func present_media_events(events: Array[DomainEvent], media: PackageMediaCatalog) -> void:
+func present_media_events(events: Array[DomainEvent], media: ClassicMediaCatalog) -> void:
 	set_package_media(media)
 	if media == null:
 		return
