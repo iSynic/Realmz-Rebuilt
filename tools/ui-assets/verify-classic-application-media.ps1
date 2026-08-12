@@ -45,3 +45,4 @@ if ($manifest.assets.Count -ne 142) {
     throw "Expected the complete 142-resource built-in sound catalog; found $($manifest.assets.Count)"
 }
 Write-Host "Classic application media verified: $($manifest.assets.Count) assets."
+exit 0
