@@ -377,6 +377,72 @@ func run() -> void:
 	assert_equal(revived.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "revival publishes one terminal no-reward battle return")
 	assert_false(revived.events.any(func(event: DomainEvent) -> bool: return event.kind in [&"reward_opened", &"reward_completed"]), "the direct no-reward return skips treasure, experience, and after-message reward processing")
 	assert_equal([restored_defeat.view().session_started, restored_defeat._state.party.character_by_id(defeated_character.id).current_health, restored_defeat._state.combat, restored_defeat._state.last_battle_outcome], [true, 1, null, &"retreated"], "revival retains the session, restores one stamina, records retreat, and releases combat exactly once")
+
+	var placed_trigger := content.trigger_by_id("ap.fixture.encounter")
+	assert_not_null(placed_trigger, "the scenario-defeat fixture retains an ordinary placed Action Point owner")
+	if placed_trigger != null:
+		var scenario_programs: Array[ScenarioProgramDefinition] = []
+		for program_id: String in original_scenario.program_ids():
+			if program_id != placed_trigger.program_id:
+				scenario_programs.append(original_scenario.program_by_id(program_id))
+		scenario_programs.append(ScenarioProgramDefinition.new(placed_trigger.program_id, &"trigger", placed_trigger.id, [
+			ClassicActionDefinition.new(0, 2, 2, 0, false, [0, 0, 0, 0, 0]),
+			ClassicActionDefinition.new(1, 28, 28, 0, false, []),
+		]))
+		scenario_programs.append(party_death_program)
+		var scenario_actions: Array[ScenarioActionDefinition] = []
+		for action_id: String in original_scenario.action_ids():
+			scenario_actions.append(original_scenario.action_by_id(action_id))
+		content.scenario = ScenarioDefinition.new(scenario_programs, scenario_actions, ScenarioApplicationHooks.new("", party_death_program.id, "", "", ""))
+
+		var scenario_defeat := GameSession.new()
+		scenario_defeat.start(content, 26)
+		var scenario_character := CharacterState.new("fixture.scenario-party-death", "Scenario Hero", 0, 10)
+		scenario_character.conditions.set_value(ConditionRules.ANIMATED, -1)
+		scenario_defeat._state.party = PartyState.new("land:1", Vector2i(1, 1), [scenario_character])
+		scenario_defeat._state.party_setup_completed = true
+		scenario_defeat._state.combat = CombatState.new("classic.battle.0")
+		scenario_defeat._state.combat.completed = true
+		scenario_defeat._state.combat.outcome = &"defeat"
+		scenario_defeat._state.last_battle_outcome = &"defeat"
+		scenario_defeat._set_post_move_continuation(content.world.map_by_id("land:1"), Vector2i(1, 1))
+		scenario_defeat._session_continuation["activeTriggerId"] = placed_trigger.id
+		scenario_defeat._session_continuation["randomRegionIndex"] = -1
+		assert_equal(scenario_defeat._scenario_vm.start_program(placed_trigger.program_id, {"callingContext": "action", "triggerId": placed_trigger.id, "mapId": "land:1", "x": 1, "y": 1}).state, ScenarioVmResult.State.COMPLETED, "the placed Action Point owns the battle caller before total defeat")
+		scenario_defeat._scenario_vm._frames[0].cursor = 1
+		var caller := {"kind": "classic", "opcode": 2, "gosub": false, "mode": 0, "branchTarget": 0}
+		var defeat_operation := scenario_defeat._runtime_api._finish_battle_with_allies("classic-combat", caller, "fixture.scenario-defeat", [])
+		assert_equal(defeat_operation.state, ScenarioRuntimeOperationResult.State.SUSPENDED, "scenario-owned total defeat suspends at a typed host handoff instead of completing the caller")
+		var suspended_vm := scenario_defeat._scenario_vm._suspend_operation("classic-operation", defeat_operation)
+		assert_equal(scenario_defeat._scenario_vm.snapshot().frames[0].cursor, 1, "the suspended VM has committed the battle instruction but not its following opcode")
+		var scenario_hook := scenario_defeat._begin_scenario_handoff(suspended_vm, [])
+		assert_equal([scenario_hook.state, scenario_hook.interaction.payload.get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "scenario defeat enters the package Party Death hook without discarding its Action Point caller")
+
+		var scenario_boundary_data: Dictionary = JSON.parse_string(JSON.stringify(scenario_defeat.snapshot().to_data()))
+		var scenario_boundary := SaveEnvelope.from_data(scenario_boundary_data)
+		assert_not_null(scenario_boundary, "the Party Death hook and suspended caller survive canonical save JSON together")
+		var stable_scenario_state := scenario_defeat.snapshot().to_data()
+		var corrupt_handoff := SaveEnvelope.from_data(scenario_boundary_data.duplicate(true))
+		corrupt_handoff.session_continuation["vmHandoff"]["runtime"]["battleId"] = "classic.battle.missing"
+		assert_equal(scenario_defeat.restore(content, corrupt_handoff).error_code, &"invalid_session_continuation", "restore rejects a Party Death handoff whose battle caller no longer matches combat")
+		assert_equal(scenario_defeat.snapshot().to_data(), stable_scenario_state, "a rejected scenario defeat handoff leaves the current session untouched")
+		var corrupt_vm_data: Dictionary = scenario_boundary_data.duplicate(true)
+		corrupt_vm_data["sessionContinuation"]["suspendedVm"]["frames"][0]["cursor"] = 999
+		var corrupt_vm := SaveEnvelope.from_data(corrupt_vm_data)
+		assert_not_null(corrupt_vm, "the save envelope keeps structural validation separate from package-owned program bounds")
+		assert_equal(GameSession.new().restore(content, corrupt_vm).error_code, &"invalid_session_continuation", "restore rejects a suspended VM cursor outside its immutable program")
+
+		var restored_scenario_defeat := GameSession.new()
+		assert_equal(restored_scenario_defeat.restore(content, scenario_boundary).state, SessionStep.State.COMPLETED, "scenario-owned Party Death restores transactionally at its textbox boundary")
+		var scenario_revived := restored_scenario_defeat.respond(InteractionResponse.acknowledge(restored_scenario_defeat.view().pending_interaction))
+		assert_equal(scenario_revived.state, SessionStep.State.COMPLETED, "Party Death revival resumes and completes the original placed Action Point")
+		assert_equal(scenario_revived.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "scenario revival publishes exactly one terminal battle return")
+		assert_equal(scenario_revived.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"map_redraw_requested").size(), 1, "the opcode after the suspended battle executes exactly once")
+		assert_false(scenario_revived.events.any(func(event: DomainEvent) -> bool: return event.kind in [&"reward_opened", &"reward_completed"]), "Castle's cowardly Party Death return suppresses the scenario battle reward chain")
+		assert_equal([restored_scenario_defeat._state.combat, restored_scenario_defeat._state.last_battle_outcome, restored_scenario_defeat._state.party.character_by_id(scenario_character.id).current_health], [null, &"retreated", 1], "the resumed caller releases combat once and preserves the Party Death revival")
+
+		var unresolved_mode_ten := scenario_defeat._runtime_api._finish_battle_with_allies("classic-combat", {"kind": "classic", "opcode": 2, "gosub": false, "mode": 10, "branchTarget": 0}, "fixture.mode-ten-defeat", [])
+		assert_equal(unresolved_mode_ten.error_code, &"classic_mode_10_defeat_unresolved", "Classic mode 10 defeat remains explicit because Castle bypasses Party Death and restarts the encounter")
 	content.scenario = original_scenario
 	var ordinary_defeat := GameSession.new()
 	ordinary_defeat.start(content, 25)

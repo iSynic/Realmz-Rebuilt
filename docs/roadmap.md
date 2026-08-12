@@ -412,6 +412,8 @@ The application workflow audit selected ordinary treasure and terminal battle re
 
 Flagged rather than copied: Castle's two less-than-ten parchment/ration drops, battle mode 5 XP-only behavior, battle mode 10 restoration behavior, opcode 48 bonus treasure, and progression beyond the thirtieth threshold still require controlled fixtures or package-contract evidence. The complete ordinary AOGM battle/reward/return presentation also remains uncertified.
 
+Scenario-owned ordinary total defeat now crosses a typed, saveable VM-to-session handoff into Global Party Death. Unrecovered defeat closes without running later scenario instructions; opcode 119 revival suppresses rewards, releases combat once, and resumes the exact Classic or Safe caller. Castle's mode-10 encounter restart and opcode-56 target-minus-one backup/experience-loss return remain explicit unavailable branches. Providence schema v2 already retains the positional EDCD words needed for these callers, so the remaining work is runtime behavior and controlled oracle adjudication rather than a presumed schema revision.
+
 Next application-workflow priority: use the regenerated audit queue for remaining AOGM blockers—ordinary item use/targeting, field and camp spells or scrolls, full Pool/Share/Swap access, bank denomination behavior, and complete camp/rest—while scheduling one ordinary AOGM battle acceptance pass as soon as a stable reachable battle is available.
 
 ## Current rolling fidelity pass — Charged spell-item use

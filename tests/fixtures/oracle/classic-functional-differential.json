@@ -3002,7 +3002,7 @@
         "authoredInputs": ["battle outcome and mode", "monster money, experience, and items", "surviving allies", "fumbled exact instances", "after-message", "originating action continuation"],
         "observation": "The normal victory path moves through bodycount, booty, experience and level processing before returning to the caller; defeat follows party-loss handling and full-party cowardice skips ordinary booty. Fumbled equipment is handled before ordinary loot. Experience dividers require a living, non-animated character whose inbattle flag remains set, excluding a character who escaped before a later victory. The after-message and caller return occur after the reward workspaces close.",
         "unresolved": [
-          "Battle mode 5, mode 10, and opcode 48 bonus treasure overload source action fields that Providence and Realmz 2.0 do not yet preserve as a complete typed branch."
+          "Battle mode 5 still burns monster-money RNG and permits incidental item checks despite its source comment describing experience only; mode 10 has a distinct equipment/wealth restoration branch and a separate total-defeat restart; opcode 48 opens a second fixed-treasure workspace after ordinary booty. These suspicious or distinct branches remain explicit."
         ]
       },
       "providence": {
@@ -3011,7 +3011,7 @@
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
-        "expectedRepresentation": "Schema v2 preserves the ordinary battle, monster reward, after-message, and scenario continuation inputs. Explicit normalized ownership for all overloaded battle modes remains a compiler gap."
+        "expectedRepresentation": "Schema v2 preserves the ordinary battle, monster reward, after-message, and scenario continuation inputs plus the exact five positional EDCD words needed for modes 5/10 and opcode 48. Runtime semantics and some compiler validation remain incomplete; no schema change is currently required."
       },
       "realmz2": {
         "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _finish_direct_battle" },
@@ -3715,7 +3715,7 @@
       "id": "application.party-death-hook",
       "workflowIds": ["classic.combat.resolve-outcome"],
       "domain": "application",
-      "claim": "The direct GameSession terminal total-party defeat path runs the authored Global Party Death hook before teardown; its scenario-VM-owned battle counterpart remains unresolved because RealmzRuntimeApi currently bypasses that hook. Opcode 119 revival and caller-specific reward handling therefore remain partial.",
+      "claim": "Direct-session and scenario-VM total-party defeat run the authored Global Party Death hook before teardown. The scenario VM suspends after its battle instruction; opcode 119 revival suppresses rewards, releases combat once, and resumes the exact ordinary caller, while unrecovered defeat closes without executing later instructions.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "Remake exposes loot and combat cleanup leads but does not provide an authoritative Global Party Death hook continuation or Castle's revival-versus-teardown boundary.",
@@ -3728,12 +3728,13 @@
         "controlFlow": [
           { "path": "src/realmz_orig/combat.c", "symbol": "partyloss(0)" },
           { "path": "src/realmz_orig/partyloss.c", "symbol": "void partyloss(short mode)" },
+          { "path": "src/realmz_orig/booty.c", "symbol": "void booty(short mode)" },
           { "path": "src/realmz_orig/newland.c", "symbol": "case 56: /*************** Branch on Battle Outcome ****************/" },
           { "path": "src/realmz_orig/newland.c", "symbol": "case 107: /************ improved selective battle ***********/" }
         ],
         "authoredInputs": ["total-party defeat", "Global macro slot 1", "opcode 119 revival", "party combat state"],
-        "observation": "Combat calls partyloss after total party loss. partyloss runs nonzero Global macro slot 1; a revival flag or a -1 result suppresses party teardown and marks the outcome cowardly, while an unrecovered loss continues to party cleanup.",
-        "unresolved": ["Castle caller behavior after a revived partyloss is not uniform: newland.c case 2 falls into booty(coward), while another caller explicitly skips booty when coward. The scenario-owned caller must be traced before selecting a 2.0 reward/return policy."]
+        "observation": "Combat calls partyloss after total party loss. partyloss runs nonzero Global macro slot 1; a revival flag or a -1 result suppresses party teardown and marks the outcome cowardly, while an unrecovered loss continues to party cleanup. Ordinary battle callers either enter booty with coward set or explicitly skip booty, and booty itself returns without rewards when coward is set.",
+        "unresolved": ["Opcode 2 mode 10 bypasses Party Death, revives, and restarts its encounter through an overloaded source field whose sound-versus-restart meaning remains suspicious.", "Opcode 56 with a minus-one loss target applies experience loss and backs up the party before returning from its Action Point; this distinct return remains unavailable."]
       },
       "providence": {
         "commit": "2ce5a512d9754d3b3d000641edbfc96884e7e14e",
@@ -3744,18 +3745,18 @@
         "expectedRepresentation": "Schema v2 emits the nullable partyDeath application hook and preserves its compiled program, while ordinary battle content remains independently represented."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _finish_direct_battle" },
-        "owners": [{ "path": "src/core/session/game_session.gd", "symbol": "func _finish_direct_battle" }, { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func begin_completed_battle_reward" }],
-        "expectedTrace": ["detect terminal total-party defeat", "start the authored Global Party Death program before releasing combat on the direct session path", "save and restore its pending Classic interaction without replaying defeat", "keep the scenario-owned battle path explicitly unresolved until it uses the same hook continuation", "if opcode 119 revives the party, apply the caller-adjudicated reward/return policy", "otherwise close the session aggregate exactly once", "never open victory treasure or level-up stages for a defeated party"],
+        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _begin_scenario_handoff" },
+        "owners": [{ "path": "src/core/session/game_session.gd", "symbol": "func _begin_scenario_handoff" }, { "path": "src/core/session/game_session.gd", "symbol": "func _resume_scenario_party_defeat" }, { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func complete_party_defeat_handoff" }, { "path": "src/scenario/vm/scenario_vm.gd", "symbol": "func resume_handoff" }],
+        "expectedTrace": ["detect terminal total-party defeat", "advance and suspend the issuing Classic or Safe operation", "start the authored Global Party Death program before releasing combat", "save and restore the hook, original VM, caller metadata, and exploration owner together", "if opcode 119 revives the party, suppress rewards, release combat once, and resume the exact caller", "otherwise close the session aggregate without executing later instructions", "reject unresolved special callers explicitly"],
         "tests": [
           { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" },
           { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_death_macro_revival" },
           { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_terminal_battle_rewards_once" }
         ]
       },
-      "decision": "unresolved",
-      "availability": "disabled",
-      "status": "partial-direct-session-aligned-scenario-owned-battle-hook-unresolved"
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "ordinary-direct-and-scenario-party-death-hook-revival-close-exact-once-and-save-resume-verified-special-callers-unresolved"
     },
     {
       "id": "application.end-adventure-lifecycle",

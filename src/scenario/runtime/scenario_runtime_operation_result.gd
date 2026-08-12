@@ -4,6 +4,7 @@ extends RefCounted
 enum State {
 	COMPLETED,
 	WAITING,
+	SUSPENDED,
 	FAILED,
 }
 
@@ -12,6 +13,7 @@ var value: Variant
 var events: Array[DomainEvent] = []
 var interaction: InteractionRequest
 var continuation: Dictionary = {}
+var handoff: Dictionary = {}
 var directive: Dictionary = {}
 var error_code: StringName = &""
 var error_message: String = ""
@@ -30,6 +32,13 @@ static func waiting(request: InteractionRequest, resume_data: Dictionary, commit
 	result.state = State.WAITING
 	result.interaction = request
 	result.continuation = resume_data.duplicate(true)
+	return result
+
+
+static func suspended(host_handoff: Dictionary, committed_events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
+	var result := completed(null, committed_events)
+	result.state = State.SUSPENDED
+	result.handoff = host_handoff.duplicate(true)
 	return result
 
 

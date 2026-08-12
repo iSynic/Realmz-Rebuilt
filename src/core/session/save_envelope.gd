@@ -166,6 +166,9 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 		return {}
 	if value.get("kind") == "application-hook":
 		var hook_fields: Array[String] = ["kind", "hook", "programId", "resumeKind", "serviceId", "partyRevived"]
+		var scenario_defeat: bool = value.get("resumeKind") == "scenario-party-defeat"
+		if scenario_defeat:
+			hook_fields.append_array(["suspendedVm", "suspendedOwner", "vmHandoff"])
 		if value.size() != hook_fields.size():
 			return null
 		for field: String in hook_fields:
@@ -189,9 +192,22 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 			"end-adventure-close", "party-defeat":
 				if hook != String(ScenarioApplicationHooks.PARTY_DEATH) or not service_id.is_empty():
 					return null
+			"scenario-party-defeat":
+				if hook != String(ScenarioApplicationHooks.PARTY_DEATH) or not service_id.is_empty():
+					return null
 			_:
 				return null
-		return {"kind": "application-hook", "hook": hook, "programId": value["programId"], "resumeKind": resume_kind, "serviceId": service_id, "partyRevived": value["partyRevived"]}
+		var normalized := {"kind": "application-hook", "hook": hook, "programId": value["programId"], "resumeKind": resume_kind, "serviceId": service_id, "partyRevived": value["partyRevived"]}
+		if scenario_defeat:
+			var suspended_vm := ScenarioVmSnapshot.from_data(value["suspendedVm"])
+			var suspended_owner: Variant = _normalize_session_continuation(value["suspendedOwner"]) if value["suspendedOwner"] is Dictionary else null
+			var vm_handoff: Variant = _normalize_vm_handoff(value["vmHandoff"])
+			if suspended_vm == null or not suspended_owner is Dictionary or suspended_owner.get("kind") not in ["post-clock", "post-move"] or not vm_handoff is Dictionary:
+				return null
+			normalized["suspendedVm"] = suspended_vm.to_data()
+			normalized["suspendedOwner"] = suspended_owner
+			normalized["vmHandoff"] = vm_handoff
+		return normalized
 	if value.get("kind") == "pooled-wealth-departure":
 		var departure_fields: Array[String] = ["kind", "stage", "directionX", "directionY"]
 		if value.size() != departure_fields.size():
@@ -422,6 +438,58 @@ static func _normalize_session_continuation(value: Dictionary) -> Variant:
 	if value["randomBattleStage"] == "surprise-choice" and value["activeRandomRegionId"].is_empty():
 		return null
 	return {"kind": "post-move", "mapId": value["mapId"], "x": x, "y": y, "triggerIds": trigger_ids, "triggerIndex": trigger_index, "activeTriggerId": value["activeTriggerId"], "randomRegionIds": random_region_ids, "randomRegionIndex": random_region_index, "activeRandomProgramId": value["activeRandomProgramId"], "activeRandomRegionId": value["activeRandomRegionId"], "randomBattleStage": value["randomBattleStage"], "actionPointDestinationDepth": destination_depth}
+
+
+static func _normalize_vm_handoff(value: Variant) -> Variant:
+	if not value is Dictionary or not value.get("runtime") is Dictionary:
+		return null
+	var runtime: Variant = _normalize_party_defeat_handoff(value["runtime"])
+	if not runtime is Dictionary:
+		return null
+	match value.get("kind"):
+		"classic-operation":
+			if value.size() != 2:
+				return null
+			return {"kind": "classic-operation", "runtime": runtime}
+		"safe-operation":
+			if value.size() != 4 or not value.get("resultTarget") is String:
+				return null
+			var frame_index := _integer(value.get("frameIndex"))
+			if frame_index < 0:
+				return null
+			return {"kind": "safe-operation", "runtime": runtime, "frameIndex": frame_index, "resultTarget": value["resultTarget"]}
+	return null
+
+
+static func _normalize_party_defeat_handoff(value: Variant) -> Variant:
+	if not value is Dictionary or value.size() != 4 or value.get("kind") != "party-defeat" or not value.get("battleId") is String or value["battleId"].is_empty() or value.get("sourceKind") not in ["classic-combat", "safe-combat"]:
+		return null
+	var caller: Variant = _normalize_battle_caller(value.get("caller"))
+	if not caller is Dictionary:
+		return null
+	if value["sourceKind"] == "safe-combat" and caller.get("kind") != "safe" or value["sourceKind"] == "classic-combat" and caller.get("kind") != "classic":
+		return null
+	return {"kind": "party-defeat", "battleId": value["battleId"], "sourceKind": value["sourceKind"], "caller": caller}
+
+
+static func _normalize_battle_caller(value: Variant) -> Variant:
+	if not value is Dictionary:
+		return null
+	match value.get("kind"):
+		"safe":
+			if value.size() != 2 or value.get("policy") != "continue":
+				return null
+			return {"kind": "safe", "policy": "continue"}
+		"classic":
+			if value.size() != 5 or not value.get("gosub") is bool:
+				return null
+			var opcode := _integer(value.get("opcode"))
+			var mode := _signed_integer(value.get("mode"))
+			var branch_target := _signed_integer(value.get("branchTarget"))
+			if opcode not in [2, 48, 56, 107] or mode == -100_000 or branch_target == -100_000:
+				return null
+			return {"kind": "classic", "opcode": opcode, "gosub": value["gosub"], "mode": mode, "branchTarget": branch_target}
+	return null
 
 
 static func _json_safe(value: Variant, depth: int) -> bool:

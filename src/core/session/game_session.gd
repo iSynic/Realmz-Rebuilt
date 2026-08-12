@@ -241,6 +241,8 @@ func respond(response: InteractionResponse) -> SessionStep:
 	events.append_array(result.events)
 	if _session_continuation.get("kind") == "application-hook" and _events_have(result.events, &"party_revived"):
 		_session_continuation["partyRevived"] = true
+	if result.state == ScenarioVmResult.State.SUSPENDED:
+		return _begin_scenario_handoff(result, events)
 	if result.state == ScenarioVmResult.State.WAITING:
 		if _session_continuation.get("kind") == "post-clock" and not String(_session_continuation.get("activeTimedProgramId", "")).is_empty() and not _rebase_post_time_location():
 			_session_continuation.clear()
@@ -2033,6 +2035,8 @@ func _continue_timed_encounters(events: Array[DomainEvent]) -> SessionStep:
 			return _finish_failed(started.error_code, started.error_message, events)
 		var result := _scenario_vm.run(_runtime_api)
 		events.append_array(result.events)
+		if result.state == ScenarioVmResult.State.SUSPENDED:
+			return _begin_scenario_handoff(result, events)
 		if result.state == ScenarioVmResult.State.WAITING:
 			if not _rebase_post_time_location():
 				_session_continuation.clear()
@@ -2188,6 +2192,8 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 			return _finish_failed(started.error_code, started.error_message, events)
 		var result := _scenario_vm.run(_runtime_api)
 		events.append_array(result.events)
+		if result.state == ScenarioVmResult.State.SUSPENDED:
+			return _begin_scenario_handoff(result, events)
 		if result.state == ScenarioVmResult.State.WAITING:
 			return _finish_waiting(result.interaction, events)
 		if result.state == ScenarioVmResult.State.FAILED:
@@ -2224,7 +2230,7 @@ func _continue_exploration_continuation(events: Array[DomainEvent]) -> SessionSt
 	return _finish_failed(&"invalid_session_continuation", "The completed scenario has no valid exploration continuation.", events)
 
 
-func _start_application_hook(hook: StringName, resume_kind: String, service_id: String, preceding_events: Array[DomainEvent]) -> SessionStep:
+func _start_application_hook(hook: StringName, resume_kind: String, service_id: String, preceding_events: Array[DomainEvent], suspended_context: Dictionary = {}) -> SessionStep:
 	var program_id := _content.scenario.application_hook_program_id(hook)
 	_session_continuation = {
 		"kind": "application-hook",
@@ -2234,6 +2240,8 @@ func _start_application_hook(hook: StringName, resume_kind: String, service_id: 
 		"serviceId": service_id,
 		"partyRevived": false,
 	}
+	for key: Variant in suspended_context:
+		_session_continuation[key] = suspended_context[key]
 	if program_id.is_empty():
 		return _continue_application_hook(preceding_events)
 	var started := _scenario_vm.start_program(program_id, {
@@ -2251,6 +2259,8 @@ func _start_application_hook(hook: StringName, resume_kind: String, service_id: 
 	events.append_array(result.events)
 	if _events_have(result.events, &"party_revived"):
 		_session_continuation["partyRevived"] = true
+	if result.state == ScenarioVmResult.State.SUSPENDED:
+		return _finish_failed(&"nested_party_defeat_handoff", "An application hook cannot suspend another total-party defeat.", events)
 	if result.state == ScenarioVmResult.State.FAILED:
 		_session_continuation.clear()
 		return _finish_failed(result.error_code, result.error_message, events)
@@ -2265,6 +2275,9 @@ func _continue_application_hook(events: Array[DomainEvent]) -> SessionStep:
 	var resume_kind := String(_session_continuation.get("resumeKind", ""))
 	var service_id := String(_session_continuation.get("serviceId", ""))
 	var party_revived := bool(_session_continuation.get("partyRevived", false))
+	var suspended_vm: Dictionary = _session_continuation.get("suspendedVm", {}).duplicate(true)
+	var suspended_owner: Dictionary = _session_continuation.get("suspendedOwner", {}).duplicate(true)
+	var vm_handoff: Dictionary = _session_continuation.get("vmHandoff", {}).duplicate(true)
 	_session_continuation.clear()
 	if not program_id.is_empty():
 		events.append(DomainEvent.new(&"application_hook_completed", {"hook": String(hook), "programId": program_id}))
@@ -2290,7 +2303,58 @@ func _continue_application_hook(events: Array[DomainEvent]) -> SessionStep:
 			_state.last_battle_outcome = &"retreated"
 			events.append(DomainEvent.new(&"party_defeat_revived", {"battleId": _state.combat.battle_id, "source": "classic-party-death-hook"}))
 			return _finish_direct_battle_without_rewards(events)
+		"scenario-party-defeat":
+			if not party_revived:
+				return _commit_close(events, "party-defeat")
+			return _resume_scenario_party_defeat(suspended_vm, suspended_owner, vm_handoff, events)
 	return _finish_failed(&"invalid_session_continuation", "Application hook '%s' has invalid resume kind '%s'." % [hook, resume_kind], events)
+
+
+func _begin_scenario_handoff(result: ScenarioVmResult, events: Array[DomainEvent]) -> SessionStep:
+	if result == null or result.state != ScenarioVmResult.State.SUSPENDED or not result.handoff.get("runtime") is Dictionary:
+		_session_continuation.clear()
+		return _finish_failed(&"invalid_vm_handoff", "The Scenario VM did not provide a typed application handoff.", events)
+	if _session_continuation.get("kind") not in ["post-clock", "post-move"]:
+		_session_continuation.clear()
+		return _finish_failed(&"unsupported_vm_handoff_owner", "Total-party defeat cannot suspend this scenario caller.", events)
+	var saved := _scenario_vm.snapshot()
+	if not ScenarioVm.handoff_is_valid(result.handoff, saved) or not RealmzRuntimeApi.party_defeat_handoff_is_valid(_content, _state, result.handoff["runtime"]):
+		_session_continuation.clear()
+		return _finish_failed(&"invalid_party_defeat_handoff", "The Scenario VM total-party defeat handoff is invalid.", events)
+	var suspended_context := {
+		"suspendedVm": saved.to_data(),
+		"suspendedOwner": _session_continuation.duplicate(true),
+		"vmHandoff": result.handoff.duplicate(true),
+	}
+	_scenario_vm.reset()
+	return _start_application_hook(ScenarioApplicationHooks.PARTY_DEATH, "scenario-party-defeat", "", events, suspended_context)
+
+
+func _resume_scenario_party_defeat(suspended_vm_data: Dictionary, suspended_owner: Dictionary, vm_handoff: Dictionary, events: Array[DomainEvent]) -> SessionStep:
+	var saved := ScenarioVmSnapshot.from_data(suspended_vm_data)
+	if not ScenarioVm.handoff_is_valid(vm_handoff, saved) or not RealmzRuntimeApi.party_defeat_handoff_is_valid(_content, _state, vm_handoff.get("runtime")) or not _valid_suspended_scenario_owner(_content, _state, suspended_owner, saved):
+		return _finish_failed(&"invalid_party_defeat_handoff", "The saved scenario defeat continuation is invalid.", events)
+	var restored_vm := ScenarioVm.new()
+	restored_vm.configure(_content.scenario)
+	if not restored_vm.restore(saved):
+		return _finish_failed(&"invalid_vm_state", "The suspended scenario cannot be restored after Party Death.", events)
+	var operation := _runtime_api.complete_party_defeat_handoff(vm_handoff["runtime"])
+	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
+		return _finish_failed(operation.error_code, operation.error_message, events)
+	_scenario_vm = restored_vm
+	var resumed := _scenario_vm.resume_handoff(vm_handoff, operation, _runtime_api)
+	events.append_array(resumed.events)
+	_session_continuation = suspended_owner.duplicate(true)
+	if resumed.state == ScenarioVmResult.State.SUSPENDED:
+		return _begin_scenario_handoff(resumed, events)
+	if resumed.state == ScenarioVmResult.State.WAITING:
+		return _finish_waiting(resumed.interaction, events)
+	if resumed.state == ScenarioVmResult.State.FAILED:
+		_session_continuation.clear()
+		return _finish_failed(resumed.error_code, resumed.error_message, events)
+	if _session_continuation.is_empty():
+		return _finish_completed(events)
+	return _continue_exploration_continuation(events)
 
 
 func _apply_trigger_destination(trigger: TriggerDefinition, events: Array[DomainEvent], allow_destination: bool) -> bool:
@@ -2366,6 +2430,9 @@ func _start_session_death_macro(preceding_events: Array[DomainEvent]) -> Session
 	events.assign(preceding_events)
 	events.append(DomainEvent.new(&"monster_death_macro_started", {"battleId": combat.battle_id, "combatantId": combatant_id, "programId": program_id}))
 	events.append_array(result.events)
+	if result.state == ScenarioVmResult.State.SUSPENDED:
+		_session_continuation.clear()
+		return _finish_failed(&"unsupported_vm_handoff_owner", "A session-owned monster death macro cannot suspend a total-party defeat.", events)
 	if result.state == ScenarioVmResult.State.FAILED:
 		_session_continuation.clear()
 		return _finish_failed(result.error_code, result.error_message, events)
@@ -2504,6 +2571,8 @@ func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) ->
 					return _finish_failed(started.error_code, started.error_message, events)
 				var result := _scenario_vm.run(_runtime_api)
 				events.append_array(result.events)
+				if result.state == ScenarioVmResult.State.SUSPENDED:
+					return _begin_scenario_handoff(result, events)
 				if result.state == ScenarioVmResult.State.WAITING:
 					return _finish_waiting(result.interaction, events)
 				if result.state == ScenarioVmResult.State.FAILED:
@@ -3192,6 +3261,9 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
 	if continuation.get("kind") == "application-hook":
 		var hook_fields: Array[String] = ["kind", "hook", "programId", "resumeKind", "serviceId", "partyRevived"]
+		var scenario_defeat: bool = continuation.get("resumeKind") == "scenario-party-defeat"
+		if scenario_defeat:
+			hook_fields.append_array(["suspendedVm", "suspendedOwner", "vmHandoff"])
 		if continuation.size() != hook_fields.size() or vm_interaction == null or session_interaction != null:
 			return false
 		for field: String in hook_fields:
@@ -3215,6 +3287,12 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 				return hook == ScenarioApplicationHooks.PARTY_DEATH and service_id.is_empty()
 			"party-defeat":
 				return hook == ScenarioApplicationHooks.PARTY_DEATH and service_id.is_empty() and state.combat != null and state.combat.completed and state.combat.outcome == &"defeat"
+			"scenario-party-defeat":
+				if hook != ScenarioApplicationHooks.PARTY_DEATH or not service_id.is_empty() or not continuation.get("suspendedVm") is Dictionary or not continuation.get("suspendedOwner") is Dictionary or not continuation.get("vmHandoff") is Dictionary:
+					return false
+				var saved := ScenarioVmSnapshot.from_data(continuation["suspendedVm"])
+				var vm_handoff: Dictionary = continuation["vmHandoff"]
+				return ScenarioVm.handoff_is_valid(vm_handoff, saved) and RealmzRuntimeApi.party_defeat_handoff_is_valid(content, state, vm_handoff.get("runtime")) and _valid_suspended_scenario_owner(content, state, continuation["suspendedOwner"], saved)
 		return false
 	if continuation.get("kind") == "pooled-wealth-departure":
 		var departure_fields: Array[String] = ["kind", "stage", "directionX", "directionY"]
@@ -3507,6 +3585,20 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 	if index < 0 or index >= continuation["triggerIds"].size() or continuation["activeTriggerId"].is_empty() or continuation["triggerIds"][index] != continuation["activeTriggerId"]:
 		return false
 	return content.trigger_by_id(continuation["activeTriggerId"]) != null
+
+
+static func _valid_suspended_scenario_owner(content: RealmzContent, state: GameState, owner: Dictionary, saved: ScenarioVmSnapshot) -> bool:
+	# The full handoff shape is validated by the caller. This guard proves the
+	# detached VM can resume and that its owner is an exploration continuation
+	# which would ordinarily be validated beside a live VM interaction.
+	if owner.get("kind") not in ["post-clock", "post-move"] or saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or not saved.pending_continuation.is_empty():
+		return false
+	var test_vm := ScenarioVm.new()
+	test_vm.configure(content.scenario)
+	if not test_vm.restore(saved):
+		return false
+	var sentinel := InteractionRequest.acknowledge("internal.suspended-scenario", "Suspended scenario validation")
+	return _valid_session_continuation(content, state, owner, sentinel, null)
 
 
 static func _valid_post_time_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:

@@ -93,6 +93,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - `tools/verify.ps1` runs import/script checks, tests, architecture guards, and `git diff --check`.
 - Package contract coverage verifies that multiple immutable files for one campaign collapse to one current selector entry without deleting revisions.
 - Save-preview coverage indexes current and backup records independently, exposes corrupt and package-mismatched records without enabling them, and proves that loading a backup returns the exact prior committed boundary.
+- Scenario-defeat persistence coverage saves the Party Death hook together with its suspended VM frame and post-move owner, rejects corrupt caller and cursor state transactionally, suppresses rewards after opcode 119, and proves that the next authored instruction and terminal battle return each execute once.
 
 ## Child DOX Index
 

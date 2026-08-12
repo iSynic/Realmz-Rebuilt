@@ -59,7 +59,7 @@ func _test_player_collision_initiates_melee() -> void:
 	var host_monster := MonsterState.new("monster.collision-host.instance", definition.id, definition.name, 30, 30, 1)
 	var host_state := _state(host_character, host_monster, "battle.collision-host")
 	var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new(_ints(24)), ScenarioActionState.new())
-	var host_result := host_api._resume_battle({"kind": "classic-combat", "battleId": host_state.combat.battle_id}, InteractionResponse.new("request.collision-host", InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "move", "targetId": "", "destination": [46, 45]}), "request.collision-host")
+	var host_result := host_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.new("request.collision-host", InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "move", "targetId": "", "destination": [46, 45]}), "request.collision-host")
 	assert_equal(host_result.state, ScenarioRuntimeOperationResult.State.WAITING, "the scenario-owned combat interaction returns collision melee to the same battle request")
 	assert_true(host_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == host_character.id and event.payload.get("targetId") == host_monster.id), "the ordinary typed movement response reaches the collision-melee owner")
 
@@ -142,11 +142,11 @@ func _test_source_backed_combat_spell_item_use() -> void:
 	assert_true(request.payload.get("itemCasts", []).any(func(option: Dictionary) -> bool: return option.get("itemInstanceId") == instance.id and option.get("targetId") == monster.id and option.get("power") == 1), "the scenario interaction carries exact item, spell-power, and target identities")
 	var host_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 100]), ScenarioActionState.new())
-	var host_result := host_api._resume_battle({"kind": "classic-combat", "battleId": state.combat.battle_id}, InteractionResponse.new("request.item-use", InteractionRequest.COMBAT, {"actorId": character.id, "action": "use_item", "targetId": monster.id, "itemInstanceId": instance.id}), "request.item-use")
+	var host_result := host_api._resume_battle(_classic_battle_continuation(state.combat.battle_id), InteractionResponse.new("request.item-use", InteractionRequest.COMBAT, {"actorId": character.id, "action": "use_item", "targetId": monster.id, "itemInstanceId": instance.id}), "request.item-use")
 	assert_equal(host_result.state, ScenarioRuntimeOperationResult.State.WAITING, "a typed combat item response returns to the ordinary battle interaction")
 	assert_equal([host_state.combat.monster_by_id(monster.id).current_health, host_state.party.character_by_id(character.id).inventory()[0].charges], [7, 1], "the scenario host commits the same exact target and item instance carried by its request")
 	var host_state_before_invalid := host_state.to_data()
-	var invalid_host_result := host_api._resume_battle({"kind": "classic-combat", "battleId": state.combat.battle_id}, InteractionResponse.new("request.item-use", InteractionRequest.COMBAT, {"actorId": character.id, "action": "use_item", "targetId": monster.id}), "request.item-use")
+	var invalid_host_result := host_api._resume_battle(_classic_battle_continuation(state.combat.battle_id), InteractionResponse.new("request.item-use", InteractionRequest.COMBAT, {"actorId": character.id, "action": "use_item", "targetId": monster.id}), "request.item-use")
 	assert_equal(invalid_host_result.state, ScenarioRuntimeOperationResult.State.FAILED, "a malformed combat item response is rejected explicitly")
 	assert_equal(host_state.to_data(), host_state_before_invalid, "a rejected combat item response cannot consume a second charge or mutate battle state")
 	var spell_points_before := character.spell_points
@@ -425,7 +425,7 @@ func _test_character_and_monster_retreat() -> void:
 	edge_host_state.combat = CombatState.new("battle.edge-retreat-host", [monster], 0, edge_host_field)
 	edge_host_state.combat.set_turn_order([edge_host_actor.id, edge_companion.id, monster.id])
 	var edge_host_api := RealmzRuntimeApi.new(content, edge_host_state, ScriptedRng.new([]), ScenarioActionState.new())
-	var edge_prompt := edge_host_api._resume_battle({"kind": "classic-combat", "battleId": edge_host_state.combat.battle_id}, InteractionResponse.new("request.edge-retreat", InteractionRequest.COMBAT, {"actorId": edge_host_actor.id, "action": "retreat_edge", "targetId": "", "destination": [1, 45]}), "request.edge-retreat")
+	var edge_prompt := edge_host_api._resume_battle(_classic_battle_continuation(edge_host_state.combat.battle_id), InteractionResponse.new("request.edge-retreat", InteractionRequest.COMBAT, {"actorId": edge_host_actor.id, "action": "retreat_edge", "targetId": "", "destination": [1, 45]}), "request.edge-retreat")
 	assert_equal([edge_prompt.state, edge_prompt.interaction.kind], [ScenarioRuntimeOperationResult.State.WAITING, InteractionRequest.YES_NO], "the typed edge command reaches the same Escape confirmation boundary")
 	var edge_accepted := edge_host_api._resume_battle_retreat(edge_prompt.continuation, InteractionResponse.yes_no(edge_prompt.interaction, true), edge_prompt.interaction.request_id)
 	assert_equal(edge_accepted.state, ScenarioRuntimeOperationResult.State.WAITING, "accepting edge Escape returns to combat while the companion remains")
@@ -939,7 +939,7 @@ func _test_source_backed_projectile_fire() -> void:
 		var switch_api := RealmzRuntimeApi.new(content, host_state, switch_rng, ScenarioActionState.new())
 		var melee_request := switch_api._combat_request("request.projectile-switch")
 		assert_equal(melee_request.payload.get("weaponSwitch", {}).get("targetMode"), "missile", "the typed melee request offers the source-backed missile mode")
-		var switched := switch_api._resume_battle({"kind": "classic-combat", "battleId": host_state.combat.battle_id}, InteractionResponse.new(melee_request.request_id, InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "switch_weapon", "targetId": ""}), melee_request.request_id)
+		var switched := switch_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.new(melee_request.request_id, InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "switch_weapon", "targetId": ""}), melee_request.request_id)
 		assert_equal(switched.state, ScenarioRuntimeOperationResult.State.WAITING, "switching weapon mode returns to the same typed battle boundary")
 		assert_equal(switched.interaction.payload.get("weaponMode"), "missile", "the resumed request exposes missile mode without spending the turn")
 		assert_equal(switched.interaction.payload.get("targets", []).map(func(target: Dictionary) -> String: return String(target.get("id"))), [host_monster.id], "the resumed Fire picker contains only the core-proven hostile target")
@@ -949,7 +949,7 @@ func _test_source_backed_projectile_fire() -> void:
 		assert_true(restored_host_rng.restore(switch_rng.snapshot()), "the missile exchange restores its exact pre-Fire RNG state")
 		if restored_host_state != null:
 			var restored_api := RealmzRuntimeApi.new(content, restored_host_state, restored_host_rng, ScenarioActionState.new())
-			var fired := restored_api._resume_battle({"kind": "classic-combat", "battleId": restored_host_state.combat.battle_id}, InteractionResponse.new(switched.interaction.request_id, InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "attack", "targetId": host_monster.id}), switched.interaction.request_id)
+			var fired := restored_api._resume_battle(_classic_battle_continuation(restored_host_state.combat.battle_id), InteractionResponse.new(switched.interaction.request_id, InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "attack", "targetId": host_monster.id}), switched.interaction.request_id)
 			assert_equal(fired.state, ScenarioRuntimeOperationResult.State.WAITING, "restored Fire resolves and returns to the ordinary battle interaction")
 			assert_true(fired.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_projectile_resolved" and event.payload.get("actorId") == host_character.id and event.payload.get("targetId") == host_monster.id), "the typed restored response reaches the source-backed projectile resolver")
 			var restored_character := restored_host_state.party.character_by_id(host_character.id)
@@ -1034,7 +1034,7 @@ func _test_source_backed_character_spell_casting() -> void:
 		var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 32_767, 32_767]), ScenarioActionState.new())
 		var host_request := host_api._combat_request("request.spell-single")
 		assert_true(host_request.payload.get("spellCasts", []).any(func(option: Dictionary) -> bool: return option.get("spellId") == spell.id and option.get("power") == 1 and option.get("targetId") == monster.id and option.get("targetMode") == "combatant"), "the runtime request exposes the core-proven single-target cast")
-		var host_cast := host_api._resume_battle({"kind": "classic-combat", "battleId": host_state.combat.battle_id}, InteractionResponse.new(host_request.request_id, InteractionRequest.COMBAT, {"actorId": character.id, "action": "cast_spell", "targetId": monster.id, "spellId": spell.id, "power": 1}), host_request.request_id)
+		var host_cast := host_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.new(host_request.request_id, InteractionRequest.COMBAT, {"actorId": character.id, "action": "cast_spell", "targetId": monster.id, "spellId": spell.id, "power": 1}), host_request.request_id)
 		assert_equal(host_cast.state, ScenarioRuntimeOperationResult.State.WAITING, "the typed single-target cast returns to the active battle request")
 		assert_true(host_cast.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == monster.id), "the typed single-target response reaches the ordinary spell resolver")
 		assert_equal([host_state.party.character_by_id(character.id).spell_points, host_state.combat.monster_by_id(monster.id).current_health], [8, 26], "the restored typed cast commits one cost and one target result")
@@ -1290,7 +1290,7 @@ func _test_character_automatic_group_spell() -> void:
 		var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 0, 32_767, 32_767, 32_767, 32_767]), ScenarioActionState.new())
 		var host_request := host_api._combat_request("request.spell-group")
 		assert_true(host_request.payload.get("spellCasts", []).any(func(option: Dictionary) -> bool: return option.get("spellId") == spell.id and option.get("power") == 1 and option.get("targetId") == "" and option.get("targetMode") == "automatic"), "the runtime request preserves the targetless automatic-group ABI")
-		var host_cast := host_api._resume_battle({"kind": "classic-combat", "battleId": host_state.combat.battle_id}, InteractionResponse.new(host_request.request_id, InteractionRequest.COMBAT, {"actorId": caster.id, "action": "cast_spell", "targetId": "", "spellId": spell.id, "power": 1}), host_request.request_id)
+		var host_cast := host_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.new(host_request.request_id, InteractionRequest.COMBAT, {"actorId": caster.id, "action": "cast_spell", "targetId": "", "spellId": spell.id, "power": 1}), host_request.request_id)
 		assert_equal(host_cast.state, ScenarioRuntimeOperationResult.State.WAITING, "the typed automatic-group cast returns to the active battle request")
 		assert_equal(host_cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved").map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), [caster.id, ally.id, first.id, second.id], "the targetless response preserves Castle party-then-monster order through the host boundary")
 	var cast := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 1, ScriptedRng.new([0, 0, 0, 32_767, 32_767, 32_767, 32_767]))
@@ -1365,7 +1365,7 @@ func _test_character_fixed_area_spell() -> void:
 		var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 0, 32_767, 32_767, 32_767, 32_767]), ScenarioActionState.new())
 		var host_request := host_api._combat_request("request.spell-area")
 		assert_true(host_request.payload.get("spellCasts", []).any(func(option: Dictionary) -> bool: return option.get("spellId") == spell.id and option.get("power") == 1 and option.get("targetMode") == "area" and option.get("areaShape") == 3), "the runtime request carries the rules-owned Data AD shape")
-		var host_cast := host_api._resume_battle({"kind": "classic-combat", "battleId": host_state.combat.battle_id}, InteractionResponse.new(host_request.request_id, InteractionRequest.COMBAT, {"actorId": caster.id, "action": "cast_spell", "targetId": "", "spellId": spell.id, "power": 1, "targetCoordinate": [45, 45], "rotation": 0}), host_request.request_id)
+		var host_cast := host_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.new(host_request.request_id, InteractionRequest.COMBAT, {"actorId": caster.id, "action": "cast_spell", "targetId": "", "spellId": spell.id, "power": 1, "targetCoordinate": [45, 45], "rotation": 0}), host_request.request_id)
 		assert_equal(host_cast.state, ScenarioRuntimeOperationResult.State.WAITING, "the typed fixed-area cast returns to the active battle request")
 		assert_equal(host_cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved").map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), [ally.id, first.id], "the coordinate response retains core-owned area membership and target order")
 	var empty_caster := _character("character.area.empty-caster")
@@ -2035,6 +2035,10 @@ func _character(character_id: String) -> CharacterState:
 
 func _monster_definition(definition_id: String, attacks: Array[MonsterAttackDefinition]) -> MonsterDefinition:
 	return MonsterDefinition.new(definition_id, 1, "Cadence Monster", 1, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), [], [], attacks)
+
+
+func _classic_battle_continuation(battle_id: String) -> Dictionary:
+	return {"kind": "classic-combat", "battleId": battle_id, "battleCaller": {"kind": "classic", "opcode": 2, "gosub": false, "mode": 0, "branchTarget": 0}}
 
 
 func _state(character: CharacterState, monster: MonsterState, battle_id: String) -> GameState:
