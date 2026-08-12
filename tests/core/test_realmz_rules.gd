@@ -295,7 +295,7 @@ func _test_monster_ordinary_attacks() -> void:
 	var weapon_result := rules.combat.resolve_monster_attack(MonsterState.new("monster.ordinary.weapon", definition.id, definition.name, 20, 20, 2), definition, 0, weapon_target, null, null, ScriptedRng.new([0, 0, 32_767, 32_767, 0]), 0, MonsterAttackContext.new(weapon, 140, false, 5, true))
 	assert_equal(weapon_result.chance, 89, "monster weapons contribute magic plus and double-to-hit metadata to accuracy")
 	assert_equal([weapon_result.physical_damage, weapon_result.weapon_effects[0].get("amount"), weapon_result.damage], [6, 2, 8], "monster weapon damage preserves physical, elemental mitigation, and Dragon Hide reduction")
-	assert_equal([weapon_result.physical_damage_reduction, weapon_result.physical_feedback_sound_id], [5, 694], "Dragon Hide reports Castle's full reduction and asynchronous feedback sound")
+	assert_equal([weapon_result.physical_damage_reduction, weapon_result.physical_feedback_sound_id], [5, 694], "Dragon Hide reports Castle's full reduction and synchronous feedback sound")
 
 	var monster_target_definition := MonsterDefinition.new("monster.ordinary.weapon-gated", 703, "Weapon-gated Monster", 1, 0, 10, 0, 0, evil_flags, _ints_size(8, 0), _ints_size(6, 0), _ints_size(3, 0), [], [], [MonsterAttackDefinition.new(1, 1)])
 	monster_target_definition.required_weapon = -1

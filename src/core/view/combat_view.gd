@@ -20,6 +20,8 @@ var retreat_unavailable_reason: String = "Retreat is unavailable."
 var nearest_enemy_range: int = 127
 var outcome: StringName
 var turn_order: Array[String] = []
+var friendly_actor_ids: Array[String] = []
+var hostile_actor_ids: Array[String] = []
 var legal_actions: Array[StringName] = []
 var targets: Array[MonsterView] = []
 var character_targets: Array[CharacterView] = []
@@ -45,7 +47,8 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 	if combat.battlefield != null and battlefield_rules != null and not active_actor_id.is_empty():
 		adjacent_ids = battlefield_rules.adjacent_actor_ids(combat.battlefield, active_actor_id)
 	for monster: MonsterState in combat.monsters():
-		var view := MonsterView.new(monster)
+		var definition := content.monster_by_id(monster.definition_id) if content != null else null
+		var view := MonsterView.new(monster, definition, content)
 		monsters.append(view)
 		if monster.current_health > 0 and monster.traitor and adjacent_ids.has(monster.id):
 			targets.append(view)
@@ -55,6 +58,7 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 			movement_remaining = character.movement
 		if character.current_health > 0 and character.traitor and adjacent_ids.has(character.id):
 			character_targets.append(CharacterView.new(character, content))
+	_populate_active_relationships(combat, characters)
 	if combat.completed:
 		return
 	var active_character: CharacterState = null
@@ -85,7 +89,7 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 				else:
 					for monster: MonsterState in combat.monsters():
 						if monster.current_health > 0 and monster.traitor != active_character.traitor and combat_flow.projectile_target_is_valid(combat, content, active_character.id, monster.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
-							targets.append(MonsterView.new(monster))
+							targets.append(MonsterView.new(monster, content.monster_by_id(monster.definition_id), content))
 					if targets.is_empty():
 						ranged_attack_unavailable_reason = "No hostile monster is within the projectile's Classic range and line of sight."
 					else:
@@ -120,6 +124,19 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 	legal_actions.append(&"defend")
 	if retreat_available:
 		legal_actions.append(&"retreat")
+
+
+func _populate_active_relationships(combat: CombatState, characters: Array[CharacterState]) -> void:
+	if combat.battlefield == null:
+		return
+	for character: CharacterState in characters:
+		if character.current_health <= 0 or not combat.battlefield.has_actor(character.id):
+			continue
+		(friendly_actor_ids if not character.traitor else hostile_actor_ids).append(character.id)
+	for monster: MonsterState in combat.monsters():
+		if monster.current_health <= 0 or not combat.battlefield.has_actor(monster.id):
+			continue
+		(friendly_actor_ids if not monster.traitor else hostile_actor_ids).append(monster.id)
 
 
 static func _is_hostile_target(combat: CombatState, characters: Array[CharacterState], actor: CharacterState, target_id: String) -> bool:

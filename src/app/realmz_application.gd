@@ -53,8 +53,10 @@ func _ready() -> void:
 	add_child(_dungeon_presenter)
 	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
 	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
+	_interaction_presenter.presentation_action_requested.connect(_on_combat_presentation_action_requested)
 	_map_presenter.movement_requested.connect(_on_map_movement_requested)
 	_battlefield_presenter.tactical_action_requested.connect(_on_battlefield_action_requested)
+	_battlefield_presenter.combatant_inspected.connect(_on_battlefield_combatant_inspected)
 	_shell_presenter.start_package_requested.connect(_begin_package_start)
 	_shell_presenter.cancel_package_requested.connect(_cancel_package_start)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
@@ -227,6 +229,9 @@ func _input(event: InputEvent) -> void:
 		return
 	if not event.is_pressed():
 		return
+	if combat_pending and _battlefield_presenter.dismiss_reveal_friends():
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed(&"realmz_back"):
 		if _interaction_presenter.has_blocking_request():
 			_shell_presenter.set_status("Choose a response before leaving this interaction.")
@@ -275,6 +280,23 @@ func _on_map_movement_requested(direction: Vector2i) -> void:
 func _on_battlefield_action_requested(payload: Dictionary) -> void:
 	if _interaction_presenter.accepts_combat_spatial_input():
 		_interaction_presenter.submit_active_payload(payload)
+
+
+func _on_battlefield_combatant_inspected(combatant_id: String) -> void:
+	_interaction_presenter.inspect_combatant(combatant_id)
+
+
+func _on_combat_presentation_action_requested(action: StringName, payload: Dictionary) -> void:
+	match action:
+		&"focus_combatant":
+			var combatant_id := String(payload.get("combatantId", ""))
+			_battlefield_presenter.focus_combatant(combatant_id)
+			_interaction_presenter.inspect_combatant(combatant_id)
+			if bool(payload.get("playSound", false)):
+				_audio_presenter.present_sound(147, presentation_coordinator.package_media())
+		&"toggle_reveal_friends":
+			_battlefield_presenter.toggle_reveal_friends()
+			_audio_presenter.present_sound(137, presentation_coordinator.package_media())
 
 
 func _submit_movement(direction: Vector2i) -> void:

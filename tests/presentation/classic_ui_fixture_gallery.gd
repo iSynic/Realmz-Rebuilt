@@ -111,8 +111,17 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 			payload.merge({
 				"round": 1,
 				"actorId": "hero",
+				"attackUnitsRemaining": 4,
+				"movementRemaining": 8,
+				"enemiesRemaining": 1,
 				"actions": [] if empty_values else ["use_item", "defend", "finish"],
 				"weaponMode": "melee",
+				"combatants": [] if empty_values else [
+					{"id": "hero", "kind": "character", "name": "Hero", "currentHealth": 8, "maximumHealth": 10, "spellPoints": 4, "maximumSpellPoints": 8, "armor": 6, "magicResistance": 10, "attacks": "2", "movement": 8, "maximumMovement": 10, "weapon": "Long Sword", "weaponCharges": -1, "conditions": ["Blessed"]},
+					{"id": "monster", "kind": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4, "spellPoints": 0, "maximumSpellPoints": 0, "armor": 2, "magicResistance": 0, "hitDice": 2, "attacks": "1", "movement": 6, "maximumMovement": 6, "weapon": "Short Sword", "weaponCharges": -1, "range": 2, "blocked": false, "conditions": [], "immunities": [], "vulnerabilities": ["Heat"]},
+				],
+				"friendlyActorIds": ["hero"],
+				"hostileActorIds": ["monster"],
 				"targets": [] if empty_values else [{"id": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4}],
 				"movement": [] if empty_values else [
 					{"direction": [-1, -1], "destination": [44, 44], "cost": 1, "enabled": true, "reason": ""},

@@ -2,6 +2,8 @@ class_name InteractionComponent
 extends VBoxContainer
 
 signal payload_submitted(payload: Dictionary)
+@warning_ignore("unused_signal")
+signal presentation_action_requested(action: StringName, payload: Dictionary)
 
 
 func build(_request: InteractionRequest) -> void:

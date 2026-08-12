@@ -143,14 +143,13 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **22**.
+Blockers: **1**. Major gaps: **21**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
 - **major** `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
 - **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Characterize the suspicious mode-5 incidental/RNG branches and mode-10 restart field with controlled Castle fixtures, then implement each distinct runtime continuation without changing schema v2 unless the fixture disproves positional preservation.
-- **major** `classic.combat.tactical-movement` — The tactical workspace lacks Castle's Reveal Friends and camera Center, Next, and Previous controls. Next: Add detached relationship/range facts and presentation-only camera navigation after verifying dismissal and target-mode behavior; do not infer hostility or range inside the presenter.
 - **major** `classic.combat.turn-control` — The Classic turn workspace still lacks Auto Character Move, the independently saved per-character Auto toggle, Delay, Undo, Bandage, and conditional Turn Undead. Next: Characterize Delay, Undo, Bandage, both Auto concepts, and Turn Undead as separate source-backed workflows, including save ownership, then add typed actions one coherent subset at a time.
 - **major** `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end. Next: Trace the preference/save fields and ordinary cast handoff, then decide whether the shortcut is Classic state or presentation state.
 - **major** `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved. Next: Use controlled fixtures for zero/negative land tiles, boat/shore cancellation, special dungeon wall bits, and attempted-coordinate timed gates before broadening the topology result.
@@ -221,7 +220,6 @@ Blockers: **1**. Major gaps: **22**.
 - `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete.
 - `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately.
 - `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end.
-- `classic.combat.tactical-movement` — The tactical workspace lacks Castle's Reveal Friends and camera Center, Next, and Previous controls.
 - `classic.combat.turn-control` — The Classic turn workspace still lacks Auto Character Move, the independently saved per-character Auto toggle, Delay, Undo, Bandage, and conditional Turn Undead.
 - `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end.
 - `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified.

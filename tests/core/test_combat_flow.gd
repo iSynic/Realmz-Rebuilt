@@ -27,6 +27,7 @@ func run() -> void:
 	_test_source_backed_monster_spell_casting()
 	_test_charm_resistance_continues_after_failed_opposed_save()
 	_test_monster_authored_attack_rows_and_target_retention()
+	_test_source_backed_physical_attack_audio()
 	_test_monster_attack_cursor_restore()
 	_test_battle_owned_fumble_and_exact_recovery()
 	_test_monster_fumble_clears_only_active_weapon()
@@ -49,6 +50,10 @@ func _test_player_collision_initiates_melee() -> void:
 	var request := RealmzRuntimeApi.new(content, state, ScriptedRng.new([]), ScenarioActionState.new())._combat_request("request.collision-melee")
 	var east_request: Dictionary = request.payload.get("movement", []).filter(func(option: Dictionary) -> bool: return option.get("direction") == [1, 0])[0]
 	assert_equal([east_request.get("enabled"), east_request.get("attackTargetId")], [true, monster.id], "the typed combat request preserves the source-owned collision target")
+	assert_equal([view.friendly_actor_ids, view.hostile_actor_ids], [[character.id], [monster.id]], "the detached combat view owns allegiance relative to the active actor")
+	var combatants: Array = request.payload.get("combatants", [])
+	assert_equal(combatants.map(func(combatant: Dictionary) -> String: return String(combatant.get("id"))), [character.id, monster.id], "the target-information sequence follows Castle's active initiative order")
+	assert_equal([combatants[1].get("range"), combatants[1].get("blocked"), request.payload.get("enemiesRemaining")], [1, false, 1], "the core supplies target range, LOS, and enemy count rather than asking presentation to derive combat facts")
 	var result := rules.combat_flow.move_character(state, content, character.id, Vector2i(46, 45), ScriptedRng.new([0, 0, 0, 0, 0, 0]))
 	assert_true(result.ok, "moving into an opposed occupied footprint resolves melee")
 	assert_equal(state.combat.battlefield.character_position(character.id), Vector2i(45, 45), "collision melee does not move the attacker into the target footprint")
@@ -1892,6 +1897,57 @@ func _test_monster_authored_attack_rows_and_target_retention() -> void:
 	var target_draws := rng.trace().filter(func(entry: Dictionary) -> bool: return entry.get("tag") == "combat.monster-target")
 	assert_equal(target_draws.size(), 1, "one Castle target draw owns the complete authored attack sequence")
 	assert_equal(state.combat.active_actor_id(), character.id, "the monster advances only after its final authored row")
+
+
+func _test_source_backed_physical_attack_audio() -> void:
+	var rules := RealmzRules.new()
+	var sword := ItemDefinition.new("item.audio-sword", 92, "Audio Sword")
+	sword.item_type = 2
+	sword.vs_small = 1
+	sword.sound_id = 38
+	var attacker := _character("character.audio-attacker")
+	attacker.gender = 1
+	attacker.normal_attacks = 4
+	var sword_instance := rules.inventory.add_item(attacker, sword, "instance.audio-sword", true)
+	assert_true(rules.inventory.equip(attacker, sword_instance.id, sword), "attack-audio fixture equips its source-sounded weapon")
+	var defender_definition := _monster_definition("monster.audio-defender", [])
+	var defender := MonsterState.new("monster.audio-defender.instance", defender_definition.id, defender_definition.name, 20, 20, 1)
+	var character_state := _state(attacker, defender, "battle.character-audio")
+	var character_result := rules.combat_flow.submit_action(character_state, _content([defender_definition], [sword]), attacker.id, &"attack", defender.id, ScriptedRng.new([0, 0, 0, 0, 0, 0]))
+	var character_sound := character_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("source") == "classic-combat-attack")
+	assert_equal(character_sound.map(func(event: DomainEvent) -> int: return int(event.payload.get("soundId"))), [638], "an armed character hit requests 600 plus the authored item sound")
+	var character_damage_index := character_result.events.find_custom(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved")
+	assert_true(character_result.events.find(character_sound[0]) < character_damage_index, "character impact sound precedes its typed damage result")
+
+	var row := MonsterAttackDefinition.new(1, 1, 31)
+	var monster_definition := _monster_definition("monster.audio-attacker", [row])
+	monster_definition.hit_dice = 20
+	var target := _character("character.audio-target")
+	target.current_health = 20
+	target.maximum_health = 20
+	var monster := MonsterState.new("monster.audio-attacker.instance", monster_definition.id, monster_definition.name, 20, 20, 20)
+	var monster_state := _state(target, monster, "battle.monster-audio")
+	var monster_result := rules.combat_flow.submit_action(monster_state, _content([monster_definition]), target.id, &"finish", "", ScriptedRng.new(_ints(24)))
+	var monster_sounds := monster_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("source") == "classic-combat-attack")
+	assert_equal(monster_sounds.map(func(event: DomainEvent) -> int: return int(event.payload.get("soundId"))), [632], "Castle's unarmed 631 attack sound remaps to 632")
+
+	var armed_weapon := ItemDefinition.new("item.audio-monster-weapon", 93, "Monster Blade")
+	armed_weapon.item_type = 2
+	armed_weapon.vs_small = 1
+	armed_weapon.blunt = 0
+	var armed_definition := _monster_definition("monster.audio-armed", [MonsterAttackDefinition.new(1, 1, 20)])
+	armed_definition.hit_dice = 20
+	armed_definition.weapon_id = armed_weapon.id
+	var armed_monster := MonsterState.new("monster.audio-armed.instance", armed_definition.id, armed_definition.name, 20, 20, 20)
+	armed_monster.weapon_id = armed_weapon.id
+	var armed_target := _character("character.audio-armed-target")
+	armed_target.current_health = 20
+	armed_target.maximum_health = 20
+	var armed_state := _state(armed_target, armed_monster, "battle.monster-armed-audio")
+	var armed_rng := ScriptedRng.new(_ints(30))
+	var armed_result := rules.combat_flow.submit_action(armed_state, _content([armed_definition], [armed_weapon]), armed_target.id, &"finish", "", armed_rng)
+	assert_true(armed_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 632 and event.payload.get("source") == "classic-combat-attack"), "an armed monster uses Castle's late 632-or-639 sound choice")
+	assert_true(armed_rng.trace().any(func(entry: Dictionary) -> bool: return entry.get("tag") == "combat.monster-attack.sound"), "armed-monster audio owns its source-ordered deterministic RNG draw")
 
 
 func _test_monster_attack_cursor_restore() -> void:

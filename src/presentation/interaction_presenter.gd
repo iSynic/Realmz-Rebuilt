@@ -4,6 +4,7 @@ extends PanelContainer
 const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
 
 signal response_submitted(response: InteractionResponse)
+signal presentation_action_requested(action: StringName, payload: Dictionary)
 
 @onready var _prompt: Label = %InteractionPrompt
 @onready var _heading: Label = %InteractionHeading
@@ -27,14 +28,18 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	if request == null:
 		_set_heading("")
 		_prompt.text = ""
+		_prompt.visible = false
 		return
 	_set_heading(_heading_for_kind(request.kind))
 	_prompt.text = _prompt_for(request, classic_text_context)
+	_prompt.visible = not _prompt.text.is_empty()
 	if request.payload.get("presentation") == "player-map":
 		_prompt.text = ""
+		_prompt.visible = false
 	if request.kind == &"combat_action":
 		_set_heading("")
 		_prompt.text = ""
+		_prompt.visible = false
 	_component = _component_for(request, game_view, media)
 	if _component == null:
 		_set_heading("Unsupported Interaction")
@@ -44,6 +49,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_component.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_component.add_theme_constant_override("separation", 8)
 	_component.payload_submitted.connect(_submit_payload)
+	_component.presentation_action_requested.connect(func(action: StringName, payload: Dictionary) -> void: presentation_action_requested.emit(action, payload))
 	_options.add_child(_component)
 	_component.build(request)
 	_apply_classic_region()
@@ -72,6 +78,7 @@ func present_passive_classic_text(text: String) -> void:
 	_clear_options()
 	_set_heading("")
 	_prompt.text = text
+	_prompt.visible = not text.is_empty()
 	_passive_text = not text.is_empty()
 	visible = not text.is_empty()
 	_apply_classic_region()
@@ -90,6 +97,11 @@ func submit_active_payload(payload: Dictionary) -> bool:
 
 func accepts_combat_spatial_input() -> bool:
 	return _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).accepts_spatial_input()
+
+
+func inspect_combatant(combatant_id: String) -> void:
+	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
+		(_component as BattleInteraction).inspect_combatant(combatant_id)
 
 
 func set_text_scale(value: float) -> void:
@@ -171,7 +183,7 @@ static func uses_textbox_region(request: InteractionRequest, passive_text: bool 
 	return passive_text or request != null and request.payload.get("presentation") != "player-map" and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"combat_action"]
 
 
-static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, _stage_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:
+static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, _unused_stage_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:
 	if request == null or request.kind != &"combat_action":
 		return textbox_rect
 	return combat_rect if combat_rect.has_area() else textbox_rect

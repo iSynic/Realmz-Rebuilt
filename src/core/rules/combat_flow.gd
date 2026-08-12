@@ -222,6 +222,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 					combat.mark_attacked(monster_target.id)
 				if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
 					return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
+				_append_character_attack_audio(events, actor, equipment, resolution, &"monster")
 				events.append(_character_attack_event(actor.id, monster_target.id, &"monster", resolution))
 				monster_death_macro_requested = resolution.killed and _request_monster_death_macro(monster_target, definition, events)
 				_remove_defeated_position(combat, monster_target.id, resolution.killed and not monster_death_macro_requested)
@@ -238,6 +239,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 					combat.mark_attacked(character_target.id)
 				if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
 					return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
+				_append_character_attack_audio(events, actor, equipment, resolution, &"character")
 				events.append(_character_attack_event(actor.id, character_target.id, &"character", resolution))
 				_remove_defeated_position(combat, character_target.id, resolution.killed)
 			_consume_character_attack(actor)
@@ -545,15 +547,16 @@ func _resolve_character_reaction(state: GameState, content: RealmzContent, attac
 	var monster_target := combat.monster_by_id(target_id)
 	if monster_target != null:
 		var definition := content.monster_by_id(monster_target.definition_id)
-		var resolution := _rules.combat.resolve_character_attack(attacker, equipment, monster_target, definition, rng, state.clock.day(), behind, true, combat.can_queue_fumbled_item())
-		if resolution.total_damage() > 0:
+		var reaction_resolution := _rules.combat.resolve_character_attack(attacker, equipment, monster_target, definition, rng, state.clock.day(), behind, true, combat.can_queue_fumbled_item())
+		if reaction_resolution.total_damage() > 0:
 			combat.mark_attacked(monster_target.id)
-		if resolution.fumbled and not _commit_character_fumble(state, attacker, equipment, events):
+		if reaction_resolution.fumbled and not _commit_character_fumble(state, attacker, equipment, events):
 			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
-		var event := _character_attack_event(attacker.id, monster_target.id, &"monster", resolution)
-		_append_reaction_identity(event, action, behind)
-		events.append(event)
-		if resolution.killed:
+		_append_character_attack_audio(events, attacker, equipment, reaction_resolution, &"monster")
+		var reaction_event := _character_attack_event(attacker.id, monster_target.id, &"monster", reaction_resolution)
+		_append_reaction_identity(reaction_event, action, behind)
+		events.append(reaction_event)
+		if reaction_resolution.killed:
 			combat.pending_reaction.mover_killed = true
 			var death_macro_requested := _request_monster_death_macro(monster_target, definition, events)
 			_remove_defeated_position(combat, monster_target.id, not death_macro_requested)
@@ -571,6 +574,7 @@ func _resolve_character_reaction(state: GameState, content: RealmzContent, attac
 		combat.mark_attacked(character_target.id)
 	if resolution.fumbled and not _commit_character_fumble(state, attacker, equipment, events):
 		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
+	_append_character_attack_audio(events, attacker, equipment, resolution, &"character")
 	var event := _character_attack_event(attacker.id, character_target.id, &"character", resolution)
 	_append_reaction_identity(event, action, behind)
 	events.append(event)
@@ -596,23 +600,24 @@ func _resolve_monster_reaction(state: GameState, content: RealmzContent, attacke
 		var defender_equipment := _rules.inventory.combat_equipment(character_target, content.item_definitions())
 		var defender_luck := defender_equipment.effective_luck if defender_equipment.valid else character_target.luck
 		var defender_armor := defender_equipment.effective_armor if defender_equipment.valid else character_target.armor
-		var context := MonsterAttackContext.new(weapon, state.clock.day(), behind, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
-		var resolution := _rules.combat.resolve_monster_attack(attacker, definition, 0, character_target, race, caste, rng, charm_bonus, context, true)
-		if resolution.total_damage() > 0:
+		var reaction_context := MonsterAttackContext.new(weapon, state.clock.day(), behind, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
+		var reaction_resolution := _rules.combat.resolve_monster_attack(attacker, definition, 0, character_target, race, caste, rng, charm_bonus, reaction_context, true)
+		if reaction_resolution.total_damage() > 0:
 			combat.mark_attacked(character_target.id)
-		if resolution.fumbled:
+		if reaction_resolution.fumbled:
 			_commit_monster_fumble(attacker, events)
-		if resolution.special_handled:
-			_append_monster_special_events(events, attacker.id, character_target.id, &"character", resolution)
-			if resolution.aging != null and resolution.aging.changed_group():
-				events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(character_target, race)))
-				combat.pending_monster_attack = PendingMonsterAttack.new(attacker.id, character_target.id, action, resolution.damage, resolution.chance, resolution.roll, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after, resolution.physical_feedback_sound_id)
+		if reaction_resolution.special_handled:
+			_append_monster_special_events(events, attacker.id, character_target.id, &"character", reaction_resolution)
+			if reaction_resolution.aging != null and reaction_resolution.aging.changed_group():
+				events.append(DomainEvent.new(&"character_age_changed", reaction_resolution.aging.event_payload(character_target, race)))
+				combat.pending_monster_attack = PendingMonsterAttack.new(attacker.id, character_target.id, action, reaction_resolution.damage, reaction_resolution.chance, reaction_resolution.roll, reaction_resolution.weapon_condition_index, reaction_resolution.weapon_condition_before, reaction_resolution.weapon_condition_after, reaction_resolution.physical_feedback_sound_id)
 				return REACTION_WAITING
-		_append_monster_physical_feedback(events, resolution.physical_feedback_sound_id)
-		var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": character_target.id, "targetKind": "character", "action": String(action), "attackIndex": 0, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
-		_append_reaction_identity(event, action, behind)
-		events.append(event)
-		if resolution.killed:
+		_append_monster_physical_feedback(events, reaction_resolution.physical_feedback_sound_id)
+		_append_monster_attack_audio(events, attacker, definition, 0, weapon, reaction_resolution, rng)
+		var reaction_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": character_target.id, "targetKind": "character", "action": String(action), "attackIndex": 0, "hit": reaction_resolution.hit, "damage": reaction_resolution.total_damage(), "defeated": reaction_resolution.killed, "chance": reaction_resolution.chance, "roll": reaction_resolution.roll})
+		_append_reaction_identity(reaction_event, action, behind)
+		events.append(reaction_event)
+		if reaction_resolution.killed:
 			combat.pending_reaction.mover_killed = true
 			_remove_defeated_position(combat, character_target.id, true)
 			return REACTION_MOVER_DEFEATED
@@ -629,6 +634,7 @@ func _resolve_monster_reaction(state: GameState, content: RealmzContent, attacke
 		_commit_monster_fumble(attacker, events)
 	if resolution.special_handled:
 		_append_monster_special_events(events, attacker.id, monster_target.id, &"monster", resolution)
+	_append_monster_attack_audio(events, attacker, definition, 0, weapon, resolution, rng)
 	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": monster_target.id, "targetKind": "monster", "action": String(action), "attackIndex": 0, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
 	_append_reaction_identity(event, action, behind)
 	events.append(event)
@@ -918,10 +924,10 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	if spell.target_type == 0:
 		var selections: Array[SpellTargetSelection] = []
 		for selected_id: String in target_ids:
-			var selection := _spell_target_selection(state, content, selected_id)
-			if selection == null:
+			var repeated_selection := _spell_target_selection(state, content, selected_id)
+			if repeated_selection == null:
 				return CombatFlowResult.failed(&"spell_target_unavailable", "A selected repeated-spell target is unavailable.")
-			selections.append(selection)
+			selections.append(repeated_selection)
 		_prepare_character_turn(combat, caster)
 		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng)
 		if repeated == null or not repeated.cast:
@@ -1302,6 +1308,11 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 	var defeated := target.current_health <= 0
 	_remove_defeated_position(combat, target.id, defeated)
 	var pending_attack_index := maxi(0, combat.active_turn.attack_index - 1) if combat.active_turn != null and combat.pending_reaction == null else 0
+	var pending_attacker := combat.monster_by_id(pending.actor_id)
+	var pending_definition := content.monster_by_id(pending_attacker.definition_id) if pending_attacker != null else null
+	var pending_weapon := content.item_by_id(pending_attacker.weapon_id) if pending_attacker != null and not pending_attacker.weapon_id.is_empty() else null
+	var pending_resolution := AttackResolution.new(true, defeated, pending.chance, pending.roll, pending.damage)
+	_append_monster_attack_audio(events, pending_attacker, pending_definition, pending_attack_index, pending_weapon, pending_resolution, rng)
 	var attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": pending.actor_id, "targetId": pending.target_id, "action": String(pending.action), "attackIndex": pending_attack_index, "hit": true, "damage": pending.damage, "defeated": defeated, "chance": pending.chance, "roll": pending.roll})
 	if combat.pending_reaction != null:
 		_append_reaction_identity(attack_event, pending.action, pending.action == &"withdrawal")
@@ -2060,27 +2071,28 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 		var charm_bonus := 50 if state.party.conditions.is_active(ConditionRules.PARTY_CHARM_RESISTANCE) else 0
 		var defender_equipment := _rules.inventory.combat_equipment(character_target, content.item_definitions())
 		var defender_luck := defender_equipment.effective_luck if defender_equipment.valid else character_target.luck
-		var weapon := content.item_by_id(monster.weapon_id) if not monster.weapon_id.is_empty() else null
+		var attack_weapon := content.item_by_id(monster.weapon_id) if not monster.weapon_id.is_empty() else null
 		var defender_armor := defender_equipment.effective_armor if defender_equipment.valid else character_target.armor
-		var attack_context := MonsterAttackContext.new(weapon, state.clock.day(), false, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
-		var resolution := _rules.combat.resolve_monster_attack(monster, definition, attack_index, character_target, race, caste, rng, charm_bonus, attack_context, true)
-		if resolution.total_damage() > 0:
+		var monster_attack_context := MonsterAttackContext.new(attack_weapon, state.clock.day(), false, defender_luck, state.party.conditions.is_active(ConditionRules.PARTY_DRAGON_HIDE), defender_armor)
+		var monster_resolution := _rules.combat.resolve_monster_attack(monster, definition, attack_index, character_target, race, caste, rng, charm_bonus, monster_attack_context, true)
+		if monster_resolution.total_damage() > 0:
 			combat.mark_attacked(character_target.id)
-		if resolution.fumbled:
+		if monster_resolution.fumbled:
 			_commit_monster_fumble(monster, events)
 		var age_update_requested := false
-		if resolution.special_handled:
-			_append_monster_special_events(events, monster.id, character_target.id, &"character", resolution)
-			if resolution.aging != null and resolution.aging.changed_group():
-				events.append(DomainEvent.new(&"character_age_changed", resolution.aging.event_payload(character_target, race)))
+		if monster_resolution.special_handled:
+			_append_monster_special_events(events, monster.id, character_target.id, &"character", monster_resolution)
+			if monster_resolution.aging != null and monster_resolution.aging.changed_group():
+				events.append(DomainEvent.new(&"character_age_changed", monster_resolution.aging.event_payload(character_target, race)))
 				age_update_requested = true
 		if age_update_requested:
-			combat.pending_monster_attack = PendingMonsterAttack.new(monster.id, character_target.id, active_turn.action, resolution.damage, resolution.chance, resolution.roll, resolution.weapon_condition_index, resolution.weapon_condition_before, resolution.weapon_condition_after, resolution.physical_feedback_sound_id)
+			combat.pending_monster_attack = PendingMonsterAttack.new(monster.id, character_target.id, active_turn.action, monster_resolution.damage, monster_resolution.chance, monster_resolution.roll, monster_resolution.weapon_condition_index, monster_resolution.weapon_condition_before, monster_resolution.weapon_condition_after, monster_resolution.physical_feedback_sound_id)
 			return MONSTER_ATTACK_WAITING
-		_append_monster_physical_feedback(events, resolution.physical_feedback_sound_id)
-		events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": character_target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
-		_remove_defeated_position(combat, character_target.id, resolution.killed)
-		if resolution.killed:
+		_append_monster_physical_feedback(events, monster_resolution.physical_feedback_sound_id)
+		_append_monster_attack_audio(events, monster, definition, attack_index, attack_weapon, monster_resolution, rng)
+		events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": character_target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": monster_resolution.hit, "damage": monster_resolution.total_damage(), "defeated": monster_resolution.killed, "chance": monster_resolution.chance, "roll": monster_resolution.roll}))
+		_remove_defeated_position(combat, character_target.id, monster_resolution.killed)
+		if monster_resolution.killed:
 			active_turn.target_id = ""
 			monster.target_id = ""
 		return MONSTER_ATTACK_COMPLETED
@@ -2098,6 +2110,7 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 		_commit_monster_fumble(monster, events)
 	if resolution.special_handled:
 		_append_monster_special_events(events, monster.id, monster_target.id, &"monster", resolution)
+	_append_monster_attack_audio(events, monster, definition, attack_index, weapon, resolution, rng)
 	events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": monster_target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
 	if resolution.killed:
 		active_turn.target_id = ""
@@ -2258,16 +2271,17 @@ func _process_charmed_character_turn(state: GameState, content: RealmzContent, a
 			events.append(DomainEvent.new(&"combat_attack_blocked", {"actorId": actor.id, "targetId": character_target.id, "reason": String(target_equipment.error_code), "message": target_equipment.error_message}))
 			return false
 		active_turn.physical_action_committed = true
-		var resolution := _rules.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng, false, true, state.combat.can_queue_fumbled_item())
-		if resolution.total_damage() > 0:
+		var character_resolution := _rules.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng, false, true, state.combat.can_queue_fumbled_item())
+		if character_resolution.total_damage() > 0:
 			state.combat.mark_attacked(character_target.id)
-		if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
+		if character_resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
 			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
 			return false
-		var event := _character_attack_event(actor.id, character_target.id, &"character", resolution)
-		event.payload["automatic"] = true
-		events.append(event)
-		_remove_defeated_position(state.combat, character_target.id, resolution.killed)
+		var character_event := _character_attack_event(actor.id, character_target.id, &"character", character_resolution)
+		_append_character_attack_audio(events, actor, equipment, character_resolution, &"character")
+		character_event.payload["automatic"] = true
+		events.append(character_event)
+		_remove_defeated_position(state.combat, character_target.id, character_resolution.killed)
 		return false
 	var monster_target := monster_targets[target_index - character_targets.size()]
 	var target_definition := content.monster_by_id(monster_target.definition_id)
@@ -2279,6 +2293,7 @@ func _process_charmed_character_turn(state: GameState, content: RealmzContent, a
 		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
 		return false
 	var event := _character_attack_event(actor.id, monster_target.id, &"monster", resolution)
+	_append_character_attack_audio(events, actor, equipment, resolution, &"monster")
 	event.payload["automatic"] = true
 	events.append(event)
 	var death_macro_requested := resolution.killed and _request_monster_death_macro(monster_target, target_definition, events)
@@ -2478,7 +2493,71 @@ func _append_monster_special_events(events: Array[DomainEvent], actor_id: String
 
 static func _append_monster_physical_feedback(events: Array[DomainEvent], sound_id: int) -> void:
 	if sound_id > 0:
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "waitForCompletion": false, "source": "classic-party-dragon-hide"}))
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "waitForCompletion": true, "source": "classic-party-dragon-hide"}))
+
+
+static func _append_character_attack_audio(events: Array[DomainEvent], attacker: CharacterState, equipment: CharacterCombatEquipment, resolution: AttackResolution, target_kind: StringName) -> void:
+	if attacker == null or equipment == null or resolution == null:
+		return
+	if resolution.blocked:
+		_append_attack_sound(events, _weapon_requirement_sound(resolution.block_reason))
+		return
+	if not resolution.hit:
+		_append_attack_sound(events, 650)
+		return
+	var sound_id := 600 + (equipment.melee_weapon.sound_id if equipment.melee_weapon != null else 30 + attacker.gender * 8)
+	if resolution.killed and target_kind == &"character":
+		_append_attack_sound(events, 132)
+	_append_attack_sound(events, sound_id)
+	if resolution.killed and target_kind != &"character":
+		_append_attack_sound(events, 132)
+
+
+static func _append_monster_attack_audio(events: Array[DomainEvent], attacker: MonsterState, definition: MonsterDefinition, attack_index: int, weapon: ItemDefinition, resolution: AttackResolution, rng: RealmzRng) -> void:
+	if attacker == null or definition == null or resolution == null or rng == null:
+		return
+	if resolution.blocked:
+		_append_attack_sound(events, _weapon_requirement_sound(resolution.block_reason))
+		return
+	if not resolution.hit:
+		_append_attack_sound(events, 650)
+		return
+	var sound_id := 0
+	if weapon != null:
+		if weapon.blunt == -2:
+			sound_id = rng.draw_between(635, 637, &"combat.monster-attack.sound")
+		else:
+			sound_id = 632 if rng.draw(100, &"combat.monster-attack.sound") < 50 else 639
+	else:
+		var attacks := definition.attacks()
+		var selected := MonsterAttackDefinition.new(1, 1)
+		if not attacks.is_empty():
+			selected = attacks[clampi(attack_index, 0, attacks.size() - 1)]
+			if selected.damage_min == 0:
+				selected = attacks[0]
+		sound_id = 600 + selected.sound_or_type
+		if sound_id == 631:
+			sound_id = 632
+	_append_attack_sound(events, sound_id)
+	if resolution.killed:
+		_append_attack_sound(events, 132)
+
+
+static func _weapon_requirement_sound(reason: StringName) -> int:
+	match reason:
+		&"classic_blunt_weapon_required":
+			return 621
+		&"classic_sharp_weapon_required":
+			return 639
+		&"classic_magic_weapon_required", &"classic_specific_weapon_required":
+			return 698
+	return 0
+
+
+static func _append_attack_sound(events: Array[DomainEvent], native_sound_id: int) -> void:
+	if native_sound_id == 0:
+		return
+	events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": "classic-combat-attack"}))
 
 
 func _request_monster_death_macro(monster: MonsterState, definition: MonsterDefinition, events: Array[DomainEvent]) -> bool:

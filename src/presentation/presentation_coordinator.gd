@@ -60,6 +60,10 @@ func set_package_media(media: PackageMediaCatalog) -> void:
 	_shell_presenter.set_package_media(media)
 
 
+func package_media() -> PackageMediaCatalog:
+	return _media
+
+
 func set_active_route(route_id: StringName) -> void:
 	_active_route = route_id
 	_present_current_view()

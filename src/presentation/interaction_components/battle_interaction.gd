@@ -1,14 +1,21 @@
 class_name BattleInteraction
 extends InteractionComponent
 
+var _actor_id: String = ""
+var _combatants: Array[Dictionary] = []
+var _inspected_index: int = -1
+var _inspected_label: Label
+
 
 func build(request: InteractionRequest) -> void:
 	var actor_id := String(request.payload.get("actorId", ""))
+	_actor_id = actor_id
+	_read_combatants(request.payload.get("combatants", []))
 	var actions: Variant = request.payload.get("actions", [])
 	var action_ids: Array = actions if actions is Array else []
 	var weapon_mode := String(request.payload.get("weaponMode", "melee"))
 	var targets: Variant = request.payload.get("targets", [])
-	add_hint("%d attack%s • %d movement • %s" % [int(request.payload.get("attackUnitsRemaining", 0)), "" if int(request.payload.get("attackUnitsRemaining", 0)) == 1 else "s", int(request.payload.get("movementRemaining", 0)), weapon_mode.capitalize()])
+	_build_combatant_information(request, targets)
 	var target_panel := VBoxContainer.new()
 	var spell_panel := VBoxContainer.new()
 	var item_panel := VBoxContainer.new()
@@ -181,7 +188,128 @@ func build(request: InteractionRequest) -> void:
 		item_row.add_child(use_button)
 	elif not String(request.payload.get("itemCastReason", "")).is_empty():
 		add_response_to(item_panel, "Use item unavailable", {}, false, String(request.payload.get("itemCastReason")))
-	add_hint("Move with arrows, WASD, keypad, or a neighboring battlefield tile • hold Shift to show movement costs")
+
+
+func inspect_combatant(combatant_id: String) -> void:
+	for index: int in _combatants.size():
+		if String(_combatants[index].get("id", "")) == combatant_id:
+			_inspected_index = index
+			_refresh_inspected_label()
+			return
+
+
+func _read_combatants(value: Variant) -> void:
+	_combatants.clear()
+	if value is Array:
+		for combatant: Variant in value:
+			if combatant is Dictionary and not String(combatant.get("id", "")).is_empty():
+				_combatants.append((combatant as Dictionary).duplicate(true))
+
+
+func _build_combatant_information(request: InteractionRequest, targets: Variant) -> void:
+	var information := HBoxContainer.new()
+	information.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	information.add_theme_constant_override("separation", 16)
+	var active_label := Label.new()
+	active_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	active_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	active_label.text = "Active • %s\n%d attack%s • %d movement • %s\nEnemies left • %d" % [_combatant_name(_actor_id), int(request.payload.get("attackUnitsRemaining", 0)), "" if int(request.payload.get("attackUnitsRemaining", 0)) == 1 else "s", int(request.payload.get("movementRemaining", 0)), String(request.payload.get("weaponMode", "melee")).capitalize(), int(request.payload.get("enemiesRemaining", 0))]
+	information.add_child(active_label)
+	_inspected_label = Label.new()
+	_inspected_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inspected_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	information.add_child(_inspected_label)
+	add_child(information)
+	var default_id := _actor_id
+	if targets is Array and not targets.is_empty() and targets[0] is Dictionary:
+		default_id = String(targets[0].get("id", default_id))
+	inspect_combatant(default_id)
+	if _inspected_index < 0 and not _combatants.is_empty():
+		_inspected_index = 0
+	_refresh_inspected_label()
+	var navigation := HFlowContainer.new()
+	navigation.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	add_child(navigation)
+	_add_presentation_button(navigation, "Previous", &"inspect_previous")
+	_add_presentation_button(navigation, "Center Active", &"center_active")
+	_add_presentation_button(navigation, "Next", &"inspect_next")
+	_add_presentation_button(navigation, "Reveal Friends", &"reveal_friends")
+
+
+func _add_presentation_button(parent: Container, text: String, action: StringName) -> void:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size.y = 30.0
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.pressed.connect(func() -> void: _perform_presentation_action(action))
+	parent.add_child(button)
+
+
+func _perform_presentation_action(action: StringName) -> void:
+	if action in [&"inspect_previous", &"inspect_next"] and not _combatants.is_empty():
+		var delta := -1 if action == &"inspect_previous" else 1
+		_inspected_index = posmod(_inspected_index + delta, _combatants.size())
+		_refresh_inspected_label()
+		presentation_action_requested.emit(&"focus_combatant", {"combatantId": String(_combatants[_inspected_index].get("id", "")), "playSound": true})
+		return
+	if action == &"center_active":
+		inspect_combatant(_actor_id)
+		presentation_action_requested.emit(&"focus_combatant", {"combatantId": _actor_id, "playSound": true})
+		return
+	if action == &"reveal_friends":
+		presentation_action_requested.emit(&"toggle_reveal_friends", {})
+
+
+func _refresh_inspected_label() -> void:
+	if _inspected_label == null:
+		return
+	if _inspected_index < 0 or _inspected_index >= _combatants.size():
+		_inspected_label.text = "Shown • No combatant selected"
+		return
+	var combatant := _combatants[_inspected_index]
+	var details: Array[String] = ["HP %d/%d" % [int(combatant.get("currentHealth", 0)), int(combatant.get("maximumHealth", 0))]]
+	if int(combatant.get("maximumSpellPoints", 0)) > 0:
+		details.append("SP %d/%d" % [int(combatant.get("spellPoints", 0)), int(combatant.get("maximumSpellPoints", 0))])
+	details.append("AR %d" % int(combatant.get("armor", 0)))
+	details.append("MR %d" % int(combatant.get("magicResistance", 0)))
+	if combatant.has("hitDice"):
+		details.append("HD %d" % int(combatant.get("hitDice", 0)))
+	if int(combatant.get("range", -1)) >= 0:
+		details.append("Range %d%s" % [int(combatant.get("range", -1)), " • Blocked" if bool(combatant.get("blocked", false)) else ""])
+	var secondary: Array[String] = []
+	var weapon := String(combatant.get("weapon", ""))
+	if not weapon.is_empty():
+		var charges := int(combatant.get("weaponCharges", -1))
+		secondary.append("%s%s" % [weapon, " (%d)" % charges if charges >= 0 else ""])
+	secondary.append("Attacks %s" % String(combatant.get("attacks", "0")))
+	secondary.append("Move %d" % int(combatant.get("maximumMovement", combatant.get("movement", 0))))
+	var conditions := _string_array(combatant.get("conditions", []))
+	if not conditions.is_empty():
+		secondary.append("Conditions: %s" % ", ".join(conditions))
+	var defenses: Array[String] = []
+	var immunities := _string_array(combatant.get("immunities", []))
+	var vulnerabilities := _string_array(combatant.get("vulnerabilities", []))
+	if not immunities.is_empty():
+		defenses.append("Immune: %s" % ", ".join(immunities))
+	if not vulnerabilities.is_empty():
+		defenses.append("Vulnerable: %s" % ", ".join(vulnerabilities))
+	var defense_line := "\n%s" % " • ".join(defenses) if not defenses.is_empty() else ""
+	_inspected_label.text = "Shown • %s\n%s\n%s%s" % [String(combatant.get("name", "Combatant")), " • ".join(details), " • ".join(secondary), defense_line]
+
+
+func _combatant_name(combatant_id: String) -> String:
+	for combatant: Dictionary in _combatants:
+		if String(combatant.get("id", "")) == combatant_id:
+			return String(combatant.get("name", combatant_id))
+	return combatant_id
+
+
+static func _string_array(value: Variant) -> Array[String]:
+	var result: Array[String] = []
+	if value is Array:
+		for entry: Variant in value:
+			result.append(String(entry))
+	return result
 
 
 func accepts_spatial_input() -> bool:
@@ -216,6 +344,15 @@ func _add_primary_action_row(request: InteractionRequest, actor_id: String, acti
 	var retreat_enabled := action_ids.has("retreat") and retreat is Dictionary and bool(retreat.get("enabled", false))
 	var retreat_reason := String(retreat.get("reason", "Retreat is unavailable.") if retreat is Dictionary else "Retreat is unavailable.")
 	add_response_to(action_row, "Escape", {"actorId": actor_id, "action": "retreat", "targetId": ""}, retreat_enabled, retreat_reason)
+	_add_unavailable_classic_commands(action_row)
+
+
+func _add_unavailable_classic_commands(parent: Container) -> void:
+	add_response_to(parent, "Auto", {}, false, "Classic Auto Character Move and the separately saved per-character Auto toggle require a typed automation workflow.")
+	add_response_to(parent, "Delay", {}, false, "Classic Delay changes initiative ordering; its save-owned turn contract is not implemented yet.")
+	add_response_to(parent, "Undo", {}, false, "Classic Undo requires an explicit reversible combat transaction boundary.")
+	add_response_to(parent, "Bandage", {}, false, "Classic Bandage clears bleeding. Bleeding is not yet represented in typed character state, so this cannot safely mutate combat.")
+	add_response_to(parent, "Turn Undead", {}, false, "Turn Undead will appear when its caste ability, target, and resolution workflow are source-backed.")
 
 
 func _add_panel_toggle(parent: Container, label: String, panel: Control, panels: Array[Control], enabled: bool, reason: String) -> Button:
@@ -226,9 +363,9 @@ func _add_panel_toggle(parent: Container, label: String, panel: Control, panels:
 	button.disabled = not enabled
 	button.tooltip_text = reason if not enabled else ""
 	button.pressed.connect(func() -> void:
-		var show := not panel.visible
+		var should_show := not panel.visible
 		for candidate: Control in panels:
-			candidate.visible = show and candidate == panel
+			candidate.visible = should_show and candidate == panel
 	)
 	parent.add_child(button)
 	return button

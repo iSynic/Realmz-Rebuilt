@@ -13,6 +13,8 @@ The completed application audit remains the fixed denominator, and the rolling d
 
 The scheduled batch is **Ordinary AOGM combat certification**: representative physical attack, combat spell, retreat, and actual level-up through the ordinary UI. These rules are already functional from deterministic evidence. New archaeology is permitted only if the ordinary route reproduces a discrepancy or reaches a named high-risk boundary; battle reward modes 5/10, opcode 48 bonus treasure, and incidental reward quirks remain deferred parity work rather than silently expanding this batch.
 
+Current combat-interface convergence restores Castle's far-click one-step direction projection, detached shown-target facts, Reveal Friends, camera Center/Next/Previous, and source-ordered physical attack feedback. The full-width deck now exposes the still-missing Auto, Delay, Undo, Bandage, and Turn Undead commands with explicit unavailable reasons rather than hiding the parity gap. Providence commit `b3ff657e235925e549b5736c01dae94dc65e745f` packages the fixed combat sound bank plus reachable item and monster-row sounds without changing schema v2; ordinary AOGM auditory and layout acceptance remains the batch closeout evidence.
+
 The next batch is chosen from the regenerated audit after this route closes. Missing Fast Spell and Allies/Bestiary remain the leading implementation candidates unless ordinary AOGM evidence exposes a higher-priority blocker. Historical rolling-pass entries below remain evidence of completed slices, not standing instructions to continue their old “next priority” notes.
 
 ## Phase 0 — Foundation and tooling (completed)
@@ -165,7 +167,7 @@ The later remaining-monster-specials pass completes specials 10–15 and 18–19
 
 ## Current rolling fidelity pass — ordinary monster melee (implemented)
 
-- With optional fumbles disabled, the resolver now includes Castle's damage-plus accuracy term, carried-weapon accuracy and damage fields, defender-luck draw, effective equipped armor, Realmz-day bonus, attacker conditions, evil-conditional protection, ten-percent floor, zero-minimum attack-row fallback, helpless branch, target-type damage, elemental mitigation, required-weapon gate, and Dragon Hide physical reduction plus asynchronous sound 694.
+- With optional fumbles disabled, the resolver now includes Castle's damage-plus accuracy term, carried-weapon accuracy and damage fields, defender-luck draw, effective equipped armor, Realmz-day bonus, attacker conditions, evil-conditional protection, ten-percent floor, zero-minimum attack-row fallback, helpless branch, target-type damage, elemental mitigation, required-weapon gate, and Dragon Hide physical reduction plus synchronous sound 694.
 - Remake corroborates `hitDice + damageBonus` accuracy and signed physical damage materialization. Castle controls the exact percentage and RNG ordering. Providence schema v2 already emits signed `damageBonus`, attack rows, weapon identity, and complete item metadata, so no compiler or package-contract change was required.
 - `FD-COMBAT-004` records Castle's negative-damage healing defect and the 2.0 zero floor. The source observation is synthetic control-flow evidence, not a Castle-runtime fixture.
 - A monster weapon condition and Dragon Hide feedback that follow a monster-caused age dialog now remain in the central pending-attack state. Restore validates the saved condition baseline, applies both effects exactly once after acknowledgement, and preserves Castle's feedback-before-damage order without changing `.r2save` v3.

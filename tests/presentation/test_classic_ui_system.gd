@@ -251,11 +251,18 @@ func _test_battle_weapon_mode_component() -> void:
 	var request := InteractionRequest.new("battle.weapon-mode", &"combat_action", {
 		"round": 2,
 		"actorId": "character.archer",
+		"attackUnitsRemaining": 2,
+		"movementRemaining": 8,
+		"enemiesRemaining": 1,
 		"actions": ["switch_weapon", "cast_spell", "use_item", "finish", "defend", "retreat"],
 		"weaponMode": "missile",
 		"weaponSwitch": {"enabled": true, "targetMode": "melee", "reason": ""},
 		"rangedAttack": {"enabled": false, "reason": "Missile range, line of sight, and projectile resolution are unavailable."},
 		"retreat": {"enabled": false, "reason": "An enemy is too close.", "nearestEnemyRange": 1},
+		"combatants": [
+			{"id": "character.archer", "kind": "character", "name": "Archer", "currentHealth": 9, "maximumHealth": 10, "spellPoints": 6, "maximumSpellPoints": 8, "armor": 7, "magicResistance": 12, "attacks": "2", "movement": 8, "maximumMovement": 12, "conditions": ["Speedy"]},
+			{"id": "monster.target", "kind": "monster", "name": "Target", "currentHealth": 5, "maximumHealth": 5, "spellPoints": 0, "maximumSpellPoints": 0, "armor": 11, "magicResistance": 25, "hitDice": 3, "attacks": "2", "movement": 9, "maximumMovement": 9, "weapon": "Claws", "weaponCharges": 4, "range": 7, "blocked": true, "conditions": ["Poisoned"], "immunities": ["Heat"], "vulnerabilities": ["Cold"]},
+		],
 		"targets": [{"id": "monster.target", "name": "Target", "currentHealth": 5, "maximumHealth": 5}],
 		"spellCasts": [
 			{"spellId": "spell.flame", "spellName": "Flame", "power": 2, "cost": 4, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5},
@@ -292,6 +299,8 @@ func _test_battle_weapon_mode_component() -> void:
 	var cast_button: Button = null
 	var use_item_button: Button = null
 	var add_target_button: Button = null
+	var center_button: Button = null
+	var reveal_button: Button = null
 	for button: Button in buttons:
 		if button.text == "Fire":
 			fire_button = button
@@ -311,6 +320,10 @@ func _test_battle_weapon_mode_component() -> void:
 			use_item_button = button
 		elif button.text == "Add target":
 			add_target_button = button
+		elif button.text == "Center Active":
+			center_button = button
+		elif button.text == "Reveal Friends":
+			reveal_button = button
 	assert_not_null(fire_button, "the unresolved ranged action remains visible instead of silently disappearing")
 	assert_true(fire_button.disabled and not fire_button.tooltip_text.is_empty(), "the disabled Fire action exposes the typed tactical blocker")
 	assert_not_null(switch_button, "the source-backed no-cost mode toggle remains available")
@@ -322,6 +335,21 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_not_null(cast_button, "the battle component exposes a core-proven spell, power, and target option")
 	assert_not_null(use_item_button, "the battle component exposes a core-proven charged item, power, and target option")
 	assert_not_null(add_target_button, "the battle component exposes an explicit ordered repeated-target selection control")
+	assert_not_null(center_button, "the battle deck exposes Castle's presentation-owned active-actor centering command")
+	assert_not_null(reveal_button, "the battle deck exposes Castle's presentation-owned Reveal Friends command")
+	var battle_labels := component.find_children("*", "Label", true, false)
+	assert_true(battle_labels.any(func(label: Label) -> bool: return label.text.contains("Shown • Target") and label.text.contains("AR 11") and label.text.contains("Range 7 • Blocked") and label.text.contains("Claws (4)") and label.text.contains("Immune: Heat") and label.text.contains("Vulnerable: Cold")), "the source-backed shown-combatant panel exposes target range, LOS, armor, resistance, weapon charges, condition, immunity, and vulnerability facts")
+	assert_true(battle_labels.any(func(label: Label) -> bool: return label.text.contains("Enemies left • 1")), "the active combat summary exposes the core-counted opposing force")
+	for unavailable_label: String in ["Auto", "Delay", "Undo", "Bandage", "Turn Undead"]:
+		var matching_buttons := buttons.filter(func(button: Button) -> bool: return button.text == unavailable_label)
+		assert_equal(matching_buttons.size(), 1, "%s remains visible in the Classic command deck" % unavailable_label)
+		if not matching_buttons.is_empty():
+			assert_true(matching_buttons[0].disabled and not matching_buttons[0].tooltip_text.is_empty(), "%s exposes an explicit typed-workflow gap instead of a fake mutation" % unavailable_label)
+	var presentation_actions: Array[Array] = []
+	component.presentation_action_requested.connect(func(action: StringName, payload: Dictionary) -> void: presentation_actions.append([action, payload]))
+	center_button.pressed.emit()
+	reveal_button.pressed.emit()
+	assert_equal(presentation_actions, [[&"focus_combatant", {"combatantId": "character.archer", "playSound": true}], [&"toggle_reveal_friends", {}]], "Center and Reveal remain presentation events rather than gameplay responses")
 	assert_equal([cast_button.get_parent().visible, use_item_button.get_parent().get_parent().visible], [false, false], "secondary battle workflows begin collapsed instead of overflowing the battlefield")
 	assert_true(component.accepts_spatial_input(), "ordinary battle commands leave keyboard and battlefield movement active")
 	spell_mode_button.pressed.emit()
@@ -950,6 +978,13 @@ func _test_battlefield_presenter() -> void:
 	assert_equal(ClassicBattlefieldPresenter.camera_top_left(Vector2i(45, 45), Vector2i(16, 14)), Vector2i(37, 38), "the active actor remains centered in the ordinary battlefield window")
 	assert_equal(ClassicBattlefieldPresenter.camera_top_left(Vector2i(1, 1), Vector2i(16, 14)), Vector2i.ZERO, "battlefield camera centering clamps safely at the 90 by 90 edge")
 	assert_true(ClassicBattlefieldPresenter.coordinate_is_visible(Vector2i(45, 45), Vector2i(37, 38), Vector2i(16, 14)), "the active actor lies inside its centered tactical camera")
+	assert_equal(ClassicBattlefieldPresenter.click_direction(Vector2i(45, 45), Vector2i(52, 39)), Vector2i(1, -1), "a distant north-east battlefield click selects one north-east step")
+	assert_equal(ClassicBattlefieldPresenter.click_direction(Vector2i(45, 45), Vector2i(38, 45)), Vector2i.LEFT, "a distant west battlefield click selects one west step")
+	assert_equal(ClassicBattlefieldPresenter.click_direction(Vector2i(45, 45), Vector2i(45, 45)), Vector2i.ZERO, "clicking the active actor does not invent a movement direction")
+	var active_cell := Rect2(Vector2(100.0, 100.0), Vector2(32.0, 32.0))
+	assert_equal(ClassicBattlefieldPresenter.click_direction_for_point(active_cell, Vector2(180.0, 40.0)), Vector2i(1, -1), "Castle's raw-pointer partition projects a distant north-east click onto one diagonal step")
+	assert_equal(ClassicBattlefieldPresenter.click_direction_for_point(active_cell, active_cell.end), Vector2i.ZERO, "Castle's strict comparisons keep the exact lower-right active-cell boundary neutral")
+	assert_equal(ClassicBattlefieldPresenter.click_direction_for_point(active_cell, active_cell.end + Vector2.ONE), Vector2i(1, 1), "one pixel beyond both active-cell boundaries selects south-east")
 	combat_view.movement_options.append(CombatMoveOptionView.new(Vector2i.RIGHT, BattlefieldStepResult.permitted(Vector2i(46, 45), 2)))
 	var game_view := GameView.new(1, true, null)
 	game_view.party_members = character_views

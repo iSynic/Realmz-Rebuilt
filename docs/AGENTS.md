@@ -16,7 +16,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - Describe current target behavior, not a diary of implementation attempts.
 - Separate proven Castle behavior, target Realmz 2.0 behavior, and inference.
 - Every fidelity correction records source/control-flow evidence, observable oracle behavior, player-facing problem, chosen result, and tests.
-- Application-hook evidence records the Providence compiler pin `287668a0d620113609841b01bf2eb0943a51e1d5` and keeps direct `GameSession` proof separate from scenario-VM-owned caller coverage; a hook case or workflow remains partial while any caller path is unresolved.
+- Application-hook evidence records the Providence compiler pin `b3ff657e235925e549b5736c01dae94dc65e745f` and keeps direct `GameSession` proof separate from scenario-VM-owned caller coverage; a hook case or workflow remains partial while any caller path is unresolved.
 - Classic media documentation distinguishes shared resource identity from Castle's effective compositing steps; the battle viewport contract records both the active landlook and shared PICT 302 inputs.
 - Roadmap phases remain tied to their approved exit gates.
 - `docs/development.md` is the operational source of truth for risk tiers, workflow batches, Luna delegation, and delivery evidence; `roadmap.md` records the current and future batch interpretation without rewriting historical evidence.

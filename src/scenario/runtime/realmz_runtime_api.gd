@@ -2826,6 +2826,31 @@ func _combat_request(request_id: String) -> InteractionRequest:
 		targets.append({"id": monster.id, "kind": "monster", "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health})
 	for character: CharacterView in combat_view.character_targets:
 		targets.append({"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
+	var combatants_by_id: Dictionary = {}
+	var terrain_set := _combat_terrain_set()
+	for character_state: CharacterState in _game_state.party.characters():
+		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.has_actor(character_state.id):
+			continue
+		var character := CharacterView.new(character_state, _content)
+		var equipment := _rules.inventory.combat_equipment(character_state, _content.item_definitions())
+		character.apply_equipment(equipment)
+		var payload := _character_combatant_payload(character)
+		_append_combatant_position_facts(payload, combat_view.active_actor_id, character.id, terrain_set)
+		_append_character_weapon_facts(payload, character_state, equipment, combat_view.weapon_mode if character.id == combat_view.active_actor_id else &"melee")
+		combatants_by_id[character.id] = payload
+	for monster: MonsterView in combat_view.monsters:
+		if _game_state.combat.battlefield == null or not _game_state.combat.battlefield.has_actor(monster.id):
+			continue
+		var payload := _monster_combatant_payload(monster)
+		_append_combatant_position_facts(payload, combat_view.active_actor_id, monster.id, terrain_set)
+		combatants_by_id[monster.id] = payload
+	var combatants: Array[Dictionary] = []
+	for combatant_id: String in combat_view.turn_order:
+		if combatants_by_id.has(combatant_id):
+			combatants.append(combatants_by_id[combatant_id])
+			combatants_by_id.erase(combatant_id)
+	for remaining: Dictionary in combatants_by_id.values():
+		combatants.append(remaining)
 	var movement: Array[Dictionary] = []
 	for option: CombatMoveOptionView in combat_view.movement_options:
 		movement.append({"direction": [option.direction.x, option.direction.y], "destination": [option.destination.x, option.destination.y], "cost": option.movement_cost, "enabled": option.enabled, "reasonCode": String(option.reason), "reason": option.reason_text, "retreat": option.retreats_from_battle, "forcedRetreat": option.forced_retreat, "attackTargetId": option.attack_target_id, "attackTargetName": option.attack_target_name})
@@ -2853,7 +2878,43 @@ func _combat_request(request_id: String) -> InteractionRequest:
 		actions.append("use_item")
 	var item_cast_reason := _rules.combat_flow.character_item_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
 	var retreat := {"enabled": combat_view.retreat_available, "reason": combat_view.retreat_unavailable_reason, "nearestEnemyRange": combat_view.nearest_enemy_range}
-	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason, "itemCasts": item_casts, "itemCastReason": item_cast_reason})
+	var enemies_remaining := combat_view.hostile_actor_ids.size()
+	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "enemiesRemaining": enemies_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "combatants": combatants, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason, "itemCasts": item_casts, "itemCastReason": item_cast_reason})
+
+
+static func _character_combatant_payload(character: CharacterView) -> Dictionary:
+	return {"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health, "spellPoints": character.spell_points, "maximumSpellPoints": character.maximum_spell_points, "armor": character.armor, "magicResistance": character.magic_resistance, "attacks": character.attacks_per_round, "movement": character.movement, "maximumMovement": character.maximum_movement, "traitor": character.traitor, "helpless": character.condition_values[ConditionRules.HELPLESS] != 0, "conditions": character.conditions.map(func(condition: CharacterMetricView) -> String: return condition.name)}
+
+
+static func _monster_combatant_payload(monster: MonsterView) -> Dictionary:
+	return {"id": monster.id, "kind": "monster", "name": monster.name, "currentHealth": monster.current_health, "maximumHealth": monster.maximum_health, "spellPoints": monster.spell_points, "maximumSpellPoints": monster.maximum_spell_points, "armor": monster.armor, "magicResistance": monster.magic_resistance, "hitDice": monster.hit_dice, "attacks": str(monster.attack_count), "movement": monster.movement_maximum, "maximumMovement": monster.movement_maximum, "traitor": monster.traitor, "helpless": monster.helpless, "conditions": monster.conditions.duplicate(), "immunities": monster.immunities.duplicate(), "vulnerabilities": monster.vulnerabilities.duplicate(), "weapon": monster.weapon_name}
+
+
+func _append_combatant_position_facts(payload: Dictionary, active_actor_id: String, combatant_id: String, terrain_set: BattleTerrainSetDefinition) -> void:
+	if _game_state.combat == null or _game_state.combat.battlefield == null or active_actor_id.is_empty() or combatant_id.is_empty():
+		return
+	payload["range"] = _rules.battlefield.classic_range(_game_state.combat.battlefield, active_actor_id, combatant_id)
+	payload["blocked"] = terrain_set == null or not _rules.battlefield.has_line_of_sight(_game_state.combat.battlefield, terrain_set, active_actor_id, combatant_id)
+
+
+func _append_character_weapon_facts(payload: Dictionary, character: CharacterState, equipment: CharacterCombatEquipment, weapon_mode: StringName) -> void:
+	if equipment == null or not equipment.valid:
+		return
+	var weapon := equipment.missile_weapon if weapon_mode == &"missile" else equipment.melee_weapon
+	var instance_id := equipment.missile_weapon_instance_id if weapon_mode == &"missile" else equipment.melee_weapon_instance_id
+	payload["weapon"] = weapon.name if weapon != null else "Unarmed"
+	payload["weaponCharges"] = -1
+	for instance: ItemInstance in character.inventory():
+		if instance.id == instance_id:
+			payload["weaponCharges"] = instance.charges
+			break
+
+
+func _combat_terrain_set() -> BattleTerrainSetDefinition:
+	if _game_state.combat == null or _game_state.combat.battlefield == null:
+		return null
+	var map := _content.world.map_by_id(_game_state.combat.battlefield.map_id)
+	return _content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
 
 
 static func _combat_destination(value: Variant) -> Vector2i:

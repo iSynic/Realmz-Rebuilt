@@ -2,6 +2,7 @@ class_name ClassicBattlefieldPresenter
 extends Control
 
 signal tactical_action_requested(payload: Dictionary)
+signal combatant_inspected(combatant_id: String)
 
 const NATIVE_CELL_SIZE: float = 32.0
 const HEADER_HEIGHT: float = 38.0
@@ -18,6 +19,8 @@ var _upper_atlas_texture: Texture2D
 var _actor_textures: Dictionary = {}
 var _movement_costs_visible: bool = false
 var _hovered_coordinate := Vector2i(-1, -1)
+var _camera_focus_id: String = ""
+var _reveal_friends: bool = false
 
 
 func _ready() -> void:
@@ -30,6 +33,10 @@ func present(game_view: GameView) -> void:
 	if _view == null or _view.combat_view == null:
 		_movement_costs_visible = false
 		_hovered_coordinate = Vector2i(-1, -1)
+		_camera_focus_id = ""
+		_reveal_friends = false
+	elif not _camera_focus_id.is_empty() and actor_position(_view.combat_view, _view.party_members, _camera_focus_id).x < 0:
+		_camera_focus_id = ""
 	var requested_upper_atlas_id := ""
 	if _view != null and _view.combat_view != null and _view.combat_view.battlefield != null:
 		requested_upper_atlas_id = _view.combat_view.battlefield.upper_tileset_id
@@ -67,7 +74,8 @@ func _draw() -> void:
 		return
 	var combat := _view.combat_view
 	var battlefield := combat.battlefield
-	var active_position := actor_position(combat, _view.party_members, combat.active_actor_id)
+	var focus_id := _camera_focus_id if not _camera_focus_id.is_empty() else combat.active_actor_id
+	var active_position := actor_position(combat, _view.party_members, focus_id)
 	if active_position.x < 0:
 		active_position = battlefield.party_anchor
 	var visible_cells := viewport_cells_for(size)
@@ -79,6 +87,7 @@ func _draw() -> void:
 			var coordinate := camera + Vector2i(x, y)
 			var rect := Rect2(draw_origin + Vector2(x, y) * NATIVE_CELL_SIZE, Vector2.ONE * NATIVE_CELL_SIZE)
 			_draw_terrain_cell(battlefield.terrain_at(coordinate), rect)
+	_draw_revealed_relationships(combat, camera, visible_cells, draw_origin)
 	_draw_movement_options(combat, camera, visible_cells, draw_origin)
 	_draw_characters(combat, camera, visible_cells, draw_origin)
 	_draw_monsters(combat, camera, visible_cells, draw_origin)
@@ -136,6 +145,28 @@ func movement_costs_visible() -> bool:
 	return _movement_costs_visible
 
 
+func focus_combatant(combatant_id: String) -> void:
+	_camera_focus_id = combatant_id
+	queue_redraw()
+
+
+func toggle_reveal_friends() -> void:
+	_reveal_friends = not _reveal_friends
+	queue_redraw()
+
+
+func dismiss_reveal_friends() -> bool:
+	if not _reveal_friends:
+		return false
+	_reveal_friends = false
+	queue_redraw()
+	return true
+
+
+func reveal_friends_visible() -> bool:
+	return _reveal_friends
+
+
 func submit_movement_direction(direction: Vector2i) -> bool:
 	var option := _movement_option_for_direction(direction)
 	return _submit_movement_option(option)
@@ -145,15 +176,24 @@ func _gui_input(event: InputEvent) -> void:
 	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
 		return
 	if event is InputEventMouseMotion:
-		var coordinate := _coordinate_at_local_position((event as InputEventMouseMotion).position)
-		var next_hover := coordinate if _movement_option_for_destination(coordinate) != null else Vector2i(-1, -1)
+		var hover_option := _movement_option_toward_local_position((event as InputEventMouseMotion).position)
+		var next_hover := hover_option.destination if hover_option != null else Vector2i(-1, -1)
 		if next_hover != _hovered_coordinate:
 			_hovered_coordinate = next_hover
 			queue_redraw()
 		return
 	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT and (event as InputEventMouseButton).pressed:
-		var coordinate := _coordinate_at_local_position((event as InputEventMouseButton).position)
-		if _submit_movement_option(_movement_option_for_destination(coordinate)):
+		if dismiss_reveal_friends():
+			accept_event()
+			return
+		if (event as InputEventMouseButton).ctrl_pressed or (event as InputEventMouseButton).meta_pressed:
+			var inspected_id := combatant_at(_view.combat_view, _view.party_members, _coordinate_at_local_position((event as InputEventMouseButton).position))
+			if not inspected_id.is_empty():
+				focus_combatant(inspected_id)
+				combatant_inspected.emit(inspected_id)
+				accept_event()
+			return
+		if _submit_movement_option(_movement_option_toward_local_position((event as InputEventMouseButton).position)):
 			accept_event()
 
 
@@ -199,6 +239,16 @@ func _movement_option_for_destination(destination: Vector2i) -> CombatMoveOption
 	return null
 
 
+func _movement_option_toward_local_position(local_position: Vector2) -> CombatMoveOptionView:
+	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
+		return null
+	var origin := actor_position(_view.combat_view, _view.party_members, _view.combat_view.active_actor_id)
+	var visible_cells := viewport_cells_for(size)
+	var camera := camera_top_left(origin, visible_cells)
+	var draw_origin := battlefield_draw_origin(size, visible_cells)
+	return _movement_option_for_direction(click_direction_for_point(cell_rect(origin, camera, draw_origin), local_position))
+
+
 func _submit_movement_option(option: CombatMoveOptionView) -> bool:
 	if option == null or not option.enabled or _view == null or _view.combat_view == null:
 		return false
@@ -225,6 +275,27 @@ func _draw_characters(combat: CombatView, camera: Vector2i, visible_cells: Vecto
 		var rect := cell_rect(coordinate, camera, draw_origin)
 		var asset := _media.asset_by_id(character.combat_icon_id) if _media != null else null
 		_draw_actor(rect, _texture_for(asset), character.name, character.id == combat.active_actor_id, target_ids.has(character.id), character.traitor)
+
+
+func _draw_revealed_relationships(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
+	if not _reveal_friends:
+		return
+	var origin := actor_position(combat, _view.party_members, combat.active_actor_id)
+	if not coordinate_is_visible(origin, camera, visible_cells):
+		return
+	var start := cell_rect(origin, camera, draw_origin).get_center()
+	for character: CharacterView in _view.party_members:
+		var coordinate := combat.battlefield.character_position(character.id)
+		if character.id == combat.active_actor_id or not coordinate_is_visible(coordinate, camera, visible_cells):
+			continue
+		var color := Color(0.20, 0.42, 1.0, 0.90) if character.condition_values[ConditionRules.HELPLESS] != 0 else Color(0.18, 0.90, 0.38, 0.86) if combat.friendly_actor_ids.has(character.id) else Color(0.95, 0.22, 0.18, 0.86)
+		draw_line(start, cell_rect(coordinate, camera, draw_origin).get_center(), color, 2.0)
+	for monster: MonsterView in combat.monsters:
+		var coordinate := combat.battlefield.monster_position(monster.id)
+		if not coordinate_is_visible(coordinate, camera, visible_cells):
+			continue
+		var color := Color(0.20, 0.42, 1.0, 0.90) if monster.helpless else Color(0.18, 0.90, 0.38, 0.86) if combat.friendly_actor_ids.has(monster.id) else Color(0.95, 0.22, 0.18, 0.86)
+		draw_line(start, cell_rect(coordinate, camera, draw_origin).get_center(), color, 2.0)
 
 
 func _draw_monsters(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
@@ -306,6 +377,36 @@ static func actor_name(combat: CombatView, party_members: Array[CharacterView], 
 			if monster.id == actor_id:
 				return monster.name
 	return actor_id if not actor_id.is_empty() else "Waiting"
+
+
+static func combatant_at(combat: CombatView, party_members: Array[CharacterView], coordinate: Vector2i) -> String:
+	if combat == null or combat.battlefield == null:
+		return ""
+	for character: CharacterView in party_members:
+		if combat.battlefield.character_position(character.id) == coordinate:
+			return character.id
+	for monster: MonsterView in combat.monsters:
+		if combat.battlefield.monster_footprint(monster.id).has(coordinate):
+			return monster.id
+	return ""
+
+
+static func click_direction(origin: Vector2i, destination: Vector2i) -> Vector2i:
+	var offset := destination - origin
+	return Vector2i(signi(offset.x), signi(offset.y))
+
+
+static func click_direction_for_point(active_cell: Rect2, point: Vector2) -> Vector2i:
+	var direction := Vector2i.ZERO
+	if point.x < active_cell.position.x:
+		direction.x = -1
+	elif point.x > active_cell.end.x:
+		direction.x = 1
+	if point.y < active_cell.position.y:
+		direction.y = -1
+	elif point.y > active_cell.end.y:
+		direction.y = 1
+	return direction
 
 
 static func viewport_cells_for(control_size: Vector2) -> Vector2i:
