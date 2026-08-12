@@ -23,7 +23,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | --- | --- | --- |
 | `classic.combat.physical-attack` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.spellcasting.combat-cast` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.combat.retreat` | certification | aogm-certification | aogm-ordinary | GAP-COMBAT-005 |
+| `classic.combat.retreat` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary | GAP-REWARD-002 |
 
 ### Batch count delta
@@ -137,7 +137,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: | ---: |
 | synthetic | 58 | 7 |
 | route-harness | 39 | 2 |
-| aogm-ordinary | 24 | 3 |
+| aogm-ordinary | 25 | 3 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
@@ -202,7 +202,6 @@ Blockers: **1**. Major gaps: **20**.
 ### other-campaign
 
 - `classic.character.age-update` — Age updates have no ordinary-campaign observation because the trigger is rare.
-- `classic.combat.retreat` — Retreat variants lack ordinary-campaign evidence.
 - `classic.exploration.travel` — Dungeon and boat variants lack ordinary campaign certification.
 - `classic.maps.authored-journal` — Authored journal discovery and browsing have synthetic proof only.
 - `classic.maps.location-notes` — Location-note creation, editing, removal, and restoration have synthetic proof only.
