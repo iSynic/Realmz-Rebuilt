@@ -13,27 +13,27 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Ordinary AOGM combat certification** (`aogm-combat-certification`)
+**Ordinary AOGM exploration and services certification** (`aogm-exploration-services-certification`)
 
-Close a coherent ordinary AOGM combat path across already functional workflows before investigating deferred special battle modes or rare reward branches.
+Move from the completed combat route to ordinary application depth: Camp/Rest and money operations are ready for certification, while contextual service entry supplies their normal exploration handoff. Missing combat subcommands and broad item/spell edge cases remain separate implementation batches.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.combat.physical-attack` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.spellcasting.combat-cast` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.combat.retreat` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.exploration.camp-rest` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.services.pool-share` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.services.swap` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.exploration.contextual-service` | certification | aogm-certification | aogm-ordinary | GAP-EXP-004 |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 2 | 2 | 0 |
-| classic | partial | 16 | 17 | +1 |
-| classic | functional | 42 | 40 | -2 |
-| classic | certified | 0 | 1 | +1 |
+| classic | partial | 17 | 17 | 0 |
+| classic | functional | 40 | 40 | 0 |
+| classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 6 | 6 | 0 |
