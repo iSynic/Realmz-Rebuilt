@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Realmz Remake 2.0"
+config/name="Realmz Rebuilt"
 config/version="0.1.0-dev"
 run/main_scene="res://src/presentation/realmz_application.tscn"
 config/use_custom_user_dir=true
