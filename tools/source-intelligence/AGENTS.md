@@ -18,6 +18,7 @@ Own the deterministic source-intelligence generator, validator, HTML template, a
 - Use exact path, symbol, line, column, file hash, and generation commit evidence for every local source relationship.
 - Never turn an ambiguous name match or dynamic dispatch into a resolved edge.
 - Stage and validate all generated outputs before replacing the existing snapshot.
+- Write physical `chunks.jsonl` record separators as LF so committed output hashes survive Git checkout on every platform.
 - Reuse a prior snapshot commit only when the working tree is clean and Git confirms that commit and current `HEAD` contain identical indexed inputs. A dirty snapshot always names current `HEAD`; matching fingerprints alone cannot preserve a commit that lacks the embedded bytes.
 - Preserve the existing overview catalog while allowing the detailed graph to grow beyond 20 nodes.
 

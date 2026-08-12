@@ -958,7 +958,7 @@ $model=[ordered]@{schema_version=1;generator_version=$generatorVersion;repositor
 Test-Model $model $fileByPath $commit
 
 $overview=[ordered]@{generated_at=$effectiveGeneratedAt;generated_from_commit=$commit;scope=$scopeRoots+$rootFiles;nodes=@($overviewNodes);edges=@($overviewEdges);flows=@($overviewFlows)}
-$chunkText=(@($chunks|Sort-Object id|ForEach-Object{Get-CanonicalJson $_}) -join [Environment]::NewLine)+[Environment]::NewLine
+$chunkText=(@($chunks|Sort-Object id|ForEach-Object{Get-CanonicalJson $_}) -join "`n")+"`n"
 $intelligenceText=Get-CanonicalJson $model;$overviewText=Get-CanonicalJson $overview;$template=Get-Content -Raw $templatePath;$overviewHtmlText=$overviewText.Replace("</script","<\/script");$intelligenceHtmlText=$intelligenceText.Replace("</script","<\/script");$htmlText=$template.Replace("@@OVERVIEW_JSON@@",$overviewHtmlText).Replace("@@INTELLIGENCE_JSON@@",$intelligenceHtmlText)
 
 $stage=Join-Path $outputRoot (".stage-" + [Guid]::NewGuid().ToString("N"));New-Item -ItemType Directory -Path $stage -Force|Out-Null
