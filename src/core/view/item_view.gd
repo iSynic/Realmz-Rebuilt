@@ -14,7 +14,7 @@ var description: String
 var value: int
 var restriction_reason: String = ""
 var icon_id: int
-var icon_resource_type: String = "CICN"
+var icon_resource_type: String = "cicn"
 var item_type: int
 var curse_revealed: bool = false
 var facts: Array[ItemFactView] = []

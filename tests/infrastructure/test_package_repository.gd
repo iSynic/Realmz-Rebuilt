@@ -12,7 +12,7 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "da09623bcd1c1dac35c53e301e6f536155df3aca26a5a16fa08cbfd5259f9f15", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "924b0f046247a38cfdb684314b97b968c53c60384cf117b14753f2a26e0a93b9", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -119,6 +119,14 @@ func run() -> void:
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").spell_id_at(1), "", "an empty native spell slot remains selectable as an empty Castle retry")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").required_weapon, 0, "monster weapon requirements remain distinct from battle placement distance")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").magic_to_hit, 0, "monster magical-plus thresholds remain an explicit field even when unrestricted")
+	assert_equal(loaded.content.monster_by_id("classic.monster.1").icon_id, 384, "monster display identity preserves Castle's exact base cicn")
+	assert_not_null(loaded.media.asset_by_resource("cicn", 384), "the base facing of each reachable monster resolves through exact Classic media identity")
+	assert_not_null(loaded.media.asset_by_resource("cicn", 692), "the alternate Castle facing resolves through the authored base cicn plus 308")
+	var monster_media: Array[PackageMediaAsset] = loaded.media.assets()
+	var fixture_monsters: Array[MonsterDefinition] = [loaded.content.monster_by_id("classic.monster.1")]
+	assert_true(PackageRepository.new()._validate_monster_media(fixture_monsters, monster_media), "complete reachable monster media passes independent runtime readiness")
+	monster_media = monster_media.filter(func(asset: PackageMediaAsset) -> bool: return not (asset.resource_type == "cicn" and asset.resource_id == 384))
+	assert_false(PackageRepository.new()._validate_monster_media(fixture_monsters, monster_media), "missing required monster media fails readiness instead of degrading to letter placeholders")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").starting_conditions()[ConditionRules.REFLECTING_SPELLS], -1, "all forty authored monster starting conditions cross the validating package boundary")
 	var random_weapon_monster := MonsterDefinition.new("monster.random-readiness", 999, "Random Readiness", 1, 0, 1, 0, 0, [], [], [], [], [], [], [MonsterAttackDefinition.new(1, 1)])
 	random_weapon_monster.random_weapon_table = 6
@@ -249,7 +257,7 @@ func run() -> void:
 	assert_equal(loaded.content.spell_by_id("classic.spell.1108").name, "Magic Darts", "standard spell names follow Castle's positive Custom Names STR# lookup")
 	assert_equal(loaded.content.spell_by_id("classic.spell.2302").name, "Destroy Magic", "standard spell labels preserve their packed Classic identity")
 	assert_not_null(loaded.media, "validated package media receives a typed catalog")
-	assert_equal(loaded.media.assets().size(), 252, "the synthetic fixture carries authored map/scenario media, player-map media and markers, the battle atlas, and both 120-entry character-appearance catalogs")
+	assert_equal(loaded.media.assets().size(), 254, "the synthetic fixture carries authored map/scenario media, player-map media and markers, the battle atlas, both monster facings, and both 120-entry character-appearance catalogs")
 	assert_equal([loaded.media.assets_of_kind("portrait").size(), loaded.media.assets_of_kind("combat-icon").size()], [120, 120], "the media catalog groups appearance roles without resource-ID-only lookup")
 	var first_portrait_bytes := loaded.media.read_bytes_batch([loaded.media.assets_of_kind("portrait")[0]])
 	assert_false((first_portrait_bytes.get("realmz-portrait-257", PackedByteArray()) as PackedByteArray).is_empty(), "batch media reads validate creator thumbnails through one archive boundary")

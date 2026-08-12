@@ -8,7 +8,7 @@ var current_health: int
 var maximum_health: int
 var traitor: bool
 var icon_id: int
-var icon_resource_type: String = "CICN"
+var icon_resource_type: String = "cicn"
 
 
 func _init(monster: MonsterState) -> void:

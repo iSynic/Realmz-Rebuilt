@@ -15,7 +15,7 @@ var target_type: int
 var castable_in_combat: bool
 var castable_in_camp: bool
 var icon_id: int
-var icon_resource_type: String = "CICN"
+var icon_resource_type: String = "cicn"
 var field_cast: ActionAvailabilityView = ActionAvailabilityView.new(&"cast_spell", false, "Field casting is unavailable.")
 var power_levels: Array[int] = []
 var make_scroll: ActionAvailabilityView = ActionAvailabilityView.new(&"cast_spell", false, "Scroll scribing is unavailable.")

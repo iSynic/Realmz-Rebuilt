@@ -42,6 +42,7 @@ func build_monster(definition: MonsterDefinition, instance_id: String, traitor_o
 		stamina += int(float(realmz_day) / float(denominator))
 	var traitor := definition.traitor if traitor_override < 0 else traitor_override != 0
 	var result := MonsterState.new(instance_id, definition.id, definition.name, stamina, stamina, definition.hit_dice, agility, armor, magic_resistance, spell_points, traitor)
+	result.icon_id = definition.icon_id
 	for index: int in 8:
 		result.set_save_value(index, definition.save_value(index) + (7 * difficulty if index < 6 else 0))
 	_apply_starting_conditions(result, definition)
@@ -79,6 +80,7 @@ func build_battle_monster(definition: MonsterDefinition, instance_id: String, in
 	if invert_traitor:
 		traitor = not traitor
 	var result := MonsterState.new(instance_id, definition.id, definition.name, stamina, stamina, definition.hit_dice, agility, armor, magic_resistance, spell_points, traitor)
+	result.icon_id = definition.icon_id
 	for index: int in 8:
 		result.set_save_value(index, definition.save_value(index) + (10 * difficulty if index < 6 else 0))
 	_apply_starting_conditions(result, definition)

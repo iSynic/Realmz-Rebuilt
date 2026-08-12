@@ -8,49 +8,30 @@ func build(request: InteractionRequest) -> void:
 	var action_ids: Array = actions if actions is Array else []
 	var weapon_mode := String(request.payload.get("weaponMode", "melee"))
 	var targets: Variant = request.payload.get("targets", [])
+	add_hint("%d attack%s • %d movement • %s" % [int(request.payload.get("attackUnitsRemaining", 0)), "" if int(request.payload.get("attackUnitsRemaining", 0)) == 1 else "s", int(request.payload.get("movementRemaining", 0)), weapon_mode.capitalize()])
+	var target_panel := VBoxContainer.new()
+	var spell_panel := VBoxContainer.new()
+	var item_panel := VBoxContainer.new()
+	var mode_panels: Array[Control] = [target_panel, spell_panel, item_panel]
+	_add_primary_action_row(request, actor_id, action_ids, targets, target_panel, spell_panel, item_panel, mode_panels)
+	for panel: Control in mode_panels:
+		panel.visible = false
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		add_child(panel)
 	if action_ids.has("attack") and targets is Array:
 		var attack_row := HFlowContainer.new()
 		attack_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		add_child(attack_row)
+		target_panel.add_child(attack_row)
 		for target: Variant in targets:
 			if target is Dictionary:
 				var verb := "Fire at" if weapon_mode == "missile" else "Attack"
 				add_response_to(attack_row, "%s %s • HP %d/%d" % [verb, target.get("name", "Enemy"), int(target.get("currentHealth", 0)), int(target.get("maximumHealth", 0))], {"actorId": actor_id, "action": "attack", "targetId": String(target.get("id", ""))})
 	elif weapon_mode == "melee" and not String(request.payload.get("meleeAttackReason", "")).is_empty():
-		add_hint(String(request.payload.get("meleeAttackReason", "No adjacent melee target.")))
+		_add_hint_to(target_panel, String(request.payload.get("meleeAttackReason", "No adjacent melee target.")))
 	if weapon_mode == "missile" and not action_ids.has("attack"):
 		var ranged: Variant = request.payload.get("rangedAttack", {})
 		var ranged_reason := String(ranged.get("reason", "Missile attacks are unavailable.") if ranged is Dictionary else "Missile attacks are unavailable.")
-		add_response("Fire missile unavailable", {}, false, ranged_reason)
-	_add_primary_action_row(request, actor_id, action_ids)
-	var movement: Variant = request.payload.get("movement", [])
-	if movement is Array:
-		var movement_by_direction: Dictionary = {}
-		for option: Variant in movement:
-			if option is Dictionary:
-				movement_by_direction[_direction_key(option.get("direction", []))] = option
-		var movement_row := HFlowContainer.new()
-		movement_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		add_child(movement_row)
-		for direction: Vector2i in [Vector2i(-1, -1), Vector2i.UP, Vector2i(1, -1), Vector2i.LEFT, Vector2i.RIGHT, Vector2i(-1, 1), Vector2i.DOWN, Vector2i.ONE]:
-			var option: Variant = movement_by_direction.get(_direction_key([direction.x, direction.y]))
-			if not option is Dictionary:
-				continue
-			var destination: Variant = option.get("destination", [])
-			var edge_retreat := bool(option.get("retreat", false))
-			var attack_target_id := String(option.get("attackTargetId", ""))
-			var direction_label := _direction_label(option.get("direction", []))
-			var label := "Leave %s" % direction_label if edge_retreat else "Attack %s" % direction_label if not attack_target_id.is_empty() else "%s • %d MP" % [direction_label, int(option.get("cost", 0))]
-			var full_label := "Leave battle %s" % direction_label if edge_retreat else "Attack %s to the %s • %d MP" % [option.get("attackTargetName", "hostile"), direction_label, int(option.get("cost", 0))] if not attack_target_id.is_empty() else "Move %s • %d MP" % [direction_label, int(option.get("cost", 0))]
-			var action := "retreat_edge" if edge_retreat else "move"
-			var response := {"actorId": actor_id, "action": action, "targetId": "", "destination": destination}
-			if edge_retreat:
-				response["forced"] = bool(option.get("forcedRetreat", false))
-			var enabled := bool(option.get("enabled", false))
-			var reason := String(option.get("reason", "Movement unavailable."))
-			var button := add_response_to(movement_row, label, response, enabled, reason)
-			if enabled:
-				button.tooltip_text = full_label
+		add_response_to(target_panel, "Fire unavailable", {}, false, ranged_reason)
 	var spell_casts: Variant = request.payload.get("spellCasts", [])
 	if action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty():
 		var spell_picker := OptionButton.new()
@@ -68,14 +49,14 @@ func build(request: InteractionRequest) -> void:
 					label += " (%d/%d HP)" % [target_health, int(option.get("targetMaximumHealth", 0))]
 				spell_picker.add_item(label)
 				spell_picker.set_item_metadata(spell_picker.item_count - 1, option.duplicate(true))
-		add_child(spell_picker)
+		spell_panel.add_child(spell_picker)
 		var cast_button := Button.new()
 		cast_button.text = "Cast selected spell"
 		cast_button.disabled = spell_picker.item_count == 0
 		var target_x := SpinBox.new()
 		var target_y := SpinBox.new()
 		if has_area_spell:
-			add_hint("Area center uses validated battlefield coordinates. A viewport pointer/highlight is still presentation work.")
+			_add_hint_to(spell_panel, "Area center uses validated battlefield coordinates. A viewport pointer/highlight is still presentation work.")
 			var coordinate_row := HBoxContainer.new()
 			target_x.min_value = 0
 			target_x.max_value = BattlefieldState.SIZE - 1
@@ -85,7 +66,7 @@ func build(request: InteractionRequest) -> void:
 			target_y.prefix = "Y "
 			coordinate_row.add_child(target_x)
 			coordinate_row.add_child(target_y)
-			add_child(coordinate_row)
+			spell_panel.add_child(coordinate_row)
 			var update_area_controls := func(index: int) -> void:
 				var selected: Variant = spell_picker.get_item_metadata(index)
 				var area_selected: bool = selected is Dictionary and selected.get("targetMode", "combatant") == "area"
@@ -104,15 +85,15 @@ func build(request: InteractionRequest) -> void:
 		var sequence_remove_button := Button.new()
 		var sequence_target_ids: Array[String] = []
 		if has_sequence_spell:
-			add_hint("Repeated spells preserve the order selected. Cast may begin after one target, up to the chosen power.")
+			_add_hint_to(spell_panel, "Repeated spells preserve the order selected. Cast may begin after one target, up to the chosen power.")
 			sequence_target_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			sequence_selected_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			sequence_add_button.text = "Add target"
 			sequence_remove_button.text = "Remove selected target"
-			add_child(sequence_target_picker)
-			add_child(sequence_add_button)
-			add_child(sequence_selected_picker)
-			add_child(sequence_remove_button)
+			spell_panel.add_child(sequence_target_picker)
+			spell_panel.add_child(sequence_add_button)
+			spell_panel.add_child(sequence_selected_picker)
+			spell_panel.add_child(sequence_remove_button)
 			var refresh_sequence_controls := func(index: int) -> void:
 				sequence_target_ids.clear()
 				sequence_target_picker.clear()
@@ -167,14 +148,14 @@ func build(request: InteractionRequest) -> void:
 					payload["rotation"] = 0
 				payload_submitted.emit(payload)
 		)
-		add_child(cast_button)
+		spell_panel.add_child(cast_button)
 	elif not String(request.payload.get("spellCastReason", "")).is_empty():
-		add_response("Cast unavailable", {}, false, String(request.payload.get("spellCastReason")))
+		add_response_to(spell_panel, "Cast unavailable", {}, false, String(request.payload.get("spellCastReason")))
 	var item_casts: Variant = request.payload.get("itemCasts", [])
 	if action_ids.has("use_item") and item_casts is Array and not item_casts.is_empty():
 		var item_row := HBoxContainer.new()
 		item_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		add_child(item_row)
+		item_panel.add_child(item_row)
 		var item_picker := OptionButton.new()
 		item_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		for option: Variant in item_casts:
@@ -199,39 +180,64 @@ func build(request: InteractionRequest) -> void:
 		)
 		item_row.add_child(use_button)
 	elif not String(request.payload.get("itemCastReason", "")).is_empty():
-		add_response("Use item unavailable", {}, false, String(request.payload.get("itemCastReason")))
+		add_response_to(item_panel, "Use item unavailable", {}, false, String(request.payload.get("itemCastReason")))
+	add_hint("Move with arrows, WASD, keypad, or a neighboring battlefield tile • hold Shift to show movement costs")
 
 
-func _add_primary_action_row(request: InteractionRequest, actor_id: String, action_ids: Array) -> void:
+func accepts_spatial_input() -> bool:
+	for child: Node in get_children():
+		if child is Control and (child as Control).visible and child is VBoxContainer and child != self:
+			return false
+	return true
+
+
+func _add_primary_action_row(request: InteractionRequest, actor_id: String, action_ids: Array, targets: Variant, target_panel: Control, spell_panel: Control, item_panel: Control, mode_panels: Array[Control]) -> void:
 	var weapon_switch: Variant = request.payload.get("weaponSwitch", {})
 	var action_row := HFlowContainer.new()
 	action_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_child(action_row)
 	if action_ids.has("switch_weapon") and weapon_switch is Dictionary:
 		var target_mode := String(weapon_switch.get("targetMode", "melee"))
-		add_response_to(action_row, "Switch to %s" % target_mode, {"actorId": actor_id, "action": "switch_weapon", "targetId": ""})
+		add_response_to(action_row, "Weapon: %s" % target_mode.capitalize(), {"actorId": actor_id, "action": "switch_weapon", "targetId": ""})
 	if action_ids.has("defend"):
-		add_response_to(action_row, "Defend", {"actorId": actor_id, "action": "defend", "targetId": ""})
+		add_response_to(action_row, "Guard", {"actorId": actor_id, "action": "defend", "targetId": ""})
+	var weapon_mode := String(request.payload.get("weaponMode", "melee"))
+	var target_enabled: bool = action_ids.has("attack") and targets is Array and not (targets as Array).is_empty()
+	var ranged: Variant = request.payload.get("rangedAttack", {})
+	var target_reason := String(request.payload.get("meleeAttackReason", "No adjacent target.")) if weapon_mode == "melee" else String(ranged.get("reason", "Fire is unavailable.") if ranged is Dictionary else "Fire is unavailable.")
+	_add_panel_toggle(action_row, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, target_enabled, target_reason)
+	var spell_casts: Variant = request.payload.get("spellCasts", [])
+	_add_panel_toggle(action_row, "Spells", spell_panel, mode_panels, action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty(), String(request.payload.get("spellCastReason", "Spellcasting is unavailable.")))
+	var item_casts: Variant = request.payload.get("itemCasts", [])
+	_add_panel_toggle(action_row, "Items", item_panel, mode_panels, action_ids.has("use_item") and item_casts is Array and not item_casts.is_empty(), String(request.payload.get("itemCastReason", "Item use is unavailable.")))
 	if action_ids.has("finish"):
-		add_response_to(action_row, "Finish turn", {"actorId": actor_id, "action": "finish", "targetId": ""})
+		add_response_to(action_row, "Finish", {"actorId": actor_id, "action": "finish", "targetId": ""})
 	var retreat: Variant = request.payload.get("retreat", {})
 	var retreat_enabled := action_ids.has("retreat") and retreat is Dictionary and bool(retreat.get("enabled", false))
 	var retreat_reason := String(retreat.get("reason", "Retreat is unavailable.") if retreat is Dictionary else "Retreat is unavailable.")
 	add_response_to(action_row, "Escape", {"actorId": actor_id, "action": "retreat", "targetId": ""}, retreat_enabled, retreat_reason)
 
 
-static func _direction_label(value: Variant) -> String:
-	if not value is Array or value.size() != 2:
-		return "?"
-	var direction := Vector2i(int(value[0]), int(value[1]))
-	return {
-		Vector2i(-1, -1): "NW", Vector2i(0, -1): "N", Vector2i(1, -1): "NE",
-		Vector2i(-1, 0): "W", Vector2i(1, 0): "E",
-		Vector2i(-1, 1): "SW", Vector2i(0, 1): "S", Vector2i(1, 1): "SE",
-	}.get(direction, "?")
+func _add_panel_toggle(parent: Container, label: String, panel: Control, panels: Array[Control], enabled: bool, reason: String) -> Button:
+	var button := Button.new()
+	button.text = label
+	button.custom_minimum_size.y = 36.0
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.disabled = not enabled
+	button.tooltip_text = reason if not enabled else ""
+	button.pressed.connect(func() -> void:
+		var show := not panel.visible
+		for candidate: Control in panels:
+			candidate.visible = show and candidate == panel
+	)
+	parent.add_child(button)
+	return button
 
 
-static func _direction_key(value: Variant) -> String:
-	if not value is Array or value.size() != 2:
-		return "?"
-	return "%d,%d" % [int(value[0]), int(value[1])]
+func _add_hint_to(parent: Container, text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_color_override("font_color", Color("d5b45d"))
+	parent.add_child(label)
+	return label

@@ -345,6 +345,8 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 	var battles: Array[BattleDefinition] = battles_value
 	var treasures: Array[TreasureDefinition] = treasures_value
 	var shops: Array[ShopDefinition] = shops_value
+	if not _validate_monster_media(monsters, media_assets):
+		return null
 	var appearance_options := _construct_character_appearance_options(media_assets, races)
 	var scenario_definition := _construct_scenario(scenario, manifest["campaignId"])
 	if scenario_definition == null:
@@ -408,6 +410,20 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 				_reject("Trigger '%s' references an unavailable post-action location." % trigger.id)
 				return null
 	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters, option_labels, campaign_definition, appearance_options)
+
+
+func _validate_monster_media(monsters: Array[MonsterDefinition], media_assets: Array[PackageMediaAsset]) -> bool:
+	var assets_by_resource: Dictionary = {}
+	for asset: PackageMediaAsset in media_assets:
+		if not asset.resource_type.is_empty():
+			assets_by_resource[JSON.stringify([asset.resource_type, asset.resource_id])] = asset
+	for monster: MonsterDefinition in monsters:
+		if monster.icon_id <= 0:
+			continue
+		var asset := assets_by_resource.get(JSON.stringify(["cicn", monster.icon_id])) as PackageMediaAsset
+		if asset == null or asset.mime_type != "image/png" or asset.width < 1 or asset.height < 1:
+			return _reject("Monster '%s' requires unavailable Classic cicn %d." % [monster.id, monster.icon_id])
+	return true
 
 
 func _construct_campaign_definition(value: Variant) -> CampaignDefinition:

@@ -14,6 +14,7 @@ var _request: InteractionRequest
 var _component: InteractionComponent
 var _stage_rect := Rect2(32.0, 32.0, 640.0, 480.0)
 var _textbox_rect := Rect2(8.0, 424.0, 696.0, 168.0)
+var _combat_rect := Rect2(0.0, 424.0, 960.0, 176.0)
 var _passive_text: bool = false
 
 
@@ -49,9 +50,10 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	call_deferred("_prepare_interaction_focus")
 
 
-func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2) -> void:
+func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Rect2 = Rect2()) -> void:
 	_stage_rect = stage_rect
 	_textbox_rect = textbox_rect
+	_combat_rect = combat_rect if combat_rect.has_area() else textbox_rect
 	_apply_classic_region()
 
 
@@ -77,6 +79,17 @@ func present_passive_classic_text(text: String) -> void:
 
 func has_blocking_request() -> bool:
 	return _request != null
+
+
+func submit_active_payload(payload: Dictionary) -> bool:
+	if _request == null or _request.kind != InteractionRequest.COMBAT:
+		return false
+	_submit_payload(payload)
+	return true
+
+
+func accepts_combat_spatial_input() -> bool:
+	return _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).accepts_spatial_input()
 
 
 func set_text_scale(value: float) -> void:
@@ -142,7 +155,7 @@ func _apply_classic_region() -> void:
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
 	if uses_textbox_region(_request, _passive_text):
 		theme_type_variation = &"ClassicOpenRight"
-		var region := interaction_region(_request, _textbox_rect, _stage_rect)
+		var region := interaction_region(_request, _textbox_rect, _stage_rect, _combat_rect)
 		position = region.position
 		size = region.size
 	else:
@@ -158,14 +171,10 @@ static func uses_textbox_region(request: InteractionRequest, passive_text: bool 
 	return passive_text or request != null and request.payload.get("presentation") != "player-map" and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"combat_action"]
 
 
-static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, stage_rect: Rect2) -> Rect2:
+static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, _stage_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:
 	if request == null or request.kind != &"combat_action":
 		return textbox_rect
-	# Combat combines turn controls, movement, and typed spell/item targeting. Give
-	# that command deck enough vertical room to keep its committed action visible
-	# while retaining the upper tactical battlefield.
-	var desired_height := minf(300.0, stage_rect.size.y + textbox_rect.size.y)
-	return Rect2(textbox_rect.position.x, textbox_rect.end.y - desired_height, textbox_rect.size.x, desired_height)
+	return combat_rect if combat_rect.has_area() else textbox_rect
 
 
 func _add_hint(text: String) -> void:

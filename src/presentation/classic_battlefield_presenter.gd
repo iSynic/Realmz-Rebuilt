@@ -1,6 +1,8 @@
 class_name ClassicBattlefieldPresenter
 extends Control
 
+signal tactical_action_requested(payload: Dictionary)
+
 const NATIVE_CELL_SIZE: float = 32.0
 const HEADER_HEIGHT: float = 38.0
 const MAX_VISIBLE_COLUMNS: int = 16
@@ -14,15 +16,20 @@ var _upper_atlas_id: String = ""
 var _upper_atlas_asset: PackageMediaAsset
 var _upper_atlas_texture: Texture2D
 var _actor_textures: Dictionary = {}
+var _movement_costs_visible: bool = false
+var _hovered_coordinate := Vector2i(-1, -1)
 
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_STOP
 	resized.connect(queue_redraw)
 
 
 func present(game_view: GameView) -> void:
 	_view = game_view
+	if _view == null or _view.combat_view == null:
+		_movement_costs_visible = false
+		_hovered_coordinate = Vector2i(-1, -1)
 	var requested_upper_atlas_id := ""
 	if _view != null and _view.combat_view != null and _view.combat_view.battlefield != null:
 		requested_upper_atlas_id = _view.combat_view.battlefield.upper_tileset_id
@@ -104,12 +111,107 @@ func _draw_movement_options(combat: CombatView, camera: Vector2i, visible_cells:
 	for option: CombatMoveOptionView in combat.movement_options:
 		if not coordinate_is_visible(option.destination, camera, visible_cells):
 			continue
+		if not _movement_costs_visible and option.destination != _hovered_coordinate:
+			continue
 		var rect := cell_rect(option.destination, camera, draw_origin).grow(-2.0)
 		if option.enabled:
-			draw_rect(rect, Color(0.20, 0.72, 0.42, 0.28), true)
-			draw_rect(rect, Color(0.32, 0.92, 0.52, 0.92), false, 2.0)
+			draw_rect(rect, Color(0.08, 0.10, 0.08, 0.62), true)
+			draw_rect(rect, Color(0.88, 0.76, 0.28, 0.95), false, 2.0)
+			var label := "Leave" if option.retreats_from_battle else "Attack" if not option.attack_target_id.is_empty() else "%d MP" % option.movement_cost
+			draw_string(ThemeDB.fallback_font, rect.position + Vector2(2.0, 20.0), label, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 4.0, 11, Color(1.0, 0.94, 0.68))
 		else:
-			draw_rect(rect, Color(0.84, 0.30, 0.28, 0.50), false, 1.0)
+			draw_rect(rect, Color(0.10, 0.08, 0.08, 0.52), true)
+			draw_rect(rect, Color(0.70, 0.30, 0.26, 0.78), false, 1.0)
+			draw_string(ThemeDB.fallback_font, rect.position + Vector2(2.0, 20.0), "—", HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 4.0, 12, Color(0.90, 0.62, 0.56))
+
+
+func set_movement_costs_visible(visible_costs: bool) -> void:
+	if _movement_costs_visible == visible_costs:
+		return
+	_movement_costs_visible = visible_costs
+	queue_redraw()
+
+
+func movement_costs_visible() -> bool:
+	return _movement_costs_visible
+
+
+func submit_movement_direction(direction: Vector2i) -> bool:
+	var option := _movement_option_for_direction(direction)
+	return _submit_movement_option(option)
+
+
+func _gui_input(event: InputEvent) -> void:
+	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
+		return
+	if event is InputEventMouseMotion:
+		var coordinate := _coordinate_at_local_position((event as InputEventMouseMotion).position)
+		var next_hover := coordinate if _movement_option_for_destination(coordinate) != null else Vector2i(-1, -1)
+		if next_hover != _hovered_coordinate:
+			_hovered_coordinate = next_hover
+			queue_redraw()
+		return
+	if event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT and (event as InputEventMouseButton).pressed:
+		var coordinate := _coordinate_at_local_position((event as InputEventMouseButton).position)
+		if _submit_movement_option(_movement_option_for_destination(coordinate)):
+			accept_event()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_MOUSE_EXIT and _hovered_coordinate != Vector2i(-1, -1):
+		_hovered_coordinate = Vector2i(-1, -1)
+		queue_redraw()
+
+
+func _coordinate_at_local_position(local_position: Vector2) -> Vector2i:
+	var combat := _view.combat_view
+	var battlefield := combat.battlefield
+	var active_position := actor_position(combat, _view.party_members, combat.active_actor_id)
+	if active_position.x < 0:
+		active_position = battlefield.party_anchor
+	var visible_cells := viewport_cells_for(size)
+	var camera := camera_top_left(active_position, visible_cells)
+	var draw_origin := battlefield_draw_origin(size, visible_cells)
+	var relative := local_position - draw_origin
+	if relative.x < 0.0 or relative.y < 0.0:
+		return Vector2i(-1, -1)
+	var cell := Vector2i(floori(relative.x / NATIVE_CELL_SIZE), floori(relative.y / NATIVE_CELL_SIZE))
+	if cell.x < 0 or cell.y < 0 or cell.x >= visible_cells.x or cell.y >= visible_cells.y:
+		return Vector2i(-1, -1)
+	return camera + cell
+
+
+func _movement_option_for_direction(direction: Vector2i) -> CombatMoveOptionView:
+	if _view == null or _view.combat_view == null:
+		return null
+	for option: CombatMoveOptionView in _view.combat_view.movement_options:
+		if option.direction == direction:
+			return option
+	return null
+
+
+func _movement_option_for_destination(destination: Vector2i) -> CombatMoveOptionView:
+	if _view == null or _view.combat_view == null:
+		return null
+	for option: CombatMoveOptionView in _view.combat_view.movement_options:
+		if option.destination == destination:
+			return option
+	return null
+
+
+func _submit_movement_option(option: CombatMoveOptionView) -> bool:
+	if option == null or not option.enabled or _view == null or _view.combat_view == null:
+		return false
+	var payload := {
+		"actorId": _view.combat_view.active_actor_id,
+		"action": "retreat_edge" if option.retreats_from_battle else "move",
+		"targetId": "",
+		"destination": [option.destination.x, option.destination.y],
+	}
+	if option.retreats_from_battle:
+		payload["forced"] = option.forced_retreat
+	tactical_action_requested.emit(payload)
+	return true
 
 
 func _draw_characters(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
@@ -122,7 +224,7 @@ func _draw_characters(combat: CombatView, camera: Vector2i, visible_cells: Vecto
 			continue
 		var rect := cell_rect(coordinate, camera, draw_origin)
 		var asset := _media.asset_by_id(character.combat_icon_id) if _media != null else null
-		_draw_actor(rect, _texture_for(asset), character.name, character.current_health, character.maximum_health, character.id == combat.active_actor_id, target_ids.has(character.id), character.traitor)
+		_draw_actor(rect, _texture_for(asset), character.name, character.id == combat.active_actor_id, target_ids.has(character.id), character.traitor)
 
 
 func _draw_monsters(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
@@ -139,18 +241,15 @@ func _draw_monsters(combat: CombatView, camera: Vector2i, visible_cells: Vector2
 			continue
 		var rect := footprint_rect(visible_footprint, camera, draw_origin)
 		var asset := _media.asset_by_resource(monster.icon_resource_type, monster.icon_id) if _media != null else null
-		_draw_actor(rect, _texture_for(asset), monster.name, monster.current_health, monster.maximum_health, monster.id == combat.active_actor_id, target_ids.has(monster.id), monster.traitor)
+		_draw_actor(rect, _texture_for(asset), monster.name, monster.id == combat.active_actor_id, target_ids.has(monster.id), monster.traitor)
 
 
-func _draw_actor(rect: Rect2, texture: Texture2D, label: String, health: int, maximum_health: int, active: bool, target: bool, hostile: bool) -> void:
+func _draw_actor(rect: Rect2, texture: Texture2D, label: String, active: bool, target: bool, hostile: bool) -> void:
 	if texture != null:
 		draw_texture_rect(texture, rect, false)
 	else:
 		draw_rect(rect.grow(-3.0), Color(0.62, 0.20, 0.18) if hostile else Color(0.18, 0.42, 0.64), true)
 		draw_string(ThemeDB.fallback_font, rect.position + Vector2(5.0, 20.0), label.left(2).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color.WHITE)
-	var ratio := clampf(float(health) / float(maxi(maximum_health, 1)), 0.0, 1.0)
-	draw_rect(Rect2(rect.position + Vector2(2.0, rect.size.y - 5.0), Vector2(maxf(rect.size.x - 4.0, 1.0), 3.0)), Color(0.13, 0.04, 0.04, 0.9), true)
-	draw_rect(Rect2(rect.position + Vector2(2.0, rect.size.y - 5.0), Vector2(maxf(rect.size.x - 4.0, 1.0) * ratio, 3.0)), Color(0.28, 0.82, 0.38, 0.95), true)
 	if target:
 		draw_rect(rect.grow(-1.0), Color(0.95, 0.35, 0.26), false, 3.0)
 	if active:

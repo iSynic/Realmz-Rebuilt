@@ -54,6 +54,7 @@ func _ready() -> void:
 	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
 	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
 	_map_presenter.movement_requested.connect(_on_map_movement_requested)
+	_battlefield_presenter.tactical_action_requested.connect(_on_battlefield_action_requested)
 	_shell_presenter.start_package_requested.connect(_begin_package_start)
 	_shell_presenter.cancel_package_requested.connect(_cancel_package_start)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
@@ -214,6 +215,16 @@ func _complete_package_install(installation: PackageInstallResult, initial_seed:
 
 
 func _input(event: InputEvent) -> void:
+	var pending := session_controller.view().pending_interaction
+	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
+	if combat_pending and event.is_action_pressed(&"realmz_inspect_movement"):
+		_battlefield_presenter.set_movement_costs_visible(true)
+		get_viewport().set_input_as_handled()
+		return
+	if combat_pending and event.is_action_released(&"realmz_inspect_movement"):
+		_battlefield_presenter.set_movement_costs_visible(false)
+		get_viewport().set_input_as_handled()
+		return
 	if not event.is_pressed():
 		return
 	if event.is_action_pressed(&"realmz_back"):
@@ -226,7 +237,11 @@ func _input(event: InputEvent) -> void:
 			return
 	if _host_interaction != null:
 		return
-	if session_controller.view().pending_interaction != null:
+	if pending != null:
+		if pending.kind == InteractionRequest.COMBAT:
+			var combat_direction := UiInputActions.movement_direction(event)
+			if combat_direction != Vector2i.ZERO and _interaction_presenter.accepts_combat_spatial_input() and _battlefield_presenter.submit_movement_direction(combat_direction):
+				get_viewport().set_input_as_handled()
 		return
 	if _shell_presenter.handle_route_shortcut(event):
 		get_viewport().set_input_as_handled()
@@ -255,6 +270,11 @@ func _input(event: InputEvent) -> void:
 
 func _on_map_movement_requested(direction: Vector2i) -> void:
 	_submit_movement(direction)
+
+
+func _on_battlefield_action_requested(payload: Dictionary) -> void:
+	if _interaction_presenter.accepts_combat_spatial_input():
+		_interaction_presenter.submit_active_payload(payload)
 
 
 func _submit_movement(direction: Vector2i) -> void:
@@ -601,11 +621,15 @@ func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) 
 		_dungeon_presenter.position = content_rect.position
 		_dungeon_presenter.size = content_rect.size
 	var textbox_rect := classic_textbox_rect(workspace_rect, _profile.bottom_height)
-	_interaction_presenter.set_classic_regions(content_rect, textbox_rect)
+	_interaction_presenter.set_classic_regions(content_rect, textbox_rect, classic_combat_rect(size, _profile.bottom_height))
 
 
 static func classic_textbox_rect(workspace_rect: Rect2, bottom_height: float) -> Rect2:
 	return Rect2(workspace_rect.position.x, workspace_rect.end.y, workspace_rect.size.x, bottom_height)
+
+
+static func classic_combat_rect(viewport_size: Vector2, bottom_height: float) -> Rect2:
+	return Rect2(0.0, maxf(0.0, viewport_size.y - bottom_height), viewport_size.x, minf(bottom_height, viewport_size.y))
 
 
 func _on_reduced_motion_changed(enabled: bool) -> void:

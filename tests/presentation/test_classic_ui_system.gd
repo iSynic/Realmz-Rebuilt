@@ -285,26 +285,26 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_false(buttons.any(func(button: Button) -> bool: return button.text.begins_with("Attack ")), "missile mode renders no melee attack target buttons")
 	var fire_button: Button = null
 	var switch_button: Button = null
-	var move_button: Button = null
-	var edge_button: Button = null
 	var finish_button: Button = null
 	var escape_button: Button = null
+	var spell_mode_button: Button = null
+	var item_mode_button: Button = null
 	var cast_button: Button = null
 	var use_item_button: Button = null
 	var add_target_button: Button = null
 	for button: Button in buttons:
-		if button.text == "Fire missile unavailable":
+		if button.text == "Fire":
 			fire_button = button
-		elif button.text == "Switch to melee":
+		elif button.text == "Weapon: Melee":
 			switch_button = button
-		elif button.text.begins_with("N "):
-			move_button = button
-		elif button.text == "Leave W":
-			edge_button = button
-		elif button.text == "Finish turn":
+		elif button.text == "Finish":
 			finish_button = button
 		elif button.text == "Escape":
 			escape_button = button
+		elif button.text == "Spells":
+			spell_mode_button = button
+		elif button.text == "Items":
+			item_mode_button = button
 		elif button.text == "Cast selected spell":
 			cast_button = button
 		elif button.text == "Use selected item":
@@ -314,21 +314,22 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_not_null(fire_button, "the unresolved ranged action remains visible instead of silently disappearing")
 	assert_true(fire_button.disabled and not fire_button.tooltip_text.is_empty(), "the disabled Fire action exposes the typed tactical blocker")
 	assert_not_null(switch_button, "the source-backed no-cost mode toggle remains available")
-	assert_not_null(move_button, "the typed battle component exposes a source-probed tactical step")
-	assert_not_null(edge_button, "the typed battle component distinguishes edge Escape from ordinary movement")
-	assert_equal(move_button.tooltip_text, "Move N • 1 MP", "compact movement labels retain their complete directional and movement-point meaning")
-	assert_equal(edge_button.tooltip_text, "Leave battle W", "compact edge movement retains its complete battle-exit meaning")
+	assert_false(buttons.any(func(button: Button) -> bool: return button.text.begins_with("N ") or button.text.begins_with("Leave ")), "spatial movement is no longer duplicated as eight permanent direction buttons")
 	assert_not_null(finish_button, "the Classic Finish command remains distinct from Defend")
 	assert_true(escape_button != null and escape_button.disabled and escape_button.tooltip_text == "An enemy is too close.", "the explicit Escape control exposes the core-owned unavailable reason")
+	assert_not_null(spell_mode_button, "the full-width command deck exposes the spell workflow")
+	assert_not_null(item_mode_button, "the full-width command deck exposes the item workflow")
 	assert_not_null(cast_button, "the battle component exposes a core-proven spell, power, and target option")
 	assert_not_null(use_item_button, "the battle component exposes a core-proven charged item, power, and target option")
 	assert_not_null(add_target_button, "the battle component exposes an explicit ordered repeated-target selection control")
-	assert_true(finish_button.get_parent().get_index() < move_button.get_parent().get_index(), "primary turn controls precede the compact movement chooser in the bottom command deck")
-	var spell_picker := component.get_children().filter(func(child: Node) -> bool: return child is OptionButton)[0] as OptionButton
+	assert_equal([cast_button.get_parent().visible, use_item_button.get_parent().get_parent().visible], [false, false], "secondary battle workflows begin collapsed instead of overflowing the battlefield")
+	assert_true(component.accepts_spatial_input(), "ordinary battle commands leave keyboard and battlefield movement active")
+	spell_mode_button.pressed.emit()
+	assert_true(cast_button.get_parent().visible, "Spells opens its compact command-deck workflow")
+	assert_false(component.accepts_spatial_input(), "an open spell workflow owns direction keys and prevents accidental tactical movement")
+	var spell_picker := component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() == cast_button.get_parent())[0] as OptionButton
 	assert_equal(spell_picker.get_item_text(1), "Wave • P1 • 3 SP → Everybody", "automatic group spells render their typed label without fabricating one target's HP")
 	switch_button.pressed.emit()
-	move_button.pressed.emit()
-	edge_button.pressed.emit()
 	cast_button.pressed.emit()
 	spell_picker.select(2)
 	spell_picker.item_selected.emit(2)
@@ -339,23 +340,24 @@ func _test_battle_weapon_mode_component() -> void:
 	cast_button.pressed.emit()
 	spell_picker.select(3)
 	spell_picker.item_selected.emit(3)
-	var option_pickers := component.get_children().filter(func(child: Node) -> bool: return child is OptionButton)
+	var option_pickers := cast_button.get_parent().find_children("*", "OptionButton", true, false)
 	var sequence_target_picker := option_pickers[1] as OptionButton
 	sequence_target_picker.select(1)
 	add_target_button.pressed.emit()
 	sequence_target_picker.select(0)
 	add_target_button.pressed.emit()
 	cast_button.pressed.emit()
+	item_mode_button.pressed.emit()
+	assert_true(use_item_button.get_parent().get_parent().visible and not cast_button.get_parent().visible, "Items replaces the prior secondary workflow instead of stacking beneath it")
+	assert_false(component.accepts_spatial_input(), "an open item workflow suppresses spatial battle input")
 	use_item_button.pressed.emit()
 	assert_equal(submitted, [
 		{"actorId": "character.archer", "action": "switch_weapon", "targetId": ""},
-		{"actorId": "character.archer", "action": "move", "targetId": "", "destination": [45, 44]},
-		{"actorId": "character.archer", "action": "retreat_edge", "targetId": "", "destination": [1, 45], "forced": false},
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "monster.target", "spellId": "spell.flame", "power": 2},
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.burst", "power": 3, "targetCoordinate": [47, 43], "rotation": 0},
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.darts", "power": 3, "targetIds": ["character.ally", "monster.target"]},
 		{"actorId": "character.archer", "action": "use_item", "targetId": "monster.target", "itemInstanceId": "item.wand.instance"},
-	], "the presenter emits typed switch, movement, combatant, battlefield-coordinate, ordered repeated-target spell, and charged-item responses")
+	], "the command deck emits typed switch, combatant, battlefield-coordinate, ordered repeated-target spell, and charged-item responses")
 	component.free()
 
 	var melee_request := InteractionRequest.new("battle.collision-melee", &"combat_action", {
@@ -371,12 +373,8 @@ func _test_battle_weapon_mode_component() -> void:
 	melee_component.payload_submitted.connect(func(payload: Dictionary) -> void: melee_submitted.append(payload))
 	melee_component.build(melee_request)
 	var melee_buttons: Array[Node] = melee_component.find_children("*", "Button", true, false)
-	var collision_button: Button = melee_buttons.filter(func(button: Button) -> bool: return button.text == "Attack E")[0]
-	assert_not_null(collision_button, "melee renders the hostile occupied direction as the attack command")
-	assert_equal(collision_button.tooltip_text, "Attack Ogre to the E • 3 MP", "collision melee exposes its target, direction, and source-owned movement cost")
-	assert_false(melee_buttons.any(func(button: Button) -> bool: return button.text.begins_with("Attack Ogre")), "melee does not duplicate Castle's collision command with a separate target button")
-	collision_button.pressed.emit()
-	assert_equal(melee_submitted, [{"actorId": "character.fighter", "action": "move", "targetId": "", "destination": [46, 45]}], "collision melee remains a typed directional response and lets the core resolve occupancy")
+	assert_false(melee_buttons.any(func(button: Button) -> bool: return button.text == "Attack E"), "collision melee remains on the tactical board rather than reappearing as a directional command button")
+	assert_equal(melee_submitted, [], "building the spatial melee command surface does not mutate combat")
 	melee_component.free()
 
 
@@ -646,7 +644,7 @@ func _test_safe_item_display() -> void:
 	assert_equal(hidden.definition_id, "", "unidentified items do not leak stable definition identity")
 	assert_equal(hidden.classic_id, 0, "unidentified items do not leak Classic item identity")
 	assert_equal(hidden.icon_id, 555, "the authored content icon identity remains available to presentation")
-	assert_equal(hidden.icon_resource_type, "CICN", "item icons carry an exact resource type for collision-free lookup")
+	assert_equal(hidden.icon_resource_type, "cicn", "item icons carry Castle's exact lowercase resource type for collision-free lookup")
 	assert_equal(hidden.item_type, 21, "the player-visible item type remains available while identity is hidden")
 	var known := ItemView.new(ItemInstance.new("item-607", definition.id, 1, false, true), definition)
 	assert_equal(known.name, "Improvement", "identified items expose their identified name")
@@ -937,12 +935,14 @@ func _test_battlefield_presenter() -> void:
 	var battlefield := BattlefieldState.new("land:0", tiles)
 	assert_true(battlefield.place_character("hero", Vector2i(45, 45)), "battlefield presenter fixture places its active character")
 	var monster := MonsterState.new("monster", "classic.monster.1", "Goblin", 4, 4)
+	monster.icon_id = 384
 	assert_true(battlefield.place_monster(monster.id, Vector2i(47, 45), 0), "battlefield presenter fixture places its target")
 	var combat := CombatState.new("classic.battle.presenter", [monster], 0, battlefield)
 	combat.set_turn_order(["hero", "monster"])
 	var character := CharacterState.new("hero", "Hero", 10, 10)
 	var character_views: Array[CharacterView] = [CharacterView.new(character)]
 	var combat_view := CombatView.new(combat, [character])
+	assert_equal(combat_view.monsters[0].icon_resource_type, "cicn", "monster actors retain Castle's exact lowercase cicn resource type")
 	assert_equal(ClassicBattlefieldPresenter.actor_position(combat_view, character_views, "hero"), Vector2i(45, 45), "the camera reads the active character's detached battlefield coordinate")
 	assert_equal(ClassicBattlefieldPresenter.actor_position(combat_view, character_views, "monster"), Vector2i(47, 45), "monster turns use the same detached battlefield coordinate source")
 	assert_equal(ClassicBattlefieldPresenter.actor_name(combat_view, character_views, "monster"), "Goblin", "the tactical header resolves actor names from detached combatants")
@@ -950,6 +950,22 @@ func _test_battlefield_presenter() -> void:
 	assert_equal(ClassicBattlefieldPresenter.camera_top_left(Vector2i(45, 45), Vector2i(16, 14)), Vector2i(37, 38), "the active actor remains centered in the ordinary battlefield window")
 	assert_equal(ClassicBattlefieldPresenter.camera_top_left(Vector2i(1, 1), Vector2i(16, 14)), Vector2i.ZERO, "battlefield camera centering clamps safely at the 90 by 90 edge")
 	assert_true(ClassicBattlefieldPresenter.coordinate_is_visible(Vector2i(45, 45), Vector2i(37, 38), Vector2i(16, 14)), "the active actor lies inside its centered tactical camera")
+	combat_view.movement_options.append(CombatMoveOptionView.new(Vector2i.RIGHT, BattlefieldStepResult.permitted(Vector2i(46, 45), 2)))
+	var game_view := GameView.new(1, true, null)
+	game_view.party_members = character_views
+	game_view.combat_view = combat_view
+	var presenter := ClassicBattlefieldPresenter.new()
+	presenter.size = Vector2(704.0, 396.0)
+	presenter.present(game_view)
+	assert_false(presenter.movement_costs_visible(), "movement costs stay off the tactical art during ordinary combat")
+	presenter.set_movement_costs_visible(true)
+	assert_true(presenter.movement_costs_visible(), "the explicit inspection state reveals typed movement costs without changing combat")
+	var payloads: Array[Dictionary] = []
+	presenter.tactical_action_requested.connect(func(payload: Dictionary) -> void: payloads.append(payload))
+	assert_true(presenter.submit_movement_direction(Vector2i.RIGHT), "keyboard movement selects the matching core-provided tactical option")
+	assert_equal(payloads, [{"actorId": "hero", "action": "move", "targetId": "", "destination": [46, 45]}], "the spatial battlefield emits the existing typed combat response payload")
+	assert_false(presenter.submit_movement_direction(Vector2i.LEFT), "the battlefield cannot fabricate a movement option absent from the detached view")
+	presenter.free()
 
 
 func _test_character_creator_workflow() -> void:
@@ -1636,7 +1652,9 @@ func _test_scene_composition() -> void:
 	assert_true(InteractionPresenter.uses_textbox_region(InteractionRequest.acknowledge("edge-to-edge", "Continue")), "Classic acknowledgements use the edge-to-edge textbox surface")
 	var combat_request := ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT)
 	assert_true(InteractionPresenter.uses_textbox_region(combat_request), "battle controls occupy the bottom Classic control region without replacing the tactical board")
-	assert_equal(InteractionPresenter.interaction_region(combat_request, standard_textbox_rect, Rect2(0.0, 28.0, 704.0, 396.0)), Rect2(0.0, 300.0, 704.0, 300.0), "the battle command deck expands upward enough to keep spell and item actions reachable")
+	var combat_rect := RealmzApplication.classic_combat_rect(Vector2(960.0, 600.0), 176.0)
+	assert_equal(combat_rect, Rect2(0.0, 424.0, 960.0, 176.0), "combat claims the full Classic lower edge instead of stopping at the map-stage width")
+	assert_equal(InteractionPresenter.interaction_region(combat_request, standard_textbox_rect, Rect2(0.0, 28.0, 704.0, 396.0), combat_rect), combat_rect, "the battle command deck uses the full-width lower control region")
 	assert_equal(InteractionPresenter.interaction_region(InteractionRequest.acknowledge("edge-to-edge", "Continue"), standard_textbox_rect, Rect2(0.0, 28.0, 704.0, 396.0)), standard_textbox_rect, "ordinary Classic text retains the source-shaped textbox height")
 	assert_false(InteractionPresenter.uses_textbox_region(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP)), "stage interactions retain their independent inset frame")
 	assert_equal(interaction.custom_minimum_size, Vector2.ZERO, "textbox interactions may shrink to the bottom-region rectangle instead of retaining a stage-modal minimum")
