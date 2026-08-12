@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 2 | 18 | 40 | 0 |
+| classic | 60 | 2 | 16 | 42 | 0 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -15,13 +15,13 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 | Domain | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| Startup and party | 8 | 0 | 1 | 7 | 0 |
+| Startup and party | 8 | 0 | 0 | 8 | 0 |
 | Exploration | 6 | 1 | 1 | 4 | 0 |
 | Scenario interaction | 6 | 0 | 2 | 4 | 0 |
 | Character management | 5 | 1 | 1 | 3 | 0 |
 | Inventory and equipment | 7 | 0 | 3 | 4 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
-| Services and economy | 5 | 0 | 2 | 3 | 0 |
+| Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 8 | 0 | 2 | 6 | 0 |
 | Rewards and progression | 5 | 0 | 1 | 4 | 0 |
 | Maps and journal | 3 | 0 | 2 | 1 | 0 |
@@ -49,22 +49,22 @@ Delivery state is derived. Missing means required content, simulation, or presen
 | --- | ---: |
 | not-required | 13 |
 | missing | 0 |
-| partial | 6 |
-| complete | 41 |
+| partial | 3 |
+| complete | 44 |
 
 | simulation | Count |
 | --- | ---: |
 | not-applicable | 2 |
 | absent | 1 |
-| partial | 14 |
-| complete | 43 |
+| partial | 11 |
+| complete | 46 |
 
 | persistence | Count |
 | --- | ---: |
 | not-applicable | 6 |
 | absent | 1 |
-| partial | 2 |
-| verified | 51 |
+| partial | 1 |
+| verified | 52 |
 
 | presentation | Count |
 | --- | ---: |
@@ -115,13 +115,14 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **23**.
+Blockers: **1**. Major gaps: **21**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
 - **major** `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
 - **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Create synthetic Castle fixtures for battle modes 5 and 10 and opcode 48 bonus treasure before changing the package contract.
+- **major** `classic.combat.resolve-outcome` — Scenario-VM-owned total-party defeat continuations bypass the GameSession Party Death hook, so the direct-session hook proof does not establish full battle-return behavior. Next: Trace both Castle callers with controlled defeat/revival fixtures, then route scenario-owned total defeat through one typed Party Death continuation with caller-specific reward/return policy and save/resume tests.
 - **major** `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end. Next: Trace the preference/save fields and ordinary cast handoff, then decide whether the shortcut is Classic state or presentation state.
 - **major** `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved. Next: Use controlled fixtures for zero/negative land tiles, boat/shore cancellation, special dungeon wall bits, and attempted-coordinate timed gates before broadening the topology result.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
@@ -134,12 +135,9 @@ Blockers: **1**. Major gaps: **23**.
 - **major** `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
 - **major** `classic.scenario.random-timed-encounter` — Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture. Next: Add a synthetic timed AP that changes map or coordinate, yields, applies any source-owned AP destination semantics, resumes the remaining scan, and performs the final random check at the resulting location.
 - **major** `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification. Next: Exercise buy, sell, identify, buyback, leave, and reload in an ordinary shop.
-- **major** `classic.services.shop` — Realmz 2.0 packages omit Castle's global Shop macro hook. Next: Preserve global application hooks in Providence schema v2 and run the Shop hook through the session-owned VM before opening the service.
-- **major** `classic.services.temple` — The implemented temple subset has no ordinary campaign certification. Next: After hook support, exercise representative temple mutations and no-op payment in ordinary play.
-- **major** `classic.services.temple` — Realmz 2.0 packages omit Castle's global Temple macro hook. Next: Preserve global application hooks in Providence schema v2 and run the Temple hook through the session-owned VM before opening the service.
+- **major** `classic.services.temple` — The implemented temple subset has no ordinary campaign certification. Next: Exercise representative temple mutations and no-op payment in ordinary play.
 - **major** `classic.spellcasting.combat-cast` — Combat spellcasting has extensive deterministic coverage but no ordinary campaign certification. Next: Cast representative single, group, and area spells in an ordinary AOGM battle and verify save/resume.
 - **major** `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot scroll persistence, parchment-backed Make Scroll, and transactional no-SP field scroll use are implemented; combat scroll use, invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise the field scroll workflow in ordinary AOGM play, then implement combat/discard/case-transfer branches only from their bounded differential evidence.
-- **major** `classic.startup.end-adventure` — Providence parses Classic Global macro slot 2 but schema v2 does not associate that hook with its compiled program, so End Adventure cannot run authored quit behavior before closing. Next: Add deterministic lifecycle-hook mapping to Providence and the mirrored package contract, then execute Global quit macro slot 2 through a serializable session continuation before close.
 - **major** `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
 ## Oracle-required unknowns
@@ -194,6 +192,7 @@ Blockers: **1**. Major gaps: **23**.
 - `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete.
 - `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately.
 - `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end.
+- `classic.combat.resolve-outcome` — Scenario-VM-owned total-party defeat continuations bypass the GameSession Party Death hook, so the direct-session hook proof does not establish full battle-return behavior.
 - `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end.
 - `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified.
 - `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow.
@@ -201,9 +200,6 @@ Blockers: **1**. Major gaps: **23**.
 - `classic.maps.view-acquired` — Exact dungeon player-map composition is not yet proven against Castle.
 - `classic.rewards.treasure-distribution` — Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced.
 - `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented.
-- `classic.services.shop` — Realmz 2.0 packages omit Castle's global Shop macro hook.
-- `classic.services.temple` — Realmz 2.0 packages omit Castle's global Temple macro hook.
-- `classic.startup.end-adventure` — Providence parses Classic Global macro slot 2 but schema v2 does not associate that hook with its compiled program, so End Adventure cannot run authored quit behavior before closing.
 - `classic.character.view-sheet` — Several nonzero Classic ability slots lack verified display names.
 - `classic.combat.tactical-movement` — Realmz 2.0 requires an explicit switch from missile to melee before hostile collision, while Castle can perform that switch through its Auto Weapon Switch preference.
 - `classic.maps.authored-journal` — Castle's Auto Note preference and unsafe journal cursor boundary remain outside the verified authored-journal subset.

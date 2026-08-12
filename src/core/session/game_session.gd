@@ -128,6 +128,18 @@ func close() -> SessionStep:
 	var pending := _pending_interaction()
 	if (_scenario_vm.is_active() and pending == null) or (pending != null and pending.kind != InteractionRequest.COMBAT):
 		return SessionStep.failed(_view_revision, &"session_not_committed", "The session can close only at a committed boundary.")
+	# Castle permits End Adventure during combat after confirmation. Abandon the
+	# interrupted combat/VM interaction before the synchronous Global hooks run.
+	if pending != null:
+		_session_continuation.clear()
+		_session_interaction = null
+		_scenario_vm = ScenarioVm.new()
+		_scenario_vm.configure(_content.scenario)
+		_runtime_api = RealmzRuntimeApi.new(_content, _state, _rng, _scenario_action_state, _rules)
+	return _start_application_hook(ScenarioApplicationHooks.END_ADVENTURE, "end-adventure", "", [])
+
+
+func _commit_close(events: Array[DomainEvent], reason: String) -> SessionStep:
 	var campaign_id := _content.campaign_id
 	_session_continuation.clear()
 	_session_interaction = null
@@ -140,7 +152,10 @@ func close() -> SessionStep:
 	_content = null
 	_started = false
 	_view_revision += 1
-	return SessionStep.completed(_view_revision, [DomainEvent.new(&"session_ended", {"campaignId": campaign_id})])
+	var completed_events: Array[DomainEvent] = []
+	completed_events.assign(events)
+	completed_events.append(DomainEvent.new(&"session_ended", {"campaignId": campaign_id, "reason": reason}))
+	return SessionStep.completed(_view_revision, completed_events)
 
 
 func submit_intent(intent: PlayerIntent) -> SessionStep:
@@ -224,6 +239,8 @@ func respond(response: InteractionResponse) -> SessionStep:
 	var result := _scenario_vm.resume(response, _runtime_api)
 	var events: Array[DomainEvent] = []
 	events.append_array(result.events)
+	if _session_continuation.get("kind") == "application-hook" and _events_have(result.events, &"party_revived"):
+		_session_continuation["partyRevived"] = true
 	if result.state == ScenarioVmResult.State.WAITING:
 		if _session_continuation.get("kind") == "post-clock" and not String(_session_continuation.get("activeTimedProgramId", "")).is_empty() and not _rebase_post_time_location():
 			_session_continuation.clear()
@@ -1366,7 +1383,7 @@ func _begin_adventure() -> SessionStep:
 	var character_ids: Array[String] = []
 	for character: CharacterState in characters:
 		character_ids.append(character.id)
-	return _finish_completed([DomainEvent.new(&"party_created", {"characterIds": character_ids})])
+	return _start_application_hook(ScenarioApplicationHooks.START_GAME, "begin-adventure", "", [DomainEvent.new(&"party_created", {"characterIds": character_ids})])
 
 
 func _import_vault_character(intent: PlayerIntent) -> SessionStep:
@@ -2198,11 +2215,82 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 
 
 func _continue_exploration_continuation(events: Array[DomainEvent]) -> SessionStep:
+	if _session_continuation.get("kind") == "application-hook":
+		return _continue_application_hook(events)
 	if _session_continuation.get("kind") == "post-clock":
 		return _continue_post_time(events)
 	if _session_continuation.get("kind") == "post-move":
 		return _continue_post_move(events)
 	return _finish_failed(&"invalid_session_continuation", "The completed scenario has no valid exploration continuation.", events)
+
+
+func _start_application_hook(hook: StringName, resume_kind: String, service_id: String, preceding_events: Array[DomainEvent]) -> SessionStep:
+	var program_id := _content.scenario.application_hook_program_id(hook)
+	_session_continuation = {
+		"kind": "application-hook",
+		"hook": String(hook),
+		"programId": program_id,
+		"resumeKind": resume_kind,
+		"serviceId": service_id,
+		"partyRevived": false,
+	}
+	if program_id.is_empty():
+		return _continue_application_hook(preceding_events)
+	var started := _scenario_vm.start_program(program_id, {
+		"callingContext": "lifecycle",
+		"applicationHook": String(hook),
+		"serviceId": service_id,
+	})
+	if started.state == ScenarioVmResult.State.FAILED:
+		_session_continuation.clear()
+		return _finish_failed(started.error_code, started.error_message, preceding_events)
+	var result := _scenario_vm.run(_runtime_api)
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	events.append(DomainEvent.new(&"application_hook_started", {"hook": String(hook), "programId": program_id}))
+	events.append_array(result.events)
+	if _events_have(result.events, &"party_revived"):
+		_session_continuation["partyRevived"] = true
+	if result.state == ScenarioVmResult.State.FAILED:
+		_session_continuation.clear()
+		return _finish_failed(result.error_code, result.error_message, events)
+	if result.state == ScenarioVmResult.State.WAITING:
+		return _finish_waiting(result.interaction, events)
+	return _continue_application_hook(events)
+
+
+func _continue_application_hook(events: Array[DomainEvent]) -> SessionStep:
+	var hook := StringName(_session_continuation.get("hook", ""))
+	var program_id := String(_session_continuation.get("programId", ""))
+	var resume_kind := String(_session_continuation.get("resumeKind", ""))
+	var service_id := String(_session_continuation.get("serviceId", ""))
+	var party_revived := bool(_session_continuation.get("partyRevived", false))
+	_session_continuation.clear()
+	if not program_id.is_empty():
+		events.append(DomainEvent.new(&"application_hook_completed", {"hook": String(hook), "programId": program_id}))
+	match resume_kind:
+		"begin-adventure":
+			events.append(DomainEvent.new(&"adventure_begun", {"campaignId": _content.campaign_id}))
+			return _finish_completed(events)
+		"service":
+			return _open_contextual_service(service_id, events)
+		"end-adventure":
+			return _start_application_hook(ScenarioApplicationHooks.PARTY_DEATH, "end-adventure-close", "", events)
+		"end-adventure-close":
+			if party_revived:
+				events.append(DomainEvent.new(&"adventure_end_suppressed", {"reason": "classic-party-death-revival"}))
+				return _finish_completed(events)
+			return _commit_close(events, "end-adventure")
+		"party-defeat":
+			if not party_revived:
+				return _commit_close(events, "party-defeat")
+			if _state.combat == null or not _state.combat.completed or _state.combat.outcome != &"defeat":
+				return _finish_failed(&"invalid_battle_continuation", "Party Death revival lost its completed defeat.", events)
+			_state.combat.outcome = &"retreated"
+			_state.last_battle_outcome = &"retreated"
+			events.append(DomainEvent.new(&"party_defeat_revived", {"battleId": _state.combat.battle_id, "source": "classic-party-death-hook"}))
+			return _finish_direct_battle_without_rewards(events)
+	return _finish_failed(&"invalid_session_continuation", "Application hook '%s' has invalid resume kind '%s'." % [hook, resume_kind], events)
 
 
 func _apply_trigger_destination(trigger: TriggerDefinition, events: Array[DomainEvent], allow_destination: bool) -> bool:
@@ -2324,6 +2412,8 @@ func _append_session_battle_after_message(battle_id: String, events: Array[Domai
 func _finish_direct_battle(events: Array[DomainEvent]) -> SessionStep:
 	if _state.combat == null or not _state.combat.completed:
 		return _finish_failed(&"invalid_battle_continuation", "Post-battle completion requires a completed battle.", events)
+	if _state.combat.outcome == &"defeat":
+		return _start_application_hook(ScenarioApplicationHooks.PARTY_DEATH, "party-defeat", "", events)
 	var payload := _rules.combat_flow.ally_selection_payload(_state, _content)
 	if not payload.is_empty():
 		var request_id := "session.ally-selection.%d" % (_view_revision + 1)
@@ -2341,6 +2431,17 @@ func _finish_direct_battle_recovery(events: Array[DomainEvent]) -> SessionStep:
 		_session_interaction = InteractionRequest.new(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload)
 		return _finish_waiting(_session_interaction, events)
 	return _begin_direct_battle_reward(events)
+
+
+func _finish_direct_battle_without_rewards(events: Array[DomainEvent]) -> SessionStep:
+	if _state.combat == null or not _state.combat.completed:
+		return _finish_failed(&"invalid_battle_continuation", "Suppressed battle rewards require a completed battle.", events)
+	var battle_id := _state.combat.battle_id
+	var return_continuation: Dictionary = _state.combat.return_continuation.duplicate(true)
+	var battle_outcome := _state.combat.outcome
+	events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": String(battle_outcome)}))
+	_state.combat = null
+	return _finish_after_direct_battle(events, return_continuation, battle_outcome)
 
 
 func _begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionStep:
@@ -2730,17 +2831,33 @@ func _respond_scroll_target(response: InteractionResponse) -> SessionStep:
 func _service_action(intent: PlayerIntent) -> SessionStep:
 	if intent.action != &"enter":
 		return SessionStep.failed(_view_revision, &"unknown_service_action", "Only entering an available service is implemented through this intent.")
-	var request_id := "service:%s:%d" % [intent.target_id, _view_revision]
-	var operation: ScenarioRuntimeOperationResult
 	if intent.target_id == "realmz.service.temple":
-		operation = _runtime_api.request_available_temple(request_id)
+		if not _state.temple_available:
+			return SessionStep.failed(_view_revision, &"service_unavailable", "The selected temple is not available at this location.")
+		return _start_application_hook(ScenarioApplicationHooks.TEMPLE, "service", intent.target_id, [])
 	elif intent.target_id == "realmz.service.bank":
-		operation = _runtime_api.request_available_bank(request_id)
+		return _open_contextual_service(intent.target_id, [])
 	elif intent.target_id == _state.active_shop_id:
-		operation = _runtime_api.request_available_shop(request_id)
+		if intent.target_id.is_empty() or _content.shop_by_id(intent.target_id) == null:
+			return SessionStep.failed(_view_revision, &"service_unavailable", "The selected shop is not available at this location.")
+		return _start_application_hook(ScenarioApplicationHooks.SHOP, "service", intent.target_id, [])
 	else:
 		return SessionStep.failed(_view_revision, &"service_unavailable", "The selected service is not available at this location.")
-	return _begin_runtime_service(intent.target_id, operation)
+
+
+func _open_contextual_service(service_id: String, preceding_events: Array[DomainEvent]) -> SessionStep:
+	var request_id := "service:%s:%d" % [service_id, _view_revision]
+	var operation: ScenarioRuntimeOperationResult
+	if service_id == "realmz.service.temple":
+		operation = _runtime_api.request_available_temple(request_id)
+	elif service_id == "realmz.service.bank":
+		operation = _runtime_api.request_available_bank(request_id)
+	elif service_id == _state.active_shop_id:
+		operation = _runtime_api.request_available_shop(request_id)
+	else:
+		return _finish_failed(&"service_unavailable", "The selected service is not available at this location.", preceding_events)
+	operation.events = preceding_events + operation.events
+	return _begin_runtime_service(service_id, operation)
 
 
 func _money_action(intent: PlayerIntent) -> SessionStep:
@@ -3073,6 +3190,32 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 
 
 static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	if continuation.get("kind") == "application-hook":
+		var hook_fields: Array[String] = ["kind", "hook", "programId", "resumeKind", "serviceId", "partyRevived"]
+		if continuation.size() != hook_fields.size() or vm_interaction == null or session_interaction != null:
+			return false
+		for field: String in hook_fields:
+			if not continuation.has(field):
+				return false
+		if not continuation["hook"] is String or not continuation["programId"] is String or continuation["programId"].is_empty() or not continuation["resumeKind"] is String or not continuation["serviceId"] is String or not continuation["partyRevived"] is bool:
+			return false
+		var hook := StringName(continuation["hook"])
+		if content.scenario.application_hook_program_id(hook) != continuation["programId"] or content.scenario.program_by_id(continuation["programId"]) == null:
+			return false
+		var resume_kind: String = continuation["resumeKind"]
+		var service_id: String = continuation["serviceId"]
+		match resume_kind:
+			"begin-adventure":
+				return hook == ScenarioApplicationHooks.START_GAME and service_id.is_empty() and state.party_setup_completed and not state.party.characters().is_empty()
+			"service":
+				return hook in [ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE] and not service_id.is_empty() and ((service_id == state.active_shop_id and content.shop_by_id(service_id) != null) or (service_id == "realmz.service.temple" and state.temple_available))
+			"end-adventure":
+				return hook == ScenarioApplicationHooks.END_ADVENTURE and service_id.is_empty()
+			"end-adventure-close":
+				return hook == ScenarioApplicationHooks.PARTY_DEATH and service_id.is_empty()
+			"party-defeat":
+				return hook == ScenarioApplicationHooks.PARTY_DEATH and service_id.is_empty() and state.combat != null and state.combat.completed and state.combat.outcome == &"defeat"
+		return false
 	if continuation.get("kind") == "pooled-wealth-departure":
 		var departure_fields: Array[String] = ["kind", "stage", "directionX", "directionY"]
 		if continuation.size() != departure_fields.size() or vm_interaction != null or session_interaction == null or state.party == null or state.bank_available:

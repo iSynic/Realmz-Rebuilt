@@ -260,6 +260,7 @@ func _test_classic_shell_domain_route(content: RealmzContent) -> void:
 
 	var shop := session.submit_intent(PlayerIntent.move(Vector2i.DOWN))
 	assert_equal(shop.interaction.kind, &"shop_action", "shop AP exposes typed stock, party, and leave actions")
+	assert_false(shop.events.any(func(event: DomainEvent) -> bool: return event.kind == &"application_hook_started"), "direct opcode 6 bypasses the contextual Shop Global hook")
 	assert_true(shop.interaction.payload.get("stock") is Array and shop.interaction.payload.get("characters") is Array, "shop request carries detached purchase and sale read models")
 	var shop_save := SaveEnvelope.from_data(session.snapshot().to_data())
 	assert_not_null(shop_save, "shop interaction serializes through the same VM frame")
@@ -268,15 +269,35 @@ func _test_classic_shell_domain_route(content: RealmzContent) -> void:
 	var restored_shop_request := restored_shop_session.view().pending_interaction
 	assert_equal(restored_shop_session.respond(InteractionResponse.new(restored_shop_request.request_id, &"shop_action", {"action": "leave"})).state, SessionStep.State.COMPLETED, "leaving a restored shop resumes and completes the AP")
 	session = restored_shop_session
+	var contextual_shop := content.shop_by_classic_id(0)
+	assert_not_null(contextual_shop, "the fixture supplies the contextual shop definition")
+	if contextual_shop != null:
+		assert_true(session._state.set_active_shop(contextual_shop.id, [0, 0, 0, 0]), "the contextual shop fixture establishes a complete saveable location-service state")
+		var shop_hook := session.submit_intent(PlayerIntent.service_action(contextual_shop.id, &"enter"))
+		assert_equal([shop_hook.interaction.kind, shop_hook.interaction.payload.get("prompt")], [InteractionRequest.ACKNOWLEDGE, "The Shop application hook runs."], "the contextual Shop Global hook runs before the service workspace")
+		var contextual_shop_save := session.snapshot()
+		assert_not_null(contextual_shop_save, "the contextual Shop hook is a committed save boundary")
+		var shop_hook_restored := GameSession.new()
+		assert_equal(shop_hook_restored.restore(content, SaveEnvelope.from_data(contextual_shop_save.to_data())).state, SessionStep.State.COMPLETED, "the contextual Shop hook restores transactionally")
+		var contextual_opened := shop_hook_restored.respond(InteractionResponse.acknowledge(shop_hook_restored.view().pending_interaction))
+		assert_equal(contextual_opened.interaction.kind, InteractionRequest.SHOP, "the contextual shop opens after its Global hook returns")
+		assert_equal(shop_hook_restored.respond(InteractionResponse.new(contextual_opened.interaction.request_id, InteractionRequest.SHOP, {"action": "leave"})).state, SessionStep.State.COMPLETED, "leaving the contextual shop returns to exploration")
+		session = shop_hook_restored
 
 	var temple_offer := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal(temple_offer.state, SessionStep.State.COMPLETED, "temple AP offers a contextual service without forcing presentation")
 	assert_true(session.view().services.any(func(service: ServiceView) -> bool: return service.service_kind == &"temple"), "the detached view exposes the available temple")
 	var temple := session.submit_intent(PlayerIntent.service_action("realmz.service.temple", &"enter"))
-	assert_equal(temple.interaction.kind, InteractionRequest.TEMPLE, "the player enters the offered temple through an ordinary typed intent")
-	assert_equal(temple.interaction.payload.get("services", []).size(), 9, "temple request carries all nine source-backed services")
+	assert_equal([temple.interaction.kind, temple.interaction.payload.get("prompt")], [InteractionRequest.ACKNOWLEDGE, "The Temple application hook runs."], "the contextual Temple Global hook runs before the service workspace")
 	var temple_save := SaveEnvelope.from_data(session.snapshot().to_data())
-	assert_not_null(temple_save, "contextual temple interaction is a committed save boundary")
+	assert_not_null(temple_save, "contextual temple hook is a committed save boundary")
+	var restored_temple_hook := GameSession.new()
+	assert_equal(restored_temple_hook.restore(content, temple_save).state, SessionStep.State.COMPLETED, "the contextual Temple hook restores transactionally")
+	temple = restored_temple_hook.respond(InteractionResponse.acknowledge(restored_temple_hook.view().pending_interaction))
+	assert_equal(temple.interaction.kind, InteractionRequest.TEMPLE, "the player enters the offered temple after the Global hook returns")
+	assert_equal(temple.interaction.payload.get("services", []).size(), 9, "temple request carries all nine source-backed services")
+	session = restored_temple_hook
+	temple_save = SaveEnvelope.from_data(session.snapshot().to_data())
 	temple_save.game_state.party.pooled_wealth.gold = 1
 	var restored_temple := GameSession.new()
 	assert_equal(restored_temple.restore(content, temple_save).state, SessionStep.State.COMPLETED, "temple service continuation restores transactionally")
@@ -1970,7 +1991,12 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	character.race_id = races[0].id
 	character.caste_id = castes[0].id
 	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "scenario fixture imports a deterministic party member")
-	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "scenario fixture explicitly completes party setup")
+	var started := session.submit_intent(PlayerIntent.begin_adventure())
+	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
+		assert_equal(started.state, SessionStep.State.COMPLETED, "scenario content without a Start Game hook completes party setup synchronously")
+	else:
+		assert_equal(started.state, SessionStep.State.WAITING_FOR_INTERACTION, "scenario fixture reaches the Start Game hook after party setup")
+		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, "scenario fixture explicitly completes party setup")
 
 
 func _drain_runtime_reward(api: RealmzRuntimeApi, operation: ScenarioRuntimeOperationResult, safe: bool) -> ScenarioRuntimeOperationResult:

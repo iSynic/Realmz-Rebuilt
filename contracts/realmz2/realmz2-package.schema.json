@@ -969,12 +969,25 @@
       },
       "additionalProperties": false
     },
+    "applicationHooks": {
+      "type": "object",
+      "required": ["startGame", "partyDeath", "endAdventure", "shop", "temple"],
+      "properties": {
+        "startGame": { "type": ["string", "null"], "minLength": 1, "maxLength": 255 },
+        "partyDeath": { "type": ["string", "null"], "minLength": 1, "maxLength": 255 },
+        "endAdventure": { "type": ["string", "null"], "minLength": 1, "maxLength": 255 },
+        "shop": { "type": ["string", "null"], "minLength": 1, "maxLength": 255 },
+        "temple": { "type": ["string", "null"], "minLength": 1, "maxLength": 255 }
+      },
+      "additionalProperties": false
+    },
     "scenario": {
       "type": "object",
-      "required": ["kind", "schemaVersion", "programs", "scenarioActions", "stateDefinitions", "migrations"],
+      "required": ["kind", "schemaVersion", "applicationHooks", "programs", "scenarioActions", "stateDefinitions", "migrations"],
       "properties": {
         "kind": { "const": "realmz2.scenario" },
         "schemaVersion": { "const": 2 },
+        "applicationHooks": { "$ref": "#/$defs/applicationHooks" },
         "programs": { "type": "array", "items": { "$ref": "#/$defs/scenarioProgram" } },
         "scenarioActions": { "type": "array", "items": { "$ref": "#/$defs/scenarioAction" } },
         "stateDefinitions": { "type": "array" },

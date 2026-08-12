@@ -350,7 +350,12 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	character.race_id = races[0].id
 	character.caste_id = castes[0].id
 	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
-	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "exploration fixture explicitly leaves party setup")
+	var started := session.submit_intent(PlayerIntent.begin_adventure())
+	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
+		assert_equal(started.state, SessionStep.State.COMPLETED, "exploration content without a Start Game hook leaves party setup synchronously")
+	else:
+		assert_equal(started.state, SessionStep.State.WAITING_FOR_INTERACTION, "exploration fixture reaches the Start Game hook after party setup")
+		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, "exploration fixture explicitly leaves party setup")
 
 
 func _restore_fixture_position(session: GameSession, content: RealmzContent, map_id: String, coordinate: Vector2i) -> void:

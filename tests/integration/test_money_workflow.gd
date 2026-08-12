@@ -66,7 +66,7 @@ func _test_session_money_workflow(content: RealmzContent) -> void:
 	var second := _character("money.second", "Borin", race, caste, WealthState.new(5, 0, 0))
 	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(first.id, "1".repeat(64), first.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "first money character enters party setup")
 	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(second.id, "2".repeat(64), second.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "second money character enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "money fixture begins the adventure")
+	_begin_with_start_hook(session, "money fixture begins the adventure")
 	var initial_view := session.view()
 	assert_not_null(initial_view.money_workspace, "detached view exposes the ordinary money workspace")
 	assert_true(initial_view.availability(&"money_action").enabled, "ordinary money actions are available outside battle and interactions")
@@ -234,7 +234,7 @@ func _departure_session(content: RealmzContent, seed: int) -> GameSession:
 	assert_equal(session.start(content, seed).state, SessionStep.State.COMPLETED, "pooled-wealth departure session starts")
 	var character := _character("money.departure.%d" % seed, "Traveler", pair[0] as RaceDefinition, pair[1] as CasteDefinition, WealthState.new(10, 1, 1))
 	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "d".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "departure character enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "departure fixture begins the adventure")
+	_begin_with_start_hook(session, "departure fixture begins the adventure")
 	assert_equal(session.submit_intent(PlayerIntent.money_action(&"pool")).state, SessionStep.State.COMPLETED, "departure fixture enters movement with pooled wealth")
 	return session
 
@@ -248,6 +248,14 @@ func _playable_pair(content: RealmzContent) -> Array:
 				continue
 			return [race, caste]
 	return []
+
+
+func _begin_with_start_hook(session: GameSession, label: String) -> void:
+	var started := session.submit_intent(PlayerIntent.begin_adventure())
+	if started.state == SessionStep.State.WAITING_FOR_INTERACTION:
+		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, label)
+	else:
+		assert_equal(started.state, SessionStep.State.COMPLETED, label)
 
 
 func _character(character_id: String, display_name: String, race: RaceDefinition, caste: CasteDefinition, wealth: WealthState) -> CharacterState:

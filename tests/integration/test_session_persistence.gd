@@ -14,14 +14,39 @@ func run() -> void:
 	var closing_snapshot := closing_session.snapshot()
 	assert_not_null(closing_snapshot, "End Adventure can preserve the committed boundary before closing")
 	var close_step := closing_session.close()
-	assert_equal(close_step.state, SessionStep.State.COMPLETED, "End Adventure closes through an explicit session boundary")
-	assert_true(close_step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"session_ended" and event.payload.get("campaignId") == content.campaign_id), "session close publishes the detached campaign identity once")
-	assert_false(closing_session.view().session_started, "closed gameplay is no longer exposed as an active session")
-	assert_equal(closing_session.snapshot(), null, "a closed session cannot be persisted as active gameplay")
-	assert_equal(closing_session.close().error_code, &"session_not_started", "repeated close fails instead of publishing duplicate teardown")
+	assert_equal([close_step.state, close_step.interaction.payload.get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The End Adventure application hook runs."], "End Adventure runs its Global hook before party release")
+	var end_hook_snapshot := closing_session.snapshot()
+	assert_not_null(end_hook_snapshot, "the End Adventure hook is a committed save boundary")
+	var end_hook_data := end_hook_snapshot.to_data()
+	var missing_hook_field: Dictionary = end_hook_data.duplicate(true)
+	missing_hook_field["sessionContinuation"].erase("partyRevived")
+	assert_equal(SaveEnvelope.from_data(missing_hook_field), null, "the save envelope rejects an incomplete application-hook continuation")
+	var wrong_hook_type: Dictionary = end_hook_data.duplicate(true)
+	wrong_hook_type["sessionContinuation"]["partyRevived"] = 1
+	assert_equal(SaveEnvelope.from_data(wrong_hook_type), null, "the save envelope rejects a mistyped application-hook continuation")
+	var wrong_hook_resume: Dictionary = end_hook_data.duplicate(true)
+	wrong_hook_resume["sessionContinuation"]["hook"] = String(ScenarioApplicationHooks.SHOP)
+	assert_equal(SaveEnvelope.from_data(wrong_hook_resume), null, "the save envelope rejects a hook that cannot own the serialized resume operation")
+	var end_hook_save := SaveEnvelope.from_data(end_hook_data)
+	assert_not_null(end_hook_save, "the exact End Adventure application-hook continuation round-trips")
+	var closing_restored := GameSession.new()
+	assert_equal(closing_restored.restore(content, end_hook_save).state, SessionStep.State.COMPLETED, "the End Adventure hook restores at its exact textbox boundary")
+	var death_hook := closing_restored.respond(InteractionResponse.acknowledge(closing_restored.view().pending_interaction))
+	assert_equal([death_hook.state, death_hook.interaction.payload.get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "Castle party release chains the Party Death hook after End Adventure")
+	var death_hook_save := SaveEnvelope.from_data(closing_restored.snapshot().to_data())
+	var death_hook_restored := GameSession.new()
+	assert_equal(death_hook_restored.restore(content, death_hook_save).state, SessionStep.State.COMPLETED, "the chained Party Death hook restores transactionally")
+	var closed := death_hook_restored.respond(InteractionResponse.acknowledge(death_hook_restored.view().pending_interaction))
+	assert_equal(closed.state, SessionStep.State.COMPLETED, "End Adventure closes after both source-ordered Global hooks")
+	assert_true(closed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"session_ended" and event.payload.get("campaignId") == content.campaign_id), "session close publishes the detached campaign identity once")
+	assert_false(death_hook_restored.view().session_started, "closed gameplay is no longer exposed as an active session")
+	assert_equal(death_hook_restored.snapshot(), null, "a closed session cannot be persisted as active gameplay")
+	assert_equal(death_hook_restored.close().error_code, &"session_not_started", "repeated close fails instead of publishing duplicate teardown")
 	var closing_controller := GameSessionController.new()
 	assert_equal(closing_controller.start(content, 6).state, SessionStep.State.COMPLETED, "the host controller owns the replacement session")
-	assert_equal(closing_controller.close().state, SessionStep.State.COMPLETED, "the host controller commits session close synchronously")
+	assert_equal(closing_controller.close().state, SessionStep.State.WAITING_FOR_INTERACTION, "the host controller exposes the End Adventure hook interaction")
+	assert_equal(closing_controller.respond(InteractionResponse.acknowledge(closing_controller.view().pending_interaction)).state, SessionStep.State.WAITING_FOR_INTERACTION, "the host controller advances into the chained Party Death hook")
+	assert_equal(closing_controller.respond(InteractionResponse.acknowledge(closing_controller.view().pending_interaction)).state, SessionStep.State.COMPLETED, "the host controller commits close after both hook interactions")
 	assert_false(closing_controller.view().session_started, "controller close refreshes the detached view")
 	closing_controller.free()
 	var session := GameSession.new()
@@ -224,7 +249,9 @@ func run() -> void:
 	assert_equal(resumed_setup.submit_intent(PlayerIntent.remove_party_member(created_id)).state, SessionStep.State.COMPLETED, "typed removal updates the setup party")
 	assert_equal(resumed_setup.view().party_members.size(), 1, "removal leaves the remaining vault character in setup")
 	assert_true(resumed_setup.view().party_setup_available, "removing a member does not begin the adventure")
-	assert_equal(resumed_setup.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "Begin explicitly commits the assembled party")
+	var resumed_begin := resumed_setup.submit_intent(PlayerIntent.begin_adventure())
+	assert_equal(resumed_begin.state, SessionStep.State.WAITING_FOR_INTERACTION, "Begin commits the party before yielding to the Start Game hook")
+	assert_equal(resumed_setup.respond(InteractionResponse.acknowledge(resumed_begin.interaction)).state, SessionStep.State.COMPLETED, "acknowledging Start Game enters ordinary exploration")
 	assert_false(resumed_setup.view().party_setup_available, "party setup closes only after Begin")
 	assert_equal(resumed_setup.submit_intent(PlayerIntent.remove_party_member(imported.id)).error_code, &"party_setup_closed", "party composition cannot change after Begin")
 
@@ -318,6 +345,53 @@ func run() -> void:
 		if not recovered_inventory.is_empty():
 			assert_equal(recovered_inventory[0].to_data(), dropped.to_data(), "save/resume retains the exact recovered instance and charge count")
 		assert_equal(recovered_session._state.combat, null, "save/resume releases the completed battle after the final recovery and empty reward stages")
+
+	var original_scenario := content.scenario
+	var party_death_program := ScenarioProgramDefinition.new("fixture.party-death-revival", &"extra-action-point", "fixture.party-death-revival", [
+		ClassicActionDefinition.new(0, 1, 1, 21, false, []),
+		ClassicActionDefinition.new(1, 119, 119, 0, false, []),
+	])
+	content.scenario = ScenarioDefinition.new(
+		[party_death_program],
+		[],
+		ScenarioApplicationHooks.new("", party_death_program.id, "", "", "")
+	)
+	var revived_defeat := GameSession.new()
+	revived_defeat.start(content, 24)
+	var defeated_character := CharacterState.new("fixture.party-death-revival", "Revived Hero", 0, 10)
+	defeated_character.conditions.set_value(ConditionRules.ANIMATED, -1)
+	revived_defeat._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [defeated_character])
+	revived_defeat._state.party_setup_completed = true
+	revived_defeat._state.combat = CombatState.new("classic.battle.0")
+	revived_defeat._state.combat.completed = true
+	revived_defeat._state.combat.outcome = &"defeat"
+	revived_defeat._state.last_battle_outcome = &"defeat"
+	var defeat_hook := revived_defeat._finish_direct_battle([])
+	assert_equal([defeat_hook.state, defeat_hook.interaction.payload.get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "total defeat enters the Party Death program before releasing the party")
+	var defeat_boundary := SaveEnvelope.from_data(revived_defeat.snapshot().to_data())
+	var restored_defeat := GameSession.new()
+	assert_equal(restored_defeat.restore(content, defeat_boundary).state, SessionStep.State.COMPLETED, "the Party Death hook restores before its revival instruction")
+	var revived := restored_defeat.respond(InteractionResponse.acknowledge(restored_defeat.view().pending_interaction))
+	assert_equal(revived.state, SessionStep.State.COMPLETED, "opcode 119 suppresses defeat teardown and completes the no-reward battle return")
+	assert_true(revived.events.any(func(event: DomainEvent) -> bool: return event.kind == &"party_defeat_revived"), "the resumed hook records the source-backed defeat revival boundary")
+	assert_equal(revived.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "revival publishes one terminal no-reward battle return")
+	assert_false(revived.events.any(func(event: DomainEvent) -> bool: return event.kind in [&"reward_opened", &"reward_completed"]), "the direct no-reward return skips treasure, experience, and after-message reward processing")
+	assert_equal([restored_defeat.view().session_started, restored_defeat._state.party.character_by_id(defeated_character.id).current_health, restored_defeat._state.combat, restored_defeat._state.last_battle_outcome], [true, 1, null, &"retreated"], "revival retains the session, restores one stamina, records retreat, and releases combat exactly once")
+	content.scenario = original_scenario
+	var ordinary_defeat := GameSession.new()
+	ordinary_defeat.start(content, 25)
+	var lost_character := CharacterState.new("fixture.party-defeat", "Lost Hero", 0, 10)
+	ordinary_defeat._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [lost_character])
+	ordinary_defeat._state.party_setup_completed = true
+	ordinary_defeat._state.combat = CombatState.new("classic.battle.0")
+	ordinary_defeat._state.combat.completed = true
+	ordinary_defeat._state.combat.outcome = &"defeat"
+	ordinary_defeat._state.last_battle_outcome = &"defeat"
+	var ordinary_death_hook := ordinary_defeat._finish_direct_battle([])
+	assert_equal(ordinary_death_hook.interaction.payload.get("prompt"), "The Party Death application hook runs.", "ordinary total defeat runs the package Party Death hook")
+	var released := ordinary_defeat.respond(InteractionResponse.acknowledge(ordinary_death_hook.interaction))
+	assert_true(released.events.any(func(event: DomainEvent) -> bool: return event.kind == &"session_ended" and event.payload.get("reason") == "party-defeat"), "a Party Death hook without revival releases the defeated session")
+	assert_false(ordinary_defeat.view().session_started, "ordinary total defeat does not return to exploration")
 
 	var battle: BattleDefinition = content.battle_by_id("classic.battle.0")
 	assert_not_null(battle, "the integration fixture exposes a terminal reward battle")
@@ -430,7 +504,15 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	character.race_id = races[0].id
 	character.caste_id = castes[0].id
 	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture vault member enters party setup without consuming RNG")
-	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "fixture party explicitly begins before gameplay intents")
+	var begin_step := session.submit_intent(PlayerIntent.begin_adventure())
+	assert_equal([begin_step.state, begin_step.interaction.payload.get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Start Game application hook runs."], "fixture party commits before the Start Game hook")
+	var begin_boundary := SaveEnvelope.from_data(session.snapshot().to_data())
+	var restored := GameSession.new()
+	assert_equal(restored.restore(content, begin_boundary).state, SessionStep.State.COMPLETED, "the Start Game textbox restores without rerunning the hook")
+	var completed := restored.respond(InteractionResponse.acknowledge(restored.view().pending_interaction))
+	assert_equal(completed.state, SessionStep.State.COMPLETED, "Start Game completion enters ordinary exploration")
+	assert_true(completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"adventure_begun"), "Start Game completion publishes the application boundary")
+	assert_equal(session.restore(content, restored.snapshot()).state, SessionStep.State.COMPLETED, "the helper returns the completed adventure state to its caller")
 
 
 func _spellcaster_creation_spec(content: RealmzContent) -> CharacterCreationSpec:

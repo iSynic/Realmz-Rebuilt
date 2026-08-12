@@ -69,6 +69,8 @@ static func execute_end_adventure(action: StringName, save_operation: Callable, 
 	var step: SessionStep = close_operation.call()
 	if step == null or step.state == SessionStep.State.FAILED:
 		return {"state": &"close-failed", "step": step}
+	if step.state == SessionStep.State.WAITING_FOR_INTERACTION:
+		return {"state": &"pending", "step": step}
 	return {"state": &"closed", "step": step}
 
 

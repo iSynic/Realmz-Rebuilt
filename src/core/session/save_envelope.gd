@@ -164,6 +164,34 @@ static func _migrate(value: Variant) -> Variant:
 static func _normalize_session_continuation(value: Dictionary) -> Variant:
 	if value.is_empty():
 		return {}
+	if value.get("kind") == "application-hook":
+		var hook_fields: Array[String] = ["kind", "hook", "programId", "resumeKind", "serviceId", "partyRevived"]
+		if value.size() != hook_fields.size():
+			return null
+		for field: String in hook_fields:
+			if not value.has(field):
+				return null
+		if not value["hook"] is String or not value["programId"] is String or value["programId"].is_empty() or not value["resumeKind"] is String or not value["serviceId"] is String or not value["partyRevived"] is bool:
+			return null
+		var hook: String = value["hook"]
+		var resume_kind: String = value["resumeKind"]
+		var service_id: String = value["serviceId"]
+		match resume_kind:
+			"begin-adventure":
+				if hook != String(ScenarioApplicationHooks.START_GAME) or not service_id.is_empty():
+					return null
+			"service":
+				if hook not in [String(ScenarioApplicationHooks.SHOP), String(ScenarioApplicationHooks.TEMPLE)] or service_id.is_empty():
+					return null
+			"end-adventure":
+				if hook != String(ScenarioApplicationHooks.END_ADVENTURE) or not service_id.is_empty():
+					return null
+			"end-adventure-close", "party-defeat":
+				if hook != String(ScenarioApplicationHooks.PARTY_DEATH) or not service_id.is_empty():
+					return null
+			_:
+				return null
+		return {"kind": "application-hook", "hook": hook, "programId": value["programId"], "resumeKind": resume_kind, "serviceId": service_id, "partyRevived": value["partyRevived"]}
 	if value.get("kind") == "pooled-wealth-departure":
 		var departure_fields: Array[String] = ["kind", "stage", "directionX", "directionY"]
 		if value.size() != departure_fields.size():

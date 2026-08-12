@@ -321,6 +321,11 @@ func _respond_host_interaction(response: InteractionResponse) -> void:
 		_shell_presenter.set_status("End Adventure failed • %s" % error_message, true)
 		presentation_coordinator.present_host_interaction(_host_interaction)
 		return
+	if result_state == &"pending":
+		_host_interaction = null
+		var pending_step: SessionStep = result.get("step")
+		_present_step_status(pending_step)
+		return
 	if result_state != &"closed":
 		_shell_presenter.set_status("The lifecycle response was invalid.", true)
 		presentation_coordinator.present_host_interaction(_host_interaction)
@@ -372,6 +377,9 @@ func _present_step_status(step: SessionStep) -> void:
 		_shell_presenter.set_status(_status_label.text, true)
 		return
 	for event: DomainEvent in step.events:
+		if event.kind == &"session_ended":
+			_complete_closed_session()
+			return
 		match event.kind:
 			&"character_draft_generated":
 				_status_label.text = "Classic character roll ready for review"

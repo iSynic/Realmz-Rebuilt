@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "2f9b23f5b5c4c2b056226b945746bf6941436accdbbacc52b6af8507c511d855"
+const EXPECTED_SCHEMA_HASH: String = "5d2be8213868bc9b5bc3499f0a5a5033ed1ea1402a4971185fff217d08cb7d2d"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -1036,18 +1036,25 @@ func _construct_timed_encounters(value: Variant) -> Variant:
 
 
 func _construct_scenario(document: Dictionary, campaign_id: String) -> ScenarioDefinition:
-	if not _has_fields(document, ["programs", "scenarioActions", "stateDefinitions", "migrations"], "scenario document"):
+	if not _has_fields(document, ["applicationHooks", "programs", "scenarioActions", "stateDefinitions", "migrations"], "scenario document"):
 		return null
 	if not document["stateDefinitions"] is Array or document["stateDefinitions"].size() > 4096 or not document["migrations"] is Array or document["migrations"].size() > 4096 or not _json_safe(document["stateDefinitions"], 0) or not _json_safe(document["migrations"], 0):
 		_reject("Scenario state definitions or migrations are malformed.")
 		return null
 	var programs_value: Variant = _construct_programs(document["programs"])
 	var actions_value: Variant = _construct_scenario_actions(document["scenarioActions"], campaign_id)
-	if programs_value == null or actions_value == null:
+	var hooks_value: Variant = _construct_application_hooks(document["applicationHooks"])
+	if programs_value == null or actions_value == null or hooks_value == null:
 		return null
 	var programs: Array[ScenarioProgramDefinition] = programs_value
 	var actions: Array[ScenarioActionDefinition] = actions_value
-	var definition := ScenarioDefinition.new(programs, actions)
+	var hooks: ScenarioApplicationHooks = hooks_value
+	var definition := ScenarioDefinition.new(programs, actions, hooks)
+	for hook: StringName in [ScenarioApplicationHooks.START_GAME, ScenarioApplicationHooks.PARTY_DEATH, ScenarioApplicationHooks.END_ADVENTURE, ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE]:
+		var hook_program_id := definition.application_hook_program_id(hook)
+		if not hook_program_id.is_empty() and definition.program_by_id(hook_program_id) == null:
+			_reject("Scenario application hook '%s' references missing program '%s'." % [hook, hook_program_id])
+			return null
 	for program: ScenarioProgramDefinition in programs:
 		for index: int in range(program.instruction_count()):
 			var instruction: Variant = program.instruction_at(index)
@@ -1066,6 +1073,21 @@ func _construct_scenario(document: Dictionary, campaign_id: String) -> ScenarioD
 					_reject("Scenario Action '%s' has an invalid call to '%s'." % [action.id, instruction.action_id])
 					return null
 	return definition
+
+
+func _construct_application_hooks(value: Variant) -> Variant:
+	var fields: Array[String] = ["startGame", "partyDeath", "endAdventure", "shop", "temple"]
+	if not value is Dictionary or not _exact_fields(value, fields):
+		_reject("Scenario application hooks are malformed.")
+		return null
+	var hook_ids: Array[String] = []
+	for field: String in fields:
+		var hook_id: Variant = value[field]
+		if hook_id != null and (not hook_id is String or hook_id.is_empty() or hook_id.length() > 255):
+			_reject("Scenario application hook '%s' has an invalid program ID." % field)
+			return null
+		hook_ids.append("" if hook_id == null else String(hook_id))
+	return ScenarioApplicationHooks.new(hook_ids[0], hook_ids[1], hook_ids[2], hook_ids[3], hook_ids[4])
 
 
 func _construct_programs(value: Variant) -> Variant:
