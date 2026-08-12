@@ -142,8 +142,9 @@ func _apply_classic_region() -> void:
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
 	if uses_textbox_region(_request, _passive_text):
 		theme_type_variation = &"ClassicOpenRight"
-		position = _textbox_rect.position
-		size = _textbox_rect.size
+		var region := interaction_region(_request, _textbox_rect, _stage_rect)
+		position = region.position
+		size = region.size
 	else:
 		theme_type_variation = &"ClassicInset"
 		var desired := Vector2(minf(700.0, _stage_rect.size.x - 20.0), minf(520.0, _stage_rect.size.y - 20.0))
@@ -155,6 +156,16 @@ func _apply_classic_region() -> void:
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
 	return passive_text or request != null and request.payload.get("presentation") != "player-map" and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"combat_action"]
+
+
+static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, stage_rect: Rect2) -> Rect2:
+	if request == null or request.kind != &"combat_action":
+		return textbox_rect
+	# Combat combines turn controls, movement, and typed spell/item targeting. Give
+	# that command deck enough vertical room to keep its committed action visible
+	# while retaining the upper tactical battlefield.
+	var desired_height := minf(300.0, stage_rect.size.y + textbox_rect.size.y)
+	return Rect2(textbox_rect.position.x, textbox_rect.end.y - desired_height, textbox_rect.size.x, desired_height)
 
 
 func _add_hint(text: String) -> void:
