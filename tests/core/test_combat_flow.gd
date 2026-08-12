@@ -5,6 +5,7 @@ var _cached_battle_world: WorldDefinition
 
 func run() -> void:
 	_test_tactical_adjacency_movement_and_restore()
+	_test_detached_turn_start_movement_refresh()
 	_test_player_collision_initiates_melee()
 	_test_guard_and_withdrawal_reactions()
 	_test_character_and_monster_retreat()
@@ -260,6 +261,41 @@ func _test_tactical_adjacency_movement_and_restore() -> void:
 	assert_true(advanced.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved" and event.payload.get("actorId") == distant_monster.id), "monster movement is committed as explicit battlefield events")
 	assert_true(distant_character.current_health < 20, "the monster resolves melee only after reaching an adjacent footprint")
 	assert_true(rules.battlefield.are_adjacent(distant_state.combat.battlefield, distant_character.id, distant_monster.id), "automatic movement ends in source-legal melee adjacency")
+
+
+func _test_detached_turn_start_movement_refresh() -> void:
+	var rules := RealmzRules.new()
+	var character := _character("character.detached-movement-refresh")
+	var definition := _monster_definition("monster.detached-movement-refresh", [])
+	var monster := MonsterState.new("monster.detached-movement-refresh.instance", definition.id, definition.name, 10, 10, 1)
+	monster.conditions.set_value(ConditionRules.HELPLESS, -1)
+	var state := _state(character, monster, "battle.detached-movement-refresh")
+	var content := _content([definition])
+	character.movement = 0
+	state.combat.clear_active_turn()
+	assert_equal(state.combat.active_actor_id(), character.id, "the fixture retains the active character at the uncommitted host boundary")
+	assert_equal(state.combat.active_turn, null, "the fixture models a restored or resumed activation before its first action")
+	assert_equal(character.movement, 0, "the host boundary may retain the prior committed remainder until the next action")
+
+	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow)
+	var west: CombatMoveOptionView = null
+	for option: CombatMoveOptionView in view.movement_options:
+		if option.direction == Vector2i.LEFT:
+			west = option
+			break
+	assert_not_null(west, "the detached view exposes the west tactical direction")
+	assert_equal(view.movement_remaining, character.maximum_movement, "a fresh detached activation displays Castle's restored movement maximum")
+	if west != null:
+		assert_true(west.enabled, "a fresh detached activation probes open movement with the restored maximum")
+
+	var request := RealmzRuntimeApi.new(content, state, ScriptedRng.new([]), ScenarioActionState.new(), rules)._combat_request("request.detached-movement-refresh")
+	assert_equal(request.payload.get("movementRemaining"), character.maximum_movement, "the typed combat request carries the restored turn-start allowance")
+	var request_west: Dictionary = {}
+	for option: Dictionary in request.payload.get("movement", []):
+		if option.get("direction") == [-1, 0]:
+			request_west = option
+			break
+	assert_true(not request_west.is_empty() and bool(request_west.get("enabled")), "the typed request keeps the source-legal turn-start step enabled")
 
 
 func _test_guard_and_withdrawal_reactions() -> void:

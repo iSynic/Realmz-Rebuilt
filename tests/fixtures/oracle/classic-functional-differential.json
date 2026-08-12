@@ -1341,13 +1341,14 @@
         "evidence": "source-control-flow",
         "controlFlow": [
           { "path": "src/realmz_orig/combat.c", "symbol": "void combat(short suprise, short mode)" },
+          { "path": "src/realmz_orig/getup.c", "symbol": "void getup(short skip)" },
           { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice(void)" },
           { "path": "src/realmz_orig/share-movecost-dialog.c", "symbol": "short getmovecost(short hit)" },
           { "path": "src/realmz_orig/checkforenemy.c", "symbol": "short checkforenemy(short code)" },
           { "path": "src/realmz_orig/movemonster.c", "symbol": "short movemonster(void)" }
         ],
         "authoredInputs": ["90 by 90 battlefield terrain", "terrain time and solid values", "combatant anchors and size footprints", "allegiance", "remaining movement and half-attacks"],
-        "observation": "combat maps keypad, keyboard, and battlefield clicks to movelook plus independent horizontal and vertical deltas. combatchoice runs Guard checks before inspecting the destination; an opposed occupied footprint then deducts three movement and two half-attack units, calls attack, and returns without reaching the ordinary position commit. Target instead maps to combatitem and is enabled for charged missile/item spell targeting, not generic melee. getmovecost takes the maximum destination-footprint tile time divided by two minus one, floored at zero, then adds one for each changed axis. checkforenemy scans the complete one-cell perimeter around an actor footprint. movemonster uses the same footprint legality and maximum terrain cost but owns separate target-directed movement and randomized blocked-step retries.",
+        "observation": "combat maps keypad, keyboard, and battlefield clicks to movelook plus independent horizontal and vertical deltas. getup calls movecalc, assigns movementmax to the active character, and updates controls before that activation's first command. combatchoice runs Guard checks before inspecting the destination; an opposed occupied footprint then deducts three movement and two half-attack units, calls attack, and returns without reaching the ordinary position commit. Target instead maps to combatitem and is enabled for charged missile/item spell targeting, not generic melee. getmovecost takes the maximum destination-footprint tile time divided by two minus one, floored at zero, then adds one for each changed axis. checkforenemy scans the complete one-cell perimeter around an actor footprint. movemonster uses the same footprint legality and maximum terrain cost but owns separate target-directed movement and randomized blocked-step retries.",
         "unresolved": [
           "cansee advances each of 128 iterations by delta divided by 128 plus the user delay-speed preference; the resulting line-of-sight endpoint appears preference-dependent and needs a controlled Castle runtime fixture before 2.0 chooses a correction.",
           "When a character is in missile mode, Castle's collision branch consults the autoweapswitch preference for an ordinary class-nine physical missile and either switches to melee or warns. Realmz 2.0 currently requires an explicit weapon-mode command; that preference-versus-fixed-workflow difference remains visible rather than being guessed into core rules."
@@ -1364,10 +1365,11 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func move_character(" },
-        "expectedTrace": ["probe one adjacent eight-direction destination", "validate every destination footprint cell", "identify an opposed occupied destination without committing movement", "adjudicate Castle's collision-initiated melee against the explicit target command", "charge maximum terrain cost plus changed axes for an actual move", "compare complete hostile adjacency before and after", "reject unimplemented guarding or withdrawal reactions without mutation", "commit reaction-free position and movement synchronously", "expose adjacent melee and all eight probes in detached view and interaction", "derive global combat-move availability from enabled detached probes", "suppress exploration movement and Search while combat outcome is active"],
+        "expectedTrace": ["restore maximum movement before a fresh character activation", "probe one adjacent eight-direction destination", "validate every destination footprint cell", "identify an opposed occupied destination without committing movement", "adjudicate Castle's collision-initiated melee against the explicit target command", "charge maximum terrain cost plus changed axes for an actual move", "compare complete hostile adjacency before and after", "reject unimplemented guarding or withdrawal reactions without mutation", "commit reaction-free position and movement synchronously", "expose adjacent melee and all eight probes in detached view and interaction", "derive global combat-move availability from enabled detached probes", "suppress exploration movement and Search while combat outcome is active"],
         "tests": [
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_player_collision_initiates_melee()" },
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_tactical_adjacency_movement_and_restore()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_detached_turn_start_movement_refresh()" },
           { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_gameplay_capabilities_and_battle_resume(" },
           { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
@@ -1375,7 +1377,7 @@
       },
       "decision": "runtime-defect",
       "availability": "implemented",
-      "status": "player-movement-collision-melee-adjacency-global-availability-and-save-resume-verified-auto-weapon-switch-preference-unresolved"
+      "status": "player-movement-turn-start-refresh-collision-melee-adjacency-global-availability-and-save-resume-verified-auto-weapon-switch-preference-unresolved"
     },
     {
       "id": "combat.death-macro-battlefield-occupancy",

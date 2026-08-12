@@ -55,7 +55,7 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 	for character: CharacterState in characters:
 		if character.id == active_actor_id:
 			attack_units_remaining = character.attacks_remaining
-			movement_remaining = character.movement
+			movement_remaining = character.maximum_movement if combat.active_turn == null else character.movement
 		if character.current_health > 0 and character.traitor and adjacent_ids.has(character.id):
 			character_targets.append(CharacterView.new(character, content))
 	_populate_active_relationships(combat, characters)
@@ -104,10 +104,11 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 			var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
 			if terrain_set != null:
 				var contact_attack_available := false
+				var movement_allowance := active_character.maximum_movement if combat.active_turn == null else active_character.movement
 				for direction: Vector2i in BattlefieldRules.DIRECTIONS:
 					var destination := combat.battlefield.actor_position(active_character.id) + direction
 					var edge_retreat: Variant = combat_flow.probe_edge_retreat(combat, active_character.id, destination) if combat_flow != null else null
-					var probe := battlefield_rules.probe_step(combat.battlefield, terrain_set, active_character.id, direction, active_character.movement)
+					var probe := battlefield_rules.probe_step(combat.battlefield, terrain_set, active_character.id, direction, movement_allowance)
 					var contact_target_id := ""
 					var contact_target_name := ""
 					if weapon_mode == &"melee" and probe.reason == &"occupied" and _is_hostile_target(combat, characters, active_character, probe.occupant_id):
