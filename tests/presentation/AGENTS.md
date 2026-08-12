@@ -14,7 +14,7 @@
 
 - Fixture facts are synthetic and cannot become gameplay or live-campaign evidence.
 - Local screenshots may prove visual layout only and remain under ignored artifact storage.
-- Test navigation must not mutate a session.
+- Test navigation must not mutate a session. Automatic-route coverage proves that combat, services, and scenario/AP interactions replace unrelated browsing workspaces while interaction-free browsing remains presentation-owned.
 
 # Work Guidance
 
