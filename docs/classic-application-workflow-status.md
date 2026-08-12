@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 60 | 2 | 16 | 42 | 0 |
+| classic | 60 | 2 | 16 | 41 | 1 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -32,8 +32,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 2 | 2 | 0 |
 | classic | partial | 16 | 16 | 0 |
-| classic | functional | 42 | 42 | 0 |
-| classic | certified | 0 | 0 | 0 |
+| classic | functional | 42 | 41 | -1 |
+| classic | certified | 0 | 1 | +1 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 6 | 6 | 0 |
@@ -50,7 +50,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Inventory and equipment | 7 | 0 | 3 | 4 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
-| Combat | 8 | 0 | 2 | 6 | 0 |
+| Combat | 8 | 0 | 2 | 5 | 1 |
 | Rewards and progression | 5 | 0 | 1 | 4 | 0 |
 | Maps and journal | 3 | 0 | 2 | 1 | 0 |
 | Save and system | 4 | 0 | 2 | 2 | 0 |
@@ -98,8 +98,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | absent | 2 |
 | fixture-shell | 0 |
-| functional | 58 |
-| accepted | 0 |
+| functional | 57 |
+| accepted | 1 |
 
 ### Host
 
@@ -137,7 +137,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: | ---: |
 | synthetic | 58 | 7 |
 | route-harness | 39 | 2 |
-| aogm-ordinary | 22 | 3 |
+| aogm-ordinary | 23 | 3 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
