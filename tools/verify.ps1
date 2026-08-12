@@ -4,6 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
+. "$PSScriptRoot\stream_process.ps1"
 
 if ([string]::IsNullOrWhiteSpace($GodotPath)) {
     $candidate = Get-ChildItem "$env:LOCALAPPDATA\Microsoft\WinGet\Packages" -Recurse -Filter "Godot_v4.7.1-stable_win64_console.exe" -ErrorAction SilentlyContinue |
@@ -31,17 +32,9 @@ function Invoke-GodotGate {
         [switch]$RejectTeardownLeaks
     )
 
-    $previousErrorAction = $ErrorActionPreference
-    $ErrorActionPreference = "Continue"
-    try {
-        $output = & $GodotPath @GodotArguments 2>&1
-        $exitCode = $LASTEXITCODE
-    } finally {
-        $ErrorActionPreference = $previousErrorAction
-    }
-    $output | ForEach-Object { Write-Host $_ }
-    $combined = $output -join "`n"
-    if ($exitCode -ne 0) { throw "$Label failed with exit code $exitCode." }
+    $result = Invoke-StreamingProcess -FilePath $GodotPath -ArgumentList $GodotArguments -Label $Label
+    $combined = $result.Output -join "`n"
+    if ($result.ExitCode -ne 0) { throw "$Label failed with exit code $($result.ExitCode)." }
     if ($combined -match "SCRIPT ERROR:" -or $combined -match "Parse Error:") {
         throw "$Label emitted a GDScript error despite returning exit 0."
     }

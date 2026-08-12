@@ -5,6 +5,12 @@ const AOGM_OPCODE_INVENTORY_PATH: String = "res://tests/fixtures/oracle/aogm-act
 const BANK_SOURCE_OBSERVATION_PATH: String = "res://tests/fixtures/oracle/classic-bank-swap-source-observation.json"
 
 
+func selected_case_arguments() -> Array:
+	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
+	assert_true(loaded.is_ok(), "Scenario VM fixture loads: %s" % loaded.error_message)
+	return [loaded.content] if loaded.is_ok() else []
+
+
 func run() -> void:
 	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
 	assert_true(loaded.is_ok(), "Scenario VM fixture loads: %s" % loaded.error_message)

@@ -5,6 +5,10 @@ var assertions: int = 0
 var failures: Array[String] = []
 
 
+func selected_case_arguments() -> Array:
+	return []
+
+
 func assert_true(value: bool, message: String) -> void:
 	assertions += 1
 	if not value:

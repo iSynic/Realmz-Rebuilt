@@ -10,6 +10,14 @@ const TERMINAL_WAIT_MILLISECONDS: int = 20_000
 const POLL_DELAY_MILLISECONDS: int = 2
 
 
+func selected_case_arguments() -> Array:
+	var package := PackageRepository.new().load_package(FIXTURE_PATH)
+	assert_true(package.is_ok(), "the package-task success fixture passes independent package validation")
+	if not package.is_ok():
+		return []
+	return [package.content.campaign_id, package.content.package_hash]
+
+
 func run() -> void:
 	var package := PackageRepository.new().load_package(FIXTURE_PATH)
 	assert_true(package.is_ok(), "the package-task success fixture passes independent package validation")

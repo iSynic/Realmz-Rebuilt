@@ -26,7 +26,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 - `aogm-ordinary` records only the variants directly observed through ordinary UI. A workflow may retain that label while unresolved variants, presentation acceptance, or other-campaign proof remain gaps; the label never implies certification by itself.
 - `tools/route_acceptance.gd` is a generic local harness. Certified route JSON, campaign packages, and emitted reports stay outside this repository when they contain or identify commercial campaign content.
 - Direct ED3/XAP route checkpoints may name a compiled program explicitly; this proves that macro's ordinary VM behavior, not map reachability for an unplaced record.
-- Verification follows the delivery tier: Tier 1 runs only the affected suite or suites; Tier 2 adds the applicable architecture, differential, inventory, scope, and DOX checks; Tier 3 closes the workflow batch with the complete local gate and its required evidence. Do not widen a focused test run to unrelated routes without a Tier 3 reason.
+- Verification follows the delivery tier: Tier 1 runs named affected cases through the streaming, budgeted focused runner, using a whole suite only when its tests require shared arguments; Tier 2 adds the applicable architecture, differential, inventory, scope, and DOX checks; Tier 3 closes the workflow batch with the complete local gate and its required evidence. Do not widen a focused test run to unrelated routes without a Tier 3 reason, and never rerun an unchanged focused command after it times out.
 - Ordinary-play evidence and accepted presentation drive certification. Do not add source fixtures or differential cases to a functional workflow unless its scheduled target records an observed discrepancy, reachable blocker, high-risk boundary, possible compiler loss, or target-campaign source ambiguity.
 - Post-battle tests preserve Castle's distinction between consumed held-over allies and the subsequent `bodycount()` survivor selection; route defaults must use the request's source-backed preselection rather than silently retaining all friendlies.
 - Presentation tests compare 2D topology facts with the 3D geometry projection. Local MCP screenshots are visual evidence only and remain outside the repository.
@@ -90,7 +90,7 @@ Own deterministic tests, synthetic fixtures, oracle provenance, route evidence, 
 
 ## Verification
 
-- `godot --headless --path . --script res://tests/test_runner.gd` runs the complete typed GDScript suite; repeated `-- --suite <fragment> --suite <fragment>` arguments select the union of matching suites for Tier 1 or Tier 2.
+- `godot --headless --path . --script res://tests/test_runner.gd` runs the complete typed GDScript suite. The local focused wrapper accepts suite and named-case filter arrays, requires an owning suite for named cases, reports per-case timing, rejects unmatched filters, prepares suite-owned shared fixture arguments once, and enforces the focused process budget.
 - A passing full-suite process must also exit without ObjectDB leak or retained-resource diagnostics; `tools/verify.ps1` treats either teardown warning as a failure.
 - `tools/verify.ps1` runs import/script checks, tests, architecture guards, and `git diff --check`.
 - Package contract coverage verifies that multiple immutable files for one campaign collapse to one current selector entry without deleting revisions.

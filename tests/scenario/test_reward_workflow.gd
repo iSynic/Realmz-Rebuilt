@@ -3,6 +3,12 @@ extends RealmzTestCase
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 
 
+func selected_case_arguments() -> Array:
+	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
+	assert_true(loaded.is_ok(), "reward workflow fixture loads: %s" % loaded.error_message)
+	return [loaded.content] if loaded.is_ok() else []
+
+
 func run() -> void:
 	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
 	assert_true(loaded.is_ok(), "reward workflow fixture loads: %s" % loaded.error_message)

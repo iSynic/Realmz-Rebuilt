@@ -5,6 +5,12 @@ const CORRECTION_PATH: String = "res://tests/fixtures/oracle/money-share-capacit
 const DEPARTURE_OBSERVATION_PATH: String = "res://tests/fixtures/oracle/classic-pooled-wealth-departure-source-observation.json"
 
 
+func selected_case_arguments() -> Array:
+	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
+	assert_true(loaded.is_ok(), "money workflow starts from the validated package fixture")
+	return [loaded.content] if loaded.is_ok() else []
+
+
 func run() -> void:
 	_test_share_capacity_correction()
 	_test_pooled_departure_source_observation()

@@ -1,7 +1,8 @@
 param(
-    [Parameter(Mandatory = $true)]
-    [ValidateNotNullOrEmpty()]
-    [string[]]$Suite,
+    [string[]]$Suite = @(),
+    [string[]]$Case = @(),
+    [ValidateRange(1, 3600)]
+    [int]$TimeoutSeconds = 120,
     [string]$GodotPath = "",
     [string]$CastleRoot = "",
     [string]$RemakeRoot = "",
@@ -21,34 +22,15 @@ if ([string]::IsNullOrWhiteSpace($GodotPath)) {
 }
 
 $suiteFragments = @($Suite | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
-if ($suiteFragments.Count -eq 0) {
-    throw "At least one non-empty -Suite path fragment is required."
+$caseFragments = @($Case | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
+if ($suiteFragments.Count -eq 0 -and $caseFragments.Count -eq 0) {
+    throw "At least one non-empty -Suite or -Case fragment is required."
+}
+if ($suiteFragments.Count -eq 0 -and $caseFragments.Count -gt 0) {
+    throw "Named case filters require at least one -Suite fragment."
 }
 
-$testArguments = @("--headless", "--path", $repoRoot, "--script", "res://tests/test_runner.gd", "--")
-foreach ($fragment in $suiteFragments) {
-    $testArguments += @("--suite", $fragment)
-}
-
-$previousErrorAction = $ErrorActionPreference
-$ErrorActionPreference = "Continue"
-try {
-    $testOutput = & $GodotPath @testArguments 2>&1
-    $testExitCode = $LASTEXITCODE
-} finally {
-    $ErrorActionPreference = $previousErrorAction
-}
-$testOutput | ForEach-Object { Write-Host $_ }
-$combinedOutput = $testOutput -join "`n"
-if ($testExitCode -ne 0) {
-    throw "Focused Godot suites failed with exit code $testExitCode."
-}
-if ($combinedOutput -match "SCRIPT ERROR:" -or $combinedOutput -match "Parse Error:") {
-    throw "Focused Godot suites emitted a GDScript error despite returning exit 0."
-}
-if ($combinedOutput -match "ObjectDB instances were leaked at exit" -or $combinedOutput -match "resources still in use at exit") {
-    throw "Focused Godot suites retained objects or resources during process teardown."
-}
+& "$PSScriptRoot\run_tests.ps1" -Suite $suiteFragments -Case $caseFragments -TimeoutSeconds $TimeoutSeconds -GodotPath $GodotPath
 
 $changedPaths = @(
     git -C $repoRoot status --porcelain=v1 --untracked-files=all |
@@ -113,5 +95,5 @@ foreach ($path in $changedPaths) {
     }
 }
 
-Write-Host "Workflow verification complete: $($suiteFragments.Count) requested suite filter(s), $($changedPaths.Count) changed path(s)."
+Write-Host "Workflow verification complete: $($suiteFragments.Count) suite filter(s), $($caseFragments.Count) case filter(s), $($changedPaths.Count) changed path(s)."
 exit 0
