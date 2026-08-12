@@ -8,6 +8,7 @@ signal response_submitted(response: InteractionResponse)
 @onready var _prompt: Label = %InteractionPrompt
 @onready var _heading: Label = %InteractionHeading
 @onready var _options: VBoxContainer = %InteractionOptions
+@onready var _scroll: ScrollContainer = $InteractionScroll
 
 var _request: InteractionRequest
 var _component: InteractionComponent
@@ -19,6 +20,7 @@ var _passive_text: bool = false
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: PackageMediaCatalog = null) -> void:
 	_request = request
 	_passive_text = false
+	_reset_interaction_scroll()
 	_clear_options()
 	visible = request != null
 	if request == null:
@@ -44,7 +46,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_options.add_child(_component)
 	_component.build(request)
 	_apply_classic_region()
-	call_deferred("_focus_first_control")
+	call_deferred("_prepare_interaction_focus")
 
 
 func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2) -> void:
@@ -167,6 +169,17 @@ func _focus_first_control() -> void:
 	var first := _first_focusable(_options)
 	if first != null:
 		first.grab_focus()
+
+
+func _prepare_interaction_focus() -> void:
+	_reset_interaction_scroll()
+	_focus_first_control()
+	_reset_interaction_scroll()
+
+
+func _reset_interaction_scroll() -> void:
+	_scroll.scroll_horizontal = 0
+	_scroll.scroll_vertical = 0
 
 
 static func _title_for_kind(kind: StringName) -> String:

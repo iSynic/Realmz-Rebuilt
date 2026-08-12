@@ -16,6 +16,7 @@ func run() -> void:
 	_test_action_availability()
 	_test_fixture_gallery_coverage()
 	_test_interaction_identity()
+	_test_interaction_scroll_resets_for_new_request()
 	_test_lifecycle_interaction()
 	_test_classic_choice_context()
 	_test_battle_weapon_mode_component()
@@ -66,6 +67,21 @@ func _test_package_operation_presentation() -> void:
 	router.set_package_operation(PackageOperationStatusScript.new())
 	assert_equal(router.find_child("CancelPackageOperation", true, false), null, "completed package work removes the transient Cancel action")
 	router.free()
+
+
+func _test_interaction_scroll_resets_for_new_request() -> void:
+	var scene := load("res://src/presentation/interaction_presenter.tscn") as PackedScene
+	var presenter := scene.instantiate() as InteractionPresenter
+	var scroll := presenter.get_node("InteractionScroll") as ScrollContainer
+	presenter._prompt = presenter.get_node("InteractionScroll/InteractionContent/InteractionPrompt") as Label
+	presenter._heading = presenter.get_node("InteractionScroll/InteractionContent/InteractionHeading") as Label
+	presenter._options = presenter.get_node("InteractionScroll/InteractionContent/InteractionOptions") as VBoxContainer
+	presenter._scroll = scroll
+	presenter.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
+	scroll.scroll_vertical = 294
+	presenter.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unavailable"))
+	assert_equal([scroll.scroll_horizontal, scroll.scroll_vertical], [0, 0], "a newly presented interaction starts at its title and current item instead of inheriting focus-driven scroll")
+	presenter.free()
 
 
 func _test_save_preview_workspace() -> void:
