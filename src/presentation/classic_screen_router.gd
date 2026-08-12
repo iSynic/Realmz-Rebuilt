@@ -22,6 +22,7 @@ const PANEL_DARK := Color("1d2025")
 const MUTED := Color("9aa0a8")
 const SWAP_OPEN_SOUND_ID: int = 3003
 const SWAP_DONE_SOUND_ID: int = 141
+const MAXIMUM_MODAL_Z_INDEX: int = 30
 
 var _view: GameView
 var _campaigns: Array[PackageDiscoveryResult] = []
@@ -452,7 +453,7 @@ func _build_campaign_overlay() -> void:
 	_campaign_overlay.offset_top = -220.0
 	_campaign_overlay.offset_right = 300.0
 	_campaign_overlay.offset_bottom = 220.0
-	_campaign_overlay.z_index = 30
+	_campaign_overlay.z_index = MAXIMUM_MODAL_Z_INDEX
 	add_child(_campaign_overlay)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 10)

@@ -328,10 +328,14 @@ func run() -> void:
 		fumble_session._state.last_battle_outcome = &"retreated"
 		var dropped := ItemInstance.new("fixture.fumbled-item", fumble_item.id, 7, false, true)
 		assert_true(fumble_session._state.combat.queue_fumbled_item(dropped), "a completed retreat retains its battle-local fumbled weapon")
-		var ally_step := fumble_session._finish_direct_battle([])
-		assert_equal(ally_step.interaction.kind, InteractionRequest.ALLY_SELECTION, "the established body-count stage remains ahead of recovery")
-		var recovery_step := fumble_session.respond(InteractionResponse.new(ally_step.interaction.request_id, InteractionRequest.ALLY_SELECTION, {"selectedIds": []}))
+		# Simulate a save or live session created before empty Castle body-count
+		# boundaries were removed. Continue must heal it into the next real stage.
+		var stale_ally_request := InteractionRequest.new("fixture.stale-empty-ally", InteractionRequest.ALLY_SELECTION, {"candidates": [], "maximumSelections": 4, "requiredIds": []})
+		fumble_session._session_interaction = stale_ally_request
+		fumble_session._session_continuation = {"kind": "combat-ally-selection", "battleId": fumble_session._state.combat.battle_id}
+		var recovery_step := fumble_session.respond(InteractionResponse.new(stale_ally_request.request_id, stale_ally_request.kind, {"selectedIds": []}))
 		assert_equal(recovery_step.state, SessionStep.State.WAITING_FOR_INTERACTION, "retreat still enters the typed fumbled-weapon recovery boundary")
+		assert_false(recovery_step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"allies_selected"), "a stale empty body-count stage is bypassed rather than manufactured")
 		assert_equal(recovery_step.interaction.kind, InteractionRequest.TREASURE_DISTRIBUTION, "post-battle recovery uses the dedicated treasure-distribution request")
 		var fumble_boundary := SaveEnvelope.from_data(fumble_session.snapshot().to_data())
 		assert_not_null(fumble_boundary, "the pending fumble assignment is centrally saveable")
@@ -514,8 +518,7 @@ func run() -> void:
 			reward_session._state.combat.outcome = &"victory"
 			reward_session._state.last_battle_outcome = &"victory"
 			var terminal := reward_session._finish_direct_battle([])
-			assert_equal(terminal.interaction.kind, InteractionRequest.ALLY_SELECTION, "terminal victory retains body-count ally selection ahead of ordinary booty")
-			terminal = reward_session.respond(InteractionResponse.new(terminal.interaction.request_id, InteractionRequest.ALLY_SELECTION, {"selectedIds": []}))
+			assert_false(terminal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"allies_selected"), "terminal victory skips body-count when no eligible ally survived")
 			assert_equal([terminal.state, terminal.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.TREASURE_DISTRIBUTION], "victory enters the ordinary typed booty workspace")
 			var initial_boundary := reward_session.snapshot()
 			assert_not_null(initial_boundary, "the complete direct reward aggregate validates before canonical JSON")

@@ -1368,6 +1368,10 @@ func ally_selection_payload(state: GameState, content: RealmzContent) -> Diction
 			"required": definition.can_summon < 0,
 			"canSummon": definition.can_summon,
 		})
+	# Castle bodycount.c returns before creating Dialog 173 when count is zero.
+	# An empty choice is not an interaction boundary and must not stall battle return.
+	if candidates.is_empty():
+		return {}
 	# bodycount.c promotes mandatory allies and then orders optional survivors by stamina.
 	for _pass: int in range(maxi(0, candidates.size() - 1)):
 		for index: int in range(maxi(0, candidates.size() - 1)):

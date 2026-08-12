@@ -224,9 +224,17 @@ func handle_back() -> bool:
 func handle_route_shortcut(event: InputEvent) -> bool:
 	for definition: Dictionary in UiRouteCatalog.ROUTES:
 		if event.is_action_pressed(StringName(definition["shortcut"])):
+			if not route_change_reason(_current_view).is_empty():
+				return true
 			_router.open_screen(StringName(definition["id"]))
 			return true
 	return false
+
+
+static func route_change_reason(game_view: GameView) -> String:
+	if game_view != null and game_view.pending_interaction != null:
+		return "Resolve the current interaction first."
+	return ""
 
 
 func set_status(text: String, is_error: bool = false) -> void:
@@ -357,8 +365,12 @@ func _fill_menu(menu: MenuButton, entries: Array[Dictionary]) -> void:
 	for index: int in entries.size():
 		var entry := entries[index]
 		popup.add_item(String(entry["label"]), index)
-		actions[index] = entry
 		var reason := String(entry.get("disabled_reason", ""))
+		if reason.is_empty() and entry.has("route"):
+			reason = route_change_reason(_current_view)
+		if not reason.is_empty():
+			entry["disabled_reason"] = reason
+		actions[index] = entry
 		if not reason.is_empty():
 			popup.set_item_disabled(index, true)
 			popup.set_item_tooltip(index, reason)
@@ -370,7 +382,7 @@ func _fill_menu(menu: MenuButton, entries: Array[Dictionary]) -> void:
 
 func _on_menu_item_pressed(item_id: int, menu: MenuButton) -> void:
 	var entry: Dictionary = _menu_actions.get(menu.get_instance_id(), {}).get(item_id, {})
-	if entry.is_empty():
+	if entry.is_empty() or not String(entry.get("disabled_reason", "")).is_empty():
 		return
 	if entry.has("route"):
 		_router.open_screen(StringName(entry["route"]))

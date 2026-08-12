@@ -10,6 +10,8 @@ signal presentation_action_requested(action: StringName, payload: Dictionary)
 @onready var _heading: Label = %InteractionHeading
 @onready var _options: VBoxContainer = %InteractionOptions
 @onready var _scroll: ScrollContainer = $InteractionScroll
+@onready var _stage_opaque_backing: ColorRect = $StageOpaqueBacking
+@onready var _stage_backing: TextureRect = $StageBacking
 
 var _request: InteractionRequest
 var _component: InteractionComponent
@@ -25,6 +27,9 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_reset_interaction_scroll()
 	_clear_options()
 	visible = request != null
+	var full_stage := uses_full_stage_region(request)
+	_stage_opaque_backing.visible = full_stage
+	_stage_backing.visible = full_stage
 	if request == null:
 		_set_heading("")
 		_prompt.text = ""
@@ -170,6 +175,10 @@ func _apply_classic_region() -> void:
 		var region := interaction_region(_request, _textbox_rect, _stage_rect, _combat_rect)
 		position = region.position
 		size = region.size
+	elif uses_full_stage_region(_request):
+		theme_type_variation = &"ClassicInset"
+		position = _stage_rect.position
+		size = _stage_rect.size
 	else:
 		theme_type_variation = &"ClassicInset"
 		var desired := Vector2(minf(700.0, _stage_rect.size.x - 20.0), minf(520.0, _stage_rect.size.y - 20.0))
@@ -181,6 +190,10 @@ func _apply_classic_region() -> void:
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
 	return passive_text or request != null and request.payload.get("presentation") != "player-map" and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"combat_action"]
+
+
+static func uses_full_stage_region(request: InteractionRequest) -> bool:
+	return request != null and request.kind == InteractionRequest.ALLY_SELECTION
 
 
 static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, _unused_stage_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:

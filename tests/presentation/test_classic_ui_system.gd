@@ -78,6 +78,8 @@ func _test_interaction_scroll_resets_for_new_request() -> void:
 	presenter._heading = presenter.get_node("InteractionScroll/InteractionContent/InteractionHeading") as Label
 	presenter._options = presenter.get_node("InteractionScroll/InteractionContent/InteractionOptions") as VBoxContainer
 	presenter._scroll = scroll
+	presenter._stage_opaque_backing = presenter.get_node("StageOpaqueBacking") as ColorRect
+	presenter._stage_backing = presenter.get_node("StageBacking") as TextureRect
 	presenter.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
 	scroll.scroll_vertical = 294
 	presenter.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unavailable"))
@@ -1713,7 +1715,11 @@ func _test_scene_composition() -> void:
 	var application := application_scene.instantiate() as Control
 	assert_true(application.get_node("InteractionPanel").get_index() > application.get_node("ClassicShell").get_index(), "AP and encounter presenter controls are ordered above the shell for mouse input")
 	assert_true(application.get_node("BattlefieldMap") is ClassicBattlefieldPresenter, "the root application owns one detached tactical battlefield presenter")
+	var application_shell := application.get_node("ClassicShell") as Control
+	var application_router := application.get_node("ClassicShell/ScreenRouter") as Control
 	var interaction := application.get_node("InteractionPanel") as InteractionPresenter
+	assert_true(interaction.z_index > ClassicScreenRouter.MAXIMUM_MODAL_Z_INDEX + application_router.z_index + application_shell.z_index, "the dedicated interaction layer draws above every nested router modal instead of allowing stale workspace labels through")
+	assert_equal(interaction.mouse_filter, Control.MOUSE_FILTER_STOP, "the blocking interaction surface, not its decorative backing, owns every pointer inside the tactical stage")
 	var standard_textbox_rect := RealmzApplication.classic_textbox_rect(Rect2(0.0, 28.0, 704.0, 396.0), 176.0)
 	assert_equal(standard_textbox_rect, Rect2(0.0, 424.0, 704.0, 176.0), "textbox interactions replace the complete shell bottom region without exposing an inset frame")
 	assert_true(InteractionPresenter.uses_textbox_region(InteractionRequest.acknowledge("edge-to-edge", "Continue")), "Classic acknowledgements use the edge-to-edge textbox surface")
@@ -1723,6 +1729,11 @@ func _test_scene_composition() -> void:
 	assert_equal(combat_rect, Rect2(0.0, 424.0, 960.0, 176.0), "combat claims the full Classic lower edge instead of stopping at the map-stage width")
 	assert_equal(InteractionPresenter.interaction_region(combat_request, standard_textbox_rect, Rect2(0.0, 28.0, 704.0, 396.0), combat_rect), combat_rect, "the battle command deck uses the full-width lower control region")
 	assert_equal(InteractionPresenter.interaction_region(InteractionRequest.acknowledge("edge-to-edge", "Continue"), standard_textbox_rect, Rect2(0.0, 28.0, 704.0, 396.0)), standard_textbox_rect, "ordinary Classic text retains the source-shaped textbox height")
+	assert_true(InteractionPresenter.uses_full_stage_region(ClassicUiFixtureGallery.request_for(InteractionRequest.ALLY_SELECTION)), "a genuine post-battle ally choice replaces the complete tactical stage instead of clipping its old heading")
+	var ally_opaque_backing := interaction.get_node("StageOpaqueBacking") as ColorRect
+	assert_equal(ally_opaque_backing.color.a, 1.0, "full-stage interactions mask every stale tactical or route label before drawing their stone surface")
+	var ally_stage_backing := interaction.get_node("StageBacking") as TextureRect
+	assert_equal([ally_stage_backing.stretch_mode, ally_stage_backing.texture_repeat], [TextureRect.STRETCH_TILE, CanvasItem.TEXTURE_REPEAT_ENABLED], "full-stage interactions own one seamless opaque surface over stale tactical content")
 	assert_false(InteractionPresenter.uses_textbox_region(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP)), "stage interactions retain their independent inset frame")
 	assert_equal(interaction.custom_minimum_size, Vector2.ZERO, "textbox interactions may shrink to the bottom-region rectangle instead of retaining a stage-modal minimum")
 	assert_equal(InteractionPresenter._heading_for_kind(&"acknowledge"), "", "ordinary narrative text does not label itself Classic Textbox")
@@ -1745,6 +1756,16 @@ func _test_automatic_workflow_routes() -> void:
 	view.combat_view = CombatView.new(CombatState.new("classic.battle.route"))
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"exploration", view), &"combat", "battle setup opens the tactical workspace")
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"inventory", view), &"combat", "battle setup replaces a browsing workspace so combat controls cannot overlap it")
+	view.pending_interaction = ClassicUiFixtureGallery.request_for(InteractionRequest.ALLY_SELECTION)
+	assert_equal(ClassicApplicationShell.route_change_reason(view), "Resolve the current interaction first.", "a mandatory post-battle response disables misleading route changes such as Adventure Explore")
+	var menu_shell := ClassicApplicationShell.new()
+	menu_shell._current_view = view
+	var pending_menu := MenuButton.new()
+	menu_shell.add_child(pending_menu)
+	menu_shell._fill_menu(pending_menu, [{"label": "Explore", "route": &"exploration"}, {"label": "Characters", "route": &"character"}])
+	assert_true(pending_menu.get_popup().is_item_disabled(0) and pending_menu.get_popup().is_item_disabled(1), "every browsing route is visibly disabled while the mandatory response owns its workspace")
+	menu_shell.free()
+	view.pending_interaction = null
 	view.combat_view = null
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"combat", view), &"exploration", "completed battle cleanup returns the ordinary shell to exploration")
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"inventory", view), &"inventory", "ordinary non-combat workspaces remain presentation-owned")

@@ -1428,6 +1428,8 @@ func _test_classic_bodycount_selection(content: RealmzContent) -> void:
 	var mandatory := flow.apply_ally_selection(state, content, [])
 	assert_false(mandatory.ok, "scenario-mandatory Classic allies cannot be left behind")
 	assert_equal(mandatory.error_code, &"required_ally_missing", "mandatory ally rejection is explicit")
+	survivor.current_health = 0
+	assert_true(flow.ally_selection_payload(state, content).is_empty(), "Castle bypasses its body-count dialog when no living non-party ally is available")
 	definition.can_summon = original_can_summon
 
 

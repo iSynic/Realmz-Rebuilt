@@ -3176,6 +3176,13 @@ func _respond_session_ally_selection(response: InteractionResponse) -> SessionSt
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Ally selection requires selectedIds.")
 	if _state.combat == null or not _state.combat.completed or _state.combat.battle_id != _session_continuation.get("battleId"):
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The completed battle is unavailable for ally selection.")
+	# Development saves from before the Castle body-count correction can retain an
+	# impossible empty selection boundary. Re-evaluate the source-backed candidate
+	# set and advance it exactly as a fresh terminal battle now does.
+	if _rules.combat_flow.ally_selection_payload(_state, _content).is_empty():
+		_session_interaction = null
+		_session_continuation.clear()
+		return _finish_direct_battle_recovery([])
 	var result := _rules.combat_flow.apply_ally_selection(_state, _content, response.payload["selectedIds"])
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)

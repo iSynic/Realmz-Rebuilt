@@ -2572,6 +2572,8 @@ func _resume_ally_selection(continuation: Dictionary, response: InteractionRespo
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Ally selection requires selectedIds.")
 	if _game_state.combat == null or not _game_state.combat.completed or _game_state.combat.battle_id != continuation.get("battleId"):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The completed battle is unavailable for ally selection.")
+	if _rules.combat_flow.ally_selection_payload(_game_state, _content).is_empty():
+		return _finish_battle_with_fumbles(String(continuation.get("sourceKind", "classic-combat")), _battle_caller(continuation), String(response.request_id), [])
 	var selected := _rules.combat_flow.apply_ally_selection(_game_state, _content, response.payload["selectedIds"])
 	if not selected.ok:
 		return ScenarioRuntimeOperationResult.failed(selected.error_code, selected.error_message)
