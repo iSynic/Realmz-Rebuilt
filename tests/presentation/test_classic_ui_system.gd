@@ -354,10 +354,17 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_equal(presentation_actions, [[&"focus_combatant", {"combatantId": "character.archer", "playSound": true}], [&"toggle_reveal_friends", {}]], "Center and Reveal remain presentation events rather than gameplay responses")
 	assert_equal([cast_button.get_parent().visible, use_item_button.get_parent().get_parent().visible], [false, false], "secondary battle workflows begin collapsed instead of overflowing the battlefield")
 	assert_true(component.accepts_spatial_input(), "ordinary battle commands leave keyboard and battlefield movement active")
+	var overview := spell_mode_button.get_parent().get_parent() as Control
+	var spell_panel := cast_button.get_parent() as VBoxContainer
+	var spell_back := spell_panel.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Back to battle")[0] as Button
 	spell_mode_button.pressed.emit()
-	assert_true(cast_button.get_parent().visible, "Spells opens its compact command-deck workflow")
+	assert_true(spell_panel.visible and not overview.visible, "Spells replaces the battle overview so its controls stay inside the fixed Classic command region")
+	assert_true(spell_panel.get_combined_minimum_size().y <= 160.0, "the default area-spell workflow fits the 960x600 combat region's usable height")
 	assert_false(component.accepts_spatial_input(), "an open spell workflow owns direction keys and prevents accidental tactical movement")
-	var spell_picker := component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() == cast_button.get_parent())[0] as OptionButton
+	spell_back.pressed.emit()
+	assert_true(overview.visible and not spell_panel.visible and component.accepts_spatial_input(), "Back to battle restores the tactical overview and spatial input")
+	spell_mode_button.pressed.emit()
+	var spell_picker := component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() == spell_panel)[0] as OptionButton
 	assert_equal(spell_picker.get_item_text(1), "Wave • P1 • 3 SP → Everybody", "automatic group spells render their typed label without fabricating one target's HP")
 	switch_button.pressed.emit()
 	cast_button.pressed.emit()
@@ -370,7 +377,7 @@ func _test_battle_weapon_mode_component() -> void:
 	cast_button.pressed.emit()
 	spell_picker.select(3)
 	spell_picker.item_selected.emit(3)
-	var option_pickers := cast_button.get_parent().find_children("*", "OptionButton", true, false)
+	var option_pickers := spell_panel.find_children("*", "OptionButton", true, false)
 	var sequence_target_picker := option_pickers[1] as OptionButton
 	sequence_target_picker.select(1)
 	add_target_button.pressed.emit()

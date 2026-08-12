@@ -5,26 +5,35 @@ var _actor_id: String = ""
 var _combatants: Array[Dictionary] = []
 var _inspected_index: int = -1
 var _inspected_label: Label
+var _mode_panels: Array[Control] = []
 
 
 func build(request: InteractionRequest) -> void:
 	var actor_id := String(request.payload.get("actorId", ""))
 	_actor_id = actor_id
+	_mode_panels.clear()
 	_read_combatants(request.payload.get("combatants", []))
 	var actions: Variant = request.payload.get("actions", [])
 	var action_ids: Array = actions if actions is Array else []
 	var weapon_mode := String(request.payload.get("weaponMode", "melee"))
 	var targets: Variant = request.payload.get("targets", [])
-	_build_combatant_information(request, targets)
 	var target_panel := VBoxContainer.new()
 	var spell_panel := VBoxContainer.new()
 	var item_panel := VBoxContainer.new()
 	var mode_panels: Array[Control] = [target_panel, spell_panel, item_panel]
-	_add_primary_action_row(request, actor_id, action_ids, targets, target_panel, spell_panel, item_panel, mode_panels)
+	_mode_panels.assign(mode_panels)
+	var overview := VBoxContainer.new()
+	overview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	overview.add_theme_constant_override("separation", 8)
+	add_child(overview)
+	_build_combatant_information(request, targets, overview)
+	_add_primary_action_row(request, actor_id, action_ids, targets, target_panel, spell_panel, item_panel, mode_panels, overview)
 	for panel: Control in mode_panels:
 		panel.visible = false
 		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		panel.add_theme_constant_override("separation", 6)
 		add_child(panel)
+		_add_mode_back_button(panel, overview, mode_panels)
 	if action_ids.has("attack") and targets is Array:
 		var attack_row := HFlowContainer.new()
 		attack_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -63,7 +72,7 @@ func build(request: InteractionRequest) -> void:
 		var target_x := SpinBox.new()
 		var target_y := SpinBox.new()
 		if has_area_spell:
-			_add_hint_to(spell_panel, "Area center uses validated battlefield coordinates. A viewport pointer/highlight is still presentation work.")
+			var area_hint := _add_hint_to(spell_panel, "Area center uses validated battlefield coordinates. A viewport pointer/highlight is still presentation work.")
 			var coordinate_row := HBoxContainer.new()
 			target_x.min_value = 0
 			target_x.max_value = BattlefieldState.SIZE - 1
@@ -77,6 +86,8 @@ func build(request: InteractionRequest) -> void:
 			var update_area_controls := func(index: int) -> void:
 				var selected: Variant = spell_picker.get_item_metadata(index)
 				var area_selected: bool = selected is Dictionary and selected.get("targetMode", "combatant") == "area"
+				area_hint.visible = area_selected
+				coordinate_row.visible = area_selected
 				target_x.editable = area_selected
 				target_y.editable = area_selected
 				if area_selected:
@@ -92,21 +103,26 @@ func build(request: InteractionRequest) -> void:
 		var sequence_remove_button := Button.new()
 		var sequence_target_ids: Array[String] = []
 		if has_sequence_spell:
-			_add_hint_to(spell_panel, "Repeated spells preserve the order selected. Cast may begin after one target, up to the chosen power.")
+			var sequence_hint := _add_hint_to(spell_panel, "Repeated spells preserve the order selected. Cast may begin after one target, up to the chosen power.")
 			sequence_target_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			sequence_selected_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			sequence_add_button.text = "Add target"
 			sequence_remove_button.text = "Remove selected target"
-			spell_panel.add_child(sequence_target_picker)
-			spell_panel.add_child(sequence_add_button)
-			spell_panel.add_child(sequence_selected_picker)
-			spell_panel.add_child(sequence_remove_button)
+			var sequence_controls := HBoxContainer.new()
+			sequence_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			sequence_controls.add_child(sequence_target_picker)
+			sequence_controls.add_child(sequence_add_button)
+			sequence_controls.add_child(sequence_selected_picker)
+			sequence_controls.add_child(sequence_remove_button)
+			spell_panel.add_child(sequence_controls)
 			var refresh_sequence_controls := func(index: int) -> void:
 				sequence_target_ids.clear()
 				sequence_target_picker.clear()
 				sequence_selected_picker.clear()
 				var selected: Variant = spell_picker.get_item_metadata(index)
 				var sequence_selected: bool = selected is Dictionary and selected.get("targetMode", "combatant") == "sequence"
+				sequence_hint.visible = sequence_selected
+				sequence_controls.visible = sequence_selected
 				sequence_target_picker.visible = sequence_selected
 				sequence_selected_picker.visible = sequence_selected
 				sequence_add_button.visible = sequence_selected
@@ -206,7 +222,7 @@ func _read_combatants(value: Variant) -> void:
 				_combatants.append((combatant as Dictionary).duplicate(true))
 
 
-func _build_combatant_information(request: InteractionRequest, targets: Variant) -> void:
+func _build_combatant_information(request: InteractionRequest, targets: Variant, parent: Container) -> void:
 	var information := HBoxContainer.new()
 	information.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	information.add_theme_constant_override("separation", 16)
@@ -219,7 +235,7 @@ func _build_combatant_information(request: InteractionRequest, targets: Variant)
 	_inspected_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_inspected_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	information.add_child(_inspected_label)
-	add_child(information)
+	parent.add_child(information)
 	var default_id := _actor_id
 	if targets is Array and not targets.is_empty() and targets[0] is Dictionary:
 		default_id = String(targets[0].get("id", default_id))
@@ -229,7 +245,7 @@ func _build_combatant_information(request: InteractionRequest, targets: Variant)
 	_refresh_inspected_label()
 	var navigation := HFlowContainer.new()
 	navigation.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(navigation)
+	parent.add_child(navigation)
 	_add_presentation_button(navigation, "Previous", &"inspect_previous")
 	_add_presentation_button(navigation, "Center Active", &"center_active")
 	_add_presentation_button(navigation, "Next", &"inspect_next")
@@ -313,17 +329,17 @@ static func _string_array(value: Variant) -> Array[String]:
 
 
 func accepts_spatial_input() -> bool:
-	for child: Node in get_children():
-		if child is Control and (child as Control).visible and child is VBoxContainer and child != self:
+	for panel: Control in _mode_panels:
+		if panel.visible:
 			return false
 	return true
 
 
-func _add_primary_action_row(request: InteractionRequest, actor_id: String, action_ids: Array, targets: Variant, target_panel: Control, spell_panel: Control, item_panel: Control, mode_panels: Array[Control]) -> void:
+func _add_primary_action_row(request: InteractionRequest, actor_id: String, action_ids: Array, targets: Variant, target_panel: Control, spell_panel: Control, item_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
 	var weapon_switch: Variant = request.payload.get("weaponSwitch", {})
 	var action_row := HFlowContainer.new()
 	action_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(action_row)
+	overview.add_child(action_row)
 	if action_ids.has("switch_weapon") and weapon_switch is Dictionary:
 		var target_mode := String(weapon_switch.get("targetMode", "melee"))
 		add_response_to(action_row, "Weapon: %s" % target_mode.capitalize(), {"actorId": actor_id, "action": "switch_weapon", "targetId": ""})
@@ -333,11 +349,11 @@ func _add_primary_action_row(request: InteractionRequest, actor_id: String, acti
 	var target_enabled: bool = action_ids.has("attack") and targets is Array and not (targets as Array).is_empty()
 	var ranged: Variant = request.payload.get("rangedAttack", {})
 	var target_reason := String(request.payload.get("meleeAttackReason", "No adjacent target.")) if weapon_mode == "melee" else String(ranged.get("reason", "Fire is unavailable.") if ranged is Dictionary else "Fire is unavailable.")
-	_add_panel_toggle(action_row, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, target_enabled, target_reason)
+	_add_panel_toggle(action_row, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason)
 	var spell_casts: Variant = request.payload.get("spellCasts", [])
-	_add_panel_toggle(action_row, "Spells", spell_panel, mode_panels, action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty(), String(request.payload.get("spellCastReason", "Spellcasting is unavailable.")))
+	_add_panel_toggle(action_row, "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty(), String(request.payload.get("spellCastReason", "Spellcasting is unavailable.")))
 	var item_casts: Variant = request.payload.get("itemCasts", [])
-	_add_panel_toggle(action_row, "Items", item_panel, mode_panels, action_ids.has("use_item") and item_casts is Array and not item_casts.is_empty(), String(request.payload.get("itemCastReason", "Item use is unavailable.")))
+	_add_panel_toggle(action_row, "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and item_casts is Array and not item_casts.is_empty(), String(request.payload.get("itemCastReason", "Item use is unavailable.")))
 	if action_ids.has("finish"):
 		add_response_to(action_row, "Finish", {"actorId": actor_id, "action": "finish", "targetId": ""})
 	var retreat: Variant = request.payload.get("retreat", {})
@@ -355,7 +371,7 @@ func _add_unavailable_classic_commands(parent: Container) -> void:
 	add_response_to(parent, "Turn Undead", {}, false, "Turn Undead will appear when its caste ability, target, and resolution workflow are source-backed.")
 
 
-func _add_panel_toggle(parent: Container, label: String, panel: Control, panels: Array[Control], enabled: bool, reason: String) -> Button:
+func _add_panel_toggle(parent: Container, label: String, panel: Control, panels: Array[Control], overview: Control, enabled: bool, reason: String) -> Button:
 	var button := Button.new()
 	button.text = label
 	button.custom_minimum_size.y = 36.0
@@ -366,9 +382,24 @@ func _add_panel_toggle(parent: Container, label: String, panel: Control, panels:
 		var should_show := not panel.visible
 		for candidate: Control in panels:
 			candidate.visible = should_show and candidate == panel
+		overview.visible = not should_show
 	)
 	parent.add_child(button)
 	return button
+
+
+func _add_mode_back_button(panel: Container, overview: Control, panels: Array[Control]) -> void:
+	var back := Button.new()
+	back.text = "Back to battle"
+	back.custom_minimum_size.y = 30.0
+	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	back.pressed.connect(func() -> void:
+		for candidate: Control in panels:
+			candidate.visible = false
+		overview.visible = true
+	)
+	panel.add_child(back)
+	panel.move_child(back, 0)
 
 
 func _add_hint_to(parent: Container, text: String) -> Label:
