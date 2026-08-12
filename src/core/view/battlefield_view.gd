@@ -52,4 +52,7 @@ func monster_size(actor_id: String) -> int:
 func monster_footprint(actor_id: String) -> Array[Vector2i]:
 	var anchor := monster_position(actor_id)
 	var size := monster_size(actor_id)
-	return [] if anchor.x < 0 or size < 0 else BattlefieldState.footprint_cells(anchor, size)
+	var footprint: Array[Vector2i] = []
+	if anchor.x < 0 or size < 0:
+		return footprint
+	return BattlefieldState.footprint_cells(anchor, size)
