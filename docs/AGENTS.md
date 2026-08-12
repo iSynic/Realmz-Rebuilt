@@ -20,6 +20,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - Classic media documentation distinguishes shared resource identity from Castle's effective compositing steps; the battle viewport contract records both the active landlook and shared PICT 302 inputs.
 - Roadmap phases remain tied to their approved exit gates.
 - `docs/development.md` is the operational source of truth for risk tiers, workflow batches, Luna delegation, and delivery evidence; `roadmap.md` records the current and future batch interpretation without rewriting historical evidence.
+- Parity-convergence status is generated from the workflow inventory's current batch, baseline counts, certification targets, and owned gaps. The 60/25/15 effort allocation is planning guidance, not a derived productivity claim.
 - The risk-tiered delivery policy is an operating contract, not an ADR. Add an ADR only when a separate non-local architectural boundary changes.
 
 ## Work Guidance
@@ -37,7 +38,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - `adr/` contains immutable decision records and follows this contract; no additional child AGENTS.md is currently needed.
 - `gameplay-domain-evidence.md` owns Phase 4 Castle source ranges, bounded campaign-inventory provenance, and the distinction between source, runtime-unit, integration, and live-route proof.
 - `classic-functional-differential.md` owns the current human-readable Remake-versus-2.0 comparison status and links each rolling slice to its machine-readable evidence case.
-- `classic-application-workflow-status.md` is generated from the authoritative workflow inventory and owns the current Classic and host completeness totals, domain heatmap, blockers, oracle unknowns, and prioritized queues. Never edit it independently of the inventory and generator.
+- `classic-application-workflow-status.md` is generated from the authoritative workflow inventory and owns the current batch, count deltas, Classic and host completeness totals, domain heatmap, blockers, oracle unknowns, and prioritized queues. Never edit it independently of the inventory and generator.
 - `scenario-vm-evidence.md` owns Classic control-flow, nested macro, and host-boundary evidence.
 - `codemap/AGENTS.md` owns the generated source-intelligence encyclopedia, embedded source snapshot, machine graph, retrieval chunks, and evidence boundaries.
 - `ui-strategy.md` owns the canonical visual language, responsive profiles, route/screen matrix, scaling, input, accessibility, media, and fidelity boundaries.

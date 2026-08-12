@@ -11,6 +11,34 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
+## Current parity-convergence batch
+
+**Ordinary AOGM combat certification** (`aogm-combat-certification`)
+
+Close a coherent ordinary AOGM combat path across already functional workflows before investigating deferred special battle modes or rare reward branches.
+
+Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
+
+| Workflow | Mode | Priority | Expected evidence | Owned gaps |
+| --- | --- | --- | --- | --- |
+| `classic.combat.physical-attack` | certification | aogm-certification | aogm-ordinary | GAP-COMBAT-004 |
+| `classic.spellcasting.combat-cast` | certification | aogm-certification | aogm-ordinary | GAP-SPELL-003 |
+| `classic.combat.retreat` | certification | aogm-certification | aogm-ordinary | GAP-COMBAT-005 |
+| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary | GAP-REWARD-002 |
+
+### Batch count delta
+
+| Scope | State | Baseline | Current | Delta |
+| --- | --- | ---: | ---: | ---: |
+| classic | missing | 2 | 2 | 0 |
+| classic | partial | 16 | 16 | 0 |
+| classic | functional | 42 | 42 | 0 |
+| classic | certified | 0 | 0 | 0 |
+| host | missing | 1 | 1 | 0 |
+| host | partial | 1 | 1 | 0 |
+| host | functional | 6 | 6 | 0 |
+| host | certified | 0 | 0 | 0 |
+
 ## Classic domain heatmap
 
 | Domain | Total | Missing | Partial | Functional | Certified |
@@ -223,3 +251,4 @@ Blockers: **1**. Major gaps: **20**.
 - AOGM and other ordinary-play labels certify only the listed workflow variants actually observed.
 - Cross-platform certification requires the same Safe package and workflow to pass on every release platform.
 - Differential cases provide behavioral depth. This inventory supplies the fixed application denominator.
+- Gaps not selected by the current batch remain explicitly deferred; their presence alone does not authorize archaeology.

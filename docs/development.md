@@ -27,6 +27,33 @@ At batch start, Sol identifies the critical path and any suitable sidecars. If s
 
 Every Luna prompt states the objective; repository and base; DOX requirements; read and write scope; settled interfaces and evidence; non-goals; tests; ambiguity handling; and final-report format. Luna must not commit or push, modify references, broaden scope, or make fidelity decisions unless explicitly authorized. Sol reviews every result, and Luna evidence never upgrades audit status without Sol validation.
 
+### Parity convergence
+
+The workflow inventory schedules parity work; the differential ledger adjudicates only the behavior a scheduled workflow needs. Each batch records 3–5 workflow targets, its baseline commit and delivery-state counts, the gaps it owns, and at least one ordinary-play certification target. Batch closeout reports changes in missing, partial, functional, and certified counts. Assertion totals and differential-case totals are supporting evidence, not delivery progress by themselves.
+
+Use this priority order:
+
+1. AOGM blocker or ordinary-play certification gap.
+2. Missing Classic workflow.
+3. Major partial workflow reachable in AOGM.
+4. War prerequisite.
+5. Broader Classic parity gap.
+6. Rare or unreachable Castle edge case.
+
+Plan effort at approximately 60 percent ordinary-play acceptance and presentation, 25 percent missing or partial workflow implementation, and 15 percent targeted archaeology. This is a planning allocation, not a machine-derived time or commit metric. Prefer closing a missing or partial workflow over adding another edge case to one already functional.
+
+Archaeology begins or continues only when at least one trigger applies:
+
+- Ordinary play reproduces a discrepancy.
+- A reachable campaign or release blocker depends on the answer.
+- Save, RNG, VM, authoritative topology, terminal combat, or another named high-risk boundary is involved.
+- Providence may be dropping or changing authored data.
+- Source ambiguity affects a target certification campaign.
+
+Stop once complete source flow establishes the ordinary behavior and focused tests pass. Use a controlled Castle runtime fixture only when source remains ambiguous at one of those triggers. Record rare, unreachable, malformed-data, and non-blocking quirks as deferred parity gaps; do not investigate them merely because they exist. A functional workflow may receive further archaeology only when certification or a target campaign depends on it.
+
+At batch start, update `currentBatch` in the authoritative workflow inventory and regenerate its status report. At batch closeout, update workflow evidence and gaps, regenerate the report, and state both the functional and certified count deltas. If a prerequisite changes the selected batch, record the new rationale and baseline rather than silently drifting into another domain.
+
 ## Source intelligence
 
 The repository also maintains an offline source-intelligence snapshot under docs/codemap/. It embeds exact local source and documentation text, source spans, DOX ownership, tests, flows, retrieval chunks, and conservative resolved/unknown relationships. Open docs/codemap/codemap.html directly for the browser encyclopedia, or consume intelligence.json and chunks.jsonl from an agent. Use ./tools/source-intelligence/validate.ps1 for the read-only artifact check. The aggregate gate regenerates it automatically; local verification leaves regenerated files for review and CI fails if the committed snapshot is stale.

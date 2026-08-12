@@ -89,6 +89,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - Use one Classic-wide UI language: preserve the map/picture stage, right six-character roster, bottom narrative/status well, contextual original bitmap commands, and compact menu hierarchy inside responsive Realmz 2 slate frames. Keep imported pixels intact at 1x/2x, interface density independent from text scale, hidden item facts private, and unimplemented actions disabled with explicit reasons.
 - Never use `codex` or `Codex` in branch names.
 - Group normal player-visible work into coherent batches of 3–5 related workflows, with one focused-verified commit per workflow. Use the risk-tiered delivery and delegation policy in `docs/development.md`; CI remains comprehensive.
+- Use the parity-convergence amendment in `docs/development.md`: every batch declares an ordinary-play certification target, prioritizes missing/partial and target-campaign gaps over deeper functional edge cases, and limits archaeology to approved discrepancy, blocker, high-risk, compiler-loss, or target-campaign ambiguity triggers.
 - Sol retains the critical path, architecture and fidelity adjudication, high-risk boundaries, cross-cutting integration, final review/tests/commit, and user conclusions. When a concrete suitable sidecar exists, delegate it under the bounded Luna rules in `docs/development.md`; Luna agents do not commit or push.
 
 ## Child DOX Index

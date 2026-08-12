@@ -127,6 +127,14 @@ function Add-CountTable([System.Text.StringBuilder]$Builder, [object[]]$Workflow
     [void]$Builder.AppendLine()
 }
 
+function Get-StateCounts([object[]]$Workflows, [hashtable]$States) {
+    $counts = [ordered]@{}
+    foreach ($state in @("missing", "partial", "functional", "certified")) {
+        $counts[$state] = @($Workflows | Where-Object { $States[[string]$_.id] -eq $state }).Count
+    }
+    return $counts
+}
+
 function New-StatusReport([object]$Inventory) {
     $builder = [System.Text.StringBuilder]::new()
     $workflows = @($Inventory.workflows)
@@ -153,6 +161,40 @@ function New-StatusReport([object]$Inventory) {
     }
     [void]$builder.AppendLine()
     [void]$builder.AppendLine("Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.")
+    [void]$builder.AppendLine()
+
+    $batch = $Inventory.currentBatch
+    [void]$builder.AppendLine("## Current parity-convergence batch")
+    [void]$builder.AppendLine()
+    [void]$builder.AppendLine("**$($batch.name)** (``$($batch.id)``)")
+    [void]$builder.AppendLine()
+    [void]$builder.AppendLine($batch.selectionRationale)
+    [void]$builder.AppendLine()
+    [void]$builder.AppendLine("Planning target: **$($Inventory.convergencePolicy.effortTargets.ordinaryPlayAndPresentationPercent)%** ordinary-play acceptance and presentation, **$($Inventory.convergencePolicy.effortTargets.missingAndPartialImplementationPercent)%** missing or partial workflow implementation, and **$($Inventory.convergencePolicy.effortTargets.targetedArchaeologyPercent)%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.")
+    [void]$builder.AppendLine()
+    [void]$builder.AppendLine("| Workflow | Mode | Priority | Expected evidence | Owned gaps |")
+    [void]$builder.AppendLine("| --- | --- | --- | --- | --- |")
+    foreach ($target in @($batch.targets)) {
+        $ownedGaps = @($target.gapIds) -join ", "
+        $expectedEvidence = if ([string]::IsNullOrWhiteSpace([string]$target.expectedEvidence)) { "—" } else { [string]$target.expectedEvidence }
+        [void]$builder.AppendLine("| ``$($target.workflowId)`` | $($target.mode) | $($target.priority) | $expectedEvidence | $ownedGaps |")
+    }
+    [void]$builder.AppendLine()
+    [void]$builder.AppendLine("### Batch count delta")
+    [void]$builder.AppendLine()
+    [void]$builder.AppendLine("| Scope | State | Baseline | Current | Delta |")
+    [void]$builder.AppendLine("| --- | --- | ---: | ---: | ---: |")
+    foreach ($scope in @("classic", "host")) {
+        $rows = @($workflows | Where-Object { $_.scope -eq $scope })
+        $currentCounts = Get-StateCounts $rows $states
+        foreach ($state in @("missing", "partial", "functional", "certified")) {
+            $baseline = [int]$batch.baselineCounts.$scope.$state
+            $current = [int]$currentCounts[$state]
+            $delta = $current - $baseline
+            $deltaText = if ($delta -gt 0) { "+$delta" } else { [string]$delta }
+            [void]$builder.AppendLine("| $scope | $state | $baseline | $current | $deltaText |")
+        }
+    }
     [void]$builder.AppendLine()
 
     [void]$builder.AppendLine("## Classic domain heatmap")
@@ -253,6 +295,7 @@ function New-StatusReport([object]$Inventory) {
     [void]$builder.AppendLine("- AOGM and other ordinary-play labels certify only the listed workflow variants actually observed.")
     [void]$builder.AppendLine("- Cross-platform certification requires the same Safe package and workflow to pass on every release platform.")
     [void]$builder.AppendLine("- Differential cases provide behavioral depth. This inventory supplies the fixed application denominator.")
+    [void]$builder.AppendLine("- Gaps not selected by the current batch remain explicitly deferred; their presence alone does not authorize archaeology.")
     return $builder.ToString().Replace("`r`n", "`n")
 }
 
@@ -266,7 +309,7 @@ $referenceLock = Get-Content -LiteralPath $referencesPath -Raw | ConvertFrom-Jso
 $lockedById = @{}
 foreach ($reference in $referenceLock.references) { $lockedById[[string]$reference.id] = [string]$reference.commit }
 
-Assert-Condition ($inventory.formatVersion -eq 1) "Unsupported formatVersion."
+Assert-Condition ($inventory.formatVersion -eq 2) "Unsupported formatVersion."
 Assert-Condition ($inventory.references.castle -eq $lockedById["realmz-castle-oracle"]) "Castle commit differs from references.lock.json."
 Assert-Condition ($inventory.references.remakeFunctional -eq $lockedById["realmz-remake-functional-reference"]) "Remake commit differs from references.lock.json."
 Assert-Condition ($inventory.references.remakeVm -eq $lockedById["realmz-remake-vm-reference"]) "Remake VM commit differs from references.lock.json."
@@ -293,6 +336,9 @@ $allowedGapCategory = @("source", "compiler", "simulation", "persistence", "pres
 $allowedSeverity = @("blocker", "major", "minor")
 $allowedQueue = @("aogm", "other-campaign", "parity", "polish")
 $allowedIntentClassification = @("implemented", "presentation-owned", "intentionally-rejected", "redundant-dead", "missing")
+$allowedBatchModes = @("certification", "implementation", "archaeology")
+$requiredPriorityOrder = @("aogm-certification", "classic-missing", "aogm-major-partial", "war-prerequisite", "broader-parity", "rare-or-unreachable")
+$allowedArchaeologyTriggers = @("observed-discrepancy", "reachable-blocker", "high-risk-boundary", "providence-data-loss", "source-ambiguity-for-target-campaign")
 
 $scopeIds = @{}
 foreach ($scope in $inventory.scopes) {
@@ -393,6 +439,75 @@ foreach ($workflow in $inventory.workflows) {
         $differentialToWorkflows[[string]$caseId] += $id
     }
     $workflowIds[$id] = $workflow
+}
+
+$policy = $inventory.convergencePolicy
+Assert-Condition ($null -ne $policy) "Parity convergence policy is missing."
+Assert-Condition ([int]$policy.effortTargets.ordinaryPlayAndPresentationPercent -eq 60) "Ordinary-play and presentation effort target must remain 60 percent."
+Assert-Condition ([int]$policy.effortTargets.missingAndPartialImplementationPercent -eq 25) "Missing and partial implementation effort target must remain 25 percent."
+Assert-Condition ([int]$policy.effortTargets.targetedArchaeologyPercent -eq 15) "Targeted archaeology effort target must remain 15 percent."
+Assert-Condition (((@($policy.priorityOrder) | ForEach-Object { [string]$_ }) -join '|') -eq ($requiredPriorityOrder -join '|')) "Parity convergence priority order differs from the approved policy."
+$policyTriggers = @($policy.archaeologyTriggers | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+Assert-Condition (($policyTriggers -join '|') -eq (($allowedArchaeologyTriggers | Sort-Object) -join '|')) "Parity convergence archaeology triggers differ from the approved policy."
+
+$batch = $inventory.currentBatch
+Assert-Condition ($null -ne $batch) "Current parity-convergence batch is missing."
+Assert-Condition ([string]$batch.id -match '^[a-z][a-z0-9-]+$') "Current batch has an invalid ID."
+Assert-Condition (-not [string]::IsNullOrWhiteSpace([string]$batch.name)) "Current batch has no name."
+Assert-Condition ([string]$batch.baselineCommit -match '^[0-9a-f]{40}$') "Current batch has no full baseline commit."
+$null = & git -C $repoRoot cat-file -e "$($batch.baselineCommit)^{commit}" 2>$null
+Assert-Condition ($LASTEXITCODE -eq 0) "Current batch baseline commit does not exist locally."
+$null = & git -C $repoRoot merge-base --is-ancestor $batch.baselineCommit HEAD 2>$null
+Assert-Condition ($LASTEXITCODE -eq 0) "Current batch baseline commit is not an ancestor of HEAD."
+Assert-Condition (-not [string]::IsNullOrWhiteSpace([string]$batch.selectionRationale)) "Current batch has no selection rationale."
+$batchTargets = @($batch.targets)
+Assert-Condition ($batchTargets.Count -ge 3 -and $batchTargets.Count -le 5) "Current batch must contain 3 to 5 workflows."
+Assert-Condition (@($batchTargets | Where-Object { $_.mode -eq 'certification' }).Count -gt 0) "Current batch must contain at least one ordinary-play certification target."
+$batchWorkflowIds = @{}
+foreach ($target in $batchTargets) {
+    $workflowId = [string]$target.workflowId
+    Assert-Condition ($workflowIds.ContainsKey($workflowId)) "Current batch references unknown workflow $workflowId."
+    Assert-Condition (-not $batchWorkflowIds.ContainsKey($workflowId)) "Current batch repeats workflow $workflowId."
+    $batchWorkflowIds[$workflowId] = $true
+    Assert-Condition ($allowedBatchModes -contains [string]$target.mode) "$workflowId has invalid batch mode."
+    Assert-Condition ($requiredPriorityOrder -contains [string]$target.priority) "$workflowId has invalid convergence priority."
+    $targetTriggers = @($target.archaeologyTriggers | ForEach-Object { [string]$_ } | Sort-Object -Unique)
+    foreach ($trigger in $targetTriggers) { Assert-Condition ($allowedArchaeologyTriggers -contains $trigger) "$workflowId has invalid archaeology trigger $trigger." }
+    if ($target.mode -eq "archaeology") {
+        Assert-Condition ($targetTriggers.Count -gt 0) "$workflowId schedules archaeology without an approved trigger."
+    } else {
+        Assert-Condition ($targetTriggers.Count -eq 0) "$workflowId declares archaeology triggers outside an archaeology target."
+    }
+    $workflow = $workflowIds[$workflowId]
+    $derivedState = Get-DerivedState $workflow
+    if ($target.mode -eq "certification") {
+        Assert-Condition ($derivedState -in @("functional", "certified")) "$workflowId is not ready for a certification target."
+        Assert-Condition ([string]$target.expectedEvidence -in @("aogm-ordinary", "other-ordinary")) "$workflowId certification target has no ordinary-play evidence goal."
+    } else {
+        Assert-Condition ([string]::IsNullOrWhiteSpace([string]$target.expectedEvidence)) "$workflowId declares ordinary-play evidence outside a certification target."
+    }
+    if ($target.mode -eq "implementation") {
+        Assert-Condition ($derivedState -in @("missing", "partial")) "$workflowId is already functional and cannot be scheduled as implementation."
+    }
+    if ($derivedState -in @("functional", "certified") -and $target.mode -eq "archaeology") {
+        Assert-Condition ($targetTriggers.Count -gt 0) "$workflowId cannot deepen a functional workflow without an approved archaeology trigger."
+    }
+    if ($target.priority -eq "aogm-certification") {
+        Assert-Condition ($workflow.scope -eq "classic" -and $workflow.reachability.aogm -in @("known-reachable", "observed")) "$workflowId is not an evidenced AOGM certification candidate."
+    }
+    foreach ($gapId in @($target.gapIds)) {
+        Assert-Condition (@($workflow.gaps | ForEach-Object { [string]$_.id }) -contains [string]$gapId) "$workflowId batch target references gap $gapId owned by another workflow."
+    }
+}
+foreach ($scope in @("classic", "host")) {
+    $scopeTotal = @($inventory.workflows | Where-Object { $_.scope -eq $scope }).Count
+    $baselineTotal = 0
+    foreach ($state in @("missing", "partial", "functional", "certified")) {
+        $value = [int]$batch.baselineCounts.$scope.$state
+        Assert-Condition ($value -ge 0) "Current batch has a negative $scope $state baseline."
+        $baselineTotal += $value
+    }
+    Assert-Condition ($baselineTotal -eq $scopeTotal) "Current batch $scope baseline does not match the fixed denominator."
 }
 
 function Assert-WorkflowLinks([object]$Record, [string]$Label) {

@@ -4,7 +4,7 @@ Classic-visible behavior is developed through a rolling differential gate. Curre
 
 The machine-readable record is `tests/fixtures/oracle/classic-functional-differential.json`. It contains the detailed paths, symbols, commits, expected traces, tests, decision state, and links to the application workflows those cases support. This document summarizes only the current conclusions.
 
-Differential cases provide depth for behavior already investigated; they are not the completeness denominator. The fixed denominator is `tests/fixtures/oracle/classic-application-workflow-inventory.json`, and its deterministic [status report](classic-application-workflow-status.md) separates complete-application gaps from route coverage, individual opcode ownership, and modern host work. Every differential case and workflow link is validated bidirectionally.
+Differential cases provide depth for behavior already investigated; they are not the completeness denominator or the default scheduler. The fixed denominator and parity-convergence batch live in `tests/fixtures/oracle/classic-application-workflow-inventory.json`. Its deterministic [status report](classic-application-workflow-status.md) separates complete-application gaps from route coverage, individual opcode ownership, and modern host work. A functional workflow receives more differential archaeology only when ordinary play exposes a discrepancy, a reachable blocker or high-risk boundary depends on it, Providence may lose authored data, or source ambiguity affects a target campaign. Every differential case and workflow link is validated bidirectionally.
 
 ## Current cases
 

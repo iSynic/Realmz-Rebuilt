@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "references": {
     "castle": "491816ad60037394f92c428e99c004494d3c28b3",
     "remakeFunctional": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
@@ -11,6 +11,44 @@
     "realmzCommit": "4089d550ab606172bac850ac055677c36c6ff547",
     "usage": "navigation-only",
     "policy": "Candidate discovery only; every conclusion below was rechecked against the pinned Castle worktree."
+  },
+  "convergencePolicy": {
+    "effortTargets": {
+      "ordinaryPlayAndPresentationPercent": 60,
+      "missingAndPartialImplementationPercent": 25,
+      "targetedArchaeologyPercent": 15
+    },
+    "priorityOrder": [
+      "aogm-certification",
+      "classic-missing",
+      "aogm-major-partial",
+      "war-prerequisite",
+      "broader-parity",
+      "rare-or-unreachable"
+    ],
+    "archaeologyTriggers": [
+      "observed-discrepancy",
+      "reachable-blocker",
+      "high-risk-boundary",
+      "providence-data-loss",
+      "source-ambiguity-for-target-campaign"
+    ]
+  },
+  "currentBatch": {
+    "id": "aogm-combat-certification",
+    "name": "Ordinary AOGM combat certification",
+    "baselineCommit": "39079b213449fff4682dd8d9cf7f70c613802d67",
+    "baselineCounts": {
+      "classic": { "missing": 2, "partial": 16, "functional": 42, "certified": 0 },
+      "host": { "missing": 1, "partial": 1, "functional": 6, "certified": 0 }
+    },
+    "selectionRationale": "Close a coherent ordinary AOGM combat path across already functional workflows before investigating deferred special battle modes or rare reward branches.",
+    "targets": [
+      { "workflowId": "classic.combat.physical-attack", "mode": "certification", "priority": "aogm-certification", "expectedEvidence": "aogm-ordinary", "gapIds": ["GAP-COMBAT-004"], "archaeologyTriggers": [] },
+      { "workflowId": "classic.spellcasting.combat-cast", "mode": "certification", "priority": "aogm-certification", "expectedEvidence": "aogm-ordinary", "gapIds": ["GAP-SPELL-003"], "archaeologyTriggers": [] },
+      { "workflowId": "classic.combat.retreat", "mode": "certification", "priority": "aogm-certification", "expectedEvidence": "aogm-ordinary", "gapIds": ["GAP-COMBAT-005"], "archaeologyTriggers": [] },
+      { "workflowId": "classic.rewards.experience-level-up", "mode": "certification", "priority": "aogm-certification", "expectedEvidence": "aogm-ordinary", "gapIds": ["GAP-REWARD-002"], "archaeologyTriggers": [] }
+    ]
   },
   "scopes": [
     { "id": "classic", "name": "Classic Realmz application", "definition": "Every distinct player-visible task or interaction sequence exposed by the pinned Castle application." },

@@ -7,6 +7,14 @@ Status values describe current evidence, not intent. A phase completes only when
 - **Functionally complete** means every required axis and variant for a workflow passes the generated application audit.
 - **Live-certified** means a functionally complete workflow also has accepted presentation and the required ordinary-play or cross-platform evidence.
 
+## Current phase — Audit-guided parity convergence
+
+The completed application audit remains the fixed denominator, and the rolling differential ledger remains the authority for disputed behavior. Delivery now emphasizes convergence: each 3–5-workflow batch includes ordinary-play certification, prioritizes missing and partial workflows over deeper edge cases in functional workflows, and reports functional/certified count deltas from an explicit baseline. The 60/25/15 planning allocation and archaeology stop rule are defined in `docs/development.md` and enforced structurally by the workflow-inventory validator.
+
+The scheduled batch is **Ordinary AOGM combat certification**: representative physical attack, combat spell, retreat, and actual level-up through the ordinary UI. These rules are already functional from deterministic evidence. New archaeology is permitted only if the ordinary route reproduces a discrepancy or reaches a named high-risk boundary; battle reward modes 5/10, opcode 48 bonus treasure, and incidental reward quirks remain deferred parity work rather than silently expanding this batch.
+
+The next batch is chosen from the regenerated audit after this route closes. Missing Fast Spell and Allies/Bestiary remain the leading implementation candidates unless ordinary AOGM evidence exposes a higher-priority blocker. Historical rolling-pass entries below remain evidence of completed slices, not standing instructions to continue their old “next priority” notes.
+
 ## Phase 0 — Foundation and tooling (completed)
 
 - Godot project and explicit composition root.
