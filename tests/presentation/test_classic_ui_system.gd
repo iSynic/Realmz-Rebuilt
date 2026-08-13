@@ -2125,6 +2125,9 @@ func _test_automatic_workflow_routes() -> void:
 	view.pending_interaction = InteractionRequest.new("shop.route", InteractionRequest.SHOP, {"prompt": "Shop"})
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"exploration", view), &"services", "application services open their dedicated workspace")
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"inventory", view), &"services", "a service interaction replaces an unrelated browsing workspace")
+	view.pending_interaction = null
+	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"services", view, true), &"exploration", "completing a contextual service returns to exploration instead of leaving its interaction workspace open")
+	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"services", view, false), &"services", "ordinary Money browsing remains open until the player chooses Done")
 	view.pending_interaction = InteractionRequest.yes_no("action-point.route", "Will you approach?", "Yes", "No")
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"inventory", view), &"exploration", "an Action Point interaction returns an unrelated browsing workspace to exploration")
 	view.pending_interaction = null

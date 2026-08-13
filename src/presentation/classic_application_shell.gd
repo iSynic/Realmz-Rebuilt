@@ -97,6 +97,7 @@ func _ready() -> void:
 
 func present(game_view: GameView) -> void:
 	var previous_campaign_id := _current_view.campaign_id if _current_view != null and _current_view.session_started else ""
+	var contextual_service_closed := _current_view != null and _current_view.pending_interaction != null and _current_view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK] and game_view != null and game_view.pending_interaction == null
 	_current_view = game_view
 	if not _held_command.is_empty() and (game_view == null or game_view.pending_interaction != null or not game_view.availability(_held_command).enabled):
 		_stop_held_command()
@@ -125,7 +126,7 @@ func present(game_view: GameView) -> void:
 	_router.present(game_view)
 	var play_regions_visible := not _router.full_stage_overlay_visible()
 	_set_play_regions_visible(play_regions_visible)
-	var automatic_route := automatic_workflow_route(_router.current_screen(), game_view)
+	var automatic_route := automatic_workflow_route(_router.current_screen(), game_view, contextual_service_closed)
 	if automatic_route != _router.current_screen():
 		_router.open_screen(automatic_route)
 	_build_menus()
@@ -152,7 +153,7 @@ func latest_classic_text() -> String:
 	return _latest_classic_text
 
 
-static func automatic_workflow_route(current_route: StringName, game_view: GameView) -> StringName:
+static func automatic_workflow_route(current_route: StringName, game_view: GameView, contextual_service_closed: bool = false) -> StringName:
 	if game_view == null:
 		return current_route
 	if game_view.pending_interaction != null and game_view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK]:
@@ -160,6 +161,8 @@ static func automatic_workflow_route(current_route: StringName, game_view: GameV
 	if game_view.combat_view != null:
 		return &"combat"
 	if game_view.pending_interaction != null:
+		return &"exploration"
+	if contextual_service_closed and current_route == &"services":
 		return &"exploration"
 	if game_view.combat_view == null and current_route == &"combat":
 		return &"exploration"
