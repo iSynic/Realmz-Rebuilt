@@ -21,7 +21,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.services.temple` | certification | aogm-certification | aogm-ordinary | GAP-SVC-004 |
+| `classic.services.temple` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.services.shop` | implementation | aogm-certification | — | GAP-SVC-003 |
 | `classic.inventory.trade-item` | certification | aogm-certification | aogm-ordinary |  |
 
@@ -136,13 +136,13 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: | ---: |
 | synthetic | 65 | 7 |
 | route-harness | 39 | 2 |
-| aogm-ordinary | 29 | 3 |
+| aogm-ordinary | 30 | 3 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **19**.
+Blockers: **1**. Major gaps: **18**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -161,7 +161,6 @@ Blockers: **1**. Major gaps: **19**.
 - **major** `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
 - **major** `classic.scenario.random-timed-encounter` — Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture. Next: Add a synthetic timed AP that changes map or coordinate, yields, applies any source-owned AP destination semantics, resumes the remaining scan, and performs the final random check at the resulting location.
 - **major** `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification. Next: Exercise buy, sell, identify, buyback, leave, and reload in an ordinary shop.
-- **major** `classic.services.temple` — The implemented temple subset has no ordinary campaign certification. Next: Exercise representative temple mutations and no-op payment in ordinary play.
 - **major** `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise field and combat scroll workflows in ordinary AOGM play, then implement discard/case-transfer branches only from bounded differential evidence.
 - **major** `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
@@ -188,7 +187,6 @@ Blockers: **1**. Major gaps: **19**.
 - `classic.maps.view-acquired` — Acquisition and browsing have synthetic proof but no ordinary AOGM acceptance.
 - `classic.scenario.random-timed-encounter` — Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture.
 - `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification.
-- `classic.services.temple` — The implemented temple subset has no ordinary campaign certification.
 - `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.scenario.select-subject` — Picker variants are tested synthetically but not all observed in ordinary AOGM play.
 - `classic.startup.create-character` — The five-step creator has deterministic and UI tests but no recorded ordinary AOGM completion in the audit evidence.
