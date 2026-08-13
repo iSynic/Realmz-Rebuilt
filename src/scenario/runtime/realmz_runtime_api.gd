@@ -410,12 +410,13 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 func _continue_if_monster_present(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if _game_state.combat == null or _game_state.combat.completed:
 		return ScenarioRuntimeOperationResult.failed(&"monster_test_outside_combat", "Classic opcode 127 requires an active battle macro.")
-	var definition := _content.monster_by_classic_id(absi(action.operand_id))
+	var definition := _content.monster_by_classic_id_for_set(absi(action.operand_id), _game_state.monster_set)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 127 references unavailable monster %d." % action.operand_id)
 	var present := false
 	for monster: MonsterState in _game_state.combat.monsters():
-		if monster.definition_id == definition.id and monster.current_health > 0:
+		var present_definition := _content.monster_by_id(monster.definition_id)
+		if present_definition != null and present_definition.classic_id == definition.classic_id and monster.current_health > 0:
 			present = true
 			break
 	var directive: Dictionary = {} if present else {"kind": "finish"}
@@ -471,7 +472,7 @@ func _alter_combat_monsters(action: ClassicActionDefinition) -> ScenarioRuntimeO
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 120 requires a five-value Extra Code row.")
 	var target_kind := action.extra_code[0]
-	var definition := _content.monster_by_classic_id(absi(action.extra_code[1]))
+	var definition := _content.monster_by_classic_id_for_set(absi(action.extra_code[1]), _game_state.monster_set)
 	var remaining := maxi(0, action.extra_code[2])
 	if target_kind < 1 or target_kind > 2 or definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_combat_monster_target", "Classic opcode 120 references an unavailable monster kind or identity.")
@@ -480,7 +481,8 @@ func _alter_combat_monsters(action: ClassicActionDefinition) -> ScenarioRuntimeO
 	for monster: MonsterState in candidates:
 		if remaining <= 0:
 			break
-		if monster.definition_id != definition.id:
+		var candidate_definition := _content.monster_by_id(monster.definition_id)
+		if candidate_definition == null or candidate_definition.classic_id != definition.classic_id:
 			continue
 		if action.extra_code[3] != -1:
 			monster.icon_id = action.extra_code[3]
@@ -507,13 +509,14 @@ func _cause_monsters_to_route(action: ClassicActionDefinition, context: Dictiona
 	for classic_id: int in action.extra_code:
 		if classic_id == 0:
 			continue
-		var definition := _content.monster_by_classic_id(absi(classic_id))
+		var definition := _content.monster_by_classic_id_for_set(absi(classic_id), _game_state.monster_set)
 		if definition == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 123 references unavailable monster %d." % classic_id)
-		definition_ids[definition.id] = true
+		definition_ids[definition.classic_id] = true
 	var routed: Array[String] = []
 	for monster: MonsterState in _game_state.combat.monsters():
-		if monster.current_health > 0 and monster.traitor == source_traitor and definition_ids.has(monster.definition_id):
+		var routed_definition := _content.monster_by_id(monster.definition_id)
+		if routed_definition != null and monster.current_health > 0 and monster.traitor == source_traitor and definition_ids.has(routed_definition.classic_id):
 			monster.conditions.set_value(ConditionRules.RUNS_AWAY, -1)
 			monster.surrender_percent = 50
 			routed.append(monster.id)
@@ -1582,11 +1585,12 @@ func _branch_on_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeO
 func _branch_on_ally(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 87 requires a five-value Extra Code row.")
-	var monster := _content.monster_by_classic_id(absi(action.extra_code[0]))
+	var monster := _content.monster_by_classic_id_for_set(absi(action.extra_code[0]), _game_state.monster_set)
 	var present := false
 	if monster != null:
 		for ally: MonsterState in _game_state.party.allies():
-			if ally.definition_id == monster.id:
+			var ally_definition := _content.monster_by_id(ally.definition_id)
+			if ally_definition != null and ally_definition.classic_id == monster.classic_id:
 				present = true
 				break
 	var event := DomainEvent.new(&"ally_branch_checked", {"classicMonsterId": absi(action.extra_code[0]), "present": present})
@@ -3093,6 +3097,19 @@ func begin_completed_battle_reward(request_id: String) -> ScenarioRuntimeOperati
 func _begin_reward(origin: StringName, source_id: String, total_experience: int, wealth: WealthState, item_ids: Array[String], request_id: String) -> ScenarioRuntimeOperationResult:
 	if wealth == null or item_ids.size() > ClassicRewardState.MAX_PENDING_ITEMS:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The reward exceeds the supported Classic reward bounds.")
+	var experience_multiplier := _game_state.experience_multiplier
+	if experience_multiplier < 0.0:
+		var campaign := _content.campaign_definition()
+		var current_levels := 0
+		for party_character: CharacterState in _game_state.party.characters():
+			current_levels += party_character.level
+		experience_multiplier = PartySetupRules.experience_multiplier(campaign.recommended_party_levels, current_levels, _game_state.difficulty) if campaign != null and campaign.guidance_authored and campaign.recommended_party_levels > 0 else 1.0
+	var scaled_experience := PartySetupRules.scale_experience_by_multiplier(total_experience, experience_multiplier)
+	var scaled_wealth := WealthState.new(
+		PartySetupRules.scale_money(wealth.gold, _game_state.difficulty),
+		PartySetupRules.scale_money(wealth.gems, _game_state.difficulty),
+		PartySetupRules.scale_money(wealth.jewelry, _game_state.difficulty),
+	)
 	var reward_definitions: Array[ItemDefinition] = []
 	var unique_owned: Dictionary = {}
 	for character: CharacterState in _game_state.party.characters():
@@ -3107,7 +3124,7 @@ func _begin_reward(origin: StringName, source_id: String, total_experience: int,
 		reward_definitions.append(definition)
 		if definition.cost < 0:
 			unique_owned[definition.id] = true
-	var reward := ClassicRewardState.new(origin, source_id, maxi(0, total_experience), wealth)
+	var reward := ClassicRewardState.new(origin, source_id, scaled_experience, scaled_wealth)
 	var items: Array[ItemInstance] = []
 	for definition: ItemDefinition in reward_definitions:
 		var identified := absi(definition.item_type) == 24
@@ -3124,13 +3141,13 @@ func _begin_reward(origin: StringName, source_id: String, total_experience: int,
 		awards[character.id] = awarded
 	if not reward.set_experience_awards(awards):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The reward experience recipients are invalid.")
-	_game_state.party.pooled_wealth.gold += wealth.gold
-	_game_state.party.pooled_wealth.gems += wealth.gems
-	_game_state.party.pooled_wealth.jewelry += wealth.jewelry
+	_game_state.party.pooled_wealth.gold += scaled_wealth.gold
+	_game_state.party.pooled_wealth.gems += scaled_wealth.gems
+	_game_state.party.pooled_wealth.jewelry += scaled_wealth.jewelry
 	for character: CharacterState in recipients:
 		character.experience += int(awards[character.id])
-	var events: Array[DomainEvent] = [DomainEvent.new(&"reward_opened", {"origin": String(origin), "sourceId": source_id, "experiencePool": reward.experience_pool, "experienceShare": reward.experience_share, "experienceByCharacter": awards, "wealth": wealth.to_data(), "itemCount": items.size()})]
-	if items.is_empty() and wealth.gold == 0 and wealth.gems == 0 and wealth.jewelry == 0 and total_experience == 0:
+	var events: Array[DomainEvent] = [DomainEvent.new(&"reward_opened", {"origin": String(origin), "sourceId": source_id, "experiencePool": reward.experience_pool, "experienceShare": reward.experience_share, "experienceByCharacter": awards, "wealth": scaled_wealth.to_data(), "itemCount": items.size()})]
+	if items.is_empty() and scaled_wealth.gold == 0 and scaled_wealth.gems == 0 and scaled_wealth.jewelry == 0 and scaled_experience == 0:
 		return _complete_reward(reward, events)
 	return _wait_for_reward(reward, request_id, events)
 
@@ -3600,15 +3617,23 @@ func _apply_classic_condition(action: ClassicActionDefinition) -> ScenarioRuntim
 
 
 func _remove_classic_ally(classic_monster_id: int) -> int:
-	var definition := _content.monster_by_classic_id(classic_monster_id)
-	return 0 if definition == null else _game_state.party.remove_allies_by_definition(definition.id)
+	var removed := 0
+	var retained: Array[MonsterState] = []
+	for ally: MonsterState in _game_state.party.allies():
+		var definition := _content.monster_by_id(ally.definition_id)
+		if definition != null and definition.classic_id == classic_monster_id:
+			removed += 1
+		else:
+			retained.append(ally)
+	_game_state.party.set_allies(retained)
+	return removed
 
 
 func _add_classic_ally(classic_monster_id: int) -> ScenarioRuntimeOperationResult:
-	var definition := _content.monster_by_classic_id(classic_monster_id)
+	var definition := _content.monster_by_classic_id_for_set(classic_monster_id, _game_state.monster_set)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 89 references unavailable monster %d." % classic_monster_id)
-	var ally := _rules.monsters.build_monster(definition, _game_state.next_instance_id("party.ally"), 0, 0, _game_state.clock.day(), _rng)
+	var ally := _rules.monsters.build_monster(definition, _game_state.next_instance_id("party.ally"), 0, _game_state.difficulty, _game_state.clock.day(), _rng)
 	if ally == null or not _game_state.party.add_ally(ally):
 		return ScenarioRuntimeOperationResult.failed(&"ally_add_failed", "The ally could not join the party.")
 	return ScenarioRuntimeOperationResult.completed(ally.id, [DomainEvent.new(&"ally_added", {"allyId": ally.id, "monsterId": definition.id})])
@@ -3631,14 +3656,14 @@ func _spawn_classic_monsters(action: ClassicActionDefinition) -> ScenarioRuntime
 		return ScenarioRuntimeOperationResult.failed(&"no_active_battle", "Classic opcode 124 requires an active battle.")
 	if action.extra_code.size() < 3:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 124 requires a five-value Extra Code row.")
-	var definition := _content.monster_by_classic_id(absi(action.extra_code[1]))
+	var definition := _content.monster_by_classic_id_for_set(absi(action.extra_code[1]), _game_state.monster_set)
 	if definition == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 124 references unavailable monster %d." % action.extra_code[1])
 	var authored_count := action.extra_code[2]
 	var count := _rng.draw(absi(authored_count), &"classic.combat.spawn-count") if authored_count < 0 else authored_count
 	var spawned: Array[String] = []
 	for _index: int in maxi(0, count):
-		var monster := _rules.monsters.build_monster(definition, _game_state.next_instance_id("combat.spawn"), -1, 0, _game_state.clock.day(), _rng)
+		var monster := _rules.monsters.build_monster(definition, _game_state.next_instance_id("combat.spawn"), -1, _game_state.difficulty, _game_state.clock.day(), _rng)
 		if monster != null and _game_state.combat.add_monster(monster):
 			_game_state.combat.append_turn_actor(monster.id)
 			spawned.append(monster.id)

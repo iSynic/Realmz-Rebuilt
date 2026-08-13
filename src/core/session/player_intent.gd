@@ -38,6 +38,7 @@ enum Kind {
 	SET_LOCATION_NOTE,
 	SET_COMBAT_AUTO,
 	SET_FAST_SPELL,
+	SET_PARTY_SETUP_OPTIONS,
 }
 
 var kind: Kind
@@ -59,6 +60,8 @@ var vault_source_campaign_id: String = ""
 var vault_source_package_hash: String = ""
 var text_value: String = ""
 var enabled: bool = false
+var difficulty: int = 0
+var monster_set: int = 0
 
 
 func _init(intent_kind: Kind) -> void:
@@ -166,6 +169,13 @@ static func create_party(members: Array[CharacterCreationSpec]) -> PlayerIntent:
 
 static func begin_adventure() -> PlayerIntent:
 	return PlayerIntent.new(Kind.BEGIN_ADVENTURE)
+
+
+static func set_party_setup_options(difficulty_value: int, monster_set_value: int) -> PlayerIntent:
+	var intent := PlayerIntent.new(Kind.SET_PARTY_SETUP_OPTIONS)
+	intent.difficulty = difficulty_value
+	intent.monster_set = monster_set_value
+	return intent
 
 
 static func import_vault_character(character_id: String, revision: String, state_data: Dictionary = {}, source_campaign_id: String = "", source_package_hash: String = "") -> PlayerIntent:

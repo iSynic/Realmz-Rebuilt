@@ -22,6 +22,7 @@ var _castes: Dictionary = {}
 var _items: Dictionary = {}
 var _spells: Dictionary = {}
 var _monsters: Dictionary = {}
+var _monster_sets: Dictionary = {}
 var _battles: Dictionary = {}
 var _treasures: Dictionary = {}
 var _shops: Dictionary = {}
@@ -29,7 +30,7 @@ var _appearance_options: Dictionary = {}
 var _appearance_by_resource: Dictionary = {}
 
 
-func _init(campaign: String, package_identity: String, content_identity: String, rules: String, start_map: String, start_position: Vector2i, world_definition: WorldDefinition, scenario_definition: ScenarioDefinition, messages: Array[MessageDefinition], triggers: Array[TriggerDefinition], simple_encounters: Array[SimpleEncounterDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = [], items: Array[ItemDefinition] = [], spells: Array[SpellDefinition] = [], monsters: Array[MonsterDefinition] = [], battles: Array[BattleDefinition] = [], treasures: Array[TreasureDefinition] = [], shops: Array[ShopDefinition] = [], complex_encounters: Array[ComplexEncounterDefinition] = [], thief_encounters: Array[ThiefEncounterDefinition] = [], authored_timed_encounters: Array[TimedEncounterDefinition] = [], authored_option_labels: Array[OptionLabelDefinition] = [], campaign_definition: CampaignDefinition = null, appearance_options: Array[CharacterAppearanceDefinition] = []) -> void:
+func _init(campaign: String, package_identity: String, content_identity: String, rules: String, start_map: String, start_position: Vector2i, world_definition: WorldDefinition, scenario_definition: ScenarioDefinition, messages: Array[MessageDefinition], triggers: Array[TriggerDefinition], simple_encounters: Array[SimpleEncounterDefinition] = [], races: Array[RaceDefinition] = [], castes: Array[CasteDefinition] = [], items: Array[ItemDefinition] = [], spells: Array[SpellDefinition] = [], monsters: Array[MonsterDefinition] = [], battles: Array[BattleDefinition] = [], treasures: Array[TreasureDefinition] = [], shops: Array[ShopDefinition] = [], complex_encounters: Array[ComplexEncounterDefinition] = [], thief_encounters: Array[ThiefEncounterDefinition] = [], authored_timed_encounters: Array[TimedEncounterDefinition] = [], authored_option_labels: Array[OptionLabelDefinition] = [], campaign_definition: CampaignDefinition = null, appearance_options: Array[CharacterAppearanceDefinition] = [], monster_sets: Dictionary = {}) -> void:
 	campaign_id = campaign
 	package_hash = package_identity
 	content_id = content_identity
@@ -64,6 +65,12 @@ func _init(campaign: String, package_identity: String, content_identity: String,
 		_spells[spell.id] = spell
 	for monster: MonsterDefinition in monsters:
 		_monsters[monster.id] = monster
+	for set_id: Variant in monster_sets:
+		var records: Dictionary = {}
+		for monster: MonsterDefinition in monster_sets[set_id]:
+			records["classic.monster.%d" % monster.classic_id] = monster
+			_monsters[monster.id] = monster
+		_monster_sets[int(set_id)] = records
 	for battle: BattleDefinition in battles:
 		_battles[battle.id] = battle
 	for treasure: TreasureDefinition in treasures:
@@ -186,12 +193,31 @@ func monster_by_id(definition_id: String) -> MonsterDefinition:
 	return _monsters.get(definition_id) as MonsterDefinition
 
 
+func monster_by_id_for_set(definition_id: String, set_id: int) -> MonsterDefinition:
+	var records: Variant = _monster_sets.get(set_id)
+	if records is Dictionary and records.has(definition_id):
+		return records[definition_id] as MonsterDefinition
+	return monster_by_id(definition_id)
+
+
+func available_monster_sets() -> Array[int]:
+	var result: Array[int] = [0]
+	for value: Variant in _monster_sets.keys():
+		result.append(int(value))
+	result.sort()
+	return result
+
+
 func monster_by_classic_id(classic_id: int) -> MonsterDefinition:
 	for value: Variant in _monsters.values():
 		var definition := value as MonsterDefinition
 		if definition.classic_id == classic_id:
 			return definition
 	return null
+
+
+func monster_by_classic_id_for_set(classic_id: int, set_id: int) -> MonsterDefinition:
+	return monster_by_id_for_set("classic.monster.%d" % classic_id, set_id)
 
 
 func battle_by_id(definition_id: String) -> BattleDefinition:

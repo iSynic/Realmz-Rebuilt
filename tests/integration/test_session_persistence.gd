@@ -137,26 +137,40 @@ func run() -> void:
 	party_session.start(content, 7)
 	var setup_view := party_session.view()
 	assert_true(setup_view.party_setup_available, "fresh campaigns expose party creation through the detached view")
+	assert_equal([setup_view.party_setup.difficulty, setup_view.party_setup.monster_set, setup_view.party_setup.available_monster_sets, setup_view.party_setup.current_party_levels, setup_view.party_setup.experience_percent], [0, 0, [-1, 0, 1], 0, 0], "fresh setup exposes source-backed defaults without Castle's stale empty-party percentage")
+	assert_equal(party_session.submit_intent(PlayerIntent.set_party_setup_options(1, -1)).state, SessionStep.State.COMPLETED, "difficulty and Monster Set commit through one typed setup intent")
+	assert_equal([party_session.snapshot().game_state.difficulty, party_session.snapshot().game_state.monster_set], [1, -1], "the central save owns selected setup options")
+	assert_equal(party_session.submit_intent(PlayerIntent.set_party_setup_options(3, 0)).error_code, &"invalid_difficulty", "difficulty outside Castle's five choices fails explicitly")
 	assert_true(not setup_view.race_options.is_empty() and not setup_view.caste_options.is_empty(), "party creation options come from validated package definitions")
 	var member := CharacterCreationSpec.new("Ari", setup_view.race_options[0].id, setup_view.caste_options[0].id, 1)
 	var party_step := party_session.submit_intent(PlayerIntent.create_party([member]))
 	assert_equal(party_step.state, SessionStep.State.COMPLETED, "typed party creation commits through GameSession")
 	assert_equal(party_session.view().party_members[0].name, "Ari", "presentation sees the rule-created party member")
+	assert_equal(party_session.view().party_setup.experience_percent, 250, "selected Hard difficulty and a low-level party produce Castle's clamped experience guidance")
 	assert_false(party_session.view().party_setup_available, "party creation closes after the committed setup")
 	var party_save := party_session.snapshot()
 	assert_true(party_save.game_state.party_setup_completed, "central save owns party setup completion")
+	assert_equal(party_save.game_state.experience_multiplier, 2.5, "party commitment freezes Castle's displayed experience ratio for the playthrough")
 	var saved_age_group := party_save.game_state.party.characters()[0].age_group
 	assert_true(saved_age_group >= 1 and saved_age_group <= 5, "the central save owns the character's independent Classic age group")
 	var restored_party := GameSession.new()
 	assert_equal(restored_party.restore(content, party_save).state, SessionStep.State.COMPLETED, "created party restores transactionally")
 	assert_equal(restored_party.view().party_members[0].name, "Ari", "created party survives save and restore")
 	assert_equal(restored_party.view().party_members[0].age_group, saved_age_group, "save restoration preserves the exact current age group")
+	assert_equal([restored_party.snapshot().game_state.difficulty, restored_party.snapshot().game_state.monster_set], [1, -1], "save restoration preserves difficulty and Monster Set exactly")
+	assert_equal(restored_party.snapshot().game_state.experience_multiplier, 2.5, "save restoration preserves the committed setup experience multiplier instead of recomputing from later levels")
+	var invalid_multiplier_data := party_save.game_state.to_data()
+	invalid_multiplier_data["experienceMultiplier"] = -0.5
+	assert_equal(GameState.from_data(invalid_multiplier_data), null, "save restoration rejects experience ratios between the legacy migration sentinel and Castle's minimum twenty percent")
 	assert_equal(restored_party.submit_intent(PlayerIntent.create_party([member])).error_code, &"party_setup_closed", "party setup cannot be replayed after restore")
 	var corrupt_load_save := SaveEnvelope.from_data(party_save.to_data())
 	corrupt_load_save.game_state.party.characters()[0].carried_load += 1
 	var before_corrupt_load_restore := restored_party.snapshot().to_data()
 	assert_equal(restored_party.restore(content, corrupt_load_save).error_code, &"invalid_game_state", "restore rejects a carried-load value that does not match package item weights and personal wealth")
 	assert_equal(restored_party.snapshot().to_data(), before_corrupt_load_restore, "a rejected carried-load snapshot leaves the active session untouched")
+	var corrupt_multiplier_data := party_save.to_data()
+	corrupt_multiplier_data["gameState"]["experienceMultiplier"] = 3.0
+	assert_equal(SaveEnvelope.from_data(corrupt_multiplier_data), null, "restore rejects an out-of-range persisted setup multiplier")
 	var legacy_save_data := party_save.to_data()
 	legacy_save_data["gameState"]["party"]["characters"][0].erase("ageGroup")
 	var legacy_save := SaveEnvelope.from_data(legacy_save_data)
@@ -475,9 +489,11 @@ func run() -> void:
 		reward_character.maximum_load = 5_000
 		reward_session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [reward_character])
 		reward_session._state.party_setup_completed = true
+		reward_session._state.monster_set = -1
 		var setup: CombatFlowResult = reward_session._rules.combat_flow.start_battle(reward_session._state, content, battle, reward_session._rng)
 		assert_true(setup.ok, "the terminal reward integration starts through the source-backed battle builder")
 		if setup.ok:
+			assert_true(reward_session._state.combat.monsters().all(func(monster: MonsterState) -> bool: return monster.definition_id.begins_with("classic.monster-set.-1.")), "battle construction resolves every authored slot through the selected Classic Monster Set")
 			var reordered_turns: Array[String] = [reward_character.id]
 			for actor_id: String in reward_session._state.combat.turn_order():
 				if actor_id != reward_character.id:

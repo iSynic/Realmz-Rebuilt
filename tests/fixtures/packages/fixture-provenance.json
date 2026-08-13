@@ -1,14 +1,14 @@
 {
-  "fixture_id": "realmz2-synthetic-classic-map-v20",
+  "fixture_id": "realmz2-synthetic-party-setup-v21",
   "evidence_label": "runtime-integration",
   "authoring": "synthetic Providence-authored data",
   "commercial_payload": false,
-  "providence_commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
-  "schema_sha256": "5d2be8213868bc9b5bc3499f0a5a5033ed1ea1402a4971185fff217d08cb7d2d",
-  "package_bytes": 24024767,
-  "package_sha256": "7f4658a2707032feb36c9c3b72cd844259eb1fcfb57df7f72961a7463ea4c756",
-  "package_hash": "924b0f046247a38cfdb684314b97b968c53c60384cf117b14753f2a26e0a93b9",
-  "negative_fixture_sha256": "e9a2c4408efcd26b4162d7264136240a5757a3ca4a768ab06b94bbece39ab554",
+  "providence_commit": "899a191272643295d0c7d0c00d23a073407870fa",
+  "schema_sha256": "8167835e4db54d97eb90a263967d472f8108dbf63c3bc0ebd5d723441bdadbaf",
+  "package_bytes": 24026567,
+  "package_sha256": "9fff7fdc28faab86d23cb0335f413d5b1f50c0e7655dc5e48c879f5685173dea",
+  "package_hash": "bc97f821af1d19d3517681f027b9d54143145b78fdcedb46ab72ee4e9380093a",
+  "negative_fixture_sha256": "e6d4400336820131aec12d9a128468814c2d33a2312e8fbc8b91268777d79cbb",
   "negative_fixture_mutation": "content.json changes the synthetic Fixture Wand name without updating manifest integrity",
   "generator": "cargo run --manifest-path src-tauri/Cargo.toml --example export_realmz2_fixture -- <output-directory>"
 }

@@ -140,6 +140,16 @@
       },
       "additionalProperties": false
     },
+    "monsterSetDefinition": {
+      "type": "object",
+      "required": ["setId", "name", "monsters"],
+      "properties": {
+        "setId": { "enum": [-1, 1] },
+        "name": { "type": "string", "minLength": 1 },
+        "monsters": { "type": "array", "items": { "$ref": "#/$defs/monsterDefinition" } }
+      },
+      "additionalProperties": false
+    },
     "battleMonsterSlot": {
       "type": "object",
       "required": ["x", "y", "monsterId", "invertTraitor"],
@@ -260,7 +270,7 @@
         "schemaVersion": { "const": 2 },
         "campaign": {
           "type": "object",
-          "required": ["id", "name", "version", "author", "contact", "description", "splashAssetId", "restrictions"],
+          "required": ["id", "name", "version", "author", "contact", "description", "splashAssetId", "recommendedPartyLevels", "maximumPartyLevels", "guidanceAuthored", "restrictions"],
           "properties": {
             "id": { "$ref": "#/$defs/identifier" },
             "name": { "type": "string", "minLength": 1 },
@@ -279,6 +289,9 @@
             },
             "description": { "type": "string" },
             "splashAssetId": { "type": "string" },
+            "recommendedPartyLevels": { "type": "integer", "minimum": 0 },
+            "maximumPartyLevels": { "type": "integer", "minimum": 0 },
+            "guidanceAuthored": { "type": "boolean" },
             "restrictions": { "$ref": "#/$defs/campaignRestrictions" }
           },
           "additionalProperties": false
@@ -287,7 +300,7 @@
         "optionLabels": { "type": "array" },
         "battles": { "type": "array", "items": { "$ref": "#/$defs/battleDefinition" } },
         "monsters": { "type": "array", "items": { "$ref": "#/$defs/monsterDefinition" } },
-        "monsterSets": { "type": "array" },
+        "monsterSets": { "type": "array", "maxItems": 2, "items": { "$ref": "#/$defs/monsterSetDefinition" } },
         "monsterDescriptions": { "type": "array" },
         "items": { "type": "array", "items": { "$ref": "#/$defs/itemDefinition" } },
         "itemTexts": { "type": "array" },

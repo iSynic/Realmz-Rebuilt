@@ -108,7 +108,7 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 	)
 	var authored_definitions: Dictionary = {}
 	for slot: BattleMonsterSlotDefinition in authored_slots:
-		var definition := content.monster_by_id(slot.monster_id)
+		var definition := content.monster_by_id_for_set(slot.monster_id, state.monster_set)
 		if definition == null:
 			return CombatFlowResult.failed(&"unknown_monster", "Battle '%s' references unavailable monster '%s'." % [battle.id, slot.monster_id])
 		authored_definitions[slot.monster_id] = definition
@@ -152,7 +152,7 @@ func start_battle(state: GameState, content: RealmzContent, battle: BattleDefini
 		var pending_id := "pending.authored.%d" % slot_index
 		if not battlefield_builder.place_monster(battlefield, terrain_set, pending_id, monster_origin + slot.coordinate, definition.size):
 			return _battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"monster_placement_failed", "Battle '%s' has no legal battlefield footprint for authored monster at %s." % [battle.id, slot.coordinate])
-		var pending_monster := _rules.monsters.build_battle_monster(definition, pending_id, slot.invert_traitor, 0, state.clock.day(), rng)
+		var pending_monster := _rules.monsters.build_battle_monster(definition, pending_id, slot.invert_traitor, state.difficulty, state.clock.day(), rng)
 		if pending_monster == null:
 			return _battle_setup_failure(state, instance_checkpoint, rng, rng_checkpoint, &"invalid_monster", "Battle '%s' could not construct monster '%s'." % [battle.id, slot.monster_id])
 		pending_authored.append({"placeholderId": pending_id, "monster": pending_monster})

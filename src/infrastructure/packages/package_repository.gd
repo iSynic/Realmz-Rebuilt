@@ -1,7 +1,7 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "5d2be8213868bc9b5bc3499f0a5a5033ed1ea1402a4971185fff217d08cb7d2d"
+const EXPECTED_SCHEMA_HASH: String = "8167835e4db54d97eb90a263967d472f8108dbf63c3bc0ebd5d723441bdadbaf"
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -332,20 +332,37 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 	var items_value: Variant = _construct_items(content.get("items"))
 	var spells_value: Variant = _construct_spells(content.get("spells"))
 	var monsters_value: Variant = _construct_monsters(content.get("monsters"))
+	var monster_sets_value: Variant = _construct_monster_sets(content.get("monsterSets"))
 	var battles_value: Variant = _construct_battles(content.get("battles"))
 	var treasures_value: Variant = _construct_treasures(content.get("treasures"))
 	var shops_value: Variant = _construct_shops(content.get("shops"))
-	if races_value == null or castes_value == null or items_value == null or spells_value == null or monsters_value == null or battles_value == null or treasures_value == null or shops_value == null:
+	if races_value == null or castes_value == null or items_value == null or spells_value == null or monsters_value == null or monster_sets_value == null or battles_value == null or treasures_value == null or shops_value == null:
 		return null
 	var races: Array[RaceDefinition] = races_value
 	var castes: Array[CasteDefinition] = castes_value
 	var items: Array[ItemDefinition] = items_value
 	var spells: Array[SpellDefinition] = spells_value
 	var monsters: Array[MonsterDefinition] = monsters_value
+	var monster_sets: Dictionary = monster_sets_value
 	var battles: Array[BattleDefinition] = battles_value
 	var treasures: Array[TreasureDefinition] = treasures_value
 	var shops: Array[ShopDefinition] = shops_value
-	if not _validate_monster_media(monsters, media_assets):
+	var all_monsters: Array[MonsterDefinition] = monsters.duplicate()
+	var base_monster_ids := _definition_ids(monsters)
+	for set_id: Variant in monster_sets:
+		var set_monsters: Array[MonsterDefinition] = monster_sets[set_id]
+		var covered_classic_ids: Dictionary = {}
+		for monster: MonsterDefinition in set_monsters:
+			covered_classic_ids["classic.monster.%d" % monster.classic_id] = true
+			all_monsters.append(monster)
+		if covered_classic_ids.size() != base_monster_ids.size():
+			_reject("Monster set %d does not define every packaged Classic monster." % int(set_id))
+			return null
+		for base_id: Variant in base_monster_ids:
+			if not covered_classic_ids.has(base_id):
+				_reject("Monster set %d is missing Classic monster '%s'." % [int(set_id), base_id])
+				return null
+	if not _validate_monster_media(all_monsters, media_assets):
 		return null
 	var appearance_options := _construct_character_appearance_options(media_assets, races)
 	var scenario_definition := _construct_scenario(scenario, manifest["campaignId"])
@@ -359,6 +376,9 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 		return null
 	if not _validate_rule_references(races, castes, items, spells, monsters, battles, treasures, shops, message_ids):
 		return null
+	for set_id: Variant in monster_sets:
+		if not _validate_monster_record_references(monster_sets[set_id], items, spells):
+			return null
 	var trigger_ids: Dictionary = {}
 	for trigger: TriggerDefinition in triggers:
 		if trigger_ids.has(trigger.id):
@@ -409,7 +429,7 @@ func _construct_content(manifest: Dictionary, content: Dictionary, world: Dictio
 			if destination_map == null or destination_map.topology.cell_at(trigger.post_action_location.coordinate) == null:
 				_reject("Trigger '%s' references an unavailable post-action location." % trigger.id)
 				return null
-	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters, option_labels, campaign_definition, appearance_options)
+	return RealmzContent.new(manifest["campaignId"], manifest["packageHash"], manifest["contentId"], manifest["engine"]["rulesVersion"], start["mapId"], start_coordinate, world_definition, scenario_definition, messages, triggers, simple_encounters, races, castes, items, spells, monsters, battles, treasures, shops, complex_encounters, thief_encounters, timed_encounters, option_labels, campaign_definition, appearance_options, monster_sets_value)
 
 
 func _validate_monster_media(monsters: Array[MonsterDefinition], media_assets: Array[PackageMediaAsset]) -> bool:
@@ -431,8 +451,8 @@ func _construct_campaign_definition(value: Variant) -> CampaignDefinition:
 		_reject("Content campaign metadata must be an object.")
 		return null
 	var record: Dictionary = value
-	var fields: Array[String] = ["id", "name", "version", "author", "contact", "description", "splashAssetId", "restrictions"]
-	if not _exact_fields(record, fields) or not record["id"] is String or record["id"].is_empty() or not record["name"] is String or record["name"].is_empty() or not record["version"] is String or not record["author"] is String or not record["contact"] is Dictionary or not record["description"] is String or not record["splashAssetId"] is String or not record["restrictions"] is Dictionary:
+	var fields: Array[String] = ["id", "name", "version", "author", "contact", "description", "splashAssetId", "recommendedPartyLevels", "maximumPartyLevels", "guidanceAuthored", "restrictions"]
+	if not _exact_fields(record, fields) or not record["id"] is String or record["id"].is_empty() or not record["name"] is String or record["name"].is_empty() or not record["version"] is String or not record["author"] is String or not record["contact"] is Dictionary or not record["description"] is String or not record["splashAssetId"] is String or _integer(record["recommendedPartyLevels"]) < 0 or _integer(record["maximumPartyLevels"]) < 0 or not record["guidanceAuthored"] is bool or not record["restrictions"] is Dictionary:
 		_reject("Campaign display metadata is malformed.")
 		return null
 	var contact: Dictionary = record["contact"]
@@ -452,6 +472,9 @@ func _construct_campaign_definition(value: Variant) -> CampaignDefinition:
 	result.contact = record["contact"].duplicate(true)
 	result.description = record["description"]
 	result.splash_asset_id = record["splashAssetId"]
+	result.recommended_party_levels = _integer(record["recommendedPartyLevels"])
+	result.maximum_party_levels = _integer(record["maximumPartyLevels"])
+	result.guidance_authored = record["guidanceAuthored"]
 	result.restrictions.description = restrictions["description"]
 	result.restrictions.maximum_party_size = _integer(restrictions["maxPartySize"])
 	result.restrictions.maximum_level = _integer(restrictions["maxLevel"])
@@ -822,6 +845,26 @@ func _construct_monsters(value: Variant) -> Variant:
 		monster.experience = integers["experience"]
 		monster.death_macro = integers["deathMacro"]
 		result.append(monster)
+	return result
+
+
+func _construct_monster_sets(value: Variant) -> Variant:
+	if not value is Array:
+		_reject("Monster sets must be an array.")
+		return null
+	var result: Dictionary = {}
+	for entry: Variant in value:
+		if not entry is Dictionary or not _exact_fields(entry, ["setId", "name", "monsters"]):
+			_reject("Monster-set metadata is malformed.")
+			return null
+		var set_id := _integer(entry["setId"])
+		if set_id not in [-1, 1] or result.has(set_id) or not entry["name"] is String or entry["name"].is_empty():
+			_reject("Monster-set identity is invalid or duplicated.")
+			return null
+		var records: Variant = _construct_monsters(entry["monsters"])
+		if records == null:
+			return null
+		result[set_id] = records
 	return result
 
 
@@ -1974,20 +2017,8 @@ func _validate_rule_references(races: Array[RaceDefinition], castes: Array[Caste
 		for item_id: String in caste.start_items():
 			if not item_ids.has(item_id):
 				return _reject("Caste '%s' references unavailable starting item '%s'." % [caste.id, item_id])
-	for monster: MonsterDefinition in monsters:
-		for spell_id: String in monster.spell_ids():
-			if spell_id.is_empty():
-				continue
-			if not spell_ids.has(spell_id):
-				return _reject("Monster '%s' references unavailable spell '%s'." % [monster.id, spell_id])
-		for item_id: String in monster.item_ids():
-			if not item_id.is_empty() and not item_ids.has(item_id):
-				return _reject("Monster '%s' references unavailable item '%s'." % [monster.id, item_id])
-		if not monster.weapon_id.is_empty() and not item_ids.has(monster.weapon_id):
-			return _reject("Monster '%s' references unavailable weapon '%s'." % [monster.id, monster.weapon_id])
-		for random_weapon_id: String in MonsterRules.random_weapon_item_ids(monster.random_weapon_table):
-			if not item_ids.has(random_weapon_id):
-				return _reject("Monster '%s' random weapon table %d can produce unavailable weapon '%s'." % [monster.id, monster.random_weapon_table, random_weapon_id])
+	if not _validate_monster_record_references(monsters, items, spells):
+		return false
 	for battle: BattleDefinition in battles:
 		for slot: BattleMonsterSlotDefinition in battle.monster_slots():
 			if not monster_ids.has(slot.monster_id):
@@ -2003,6 +2034,26 @@ func _validate_rule_references(races: Array[RaceDefinition], castes: Array[Caste
 		for item_id: String in shop.item_ids():
 			if not item_ids.has(item_id):
 				return _reject("Shop '%s' references unavailable item '%s'." % [shop.id, item_id])
+	return true
+
+
+func _validate_monster_record_references(monsters: Array[MonsterDefinition], items: Array[ItemDefinition], spells: Array[SpellDefinition]) -> bool:
+	var item_ids := _definition_ids(items)
+	var spell_ids := _definition_ids(spells)
+	for monster: MonsterDefinition in monsters:
+		for spell_id: String in monster.spell_ids():
+			if spell_id.is_empty():
+				continue
+			if not spell_ids.has(spell_id):
+				return _reject("Monster '%s' references unavailable spell '%s'." % [monster.id, spell_id])
+		for item_id: String in monster.item_ids():
+			if not item_id.is_empty() and not item_ids.has(item_id):
+				return _reject("Monster '%s' references unavailable item '%s'." % [monster.id, item_id])
+		if not monster.weapon_id.is_empty() and not item_ids.has(monster.weapon_id):
+			return _reject("Monster '%s' references unavailable weapon '%s'." % [monster.id, monster.weapon_id])
+		for random_weapon_id: String in MonsterRules.random_weapon_item_ids(monster.random_weapon_table):
+			if not item_ids.has(random_weapon_id):
+				return _reject("Monster '%s' random weapon table %d can produce unavailable weapon '%s'." % [monster.id, monster.random_weapon_table, random_weapon_id])
 	return true
 
 

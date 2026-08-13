@@ -3,6 +3,7 @@ extends RealmzTestCase
 
 func run() -> void:
 	_test_arithmetic_and_ranges()
+	_test_party_setup_scaling()
 	_test_character_creation_and_leveling()
 	_test_live_aging_and_maximum_age()
 	_test_monster_ordinary_attacks()
@@ -28,6 +29,12 @@ func _test_arithmetic_and_ranges() -> void:
 	var ranged := ScriptedRng.new([0, 32_767])
 	assert_equal(ranged.draw_between(-3, 3, &"rules.range.low"), -3, "Castle randrange includes its lower bound")
 	assert_equal(ranged.draw_between(-3, 3, &"rules.range.high"), 3, "Castle randrange includes its upper bound")
+
+
+func _test_party_setup_scaling() -> void:
+	assert_equal([PartySetupRules.experience_percent(6, 6, 0), PartySetupRules.experience_percent(6, 3, 1), PartySetupRules.experience_percent(6, 60, -2)], [100, 250, 20], "party guidance uses Castle's difficulty and recommended-to-current ratio with 20 through 250 percent bounds")
+	assert_equal(PartySetupRules.experience_percent(6, 0, 0), 0, "an empty party reports no stale Classic experience percentage")
+	assert_equal([PartySetupRules.scale_experience(101, 6, 6, -1), PartySetupRules.scale_money(101, -1), PartySetupRules.scale_money(101, 2)], [67, 67, 167], "Classic reward scaling retains floating multiplication followed by integer truncation")
 
 
 func _test_temple_services_and_wealth() -> void:

@@ -62,6 +62,10 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 	var replacement_action_state := ScenarioActionState.from_data(save_envelope.scenario_action_state.to_data())
 	if replacement_state == null or replacement_action_state == null:
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved game or Scenario Action state is invalid.")
+	if not content.available_monster_sets().has(replacement_state.monster_set):
+		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved game selects a monster set unavailable in this package.")
+	if replacement_state.party_setup_completed and replacement_state.experience_multiplier < 0.0:
+		replacement_state.experience_multiplier = _party_experience_multiplier(replacement_state.party.characters(), replacement_state.difficulty, content.campaign_definition())
 	if replacement_state.combat != null:
 		if not replacement_state.combat.return_continuation.is_empty():
 			var battle_return: Dictionary = replacement_state.combat.return_continuation
@@ -169,7 +173,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return _set_combat_auto(intent)
 	if _pending_interaction() != null or _scenario_vm.is_active():
 		return SessionStep.failed(_view_revision, &"interaction_pending", "Respond to the pending interaction first.")
-	if not _state.party_setup_completed and intent.kind not in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT, PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS, PlayerIntent.Kind.FINALIZE_CHARACTER, PlayerIntent.Kind.REMOVE_PARTY_MEMBER]:
+	if not _state.party_setup_completed and intent.kind not in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT, PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS, PlayerIntent.Kind.FINALIZE_CHARACTER, PlayerIntent.Kind.REMOVE_PARTY_MEMBER, PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS]:
 		return SessionStep.failed(_view_revision, &"party_setup_incomplete", "Finish party setup before beginning the adventure.")
 	if _state.combat != null and not _state.combat.completed and intent.kind not in [PlayerIntent.Kind.USE_ITEM, PlayerIntent.Kind.USE_ITEM_ON_TARGET, PlayerIntent.Kind.CAST_SPELL, PlayerIntent.Kind.CHOOSE_COMBAT_ACTION, PlayerIntent.Kind.COMBAT_MOVE]:
 		return SessionStep.failed(_view_revision, &"battle_in_progress", "Resolve the active battle before returning to exploration.")
@@ -212,6 +216,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _finalize_character(intent)
 		PlayerIntent.Kind.REMOVE_PARTY_MEMBER:
 			return _remove_party_member(intent.target_id)
+		PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS:
+			return _set_party_setup_options(intent.difficulty, intent.monster_set)
 		PlayerIntent.Kind.REORDER_PARTY:
 			return _reorder_party(intent.selected_ids)
 		PlayerIntent.Kind.CHANGE_CHARACTER_APPEARANCE:
@@ -294,9 +300,19 @@ func view() -> GameView:
 	result.campaign_summary.restriction_description = campaign.restrictions.description
 	result.campaign_summary.maximum_party_size = campaign.restrictions.maximum_party_size
 	result.campaign_summary.maximum_level = campaign.restrictions.maximum_level
+	result.campaign_summary.recommended_party_levels = campaign.recommended_party_levels
+	result.campaign_summary.maximum_party_levels = campaign.maximum_party_levels
+	result.campaign_summary.guidance_authored = campaign.guidance_authored
 	result.campaign_summary.banned_races = campaign.restrictions.banned_races.duplicate()
 	result.campaign_summary.banned_castes = campaign.restrictions.banned_castes.duplicate()
 	result.campaign_summary.package_hash = _content.package_hash
+	result.party_setup = PartySetupView.new()
+	result.party_setup.difficulty = _state.difficulty
+	result.party_setup.monster_set = _state.monster_set
+	result.party_setup.available_monster_sets = _content.available_monster_sets()
+	for character: CharacterState in _state.party.characters():
+		result.party_setup.current_party_levels += character.level
+	result.party_setup.experience_percent = PartySetupRules.experience_percent(campaign.recommended_party_levels, result.party_setup.current_party_levels, _state.difficulty)
 	result.party_summary = PartySummaryView.new()
 	for character: CharacterState in _state.party.characters():
 		result.party_summary.character_ids.append(character.id)
@@ -1446,6 +1462,12 @@ func _create_party(specs: Array[CharacterCreationSpec]) -> SessionStep:
 	var maximum_party_size := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
 	if specs.is_empty() or specs.size() > maximum_party_size:
 		return SessionStep.failed(_view_revision, &"invalid_party_size", "This campaign allows one through %d characters." % maximum_party_size)
+	var requested_levels := 0
+	for requested: CharacterCreationSpec in specs:
+		requested_levels += requested.starting_level
+	var campaign := _content.campaign_definition()
+	if campaign != null and campaign.guidance_authored and campaign.maximum_party_levels > 0 and requested_levels > campaign.maximum_party_levels:
+		return SessionStep.failed(_view_revision, &"party_level_limit_exceeded", "This party's combined %d levels exceed the scenario maximum of %d." % [requested_levels, campaign.maximum_party_levels])
 	var created: Array[CharacterState] = []
 	var names: Dictionary = {}
 	for index: int in specs.size():
@@ -1460,6 +1482,7 @@ func _create_party(specs: Array[CharacterCreationSpec]) -> SessionStep:
 		created.append(character)
 	var replacement := PartyState.new(_state.party.map_id, _state.party.coordinate, created)
 	_state.party = replacement
+	_state.experience_multiplier = _party_experience_multiplier(created, _state.difficulty, _content.campaign_definition())
 	_state.party_setup_completed = true
 	var character_ids: Array[String] = []
 	for character: CharacterState in created:
@@ -1475,11 +1498,27 @@ func _begin_adventure() -> SessionStep:
 	var characters := _state.party.characters()
 	if characters.is_empty():
 		return SessionStep.failed(_view_revision, &"empty_party", "Add or import at least one character before beginning.")
+	var aggregate_error := _aggregate_party_level_error(characters)
+	if not aggregate_error.is_empty():
+		return SessionStep.failed(_view_revision, &"party_level_limit_exceeded", aggregate_error)
+	_state.experience_multiplier = _party_experience_multiplier(characters, _state.difficulty, _content.campaign_definition())
 	_state.party_setup_completed = true
 	var character_ids: Array[String] = []
 	for character: CharacterState in characters:
 		character_ids.append(character.id)
 	return _start_application_hook(ScenarioApplicationHooks.START_GAME, "begin-adventure", "", [DomainEvent.new(&"party_created", {"characterIds": character_ids})])
+
+
+func _set_party_setup_options(difficulty: int, monster_set: int) -> SessionStep:
+	if _state.party_setup_completed or _pending_interaction() != null:
+		return SessionStep.failed(_view_revision, &"party_setup_closed", "Party setup options are no longer available.")
+	if difficulty < -2 or difficulty > 2:
+		return SessionStep.failed(_view_revision, &"invalid_difficulty", "Classic difficulty must be between Novice and Veteran.")
+	if not _content.available_monster_sets().has(monster_set):
+		return SessionStep.failed(_view_revision, &"unavailable_monster_set", "That Classic monster set is not present in this campaign package.")
+	_state.difficulty = difficulty
+	_state.monster_set = monster_set
+	return _finish_completed([DomainEvent.new(&"party_setup_options_changed", {"difficulty": difficulty, "monsterSet": monster_set})])
 
 
 func _import_vault_character(intent: PlayerIntent) -> SessionStep:
@@ -1503,6 +1542,11 @@ func _import_vault_character(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The campaign restrictions reject this vault character.")
 	if restrictions.maximum_level > 0 and imported.level > restrictions.maximum_level:
 		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character exceeds this campaign's maximum level.")
+	var prospective_party := current_characters.duplicate()
+	prospective_party.append(imported)
+	var aggregate_error := _aggregate_party_level_error(prospective_party)
+	if not aggregate_error.is_empty():
+		return SessionStep.failed(_view_revision, &"vault_character_ineligible", aggregate_error)
 	var race := _content.race_by_id(imported.race_id)
 	var caste := _content.caste_by_id(imported.caste_id)
 	_rules.characters.ensure_age_group(imported, race, caste)
@@ -1659,6 +1703,9 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionStep:
 		return _finish_failed(&"character_creation_failed", "Realmz rules rejected the generated character.", events)
 	var party_context := _state.party.characters()
 	party_context.append(character)
+	var aggregate_error := _aggregate_party_level_error(party_context)
+	if not aggregate_error.is_empty():
+		return _finish_failed(&"party_level_limit_exceeded", aggregate_error, events)
 	if not _materialize_initial_inventory(character, _content.caste_by_id(character.caste_id), party_context) or not _state.party.add_character(character):
 		return _finish_failed(&"character_creation_failed", "Realmz rules rejected the generated character.", events)
 	_state.character_draft = null
@@ -1668,6 +1715,28 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionStep:
 	_session_interaction = _character_vault_confirmation_request(request_id, character.name)
 	events.append(DomainEvent.new(&"character_vault_confirmation_requested", {"characterId": character.id}))
 	return _finish_waiting(_session_interaction, events)
+
+
+func _aggregate_party_level_error(characters: Array[CharacterState]) -> String:
+	var campaign := _content.campaign_definition()
+	if campaign == null or not campaign.guidance_authored or campaign.maximum_party_levels <= 0:
+		return ""
+	var current_levels := 0
+	for character: CharacterState in characters:
+		current_levels += character.level
+	if current_levels <= campaign.maximum_party_levels:
+		return ""
+	return "This party's combined %d levels exceed the scenario maximum of %d." % [current_levels, campaign.maximum_party_levels]
+
+
+static func _party_experience_multiplier(characters: Array[CharacterState], difficulty: int, campaign: CampaignDefinition) -> float:
+	if campaign == null or not campaign.guidance_authored or campaign.recommended_party_levels <= 0:
+		return 1.0
+	var current_levels := 0
+	for character: CharacterState in characters:
+		current_levels += character.level
+	var multiplier := PartySetupRules.experience_multiplier(campaign.recommended_party_levels, current_levels, difficulty)
+	return 1.0 if multiplier <= 0.0 else multiplier
 
 
 func _remove_party_member(character_id: String) -> SessionStep:

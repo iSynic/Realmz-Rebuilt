@@ -24,6 +24,9 @@ var temple_cost_percent: int = 100
 var bank_available: bool = false
 var last_battle_outcome: StringName = &"none"
 var party_setup_completed: bool = false
+var difficulty: int = 0
+var monster_set: int = 0
+var experience_multiplier: float = -1.0
 var character_draft: CharacterDraft
 var _searched_cells: Dictionary = {}
 var _quest_values: Dictionary = {}
@@ -332,6 +335,9 @@ func restore_from_data(data: Dictionary) -> bool:
 	bank_available = loaded.bank_available
 	last_battle_outcome = loaded.last_battle_outcome
 	party_setup_completed = loaded.party_setup_completed
+	difficulty = loaded.difficulty
+	monster_set = loaded.monster_set
+	experience_multiplier = loaded.experience_multiplier
 	character_draft = loaded.character_draft
 	_searched_cells = loaded._searched_cells
 	_quest_values = loaded._quest_values
@@ -394,6 +400,9 @@ func to_data() -> Dictionary:
 		"bankAvailable": bank_available,
 		"lastBattleOutcome": String(last_battle_outcome),
 		"partySetupCompleted": party_setup_completed,
+		"difficulty": difficulty,
+		"monsterSet": monster_set,
+		"experienceMultiplier": experience_multiplier,
 		"characterDraft": null if character_draft == null else character_draft.to_data(),
 		"questValues": quests,
 		"selectedCharacterIds": _selected_character_ids.duplicate(),
@@ -558,6 +567,15 @@ static func from_data(data: Variant) -> GameState:
 			state.bank_available = data["bankAvailable"]
 		state.last_battle_outcome = StringName(data["lastBattleOutcome"])
 		state.party_setup_completed = bool(data.get("partySetupCompleted", false))
+		state.difficulty = _signed_integer(data.get("difficulty", 0))
+		state.monster_set = _signed_integer(data.get("monsterSet", 0))
+		var multiplier_value: Variant = data.get("experienceMultiplier", -1.0)
+		if not multiplier_value is int and not multiplier_value is float:
+			return null
+		state.experience_multiplier = float(multiplier_value)
+		var multiplier_is_valid := is_equal_approx(state.experience_multiplier, -1.0) or (state.experience_multiplier >= 0.20 and state.experience_multiplier <= 2.50)
+		if state.difficulty < -2 or state.difficulty > 2 or state.monster_set not in [-1, 0, 1] or is_nan(state.experience_multiplier) or is_inf(state.experience_multiplier) or not multiplier_is_valid:
+			return null
 		if data.has("characterDraft") and data["characterDraft"] != null:
 			state.character_draft = CharacterDraft.from_data(data["characterDraft"])
 			if state.character_draft == null:

@@ -1346,6 +1346,13 @@ func _test_character_creator_workflow() -> void:
 	view.campaign_summary.title = "Creator Fixture"
 	view.campaign_summary.maximum_party_size = 6
 	view.campaign_summary.maximum_level = 7
+	view.campaign_summary.recommended_party_levels = 6
+	view.campaign_summary.maximum_party_levels = 12
+	view.campaign_summary.guidance_authored = true
+	view.party_setup = PartySetupView.new()
+	view.party_setup.available_monster_sets = [-1, 0, 1]
+	view.party_setup.current_party_levels = 9
+	view.party_setup.experience_percent = 66
 	view.race_options = [DefinitionOptionView.new("race.human", "Human", "Adaptable.", ["caste.sorcerer"])]
 	view.caste_options = [DefinitionOptionView.new("caste.sorcerer", "Sorcerer", "Arcane caster.", ["race.human"])]
 	view.portrait_options = [CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("portrait.human.1", "Human 1", CharacterAppearanceDefinition.PORTRAIT, 257, ["race.human"]))]
@@ -1391,12 +1398,22 @@ func _test_character_creator_workflow() -> void:
 	assert_equal(router._setup_mode, &"assembly", "party setup opens on stored-character assembly instead of forcing the creator")
 	assert_not_null(router._stored_character_list, "stored characters remain visible beside the six party slots")
 	assert_equal(router._party_list.get_child_count(), 6, "party assembly always exposes the campaign's complete slot capacity")
+	var party_scroll := router._party_list.get_parent() as ScrollContainer
+	var party_heading_control := party_scroll.get_parent().get_node("PartyHeading") as Control
+	assert_true(router._party_list.get_combined_minimum_size().y + party_heading_control.custom_minimum_size.y <= router._creator.custom_minimum_size.y, "all six compact party positions plus their heading fit the standard 960 by 600 assembly viewport without scrolling")
+	assert_equal(party_scroll.vertical_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED, "the six-slot Current Party surface never hides its final member behind a scrollbar")
+	assert_equal([router._difficulty_option.item_count, router._monster_set_option.item_count], [5, 3], "party assembly exposes all five Classic difficulty choices and only packaged monster sets")
+	assert_true(router._party_guidance_label.text.contains("Maximum 12") and router._party_guidance_label.text.contains("Recommended 6") and router._party_guidance_label.text.contains("Current 9") and router._party_guidance_label.text.contains("66%"), "aggregate level and experience guidance is visible beside setup options")
+	var setup_intent_count := intents.size()
+	router._difficulty_option.select(3)
+	router._party_setup_option_changed(3)
+	assert_equal([intents.size(), intents[-1].kind, intents[-1].difficulty, intents[-1].monster_set], [setup_intent_count + 1, PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS, 1, 0], "party option changes emit stable typed values rather than widget indexes")
 	var stored_row := router._stored_character_list.find_child("StoredCharacter_*", false, false) as PartySetupCharacterRow
 	assert_not_null(stored_row, "the current eligible stored revision is an ordinary Add row")
 	var stored_portrait := stored_row.find_child("Portrait", true, false) as TextureRect
 	assert_not_null(stored_portrait, "each Character Files row exposes the stored character's portrait surface")
 	assert_equal(stored_portrait.texture, icon_texture, "Character Files uses the in-game portrait rather than a tactical CICN or placeholder")
-	assert_equal(stored_portrait.texture_filter, CanvasItem.TEXTURE_FILTER_PARENT_NODE, "party-picker portraits inherit ordinary UI filtering instead of forcing the tactical nearest-neighbor treatment")
+	assert_equal(stored_portrait.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST, "party-picker portraits retain crisp Classic pixels without filtered outlines")
 	assert_equal([stored_row.mouse_filter, stored_portrait.mouse_filter, (stored_row.find_child("Summary", true, false) as Label).mouse_filter], [Control.MOUSE_FILTER_STOP, Control.MOUSE_FILTER_IGNORE, Control.MOUSE_FILTER_IGNORE], "the visible portrait and summary route drag gestures to the draggable Character Files row")
 	var party_portrait := router._party_list.find_child("Portrait", true, false) as TextureRect
 	assert_not_null(party_portrait, "each occupied party position reserves the same portrait surface")

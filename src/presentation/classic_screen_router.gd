@@ -59,6 +59,10 @@ var _portrait_option: OptionButton
 var _combat_icon_option: OptionButton
 var _party_list: VBoxContainer
 var _stored_character_list: VBoxContainer
+var _party_setup_options: HBoxContainer
+var _difficulty_option: OptionButton
+var _monster_set_option: OptionButton
+var _party_guidance_label: Label
 var _create_character_button: Button
 var _setup_message: Label
 var _review_label: Label
@@ -564,7 +568,7 @@ func _build_setup_overlay() -> void:
 	_creator_scroll.follow_focus = true
 	_setup_body.add_child(_creator_scroll)
 	_creator = BoxContainer.new()
-	_creator.custom_minimum_size.y = 250.0
+	_creator.custom_minimum_size.y = 256.0
 	_creator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_creator.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_creator.add_theme_constant_override("separation", 12)
@@ -594,11 +598,13 @@ func _build_setup_overlay() -> void:
 	party_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	party_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	party_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	party_scroll.follow_focus = true
 	_party_list = PartySetupPartyListScript.new()
 	_party_list.name = "PartySlots"
 	_party_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_party_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_party_list.add_theme_constant_override("separation", 3)
 	_party_list.import_requested.connect(_import_stored_character)
 	party_scroll.add_child(_party_list)
 	party_column.add_child(party_scroll)
@@ -606,6 +612,30 @@ func _build_setup_overlay() -> void:
 	_setup_message = _add_label(_setup_body, "Enter a name to begin creating a character.", MUTED)
 	_setup_message.custom_minimum_size.y = 32.0
 	_setup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_party_setup_options = HBoxContainer.new()
+	_party_setup_options.name = "PartySetupOptions"
+	_party_setup_options.add_theme_constant_override("separation", 16)
+	var selectors := HBoxContainer.new()
+	selectors.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	selectors.add_child(_label("Monster Set", GOLD, 13))
+	_monster_set_option = OptionButton.new()
+	_monster_set_option.name = "MonsterSetOption"
+	_monster_set_option.item_selected.connect(_party_setup_option_changed)
+	selectors.add_child(_monster_set_option)
+	selectors.add_child(_label("Difficulty", GOLD, 13))
+	_difficulty_option = OptionButton.new()
+	_difficulty_option.name = "DifficultyOption"
+	for value: int in range(-2, 3):
+		_difficulty_option.add_item(PartySetupView.difficulty_name(value))
+		_difficulty_option.set_item_metadata(_difficulty_option.item_count - 1, value)
+	_difficulty_option.item_selected.connect(_party_setup_option_changed)
+	selectors.add_child(_difficulty_option)
+	_party_setup_options.add_child(selectors)
+	_party_guidance_label = _label("", Color("e0e2e5"), 12)
+	_party_guidance_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_party_guidance_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_party_setup_options.add_child(_party_guidance_label)
+	_setup_body.add_child(_party_setup_options)
 	_creator_action_bar = HBoxContainer.new()
 	_creator_action_bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	_creator_cancel_button = Button.new()
@@ -683,6 +713,7 @@ func _refresh_setup_options() -> void:
 		_setup_campaign_label.text = "Assemble your party"
 		_setup_restriction_label.text = "No campaign metadata is available."
 	_refresh_party_list()
+	_refresh_party_setup_options()
 	var setup_count := _view.party_members.size()
 	_apply_availability(_setup_import_button, &"import_vault_character")
 	_apply_availability(_begin_button, &"begin_adventure")
@@ -697,6 +728,7 @@ func _render_creator_step() -> void:
 		_render_party_assembly()
 		return
 	_create_character_button.visible = false
+	_party_setup_options.visible = false
 	_creator_steps.visible = true
 	_creator_action_bar.visible = true
 	_setup_message.text = _creator_step_message()
@@ -1184,14 +1216,14 @@ func _refresh_party_list() -> void:
 			if slot_index >= _view.party_members.size():
 				var empty := PanelContainer.new()
 				empty.name = "EmptyPartySlot%d" % (slot_index + 1)
-				empty.custom_minimum_size.y = 60.0
+				empty.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
 				empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				var empty_row := HBoxContainer.new()
 				empty_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				empty_row.add_theme_constant_override("separation", 6)
 				empty.add_child(empty_row)
 				var portrait_space := Control.new()
-				portrait_space.custom_minimum_size = Vector2(48.0, 48.0)
+				portrait_space.custom_minimum_size = Vector2(PartySetupCharacterRowScript.PORTRAIT_SIZE, PartySetupCharacterRowScript.PORTRAIT_SIZE)
 				portrait_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				empty_row.add_child(portrait_space)
 				var empty_label := Label.new()
@@ -1202,7 +1234,7 @@ func _refresh_party_list() -> void:
 				empty_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				empty_row.add_child(empty_label)
 				var action_space := Control.new()
-				action_space.custom_minimum_size.x = 62.0
+				action_space.custom_minimum_size.x = 130.0
 				action_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				empty_row.add_child(action_space)
 				_party_list.add_child(empty)
@@ -1210,22 +1242,24 @@ func _refresh_party_list() -> void:
 			var character: CharacterView = _view.party_members[slot_index]
 			var row_panel := PanelContainer.new()
 			row_panel.name = "PartySlot_%s" % character.id.validate_node_name()
-			row_panel.custom_minimum_size.y = 60.0
+			row_panel.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
 			row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 6)
 			row_panel.add_child(row)
 			var portrait_view := TextureRect.new()
 			portrait_view.name = "Portrait"
-			portrait_view.custom_minimum_size = Vector2(48.0, 48.0)
+			portrait_view.custom_minimum_size = Vector2(PartySetupCharacterRowScript.PORTRAIT_SIZE, PartySetupCharacterRowScript.PORTRAIT_SIZE)
 			portrait_view.texture = _appearance_textures.get(character.portrait_id) as Texture2D
+			portrait_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			portrait_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			portrait_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 			portrait_view.tooltip_text = "%s's portrait" % character.name
 			row.add_child(portrait_view)
 			var label := Label.new()
-			label.text = "%d. %s\nLevel %d • %s / %s" % [slot_index + 1, character.name, character.level, character.race_name, character.caste_name]
-			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			label.text = PartySetupCharacterRowScript._summary_text(character.name, character.level, character.race_name, character.caste_name, character, slot_index + 1)
+			label.add_theme_font_size_override("font_size", 10)
+			label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			label.modulate = Color("e0e2e5")
 			row.add_child(label)
@@ -1248,6 +1282,7 @@ func _render_party_assembly() -> void:
 	_create_character_button.tooltip_text = "This party already has %d characters." % _maximum_party_size() if _create_character_button.disabled else "Create a new character for this campaign."
 	_creator_steps.visible = false
 	_creator_action_bar.visible = false
+	_party_setup_options.visible = true
 	_setup_message.text = "Choose from Character Files on the left. Click a character or drag it into an empty party position."
 	_clear(_creator_page)
 	_ensure_appearance_textures()
@@ -1270,6 +1305,7 @@ func _render_party_assembly() -> void:
 	_stored_character_list = VBoxContainer.new()
 	_stored_character_list.name = "StoredCharacterList"
 	_stored_character_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_stored_character_list.add_theme_constant_override("separation", 3)
 	stored_scroll.add_child(_stored_character_list)
 	var current_revisions := _current_vault_revisions()
 	if current_revisions.is_empty():
@@ -1293,6 +1329,37 @@ func _render_party_assembly() -> void:
 		row.configure(revision, revision.eligible and global_available.enabled and _view.party_members.size() < _maximum_party_size(), reason, portrait)
 		row.import_requested.connect(_import_stored_character)
 		_stored_character_list.add_child(row)
+
+
+func _refresh_party_setup_options() -> void:
+	if _view == null or _view.party_setup == null or _difficulty_option == null:
+		return
+	_monster_set_option.clear()
+	for set_id: int in _view.party_setup.available_monster_sets:
+		_monster_set_option.add_item(PartySetupView.monster_set_name(set_id))
+		_monster_set_option.set_item_metadata(_monster_set_option.item_count - 1, set_id)
+	_select_option_metadata(_monster_set_option, _view.party_setup.monster_set)
+	_select_option_metadata(_difficulty_option, _view.party_setup.difficulty)
+	var summary := _view.campaign_summary
+	var maximum := "None" if summary == null or summary.maximum_party_levels <= 0 else str(summary.maximum_party_levels)
+	var recommended := "—" if summary == null or not summary.guidance_authored or summary.recommended_party_levels <= 0 else str(summary.recommended_party_levels)
+	var gained := "—" if _view.party_setup.experience_percent <= 0 else "%d%%" % _view.party_setup.experience_percent
+	_party_guidance_label.text = "Maximum %s  •  Recommended %s  •  Current %d  •  Experience gained at %s" % [maximum, recommended, _view.party_setup.current_party_levels, gained]
+
+
+func _party_setup_option_changed(_index: int) -> void:
+	if _view == null or _view.party_setup == null:
+		return
+	var difficulty := int(_difficulty_option.get_item_metadata(_difficulty_option.selected))
+	var monster_set := int(_monster_set_option.get_item_metadata(_monster_set_option.selected))
+	intent_submitted.emit(PlayerIntent.set_party_setup_options(difficulty, monster_set))
+
+
+static func _select_option_metadata(option: OptionButton, value: int) -> void:
+	for index: int in option.item_count:
+		if int(option.get_item_metadata(index)) == value:
+			option.select(index)
+			return
 
 
 func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:

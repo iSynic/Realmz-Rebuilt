@@ -103,7 +103,7 @@ Current and future work in this tranche follows the risk-tiered delivery policy 
 Delivered so far in this in-progress tranche:
 
 - `ClassicApplicationShell` map-first composition: compact menu strip, dominant map/picture stage, persistent right roster, bottom narrative/status well, and contextual command deck over the existing typed session boundary.
-- Campaign-aware party setup with schema-v2 title/version/author/restriction metadata, Race-left/Class-right filtering, and explicit setup errors.
+- Campaign-aware party setup with schema-v2 title/version/author/restriction metadata, source-authored aggregate level guidance, five Difficulty choices, three complete Monster Sets, core-computed experience ratio, six always-visible party slots, Race-left/Class-right filtering, and explicit setup errors.
 - Character creator with five separately mounted stages, session-owned generated Review state, reroll/cancel without RNG rollback, typed first-twelve-slot starting-spell selection, saveable unused-point confirmation, finalization without a second roll, and complete package-backed portrait/tactical selection with race recommendations.
 - Immutable `.r2char` character vault records/repository, explicit import intent, transactional persistence, complete revision history, exact target-package eligibility, confirmed archive, and exact revision recovery.
 - Providence schema v2 exporter plus byte-identical runtime mirror and regenerated synthetic fixtures.

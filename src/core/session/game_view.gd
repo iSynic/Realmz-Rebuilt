@@ -26,6 +26,7 @@ var caste_options: Array[DefinitionOptionView] = []
 var portrait_options: Array[CharacterAppearanceOptionView] = []
 var combat_icon_options: Array[CharacterAppearanceOptionView] = []
 var campaign_summary: CampaignSummaryView
+var party_setup: PartySetupView
 var party_summary: PartySummaryView
 var journal_entries: Array[JournalEntryView] = []
 var acquired_player_maps: Array[PlayerMapView] = []

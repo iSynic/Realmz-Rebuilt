@@ -98,6 +98,7 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	character.judgment = 16
 	character.vitality = 15
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
+	state.experience_multiplier = 2.5
 	var rng := RealmzRng.new(23)
 	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new(), RealmzRules.new())
 	var instructions: Array[ClassicActionDefinition] = [ClassicActionDefinition.new(0, 11, 11, 10_000, false, [])]
@@ -107,10 +108,10 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	vm.configure(definition)
 	assert_equal(vm.start_program(program.id, {"callingContext": "action"}).state, ScenarioVmResult.State.COMPLETED, "experience fixture starts through the ordinary VM")
 	var treasure_stage := vm.run(api)
-	assert_equal([treasure_stage.state, treasure_stage.interaction.kind, treasure_stage.interaction.payload["experienceShare"]], [ScenarioVmResult.State.WAITING, InteractionRequest.TREASURE_DISTRIBUTION, 10_000], "experience is awarded once before the empty treasure stage")
+	assert_equal([treasure_stage.state, treasure_stage.interaction.kind, treasure_stage.interaction.payload["experienceShare"]], [ScenarioVmResult.State.WAITING, InteractionRequest.TREASURE_DISTRIBUTION, 25_000], "experience is awarded once with the selected party's Classic 250 percent setup multiplier before the empty treasure stage")
 	var level_stage := vm.resume(InteractionResponse.new(treasure_stage.interaction.request_id, treasure_stage.interaction.kind, {"action": "done"}), api)
 	assert_equal([level_stage.state, level_stage.interaction.kind, level_stage.interaction.payload["mode"], character.level], [ScenarioVmResult.State.WAITING, InteractionRequest.LEVEL_UP, "result", 2], "positive residual experience produces one staged source-backed level result")
-	assert_equal(character.experience, 6_499, "one reward close subtracts one threshold and retains positive residual experience without auto-looping")
+	assert_equal(character.experience, 21_499, "one reward close subtracts one threshold and retains positive scaled residual experience without auto-looping")
 	var saved_vm := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(vm.snapshot().to_data())))
 	var saved_game := GameState.from_data(state.to_data())
 	var saved_rng := rng.snapshot()
@@ -130,7 +131,7 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	assert_not_null(spell_boundary, "the spell-selection stage is independently serializable")
 	var completed := restored_vm.resume(InteractionResponse.new(spell_stage.interaction.request_id, InteractionRequest.LEVEL_UP, {"action": "confirm-spells", "characterId": character.id, "spellIds": []}), restored_api)
 	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "confirmed spell selection resumes and completes the issuing VM exactly once")
-	assert_equal([saved_game.party.character_by_id(character.id).level, saved_game.party.character_by_id(character.id).experience], [2, 6_499], "the source-limited one-level result survives the complete continuation")
+	assert_equal([saved_game.party.character_by_id(character.id).level, saved_game.party.character_by_id(character.id).experience], [2, 21_499], "the source-limited one-level result survives the complete continuation")
 
 
 func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
