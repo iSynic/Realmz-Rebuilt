@@ -14,6 +14,7 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 	revision_hash = revision.revision_hash
 	import_enabled = enabled
 	custom_minimum_size.y = 60.0
+	mouse_default_cursor_shape = Control.CURSOR_DRAG if enabled else Control.CURSOR_FORBIDDEN
 	tooltip_text = "Add %s to the party. You can also drag this character into an empty party position." % revision.name if enabled else reason
 	var race_name := revision.race_id.replace("_", " ").replace("-", " ").capitalize()
 	var caste_name := revision.caste_id.replace("_", " ").replace("-", " ").capitalize()
@@ -22,6 +23,7 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 		caste_name = revision.character.caste_name
 	_drag_label = revision.name
 	var row := HBoxContainer.new()
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 6)
 	add_child(row)
 	var portrait_view := TextureRect.new()
@@ -31,12 +33,14 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 	portrait_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait_view.tooltip_text = "%s's portrait" % revision.name
+	portrait_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(portrait_view)
 	var summary := Label.new()
 	summary.name = "Summary"
 	summary.text = "%s\nLevel %d • %s / %s" % [revision.name, revision.level, race_name, caste_name]
 	summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(summary)
 	var add_button := Button.new()
 	add_button.name = "AddCharacter"
@@ -50,12 +54,20 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 func _get_drag_data(_position: Vector2) -> Variant:
 	if not import_enabled:
 		return null
-	var preview := Label.new()
-	preview.text = "Add • %s" % _drag_label
-	preview.modulate = Color("d5b45d")
-	set_drag_preview(preview)
+	set_drag_preview(_drag_preview())
+	return drag_payload()
+
+
+func drag_payload() -> Dictionary:
 	return {
 		"kind": "party-setup-character",
 		"characterId": character_id,
 		"revisionHash": revision_hash,
 	}
+
+
+func _drag_preview() -> Control:
+	var preview := Label.new()
+	preview.text = "Add • %s" % _drag_label
+	preview.modulate = Color("d5b45d")
+	return preview

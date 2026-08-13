@@ -1397,6 +1397,7 @@ func _test_character_creator_workflow() -> void:
 	assert_not_null(stored_portrait, "each Character Files row exposes the stored character's portrait surface")
 	assert_equal(stored_portrait.texture, icon_texture, "Character Files uses the in-game portrait rather than a tactical CICN or placeholder")
 	assert_equal(stored_portrait.texture_filter, CanvasItem.TEXTURE_FILTER_PARENT_NODE, "party-picker portraits inherit ordinary UI filtering instead of forcing the tactical nearest-neighbor treatment")
+	assert_equal([stored_row.mouse_filter, stored_portrait.mouse_filter, (stored_row.find_child("Summary", true, false) as Label).mouse_filter], [Control.MOUSE_FILTER_STOP, Control.MOUSE_FILTER_IGNORE, Control.MOUSE_FILTER_IGNORE], "the visible portrait and summary route drag gestures to the draggable Character Files row")
 	var party_portrait := router._party_list.find_child("Portrait", true, false) as TextureRect
 	assert_not_null(party_portrait, "each occupied party position reserves the same portrait surface")
 	assert_equal(party_portrait.texture, icon_texture, "the assembled party repeats the exact character portrait for visual matching")
@@ -1410,6 +1411,7 @@ func _test_character_creator_workflow() -> void:
 	add_stored.pressed.emit()
 	assert_equal([intents[-1].kind, intents[-1].target_id, intents[-1].revision_hash], [PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id, stored.revision_hash], "click Add submits the stable stored-character revision through the existing typed intent")
 	var intent_count_before_drop := intents.size()
+	assert_true(router._party_list._can_drop_data(Vector2.ZERO, stored_row.drag_payload()), "the real draggable row payload is accepted by the complete party-list drop surface")
 	router._party_list._drop_data(Vector2.ZERO, {"kind": "party-setup-character", "characterId": stored.character_id, "revisionHash": stored.revision_hash})
 	assert_equal([intents.size(), intents[-1].kind, intents[-1].target_id], [intent_count_before_drop + 1, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id], "dragging onto the party list is a pointer convenience over the same typed import path")
 	var inspect_setup := router._party_list.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Inspect")[0] as Button

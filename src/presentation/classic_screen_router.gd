@@ -1185,20 +1185,25 @@ func _refresh_party_list() -> void:
 				var empty := PanelContainer.new()
 				empty.name = "EmptyPartySlot%d" % (slot_index + 1)
 				empty.custom_minimum_size.y = 60.0
+				empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				var empty_row := HBoxContainer.new()
+				empty_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				empty_row.add_theme_constant_override("separation", 6)
 				empty.add_child(empty_row)
 				var portrait_space := Control.new()
 				portrait_space.custom_minimum_size = Vector2(48.0, 48.0)
+				portrait_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				empty_row.add_child(portrait_space)
 				var empty_label := Label.new()
 				empty_label.text = "%d. Empty position" % (slot_index + 1)
 				empty_label.modulate = MUTED
 				empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 				empty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				empty_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				empty_row.add_child(empty_label)
 				var action_space := Control.new()
 				action_space.custom_minimum_size.x = 62.0
+				action_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				empty_row.add_child(action_space)
 				_party_list.add_child(empty)
 				continue
