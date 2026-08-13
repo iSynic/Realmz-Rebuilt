@@ -13,18 +13,17 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Ordinary AOGM exploration and services certification** (`aogm-exploration-services-certification`)
+**Final ordinary AOGM service lifecycle certification** (`aogm-service-lifecycle-certification`)
 
-The combat feedback and command-parity tranche is complete. Return to application-facing ordinary play: certify Camp/Rest, Pool/Share, denomination Swap, and contextual service entry through AOGM without reopening settled combat internals.
+Close the remaining ordinary AOGM Shop and Temple lifecycle gaps together with charged-item Trade, then leave services for the lower-priority native empty-slot parity queue unless live play exposes a genuine defect.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.exploration.camp-rest` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.services.pool-share` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.services.swap` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.exploration.contextual-service` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.services.temple` | certification | aogm-certification | aogm-ordinary | GAP-SVC-004 |
+| `classic.services.shop` | implementation | aogm-certification | — | GAP-SVC-003 |
+| `classic.inventory.trade-item` | certification | aogm-certification | aogm-ordinary | GAP-INV-004 |
 
 ### Batch count delta
 
