@@ -4737,10 +4737,10 @@
         "classic.combat.undo"
       ],
       "domain": "combat",
-      "claim": "Castle Undo records an activation-start position and uses canundo to restore that position while subtracting the current attack allocation and re-entering turn selection; broader state and intended behavior require a controlled fixture.",
+      "claim": "Castle Undo is a narrow activation restart: it restores the recorded start cell, adjusts the current attack allocation, and re-enters getup without restoring health, spell points, items, conditions, target selection, or RNG.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
-        "behavior": "Remake command concepts are donor leads only; direct global dispatch is not Classic authority.",
+        "behavior": "The pinned functional Remake checkpoint has no owned Undo implementation or regression test.",
         "sources": [],
         "tests": []
       },
@@ -4764,34 +4764,49 @@
           "initiative cursor",
           "position and field occupancy"
         ],
-        "observation": "Castle records only undox and undoy at getup, then Undo subtracts normal and bonus attacks, restores the recorded cell, decrements up, and calls getup. RNG, conditions, target selection, sound/effect state, and generic rollback are not established; fixture evidence is required."
+        "observation": "getup records undox and undoy for the active party actor. Undo checks canundo and condition gates, requests sound 664, subtracts normattacks plus attackbonus, restores the recorded cell, decrements the initiative cursor, and calls getup(FALSE), which recalculates movement and attacks and normally requests sound 138. Attacks and showresults clear canundo. The destination write has no occupancy check. Repeated Undo and queue-edge re-entry remain runtime-unobserved."
       },
       "providence": {
         "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
         "sources": [],
-        "expectedRepresentation": "No package schema change is required for this unresolved command contract."
+        "expectedRepresentation": "No package data is required; Undo is volatile, save-owned combat state."
       },
       "realmz2": {
         "owner": {
-          "path": "src/presentation/interaction_components/battle_interaction.gd",
-          "symbol": "class_name BattleInteraction"
+          "path": "src/core/rules/combat_flow.gd",
+          "symbol": "func probe_undo"
         },
         "expectedTrace": [
-          "build a controlled Castle fixture",
-          "record only proven activation-start fields",
-          "reject generic rollback semantics",
-          "serialize bounded continuation after adjudication"
+          "capture actor, start cell, round, and turn index when a loyal character activation begins",
+          "retain Undo across result-free movement and save restoration",
+          "invalidate Undo after attacks, spell or item results, reactions, or turn advancement",
+          "restore the empty activation-start cell and recalculate only the source-proven turn allowance",
+          "present sounds 664 and ordinary reactivation 138 before reverse-step playback",
+          "leave repeated and initiative-edge behavior unavailable to further expansion pending a runtime fixture"
         ],
         "tests": [
           {
+            "path": "tests/core/test_combat_flow.gd",
+            "symbol": "func _test_bounded_classic_undo_and_restore()"
+          },
+          {
             "path": "tests/presentation/test_classic_ui_system.gd",
             "symbol": "func _test_battle_weapon_mode_component()"
+          },
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_combat_playback_controller()"
           }
         ]
       },
-      "decision": "unresolved",
-      "availability": "disabled",
-      "status": "fixture-required-before-implementation"
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "source-backed-bounded-implemented",
+      "fidelityDecision": {
+        "id": "FD-COMBAT-014",
+        "fixturePath": "tests/fixtures/oracle/combat-undo-occupied-cell-correction.json",
+        "fixtureSha256": "6df28c67ad570d0e64b6fdb39ec123de32413a7fd62840101b30052a586ae80f"
+      }
     }
   ]
 }

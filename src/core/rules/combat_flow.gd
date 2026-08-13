@@ -215,11 +215,14 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 				return CombatFlowResult.failed(&"missing_battlefield", "Melee requires the session-owned Classic battlefield.")
 			if not _rules.battlefield.are_adjacent(combat.battlefield, actor.id, target_id):
 				return CombatFlowResult.failed(&"combat_target_not_adjacent", "Classic melee can target only an enemy in an adjacent battlefield footprint.")
-			_prepare_character_turn(combat, actor)
 			var monster_target := combat.monster_by_id(target_id)
 			if monster_target != null and monster_target.current_health > 0 and monster_target.traitor != actor.traitor:
-				combat.active_turn.physical_action_committed = true
 				var definition := content.monster_by_id(monster_target.definition_id)
+				if definition == null:
+					return CombatFlowResult.failed(&"unknown_monster_definition", "The selected monster has no immutable definition.")
+				_prepare_character_turn(combat, actor)
+				combat.invalidate_undo()
+				combat.active_turn.physical_action_committed = true
 				var resolution := _rules.combat.resolve_character_attack(actor, equipment, monster_target, definition, rng, state.clock.day(), false, true, combat.can_queue_fumbled_item())
 				if resolution.total_damage() > 0:
 					combat.mark_attacked(monster_target.id)
@@ -233,10 +236,12 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 				var character_target := state.party.character_by_id(target_id)
 				if character_target == null or character_target.id == actor.id or character_target.current_health <= 0 or character_target.traitor == actor.traitor:
 					return CombatFlowResult.failed(&"invalid_combat_target", "The selected combatant is unavailable to this allegiance.")
-				combat.active_turn.physical_action_committed = true
 				var target_equipment := _rules.inventory.combat_equipment(character_target, content.item_definitions())
 				if not target_equipment.valid:
 					return CombatFlowResult.failed(target_equipment.error_code, target_equipment.error_message)
+				_prepare_character_turn(combat, actor)
+				combat.invalidate_undo()
+				combat.active_turn.physical_action_committed = true
 				var resolution := _rules.combat.resolve_character_attack_character(actor, equipment, character_target, target_equipment, rng, false, true, combat.can_queue_fumbled_item())
 				if resolution.total_damage() > 0:
 					combat.mark_attacked(character_target.id)
@@ -304,6 +309,22 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 			events.append_array(turn_result.events)
 			if not combat.pending_spell_death_macro_id().is_empty():
 				return CombatFlowResult.succeeded(events)
+		&"undo":
+			var undo_probe := probe_undo(state, actor.id)
+			if not undo_probe.allowed:
+				return CombatFlowResult.failed(&"combat_undo_unavailable", undo_probe.reason_text)
+			var from_position := combat.battlefield.actor_position(actor.id)
+			var start_position := combat.undo_state.start_position
+			if from_position != start_position and not combat.battlefield.move_actor(actor.id, start_position):
+				return CombatFlowResult.failed(&"combat_undo_position_blocked", "The activation-start position is no longer available.")
+			actor.attacks_remaining = _rules.arithmetic.signed_16(actor.attacks_remaining - actor.normal_attacks - actor.attack_bonus)
+			combat.restart_active_turn_after_undo()
+			_prepare_character_turn(combat, actor)
+			combat.invalidate_undo()
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 664, "waitForCompletion": false, "source": "classic-combat-undo"}))
+			if not actor.conditions.is_active(ConditionRules.ANIMATED):
+				events.append(DomainEvent.new(&"sound_requested", {"soundId": 138, "waitForCompletion": false, "source": "classic-combat-activation"}))
+			events.append(DomainEvent.new(&"combat_turn_undone", {"actorId": actor.id, "from": [from_position.x, from_position.y], "to": [start_position.x, start_position.y], "attacksRemaining": actor.attacks_remaining, "movementRemaining": actor.movement, "source": "classic"}))
 		&"auto":
 			var auto_state_checkpoint := state.to_data()
 			var auto_rng_checkpoint := rng.checkpoint()
@@ -344,6 +365,26 @@ func probe_delay(state: GameState, actor_id: String) -> CombatCommandProbeType:
 		return CombatCommandProbeType.new(false, "Only the active loyal character can Delay.")
 	if not _is_fresh_character_activation(combat, actor):
 		return CombatCommandProbeType.new(false, "Delay is available only before moving, attacking, or casting this activation.")
+	return CombatCommandProbeType.new(true)
+
+
+func probe_undo(state: GameState, actor_id: String) -> CombatCommandProbeType:
+	var actor := state.party.character_by_id(actor_id) if state != null else null
+	var combat := state.combat if state != null else null
+	if actor == null or combat == null or combat.completed or combat.active_actor_id() != actor_id or actor.current_health <= 0:
+		return CombatCommandProbeType.new(false, "Only the active living character can Undo.")
+	if actor.traitor or actor.conditions.is_active(ConditionRules.HELPLESS) or actor.conditions.is_active(ConditionRules.CONFUSED):
+		return CombatCommandProbeType.new(false, "This character's current combat state prevents Undo.")
+	if combat.pending_reaction != null or combat.pending_monster_attack != null:
+		return CombatCommandProbeType.new(false, "Resolve the current combat result before using Undo.")
+	var undo := combat.undo_state
+	if combat.active_turn == null or undo == null or not undo.available or undo.actor_id != actor_id or undo.round_number != combat.round_number or undo.turn_index != combat.turn_index:
+		return CombatCommandProbeType.new(false, "Undo is unavailable after a combat result.")
+	if combat.battlefield == null or not combat.battlefield.has_actor(actor_id):
+		return CombatCommandProbeType.new(false, "The active character has no battlefield position to restore.")
+	var occupant := combat.battlefield.actor_at(undo.start_position, actor_id)
+	if not occupant.is_empty():
+		return CombatCommandProbeType.new(false, "The activation-start position is occupied.")
 	return CombatCommandProbeType.new(true)
 
 
@@ -408,6 +449,7 @@ func _turn_undead(state: GameState, content: RealmzContent, actor: CharacterStat
 	if not probe.allowed:
 		return CombatFlowResult.failed(&"combat_turn_undead_unavailable", probe.reason_text)
 	var combat := state.combat
+	combat.invalidate_undo()
 	var target_ids := turn_undead_target_ids(state, content)
 	var macro_count := 0
 	for target_id: String in target_ids:
@@ -916,6 +958,7 @@ func _resolve_reaction_attack(state: GameState, content: RealmzContent, attacker
 
 func _resolve_character_reaction(state: GameState, content: RealmzContent, attacker: CharacterState, target_id: String, action: StringName, behind: bool, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
+	combat.invalidate_undo()
 	var equipment := _rules.inventory.combat_equipment(attacker, content.item_definitions())
 	if not equipment.valid:
 		events.append(DomainEvent.new(&"combat_reaction_failed", {"actorId": attacker.id, "targetId": target_id, "reason": String(equipment.error_code)}))
@@ -964,6 +1007,7 @@ func _resolve_character_reaction(state: GameState, content: RealmzContent, attac
 
 func _resolve_monster_reaction(state: GameState, content: RealmzContent, attacker: MonsterState, target_id: String, action: StringName, behind: bool, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
+	combat.invalidate_undo()
 	var definition := content.monster_by_id(attacker.definition_id)
 	if definition == null:
 		return REACTION_COMPLETED
@@ -1172,8 +1216,9 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 	var power_level := absi(item.special_1)
 	if not _rules.inventory.use_charge(caster, instance.id, item):
 		return CombatFlowResult.failed(&"item_charge_commit_failed", "The validated item charge could not be committed.")
-	var cast_level := spell.classic_tier()
 	_prepare_character_turn(state.combat, caster)
+	state.combat.invalidate_undo()
+	var cast_level := spell.classic_tier()
 	var result: CombatFlowResult
 	if spell.target_type in [9, 10, 12]:
 		var character_targets: Array[CharacterState] = []
@@ -1297,8 +1342,11 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 	if spell.target_type in [3, 4]:
 		if target_coordinate == INVALID_COORDINATE:
 			return CombatFlowResult.failed(&"area_target_required", "A fixed or power area spell requires a battlefield coordinate.")
+		_prepare_character_turn(combat, caster)
+		combat.invalidate_undo()
 		return _cast_character_area_spell(state, content, caster, spell, power_level, cast_level, rng, target_coordinate, rotation)
 	_prepare_character_turn(combat, caster)
+	combat.invalidate_undo()
 	if spell.target_type in [9, 10, 12]:
 		return _cast_character_group_spell(state, content, caster, spell, power_level, cast_level, rng)
 	if spell.target_type == 0:
@@ -1308,7 +1356,6 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 			if repeated_selection == null:
 				return CombatFlowResult.failed(&"spell_target_unavailable", "A selected repeated-spell target is unavailable.")
 			selections.append(repeated_selection)
-		_prepare_character_turn(combat, caster)
 		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng)
 		if repeated == null or not repeated.cast:
 			return CombatFlowResult.failed(&"spell_cast_failed", "The repeated-target spell could not be cast with the available spell points.")
@@ -1973,6 +2020,7 @@ func _fire_character_projectile(state: GameState, content: RealmzContent, actor:
 	_prepare_character_turn(combat, actor)
 	if not _rules.inventory.use_charge(actor, profile.item_instance_id, profile.item):
 		return CombatFlowResult.failed(&"projectile_charge_unavailable", "The selected projectile charge could not be consumed atomically.")
+	combat.invalidate_undo()
 	var resolution := _rules.magic.resolve_character_projectile(actor, caste, profile.item, target, profile.spell, profile.power_level, rng)
 	if resolution == null:
 		return CombatFlowResult.failed(&"unsupported_projectile_spell", "The selected projectile cannot be resolved by the source-backed missile rules.")
@@ -2023,6 +2071,7 @@ func _prepare_character_turn(combat: CombatState, character: CharacterState) -> 
 	if combat.active_turn != null:
 		return
 	combat.begin_active_turn()
+	combat.begin_character_undo(character.id)
 	character.movement = character.maximum_movement
 	var carried_half_attack := 1 if character.attacks_remaining > 0 else 0
 	var haste_half_attacks := 4 if character.conditions.is_active(ConditionRules.SPEEDY) else 0

@@ -31,6 +31,7 @@ const PLAYBACK_EVENT_KINDS: Array[StringName] = [
 	&"combat_bleeding_warning",
 	&"combatant_bled_to_death",
 	&"combat_turn_delayed",
+	&"combat_turn_undone",
 	&"combatant_fumbled",
 	&"combat_attack_blocked",
 	&"combatant_retreated",
@@ -199,6 +200,8 @@ func _build_frames(events: Array[DomainEvent]) -> void:
 				_append_bleeding_result(event, positions, hidden, true)
 			&"combat_turn_delayed":
 				_append_simple_result(event, positions, hidden, &"delay", "Delayed")
+			&"combat_turn_undone":
+				_append_movement(event, positions, hidden)
 			&"combatant_fumbled":
 				_append_simple_result(event, positions, hidden, &"fumble", "Fumble")
 			&"combat_attack_blocked":

@@ -20,6 +20,7 @@ func run() -> void:
 	_test_lifecycle_interaction()
 	_test_classic_choice_context()
 	_test_battle_weapon_mode_component()
+	_test_battle_typed_option_contracts()
 	_test_shop_component()
 	_test_temple_component()
 	_test_bank_component()
@@ -350,11 +351,12 @@ func _test_battle_weapon_mode_component() -> void:
 			assert_true(matching_buttons[0].disabled and not matching_buttons[0].tooltip_text.is_empty(), "%s exposes an explicit typed-workflow gap instead of a fake mutation" % unavailable_label)
 	var command_request := InteractionRequest.new("battle.command-parity", &"combat_action", {
 		"actorId": "character.priest",
-		"actions": ["finish", "defend", "auto", "delay", "bandage", "turn_undead"],
+		"actions": ["finish", "defend", "auto", "delay", "bandage", "turn_undead", "undo"],
 		"autoTurn": {"enabled": true, "reason": ""},
 		"delay": {"enabled": true, "reason": ""},
 		"bandage": {"enabled": true, "reason": "", "targets": [{"id": "character.bleeding", "name": "Bleeding Hero", "currentHealth": -2, "maximumHealth": 20}]},
 		"turnUndead": {"enabled": true, "reason": "", "targets": [{"id": "monster.undead", "name": "Undead", "hitDice": 3, "magicResistance": 10}]},
+		"undo": {"enabled": true, "reason": ""},
 	})
 	var command_component := BattleInteraction.new()
 	var command_payloads: Array[Dictionary] = []
@@ -367,10 +369,12 @@ func _test_battle_weapon_mode_component() -> void:
 	var delay_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Delay")[0] as Button
 	var bandage_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Bandage")[0] as Button
 	var turn_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Turn Undead (1)")[0] as Button
-	assert_equal([auto_button.disabled, delay_button.disabled, bandage_button.disabled, turn_button.disabled], [false, false, false, false], "typed combat command availability enables Auto, Delay, Bandage, and Turn Undead without presenter-side rules")
+	var undo_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Undo")[0] as Button
+	assert_equal([auto_button.disabled, delay_button.disabled, bandage_button.disabled, turn_button.disabled, undo_button.disabled], [false, false, false, false, false], "typed combat command availability enables Auto, Delay, Bandage, Turn Undead, and Undo without presenter-side rules")
 	auto_button.pressed.emit()
 	delay_button.pressed.emit()
 	turn_button.pressed.emit()
+	undo_button.pressed.emit()
 	bandage_button.pressed.emit()
 	var bandage_submit := command_buttons.filter(func(button: Button) -> bool: return button.text == "Bandage selected character")[0] as Button
 	bandage_submit.pressed.emit()
@@ -378,6 +382,7 @@ func _test_battle_weapon_mode_component() -> void:
 		{"actorId": "character.priest", "action": "auto", "targetId": ""},
 		{"actorId": "character.priest", "action": "delay", "targetId": ""},
 		{"actorId": "character.priest", "action": "turn_undead", "targetId": ""},
+		{"actorId": "character.priest", "action": "undo", "targetId": ""},
 		{"actorId": "character.priest", "action": "bandage", "targetId": "character.bleeding"},
 	], "the command deck returns only typed command and stable recipient identity payloads")
 	command_component.free()
@@ -449,6 +454,62 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_false(melee_buttons.any(func(button: Button) -> bool: return button.text == "Attack E"), "collision melee remains on the tactical board rather than reappearing as a directional command button")
 	assert_equal(melee_submitted, [], "building the spatial melee command surface does not mutate combat")
 	melee_component.free()
+
+
+func _test_battle_typed_option_contracts() -> void:
+	var unavailable_request := InteractionRequest.new("battle.typed-unavailable", InteractionRequest.COMBAT, {
+		"actorId": "character.caster",
+		"actions": ["cast_spell", "use_item"],
+		"spellCasts": [],
+		"itemCasts": [],
+		"spellCastReason": "No legal Classic combat spell is available.",
+		"itemCastReason": "No carried item has a supported Classic combat use.",
+	})
+	var unavailable_component := BattleInteraction.new()
+	unavailable_component.build(unavailable_request)
+	var unavailable_buttons: Array[Button] = []
+	for child: Node in unavailable_component.find_children("*", "Button", true, false):
+		unavailable_buttons.append(child as Button)
+	var unavailable_spell := unavailable_buttons.filter(func(button: Button) -> bool: return button.text == "Spells")[0] as Button
+	var unavailable_item := unavailable_buttons.filter(func(button: Button) -> bool: return button.text == "Items")[0] as Button
+	assert_equal([unavailable_spell.disabled, unavailable_item.disabled], [true, true], "typed combat spell and item workflows remain disabled when the core supplies no legal options")
+	assert_equal([unavailable_spell.tooltip_text, unavailable_item.tooltip_text], ["No legal Classic combat spell is available.", "No carried item has a supported Classic combat use."], "disabled combat spell and item workflows expose the exact core-owned reasons")
+	unavailable_component.free()
+
+	var option_request := InteractionRequest.new("battle.typed-options", InteractionRequest.COMBAT, {
+		"actorId": "character.caster",
+		"actions": ["cast_spell", "use_item"],
+		"spellCasts": [
+			{"spellId": "spell.arc", "spellName": "Arc", "power": 2, "cost": 4, "targetId": "target.second", "targetName": "Second", "targetCurrentHealth": 7, "targetMaximumHealth": 7, "targetMode": "combatant"},
+			{"spellId": "spell.arc", "spellName": "Arc", "power": 2, "cost": 4, "targetId": "target.first", "targetName": "First", "targetCurrentHealth": 6, "targetMaximumHealth": 6, "targetMode": "combatant"},
+		],
+		"itemCasts": [
+			{"itemInstanceId": "item.wand.instance", "itemId": "item.wand", "itemName": "Runed Wand", "charges": 2, "spellId": "spell.arc", "spellName": "Arc", "power": 2, "targetId": "target.second", "targetName": "Second", "targetCurrentHealth": 7, "targetMaximumHealth": 7, "targetMode": "combatant"},
+			{"itemInstanceId": "item.wand.instance", "itemId": "item.wand", "itemName": "Runed Wand", "charges": 2, "spellId": "spell.arc", "spellName": "Arc", "power": 2, "targetId": "target.first", "targetName": "First", "targetCurrentHealth": 6, "targetMaximumHealth": 6, "targetMode": "combatant"},
+		],
+	})
+	var option_component := BattleInteraction.new()
+	var presentation_actions: Array[Array] = []
+	option_component.presentation_action_requested.connect(func(action: StringName, payload: Dictionary) -> void: presentation_actions.append([action, payload]))
+	option_component.build(option_request)
+	var option_buttons: Array[Button] = []
+	for child: Node in option_component.find_children("*", "Button", true, false):
+		option_buttons.append(child as Button)
+	var spell_mode := option_buttons.filter(func(button: Button) -> bool: return button.text == "Spells")[0] as Button
+	var item_mode := option_buttons.filter(func(button: Button) -> bool: return button.text == "Items")[0] as Button
+	spell_mode.pressed.emit()
+	var spell_picker := option_component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() is VBoxContainer)[0] as OptionButton
+	var cast_button := spell_picker.get_parent().find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Choose spell target on battlefield")[0] as Button
+	cast_button.pressed.emit()
+	var spell_configuration: Dictionary = presentation_actions[-1][1]
+	assert_equal([presentation_actions[-1][0], spell_configuration.get("candidateIds")], [&"begin_battlefield_targeting", ["target.second", "target.first"]], "combat spell targeting preserves the typed legal target IDs and their supplied order")
+	item_mode.pressed.emit()
+	var item_picker := option_component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() is HBoxContainer)[0] as OptionButton
+	var use_item_button := item_picker.get_parent().find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Use selected item")[0] as Button
+	use_item_button.pressed.emit()
+	var item_configuration: Dictionary = presentation_actions[-1][1]
+	assert_equal([item_configuration.get("candidateIds"), item_configuration.get("responsePayload", {}).get("itemInstanceId")], [["target.second", "target.first"], "item.wand.instance"], "combat item targeting preserves the typed legal target IDs and selected stable item instance")
+	option_component.free()
 
 
 func _test_shop_component() -> void:
@@ -1186,6 +1247,19 @@ func _test_combat_playback_controller() -> void:
 	assert_equal(synchronous_frames, [&"sound"], "a blocking synchronous sound prevents the next visual frame from becoming visible")
 	synchronous.advance(1.0, false)
 	assert_equal(synchronous_frames, [&"sound", &"melee_attack"], "visual playback resumes only after the synchronous sound completes")
+
+	var undo_controller := CombatPlaybackController.new()
+	var undo_frames: Array[CombatPlaybackFrame] = []
+	undo_controller.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
+		if frame.progress == 0.0:
+			undo_frames.append(frame)
+	)
+	assert_true(undo_controller.begin(final, [DomainEvent.new(&"combat_turn_undone", {"actorId": "hero", "from": [46, 45], "to": [45, 45]})], previous, false), "Undo uses the same presentation-only movement playback boundary")
+	while undo_controller.is_active():
+		undo_controller.advance(1.0, false)
+	var undo_move_frames := undo_frames.filter(func(frame: CombatPlaybackFrame) -> bool: return frame.kind in [&"move_start", &"move_end"])
+	assert_equal(undo_move_frames.map(func(frame: CombatPlaybackFrame) -> StringName: return frame.kind), [&"move_start", &"move_end"], "Undo presents one reverse battlefield step without advancing simulation")
+	assert_equal([undo_move_frames[0].from_coordinate, undo_move_frames[0].to_coordinate], [Vector2i(46, 45), Vector2i(45, 45)], "Undo playback preserves the detached source and destination coordinates")
 
 
 func _combat_playback_view(monster_health: int, hero_position: Vector2i, monster_position: Vector2i, outcome: StringName) -> GameView:

@@ -6,34 +6,33 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 66 | 3 | 16 | 46 | 1 |
+| classic | 66 | 2 | 17 | 46 | 1 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**AOGM Auto and source-backed turn commands** (`aogm-combat-turn-commands`)
+**Classic remaining combat command parity** (`classic-combat-command-parity`)
 
-The completed feedback batch established ordered playback and board targeting. This high-risk follow-on closes the five source-defined Auto, Delay, Bandage, and Turn Undead workflows together, then seeks ordinary AOGM evidence for their integrated command deck, saved state, and mandatory-stop behavior before scheduling Undo and combat-scroll parity.
+The source-backed Auto, Delay, Bandage, and Turn Undead workflow batch is complete. This follow-on implements bounded Undo while retaining explicit fixture-required edge cases, then wires combat scroll use and character fast-spell shortcuts before adjudicating Auto Weapon Switch.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.combat.auto-turn` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.combat.auto-character` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.combat.delay` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.combat.bandage` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.combat.turn-undead` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.combat.undo` | implementation | broader-parity | — | GAP-COMBAT-014 |
+| `classic.inventory.use-item` | implementation | aogm-major-partial | — | GAP-INV-003 |
+| `classic.exploration.fast-spell` | implementation | broader-parity | — | GAP-EXP-003 |
+| `classic.combat.weapon-mode` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
-| classic | missing | 8 | 3 | -5 |
-| classic | partial | 16 | 16 | 0 |
-| classic | functional | 41 | 46 | +5 |
+| classic | missing | 3 | 2 | -1 |
+| classic | partial | 16 | 17 | +1 |
+| classic | functional | 46 | 46 | 0 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -51,7 +50,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Inventory and equipment | 7 | 0 | 3 | 4 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
-| Combat | 14 | 1 | 2 | 10 | 1 |
+| Combat | 14 | 0 | 3 | 10 | 1 |
 | Rewards and progression | 5 | 0 | 1 | 4 | 0 |
 | Maps and journal | 3 | 0 | 2 | 1 | 0 |
 | Save and system | 4 | 0 | 2 | 2 | 0 |
@@ -63,13 +62,13 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 10 |
-| required | 10 |
-| completed | 46 |
+| required | 11 |
+| completed | 45 |
 
 | Remake | Count |
 | --- | ---: |
-| absent | 5 |
-| partial | 36 |
+| absent | 6 |
+| partial | 35 |
 | implemented | 14 |
 | divergent | 11 |
 | not-applicable | 0 |
@@ -84,22 +83,22 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | simulation | Count |
 | --- | ---: |
 | not-applicable | 2 |
-| absent | 2 |
-| partial | 11 |
+| absent | 1 |
+| partial | 12 |
 | complete | 51 |
 
 | persistence | Count |
 | --- | ---: |
 | not-applicable | 6 |
-| absent | 2 |
+| absent | 1 |
 | partial | 1 |
-| verified | 57 |
+| verified | 58 |
 
 | presentation | Count |
 | --- | ---: |
 | absent | 2 |
-| fixture-shell | 1 |
-| functional | 62 |
+| fixture-shell | 0 |
+| functional | 63 |
 | accepted | 1 |
 
 ### Host
@@ -151,7 +150,7 @@ Blockers: **1**. Major gaps: **20**.
 - **major** `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
 - **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Characterize the suspicious mode-5 incidental/RNG branches and mode-10 restart field with controlled Castle fixtures, then implement each distinct runtime continuation without changing schema v2 unless the fixture disproves positional preservation.
-- **major** `classic.combat.undo` — This Classic combat command is source-defined but has no typed Realmz Rebuilt simulation and persistence owner. Next: Build a controlled Castle fixture for Undo before implementation; do not infer RNG, selection, conditions, or generic rollback behavior.
+- **major** `classic.combat.undo` — Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
 - **major** `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end. Next: Trace the preference/save fields and ordinary cast handoff, then decide whether the shortcut is Classic state or presentation state.
 - **major** `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved. Next: Use controlled fixtures for zero/negative land tiles, boat/shore cancellation, special dungeon wall bits, and attempted-coordinate timed gates before broadening the topology result.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
@@ -170,6 +169,7 @@ Blockers: **1**. Major gaps: **20**.
 
 ## Oracle-required unknowns
 
+- `classic.combat.undo` — Undo the active combat activation
 - `classic.exploration.fast-spell` — Cast a numeric fast spell
 - `classic.exploration.travel` — Travel on land and in dungeons
 - `classic.inventory.identify-item` — Identify an item
@@ -216,7 +216,7 @@ Blockers: **1**. Major gaps: **20**.
 - `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete.
 - `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately.
 - `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end.
-- `classic.combat.undo` — This Classic combat command is source-defined but has no typed Realmz Rebuilt simulation and persistence owner.
+- `classic.combat.undo` — Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved.
 - `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end.
 - `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified.
 - `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow.

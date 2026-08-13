@@ -1,6 +1,7 @@
 class_name CombatState
 extends RefCounted
 
+const CombatUndoStateType := preload("res://src/core/state/combat_undo_state.gd")
 const MAX_SPELL_DEATH_MACROS := 100
 
 const MAX_FUMBLED_ITEMS: int = 20
@@ -18,6 +19,7 @@ var battlefield: BattlefieldState
 var pending_monster_attack: PendingMonsterAttack
 var pending_reaction: CombatReactionState
 var active_turn: CombatTurnState
+var undo_state: CombatUndoStateType
 var _turn_order: Array[String] = []
 var _monsters: Array[MonsterState] = []
 var _fumbled_items: Array[ItemInstance] = []
@@ -51,6 +53,7 @@ func set_turn_order(order: Array[String]) -> void:
 	_turn_order = order.duplicate()
 	turn_index = 0
 	active_turn = null
+	undo_state = null
 
 
 func active_actor_id() -> String:
@@ -116,6 +119,7 @@ func advance_turn() -> bool:
 	if _turn_order.is_empty():
 		return false
 	active_turn = null
+	undo_state = null
 	turn_index += 1
 	if turn_index >= _turn_order.size():
 		turn_index = 0
@@ -129,6 +133,7 @@ func delay_active_actor() -> bool:
 	if _turn_order.is_empty() or turn_index < 0 or turn_index >= _turn_order.size():
 		return false
 	active_turn = null
+	undo_state = null
 	if turn_index >= _turn_order.size() - 1:
 		turn_index = 0
 		round_number += 1
@@ -148,8 +153,26 @@ func begin_active_turn() -> CombatTurnState:
 	return active_turn
 
 
+func begin_character_undo(actor_id: String) -> bool:
+	if active_turn == null or active_turn.actor_id != actor_id or active_actor_id() != actor_id or battlefield == null or not battlefield.has_actor(actor_id) or monster_by_id(actor_id) != null:
+		return false
+	undo_state = CombatUndoStateType.new(actor_id, battlefield.actor_position(actor_id), round_number, turn_index)
+	return true
+
+
 func clear_active_turn() -> void:
 	active_turn = null
+	undo_state = null
+
+
+func invalidate_undo() -> void:
+	if undo_state != null:
+		undo_state.available = false
+
+
+func restart_active_turn_after_undo() -> void:
+	active_turn = null
+	undo_state = null
 
 
 func append_turn_actor(actor_id: String) -> void:
@@ -323,6 +346,9 @@ func to_data() -> Dictionary:
 	var active_turn_data: Variant = null
 	if active_turn != null:
 		active_turn_data = active_turn.to_data()
+	var undo_data: Variant = null
+	if undo_state != null:
+		undo_data = undo_state.to_data()
 	var reaction_data: Variant = null
 	if pending_reaction != null:
 		reaction_data = pending_reaction.to_data()
@@ -334,7 +360,7 @@ func to_data() -> Dictionary:
 	weapon_mode_ids.sort()
 	for actor_id: Variant in weapon_mode_ids:
 		weapon_modes[String(actor_id)] = _character_weapon_modes[actor_id]
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "rewardsStarted": rewards_started, "rewardsCompleted": rewards_completed, "returnContinuation": return_continuation.duplicate(true), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "bleedingCharacterIds": bleeding_character_ids(), "turnUndeadActorIds": turn_undead_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "battlefield": null if battlefield == null else battlefield.to_data()}
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "rewardsStarted": rewards_started, "rewardsCompleted": rewards_completed, "returnContinuation": return_continuation.duplicate(true), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "undoState": undo_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "bleedingCharacterIds": bleeding_character_ids(), "turnUndeadActorIds": turn_undead_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "battlefield": null if battlefield == null else battlefield.to_data()}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -451,6 +477,11 @@ static func from_data(data: Variant) -> CombatState:
 		result.active_turn = CombatTurnState.from_data(active_turn_data)
 		if result.active_turn == null:
 			return null
+	var undo_data: Variant = data.get("undoState")
+	if undo_data != null:
+		result.undo_state = _undo_from_data(undo_data)
+		if result.undo_state == null:
+			return null
 	var pending_data: Variant = data.get("pendingMonsterAttack")
 	if pending_data != null:
 		result.pending_monster_attack = PendingMonsterAttack.from_data(pending_data)
@@ -464,6 +495,8 @@ static func from_data(data: Variant) -> CombatState:
 	if (result._turn_order.is_empty() and result.turn_index != 0) or (not result._turn_order.is_empty() and result.turn_index >= result._turn_order.size()):
 		return null
 	if result.active_turn != null and (result.completed or result.active_turn.actor_id != result.active_actor_id()):
+		return null
+	if result.undo_state != null and (result.completed or result.active_turn == null or result.battlefield == null or result.undo_state.actor_id != result.active_actor_id() or result.undo_state.actor_id != result.active_turn.actor_id or result.undo_state.round_number != result.round_number or result.undo_state.turn_index != result.turn_index or not result.battlefield.has_actor(result.undo_state.actor_id)):
 		return null
 	if result._spell_death_macro_queue.is_empty() != result._spell_macro_actor_id.is_empty() or (not result._spell_macro_actor_id.is_empty() and (result.completed or result.active_actor_id() != result._spell_macro_actor_id)):
 		return null
@@ -490,6 +523,29 @@ static func from_data(data: Variant) -> CombatState:
 		if result.pending_monster_attack.target_id != result.pending_reaction.mover_id or result.pending_monster_attack.action != expected_action or not completed_attackers.has(result.pending_monster_attack.actor_id):
 			return null
 	return result
+
+
+static func _undo_from_data(data: Variant) -> RefCounted:
+	if not data is Dictionary or data.size() != 5:
+		return null
+	for field: String in ["actorId", "startPosition", "round", "turnIndex", "available"]:
+		if not data.has(field):
+			return null
+	if not data["actorId"] is String or data["actorId"].is_empty() or not data["available"] is bool:
+		return null
+	var start_data: Variant = data["startPosition"]
+	if not start_data is Array or start_data.size() != 2:
+		return null
+	var x := _signed_integer(start_data[0])
+	var y := _signed_integer(start_data[1])
+	var loaded_round := _integer(data["round"])
+	var loaded_turn := _integer(data["turnIndex"])
+	var position := Vector2i(x, y)
+	if x == -100_000 or y == -100_000 or not BattlefieldState.contains(position) or loaded_round < 1 or loaded_turn < 0:
+		return null
+	var undo := CombatUndoStateType.new(data["actorId"], position, loaded_round, loaded_turn)
+	undo.available = data["available"]
+	return undo
 
 
 static func _integer(value: Variant) -> int:

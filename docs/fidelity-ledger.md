@@ -202,6 +202,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: combat-flow and persistence tests cover legal-recipient order, exact one-recipient mutation, invalid-target rejection, immediate persistent-Auto cleanup on defeat, party-ordered round bleeding, Castle's default party-warning RNG draw, death, and save restoration.
 - Legacy quirk: none. A no-op or hidden multi-bandage selection is not needed by authored scenario data.
 
+## FD-COMBAT-014 — Undo never overwrites an occupied combatant
+
+- Affected rule: activation-start position restoration when another combatant now occupies that cell.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/getup.c`, `getup`, lines 220–225, and `src/realmz_orig/combat.c`, `combat`, lines 680–693. Castle records only `undox`/`undoy`, restores the current underlying cell, copies the destination field value into `charunder`, then writes the active actor into that field cell without an occupancy check.
+- Observable oracle behavior, determined from complete source flow: an occupied activation-start cell is overwritten. The source-observation fixture is `tests/fixtures/oracle/combat-undo-occupied-cell-correction.json`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: the overwrite can make battlefield occupancy and actor positions disagree, corrupting movement, targeting, and save invariants.
+- Chosen 2.0 behavior: the core availability probe disables Undo while another combatant occupies the recorded start cell. A submitted stale command fails without mutating state or RNG.
+- Tests: the bounded Undo test covers the occupied-cell reason, mutation-free rejection, ordinary movement restoration, save/resume, source sound order, condition gates, and result invalidation.
+- Legacy quirk: none. Authored scenarios cannot rely on one combatant replacing another in volatile battle state.
+
 Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
 
 Each entry must include:

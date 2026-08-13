@@ -32,6 +32,7 @@ var auto_turn: ActionAvailabilityView = ActionAvailabilityView.new(&"auto", fals
 var delay: ActionAvailabilityView = ActionAvailabilityView.new(&"delay", false, "Delay is unavailable.")
 var bandage: ActionAvailabilityView = ActionAvailabilityView.new(&"bandage", false, "Bandage is unavailable.")
 var turn_undead: ActionAvailabilityView = ActionAvailabilityView.new(&"turn_undead", false, "Turn Undead is unavailable.")
+var undo: ActionAvailabilityView = ActionAvailabilityView.new(&"undo", false, "Undo is unavailable.")
 var bandage_candidates: Array[CharacterView] = []
 var turn_undead_targets: Array[MonsterView] = []
 var auto_character_ids: Array[String] = []
@@ -86,6 +87,8 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 			bandage = ActionAvailabilityView.new(&"bandage", bandage_probe.allowed, bandage_probe.reason_text)
 			var turn_probe := combat_flow.probe_turn_undead(game_state, content, active_character.id)
 			turn_undead = ActionAvailabilityView.new(&"turn_undead", turn_probe.allowed, turn_probe.reason_text)
+			var undo_probe := combat_flow.probe_undo(game_state, active_character.id)
+			undo = ActionAvailabilityView.new(&"undo", undo_probe.allowed, undo_probe.reason_text)
 			for candidate_id: String in combat_flow.bandage_candidate_ids(game_state):
 				var candidate := game_state.party.character_by_id(candidate_id)
 				if candidate != null:
@@ -155,6 +158,8 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 		legal_actions.append(&"bandage")
 	if turn_undead.enabled:
 		legal_actions.append(&"turn_undead")
+	if undo.enabled:
+		legal_actions.append(&"undo")
 	if game_state != null:
 		auto_character_ids = game_state.combat_auto_character_ids()
 

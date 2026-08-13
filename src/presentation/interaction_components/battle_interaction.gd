@@ -390,7 +390,8 @@ func _add_classic_turn_commands(parent: Container, request: InteractionRequest, 
 		turn_label = "Turn Undead (%d)" % (turn_targets as Array).size()
 	add_response_to(parent, turn_label, {"actorId": actor_id, "action": "turn_undead", "targetId": ""}, bool(turn_undead.get("enabled", false)), String(turn_undead.get("reason", "Turn Undead is unavailable.")))
 
-	add_response_to(parent, "Undo", {"actorId": actor_id, "action": "undo", "targetId": ""}, false, "Classic Undo is not available in this build.")
+	var undo := _availability_dictionary(request.payload.get("undo", {}), "Undo is unavailable.")
+	add_response_to(parent, "Undo", {"actorId": actor_id, "action": "undo", "targetId": ""}, bool(undo.get("enabled", false)), String(undo.get("reason", "Undo is unavailable.")))
 
 
 func _add_bandage_panel(parent: Control, actor_id: String, targets: Array) -> void:

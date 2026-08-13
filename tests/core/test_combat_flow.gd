@@ -35,6 +35,7 @@ func run() -> void:
 	_test_batch_two_delay_bandage_and_bleeding()
 	_test_batch_two_turn_undead_and_restore()
 	_test_batch_two_combat_auto_state()
+	_test_bounded_classic_undo_and_restore()
 
 
 func _test_player_collision_initiates_melee() -> void:
@@ -824,7 +825,7 @@ func _test_character_weapon_mode_toggle_and_restore() -> void:
 	assert_false(combat_view.ranged_attack_unavailable_reason.is_empty(), "the detached view carries the exact tactical ranged blocker")
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(94), ScenarioActionState.new())
 	var request := api._combat_request("request.weapon-mode")
-	assert_equal([request.payload.get("weaponMode"), request.payload.get("actions")], ["missile", ["switch_weapon", "finish", "defend", "auto", "delay"]], "the typed interaction preserves the same legal actions as the detached view and exposes fresh-activation Delay")
+	assert_equal([request.payload.get("weaponMode"), request.payload.get("actions")], ["missile", ["switch_weapon", "finish", "defend", "auto", "delay", "undo"]], "the typed interaction preserves the same legal actions as the detached view and exposes fresh-activation Delay and Undo")
 	assert_equal([request.payload.get("retreat", {}).get("enabled"), request.payload.get("retreat", {}).get("nearestEnemyRange")], [false, 1], "the typed interaction explains the source-backed close-range Escape blocker")
 	assert_equal(request.payload.get("weaponSwitch", {}).get("targetMode"), "melee", "the typed switch response names its source-owned destination mode")
 	assert_false(String(request.payload.get("rangedAttack", {}).get("reason", "")).is_empty(), "the typed interaction explains why Fire is disabled")
@@ -2475,6 +2476,82 @@ func _test_batch_two_combat_auto_state() -> void:
 	assert_equal(limit_result.error_code, &"combat_auto_operation_limit", "persistent Auto reports its specific bounded-operation failure")
 	assert_equal(JSON.stringify(limit_state.to_data()), limit_state_before, "persistent Auto rolls the complete battle state back after operation-limit exhaustion")
 	assert_equal([limit_rng.snapshot().generator_state, limit_rng.snapshot().draw_count, limit_rng.trace().size()], [limit_rng_before.generator_state, limit_rng_before.draw_count, 0], "persistent Auto restores RNG state, draw count, and trace after operation-limit exhaustion")
+
+
+func _test_bounded_classic_undo_and_restore() -> void:
+	var rules := RealmzRules.new()
+	var actor := _character("character.undo")
+	actor.normal_attacks = 2
+	actor.attack_bonus = 1
+	var definition := _monster_definition("monster.undo", [])
+	var monster := MonsterState.new("monster.undo.instance", definition.id, definition.name, 100, 100, 1)
+	var state := _state(actor, monster, "battle.undo")
+	state.combat.battlefield.move_actor(monster.id, Vector2i(50, 45))
+	var content := _content([definition])
+	var moved := rules.combat_flow.move_character(state, content, actor.id, Vector2i(46, 45), ScriptedRng.new([]))
+	assert_true(moved.ok, "a reaction-free movement establishes the source-backed Undo boundary")
+	assert_equal([state.combat.battlefield.actor_position(actor.id), actor.movement, actor.attacks_remaining], [Vector2i(46, 45), 11, 4], "movement preserves the activation allocation while leaving the actor away from the captured cell")
+	assert_true(rules.combat_flow.probe_undo(state, actor.id).allowed, "Undo remains available after movement that produced no combat result")
+	assert_equal([state.combat.undo_state.actor_id, state.combat.undo_state.start_position, state.combat.undo_state.round_number, state.combat.undo_state.turn_index], [actor.id, Vector2i(45, 45), 1, 0], "the save-owned Undo state captures only activation identity, position, round, and queue cursor")
+
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(restored, "the pending movement-only Undo boundary survives save restoration")
+	if restored != null:
+		var restored_actor := restored.party.character_by_id(actor.id)
+		assert_equal([restored.combat.undo_state.start_position, restored.combat.battlefield.actor_position(actor.id)], [Vector2i(45, 45), Vector2i(46, 45)], "restore retains both the activation-start and committed current positions")
+		var request := RealmzRuntimeApi.new(content, restored, ScriptedRng.new([]), ScenarioActionState.new(), rules)._combat_request("request.undo")
+		assert_equal(request.payload.get("undo"), {"enabled": true, "reason": ""}, "the typed battle request exposes core-owned Undo availability")
+		var undone := rules.combat_flow.submit_action(restored, content, actor.id, &"undo", "", ScriptedRng.new([]))
+		assert_true(undone.ok, "movement-only Undo re-enters the current activation")
+		assert_equal([restored.combat.battlefield.actor_position(actor.id), restored_actor.movement, restored_actor.attacks_remaining, restored.combat.active_actor_id()], [Vector2i(45, 45), 12, 4, actor.id], "Undo restores the cell and recalculates movement and attack allocation without generic rollback")
+		assert_equal(undone.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested").map(func(event: DomainEvent) -> int: return int(event.payload.get("soundId"))), [664, 138], "Undo preserves Castle's button and ordinary actor-reactivation sound order")
+		assert_true(undone.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_turn_undone" and event.payload.get("from") == [46, 45] and event.payload.get("to") == [45, 45]), "Undo publishes detached coordinates for presentation-owned movement playback")
+		assert_false(rules.combat_flow.probe_undo(restored, actor.id).allowed, "the bounded path disables a repeated Undo until Castle runtime settles its getup re-entry behavior")
+
+	var corrupt_data := state.to_data()
+	(corrupt_data["combat"]["undoState"] as Dictionary)["round"] = 99
+	assert_equal(GameState.from_data(corrupt_data), null, "restore rejects an Undo cursor that does not match the active combat round")
+
+	var occupied_actor := _character("character.undo-occupied")
+	var occupied_monster := MonsterState.new("monster.undo-occupied.instance", definition.id, definition.name, 100, 100, 1)
+	var occupied_state := _state(occupied_actor, occupied_monster, "battle.undo-occupied")
+	occupied_state.combat.battlefield.move_actor(occupied_monster.id, Vector2i(50, 45))
+	assert_true(rules.combat_flow.move_character(occupied_state, content, occupied_actor.id, Vector2i(46, 45), ScriptedRng.new([])).ok, "occupied-start fixture first moves away from its captured cell")
+	var blocker := _character("character.undo-blocker")
+	assert_true(occupied_state.party.add_character(blocker), "occupied-start fixture adds the blocking party member")
+	assert_true(occupied_state.combat.battlefield.place_character(blocker.id, Vector2i(45, 45)), "occupied-start fixture fills the activation-start cell")
+	var occupied_before := occupied_state.to_data()
+	var occupied_probe := rules.combat_flow.probe_undo(occupied_state, occupied_actor.id)
+	assert_false(occupied_probe.allowed, "FD-COMBAT-014 refuses Castle's unchecked destination overwrite when the activation-start cell is occupied")
+	assert_equal(occupied_probe.reason_text, "The activation-start position is occupied.", "the safety correction exposes its exact core-owned disabled reason")
+	var occupied_result := rules.combat_flow.submit_action(occupied_state, content, occupied_actor.id, &"undo", "", ScriptedRng.new([]))
+	assert_false(occupied_result.ok, "an occupied activation-start cell rejects Undo")
+	assert_equal(occupied_state.to_data(), occupied_before, "rejected occupied-cell Undo is transactionally mutation-free")
+
+	var conditioned_actor := _character("character.undo-conditioned")
+	var conditioned_monster := MonsterState.new("monster.undo-conditioned.instance", definition.id, definition.name, 100, 100, 1)
+	var conditioned_state := _state(conditioned_actor, conditioned_monster, "battle.undo-conditioned")
+	conditioned_state.combat.battlefield.move_actor(conditioned_monster.id, Vector2i(50, 45))
+	rules.combat_flow._prepare_character_turn(conditioned_state.combat, conditioned_actor)
+	for condition: int in [ConditionRules.HELPLESS, ConditionRules.CONFUSED]:
+		conditioned_actor.conditions.set_value(condition, 1)
+		assert_false(rules.combat_flow.probe_undo(conditioned_state, conditioned_actor.id).allowed, "Castle's condition gate remains explicit for condition %d" % condition)
+		conditioned_actor.conditions.set_value(condition, 0)
+	conditioned_actor.traitor = true
+	assert_false(rules.combat_flow.probe_undo(conditioned_state, conditioned_actor.id).allowed, "traitorous characters retain Castle's Undo gate")
+
+	var attack_actor := _character("character.undo-attack")
+	attack_actor.normal_attacks = 4
+	var attack_monster := MonsterState.new("monster.undo-attack.instance", definition.id, definition.name, 100, 100, 1)
+	var attack_state := _state(attack_actor, attack_monster, "battle.undo-attack")
+	rules.combat_flow._prepare_character_turn(attack_state.combat, attack_actor)
+	var attack_checkpoint := attack_state.to_data()
+	var rejected_attack := rules.combat_flow.submit_action(attack_state, content, attack_actor.id, &"attack", "missing.target", ScriptedRng.new([]))
+	assert_false(rejected_attack.ok, "an invalid attack target is rejected before committing a combat result")
+	assert_equal(attack_state.to_data(), attack_checkpoint, "a rejected attack does not consume the pending Undo boundary")
+	var attack_result := rules.combat_flow.submit_action(attack_state, content, attack_actor.id, &"attack", attack_monster.id, ScriptedRng.new(_ints(24)))
+	assert_true(attack_result.ok, "a legal attack commits through the ordinary result path")
+	assert_false(rules.combat_flow.probe_undo(attack_state, attack_actor.id).allowed, "a committed attack result invalidates Undo exactly as Castle's canundo latch does")
 
 
 func _character(character_id: String) -> CharacterState:
