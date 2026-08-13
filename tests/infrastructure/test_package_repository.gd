@@ -17,7 +17,7 @@ func run() -> void:
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
 	assert_equal([loaded.content.campaign_definition().recommended_party_levels, loaded.content.campaign_definition().maximum_party_levels, loaded.content.campaign_definition().guidance_authored], [6, 12, true], "Data SC aggregate party guidance remains distinct from per-character restrictions")
-	assert_equal(loaded.content.available_monster_sets(), [-1, 0, 1], "all packaged Classic monster-set choices cross the immutable boundary")
+	assert_equal(loaded.content.available_monster_sets(), [0, -1, 1], "packaged Classic monster sets retain the player-facing Normal, Mega, Monster order")
 	assert_equal(loaded.content.monster_by_id_for_set("classic.monster.1", 1).id, "classic.monster-set.1.1", "Monster Monsters resolves to a stable alternate definition identity")
 	assert_equal(loaded.content.monster_by_id_for_set("classic.monster.1", -1).hit_dice, 12, "Mega Monsters preserves its alternate combat record")
 	assert_true(loaded.content.campaign_definition().contact.has("email"), "campaign contact metadata is validated as a fixed shape")

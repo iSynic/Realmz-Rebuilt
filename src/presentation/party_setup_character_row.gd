@@ -3,14 +3,15 @@ extends PanelContainer
 
 signal import_requested(character_id: String, revision_hash: String)
 
-const ROW_HEIGHT: float = 32.0
-const PORTRAIT_SIZE: float = 26.0
+const ROW_HEIGHT: float = 44.0
+const PORTRAIT_SIZE: float = 44.0
 const ACTION_WIDTH: float = 58.0
 
 var character_id: String
 var revision_hash: String
 var import_enabled: bool = false
 var _drag_label: String = ""
+var _drag_portrait: Texture2D
 
 
 func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: String, portrait: Texture2D = null) -> void:
@@ -18,6 +19,7 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 	revision_hash = revision.revision_hash
 	import_enabled = enabled
 	custom_minimum_size.y = ROW_HEIGHT
+	add_theme_stylebox_override("panel", row_style())
 	mouse_default_cursor_shape = Control.CURSOR_DRAG if enabled else Control.CURSOR_FORBIDDEN
 	tooltip_text = "Add %s to the party. You can also drag this character into an empty party position." % revision.name if enabled else reason
 	var race_name := revision.race_id.replace("_", " ").replace("-", " ").capitalize()
@@ -26,6 +28,7 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 		race_name = revision.character.race_name
 		caste_name = revision.character.caste_name
 	_drag_label = revision.name
+	_drag_portrait = portrait
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 6)
@@ -92,7 +95,24 @@ func drag_payload() -> Dictionary:
 
 
 func _drag_preview() -> Control:
-	var preview := Label.new()
-	preview.text = "Add • %s" % _drag_label
-	preview.modulate = Color("d5b45d")
+	var preview := TextureRect.new()
+	preview.name = "PortraitDragPreview"
+	preview.custom_minimum_size = Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)
+	preview.texture = _drag_portrait
+	preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	preview.modulate = Color(1.0, 1.0, 1.0, 0.62)
+	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	preview.tooltip_text = "Dragging %s" % _drag_label
 	return preview
+
+
+static func row_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("1a1e22")
+	style.content_margin_left = 0.0
+	style.content_margin_top = 0.0
+	style.content_margin_right = 0.0
+	style.content_margin_bottom = 0.0
+	return style

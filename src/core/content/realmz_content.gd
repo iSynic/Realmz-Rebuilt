@@ -202,9 +202,16 @@ func monster_by_id_for_set(definition_id: String, set_id: int) -> MonsterDefinit
 
 func available_monster_sets() -> Array[int]:
 	var result: Array[int] = [0]
+	for classic_set_id: int in [-1, 1]:
+		if _monster_sets.has(classic_set_id):
+			result.append(classic_set_id)
+	var extension_sets: Array[int] = []
 	for value: Variant in _monster_sets.keys():
-		result.append(int(value))
-	result.sort()
+		var set_id := int(value)
+		if set_id not in [0, -1, 1]:
+			extension_sets.append(set_id)
+	extension_sets.sort()
+	result.append_array(extension_sets)
 	return result
 
 

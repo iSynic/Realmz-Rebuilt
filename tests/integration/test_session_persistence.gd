@@ -137,7 +137,7 @@ func run() -> void:
 	party_session.start(content, 7)
 	var setup_view := party_session.view()
 	assert_true(setup_view.party_setup_available, "fresh campaigns expose party creation through the detached view")
-	assert_equal([setup_view.party_setup.difficulty, setup_view.party_setup.monster_set, setup_view.party_setup.available_monster_sets, setup_view.party_setup.current_party_levels, setup_view.party_setup.experience_percent], [0, 0, [-1, 0, 1], 0, 0], "fresh setup exposes source-backed defaults without Castle's stale empty-party percentage")
+	assert_equal([setup_view.party_setup.difficulty, setup_view.party_setup.monster_set, setup_view.party_setup.available_monster_sets, setup_view.party_setup.current_party_levels, setup_view.party_setup.experience_percent], [0, 0, [0, -1, 1], 0, 0], "fresh setup exposes source-backed defaults and player-facing monster-set order without Castle's stale empty-party percentage")
 	assert_equal(party_session.submit_intent(PlayerIntent.set_party_setup_options(1, -1)).state, SessionStep.State.COMPLETED, "difficulty and Monster Set commit through one typed setup intent")
 	assert_equal([party_session.snapshot().game_state.difficulty, party_session.snapshot().game_state.monster_set], [1, -1], "the central save owns selected setup options")
 	assert_equal(party_session.submit_intent(PlayerIntent.set_party_setup_options(3, 0)).error_code, &"invalid_difficulty", "difficulty outside Castle's five choices fails explicitly")

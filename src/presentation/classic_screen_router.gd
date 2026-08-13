@@ -568,7 +568,7 @@ func _build_setup_overlay() -> void:
 	_creator_scroll.follow_focus = true
 	_setup_body.add_child(_creator_scroll)
 	_creator = BoxContainer.new()
-	_creator.custom_minimum_size.y = 256.0
+	_creator.custom_minimum_size.y = 310.0
 	_creator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_creator.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_creator.add_theme_constant_override("separation", 12)
@@ -585,7 +585,7 @@ func _build_setup_overlay() -> void:
 	party_column.size_flags_stretch_ratio = 1.0
 	var party_heading := CenterContainer.new()
 	party_heading.name = "PartyHeading"
-	party_heading.custom_minimum_size.y = 25.0
+	party_heading.custom_minimum_size.y = 20.0
 	var party_heading_content := HBoxContainer.new()
 	party_heading_content.add_child(_label("Current Party", GOLD, 18))
 	var party_count := _label("• 0 / 6", MUTED, 13)
@@ -604,7 +604,7 @@ func _build_setup_overlay() -> void:
 	_party_list.name = "PartySlots"
 	_party_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_party_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_party_list.add_theme_constant_override("separation", 3)
+	_party_list.add_theme_constant_override("separation", 2)
 	_party_list.import_requested.connect(_import_stored_character)
 	party_scroll.add_child(_party_list)
 	party_column.add_child(party_scroll)
@@ -731,6 +731,7 @@ func _render_creator_step() -> void:
 	_party_setup_options.visible = false
 	_creator_steps.visible = true
 	_creator_action_bar.visible = true
+	_setup_message.visible = true
 	_setup_message.text = _creator_step_message()
 	_clear(_creator_page)
 	_race_list = null
@@ -1217,6 +1218,7 @@ func _refresh_party_list() -> void:
 				var empty := PanelContainer.new()
 				empty.name = "EmptyPartySlot%d" % (slot_index + 1)
 				empty.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
+				empty.add_theme_stylebox_override("panel", PartySetupCharacterRowScript.row_style())
 				empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				var empty_row := HBoxContainer.new()
 				empty_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1243,6 +1245,7 @@ func _refresh_party_list() -> void:
 			var row_panel := PanelContainer.new()
 			row_panel.name = "PartySlot_%s" % character.id.validate_node_name()
 			row_panel.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
+			row_panel.add_theme_stylebox_override("panel", PartySetupCharacterRowScript.row_style())
 			row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 6)
@@ -1283,12 +1286,12 @@ func _render_party_assembly() -> void:
 	_creator_steps.visible = false
 	_creator_action_bar.visible = false
 	_party_setup_options.visible = true
-	_setup_message.text = "Choose from Character Files on the left. Click a character or drag it into an empty party position."
+	_setup_message.visible = false
 	_clear(_creator_page)
 	_ensure_appearance_textures()
 	var heading := CenterContainer.new()
 	heading.name = "CharacterFilesHeading"
-	heading.custom_minimum_size.y = 25.0
+	heading.custom_minimum_size.y = 20.0
 	var heading_content := HBoxContainer.new()
 	heading_content.add_child(_label("Character Files", GOLD, 18))
 	var character_count := _label("• %d available" % _current_vault_revisions().size(), MUTED, 13)
@@ -1305,7 +1308,7 @@ func _render_party_assembly() -> void:
 	_stored_character_list = VBoxContainer.new()
 	_stored_character_list.name = "StoredCharacterList"
 	_stored_character_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_stored_character_list.add_theme_constant_override("separation", 3)
+	_stored_character_list.add_theme_constant_override("separation", 2)
 	stored_scroll.add_child(_stored_character_list)
 	var current_revisions := _current_vault_revisions()
 	if current_revisions.is_empty():
@@ -1335,7 +1338,14 @@ func _refresh_party_setup_options() -> void:
 	if _view == null or _view.party_setup == null or _difficulty_option == null:
 		return
 	_monster_set_option.clear()
+	var ordered_monster_sets: Array[int] = []
+	for preferred_set_id: int in [0, -1, 1]:
+		if _view.party_setup.available_monster_sets.has(preferred_set_id):
+			ordered_monster_sets.append(preferred_set_id)
 	for set_id: int in _view.party_setup.available_monster_sets:
+		if not ordered_monster_sets.has(set_id):
+			ordered_monster_sets.append(set_id)
+	for set_id: int in ordered_monster_sets:
 		_monster_set_option.add_item(PartySetupView.monster_set_name(set_id))
 		_monster_set_option.set_item_metadata(_monster_set_option.item_count - 1, set_id)
 	_select_option_metadata(_monster_set_option, _view.party_setup.monster_set)

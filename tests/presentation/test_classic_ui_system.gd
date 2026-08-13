@@ -1350,7 +1350,7 @@ func _test_character_creator_workflow() -> void:
 	view.campaign_summary.maximum_party_levels = 12
 	view.campaign_summary.guidance_authored = true
 	view.party_setup = PartySetupView.new()
-	view.party_setup.available_monster_sets = [-1, 0, 1]
+	view.party_setup.available_monster_sets = [0, -1, 1]
 	view.party_setup.current_party_levels = 9
 	view.party_setup.experience_percent = 66
 	view.race_options = [DefinitionOptionView.new("race.human", "Human", "Adaptable.", ["caste.sorcerer"])]
@@ -1403,6 +1403,7 @@ func _test_character_creator_workflow() -> void:
 	assert_true(router._party_list.get_combined_minimum_size().y + party_heading_control.custom_minimum_size.y <= router._creator.custom_minimum_size.y, "all six compact party positions plus their heading fit the standard 960 by 600 assembly viewport without scrolling")
 	assert_equal(party_scroll.vertical_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED, "the six-slot Current Party surface never hides its final member behind a scrollbar")
 	assert_equal([router._difficulty_option.item_count, router._monster_set_option.item_count], [5, 3], "party assembly exposes all five Classic difficulty choices and only packaged monster sets")
+	assert_equal([router._monster_set_option.get_item_text(0), router._monster_set_option.get_item_text(1), router._monster_set_option.get_item_text(2)], ["Normal Monsters", "Mega Monsters", "Monster Monsters"], "Monster Set is presented in Classic's Normal, Mega, Monster order")
 	assert_true(router._party_guidance_label.text.contains("Maximum 12") and router._party_guidance_label.text.contains("Recommended 6") and router._party_guidance_label.text.contains("Current 9") and router._party_guidance_label.text.contains("66%"), "aggregate level and experience guidance is visible beside setup options")
 	var setup_intent_count := intents.size()
 	router._difficulty_option.select(3)
@@ -1414,14 +1415,21 @@ func _test_character_creator_workflow() -> void:
 	assert_not_null(stored_portrait, "each Character Files row exposes the stored character's portrait surface")
 	assert_equal(stored_portrait.texture, icon_texture, "Character Files uses the in-game portrait rather than a tactical CICN or placeholder")
 	assert_equal(stored_portrait.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST, "party-picker portraits retain crisp Classic pixels without filtered outlines")
+	assert_equal(stored_portrait.custom_minimum_size, Vector2(44.0, 44.0), "Character Files keeps each native 44 by 44 portrait at full size")
 	assert_equal([stored_row.mouse_filter, stored_portrait.mouse_filter, (stored_row.find_child("Summary", true, false) as Label).mouse_filter], [Control.MOUSE_FILTER_STOP, Control.MOUSE_FILTER_IGNORE, Control.MOUSE_FILTER_IGNORE], "the visible portrait and summary route drag gestures to the draggable Character Files row")
 	var party_portrait := router._party_list.find_child("Portrait", true, false) as TextureRect
 	assert_not_null(party_portrait, "each occupied party position reserves the same portrait surface")
 	assert_equal(party_portrait.texture, icon_texture, "the assembled party repeats the exact character portrait for visual matching")
+	assert_equal(party_portrait.custom_minimum_size, Vector2(44.0, 44.0), "Current Party also keeps the native portrait at full size")
+	var drag_preview := stored_row._drag_preview() as TextureRect
+	assert_not_null(drag_preview, "dragging a stored character uses the portrait itself as the cursor preview")
+	assert_equal([drag_preview.texture, drag_preview.custom_minimum_size, drag_preview.texture_filter], [icon_texture, Vector2(44.0, 44.0), CanvasItem.TEXTURE_FILTER_NEAREST], "the drag cursor preserves the exact full-size package portrait")
+	assert_true(is_equal_approx(drag_preview.modulate.a, 0.62), "the portrait drag cursor is translucent so the drop destination stays visible")
+	drag_preview.free()
 	assert_equal(router._creator_page.size_flags_stretch_ratio, (router._party_list.get_parent().get_parent() as Control).size_flags_stretch_ratio, "Character Files and Current Party receive identical horizontal layout weight")
 	var character_heading := router._setup_overlay.find_child("CharacterFilesHeading", true, false) as CenterContainer
 	var party_heading := router._setup_overlay.find_child("PartyHeading", true, false) as CenterContainer
-	assert_equal([character_heading.custom_minimum_size.y, party_heading.custom_minimum_size.y], [25.0, 25.0], "both transfer sections use identically sized centered headings")
+	assert_equal([character_heading.custom_minimum_size.y, party_heading.custom_minimum_size.y], [20.0, 20.0], "both transfer sections use identically sized centered headings")
 	assert_equal([router._creator_page.get_child(1).name, (router._party_list.get_parent() as ScrollContainer).name], [&"StoredCharacterScroll", &"PartySlotScroll"], "both lists begin immediately beneath their aligned headings")
 	var add_stored := stored_row.find_child("AddCharacter", true, false) as Button
 	assert_not_null(add_stored, "the balanced Character Files row keeps an explicit Add action")
