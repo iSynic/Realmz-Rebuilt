@@ -1371,13 +1371,14 @@ func _test_character_creator_workflow() -> void:
 	stored_state.level = stored.level
 	stored_state.race_id = stored.race_id
 	stored_state.caste_id = stored.caste_id
+	stored_state.portrait_id = "portrait.human.1"
 	stored_state.combat_icon_id = "icon.human.1"
 	stored.character = CharacterView.new(stored_state)
 	var icon_image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
 	icon_image.fill(Color("67b789"))
 	var icon_texture := ImageTexture.create_from_image(icon_image)
-	router._appearance_textures[stored_state.combat_icon_id] = icon_texture
-	(view.party_members[0] as CharacterView).combat_icon_id = stored_state.combat_icon_id
+	router._appearance_textures[stored_state.portrait_id] = icon_texture
+	(view.party_members[0] as CharacterView).portrait_id = stored_state.portrait_id
 	router.set_vault_revisions([stored])
 	router.present(view)
 	var standard_profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
@@ -1390,13 +1391,23 @@ func _test_character_creator_workflow() -> void:
 	assert_equal(router._setup_mode, &"assembly", "party setup opens on stored-character assembly instead of forcing the creator")
 	assert_not_null(router._stored_character_list, "stored characters remain visible beside the six party slots")
 	assert_equal(router._party_list.get_child_count(), 6, "party assembly always exposes the campaign's complete slot capacity")
-	var stored_row := router._stored_character_list.find_child("StoredCharacter_*", false, false) as Button
+	var stored_row := router._stored_character_list.find_child("StoredCharacter_*", false, false) as PartySetupCharacterRow
 	assert_not_null(stored_row, "the current eligible stored revision is an ordinary Add row")
-	assert_equal(stored_row.icon, icon_texture, "Character Files uses the stored character's Classic CICN instead of a text-only picker row")
-	var party_icon := router._party_list.find_child("CombatIcon", true, false) as TextureRect
-	assert_not_null(party_icon, "each occupied party position reserves a Classic CICN surface")
-	assert_equal(party_icon.texture, icon_texture, "the assembled party repeats the exact character CICN for visual matching")
-	stored_row.pressed.emit()
+	var stored_portrait := stored_row.find_child("Portrait", true, false) as TextureRect
+	assert_not_null(stored_portrait, "each Character Files row exposes the stored character's portrait surface")
+	assert_equal(stored_portrait.texture, icon_texture, "Character Files uses the in-game portrait rather than a tactical CICN or placeholder")
+	assert_equal(stored_portrait.texture_filter, CanvasItem.TEXTURE_FILTER_PARENT_NODE, "party-picker portraits inherit ordinary UI filtering instead of forcing the tactical nearest-neighbor treatment")
+	var party_portrait := router._party_list.find_child("Portrait", true, false) as TextureRect
+	assert_not_null(party_portrait, "each occupied party position reserves the same portrait surface")
+	assert_equal(party_portrait.texture, icon_texture, "the assembled party repeats the exact character portrait for visual matching")
+	assert_equal(router._creator_page.size_flags_stretch_ratio, (router._party_list.get_parent().get_parent() as Control).size_flags_stretch_ratio, "Character Files and Current Party receive identical horizontal layout weight")
+	var character_heading := router._setup_overlay.find_child("CharacterFilesHeading", true, false) as CenterContainer
+	var party_heading := router._setup_overlay.find_child("PartyHeading", true, false) as CenterContainer
+	assert_equal([character_heading.custom_minimum_size.y, party_heading.custom_minimum_size.y], [25.0, 25.0], "both transfer sections use identically sized centered headings")
+	assert_equal([router._creator_page.get_child(1).name, (router._party_list.get_parent() as ScrollContainer).name], [&"StoredCharacterScroll", &"PartySlotScroll"], "both lists begin immediately beneath their aligned headings")
+	var add_stored := stored_row.find_child("AddCharacter", true, false) as Button
+	assert_not_null(add_stored, "the balanced Character Files row keeps an explicit Add action")
+	add_stored.pressed.emit()
 	assert_equal([intents[-1].kind, intents[-1].target_id, intents[-1].revision_hash], [PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id, stored.revision_hash], "click Add submits the stable stored-character revision through the existing typed intent")
 	var intent_count_before_drop := intents.size()
 	router._party_list._drop_data(Vector2.ZERO, {"kind": "party-setup-character", "characterId": stored.character_id, "revisionHash": stored.revision_hash})

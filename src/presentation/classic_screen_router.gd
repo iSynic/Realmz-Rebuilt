@@ -572,22 +572,36 @@ func _build_setup_overlay() -> void:
 	_creator_page = VBoxContainer.new()
 	_creator_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_creator_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_creator_page.size_flags_stretch_ratio = 1.0
 	_creator.add_child(_creator_page)
 	var party_column := VBoxContainer.new()
-	party_column.custom_minimum_size.x = 340.0
+	party_column.name = "PartyColumn"
+	party_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	party_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var party_heading := HBoxContainer.new()
-	party_heading.add_child(_label("Current Party", GOLD, 18))
-	party_heading.add_spacer(true)
-	var party_count := _label("0 / 6", MUTED, 13)
+	party_column.size_flags_stretch_ratio = 1.0
+	var party_heading := CenterContainer.new()
+	party_heading.name = "PartyHeading"
+	party_heading.custom_minimum_size.y = 25.0
+	var party_heading_content := HBoxContainer.new()
+	party_heading_content.add_child(_label("Current Party", GOLD, 18))
+	var party_count := _label("• 0 / 6", MUTED, 13)
 	party_count.name = "PartyCount"
-	party_heading.add_child(party_count)
+	party_heading_content.add_child(party_count)
+	party_heading.add_child(party_heading_content)
 	party_column.add_child(party_heading)
+	var party_scroll := ScrollContainer.new()
+	party_scroll.name = "PartySlotScroll"
+	party_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	party_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	party_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	party_scroll.follow_focus = true
 	_party_list = PartySetupPartyListScript.new()
 	_party_list.name = "PartySlots"
+	_party_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_party_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_party_list.import_requested.connect(_import_stored_character)
-	party_column.add_child(_party_list)
+	party_scroll.add_child(_party_list)
+	party_column.add_child(party_scroll)
 	_creator.add_child(party_column)
 	_setup_message = _add_label(_setup_body, "Enter a name to begin creating a character.", MUTED)
 	_setup_message.custom_minimum_size.y = 32.0
@@ -616,6 +630,11 @@ func _build_setup_overlay() -> void:
 	_setup_import_button.pressed.connect(_show_vault_for_setup)
 	_setup_body.add_child(_creator_action_bar)
 	var setup_footer := HBoxContainer.new()
+	_create_character_button = Button.new()
+	_create_character_button.name = "CreateCharacter"
+	_create_character_button.text = "Create new character"
+	_create_character_button.pressed.connect(_start_creator)
+	setup_footer.add_child(_create_character_button)
 	setup_footer.add_child(_setup_import_button)
 	setup_footer.add_spacer(true)
 	_begin_button = Button.new()
@@ -677,6 +696,7 @@ func _render_creator_step() -> void:
 	if _setup_mode == &"assembly":
 		_render_party_assembly()
 		return
+	_create_character_button.visible = false
 	_creator_steps.visible = true
 	_creator_action_bar.visible = true
 	_setup_message.text = _creator_step_message()
@@ -1158,37 +1178,46 @@ func _refresh_party_list() -> void:
 	_party_list.configure_drop_target(import_available, import_reason)
 	var party_count := _setup_overlay.find_child("PartyCount", true, false) as Label
 	if party_count != null:
-		party_count.text = "%d / %d" % [_view.party_members.size() if _view != null else 0, _maximum_party_size()]
+		party_count.text = "• %d / %d" % [_view.party_members.size() if _view != null else 0, _maximum_party_size()]
 	if _view != null:
 		for slot_index: int in _maximum_party_size():
 			if slot_index >= _view.party_members.size():
 				var empty := PanelContainer.new()
 				empty.name = "EmptyPartySlot%d" % (slot_index + 1)
-				empty.custom_minimum_size.y = 50.0
+				empty.custom_minimum_size.y = 60.0
+				var empty_row := HBoxContainer.new()
+				empty_row.add_theme_constant_override("separation", 6)
+				empty.add_child(empty_row)
+				var portrait_space := Control.new()
+				portrait_space.custom_minimum_size = Vector2(48.0, 48.0)
+				empty_row.add_child(portrait_space)
 				var empty_label := Label.new()
 				empty_label.text = "%d. Empty position" % (slot_index + 1)
 				empty_label.modulate = MUTED
 				empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-				empty.add_child(empty_label)
+				empty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				empty_row.add_child(empty_label)
+				var action_space := Control.new()
+				action_space.custom_minimum_size.x = 62.0
+				empty_row.add_child(action_space)
 				_party_list.add_child(empty)
 				continue
 			var character: CharacterView = _view.party_members[slot_index]
 			var row_panel := PanelContainer.new()
 			row_panel.name = "PartySlot_%s" % character.id.validate_node_name()
-			row_panel.custom_minimum_size.y = 58.0
+			row_panel.custom_minimum_size.y = 60.0
 			row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 6)
 			row_panel.add_child(row)
-			var combat_icon := TextureRect.new()
-			combat_icon.name = "CombatIcon"
-			combat_icon.custom_minimum_size = Vector2(48.0, 48.0)
-			combat_icon.texture = _appearance_textures.get(character.combat_icon_id) as Texture2D
-			combat_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			combat_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			combat_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			combat_icon.tooltip_text = "%s's Classic combat icon" % character.name
-			row.add_child(combat_icon)
+			var portrait_view := TextureRect.new()
+			portrait_view.name = "Portrait"
+			portrait_view.custom_minimum_size = Vector2(48.0, 48.0)
+			portrait_view.texture = _appearance_textures.get(character.portrait_id) as Texture2D
+			portrait_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			portrait_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			portrait_view.tooltip_text = "%s's portrait" % character.name
+			row.add_child(portrait_view)
 			var label := Label.new()
 			label.text = "%d. %s\nLevel %d • %s / %s" % [slot_index + 1, character.name, character.level, character.race_name, character.caste_name]
 			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1209,27 +1238,24 @@ func _refresh_party_list() -> void:
 
 
 func _render_party_assembly() -> void:
+	_create_character_button.visible = true
+	_create_character_button.disabled = _view != null and _view.party_members.size() >= _maximum_party_size()
+	_create_character_button.tooltip_text = "This party already has %d characters." % _maximum_party_size() if _create_character_button.disabled else "Create a new character for this campaign."
 	_creator_steps.visible = false
 	_creator_action_bar.visible = false
 	_setup_message.text = "Choose from Character Files on the left. Click a character or drag it into an empty party position."
 	_clear(_creator_page)
 	_ensure_appearance_textures()
-	var heading := HBoxContainer.new()
-	var title := _label("Character Files", GOLD, 18)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	heading.add_child(title)
-	_create_character_button = Button.new()
-	_create_character_button.name = "CreateCharacter"
-	_create_character_button.text = "Create new character"
-	_create_character_button.disabled = _view != null and _view.party_members.size() >= _maximum_party_size()
-	if _create_character_button.disabled:
-		_create_character_button.tooltip_text = "This party already has %d characters." % _maximum_party_size()
-	_create_character_button.pressed.connect(_start_creator)
-	heading.add_child(_create_character_button)
+	var heading := CenterContainer.new()
+	heading.name = "CharacterFilesHeading"
+	heading.custom_minimum_size.y = 25.0
+	var heading_content := HBoxContainer.new()
+	heading_content.add_child(_label("Character Files", GOLD, 18))
+	var character_count := _label("• %d available" % _current_vault_revisions().size(), MUTED, 13)
+	character_count.name = "CharacterFileCount"
+	heading_content.add_child(character_count)
+	heading.add_child(heading_content)
 	_creator_page.add_child(heading)
-	var guidance := _label("Reusable characters eligible for this campaign. Character creation returns to this list when complete.", MUTED)
-	guidance.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_creator_page.add_child(guidance)
 	var stored_scroll := ScrollContainer.new()
 	stored_scroll.name = "StoredCharacterScroll"
 	stored_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1240,11 +1266,7 @@ func _render_party_assembly() -> void:
 	_stored_character_list.name = "StoredCharacterList"
 	_stored_character_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stored_scroll.add_child(_stored_character_list)
-	var current_revisions: Array[CharacterVaultRevisionView] = []
-	for revision: CharacterVaultRevisionView in _vault_revisions:
-		if revision.is_current and not revision.archived:
-			current_revisions.append(revision)
-	current_revisions.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool: return left.name.naturalnocasecmp_to(right.name) < 0)
+	var current_revisions := _current_vault_revisions()
 	if current_revisions.is_empty():
 		var empty := _label("No stored characters are available. Create one to begin assembling this party.", MUTED)
 		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1261,11 +1283,20 @@ func _render_party_assembly() -> void:
 			reason = "This party already has %d characters." % _maximum_party_size()
 		var row := PartySetupCharacterRowScript.new()
 		row.name = "StoredCharacter_%s" % revision.character_id.validate_node_name()
-		var combat_icon_id := revision.character.combat_icon_id if revision.character != null else ""
-		var combat_icon := _appearance_textures.get(combat_icon_id) as Texture2D
-		row.configure(revision, revision.eligible and global_available.enabled and _view.party_members.size() < _maximum_party_size(), reason, combat_icon)
+		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
+		var portrait := _appearance_textures.get(portrait_id) as Texture2D
+		row.configure(revision, revision.eligible and global_available.enabled and _view.party_members.size() < _maximum_party_size(), reason, portrait)
 		row.import_requested.connect(_import_stored_character)
 		_stored_character_list.add_child(row)
+
+
+func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
+	var current_revisions: Array[CharacterVaultRevisionView] = []
+	for revision: CharacterVaultRevisionView in _vault_revisions:
+		if revision.is_current and not revision.archived:
+			current_revisions.append(revision)
+	current_revisions.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool: return left.name.naturalnocasecmp_to(right.name) < 0)
+	return current_revisions
 
 
 func _start_creator() -> void:
