@@ -19,6 +19,7 @@ func run() -> void:
 	_test_source_backed_projectile_fire()
 	_test_source_backed_character_spell_casting()
 	_test_source_backed_combat_spell_item_use()
+	_test_source_backed_combat_scroll_use()
 	_test_source_backed_special_healing_and_actor_targeting()
 	_test_character_automatic_group_spell()
 	_test_character_fixed_area_spell()
@@ -178,6 +179,62 @@ func _test_source_backed_combat_spell_item_use() -> void:
 	var depleted := rules.combat_flow.use_spell_item(state, content, character.id, monster.id, instance.id, rng)
 	assert_equal(depleted.error_code, &"item_has_no_charges", "depleted combat item is rejected explicitly")
 	assert_equal(rng.snapshot().draw_count, 0, "depleted combat item consumes no randomness")
+
+
+func _test_source_backed_combat_scroll_use() -> void:
+	var rules := RealmzRules.new()
+	var character := _character("character.scroll-caster")
+	character.normal_attacks = 4
+	character.spell_points = 0
+	character.maximum_spell_points = 0
+	character.maximum_load = 100
+	var monster_definition := _monster_definition("monster.scroll-target", [MonsterAttackDefinition.new(1, 1)])
+	var monster := MonsterState.new("monster.scroll-target.instance", monster_definition.id, "Scroll Target", 10, 10, 1)
+	var state := _state(character, monster, "battle.scroll-use")
+	var category_mask := 1 << 5
+	var empty_ranges: Array[Vector2i] = []
+	var empty_age_changes: Array[PackedInt32Array] = []
+	var race := RaceDefinition.new("race.test", 1, "Human", _ints(8), _ints(8), _ints(5), _ints(5), _ints(40), empty_ranges, empty_age_changes, 0, false, 10, 0, 0, 0, 1, 1, false, 0, category_mask, 0)
+	var caste := CasteDefinition.new("caste.test", 1, "Fighter", _ints(8), _ints(5), _ints(5), _ints(40), Vector2i(1, 1), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], [], 1, 1, 0, 1, 0, 0, 0, 1, 0, true, false, 0, category_mask, 0)
+	var spell := SpellDefinition.new("spell.scroll-bolt", 1101, "Scroll Bolt")
+	spell.damage_min = 3
+	spell.damage_max = 3
+	spell.damage_type = 1
+	spell.spell_class = 1
+	spell.cannot = 3
+	spell.target_type = 1
+	spell.in_combat = true
+	spell.range_min = 10
+	spell.look_start = 2
+	spell.look_end = 3
+	var scroll_case := ItemDefinition.new("item.scroll-case", 801, "Scroll Case")
+	scroll_case.item_type = 13
+	scroll_case.item_category_mask_low = category_mask
+	var case_instance := rules.inventory.add_item(character, scroll_case, "item.scroll-case.instance", true)
+	case_instance.equipped = true
+	assert_true(character.write_scroll(0, spell.id, 2), "the fixture stores a fixed-power spell in one of Castle's five scroll slots")
+	var content := _content([monster_definition], [scroll_case], [race], [caste], [spell])
+	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(restored, "a pending combat scroll and equipped case survive the central save aggregate")
+	assert_equal([restored.party.character_by_id(character.id).scroll_at(0).spell_id, restored.party.character_by_id(character.id).scroll_at(0).power], [spell.id, 2], "save restoration preserves the scroll's exact slot, spell, and fixed power")
+	var options := rules.combat_flow.character_scroll_options(state, content, character.id)
+	assert_true(options.any(func(option: Variant) -> bool: return option.scroll_slot == 0 and option.spell_id == spell.id and option.power == 2 and option.target_id == monster.id), "the combat request exposes the fixed scroll slot, power, and exact legal target")
+	var request := RealmzRuntimeApi.new(content, state, ScriptedRng.new([]), ScenarioActionState.new())._combat_request("request.scroll-use")
+	assert_true(request.payload.get("actions", []).has("use_scroll"), "the scenario host advertises combat scroll use only when a source-probed option exists")
+	assert_true(request.payload.get("scrollCasts", []).any(func(option: Dictionary) -> bool: return option.get("scrollSlot") == 0 and option.get("spellId") == spell.id and option.get("power") == 2 and option.get("targetId") == monster.id), "the combat interaction carries exact scroll, spell-power, and target identities")
+	var checkpoint := state.to_data()
+	var invalid_rng := ScriptedRng.new([])
+	var invalid := rules.combat_flow.use_combat_scroll(state, content, character.id, 0, "monster.missing", invalid_rng)
+	assert_equal(invalid.error_code, &"invalid_scroll_target", "an unavailable target rejects the scroll before its transaction begins")
+	assert_equal(state.to_data(), checkpoint, "an invalid target retains the scroll and every combat field")
+	assert_equal(invalid_rng.snapshot().draw_count, 0, "an invalid combat scroll target consumes no randomness")
+	var spell_points_before := character.spell_points
+	var used := rules.combat_flow.use_combat_scroll(state, content, character.id, 0, monster.id, ScriptedRng.new([0, 0, 100]))
+	assert_true(used.ok, "the active character can commit a source-backed combat scroll")
+	assert_equal([monster.current_health, character.spell_points, character.scroll_at(0).is_empty()], [7, spell_points_before, true], "combat scroll applies its fixed-power effect, spends no spell points, and consumes the exact slot only after success")
+	assert_equal([character.movement, character.attacks_remaining], [0, 3], "successful combat scroll use pays Castle's twelve movement and two half-attack units")
+	assert_true(used.events.any(func(event: DomainEvent) -> bool: return event.kind == &"scroll_used" and event.payload.get("slot") == 0 and event.payload.get("source") == "classic-combat"), "combat scroll publication retains its slot and combat provenance")
+	assert_true(used.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-scroll" and event.payload.get("power") == 2), "combat scroll resolution reuses the ordinary spell event contract without impersonating a learned cast")
 
 
 func _test_tactical_adjacency_movement_and_restore() -> void:

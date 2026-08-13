@@ -459,11 +459,13 @@ func _test_battle_weapon_mode_component() -> void:
 func _test_battle_typed_option_contracts() -> void:
 	var unavailable_request := InteractionRequest.new("battle.typed-unavailable", InteractionRequest.COMBAT, {
 		"actorId": "character.caster",
-		"actions": ["cast_spell", "use_item"],
+		"actions": ["cast_spell", "use_item", "use_scroll"],
 		"spellCasts": [],
 		"itemCasts": [],
+		"scrollCasts": [],
 		"spellCastReason": "No legal Classic combat spell is available.",
 		"itemCastReason": "No carried item has a supported Classic combat use.",
+		"scrollCastReason": "The equipped scroll case contains no combat-ready spells.",
 	})
 	var unavailable_component := BattleInteraction.new()
 	unavailable_component.build(unavailable_request)
@@ -472,13 +474,14 @@ func _test_battle_typed_option_contracts() -> void:
 		unavailable_buttons.append(child as Button)
 	var unavailable_spell := unavailable_buttons.filter(func(button: Button) -> bool: return button.text == "Spells")[0] as Button
 	var unavailable_item := unavailable_buttons.filter(func(button: Button) -> bool: return button.text == "Items")[0] as Button
-	assert_equal([unavailable_spell.disabled, unavailable_item.disabled], [true, true], "typed combat spell and item workflows remain disabled when the core supplies no legal options")
-	assert_equal([unavailable_spell.tooltip_text, unavailable_item.tooltip_text], ["No legal Classic combat spell is available.", "No carried item has a supported Classic combat use."], "disabled combat spell and item workflows expose the exact core-owned reasons")
+	var unavailable_scroll := unavailable_buttons.filter(func(button: Button) -> bool: return button.text == "Scrolls")[0] as Button
+	assert_equal([unavailable_spell.disabled, unavailable_item.disabled, unavailable_scroll.disabled], [true, true, true], "typed combat spell, item, and scroll workflows remain disabled when the core supplies no legal options")
+	assert_equal([unavailable_spell.tooltip_text, unavailable_item.tooltip_text, unavailable_scroll.tooltip_text], ["No legal Classic combat spell is available.", "No carried item has a supported Classic combat use.", "The equipped scroll case contains no combat-ready spells."], "disabled combat magic workflows expose the exact core-owned reasons")
 	unavailable_component.free()
 
 	var option_request := InteractionRequest.new("battle.typed-options", InteractionRequest.COMBAT, {
 		"actorId": "character.caster",
-		"actions": ["cast_spell", "use_item"],
+		"actions": ["cast_spell", "use_item", "use_scroll"],
 		"spellCasts": [
 			{"spellId": "spell.arc", "spellName": "Arc", "power": 2, "cost": 4, "targetId": "target.second", "targetName": "Second", "targetCurrentHealth": 7, "targetMaximumHealth": 7, "targetMode": "combatant"},
 			{"spellId": "spell.arc", "spellName": "Arc", "power": 2, "cost": 4, "targetId": "target.first", "targetName": "First", "targetCurrentHealth": 6, "targetMaximumHealth": 6, "targetMode": "combatant"},
@@ -486,6 +489,10 @@ func _test_battle_typed_option_contracts() -> void:
 		"itemCasts": [
 			{"itemInstanceId": "item.wand.instance", "itemId": "item.wand", "itemName": "Runed Wand", "charges": 2, "spellId": "spell.arc", "spellName": "Arc", "power": 2, "targetId": "target.second", "targetName": "Second", "targetCurrentHealth": 7, "targetMaximumHealth": 7, "targetMode": "combatant"},
 			{"itemInstanceId": "item.wand.instance", "itemId": "item.wand", "itemName": "Runed Wand", "charges": 2, "spellId": "spell.arc", "spellName": "Arc", "power": 2, "targetId": "target.first", "targetName": "First", "targetCurrentHealth": 6, "targetMaximumHealth": 6, "targetMode": "combatant"},
+		],
+		"scrollCasts": [
+			{"scrollSlot": 2, "spellId": "spell.arc", "spellName": "Arc", "power": 2, "targetId": "target.second", "targetName": "Second", "targetCurrentHealth": 7, "targetMaximumHealth": 7, "targetMode": "combatant"},
+			{"scrollSlot": 2, "spellId": "spell.arc", "spellName": "Arc", "power": 2, "targetId": "target.first", "targetName": "First", "targetCurrentHealth": 6, "targetMaximumHealth": 6, "targetMode": "combatant"},
 		],
 	})
 	var option_component := BattleInteraction.new()
@@ -497,6 +504,7 @@ func _test_battle_typed_option_contracts() -> void:
 		option_buttons.append(child as Button)
 	var spell_mode := option_buttons.filter(func(button: Button) -> bool: return button.text == "Spells")[0] as Button
 	var item_mode := option_buttons.filter(func(button: Button) -> bool: return button.text == "Items")[0] as Button
+	var scroll_mode := option_buttons.filter(func(button: Button) -> bool: return button.text == "Scrolls")[0] as Button
 	spell_mode.pressed.emit()
 	var spell_picker := option_component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() is VBoxContainer)[0] as OptionButton
 	var cast_button := spell_picker.get_parent().find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Choose spell target on battlefield")[0] as Button
@@ -509,6 +517,12 @@ func _test_battle_typed_option_contracts() -> void:
 	use_item_button.pressed.emit()
 	var item_configuration: Dictionary = presentation_actions[-1][1]
 	assert_equal([item_configuration.get("candidateIds"), item_configuration.get("responsePayload", {}).get("itemInstanceId")], [["target.second", "target.first"], "item.wand.instance"], "combat item targeting preserves the typed legal target IDs and selected stable item instance")
+	scroll_mode.pressed.emit()
+	var scroll_picker := option_component.find_child("CombatScrollPicker", true, false) as OptionButton
+	var use_scroll_button := scroll_picker.get_parent().find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Choose scroll target on battlefield")[0] as Button
+	use_scroll_button.pressed.emit()
+	var scroll_configuration: Dictionary = presentation_actions[-1][1]
+	assert_equal([scroll_configuration.get("candidateIds"), scroll_configuration.get("responsePayload", {}).get("scrollSlot")], [["target.second", "target.first"], 2], "combat scroll targeting preserves source order and the exact fixed scroll slot")
 	option_component.free()
 
 

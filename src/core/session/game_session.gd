@@ -519,7 +519,11 @@ func _populate_spell_actions(result: GameView) -> void:
 				scroll_view.use = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
 				continue
 			if battle_active:
-				scroll_view.use = ActionAvailabilityView.new(&"cast_spell", false, "Combat scroll targeting is not implemented yet.")
+				var combat_scroll := character.scroll_at(scroll_view.slot_index)
+				var combat_scroll_spell := _content.spell_by_id(combat_scroll.spell_id) if combat_scroll != null and not combat_scroll.is_empty() else null
+				var combat_target_id := character.id if combat_scroll_spell != null and combat_scroll_spell.target_type == 5 else ""
+				var combat_probe := _rules.combat_flow.probe_character_scroll_cast(_state, _content, character.id, scroll_view.slot_index, combat_target_id)
+				scroll_view.use = ActionAvailabilityView.new(&"cast_spell", combat_probe.allowed, combat_probe.reason_text)
 				continue
 			var scroll := character.scroll_at(scroll_view.slot_index)
 			var scroll_spell := _content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
@@ -1020,7 +1024,14 @@ func _make_scroll_probe(character: CharacterState, spell: SpellDefinition, power
 
 func _use_scroll(intent: PlayerIntent) -> SessionStep:
 	if _state.combat != null and not _state.combat.completed:
-		return SessionStep.failed(_view_revision, &"combat_scroll_unavailable", "Combat scroll targeting is not implemented yet.")
+		var combat_result := _rules.combat_flow.use_combat_scroll(_state, _content, intent.actor_id, intent.quantity, intent.secondary_target_id, _rng, intent.target_coordinate, intent.rotation, intent.selected_ids)
+		if not combat_result.ok:
+			return SessionStep.failed(_view_revision, combat_result.error_code, combat_result.error_message)
+		if not _event_payload(combat_result.events, &"monster_death_macro_requested").is_empty():
+			return _start_session_death_macro(combat_result.events)
+		if combat_result.completed:
+			return _finish_direct_battle(combat_result.events)
+		return _finish_completed(combat_result.events)
 	var character := _state.party.character_by_id(intent.actor_id)
 	var scroll := character.scroll_at(intent.quantity) if character != null else null
 	var spell := _content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null

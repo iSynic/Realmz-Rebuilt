@@ -2491,6 +2491,22 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 		if response.payload.get("itemInstanceId") is not String or response.payload["itemInstanceId"].is_empty():
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat item use requires an itemInstanceId string.")
 		result = _rules.combat_flow.use_spell_item(_game_state, _content, response.payload["actorId"], response.payload.get("targetId", ""), response.payload["itemInstanceId"], _rng)
+	elif response.payload["action"] == "use_scroll":
+		if response.payload.get("scrollSlot") is not int:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat scroll use requires an integer scrollSlot.")
+		var scroll_target_coordinate := _combat_destination(response.payload.get("targetCoordinate")) if response.payload.has("targetCoordinate") else CombatFlow.INVALID_COORDINATE
+		var scroll_rotation: Variant = response.payload.get("rotation", 0)
+		if not scroll_rotation is int:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat scroll rotation must be an integer.")
+		var scroll_target_ids: Array[String] = []
+		var raw_target_ids: Variant = response.payload.get("targetIds", [])
+		if not raw_target_ids is Array:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Repeated combat scroll targets must be an ordered array.")
+		for target_id: Variant in raw_target_ids:
+			if not target_id is String:
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Every repeated combat scroll target must be a stable string ID.")
+			scroll_target_ids.append(target_id)
+		result = _rules.combat_flow.use_combat_scroll(_game_state, _content, response.payload["actorId"], response.payload["scrollSlot"], response.payload.get("targetId", ""), _rng, scroll_target_coordinate, int(scroll_rotation), scroll_target_ids)
 	else:
 		result = _rules.combat_flow.submit_action(_game_state, _content, response.payload["actorId"], StringName(response.payload["action"]), response.payload.get("targetId", ""), _rng)
 	if not result.ok:
@@ -2905,6 +2921,24 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	if not item_casts.is_empty():
 		actions.append("use_item")
 	var item_cast_reason := _rules.combat_flow.character_item_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
+	var scroll_casts: Array[Dictionary] = []
+	for option: Variant in _rules.combat_flow.character_scroll_options(_game_state, _content, combat_view.active_actor_id):
+		var scroll_cast := {"scrollSlot": option.scroll_slot, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
+		if option.target_mode == &"sequence":
+			scroll_cast["maximumTargets"] = option.maximum_targets
+			var candidates: Array[Dictionary] = []
+			for candidate: CombatSpellTargetView in option.target_candidates:
+				candidates.append({"id": candidate.id, "kind": String(candidate.kind), "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})
+			scroll_cast["targetCandidates"] = candidates
+		if option.target_mode == &"area":
+			scroll_cast["areaShape"] = option.area_shape
+			scroll_cast["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]
+			scroll_cast["areaOffsets"] = option.area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
+			scroll_cast["legalTargetCoordinates"] = option.legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
+		scroll_casts.append(scroll_cast)
+	if not scroll_casts.is_empty():
+		actions.append("use_scroll")
+	var scroll_cast_reason := _rules.combat_flow.character_scroll_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
 	var retreat := {"enabled": combat_view.retreat_available, "reason": combat_view.retreat_unavailable_reason, "nearestEnemyRange": combat_view.nearest_enemy_range}
 	var enemies_remaining := combat_view.hostile_actor_ids.size()
 	var bandage_targets: Array[Dictionary] = []
@@ -2913,7 +2947,7 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var turn_targets: Array[Dictionary] = []
 	for target: MonsterView in combat_view.turn_undead_targets:
 		turn_targets.append({"id": target.id, "name": target.name, "hitDice": target.hit_dice, "magicResistance": target.magic_resistance})
-	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "enemiesRemaining": enemies_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "combatants": combatants, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason, "itemCasts": item_casts, "itemCastReason": item_cast_reason, "autoTurn": {"enabled": combat_view.auto_turn.enabled, "reason": combat_view.auto_turn.reason}, "autoCharacterIds": combat_view.auto_character_ids.duplicate(), "delay": {"enabled": combat_view.delay.enabled, "reason": combat_view.delay.reason}, "bandage": {"enabled": combat_view.bandage.enabled, "reason": combat_view.bandage.reason, "targets": bandage_targets}, "turnUndead": {"enabled": combat_view.turn_undead.enabled, "reason": combat_view.turn_undead.reason, "targets": turn_targets}, "undo": {"enabled": combat_view.undo.enabled, "reason": combat_view.undo.reason}})
+	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "enemiesRemaining": enemies_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "combatants": combatants, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason, "itemCasts": item_casts, "itemCastReason": item_cast_reason, "scrollCasts": scroll_casts, "scrollCastReason": scroll_cast_reason, "autoTurn": {"enabled": combat_view.auto_turn.enabled, "reason": combat_view.auto_turn.reason}, "autoCharacterIds": combat_view.auto_character_ids.duplicate(), "delay": {"enabled": combat_view.delay.enabled, "reason": combat_view.delay.reason}, "bandage": {"enabled": combat_view.bandage.enabled, "reason": combat_view.bandage.reason, "targets": bandage_targets}, "turnUndead": {"enabled": combat_view.turn_undead.enabled, "reason": combat_view.turn_undead.reason, "targets": turn_targets}, "undo": {"enabled": combat_view.undo.enabled, "reason": combat_view.undo.reason}})
 
 
 static func _character_combatant_payload(character: CharacterView) -> Dictionary:

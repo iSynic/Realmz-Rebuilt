@@ -119,6 +119,14 @@ static func use_scroll(caster_id: String, slot_index: int, target_character_ids:
 	return intent
 
 
+static func use_scroll_on_target(caster_id: String, slot_index: int, target_combatant_id: String = "", target_combatant_ids: Array[String] = [], coordinate: Vector2i = Vector2i(-100_000, -100_000), area_rotation: int = 0) -> PlayerIntent:
+	var intent := use_scroll(caster_id, slot_index, target_combatant_ids)
+	intent.secondary_target_id = target_combatant_id
+	intent.target_coordinate = coordinate
+	intent.rotation = area_rotation
+	return intent
+
+
 static func cast_spell_at(spell_id: String, caster_id: String, coordinate: Vector2i, power: int = 1, area_rotation: int = 0) -> PlayerIntent:
 	var intent := cast_spell(spell_id, caster_id, "", power)
 	intent.target_coordinate = coordinate

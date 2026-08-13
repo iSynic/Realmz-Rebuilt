@@ -316,6 +316,10 @@ func _on_combat_presentation_action_requested(action: StringName, payload: Dicti
 			_battlefield_presenter.confirm_targeting()
 		&"cancel_battlefield_targeting":
 			_battlefield_presenter.cancel_targeting()
+		&"play_sound":
+			var sound_id := int(payload.get("soundId", 0))
+			if sound_id > 0:
+				_audio_presenter.present_sound(sound_id, presentation_coordinator.package_media())
 
 
 func _submit_movement(direction: Vector2i) -> void:

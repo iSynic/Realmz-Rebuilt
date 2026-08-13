@@ -27,16 +27,17 @@ func build(request: InteractionRequest) -> void:
 	var targets: Variant = request.payload.get("targets", [])
 	var target_panel := VBoxContainer.new()
 	var spell_panel := VBoxContainer.new()
+	var scroll_panel := VBoxContainer.new()
 	var item_panel := VBoxContainer.new()
 	var bandage_panel := VBoxContainer.new()
-	var mode_panels: Array[Control] = [target_panel, spell_panel, item_panel, bandage_panel]
+	var mode_panels: Array[Control] = [target_panel, spell_panel, scroll_panel, item_panel, bandage_panel]
 	_mode_panels.assign(mode_panels)
 	var overview := VBoxContainer.new()
 	overview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	overview.add_theme_constant_override("separation", 8)
 	add_child(overview)
 	_build_combatant_information(request, targets, overview)
-	_add_primary_action_row(request, actor_id, action_ids, targets, target_panel, spell_panel, item_panel, bandage_panel, mode_panels, overview)
+	_add_primary_action_row(request, actor_id, action_ids, targets, target_panel, spell_panel, scroll_panel, item_panel, bandage_panel, mode_panels, overview)
 	for panel: Control in mode_panels:
 		panel.visible = false
 		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -99,6 +100,46 @@ func build(request: InteractionRequest) -> void:
 		refresh_cast_button.call(spell_picker.selected)
 	elif not String(request.payload.get("spellCastReason", "")).is_empty():
 		add_response_to(spell_panel, "Cast unavailable", {}, false, String(request.payload.get("spellCastReason")))
+	var scroll_casts: Variant = request.payload.get("scrollCasts", [])
+	if action_ids.has("use_scroll") and scroll_casts is Array and not scroll_casts.is_empty():
+		var scroll_picker := OptionButton.new()
+		scroll_picker.name = "CombatScrollPicker"
+		scroll_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		for option: Variant in scroll_casts:
+			if option is Dictionary:
+				var label := "Slot %d • %s • P%d → %s" % [int(option.get("scrollSlot", 0)) + 1, option.get("spellName", "Scroll"), int(option.get("power", 1)), option.get("targetName", "Choose target")]
+				var target_health := int(option.get("targetCurrentHealth", -1))
+				if target_health >= 0:
+					label += " (%d/%d HP)" % [target_health, int(option.get("targetMaximumHealth", 0))]
+				scroll_picker.add_item(label)
+				scroll_picker.set_item_metadata(scroll_picker.item_count - 1, option.duplicate(true))
+		scroll_panel.add_child(scroll_picker)
+		var use_scroll_button := Button.new()
+		use_scroll_button.name = "ChooseScrollTarget"
+		use_scroll_button.disabled = scroll_picker.item_count == 0
+		var refresh_scroll_button := func(_index: int) -> void:
+			if _targeting_active:
+				presentation_action_requested.emit(&"cancel_battlefield_targeting", {})
+			var selected: Variant = scroll_picker.get_selected_metadata()
+			var mode := String(selected.get("targetMode", "combatant")) if selected is Dictionary else "combatant"
+			use_scroll_button.text = "Use selected scroll" if mode == "automatic" else "Choose scroll target on battlefield"
+		scroll_picker.item_selected.connect(refresh_scroll_button)
+		use_scroll_button.pressed.connect(func() -> void:
+			var option: Variant = scroll_picker.get_selected_metadata()
+			if not option is Dictionary:
+				return
+			var payload := {"actorId": actor_id, "action": "use_scroll", "targetId": "", "scrollSlot": int(option.get("scrollSlot", -1))}
+			var mode := String(option.get("targetMode", "combatant"))
+			if mode == "automatic":
+				payload_submitted.emit(payload)
+				return
+			var configuration := _spell_targeting_configuration(scroll_casts, option, payload)
+			_start_targeting(configuration, scroll_panel)
+		)
+		scroll_panel.add_child(use_scroll_button)
+		refresh_scroll_button.call(scroll_picker.selected)
+	elif not String(request.payload.get("scrollCastReason", "")).is_empty():
+		add_response_to(scroll_panel, "Use scroll unavailable", {}, false, String(request.payload.get("scrollCastReason")))
 	var item_casts: Variant = request.payload.get("itemCasts", [])
 	if action_ids.has("use_item") and item_casts is Array and not item_casts.is_empty():
 		var item_row := HBoxContainer.new()
@@ -163,7 +204,7 @@ func _spell_targeting_configuration(spell_casts: Array, selected: Dictionary, re
 				candidate_ids.append(String(candidate.get("id")))
 	elif mode == "combatant":
 		for candidate: Variant in spell_casts:
-			if candidate is Dictionary and candidate.get("spellId") == selected.get("spellId") and int(candidate.get("power", 0)) == int(selected.get("power", 0)) and candidate.get("targetMode", "combatant") == "combatant" and not String(candidate.get("targetId", "")).is_empty():
+			if candidate is Dictionary and candidate.get("spellId") == selected.get("spellId") and int(candidate.get("power", 0)) == int(selected.get("power", 0)) and (not selected.has("scrollSlot") or candidate.get("scrollSlot") == selected.get("scrollSlot")) and candidate.get("targetMode", "combatant") == "combatant" and not String(candidate.get("targetId", "")).is_empty():
 				candidate_ids.append(String(candidate.get("targetId")))
 	return {
 		"mode": mode,
@@ -339,7 +380,7 @@ func accepts_spatial_input() -> bool:
 	return true
 
 
-func _add_primary_action_row(request: InteractionRequest, actor_id: String, action_ids: Array, targets: Variant, target_panel: Control, spell_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
+func _add_primary_action_row(request: InteractionRequest, actor_id: String, action_ids: Array, targets: Variant, target_panel: Control, spell_panel: Control, scroll_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
 	var weapon_switch: Variant = request.payload.get("weaponSwitch", {})
 	var action_row := HFlowContainer.new()
 	action_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -356,6 +397,8 @@ func _add_primary_action_row(request: InteractionRequest, actor_id: String, acti
 	_add_panel_toggle(action_row, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason)
 	var spell_casts: Variant = request.payload.get("spellCasts", [])
 	_add_panel_toggle(action_row, "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty(), String(request.payload.get("spellCastReason", "Spellcasting is unavailable.")))
+	var scroll_casts: Variant = request.payload.get("scrollCasts", [])
+	_add_panel_toggle(action_row, "Scrolls", scroll_panel, mode_panels, overview, action_ids.has("use_scroll") and scroll_casts is Array and not scroll_casts.is_empty(), String(request.payload.get("scrollCastReason", "Scroll use is unavailable.")), 647)
 	var item_casts: Variant = request.payload.get("itemCasts", [])
 	_add_panel_toggle(action_row, "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and item_casts is Array and not item_casts.is_empty(), String(request.payload.get("itemCastReason", "Item use is unavailable.")))
 	if action_ids.has("finish"):
@@ -429,7 +472,7 @@ func _availability_dictionary(value: Variant, fallback_reason: String) -> Dictio
 	return {"enabled": false, "reason": fallback_reason, "targets": []}
 
 
-func _add_panel_toggle(parent: Container, label: String, panel: Control, panels: Array[Control], overview: Control, enabled: bool, reason: String) -> Button:
+func _add_panel_toggle(parent: Container, label: String, panel: Control, panels: Array[Control], overview: Control, enabled: bool, reason: String, presentation_sound_id: int = 0) -> Button:
 	var button := Button.new()
 	button.text = label
 	button.custom_minimum_size.y = 36.0
@@ -441,6 +484,8 @@ func _add_panel_toggle(parent: Container, label: String, panel: Control, panels:
 		for candidate: Control in panels:
 			candidate.visible = should_show and candidate == panel
 		overview.visible = not should_show
+		if should_show and presentation_sound_id > 0:
+			presentation_action_requested.emit(&"play_sound", {"soundId": presentation_sound_id})
 	)
 	parent.add_child(button)
 	return button

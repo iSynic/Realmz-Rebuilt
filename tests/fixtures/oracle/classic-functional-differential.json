@@ -3424,7 +3424,7 @@
       "id": "spell.scroll-case-scribe-use",
       "workflowIds": ["classic.spellcasting.field-camp-cast", "classic.inventory.use-item"],
       "domain": "spellcasting",
-      "claim": "An alive spellcaster with an equipped type-13 case may scribe a known spell into the first of five fixed slots while camped by spending twice its power-scaled spell cost and one charge of Classic item 806; a valid field scroll cast spends no spell points and consumes the exact slot only after valid targeting.",
+      "claim": "An alive spellcaster with an equipped type-13 case may scribe a known spell into the first of five fixed slots while camped by spending twice its power-scaled spell cost and one charge of Classic item 806; valid field and combat scroll casts use the stored power, spend no spell points, and consume the exact slot only after valid targeting.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "The pinned Remake has no source-backed scroll-case state, scribing, or use workflow.",
@@ -3439,12 +3439,12 @@
           { "path": "src/realmz_orig/makescroll.c", "symbol": "void makescroll" },
           { "path": "src/realmz_orig/getscroll.c", "symbol": "short getscroll" },
           { "path": "src/realmz_orig/castspell.c", "symbol": "short castspell" },
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice" },
           { "path": "src/realmz_orig/moveicon.c", "symbol": "void moveicon" }
         ],
         "authoredInputs": ["equipped item type 13", "item 806 charges and load", "five scroll records", "known spell class, tier, slot, signed cost, power, context, target, and sound"],
-        "observation": "Castle permits scribing only in camp for a living spellcaster with an equipped scroll case, stores class/tier/slot/power in the first empty one of five slots, spends twice the normal spell cost, consumes one parchment charge/load, and plays the spell's positive completion sound. Scroll use requires an equipped case, spends no spell points, and clears a valid scroll before its later cancellable target picker.",
+        "observation": "Castle permits scribing only in camp for a living spellcaster with an equipped scroll case, stores class/tier/slot/power in the first empty one of five slots, spends twice the normal spell cost, consumes one parchment charge/load, and plays the spell's positive completion sound. Field and combat scroll use require an equipped case, use stored power without spending spell points, and clear a valid scroll before the later cancellable target picker. A committed combat use spends twelve movement and two half-attack units through the ordinary spell result path.",
         "unresolved": [
-          "Combat scroll targeting and action costs remain disabled.",
           "The explicit discard choice for a field-invalid scroll remains unavailable.",
           "Trading a type-13 case also transfers its five scroll records in Castle; typed case ownership/transfer is not implemented."
         ]
@@ -3459,22 +3459,24 @@
         "expectedRepresentation": "Schema v2 preserves item type, Classic ID, charges, per-charge weight, drop-on-empty, and signed spell fields. The synthetic fixture proves type-13 item 800 and charged item 806 reach the consumer."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _make_scroll" },
-        "expectedTrace": ["validate camp, caster, case, free slot, parchment, known spell, power, and double cost", "consume one parchment charge/load and fill the first fixed slot without RNG", "persist all five slots", "validate a stored scroll and field context", "stage a typed target request without mutation", "commit the effect with no spell-point cost", "clear the exact slot after valid targeting", "publish source-shaped sounds and results"],
+        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func use_combat_scroll" },
+        "expectedTrace": ["validate camp, caster, case, free slot, parchment, known spell, power, and double cost", "consume one parchment charge/load and fill the first fixed slot without RNG", "persist all five slots", "validate a stored scroll and its field or combat context", "stage typed targets without mutation", "commit the fixed-power effect with no spell-point cost", "charge combat movement and half-attack units only after legal targeting", "clear the exact slot after a successful result", "publish source-shaped sounds and results"],
         "tests": [
           { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_combat_scroll_use" },
           { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run" },
-          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_field_spell_workspace" }
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_field_spell_workspace" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_typed_option_contracts" }
         ]
       },
       "decision": "intentional-correction",
       "fidelityDecision": {
         "id": "FD-SPELL-002",
         "fixturePath": "tests/fixtures/oracle/scroll-target-cancel-consumption-correction.json",
-        "fixtureSha256": "5626549d323bd08dbd7a86e6e664ca83beaf2c2891cfd72024b41d2819c1d95f"
+        "fixtureSha256": "1eb33c3b3349776658c38aebb33404d0c1e6e0befbd3e5e83ab8ebe9bfcf9451"
       },
       "availability": "implemented",
-      "status": "field-scribing-five-slot-persistence-targeting-use-and-cancel-correction-verified-combat-discard-and-case-transfer-unresolved"
+      "status": "field-and-combat-scribing-five-slot-persistence-targeting-use-cost-and-cancel-correction-verified-discard-and-case-transfer-unresolved"
     },
     {
       "id": "combat.tactical-workspace-presentation",

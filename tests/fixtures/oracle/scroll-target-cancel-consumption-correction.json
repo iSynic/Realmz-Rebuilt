@@ -23,6 +23,7 @@
   "realmz2ChosenResult": {
     "scrollClearedAfterValidTargetSelection": true,
     "invalidOrCancelledSelectionPreservesScroll": true,
-    "effectRandomnessBeginsAfterValidTargetSelection": true
+    "effectRandomnessBeginsAfterValidTargetSelection": true,
+    "appliesToFieldAndCombatUse": true
   }
 }
