@@ -3,6 +3,8 @@ extends Control
 
 const SaveSlotPreviewScript := preload("res://src/infrastructure/saves/save_slot_preview.gd")
 const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
+const PartySetupCharacterRowScript := preload("res://src/presentation/party_setup_character_row.gd")
+const PartySetupPartyListScript := preload("res://src/presentation/party_setup_party_list.gd")
 
 signal screen_changed(screen_id: StringName)
 signal start_requested(package_path: String, seed: int)
@@ -42,6 +44,8 @@ var _setup_body: VBoxContainer
 var _creator_scroll: ScrollContainer
 var _creator: BoxContainer
 var _creator_page: VBoxContainer
+var _creator_steps: HBoxContainer
+var _creator_action_bar: HBoxContainer
 var _creator_step_labels: Array[Label] = []
 var _race_class_columns: BoxContainer
 var _setup_campaign_label: Label
@@ -54,6 +58,8 @@ var _starting_level_option: OptionButton
 var _portrait_option: OptionButton
 var _combat_icon_option: OptionButton
 var _party_list: VBoxContainer
+var _stored_character_list: VBoxContainer
+var _create_character_button: Button
 var _setup_message: Label
 var _review_label: Label
 var _spell_label: Label
@@ -71,6 +77,7 @@ var _vault_revisions: Array[CharacterVaultRevisionView] = []
 var _selected_race_id: String = ""
 var _selected_caste_id: String = ""
 var _creator_step: int = 0
+var _setup_mode: StringName = &"assembly"
 var _draft_name: String = ""
 var _draft_gender: int = 1
 var _draft_starting_level: int = 1
@@ -125,7 +132,7 @@ func present(view: GameView) -> void:
 		_body_frame.visible = false
 		return
 	if not _presented_campaign_id.is_empty() and _presented_campaign_id != view.campaign_id:
-		_reset_creator()
+		_reset_creator(true)
 		_inventory_character_id = ""
 		_inventory_item_id = ""
 		_money_character_id = ""
@@ -140,7 +147,7 @@ func present(view: GameView) -> void:
 			_awaiting_draft_generation = false
 		if _awaiting_draft_finalization and view.character_draft == null:
 			_awaiting_draft_finalization = false
-			_reset_creator()
+			_reset_creator(true)
 		_campaign_overlay.visible = false
 		_setup_overlay.visible = true
 		_body_frame.visible = false
@@ -168,7 +175,7 @@ func _finish_party_setup_navigation() -> void:
 	_setup_inspection_character_id = ""
 	if _setup_inspection_overlay != null:
 		_setup_inspection_overlay.visible = false
-	_reset_creator()
+	_reset_creator(true)
 	_route_history.clear()
 	if _screen_id == &"exploration":
 		return
@@ -244,6 +251,8 @@ func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 	_vault_revisions = revisions.duplicate()
 	if _screen_id == &"vault":
 		_render_screen()
+	elif _view != null and _view.party_setup_available and _setup_overlay != null and _setup_overlay.visible:
+		_refresh_setup_options()
 
 
 func set_save_previews(previews: Array) -> void:
@@ -276,7 +285,7 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2) -> voi
 	_workspace_rect = Rect2(0.0, top, maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top - bottom))
 	if _body_frame != null:
 		_workspace_view.set_workspace_rect(_workspace_rect)
-	_modal_layout_rect = Rect2(12.0, top + 8.0, maxf(320.0, viewport_size.x - profile.party_width - 24.0), maxf(300.0, viewport_size.y - top - 16.0))
+	_modal_layout_rect = Rect2(12.0, top + 8.0, maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - top - 16.0))
 	_campaign_layout_rect = ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
 	if _setup_overlay != null:
 		_apply_creator_layout(profile.id)
@@ -508,7 +517,16 @@ func _details_button(row: HBoxContainer) -> void:
 func _build_setup_overlay() -> void:
 	_setup_overlay = PanelContainer.new()
 	_setup_overlay.name = "PartySetup"
-	_setup_overlay.theme_type_variation = &"ClassicSharedStone"
+	_setup_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var setup_surface := StyleBoxFlat.new()
+	setup_surface.bg_color = Color("121519")
+	setup_surface.border_color = Color("4b5157")
+	setup_surface.set_border_width_all(1)
+	setup_surface.content_margin_left = 10.0
+	setup_surface.content_margin_top = 8.0
+	setup_surface.content_margin_right = 10.0
+	setup_surface.content_margin_bottom = 8.0
+	_setup_overlay.add_theme_stylebox_override("panel", setup_surface)
 	_setup_overlay.set_anchors_preset(Control.PRESET_CENTER)
 	_setup_overlay.offset_left = -440.0
 	_setup_overlay.offset_top = -238.0
@@ -526,16 +544,16 @@ func _build_setup_overlay() -> void:
 	_setup_restriction_label = _add_label(_setup_body, "", MUTED)
 	_setup_restriction_label.custom_minimum_size.y = 34.0
 	_setup_restriction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var steps := HBoxContainer.new()
-	steps.add_theme_constant_override("separation", 6)
-	steps.custom_minimum_size.y = 24.0
+	_creator_steps = HBoxContainer.new()
+	_creator_steps.add_theme_constant_override("separation", 6)
+	_creator_steps.custom_minimum_size.y = 24.0
 	for step: String in ["1 Identity", "2 Race & Class", "3 Appearance", "4 Review", "5 Spells"]:
 		var step_label := _label(step, GOLD if step.begins_with("1") else MUTED, 13)
 		step_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		step_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		steps.add_child(step_label)
+		_creator_steps.add_child(step_label)
 		_creator_step_labels.append(step_label)
-	_setup_body.add_child(steps)
+	_setup_body.add_child(_creator_steps)
 	_creator_scroll = ScrollContainer.new()
 	_creator_scroll.name = "CreatorScroll"
 	_creator_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -556,46 +574,57 @@ func _build_setup_overlay() -> void:
 	_creator_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_creator.add_child(_creator_page)
 	var party_column := VBoxContainer.new()
-	party_column.custom_minimum_size.x = 190.0
+	party_column.custom_minimum_size.x = 340.0
 	party_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	party_column.add_child(_label("Current Party", GOLD))
-	_party_list = VBoxContainer.new()
+	var party_heading := HBoxContainer.new()
+	party_heading.add_child(_label("Current Party", GOLD, 18))
+	party_heading.add_spacer(true)
+	var party_count := _label("0 / 6", MUTED, 13)
+	party_count.name = "PartyCount"
+	party_heading.add_child(party_count)
+	party_column.add_child(party_heading)
+	_party_list = PartySetupPartyListScript.new()
+	_party_list.name = "PartySlots"
 	_party_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_party_list.import_requested.connect(_import_stored_character)
 	party_column.add_child(_party_list)
 	_creator.add_child(party_column)
 	_setup_message = _add_label(_setup_body, "Enter a name to begin creating a character.", MUTED)
 	_setup_message.custom_minimum_size.y = 32.0
 	_setup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var action_bar := HBoxContainer.new()
-	action_bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	_creator_action_bar = HBoxContainer.new()
+	_creator_action_bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	_creator_cancel_button = Button.new()
 	_creator_cancel_button.text = "Cancel character"
 	_creator_cancel_button.pressed.connect(_cancel_creator)
-	action_bar.add_child(_creator_cancel_button)
-	action_bar.add_spacer(true)
+	_creator_action_bar.add_child(_creator_cancel_button)
+	_creator_action_bar.add_spacer(true)
 	_creator_back_button = Button.new()
 	_creator_back_button.text = "Back"
 	_creator_back_button.pressed.connect(_creator_back)
-	action_bar.add_child(_creator_back_button)
+	_creator_action_bar.add_child(_creator_back_button)
 	_add_character_button = Button.new()
 	_add_character_button.text = "Reroll"
 	_add_character_button.pressed.connect(_reroll_character)
-	action_bar.add_child(_add_character_button)
+	_creator_action_bar.add_child(_add_character_button)
 	_creator_next_button = Button.new()
 	_creator_next_button.text = "Continue"
 	_creator_next_button.pressed.connect(_creator_next)
-	action_bar.add_child(_creator_next_button)
+	_creator_action_bar.add_child(_creator_next_button)
 	_setup_import_button = Button.new()
-	_setup_import_button.text = "Import from vault"
+	_setup_import_button.text = "Revision history and archives…"
 	_setup_import_button.pressed.connect(_show_vault_for_setup)
-	_setup_body.add_child(action_bar)
-	_setup_body.add_child(_setup_import_button)
+	_setup_body.add_child(_creator_action_bar)
+	var setup_footer := HBoxContainer.new()
+	setup_footer.add_child(_setup_import_button)
+	setup_footer.add_spacer(true)
 	_begin_button = Button.new()
 	_begin_button.text = "Begin adventure"
 	_begin_button.custom_minimum_size.y = 34.0
 	_begin_button.disabled = true
 	_begin_button.pressed.connect(_submit_party)
-	_setup_body.add_child(_begin_button)
+	setup_footer.add_child(_begin_button)
+	_setup_body.add_child(setup_footer)
 	_build_setup_character_inspection()
 	_render_creator_step()
 
@@ -645,6 +674,11 @@ func _refresh_setup_options() -> void:
 func _render_creator_step() -> void:
 	if _creator_page == null:
 		return
+	if _setup_mode == &"assembly":
+		_render_party_assembly()
+		return
+	_creator_steps.visible = true
+	_creator_action_bar.visible = true
 	_setup_message.text = _creator_step_message()
 	_clear(_creator_page)
 	_race_list = null
@@ -988,14 +1022,16 @@ func _creator_back() -> void:
 
 func _cancel_creator() -> void:
 	var had_generated_draft := _view != null and _view.character_draft != null
-	_reset_creator()
+	_reset_creator(true)
 	if had_generated_draft:
 		intent_submitted.emit(PlayerIntent.cancel_character_draft())
 	else:
 		_render_creator_step()
 
 
-func _reset_creator() -> void:
+func _reset_creator(return_to_assembly: bool = false) -> void:
+	if return_to_assembly:
+		_setup_mode = &"assembly"
 	_creator_step = 0
 	_draft_name = ""
 	_draft_gender = 1
@@ -1007,7 +1043,7 @@ func _reset_creator() -> void:
 	_selected_caste_id = ""
 	_awaiting_draft_generation = false
 	_awaiting_draft_finalization = false
-	_setup_message.text = "Enter a name to begin creating another character."
+	_setup_message.text = "Choose stored characters or create a new one." if _setup_mode == &"assembly" else "Enter a name to begin creating another character."
 
 
 func _reroll_character() -> void:
@@ -1116,12 +1152,46 @@ func _first_enabled_item(list: ItemList) -> int:
 
 func _refresh_party_list() -> void:
 	_clear(_party_list)
+	_ensure_appearance_textures()
+	var import_available: bool = _view != null and _view.availability(&"import_vault_character").enabled and _view.party_members.size() < _maximum_party_size()
+	var import_reason := "" if import_available else "The party cannot accept another stored character right now."
+	_party_list.configure_drop_target(import_available, import_reason)
+	var party_count := _setup_overlay.find_child("PartyCount", true, false) as Label
+	if party_count != null:
+		party_count.text = "%d / %d" % [_view.party_members.size() if _view != null else 0, _maximum_party_size()]
 	if _view != null:
-		for character: CharacterView in _view.party_members:
+		for slot_index: int in _maximum_party_size():
+			if slot_index >= _view.party_members.size():
+				var empty := PanelContainer.new()
+				empty.name = "EmptyPartySlot%d" % (slot_index + 1)
+				empty.custom_minimum_size.y = 50.0
+				var empty_label := Label.new()
+				empty_label.text = "%d. Empty position" % (slot_index + 1)
+				empty_label.modulate = MUTED
+				empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+				empty.add_child(empty_label)
+				_party_list.add_child(empty)
+				continue
+			var character: CharacterView = _view.party_members[slot_index]
+			var row_panel := PanelContainer.new()
+			row_panel.name = "PartySlot_%s" % character.id.validate_node_name()
+			row_panel.custom_minimum_size.y = 58.0
+			row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			var row := HBoxContainer.new()
-			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_theme_constant_override("separation", 6)
+			row_panel.add_child(row)
+			var combat_icon := TextureRect.new()
+			combat_icon.name = "CombatIcon"
+			combat_icon.custom_minimum_size = Vector2(48.0, 48.0)
+			combat_icon.texture = _appearance_textures.get(character.combat_icon_id) as Texture2D
+			combat_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			combat_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			combat_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			combat_icon.tooltip_text = "%s's Classic combat icon" % character.name
+			row.add_child(combat_icon)
 			var label := Label.new()
-			label.text = "%d. %s" % [_party_list.get_child_count() + 1, character.name]
+			label.text = "%d. %s\nLevel %d • %s / %s" % [slot_index + 1, character.name, character.level, character.race_name, character.caste_name]
+			label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			label.modulate = Color("e0e2e5")
 			row.add_child(label)
@@ -1135,7 +1205,77 @@ func _refresh_party_list() -> void:
 			_apply_availability(remove_button, &"remove_party_member")
 			remove_button.pressed.connect(_remove_setup_character.bind(character.id))
 			row.add_child(remove_button)
-			_party_list.add_child(row)
+			_party_list.add_child(row_panel)
+
+
+func _render_party_assembly() -> void:
+	_creator_steps.visible = false
+	_creator_action_bar.visible = false
+	_setup_message.text = "Choose from Character Files on the left. Click a character or drag it into an empty party position."
+	_clear(_creator_page)
+	_ensure_appearance_textures()
+	var heading := HBoxContainer.new()
+	var title := _label("Character Files", GOLD, 18)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(title)
+	_create_character_button = Button.new()
+	_create_character_button.name = "CreateCharacter"
+	_create_character_button.text = "Create new character"
+	_create_character_button.disabled = _view != null and _view.party_members.size() >= _maximum_party_size()
+	if _create_character_button.disabled:
+		_create_character_button.tooltip_text = "This party already has %d characters." % _maximum_party_size()
+	_create_character_button.pressed.connect(_start_creator)
+	heading.add_child(_create_character_button)
+	_creator_page.add_child(heading)
+	var guidance := _label("Reusable characters eligible for this campaign. Character creation returns to this list when complete.", MUTED)
+	guidance.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_creator_page.add_child(guidance)
+	var stored_scroll := ScrollContainer.new()
+	stored_scroll.name = "StoredCharacterScroll"
+	stored_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stored_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stored_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_creator_page.add_child(stored_scroll)
+	_stored_character_list = VBoxContainer.new()
+	_stored_character_list.name = "StoredCharacterList"
+	_stored_character_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stored_scroll.add_child(_stored_character_list)
+	var current_revisions: Array[CharacterVaultRevisionView] = []
+	for revision: CharacterVaultRevisionView in _vault_revisions:
+		if revision.is_current and not revision.archived:
+			current_revisions.append(revision)
+	current_revisions.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool: return left.name.naturalnocasecmp_to(right.name) < 0)
+	if current_revisions.is_empty():
+		var empty := _label("No stored characters are available. Create one to begin assembling this party.", MUTED)
+		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_stored_character_list.add_child(empty)
+		return
+	var global_available: ActionAvailabilityView = _view.availability(&"import_vault_character") if _view != null else ActionAvailabilityView.new(&"import_vault_character", false, "No active party setup.")
+	for revision: CharacterVaultRevisionView in current_revisions:
+		var reason := ""
+		if not revision.eligible:
+			reason = "\n".join(revision.eligibility_reasons)
+		elif not global_available.enabled:
+			reason = global_available.reason
+		elif _view.party_members.size() >= _maximum_party_size():
+			reason = "This party already has %d characters." % _maximum_party_size()
+		var row := PartySetupCharacterRowScript.new()
+		row.name = "StoredCharacter_%s" % revision.character_id.validate_node_name()
+		var combat_icon_id := revision.character.combat_icon_id if revision.character != null else ""
+		var combat_icon := _appearance_textures.get(combat_icon_id) as Texture2D
+		row.configure(revision, revision.eligible and global_available.enabled and _view.party_members.size() < _maximum_party_size(), reason, combat_icon)
+		row.import_requested.connect(_import_stored_character)
+		_stored_character_list.add_child(row)
+
+
+func _start_creator() -> void:
+	_setup_mode = &"creator"
+	_reset_creator(false)
+	_render_creator_step()
+
+
+func _import_stored_character(character_id: String, revision_hash: String) -> void:
+	intent_submitted.emit(PlayerIntent.import_vault_character(character_id, revision_hash))
 
 
 func _inspect_setup_character(character_id: String) -> void:

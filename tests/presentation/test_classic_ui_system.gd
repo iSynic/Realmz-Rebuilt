@@ -1358,15 +1358,61 @@ func _test_character_creator_workflow() -> void:
 		view.set_action_availability(action_id, action_id in [&"generate_character_draft", &"import_vault_character"], "Unavailable in this fixture state.")
 	var intents: Array[PlayerIntent] = []
 	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	var stored := CharacterVaultRevisionView.new()
+	stored.character_id = "vault.stored.mira"
+	stored.revision_hash = "d".repeat(64)
+	stored.name = "Stored Mira"
+	stored.level = 3
+	stored.race_id = "race.human"
+	stored.caste_id = "caste.sorcerer"
+	stored.is_current = true
+	stored.eligible = true
+	var stored_state := CharacterState.new(stored.character_id, stored.name, 8, 8)
+	stored_state.level = stored.level
+	stored_state.race_id = stored.race_id
+	stored_state.caste_id = stored.caste_id
+	stored_state.combat_icon_id = "icon.human.1"
+	stored.character = CharacterView.new(stored_state)
+	var icon_image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	icon_image.fill(Color("67b789"))
+	var icon_texture := ImageTexture.create_from_image(icon_image)
+	router._appearance_textures[stored_state.combat_icon_id] = icon_texture
+	(view.party_members[0] as CharacterView).combat_icon_id = stored_state.combat_icon_id
+	router.set_vault_revisions([stored])
 	router.present(view)
+	var standard_profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
+	router._layout_profile = standard_profile.id
+	router._modal_layout_rect = Rect2(12.0, standard_profile.menu_height + 8.0, 936.0, 548.0)
+	router._apply_modal_layouts()
+	assert_equal(router._setup_overlay.size.x, 936.0, "party assembly covers the complete application width instead of duplicating the persistent in-game roster")
+	var setup_surface := router._setup_overlay.get_theme_stylebox("panel") as StyleBoxFlat
+	assert_true(setup_surface != null and setup_surface.bg_color.a >= 0.99, "party setup owns an opaque workspace rather than exposing the persistent exploration roster beneath it")
+	assert_equal(router._setup_mode, &"assembly", "party setup opens on stored-character assembly instead of forcing the creator")
+	assert_not_null(router._stored_character_list, "stored characters remain visible beside the six party slots")
+	assert_equal(router._party_list.get_child_count(), 6, "party assembly always exposes the campaign's complete slot capacity")
+	var stored_row := router._stored_character_list.find_child("StoredCharacter_*", false, false) as Button
+	assert_not_null(stored_row, "the current eligible stored revision is an ordinary Add row")
+	assert_equal(stored_row.icon, icon_texture, "Character Files uses the stored character's Classic CICN instead of a text-only picker row")
+	var party_icon := router._party_list.find_child("CombatIcon", true, false) as TextureRect
+	assert_not_null(party_icon, "each occupied party position reserves a Classic CICN surface")
+	assert_equal(party_icon.texture, icon_texture, "the assembled party repeats the exact character CICN for visual matching")
+	stored_row.pressed.emit()
+	assert_equal([intents[-1].kind, intents[-1].target_id, intents[-1].revision_hash], [PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id, stored.revision_hash], "click Add submits the stable stored-character revision through the existing typed intent")
+	var intent_count_before_drop := intents.size()
+	router._party_list._drop_data(Vector2.ZERO, {"kind": "party-setup-character", "characterId": stored.character_id, "revisionHash": stored.revision_hash})
+	assert_equal([intents.size(), intents[-1].kind, intents[-1].target_id], [intent_count_before_drop + 1, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id], "dragging onto the party list is a pointer convenience over the same typed import path")
 	var inspect_setup := router._party_list.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Inspect")[0] as Button
+	var intent_count_before_inspection := intents.size()
 	inspect_setup.pressed.emit()
 	assert_true(router._setup_inspection_overlay.visible, "party setup can open a complete detached character inspection surface before play")
 	assert_not_null(router._setup_inspection_overlay.find_child("PartySetupCharacterSheet", true, false), "setup inspection reuses the complete Classic character sheet instead of a second summary path")
-	assert_equal(intents.size(), 0, "opening and browsing setup inspection cannot mutate the session")
+	assert_equal(intents.size(), intent_count_before_inspection, "opening and browsing setup inspection cannot mutate the session")
 	assert_true(router.handle_back(), "Back closes setup character inspection before leaving party setup")
 	assert_false(router._setup_inspection_overlay.visible, "closing inspection restores the creator and party assembly surface")
-	assert_equal(router._creator_step, 0, "party setup opens on Identity rather than mounting all five creator pages")
+	var create_button := router._create_character_button
+	assert_not_null(create_button, "Create new character is an explicit secondary party-assembly action")
+	create_button.pressed.emit()
+	assert_equal([router._setup_mode, router._creator_step], [&"creator", 0], "Create switches the left pane to Identity while retaining the party pane")
 	assert_not_null(router._creator_page.get_node_or_null("CharacterName"), "Identity alone owns the character-name field")
 	var starting_level := router._creator_page.get_node_or_null("StartingLevel") as OptionButton
 	assert_not_null(starting_level, "Identity exposes the Classic starting-level boundary instead of silently omitting it")
