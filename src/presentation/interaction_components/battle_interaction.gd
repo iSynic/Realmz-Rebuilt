@@ -28,14 +28,15 @@ func build(request: InteractionRequest) -> void:
 	var target_panel := VBoxContainer.new()
 	var spell_panel := VBoxContainer.new()
 	var item_panel := VBoxContainer.new()
-	var mode_panels: Array[Control] = [target_panel, spell_panel, item_panel]
+	var bandage_panel := VBoxContainer.new()
+	var mode_panels: Array[Control] = [target_panel, spell_panel, item_panel, bandage_panel]
 	_mode_panels.assign(mode_panels)
 	var overview := VBoxContainer.new()
 	overview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	overview.add_theme_constant_override("separation", 8)
 	add_child(overview)
 	_build_combatant_information(request, targets, overview)
-	_add_primary_action_row(request, actor_id, action_ids, targets, target_panel, spell_panel, item_panel, mode_panels, overview)
+	_add_primary_action_row(request, actor_id, action_ids, targets, target_panel, spell_panel, item_panel, bandage_panel, mode_panels, overview)
 	for panel: Control in mode_panels:
 		panel.visible = false
 		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -338,7 +339,7 @@ func accepts_spatial_input() -> bool:
 	return true
 
 
-func _add_primary_action_row(request: InteractionRequest, actor_id: String, action_ids: Array, targets: Variant, target_panel: Control, spell_panel: Control, item_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
+func _add_primary_action_row(request: InteractionRequest, actor_id: String, action_ids: Array, targets: Variant, target_panel: Control, spell_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
 	var weapon_switch: Variant = request.payload.get("weaponSwitch", {})
 	var action_row := HFlowContainer.new()
 	action_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -363,15 +364,68 @@ func _add_primary_action_row(request: InteractionRequest, actor_id: String, acti
 	var retreat_enabled := action_ids.has("retreat") and retreat is Dictionary and bool(retreat.get("enabled", false))
 	var retreat_reason := String(retreat.get("reason", "Retreat is unavailable.") if retreat is Dictionary else "Retreat is unavailable.")
 	add_response_to(action_row, "Escape", {"actorId": actor_id, "action": "retreat", "targetId": ""}, retreat_enabled, retreat_reason)
-	_add_unavailable_classic_commands(action_row)
+	_add_classic_turn_commands(action_row, request, actor_id, bandage_panel, mode_panels, overview)
 
 
-func _add_unavailable_classic_commands(parent: Container) -> void:
-	add_response_to(parent, "Auto", {}, false, "Classic Auto Character Move and the separately saved per-character Auto toggle require a typed automation workflow.")
-	add_response_to(parent, "Delay", {}, false, "Classic Delay changes initiative ordering; its save-owned turn contract is not implemented yet.")
-	add_response_to(parent, "Undo", {}, false, "Classic Undo requires an explicit reversible combat transaction boundary.")
-	add_response_to(parent, "Bandage", {}, false, "Classic Bandage clears bleeding. Bleeding is not yet represented in typed character state, so this cannot safely mutate combat.")
-	add_response_to(parent, "Turn Undead", {}, false, "Turn Undead will appear when its caste ability, target, and resolution workflow are source-backed.")
+func _add_classic_turn_commands(parent: Container, request: InteractionRequest, actor_id: String, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
+	var auto_turn := _availability_dictionary(request.payload.get("autoTurn", {}), "Auto Turn is unavailable.")
+	add_response_to(parent, "Auto", {"actorId": actor_id, "action": "auto", "targetId": ""}, bool(auto_turn.get("enabled", false)), String(auto_turn.get("reason", "Auto Turn is unavailable.")))
+
+	var delay := _availability_dictionary(request.payload.get("delay", {}), "Delay is unavailable.")
+	add_response_to(parent, "Delay", {"actorId": actor_id, "action": "delay", "targetId": ""}, bool(delay.get("enabled", false)), String(delay.get("reason", "Delay is unavailable.")))
+
+	var bandage := _availability_dictionary(request.payload.get("bandage", {}), "Bandage is unavailable.")
+	var bandage_targets: Array = bandage.get("targets", []) if bandage.get("targets", []) is Array else []
+	var bandage_enabled := bool(bandage.get("enabled", false)) and not bandage_targets.is_empty()
+	var bandage_reason := String(bandage.get("reason", "Bandage is unavailable."))
+	if bandage_targets.is_empty() and bool(bandage.get("enabled", false)):
+		bandage_reason = "No legal Bandage recipient is available."
+	_add_bandage_panel(bandage_panel, actor_id, bandage_targets)
+	_add_panel_toggle(parent, "Bandage", bandage_panel, mode_panels, overview, bandage_enabled, bandage_reason)
+
+	var turn_undead := _availability_dictionary(request.payload.get("turnUndead", {}), "Turn Undead is unavailable.")
+	var turn_targets: Variant = turn_undead.get("targets", [])
+	var turn_label := "Turn Undead"
+	if bool(turn_undead.get("enabled", false)) and turn_targets is Array:
+		turn_label = "Turn Undead (%d)" % (turn_targets as Array).size()
+	add_response_to(parent, turn_label, {"actorId": actor_id, "action": "turn_undead", "targetId": ""}, bool(turn_undead.get("enabled", false)), String(turn_undead.get("reason", "Turn Undead is unavailable.")))
+
+	add_response_to(parent, "Undo", {"actorId": actor_id, "action": "undo", "targetId": ""}, false, "Classic Undo is not available in this build.")
+
+
+func _add_bandage_panel(parent: Control, actor_id: String, targets: Array) -> void:
+	_add_hint_to(parent, "Choose one bleeding party member.")
+	var picker := OptionButton.new()
+	picker.name = "BandageRecipient"
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.tooltip_text = "Choose one supplied legal Bandage recipient."
+	for target: Variant in targets:
+		if target is Dictionary and not String(target.get("id", "")).is_empty():
+			var label := String(target.get("name", target.get("id", "Character")))
+			label += " • %d HP" % int(target.get("currentHealth", 0))
+			picker.add_item(label)
+			picker.set_item_metadata(picker.item_count - 1, String(target.get("id", "")))
+	picker.disabled = picker.item_count == 0
+	parent.add_child(picker)
+	var submit := Button.new()
+	submit.name = "Bandage"
+	submit.text = "Bandage selected character"
+	submit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	submit.disabled = picker.item_count == 0
+	submit.tooltip_text = "Bandage the selected party member."
+	submit.pressed.connect(func() -> void:
+		var target_id := String(picker.get_selected_metadata())
+		if target_id.is_empty():
+			return
+		payload_submitted.emit({"actorId": actor_id, "action": "bandage", "targetId": target_id})
+	)
+	parent.add_child(submit)
+
+
+func _availability_dictionary(value: Variant, fallback_reason: String) -> Dictionary:
+	if value is Dictionary:
+		return (value as Dictionary).duplicate(true)
+	return {"enabled": false, "reason": fallback_reason, "targets": []}
 
 
 func _add_panel_toggle(parent: Container, label: String, panel: Control, panels: Array[Control], overview: Control, enabled: bool, reason: String) -> Button:

@@ -25,6 +25,8 @@ var _character_weapon_modes: Dictionary = {}
 var _guarding_actor_ids: Dictionary = {}
 var _retreated_character_ids: Dictionary = {}
 var _attacked_actor_ids: Dictionary = {}
+var _bleeding_character_ids: Dictionary = {}
+var _turned_undead_actor_ids: Dictionary = {}
 var _spell_death_macro_queue: Array[String] = []
 var _spell_macro_actor_id: String = ""
 var _spell_macro_advances_turn: bool = false
@@ -110,15 +112,31 @@ func clear_fumbled_items() -> void:
 	_fumbled_items.clear()
 
 
-func advance_turn() -> void:
+func advance_turn() -> bool:
 	if _turn_order.is_empty():
-		return
+		return false
 	active_turn = null
 	turn_index += 1
 	if turn_index >= _turn_order.size():
 		turn_index = 0
 		round_number += 1
 		_attacked_actor_ids.clear()
+		return true
+	return false
+
+
+func delay_active_actor() -> bool:
+	if _turn_order.is_empty() or turn_index < 0 or turn_index >= _turn_order.size():
+		return false
+	active_turn = null
+	if turn_index >= _turn_order.size() - 1:
+		turn_index = 0
+		round_number += 1
+		_attacked_actor_ids.clear()
+		return true
+	var actor_id: String = _turn_order.pop_at(turn_index)
+	_turn_order.append(actor_id)
+	return false
 
 
 func begin_active_turn() -> CombatTurnState:
@@ -186,6 +204,47 @@ func was_attacked(actor_id: String) -> bool:
 func attacked_actor_ids() -> Array[String]:
 	var result: Array[String] = []
 	for actor_id: Variant in _attacked_actor_ids:
+		result.append(String(actor_id))
+	result.sort()
+	return result
+
+
+func set_character_bleeding(actor_id: String, bleeding: bool) -> bool:
+	if actor_id.is_empty() or not _turn_order.has(actor_id) or monster_by_id(actor_id) != null:
+		return false
+	if bleeding:
+		_bleeding_character_ids[actor_id] = true
+	else:
+		_bleeding_character_ids.erase(actor_id)
+	return true
+
+
+func is_character_bleeding(actor_id: String) -> bool:
+	return bool(_bleeding_character_ids.get(actor_id, false))
+
+
+func bleeding_character_ids() -> Array[String]:
+	var result: Array[String] = []
+	for actor_id: Variant in _bleeding_character_ids:
+		result.append(String(actor_id))
+	result.sort()
+	return result
+
+
+func mark_turn_undead_used(actor_id: String) -> bool:
+	if actor_id.is_empty() or not _turn_order.has(actor_id) or monster_by_id(actor_id) != null:
+		return false
+	_turned_undead_actor_ids[actor_id] = true
+	return true
+
+
+func has_used_turn_undead(actor_id: String) -> bool:
+	return bool(_turned_undead_actor_ids.get(actor_id, false))
+
+
+func turn_undead_actor_ids() -> Array[String]:
+	var result: Array[String] = []
+	for actor_id: Variant in _turned_undead_actor_ids:
 		result.append(String(actor_id))
 	result.sort()
 	return result
@@ -275,7 +334,7 @@ func to_data() -> Dictionary:
 	weapon_mode_ids.sort()
 	for actor_id: Variant in weapon_mode_ids:
 		weapon_modes[String(actor_id)] = _character_weapon_modes[actor_id]
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "rewardsStarted": rewards_started, "rewardsCompleted": rewards_completed, "returnContinuation": return_continuation.duplicate(true), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "battlefield": null if battlefield == null else battlefield.to_data()}
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "rewardsStarted": rewards_started, "rewardsCompleted": rewards_completed, "returnContinuation": return_continuation.duplicate(true), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "bleedingCharacterIds": bleeding_character_ids(), "turnUndeadActorIds": turn_undead_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "battlefield": null if battlefield == null else battlefield.to_data()}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -335,6 +394,20 @@ static func from_data(data: Variant) -> CombatState:
 		if not actor_id is String or actor_id.is_empty() or not order.has(actor_id) or result._attacked_actor_ids.has(actor_id):
 			return null
 		result._attacked_actor_ids[actor_id] = true
+	var bleeding_data: Variant = data.get("bleedingCharacterIds", [])
+	if not bleeding_data is Array or bleeding_data.size() > 6:
+		return null
+	for actor_id: Variant in bleeding_data:
+		if not actor_id is String or actor_id.is_empty() or not order.has(actor_id) or result.monster_by_id(actor_id) != null or result._bleeding_character_ids.has(actor_id):
+			return null
+		result._bleeding_character_ids[actor_id] = true
+	var turn_undead_data: Variant = data.get("turnUndeadActorIds", [])
+	if not turn_undead_data is Array or turn_undead_data.size() > 6:
+		return null
+	for actor_id: Variant in turn_undead_data:
+		if not actor_id is String or actor_id.is_empty() or not order.has(actor_id) or result.monster_by_id(actor_id) != null or result._turned_undead_actor_ids.has(actor_id):
+			return null
+		result._turned_undead_actor_ids[actor_id] = true
 	var spell_macro_queue: Variant = data.get("spellDeathMacroQueue", [])
 	var spell_macro_actor: Variant = data.get("spellMacroActorId", "")
 	var spell_macro_advances: Variant = data.get("spellMacroAdvancesTurn", false)

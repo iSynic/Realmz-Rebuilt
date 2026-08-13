@@ -2,6 +2,7 @@ class_name CombatFlow
 extends RefCounted
 
 const CombatRetreatProbeType = preload("res://src/core/rules/combat_retreat_probe.gd")
+const CombatCommandProbeType = preload("res://src/core/rules/combat_command_probe.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -12,6 +13,7 @@ const REACTION_WAITING := 1
 const REACTION_DEATH_MACRO := 2
 const REACTION_MOVER_DEFEATED := 3
 const MAX_MONSTERS: int = 100
+const MAX_AUTO_OPERATIONS: int = 256
 const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
 const CHARACTER_FUMBLE_SOUNDS: Array[Dictionary] = [
 	{"soundId": 10121, "waitForCompletion": true},
@@ -53,6 +55,7 @@ class RuleDependencies:
 
 
 var _rules: RuleDependencies
+var _processing_auto: bool = false
 
 
 func _init(rules: RealmzRules) -> void:
@@ -241,10 +244,11 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 					return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
 				_append_character_attack_audio(events, actor, equipment, resolution, &"character")
 				events.append(_character_attack_event(actor.id, character_target.id, &"character", resolution, equipment.melee_weapon != null))
+				_mark_character_bleeding(state, character_target, resolution.killed)
 				_remove_defeated_position(combat, character_target.id, resolution.killed)
 			_consume_character_attack(actor)
 			if not _character_can_continue(actor):
-				combat.advance_turn()
+				_advance_turn(state, rng, events)
 			if monster_death_macro_requested:
 				return CombatFlowResult.succeeded(events)
 		&"switch_weapon":
@@ -266,13 +270,63 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 			combat.set_guarding(actor.id, true)
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": guard_sound, "waitForCompletion": false, "source": "classic-combat-guard"}))
 			events.append(DomainEvent.new(&"combatant_guarded", {"actorId": actor.id, "roll": guard_roll, "soundId": guard_sound, "source": "classic"}))
-			combat.advance_turn()
+			_advance_turn(state, rng, events)
+		&"delay":
+			var delay_probe := probe_delay(state, actor.id)
+			if not delay_probe.allowed:
+				return CombatFlowResult.failed(&"combat_delay_unavailable", delay_probe.reason_text)
+			_prepare_character_turn(combat, actor)
+			actor.attacks_remaining = _rules.arithmetic.signed_16(actor.attacks_remaining - actor.normal_attacks - actor.attack_bonus)
+			var round_advanced := combat.delay_active_actor()
+			if round_advanced:
+				_process_bleeding_round(state, rng, events)
+			events.append(DomainEvent.new(&"combat_turn_delayed", {"actorId": actor.id, "roundAdvanced": round_advanced, "source": "classic-corrected", "fidelityDecision": "FD-COMBAT-012"}))
+		&"bandage":
+			var bandage_probe := probe_bandage(state, actor.id, target_id)
+			if not bandage_probe.allowed:
+				return CombatFlowResult.failed(&"combat_bandage_unavailable", bandage_probe.reason_text)
+			_prepare_character_turn(combat, actor)
+			if not combat.set_character_bleeding(target_id, false):
+				return CombatFlowResult.failed(&"invalid_bandage_target", "The selected bleeding state could not be cleared.")
+			actor.attacks_remaining = 0
+			actor.movement = 0
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10105, "waitForCompletion": false, "source": "classic-combat-bandage"}))
+			if _processing_auto:
+				var bandage_roll := rng.draw(100, StringName("combat.auto.%s.bandage-sound" % actor.id))
+				var bandage_sound := 10121 if bandage_roll < 50 else 10123
+				events.append(DomainEvent.new(&"sound_requested", {"soundId": bandage_sound, "waitForCompletion": false, "source": "classic-combat-auto-bandage"}))
+			events.append(DomainEvent.new(&"combatant_bandaged", {"actorId": actor.id, "targetId": target_id, "source": "classic-corrected", "fidelityDecision": "FD-COMBAT-013"}))
+			_advance_turn(state, rng, events)
+		&"turn_undead":
+			var turn_result := _turn_undead(state, content, actor, rng)
+			if not turn_result.ok:
+				return turn_result
+			events.append_array(turn_result.events)
+			if not combat.pending_spell_death_macro_id().is_empty():
+				return CombatFlowResult.succeeded(events)
+		&"auto":
+			var auto_state_checkpoint := state.to_data()
+			var auto_rng_checkpoint := rng.checkpoint()
+			var auto_result := run_auto_turn(state, content, actor.id, rng)
+			if not auto_result.ok or auto_result.completed or state.combat == null or state.combat.pending_monster_attack != null or _events_include(auto_result.events, &"monster_death_macro_requested"):
+				if auto_result.ok:
+					auto_result.events.push_front(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
+				return auto_result
+			var persistent_result := run_persistent_auto_characters(state, content, rng)
+			if not persistent_result.ok:
+				if not state.restore_from_data(auto_state_checkpoint) or not rng.rollback(auto_rng_checkpoint):
+					return CombatFlowResult.failed(&"combat_auto_rollback_failed", "Auto Turn failed and could not restore its deterministic transaction boundary.")
+				return persistent_result
+			auto_result.events.append_array(persistent_result.events)
+			auto_result.events.push_front(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
+			auto_result.completed = persistent_result.completed
+			return auto_result
 		&"finish", &"pass":
 			_prepare_character_turn(combat, actor)
 			actor.movement = 0
 			combat.set_guarding(actor.id, false)
 			events.append(DomainEvent.new(&"combat_turn_passed", {"actorId": actor.id, "action": String(action)}))
-			combat.advance_turn()
+			_advance_turn(state, rng, events)
 		&"retreat":
 			return retreat_character(state, content, actor_id, &"explicit", Vector2i(-100_000, -100_000), rng)
 		_:
@@ -281,6 +335,328 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 		return CombatFlowResult.succeeded(events, true)
 	_process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
+
+
+func probe_delay(state: GameState, actor_id: String) -> CombatCommandProbeType:
+	var actor := state.party.character_by_id(actor_id) if state != null else null
+	var combat := state.combat if state != null else null
+	if actor == null or combat == null or combat.completed or combat.active_actor_id() != actor_id or actor.current_health <= 0 or actor.traitor:
+		return CombatCommandProbeType.new(false, "Only the active loyal character can Delay.")
+	if not _is_fresh_character_activation(combat, actor):
+		return CombatCommandProbeType.new(false, "Delay is available only before moving, attacking, or casting this activation.")
+	return CombatCommandProbeType.new(true)
+
+
+func bandage_candidate_ids(state: GameState) -> Array[String]:
+	var result: Array[String] = []
+	if state == null or state.combat == null:
+		return result
+	for character: CharacterState in state.party.characters():
+		if state.combat.is_character_bleeding(character.id) and character.current_health > -10:
+			result.append(character.id)
+	return result
+
+
+func probe_bandage(state: GameState, actor_id: String, target_id: String = "") -> CombatCommandProbeType:
+	var actor := state.party.character_by_id(actor_id) if state != null else null
+	var combat := state.combat if state != null else null
+	if actor == null or combat == null or combat.completed or combat.active_actor_id() != actor_id or actor.current_health <= 0 or actor.traitor:
+		return CombatCommandProbeType.new(false, "Only the active loyal character can Bandage.")
+	if not _is_fresh_character_activation(combat, actor):
+		return CombatCommandProbeType.new(false, "Bandage is available only before moving, attacking, or casting this activation.")
+	var candidates := bandage_candidate_ids(state)
+	if candidates.is_empty():
+		return CombatCommandProbeType.new(false, "No party member is bleeding.")
+	if not target_id.is_empty() and not candidates.has(target_id):
+		return CombatCommandProbeType.new(false, "The selected party member is not a legal bleeding recipient.")
+	return CombatCommandProbeType.new(true)
+
+
+func turn_undead_target_ids(state: GameState, content: RealmzContent) -> Array[String]:
+	var result: Array[String] = []
+	if state == null or state.combat == null or content == null or state.combat.battlefield == null:
+		return result
+	for monster: MonsterState in state.combat.monsters():
+		var definition := content.monster_by_id(monster.definition_id)
+		# Providence normalizes Castle's unsigned byte sentinel 255 to signed -1.
+		if monster.current_health > 0 and monster.traitor and state.combat.battlefield.has_actor(monster.id) and definition != null and definition.can_summon != -1 and (definition.type_flag(1) or definition.type_flag(2)):
+			result.append(monster.id)
+	return result
+
+
+func probe_turn_undead(state: GameState, content: RealmzContent, actor_id: String) -> CombatCommandProbeType:
+	var actor := state.party.character_by_id(actor_id) if state != null else null
+	var combat := state.combat if state != null else null
+	if actor == null or combat == null or combat.completed or combat.active_actor_id() != actor_id or actor.current_health <= 0 or actor.traitor:
+		return CombatCommandProbeType.new(false, "Only the active loyal character can Turn Undead.")
+	if not state.priest_turning_allowed:
+		return CombatCommandProbeType.new(false, "This campaign location forbids priest turning.")
+	if actor.ability_value(13) <= 0:
+		return CombatCommandProbeType.new(false, "This character has no Turn Undead ability.")
+	if combat.has_used_turn_undead(actor.id):
+		return CombatCommandProbeType.new(false, "This character has already attempted Turn Undead in this battle.")
+	if combat.active_turn != null and actor.attacks_remaining < 2:
+		return CombatCommandProbeType.new(false, "Turn Undead requires one remaining attack.")
+	if turn_undead_target_ids(state, content).is_empty():
+		return CombatCommandProbeType.new(false, "No hostile undead or nether spawn can be turned.")
+	return CombatCommandProbeType.new(true)
+
+
+func _turn_undead(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
+	_prepare_character_turn(state.combat, actor)
+	var probe := probe_turn_undead(state, content, actor.id)
+	if not probe.allowed:
+		return CombatFlowResult.failed(&"combat_turn_undead_unavailable", probe.reason_text)
+	var combat := state.combat
+	var target_ids := turn_undead_target_ids(state, content)
+	var macro_count := 0
+	for target_id: String in target_ids:
+		var target := combat.monster_by_id(target_id)
+		var definition := content.monster_by_id(target.definition_id) if target != null else null
+		if definition != null and definition.death_macro > 0:
+			macro_count += 1
+	if macro_count > CombatState.MAX_SPELL_DEATH_MACROS - combat.spell_death_macro_queue().size():
+		return CombatFlowResult.failed(&"combat_turn_undead_macro_limit", "Turn Undead would exceed the bounded death-macro queue.")
+	var events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": 659, "waitForCompletion": false, "source": "classic-combat-turn-undead"})]
+	combat.mark_turn_undead_used(actor.id)
+	events.append(DomainEvent.new(&"combat_turn_undead_attempted", {"actorId": actor.id, "ability": actor.ability_value(13), "targetIds": target_ids.duplicate(), "source": "classic"}))
+	for target_id: String in target_ids:
+		var target := combat.monster_by_id(target_id)
+		var definition := content.monster_by_id(target.definition_id)
+		var threshold := maxi(25, 100 - actor.ability_value(13) + 5 * target.hit_dice) + target.magic_resistance
+		var roll := rng.draw(100, StringName("combat.turn-undead.%s" % target.id))
+		var margin := roll - threshold
+		var result_kind := "resisted"
+		var experience_award := 0
+		if margin > 0 and margin < 30:
+			result_kind = "destroyed"
+			experience_award = 25 * target.hit_dice
+			target.current_health = 0
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 132, "waitForCompletion": false, "source": "classic-combat-turn-undead"}))
+			if not _queue_spell_death_macro(combat, target, definition):
+				_remove_defeated_position(combat, target.id, true)
+		elif margin >= 30:
+			result_kind = "turned"
+			experience_award = 50 * target.hit_dice
+			target.traitor = actor.traitor
+			target.target_id = ""
+			combat.set_guarding(target.id, false)
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 630, "waitForCompletion": false, "source": "classic-combat-turn-undead"}))
+		actor.experience = _rules.arithmetic.signed_32(actor.experience + experience_award)
+		events.append(DomainEvent.new(&"combat_turn_undead_resolved", {
+			"actorId": actor.id,
+			"targetId": target.id,
+			"result": result_kind,
+			"threshold": threshold,
+			"roll": roll,
+			"margin": margin,
+			"experience": experience_award,
+			"effectResourceType": "CIcon" if result_kind == "turned" else "",
+			"effectResourceId": 12056 if result_kind == "turned" else 0,
+			"effectFrameCount": 8 if result_kind == "turned" else 0,
+			"source": "classic",
+		}))
+	actor.attacks_remaining = _rules.arithmetic.signed_16(actor.attacks_remaining - 2)
+	var advances_turn := not _character_can_continue(actor)
+	if not combat.pending_spell_death_macro_id().is_empty():
+		if not combat.begin_spell_death_macro_sequence(actor.id, advances_turn) or not _request_next_spell_death_macro(combat, content, events):
+			return CombatFlowResult.failed(&"invalid_turn_undead_macro_queue", "Turn Undead could not begin its source-ordered death-macro continuation.")
+		return CombatFlowResult.succeeded(events)
+	if advances_turn:
+		_advance_turn(state, rng, events)
+	return CombatFlowResult.succeeded(events)
+
+
+static func _is_fresh_character_activation(combat: CombatState, actor: CharacterState) -> bool:
+	return combat.active_turn == null or (actor.movement == actor.maximum_movement and not combat.active_turn.physical_action_committed and combat.active_turn.spell_cast_count == 0)
+
+
+static func _mark_character_bleeding(state: GameState, character: CharacterState, defeated: bool) -> void:
+	if not defeated or state == null or state.combat == null or character == null:
+		return
+	# killbody.c clears doauto as soon as a party combatant is removed from the
+	# battle, even when the body remains recoverable above -10 health.
+	state.set_combat_auto(character.id, false)
+	if character.current_health > -10:
+		state.combat.set_character_bleeding(character.id, true)
+
+
+func _advance_turn(state: GameState, rng: RealmzRng, events: Array[DomainEvent]) -> void:
+	if state == null or state.combat == null:
+		return
+	if state.combat.advance_turn():
+		_process_bleeding_round(state, rng, events)
+
+
+func _process_bleeding_round(state: GameState, rng: RealmzRng, events: Array[DomainEvent]) -> void:
+	var combat := state.combat
+	for character: CharacterState in state.party.characters():
+		if not combat.is_character_bleeding(character.id):
+			continue
+		if character.current_health <= -10:
+			combat.set_character_bleeding(character.id, false)
+			state.set_combat_auto(character.id, false)
+			continue
+		character.current_health = _rules.arithmetic.signed_16(character.current_health - 1)
+		if character.current_health < -9:
+			combat.set_character_bleeding(character.id, false)
+			state.set_combat_auto(character.id, false)
+			_remove_defeated_position(combat, character.id, true)
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 132, "waitForCompletion": false, "source": "classic-combat-bleeding"}))
+			events.append(DomainEvent.new(&"combatant_bled_to_death", {"characterId": character.id, "health": character.current_health, "source": "classic"}))
+			continue
+		var roll := rng.draw(100, StringName("combat.bleeding.%s" % character.id))
+		var sound_id := 10121 if roll < 50 else 10123
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "waitForCompletion": false, "source": "classic-combat-bleeding"}))
+		events.append(DomainEvent.new(&"combatant_bleeding_progressed", {"characterId": character.id, "health": character.current_health, "roll": roll, "soundId": sound_id, "source": "classic"}))
+	if not bandage_candidate_ids(state).is_empty():
+		# getup.c performs a second, party-wide warning draw after every
+		# individual bleeding result when the Classic warning preference is on.
+		# Realmz Rebuilt currently preserves that default; exposing the preference
+		# itself remains owned by the settings workflow.
+		var warning_roll := rng.draw(100, &"combat.bleeding.warning-sound")
+		var warning_sound_id := 10121 if warning_roll < 50 else 10123
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": warning_sound_id, "waitForCompletion": false, "source": "classic-combat-bleeding-warning"}))
+		events.append(DomainEvent.new(&"combat_bleeding_warning", {"roll": warning_roll, "soundId": warning_sound_id, "source": "classic-default"}))
+
+
+func run_auto_turn(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng) -> CombatFlowResult:
+	if state == null or content == null or rng == null or state.combat == null or state.combat.completed:
+		return CombatFlowResult.failed(&"combat_auto_unavailable", "No active battle can resolve an automatic turn.")
+	var actor := state.party.character_by_id(actor_id)
+	if actor == null or actor.current_health <= 0 or actor.traitor or state.combat.active_actor_id() != actor_id:
+		return CombatFlowResult.failed(&"combat_auto_unavailable", "Only the active loyal character can use Auto Turn.")
+	var state_checkpoint := state.to_data()
+	var rng_checkpoint := rng.checkpoint()
+	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_auto_started", {"actorId": actor.id, "persistent": state.combat_auto_enabled(actor.id), "source": "classic"})]
+	var starting_round := state.combat.round_number
+	var operation_count := 0
+	var previous_processing := _processing_auto
+	_processing_auto = true
+	while operation_count < MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.active_actor_id() == actor_id and state.combat.round_number == starting_round:
+		operation_count += 1
+		var result: CombatFlowResult = null
+		var bandage_targets := bandage_candidate_ids(state)
+		if probe_bandage(state, actor.id).allowed and not bandage_targets.is_empty():
+			result = submit_action(state, content, actor.id, &"bandage", bandage_targets[0], rng)
+		elif probe_turn_undead(state, content, actor.id).allowed:
+			result = submit_action(state, content, actor.id, &"turn_undead", "", rng)
+		else:
+			var adjacent_ids := _hostile_adjacent_ids(state, actor.id)
+			if not adjacent_ids.is_empty():
+				if state.combat.character_weapon_mode(actor.id) == &"missile":
+					result = submit_action(state, content, actor.id, &"switch_weapon", "", rng)
+				else:
+					result = submit_action(state, content, actor.id, &"attack", adjacent_ids[0], rng)
+			else:
+				result = _auto_projectile_or_move(state, content, actor, rng)
+		if result == null or not result.ok:
+			result = submit_action(state, content, actor.id, &"defend", "", rng)
+		if result == null or not result.ok:
+			_processing_auto = previous_processing
+			if not state.restore_from_data(state_checkpoint) or not rng.rollback(rng_checkpoint):
+				return CombatFlowResult.failed(&"combat_auto_rollback_failed", "Automatic combat failed and could not restore its deterministic transaction boundary.")
+			return CombatFlowResult.failed(&"combat_auto_failed", "Automatic combat could not choose a legal source-backed action.")
+		events.append_array(result.events)
+		if result.completed or _events_include(result.events, &"monster_death_macro_requested") or state.combat.pending_monster_attack != null:
+			break
+	_processing_auto = previous_processing
+	if operation_count >= MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.active_actor_id() == actor_id and state.combat.round_number == starting_round:
+		if not state.restore_from_data(state_checkpoint) or not rng.rollback(rng_checkpoint):
+			return CombatFlowResult.failed(&"combat_auto_rollback_failed", "Automatic combat exhausted its operation limit and could not restore its deterministic transaction boundary.")
+		return CombatFlowResult.failed(&"combat_auto_operation_limit", "Automatic combat exceeded its 256-operation safety limit without committing a partial activation.")
+	events.append(DomainEvent.new(&"combat_auto_completed", {"actorId": actor.id, "operations": operation_count, "source": "classic"}))
+	return CombatFlowResult.succeeded(events, state.combat == null or state.combat.completed)
+
+
+func run_persistent_auto_characters(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
+	if state == null or content == null or rng == null or state.combat == null or state.combat.completed:
+		return CombatFlowResult.succeeded([])
+	var state_checkpoint := state.to_data()
+	var rng_checkpoint := rng.checkpoint()
+	var events: Array[DomainEvent] = []
+	var activation_count := 0
+	var previous_processing := _processing_auto
+	_processing_auto = true
+	while activation_count < MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed:
+		var actor_id := state.combat.active_actor_id()
+		var actor := state.party.character_by_id(actor_id)
+		if actor == null or actor.traitor or not state.combat_auto_enabled(actor_id):
+			break
+		activation_count += 1
+		var result := run_auto_turn(state, content, actor_id, rng)
+		if not result.ok:
+			_processing_auto = previous_processing
+			if not state.restore_from_data(state_checkpoint) or not rng.rollback(rng_checkpoint):
+				return CombatFlowResult.failed(&"combat_auto_rollback_failed", "Persistent Auto failed and could not restore its deterministic transaction boundary.")
+			return result
+		events.append_array(result.events)
+		if result.completed or state.combat.pending_monster_attack != null or _events_include(result.events, &"monster_death_macro_requested"):
+			_processing_auto = previous_processing
+			return CombatFlowResult.succeeded(events, result.completed)
+	_processing_auto = previous_processing
+	if activation_count >= MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat_auto_enabled(state.combat.active_actor_id()):
+		if not state.restore_from_data(state_checkpoint) or not rng.rollback(rng_checkpoint):
+			return CombatFlowResult.failed(&"combat_auto_rollback_failed", "Persistent Auto exhausted its operation limit and could not restore its deterministic transaction boundary.")
+		return CombatFlowResult.failed(&"combat_auto_operation_limit", "Persistent Auto exceeded its 256-activation safety limit without committing a partial chain.")
+	return CombatFlowResult.succeeded(events, state.combat == null or state.combat.completed)
+
+
+func _auto_projectile_or_move(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
+	if state.combat.character_weapon_mode(actor.id) == &"missile":
+		var equipment := _rules.inventory.combat_equipment(actor, content.item_definitions())
+		var profile := character_projectile_profile(actor, content, equipment)
+		if profile != null and profile.available:
+			for character: CharacterState in state.party.characters():
+				if character.id != actor.id and character.current_health > 0 and character.traitor != actor.traitor and projectile_target_is_valid(state.combat, content, actor.id, character.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
+					return submit_action(state, content, actor.id, &"attack", character.id, rng)
+			for monster: MonsterState in state.combat.monsters():
+				if monster.current_health > 0 and monster.traitor != actor.traitor and projectile_target_is_valid(state.combat, content, actor.id, monster.id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
+					return submit_action(state, content, actor.id, &"attack", monster.id, rng)
+		return submit_action(state, content, actor.id, &"switch_weapon", "", rng)
+	return _auto_move_toward_target(state, content, actor, rng)
+
+
+func _auto_move_toward_target(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
+	var combat := state.combat
+	_prepare_character_turn(combat, actor)
+	if actor.movement <= 0:
+		return CombatFlowResult.failed(&"combat_auto_no_movement", "The automatic character cannot move toward a target.")
+	var candidates: Array[String] = []
+	for character: CharacterState in state.party.characters():
+		if character.id != actor.id and character.current_health > 0 and character.traitor != actor.traitor and combat.battlefield.has_actor(character.id):
+			candidates.append(character.id)
+	for monster: MonsterState in combat.monsters():
+		if monster.current_health > 0 and monster.traitor != actor.traitor and combat.battlefield.has_actor(monster.id):
+			candidates.append(monster.id)
+	if candidates.is_empty():
+		return CombatFlowResult.failed(&"combat_auto_no_target", "No opposed battlefield combatant remains.")
+	var target_id := combat.active_turn.target_id
+	if not candidates.has(target_id):
+		target_id = candidates[rng.draw_between(0, candidates.size() - 1, StringName("combat.auto.%s.target" % actor.id))]
+		combat.active_turn.target_id = target_id
+	var origin := combat.battlefield.actor_position(actor.id)
+	var target := combat.battlefield.actor_position(target_id)
+	var direction := Vector2i(signi(target.x - origin.x), signi(target.y - origin.y))
+	if direction != Vector2i.ZERO:
+		var direct := move_character(state, content, actor.id, origin + direction, rng)
+		if direct.ok:
+			return direct
+	for retry: int in 20:
+		var shifted := Vector2i(rng.draw(3, StringName("combat.auto.%s.shift.%d.x" % [actor.id, retry])) - 2, rng.draw(3, StringName("combat.auto.%s.shift.%d.y" % [actor.id, retry])) - 2)
+		if shifted == Vector2i.ZERO:
+			continue
+		var shifted_result := move_character(state, content, actor.id, origin + shifted, rng)
+		if shifted_result.ok:
+			return shifted_result
+	return CombatFlowResult.failed(&"combat_auto_blocked", "The automatic character exhausted Castle's bounded movement retries.")
+
+
+static func _events_include(events: Array[DomainEvent], kind: StringName) -> bool:
+	for event: DomainEvent in events:
+		if event.kind == kind:
+			return true
+	return false
 
 
 func probe_character_retreat(combat: CombatState, characters: Array[CharacterState], actor_id: String):
@@ -385,9 +761,9 @@ func retreat_character(state: GameState, content: RealmzContent, actor_id: Strin
 	if not _has_loyal_battlefield_character(state):
 		_complete_battle(state, content, &"retreated", events)
 		return CombatFlowResult.succeeded(events, true)
-	combat.advance_turn()
+	_advance_turn(state, rng, events)
 	_process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, combat.completed)
+	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
 func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i, rng: RealmzRng) -> CombatFlowResult:
@@ -426,7 +802,7 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 	var reaction_result := _continue_pending_reaction(state, content, rng, events)
 	if reaction_result == REACTION_MOVER_DEFEATED:
 		if combat.active_actor_id() == actor.id:
-			combat.advance_turn()
+			_advance_turn(state, rng, events)
 		if _finish_if_resolved(state, content, events):
 			return CombatFlowResult.succeeded(events, true)
 		_process_monster_turns(state, content, rng, events)
@@ -580,6 +956,7 @@ func _resolve_character_reaction(state: GameState, content: RealmzContent, attac
 	events.append(event)
 	if resolution.killed:
 		combat.pending_reaction.mover_killed = true
+		_mark_character_bleeding(state, character_target, true)
 		_remove_defeated_position(combat, character_target.id, true)
 		return REACTION_MOVER_DEFEATED
 	return REACTION_COMPLETED
@@ -620,6 +997,7 @@ func _resolve_monster_reaction(state: GameState, content: RealmzContent, attacke
 		events.append(reaction_event)
 		if reaction_resolution.killed:
 			combat.pending_reaction.mover_killed = true
+			_mark_character_bleeding(state, character_target, true)
 			_remove_defeated_position(combat, character_target.id, true)
 			return REACTION_MOVER_DEFEATED
 		return REACTION_COMPLETED
@@ -1047,11 +1425,11 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The multi-target spell death-macro queue could not retain its caster and source order.")
 		return CombatFlowResult.succeeded(events)
 	if advances_turn:
-		combat.advance_turn()
+		_advance_turn(state, rng, events)
 	if _finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	_process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, combat.completed)
+	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
 static func _append_spell_sound(events: Array[DomainEvent], authored_sound_id: int, source: String) -> void:
@@ -1331,7 +1709,7 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 				return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The active caster changed before the queued spell action completed.")
 		state.combat.clear_spell_death_macro_sequence()
 		if advances_turn:
-			state.combat.advance_turn()
+			_advance_turn(state, rng, events)
 	_remove_all_defeated_positions(state)
 	if state.combat.pending_reaction != null:
 		var reaction := state.combat.pending_reaction
@@ -1347,7 +1725,7 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 		else:
 			state.combat.pending_reaction = null
 		if state.combat.active_actor_id() == mover_id:
-			state.combat.advance_turn()
+			_advance_turn(state, rng, events)
 	if state.combat.completed or _finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	_process_monster_turns(state, content, rng, events)
@@ -1372,6 +1750,7 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 	if pending.damage > 0:
 		combat.mark_attacked(target.id)
 	var defeated := target.current_health <= 0
+	_mark_character_bleeding(state, target, defeated)
 	_remove_defeated_position(combat, target.id, defeated)
 	var pending_attack_index := maxi(0, combat.active_turn.attack_index - 1) if combat.active_turn != null and combat.pending_reaction == null else 0
 	var pending_attacker := combat.monster_by_id(pending.actor_id)
@@ -1395,21 +1774,21 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 			return CombatFlowResult.succeeded(events)
 		if reaction_result == REACTION_MOVER_DEFEATED:
 			if combat.active_actor_id() == mover_id:
-				combat.advance_turn()
+				_advance_turn(state, rng, events)
 			if _finish_if_resolved(state, content, events):
 				return CombatFlowResult.succeeded(events, true)
 			_process_monster_turns(state, content, rng, events)
-			return CombatFlowResult.succeeded(events, combat.completed)
+			return CombatFlowResult.succeeded(events, state.combat.completed)
 		if reaction_kind == CombatReactionState.CHARACTER_MOVE:
 			return CombatFlowResult.succeeded(events)
 		_process_monster_turns(state, content, rng, events)
-		return CombatFlowResult.succeeded(events, combat.completed)
+		return CombatFlowResult.succeeded(events, state.combat.completed)
 	if _finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	var monster := combat.monster_by_id(pending.actor_id)
 	var definition := content.monster_by_id(monster.definition_id) if monster != null else null
 	if combat.active_turn == null or combat.active_turn.actor_id != pending.actor_id or pending.action != &"advance" or definition == null or combat.active_turn.attack_index >= _monster_attack_limit(definition):
-		combat.advance_turn()
+		_advance_turn(state, rng, events)
 	elif defeated:
 		combat.active_turn.target_id = ""
 	_process_monster_turns(state, content, rng, events)
@@ -1619,13 +1998,13 @@ func _fire_character_projectile(state: GameState, content: RealmzContent, actor:
 	var death_macro_requested := resolution.target_defeated and _request_monster_death_macro(target, definition, events)
 	_remove_defeated_position(combat, target.id, resolution.target_defeated and not death_macro_requested)
 	if not _character_can_continue(actor):
-		combat.advance_turn()
+		_advance_turn(state, rng, events)
 	if death_macro_requested:
 		return CombatFlowResult.succeeded(events)
 	if _finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	_process_monster_turns(state, content, rng, events)
-	return CombatFlowResult.succeeded(events, combat.completed)
+	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
 static func _projectile_spell_unavailable_reason(spell: SpellDefinition) -> String:
@@ -1668,36 +2047,43 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 		if monster == null:
 			var charmed_actor := state.party.character_by_id(actor_id)
 			if charmed_actor != null and (combat.battlefield == null or not combat.battlefield.has_actor(charmed_actor.id)):
-				combat.advance_turn()
+				_advance_turn(state, rng, events)
 				guard -= 1
 				continue
 			if charmed_actor == null or not charmed_actor.traitor:
 				if charmed_actor != null and charmed_actor.current_health > 0:
 					_prepare_character_turn(combat, charmed_actor)
+					if state.combat_auto_enabled(charmed_actor.id) and not _processing_auto:
+						var auto_result := run_persistent_auto_characters(state, content, rng)
+						if not auto_result.ok:
+							events.append(DomainEvent.new(&"combat_auto_failed", {"actorId": charmed_actor.id, "code": String(auto_result.error_code), "message": auto_result.error_message, "rolledBack": true}))
+							return
+						events.append_array(auto_result.events)
+						return
 				break
 			if charmed_actor.current_health > 0 and _process_charmed_character_turn(state, content, charmed_actor, rng, events):
-				combat.advance_turn()
+				_advance_turn(state, rng, events)
 				return
-			combat.advance_turn()
+			_advance_turn(state, rng, events)
 			if _finish_if_resolved(state, content, events):
 				break
 			guard -= 1
 			continue
 		if monster.current_health <= 0:
-			combat.advance_turn()
+			_advance_turn(state, rng, events)
 			guard -= 1
 			continue
 		if combat.active_turn == null:
 			combat.set_guarding(monster.id, true)
 		if monster.conditions.is_active(ConditionRules.HELPLESS):
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": "incapacitated"}))
-			combat.advance_turn()
+			_advance_turn(state, rng, events)
 			guard -= 1
 			continue
 		var definition := content.monster_by_id(monster.definition_id)
 		if definition == null:
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": "unavailable_definition"}))
-			combat.advance_turn()
+			_advance_turn(state, rng, events)
 			guard -= 1
 			continue
 		var active_turn := combat.begin_active_turn()
@@ -1751,7 +2137,7 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 				return
 		else:
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": String(active_turn.action)}))
-		combat.advance_turn()
+		_advance_turn(state, rng, events)
 		if _finish_if_resolved(state, content, events):
 			break
 		guard -= 1
@@ -1876,6 +2262,7 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			if not resolution.target_defeated:
 				continue
 			if target_kind == &"character":
+				_mark_character_bleeding(state, state.party.character_by_id(resolved_target_id), true)
 				_remove_defeated_position(state.combat, resolved_target_id, true)
 			else:
 				var defeated_monster := state.combat.monster_by_id(resolved_target_id)
@@ -2066,6 +2453,7 @@ func _process_monster_projectile(state: GameState, content: RealmzContent, monst
 		"defeated": resolution.target_defeated,
 		"source": "classic-monster",
 	}))
+	_mark_character_bleeding(state, target, resolution.target_defeated)
 	_remove_defeated_position(combat, target.id, resolution.target_defeated)
 	return MONSTER_ATTACK_COMPLETED
 
@@ -2170,6 +2558,7 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 		var character_attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": character_target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": monster_resolution.hit, "damage": monster_resolution.total_damage(), "defeated": monster_resolution.killed, "chance": monster_resolution.chance, "roll": monster_resolution.roll})
 		_append_physical_result_effect(character_attack_event, monster_resolution.hit, attack_weapon != null)
 		events.append(character_attack_event)
+		_mark_character_bleeding(state, character_target, monster_resolution.killed)
 		_remove_defeated_position(combat, character_target.id, monster_resolution.killed)
 		if monster_resolution.killed:
 			active_turn.target_id = ""
@@ -2200,7 +2589,7 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 		_remove_defeated_position(combat, monster_target.id, not death_macro_requested)
 		if death_macro_requested:
 			if active_turn.attack_index >= _monster_attack_limit(definition):
-				combat.advance_turn()
+				_advance_turn(state, rng, events)
 			return MONSTER_ATTACK_DEATH_MACRO
 	return MONSTER_ATTACK_COMPLETED
 
@@ -2362,6 +2751,7 @@ func _process_charmed_character_turn(state: GameState, content: RealmzContent, a
 		_append_character_attack_audio(events, actor, equipment, character_resolution, &"character")
 		character_event.payload["automatic"] = true
 		events.append(character_event)
+		_mark_character_bleeding(state, character_target, character_resolution.killed)
 		_remove_defeated_position(state.combat, character_target.id, character_resolution.killed)
 		return false
 	var monster_target := monster_targets[target_index - character_targets.size()]
@@ -2684,6 +3074,7 @@ static func _append_monster_death_macro_request(monster: MonsterState, definitio
 
 
 func _finish_if_resolved(state: GameState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
+	state.prune_combat_auto_characters()
 	var combat := state.combat
 	var enemies_alive := false
 	for character: CharacterState in state.party.characters():

@@ -161,10 +161,12 @@ func _commit_close(events: Array[DomainEvent], reason: String) -> SessionStep:
 func submit_intent(intent: PlayerIntent) -> SessionStep:
 	if not _started:
 		return SessionStep.failed(_view_revision, &"session_not_started", "Start or restore the session first.")
-	if _pending_interaction() != null or _scenario_vm.is_active():
-		return SessionStep.failed(_view_revision, &"interaction_pending", "Respond to the pending interaction first.")
 	if intent == null:
 		return SessionStep.failed(_view_revision, &"invalid_intent", "A typed player intent is required.")
+	if intent.kind == PlayerIntent.Kind.SET_COMBAT_AUTO:
+		return _set_combat_auto(intent)
+	if _pending_interaction() != null or _scenario_vm.is_active():
+		return SessionStep.failed(_view_revision, &"interaction_pending", "Respond to the pending interaction first.")
 	if not _state.party_setup_completed and intent.kind not in [PlayerIntent.Kind.CREATE_PARTY, PlayerIntent.Kind.BEGIN_ADVENTURE, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT, PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS, PlayerIntent.Kind.FINALIZE_CHARACTER, PlayerIntent.Kind.REMOVE_PARTY_MEMBER]:
 		return SessionStep.failed(_view_revision, &"party_setup_incomplete", "Finish party setup before beginning the adventure.")
 	if _state.combat != null and not _state.combat.completed and intent.kind not in [PlayerIntent.Kind.USE_ITEM, PlayerIntent.Kind.USE_ITEM_ON_TARGET, PlayerIntent.Kind.CAST_SPELL, PlayerIntent.Kind.CHOOSE_COMBAT_ACTION, PlayerIntent.Kind.COMBAT_MOVE]:
@@ -188,6 +190,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _combat_action(intent)
 		PlayerIntent.Kind.COMBAT_MOVE:
 			return _combat_move(intent)
+		PlayerIntent.Kind.SET_COMBAT_AUTO:
+			return _set_combat_auto(intent)
 		PlayerIntent.Kind.CREATE_PARTY:
 			return _create_party(intent.party_members)
 		PlayerIntent.Kind.BEGIN_ADVENTURE:
@@ -266,7 +270,7 @@ func view() -> GameView:
 		var member_view := CharacterView.new(character, _content)
 		member_view.apply_equipment(_rules.inventory.combat_equipment(character, _content.item_definitions()))
 		members.append(member_view)
-	var current_combat := CombatView.new(_state.combat, _state.party.characters(), _content, _rules.inventory, _rules.battlefield, _rules.combat_flow) if _state.combat != null else null
+	var current_combat := CombatView.new(_state.combat, _state.party.characters(), _content, _rules.inventory, _rules.battlefield, _rules.combat_flow, _state) if _state.combat != null else null
 	var result := GameView.new(_view_revision, true, _pending_interaction(), _state.party.map_id, _state.party.coordinate, _state.clock.day(), _state.clock.hour(), _state.clock.minute(), _build_map_view(), members, _state.party.fatigue, _state.party.pooled_wealth.gold, current_combat)
 	result.campaign_id = _content.campaign_id
 	result.rules_version = _content.rules_version
@@ -1301,6 +1305,43 @@ func _combat_action(intent: PlayerIntent) -> SessionStep:
 	return _finish_completed(result.events)
 
 
+func _set_combat_auto(intent: PlayerIntent) -> SessionStep:
+	if _state == null or _state.combat == null or _state.combat.completed:
+		return SessionStep.failed(_view_revision, &"combat_auto_unavailable", "Persistent Auto can be changed only during an active battle.")
+	var character := _state.party.character_by_id(intent.actor_id)
+	if character == null or character.current_health <= 0:
+		return SessionStep.failed(_view_revision, &"invalid_combat_auto_character", "Persistent Auto requires a living party character.")
+	var pending := _pending_interaction()
+	if pending != null:
+		if pending.kind != InteractionRequest.COMBAT or _scenario_vm == null or not _scenario_vm.is_active():
+			return SessionStep.failed(_view_revision, &"interaction_pending", "Persistent Auto cannot replace this pending interaction.")
+		return respond(InteractionResponse.new(pending.request_id, pending.kind, {"actorId": intent.actor_id, "action": "set_auto", "targetId": "", "enabled": intent.enabled}))
+	var state_checkpoint := _state.to_data()
+	var rng_checkpoint := _rng.checkpoint()
+	if not _state.set_combat_auto(intent.actor_id, intent.enabled):
+		return SessionStep.failed(_view_revision, &"invalid_combat_auto_character", "Persistent Auto could not be changed for this character.")
+	var toggle_sound := 147 if intent.enabled else 139
+	var events: Array[DomainEvent] = [
+		DomainEvent.new(&"sound_requested", {"soundId": toggle_sound, "waitForCompletion": false, "source": "classic-combat-auto-toggle"}),
+		DomainEvent.new(&"combat_auto_changed", {"characterId": intent.actor_id, "enabled": intent.enabled, "source": "classic"}),
+	]
+	if intent.enabled and _state.combat.active_actor_id() == intent.actor_id:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
+		var result := _rules.combat_flow.run_persistent_auto_characters(_state, _content, _rng)
+		if not result.ok:
+			if not _state.restore_from_data(state_checkpoint) or not _rng.rollback(rng_checkpoint):
+				return SessionStep.failed(_view_revision, &"combat_auto_rollback_failed", "Persistent Auto failed and could not restore its toggle transaction.")
+			return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+		events.append_array(result.events)
+		if not CharacterAgingResult.update_payloads(events).is_empty():
+			return _finish_with_age_updates(events, "combat-monster-turns")
+		if not _event_payload(events, &"monster_death_macro_requested").is_empty():
+			return _start_session_death_macro(events)
+		if result.completed:
+			return _finish_direct_battle(events)
+	return _finish_completed(events)
+
+
 func _combat_move(intent: PlayerIntent) -> SessionStep:
 	var edge_probe: Variant = _rules.combat_flow.probe_edge_retreat(_state.combat, intent.actor_id, intent.direction)
 	if edge_probe.allowed:
@@ -1571,6 +1612,7 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionStep:
 func _remove_party_member(character_id: String) -> SessionStep:
 	if _state.party_setup_completed or _pending_interaction() != null:
 		return SessionStep.failed(_view_revision, &"party_setup_closed", "Party members can be removed only during party setup.")
+	_state.set_combat_auto(character_id, false)
 	if character_id.is_empty() or not _state.party.remove_character(character_id):
 		return SessionStep.failed(_view_revision, &"unknown_party_member", "The selected character is not in the setup party.")
 	_state.set_selected_character_ids([])

@@ -38,6 +38,7 @@ var _encounter_attempts: Dictionary = {}
 var _thief_encounter_type_flags: Dictionary = {}
 var _scenario_program_overrides: Dictionary = {}
 var _journal_message_ids: Dictionary = {}
+var _combat_auto_character_ids: Dictionary = {}
 
 
 func _init(party_state: PartyState, realmz_clock: RealmzClock, world_state: WorldState = null) -> void:
@@ -278,6 +279,77 @@ func clear_location_services() -> void:
 	bank_available = false
 
 
+func combat_auto_character_ids() -> Array[String]:
+	return _sorted_string_keys(_combat_auto_character_ids)
+
+
+func combat_auto_enabled(character_id: String) -> bool:
+	return bool(_combat_auto_character_ids.get(character_id, false))
+
+
+func set_combat_auto(character_id: String, enabled: bool) -> bool:
+	if not enabled:
+		if character_id.is_empty():
+			return false
+		_combat_auto_character_ids.erase(character_id)
+		return true
+	var character := party.character_by_id(character_id)
+	if character == null or character.current_health <= 0:
+		return false
+	_combat_auto_character_ids[character_id] = true
+	return true
+
+
+func prune_combat_auto_characters() -> void:
+	for character_id: Variant in _combat_auto_character_ids.keys():
+		var character := party.character_by_id(String(character_id))
+		if character == null or character.current_health <= 0:
+			_combat_auto_character_ids.erase(character_id)
+
+
+func restore_from_data(data: Dictionary) -> bool:
+	var loaded := GameState.from_data(data)
+	if loaded == null:
+		return false
+	party = loaded.party
+	clock = loaded.clock
+	world = loaded.world
+	combat = loaded.combat
+	random_encounters_enabled = loaded.random_encounters_enabled
+	camping_allowed = loaded.camping_allowed
+	party_in_boat = loaded.party_in_boat
+	party_camping = loaded.party_camping
+	priest_turning_allowed = loaded.priest_turning_allowed
+	allies_suspended = loaded.allies_suspended
+	character_spellcasting_blocked = loaded.character_spellcasting_blocked
+	monster_spellcasting_blocked = loaded.monster_spellcasting_blocked
+	spell_charging = loaded.spell_charging
+	last_move_direction = loaded.last_move_direction
+	active_shop_id = loaded.active_shop_id
+	_shop_accept_ranges = loaded._shop_accept_ranges
+	temple_available = loaded.temple_available
+	temple_cost_percent = loaded.temple_cost_percent
+	bank_available = loaded.bank_available
+	last_battle_outcome = loaded.last_battle_outcome
+	party_setup_completed = loaded.party_setup_completed
+	character_draft = loaded.character_draft
+	_searched_cells = loaded._searched_cells
+	_quest_values = loaded._quest_values
+	_selected_character_ids = loaded._selected_character_ids
+	_timed_encounter_overrides = loaded._timed_encounter_overrides
+	_instance_counter = loaded._instance_counter
+	_eliminated_simple_options = loaded._eliminated_simple_options
+	_shop_overrides = loaded._shop_overrides
+	_shop_inflation_overrides = loaded._shop_inflation_overrides
+	_shop_buyback_overrides = loaded._shop_buyback_overrides
+	_encounter_attempts = loaded._encounter_attempts
+	_thief_encounter_type_flags = loaded._thief_encounter_type_flags
+	_scenario_program_overrides = loaded._scenario_program_overrides
+	_journal_message_ids = loaded._journal_message_ids
+	_combat_auto_character_ids = loaded._combat_auto_character_ids
+	return true
+
+
 func to_data() -> Dictionary:
 	var searched: Array[String] = []
 	for key: Variant in _searched_cells.keys():
@@ -335,6 +407,7 @@ func to_data() -> Dictionary:
 		"thiefEncounterTypeFlags": _sorted_dictionary(_thief_encounter_type_flags),
 		"scenarioProgramOverrides": _sorted_dictionary(_scenario_program_overrides),
 		"journalMessageIds": journal_message_ids(),
+		"combatAutoCharacterIds": combat_auto_character_ids(),
 	}
 
 
@@ -378,6 +451,13 @@ static func from_data(data: Variant) -> GameState:
 					return null
 		for monster: MonsterState in state.combat.monsters():
 			if not monster.target_id.is_empty() and party_state.character_by_id(monster.target_id) == null and state.combat.monster_by_id(monster.target_id) == null:
+				return null
+		for character_id: String in state.combat.bleeding_character_ids():
+			var bleeding_character := party_state.character_by_id(character_id)
+			if bleeding_character == null or bleeding_character.current_health > 0 or bleeding_character.current_health <= -10:
+				return null
+		for character_id: String in state.combat.turn_undead_actor_ids():
+			if party_state.character_by_id(character_id) == null:
 				return null
 		if state.combat.active_turn != null and not state.combat.active_turn.target_id.is_empty() and party_state.character_by_id(state.combat.active_turn.target_id) == null and state.combat.monster_by_id(state.combat.active_turn.target_id) == null:
 			return null
@@ -565,6 +645,12 @@ static func from_data(data: Variant) -> GameState:
 				if not journal_message_id_is_valid(message_id) or state.journal_message_is_recorded(message_id):
 					return null
 				state._journal_message_ids[message_id] = true
+		if data.has("combatAutoCharacterIds"):
+			if not data["combatAutoCharacterIds"] is Array or data["combatAutoCharacterIds"].size() > 6:
+				return null
+			for character_id: Variant in data["combatAutoCharacterIds"]:
+				if not character_id is String or state._combat_auto_character_ids.has(character_id) or not state.set_combat_auto(character_id, true):
+					return null
 	if state.party.characters().is_empty() and (not data.has("partySetupCompleted") or state.party_setup_completed):
 		return null
 	if state.party_setup_completed and state.character_draft != null:

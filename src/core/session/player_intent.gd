@@ -36,6 +36,7 @@ enum Kind {
 	OPEN_JOURNAL,
 	OPEN_MAPS,
 	SET_LOCATION_NOTE,
+	SET_COMBAT_AUTO,
 }
 
 var kind: Kind
@@ -56,6 +57,7 @@ var vault_state_data: Dictionary = {}
 var vault_source_campaign_id: String = ""
 var vault_source_package_hash: String = ""
 var text_value: String = ""
+var enabled: bool = false
 
 
 func _init(intent_kind: Kind) -> void:
@@ -252,6 +254,13 @@ static func combat_move(actor: String, destination: Vector2i) -> PlayerIntent:
 	var intent := PlayerIntent.new(Kind.COMBAT_MOVE)
 	intent.actor_id = actor
 	intent.direction = destination
+	return intent
+
+
+static func set_combat_auto(character_id: String, auto_enabled: bool) -> PlayerIntent:
+	var intent := PlayerIntent.new(Kind.SET_COMBAT_AUTO)
+	intent.actor_id = character_id
+	intent.enabled = auto_enabled
 	return intent
 
 

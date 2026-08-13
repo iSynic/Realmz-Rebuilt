@@ -38,6 +38,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - `adr/` contains immutable decision records and follows this contract; no additional child AGENTS.md is currently needed.
 - `gameplay-domain-evidence.md` owns Phase 4 Castle source ranges, bounded campaign-inventory provenance, and the distinction between source, runtime-unit, integration, and live-route proof.
 - `classic-functional-differential.md` owns the current human-readable Remake-versus-2.0 comparison status and links each rolling slice to its machine-readable evidence case.
+- `fidelity-ledger.md` owns named corrections such as the bounded Delay and Bandage decisions; each entry links a source-observation fixture and chosen-result tests without upgrading source flow into a runtime claim.
 - `classic-application-workflow-status.md` is generated from the authoritative workflow inventory and owns the current batch, count deltas, Classic and host completeness totals, domain heatmap, blockers, oracle unknowns, and prioritized queues. Never edit it independently of the inventory and generator.
 - `scenario-vm-evidence.md` owns Classic control-flow, nested macro, and host-boundary evidence.
 - `codemap/AGENTS.md` owns the generated source-intelligence encyclopedia, embedded source snapshot, machine graph, retrieval chunks, and evidence boundaries.

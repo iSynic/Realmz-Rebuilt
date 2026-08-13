@@ -1,0 +1,21 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-012",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {"path": "src/realmz_orig/combat.c", "symbol": "void combat(short suprise, short mode)", "range": "793-817"},
+    {"path": "src/realmz_orig/getup.c", "symbol": "void getup(short skip)", "range": "1-210"}
+  ],
+  "inputs": {"activeActor": "last populated initiative entry", "freshActivation": true},
+  "castleSourceObservation": {
+    "mutation": "Delay removes the active entry, appends it to the end, decrements the initiative cursor, and calls getup(TRUE).",
+    "lastSlot": "When the actor is already last, removal and reinsertion preserve its final position while cursor rewind can select the same actor again.",
+    "risk": "The actor can gain another activation instead of advancing the round."
+  },
+  "realmz2ChosenResult": {
+    "normal": "Move a fresh active actor behind every remaining actor in the current round.",
+    "lastSlot": "Advance to the next round instead of immediately reselecting the same actor.",
+    "scope": "Preserve only Delay initiative and attack-allocation behavior; do not introduce generic rollback."
+  }
+}

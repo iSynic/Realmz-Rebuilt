@@ -86,6 +86,7 @@ func _ready() -> void:
 	_router.system_action_requested.connect(_on_system_action_requested)
 	_router.presentation_setting_changed.connect(_on_presentation_setting_changed)
 	_party_roster.character_selected.connect(_on_character_selected)
+	_party_roster.combat_auto_changed.connect(_on_combat_auto_changed)
 	_smoke_action.pressed.connect(_on_smoke_pressed)
 	resized.connect(_apply_layout)
 	_build_menus()
@@ -522,6 +523,12 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 func _on_character_selected(character_id: String) -> void:
 	_selected_character_id = character_id
 	_router.open_screen(&"character")
+
+
+func _on_combat_auto_changed(character_id: String, enabled: bool) -> void:
+	if _current_view == null or _current_view.combat_view == null or _current_view.combat_view.outcome != &"active":
+		return
+	intent_submitted.emit(PlayerIntent.set_combat_auto(character_id, enabled))
 
 
 func _on_smoke_pressed() -> void:

@@ -182,6 +182,26 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `_test_character_and_monster_repeated_target_spells` proves that a first cast may succeed on its hundredth sample and that a second cast still receives its own first sample; it also preserves the within-cast partial-result/full-cost boundary. The differential case is `combat.repeated-target-spells`.
 - Legacy quirk: none. Scenario data cannot read, write, or intentionally depend on the lifetime of Castle's local `pass` variable.
 
+## FD-COMBAT-012 — Last-slot Delay advances the round
+
+- Affected rule: initiative ordering when the final actor in a round chooses Delay.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/combat.c`, `combat`, lines 793–817, and `src/realmz_orig/getup.c`, `getup`, lines 1–210. Delay removes and appends the current queue entry, decrements the cursor, then calls `getup(TRUE)` even when the actor was already last.
+- Observable oracle behavior, determined from complete source flow: at the final initiative entry, remove-and-append leaves the actor last and cursor rewind can select that same actor again. The source-observation fixture is `tests/fixtures/oracle/combat-delay-final-slot-correction.json`, SHA-256 `e4a41f2902f0d15966ba1bbd8109f5eceee493e903b01e52817d335fe16a804f`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: Delay can grant an immediate duplicate activation instead of delaying the actor or ending the round.
+- Chosen 2.0 behavior: a fresh actor normally moves behind the remaining actors. If already last, Delay applies Castle's attack-allocation adjustment and advances to the next round, including ordinary round-boundary effects.
+- Tests: combat-flow tests cover normal reorder, last-slot round advancement, attack allocation, rejection after committed action, and save restoration.
+- Legacy quirk: none. Duplicate initiative caused by remove/reinsert cursor aliasing is not an authored scenario dependency.
+
+## FD-COMBAT-013 — Bandage only an actual bleeding recipient
+
+- Affected rule: the party selection accepted by manual Bandage.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/combat.c`, `combat`, lines 752–777, and `src/realmz_orig/combatinfo-combatchoice.c`, `combatchoice`, lines 208–228. The manual branch opens a broad dead-inclusive party picker and clears bleeding for every selected row; Auto instead scans party order for the first bleeding member.
+- Observable oracle behavior, determined from complete source flow: a manual selection can contain a non-bleeding or dead character and still consume the activation, while multi-selection can clear several recipients. The source-observation fixture is `tests/fixtures/oracle/combat-bandage-recipient-correction.json`, SHA-256 `e0ad7afaf91c5fd7a8cee8e02bd9d1d819ae85e736c0d2a79dc5d3abb1a0ca11`. This is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: the command can succeed without treating a wound, and a plural hidden effect conflicts with the singular choice presented to the player.
+- Chosen 2.0 behavior: expose living, combat-owned bleeding recipients in party order, clear exactly one selected recipient, and reject invalid targets without mutation.
+- Tests: combat-flow and persistence tests cover legal-recipient order, exact one-recipient mutation, invalid-target rejection, immediate persistent-Auto cleanup on defeat, party-ordered round bleeding, Castle's default party-warning RNG draw, death, and save restoration.
+- Legacy quirk: none. A no-op or hidden multi-bandage selection is not needed by authored scenario data.
+
 Source-conformant implementations and ownership changes are not deviations. Phase 4's packed spell identities, spell power-roll ordering, equipment escrow, program replacement, and fumble mutations preserve observed Castle behavior while moving ownership into typed session state.
 
 Each entry must include:

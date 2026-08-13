@@ -2428,7 +2428,32 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 	if caller.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The pending battle lost its originating caller.")
 	var result: CombatFlowResult
-	if response.payload["action"] == "retreat":
+	if response.payload["action"] == "set_auto":
+		if response.payload.get("enabled") is not bool or _game_state.party.character_by_id(response.payload["actorId"]) == null:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Persistent Auto requires a party character and an enabled boolean.")
+		var auto_state_checkpoint := _game_state.to_data()
+		var auto_rng_checkpoint := _rng.checkpoint()
+		if not _game_state.set_combat_auto(response.payload["actorId"], response.payload["enabled"]):
+			return ScenarioRuntimeOperationResult.failed(&"invalid_combat_auto_character", "Persistent Auto could not be changed for this character.")
+		var toggle_sound := 147 if response.payload["enabled"] else 139
+		var auto_events: Array[DomainEvent] = [
+			DomainEvent.new(&"sound_requested", {"soundId": toggle_sound, "waitForCompletion": false, "source": "classic-combat-auto-toggle"}),
+			DomainEvent.new(&"combat_auto_changed", {"characterId": response.payload["actorId"], "enabled": response.payload["enabled"], "source": "classic"}),
+		]
+		if not response.payload["enabled"] or _game_state.combat.active_actor_id() != response.payload["actorId"]:
+			return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), continuation, auto_events)
+		auto_events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
+		result = _rules.combat_flow.run_persistent_auto_characters(_game_state, _content, _rng)
+		if not result.ok:
+			if not _game_state.restore_from_data(auto_state_checkpoint) or not _rng.rollback(auto_rng_checkpoint):
+				return ScenarioRuntimeOperationResult.failed(&"combat_auto_rollback_failed", "Persistent Auto failed and could not restore its toggle transaction.")
+			return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
+		if result.ok:
+			var combined_events: Array[DomainEvent] = []
+			combined_events.append_array(auto_events)
+			combined_events.append_array(result.events)
+			result.events = combined_events
+	elif response.payload["action"] == "retreat":
 		var retreat_probe: Variant = _rules.combat_flow.probe_character_retreat(_game_state.combat, _game_state.party.characters(), response.payload["actorId"])
 		if not retreat_probe.allowed:
 			return ScenarioRuntimeOperationResult.failed(retreat_probe.reason, retreat_probe.reason_text)
@@ -2813,7 +2838,7 @@ static func _death_macro_request(events: Array[DomainEvent]) -> Dictionary:
 
 func _combat_request(request_id: String) -> InteractionRequest:
 	var combat := _game_state.combat
-	var combat_view := CombatView.new(combat, _game_state.party.characters(), _content, _rules.inventory, _rules.battlefield, _rules.combat_flow)
+	var combat_view := CombatView.new(combat, _game_state.party.characters(), _content, _rules.inventory, _rules.battlefield, _rules.combat_flow, _game_state)
 	var actions: Array[String] = []
 	for action: StringName in combat_view.legal_actions:
 		actions.append(String(action))
@@ -2882,7 +2907,13 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var item_cast_reason := _rules.combat_flow.character_item_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
 	var retreat := {"enabled": combat_view.retreat_available, "reason": combat_view.retreat_unavailable_reason, "nearestEnemyRange": combat_view.nearest_enemy_range}
 	var enemies_remaining := combat_view.hostile_actor_ids.size()
-	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "enemiesRemaining": enemies_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "combatants": combatants, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason, "itemCasts": item_casts, "itemCastReason": item_cast_reason})
+	var bandage_targets: Array[Dictionary] = []
+	for candidate: CharacterView in combat_view.bandage_candidates:
+		bandage_targets.append({"id": candidate.id, "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})
+	var turn_targets: Array[Dictionary] = []
+	for target: MonsterView in combat_view.turn_undead_targets:
+		turn_targets.append({"id": target.id, "name": target.name, "hitDice": target.hit_dice, "magicResistance": target.magic_resistance})
+	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "enemiesRemaining": enemies_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "combatants": combatants, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason, "itemCasts": item_casts, "itemCastReason": item_cast_reason, "autoTurn": {"enabled": combat_view.auto_turn.enabled, "reason": combat_view.auto_turn.reason}, "autoCharacterIds": combat_view.auto_character_ids.duplicate(), "delay": {"enabled": combat_view.delay.enabled, "reason": combat_view.delay.reason}, "bandage": {"enabled": combat_view.bandage.enabled, "reason": combat_view.bandage.reason, "targets": bandage_targets}, "turnUndead": {"enabled": combat_view.turn_undead.enabled, "reason": combat_view.turn_undead.reason, "targets": turn_targets}})
 
 
 static func _character_combatant_payload(character: CharacterView) -> Dictionary:

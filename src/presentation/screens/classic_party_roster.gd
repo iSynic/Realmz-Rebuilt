@@ -2,6 +2,7 @@ class_name ClassicPartyRoster
 extends PanelContainer
 
 signal character_selected(character_id: String)
+signal combat_auto_changed(character_id: String, enabled: bool)
 
 const MUTED := Color("9da8aa")
 
@@ -24,15 +25,22 @@ func present(view: GameView, selected_character_id: String = "") -> void:
 		_add_empty("No active party")
 		return
 	_heading.text = "Party • %d / 6" % view.party_members.size()
+	var combat_active := view.combat_view != null and view.combat_view.outcome == &"active"
+	var auto_character_ids: Array[String] = []
+	if combat_active:
+		auto_character_ids.assign(view.combat_view.auto_character_ids)
 	for character: CharacterView in view.party_members:
-		_add_character(character)
+		_add_character(character, combat_active, auto_character_ids)
 	for index: int in maxi(0, 6 - view.party_members.size()):
 		_add_empty("Empty position %d" % (view.party_members.size() + index + 1))
 
 
-func _add_character(character: CharacterView) -> void:
+func _add_character(character: CharacterView, combat_active: bool, auto_character_ids: Array[String]) -> void:
+	var row_container := HBoxContainer.new()
+	row_container.custom_minimum_size.y = 58.0
+	row_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row_container.add_theme_constant_override("separation", 3)
 	var row := Button.new()
-	row.custom_minimum_size.y = 58.0
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	row.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -59,7 +67,19 @@ func _add_character(character: CharacterView) -> void:
 		_selected_character_id = character.id
 		character_selected.emit(character.id)
 	)
-	_party_list.add_child(row)
+	row_container.add_child(row)
+	if combat_active:
+		var auto_toggle := CheckButton.new()
+		auto_toggle.name = "CombatAuto"
+		auto_toggle.text = "Auto"
+		auto_toggle.custom_minimum_size.x = 52.0
+		var auto_available := character.current_health > 0 and not character.traitor
+		auto_toggle.disabled = not auto_available
+		auto_toggle.tooltip_text = "Persistent Auto for this character's next combat activation." if auto_available else "Persistent Auto requires a living loyal party character."
+		auto_toggle.button_pressed = auto_character_ids.has(character.id)
+		auto_toggle.toggled.connect(func(enabled: bool) -> void: combat_auto_changed.emit(character.id, enabled))
+		row_container.add_child(auto_toggle)
+	_party_list.add_child(row_container)
 
 
 func _add_empty(text: String) -> void:

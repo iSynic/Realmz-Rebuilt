@@ -348,6 +348,39 @@ func _test_battle_weapon_mode_component() -> void:
 		assert_equal(matching_buttons.size(), 1, "%s remains visible in the Classic command deck" % unavailable_label)
 		if not matching_buttons.is_empty():
 			assert_true(matching_buttons[0].disabled and not matching_buttons[0].tooltip_text.is_empty(), "%s exposes an explicit typed-workflow gap instead of a fake mutation" % unavailable_label)
+	var command_request := InteractionRequest.new("battle.command-parity", &"combat_action", {
+		"actorId": "character.priest",
+		"actions": ["finish", "defend", "auto", "delay", "bandage", "turn_undead"],
+		"autoTurn": {"enabled": true, "reason": ""},
+		"delay": {"enabled": true, "reason": ""},
+		"bandage": {"enabled": true, "reason": "", "targets": [{"id": "character.bleeding", "name": "Bleeding Hero", "currentHealth": -2, "maximumHealth": 20}]},
+		"turnUndead": {"enabled": true, "reason": "", "targets": [{"id": "monster.undead", "name": "Undead", "hitDice": 3, "magicResistance": 10}]},
+	})
+	var command_component := BattleInteraction.new()
+	var command_payloads: Array[Dictionary] = []
+	command_component.payload_submitted.connect(func(payload: Dictionary) -> void: command_payloads.append(payload))
+	command_component.build(command_request)
+	var command_buttons: Array[Button] = []
+	for child: Node in command_component.find_children("*", "Button", true, false):
+		command_buttons.append(child as Button)
+	var auto_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Auto")[0] as Button
+	var delay_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Delay")[0] as Button
+	var bandage_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Bandage")[0] as Button
+	var turn_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Turn Undead (1)")[0] as Button
+	assert_equal([auto_button.disabled, delay_button.disabled, bandage_button.disabled, turn_button.disabled], [false, false, false, false], "typed combat command availability enables Auto, Delay, Bandage, and Turn Undead without presenter-side rules")
+	auto_button.pressed.emit()
+	delay_button.pressed.emit()
+	turn_button.pressed.emit()
+	bandage_button.pressed.emit()
+	var bandage_submit := command_buttons.filter(func(button: Button) -> bool: return button.text == "Bandage selected character")[0] as Button
+	bandage_submit.pressed.emit()
+	assert_equal(command_payloads, [
+		{"actorId": "character.priest", "action": "auto", "targetId": ""},
+		{"actorId": "character.priest", "action": "delay", "targetId": ""},
+		{"actorId": "character.priest", "action": "turn_undead", "targetId": ""},
+		{"actorId": "character.priest", "action": "bandage", "targetId": "character.bleeding"},
+	], "the command deck returns only typed command and stable recipient identity payloads")
+	command_component.free()
 	var presentation_actions: Array[Array] = []
 	component.presentation_action_requested.connect(func(action: StringName, payload: Dictionary) -> void: presentation_actions.append([action, payload]))
 	center_button.pressed.emit()
@@ -1814,6 +1847,22 @@ func _test_party_roster() -> void:
 	if not rows.is_empty():
 		var row := rows[0] as Button
 		assert_equal(row.get_theme_constant("icon_max_width"), 42, "portrait width uses the supported Button theme constant")
+	var combat := CombatState.new("battle.roster-auto")
+	combat.set_turn_order([character.id])
+	view.combat_view = CombatView.new(combat)
+	view.combat_view.auto_character_ids = [character.id]
+	roster.present(view)
+	var toggles := roster.find_children("CombatAuto", "CheckButton", true, false)
+	assert_equal(toggles.size(), 1, "the combat roster exposes one persistent Auto toggle per party member")
+	if not toggles.is_empty():
+		assert_true((toggles[0] as CheckButton).button_pressed and not (toggles[0] as CheckButton).disabled, "a live character's saved persistent Auto state is visible and actionable")
+	character.current_health = 0
+	view.party_members = [CharacterView.new(character)]
+	roster.present(view)
+	var dead_toggles := roster.find_children("CombatAuto", "CheckButton", true, false)
+	assert_equal(dead_toggles.size(), 1, "the dead roster row retains an explanatory Auto control")
+	if not dead_toggles.is_empty():
+		assert_true((dead_toggles[0] as CheckButton).disabled and not (dead_toggles[0] as CheckButton).tooltip_text.is_empty(), "dead characters cannot submit a core-rejected persistent Auto toggle")
 	roster.free()
 
 

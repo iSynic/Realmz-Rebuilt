@@ -25,6 +25,12 @@ const PLAYBACK_EVENT_KINDS: Array[StringName] = [
 	&"combat_spell_cast",
 	&"combat_spell_projectile",
 	&"combat_spell_resolved",
+	&"combat_turn_undead_resolved",
+	&"combatant_bandaged",
+	&"combatant_bleeding_progressed",
+	&"combat_bleeding_warning",
+	&"combatant_bled_to_death",
+	&"combat_turn_delayed",
 	&"combatant_fumbled",
 	&"combat_attack_blocked",
 	&"combatant_retreated",
@@ -181,6 +187,18 @@ func _build_frames(events: Array[DomainEvent]) -> void:
 				_append_spell_projectile(event, positions, hidden)
 			&"combat_spell_resolved":
 				_append_spell_result(event, positions, hidden)
+			&"combat_turn_undead_resolved":
+				_append_turn_undead_result(event, positions, hidden)
+			&"combatant_bandaged":
+				_append_simple_result(event, positions, hidden, &"healing", "Bandaged")
+			&"combatant_bleeding_progressed":
+				_append_bleeding_result(event, positions, hidden, false)
+			&"combat_bleeding_warning":
+				_append_simple_result(event, positions, hidden, &"bleeding", "Bleeding wounds remain")
+			&"combatant_bled_to_death":
+				_append_bleeding_result(event, positions, hidden, true)
+			&"combat_turn_delayed":
+				_append_simple_result(event, positions, hidden, &"delay", "Delayed")
 			&"combatant_fumbled":
 				_append_simple_result(event, positions, hidden, &"fumble", "Fumble")
 			&"combat_attack_blocked":
@@ -273,6 +291,40 @@ func _append_spell_result(event: DomainEvent, positions: Dictionary, hidden: Arr
 			effect.to_coordinate = _position_for(effect.target_id, positions)
 		effect.effect_resource_id = int(effect_value)
 		_frames.append(effect)
+
+
+func _append_turn_undead_result(event: DomainEvent, positions: Dictionary, hidden: Array[String]) -> void:
+	var result_kind := StringName(event.payload.get("result", "resisted"))
+	var text := "Resist" if result_kind == &"resisted" else "Destroyed" if result_kind == &"destroyed" else "Turned"
+	var result := _new_frame(&"result", RESULT_SECONDS, positions, hidden)
+	result.actor_id = String(event.payload.get("actorId", ""))
+	result.target_id = String(event.payload.get("targetId", ""))
+	result.result_kind = result_kind
+	result.display_text = text
+	_frames.append(result)
+	if result_kind == &"turned":
+		for _frame_index_value: int in int(event.payload.get("effectFrameCount", 0)):
+			var effect := _new_frame(&"spell_effect", SPELL_EFFECT_SECONDS, positions, hidden)
+			effect.actor_id = String(event.payload.get("actorId", ""))
+			effect.target_id = String(event.payload.get("targetId", ""))
+			effect.to_coordinate = _position_for(effect.target_id, positions)
+			effect.effect_resource_id = int(event.payload.get("effectResourceId", 0)) + _frame_index_value
+			_frames.append(effect)
+	elif result_kind == &"destroyed":
+		var target_id := String(event.payload.get("targetId", ""))
+		if not target_id.is_empty() and not hidden.has(target_id):
+			hidden.append(target_id)
+
+
+func _append_bleeding_result(event: DomainEvent, positions: Dictionary, hidden: Array[String], defeated: bool) -> void:
+	var target_id := String(event.payload.get("characterId", ""))
+	var frame := _new_frame(&"result", RESULT_SECONDS, positions, hidden)
+	frame.target_id = target_id
+	frame.result_kind = &"bleeding"
+	frame.display_text = "Bled to death" if defeated else "Bleeding"
+	_frames.append(frame)
+	if defeated and not target_id.is_empty() and not hidden.has(target_id):
+		hidden.append(target_id)
 
 
 func _append_simple_result(event: DomainEvent, positions: Dictionary, hidden: Array[String], result_kind: StringName, text: String) -> void:

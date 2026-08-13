@@ -28,9 +28,16 @@ var character_targets: Array[CharacterView] = []
 var movement_options: Array[CombatMoveOptionView] = []
 var monsters: Array[MonsterView] = []
 var battlefield: BattlefieldView
+var auto_turn: ActionAvailabilityView = ActionAvailabilityView.new(&"auto", false, "Auto Turn is unavailable.")
+var delay: ActionAvailabilityView = ActionAvailabilityView.new(&"delay", false, "Delay is unavailable.")
+var bandage: ActionAvailabilityView = ActionAvailabilityView.new(&"bandage", false, "Bandage is unavailable.")
+var turn_undead: ActionAvailabilityView = ActionAvailabilityView.new(&"turn_undead", false, "Turn Undead is unavailable.")
+var bandage_candidates: Array[CharacterView] = []
+var turn_undead_targets: Array[MonsterView] = []
+var auto_character_ids: Array[String] = []
 
 
-func _init(combat: CombatState, characters: Array[CharacterState] = [], content: RealmzContent = null, inventory_rules: InventoryRules = null, battlefield_rules: BattlefieldRules = null, combat_flow: CombatFlow = null) -> void:
+func _init(combat: CombatState, characters: Array[CharacterState] = [], content: RealmzContent = null, inventory_rules: InventoryRules = null, battlefield_rules: BattlefieldRules = null, combat_flow: CombatFlow = null, game_state: GameState = null) -> void:
 	battle_id = combat.battle_id
 	round_number = combat.round_number
 	active_actor_id = combat.active_actor_id()
@@ -72,6 +79,21 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 			retreat_available = retreat_probe.allowed
 			retreat_unavailable_reason = retreat_probe.reason_text
 			nearest_enemy_range = retreat_probe.nearest_enemy_range
+			auto_turn = ActionAvailabilityView.new(&"auto", true)
+			var delay_probe := combat_flow.probe_delay(game_state, active_character.id)
+			delay = ActionAvailabilityView.new(&"delay", delay_probe.allowed, delay_probe.reason_text)
+			var bandage_probe := combat_flow.probe_bandage(game_state, active_character.id)
+			bandage = ActionAvailabilityView.new(&"bandage", bandage_probe.allowed, bandage_probe.reason_text)
+			var turn_probe := combat_flow.probe_turn_undead(game_state, content, active_character.id)
+			turn_undead = ActionAvailabilityView.new(&"turn_undead", turn_probe.allowed, turn_probe.reason_text)
+			for candidate_id: String in combat_flow.bandage_candidate_ids(game_state):
+				var candidate := game_state.party.character_by_id(candidate_id)
+				if candidate != null:
+					bandage_candidates.append(CharacterView.new(candidate, content))
+			for target_id: String in combat_flow.turn_undead_target_ids(game_state, content):
+				var target := combat.monster_by_id(target_id)
+				if target != null:
+					turn_undead_targets.append(MonsterView.new(target, content.monster_by_id(target.definition_id), content))
 		var equipment := inventory_rules.combat_equipment(active_character, content.item_definitions())
 		if equipment.valid:
 			weapon_mode = combat.character_weapon_mode(active_character.id)
@@ -125,6 +147,16 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 	legal_actions.append(&"defend")
 	if retreat_available:
 		legal_actions.append(&"retreat")
+	if auto_turn.enabled:
+		legal_actions.append(&"auto")
+	if delay.enabled:
+		legal_actions.append(&"delay")
+	if bandage.enabled:
+		legal_actions.append(&"bandage")
+	if turn_undead.enabled:
+		legal_actions.append(&"turn_undead")
+	if game_state != null:
+		auto_character_ids = game_state.combat_auto_character_ids()
 
 
 func _populate_active_relationships(combat: CombatState, characters: Array[CharacterState]) -> void:

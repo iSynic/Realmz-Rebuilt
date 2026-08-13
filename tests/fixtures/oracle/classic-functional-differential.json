@@ -4538,15 +4538,9 @@
     },
     {
       "id": "combat.command-parity-availability",
-      "workflowIds": [
-        "classic.combat.auto-turn",
-        "classic.combat.auto-character",
-        "classic.combat.delay",
-        "classic.combat.bandage",
-        "classic.combat.turn-undead"
-      ],
+      "workflowIds": ["classic.combat.auto-turn", "classic.combat.auto-character", "classic.combat.delay", "classic.combat.bandage", "classic.combat.turn-undead"],
       "domain": "combat",
-      "claim": "Classic exposes Auto Turn, per-character Auto, Delay, Bandage, and Turn Undead as distinct combat commands with source-owned availability and state transitions; Realmz Rebuilt currently keeps them visibly unavailable pending typed simulation contracts.",
+      "claim": "Classic exposes Auto Turn, per-character Auto, Delay, Bandage, and Turn Undead as distinct combat commands; Realmz Rebuilt now exposes their core-owned availability and typed command paths without presentation-side rules.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "Remake command concepts are donor leads only; direct global dispatch is not Classic authority.",
@@ -4557,55 +4551,185 @@
         "commit": "491816ad60037394f92c428e99c004494d3c28b3",
         "evidence": "source-control-flow",
         "controlFlow": [
-          {
-            "path": "src/realmz_orig/combat.c",
-            "symbol": "void combat(short suprise, short mode)"
-          },
-          {
-            "path": "src/realmz_orig/combatinfo-combatchoice.c",
-            "symbol": "void combatchoice(void)"
-          },
-          {
-            "path": "src/realmz_orig/misc.c",
-            "symbol": "void checkfordoauto(void)"
-          }
+          {"path":"src/realmz_orig/combat.c","symbol":"void combat(short suprise, short mode)"},
+          {"path":"src/realmz_orig/combatinfo-combatchoice.c","symbol":"void combatchoice(void)"},
+          {"path":"src/realmz_orig/misc.c","symbol":"void checkfordoauto(void)"}
         ],
-        "authoredInputs": [
-          "active actor and legal commands",
-          "doauto flags",
-          "initiative order",
-          "bleeding recipients",
-          "undead/nether targets",
-          "source RNG and action budget"
-        ],
-        "observation": "The source exposes separate branches. Auto can start the active actor immediately; Delay is tied to the fresh activation boundary; Bandage and Turn Undead have distinct recipient/target eligibility. Complete 2.0 simulation, save, and RNG contracts are not yet settled."
+        "authoredInputs": ["active actor and legal commands", "doauto flags", "initiative order", "bleeding recipients", "undead/nether targets", "source RNG and action budget"],
+        "observation": "The source exposes separate branches. Auto starts the active actor immediately and saves per-character flags; Delay is tied to a fresh activation; Bandage and Turn Undead use distinct recipient and target eligibility. The typed implementation preserves those boundaries and records two explicit corrections for unsafe last-slot Delay and broad manual Bandage selection."
       },
       "providence": {
         "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
         "sources": [],
-        "expectedRepresentation": "No package schema change is required for this unresolved command contract."
+        "expectedRepresentation": "No package schema change is required; these workflows use session, combat, character, and monster facts already present in schema v2."
       },
       "realmz2": {
-        "owner": {
-          "path": "src/presentation/interaction_components/battle_interaction.gd",
-          "symbol": "class_name BattleInteraction"
-        },
-        "expectedTrace": [
-          "retain explicit unavailable reasons",
-          "add one typed path per workflow",
-          "persist only source-proven state",
-          "stop auto at mandatory interaction/error/terminal outcome"
-        ],
+        "owner": {"path":"src/core/rules/combat_flow.gd","symbol":"func run_auto_turn("},
+        "expectedTrace": ["derive availability in core rules", "submit one typed command or Auto toggle", "commit deterministic state and RNG", "stop automatic processing at manual, mandatory, error, or terminal boundaries", "render the refreshed detached combat view"],
         "tests": [
-          {
-            "path": "tests/presentation/test_classic_ui_system.gd",
-            "symbol": "func _test_battle_weapon_mode_component()"
-          }
+          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_batch_two_combat_auto_state()"},
+          {"path":"tests/presentation/test_classic_ui_system.gd","symbol":"func _test_battle_weapon_mode_component()"}
         ]
       },
-      "decision": "unresolved",
-      "availability": "disabled",
-      "status": "queued-for-command-parity"
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "source-backed-implemented"
+    },
+    {
+      "id": "combat.current-and-persistent-auto",
+      "workflowIds": ["classic.combat.auto-turn", "classic.combat.auto-character"],
+      "domain": "combat",
+      "claim": "Current-turn Auto resolves exactly one active character activation, while saved per-character Auto continues enabled actors until a manual actor, mandatory boundary, explicit error, or terminal result.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake is a functional lead only; Castle adjudicates the command semantics and 2.0 retains its typed session boundary.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {"path":"src/realmz_orig/combatinfo-combatchoice.c","symbol":"void combatchoice(void)"},
+          {"path":"src/realmz_orig/misc.c","symbol":"void checkfordoauto(void)"},
+          {"path":"src/realmz_orig/combat.c","symbol":"void combat(short suprise, short mode)"},
+          {"path":"src/realmz_orig/save-direction-order.c","symbol":"void save(short mode)"},
+          {"path":"src/realmz_orig/loadsavedgame.c","symbol":"short load(void)"}
+        ],
+        "authoredInputs": ["doauto flags", "active actor and turn order", "legal targets and movement", "bleeding and undead eligibility", "source RNG"],
+        "observation": "Castle saves doauto directly, starts an active toggled actor through campbut, prioritizes automatic Bandage and Turn Undead, chooses opposed targets in source order/randomness, and yields when an application interaction such as a death macro takes control."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [],
+        "expectedRepresentation": "No schema-v2 change is required for combat-owned command state."
+      },
+      "realmz2": {
+        "owner": {"path":"src/core/rules/combat_flow.gd","symbol":"func run_persistent_auto_characters("},
+        "expectedTrace": ["toggle stable character ID", "checkpoint GameState and RNG", "run one source-backed activation routine", "continue enabled actors only", "rollback atomically on bounded exhaustion"],
+        "tests": [
+          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_batch_two_combat_auto_state()"}
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "source-backed-implemented"
+    },
+    {
+      "id": "combat.delay-initiative-correction",
+      "workflowIds": ["classic.combat.delay"],
+      "domain": "combat",
+      "claim": "Delay is available only at a fresh activation and moves the actor to the current-round tail; a last-slot request advances the round rather than selecting the same actor again.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake is a functional lead only; Castle adjudicates the command semantics and 2.0 retains its typed session boundary.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {"path":"src/realmz_orig/combat.c","symbol":"void combat(short suprise, short mode)"},
+          {"path":"src/realmz_orig/getup.c","symbol":"void getup(short skip)"}
+        ],
+        "authoredInputs": ["fresh movement allowance", "attack allocation", "initiative order and cursor"],
+        "observation": "Castle subtracts normal attacks plus attack bonus, removes the actor, appends it, rewinds the cursor, and re-enters getup; when already last, that sequence can immediately reselect the same actor."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [],
+        "expectedRepresentation": "No schema-v2 change is required for combat-owned command state."
+      },
+      "realmz2": {
+        "owner": {"path":"src/core/state/combat_state.gd","symbol":"func delay_active_actor("},
+        "expectedTrace": ["probe fresh activation", "subtract the source attack allocation", "move to current-round tail", "advance a last-slot request to the next round", "persist the exact cursor and order"],
+        "tests": [
+          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_batch_two_delay_bandage_and_bleeding()"}
+        ]
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "source-backed-corrected",
+      "fidelityDecision": {"id":"FD-COMBAT-012","fixturePath":"tests/fixtures/oracle/combat-delay-final-slot-correction.json","fixtureSha256":"e4a41f2902f0d15966ba1bbd8109f5eceee493e903b01e52817d335fe16a804f"}
+    },
+    {
+      "id": "combat.bandage-recipient-correction",
+      "workflowIds": ["classic.combat.bandage"],
+      "domain": "combat",
+      "claim": "Bandage exposes actual bleeding recipients in party order, clears one selected combat-owned bleeding state, and ends the acting character's activation; Auto selects the first recipient, defeated characters immediately lose persistent Auto, and round progression preserves Castle's individual and party-warning sound draws.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake is a functional lead only; Castle adjudicates the command semantics and 2.0 retains its typed session boundary.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {"path":"src/realmz_orig/combat.c","symbol":"void combat(short suprise, short mode)"},
+          {"path":"src/realmz_orig/combatinfo-combatchoice.c","symbol":"void combatchoice(void)"},
+          {"path":"src/realmz_orig/getup.c","symbol":"void getup(short skip)"}
+        ],
+        "authoredInputs": ["party-order bleeding flags", "manualbandage preference", "fresh activation", "source RNG"],
+        "observation": "Castle Auto clears the first bleeding party member, then draws one of two sounds. Manual Bandage uses a broad candead selection and clears every tracked row without proving that each selected row is bleeding. killbody clears doauto immediately for a defeated party combatant while retaining recoverable bleeding above -10 stamina. At the next-round boundary getup draws one sound for every surviving bleeder, then—under the default enabled warning behavior—draws a second party-wide warning sound when any wound remains."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [],
+        "expectedRepresentation": "No schema-v2 change is required for combat-owned command state."
+      },
+      "realmz2": {
+        "owner": {"path":"src/core/rules/combat_flow.gd","symbol":"func probe_bandage("},
+        "expectedTrace": ["derive legal bleeding recipients", "select one stable character ID", "clear combat-owned bleeding", "end the activation", "preserve the extra Auto-only sound draw", "clear persistent Auto immediately on defeat", "tick survivors in party order", "draw the default party-wide bleeding warning last"],
+        "tests": [
+          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_batch_two_delay_bandage_and_bleeding()"}
+        ]
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "source-backed-corrected",
+      "fidelityDecision": {"id":"FD-COMBAT-013","fixturePath":"tests/fixtures/oracle/combat-bandage-recipient-correction.json","fixtureSha256":"e0ad7afaf91c5fd7a8cee8e02bd9d1d819ae85e736c0d2a79dc5d3abb1a0ca11"}
+    },
+    {
+      "id": "combat.turn-undead-resolution",
+      "workflowIds": ["classic.combat.turn-undead"],
+      "domain": "combat",
+      "claim": "Turn Undead visits eligible hostile undead and nether monsters in source order, rolls one threshold per target, awards the exact destroy/turn experience, and remains once per character per battle.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake is a functional lead only; Castle adjudicates the command semantics and 2.0 retains its typed session boundary.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {"path":"src/realmz_orig/combatinfo-combatchoice.c","symbol":"void combatchoice(void)"},
+          {"path":"src/realmz_orig/combatsetup.c","symbol":"short combatsetup(short mode, short suprise, short combatmode)"}
+        ],
+        "authoredInputs": ["canpriestturn", "ability slot 13", "type flags 1 and 2", "cansum byte", "hit dice and magic resistance", "source RNG"],
+        "observation": "Castle excludes cansum 255, clamps the base threshold to 25 before magic resistance, destroys on margins 1 through 29 for 25 times HD experience, turns on 30 or more for 50 times HD, and marks hasturned before resolving targets."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [
+          {"path":"src-tauri/src/realmz2_exporter.rs","symbol":"\"canSummon\": monster.can_summon"}
+        ],
+        "expectedRepresentation": "Schema v2 already preserves the normalized signed canSummon sentinel and all monster/type inputs."
+      },
+      "realmz2": {
+        "owner": {"path":"src/core/rules/combat_flow.gd","symbol":"func _turn_undead("},
+        "expectedTrace": ["derive eligible targets in MonsterState order", "exclude normalized signed -1", "roll one tagged d100 per target", "commit destroy or allegiance turn", "persist once-per-battle and death-macro continuation"],
+        "tests": [
+          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_batch_two_turn_undead_and_restore()"}
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "source-backed-implemented"
     },
     {
       "id": "combat.undo-behavior",

@@ -1,0 +1,21 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-COMBAT-013",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {"path": "src/realmz_orig/combat.c", "symbol": "void combat(short suprise, short mode)", "range": "752-777"},
+    {"path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice(void)", "range": "208-228"}
+  ],
+  "inputs": {"party": "one bleeding member plus non-bleeding and dead rows", "freshActivation": true},
+  "castleSourceObservation": {
+    "manualPicker": "The manual branch opens a broad candead party selection and clears bleeding for every selected row without first restricting the selection to bleeding recipients.",
+    "automaticBranch": "Auto scans party order and clears only the first bleeding character.",
+    "risk": "Manual Bandage can consume an activation on a non-bleeding or dead selection and its multi-selection does not match the singular command result."
+  },
+  "realmz2ChosenResult": {
+    "eligibility": "Expose living party members with active combat-owned bleeding in party order.",
+    "selection": "Clear exactly one selected legal recipient and end the acting character's activation.",
+    "invalidTarget": "Reject without mutation or RNG consumption."
+  }
+}

@@ -620,6 +620,13 @@ Next batch priority: use the regenerated audit queue to choose 3–5 adjacent ap
 - The integrated application-media catalog now includes proven combat CIcon families in addition to all 142 Classic sounds. Exact scenario keys still override application keys. CIcon 161 is not called blood or gore, CIcon 167 lacks a traced caller, and death-effect timing remains unresolved rather than being presented as settled fidelity.
 - Providence schema v2 already preserves `lookStart`, `lookEnd`, spell sounds, and scenario CIcon overrides, so this batch requires no package-contract change. Automated evidence may make these workflows functional, but acceptance and certification still require the ordinary AOGM MCP route and user review.
 
+### Source-backed combat commands
+
+- The follow-on command tranche implements five separately audited workflows: current-turn Auto, persistent character Auto, Delay, Bandage, and Turn Undead. Availability and disabled reasons come from the detached combat view; the command deck and roster submit only stable IDs and typed actions.
+- Persistent Auto is save-owned, survives battles, and starts the active character immediately when enabled. Both Auto forms share one deterministic rules routine and stop at manual, mandatory, error, or terminal boundaries. State and RNG roll back together at the bounded operation limit.
+- `FD-COMBAT-012` advances a last-slot Delay to the next round instead of reproducing Castle's duplicate-activation cursor artifact. `FD-COMBAT-013` exposes one actual living bleeding recipient instead of Castle's broad manual picker. Turn Undead preserves source target order, signed sentinel, RNG, experience, result effects, and death-macro continuation.
+- The inventory now reports 46 functional Classic workflows and 91 bidirectionally linked differential cases. These command workflows remain certification targets until the integrated command deck and reachable variants receive ordinary AOGM evidence.
+
 ## Current workflow batch — AOGM combat commands and return
 
 - The first workflow corrects ordinary melee input. Castle maps keypad, keyboard, and battlefield clicks into a directional `movelook` command; an opposed occupied destination runs Guard first, spends three movement and two half-attack units, attacks, and does not move. Its Target control is the charged missile/item path, not a generic melee picker.
