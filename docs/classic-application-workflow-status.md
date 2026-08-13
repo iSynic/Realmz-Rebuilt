@@ -21,9 +21,9 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.startup.create-character` | certification | aogm-certification | aogm-ordinary | GAP-START-002 |
+| `classic.startup.create-character` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.scenario.select-subject` | certification | aogm-certification | aogm-ordinary | GAP-SCEN-003 |
-| `classic.startup.end-adventure` | certification | aogm-certification | aogm-ordinary | GAP-START-005 |
+| `classic.startup.end-adventure` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
@@ -136,7 +136,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: | ---: |
 | synthetic | 65 | 7 |
 | route-harness | 39 | 2 |
-| aogm-ordinary | 30 | 3 |
+| aogm-ordinary | 32 | 3 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
@@ -187,8 +187,6 @@ Blockers: **1**. Major gaps: **17**.
 - `classic.scenario.random-timed-encounter` — Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture.
 - `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.scenario.select-subject` — Picker variants are tested synthetically but not all observed in ordinary AOGM play.
-- `classic.startup.create-character` — The five-step creator has deterministic and UI tests but no recorded ordinary AOGM completion in the audit evidence.
-- `classic.startup.end-adventure` — End Adventure has synthetic interaction and teardown proof but no ordinary AOGM acceptance.
 
 ### other-campaign
 
