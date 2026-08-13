@@ -17,6 +17,12 @@ config/use_custom_user_dir=true
 config/custom_user_dir_name="RealmzRemake2"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
+[autoload]
+
+MCPScreenshot="*res://addons/godot_mcp/mcp_screenshot_service.gd"
+MCPInputService="*res://addons/godot_mcp/mcp_input_service.gd"
+MCPGameInspector="*res://addons/godot_mcp/mcp_game_inspector_service.gd"
+
 [display]
 
 window/size/viewport_width=960
