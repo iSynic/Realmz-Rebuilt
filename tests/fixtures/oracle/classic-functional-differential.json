@@ -3504,7 +3504,7 @@
         ],
         "authoredInputs": ["active landlook", "PICT 302", "90-by-90 battlefield terrain", "combatant positions", "active actor", "legal movement and target facts"],
         "observation": "Castle initializes a 640-by-640 battle graphics world from PICT 302, overwrites its upper half with the active landlook, then centerfield draws a 16-by-14 native 32-pixel tactical viewport. A pointer outside the active actor's cell contributes signed x/y deltas and still advances one step. combatupdate2 shows the selected actor's stamina, armor, spell points, movement, weapon/charges, first condition, range/blocked state, and large-screen monster immunities/vulnerabilities. Center, Next, and Previous recenter or inspect and each requests sound 147; Reveal Friends draws green friendly, red enemy, and blue helpless lines until the next mouse or key event.",
-        "unresolved": ["Pointer-owned battlefield center selection for spatial spells remains an interim coordinate control rather than a tactical-board interaction.","Auto Character Move, persistent per-character Auto, Delay, Undo, Bandage, and Turn Undead lack settled typed simulation contracts."]
+        "unresolved": ["Pointer-owned battlefield center selection for spatial spells remains an interim coordinate control rather than a tactical-board interaction."]
       },
       "providence": {
         "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
@@ -4059,6 +4059,615 @@
       },
       "availability": "implemented",
       "status": "menu-and-window-close-share-save-no-save-cancel-guard-root-level-runtime-proof-pending"
+    },
+    {
+      "id": "combat.committed-result-playback-boundary",
+      "workflowIds": [
+        "classic.combat.enter-battle",
+        "classic.combat.physical-attack",
+        "classic.spellcasting.combat-cast",
+        "classic.combat.resolve-outcome"
+      ],
+      "domain": "combat",
+      "claim": "Combat retains the previous detached battlefield while ordered committed result feedback settles, then exposes the final battlefield or reward interaction once.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake combat presentation is a useful donor lead only; its host dispatch is not Classic authority.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/combat.c",
+            "symbol": "void combat(short suprise, short mode)"
+          },
+          {
+            "path": "src/realmz_orig/showresults.c",
+            "symbol": "void showresults(short tar, short special, short from)"
+          },
+          {
+            "path": "src/realmz_orig/killbody.c",
+            "symbol": "void killbody(short mon, short performque)"
+          }
+        ],
+        "authoredInputs": [
+          "committed combat events",
+          "previous battlefield view",
+          "final battlefield or reward view",
+          "pending interaction"
+        ],
+        "observation": "Castle keeps combat control through result display, effect timing, body redraw, and terminal cleanup. Playback is presentation-owned and must not mutate or advance simulation."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [],
+        "expectedRepresentation": "No package change; the playback transaction receives detached prior/final views and committed events."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/presentation/presentation_coordinator.gd",
+          "symbol": "class_name PresentationCoordinator"
+        },
+        "expectedTrace": [
+          "retain the last presented battlefield",
+          "build ordered transient frames",
+          "mask combat controls",
+          "settle final view and interaction once",
+          "Space skip and reduced motion do not call the session"
+        ],
+        "tests": [
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_combat_playback_controller()"
+          }
+        ]
+      },
+      "decision": "presentation-defect",
+      "availability": "implemented",
+      "status": "source-backed-target-pending"
+    },
+    {
+      "id": "combat.result-pacing-and-fixed-numbers",
+      "workflowIds": [
+        "classic.combat.physical-attack"
+      ],
+      "domain": "combat",
+      "claim": "Classic physical result feedback shows a temporary value centered over the target body and uses source pacing; it does not float upward.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake combat presentation is a useful donor lead only; its host dispatch is not Classic authority.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/showdamage-loaddark-cansee.c",
+            "symbol": "void showdamage(short body, short how, short damage)"
+          },
+          {
+            "path": "src/realmz_orig/showresults.c",
+            "symbol": "void showresults(short tar, short special, short from)"
+          }
+        ],
+        "authoredInputs": [
+          "target body position and size",
+          "damage or healing amount",
+          "result kind",
+          "oldspeed and delayspeed"
+        ],
+        "observation": "showdamage draws the temporary number in the target body rectangle, with monster-size offsets, while showresults supplies fixed result timing and redraw delays. No upward-floating number behavior is source-proven."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [],
+        "expectedRepresentation": "No package change; coordinates and display amount are detached event facts."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/presentation/combat_playback_controller.gd",
+          "symbol": "class_name CombatPlaybackController"
+        },
+        "expectedTrace": [
+          "target-relative coordinates",
+          "fixed number over target",
+          "source-ordered result delay",
+          "settle without changing health mutation"
+        ],
+        "tests": [
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_combat_playback_controller()"
+          },
+          {
+            "path": "tests/core/test_combat_flow.gd",
+            "symbol": "func _test_source_backed_physical_attack_audio()"
+          }
+        ]
+      },
+      "decision": "presentation-defect",
+      "availability": "implemented",
+      "status": "source-backed-target-pending"
+    },
+    {
+      "id": "combat.physical-feedback-resource-matrix",
+      "workflowIds": [
+        "classic.combat.physical-attack"
+      ],
+      "domain": "combat",
+      "claim": "Classic combat feedback uses exact CICN identities: 159 condition, 160 armed physical impact, 161 unarmed physical red splash, 162 fire, 163 cold, 164 electrical, 165 chemical, 166 mental, and 167 in the magic handler path; 160 and 161 are not source-proven blood names.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake combat presentation is a useful donor lead only; its host dispatch is not Classic authority.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/showresults.c",
+            "symbol": "void showresults(short tar, short special, short from)"
+          },
+          {
+            "path": "src/realmz_orig/showdamage-loaddark-cansee.c",
+            "symbol": "void showdamage(short body, short how, short damage)"
+          }
+        ],
+        "authoredInputs": [
+          "special result code",
+          "armed/unarmed branch",
+          "effect CICN ID",
+          "target body and damage"
+        ],
+        "observation": "The source selects 160 for an armed physical hit and 161 for an unarmed physical hit. The decoded 161 art is red, but no source calls either resource blood or gore; 159 is condition, 162–166 are elemental/mental families, and 167 is labelled magic by the handler but has no traced assignment here."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [],
+        "expectedRepresentation": "Schema v2 already preserves authored spell/item resource references; built-in effect identity is application media, not a compiler field."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/presentation/combat_playback_controller.gd",
+          "symbol": "class_name CombatPlaybackController"
+        },
+        "expectedTrace": [
+          "preserve exact effect IDs",
+          "scenario override before application fallback",
+          "explicit optional-art diagnostic",
+          "do not name 160/161 blood or gore without runtime evidence"
+        ],
+        "tests": [
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_combat_playback_controller()"
+          }
+        ]
+      },
+      "decision": "presentation-defect",
+      "availability": "implemented",
+      "status": "source-backed-target-pending"
+    },
+    {
+      "id": "combat.spell-cast-resolution-feedback",
+      "workflowIds": [
+        "classic.spellcasting.combat-cast"
+      ],
+      "domain": "combat",
+      "claim": "Classic spell feedback separates cast-start and projectile resources from an eight-frame resolution effect: cast uses 11992 plus lookStart times eight, projectile uses PICT 302 tile 200 plus lookStart, and resolution starts at 12032 when lookEnd is zero or 11992 plus lookEnd times eight otherwise.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake combat presentation is a useful donor lead only; its host dispatch is not Classic authority.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/cast.c",
+            "symbol": "void cast(short targetnum, short who)"
+          },
+          {
+            "path": "src/realmz_orig/spelleffect.c",
+            "symbol": "void spelleffect(short t, short mode)"
+          },
+          {
+            "path": "src/realmz_orig/resolvespell.c",
+            "symbol": "void resolvespell(void)"
+          }
+        ],
+        "authoredInputs": [
+          "spellLook1/lookStart",
+          "spellLook2/lookEnd",
+          "PICT 302",
+          "delayspeed",
+          "target type"
+        ],
+        "observation": "cast selects start and projectile families from lookStart. spelleffect selects the resolution start from lookEnd and iterates exactly eight frames; source order places cast sound before projectile and resolution sound before results."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [
+          {
+            "path": "src-tauri/src/realmz2_exporter.rs",
+            "symbol": "fn runtime_spells("
+          }
+        ],
+        "expectedRepresentation": "Schema v2 already emits lookStart/lookEnd/soundStart/soundEnd; no compiler correction or schema change is required."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/presentation/combat_playback_controller.gd",
+          "symbol": "class_name CombatPlaybackController"
+        },
+        "expectedTrace": [
+          "resolve exact look identities",
+          "present cast/projectile frames",
+          "present eight resolution frames or proven target-specific branch",
+          "sequence sounds without mutating results"
+        ],
+        "tests": [
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_combat_playback_controller()"
+          }
+        ]
+      },
+      "decision": "presentation-defect",
+      "availability": "implemented",
+      "status": "source-backed-target-pending"
+    },
+    {
+      "id": "combat.active-actor-round-cues",
+      "workflowIds": [
+        "classic.combat.enter-battle",
+        "classic.combat.turn-control"
+      ],
+      "domain": "combat",
+      "claim": "Classic active-actor and round cues update immediately at turn selection: party light pictures use 147/150/146, party activation requests sound 138 for a non-animated actor, and round advancement occurs at the source initiative boundary without a dedicated highlight delay.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake combat presentation is a useful donor lead only; its host dispatch is not Classic authority.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/getup.c",
+            "symbol": "void getup(short skip)"
+          },
+          {
+            "path": "src/realmz_orig/updatelight.c",
+            "symbol": "void updatelight(short who, short offpict)"
+          }
+        ],
+        "authoredInputs": [
+          "initiative queue",
+          "active actor",
+          "party animation state",
+          "round boundary",
+          "active/inactive/non-display pictures"
+        ],
+        "observation": "getup clears the prior light, advances the cursor, skips invalid actors, updates the combat pane, requests sound 138 for a non-animated party actor, and increments combatround at the source boundary. updatelight selects the three pictures; no separate highlight delay is established."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [],
+        "expectedRepresentation": "No package change; active actor and round cue metadata are detached presentation facts."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/presentation/combat_playback_controller.gd",
+          "symbol": "class_name CombatPlaybackController"
+        },
+        "expectedTrace": [
+          "publish active actor/round cues in event order",
+          "preserve immediate source semantics",
+          "resolve proven built-in cue resources",
+          "retain prior battlefield until settlement"
+        ],
+        "tests": [
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_combat_playback_controller()"
+          }
+        ]
+      },
+      "decision": "presentation-defect",
+      "availability": "implemented",
+      "status": "source-backed-target-pending"
+    },
+    {
+      "id": "combat.signed-sound-ordering",
+      "workflowIds": [
+        "classic.combat.physical-attack",
+        "classic.spellcasting.combat-cast"
+      ],
+      "domain": "combat",
+      "claim": "Classic sound calls remain in source event order; positive sound IDs play asynchronously and negative IDs wait synchronously while rotating through available channels.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake combat presentation is a useful donor lead only; its host dispatch is not Classic authority.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/misc.c",
+            "symbol": "void sound(short id)"
+          },
+          {
+            "path": "src/realmz_orig/cast.c",
+            "symbol": "void cast(short targetnum, short who)"
+          },
+          {
+            "path": "src/realmz_orig/resolvespell.c",
+            "symbol": "void resolvespell(void)"
+          }
+        ],
+        "authoredInputs": [
+          "signed sound ID",
+          "source event order",
+          "channel count",
+          "cast/resolution sound fields"
+        ],
+        "observation": "Positive IDs call the asynchronous path and negative IDs the synchronous path. Cast sound is requested before projectile movement and resolution sound before result handling; source order remains even when playback overlaps."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [
+          {
+            "path": "src-tauri/src/realmz2_exporter.rs",
+            "symbol": "fn collect_assets"
+          }
+        ],
+        "expectedRepresentation": "Providence preserves soundStart/soundEnd and exact scenario keys; integrated sound stays in the application catalog and scenario media supplies exact overrides."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/presentation/classic_audio_presenter.gd",
+          "symbol": "class_name ClassicAudioPresenter"
+        },
+        "expectedTrace": [
+          "consume ordered events once",
+          "interpret signed sync metadata at presentation",
+          "overlap positive async sounds",
+          "hold only synchronous sounds"
+        ],
+        "tests": [
+          {
+            "path": "tests/core/test_combat_flow.gd",
+            "symbol": "func _test_source_backed_physical_attack_audio()"
+          },
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_combat_playback_controller()"
+          }
+        ]
+      },
+      "decision": "presentation-defect",
+      "availability": "implemented",
+      "status": "source-backed-target-pending"
+    },
+    {
+      "id": "combat.board-native-targeting",
+      "workflowIds": [
+        "classic.combat.tactical-movement",
+        "classic.spellcasting.combat-cast"
+      ],
+      "domain": "combat",
+      "claim": "Castle combat target workflows are board-owned: the player inspects combatant footprints and range/LOS facts, while area and repeated spells retain typed masks, centers, and click order. Modern controls must not finish with raw coordinate spinners.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake combat presentation is a useful donor lead only; its host dispatch is not Classic authority.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/combatinfo-combatchoice.c",
+            "symbol": "void combatchoice(void)"
+          },
+          {
+            "path": "src/realmz_orig/castspell.c",
+            "symbol": "short castspell(void)"
+          },
+          {
+            "path": "src/realmz_orig/showrange.c",
+            "symbol": "void showrange(short edgemode)"
+          }
+        ],
+        "authoredInputs": [
+          "combatant footprints",
+          "range and LOS",
+          "area mask and center",
+          "repeated target order",
+          "typed response identity"
+        ],
+        "observation": "Castle gathers target identity and range/LOS from the combat board. The 2.0 control must return stable IDs, centers, masks, and ordered selections through the existing typed request."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [],
+        "expectedRepresentation": "No package change; target facts and authored masks already cross the package boundary."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/presentation/combat_targeting_state.gd",
+          "symbol": "class_name CombatTargetingState"
+        },
+        "expectedTrace": [
+          "enter target mode without mutation",
+          "select legal footprints",
+          "preview exact mask and center",
+          "preserve repeated order",
+          "Escape cancels without intent"
+        ],
+        "tests": [
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_combat_targeting_state()"
+          },
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_combat_playback_controller()"
+          }
+        ]
+      },
+      "decision": "presentation-defect",
+      "availability": "implemented",
+      "status": "source-backed-target-pending"
+    },
+    {
+      "id": "combat.command-parity-availability",
+      "workflowIds": [
+        "classic.combat.auto-turn",
+        "classic.combat.auto-character",
+        "classic.combat.delay",
+        "classic.combat.bandage",
+        "classic.combat.turn-undead"
+      ],
+      "domain": "combat",
+      "claim": "Classic exposes Auto Turn, per-character Auto, Delay, Bandage, and Turn Undead as distinct combat commands with source-owned availability and state transitions; Realmz Rebuilt currently keeps them visibly unavailable pending typed simulation contracts.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake command concepts are donor leads only; direct global dispatch is not Classic authority.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/combat.c",
+            "symbol": "void combat(short suprise, short mode)"
+          },
+          {
+            "path": "src/realmz_orig/combatinfo-combatchoice.c",
+            "symbol": "void combatchoice(void)"
+          },
+          {
+            "path": "src/realmz_orig/misc.c",
+            "symbol": "void checkfordoauto(void)"
+          }
+        ],
+        "authoredInputs": [
+          "active actor and legal commands",
+          "doauto flags",
+          "initiative order",
+          "bleeding recipients",
+          "undead/nether targets",
+          "source RNG and action budget"
+        ],
+        "observation": "The source exposes separate branches. Auto can start the active actor immediately; Delay is tied to the fresh activation boundary; Bandage and Turn Undead have distinct recipient/target eligibility. Complete 2.0 simulation, save, and RNG contracts are not yet settled."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [],
+        "expectedRepresentation": "No package schema change is required for this unresolved command contract."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/presentation/interaction_components/battle_interaction.gd",
+          "symbol": "class_name BattleInteraction"
+        },
+        "expectedTrace": [
+          "retain explicit unavailable reasons",
+          "add one typed path per workflow",
+          "persist only source-proven state",
+          "stop auto at mandatory interaction/error/terminal outcome"
+        ],
+        "tests": [
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_battle_weapon_mode_component()"
+          }
+        ]
+      },
+      "decision": "unresolved",
+      "availability": "disabled",
+      "status": "queued-for-command-parity"
+    },
+    {
+      "id": "combat.undo-behavior",
+      "workflowIds": [
+        "classic.combat.undo"
+      ],
+      "domain": "combat",
+      "claim": "Castle Undo records an activation-start position and uses canundo to restore that position while subtracting the current attack allocation and re-entering turn selection; broader state and intended behavior require a controlled fixture.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake command concepts are donor leads only; direct global dispatch is not Classic authority.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/combat.c",
+            "symbol": "void combat(short suprise, short mode)"
+          },
+          {
+            "path": "src/realmz_orig/getup.c",
+            "symbol": "void getup(short skip)"
+          }
+        ],
+        "authoredInputs": [
+          "canundo",
+          "undox/undoy",
+          "current attack allocation",
+          "initiative cursor",
+          "position and field occupancy"
+        ],
+        "observation": "Castle records only undox and undoy at getup, then Undo subtracts normal and bonus attacks, restores the recorded cell, decrements up, and calls getup. RNG, conditions, target selection, sound/effect state, and generic rollback are not established; fixture evidence is required."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [],
+        "expectedRepresentation": "No package schema change is required for this unresolved command contract."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/presentation/interaction_components/battle_interaction.gd",
+          "symbol": "class_name BattleInteraction"
+        },
+        "expectedTrace": [
+          "build a controlled Castle fixture",
+          "record only proven activation-start fields",
+          "reject generic rollback semantics",
+          "serialize bounded continuation after adjudication"
+        ],
+        "tests": [
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_battle_weapon_mode_component()"
+          }
+        ]
+      },
+      "decision": "unresolved",
+      "availability": "disabled",
+      "status": "fixture-required-before-implementation"
     }
   ]
 }
