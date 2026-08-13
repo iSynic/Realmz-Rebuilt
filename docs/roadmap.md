@@ -653,6 +653,8 @@ Next batch priority: use the regenerated audit queue to choose 3–5 adjacent ap
 - Tier 3 passed 3,981 assertions across twenty-two suites, teardown-leak rejection, all architecture/package/export gates, the 142-resource application-media manifest, 78 differential cases, and the 60-Classic/8-host inventory with one remaining host release blocker. Clean pinned Castle, Remake, and Providence references also passed external symbol validation. Source intelligence regenerated to 6,074 entities, 54,839 relationships, five flows, and 6,162 chunks.
 - Godot MCP Pro completed the ordinary route, captured the live result/spell boundaries, confirmed return to exploration, and stopped the scene. Presentation remains functional rather than accepted, and ordinary total defeat, special battle modes 5/10, opcode 48 bonus treasure, and incidental reward quirks remain explicit—not inferred as complete.
 
+Auto Weapon Switch now matches Castle's application-owned, default-on preference: only a qualifying manual projectile collision consults it, Guard resolves first, and the surviving actor switches once before the ordinary contact attack. The pending one-move decision survives interrupted Guard/age continuations without moving the preference itself into gameplay saves.
+
 Next batch: certify the ordinary AOGM Camp/Rest, Pool/Share, denomination Swap, and contextual-service entry workflows before beginning another implementation tranche.
 
 ## Current workflow batch — Session lifecycle and host responsiveness

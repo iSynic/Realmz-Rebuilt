@@ -342,6 +342,7 @@ func run() -> void:
 	settings.dungeon_3d = true
 	settings.ui_scale_mode = PresentationSettings.UI_SCALE_125
 	settings.window_mode = PresentationSettings.BORDERLESS_FULLSCREEN
+	settings.auto_switch_to_melee = false
 	assert_true(settings.to_data()["dungeon3d"] is bool, "dungeon presentation setting serializes as a JSON-safe boolean")
 	assert_not_null(PresentationSettings.from_data(settings.to_data()), "current presentation settings round-trip before filesystem persistence")
 	var parsed_settings_data: Dictionary = JSON.parse_string(CanonicalJson.encode(settings.to_data()))
@@ -355,11 +356,13 @@ func run() -> void:
 	assert_true(restored_settings.dungeon_3d, "topology-derived dungeon presentation preference persists")
 	assert_equal(restored_settings.ui_scale_mode, PresentationSettings.UI_SCALE_125, "interface density persists independently of text scale")
 	assert_equal(restored_settings.window_mode, PresentationSettings.BORDERLESS_FULLSCREEN, "window mode persists outside gameplay state")
+	assert_false(restored_settings.auto_switch_to_melee, "Auto Weapon Switch persists in the application settings repository")
 	var legacy_settings := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 1, "masterVolume": 1.0, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false})
 	assert_not_null(legacy_settings, "version-one presentation settings migrate without entering gameplay state")
 	assert_false(legacy_settings.dungeon_3d, "migrated presentation settings default the optional 3D view off")
 	assert_equal(legacy_settings.ui_scale_mode, PresentationSettings.UI_SCALE_AUTO, "legacy settings migrate to automatic interface density")
 	assert_equal(legacy_settings.window_mode, PresentationSettings.WINDOWED, "legacy settings migrate to windowed mode")
+	assert_true(legacy_settings.auto_switch_to_melee, "legacy settings migrate to Castle's default-on Auto Weapon Switch preference")
 
 	var rejected := repository.load_package(TAMPERED_FIXTURE_PATH)
 	assert_false(rejected.is_ok(), "a content mutation without matching manifest hashes is rejected")

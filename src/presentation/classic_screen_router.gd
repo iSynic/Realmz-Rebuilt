@@ -2080,6 +2080,7 @@ func _render_system() -> void:
 	_body.add_child(window_mode)
 	_add_section_heading("Accessibility and presentation", "These preferences never change simulation")
 	_add_setting_toggle("Reduced motion", _settings.reduced_motion, &"reduced_motion")
+	_add_setting_toggle("Auto Switch To Melee Weapon", _settings.auto_switch_to_melee, &"auto_switch_to_melee")
 	_add_setting_toggle("Use topology-derived 3D dungeons", _settings.dungeon_3d, &"dungeon_3d")
 	_add_setting_toggle("Show topology diagnostics", _settings.topology_debug, &"topology_debug")
 	var volume := HSlider.new()

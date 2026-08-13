@@ -1214,7 +1214,7 @@
       "id": "combat.character-weapon-mode-selection",
       "workflowIds": ["classic.combat.weapon-mode"],
       "domain": "combat",
-      "claim": "Classic battle state owns one melee-versus-missile toggle per party character. Battle setup prefers an equipped type-2 melee weapon, otherwise selects an equipped type-15 missile weapon, and the active character may switch modes without spending attacks, movement, or the turn. Missile mode may never fall through to the melee resolver.",
+      "claim": "Classic battle state owns one melee-versus-missile toggle per party character. Battle setup prefers an equipped type-2 melee weapon, otherwise selects an equipped type-15 missile weapon, and the active character may switch modes without spending attacks, movement, or the turn. Castle's default-on application preference switches a qualifying manual projectile collision to melee after Guard reactions and before exactly one contact attack; it never changes automatic actors or direct attacks.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "Remake exposes separate melee, ranged, and ammunition equipment references and separate combat controls. It is useful evidence that these are distinct workflows, but it has no Castle-equivalent single battle toggle and permits dual melee weapons, so its equipment host is not a direct donor.",
@@ -1241,9 +1241,9 @@
           { "path": "src/realmz_orig/tomissle-weap.c", "symbol": "short tomissle(short who)" },
           { "path": "src/realmz_orig/wear.c", "symbol": "short wear(short character, short itemnum, short play)" }
         ],
-        "authoredInputs": ["equipped type-2 melee slot", "equipped type-15 missile slot", "equipped type-10 ammunition slot", "item category bit twelve", "character hand-to-hand rating", "automatic weapon-switch preference"],
-        "observation": "combatsetup clears toggle, keeps melee mode when armor[2] is occupied, and selects missile mode only when melee is absent and armor[15] is occupied. The Melee control changes toggle in either direction, plays only UI feedback, and does not decrement attacks or movement. Returning to melee permits hand-to-hand with no type-2 item. wear normalizes item type by absolute value, gives types 2, 10, and 15 distinct slots, selects the newly equipped weapon mode, and requires slot 10 for category-bit-twelve bows. tomissle additionally rejects any adjacent hostile and a missile spell whose target type is not one.",
-        "unresolved": ["The fixed 2.0 runtime has no source-backed owner for Castle's autoweapswitch preference, so point-blank automatic switching remains unavailable."]
+        "authoredInputs": ["equipped type-2 melee slot", "equipped type-15 missile slot", "equipped type-10 ammunition slot", "item category bit twelve", "character hand-to-hand rating", "application-owned automatic weapon-switch preference"],
+        "observation": "combatsetup clears toggle, keeps melee mode when armor[2] is occupied, and selects missile mode only when melee is absent and armor[15] is occupied. The Melee control changes toggle in either direction, plays only UI feedback, and does not decrement attacks or movement. Returning to melee permits hand-to-hand with no type-2 item. wear normalizes item type by absolute value, gives types 2, 10, and 15 distinct slots, selects the newly equipped weapon mode, and requires slot 10 for category-bit-twelve bows. tomissle additionally rejects any adjacent hostile and a missile spell whose target type is not one. autoweapswitch is a persisted application preference whose bundled PRFN default is on. Only manual hostile collision in missile mode consults it, after Guard checks, and only when armor[15]'s item has sp2 greater than 1100 resolving to spell class 9 and damage type 9. The enabled path plays sound 141, selects melee or hand-to-hand, spends the ordinary three movement and two half-attacks, and performs one attack; the disabled path warns without mutation. Automatic actors and direct attacks do not consult the preference.",
+        "unresolved": []
       },
       "providence": {
         "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
@@ -1254,10 +1254,14 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func submit_action(" },
-        "expectedTrace": ["validate unique Classic equipment slots", "initialize melee unless only missile is equipped", "persist character weapon mode in battle state", "emit typed no-cost switch action", "retain attacks, movement, actor, and turn", "block melee resolution while missile mode is active", "expose the same action set through detached view and typed interaction"],
+        "expectedTrace": ["validate unique Classic equipment slots", "initialize melee unless only missile is equipped", "persist character weapon mode in battle state", "emit typed no-cost switch action", "retain attacks, movement, actor, and turn", "block melee resolution while missile mode is active", "inject the application-owned default-on preference only into manual movement", "carry a pending qualifying switch through the one-move Guard continuation", "switch after Guard and before exactly one ordinary collision attack", "leave direct attacks and automatic actors independent of the preference", "expose the same action set through detached view and typed interaction"],
         "tests": [
           { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_weapon_mode_toggle_and_restore()" },
-          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_player_collision_initiates_melee()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_guard_age_update_restore()" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_settings_schema_and_migration()" },
+          { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" }
         ]
       },
       "decision": "runtime-defect",

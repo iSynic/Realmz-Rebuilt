@@ -17,6 +17,7 @@ var movement_cost: int
 var phase: StringName = GUARD_BEFORE
 var next_attacker_index: int = 0
 var mover_killed: bool = false
+var auto_switch_to_melee: bool = false
 var _attacker_ids: Array[String] = []
 var _origin_hostile_ids: Array[String] = []
 
@@ -71,16 +72,24 @@ func to_data() -> Dictionary:
 		"originHostileIds": _origin_hostile_ids.duplicate(),
 		"nextAttackerIndex": next_attacker_index,
 		"moverKilled": mover_killed,
+		"autoSwitchToMelee": auto_switch_to_melee,
 	}
 
 
 static func from_data(data: Variant) -> CombatReactionState:
-	if not data is Dictionary or data.size() != 10:
+	if not data is Dictionary or data.size() not in [10, 11]:
+		return null
+	if data.size() == 11 and not data.has("autoSwitchToMelee"):
 		return null
 	for field: String in ["kind", "moverId", "origin", "destination", "movementCost", "phase", "attackerIds", "originHostileIds", "nextAttackerIndex", "moverKilled"]:
 		if not data.has(field):
 			return null
 	if not data["kind"] is String or data["kind"] not in [String(CHARACTER_MOVE), String(MONSTER_MOVE), String(MONSTER_RETREAT), String(MONSTER_CONTACT)] or not data["moverId"] is String or data["moverId"].is_empty() or not data["phase"] is String or data["phase"] not in [String(GUARD_BEFORE), String(WITHDRAWAL), String(GUARD_AFTER)] or not data["attackerIds"] is Array or not data["originHostileIds"] is Array or not data["moverKilled"] is bool:
+		return null
+	if data.has("autoSwitchToMelee") and not data["autoSwitchToMelee"] is bool:
+		return null
+	var auto_switch: bool = bool(data.get("autoSwitchToMelee", false))
+	if auto_switch and (data["kind"] != String(CHARACTER_MOVE) or data["phase"] != String(GUARD_BEFORE)):
 		return null
 	var source_origin := _coordinate(data["origin"])
 	var source_destination := _coordinate(data["destination"])
@@ -115,6 +124,7 @@ static func from_data(data: Variant) -> CombatReactionState:
 	result._origin_hostile_ids = origin_hostile_ids
 	result.next_attacker_index = attacker_index
 	result.mover_killed = data["moverKilled"]
+	result.auto_switch_to_melee = auto_switch
 	return result
 
 

@@ -73,6 +73,8 @@ func _test_player_collision_initiates_melee() -> void:
 	var host_result := host_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.new("request.collision-host", InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "move", "targetId": "", "destination": [46, 45]}), "request.collision-host")
 	assert_equal(host_result.state, ScenarioRuntimeOperationResult.State.WAITING, "the scenario-owned combat interaction returns collision melee to the same battle request")
 	assert_true(host_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == host_character.id and event.payload.get("targetId") == host_monster.id), "the ordinary typed movement response reaches the collision-melee owner")
+	var malformed_host := host_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.new("request.collision-host", InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "move", "targetId": "", "destination": [46, 45], "autoSwitchToMelee": "yes"}), "request.collision-host")
+	assert_equal(malformed_host.error_code, &"invalid_interaction_response", "the host rejects a non-boolean Auto Weapon Switch preference before combat execution")
 
 	var guarded_character := _character("character.collision-guarded")
 	guarded_character.normal_attacks = 4
@@ -93,6 +95,58 @@ func _test_player_collision_initiates_melee() -> void:
 	var missile_collision := rules.combat_flow.move_character(missile_state, content, missile_character.id, Vector2i(46, 45), missile_rng)
 	assert_equal(missile_collision.error_code, &"melee_weapon_mode_required", "an occupied direction cannot silently fire or reinterpret the active missile weapon")
 	assert_equal(missile_rng.snapshot().draw_count, 0, "rejected missile-mode collision consumes no combat randomness")
+
+	var projectile_spell := SpellDefinition.new("spell.collision-projectile", 4101, "Collision Arrow")
+	projectile_spell.spell_class = 9
+	projectile_spell.damage_type = 9
+	var projectile_bow := ItemDefinition.new("item.collision-projectile", 104, "Collision Bow")
+	projectile_bow.item_type = 15
+	projectile_bow.special_1 = -1
+	projectile_bow.special_2 = projectile_spell.classic_id
+	projectile_bow.initial_charges = 2
+	var switch_character := _character("character.collision-auto-switch")
+	switch_character.normal_attacks = 4
+	switch_character.maximum_load = 100
+	var switch_bow := rules.inventory.add_item(switch_character, projectile_bow, "instance.collision-auto-switch", true)
+	assert_not_null(switch_bow, "the Auto Weapon Switch fixture grants its source-qualified projectile item")
+	assert_true(rules.inventory.equip(switch_character, switch_bow.id, projectile_bow), "the Auto Weapon Switch fixture equips Castle's missile slot")
+	var switch_monster := MonsterState.new("monster.collision-auto-switch.instance", definition.id, definition.name, 30, 30, 1)
+	var switch_state := _state(switch_character, switch_monster, "battle.collision-auto-switch")
+	switch_state.combat.set_character_weapon_mode(switch_character.id, &"missile")
+	var switch_content := _content([definition], [projectile_bow], [], [], [projectile_spell])
+	var disabled_checkpoint := switch_state.to_data()
+	var disabled_rng := ScriptedRng.new([])
+	var disabled_switch := rules.combat_flow.move_character(switch_state, switch_content, switch_character.id, Vector2i(46, 45), disabled_rng, false)
+	assert_equal(disabled_switch.error_code, &"melee_weapon_mode_required", "disabling Castle's application preference leaves hostile projectile collision uncommitted")
+	assert_equal([switch_state.to_data(), disabled_rng.snapshot().draw_count], [disabled_checkpoint, 0], "preference-off collision preserves battle, equipment, resources, position, and RNG transactionally")
+	var warning_state := GameState.from_data(JSON.parse_string(JSON.stringify(disabled_checkpoint)))
+	assert_not_null(warning_state, "the preference-off fixture restores before the typed host warning path")
+	if warning_state != null:
+		var warning_api := RealmzRuntimeApi.new(switch_content, warning_state, ScriptedRng.new([]), ScenarioActionState.new())
+		var warning_result := warning_api._resume_battle(_classic_battle_continuation(warning_state.combat.battle_id), InteractionResponse.new("request.collision-auto-switch-off", InteractionRequest.COMBAT, {"actorId": switch_character.id, "action": "move", "targetId": "", "destination": [46, 45], "autoSwitchToMelee": false}), "request.collision-auto-switch-off")
+		assert_equal(warning_result.state, ScenarioRuntimeOperationResult.State.WAITING, "preference-off collision returns to combat instead of escalating Castle's warning into a failed scenario step")
+		assert_true(warning_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 6000), "the typed warning path requests Castle's exact warning sound")
+		assert_equal(warning_state.to_data(), disabled_checkpoint, "the host warning leaves the complete restored combat state unchanged")
+	var enabled_switch := rules.combat_flow.move_character(switch_state, switch_content, switch_character.id, Vector2i(46, 45), ScriptedRng.new(_ints(24)), true)
+	assert_true(enabled_switch.ok, "Castle's default-on preference switches a qualifying manual projectile collision to melee")
+	assert_equal([switch_state.combat.character_weapon_mode(switch_character.id), switch_character.movement, switch_character.attacks_remaining, switch_state.combat.battlefield.character_position(switch_character.id)], [&"melee", 9, 3, Vector2i(45, 45)], "Auto Weapon Switch costs nothing beyond one ordinary collision attack and supports Castle's unarmed melee fallback")
+	assert_equal(enabled_switch.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_weapon_mode_changed").size(), 1, "the collision emits exactly one typed weapon-mode change")
+	assert_equal(enabled_switch.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == switch_character.id).size(), 1, "the collision retries exactly one melee attack")
+	var switch_event_index := enabled_switch.events.find_custom(func(event: DomainEvent) -> bool: return event.kind == &"combat_weapon_mode_changed")
+	var attack_event_index := enabled_switch.events.find_custom(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == switch_character.id)
+	assert_true(switch_event_index >= 0 and switch_event_index < attack_event_index, "Castle's switch sound and mode mutation precede the collision attack result")
+	var wrong_spell := SpellDefinition.new("spell.collision-wrong-profile", 4102, "Wrong Collision Arrow")
+	wrong_spell.spell_class = 9
+	wrong_spell.damage_type = 1
+	projectile_bow.special_2 = wrong_spell.classic_id
+	var wrong_character := _character("character.collision-wrong-profile")
+	wrong_character.maximum_load = 100
+	var wrong_bow := rules.inventory.add_item(wrong_character, projectile_bow, "instance.collision-wrong-profile", true)
+	assert_true(rules.inventory.equip(wrong_character, wrong_bow.id, projectile_bow), "the wrong-profile fixture equips the same missile item")
+	var wrong_state := _state(wrong_character, MonsterState.new("monster.collision-wrong-profile.instance", definition.id, definition.name, 30, 30, 1), "battle.collision-wrong-profile")
+	wrong_state.combat.set_character_weapon_mode(wrong_character.id, &"missile")
+	var wrong_result := rules.combat_flow.move_character(wrong_state, _content([definition], [projectile_bow], [], [], [wrong_spell]), wrong_character.id, Vector2i(46, 45), ScriptedRng.new([]), true)
+	assert_equal([wrong_result.error_code, wrong_state.combat.character_weapon_mode(wrong_character.id)], [&"melee_weapon_mode_required", &"missile"], "the preference does not broaden Castle's exact class-nine plus damage-type-nine predicate")
 
 
 func _test_source_backed_combat_spell_item_use() -> void:
@@ -688,19 +742,37 @@ func _test_guard_age_update_restore() -> void:
 	var contact_monster := MonsterState.new("monster.reaction-age-contact.instance", definition.id, definition.name, 30, 30, 1)
 	var contact_state := _state(contact_character, contact_monster, "battle.reaction-age-contact")
 	contact_state.combat.set_guarding(contact_monster.id, true)
+	var contact_projectile_spell := SpellDefinition.new("spell.reaction-age-projectile", 4101, "Reaction Age Arrow")
+	contact_projectile_spell.spell_class = 9
+	contact_projectile_spell.damage_type = 9
+	var contact_projectile := ItemDefinition.new("item.reaction-age-projectile", 104, "Reaction Age Bow")
+	contact_projectile.item_type = 15
+	contact_projectile.special_1 = -1
+	contact_projectile.special_2 = contact_projectile_spell.classic_id
+	contact_projectile.initial_charges = 2
+	contact_character.maximum_load = 100
+	var contact_projectile_instance := rules.inventory.add_item(contact_character, contact_projectile, "instance.reaction-age-projectile", true)
+	assert_not_null(contact_projectile_instance, "the restored Guard fixture grants its source-qualified projectile")
+	assert_true(rules.inventory.equip(contact_character, contact_projectile_instance.id, contact_projectile), "the restored Guard fixture equips Castle's missile slot")
+	contact_state.combat.set_character_weapon_mode(contact_character.id, &"missile")
+	var contact_content := _content([definition], [contact_projectile], [race], [caste], [contact_projectile_spell])
 	var contact_values: Array[int] = [0, 0, 0, 0, 0, 32_767]
 	contact_values.append_array(_ints(24))
 	var contact_rng := ScriptedRng.new(contact_values)
-	var contact_waiting := rules.combat_flow.move_character(contact_state, content, contact_character.id, Vector2i(46, 45), contact_rng)
+	var contact_waiting := rules.combat_flow.move_character(contact_state, contact_content, contact_character.id, Vector2i(46, 45), contact_rng, true)
 	assert_true(contact_waiting.ok and contact_waiting.events.any(func(event: DomainEvent) -> bool: return event.kind == &"character_age_changed"), "Guard pauses collision melee at the same typed age-update boundary")
+	assert_true(contact_state.combat.pending_reaction.auto_switch_to_melee, "the one-move reaction owns the preference decision while Guard pauses before Castle's switch point")
+	assert_equal(contact_state.combat.character_weapon_mode(contact_character.id), &"missile", "Guard occurs before Auto Weapon Switch mutates the active weapon mode")
 	var contact_restored := GameState.from_data(JSON.parse_string(JSON.stringify(contact_state.to_data())))
 	assert_not_null(contact_restored, "the occupied collision destination survives the pending Guard continuation")
 	if contact_restored != null:
+		assert_true(contact_restored.combat.pending_reaction.auto_switch_to_melee, "save restoration preserves the pending source-ordered switch without persisting the application preference itself")
 		var contact_restored_rng := RealmzRng.new()
 		assert_true(contact_restored_rng.restore(contact_rng.snapshot()), "collision melee restores the exact post-Guard RNG boundary")
-		var contact_resumed := rules.combat_flow.continue_after_age_update(contact_restored, content, contact_restored_rng)
+		var contact_resumed := rules.combat_flow.continue_after_age_update(contact_restored, contact_content, contact_restored_rng)
 		assert_true(contact_resumed.ok, "acknowledging Guard resumes the deferred collision melee")
 		assert_equal(contact_restored.combat.battlefield.character_position(contact_character.id), Vector2i(45, 45), "restored collision melee attacks without committing movement")
+		assert_equal(contact_restored.combat.character_weapon_mode(contact_character.id), &"melee", "the restored reaction switches only after the guarding attack has resolved")
 		assert_true(contact_resumed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == contact_character.id and event.payload.get("targetId") == contact_monster.id), "restored collision melee resolves exactly once after Guard acknowledgement")
 
 

@@ -2470,7 +2470,10 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 		var destination := _combat_destination(response.payload.get("destination"))
 		if destination == Vector2i(-100_000, -100_000):
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat movement requires a two-integer destination.")
-		result = _rules.combat_flow.move_character(_game_state, _content, response.payload["actorId"], destination, _rng)
+		var auto_switch_to_melee: Variant = response.payload.get("autoSwitchToMelee", false)
+		if not auto_switch_to_melee is bool:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat movement's Auto Switch preference must be boolean.")
+		result = _rules.combat_flow.move_character(_game_state, _content, response.payload["actorId"], destination, _rng, auto_switch_to_melee)
 	elif response.payload["action"] == "cast_spell":
 		if response.payload.get("spellId") is not String or response.payload["spellId"].is_empty() or response.payload.get("power") is not int:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat spell casting requires a spellId string and integer power.")
@@ -2510,6 +2513,12 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 	else:
 		result = _rules.combat_flow.submit_action(_game_state, _content, response.payload["actorId"], StringName(response.payload["action"]), response.payload.get("targetId", ""), _rng)
 	if not result.ok:
+		if response.payload["action"] == "move" and result.error_code == &"melee_weapon_mode_required":
+			var warning_events: Array[DomainEvent] = [
+				DomainEvent.new(&"sound_requested", {"soundId": 6000, "waitForCompletion": false, "source": "classic-auto-weapon-switch-warning"}),
+				DomainEvent.new(&"combat_action_unavailable", {"actorId": response.payload["actorId"], "action": "move", "reason": String(result.error_code), "message": result.error_message, "source": "classic"}),
+			]
+			return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), continuation, warning_events)
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
 		return _wait_for_combat_age_updates(String(continuation.get("kind", "classic-combat")), caller, request_id, result.events, previous_round)

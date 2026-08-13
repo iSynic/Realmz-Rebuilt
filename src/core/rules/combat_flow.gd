@@ -809,7 +809,7 @@ func retreat_character(state: GameState, content: RealmzContent, actor_id: Strin
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
-func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i, rng: RealmzRng) -> CombatFlowResult:
+func move_character(state: GameState, content: RealmzContent, actor_id: String, destination: Vector2i, rng: RealmzRng, auto_switch_to_melee: bool = false) -> CombatFlowResult:
 	var combat := state.combat
 	if combat == null or combat.completed or rng == null:
 		return CombatFlowResult.failed(&"no_active_battle", "No Realmz battle is accepting tactical movement.")
@@ -828,8 +828,12 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 	var available_movement := actor.maximum_movement if combat.active_turn == null else actor.movement
 	var probe := _rules.battlefield.probe_step(combat.battlefield, terrain_set, actor_id, direction, available_movement)
 	var contact_target_id := _hostile_contact_target_id(state, actor.id, probe.occupant_id) if probe.reason == &"occupied" else ""
+	var automatic_actor := _processing_auto or actor.traitor or actor.conditions.is_active(ConditionRules.ANIMATED)
+	var should_auto_switch := false
 	if not contact_target_id.is_empty() and combat.character_weapon_mode(actor.id) != &"melee":
-		return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an occupied hostile footprint.")
+		if not auto_switch_to_melee or automatic_actor or not _classic_projectile_uses_point_blank_auto_switch(actor, content):
+			return CombatFlowResult.failed(&"melee_weapon_mode_required", "Switch to the melee weapon before attacking an occupied hostile footprint.")
+		should_auto_switch = true
 	if not probe.allowed and contact_target_id.is_empty():
 		return CombatFlowResult.failed(probe.reason, _movement_failure_message(probe))
 	if not contact_target_id.is_empty():
@@ -838,6 +842,7 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 			return CombatFlowResult.failed(equipment.error_code, equipment.error_message)
 	_prepare_character_turn(combat, actor)
 	combat.pending_reaction = CombatReactionState.new(CombatReactionState.CHARACTER_MOVE, actor.id, origin, destination, 3 if not contact_target_id.is_empty() else probe.movement_cost)
+	combat.pending_reaction.auto_switch_to_melee = should_auto_switch
 	var origin_hostiles := _hostile_adjacent_ids(state, actor.id)
 	combat.pending_reaction.set_origin_hostiles(origin_hostiles)
 	combat.pending_reaction.set_phase(CombatReactionState.GUARD_BEFORE, _guarding_actor_ids(state, origin_hostiles))
@@ -850,6 +855,17 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 			return CombatFlowResult.succeeded(events, true)
 		_process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
+
+
+func _classic_projectile_uses_point_blank_auto_switch(actor: CharacterState, content: RealmzContent) -> bool:
+	var equipment := _rules.inventory.combat_equipment(actor, content.item_definitions())
+	if not equipment.valid or equipment.missile_weapon == null:
+		return false
+	var projectile_item := equipment.missile_weapon
+	if projectile_item.special_2 <= 1100:
+		return false
+	var spell := content.spell_by_classic_id(absi(projectile_item.special_2))
+	return spell != null and spell.spell_class == 9 and spell.damage_type == 9
 
 
 func _continue_pending_reaction(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> int:
@@ -875,6 +891,13 @@ func _continue_pending_reaction(state: GameState, content: RealmzContent, rng: R
 				if reaction.kind == CombatReactionState.CHARACTER_MOVE:
 					var contact_target_id := _hostile_contact_target_id(state, reaction.mover_id, reaction.destination)
 					if not contact_target_id.is_empty():
+						if reaction.auto_switch_to_melee and combat.character_weapon_mode(reaction.mover_id) != &"melee":
+							if not combat.set_character_weapon_mode(reaction.mover_id, &"melee"):
+								combat.pending_reaction = null
+								events.append(DomainEvent.new(&"combat_contact_attack_failed", {"actorId": reaction.mover_id, "targetId": contact_target_id, "reason": "invalid_weapon_mode"}))
+								return REACTION_COMPLETED
+							events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-auto-weapon-switch"}))
+							events.append(DomainEvent.new(&"combat_weapon_mode_changed", {"actorId": reaction.mover_id, "mode": "melee", "source": "classic-auto-weapon-switch"}))
 						combat.pending_reaction = null
 						var contact_result := submit_action(state, content, reaction.mover_id, &"attack", contact_target_id, rng)
 						if not contact_result.ok:
@@ -882,6 +905,7 @@ func _continue_pending_reaction(state: GameState, content: RealmzContent, rng: R
 							return REACTION_COMPLETED
 						events.append_array(contact_result.events)
 						return REACTION_COMPLETED
+					reaction.auto_switch_to_melee = false
 					reaction.set_phase(CombatReactionState.WITHDRAWAL, _withdrawal_hostiles(state, reaction))
 				else:
 					if not _commit_reaction_move(state, content, reaction, events):

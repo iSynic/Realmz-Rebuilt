@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 66 | 1 | 17 | 47 | 1 |
+| classic | 66 | 1 | 16 | 48 | 1 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -31,8 +31,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 3 | 1 | -2 |
-| classic | partial | 16 | 17 | +1 |
-| classic | functional | 46 | 47 | +1 |
+| classic | partial | 16 | 16 | 0 |
+| classic | functional | 46 | 48 | +2 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -50,7 +50,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Inventory and equipment | 7 | 0 | 3 | 4 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
-| Combat | 14 | 0 | 3 | 10 | 1 |
+| Combat | 14 | 0 | 2 | 11 | 1 |
 | Rewards and progression | 5 | 0 | 1 | 4 | 0 |
 | Maps and journal | 3 | 0 | 2 | 1 | 0 |
 | Save and system | 4 | 0 | 2 | 2 | 0 |
@@ -84,8 +84,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-applicable | 2 |
 | absent | 0 |
-| partial | 12 |
-| complete | 52 |
+| partial | 11 |
+| complete | 53 |
 
 | persistence | Count |
 | --- | ---: |
@@ -222,7 +222,6 @@ Blockers: **1**. Major gaps: **19**.
 - `classic.rewards.treasure-distribution` — Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced.
 - `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented.
 - `classic.character.view-sheet` — Several nonzero Classic ability slots lack verified display names.
-- `classic.combat.tactical-movement` — Realmz 2.0 requires an explicit switch from missile to melee before hostile collision, while Castle can perform that switch through its Auto Weapon Switch preference.
 - `classic.maps.authored-journal` — Castle's Auto Note preference and unsafe journal cursor boundary remain outside the verified authored-journal subset.
 - `classic.maps.location-notes` — Castle's two dialog exit labels and exact cancellation semantics are not established by source alone.
 - `classic.maps.view-acquired` — Classic scrolling TEXT encoding and style resources remain only partially represented.

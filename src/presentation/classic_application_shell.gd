@@ -18,6 +18,7 @@ signal text_scale_changed(value: float)
 signal ui_scale_mode_changed(value: String)
 signal window_mode_changed(value: String)
 signal reduced_motion_changed(enabled: bool)
+signal auto_switch_to_melee_changed(enabled: bool)
 signal layout_changed(workspace_rect: Rect2, profile: UiLayoutProfile)
 signal route_changed(route_id: StringName)
 signal play_stage_visibility_changed(visible: bool)
@@ -543,6 +544,7 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"ui_scale_mode": ui_scale_mode_changed.emit(String(value))
 		&"window_mode": window_mode_changed.emit(String(value))
 		&"reduced_motion": reduced_motion_changed.emit(bool(value))
+		&"auto_switch_to_melee": auto_switch_to_melee_changed.emit(bool(value))
 
 
 func _on_character_selected(character_id: String) -> void:

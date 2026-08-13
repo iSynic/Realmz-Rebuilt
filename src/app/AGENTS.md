@@ -25,6 +25,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 - Named `InputMap` actions are the host input boundary. Land movement binds the complete keypad compass, including 7/9/1/3 diagonals; the host suppresses those diagonals on dungeon maps before creating a typed intent. Camp and Rest are separate typed commands; held Rest repeat cadence is presentation-owned and emits one Rest intent per pulse. Back resolves blocking/passive modals, contextual drawers, and route history before returning to exploration; pending interactions suppress route and exploration input.
 - While combat playback is active, the composition root rejects gameplay, route, and interaction input before it can reach the session. Space skips only the presentation transaction. Battlefield target clicks and Back/cancel remain host translations into the presentation-owned target state; only a completed target payload crosses the existing `GameSession.respond` boundary.
 - The application applies window mode and presentation scales, but those settings never enter the session or save aggregate.
+- The application injects Auto Switch to Melee only into a manual typed combat-move response. The core owns eligibility, source ordering, mutation, and any pending one-move continuation; no application preference object crosses into `GameState`.
 
 ## Work Guidance
 

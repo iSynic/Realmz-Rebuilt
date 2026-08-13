@@ -769,15 +769,28 @@ func _test_settings_schema_and_migration() -> void:
 	settings.ui_scale_mode = PresentationSettings.UI_SCALE_125
 	settings.window_mode = PresentationSettings.BORDERLESS_FULLSCREEN
 	settings.text_scale = 1.5
+	settings.auto_switch_to_melee = false
 	var restored := PresentationSettings.from_data(settings.to_data())
-	assert_not_null(restored, "schema-three presentation settings round-trip")
+	assert_not_null(restored, "schema-four presentation settings round-trip")
 	assert_equal(restored.ui_scale_mode, PresentationSettings.UI_SCALE_125, "interface density persists separately")
 	assert_equal(restored.window_mode, PresentationSettings.BORDERLESS_FULLSCREEN, "window mode persists")
 	assert_equal(restored.text_scale, 1.5, "text scale remains independent")
+	assert_false(restored.auto_switch_to_melee, "Auto Weapon Switch persists as an application preference rather than battle state")
 	var version_two := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 2, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": true})
 	assert_not_null(version_two, "schema-two settings migrate")
 	assert_equal(version_two.ui_scale_mode, PresentationSettings.UI_SCALE_AUTO, "migrated settings default to automatic interface density")
 	assert_equal(version_two.window_mode, PresentationSettings.WINDOWED, "migrated settings retain windowed behavior")
+	assert_true(version_two.auto_switch_to_melee, "legacy settings inherit Castle's bundled default-on Auto Weapon Switch preference")
+	var version_three := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 3, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": true, "uiScaleMode": PresentationSettings.UI_SCALE_150, "windowMode": PresentationSettings.WINDOWED})
+	assert_not_null(version_three, "schema-three settings migrate")
+	assert_equal([version_three.ui_scale_mode, version_three.auto_switch_to_melee], [PresentationSettings.UI_SCALE_150, true], "schema-three settings preserve prior display fields and inherit Castle's default-on preference")
+	var malformed_current := settings.to_data()
+	malformed_current.erase("autoSwitchToMelee")
+	assert_equal(PresentationSettings.from_data(malformed_current), null, "schema-four settings reject a missing Auto Weapon Switch field")
+	var move_payload := RealmzApplication.combat_payload_with_preferences({"action": "move", "actorId": "character.test", "destination": [46, 45]}, restored)
+	assert_false(move_payload.get("autoSwitchToMelee"), "the application injects the persisted preference only into a typed manual movement response")
+	var attack_payload := RealmzApplication.combat_payload_with_preferences({"action": "attack", "actorId": "character.test", "targetId": "monster.test"}, restored)
+	assert_false(attack_payload.has("autoSwitchToMelee"), "direct attacks and automatic combat paths never consult Auto Weapon Switch")
 
 
 func _test_movement_input() -> void:

@@ -40,7 +40,7 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 - Restore failure leaves the current session untouched.
 - Save installation is temporary-write, typed readback, one-backup rotation, then same-volume rename; never expose a partially parsed envelope.
 - Infrastructure may use Godot filesystem APIs; core and scenario code may not.
-- Presentation settings schema 3 persists window mode and interface density independently from text scale, volume, reduced motion, topology diagnostics, and dungeon-view preference. Schemas 1 and 2 migrate without loss.
+- Presentation settings schema 4 persists Castle's default-on Auto Switch to Melee preference together with window mode and interface density, independently from text scale, volume, reduced motion, topology diagnostics, and dungeon-view preference. Schemas 1 through 3 migrate with the source default and without gameplay-save ownership.
 - Packages requiring `realmz.scenario.gdscript-actions-v1` fail readiness until an OS-confined external host exists. No in-process or token-scanned GDScript fallback is permitted.
 - Release exports contain runtime resources plus Godot-generated export metadata only; local MCP configuration, addon code, tests, tools, docs, contract mirrors, and references are excluded.
 

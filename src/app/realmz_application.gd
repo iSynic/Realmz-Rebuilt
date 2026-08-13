@@ -76,6 +76,7 @@ func _ready() -> void:
 	_shell_presenter.ui_scale_mode_changed.connect(_on_ui_scale_mode_changed)
 	_shell_presenter.window_mode_changed.connect(_on_window_mode_changed)
 	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed)
+	_shell_presenter.auto_switch_to_melee_changed.connect(_on_auto_switch_to_melee_changed)
 	_shell_presenter.layout_changed.connect(_on_shell_layout_changed)
 	_shell_presenter.route_changed.connect(presentation_coordinator.set_active_route)
 	_shell_presenter.vault_archive_requested.connect(_archive_vault_character)
@@ -318,7 +319,14 @@ func _on_map_movement_requested(direction: Vector2i) -> void:
 func _on_battlefield_action_requested(payload: Dictionary) -> void:
 	var pending := session_controller.view().pending_interaction
 	if pending != null and pending.kind == InteractionRequest.COMBAT:
-		_interaction_presenter.submit_active_payload(payload)
+		_interaction_presenter.submit_active_payload(combat_payload_with_preferences(payload, _presentation_settings))
+
+
+static func combat_payload_with_preferences(payload: Dictionary, settings: PresentationSettings) -> Dictionary:
+	var result := payload.duplicate(true)
+	if result.get("action") == "move":
+		result["autoSwitchToMelee"] = settings != null and settings.auto_switch_to_melee
+	return result
 
 
 func _on_battlefield_combatant_inspected(combatant_id: String) -> void:
@@ -709,4 +717,9 @@ static func classic_combat_rect(viewport_size: Vector2, bottom_height: float) ->
 func _on_reduced_motion_changed(enabled: bool) -> void:
 	_presentation_settings.reduced_motion = enabled
 	presentation_coordinator.set_reduced_motion(enabled)
+	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_auto_switch_to_melee_changed(enabled: bool) -> void:
+	_presentation_settings.auto_switch_to_melee = enabled
 	settings_repository.save_settings(_presentation_settings)
