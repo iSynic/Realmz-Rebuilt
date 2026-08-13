@@ -1713,6 +1713,44 @@ func _render_spells() -> void:
 		_add_section_heading("Field spellbook", "Camped" if _view.party_summary.camping else "Exploring")
 	for character: CharacterView in _view.party_members:
 		_add_section_heading(character.name, "SP %d/%d" % [character.spell_points, character.maximum_spell_points])
+		_add_section_heading("Fast Spells", "Top-row 1–0 • Ctrl/Command-number casts")
+		for binding: FastSpellBindingView in character.fast_spells:
+			var fast_row := HBoxContainer.new()
+			fast_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			fast_row.add_theme_constant_override("separation", 6)
+			var fast_label := _add_label(fast_row, "Slot %s" % binding.shortcut_label, GOLD, 13)
+			fast_label.custom_minimum_size.x = 52.0
+			var picker := OptionButton.new()
+			picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			picker.add_item("Undefined Spell")
+			picker.set_item_metadata(0, {"spellId": "", "power": 0})
+			for known_spell: SpellView in character.spells:
+				var powers: Array[int] = []
+				powers.assign([1] if known_spell.cost < 0 else [1, 2, 3, 4, 5, 6, 7])
+				for power: int in powers:
+					picker.add_item("%s • P%d" % [known_spell.name, power])
+					picker.set_item_metadata(picker.item_count - 1, {"spellId": known_spell.id, "power": power})
+					if known_spell.id == binding.spell_id and power == binding.power:
+						picker.select(picker.item_count - 1)
+			fast_row.add_child(picker)
+			var set_button := Button.new()
+			set_button.text = "Set"
+			set_button.tooltip_text = "Store the selected spell and power in Fast Spell %s." % binding.shortcut_label
+			var fast_binding_availability := _view.availability(&"set_fast_spell")
+			set_button.disabled = not fast_binding_availability.enabled
+			if set_button.disabled:
+				set_button.tooltip_text = fast_binding_availability.reason
+			set_button.pressed.connect(_set_fast_spell_from_picker.bind(character.id, binding.slot_index, picker))
+			fast_row.add_child(set_button)
+			var clear_button := Button.new()
+			clear_button.text = "Clear"
+			clear_button.disabled = binding.spell_id.is_empty()
+			if not fast_binding_availability.enabled:
+				clear_button.disabled = true
+				clear_button.tooltip_text = fast_binding_availability.reason
+			clear_button.pressed.connect(_clear_fast_spell.bind(character.id, binding.slot_index))
+			fast_row.add_child(clear_button)
+			_body.add_child(fast_row)
 		for spell: SpellView in character.spells:
 			any_spells = true
 			var context := "Combat%s • Camp%s" % [" yes" if spell.castable_in_combat else " no", " yes" if spell.castable_in_camp else " no"]
@@ -1751,6 +1789,19 @@ func _render_spells() -> void:
 		_add_empty_state("No spellbooks", "The party has no characters.")
 	elif not any_spells:
 		_add_empty_state("No known spells", "No party member currently knows a spell.")
+
+
+func _set_fast_spell_from_picker(character_id: String, slot_index: int, picker: OptionButton) -> void:
+	var selected: Variant = picker.get_selected_metadata()
+	if not selected is Dictionary:
+		return
+	presentation_sound_requested.emit(144, false, false)
+	intent_submitted.emit(PlayerIntent.set_fast_spell(character_id, slot_index, String(selected.get("spellId", "")), int(selected.get("power", 0))))
+
+
+func _clear_fast_spell(character_id: String, slot_index: int) -> void:
+	presentation_sound_requested.emit(144, false, false)
+	intent_submitted.emit(PlayerIntent.set_fast_spell(character_id, slot_index))
 
 
 func _render_services() -> void:

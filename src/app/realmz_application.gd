@@ -255,6 +255,10 @@ func _input(event: InputEvent) -> void:
 		return
 	if pending != null:
 		if pending.kind == InteractionRequest.COMBAT:
+			var combat_fast_spell := UiInputActions.fast_spell_slot(event)
+			if combat_fast_spell >= 0 and _interaction_presenter.handle_fast_spell(combat_fast_spell, UiInputActions.fast_spell_use_requested(event)):
+				get_viewport().set_input_as_handled()
+				return
 			var combat_direction := UiInputActions.movement_direction(event)
 			if combat_direction != Vector2i.ZERO and _interaction_presenter.accepts_combat_spatial_input() and _battlefield_presenter.submit_movement_direction(combat_direction):
 				get_viewport().set_input_as_handled()
@@ -265,6 +269,11 @@ func _input(event: InputEvent) -> void:
 	if not session_controller.view().session_started:
 		return
 	if not _shell_presenter.accepts_exploration_input():
+		return
+	var fast_spell_slot := UiInputActions.fast_spell_slot(event)
+	if fast_spell_slot >= 0:
+		_handle_field_fast_spell(fast_spell_slot, UiInputActions.fast_spell_use_requested(event))
+		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed(&"realmz_search"):
 		_submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
@@ -282,6 +291,24 @@ func _input(event: InputEvent) -> void:
 	if direction != Vector2i.ZERO:
 		_submit_movement(direction)
 		get_viewport().set_input_as_handled()
+
+
+func _handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
+	var binding := _shell_presenter.selected_fast_spell(slot_index)
+	if binding.is_empty() or String(binding.get("spellId", "")).is_empty():
+		_shell_presenter.set_status("Fast Spell %s • Undefined Spell" % ("0" if slot_index == 9 else str(slot_index + 1)))
+		_audio_presenter.present_sound(143, presentation_coordinator.package_media())
+		return
+	var summary := "Fast Spell %s • %s P%d • %s" % ["0" if slot_index == 9 else str(slot_index + 1), binding["spellName"], binding["power"], binding["characterName"]]
+	if not use_spell:
+		_shell_presenter.set_status(summary)
+		_audio_presenter.present_sound(145, presentation_coordinator.package_media())
+		return
+	if not bool(binding.get("enabled", false)):
+		_shell_presenter.set_status("%s • %s" % [summary, binding.get("reason", "Unavailable")], true)
+		_audio_presenter.present_sound(143, presentation_coordinator.package_media())
+		return
+	_submit_intent(PlayerIntent.cast_spell(binding["spellId"], binding["characterId"], "", binding["power"]))
 
 
 func _on_map_movement_requested(direction: Vector2i) -> void:
@@ -320,6 +347,8 @@ func _on_combat_presentation_action_requested(action: StringName, payload: Dicti
 			var sound_id := int(payload.get("soundId", 0))
 			if sound_id > 0:
 				_audio_presenter.present_sound(sound_id, presentation_coordinator.package_media())
+		&"fast_spell_status":
+			_shell_presenter.set_status(String(payload.get("text", "Fast Spell")), bool(payload.get("error", false)))
 
 
 func _submit_movement(direction: Vector2i) -> void:

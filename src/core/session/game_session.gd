@@ -78,6 +78,8 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 	_normalize_age_groups(replacement_state, content, replacement_rules)
 	if not _party_inventory_is_valid(content, replacement_state, replacement_rules):
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved party inventory or carried load is invalid for this package.")
+	if not _party_fast_spells_are_valid(content, replacement_state):
+		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved Fast Spell bindings reference unavailable package content.")
 	if not _party_appearance_is_valid(content, replacement_state):
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved party appearance references unavailable package content.")
 	if not _shop_state_is_valid(content, replacement_state):
@@ -186,6 +188,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _use_item(intent)
 		PlayerIntent.Kind.CAST_SPELL:
 			return _cast_spell(intent)
+		PlayerIntent.Kind.SET_FAST_SPELL:
+			return _set_fast_spell(intent)
 		PlayerIntent.Kind.CHOOSE_COMBAT_ACTION:
 			return _combat_action(intent)
 		PlayerIntent.Kind.COMBAT_MOVE:
@@ -432,6 +436,7 @@ func _populate_action_availability(result: GameView) -> void:
 	elif cast_reason.is_empty():
 		cast_reason = field_spell_reason
 	result.set_action_availability(&"cast_spell", cast_enabled, "" if cast_enabled else cast_reason)
+	result.set_action_availability(&"set_fast_spell", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Fast Spell bindings cannot be changed during battle." if battle_active else "")
 	result.set_action_availability(&"choose_combat_action", battle_active and not blocked_by_interaction, "No battle action is currently available." if not battle_active else "Resolve the current interaction first." if blocked_by_interaction else "")
 	result.set_action_availability(&"create_party", party_setup and not blocked_by_interaction, "Resolve the current interaction first." if blocked_by_interaction else "Party creation is available only before beginning a campaign." if not party_setup else "")
 	result.set_action_availability(&"begin_adventure", party_setup and not blocked_by_interaction and setup_member_count > 0 and not draft_active, "Resolve the current interaction first." if blocked_by_interaction else "The adventure has already begun." if not party_setup else "Finish or cancel the character currently being created." if draft_active else "Add or import at least one character first.")
@@ -529,6 +534,43 @@ func _populate_spell_actions(result: GameView) -> void:
 			var scroll_spell := _content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
 			var scroll_probe := _scroll_use_probe(character, scroll_view.slot_index, scroll_spell)
 			scroll_view.use = ActionAvailabilityView.new(&"cast_spell", scroll_probe.allowed, scroll_probe.reason)
+		for fast_spell: FastSpellBindingView in member_view.fast_spells:
+			if fast_spell.spell_id.is_empty():
+				continue
+			var bound_spell := _content.spell_by_id(fast_spell.spell_id)
+			if bound_spell == null or not character.known_spells().has(fast_spell.spell_id):
+				fast_spell.activation = ActionAvailabilityView.new(&"cast_spell", false, "The stored spell is unavailable to this character.")
+				continue
+			if battle_active:
+				var option_available := false
+				for option: CombatSpellOptionView in _rules.combat_flow.character_spell_options(_state, _content, character.id):
+					if option.spell_id == bound_spell.id and option.power == fast_spell.power:
+						option_available = true
+						break
+				fast_spell.activation = ActionAvailabilityView.new(&"cast_spell", option_available, "No legal target or casting action is currently available." if not option_available else "")
+			else:
+				var field_probe := _field_spell_probe(character, bound_spell, fast_spell.power)
+				fast_spell.activation = ActionAvailabilityView.new(&"cast_spell", field_probe.allowed, field_probe.reason)
+
+
+func _set_fast_spell(intent: PlayerIntent) -> SessionStep:
+	if _state.combat != null and not _state.combat.completed:
+		return SessionStep.failed(_view_revision, &"fast_spell_binding_in_battle", "Fast Spell bindings cannot be changed during battle.")
+	var character := _state.party.character_by_id(intent.actor_id)
+	if character == null or intent.quantity < 0 or intent.quantity >= 10:
+		return SessionStep.failed(_view_revision, &"invalid_fast_spell_slot", "The selected Fast Spell slot is unavailable.")
+	if intent.target_id.is_empty():
+		if not character.clear_fast_spell(intent.quantity):
+			return SessionStep.failed(_view_revision, &"fast_spell_binding_failed", "The Fast Spell slot could not be cleared.")
+		return _finish_completed([DomainEvent.new(&"fast_spell_changed", {"characterId": character.id, "slot": intent.quantity, "spellId": "", "power": 0, "source": "classic"})])
+	var spell := _content.spell_by_id(intent.target_id)
+	if spell == null or not character.known_spells().has(spell.id):
+		return SessionStep.failed(_view_revision, &"invalid_fast_spell", "Fast Spells must reference a spell known by this character.")
+	if intent.power_level < 1 or intent.power_level > 7 or spell.cost < 0 and intent.power_level != 1:
+		return SessionStep.failed(_view_revision, &"invalid_fast_spell_power", "The selected spell does not support that Fast Spell power.")
+	if not character.bind_fast_spell(intent.quantity, spell.id, intent.power_level):
+		return SessionStep.failed(_view_revision, &"fast_spell_binding_failed", "The Fast Spell binding could not be committed.")
+	return _finish_completed([DomainEvent.new(&"fast_spell_changed", {"characterId": character.id, "slot": intent.quantity, "spellId": spell.id, "power": intent.power_level, "source": "classic"})])
 
 
 func _populate_inventory_item_actions(result: GameView) -> void:
@@ -1483,6 +1525,14 @@ func _import_vault_character(intent: PlayerIntent) -> SessionStep:
 	for scroll: SpellScrollState in imported.scroll_case():
 		if not scroll.is_empty() and _content.spell_by_id(scroll.spell_id) == null:
 			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's scroll case contains a spell unavailable in this campaign.")
+	for binding: FastSpellBindingState in imported.fast_spells():
+		if binding.is_empty():
+			continue
+		var bound_spell := _content.spell_by_id(binding.spell_id)
+		if bound_spell == null or not imported.known_spells().has(binding.spell_id):
+			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's Fast Spell bindings reference an unavailable or unknown spell.")
+		if binding.power < 1 or binding.power > 7 or bound_spell.cost < 0 and binding.power != 1:
+			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's Fast Spell bindings contain an invalid power.")
 	if _content.has_character_appearance_catalog():
 		var portrait := _content.appearance_by_id(imported.portrait_id) if not imported.portrait_id.is_empty() else null
 		if (portrait != null and portrait.kind != CharacterAppearanceDefinition.PORTRAIT) or (not imported.portrait_id.is_empty() and portrait == null):
@@ -1753,6 +1803,19 @@ static func _party_inventory_is_valid(content: RealmzContent, state: GameState, 
 			return false
 		for scroll: SpellScrollState in character.scroll_case():
 			if not scroll.is_empty() and content.spell_by_id(scroll.spell_id) == null:
+				return false
+	return true
+
+
+static func _party_fast_spells_are_valid(content: RealmzContent, state: GameState) -> bool:
+	if content == null or state == null:
+		return false
+	for character: CharacterState in state.party.characters():
+		for binding: FastSpellBindingState in character.fast_spells():
+			if binding.is_empty():
+				continue
+			var spell := content.spell_by_id(binding.spell_id)
+			if spell == null or not character.known_spells().has(binding.spell_id) or binding.power < 1 or binding.power > 7 or spell.cost < 0 and binding.power != 1:
 				return false
 	return true
 

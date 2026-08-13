@@ -232,6 +232,31 @@ func handle_route_shortcut(event: InputEvent) -> bool:
 	return false
 
 
+func selected_fast_spell(slot_index: int) -> Dictionary:
+	if _current_view == null or slot_index < 0 or slot_index >= 10:
+		return {}
+	var character: CharacterView = null
+	for candidate: CharacterView in _current_view.party_members:
+		if candidate.id == _selected_character_id:
+			character = candidate
+			break
+	if character == null and not _current_view.party_members.is_empty():
+		character = _current_view.party_members[0]
+	if character == null or slot_index >= character.fast_spells.size():
+		return {}
+	var binding := character.fast_spells[slot_index]
+	return {
+		"characterId": character.id,
+		"characterName": character.name,
+		"slot": slot_index,
+		"spellId": binding.spell_id,
+		"spellName": binding.spell_name,
+		"power": binding.power,
+		"enabled": binding.activation.enabled,
+		"reason": binding.activation.reason,
+	}
+
+
 static func route_change_reason(game_view: GameView) -> String:
 	if game_view != null and game_view.pending_interaction != null:
 		return "Resolve the current interaction first."

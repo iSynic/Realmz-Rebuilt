@@ -37,6 +37,7 @@ enum Kind {
 	OPEN_MAPS,
 	SET_LOCATION_NOTE,
 	SET_COMBAT_AUTO,
+	SET_FAST_SPELL,
 }
 
 var kind: Kind
@@ -137,6 +138,15 @@ static func cast_spell_at(spell_id: String, caster_id: String, coordinate: Vecto
 static func cast_spell_at_targets(spell_id: String, caster_id: String, target_combatant_ids: Array[String], power: int = 1) -> PlayerIntent:
 	var intent := cast_spell(spell_id, caster_id, "", power)
 	intent.selected_ids = target_combatant_ids.duplicate()
+	return intent
+
+
+static func set_fast_spell(caster_id: String, slot_index: int, spell_id: String = "", power: int = 0) -> PlayerIntent:
+	var intent := PlayerIntent.new(Kind.SET_FAST_SPELL)
+	intent.actor_id = caster_id
+	intent.quantity = slot_index
+	intent.target_id = spell_id
+	intent.power_level = power
 	return intent
 
 

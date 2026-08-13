@@ -84,6 +84,7 @@ var record_unavailable_reason: String = "Lifetime combat history is not yet trac
 var items: Array[ItemView] = []
 var spells: Array[SpellView] = []
 var scrolls: Array[SpellScrollView] = []
+var fast_spells: Array[FastSpellBindingView] = []
 
 
 func _init(character: CharacterState, content: RealmzContent = null) -> void:
@@ -176,6 +177,9 @@ func _init(character: CharacterState, content: RealmzContent = null) -> void:
 		for index: int in character.scroll_case().size():
 			var scroll := character.scroll_at(index)
 			scrolls.append(SpellScrollView.new(index, scroll, content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null))
+	for index: int in character.fast_spells().size():
+		var binding := character.fast_spell_at(index)
+		fast_spells.append(FastSpellBindingView.new(index, binding, content.spell_by_id(binding.spell_id) if content != null and binding != null and not binding.is_empty() else null))
 
 
 func apply_equipment(equipment: CharacterCombatEquipment) -> void:

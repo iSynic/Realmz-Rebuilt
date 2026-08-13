@@ -123,6 +123,10 @@ func accepts_combat_spatial_input() -> bool:
 	return not _playback_masked and _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).accepts_spatial_input()
 
 
+func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
+	return not _playback_masked and _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).handle_fast_spell(slot_index, use_spell)
+
+
 func inspect_combatant(combatant_id: String) -> void:
 	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
 		(_component as BattleInteraction).inspect_combatant(combatant_id)

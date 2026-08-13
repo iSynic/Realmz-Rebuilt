@@ -2,6 +2,7 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const CORRECTION_PATH: String = "res://tests/fixtures/oracle/field-spell-target-cancel-cost-correction.json"
+const FAST_SPELL_CORRECTION_PATH: String = "res://tests/fixtures/oracle/fast-spell-activation-correction.json"
 
 
 func run() -> void:
@@ -10,6 +11,10 @@ func run() -> void:
 	if correction is Dictionary:
 		assert_true(correction["castleSourceObservation"]["spellPointsDeductedBeforeTargetSelection"], "the fixture records Castle's premature spell-point deduction")
 		assert_true(correction["realmz2ChosenResult"]["invalidOrCancelledSelectionPreservesSpellPoints"], "the fixture records the selected transactional correction")
+	var fast_spell_correction: Variant = JSON.parse_string(FileAccess.get_file_as_string(FAST_SPELL_CORRECTION_PATH))
+	assert_true(fast_spell_correction is Dictionary, "the Fast Spell activation fidelity decision is parseable")
+	if fast_spell_correction is Dictionary:
+		assert_equal(fast_spell_correction.get("decisionId"), "FD-SPELL-003", "the Fast Spell correction retains its stable fidelity identity")
 	var loaded := PackageRepository.new().load_package(FIXTURE_PATH)
 	assert_true(loaded.is_ok(), "field-spell workflow starts from the validated package fixture")
 	if not loaded.is_ok():
@@ -31,6 +36,30 @@ func run() -> void:
 	active_target.maximum_health = 20
 	active_target.magic_resistance = 120
 	active_target.set_save_value_raw(1, -99)
+	var bound := session.submit_intent(PlayerIntent.set_fast_spell(active_caster.id, 0, "classic.spell.field-bolt", 2))
+	assert_equal(bound.state, SessionStep.State.COMPLETED, "Fast Spell binding is a typed committed character mutation")
+	assert_true(bound.events.any(func(event: DomainEvent) -> bool: return event.kind == &"fast_spell_changed" and event.payload.get("slot") == 0), "binding publishes the exact detached slot change")
+	assert_equal(session.view().party_members[0].fast_spells[0].spell_name, "Field Bolt", "the detached character view resolves a bound spell without exposing mutable state")
+	var bound_save := SaveEnvelope.from_data(session.snapshot().to_data())
+	var bound_restored := GameSession.new()
+	assert_equal(bound_restored.restore(content, bound_save).state, SessionStep.State.COMPLETED, "Fast Spell state restores through the unchanged v3 save envelope")
+	assert_equal(bound_restored.view().party_members[0].fast_spells[0].power, 2, "restoration retains the exact Fast Spell power")
+	var invalid_binding := session.submit_intent(PlayerIntent.set_fast_spell(active_caster.id, 1, "classic.spell.missing", 1))
+	assert_equal(invalid_binding.error_code, &"invalid_fast_spell", "Fast Spell binding rejects package-unknown spell identities")
+	assert_true(active_caster.fast_spell_at(1).is_empty(), "a rejected binding leaves the selected slot mutation-free")
+	var fast_cast := PlayerIntent.cast_spell(active_caster.fast_spell_at(0).spell_id, active_caster.id, active_target.id, active_caster.fast_spell_at(0).power)
+	session._rng = ScriptedRng.new([0, 0, 32_767])
+	var fast_result := session.submit_intent(fast_cast)
+	assert_equal(fast_result.state, SessionStep.State.COMPLETED, "Fast Spell activation uses the ordinary typed field-cast intent")
+	assert_equal([active_caster.spell_points, active_target.current_health], [46, 16], "Fast Spell activation pays and resolves exactly like the ordinary spell contract")
+	active_caster.spell_points = 2
+	active_target.current_health = 20
+	session._rng = ScriptedRng.new([0, 0, 32_767])
+	var exact_cost_result := session.submit_intent(PlayerIntent.cast_spell("classic.spell.field-bolt", active_caster.id, active_target.id, 1))
+	assert_equal(exact_cost_result.state, SessionStep.State.COMPLETED, "FD-SPELL-003 permits a Fast Spell that spends the caster's exact remaining points")
+	assert_equal(active_caster.spell_points, 0, "the exact-cost Fast Spell commits through the ordinary cast transaction")
+	active_target.current_health = 20
+	active_caster.spell_points = 50
 
 	var spell_view: SpellView = session.view().party_members[0].spells[0]
 	assert_true(spell_view.field_cast.enabled, "detached spell facts expose a source-backed field cast")

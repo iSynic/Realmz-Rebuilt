@@ -4809,6 +4809,103 @@
         "fixturePath": "tests/fixtures/oracle/combat-undo-occupied-cell-correction.json",
         "fixtureSha256": "6df28c67ad570d0e64b6fdb39ec123de32413a7fd62840101b30052a586ae80f"
       }
+    },
+    {
+      "id": "spell.fast-spell-shortcuts",
+      "workflowIds": [
+        "classic.exploration.fast-spell"
+      ],
+      "domain": "spellcasting",
+      "claim": "Each character owns ten numbered Fast Spell bindings. Top-row 1 through 0 displays a binding, Command or Control-number invokes it through ordinary field or combat casting, and binding state persists with that character.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "The pinned functional Remake checkpoint has no owned ten-slot Fast Spell model or shortcut regression test.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/structs.h",
+            "symbol": "short definespells[10][4]"
+          },
+          {
+            "path": "src/realmz_orig/checkkeypad.c",
+            "symbol": "short checkkeypad"
+          },
+          {
+            "path": "src/realmz_orig/castspell.c",
+            "symbol": "short castspell"
+          },
+          {
+            "path": "src/realmz_orig/combat.c",
+            "symbol": "void combat(short suprise, short mode)"
+          },
+          {
+            "path": "src/realmz_orig/save-direction-order.c",
+            "symbol": "void save(short mode)"
+          },
+          {
+            "path": "src/realmz_orig/loadsavedgame.c",
+            "symbol": "short load(void)"
+          }
+        ],
+        "authoredInputs": [
+          "character definespells[10][4]",
+          "top-row numeric key",
+          "Command-key modifier",
+          "spell context and power",
+          "character spell points"
+        ],
+        "observation": "Castle stores ten four-short bindings per character, mirrors them into the active party save, loads a numbered binding for display, and uses Command-number to cast it in field or combat context. The field shortcut has an exact-cost rejection and prepays before cancellable targeting; Rebuilt does not preserve those defects.",
+        "unresolved": []
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [],
+        "expectedRepresentation": "Fast Spell bindings are mutable character state and require no schema-v2 package field."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/core/session/game_session.gd",
+          "symbol": "func _set_fast_spell"
+        },
+        "expectedTrace": [
+          "bind a known spell and valid power to one of ten character-owned slots",
+          "persist the binding in campaign saves and immutable vault revisions",
+          "display the numbered binding without simulation mutation",
+          "invoke the ordinary typed field or combat cast contract",
+          "commit cost, RNG, and effect only after valid targeting"
+        ],
+        "tests": [
+          {
+            "path": "tests/core/test_game_session.gd",
+            "symbol": "func run"
+          },
+          {
+            "path": "tests/integration/test_field_spell_workflow.gd",
+            "symbol": "func run"
+          },
+          {
+            "path": "tests/infrastructure/test_character_vault_repository.gd",
+            "symbol": "func run"
+          },
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_fast_spell_input"
+          }
+        ]
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "source-backed-character-owned-shortcuts-implemented",
+      "fidelityDecision": {
+        "id": "FD-SPELL-003",
+        "fixturePath": "tests/fixtures/oracle/fast-spell-activation-correction.json",
+        "fixtureSha256": "b2545a8c4c690e45c22cb6d0f1a6f7fd2e3f51f6c29869a4bbde982548687d85"
+      }
     }
   ]
 }

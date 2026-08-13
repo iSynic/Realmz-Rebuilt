@@ -13,6 +13,7 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 ## Local Contracts
 
 - Treat package and save data as untrusted until all structural, hash, reference, limit, topology, and capability checks pass.
+- Character vault revisions preserve all ten Fast Spell bindings as character-owned state. Eligibility rejects bindings whose spell identity is absent from the target package, no longer known by the character, or paired with an invalid power; it never silently clears or substitutes a shortcut.
 - Discovery reads the ZIP inventory and verifies manifest/schema/capability metadata without hashing payload bytes or constructing every campaign. Selecting a package performs complete file-integrity and typed-content validation before play; unchanged immutable packages may reuse an in-memory result keyed by canonical path, modification time, and byte count.
 - Long package validation and installation run in a host-owned worker with detached, mutex-protected progress and cooperative cancellation between integrity items. The worker may use infrastructure adapters only; it never accesses Nodes, presenters, or the active session, and shutdown joins it before process exit.
 - Generic package discovery retains every immutable revision for diagnostics. Installed-campaign discovery exposes only the most recently installed valid revision for each campaign and leaves older content-hash files untouched.

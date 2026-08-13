@@ -2915,6 +2915,20 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	if not spell_casts.is_empty():
 		actions.append("cast_spell")
 	var spell_cast_reason := _rules.combat_flow.character_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
+	var fast_spells: Array[Dictionary] = []
+	var active_character := _game_state.party.character_by_id(combat_view.active_actor_id)
+	if active_character != null:
+		for index: int in active_character.fast_spells().size():
+			var binding := active_character.fast_spell_at(index)
+			var bound_spell := _content.spell_by_id(binding.spell_id) if binding != null and not binding.is_empty() else null
+			var binding_enabled := false
+			if bound_spell != null:
+				for cast: Dictionary in spell_casts:
+					if cast.get("spellId") == binding.spell_id and int(cast.get("power", 0)) == binding.power:
+						binding_enabled = true
+						break
+			var binding_reason := "This Fast Spell slot is undefined." if binding == null or binding.is_empty() else "The stored spell is unavailable to this character." if bound_spell == null or not active_character.known_spells().has(binding.spell_id) else "No legal target or casting action is currently available."
+			fast_spells.append({"slot": index, "spellId": binding.spell_id if binding != null else "", "spellName": bound_spell.name if bound_spell != null else "Undefined Spell", "power": binding.power if binding != null else 0, "enabled": binding_enabled, "reason": "" if binding_enabled else binding_reason})
 	var item_casts: Array[Dictionary] = []
 	for option: CombatItemOptionView in _rules.combat_flow.character_item_spell_options(_game_state, _content, combat_view.active_actor_id):
 		item_casts.append({"itemInstanceId": option.item_instance_id, "itemId": option.item_definition_id, "itemName": option.item_name, "charges": option.charges, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)})
@@ -2947,7 +2961,7 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var turn_targets: Array[Dictionary] = []
 	for target: MonsterView in combat_view.turn_undead_targets:
 		turn_targets.append({"id": target.id, "name": target.name, "hitDice": target.hit_dice, "magicResistance": target.magic_resistance})
-	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "enemiesRemaining": enemies_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "combatants": combatants, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason, "itemCasts": item_casts, "itemCastReason": item_cast_reason, "scrollCasts": scroll_casts, "scrollCastReason": scroll_cast_reason, "autoTurn": {"enabled": combat_view.auto_turn.enabled, "reason": combat_view.auto_turn.reason}, "autoCharacterIds": combat_view.auto_character_ids.duplicate(), "delay": {"enabled": combat_view.delay.enabled, "reason": combat_view.delay.reason}, "bandage": {"enabled": combat_view.bandage.enabled, "reason": combat_view.bandage.reason, "targets": bandage_targets}, "turnUndead": {"enabled": combat_view.turn_undead.enabled, "reason": combat_view.turn_undead.reason, "targets": turn_targets}, "undo": {"enabled": combat_view.undo.enabled, "reason": combat_view.undo.reason}})
+	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "enemiesRemaining": enemies_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "combatants": combatants, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason, "fastSpells": fast_spells, "itemCasts": item_casts, "itemCastReason": item_cast_reason, "scrollCasts": scroll_casts, "scrollCastReason": scroll_cast_reason, "autoTurn": {"enabled": combat_view.auto_turn.enabled, "reason": combat_view.auto_turn.reason}, "autoCharacterIds": combat_view.auto_character_ids.duplicate(), "delay": {"enabled": combat_view.delay.enabled, "reason": combat_view.delay.reason}, "bandage": {"enabled": combat_view.bandage.enabled, "reason": combat_view.bandage.reason, "targets": bandage_targets}, "turnUndead": {"enabled": combat_view.turn_undead.enabled, "reason": combat_view.turn_undead.reason, "targets": turn_targets}, "undo": {"enabled": combat_view.undo.enabled, "reason": combat_view.undo.reason}})
 
 
 static func _character_combatant_payload(character: CharacterView) -> Dictionary:

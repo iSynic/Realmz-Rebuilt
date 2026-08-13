@@ -216,6 +216,16 @@ func campaign_eligibility(record: CharacterVaultRecord, content: RealmzContent) 
 	for spell_id: String in record.state.known_spells():
 		if content.spell_by_id(spell_id) == null:
 			result.reasons.append("Spell '%s' is not defined by this campaign." % spell_id)
+	for binding: FastSpellBindingState in record.state.fast_spells():
+		if binding.is_empty():
+			continue
+		var bound_spell := content.spell_by_id(binding.spell_id)
+		if bound_spell == null:
+			result.reasons.append("Fast Spell '%s' is not defined by this campaign." % binding.spell_id)
+		elif not record.state.known_spells().has(binding.spell_id):
+			result.reasons.append("Fast Spell '%s' is no longer known by this character." % binding.spell_id)
+		elif binding.power < 1 or binding.power > 7 or bound_spell.cost < 0 and binding.power != 1:
+			result.reasons.append("Fast Spell '%s' uses an invalid power." % binding.spell_id)
 	if content.has_character_appearance_catalog():
 		var portrait := content.appearance_by_id(record.state.portrait_id) if not record.state.portrait_id.is_empty() else null
 		if not record.state.portrait_id.is_empty() and (portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT):

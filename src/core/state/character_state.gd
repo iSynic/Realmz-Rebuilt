@@ -49,6 +49,7 @@ var _abilities: Array[int] = []
 var _inventory: Array[ItemInstance] = []
 var _known_spells: Array[String] = []
 var _scroll_case: Array[SpellScrollState] = []
+var _fast_spells: Array[FastSpellBindingState] = []
 
 
 func _init(character_id: String, character_name: String, health: int, max_health: int) -> void:
@@ -66,6 +67,8 @@ func _init(character_id: String, character_name: String, health: int, max_health
 	_abilities.fill(0)
 	for index: int in 5:
 		_scroll_case.append(SpellScrollState.new())
+	for index: int in 10:
+		_fast_spells.append(FastSpellBindingState.new())
 
 
 func save_value(index: int) -> int:
@@ -156,6 +159,35 @@ func clear_scroll(index: int) -> bool:
 	return true
 
 
+func fast_spells() -> Array[FastSpellBindingState]:
+	return _fast_spells.duplicate()
+
+
+func fast_spell_at(index: int) -> FastSpellBindingState:
+	return null if index < 0 or index >= _fast_spells.size() else _fast_spells[index]
+
+
+func set_fast_spells(bindings: Array[FastSpellBindingState]) -> bool:
+	if bindings.size() != 10 or bindings.any(func(binding: FastSpellBindingState) -> bool: return binding == null):
+		return false
+	_fast_spells = bindings.duplicate()
+	return true
+
+
+func bind_fast_spell(index: int, spell_id: String, power: int) -> bool:
+	if index < 0 or index >= _fast_spells.size() or spell_id.is_empty() or power < 1 or power > 7:
+		return false
+	_fast_spells[index] = FastSpellBindingState.new(spell_id, power)
+	return true
+
+
+func clear_fast_spell(index: int) -> bool:
+	if index < 0 or index >= _fast_spells.size():
+		return false
+	_fast_spells[index] = FastSpellBindingState.new()
+	return true
+
+
 func to_data() -> Dictionary:
 	var item_data: Array[Dictionary] = []
 	for item: ItemInstance in _inventory:
@@ -163,6 +195,9 @@ func to_data() -> Dictionary:
 	var scroll_data: Array[Dictionary] = []
 	for scroll: SpellScrollState in _scroll_case:
 		scroll_data.append(scroll.to_data())
+	var fast_spell_data: Array[Dictionary] = []
+	for binding: FastSpellBindingState in _fast_spells:
+		fast_spell_data.append(binding.to_data())
 	return {
 		"id": id, "name": name, "currentHealth": current_health, "maximumHealth": maximum_health,
 		"raceId": race_id, "casteId": caste_id, "gender": gender, "portraitId": portrait_id, "combatIconId": combat_icon_id, "level": level, "experience": experience, "ageDays": age_days, "ageGroup": age_group,
@@ -174,7 +209,7 @@ func to_data() -> Dictionary:
 		"prestigePenalty": prestige_penalty,
 		"traitor": traitor,
 		"conditions": conditions.to_data(), "money": money.to_data(), "saves": _saves.duplicate(), "specials": _specials.duplicate(), "abilities": _abilities.duplicate(),
-		"inventory": item_data, "knownSpells": _known_spells.duplicate(), "scrollCase": scroll_data,
+		"inventory": item_data, "knownSpells": _known_spells.duplicate(), "scrollCase": scroll_data, "fastSpells": fast_spell_data,
 	}
 
 
@@ -270,6 +305,19 @@ static func from_data(data: Variant) -> CharacterState:
 			if scroll == null:
 				return null
 			scrolls.append(scroll)
+	var fast_spells: Array[FastSpellBindingState] = []
+	var fast_spell_data: Variant = data.get("fastSpells", [])
+	if not fast_spell_data is Array or fast_spell_data.size() not in [0, 10]:
+		return null
+	if fast_spell_data.is_empty():
+		for index: int in 10:
+			fast_spells.append(FastSpellBindingState.new())
+	else:
+		for value: Variant in fast_spell_data:
+			var binding := FastSpellBindingState.from_data(value)
+			if binding == null:
+				return null
+			fast_spells.append(binding)
 	result.race_id = data["raceId"]
 	result.caste_id = data["casteId"]
 	result.gender = numeric_values["gender"]
@@ -318,6 +366,7 @@ static func from_data(data: Variant) -> CharacterState:
 	result._inventory = items
 	result._known_spells = spells
 	result._scroll_case = scrolls
+	result._fast_spells = fast_spells
 	return result
 
 

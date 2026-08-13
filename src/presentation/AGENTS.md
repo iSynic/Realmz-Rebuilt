@@ -30,6 +30,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 ## Local Contracts
 
 - Presentation never mutates gameplay state directly.
+- Top-row `1` through `0` belongs to the active character's ten Classic Fast Spell slots. A plain number displays the binding, Control/Command-number invokes it through the existing typed cast path, the numeric keypad remains movement, and application route shortcuts use Alt-number. Binding and clearing are explicit spell-workspace intents; presentation never edits character state directly.
 - Animation completion never advances simulation; only genuine interaction responses resume it.
 - `CombatPlaybackController` owns the cosmetic boundary between a previous detached battle view, ordered committed combat events, and the final detached view. It retains the previous battlefield through terminal playback, sequences source-positioned sounds and effects once, masks gameplay input, and releases the already committed final view only after playback settles or the player skips it. Reduced motion shortens visuals without dropping ordered audio.
 - While an interaction is pending, exploration controls remain disabled and the presenter cannot bypass the session response path.

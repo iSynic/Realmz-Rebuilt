@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 66 | 2 | 17 | 46 | 1 |
+| classic | 66 | 1 | 17 | 47 | 1 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -23,16 +23,16 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | --- | --- | --- |
 | `classic.combat.undo` | implementation | broader-parity | — | GAP-COMBAT-014 |
 | `classic.inventory.use-item` | implementation | aogm-major-partial | — | GAP-INV-003 |
-| `classic.exploration.fast-spell` | implementation | broader-parity | — | GAP-EXP-003 |
+| `classic.exploration.fast-spell` | certification | broader-parity | aogm-ordinary |  |
 | `classic.combat.weapon-mode` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
-| classic | missing | 3 | 2 | -1 |
+| classic | missing | 3 | 1 | -2 |
 | classic | partial | 16 | 17 | +1 |
-| classic | functional | 46 | 46 | 0 |
+| classic | functional | 46 | 47 | +1 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -44,7 +44,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Domain | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Startup and party | 8 | 0 | 0 | 8 | 0 |
-| Exploration | 6 | 1 | 1 | 4 | 0 |
+| Exploration | 6 | 0 | 1 | 5 | 0 |
 | Scenario interaction | 6 | 0 | 2 | 4 | 0 |
 | Character management | 5 | 1 | 1 | 3 | 0 |
 | Inventory and equipment | 7 | 0 | 3 | 4 | 0 |
@@ -62,8 +62,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 10 |
-| required | 11 |
-| completed | 45 |
+| required | 10 |
+| completed | 46 |
 
 | Remake | Count |
 | --- | ---: |
@@ -83,22 +83,22 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | simulation | Count |
 | --- | ---: |
 | not-applicable | 2 |
-| absent | 1 |
+| absent | 0 |
 | partial | 12 |
-| complete | 51 |
+| complete | 52 |
 
 | persistence | Count |
 | --- | ---: |
 | not-applicable | 6 |
-| absent | 1 |
+| absent | 0 |
 | partial | 1 |
-| verified | 58 |
+| verified | 59 |
 
 | presentation | Count |
 | --- | ---: |
-| absent | 2 |
+| absent | 1 |
 | fixture-shell | 0 |
-| functional | 63 |
+| functional | 64 |
 | accepted | 1 |
 
 ### Host
@@ -135,7 +135,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 | Label | Classic | Host |
 | --- | ---: | ---: |
-| synthetic | 64 | 7 |
+| synthetic | 65 | 7 |
 | route-harness | 39 | 2 |
 | aogm-ordinary | 25 | 3 |
 | other-ordinary | 0 | 0 |
@@ -143,7 +143,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **20**.
+Blockers: **1**. Major gaps: **19**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -151,7 +151,6 @@ Blockers: **1**. Major gaps: **20**.
 - **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Characterize the suspicious mode-5 incidental/RNG branches and mode-10 restart field with controlled Castle fixtures, then implement each distinct runtime continuation without changing schema v2 unless the fixture disproves positional preservation.
 - **major** `classic.combat.undo` — Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
-- **major** `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end. Next: Trace the preference/save fields and ordinary cast handoff, then decide whether the shortcut is Classic state or presentation state.
 - **major** `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved. Next: Use controlled fixtures for zero/negative land tiles, boat/shore cancellation, special dungeon wall bits, and attempted-coordinate timed gates before broadening the topology result.
 - **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
 - **major** `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow. Next: Trace every items.c branch before deleting the intents or implementing a stack operation.
@@ -170,7 +169,6 @@ Blockers: **1**. Major gaps: **20**.
 ## Oracle-required unknowns
 
 - `classic.combat.undo` — Undo the active combat activation
-- `classic.exploration.fast-spell` — Cast a numeric fast spell
 - `classic.exploration.travel` — Travel on land and in dungeons
 - `classic.inventory.identify-item` — Identify an item
 - `classic.inventory.manage-equipment` — Equip and unequip carried items
@@ -217,7 +215,6 @@ Blockers: **1**. Major gaps: **20**.
 - `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately.
 - `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end.
 - `classic.combat.undo` — Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved.
-- `classic.exploration.fast-spell` — Numeric fast-spell configuration and invocation are absent and their save ownership is not yet traced end to end.
 - `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified.
 - `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow.
 - `classic.maps.location-notes` — Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.

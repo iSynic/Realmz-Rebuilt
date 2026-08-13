@@ -10,6 +10,9 @@ var _targeting_status_label: Label
 var _targeting_confirm_button: Button
 var _targeting_controls: VBoxContainer
 var _targeting_active: bool = false
+var _spell_casts: Array = []
+var _fast_spells: Array = []
+var _spell_panel: VBoxContainer
 
 
 func build(request: InteractionRequest) -> void:
@@ -27,6 +30,7 @@ func build(request: InteractionRequest) -> void:
 	var targets: Variant = request.payload.get("targets", [])
 	var target_panel := VBoxContainer.new()
 	var spell_panel := VBoxContainer.new()
+	_spell_panel = spell_panel
 	var scroll_panel := VBoxContainer.new()
 	var item_panel := VBoxContainer.new()
 	var bandage_panel := VBoxContainer.new()
@@ -61,6 +65,8 @@ func build(request: InteractionRequest) -> void:
 		var ranged_reason := String(ranged.get("reason", "Missile attacks are unavailable.") if ranged is Dictionary else "Missile attacks are unavailable.")
 		add_response_to(target_panel, "Fire unavailable", {}, false, ranged_reason)
 	var spell_casts: Variant = request.payload.get("spellCasts", [])
+	_spell_casts = spell_casts if spell_casts is Array else []
+	_fast_spells = request.payload.get("fastSpells", []) if request.payload.get("fastSpells", []) is Array else []
 	if action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty():
 		var spell_picker := OptionButton.new()
 		spell_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -178,6 +184,39 @@ func build(request: InteractionRequest) -> void:
 		item_row.add_child(use_button)
 	elif not String(request.payload.get("itemCastReason", "")).is_empty():
 		add_response_to(item_panel, "Use item unavailable", {}, false, String(request.payload.get("itemCastReason")))
+
+
+func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
+	if slot_index < 0 or slot_index >= _fast_spells.size():
+		return false
+	var binding: Variant = _fast_spells[slot_index]
+	if not binding is Dictionary:
+		return false
+	var shortcut := "0" if slot_index == 9 else str(slot_index + 1)
+	if String(binding.get("spellId", "")).is_empty():
+		presentation_action_requested.emit(&"fast_spell_status", {"text": "Fast Spell %s • Undefined Spell" % shortcut})
+		presentation_action_requested.emit(&"play_sound", {"soundId": 143})
+		return true
+	var summary := "Fast Spell %s • %s P%d" % [shortcut, binding.get("spellName", "Spell"), int(binding.get("power", 1))]
+	if not use_spell:
+		presentation_action_requested.emit(&"fast_spell_status", {"text": summary})
+		presentation_action_requested.emit(&"play_sound", {"soundId": 145})
+		return true
+	if not bool(binding.get("enabled", false)):
+		presentation_action_requested.emit(&"fast_spell_status", {"text": "%s • %s" % [summary, binding.get("reason", "Unavailable")], "error": true})
+		presentation_action_requested.emit(&"play_sound", {"soundId": 143})
+		return true
+	for candidate: Variant in _spell_casts:
+		if candidate is Dictionary and candidate.get("spellId") == binding.get("spellId") and int(candidate.get("power", 0)) == int(binding.get("power", 0)):
+			var payload := {"actorId": _actor_id, "action": "cast_spell", "targetId": "", "spellId": binding["spellId"], "power": int(binding["power"])}
+			if String(candidate.get("targetMode", "combatant")) == "automatic":
+				payload_submitted.emit(payload)
+				return true
+			_start_targeting(_spell_targeting_configuration(_spell_casts, candidate, payload), _spell_panel)
+			return true
+	presentation_action_requested.emit(&"fast_spell_status", {"text": "%s • No legal target is available." % summary, "error": true})
+	presentation_action_requested.emit(&"play_sound", {"soundId": 143})
+	return true
 
 
 func update_battlefield_targeting(selection: Dictionary) -> void:

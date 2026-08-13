@@ -12,6 +12,7 @@ func run() -> void:
 	_test_layout_profiles()
 	_test_settings_schema_and_migration()
 	_test_movement_input()
+	_test_fast_spell_input()
 	_test_safe_item_display()
 	_test_action_availability()
 	_test_fixture_gallery_coverage()
@@ -796,6 +797,28 @@ func _test_movement_input() -> void:
 		event.action = action
 		event.pressed = true
 		assert_equal(UiInputActions.movement_direction(event), expected[action], "%s resolves to its complete movement vector" % action)
+
+
+func _test_fast_spell_input() -> void:
+	var one := InputEventKey.new()
+	one.physical_keycode = KEY_1
+	one.pressed = true
+	assert_equal(UiInputActions.fast_spell_slot(one), 0, "top-row 1 selects Castle Fast Spell slot one")
+	var zero := InputEventKey.new()
+	zero.physical_keycode = KEY_0
+	zero.pressed = true
+	assert_equal(UiInputActions.fast_spell_slot(zero), 9, "top-row 0 selects Castle Fast Spell slot ten")
+	zero.ctrl_pressed = true
+	assert_true(UiInputActions.fast_spell_use_requested(zero), "Ctrl-number is the Windows equivalent of Castle Command-number activation")
+	var keypad := InputEventKey.new()
+	keypad.physical_keycode = KEY_KP_1
+	keypad.pressed = true
+	assert_equal(UiInputActions.fast_spell_slot(keypad), -1, "numeric keypad movement never aliases a top-row Fast Spell")
+	var released := InputEventKey.new()
+	released.physical_keycode = KEY_2
+	assert_equal(UiInputActions.fast_spell_slot(released), -1, "a key release cannot display or activate a Fast Spell a second time")
+	var route_binding: Dictionary = UiInputActions.DEFINITIONS.filter(func(definition: Dictionary) -> bool: return definition["id"] == &"ui_screen_explore")[0]
+	assert_true(bool(route_binding.get("alt", false)), "Rebuilt route shortcuts move behind Alt-number so Classic Fast Spells own bare 1–0")
 	var keypad_bindings: Dictionary = {}
 	for definition: Dictionary in UiInputActions.DEFINITIONS:
 		keypad_bindings[definition["id"]] = definition["keys"]
@@ -1546,11 +1569,17 @@ func _test_field_spell_workspace() -> void:
 	spell_view.scroll_power_levels = [1, 2]
 	spell_view.make_scroll = ActionAvailabilityView.new(&"cast_spell", true)
 	character_view.spells.append(spell_view)
+	character.bind_fast_spell(0, definition.id, 2)
+	character_view.fast_spells = []
+	for index: int in 10:
+		character_view.fast_spells.append(FastSpellBindingView.new(index, character.fast_spell_at(index), definition if index == 0 else null))
+	character_view.fast_spells[0].activation = ActionAvailabilityView.new(&"cast_spell", true)
 	character.write_scroll(0, definition.id, 2)
 	character_view.scrolls = [SpellScrollView.new(0, character.scroll_at(0), definition)]
 	character_view.scrolls[0].use = ActionAvailabilityView.new(&"cast_spell", true)
 	view.party_members = [character_view]
 	view.set_action_availability(&"cast_spell", true)
+	view.set_action_availability(&"set_fast_spell", true)
 	router._view = view
 	var intents: Array[PlayerIntent] = []
 	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
@@ -1559,10 +1588,13 @@ func _test_field_spell_workspace() -> void:
 	var make_power_two: Button = null
 	var use_scroll: Button = null
 	var scroll_slot_label: Label = null
+	var fast_slot_label: Label = null
 	for label: Label in router._body.find_children("*", "Label", true, false):
 		if label.text.begins_with("Slot 1"):
-			scroll_slot_label = label
-			break
+			if label.text == "Slot 1":
+				fast_slot_label = label
+			else:
+				scroll_slot_label = label
 	for button: Button in router._body.find_children("*", "Button", true, false):
 		if button.text == "Cast P2 (4 SP)":
 			cast_power_two = button
@@ -1574,6 +1606,8 @@ func _test_field_spell_workspace() -> void:
 	assert_not_null(make_power_two, "the field spell workspace renders source-backed scroll scribing cost choices")
 	assert_not_null(use_scroll, "the field spell workspace renders the character's fixed scroll-case slots")
 	assert_not_null(scroll_slot_label, "the field spell workspace labels each fixed scroll slot")
+	assert_not_null(fast_slot_label, "the spellbook renders all ten character-owned Fast Spell rows")
+	assert_equal(router._body.find_children("*", "OptionButton", true, false).filter(func(option: OptionButton) -> bool: return option.get_parent() is HBoxContainer).size(), 10, "each Fast Spell slot exposes one explicit binding picker")
 	if scroll_slot_label != null:
 		assert_true(scroll_slot_label.get_parent() is HBoxContainer, "scroll-slot identity and action share one fixed row instead of reflowing into narrow columns")
 		assert_equal(scroll_slot_label.size_flags_horizontal, Control.SIZE_EXPAND_FILL, "scroll-slot text receives the row's available width at the minimum viewport")
