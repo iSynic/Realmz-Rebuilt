@@ -4917,7 +4917,7 @@
         "classic.scenario.select-subject"
       ],
       "domain": "scenario-interaction",
-      "claim": "Classic opcodes 30 and 31 select or test party characters through getchoice and a five-value Extra Code row, but Castle's source has two suspicious indexing paths that cannot yet be adopted safely: opcode 30 evaluates c[t] while iterating loop, and opcode 31 attribute indices outside 0 through 6 consume a roll without an evidenced good or bad branch.",
+      "claim": "Classic opcodes 30 and 31 select or test party characters through getchoice and a five-value Extra Code row. A controlled Castle fixture proves opcode 30 aliases every iterated check through the unrelated instruction-slot character and inconsistently double-inverts negative attribute checks; Realmz Rebuilt corrects that defect. The same fixture proves opcode 31 attribute index 10 is an inert but observable picker-and-RNG operation, which Realmz Rebuilt preserves.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "The pinned functional Remake checkpoint supplies no focused opcode 30 or 31 characterization that resolves Castle's suspicious indexing.",
@@ -4926,7 +4926,7 @@
       },
       "castle": {
         "commit": "491816ad60037394f92c428e99c004494d3c28b3",
-        "evidence": "source-control-flow",
+        "evidence": "castle-runtime",
         "controlFlow": [
           {
             "path": "src/realmz_orig/newland.c",
@@ -4948,7 +4948,7 @@
           "modifier",
           "success and failure XAP targets"
         ],
-        "observation": "Opcode 30 loops over tracked characters but reads attributes and abilities through c[t] rather than c[loop]. Opcode 31 permits any authored attribute index, calls Rand(25), and only branches in switch cases 0 through 4 and 6; an out-of-range value such as AOGM's 10 reaches neither goodcheck nor badcheck before the case exits. Controlled Castle fixtures are required before choosing literal compatibility or a correction."
+        "observation": "With three distinct synthetic characters, opcode 30 consumed three draws but made all three outcomes depend on the action slot's c[t] value. Its negative attribute path inverted twice while the equivalent ability path inverted once. Opcode 31 index 10 retained the chosen character, consumed one Rand(25) draw, loaded neither XAP, and continued."
       },
       "providence": {
         "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
@@ -4971,13 +4971,24 @@
           "serialize and restore the exact request and continuation",
           "reject forged identities without consuming RNG",
           "consume one tagged RNG draw for a valid response",
-          "withhold a fidelity claim for Castle's suspicious index paths until oracle evidence exists"
+          "evaluate each opcode 30 candidate's own value and invert negative filters once under FD-SCENARIO-001",
+          "preserve opcode 31 index 10 as an explicit picker, one draw, and no branch"
         ],
-        "tests": []
+        "tests": [
+          {
+            "path": "tests/scenario/test_scenario_vm.gd",
+            "symbol": "func _test_classic_character_ability_picker"
+          }
+        ]
       },
-      "decision": "unresolved",
-      "availability": "disabled",
-      "status": "source-indexing-anomalies-require-controlled-castle-fixtures"
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "controlled-castle-fixture-adjudicated",
+      "fidelityDecision": {
+        "id": "FD-SCENARIO-001",
+        "fixturePath": "tests/fixtures/oracle/scenario-character-check-indexing-correction.json",
+        "fixtureSha256": "51c025afb0c18360d911fdffdccc1edcf459046a3f1899e0bf69eada94889340"
+      }
     }
   ]
 }

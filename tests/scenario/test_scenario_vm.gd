@@ -1465,7 +1465,7 @@ func _test_classic_character_ability_picker(content: RealmzContent) -> void:
 	first.set_ability_value(5, 40)
 	second.set_ability_value(5, 5)
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [first, second]), RealmzClock.new())
-	var rng := ScriptedRng.new([0, 32_767])
+	var rng := ScriptedRng.new([0, 0, 32_767])
 	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new())
 	var missing := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12]), "request.ability.missing")
 	assert_equal(missing.error_code, &"missing_extra_code", "Classic opcode 31 rejects an incomplete five-value Extra Code row")
@@ -1475,18 +1475,34 @@ func _test_classic_character_ability_picker(content: RealmzContent) -> void:
 	var saved_request := InteractionRequest.from_data(JSON.parse_string(JSON.stringify(waiting.interaction.to_data())))
 	var saved_continuation: Dictionary = JSON.parse_string(JSON.stringify(waiting.continuation))
 	assert_not_null(saved_request, "ability picker request survives the JSON-shaped save boundary")
-	var unsupported := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [10, 0, 1, 12, 13]), "request.ability.unsupported")
-	assert_equal([unsupported.state, unsupported.error_code, rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.FAILED, &"unsupported_character_attribute_index", 0], "AOGM's source-undefined attribute index 10 fails explicitly without a picker or RNG draw")
+	var inert := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [10, 0, 1, 12, 13]), "request.ability.inert")
+	assert_equal([inert.state, inert.interaction.kind, rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.WAITING, &"character_selection", 0], "AOGM's attribute index 10 retains Castle's living-character picker before its inert check")
+	var inert_result := api.resume_classic(inert.continuation, InteractionResponse.new(inert.interaction.request_id, &"character_selection", {"characterIds": [second.id]}), "request.ability.inert.resume")
+	assert_equal([inert_result.state, inert_result.directive.is_empty(), state.selected_character_ids(), rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, true, [second.id], 1], "Castle's undefined attribute index consumes one Rand(25) draw and continues without either authored branch")
+	assert_equal(inert_result.events[0].payload.get("branch"), "none", "the source-defined inert result is explicit in the committed trace")
 	var passed := api.resume_classic(saved_continuation, InteractionResponse.new(saved_request.request_id, &"character_selection", {"characterIds": [first.id]}), "request.ability.resume")
-	assert_equal([passed.directive.get("targetId"), state.selected_character_ids(), rng.snapshot().draw_count], [12, [first.id], 1], "selected ability, pass branch, and one RNG draw commit together after restore")
+	assert_equal([passed.directive.get("targetId"), state.selected_character_ids(), rng.snapshot().draw_count], [12, [first.id], 2], "selected ability, pass branch, and one RNG draw commit together after restore")
 	assert_true(_event_has(passed.events, &"character_ability_checked"), "ability picker publishes the source-ordered committed result")
 	var repeated := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12, 13]), "request.ability.second")
 	var failed := api.resume_classic(repeated.continuation, InteractionResponse.new(repeated.interaction.request_id, &"character_selection", {"characterIds": [second.id]}), "request.ability.second.resume")
-	assert_equal([failed.directive.get("targetId"), state.selected_character_ids(), rng.snapshot().draw_count], [13, [second.id], 2], "failed ability check branches to the authored alternate XAP without reusing the prior draw")
+	assert_equal([failed.directive.get("targetId"), state.selected_character_ids(), rng.snapshot().draw_count], [13, [second.id], 3], "failed ability check branches to the authored alternate XAP without reusing the prior draw")
 	var forged := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12, 13]), "request.ability.forged")
 	var rejected := api.resume_classic(forged.continuation, InteractionResponse.new(forged.interaction.request_id, &"character_selection", {"characterIds": ["missing.character"]}), "request.ability.forged.resume")
 	assert_equal(rejected.error_code, &"invalid_interaction_response", "ability picker rejects an unavailable character identity before drawing RNG")
-	assert_equal(rng.snapshot().draw_count, 2, "invalid ability-picker responses do not consume simulation RNG")
+	assert_equal(rng.snapshot().draw_count, 3, "invalid ability-picker responses do not consume simulation RNG")
+
+	first.brawn = 2
+	second.brawn = 12
+	var third := CharacterState.new("ability.third", "Third", 10, 10)
+	third.brawn = 22
+	third.set_ability_value(5, 95)
+	state.party.add_character(third)
+	var filter_rng := ScriptedRng.new([0, 13_107, 26_214, 1_311, 16_057, 30_802])
+	var filter_api := RealmzRuntimeApi.new(content, state, filter_rng, ScenarioActionState.new())
+	var attributes := filter_api.execute_classic(ClassicActionDefinition.new(0, 30, 30, 0, false, [0, 0, 2, 1, 0]), "request.filter.attributes")
+	assert_equal([attributes.value, state.selected_character_ids(), filter_rng.snapshot().draw_count], [[first.id, second.id, third.id], [first.id, second.id, third.id], 3], "FD-SCENARIO-001 evaluates each tracked character rather than Castle's unrelated instruction-slot character")
+	var abilities := filter_api.execute_classic(ClassicActionDefinition.new(0, 30, 30, 0, false, [-5, 0, 2, 0, 0]), "request.filter.abilities")
+	assert_equal([abilities.value, state.selected_character_ids(), filter_rng.snapshot().draw_count], [[second.id], [second.id], 6], "negative opcode 30 selects each character whose own ability check fails and inverts exactly once")
 
 
 func _test_classic_monster_route(content: RealmzContent) -> void:

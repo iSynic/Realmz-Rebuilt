@@ -1128,8 +1128,6 @@ func _request_character_ability(action: ClassicActionDefinition, request_id: Str
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 31 requires a five-value Extra Code row.")
 	var check_index := int(action.extra_code[0])
 	var attribute_check := int(action.extra_code[2]) != 0
-	if attribute_check and check_index not in [0, 1, 2, 3, 4, 6]:
-		return ScenarioRuntimeOperationResult.failed(&"unsupported_character_attribute_index", "Classic opcode 31 attribute index %d has no source-defined branch." % check_index)
 	if not attribute_check and (check_index < 0 or check_index >= 15):
 		return ScenarioRuntimeOperationResult.failed(&"unsupported_character_ability_index", "Classic opcode 31 ability index %d is outside the source character record." % check_index)
 	var eligible: Array[Dictionary] = []
@@ -1152,8 +1150,11 @@ func _resume_character_ability(continuation: Dictionary, response: InteractionRe
 	var check_index := int(values[0])
 	var modifier := int(values[1])
 	var attribute_check := int(values[2]) != 0
-	var check_value := _character_attribute(character, check_index) if attribute_check else character.ability_value(check_index)
 	var roll := _rng.draw(25 if attribute_check else 100, &"classic.character-ability")
+	if attribute_check and check_index not in [0, 1, 2, 3, 4, 6]:
+		var inert_event := DomainEvent.new(&"character_ability_checked", {"characterId": character.id, "checkIndex": check_index, "attribute": true, "modifier": modifier, "roll": roll, "branch": "none", "sourceDefined": false})
+		return ScenarioRuntimeOperationResult.completed(character.id, [inert_event])
+	var check_value := _character_attribute(character, check_index) if attribute_check else character.ability_value(check_index)
 	var passed := roll - modifier < check_value if attribute_check else roll <= check_value + modifier
 	var target_id := int(values[3] if passed else values[4])
 	var event := DomainEvent.new(&"character_ability_checked", {"characterId": character.id, "checkIndex": check_index, "attribute": attribute_check, "value": check_value, "modifier": modifier, "roll": roll, "passed": passed})

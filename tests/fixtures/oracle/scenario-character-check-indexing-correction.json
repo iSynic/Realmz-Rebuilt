@@ -1,0 +1,51 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-SCENARIO-001",
+  "evidence": "castle-runtime-fixture",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/newland.c",
+      "symbol": "case 30: /******* Set Picked on Check Vs. Special Ability or Attribute *******/",
+      "range": "2426-2500"
+    },
+    {
+      "path": "src/realmz_orig/newland.c",
+      "symbol": "case 31: /******* Branch on Check Vs. Ability *******/",
+      "range": "2502-2571"
+    }
+  ],
+  "oracleHarness": {
+    "kind": "isolated-local-castle-branch",
+    "branch": "test/opcode-character-check-oracle",
+    "sourceSha256": "0f4f27d098bbd3ef5e41e9b671d81acd72acd9bd78c97e29615f69f320afa4d9",
+    "inputs": {
+      "characters": [
+        {"slot": 0, "brawn": 2, "ability5": 5},
+        {"slot": 1, "brawn": 12, "ability5": 50},
+        {"slot": 2, "brawn": 22, "ability5": 95}
+      ],
+      "tracked": "all three living characters for opcode 30; character slot 1 for opcode 31",
+      "scriptedRandResult": "10 for attribute checks; 25 for ability checks"
+    },
+    "observations": [
+      "opcode30.attribute.slot0 track=000 draws=3 branch=-1",
+      "opcode30.attribute.slot1 track=111 draws=3 branch=-1",
+      "opcode30.attribute.slot2 track=111 draws=3 branch=-1",
+      "opcode30.ability.slot1 track=111 draws=3 branch=-1",
+      "opcode30.attribute-negative.slot1 track=000 draws=3 branch=-1",
+      "opcode30.ability-negative.slot1 track=000 draws=3 branch=-1",
+      "opcode31.attribute.index0 track=110 draws=1 branch=5",
+      "opcode31.attribute.index10 track=110 draws=1 branch=-1"
+    ]
+  },
+  "castleObservation": {
+    "opcode30": "Every tracked character consumes its own draw, but all outcomes depend on c[t], where t is the active instruction slot. Negative attribute checks are additionally inverted once inside the attribute branch and again after the loop.",
+    "opcode31Index10": "The selected living character remains tracked, exactly one Rand(25) draw is consumed, neither success nor failure XAP loads, and execution continues after the action."
+  },
+  "playerFacingProblem": "Opcode 30 can select or reject an entire party according to an unrelated action-slot character, and its attribute and ability forms disagree about negative selection. Scenario authors cannot reliably filter the characters whose own statistics they asked to test.",
+  "realmz2ChosenResult": {
+    "opcode30": "Evaluate each candidate's own attribute or trained ability, consume one draw per candidate in source order, and apply the authored negative sign exactly once as select-on-failure.",
+    "opcode31Index10": "Preserve the observed Castle behavior: ask for one living character, retain that identity, consume one Rand(25) draw, publish an explicit inert result, and continue without loading either XAP."
+  }
+}

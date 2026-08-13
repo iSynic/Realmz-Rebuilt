@@ -2,6 +2,16 @@
 
 Classic-visible behavior is the default ruleset. This ledger records deliberate departures only; the absence of a decision does not authorize reinterpretation.
 
+## FD-SCENARIO-001 — Per-character opcode 30 checks
+
+- Affected rule: Classic opcode 30 filtering of tracked characters by an attribute or trained ability.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/newland.c`, `newland`, lines 2426–2500. The loop advances `loop` through tracked characters but reads `c[t]`, where `t` is the action-slot cursor. Negative attribute checks invert inside the attribute branch and then invert the complete party again, while negative ability checks invert only after the loop.
+- Observable Castle behavior: a controlled synthetic fixture with three distinct characters showed that all three results changed with the instruction slot instead of the iterated character, while still consuming three draws. It also confirmed the inconsistent double inversion. The runtime fixture record is `tests/fixtures/oracle/scenario-character-check-indexing-correction.json`, SHA-256 `51c025afb0c18360d911fdffdccc1edcf459046a3f1899e0bf69eada94889340`. The same fixture established that opcode 31 attribute index 10 prompts, consumes one draw, and continues without either XAP; Realmz Rebuilt preserves that separate inert behavior.
+- Player-facing problem: an authored “set picked on check” operation can select or reject everyone according to an unrelated party member, and its negative meaning changes depending on whether the author selected an attribute or ability.
+- Chosen 2.0 behavior: test every candidate's own value in party order, preserve one RNG draw per candidate, and apply a negative check index once as select-on-failure. Opcode 31's observed undefined attribute index remains source-conformant and does not share this correction.
+- Tests: `test_scenario_vm.gd::_test_classic_character_ability_picker` covers distinct per-character attribute and ability results, one inversion, opcode 31 index-10 picker/RNG/no-branch behavior, serialization, and forged-response rejection. The differential case is `scenario.character-check-indexing`.
+- Legacy quirk: none. Action-slot aliasing and asymmetric double inversion are implementation defects, not meaningful authored behavior.
+
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 
 - Affected rule: shop sale value for an item definition whose authored charge count is zero.
