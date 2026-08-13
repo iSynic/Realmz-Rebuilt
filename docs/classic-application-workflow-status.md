@@ -13,26 +13,26 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Classic remaining combat command parity** (`classic-combat-command-parity`)
+**Ordinary AOGM exploration and services certification** (`aogm-exploration-services-certification`)
 
-The source-backed Auto, Delay, Bandage, and Turn Undead workflow batch is complete. This follow-on implements bounded Undo while retaining explicit fixture-required edge cases, then wires combat scroll use and character fast-spell shortcuts before adjudicating Auto Weapon Switch.
+The combat feedback and command-parity tranche is complete. Return to application-facing ordinary play: certify Camp/Rest, Pool/Share, denomination Swap, and contextual service entry through AOGM without reopening settled combat internals.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.combat.undo` | implementation | broader-parity | — | GAP-COMBAT-014 |
-| `classic.inventory.use-item` | implementation | aogm-major-partial | — | GAP-INV-003 |
-| `classic.exploration.fast-spell` | certification | broader-parity | aogm-ordinary |  |
-| `classic.combat.weapon-mode` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.exploration.camp-rest` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.services.pool-share` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.services.swap` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.exploration.contextual-service` | certification | aogm-certification | aogm-ordinary | GAP-EXP-004 |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
-| classic | missing | 3 | 1 | -2 |
+| classic | missing | 1 | 1 | 0 |
 | classic | partial | 16 | 16 | 0 |
-| classic | functional | 46 | 48 | +2 |
+| classic | functional | 48 | 48 | 0 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
