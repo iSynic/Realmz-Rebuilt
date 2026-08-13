@@ -330,6 +330,8 @@ func _build_menus() -> void:
 	if not is_node_ready():
 		return
 	var camp_label := "Break Camp" if _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping else "Camp"
+	var location_service := _contextual_service()
+	var service_label := location_service.title if location_service != null else "Location Service"
 	_fill_menu($MenuStrip/MenuRow/InfoMenu, [
 		{"label": "About Realmz 2", "route": &"system"},
 		{"label": "Package identity and readiness", "route": &"system"},
@@ -347,6 +349,8 @@ func _build_menus() -> void:
 		{"label": "Search", "command": &"search", "disabled_reason": _availability_reason(&"search")},
 		{"label": camp_label, "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
 		{"label": "Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
+		{"label": service_label, "command": &"service", "disabled_reason": _availability_reason(&"service_action")},
+		{"label": "Money", "command": &"money", "disabled_reason": _availability_reason(&"money_action")},
 	])
 	_fill_menu($MenuStrip/MenuRow/CharacterMenu, [
 		{"label": "Party Order", "route": &"character"},
@@ -368,6 +372,8 @@ func _build_menus() -> void:
 		{"label": "Adventure — Search", "command": &"search", "disabled_reason": _availability_reason(&"search")},
 		{"label": "Adventure — %s" % camp_label, "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
 		{"label": "Adventure — Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
+		{"label": "Adventure — %s" % service_label, "command": &"service", "disabled_reason": _availability_reason(&"service_action")},
+		{"label": "Adventure — Money", "command": &"money", "disabled_reason": _availability_reason(&"money_action")},
 		{"label": "Character — Party Order", "route": &"character"},
 		{"label": "Character — Character Sheets", "route": &"character"},
 		{"label": "Character — Inventory", "route": &"inventory"},
@@ -428,6 +434,7 @@ func _rebuild_command_deck() -> void:
 	_simulation_buttons.clear()
 	var context := &"encounter" if _current_view != null and _current_view.pending_interaction != null else _router.current_screen()
 	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
+		definition = _presentation_command_definition(definition)
 		var asset_id := StringName(definition.get("asset_id", &""))
 		var button: BaseButton
 		if not asset_id.is_empty() and ClassicUiAssetCatalog.texture(asset_id) != null:
@@ -459,7 +466,7 @@ func _rebuild_command_deck() -> void:
 func _update_command_availability() -> void:
 	for command_id: StringName in _simulation_buttons:
 		var button := _simulation_buttons[command_id] as BaseButton
-		var definition := ClassicCommandCatalog.command(command_id)
+		var definition := _presentation_command_definition(ClassicCommandCatalog.command(command_id))
 		var availability_id := StringName(definition.get("availability", &""))
 		var reason := ""
 		if _current_view == null or not _current_view.session_started:
@@ -480,11 +487,39 @@ func _activate_command(command_id: StringName) -> void:
 		&"search": intent_submitted.emit(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 		&"camp": intent_submitted.emit(PlayerIntent.camp())
 		&"rest": intent_submitted.emit(PlayerIntent.rest())
+		&"service":
+			var service := _contextual_service()
+			if service != null and not service.actions.is_empty():
+				intent_submitted.emit(PlayerIntent.service_action(service.service_id, service.actions[0]))
+		&"money": _router.open_screen(&"services")
 		&"inventory": _router.open_screen(&"inventory")
 		&"spells": _router.open_screen(&"spells")
 		&"maps": _router.open_screen(&"journal")
 		&"settings": _router.open_screen(&"system")
 		&"save": save_requested.emit("quick")
+
+
+func _presentation_command_definition(definition: Dictionary) -> Dictionary:
+	if StringName(definition.get("id", &"")) != &"service":
+		return definition
+	var result := definition.duplicate()
+	var service := _contextual_service()
+	if service == null:
+		return result
+	result["label"] = service.title
+	result["tooltip"] = "Enter %s" % service.title
+	if service.service_kind == &"temple":
+		result["asset_id"] = &"command.temple"
+	return result
+
+
+func _contextual_service() -> ServiceView:
+	if _current_view == null:
+		return null
+	for service: ServiceView in _current_view.services:
+		if not service.actions.is_empty():
+			return service
+	return null
 
 
 func _begin_held_command(command_id: StringName) -> void:

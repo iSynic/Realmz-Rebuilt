@@ -40,6 +40,7 @@ func run() -> void:
 	_test_field_spell_workspace()
 	_test_inventory_workspace()
 	_test_money_workspace()
+	_test_exploration_money_and_service_commands()
 	_test_party_order_workspace()
 	_test_character_sheet_workspace()
 	_test_party_roster()
@@ -1769,6 +1770,37 @@ func _test_money_workspace() -> void:
 	assert_equal([scroll.scroll_horizontal, scroll.scroll_vertical], [37, 100], "a same-route money mutation preserves the player's prior scroll instead of jumping to the final control")
 	scroll.free()
 	router.free()
+
+
+func _test_exploration_money_and_service_commands() -> void:
+	var view := GameView.new(1, true, null)
+	view.campaign_id = "ordinary-command-fixture"
+	view.campaign_summary = CampaignSummaryView.new()
+	view.campaign_summary.title = "Ordinary Command Fixture"
+	view.money_workspace = MoneyWorkspaceView.new()
+	view.set_action_availability(&"money_action", true)
+	view.set_action_availability(&"service_action", true)
+	for action_id: StringName in [&"search", &"camp", &"rest"]:
+		view.set_action_availability(action_id, false, "Unavailable in this fixture.")
+	var shop := ServiceView.new()
+	shop.service_id = "classic.shop.7"
+	shop.service_kind = &"shop"
+	shop.title = "Shop 7"
+	shop.actions = [&"enter"]
+	view.services = [shop]
+	var exploration_commands := ClassicCommandCatalog.for_context(&"exploration")
+	assert_true(exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == &"money" and definition["availability"] == &"money_action"), "ordinary exploration exposes Castle's Money/Swap workspace without a hidden route shortcut")
+	assert_true(exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == &"service" and definition["availability"] == &"service_action"), "ordinary exploration exposes the current location service")
+	var shell := ClassicApplicationShell.new()
+	shell._current_view = view
+	var presented_service := shell._presentation_command_definition(ClassicCommandCatalog.command(&"service"))
+	assert_equal([presented_service["label"], presented_service["asset_id"]], ["Shop 7", &""], "the single contextual service command names the core-provided shop without inventing unverified bitmap art")
+	var intents: Array[PlayerIntent] = []
+	shell.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	shell._activate_command(&"service")
+	assert_equal(intents.size(), 1, "entering the contextual service emits exactly one typed intent")
+	assert_equal([intents[0].kind, intents[0].target_id, intents[0].action], [PlayerIntent.Kind.SERVICE_ACTION, shop.service_id, &"enter"], "the contextual command preserves the stable service ID and source action")
+	shell.free()
 
 
 func _test_party_order_workspace() -> void:
