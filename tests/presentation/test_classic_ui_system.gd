@@ -2055,6 +2055,7 @@ func _test_scene_composition() -> void:
 	assert_equal(shell.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the structural shell cannot mask earlier root-level interaction controls")
 	assert_equal(router.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the full-window router cannot mask menus or sibling controls")
 	assert_true(router.get_index() > roster.get_index() and router.get_index() > bottom_region.get_index(), "modal router children are ordered above roster and textbox input regions")
+	assert_true(router.z_index > bottom_region.z_index, "workspace controls remain clickable where a scrolling route extends into the persistent bottom-region rows")
 	for viewport_size: Vector2 in [Vector2(800, 600), Vector2(960, 600), Vector2(1280, 720), Vector2(1920, 1080)]:
 		var profile := UiLayoutProfile.for_viewport(viewport_size, PresentationSettings.UI_SCALE_AUTO)
 		var campaign_rect := ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
