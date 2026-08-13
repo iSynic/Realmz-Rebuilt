@@ -24,7 +24,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | `classic.exploration.camp-rest` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.services.pool-share` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.services.swap` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.exploration.contextual-service` | certification | aogm-certification | aogm-ordinary | GAP-EXP-004 |
+| `classic.exploration.contextual-service` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
@@ -137,7 +137,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: | ---: |
 | synthetic | 65 | 7 |
 | route-harness | 39 | 2 |
-| aogm-ordinary | 25 | 3 |
+| aogm-ordinary | 28 | 3 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
@@ -191,7 +191,6 @@ Blockers: **1**. Major gaps: **19**.
 - `classic.services.shop` — The complete shop lifecycle has no ordinary campaign certification.
 - `classic.services.temple` — The implemented temple subset has no ordinary campaign certification.
 - `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
-- `classic.exploration.contextual-service` — Contextual service entry is not yet demonstrated through ordinary AOGM play.
 - `classic.inventory.trade-item` — Trade has no ordinary campaign observation.
 - `classic.scenario.select-subject` — Picker variants are tested synthetically but not all observed in ordinary AOGM play.
 - `classic.startup.create-character` — The five-step creator has deterministic and UI tests but no recorded ordinary AOGM completion in the audit evidence.

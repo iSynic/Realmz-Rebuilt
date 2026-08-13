@@ -659,6 +659,14 @@ Auto Weapon Switch now matches Castle's application-owned, default-on preference
 
 Next batch: certify the ordinary AOGM Camp/Rest, Pool/Share, denomination Swap, and contextual-service entry workflows before beginning another implementation tranche.
 
+### Ordinary AOGM exploration and services certification closeout
+
+- Ordinary AOGM play now covers the complete selected batch. Camp and Rest were previously observed through the field interface. A six-character party then pooled 1,305 gold, shared it as 218/218/218/217/217/217, and completed a five-gold character-to-pool-to-character Swap round trip without changing the total.
+- The live money evidence is deliberately limited to gold. The selected AOGM party had no gems or jewelry, so those denominations retain synthetic coverage rather than being described as ordinary-play observations.
+- The party reached an authored AOGM Temple action point through exploration. Its action sequence exposed both Temple and Bank as location services; entering Temple presented all nine fixed services plus Pool, Share, and Leave, and Leave returned cleanly to the field at the same location.
+- This closes the contextual-service entry gap, but it does not certify the complete Temple workflow. No service purchase, no-op payment, or service-boundary reload was performed, so `GAP-SVC-004` remains the owning live-proof gap.
+- No product code changed in this closeout. The workflow inventory and generated status report record only the variants observed through the ordinary application path.
+
 ## Current workflow batch — Session lifecycle and host responsiveness
 
 - Validated save previews are complete: the System workspace indexes primary and backup records independently, shows detached identity/time/location/party facts, disables corrupt or mismatched records, and restores a selected validated source without mutating the active session on failure.
