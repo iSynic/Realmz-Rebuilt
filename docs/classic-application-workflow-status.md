@@ -142,7 +142,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **17**.
+Blockers: **1**. Major gaps: **18**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -160,6 +160,7 @@ Blockers: **1**. Major gaps: **17**.
 - **major** `classic.rewards.treasure-distribution` — Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced. Next: Use controlled Castle RNG fixtures for ordinary, XP-only, and bonus-treasure battle rewards before implementing or correcting the random drops.
 - **major** `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
 - **major** `classic.scenario.random-timed-encounter` — Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture. Next: Add a synthetic timed AP that changes map or coordinate, yields, applies any source-owned AP destination semantics, resumes the remaining scan, and performs the final random check at the resulting location.
+- **major** `classic.scenario.select-subject` — AOGM contains opcode 30 character filtering and an opcode 31 attribute check using source-undefined index 10; ordinary picker certification is blocked by Castle indexing anomalies. Next: Run controlled Castle fixtures for opcode 30 with multiple distinct characters and opcode 31 attribute index 10, then record a fidelity decision before enabling the AOGM path.
 - **major** `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise field and combat scroll workflows in ordinary AOGM play, then implement discard/case-transfer branches only from bounded differential evidence.
 - **major** `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
@@ -185,8 +186,8 @@ Blockers: **1**. Major gaps: **17**.
 - `classic.inventory.use-item` — Fixed-power charged items and field/combat scroll use now preserve exact targets, charges/load, five-slot state, fixed power, action cost, sound, save/resume, and transactional cancellation; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit.
 - `classic.maps.view-acquired` — Acquisition and browsing have synthetic proof but no ordinary AOGM acceptance.
 - `classic.scenario.random-timed-encounter` — Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture.
+- `classic.scenario.select-subject` — AOGM contains opcode 30 character filtering and an opcode 31 attribute check using source-undefined index 10; ordinary picker certification is blocked by Castle indexing anomalies.
 - `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
-- `classic.scenario.select-subject` — Picker variants are tested synthetically but not all observed in ordinary AOGM play.
 
 ### other-campaign
 

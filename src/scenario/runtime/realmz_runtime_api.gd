@@ -1126,6 +1126,12 @@ func _resume_character_selection(continuation: Dictionary, response: Interaction
 func _request_character_ability(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 31 requires a five-value Extra Code row.")
+	var check_index := int(action.extra_code[0])
+	var attribute_check := int(action.extra_code[2]) != 0
+	if attribute_check and check_index not in [0, 1, 2, 3, 4, 6]:
+		return ScenarioRuntimeOperationResult.failed(&"unsupported_character_attribute_index", "Classic opcode 31 attribute index %d has no source-defined branch." % check_index)
+	if not attribute_check and (check_index < 0 or check_index >= 15):
+		return ScenarioRuntimeOperationResult.failed(&"unsupported_character_ability_index", "Classic opcode 31 ability index %d is outside the source character record." % check_index)
 	var eligible: Array[Dictionary] = []
 	for character: CharacterState in _game_state.party.characters():
 		if character.current_health > 0:

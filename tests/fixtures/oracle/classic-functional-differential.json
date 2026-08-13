@@ -4910,6 +4910,74 @@
         "fixturePath": "tests/fixtures/oracle/fast-spell-activation-correction.json",
         "fixtureSha256": "b2545a8c4c690e45c22cb6d0f1a6f7fd2e3f51f6c29869a4bbde982548687d85"
       }
+    },
+    {
+      "id": "scenario.character-check-indexing",
+      "workflowIds": [
+        "classic.scenario.select-subject"
+      ],
+      "domain": "scenario-interaction",
+      "claim": "Classic opcodes 30 and 31 select or test party characters through getchoice and a five-value Extra Code row, but Castle's source has two suspicious indexing paths that cannot yet be adopted safely: opcode 30 evaluates c[t] while iterating loop, and opcode 31 attribute indices outside 0 through 6 consume a roll without an evidenced good or bad branch.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "The pinned functional Remake checkpoint supplies no focused opcode 30 or 31 characterization that resolves Castle's suspicious indexing.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/newland.c",
+            "symbol": "case 30: /******* Set Picked on Check Vs. Special Ability or Attribute *******/"
+          },
+          {
+            "path": "src/realmz_orig/newland.c",
+            "symbol": "case 31: /******* Branch on Check Vs. Ability *******/"
+          },
+          {
+            "path": "src/realmz_orig/getchoice.c",
+            "symbol": "short getchoice(short number, short initems, short candead)"
+          }
+        ],
+        "authoredInputs": [
+          "five-value Extra Code row",
+          "selected or tracked party characters",
+          "attribute or trained-ability index",
+          "modifier",
+          "success and failure XAP targets"
+        ],
+        "observation": "Opcode 30 loops over tracked characters but reads attributes and abilities through c[t] rather than c[loop]. Opcode 31 permits any authored attribute index, calls Rand(25), and only branches in switch cases 0 through 4 and 6; an out-of-range value such as AOGM's 10 reaches neither goodcheck nor badcheck before the case exits. Controlled Castle fixtures are required before choosing literal compatibility or a correction."
+      },
+      "providence": {
+        "commit": "8fead345c0d13b74fe08b26060ab538073a77df3",
+        "sources": [
+          {
+            "path": "src-tauri/src/realmz2_exporter.rs",
+            "symbol": "fn scenario_document"
+          }
+        ],
+        "expectedRepresentation": "Preserve each opcode, sign, slot, GOSUB flag, and all five Extra Code values exactly; AOGM currently retains opcode 30 rows -5,0,2,0,0 and 5,0,2,0,0 plus opcode 31 row 10,0,1,5,6."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/scenario/runtime/realmz_runtime_api.gd",
+          "symbol": "func _request_character_ability"
+        },
+        "expectedTrace": [
+          "validate the five-value Extra Code row",
+          "yield one typed living-character selection for opcode 31",
+          "serialize and restore the exact request and continuation",
+          "reject forged identities without consuming RNG",
+          "consume one tagged RNG draw for a valid response",
+          "withhold a fidelity claim for Castle's suspicious index paths until oracle evidence exists"
+        ],
+        "tests": []
+      },
+      "decision": "unresolved",
+      "availability": "disabled",
+      "status": "source-indexing-anomalies-require-controlled-castle-fixtures"
     }
   ]
 }
