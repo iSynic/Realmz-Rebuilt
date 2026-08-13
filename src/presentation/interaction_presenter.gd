@@ -19,11 +19,13 @@ var _stage_rect := Rect2(32.0, 32.0, 640.0, 480.0)
 var _textbox_rect := Rect2(8.0, 424.0, 696.0, 168.0)
 var _combat_rect := Rect2(0.0, 424.0, 960.0, 176.0)
 var _passive_text: bool = false
+var _playback_masked: bool = false
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
 	_request = request
 	_passive_text = false
+	_playback_masked = false
 	_reset_interaction_scroll()
 	_clear_options()
 	visible = request != null
@@ -61,6 +63,22 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	call_deferred("_prepare_interaction_focus")
 
 
+func present_combat_playback_mask() -> void:
+	_request = null
+	_passive_text = false
+	_playback_masked = true
+	_reset_interaction_scroll()
+	_clear_options()
+	_set_heading("")
+	_prompt.text = ""
+	_prompt.visible = false
+	_stage_opaque_backing.visible = false
+	_stage_backing.visible = false
+	_add_hint("Resolving combat…  Press Space to skip visual playback.")
+	visible = true
+	_apply_classic_region()
+
+
 func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Rect2 = Rect2()) -> void:
 	_stage_rect = stage_rect
 	_textbox_rect = textbox_rect
@@ -80,6 +98,7 @@ func dismiss_passive_text() -> bool:
 func present_passive_classic_text(text: String) -> void:
 	if _request != null:
 		return
+	_playback_masked = false
 	_clear_options()
 	_set_heading("")
 	_prompt.text = text
@@ -90,23 +109,33 @@ func present_passive_classic_text(text: String) -> void:
 
 
 func has_blocking_request() -> bool:
-	return _request != null
+	return _request != null or _playback_masked
 
 
 func submit_active_payload(payload: Dictionary) -> bool:
-	if _request == null or _request.kind != InteractionRequest.COMBAT:
+	if _playback_masked or _request == null or _request.kind != InteractionRequest.COMBAT:
 		return false
 	_submit_payload(payload)
 	return true
 
 
 func accepts_combat_spatial_input() -> bool:
-	return _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).accepts_spatial_input()
+	return not _playback_masked and _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).accepts_spatial_input()
 
 
 func inspect_combatant(combatant_id: String) -> void:
 	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
 		(_component as BattleInteraction).inspect_combatant(combatant_id)
+
+
+func update_combat_targeting(selection: Dictionary) -> void:
+	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
+		(_component as BattleInteraction).update_battlefield_targeting(selection)
+
+
+func combat_targeting_cancelled() -> void:
+	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
+		(_component as BattleInteraction).battlefield_targeting_cancelled()
 
 
 func set_text_scale(value: float) -> void:
@@ -170,7 +199,11 @@ func _apply_classic_region() -> void:
 	if not is_inside_tree():
 		return
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
-	if uses_textbox_region(_request, _passive_text):
+	if _playback_masked:
+		theme_type_variation = &"ClassicOpenRight"
+		position = _combat_rect.position
+		size = _combat_rect.size
+	elif uses_textbox_region(_request, _passive_text):
 		theme_type_variation = &"ClassicOpenRight"
 		var region := interaction_region(_request, _textbox_rect, _stage_rect, _combat_rect)
 		position = region.position

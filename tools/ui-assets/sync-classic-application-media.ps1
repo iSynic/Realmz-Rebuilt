@@ -164,6 +164,7 @@ function Convert-SndToWav([byte[]]$Snd, [int]$ResourceId) {
 $toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
 $catalogPath = Join-Path $toolRoot "application-media-catalog.json"
+$cicnExporterPath = Join-Path $toolRoot "export-classic-cicn.ps1"
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 $castleRoot = (Resolve-Path -LiteralPath $CastleRepository).Path
 $resolvedCommit = (& git -C $castleRoot rev-parse "$($catalog.source_commit)^{commit}").Trim()
@@ -196,48 +197,97 @@ try {
             throw "Catalog source hash mismatch: $($set.source_path)"
         }
         $forkBytes = [IO.File]::ReadAllBytes($sourcePath)
-        $entries = @(Get-ResourceEntries $forkBytes $set.resource_type)
-        $actualIds = @($entries | ForEach-Object { $_.Id } | Sort-Object)
-        $expectedIds = @($set.resource_ids | ForEach-Object { [int]$_ } | Sort-Object)
-        if (($actualIds -join ",") -ne ($expectedIds -join ",")) {
-            throw "Catalog resource IDs do not exactly match $($set.source_path) $($set.resource_type)"
+        $availableEntries = @(Get-ResourceEntries $forkBytes $set.resource_type)
+        $expectedIds = @($set.resource_ids | ForEach-Object { [int]$_ })
+        foreach ($range in @($set.resource_ranges)) {
+			if ($null -eq $range) {
+				continue
+			}
+            $expectedIds += @(([int]$range.start)..([int]$range.end))
         }
+        $expectedIds = @($expectedIds | Sort-Object -Unique)
+        $availableIds = @($availableEntries | ForEach-Object { $_.Id } | Sort-Object -Unique)
+        $missingIds = @($expectedIds | Where-Object { $_ -notin $availableIds })
+        if ($missingIds.Count -gt 0) {
+            throw "Catalog resource IDs are missing from $($set.source_path) $($set.resource_type): $($missingIds -join ',')"
+        }
+        $entries = @($availableEntries | Where-Object { $_.Id -in $expectedIds })
         foreach ($entry in $entries | Sort-Object Id) {
-            if ($set.resource_type -ne "snd ") {
-                throw "Unsupported application resource type: $($set.resource_type)"
-            }
-            $decoded = Convert-SndToWav $entry.Bytes $entry.Id
-            $relativePath = "$($set.target_directory)/snd-$($entry.Id).wav"
-            $targetPath = Join-Path $outputRoot ($relativePath -replace "/", [IO.Path]::DirectorySeparatorChar)
-            New-Item -ItemType Directory -Path (Split-Path -Parent $targetPath) -Force | Out-Null
-            [IO.File]::WriteAllBytes($targetPath, $decoded.Bytes)
-            $records += [ordered]@{
-                id = "realmz-application-snd-$($entry.Id)"
-                label = "Realmz sound $($entry.Id)"
-                kind = "sound"
-                mime_type = "audio/wav"
-                resource_type = $set.resource_type
-                resource_id = $entry.Id
-                path = "res://src/presentation/assets/classic-media/$relativePath"
-                bytes = $decoded.Bytes.Length
-                sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
-                sample_rate = $decoded.PlaybackRate
-                source_sample_rate = $decoded.SourceRate
-                samples = $decoded.Samples
-                duration_ms = if ($decoded.SourceRate -gt 0) { [Math]::Floor($decoded.Samples * 1000.0 / $decoded.SourceRate) } else { 0 }
-                channels = 1
-                source_repository = $catalog.source_repository
-                source_commit = $catalog.source_commit
-                source_path = $set.source_path
-                source_file_sha256 = $set.source_file_sha256
-                source_resource_sha256 = (Get-FileHash -InputStream ([IO.MemoryStream]::new($entry.Bytes)) -Algorithm SHA256).Hash.ToLowerInvariant()
-                classification = $set.classification
-                classic_evidence = [ordered]@{
-                    status = "source-control-flow"
-                    path = $set.evidence_path
-                    note = $set.evidence_note
+            if ($set.resource_type -eq "snd ") {
+                $decoded = Convert-SndToWav $entry.Bytes $entry.Id
+                $relativePath = "$($set.target_directory)/snd-$($entry.Id).wav"
+                $targetPath = Join-Path $outputRoot ($relativePath -replace "/", [IO.Path]::DirectorySeparatorChar)
+                New-Item -ItemType Directory -Path (Split-Path -Parent $targetPath) -Force | Out-Null
+                [IO.File]::WriteAllBytes($targetPath, $decoded.Bytes)
+                $records += [ordered]@{
+                    id = "realmz-application-snd-$($entry.Id)"
+                    label = "Realmz sound $($entry.Id)"
+                    kind = "sound"
+                    mime_type = "audio/wav"
+                    resource_type = $set.resource_type
+                    resource_id = $entry.Id
+                    path = "res://src/presentation/assets/classic-media/$relativePath"
+                    bytes = $decoded.Bytes.Length
+                    sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
+                    sample_rate = $decoded.PlaybackRate
+                    source_sample_rate = $decoded.SourceRate
+                    samples = $decoded.Samples
+                    duration_ms = if ($decoded.SourceRate -gt 0) { [Math]::Floor($decoded.Samples * 1000.0 / $decoded.SourceRate) } else { 0 }
+                    channels = 1
+                    source_repository = $catalog.source_repository
+                    source_commit = $catalog.source_commit
+                    source_path = $set.source_path
+                    source_file_sha256 = $set.source_file_sha256
+                    source_resource_sha256 = (Get-FileHash -InputStream ([IO.MemoryStream]::new($entry.Bytes)) -Algorithm SHA256).Hash.ToLowerInvariant()
+                    classification = $set.classification
+                    classic_evidence = [ordered]@{
+                        status = "source-control-flow"
+                        path = $set.evidence_path
+                        note = $set.evidence_note
+                    }
                 }
+                continue
             }
+            if ($set.resource_type -eq "cicn") {
+                $relativePath = "$($set.target_directory)/cicn-$($entry.Id).png"
+                $targetPath = Join-Path $outputRoot ($relativePath -replace "/", [IO.Path]::DirectorySeparatorChar)
+                & $cicnExporterPath -ResourceForkPath $sourcePath -ResourceId $entry.Id -OutputPath $targetPath
+                if ($LASTEXITCODE -ne 0) {
+                    throw "Classic cicn export failed for resource $($entry.Id)"
+                }
+                $pngBytes = [IO.File]::ReadAllBytes($targetPath)
+                if ($pngBytes.Length -lt 24) {
+                    throw "Decoded cicn PNG is truncated: $($entry.Id)"
+                }
+                $width = [int](Get-U32 $pngBytes 16)
+                $height = [int](Get-U32 $pngBytes 20)
+                $records += [ordered]@{
+                    id = "realmz-application-cicn-$($entry.Id)"
+                    label = "Realmz color icon $($entry.Id)"
+                    kind = "icon"
+                    mime_type = "image/png"
+                    resource_type = $set.resource_type
+                    resource_id = $entry.Id
+                    path = "res://src/presentation/assets/classic-media/$relativePath"
+                    bytes = $pngBytes.Length
+                    sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $targetPath).Hash.ToLowerInvariant()
+                    width = $width
+                    height = $height
+                    source_repository = $catalog.source_repository
+                    source_commit = $catalog.source_commit
+                    source_path = $set.source_path
+                    source_file_sha256 = $set.source_file_sha256
+                    source_resource_sha256 = (Get-FileHash -InputStream ([IO.MemoryStream]::new($entry.Bytes)) -Algorithm SHA256).Hash.ToLowerInvariant()
+                    classification = $set.classification
+                    classic_evidence = [ordered]@{
+                        status = "source-control-flow"
+                        path = $set.evidence_path
+                        note = $set.evidence_note
+                    }
+                }
+                continue
+            }
+            throw "Unsupported application resource type: $($set.resource_type)"
         }
     }
 

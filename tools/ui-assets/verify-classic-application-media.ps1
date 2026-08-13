@@ -40,9 +40,14 @@ foreach ($asset in $manifest.assets) {
     if ($sha256 -ne $asset.sha256) {
         throw "Application media hash does not match: $($asset.id)"
     }
+	if ($asset.mime_type -eq "image/png" -and ($asset.width -lt 1 -or $asset.height -lt 1)) {
+		throw "Application image media has invalid dimensions: $($asset.id)"
+	}
 }
-if ($manifest.assets.Count -ne 142) {
-    throw "Expected the complete 142-resource built-in sound catalog; found $($manifest.assets.Count)"
+$soundCount = @($manifest.assets | Where-Object { $_.resource_type -eq "snd " }).Count
+$combatIconCount = @($manifest.assets | Where-Object { $_.resource_type -eq "cicn" }).Count
+if ($soundCount -ne 142 -or $combatIconCount -ne 145) {
+    throw "Expected 142 built-in sounds and 145 source-backed combat icons; found $soundCount sounds and $combatIconCount icons"
 }
 Write-Host "Classic application media verified: $($manifest.assets.Count) assets."
 exit 0

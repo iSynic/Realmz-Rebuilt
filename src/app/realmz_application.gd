@@ -57,6 +57,8 @@ func _ready() -> void:
 	_map_presenter.movement_requested.connect(_on_map_movement_requested)
 	_battlefield_presenter.tactical_action_requested.connect(_on_battlefield_action_requested)
 	_battlefield_presenter.combatant_inspected.connect(_on_battlefield_combatant_inspected)
+	_battlefield_presenter.targeting_changed.connect(_interaction_presenter.update_combat_targeting)
+	_battlefield_presenter.targeting_cancelled.connect(_interaction_presenter.combat_targeting_cancelled)
 	_shell_presenter.start_package_requested.connect(_begin_package_start)
 	_shell_presenter.cancel_package_requested.connect(_cancel_package_start)
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
@@ -79,6 +81,7 @@ func _ready() -> void:
 	_shell_presenter.vault_archive_requested.connect(_archive_vault_character)
 	_shell_presenter.vault_restore_requested.connect(_restore_vault_revision)
 	_shell_presenter.apply_settings(_presentation_settings)
+	presentation_coordinator.set_reduced_motion(_presentation_settings.reduced_motion)
 	_apply_application_theme(_presentation_settings.text_scale)
 	_interaction_presenter.set_text_scale(_presentation_settings.text_scale)
 	_apply_window_mode(_presentation_settings.window_mode)
@@ -217,6 +220,11 @@ func _complete_package_install(installation: PackageInstallResult, initial_seed:
 
 
 func _input(event: InputEvent) -> void:
+	if presentation_coordinator != null and presentation_coordinator.is_combat_playback_active():
+		if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_SPACE:
+			presentation_coordinator.skip_combat_playback()
+		get_viewport().set_input_as_handled()
+		return
 	var pending := session_controller.view().pending_interaction
 	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
 	if combat_pending and event.is_action_pressed(&"realmz_inspect_movement"):
@@ -233,6 +241,9 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed(&"realmz_back"):
+		if combat_pending and _battlefield_presenter.cancel_targeting():
+			get_viewport().set_input_as_handled()
+			return
 		if _interaction_presenter.has_blocking_request():
 			_shell_presenter.set_status("Choose a response before leaving this interaction.")
 			get_viewport().set_input_as_handled()
@@ -278,7 +289,8 @@ func _on_map_movement_requested(direction: Vector2i) -> void:
 
 
 func _on_battlefield_action_requested(payload: Dictionary) -> void:
-	if _interaction_presenter.accepts_combat_spatial_input():
+	var pending := session_controller.view().pending_interaction
+	if pending != null and pending.kind == InteractionRequest.COMBAT:
 		_interaction_presenter.submit_active_payload(payload)
 
 
@@ -297,6 +309,13 @@ func _on_combat_presentation_action_requested(action: StringName, payload: Dicti
 		&"toggle_reveal_friends":
 			_battlefield_presenter.toggle_reveal_friends()
 			_audio_presenter.present_sound(137, presentation_coordinator.package_media())
+		&"begin_battlefield_targeting":
+			if not _battlefield_presenter.begin_targeting(payload):
+				_shell_presenter.set_status("Battlefield targeting is unavailable for this action.", true)
+		&"confirm_battlefield_targeting":
+			_battlefield_presenter.confirm_targeting()
+		&"cancel_battlefield_targeting":
+			_battlefield_presenter.cancel_targeting()
 
 
 func _submit_movement(direction: Vector2i) -> void:
@@ -656,4 +675,5 @@ static func classic_combat_rect(viewport_size: Vector2, bottom_height: float) ->
 
 func _on_reduced_motion_changed(enabled: bool) -> void:
 	_presentation_settings.reduced_motion = enabled
+	presentation_coordinator.set_reduced_motion(enabled)
 	settings_repository.save_settings(_presentation_settings)

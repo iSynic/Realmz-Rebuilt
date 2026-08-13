@@ -612,6 +612,14 @@ Flagged rather than copied: Castle's successful land path checks one tile beyond
 
 Next batch priority: use the regenerated audit queue to choose 3–5 adjacent application workflows. Preserve the unresolved movement/Swap observations—ordinary callers continue movement after distribution, while the direct `moveparty(1)` fallback returns—and settle them only in the dedicated source-backed workflow that owns movement resumption.
 
+## Current workflow batch — AOGM combat feedback and command parity
+
+- The workflow inventory now schedules battle entry, tactical movement, physical attacks, combat casting, and manual turn control as the active batch. Auto Turn, persistent character Auto, Delay, Bandage, Turn Undead, and Undo are separate workflows rather than hidden variants of one oversized turn-control record. The previous exploration/services certification targets retain their evidence in the queue.
+- Batch 1 adds a presentation-owned combat playback transaction over the previous detached view, ordered committed events, and final detached view. Movement, melee, ordinary projectiles, spell cast/projectile/eight-frame resolution, fixed result numbers, defeat settlement, and ordered sounds cannot mutate or advance simulation. Space skips only visuals; reduced motion collapses the visual path while preserving audio.
+- Battlefield-native targeting replaces coordinate spin boxes. Actor and repeated-actor selection uses core-provided combatant identities; area selection previews exact Data AD offsets only at core-provided legal centers. Cancel emits no response, while confirmation preserves the existing combat response ABI.
+- The integrated application-media catalog now includes proven combat CIcon families in addition to all 142 Classic sounds. Exact scenario keys still override application keys. CIcon 161 is not called blood or gore, CIcon 167 lacks a traced caller, and death-effect timing remains unresolved rather than being presented as settled fidelity.
+- Providence schema v2 already preserves `lookStart`, `lookEnd`, spell sounds, and scenario CIcon overrides, so this batch requires no package-contract change. Automated evidence may make these workflows functional, but acceptance and certification still require the ordinary AOGM MCP route and user review.
+
 ## Current workflow batch — AOGM combat commands and return
 
 - The first workflow corrects ordinary melee input. Castle maps keypad, keyboard, and battlefield clicks into a directional `movelook` command; an opposed occupied destination runs Guard first, spends three movement and two half-attack units, attacks, and does not move. Its Target control is the charged missile/item path, not a generic melee picker.

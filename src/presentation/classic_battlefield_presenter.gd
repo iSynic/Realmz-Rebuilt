@@ -3,6 +3,8 @@ extends Control
 
 signal tactical_action_requested(payload: Dictionary)
 signal combatant_inspected(combatant_id: String)
+signal targeting_changed(selection: Dictionary)
+signal targeting_cancelled
 
 const NATIVE_CELL_SIZE: float = 32.0
 const HEADER_HEIGHT: float = 38.0
@@ -21,6 +23,9 @@ var _movement_costs_visible: bool = false
 var _hovered_coordinate := Vector2i(-1, -1)
 var _camera_focus_id: String = ""
 var _reveal_friends: bool = false
+var _playback_frame: CombatPlaybackFrame
+var last_playback_media_diagnostic: Dictionary = {}
+var _targeting: CombatTargetingState
 
 
 func _ready() -> void:
@@ -30,6 +35,7 @@ func _ready() -> void:
 
 func present(game_view: GameView) -> void:
 	_view = game_view
+	_playback_frame = null
 	if _view == null or _view.combat_view == null:
 		_movement_costs_visible = false
 		_hovered_coordinate = Vector2i(-1, -1)
@@ -45,6 +51,21 @@ func present(game_view: GameView) -> void:
 		_upper_atlas_asset = _media.tileset_by_id(_upper_atlas_id) if _media != null and not _upper_atlas_id.is_empty() else null
 		_upper_atlas_texture = _load_image_texture(_upper_atlas_asset)
 	queue_redraw()
+
+
+func present_playback_frame(frame: CombatPlaybackFrame) -> void:
+	_playback_frame = frame
+	queue_redraw()
+
+
+func clear_playback_frame() -> void:
+	_playback_frame = null
+	last_playback_media_diagnostic.clear()
+	queue_redraw()
+
+
+func playback_frame() -> CombatPlaybackFrame:
+	return _playback_frame
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
@@ -74,8 +95,9 @@ func _draw() -> void:
 		return
 	var combat := _view.combat_view
 	var battlefield := combat.battlefield
-	var focus_id := _camera_focus_id if not _camera_focus_id.is_empty() else combat.active_actor_id
-	var active_position := actor_position(combat, _view.party_members, focus_id)
+	var playback_focus_id := _playback_frame.actor_id if _playback_frame != null and not _playback_frame.actor_id.is_empty() else ""
+	var focus_id := _camera_focus_id if not _camera_focus_id.is_empty() else playback_focus_id if not playback_focus_id.is_empty() else combat.active_actor_id
+	var active_position := _effective_actor_position(combat, focus_id)
 	if active_position.x < 0:
 		active_position = battlefield.party_anchor
 	var visible_cells := viewport_cells_for(size)
@@ -89,8 +111,10 @@ func _draw() -> void:
 			_draw_terrain_cell(battlefield.terrain_at(coordinate), rect)
 	_draw_revealed_relationships(combat, camera, visible_cells, draw_origin)
 	_draw_movement_options(combat, camera, visible_cells, draw_origin)
+	_draw_targeting_preview(combat, camera, visible_cells, draw_origin)
 	_draw_characters(combat, camera, visible_cells, draw_origin)
 	_draw_monsters(combat, camera, visible_cells, draw_origin)
+	_draw_playback_overlay(combat, camera, visible_cells, draw_origin)
 	if not has_battle_artwork():
 		draw_string(ThemeDB.fallback_font, Vector2(draw_origin.x + 8.0, draw_origin.y + 20.0), "Battle artwork unavailable", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(1.0, 0.78, 0.42))
 
@@ -117,6 +141,8 @@ func _draw_terrain_cell(tile_id: int, rect: Rect2) -> void:
 
 
 func _draw_movement_options(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
+	if _playback_frame != null:
+		return
 	for option: CombatMoveOptionView in combat.movement_options:
 		if not coordinate_is_visible(option.destination, camera, visible_cells):
 			continue
@@ -168,12 +194,17 @@ func reveal_friends_visible() -> bool:
 
 
 func submit_movement_direction(direction: Vector2i) -> bool:
+	if _playback_frame != null or _targeting != null:
+		return false
 	var option := _movement_option_for_direction(direction)
 	return _submit_movement_option(option)
 
 
 func _gui_input(event: InputEvent) -> void:
-	if _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
+	if _playback_frame != null or _view == null or _view.combat_view == null or _view.combat_view.battlefield == null:
+		return
+	if _targeting != null:
+		_handle_targeting_input(event)
 		return
 	if event is InputEventMouseMotion:
 		var hover_option := _movement_option_toward_local_position((event as InputEventMouseMotion).position)
@@ -201,6 +232,89 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_MOUSE_EXIT and _hovered_coordinate != Vector2i(-1, -1):
 		_hovered_coordinate = Vector2i(-1, -1)
 		queue_redraw()
+
+
+func begin_targeting(configuration: Dictionary) -> bool:
+	if _playback_frame != null or _view == null or _view.combat_view == null:
+		return false
+	var mode := StringName(configuration.get("mode", &""))
+	var response_payload: Variant = configuration.get("responsePayload", {})
+	if mode not in [&"combatant", &"sequence", &"area"] or not response_payload is Dictionary:
+		return false
+	var state := CombatTargetingState.new(mode, response_payload)
+	for value: Variant in configuration.get("candidateIds", []):
+		var candidate_id := String(value)
+		if not candidate_id.is_empty() and not state.candidate_ids.has(candidate_id):
+			state.candidate_ids.append(candidate_id)
+	for value: Variant in configuration.get("areaOffsets", []):
+		var offset_coordinate := _array_coordinate(value)
+		if offset_coordinate.x > -BattlefieldState.SIZE and offset_coordinate.y > -BattlefieldState.SIZE:
+			state.area_offsets.append(offset_coordinate)
+	for value: Variant in configuration.get("legalTargetCoordinates", []):
+		var legal_coordinate := _array_coordinate(value)
+		if legal_coordinate.x >= 0 and legal_coordinate.y >= 0:
+			state.legal_coordinates.append(legal_coordinate)
+	state.maximum_targets = maxi(1, int(configuration.get("maximumTargets", 1)))
+	var default_coordinate := _array_coordinate(configuration.get("defaultTargetCoordinate", []))
+	if mode == &"area" and default_coordinate.x >= 0:
+		state.select_coordinate(default_coordinate)
+	_targeting = state
+	_reveal_friends = false
+	targeting_changed.emit(_targeting.selection_data())
+	queue_redraw()
+	return true
+
+
+func confirm_targeting() -> bool:
+	if _targeting == null:
+		return false
+	var payload := _targeting.committed_payload()
+	if payload.is_empty():
+		targeting_changed.emit(_targeting.selection_data())
+		return false
+	_targeting = null
+	queue_redraw()
+	tactical_action_requested.emit(payload)
+	return true
+
+
+func cancel_targeting() -> bool:
+	if _targeting == null:
+		return false
+	_targeting = null
+	queue_redraw()
+	targeting_cancelled.emit()
+	return true
+
+
+func targeting_active() -> bool:
+	return _targeting != null
+
+
+func _handle_targeting_input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion:
+		_targeting.hovered_coordinate = _coordinate_at_local_position((event as InputEventMouseMotion).position)
+		queue_redraw()
+		return
+	if not event is InputEventMouseButton or not (event as InputEventMouseButton).pressed:
+		return
+	if (event as InputEventMouseButton).button_index == MOUSE_BUTTON_RIGHT:
+		cancel_targeting()
+		accept_event()
+		return
+	if (event as InputEventMouseButton).button_index != MOUSE_BUTTON_LEFT:
+		return
+	var coordinate := _coordinate_at_local_position((event as InputEventMouseButton).position)
+	if coordinate.x < 0:
+		return
+	if _targeting.mode == &"area":
+		_targeting.select_coordinate(coordinate)
+	else:
+		var combatant_id := combatant_at(_view.combat_view, _view.party_members, coordinate)
+		_targeting.select_combatant(combatant_id)
+	targeting_changed.emit(_targeting.selection_data())
+	queue_redraw()
+	accept_event()
 
 
 func _coordinate_at_local_position(local_position: Vector2) -> Vector2i:
@@ -269,12 +383,14 @@ func _draw_characters(combat: CombatView, camera: Vector2i, visible_cells: Vecto
 	for target: CharacterView in combat.character_targets:
 		target_ids[target.id] = true
 	for character: CharacterView in _view.party_members:
-		var coordinate := combat.battlefield.character_position(character.id)
+		if _playback_hides(character.id):
+			continue
+		var coordinate := _effective_actor_position(combat, character.id)
 		if not coordinate_is_visible(coordinate, camera, visible_cells):
 			continue
-		var rect := cell_rect(coordinate, camera, draw_origin)
+		var rect := _playback_actor_rect(character.id, coordinate, camera, draw_origin)
 		var asset := _media.asset_by_id(character.combat_icon_id) if _media != null else null
-		_draw_actor(rect, _texture_for(asset), character.name, character.id == combat.active_actor_id, target_ids.has(character.id), character.traitor)
+		_draw_actor(rect, _texture_for(asset), character.name, _actor_is_highlighted(character.id, combat.active_actor_id), target_ids.has(character.id), character.traitor)
 
 
 func _draw_revealed_relationships(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
@@ -303,7 +419,15 @@ func _draw_monsters(combat: CombatView, camera: Vector2i, visible_cells: Vector2
 	for target: MonsterView in combat.targets:
 		target_ids[target.id] = true
 	for monster: MonsterView in combat.monsters:
+		if _playback_hides(monster.id):
+			continue
 		var footprint := combat.battlefield.monster_footprint(monster.id)
+		var source_anchor := combat.battlefield.monster_position(monster.id)
+		var effective_anchor := _effective_actor_position(combat, monster.id)
+		if source_anchor.x >= 0 and effective_anchor.x >= 0 and source_anchor != effective_anchor:
+			var offset := effective_anchor - source_anchor
+			for index: int in footprint.size():
+				footprint[index] += offset
 		var visible_footprint: Array[Vector2i] = []
 		for coordinate: Vector2i in footprint:
 			if coordinate_is_visible(coordinate, camera, visible_cells):
@@ -311,8 +435,183 @@ func _draw_monsters(combat: CombatView, camera: Vector2i, visible_cells: Vector2
 		if visible_footprint.is_empty():
 			continue
 		var rect := footprint_rect(visible_footprint, camera, draw_origin)
+		if _playback_frame != null and _playback_frame.actor_id == monster.id and _playback_frame.kind == &"move_start":
+			rect.position = _interpolated_draw_position(_playback_frame, camera, draw_origin)
 		var asset := _media.asset_by_resource(monster.icon_resource_type, monster.icon_id) if _media != null else null
-		_draw_actor(rect, _texture_for(asset), monster.name, monster.id == combat.active_actor_id, target_ids.has(monster.id), monster.traitor)
+		_draw_actor(rect, _texture_for(asset), monster.name, _actor_is_highlighted(monster.id, combat.active_actor_id), target_ids.has(monster.id), monster.traitor)
+
+
+func _draw_targeting_preview(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
+	if _targeting == null:
+		return
+	if _targeting.mode == &"area":
+		var center := _targeting.selected_coordinate if _targeting.selected_coordinate.x >= 0 else _targeting.hovered_coordinate
+		if center.x < 0:
+			return
+		var legal := _targeting.legal_coordinates.has(center)
+		var outline := Color(0.96, 0.82, 0.30, 0.96) if legal else Color(0.62, 0.64, 0.68, 0.86)
+		for offset: Vector2i in _targeting.area_offsets:
+			var coordinate := center + offset
+			if coordinate_is_visible(coordinate, camera, visible_cells):
+				draw_rect(cell_rect(coordinate, camera, draw_origin).grow(-2.0), outline, false, 2.0)
+		return
+	for candidate_id: String in _targeting.candidate_ids:
+		var rect := _combatant_rect(combat, candidate_id, camera, visible_cells, draw_origin)
+		if rect.has_area():
+			draw_rect(rect.grow(2.0), Color(0.86, 0.80, 0.62, 0.78), false, 2.0)
+	for index: int in _targeting.selected_ids.size():
+		var selected_id := _targeting.selected_ids[index]
+		var rect := _combatant_rect(combat, selected_id, camera, visible_cells, draw_origin)
+		if not rect.has_area():
+			continue
+		draw_rect(rect.grow(4.0), Color(1.0, 0.86, 0.28, 0.98), false, 4.0)
+		if _targeting.mode == &"sequence":
+			draw_string(ThemeDB.fallback_font, rect.position + Vector2(4.0, 18.0), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, 24.0, 15, Color(1.0, 0.94, 0.72))
+
+
+func _draw_playback_overlay(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
+	if _playback_frame == null:
+		return
+	var target_rect := _combatant_rect(combat, _playback_frame.target_id, camera, visible_cells, draw_origin)
+	var actor_rect := _combatant_rect(combat, _playback_frame.actor_id, camera, visible_cells, draw_origin)
+	if not target_rect.has_area() and _playback_frame.to_coordinate.x >= 0 and coordinate_is_visible(_playback_frame.to_coordinate, camera, visible_cells):
+		target_rect = cell_rect(_playback_frame.to_coordinate, camera, draw_origin)
+	match _playback_frame.kind:
+		&"battle_cue":
+			_draw_centered_cue(_playback_frame.display_text)
+		&"actor_cue":
+			if not target_rect.has_area():
+				target_rect = actor_rect
+			if target_rect.has_area():
+				draw_rect(target_rect.grow(4.0), Color(1.0, 0.86, 0.28, 0.95), false, 4.0)
+			if not _playback_frame.display_text.is_empty():
+				_draw_centered_cue(_playback_frame.display_text)
+		&"melee_attack":
+			if actor_rect.has_area():
+				draw_rect(actor_rect.grow(3.0), Color(1.0, 0.90, 0.58, 0.95), false, 3.0)
+			if target_rect.has_area():
+				draw_rect(target_rect.grow(2.0), Color(1.0, 0.96, 0.82, 0.95), false, 3.0)
+		&"projectile":
+			_draw_projectile(actor_rect, target_rect)
+		&"spell_projectile":
+			_draw_spell_projectile(actor_rect, target_rect)
+		&"spell_cast", &"spell_effect":
+			_draw_spell_effect(actor_rect, target_rect)
+		&"result", &"defeat", &"retreat":
+			_draw_result(target_rect if target_rect.has_area() else actor_rect)
+
+
+func _draw_centered_cue(text: String) -> void:
+	if text.is_empty():
+		return
+	var cue_rect := Rect2(Vector2(size.x * 0.5 - 110.0, HEADER_HEIGHT + 8.0), Vector2(220.0, 34.0))
+	draw_rect(cue_rect, Color(0.02, 0.025, 0.03, 0.86), true)
+	draw_rect(cue_rect, Color(0.86, 0.72, 0.30, 0.95), false, 2.0)
+	draw_string(ThemeDB.fallback_font, cue_rect.position + Vector2(4.0, 23.0), text, HORIZONTAL_ALIGNMENT_CENTER, cue_rect.size.x - 8.0, 16, Color(1.0, 0.90, 0.56))
+
+
+func _draw_projectile(actor_rect: Rect2, target_rect: Rect2) -> void:
+	if not actor_rect.has_area() or not target_rect.has_area():
+		return
+	var point := actor_rect.get_center().lerp(target_rect.get_center(), _playback_frame.progress)
+	draw_circle(point, 5.0, Color(1.0, 0.91, 0.55, 0.98))
+	draw_circle(point, 7.0, Color(1.0, 1.0, 0.88, 0.72), false, 2.0)
+
+
+func _draw_spell_projectile(actor_rect: Rect2, target_rect: Rect2) -> void:
+	if not actor_rect.has_area() or not target_rect.has_area():
+		return
+	var point := actor_rect.get_center().lerp(target_rect.get_center(), _playback_frame.progress)
+	var region := Rect2i() if _atlas_asset == null else _atlas_asset.region_for(_playback_frame.battle_tile_id)
+	if _playback_frame.battle_tile_id <= 0 or _atlas_texture == null or region.size.x <= 0 or region.size.y <= 0:
+		last_playback_media_diagnostic = {"resourceType": "PICT", "resourceId": 302, "tileId": _playback_frame.battle_tile_id, "decodeResult": "unavailable", "role": "classic-combat-spell-projectile"}
+		draw_circle(point, 6.0, Color(0.82, 0.72, 1.0, 0.96))
+		return
+	last_playback_media_diagnostic = {"resourceType": "PICT", "resourceId": 302, "tileId": _playback_frame.battle_tile_id, "assetId": _atlas_asset.id, "decodeResult": "decoded", "role": "classic-combat-spell-projectile"}
+	var projectile_rect := Rect2(point - Vector2(16.0, 16.0), Vector2(32.0, 32.0))
+	draw_texture_rect_region(_atlas_texture, projectile_rect, Rect2(region))
+
+
+func _draw_spell_effect(actor_rect: Rect2, target_rect: Rect2) -> void:
+	var destination := target_rect if target_rect.has_area() else actor_rect
+	if not destination.has_area():
+		return
+	_draw_classic_effect(destination, "classic-combat-effect")
+
+
+func _draw_classic_effect(destination: Rect2, role: String) -> void:
+	if _playback_frame.effect_resource_id <= 0 or _media == null:
+		last_playback_media_diagnostic = {"resourceType": "cicn", "resourceId": _playback_frame.effect_resource_id, "decodeResult": "unavailable", "role": role}
+		draw_rect(destination.grow(4.0), Color(0.82, 0.72, 1.0, 0.90), false, 3.0)
+		return
+	var asset := _media.asset_by_resource(_playback_frame.effect_resource_type, _playback_frame.effect_resource_id)
+	var texture := _texture_for(asset)
+	last_playback_media_diagnostic = _media.resolution_diagnostic(_playback_frame.effect_resource_type, _playback_frame.effect_resource_id, role, "decoded" if texture != null else "decode-failed")
+	if texture == null:
+		draw_rect(destination.grow(4.0), Color(0.82, 0.72, 1.0, 0.90), false, 3.0)
+		return
+	var effect_size := Vector2(texture.get_size())
+	var effect_rect := Rect2(destination.get_center() - effect_size * 0.5, effect_size)
+	draw_texture_rect(texture, effect_rect, false)
+
+
+func _draw_result(target_rect: Rect2) -> void:
+	if not target_rect.has_area() or _playback_frame.display_text.is_empty():
+		return
+	if _playback_frame.effect_resource_id > 0:
+		_draw_classic_effect(target_rect, "classic-combat-result")
+	var text_color := Color(0.72, 1.0, 0.72) if _playback_frame.result_kind == &"healing" else Color(1.0, 0.95, 0.82)
+	var result_rect := Rect2(target_rect.get_center() - Vector2(18.0, 14.0), Vector2(36.0, 28.0))
+	if _playback_frame.effect_resource_id <= 0:
+		draw_rect(result_rect, Color(0.02, 0.02, 0.02, 0.76), true)
+	draw_string(ThemeDB.fallback_font, result_rect.position + Vector2(1.0, 20.0), _playback_frame.display_text, HORIZONTAL_ALIGNMENT_CENTER, result_rect.size.x - 2.0, 14, text_color)
+
+
+func _effective_actor_position(combat: CombatView, actor_id: String) -> Vector2i:
+	if _playback_frame != null:
+		var playback_position := _playback_frame.position_for(actor_id)
+		if playback_position.x >= 0:
+			return playback_position
+	return actor_position(combat, _view.party_members, actor_id)
+
+
+func _playback_hides(actor_id: String) -> bool:
+	return _playback_frame != null and _playback_frame.hides(actor_id)
+
+
+func _actor_is_highlighted(actor_id: String, active_actor_id: String) -> bool:
+	return actor_id == active_actor_id or _playback_frame != null and _playback_frame.kind == &"actor_cue" and _playback_frame.actor_id == actor_id
+
+
+func _playback_actor_rect(actor_id: String, coordinate: Vector2i, camera: Vector2i, draw_origin: Vector2) -> Rect2:
+	var rect := cell_rect(coordinate, camera, draw_origin)
+	if _playback_frame != null and _playback_frame.actor_id == actor_id and _playback_frame.kind == &"move_start":
+		rect.position = _interpolated_draw_position(_playback_frame, camera, draw_origin)
+	return rect
+
+
+func _interpolated_draw_position(frame: CombatPlaybackFrame, camera: Vector2i, draw_origin: Vector2) -> Vector2:
+	var from_position := draw_origin + Vector2(frame.from_coordinate - camera) * NATIVE_CELL_SIZE
+	var to_position := draw_origin + Vector2(frame.to_coordinate - camera) * NATIVE_CELL_SIZE
+	return from_position.lerp(to_position, frame.progress)
+
+
+func _combatant_rect(combat: CombatView, actor_id: String, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> Rect2:
+	if actor_id.is_empty() or _playback_hides(actor_id):
+		return Rect2()
+	var coordinate := _effective_actor_position(combat, actor_id)
+	if not coordinate_is_visible(coordinate, camera, visible_cells):
+		return Rect2()
+	for monster: MonsterView in combat.monsters:
+		if monster.id != actor_id:
+			continue
+		var footprint := combat.battlefield.monster_footprint(actor_id)
+		var source_anchor := combat.battlefield.monster_position(actor_id)
+		var offset := coordinate - source_anchor
+		for index: int in footprint.size():
+			footprint[index] += offset
+		return footprint_rect(footprint, camera, draw_origin)
+	return _playback_actor_rect(actor_id, coordinate, camera, draw_origin)
 
 
 func _draw_actor(rect: Rect2, texture: Texture2D, label: String, active: bool, target: bool, hostile: bool) -> void:
@@ -407,6 +706,14 @@ static func click_direction_for_point(active_cell: Rect2, point: Vector2) -> Vec
 	elif point.y > active_cell.end.y:
 		direction.y = 1
 	return direction
+
+
+static func _array_coordinate(value: Variant) -> Vector2i:
+	if value is Vector2i:
+		return value
+	if value is Array and value.size() == 2:
+		return Vector2i(int(value[0]), int(value[1]))
+	return Vector2i(-100_000, -100_000)
 
 
 static func viewport_cells_for(control_size: Vector2) -> Vector2i:

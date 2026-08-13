@@ -29,6 +29,8 @@ func run() -> void:
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
 	_test_battlefield_presenter()
+	_test_combat_targeting_state()
+	_test_combat_playback_controller()
 	_test_automatic_workflow_routes()
 	_test_character_creator_workflow()
 	_test_begin_adventure_closes_setup_vault()
@@ -270,8 +272,8 @@ func _test_battle_weapon_mode_component() -> void:
 		"targets": [{"id": "monster.target", "name": "Target", "currentHealth": 5, "maximumHealth": 5}],
 		"spellCasts": [
 			{"spellId": "spell.flame", "spellName": "Flame", "power": 2, "cost": 4, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5},
-			{"spellId": "spell.wave", "spellName": "Wave", "power": 1, "cost": 3, "targetId": "", "targetName": "Everybody", "targetCurrentHealth": -1, "targetMaximumHealth": -1},
-			{"spellId": "spell.burst", "spellName": "Burst", "power": 3, "cost": 6, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 3, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]]},
+			{"spellId": "spell.wave", "spellName": "Wave", "power": 1, "cost": 3, "targetId": "", "targetName": "Everybody", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "automatic"},
+			{"spellId": "spell.burst", "spellName": "Burst", "power": 3, "cost": 6, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 3, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]], "legalTargetCoordinates": [[45, 45], [47, 43]]},
 			{"spellId": "spell.darts", "spellName": "Darts", "power": 3, "cost": 6, "targetId": "", "targetName": "Choose up to 3 actors", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "sequence", "maximumTargets": 3, "targetCandidates": [
 				{"id": "monster.target", "kind": "monster", "name": "Target", "currentHealth": 5, "maximumHealth": 5},
 				{"id": "character.ally", "kind": "character", "name": "Ally", "currentHealth": 8, "maximumHealth": 10},
@@ -302,7 +304,6 @@ func _test_battle_weapon_mode_component() -> void:
 	var item_mode_button: Button = null
 	var cast_button: Button = null
 	var use_item_button: Button = null
-	var add_target_button: Button = null
 	var center_button: Button = null
 	var reveal_button: Button = null
 	for button: Button in buttons:
@@ -318,12 +319,10 @@ func _test_battle_weapon_mode_component() -> void:
 			spell_mode_button = button
 		elif button.text == "Items":
 			item_mode_button = button
-		elif button.text == "Cast selected spell":
+		elif button.text == "Choose spell target on battlefield":
 			cast_button = button
 		elif button.text == "Use selected item":
 			use_item_button = button
-		elif button.text == "Add target":
-			add_target_button = button
 		elif button.text == "Center Active":
 			center_button = button
 		elif button.text == "Reveal Friends":
@@ -338,7 +337,7 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_not_null(item_mode_button, "the full-width command deck exposes the item workflow")
 	assert_not_null(cast_button, "the battle component exposes a core-proven spell, power, and target option")
 	assert_not_null(use_item_button, "the battle component exposes a core-proven charged item, power, and target option")
-	assert_not_null(add_target_button, "the battle component exposes an explicit ordered repeated-target selection control")
+	assert_false(buttons.any(func(button: Button) -> bool: return button.text == "Add target"), "repeated spell targets are selected in order on the battlefield rather than in a duplicate list")
 	assert_not_null(center_button, "the battle deck exposes Castle's presentation-owned active-actor centering command")
 	assert_not_null(reveal_button, "the battle deck exposes Castle's presentation-owned Reveal Friends command")
 	var battle_labels := component.find_children("*", "Label", true, false)
@@ -361,7 +360,7 @@ func _test_battle_weapon_mode_component() -> void:
 	var spell_back := spell_panel.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Back to battle")[0] as Button
 	spell_mode_button.pressed.emit()
 	assert_true(spell_panel.visible and not overview.visible, "Spells replaces the battle overview so its controls stay inside the fixed Classic command region")
-	assert_true(spell_panel.get_combined_minimum_size().y <= 160.0, "the default area-spell workflow fits the 960x600 combat region's usable height")
+	assert_true(spell_panel.get_combined_minimum_size().y <= 160.0, "the default spell chooser fits the 960x600 combat region's usable height")
 	assert_false(component.accepts_spatial_input(), "an open spell workflow owns direction keys and prevents accidental tactical movement")
 	spell_back.pressed.emit()
 	assert_true(overview.visible and not spell_panel.visible and component.accepts_spatial_input(), "Back to battle restores the tactical overview and spatial input")
@@ -369,34 +368,36 @@ func _test_battle_weapon_mode_component() -> void:
 	var spell_picker := component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() == spell_panel)[0] as OptionButton
 	assert_equal(spell_picker.get_item_text(1), "Wave • P1 • 3 SP → Everybody", "automatic group spells render their typed label without fabricating one target's HP")
 	switch_button.pressed.emit()
+	spell_picker.select(1)
+	spell_picker.item_selected.emit(1)
+	assert_equal(cast_button.text, "Cast selected spell", "automatic group spells commit without inventing a board target")
 	cast_button.pressed.emit()
+	spell_picker.select(0)
+	spell_picker.item_selected.emit(0)
+	cast_button.pressed.emit()
+	var combatant_configuration: Dictionary = presentation_actions[-1][1]
+	assert_equal([presentation_actions[-1][0], combatant_configuration.get("mode"), combatant_configuration.get("candidateIds")], [&"begin_battlefield_targeting", "combatant", ["monster.target"]], "single-target casting opens a battlefield-native picker with only core-proven candidates")
 	spell_picker.select(2)
 	spell_picker.item_selected.emit(2)
-	var coordinate_inputs := component.find_children("*", "SpinBox", true, false)
-	assert_equal(coordinate_inputs.size(), 2, "area spell presentation exposes one typed battlefield coordinate pair")
-	(coordinate_inputs[0] as SpinBox).value = 47
-	(coordinate_inputs[1] as SpinBox).value = 43
 	cast_button.pressed.emit()
+	var area_configuration: Dictionary = presentation_actions[-1][1]
+	assert_equal([area_configuration.get("mode"), area_configuration.get("areaOffsets"), area_configuration.get("legalTargetCoordinates")], ["area", [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]], [[45, 45], [47, 43]]], "area targeting carries the exact core-provided mask and legal centers instead of coordinate spin boxes")
+	assert_equal(component.find_children("*", "SpinBox", true, false).size(), 0, "combat targeting no longer exposes coordinate spin boxes")
 	spell_picker.select(3)
 	spell_picker.item_selected.emit(3)
-	var option_pickers := spell_panel.find_children("*", "OptionButton", true, false)
-	var sequence_target_picker := option_pickers[1] as OptionButton
-	sequence_target_picker.select(1)
-	add_target_button.pressed.emit()
-	sequence_target_picker.select(0)
-	add_target_button.pressed.emit()
 	cast_button.pressed.emit()
+	var sequence_configuration: Dictionary = presentation_actions[-1][1]
+	assert_equal([sequence_configuration.get("mode"), sequence_configuration.get("candidateIds"), sequence_configuration.get("maximumTargets")], ["sequence", ["monster.target", "character.ally"], 3], "repeated spells preserve the rules-owned candidates and maximum for ordered battlefield clicks")
 	item_mode_button.pressed.emit()
 	assert_true(use_item_button.get_parent().get_parent().visible and not cast_button.get_parent().visible, "Items replaces the prior secondary workflow instead of stacking beneath it")
 	assert_false(component.accepts_spatial_input(), "an open item workflow suppresses spatial battle input")
 	use_item_button.pressed.emit()
+	var item_configuration: Dictionary = presentation_actions[-1][1]
+	assert_equal([item_configuration.get("mode"), item_configuration.get("candidateIds"), item_configuration.get("responsePayload", {}).get("itemInstanceId")], ["combatant", ["monster.target"], "item.wand.instance"], "combat items use the same battlefield-native target contract")
 	assert_equal(submitted, [
 		{"actorId": "character.archer", "action": "switch_weapon", "targetId": ""},
-		{"actorId": "character.archer", "action": "cast_spell", "targetId": "monster.target", "spellId": "spell.flame", "power": 2},
-		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.burst", "power": 3, "targetCoordinate": [47, 43], "rotation": 0},
-		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.darts", "power": 3, "targetIds": ["character.ally", "monster.target"]},
-		{"actorId": "character.archer", "action": "use_item", "targetId": "monster.target", "itemInstanceId": "item.wand.instance"},
-	], "the command deck emits typed switch, combatant, battlefield-coordinate, ordered repeated-target spell, and charged-item responses")
+		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.wave", "power": 1},
+	], "only targetless commands submit directly; targeted actions wait for the battlefield-owned confirmation")
 	component.free()
 
 	var melee_request := InteractionRequest.new("battle.collision-melee", &"combat_action", {
@@ -597,11 +598,15 @@ func _test_money_workspace_audio() -> void:
 func _test_classic_application_media() -> void:
 	var application_media := ApplicationMediaCatalog.new()
 	assert_true(application_media.is_valid(), "the complete versioned Classic application media manifest loads independently of a campaign package")
-	assert_equal(application_media.assets().size(), 142, "the application catalog owns the complete pinned built-in sound set")
+	assert_equal(application_media.assets().size(), 287, "the application catalog owns the complete pinned sound bank and source-backed combat icon families")
 	var built_in := application_media.asset_by_resource("snd ", 147)
 	assert_not_null(built_in, "a built-in interface sound resolves by its exact Classic resource type and ID")
 	assert_true(application_media.asset_by_resource("SND ", 147) == null, "application media preserves Classic resource type case")
 	assert_not_null(application_media.audio_stream(built_in), "a committed application WAV loads through Godot's resource importer")
+	var spell_frame := application_media.asset_by_resource("cicn", 12032)
+	assert_not_null(spell_frame, "a proven built-in spell-resolution frame resolves independently of campaign media")
+	assert_equal([spell_frame.kind, spell_frame.width, spell_frame.height], ["icon", 32, 32], "application spell frames retain their decoded native dimensions")
+	assert_true(application_media.asset_by_resource("cicn", 11992) == null, "lookStart zero retains Castle's absent cast-start family instead of substituting another effect")
 
 	var package_override := PackageMediaAsset.new("scenario-snd-147", "Scenario sound 147", "sound", "audio/wav", "snd ", 147, 0, "1".repeat(64), "assets/media/scenario-147.wav", 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1)
 	var layered := ClassicMediaCatalog.new(PackageMediaCatalog.new("", "package-hash", [package_override]), application_media)
@@ -1034,7 +1039,139 @@ func _test_battlefield_presenter() -> void:
 	assert_true(presenter.submit_movement_direction(Vector2i.RIGHT), "keyboard movement selects the matching core-provided tactical option")
 	assert_equal(payloads, [{"actorId": "hero", "action": "move", "targetId": "", "destination": [46, 45]}], "the spatial battlefield emits the existing typed combat response payload")
 	assert_false(presenter.submit_movement_direction(Vector2i.LEFT), "the battlefield cannot fabricate a movement option absent from the detached view")
+	assert_true(presenter.begin_targeting({"mode": "combatant", "responsePayload": {"actorId": "hero", "action": "attack", "targetId": ""}, "candidateIds": ["monster"]}), "the tactical board accepts a typed target mode")
+	presenter._targeting.select_combatant("monster")
+	assert_false(presenter.submit_movement_direction(Vector2i.RIGHT), "target mode suppresses ordinary tactical movement")
+	assert_true(presenter.confirm_targeting(), "a legal board selection confirms through the ordinary combat response path")
+	assert_equal(payloads[-1], {"actorId": "hero", "action": "attack", "targetId": "monster"}, "battlefield confirmation supplies only the selected stable target ID")
 	presenter.free()
+
+
+func _test_combat_targeting_state() -> void:
+	var sequence := CombatTargetingState.new(&"sequence", {"actorId": "hero", "action": "cast_spell", "targetId": "", "spellId": "spell.darts", "power": 3})
+	sequence.candidate_ids.assign(["monster.one", "ally.one", "monster.two"])
+	sequence.maximum_targets = 2
+	assert_true(sequence.select_combatant("ally.one"), "the first repeated-spell click is accepted from the typed candidate set")
+	assert_true(sequence.select_combatant("monster.one"), "the second repeated-spell click preserves its selection order")
+	assert_false(sequence.select_combatant("monster.two"), "the presentation-owned selector enforces the core-provided maximum without submitting")
+	assert_equal(sequence.committed_payload().get("targetIds"), ["ally.one", "monster.one"], "repeated spell confirmation preserves click order")
+	assert_true(sequence.select_combatant("ally.one"), "clicking an already selected repeated target removes it without a session action")
+	assert_equal(sequence.committed_payload().get("targetIds"), ["monster.one"], "removal does not reorder the remaining repeated targets")
+
+	var area := CombatTargetingState.new(&"area", {"actorId": "hero", "action": "cast_spell", "spellId": "spell.burst", "power": 2})
+	area.area_offsets.assign([Vector2i.ZERO, Vector2i.LEFT, Vector2i.RIGHT])
+	area.legal_coordinates.assign([Vector2i(45, 45)])
+	assert_false(area.select_coordinate(Vector2i(46, 45)), "an area center absent from the rules-owned legal set cannot be confirmed")
+	assert_true(area.select_coordinate(Vector2i(45, 45)), "a rules-owned legal area center remains presentation selectable")
+	assert_equal(area.committed_payload(), {"actorId": "hero", "action": "cast_spell", "spellId": "spell.burst", "power": 2, "targetId": "", "targetCoordinate": [45, 45], "rotation": 0}, "area confirmation returns the exact coordinate and fixed rotation ABI")
+
+
+func _test_combat_playback_controller() -> void:
+	var previous := _combat_playback_view(20, Vector2i(45, 45), Vector2i(47, 45), &"active")
+	var final := _combat_playback_view(12, Vector2i(46, 45), Vector2i(47, 45), &"active")
+	final.combat_view.round_number = 2
+	var events: Array[DomainEvent] = [
+		DomainEvent.new(&"combatant_moved", {"actorId": "hero", "from": [45, 45], "to": [46, 45], "automatic": false}),
+		DomainEvent.new(&"sound_requested", {"soundId": 632, "waitForCompletion": false}),
+		DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 8, "defeated": false, "classicResultEffectResourceId": 160}),
+		DomainEvent.new(&"combat_projectile_resolved", {"actorId": "monster", "targetId": "hero", "hit": false, "damage": 0, "defeated": false}),
+		DomainEvent.new(&"combat_spell_cast", {"actorId": "hero", "targetId": "monster", "classicEffectResourceId": 12000}),
+		DomainEvent.new(&"combat_spell_projectile", {"actorId": "hero", "targetId": "monster", "classicBattleTileId": 201}),
+		DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 4, "healing": 0, "resisted": false, "saved": false, "defeated": false, "classicResolutionEffectResourceIds": [12032, 12033, 12034, 12035, 12036, 12037, 12038, 12039]}),
+		DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 12, "defeated": true}),
+	]
+	var controller := CombatPlaybackController.new()
+	var observed_frames: Array[Dictionary] = []
+	var observed_sounds: Array[int] = []
+	controller.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
+		if frame.progress == 0.0:
+			observed_frames.append({"kind": frame.kind, "text": frame.display_text, "effect": frame.effect_resource_id, "target": frame.target_id, "hidden": frame.hidden_combatant_ids.duplicate()})
+	)
+	controller.sound_requested.connect(func(event: DomainEvent) -> void: observed_sounds.append(int(event.payload.get("soundId", 0))))
+	assert_true(controller.begin(previous, events, final, false), "ordered combat events create a presentation-owned playback transaction")
+	assert_true(controller.base_view == previous, "playback retains the previous detached battlefield while committed results are presented")
+	while controller.is_active():
+		controller.advance(1.0, false)
+	var frame_kinds: Array = observed_frames.map(func(frame: Dictionary) -> StringName: return frame["kind"])
+	assert_true(frame_kinds.has(&"move_start") and frame_kinds.has(&"move_end"), "movement presents one transient step before the committed destination settles")
+	assert_true(frame_kinds.has(&"melee_attack") and frame_kinds.has(&"projectile") and frame_kinds.has(&"spell_projectile"), "melee, missile, and Classic spell projectiles use distinct playback frames")
+	assert_equal(frame_kinds.count(&"spell_effect"), 8, "a source-provided Classic spell resolution family presents all eight frames")
+	assert_equal(observed_frames.filter(func(frame: Dictionary) -> bool: return frame["kind"] == &"result" and frame["text"] == "8").size(), 1, "damage appears once as a fixed over-target result")
+	assert_equal(observed_frames.filter(func(frame: Dictionary) -> bool: return frame["kind"] == &"result" and frame["effect"] == 160).size(), 1, "an armed hit retains Castle's exact result-effect resource for presentation")
+	assert_equal(observed_frames.filter(func(frame: Dictionary) -> bool: return frame["kind"] == &"result" and frame["text"] == "Miss").size(), 1, "miss feedback is represented without inventing damage")
+	assert_equal(observed_sounds, [632], "sound requests retain their event position and are not bulk-played twice")
+	assert_true(frame_kinds.has(&"defeat") and observed_frames[-1]["kind"] == &"actor_cue", "defeat settles before the next-round active-actor cue")
+
+	var defeated_spell := CombatPlaybackController.new()
+	var defeated_spell_frames: Array[StringName] = []
+	defeated_spell.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
+		if frame.progress == 0.0:
+			defeated_spell_frames.append(frame.kind)
+	)
+	assert_true(defeated_spell.begin(previous, [DomainEvent.new(&"combat_spell_cast", {"actorId": "hero", "targetId": "monster", "classicEffectResourceId": 12000}), DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "monster", "damage": 20, "defeated": true, "classicResolutionEffectResourceIds": [12032, 12033]})], final, false), "a lethal spell still creates its committed result playback")
+	while defeated_spell.is_active():
+		defeated_spell.advance(1.0, false)
+	assert_equal(defeated_spell_frames.count(&"spell_effect"), 0, "Castle's lethal spell path bypasses the ordinary post-result effect family")
+
+	var healing_controller := CombatPlaybackController.new()
+	var healing_texts: Array[String] = []
+	healing_controller.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
+		if frame.progress == 0.0 and frame.kind == &"result":
+			healing_texts.append(frame.display_text)
+	)
+	assert_true(healing_controller.begin(previous, [DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "hero", "healing": 5, "damage": -5}), DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "monster", "resisted": true})], final, false), "healing and resistance feedback share the ordered playback boundary")
+	while healing_controller.is_active():
+		healing_controller.advance(1.0, false)
+	assert_equal(healing_texts, ["+5", "Resist"], "healing and resistance retain distinct fixed result labels")
+
+	var terminal := GameView.new(3, true, null)
+	var terminal_controller := CombatPlaybackController.new()
+	assert_true(terminal_controller.begin(previous, [DomainEvent.new(&"battle_completed", {"outcome": "victory"})], terminal, false), "terminal combat keeps the previous board available while the final view has already left battle")
+	assert_true(terminal_controller.base_view == previous, "terminal playback does not expose the reward workspace before battle visuals settle")
+	assert_true(terminal_controller.skip(), "Space-equivalent playback skip settles presentation without a session mutation")
+	assert_false(terminal_controller.is_active(), "skipping ends only the cosmetic playback transaction")
+
+	var reduced := CombatPlaybackController.new()
+	var reduced_sounds: Array[int] = []
+	reduced.sound_requested.connect(func(event: DomainEvent) -> void: reduced_sounds.append(int(event.payload.get("soundId", 0))))
+	assert_true(reduced.begin(previous, [DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 3}), DomainEvent.new(&"sound_requested", {"soundId": 650})], final, true), "reduced motion retains the committed playback boundary")
+	assert_equal(reduced.frame_count(), 2, "reduced motion keeps ordered audio plus one visual settlement frame")
+	while reduced.is_active():
+		reduced.advance(1.0, false)
+	assert_equal(reduced_sounds, [650], "reduced motion does not drop combat audio")
+
+	var synchronous := CombatPlaybackController.new()
+	var synchronous_frames: Array[StringName] = []
+	synchronous.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
+		if frame.progress == 0.0:
+			synchronous_frames.append(frame.kind)
+	)
+	assert_true(synchronous.begin(previous, [DomainEvent.new(&"sound_requested", {"soundId": 651, "waitForCompletion": true}), DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 3})], final, false), "synchronous Classic audio remains ordered within combat playback")
+	synchronous.advance(1.0, false)
+	assert_equal(synchronous_frames, [&"sound"], "the synchronous sound frame starts at its ordered event position")
+	synchronous.advance(1.0, true)
+	assert_equal(synchronous_frames, [&"sound"], "a blocking synchronous sound prevents the next visual frame from becoming visible")
+	synchronous.advance(1.0, false)
+	assert_equal(synchronous_frames, [&"sound", &"melee_attack"], "visual playback resumes only after the synchronous sound completes")
+
+
+func _combat_playback_view(monster_health: int, hero_position: Vector2i, monster_position: Vector2i, outcome: StringName) -> GameView:
+	var tiles: Array[int] = []
+	tiles.resize(BattlefieldState.CELL_COUNT)
+	tiles.fill(232)
+	var battlefield := BattlefieldState.new("land:0", tiles)
+	assert_true(battlefield.place_character("hero", hero_position), "playback fixture places the party actor")
+	var monster := MonsterState.new("monster", "classic.monster.1", "Goblin", monster_health, 20)
+	monster.icon_id = 384
+	assert_true(battlefield.place_monster(monster.id, monster_position, 0), "playback fixture places the target")
+	var combat := CombatState.new("classic.battle.playback", [monster], 0, battlefield)
+	combat.set_turn_order(["hero", "monster"])
+	combat.outcome = outcome
+	var character := CharacterState.new("hero", "Hero", 10, 10)
+	var view := GameView.new(1, true, null)
+	view.party_members = [CharacterView.new(character)]
+	view.combat_view = CombatView.new(combat, [character])
+	return view
 
 
 func _test_character_creator_workflow() -> void:

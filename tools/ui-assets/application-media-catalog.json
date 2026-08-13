@@ -5,7 +5,7 @@
   "copyright": "Realmz copyright 1994 by Tim Phillips",
   "license": "CC-BY-NC-SA-4.0",
   "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
-  "modification": "Classic snd resources decoded from their Macintosh resource-fork representation into mono WAV files for Godot playback.",
+  "modification": "Classic snd and selected combat cicn resources decoded from their Macintosh resource-fork representation into WAV and PNG files for Godot presentation.",
   "resource_sets": [
     {
       "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
@@ -16,6 +16,19 @@
       "classification": "classic-application-resource",
       "evidence_path": "src/realmz_orig/main.c:720-749; src/realmz_orig/misc.c:1875-1907",
       "evidence_note": "Castle opens The Family Jewels as an application resource fork before scenario selection. sound() resolves exact snd resource IDs through the open resource chain."
+    },
+    {
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "resource_type": "cicn",
+      "resource_ids": [146, 147, 150, 159, 160, 161, 162, 163, 164, 165, 166, 167, 2015, 2016, 2017, 2018, 2019],
+      "resource_ranges": [
+        {"start": 12000, "end": 12127}
+      ],
+      "target_directory": "combat-icons",
+      "classification": "classic-application-resource",
+      "evidence_path": "src/realmz_orig/combatinfo-combatchoice.c:76-122; src/realmz_orig/showdamage.c:1-149; src/realmz_orig/cast.c:30-37; src/realmz_orig/spelleffect.c:1-42; src/realmz_orig/showresults.c:5-544",
+      "evidence_note": "Castle resolves active-actor cues, result icons, death effects, and spell cast/resolution frames from the application resource chain. Scenario resources with the same exact cicn key remain later overrides. CICNs 159-167 retain neutral result-effect labels until runtime observation establishes stronger visual semantics."
     }
   ]
 }

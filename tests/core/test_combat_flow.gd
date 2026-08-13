@@ -59,7 +59,7 @@ func _test_player_collision_initiates_melee() -> void:
 	assert_true(result.ok, "moving into an opposed occupied footprint resolves melee")
 	assert_equal(state.combat.battlefield.character_position(character.id), Vector2i(45, 45), "collision melee does not move the attacker into the target footprint")
 	assert_equal([character.movement, character.attacks_remaining], [9, 3], "collision melee spends Castle's three movement and two half-attack units while preserving the carried half-attack")
-	assert_true(result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == character.id and event.payload.get("targetId") == monster.id), "collision melee publishes the ordinary physical attack result")
+	assert_true(result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == character.id and event.payload.get("targetId") == monster.id and event.payload.get("classicResultEffectResourceId") == 161), "unarmed collision melee publishes Castle's exact physical-result icon identity")
 	var host_character := _character("character.collision-host")
 	host_character.normal_attacks = 4
 	var host_monster := MonsterState.new("monster.collision-host.instance", definition.id, definition.name, 30, 30, 1)
@@ -1053,6 +1053,10 @@ func _test_source_backed_character_spell_casting() -> void:
 	spell.damage_max = 4
 	spell.duration_min = 1
 	spell.duration_max = 1
+	spell.look_start = 2
+	spell.look_end = 0
+	spell.sound_start = 1
+	spell.sound_end = 2
 	assert_equal(spell.classic_tier(), 2, "Classic spell 1306 encodes zero-based tier two rather than caster level")
 	var character := _character("character.spell-caster")
 	character.level = 10
@@ -1085,6 +1089,9 @@ func _test_source_backed_character_spell_casting() -> void:
 	var screened := rules.combat_flow.cast_spell(state, content, character.id, monster.id, spell.id, 1, ScriptedRng.new([0, 0]))
 	assert_true(screened.ok, "a funded ordinary single-target combat spell commits")
 	assert_true(screened.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("classicTier") == 2 and event.payload.get("resisted") == true), "spell resistance uses the spell ID's tier even when caster level is ten")
+	assert_equal(screened.events.map(func(event: DomainEvent) -> StringName: return event.kind), [&"sound_requested", &"combat_spell_cast", &"combat_spell_projectile", &"sound_requested", &"combat_spell_resolved"], "combat spell feedback retains Castle's start sound, cast, projectile, result sound, and resolution order")
+	assert_equal([screened.events[0].payload.get("soundId"), screened.events[1].payload.get("classicEffectResourceId"), screened.events[2].payload.get("classicBattleTileId"), screened.events[3].payload.get("soundId")], [601, 12_008, 202, 602], "combat spell feedback derives exact native sound and look identities from the immutable spell definition")
+	assert_equal(screened.events[4].payload.get("classicResolutionEffectResourceIds"), [12_032, 12_033, 12_034, 12_035, 12_036, 12_037, 12_038, 12_039], "lookEnd zero selects Castle's fixed eight-frame resolution family")
 	assert_equal([character.spell_points, character.attacks_remaining, character.movement, monster.current_health], [8, 5, 0, 30], "a resisted spell still spends energy, two half-attacks, and twelve movement while retaining Castle's carried half-attack")
 	assert_equal(state.combat.active_turn.spell_cast_count, 1, "the active turn owns the committed per-activation spell count")
 	var restored := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))

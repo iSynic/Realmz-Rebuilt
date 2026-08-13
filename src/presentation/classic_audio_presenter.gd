@@ -2,6 +2,7 @@ class_name ClassicAudioPresenter
 extends Node
 
 signal sound_observed(sound_id: int)
+signal blocking_state_changed(blocking: bool)
 
 const CHANNEL_COUNT: int = 4
 
@@ -56,6 +57,10 @@ func set_master_volume(value: float) -> void:
 	_apply_volume()
 
 
+func is_blocking() -> bool:
+	return _processing_sounds
+
+
 func _apply_volume() -> void:
 	for player: AudioStreamPlayer in _players:
 		player.volume_db = -80.0 if master_volume <= 0.0 else linear_to_db(master_volume)
@@ -74,6 +79,7 @@ func _drain_sound_queue() -> void:
 		player.play()
 		if bool(request["waitForCompletion"]) and player.playing:
 			_processing_sounds = true
+			blocking_state_changed.emit(true)
 			_waiting_player = player
 			_waiting_finished_callback = _on_waiting_sound_finished.bind(player)
 			player.finished.connect(_waiting_finished_callback, CONNECT_ONE_SHOT)
@@ -86,6 +92,7 @@ func _on_waiting_sound_finished(player: AudioStreamPlayer) -> void:
 	_waiting_player = null
 	_waiting_finished_callback = Callable()
 	_processing_sounds = false
+	blocking_state_changed.emit(false)
 	_drain_sound_queue()
 
 
@@ -97,6 +104,7 @@ func _next_channel() -> AudioStreamPlayer:
 
 
 func _stop_all() -> void:
+	var was_blocking := _processing_sounds
 	if _waiting_player != null and _waiting_finished_callback.is_valid() and _waiting_player.finished.is_connected(_waiting_finished_callback):
 		_waiting_player.finished.disconnect(_waiting_finished_callback)
 	_waiting_player = null
@@ -105,3 +113,5 @@ func _stop_all() -> void:
 	_pending_sounds.clear()
 	for player: AudioStreamPlayer in _players:
 		player.stop()
+	if was_blocking:
+		blocking_state_changed.emit(false)

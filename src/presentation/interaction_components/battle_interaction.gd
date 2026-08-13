@@ -6,12 +6,20 @@ var _combatants: Array[Dictionary] = []
 var _inspected_index: int = -1
 var _inspected_label: Label
 var _mode_panels: Array[Control] = []
+var _targeting_status_label: Label
+var _targeting_confirm_button: Button
+var _targeting_controls: VBoxContainer
+var _targeting_active: bool = false
 
 
 func build(request: InteractionRequest) -> void:
 	var actor_id := String(request.payload.get("actorId", ""))
 	_actor_id = actor_id
 	_mode_panels.clear()
+	_targeting_status_label = null
+	_targeting_confirm_button = null
+	_targeting_controls = null
+	_targeting_active = false
 	_read_combatants(request.payload.get("combatants", []))
 	var actions: Variant = request.payload.get("actions", [])
 	var action_ids: Array = actions if actions is Array else []
@@ -35,13 +43,15 @@ func build(request: InteractionRequest) -> void:
 		add_child(panel)
 		_add_mode_back_button(panel, overview, mode_panels)
 	if action_ids.has("attack") and targets is Array:
-		var attack_row := HFlowContainer.new()
-		attack_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		target_panel.add_child(attack_row)
+		var candidate_ids: Array[String] = []
 		for target: Variant in targets:
-			if target is Dictionary:
-				var verb := "Fire at" if weapon_mode == "missile" else "Attack"
-				add_response_to(attack_row, "%s %s • HP %d/%d" % [verb, target.get("name", "Enemy"), int(target.get("currentHealth", 0)), int(target.get("maximumHealth", 0))], {"actorId": actor_id, "action": "attack", "targetId": String(target.get("id", ""))})
+			if target is Dictionary and not String(target.get("id", "")).is_empty():
+				candidate_ids.append(String(target.get("id")))
+		_add_targeting_button(target_panel, "Choose Fire target on battlefield" if weapon_mode == "missile" else "Choose attack target on battlefield", {
+			"mode": "combatant",
+			"responsePayload": {"actorId": actor_id, "action": "attack", "targetId": ""},
+			"candidateIds": candidate_ids,
+		})
 	elif weapon_mode == "melee" and not String(request.payload.get("meleeAttackReason", "")).is_empty():
 		_add_hint_to(target_panel, String(request.payload.get("meleeAttackReason", "No adjacent melee target.")))
 	if weapon_mode == "missile" and not action_ids.has("attack"):
@@ -52,12 +62,8 @@ func build(request: InteractionRequest) -> void:
 	if action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty():
 		var spell_picker := OptionButton.new()
 		spell_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var has_area_spell := false
-		var has_sequence_spell := false
 		for option: Variant in spell_casts:
 			if option is Dictionary:
-				has_area_spell = has_area_spell or option.get("targetMode", "combatant") == "area"
-				has_sequence_spell = has_sequence_spell or option.get("targetMode", "combatant") == "sequence"
 				var target_health := int(option.get("targetCurrentHealth", -1))
 				var target_label := String(option.get("targetName", "Target"))
 				var label := "%s • P%d • %d SP → %s" % [option.get("spellName", "Spell"), int(option.get("power", 1)), int(option.get("cost", 0)), target_label]
@@ -67,111 +73,29 @@ func build(request: InteractionRequest) -> void:
 				spell_picker.set_item_metadata(spell_picker.item_count - 1, option.duplicate(true))
 		spell_panel.add_child(spell_picker)
 		var cast_button := Button.new()
-		cast_button.text = "Cast selected spell"
+		cast_button.name = "ChooseSpellTarget"
 		cast_button.disabled = spell_picker.item_count == 0
-		var target_x := SpinBox.new()
-		var target_y := SpinBox.new()
-		if has_area_spell:
-			var area_hint := _add_hint_to(spell_panel, "Area center uses validated battlefield coordinates. A viewport pointer/highlight is still presentation work.")
-			var coordinate_row := HBoxContainer.new()
-			target_x.min_value = 0
-			target_x.max_value = BattlefieldState.SIZE - 1
-			target_x.prefix = "X "
-			target_y.min_value = 0
-			target_y.max_value = BattlefieldState.SIZE - 1
-			target_y.prefix = "Y "
-			coordinate_row.add_child(target_x)
-			coordinate_row.add_child(target_y)
-			spell_panel.add_child(coordinate_row)
-			var update_area_controls := func(index: int) -> void:
-				var selected: Variant = spell_picker.get_item_metadata(index)
-				var area_selected: bool = selected is Dictionary and selected.get("targetMode", "combatant") == "area"
-				area_hint.visible = area_selected
-				coordinate_row.visible = area_selected
-				target_x.editable = area_selected
-				target_y.editable = area_selected
-				if area_selected:
-					var coordinate: Variant = selected.get("defaultTargetCoordinate", [])
-					if coordinate is Array and coordinate.size() == 2:
-						target_x.value = int(coordinate[0])
-						target_y.value = int(coordinate[1])
-			spell_picker.item_selected.connect(update_area_controls)
-			update_area_controls.call(spell_picker.selected)
-		var sequence_target_picker := OptionButton.new()
-		var sequence_selected_picker := OptionButton.new()
-		var sequence_add_button := Button.new()
-		var sequence_remove_button := Button.new()
-		var sequence_target_ids: Array[String] = []
-		if has_sequence_spell:
-			var sequence_hint := _add_hint_to(spell_panel, "Repeated spells preserve the order selected. Cast may begin after one target, up to the chosen power.")
-			sequence_target_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			sequence_selected_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			sequence_add_button.text = "Add target"
-			sequence_remove_button.text = "Remove selected target"
-			var sequence_controls := HBoxContainer.new()
-			sequence_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			sequence_controls.add_child(sequence_target_picker)
-			sequence_controls.add_child(sequence_add_button)
-			sequence_controls.add_child(sequence_selected_picker)
-			sequence_controls.add_child(sequence_remove_button)
-			spell_panel.add_child(sequence_controls)
-			var refresh_sequence_controls := func(index: int) -> void:
-				sequence_target_ids.clear()
-				sequence_target_picker.clear()
-				sequence_selected_picker.clear()
-				var selected: Variant = spell_picker.get_item_metadata(index)
-				var sequence_selected: bool = selected is Dictionary and selected.get("targetMode", "combatant") == "sequence"
-				sequence_hint.visible = sequence_selected
-				sequence_controls.visible = sequence_selected
-				sequence_target_picker.visible = sequence_selected
-				sequence_selected_picker.visible = sequence_selected
-				sequence_add_button.visible = sequence_selected
-				sequence_remove_button.visible = sequence_selected
-				if sequence_selected:
-					var candidates: Variant = selected.get("targetCandidates", [])
-					if candidates is Array:
-						for candidate: Variant in candidates:
-							if candidate is Dictionary:
-								sequence_target_picker.add_item("%s • HP %d/%d" % [candidate.get("name", "Target"), int(candidate.get("currentHealth", 0)), int(candidate.get("maximumHealth", 0))])
-								sequence_target_picker.set_item_metadata(sequence_target_picker.item_count - 1, candidate.duplicate(true))
-				cast_button.disabled = spell_picker.item_count == 0 or (sequence_selected and sequence_target_ids.is_empty())
-			spell_picker.item_selected.connect(refresh_sequence_controls)
-			sequence_add_button.pressed.connect(func() -> void:
-				var option: Variant = spell_picker.get_selected_metadata()
-				var candidate: Variant = sequence_target_picker.get_selected_metadata()
-				if not option is Dictionary or not candidate is Dictionary:
-					return
-				var target_id := String(candidate.get("id", ""))
-				if target_id.is_empty() or sequence_target_ids.has(target_id) or sequence_target_ids.size() >= int(option.get("maximumTargets", 1)):
-					return
-				sequence_target_ids.append(target_id)
-				sequence_selected_picker.add_item(String(candidate.get("name", "Target")))
-				sequence_selected_picker.set_item_metadata(sequence_selected_picker.item_count - 1, target_id)
-				cast_button.disabled = false
-			)
-			sequence_remove_button.pressed.connect(func() -> void:
-				var index := sequence_selected_picker.selected
-				if index < 0 or index >= sequence_target_ids.size():
-					return
-				sequence_target_ids.remove_at(index)
-				sequence_selected_picker.remove_item(index)
-				cast_button.disabled = sequence_target_ids.is_empty()
-			)
-			refresh_sequence_controls.call(spell_picker.selected)
+		var refresh_cast_button := func(_index: int) -> void:
+			if _targeting_active:
+				presentation_action_requested.emit(&"cancel_battlefield_targeting", {})
+			var selected: Variant = spell_picker.get_selected_metadata()
+			var mode := String(selected.get("targetMode", "combatant")) if selected is Dictionary else "combatant"
+			cast_button.text = "Cast selected spell" if mode == "automatic" else "Choose spell target on battlefield"
+		spell_picker.item_selected.connect(refresh_cast_button)
 		cast_button.pressed.connect(func() -> void:
 			var option: Variant = spell_picker.get_selected_metadata()
-			if option is Dictionary:
-				var payload := {"actorId": actor_id, "action": "cast_spell", "targetId": String(option.get("targetId", "")), "spellId": String(option.get("spellId", "")), "power": int(option.get("power", 1))}
-				if option.get("targetMode", "combatant") == "sequence":
-					if sequence_target_ids.is_empty():
-						return
-					payload["targetIds"] = sequence_target_ids.duplicate()
-				if option.get("targetMode", "combatant") == "area":
-					payload["targetCoordinate"] = [int(target_x.value), int(target_y.value)]
-					payload["rotation"] = 0
+			if not option is Dictionary:
+				return
+			var payload := {"actorId": actor_id, "action": "cast_spell", "targetId": "", "spellId": String(option.get("spellId", "")), "power": int(option.get("power", 1))}
+			var mode := String(option.get("targetMode", "combatant"))
+			if mode == "automatic":
 				payload_submitted.emit(payload)
+				return
+			var configuration := _spell_targeting_configuration(spell_casts, option, payload)
+			_start_targeting(configuration, spell_panel)
 		)
 		spell_panel.add_child(cast_button)
+		refresh_cast_button.call(spell_picker.selected)
 	elif not String(request.payload.get("spellCastReason", "")).is_empty():
 		add_response_to(spell_panel, "Cast unavailable", {}, false, String(request.payload.get("spellCastReason")))
 	var item_casts: Variant = request.payload.get("itemCasts", [])
@@ -199,11 +123,90 @@ func build(request: InteractionRequest) -> void:
 		use_button.pressed.connect(func() -> void:
 			var option: Variant = item_picker.get_selected_metadata()
 			if option is Dictionary:
-				payload_submitted.emit({"actorId": actor_id, "action": "use_item", "targetId": String(option.get("targetId", "")), "itemInstanceId": String(option.get("itemInstanceId", ""))})
+				var payload := {"actorId": actor_id, "action": "use_item", "targetId": "", "itemInstanceId": String(option.get("itemInstanceId", ""))}
+				if String(option.get("targetMode", "combatant")) == "automatic":
+					payload_submitted.emit(payload)
+					return
+				var candidate_ids: Array[String] = []
+				for candidate: Variant in item_casts:
+					if candidate is Dictionary and candidate.get("itemInstanceId") == option.get("itemInstanceId") and not String(candidate.get("targetId", "")).is_empty():
+						candidate_ids.append(String(candidate.get("targetId")))
+				_start_targeting({"mode": "combatant", "responsePayload": payload, "candidateIds": candidate_ids}, item_panel)
 		)
 		item_row.add_child(use_button)
 	elif not String(request.payload.get("itemCastReason", "")).is_empty():
 		add_response_to(item_panel, "Use item unavailable", {}, false, String(request.payload.get("itemCastReason")))
+
+
+func update_battlefield_targeting(selection: Dictionary) -> void:
+	if not _targeting_active or _targeting_status_label == null or _targeting_confirm_button == null:
+		return
+	_targeting_status_label.text = String(selection.get("status", "Choose a target on the battlefield."))
+	_targeting_confirm_button.disabled = not bool(selection.get("canConfirm", false))
+
+
+func battlefield_targeting_cancelled() -> void:
+	_targeting_active = false
+	if _targeting_status_label != null:
+		_targeting_status_label.text = "Targeting cancelled. Choose an action to try again."
+	if _targeting_confirm_button != null:
+		_targeting_confirm_button.disabled = true
+
+
+func _spell_targeting_configuration(spell_casts: Array, selected: Dictionary, response_payload: Dictionary) -> Dictionary:
+	var mode := String(selected.get("targetMode", "combatant"))
+	var candidate_ids: Array[String] = []
+	if mode == "sequence":
+		for candidate: Variant in selected.get("targetCandidates", []):
+			if candidate is Dictionary and not String(candidate.get("id", "")).is_empty():
+				candidate_ids.append(String(candidate.get("id")))
+	elif mode == "combatant":
+		for candidate: Variant in spell_casts:
+			if candidate is Dictionary and candidate.get("spellId") == selected.get("spellId") and int(candidate.get("power", 0)) == int(selected.get("power", 0)) and candidate.get("targetMode", "combatant") == "combatant" and not String(candidate.get("targetId", "")).is_empty():
+				candidate_ids.append(String(candidate.get("targetId")))
+	return {
+		"mode": mode,
+		"responsePayload": response_payload,
+		"candidateIds": candidate_ids,
+		"maximumTargets": int(selected.get("maximumTargets", 1)),
+		"areaOffsets": selected.get("areaOffsets", []),
+		"defaultTargetCoordinate": selected.get("defaultTargetCoordinate", []),
+		"legalTargetCoordinates": selected.get("legalTargetCoordinates", []),
+	}
+
+
+func _add_targeting_button(parent: Container, text: String, configuration: Dictionary) -> void:
+	var button := Button.new()
+	button.text = text
+	button.custom_minimum_size.y = 36.0
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.pressed.connect(func() -> void: _start_targeting(configuration, parent))
+	parent.add_child(button)
+
+
+func _start_targeting(configuration: Dictionary, parent: Container) -> void:
+	_targeting_active = true
+	if _targeting_controls != null and is_instance_valid(_targeting_controls):
+		_targeting_controls.queue_free()
+	_targeting_controls = VBoxContainer.new()
+	_targeting_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(_targeting_controls)
+	_targeting_status_label = _add_hint_to(_targeting_controls, "Choose a target on the battlefield.")
+	var target_actions := HBoxContainer.new()
+	target_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_targeting_confirm_button = Button.new()
+	_targeting_confirm_button.text = "Confirm target"
+	_targeting_confirm_button.disabled = true
+	_targeting_confirm_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_targeting_confirm_button.pressed.connect(func() -> void: presentation_action_requested.emit(&"confirm_battlefield_targeting", {}))
+	target_actions.add_child(_targeting_confirm_button)
+	var cancel := Button.new()
+	cancel.text = "Cancel targeting"
+	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cancel.pressed.connect(func() -> void: presentation_action_requested.emit(&"cancel_battlefield_targeting", {}))
+	target_actions.add_child(cancel)
+	_targeting_controls.add_child(target_actions)
+	presentation_action_requested.emit(&"begin_battlefield_targeting", configuration.duplicate(true))
 
 
 func inspect_combatant(combatant_id: String) -> void:
@@ -394,6 +397,8 @@ func _add_mode_back_button(panel: Container, overview: Control, panels: Array[Co
 	back.custom_minimum_size.y = 30.0
 	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	back.pressed.connect(func() -> void:
+		if _targeting_active:
+			presentation_action_requested.emit(&"cancel_battlefield_targeting", {})
 		for candidate: Control in panels:
 			candidate.visible = false
 		overview.visible = true

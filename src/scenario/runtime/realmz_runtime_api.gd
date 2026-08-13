@@ -2869,6 +2869,7 @@ func _combat_request(request_id: String) -> InteractionRequest:
 			spell_cast["areaShape"] = option.area_shape
 			spell_cast["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]
 			spell_cast["areaOffsets"] = option.area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
+			spell_cast["legalTargetCoordinates"] = option.legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
 		spell_casts.append(spell_cast)
 	if not spell_casts.is_empty():
 		actions.append("cast_spell")

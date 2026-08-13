@@ -223,7 +223,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 				if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
 					return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
 				_append_character_attack_audio(events, actor, equipment, resolution, &"monster")
-				events.append(_character_attack_event(actor.id, monster_target.id, &"monster", resolution))
+				events.append(_character_attack_event(actor.id, monster_target.id, &"monster", resolution, equipment.melee_weapon != null))
 				monster_death_macro_requested = resolution.killed and _request_monster_death_macro(monster_target, definition, events)
 				_remove_defeated_position(combat, monster_target.id, resolution.killed and not monster_death_macro_requested)
 			else:
@@ -240,7 +240,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 				if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
 					return CombatFlowResult.failed(&"invalid_fumble_state", "The fumbled melee weapon could not enter the battle recovery queue.")
 				_append_character_attack_audio(events, actor, equipment, resolution, &"character")
-				events.append(_character_attack_event(actor.id, character_target.id, &"character", resolution))
+				events.append(_character_attack_event(actor.id, character_target.id, &"character", resolution, equipment.melee_weapon != null))
 				_remove_defeated_position(combat, character_target.id, resolution.killed)
 			_consume_character_attack(actor)
 			if not _character_can_continue(actor):
@@ -553,7 +553,7 @@ func _resolve_character_reaction(state: GameState, content: RealmzContent, attac
 		if reaction_resolution.fumbled and not _commit_character_fumble(state, attacker, equipment, events):
 			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
 		_append_character_attack_audio(events, attacker, equipment, reaction_resolution, &"monster")
-		var reaction_event := _character_attack_event(attacker.id, monster_target.id, &"monster", reaction_resolution)
+		var reaction_event := _character_attack_event(attacker.id, monster_target.id, &"monster", reaction_resolution, equipment.melee_weapon != null)
 		_append_reaction_identity(reaction_event, action, behind)
 		events.append(reaction_event)
 		if reaction_resolution.killed:
@@ -575,7 +575,7 @@ func _resolve_character_reaction(state: GameState, content: RealmzContent, attac
 	if resolution.fumbled and not _commit_character_fumble(state, attacker, equipment, events):
 		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": attacker.id, "reason": "invalid-fumble-state"}))
 	_append_character_attack_audio(events, attacker, equipment, resolution, &"character")
-	var event := _character_attack_event(attacker.id, character_target.id, &"character", resolution)
+	var event := _character_attack_event(attacker.id, character_target.id, &"character", resolution, equipment.melee_weapon != null)
 	_append_reaction_identity(event, action, behind)
 	events.append(event)
 	if resolution.killed:
@@ -615,6 +615,7 @@ func _resolve_monster_reaction(state: GameState, content: RealmzContent, attacke
 		_append_monster_physical_feedback(events, reaction_resolution.physical_feedback_sound_id)
 		_append_monster_attack_audio(events, attacker, definition, 0, weapon, reaction_resolution, rng)
 		var reaction_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": character_target.id, "targetKind": "character", "action": String(action), "attackIndex": 0, "hit": reaction_resolution.hit, "damage": reaction_resolution.total_damage(), "defeated": reaction_resolution.killed, "chance": reaction_resolution.chance, "roll": reaction_resolution.roll})
+		_append_physical_result_effect(reaction_event, reaction_resolution.hit, weapon != null)
 		_append_reaction_identity(reaction_event, action, behind)
 		events.append(reaction_event)
 		if reaction_resolution.killed:
@@ -636,6 +637,7 @@ func _resolve_monster_reaction(state: GameState, content: RealmzContent, attacke
 		_append_monster_special_events(events, attacker.id, monster_target.id, &"monster", resolution)
 	_append_monster_attack_audio(events, attacker, definition, 0, weapon, resolution, rng)
 	var event := DomainEvent.new(&"combat_attack_resolved", {"actorId": attacker.id, "targetId": monster_target.id, "targetKind": "monster", "action": String(action), "attackIndex": 0, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
+	_append_physical_result_effect(event, resolution.hit, weapon != null)
 	_append_reaction_identity(event, action, behind)
 	events.append(event)
 	if resolution.killed:
@@ -1010,6 +1012,8 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 	caster.attacks_remaining = _rules.arithmetic.signed_16(caster.attacks_remaining - 2)
 	caster.movement = maxi(0, caster.movement - 12)
 	var events: Array[DomainEvent] = []
+	_append_spell_sound(events, spell.sound_start, "classic-combat-spell-start")
+	_append_spell_cast_event(events, caster.id, spell, group, center, shape, event_source)
 	for index: int in group.resolutions.size():
 		var resolution := group.resolutions[index]
 		var resolved_target_id := group.target_ids[index]
@@ -1018,7 +1022,10 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		var reflected := group.reflected_targets[index]
 		if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
 			combat.mark_attacked(resolved_target_id)
+		_append_spell_projectile_event(events, caster.id, resolved_target_id, spell, event_source)
+		_append_spell_sound(events, spell.sound_end, "classic-combat-spell-result")
 		var payload := {"actorId": caster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": event_source}
+		_append_spell_presentation(payload, spell, index, group.resolutions.size(), resolution.target_defeated)
 		if not item_instance_id.is_empty():
 			payload["itemInstanceId"] = item_instance_id
 		if shape > 0:
@@ -1045,6 +1052,42 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		return CombatFlowResult.succeeded(events, true)
 	_process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, combat.completed)
+
+
+static func _append_spell_sound(events: Array[DomainEvent], authored_sound_id: int, source: String) -> void:
+	var native_sound_id := authored_sound_id + 600
+	if native_sound_id == 0:
+		return
+	events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": source}))
+
+
+static func _append_spell_cast_event(events: Array[DomainEvent], actor_id: String, spell: SpellDefinition, resolutions: GroupSpellResolution, center: Vector2i, shape: int, source: String) -> void:
+	var target_id := resolutions.target_ids[0] if not resolutions.target_ids.is_empty() else ""
+	var payload := {"actorId": actor_id, "targetId": target_id, "spellId": spell.id, "classicEffectResourceId": 11_992 + spell.look_start * 8, "source": source}
+	if shape > 0:
+		payload["areaCenter"] = [center.x, center.y]
+		payload["areaShape"] = shape
+	events.append(DomainEvent.new(&"combat_spell_cast", payload))
+
+
+static func _append_spell_projectile_event(events: Array[DomainEvent], actor_id: String, target_id: String, spell: SpellDefinition, source: String) -> void:
+	if not spell.target_type in [0, 1, 2, 5, 6, 7, 8, 11]:
+		return
+	events.append(DomainEvent.new(&"combat_spell_projectile", {"actorId": actor_id, "targetId": target_id, "spellId": spell.id, "classicBattleTileId": 200 + spell.look_start, "source": source}))
+
+
+static func _append_spell_presentation(payload: Dictionary, spell: SpellDefinition, sequence_index: int, sequence_count: int, target_defeated: bool) -> void:
+	payload["castSequenceIndex"] = sequence_index
+	payload["castSequenceCount"] = sequence_count
+	# resolvespell.c bypasses the ordinary eight-frame resolution effect when the
+	# target dies, and group-body flashes (9/10) use a separate path.
+	if target_defeated or spell.target_type in [9, 10]:
+		return
+	var first_resource_id := 12_032 if spell.look_end == 0 else 11_992 + spell.look_end * 8
+	var effect_ids: Array[int] = []
+	for frame_offset: int in 8:
+		effect_ids.append(first_resource_id + frame_offset)
+	payload["classicResolutionEffectResourceIds"] = effect_ids
 
 
 func probe_character_spell_cast(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = []) -> CombatSpellCastProbe:
@@ -1159,11 +1202,34 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 			if spell.target_type in [3, 4]:
 				if probe_character_spell_cast(state, content, caster_id, "", spell.id, power_level).allowed:
 					var shape := _rules.spell_areas.shape_for(spell, power_level)
-					result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), _rules.spell_areas.pattern(shape)))
+					var offsets := _rules.spell_areas.pattern(shape)
+					var legal_coordinates := _legal_area_spell_target_coordinates(state, content, caster_id, spell, power_level, shape)
+					result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), offsets, 1, [], legal_coordinates))
 				continue
 			for target: CombatSpellTargetView in _character_actor_spell_candidates(state, content, caster, spell, power_level):
 				if probe_character_spell_cast(state, content, caster_id, target.id, spell.id, power_level).allowed:
 					result.append(CombatSpellOptionView.new(spell, power_level, target))
+	return result
+
+
+func _legal_area_spell_target_coordinates(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int, shape: int) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if state == null or state.combat == null or state.combat.battlefield == null or content == null or spell == null:
+		return result
+	var map := content.world.map_by_id(state.combat.battlefield.map_id)
+	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	if terrain_set == null:
+		return result
+	var origin := state.combat.battlefield.actor_position(caster_id)
+	var maximum_range := absi(spell.range_min + spell.range_max * power_level)
+	var minimum := Vector2i(maxi(0, origin.x - maximum_range - 1), maxi(0, origin.y - maximum_range - 1))
+	var maximum := Vector2i(mini(BattlefieldState.SIZE - 1, origin.x + maximum_range + 1), mini(BattlefieldState.SIZE - 1, origin.y + maximum_range + 1))
+	var require_line_of_sight := spell.range_min + spell.range_max > 0
+	for y: int in range(minimum.y, maximum.y + 1):
+		for x: int in range(minimum.x, maximum.x + 1):
+			var coordinate := Vector2i(x, y)
+			if _rules.spell_areas.pattern_fits(coordinate, shape) and _rules.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, caster_id, coordinate, maximum_range, require_line_of_sight):
+				result.append(coordinate)
 	return result
 
 
@@ -1314,6 +1380,7 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 	var pending_resolution := AttackResolution.new(true, defeated, pending.chance, pending.roll, pending.damage)
 	_append_monster_attack_audio(events, pending_attacker, pending_definition, pending_attack_index, pending_weapon, pending_resolution, rng)
 	var attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": pending.actor_id, "targetId": pending.target_id, "action": String(pending.action), "attackIndex": pending_attack_index, "hit": true, "damage": pending.damage, "defeated": defeated, "chance": pending.chance, "roll": pending.roll})
+	_append_physical_result_effect(attack_event, true, pending_weapon != null)
 	if combat.pending_reaction != null:
 		_append_reaction_identity(attack_event, pending.action, pending.action == &"withdrawal")
 	events.append(attack_event)
@@ -1791,6 +1858,8 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			return MONSTER_ATTACK_FALLBACK
 		active_turn.spell_cast_count += 1
 		did_cast = true
+		_append_spell_sound(events, spell.sound_start, "classic-monster-spell-start")
+		_append_spell_cast_event(events, monster.id, spell, resolutions, INVALID_COORDINATE, 0, "classic-monster")
 		for index: int in resolutions.resolutions.size():
 			var resolution := resolutions.resolutions[index]
 			var resolved_target_id := resolutions.target_ids[index]
@@ -1799,7 +1868,11 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			var reflected := resolutions.reflected_targets[index]
 			if resolution.damage > 0 or (resolution.damage < 0 and target_kind == &"monster"):
 				state.combat.mark_attacked(resolved_target_id)
-			events.append(DomainEvent.new(&"combat_spell_resolved", {"actorId": monster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster"}))
+			_append_spell_projectile_event(events, monster.id, resolved_target_id, spell, "classic-monster")
+			_append_spell_sound(events, spell.sound_end, "classic-monster-spell-result")
+			var payload := {"actorId": monster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster"}
+			_append_spell_presentation(payload, spell, index, resolutions.resolutions.size(), resolution.target_defeated)
+			events.append(DomainEvent.new(&"combat_spell_resolved", payload))
 			if not resolution.target_defeated:
 				continue
 			if target_kind == &"character":
@@ -2094,7 +2167,9 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 			return MONSTER_ATTACK_WAITING
 		_append_monster_physical_feedback(events, monster_resolution.physical_feedback_sound_id)
 		_append_monster_attack_audio(events, monster, definition, attack_index, attack_weapon, monster_resolution, rng)
-		events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": character_target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": monster_resolution.hit, "damage": monster_resolution.total_damage(), "defeated": monster_resolution.killed, "chance": monster_resolution.chance, "roll": monster_resolution.roll}))
+		var character_attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": character_target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": monster_resolution.hit, "damage": monster_resolution.total_damage(), "defeated": monster_resolution.killed, "chance": monster_resolution.chance, "roll": monster_resolution.roll})
+		_append_physical_result_effect(character_attack_event, monster_resolution.hit, attack_weapon != null)
+		events.append(character_attack_event)
 		_remove_defeated_position(combat, character_target.id, monster_resolution.killed)
 		if monster_resolution.killed:
 			active_turn.target_id = ""
@@ -2115,7 +2190,9 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 	if resolution.special_handled:
 		_append_monster_special_events(events, monster.id, monster_target.id, &"monster", resolution)
 	_append_monster_attack_audio(events, monster, definition, attack_index, weapon, resolution, rng)
-	events.append(DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": monster_target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll}))
+	var monster_attack_event := DomainEvent.new(&"combat_attack_resolved", {"actorId": monster.id, "targetId": monster_target.id, "action": String(active_turn.action), "attackIndex": attack_index, "hit": resolution.hit, "damage": resolution.total_damage(), "defeated": resolution.killed, "chance": resolution.chance, "roll": resolution.roll})
+	_append_physical_result_effect(monster_attack_event, resolution.hit, weapon != null)
+	events.append(monster_attack_event)
 	if resolution.killed:
 		active_turn.target_id = ""
 		monster.target_id = ""
@@ -2281,7 +2358,7 @@ func _process_charmed_character_turn(state: GameState, content: RealmzContent, a
 		if character_resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
 			events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
 			return false
-		var character_event := _character_attack_event(actor.id, character_target.id, &"character", character_resolution)
+		var character_event := _character_attack_event(actor.id, character_target.id, &"character", character_resolution, equipment.melee_weapon != null)
 		_append_character_attack_audio(events, actor, equipment, character_resolution, &"character")
 		character_event.payload["automatic"] = true
 		events.append(character_event)
@@ -2296,7 +2373,7 @@ func _process_charmed_character_turn(state: GameState, content: RealmzContent, a
 	if resolution.fumbled and not _commit_character_fumble(state, actor, equipment, events):
 		events.append(DomainEvent.new(&"combat_fumble_failed", {"actorId": actor.id, "reason": "invalid-fumble-state"}))
 		return false
-	var event := _character_attack_event(actor.id, monster_target.id, &"monster", resolution)
+	var event := _character_attack_event(actor.id, monster_target.id, &"monster", resolution, equipment.melee_weapon != null)
 	_append_character_attack_audio(events, actor, equipment, resolution, &"monster")
 	event.payload["automatic"] = true
 	events.append(event)
@@ -2389,8 +2466,8 @@ static func _movement_failure_message(result: BattlefieldStepResult) -> String:
 			return "The tactical step is unavailable: %s." % String(result.reason)
 
 
-static func _character_attack_event(actor_id: String, target_id: String, target_kind: StringName, resolution: AttackResolution) -> DomainEvent:
-	return DomainEvent.new(&"combat_attack_resolved", {
+static func _character_attack_event(actor_id: String, target_id: String, target_kind: StringName, resolution: AttackResolution, armed: bool) -> DomainEvent:
+	var event := DomainEvent.new(&"combat_attack_resolved", {
 		"actorId": actor_id,
 		"targetId": target_id,
 		"targetKind": String(target_kind),
@@ -2412,6 +2489,14 @@ static func _character_attack_event(actor_id: String, target_id: String, target_
 		"weaponConditionAfter": resolution.weapon_condition_after,
 		"criticalRolls": resolution.critical_rolls.duplicate(),
 	})
+	_append_physical_result_effect(event, resolution.hit, armed)
+	return event
+
+
+static func _append_physical_result_effect(event: DomainEvent, hit: bool, armed: bool) -> void:
+	if event == null or not hit:
+		return
+	event.payload["classicResultEffectResourceId"] = 160 if armed else 161
 
 
 func _commit_character_fumble(state: GameState, character: CharacterState, equipment: CharacterCombatEquipment, events: Array[DomainEvent]) -> bool:
