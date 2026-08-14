@@ -3935,10 +3935,13 @@ func _build_map_view() -> MapView:
 		for coordinate: Vector2i in map.topology.visible_cells(_state.party.coordinate, 8, _state.world, true):
 			visible[coordinate] = true
 	var cells: Array[MapCellView] = []
-	var first_x := maxi(0, _state.party.coordinate.x - MAP_VIEW_RADIUS)
-	var first_y := maxi(0, _state.party.coordinate.y - MAP_VIEW_RADIUS)
-	var last_x := mini(map.topology.width, _state.party.coordinate.x + MAP_VIEW_RADIUS + 1)
-	var last_y := mini(map.topology.height, _state.party.coordinate.y + MAP_VIEW_RADIUS + 1)
+	var projection_diameter := MAP_VIEW_RADIUS * 2 + 1
+	var projection_width := mini(map.topology.width, projection_diameter)
+	var projection_height := mini(map.topology.height, projection_diameter)
+	var first_x := clampi(_state.party.coordinate.x - MAP_VIEW_RADIUS, 0, map.topology.width - projection_width)
+	var first_y := clampi(_state.party.coordinate.y - MAP_VIEW_RADIUS, 0, map.topology.height - projection_height)
+	var last_x := first_x + projection_width
+	var last_y := first_y + projection_height
 	for y: int in range(first_y, last_y):
 		for x: int in range(first_x, last_x):
 			var cell := map.topology.cell_at(Vector2i(x, y))

@@ -32,6 +32,7 @@ func run() -> void:
 	_test_classic_asset_catalog()
 	_test_stone_surface_tiling()
 	_test_spatial_stage_visibility()
+	_test_exploration_map_camera_preserves_viewport_geometry()
 	_test_battlefield_presenter()
 	_test_combat_targeting_state()
 	_test_combat_playback_controller()
@@ -1326,6 +1327,55 @@ func _test_spatial_stage_visibility() -> void:
 	assert_true(PresentationCoordinator.should_show_battle_stage(&"combat", active_view, true), "the tactical board appears only on the active combat route")
 	assert_false(PresentationCoordinator.should_show_battle_stage(&"exploration", active_view, true), "combat facts do not replace the exploration map outside the combat route")
 	assert_false(PresentationCoordinator.should_show_battle_stage(&"combat", active_view, false), "full-stage overlays suppress the tactical board")
+
+
+func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
+	var viewport_size := Vector2(960.0, 600.0)
+	var profile := UiLayoutProfile.for_viewport(viewport_size, PresentationSettings.UI_SCALE_AUTO)
+	var stage_rect := Rect2(
+		Vector2(0.0, profile.menu_height),
+		Vector2(
+			maxf(320.0, viewport_size.x - profile.party_width),
+			maxf(220.0, viewport_size.y - profile.menu_height - profile.bottom_height)
+		)
+	)
+	var expected_viewport_rect := stage_rect.grow(-8.0)
+	var application_scene := load("res://src/presentation/realmz_application.tscn") as PackedScene
+	var application := application_scene.instantiate() as Control
+	var map_presenter := application.get_node("ExplorationMap") as ClassicMapPresenter
+	assert_not_null(map_presenter, "the canonical application owns one clipped exploration map presenter")
+	if map_presenter == null:
+		application.free()
+		return
+	map_presenter.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	map_presenter.position = expected_viewport_rect.position
+	map_presenter.size = expected_viewport_rect.size
+	var viewport_rect := Rect2(map_presenter.position, map_presenter.size)
+	var viewport_parent := map_presenter.get_parent()
+	var viewport_cells := ClassicMapPresenter.viewport_cells_for(map_presenter.size, map_presenter.map_origin.y, map_presenter.cell_size)
+	var draw_origin := ClassicMapPresenter.map_draw_origin_for(map_presenter.size, map_presenter.map_origin, map_presenter.cell_size, viewport_cells)
+	var map_size := Vector2i(90, 90)
+	var positions: Array[Vector2i] = [Vector2i(0, 45), Vector2i(45, 45), Vector2i(89, 45), Vector2i(45, 0), Vector2i(45, 89)]
+	var cameras: Array[Vector2i] = []
+	var party_rects: Array[Rect2] = []
+	for coordinate: Vector2i in positions:
+		var cells: Array[MapCellView] = [MapCellView.new(coordinate, "fixture.terrain", 1, "fixture.tileset", true, false, true, true, false, false, [], {}, {}, {})]
+		var map_view := MapView.new("fixture.map", "Synthetic Map", &"land", map_size.x, map_size.y, coordinate, cells)
+		map_presenter.present(GameView.new(1, true, null, "fixture.map", coordinate, 0, 12, 0, map_view))
+		var camera := ClassicMapPresenter.camera_top_left(coordinate, map_size, viewport_cells)
+		cameras.append(camera)
+		party_rects.append(Rect2(draw_origin + Vector2(coordinate - camera) * map_presenter.cell_size, Vector2.ONE * map_presenter.cell_size))
+		assert_equal(Rect2(map_presenter.position, map_presenter.size), viewport_rect, "party position %s does not move or shrink the exploration viewport" % coordinate)
+		assert_equal(map_presenter.get_parent(), viewport_parent, "party position %s preserves the viewport's clipping-control owner" % coordinate)
+		assert_true(map_presenter.clip_contents, "party position %s preserves viewport clipping" % coordinate)
+		assert_equal(ClassicMapPresenter.viewport_cells_for(map_presenter.size, map_presenter.map_origin.y, map_presenter.cell_size), viewport_cells, "party position %s keeps the bounded cell window" % coordinate)
+		assert_equal(ClassicMapPresenter.map_draw_origin_for(map_presenter.size, map_presenter.map_origin, map_presenter.cell_size, viewport_cells), draw_origin, "party position %s keeps the map draw origin inside the fixed viewport" % coordinate)
+
+	assert_true(cameras[0].x != cameras[1].x and cameras[1].x != cameras[2].x, "west, center, and east positions change only the internal horizontal camera offset")
+	assert_true(cameras[3].y != cameras[4].y, "north and south positions change only the internal vertical camera offset")
+	assert_true(party_rects[0].position.x != party_rects[2].position.x and party_rects[0].size == party_rects[2].size, "east-edge movement translates the party cell inside the viewport without changing cell geometry")
+	assert_true(party_rects[3].position.y != party_rects[4].position.y and party_rects[3].size == party_rects[4].size, "north/south movement translates the party cell inside the viewport without changing cell geometry")
+	application.free()
 
 
 func _test_battlefield_presenter() -> void:

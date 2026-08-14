@@ -15,11 +15,12 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	var content := loaded.content
+	_test_map_view_projection_edges(content)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "exploration session starts")
 	_begin_fixture_adventure(session, content)
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "Providence start coordinate is authoritative")
-	assert_equal(session.view().map_view.cells().size(), 196, "GameView exposes its bounded topology-derived window")
+	assert_equal(session.view().map_view.cells().size(), 625, "GameView exposes one complete bounded topology-derived window at the north-west edge")
 	assert_true(session.view().map_view.can_move(Vector2i.UP), "the detached view exposes an authoritative passable movement direction")
 	assert_false(session.view().map_view.can_move(Vector2i.LEFT), "the detached view exposes an authoritative blocked movement direction")
 	assert_equal(session.view().map_view.visited_coordinates(), [Vector2i(1, 1)], "the minimap receives only session-owned visited coordinates")
@@ -344,6 +345,20 @@ func _test_location_notes(content: RealmzContent) -> void:
 	capacity_envelope.game_state.world._location_notes[duplicate_ordinal.id()] = duplicate_ordinal
 	var corrupt_capacity := GameSession.new()
 	assert_equal(corrupt_capacity.restore(content, capacity_envelope).error_code, &"invalid_game_state", "restore rejects duplicate source ordinals transactionally")
+
+
+func _test_map_view_projection_edges(content: RealmzContent) -> void:
+	var session := GameSession.new()
+	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "the edge-projection session starts")
+	_begin_fixture_adventure(session, content)
+	assert_equal(session.view().map_view.cells().size(), 625, "the detached projection keeps its full dimensions at the north-west map edge")
+	assert_not_null(session.view().map_view.cell_at(Vector2i.ZERO), "the north-west projection begins at the map edge")
+	assert_not_null(session.view().map_view.cell_at(Vector2i(24, 24)), "the north-west projection shifts inward instead of shrinking around the party")
+	_restore_fixture_position(session, content, "land:0", Vector2i(88, 1))
+	assert_equal(session.view().map_view.cells().size(), 625, "the detached projection keeps its full dimensions at the east map edge")
+	assert_not_null(session.view().map_view.cell_at(Vector2i(65, 0)), "the east-edge projection shifts west to retain the complete viewport")
+	assert_not_null(session.view().map_view.cell_at(Vector2i(89, 24)), "the east-edge projection still reaches the authoritative map boundary")
+	assert_true(session.view().map_view.cell_at(Vector2i(64, 0)) == null, "the shifted east-edge projection remains bounded to twenty-five columns")
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
