@@ -41,7 +41,7 @@ var _campaign_list: VBoxContainer
 var _campaign_scroll: ScrollContainer
 var _package_path: LineEdit
 var _setup_overlay: PanelContainer
-var _setup_body: VBoxContainer
+var _setup_body: HBoxContainer
 var _creator_scroll: ScrollContainer
 var _creator: BoxContainer
 var _creator_page: VBoxContainer
@@ -49,8 +49,6 @@ var _creator_steps: HBoxContainer
 var _creator_action_bar: HBoxContainer
 var _creator_step_labels: Array[Label] = []
 var _race_class_columns: BoxContainer
-var _setup_campaign_label: Label
-var _setup_restriction_label: Label
 var _race_list: ItemList
 var _caste_list: ItemList
 var _name_edit: LineEdit
@@ -59,9 +57,8 @@ var _starting_level_option: OptionButton
 var _portrait_option: OptionButton
 var _combat_icon_option: OptionButton
 var _party_list: VBoxContainer
-var _party_preparation_label: Label
 var _stored_character_list: VBoxContainer
-var _party_setup_options: HBoxContainer
+var _party_setup_options: VBoxContainer
 var _difficulty_option: OptionButton
 var _monster_set_option: OptionButton
 var _party_guidance_label: Label
@@ -273,7 +270,9 @@ func _render_campaign_list() -> void:
 	if ready_count == 0 and not _package_operation_status.is_running():
 		_add_label(_campaign_list, "No playable scenarios. Install a package from the current Providence exporter.", MUTED)
 	if hidden_count > 0:
-		_add_label(_campaign_list, "%d incompatible or stale installation%s hidden." % [hidden_count, "" if hidden_count == 1 else "s"], MUTED, 11)
+		_campaign_overlay.tooltip_text = "%d incompatible or stale installation%s hidden from the ordinary scenario list." % [hidden_count, "" if hidden_count == 1 else "s"]
+	else:
+		_campaign_overlay.tooltip_text = "Installed Providence scenarios."
 	# Container minimum-size propagation runs after rows enter the tree. Restore
 	# the bounded modal rect once that layout pass has settled.
 	call_deferred("_refresh_campaign_layout")
@@ -594,17 +593,22 @@ func _mount_workspace(screen_id: StringName) -> void:
 func _build_campaign_overlay() -> void:
 	_campaign_overlay = PanelContainer.new()
 	_campaign_overlay.name = "ScenarioColumn"
-	_campaign_overlay.theme_type_variation = &"ClassicSharedStone"
+	_campaign_overlay.theme_type_variation = &"ClassicInset"
 	_campaign_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_campaign_overlay.custom_minimum_size.x = 228.0
+	_campaign_overlay.custom_minimum_size.x = 210.0
+	_campaign_overlay.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_campaign_overlay.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_campaign_overlay.size_flags_stretch_ratio = 0.72
 	_campaign_overlay.z_index = 0
 	add_child(_campaign_overlay)
 	var column := VBoxContainer.new()
+	column.name = "ScenarioPaneContent"
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_theme_constant_override("separation", 8)
 	_campaign_overlay.add_child(column)
-	_add_label(column, "Scenarios", GOLD, 20)
-	_add_label(column, "Installed Providence packages ready for play.", MUTED, 12)
+	var scenario_heading := _add_label(column, "Scenarios", GOLD, 20)
+	scenario_heading.name = "ScenarioHeading"
 	_campaign_list = VBoxContainer.new()
 	_campaign_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_campaign_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -642,12 +646,11 @@ func _build_setup_overlay() -> void:
 	_setup_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	var setup_surface := StyleBoxFlat.new()
 	setup_surface.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	setup_surface.border_color = Color("4b5157")
-	setup_surface.set_border_width_all(1)
+	setup_surface.set_border_width_all(0)
 	setup_surface.content_margin_left = 10.0
-	setup_surface.content_margin_top = 8.0
+	setup_surface.content_margin_top = 10.0
 	setup_surface.content_margin_right = 10.0
-	setup_surface.content_margin_bottom = 8.0
+	setup_surface.content_margin_bottom = 10.0
 	_setup_overlay.add_theme_stylebox_override("panel", setup_surface)
 	_setup_overlay.set_anchors_preset(Control.PRESET_CENTER)
 	_setup_overlay.offset_left = -440.0
@@ -656,25 +659,45 @@ func _build_setup_overlay() -> void:
 	_setup_overlay.offset_bottom = 238.0
 	_setup_overlay.z_index = 25
 	add_child(_setup_overlay)
-	_setup_body = VBoxContainer.new()
+	_setup_body = HBoxContainer.new()
+	_setup_body.name = "ScenarioPartyWorkspace"
 	_setup_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_setup_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_setup_body.add_theme_constant_override("separation", 6)
-	var integrated_workspace := HBoxContainer.new()
-	integrated_workspace.name = "ScenarioPartyWorkspace"
-	integrated_workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	integrated_workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	integrated_workspace.add_theme_constant_override("separation", 8)
+	_setup_body.add_theme_constant_override("separation", 10)
 	remove_child(_campaign_overlay)
-	integrated_workspace.add_child(_campaign_overlay)
-	integrated_workspace.add_child(_setup_body)
-	_setup_overlay.add_child(integrated_workspace)
-	_setup_campaign_label = _add_label(_setup_body, "Assemble your party", GOLD, 24)
-	_setup_campaign_label.custom_minimum_size.y = 28.0
-	_setup_campaign_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_setup_restriction_label = _add_label(_setup_body, "", MUTED)
-	_setup_restriction_label.custom_minimum_size.y = 34.0
-	_setup_restriction_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_setup_body.add_child(_campaign_overlay)
+	_setup_overlay.add_child(_setup_body)
+
+	var character_pane := PanelContainer.new()
+	character_pane.name = "CharacterFilesPane"
+	character_pane.theme_type_variation = &"ClassicInset"
+	character_pane.custom_minimum_size.x = 286.0
+	character_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	character_pane.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	character_pane.size_flags_stretch_ratio = 1.15
+	_setup_body.add_child(character_pane)
+	var character_column := VBoxContainer.new()
+	character_column.name = "CharacterFilesPaneContent"
+	character_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	character_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	character_column.add_theme_constant_override("separation", 6)
+	character_pane.add_child(character_column)
+
+	var party_pane := PanelContainer.new()
+	party_pane.name = "CurrentPartyPane"
+	party_pane.theme_type_variation = &"ClassicInset"
+	party_pane.custom_minimum_size.x = 286.0
+	party_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	party_pane.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	party_pane.size_flags_stretch_ratio = 1.15
+	_setup_body.add_child(party_pane)
+	var party_column := VBoxContainer.new()
+	party_column.name = "PartyColumn"
+	party_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	party_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	party_column.add_theme_constant_override("separation", 6)
+	party_pane.add_child(party_column)
+
 	_creator_steps = HBoxContainer.new()
 	_creator_steps.add_theme_constant_override("separation", 6)
 	_creator_steps.custom_minimum_size.y = 24.0
@@ -684,7 +707,7 @@ func _build_setup_overlay() -> void:
 		step_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_creator_steps.add_child(step_label)
 		_creator_step_labels.append(step_label)
-	_setup_body.add_child(_creator_steps)
+	character_column.add_child(_creator_steps)
 	_creator_scroll = ScrollContainer.new()
 	_creator_scroll.name = "CreatorScroll"
 	_creator_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -693,7 +716,7 @@ func _build_setup_overlay() -> void:
 	_creator_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_creator_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	_creator_scroll.follow_focus = true
-	_setup_body.add_child(_creator_scroll)
+	character_column.add_child(_creator_scroll)
 	_creator = BoxContainer.new()
 	_creator.custom_minimum_size.y = 310.0
 	_creator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -705,24 +728,16 @@ func _build_setup_overlay() -> void:
 	_creator_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_creator_page.size_flags_stretch_ratio = 1.0
 	_creator.add_child(_creator_page)
-	var party_column := VBoxContainer.new()
-	party_column.name = "PartyColumn"
-	party_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	party_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	party_column.size_flags_stretch_ratio = 1.0
 	var party_heading := CenterContainer.new()
 	party_heading.name = "PartyHeading"
-	party_heading.custom_minimum_size.y = 20.0
+	party_heading.custom_minimum_size.y = 28.0
 	var party_heading_content := HBoxContainer.new()
-	party_heading_content.add_child(_label("Current Party", GOLD, 18))
+	party_heading_content.add_child(_label("Current Party", GOLD, 20))
 	var party_count := _label("• 0 / 6", MUTED, 13)
 	party_count.name = "PartyCount"
 	party_heading_content.add_child(party_count)
 	party_heading.add_child(party_heading_content)
 	party_column.add_child(party_heading)
-	_party_preparation_label = _label("Select a scenario to assemble its eligible party.", MUTED, 12)
-	_party_preparation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	party_column.add_child(_party_preparation_label)
 	var party_scroll := ScrollContainer.new()
 	party_scroll.name = "PartySlotScroll"
 	party_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -738,34 +753,43 @@ func _build_setup_overlay() -> void:
 	_party_list.import_requested.connect(_import_stored_character)
 	party_scroll.add_child(_party_list)
 	party_column.add_child(party_scroll)
-	_creator.add_child(party_column)
-	_setup_message = _add_label(_setup_body, "Enter a name to begin creating a character.", MUTED)
+	_setup_message = _add_label(character_column, "Enter a name to begin creating a character.", MUTED)
 	_setup_message.custom_minimum_size.y = 32.0
 	_setup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_party_setup_options = HBoxContainer.new()
+	_party_setup_options = VBoxContainer.new()
 	_party_setup_options.name = "PartySetupOptions"
-	_party_setup_options.add_theme_constant_override("separation", 16)
+	_party_setup_options.add_theme_constant_override("separation", 4)
+	_party_guidance_label = _label("", Color("e0e2e5"), 12)
+	_party_guidance_label.name = "PartyLevelGuidance"
+	_party_guidance_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_party_guidance_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_party_setup_options.add_child(_party_guidance_label)
 	var selectors := HBoxContainer.new()
 	selectors.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	selectors.add_child(_label("Monster Set", GOLD, 13))
+	selectors.add_theme_constant_override("separation", 6)
+	var monster_column := VBoxContainer.new()
+	monster_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	monster_column.add_child(_label("Monster Set", MUTED, 12))
 	_monster_set_option = OptionButton.new()
 	_monster_set_option.name = "MonsterSetOption"
+	_monster_set_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_monster_set_option.item_selected.connect(_party_setup_option_changed)
-	selectors.add_child(_monster_set_option)
-	selectors.add_child(_label("Difficulty", GOLD, 13))
+	monster_column.add_child(_monster_set_option)
+	selectors.add_child(monster_column)
+	var difficulty_column := VBoxContainer.new()
+	difficulty_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	difficulty_column.add_child(_label("Difficulty", MUTED, 12))
 	_difficulty_option = OptionButton.new()
 	_difficulty_option.name = "DifficultyOption"
+	_difficulty_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for value: int in range(-2, 3):
 		_difficulty_option.add_item(PartySetupView.difficulty_name(value))
 		_difficulty_option.set_item_metadata(_difficulty_option.item_count - 1, value)
 	_difficulty_option.item_selected.connect(_party_setup_option_changed)
-	selectors.add_child(_difficulty_option)
+	difficulty_column.add_child(_difficulty_option)
+	selectors.add_child(difficulty_column)
 	_party_setup_options.add_child(selectors)
-	_party_guidance_label = _label("", Color("e0e2e5"), 12)
-	_party_guidance_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_party_guidance_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_party_setup_options.add_child(_party_guidance_label)
-	_setup_body.add_child(_party_setup_options)
+	party_column.add_child(_party_setup_options)
 	_creator_action_bar = HBoxContainer.new()
 	_creator_action_bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	_creator_cancel_button = Button.new()
@@ -785,21 +809,25 @@ func _build_setup_overlay() -> void:
 	_creator_next_button.text = "Continue"
 	_creator_next_button.pressed.connect(_creator_next)
 	_creator_action_bar.add_child(_creator_next_button)
-	_setup_body.add_child(_creator_action_bar)
-	var setup_footer := HBoxContainer.new()
+	character_column.add_child(_creator_action_bar)
+	var character_footer := HBoxContainer.new()
 	_create_character_button = Button.new()
 	_create_character_button.name = "CreateCharacter"
-	_create_character_button.text = "Create new character"
+	_create_character_button.text = "Create character"
+	_create_character_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_create_character_button.pressed.connect(_start_creator)
-	setup_footer.add_child(_create_character_button)
-	setup_footer.add_spacer(true)
+	character_footer.add_child(_create_character_button)
+	character_column.add_child(character_footer)
+	var party_footer := HBoxContainer.new()
 	_begin_button = Button.new()
+	_begin_button.name = "BeginAdventure"
 	_begin_button.text = "Begin adventure"
+	_begin_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_begin_button.custom_minimum_size.y = 34.0
 	_begin_button.disabled = true
 	_begin_button.pressed.connect(_submit_party)
-	setup_footer.add_child(_begin_button)
-	_setup_body.add_child(setup_footer)
+	party_footer.add_child(_begin_button)
+	party_column.add_child(party_footer)
 	_build_setup_character_inspection()
 	_render_creator_step()
 
@@ -825,14 +853,11 @@ func _build_setup_character_inspection() -> void:
 
 func _refresh_setup_options() -> void:
 	if _view == null or not _view.party_setup_available:
-		_setup_campaign_label.text = "Select a scenario"
-		_setup_restriction_label.text = "Character Files, restrictions, difficulty, and party eligibility are prepared from the selected Providence package."
-		_party_preparation_label.visible = true
+		_campaign_overlay.tooltip_text = "Select an installed scenario to assemble a party."
 		_refresh_party_list()
 		_refresh_party_setup_options()
 		_render_creator_step()
 		return
-	_party_preparation_label.visible = false
 	var summary := _view.campaign_summary
 	if summary != null:
 		var title_parts: Array[String] = [summary.title]
@@ -840,17 +865,15 @@ func _refresh_setup_options() -> void:
 			title_parts.append("v%s" % summary.version)
 		if not summary.author.is_empty():
 			title_parts.append("by %s" % summary.author)
-		_setup_campaign_label.text = " • ".join(title_parts)
 		var restriction_text := summary.restriction_description.strip_edges()
 		if restriction_text.is_empty():
 			restriction_text = "No authored party restrictions."
 		var limits := "Up to %d characters" % summary.maximum_party_size
 		if summary.maximum_level > 0:
 			limits += " • Maximum level %d" % summary.maximum_level
-		_setup_restriction_label.text = "%s\n%s" % [restriction_text, limits]
+		_campaign_overlay.tooltip_text = "%s\n%s\n%s" % [" • ".join(title_parts), restriction_text, limits]
 	else:
-		_setup_campaign_label.text = "Assemble your party"
-		_setup_restriction_label.text = "No campaign metadata is available."
+		_campaign_overlay.tooltip_text = "The selected scenario has no campaign summary metadata."
 	_refresh_party_list()
 	_refresh_party_setup_options()
 	var setup_count := _view.party_members.size()
@@ -866,6 +889,7 @@ func _render_creator_step() -> void:
 		_render_party_assembly()
 		return
 	_create_character_button.visible = false
+	_begin_button.visible = false
 	_party_setup_options.visible = false
 	_creator_steps.visible = true
 	_creator_action_bar.visible = true
@@ -1423,6 +1447,7 @@ func _refresh_party_list() -> void:
 
 func _render_party_assembly() -> void:
 	_create_character_button.visible = true
+	_begin_button.visible = true
 	_create_character_button.disabled = _view == null or not _view.party_setup_available or _view.party_members.size() >= _maximum_party_size()
 	_create_character_button.tooltip_text = "Select a scenario before creating a campaign-aware character." if _view == null or not _view.party_setup_available else ("This party already has %d characters." % _maximum_party_size() if _create_character_button.disabled else "Create a new character for this campaign.")
 	_creator_steps.visible = false
@@ -1433,9 +1458,9 @@ func _render_party_assembly() -> void:
 	_ensure_appearance_textures()
 	var heading := CenterContainer.new()
 	heading.name = "CharacterFilesHeading"
-	heading.custom_minimum_size.y = 20.0
+	heading.custom_minimum_size.y = 28.0
 	var heading_content := HBoxContainer.new()
-	heading_content.add_child(_label("Character Files", GOLD, 18))
+	heading_content.add_child(_label("Character Files", GOLD, 20))
 	var character_count := _label("• %d available" % _current_vault_revisions().size(), MUTED, 13)
 	character_count.name = "CharacterFileCount"
 	heading_content.add_child(character_count)
@@ -1454,9 +1479,6 @@ func _render_party_assembly() -> void:
 	stored_scroll.add_child(_stored_character_list)
 	var current_revisions := _current_vault_revisions()
 	if _view == null or not _view.party_setup_available:
-		var select_prompt := _label("Select an installed scenario to calculate Character File eligibility and assemble its party.", MUTED)
-		select_prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_stored_character_list.add_child(select_prompt)
 		return
 	if current_revisions.is_empty():
 		var empty := _label("No stored characters are available. Create one to begin assembling this party.", MUTED)
@@ -1507,7 +1529,7 @@ func _refresh_party_setup_options() -> void:
 	var maximum := "None" if summary == null or summary.maximum_party_levels <= 0 else str(summary.maximum_party_levels)
 	var recommended := "—" if summary == null or not summary.guidance_authored or summary.recommended_party_levels <= 0 else str(summary.recommended_party_levels)
 	var gained := "—" if _view.party_setup.experience_percent <= 0 else "%d%%" % _view.party_setup.experience_percent
-	_party_guidance_label.text = "Maximum %s  •  Recommended %s  •  Current %d  •  Experience gained at %s" % [maximum, recommended, _view.party_setup.current_party_levels, gained]
+	_party_guidance_label.text = "Maximum %s  •  Recommended %s  •  Current %d\nExperience gained at %s" % [maximum, recommended, _view.party_setup.current_party_levels, gained]
 
 
 func _party_setup_option_changed(_index: int) -> void:

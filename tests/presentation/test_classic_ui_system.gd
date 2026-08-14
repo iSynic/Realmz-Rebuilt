@@ -9,6 +9,7 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 
 func run() -> void:
 	_test_startup_shell()
+	_test_startup_party_setup_composition()
 	_test_route_catalog()
 	_test_layout_profiles()
 	_test_settings_schema_and_migration()
@@ -50,6 +51,41 @@ func run() -> void:
 	_test_save_preview_workspace()
 	_test_location_note_workspace()
 	_test_player_map_workspace()
+
+
+func _test_startup_party_setup_composition() -> void:
+	var router := ClassicScreenRouter.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(router)
+	router._body_frame = PanelContainer.new()
+	router.add_child(router._body_frame)
+	router._build_campaign_overlay()
+	router._build_setup_overlay()
+	var profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
+	router.set_layout_profile(profile, Vector2(960, 600))
+	router.show_campaign_selection()
+
+	var workspace := router.find_child("ScenarioPartyWorkspace", true, false) as Control
+	var scenario_pane := router.find_child("ScenarioColumn", true, false) as Control
+	var scenario_heading := router.find_child("ScenarioHeading", true, false) as Control
+	var character_heading := router.find_child("CharacterFilesHeading", true, false) as Control
+	var party_heading := router.find_child("PartyHeading", true, false) as Control
+	var character_pane := router.find_child("CharacterFilesPane", true, false) as Control
+	var party_pane := router.find_child("CurrentPartyPane", true, false) as Control
+	var scenario_style: StyleBox = scenario_pane.get_theme_stylebox("panel") if scenario_pane != null else null
+	var character_style: StyleBox = character_pane.get_theme_stylebox("panel") if character_pane != null else null
+	var party_style: StyleBox = party_pane.get_theme_stylebox("panel") if party_pane != null else null
+
+	assert_true(workspace != null and workspace is HBoxContainer, "startup party setup mounts one horizontal three-pane workspace")
+	assert_equal(workspace.get_child_count() if workspace != null else -1, 3, "startup party setup has exactly Scenarios, Character Files, and Current Party panes")
+	assert_true(scenario_pane != null and character_pane != null and party_pane != null and scenario_pane != character_pane and scenario_pane != party_pane and character_pane != party_pane, "the three startup panes are distinct controls")
+	assert_true(scenario_pane != null and character_pane != null and party_pane != null and scenario_pane.get_parent() == workspace and character_pane.get_parent() == workspace and party_pane.get_parent() == workspace, "the three startup panes are direct siblings in the full-stage row")
+	assert_true(scenario_pane is PanelContainer and character_pane is PanelContainer and party_pane is PanelContainer and scenario_style != null and character_style != null and party_style != null, "each startup pane has a named panel backing instead of relying on the shared slate alone")
+	assert_true(scenario_pane != null and character_pane != null and party_pane != null and scenario_pane.custom_minimum_size.x < character_pane.custom_minimum_size.x and scenario_pane.custom_minimum_size.x < party_pane.custom_minimum_size.x and scenario_pane.size_flags_stretch_ratio < character_pane.size_flags_stretch_ratio and scenario_pane.size_flags_stretch_ratio < party_pane.size_flags_stretch_ratio, "Scenarios receives a narrower minimum and stretch share than Character Files and Current Party")
+	assert_true(scenario_heading != null and character_heading != null and party_heading != null and absf(scenario_heading.global_position.y - character_heading.global_position.y) <= 1.0 and absf(character_heading.global_position.y - party_heading.global_position.y) <= 1.0, "all three startup pane headings share one aligned top band")
+	assert_true(character_heading != null and character_heading.visible and party_heading != null and party_heading.visible, "Character Files and Current Party remain visible in the startup composition")
+	var party_slots := router.find_child("PartySlots", true, false)
+	assert_equal(party_slots.get_child_count() if party_slots != null else -1, 6, "Current Party keeps all six available positions visible in the startup composition")
+	router.free()
 
 
 func _test_package_operation_presentation() -> void:
@@ -142,7 +178,7 @@ func _test_startup_shell() -> void:
 	assert_true(router._campaign_list is VBoxContainer and router._campaign_list.get_parent() is ScrollContainer, "installed scenarios use one single-column picker surface")
 	assert_true(scenario_copy.any(func(text: String) -> bool: return text.to_lower().contains("installed scenario")), "the installed-scenario picker identifies its ready scenario row")
 	assert_false(scenario_copy.any(func(text: String) -> bool: return text.contains("Stale Scenario")), "incompatible installations do not become ordinary scenario rows")
-	assert_true(scenario_copy.any(func(text: String) -> bool: return text.to_lower().contains("installation hidden")), "the picker reports hidden incompatible installations without flooding the scenario list")
+	assert_contains(scenario_picker.tooltip_text, "installation hidden", "the picker preserves incompatible-installation diagnostics in unobtrusive hover text")
 	assert_true(scenario_copy.any(func(text: String) -> bool: return text.to_lower().contains("ready") or text.to_lower().contains("opening")), "installed scenario copy says the package is ready or opening")
 	assert_false(scenario_copy.any(func(text: String) -> bool:
 		var lower := text.to_lower()
@@ -183,29 +219,21 @@ func _test_startup_shell() -> void:
 		character_heading = setup_workspace.find_child("CharacterFilesHeading", true, false) as Control
 		party_heading = setup_workspace.find_child("PartyHeading", true, false) as Control
 	assert_true(character_heading != null and party_heading != null, "the pre-session workspace mounts both setup columns before a campaign session exists")
-	var character_column: Node = character_heading.get_parent() if character_heading != null else null
-	var party_column: Node = party_heading.get_parent() if party_heading != null else null
-	var character_guidance: Array[String] = []
-	if character_column != null:
-		for node: Node in character_column.find_children("*", "Label", true, false):
+	var character_pane := setup_workspace.find_child("CharacterFilesPane", true, false) as Control if setup_workspace != null else null
+	var party_pane := setup_workspace.find_child("CurrentPartyPane", true, false) as Control if setup_workspace != null else null
+	var preselection_copy: Array[String] = []
+	for pane: Control in [character_pane, party_pane]:
+		if pane == null:
+			continue
+		for node: Node in pane.find_children("*", "Label", true, false):
 			var label := node as Label
 			if label.visible:
-				character_guidance.append(label.text)
-	var party_guidance: Array[String] = []
-	if party_column != null:
-		for node: Node in party_column.find_children("*", "Label", true, false):
-			var label := node as Label
-			if label.visible:
-				party_guidance.append(label.text)
-	assert_true(character_guidance.any(func(text: String) -> bool:
+				preselection_copy.append(label.text)
+	assert_false(preselection_copy.any(func(text: String) -> bool:
 		var lower := text.to_lower()
-		return (lower.contains("choose") or lower.contains("select")) and (lower.contains("scenario") or lower.contains("campaign"))
-	), "Character Files shows explicit pre-session scenario guidance")
-	assert_true(party_guidance.any(func(text: String) -> bool:
-		var lower := text.to_lower()
-		return (lower.contains("choose") or lower.contains("select")) and (lower.contains("scenario") or lower.contains("campaign")) and (lower.contains("party") or lower.contains("character"))
-	), "Current Party shows explicit pre-session setup guidance")
-	assert_true((character_column == null or character_column.find_children("*", "BaseButton", true, false).all(func(button: Node) -> bool: return (button as BaseButton).disabled)) and (party_column == null or party_column.find_children("*", "BaseButton", true, false).all(func(button: Node) -> bool: return (button as BaseButton).disabled)), "pre-session Character Files and Current Party guidance is noninteractive")
+		return lower.contains("select a scenario") or lower.contains("choose a campaign")
+	), "the empty setup panes avoid repeating scenario-selection helper copy beneath their headings")
+	assert_true(router._create_character_button.disabled and router._begin_button.disabled, "pre-session Character Files and Current Party actions remain unavailable until a scenario is selected")
 	var empty_party_slots: Node = null
 	if setup_workspace != null:
 		empty_party_slots = setup_workspace.find_child("PartySlots", true, false)
@@ -1574,7 +1602,8 @@ func _test_character_creator_workflow() -> void:
 	assert_equal(router._party_list.get_child_count(), 6, "party assembly always exposes the campaign's complete slot capacity")
 	var party_scroll := router._party_list.get_parent() as ScrollContainer
 	var party_heading_control := party_scroll.get_parent().get_node("PartyHeading") as Control
-	assert_true(router._party_list.get_combined_minimum_size().y + party_heading_control.custom_minimum_size.y <= router._creator.custom_minimum_size.y, "all six compact party positions plus their heading fit the standard 960 by 600 assembly viewport without scrolling")
+	var party_controls_height := router._party_list.get_combined_minimum_size().y + party_heading_control.custom_minimum_size.y + router._party_setup_options.get_combined_minimum_size().y + router._begin_button.custom_minimum_size.y
+	assert_true(party_controls_height <= router._setup_overlay.size.y - 20.0, "all six party positions, setup options, and Begin action fit the standard 960 by 600 assembly viewport without scrolling")
 	assert_equal(party_scroll.vertical_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED, "the six-slot Current Party surface never hides its final member behind a scrollbar")
 	assert_equal([router._difficulty_option.item_count, router._monster_set_option.item_count], [5, 3], "party assembly exposes all five Classic difficulty choices and only packaged monster sets")
 	assert_equal([router._monster_set_option.get_item_text(0), router._monster_set_option.get_item_text(1), router._monster_set_option.get_item_text(2)], ["Normal Monsters", "Mega Monsters", "Monster Monsters"], "Monster Set is presented in Classic's Normal, Mega, Monster order")
@@ -1599,10 +1628,12 @@ func _test_character_creator_workflow() -> void:
 	assert_not_null(drag_cursor, "dragging a stored character converts the exact portrait into a hardware cursor texture")
 	assert_equal(drag_cursor.get_size(), Vector2(2.0, 2.0), "the drag cursor preserves the source portrait dimensions")
 	assert_true(absf(drag_cursor.get_image().get_pixel(0, 0).a - 0.62) < 0.005, "the hardware drag cursor is translucent so the drop destination stays visible")
-	assert_equal(router._creator_page.size_flags_stretch_ratio, (router._party_list.get_parent().get_parent() as Control).size_flags_stretch_ratio, "Character Files and Current Party receive identical horizontal layout weight")
+	var character_pane := router._setup_overlay.find_child("CharacterFilesPane", true, false) as Control
+	var party_pane := router._setup_overlay.find_child("CurrentPartyPane", true, false) as Control
+	assert_equal(character_pane.size_flags_stretch_ratio, party_pane.size_flags_stretch_ratio, "Character Files and Current Party receive identical horizontal layout weight")
 	var character_heading := router._setup_overlay.find_child("CharacterFilesHeading", true, false) as CenterContainer
 	var party_heading := router._setup_overlay.find_child("PartyHeading", true, false) as CenterContainer
-	assert_equal([character_heading.custom_minimum_size.y, party_heading.custom_minimum_size.y], [20.0, 20.0], "both transfer sections use identically sized centered headings")
+	assert_equal([character_heading.custom_minimum_size.y, party_heading.custom_minimum_size.y], [28.0, 28.0], "both transfer sections use identically sized centered headings")
 	var stored_scroll := router._setup_overlay.find_child("StoredCharacterScroll", true, false) as ScrollContainer
 	var party_slot_scroll := router._setup_overlay.find_child("PartySlotScroll", true, false) as ScrollContainer
 	assert_true(stored_scroll != null and party_slot_scroll != null and stored_scroll.get_parent() == character_heading.get_parent() and party_slot_scroll.get_parent() == party_heading.get_parent(), "Character Files and Current Party lists remain directly beneath their aligned headings")
