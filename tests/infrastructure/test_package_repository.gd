@@ -2,11 +2,23 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const TAMPERED_FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-tampered.realmz2"
+const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
+const CLASSIC_CHARACTER_LIBRARY_ID: String = "realmz-classic-character-library"
+const CLASSIC_CHARACTER_LIBRARY_HASH: String = "55753323199fb3a4e4567a9df441b0e5f54af94a2cdcc39f2abcb49d9beb13bb"
 const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v2"
 
 
 func run() -> void:
 	var repository := PackageRepository.new()
+	var character_library := repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH)
+	assert_true(character_library.is_ok(), "the pinned Providence-built Classic character library loads as trusted application content: %s" % character_library.error_message)
+	if character_library.is_ok():
+		assert_equal([character_library.content.race_definitions().size(), character_library.content.caste_definitions().size()], [30, 30], "the application character library contains the complete stock Race and Caste tables")
+		assert_equal([character_library.content.race_by_id("classic.race.1").name, character_library.content.caste_by_id("classic.caste.1").name], ["Human", "Fighter"], "the stock library retains Realmz names without scenario overrides")
+		assert_equal([character_library.content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT).size(), character_library.content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON).size()], [120, 120], "the stock creator receives all built-in portraits and tactical icons")
+		assert_true(repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH) == character_library, "the immutable built-in library reuses one typed in-memory result")
+	var wrong_library_identity := repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, "0".repeat(64))
+	assert_false(wrong_library_identity.is_ok(), "a bundled library whose pinned package identity drifts is rejected")
 	var loaded := repository.load_package(FIXTURE_PATH)
 	assert_true(loaded.is_ok(), "the Providence-authored fixture passes package validation: %s" % loaded.error_message)
 	if not loaded.is_ok():

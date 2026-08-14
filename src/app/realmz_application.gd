@@ -11,6 +11,10 @@ const CharacterVaultRepositoryScript := preload("res://src/infrastructure/charac
 const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
 const DungeonMap3DPresenterScript := preload("res://src/presentation/dungeon_map_3d_presenter.gd")
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
+const CharacterCreationSessionScript := preload("res://src/core/session/character_creation_session.gd")
+const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
+const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
+const CLASSIC_CHARACTER_LIBRARY_HASH := "55753323199fb3a4e4567a9df441b0e5f54af94a2cdcc39f2abcb49d9beb13bb"
 
 @onready var _status_label: Label = $ClassicShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $ClassicShell/SmokeAction
@@ -34,6 +38,10 @@ var _host_interaction: InteractionRequest
 var _package_install_task: RefCounted
 var _pending_package_seed: int = 1
 var _last_package_operation_key: String = ""
+var _character_library_content: RealmzContent
+var _character_library_media: PackageMediaCatalog
+var _character_creation_session: RefCounted
+var _standalone_character_creation_active: bool = false
 
 
 func _ready() -> void:
@@ -81,6 +89,8 @@ func _ready() -> void:
 	_shell_presenter.route_changed.connect(presentation_coordinator.set_active_route)
 	_shell_presenter.vault_archive_requested.connect(_archive_vault_character)
 	_shell_presenter.vault_restore_requested.connect(_restore_vault_revision)
+	_shell_presenter.standalone_character_creation_requested.connect(_begin_standalone_character_creation)
+	_shell_presenter.standalone_character_creation_cancelled.connect(_cancel_standalone_character_creation)
 	_shell_presenter.apply_settings(_presentation_settings)
 	presentation_coordinator.set_reduced_motion(_presentation_settings.reduced_motion)
 	_apply_application_theme(_presentation_settings.text_scale)
@@ -89,6 +99,7 @@ func _ready() -> void:
 	_audio_presenter.set_master_volume(_presentation_settings.master_volume)
 	_on_topology_debug_changed(_presentation_settings.topology_debug)
 	_on_dungeon_3d_changed(_presentation_settings.dungeon_3d)
+	_load_classic_character_library()
 	_status_label.text = "Pure session boundary online"
 	_refresh_campaigns()
 	_refresh_vault_views()
@@ -371,6 +382,10 @@ func _submit_movement(direction: Vector2i) -> void:
 
 
 func _submit_intent(intent: PlayerIntent) -> SessionStep:
+	if _standalone_character_creation_active:
+		var creator_step: SessionStep = _character_creation_session.submit_intent(intent)
+		_present_standalone_character_step(creator_step)
+		return creator_step
 	if intent != null and intent.kind == PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
 		var record := character_vault_repository.load_revision(intent.target_id, intent.revision_hash)
 		if record == null:
@@ -384,6 +399,9 @@ func _submit_intent(intent: PlayerIntent) -> SessionStep:
 
 
 func _on_interaction_response_submitted(response: InteractionResponse) -> void:
+	if _standalone_character_creation_active:
+		_present_standalone_character_step(_character_creation_session.respond(response))
+		return
 	if _host_interaction != null:
 		_respond_host_interaction(response)
 		return
@@ -466,7 +484,7 @@ func _quit_application() -> void:
 func _complete_closed_session() -> void:
 	_host_interaction = null
 	_active_content = null
-	presentation_coordinator.set_package_media(null)
+	presentation_coordinator.set_package_media(_character_library_media)
 	_refresh_save_previews()
 	_refresh_vault_views()
 	_refresh_campaigns()
@@ -552,12 +570,13 @@ func _publish_character_revision(character_id: String) -> bool:
 
 func _refresh_vault_views() -> void:
 	var revisions: Array[CharacterVaultRevisionView] = []
+	var display_content := _active_content if _active_content != null else _character_library_content
 	for character_id: String in character_vault_repository.list_character_ids():
 		var current_hash := character_vault_repository.current_revision_hash(character_id)
 		var character_archived := current_hash.is_empty()
 		for record: CharacterVaultRecord in character_vault_repository.list_revisions(character_id):
 			var eligibility := character_vault_repository.campaign_eligibility(record, _active_content) if _active_content != null else null
-			revisions.append(CharacterVaultRevisionView.from_record(record, eligibility, record.revision_hash == current_hash, character_archived, _active_content))
+			revisions.append(CharacterVaultRevisionView.from_record(record, eligibility, record.revision_hash == current_hash, character_archived, display_content))
 	revisions.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool:
 		var character_order := left.character_id.naturalnocasecmp_to(right.character_id)
 		if character_order != 0:
@@ -567,6 +586,94 @@ func _refresh_vault_views() -> void:
 		return left.revision_hash < right.revision_hash
 	)
 	_classic_shell.set_vault_revisions(revisions)
+
+
+func _load_classic_character_library() -> void:
+	var result := package_repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH)
+	if not result.is_ok():
+		_classic_shell.set_standalone_character_creation_available(false, result.error_message)
+		_shell_presenter.set_status("Character Files creation unavailable • %s" % result.error_message, true)
+		return
+	_character_library_content = result.content
+	_character_library_media = result.media
+	presentation_coordinator.set_package_media(_character_library_media)
+	_classic_shell.set_standalone_character_creation_available(true)
+
+
+func _begin_standalone_character_creation() -> void:
+	if _active_content != null or session_controller.view().session_started:
+		_shell_presenter.set_status("Finish the current campaign setup before opening the general Character Files creator.", true)
+		return
+	if _character_library_content == null:
+		_shell_presenter.set_status("Character Files creation is unavailable because the built-in Classic definitions did not load.", true)
+		return
+	var identity := _next_character_file_identity()
+	_character_creation_session = CharacterCreationSessionScript.new()
+	var step: SessionStep = _character_creation_session.start(_character_library_content, int(identity["seed"]), String(identity["id"]))
+	if step.state == SessionStep.State.FAILED:
+		_shell_presenter.set_status("Character Files creation failed • %s" % step.error_message, true)
+		_character_creation_session = null
+		return
+	_standalone_character_creation_active = true
+	presentation_coordinator.set_package_media(_character_library_media)
+	presentation_coordinator.present_host_workflow(_character_creation_session.view(), step)
+	_classic_shell.begin_standalone_character_creation()
+	_shell_presenter.set_status("Create a reusable character with the built-in Realmz races and classes.")
+
+
+func _cancel_standalone_character_creation() -> void:
+	if not _standalone_character_creation_active:
+		return
+	_finish_standalone_character_creation("Character creation cancelled.")
+
+
+func _present_standalone_character_step(step: SessionStep) -> void:
+	if not _standalone_character_creation_active or _character_creation_session == null:
+		return
+	if step.state == SessionStep.State.FAILED:
+		presentation_coordinator.present_host_workflow(_character_creation_session.view(), step)
+		_shell_presenter.set_status("Character creation failed • %s" % step.error_message, true)
+		return
+	presentation_coordinator.present_host_workflow(_character_creation_session.view(), step)
+	for event: DomainEvent in step.events:
+		if event.kind == &"character_publication_requested":
+			_publish_standalone_character_revision()
+			return
+
+
+func _publish_standalone_character_revision() -> void:
+	var character: CharacterState = _character_creation_session.completed_character()
+	if character == null:
+		_shell_presenter.set_status("Character File publication failed • the completed character is unavailable.", true)
+		return
+	var record := CharacterVaultRecord.new(character.id, _character_library_content.rules_version, "", _character_library_content.package_hash, character)
+	record.publication_metadata = {"name": character.name, "level": character.level, "source": "classic-application"}
+	if not character_vault_repository.publish_revision(record):
+		_shell_presenter.set_status("Character File publication failed • %s" % character_vault_repository.last_error, true)
+		return
+	_character_creation_session.publication_committed()
+	_finish_standalone_character_creation("Created Character File for %s." % character.name)
+
+
+func _finish_standalone_character_creation(status: String) -> void:
+	_standalone_character_creation_active = false
+	_character_creation_session = null
+	_classic_shell.finish_standalone_character_creation()
+	presentation_coordinator.set_package_media(_character_library_media)
+	presentation_coordinator.refresh()
+	_refresh_vault_views()
+	_classic_shell.show_campaign_selection()
+	_shell_presenter.set_status(status)
+
+
+func _next_character_file_identity() -> Dictionary:
+	var occupied: Dictionary = {}
+	for character_id: String in character_vault_repository.list_character_ids():
+		occupied[character_id] = true
+	var sequence := 1
+	while occupied.has("realmz.character.%d" % sequence):
+		sequence += 1
+	return {"id": "realmz.character.%d" % sequence, "seed": sequence * 7919 + 1}
 
 
 func _archive_vault_character(character_id: String) -> void:

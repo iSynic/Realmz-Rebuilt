@@ -17,6 +17,8 @@ signal presentation_setting_changed(setting_id: StringName, value: Variant)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
 signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool)
+signal standalone_character_creation_requested
+signal standalone_character_creation_cancelled
 
 const GOLD := Color("d5b45d")
 const INK := Color("17191d")
@@ -116,6 +118,9 @@ var _vault_inspection_revision_hash: String = ""
 var _ordinary_money_workspace_open: bool = false
 var _save_previews: Array = []
 var _package_operation_status: RefCounted = PackageOperationStatusScript.new()
+var _standalone_character_creation_available: bool = false
+var _standalone_character_creation_reason: String = "The Classic character library is unavailable."
+var _standalone_character_creation_active: bool = false
 
 
 func _ready() -> void:
@@ -282,8 +287,27 @@ func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 	_vault_revisions = revisions.duplicate()
 	if _screen_id == &"vault":
 		_render_screen()
-	elif _view != null and _view.party_setup_available and _setup_overlay != null and _setup_overlay.visible:
+	elif _setup_overlay != null and _setup_overlay.visible:
 		_refresh_setup_options()
+
+
+func set_standalone_character_creation_available(enabled: bool, reason: String = "") -> void:
+	_standalone_character_creation_available = enabled
+	_standalone_character_creation_reason = reason if not reason.is_empty() else "The Classic character library is unavailable."
+	if _setup_overlay != null and _setup_overlay.visible and _setup_mode == &"assembly":
+		_refresh_setup_options()
+
+
+func begin_standalone_character_creation() -> void:
+	_standalone_character_creation_active = true
+	_setup_mode = &"creator"
+	_reset_creator(false)
+	_render_creator_step()
+
+
+func finish_standalone_character_creation() -> void:
+	_standalone_character_creation_active = false
+	_reset_creator(true)
 
 
 func present_party_setup_status(text: String, is_error: bool = false) -> void:
@@ -557,7 +581,7 @@ func _build_splash_overlay() -> void:
 	var characters := Button.new()
 	characters.name = "CharacterFiles"
 	characters.text = "Character files"
-	characters.tooltip_text = "Review reusable characters. New characters are created for a selected scenario so its race, class, and level rules can be applied."
+	characters.tooltip_text = "Review reusable Character Files. Stock Realmz characters can be created without selecting a scenario; scenario-specific races and classes require that scenario."
 	characters.custom_minimum_size.y = 42.0
 	characters.pressed.connect(_show_vault_from_splash)
 	column.add_child(characters)
@@ -1245,7 +1269,9 @@ func _cancel_creator() -> void:
 	_reset_creator(true)
 	if had_generated_draft:
 		intent_submitted.emit(PlayerIntent.cancel_character_draft())
-	else:
+	if _standalone_character_creation_active:
+		standalone_character_creation_cancelled.emit()
+	elif not had_generated_draft:
 		_render_creator_step()
 
 
@@ -1288,7 +1314,8 @@ func _character_creation_spec() -> CharacterCreationSpec:
 
 
 func _creator_step_message() -> String:
-	return ["Enter the character's identity.", "Choose a race, then a compatible class.", "Choose the character's appearance.", "Review or reroll the generated Classic character.", "Choose starting spells, then add the character to the party."][_creator_step]
+	var final_step := "Choose starting spells, then create the Character File." if _standalone_character_creation_active else "Choose starting spells, then add the character to the party."
+	return ["Enter the character's identity.", "Choose a race, then a compatible class.", "Choose the character's appearance.", "Review or reroll the generated Classic character.", final_step][_creator_step]
 
 
 func _update_creator_actions() -> void:
@@ -1297,7 +1324,7 @@ func _update_creator_actions() -> void:
 	_creator_back_button.disabled = _creator_step == 0
 	_add_character_button.visible = _creator_step == 3
 	_apply_availability(_add_character_button, &"generate_character_draft")
-	_creator_next_button.text = "Add to party" if _creator_step == 4 else "Choose spells" if _creator_step == 3 else "Continue"
+	_creator_next_button.text = ("Create Character File" if _standalone_character_creation_active else "Add to party") if _creator_step == 4 else "Choose spells" if _creator_step == 3 else "Continue"
 	if _creator_step == 4:
 		_apply_availability(_creator_next_button, &"finalize_character")
 	else:
@@ -1446,10 +1473,19 @@ func _refresh_party_list() -> void:
 
 
 func _render_party_assembly() -> void:
+	var campaign_setup := _view != null and _view.party_setup_available and not _standalone_character_creation_active
+	var party_full := campaign_setup and _view.party_members.size() >= _maximum_party_size()
 	_create_character_button.visible = true
 	_begin_button.visible = true
-	_create_character_button.disabled = _view == null or not _view.party_setup_available or _view.party_members.size() >= _maximum_party_size()
-	_create_character_button.tooltip_text = "Select a scenario before creating a campaign-aware character." if _view == null or not _view.party_setup_available else ("This party already has %d characters." % _maximum_party_size() if _create_character_button.disabled else "Create a new character for this campaign.")
+	_create_character_button.disabled = party_full or (not campaign_setup and not _standalone_character_creation_available)
+	if party_full:
+		_create_character_button.tooltip_text = "This party already has %d characters." % _maximum_party_size()
+	elif campaign_setup:
+		_create_character_button.tooltip_text = "Create a character using this scenario's standard or custom race and class definitions."
+	elif _standalone_character_creation_available:
+		_create_character_button.tooltip_text = "Create a reusable Character File with the built-in Realmz races and classes."
+	else:
+		_create_character_button.tooltip_text = _standalone_character_creation_reason
 	_creator_steps.visible = false
 	_creator_action_bar.visible = false
 	_party_setup_options.visible = _view != null and _view.party_setup_available
@@ -1478,27 +1514,27 @@ func _render_party_assembly() -> void:
 	_stored_character_list.add_theme_constant_override("separation", 2)
 	stored_scroll.add_child(_stored_character_list)
 	var current_revisions := _current_vault_revisions()
-	if _view == null or not _view.party_setup_available:
-		return
 	if current_revisions.is_empty():
-		var empty := _label("No stored characters are available. Create one to begin assembling this party.", MUTED)
+		var empty := _label("No Character Files yet. Create one here.", MUTED)
 		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		_stored_character_list.add_child(empty)
 		return
-	var global_available: ActionAvailabilityView = _view.availability(&"import_vault_character") if _view != null else ActionAvailabilityView.new(&"import_vault_character", false, "No active party setup.")
+	var global_available: ActionAvailabilityView = _view.availability(&"import_vault_character") if campaign_setup else ActionAvailabilityView.new(&"import_vault_character", false, "Choose a scenario before adding a Character File to a party.")
 	for revision: CharacterVaultRevisionView in current_revisions:
 		var reason := ""
-		if not revision.eligible:
+		if not campaign_setup:
+			reason = global_available.reason
+		elif not revision.eligible:
 			reason = "\n".join(revision.eligibility_reasons)
 		elif not global_available.enabled:
 			reason = global_available.reason
-		elif _view.party_members.size() >= _maximum_party_size():
+		elif party_full:
 			reason = "This party already has %d characters." % _maximum_party_size()
 		var row := PartySetupCharacterRowScript.new()
 		row.name = "StoredCharacter_%s" % revision.character_id.validate_node_name()
 		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
 		var portrait := _appearance_textures.get(portrait_id) as Texture2D
-		row.configure(revision, revision.eligible and global_available.enabled and _view.party_members.size() < _maximum_party_size(), reason, portrait)
+		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, portrait)
 		row.import_requested.connect(_import_stored_character)
 		_stored_character_list.add_child(row)
 
@@ -1557,6 +1593,13 @@ func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
 
 
 func _start_creator() -> void:
+	if _view == null or not _view.party_setup_available:
+		if _standalone_character_creation_available:
+			standalone_character_creation_requested.emit()
+			return
+		else:
+			_setup_message.text = _standalone_character_creation_reason
+			return
 	_setup_mode = &"creator"
 	_reset_creator(false)
 	_render_creator_step()

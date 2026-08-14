@@ -81,7 +81,9 @@ foreach ($path in $changedPaths) {
     if ($extension -eq ".r2save") {
         throw "Save artifact must not enter a workflow commit: $path"
     }
-    if ($extension -eq ".realmz2" -and -not $path.StartsWith("tests/fixtures/packages/")) {
+    $isAllowedRealmz2 = $path.StartsWith("tests/fixtures/packages/") -or
+        $path -eq "src/infrastructure/characters/realmz-classic-character-library.realmz2"
+    if ($extension -eq ".realmz2" -and -not $isAllowedRealmz2) {
         throw "Campaign package outside the synthetic fixture boundary must not enter a workflow commit: $path"
     }
     $fullPath = Join-Path $repoRoot $path

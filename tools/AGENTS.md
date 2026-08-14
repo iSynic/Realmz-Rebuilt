@@ -27,6 +27,7 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 - Keep the universal macOS export preset on ETC2/ASTC texture import; `verify_export_contract.ps1` enforces the exporter requirement.
 - An action-list route step may execute its named compiled XAP/ED3 program directly when the record has no map topology. Reports must keep that distinction from placed AP reachability.
 - Tier 2 report regeneration is allowed only when the authoritative workflow inventory changed; never use `-Write` for an unrelated workflow edit and never hand-edit the generated status report.
+- Tier 2 scope checks permit only synthetic test packages and the exact committed application Character Files catalog. Every other `.realmz2` remains a local/install artifact and fails the workflow gate.
 - Tier 3 runs `verify.ps1` once per workflow batch, plus source-intelligence validation/regeneration, clean-reference evidence validation, relevant Providence full checks, and one coherent MCP walkthrough.
 
 ## Work Guidance

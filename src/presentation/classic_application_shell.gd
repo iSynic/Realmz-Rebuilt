@@ -25,6 +25,8 @@ signal play_stage_visibility_changed(visible: bool)
 signal vault_archive_requested(character_id: String)
 signal vault_restore_requested(character_id: String, revision_hash: String)
 signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool)
+signal standalone_character_creation_requested
+signal standalone_character_creation_cancelled
 
 const MUTED := Color("9aa4a5")
 const ERROR := Color("ef7770")
@@ -83,6 +85,8 @@ func _ready() -> void:
 	_router.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
 	_router.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
 	_router.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing))
+	_router.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())
+	_router.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
 	_router.screen_changed.connect(_on_screen_changed)
 	_router.system_action_requested.connect(_on_system_action_requested)
 	_router.presentation_setting_changed.connect(_on_presentation_setting_changed)
@@ -290,6 +294,18 @@ func set_package_operation(status: RefCounted) -> void:
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 	_router.set_vault_revisions(revisions)
+
+
+func set_standalone_character_creation_available(enabled: bool, reason: String = "") -> void:
+	_router.set_standalone_character_creation_available(enabled, reason)
+
+
+func begin_standalone_character_creation() -> void:
+	_router.begin_standalone_character_creation()
+
+
+func finish_standalone_character_creation() -> void:
+	_router.finish_standalone_character_creation()
 
 
 func show_campaign_selection() -> void:

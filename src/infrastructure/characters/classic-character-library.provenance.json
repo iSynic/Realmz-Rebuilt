@@ -1,0 +1,27 @@
+{
+  "kind": "realmz2.classic-character-library-provenance",
+  "formatVersion": 1,
+  "compiler": {
+    "name": "Providence",
+    "commit": "54e5dddd044af6fa1d2200d7e5f1932c93368b87",
+    "entrypoint": "src-tauri/examples/export_classic_character_library.rs"
+  },
+  "castle": {
+    "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+    "standardTables": [
+      "base/Realmz/Data Files/Data Race",
+      "base/Realmz/Data Files/Data Caste",
+      "base/Realmz/Data Files/Data ID",
+      "base/Realmz/Data Files/Data S",
+      "base/Realmz/Scenarios/New Scenario/Data NI"
+    ]
+  },
+  "package": {
+    "path": "src/infrastructure/characters/realmz-classic-character-library.realmz2",
+    "campaignId": "realmz-classic-character-library",
+    "packageHash": "55753323199fb3a4e4567a9df441b0e5f54af94a2cdcc39f2abcb49d9beb13bb",
+    "archiveSha256": "67aafe130bc2354a976b9ff84063e134995ba95818728c30f2e9f688da47a444",
+    "bytes": 3733951
+  },
+  "scenarioOverrides": false
+}

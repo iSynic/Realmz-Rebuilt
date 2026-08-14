@@ -63,6 +63,7 @@ func _test_startup_party_setup_composition() -> void:
 	router._build_setup_overlay()
 	var profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
 	router.set_layout_profile(profile, Vector2(960, 600))
+	router.set_standalone_character_creation_available(true)
 	router.show_campaign_selection()
 
 	var workspace := router.find_child("ScenarioPartyWorkspace", true, false) as Control
@@ -149,6 +150,7 @@ func _test_startup_shell() -> void:
 	router.show_splash()
 	var profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
 	router.set_layout_profile(profile, Vector2(960, 600))
+	router.set_standalone_character_creation_available(true)
 	assert_true(router._splash_overlay.visible, "Realmz Rebuilt opens on its application splash instead of dropping directly into package selection")
 	assert_false(router._campaign_overlay.visible, "the campaign library waits for an explicit splash action")
 	var choose_scenario := router._splash_overlay.find_child("ChooseScenario", true, false) as Button
@@ -234,7 +236,12 @@ func _test_startup_shell() -> void:
 		var lower := text.to_lower()
 		return lower.contains("select a scenario") or lower.contains("choose a campaign")
 	), "the empty setup panes avoid repeating scenario-selection helper copy beneath their headings")
-	assert_true(router._create_character_button.disabled and router._begin_button.disabled, "pre-session Character Files and Current Party actions remain unavailable until a scenario is selected")
+	assert_false(router._create_character_button.disabled, "stock Character Files creation remains available before a scenario is selected")
+	assert_true(router._begin_button.disabled, "Begin Adventure remains unavailable until a scenario and party are selected")
+	var standalone_requests: Array[int] = [0]
+	router.standalone_character_creation_requested.connect(func() -> void: standalone_requests[0] += 1)
+	router._create_character_button.pressed.emit()
+	assert_equal(standalone_requests[0], 1, "pre-session Create Character requests the application-owned stock creator")
 	var empty_party_slots: Node = null
 	if setup_workspace != null:
 		empty_party_slots = setup_workspace.find_child("PartySlots", true, false)
@@ -245,7 +252,7 @@ func _test_startup_shell() -> void:
 			assert_not_null(empty_party_slots.find_child("EmptyPartySlot%d" % slot_number, true, false), "pre-session Current Party preserves empty slot %d" % slot_number)
 	assert_true(router.handle_back(), "Back from the integrated pre-session workspace returns to the splash")
 	assert_true(router._splash_overlay.visible, "the startup flow retains a real front door after backing out of campaign selection")
-	assert_contains(character_files.tooltip_text, "selected scenario", "the splash explains why new character generation remains campaign-aware")
+	assert_contains(character_files.tooltip_text, "reusable", "the splash identifies Character Files as application-wide rather than scenario-owned")
 	var route_changes: Array[StringName] = []
 	router.screen_changed.connect(func(screen_id: StringName) -> void: route_changes.append(screen_id))
 	character_files.pressed.emit()
