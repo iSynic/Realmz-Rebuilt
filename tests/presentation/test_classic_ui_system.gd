@@ -75,6 +75,32 @@ func _test_package_operation_presentation() -> void:
 	assert_equal(router.find_child("CancelPackageOperation", true, false), null, "completed package work removes the transient Cancel action")
 	router.free()
 
+	var integrated_router := ClassicScreenRouter.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(integrated_router)
+	integrated_router._body_frame = PanelContainer.new()
+	integrated_router.add_child(integrated_router._body_frame)
+	integrated_router._build_campaign_overlay()
+	integrated_router._build_setup_overlay()
+	var profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
+	integrated_router.set_layout_profile(profile, Vector2(960, 600))
+	integrated_router.show_campaign_selection()
+	integrated_router.set_package_operation(PackageOperationStatusScript.new(&"running", &"loading", 1, 3, "Loading scenario package and preparing its campaign records…"))
+	var scenario_column := integrated_router.find_child("ScenarioColumn", true, false) as Control
+	var loading_label := integrated_router.find_child("PackageOperationStatus", true, false) as Label
+	var operation_controls := integrated_router.find_child("PackageOperationControls", true, false) as Control
+	var loading_progress := integrated_router.find_child("PackageOperationProgress", true, false) as ProgressBar
+	var loading_cancel := integrated_router.find_child("CancelPackageOperation", true, false) as Button
+	var character_heading := integrated_router.find_child("CharacterFilesHeading", true, false) as Control
+	var character_column := character_heading.get_parent() as Control if character_heading != null else null
+	var party_heading := integrated_router.find_child("PartyHeading", true, false) as Control
+	var party_column := party_heading.get_parent() as Control if party_heading != null else null
+	var operation_row := integrated_router.find_child("PackageOperationRow", true, false) as Control
+	var intended_scenario_width := ClassicScreenRouter.campaign_rect_for(profile, Vector2(960, 600)).size.x
+	assert_true(loading_label != null and loading_label.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART and operation_row != null and operation_row is VBoxContainer and operation_controls != null and operation_controls is HBoxContainer and operation_row.get_child_count() == 2 and operation_row.get_child(0) == loading_label and operation_row.get_child(1) == operation_controls and scenario_column != null and scenario_column.get_combined_minimum_size().x >= 200.0, "integrated package loading copy keeps a practical horizontal Scenarios width instead of collapsing to one-character lines")
+	assert_true(operation_controls != null and loading_progress != null and loading_cancel != null and operation_controls.get_combined_minimum_size().x <= intended_scenario_width and scenario_column != null and scenario_column.get_combined_minimum_size().x <= intended_scenario_width, "progress and Cancel fit inside the intended bounded Scenarios share")
+	assert_true(character_heading != null and character_heading.visible and character_column != null and character_column.get_combined_minimum_size().x > 0.0 and party_heading != null and party_heading.visible and party_column != null and party_column.get_combined_minimum_size().x > 0.0, "package loading keeps the Character Files and Current Party columns mounted and visible")
+	integrated_router.free()
+
 
 func _test_startup_shell() -> void:
 	var router := ClassicScreenRouter.new()

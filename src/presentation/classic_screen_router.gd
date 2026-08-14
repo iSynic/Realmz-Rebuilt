@@ -212,28 +212,36 @@ func set_package_operation(status: RefCounted) -> void:
 func _render_campaign_list() -> void:
 	_clear(_campaign_list)
 	if _package_operation_status.is_running():
-		var operation_row := HBoxContainer.new()
+		var operation_row := VBoxContainer.new()
 		operation_row.name = "PackageOperationRow"
-		operation_row.custom_minimum_size = Vector2(0, 52)
+		operation_row.custom_minimum_size = Vector2(0, 76)
+		operation_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		operation_row.add_theme_constant_override("separation", 4)
 		var operation_label := Label.new()
 		operation_label.name = "PackageOperationStatus"
 		operation_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		operation_label.text = _package_operation_status.message
+		operation_label.tooltip_text = _package_operation_status.message
 		operation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		operation_row.add_child(operation_label)
+		var operation_controls := HBoxContainer.new()
+		operation_controls.name = "PackageOperationControls"
+		operation_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		var progress := ProgressBar.new()
 		progress.name = "PackageOperationProgress"
-		progress.custom_minimum_size = Vector2(150, 0)
+		progress.custom_minimum_size = Vector2(80, 24)
+		progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		progress.show_percentage = _package_operation_status.total > 0
 		progress.indeterminate = _package_operation_status.total <= 0
 		progress.max_value = maxf(1.0, float(_package_operation_status.total))
 		progress.value = clampf(float(_package_operation_status.completed), 0.0, progress.max_value)
-		operation_row.add_child(progress)
+		operation_controls.add_child(progress)
 		var cancel := Button.new()
 		cancel.name = "CancelPackageOperation"
 		cancel.text = "Cancel"
 		cancel.pressed.connect(func() -> void: cancel_package_requested.emit())
-		operation_row.add_child(cancel)
+		operation_controls.add_child(cancel)
+		operation_row.add_child(operation_controls)
 		_campaign_list.add_child(operation_row)
 	if _campaigns.is_empty():
 		if not _package_operation_status.is_running():
