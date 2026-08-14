@@ -17,7 +17,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - Preserve imported pixels byte-for-byte. Derived slate surfaces must identify their source asset and algorithm.
 - Integrated media keeps exact Classic `(resource type, ID)` identity and provenance. The runtime resolves scenario package media before these application fallbacks, matching Castle's resource-chain precedence.
 - Preserve existing Godot `.import` sidecars for retained catalog assets so exact-byte regeneration does not churn stable resource UIDs; newly added assets receive their sidecars from the ordinary Godot import pass.
-- `build-classic-surfaces.ps1 -RebuildFromCommittedSurface` is the offline path for regenerating the seamless tile and frame kit without replacing selected SpriteCook provenance.
+- `build-classic-surfaces.ps1 -RebuildFromCommittedSurface` is the offline path for regenerating the seamless tile and frame kit without replacing selected SpriteCook provenance. Raised and inset frames tile the selected slate through their complete bounds; bevel corners remain opaque so controls cannot reveal unrelated parent colors.
 - Validate hashes and PNG dimensions before replacing committed outputs.
 
 ## Work Guidance
@@ -27,7 +27,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 ## Verification
 
 - `sync-classic-ui-assets.ps1` verifies source commits, source hashes, decoded CICN identity, PNG bytes, dimensions, and manifest output.
-- `build-classic-surfaces.ps1` verifies every generated PNG, records deterministic SHA-256 values, and produces a tile with exact matching opposite edges.
+- `build-classic-surfaces.ps1` verifies every generated PNG, records deterministic SHA-256 values, produces a tile with exact matching opposite edges, and records the opaque-bevel algorithm version.
 - `verify-classic-application-media.ps1` verifies unique IDs/resource keys, the expected integrated sound and combat-CIcon counts, native image dimensions, and every committed byte count and SHA-256 without requiring an external Castle checkout.
 
 ## Child DOX Index

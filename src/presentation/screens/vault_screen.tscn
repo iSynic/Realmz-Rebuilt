@@ -2,5 +2,5 @@
 [ext_resource type="PackedScene" path="res://src/presentation/screens/classic_route_screen.tscn" id="1_base"]
 [node name="VaultScreen" instance=ExtResource("1_base")]
 route_id = &"vault"
-title = "Character Vault"
-description = "Immutable revisions, campaign provenance, and import eligibility."
+title = "Character Files"
+description = "Reusable characters, revision history, and campaign eligibility."

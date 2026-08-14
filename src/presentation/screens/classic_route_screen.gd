@@ -21,4 +21,5 @@ func _ready() -> void:
 func set_workspace_rect(workspace_rect: Rect2) -> void:
 	position = workspace_rect.position + Vector2(8.0, 8.0)
 	size = workspace_rect.size - Vector2(16.0, 16.0)
-	_header.vertical = workspace_rect.size.x < 620.0
+	if _header != null:
+		_header.vertical = workspace_rect.size.x < 620.0

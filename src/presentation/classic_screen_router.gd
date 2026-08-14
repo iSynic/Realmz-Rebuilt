@@ -5,6 +5,7 @@ const SaveSlotPreviewScript := preload("res://src/infrastructure/saves/save_slot
 const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
 const PartySetupCharacterRowScript := preload("res://src/presentation/party_setup_character_row.gd")
 const PartySetupPartyListScript := preload("res://src/presentation/party_setup_party_list.gd")
+const ClassicUiTheme := preload("res://src/presentation/classic_ui_theme.tres")
 
 signal screen_changed(screen_id: StringName)
 signal start_requested(package_path: String, seed: int)
@@ -293,8 +294,6 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2) -> voi
 	var top := profile.menu_height
 	var bottom := profile.bottom_height
 	_workspace_rect = Rect2(0.0, top, maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top - bottom))
-	if _body_frame != null:
-		_workspace_view.set_workspace_rect(_workspace_rect)
 	_modal_layout_rect = Rect2(12.0, top + 8.0, maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - top - 16.0))
 	_campaign_layout_rect = ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
 	if _setup_overlay != null:
@@ -321,6 +320,8 @@ static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2) 
 
 
 func _apply_modal_layouts() -> void:
+	if _workspace_view != null:
+		_workspace_view.set_workspace_rect(_workspace_layout_rect())
 	if _splash_overlay != null:
 		_splash_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		_splash_overlay.position = _modal_layout_rect.position
@@ -376,7 +377,7 @@ func show_campaign_selection() -> void:
 
 
 func full_stage_overlay_visible() -> bool:
-	return _splash_overlay != null and _splash_overlay.visible or _campaign_overlay != null and _campaign_overlay.visible or _setup_overlay != null and _setup_overlay.visible
+	return _splash_overlay != null and _splash_overlay.visible or _campaign_overlay != null and _campaign_overlay.visible or _setup_overlay != null and _setup_overlay.visible or _screen_id == &"vault"
 
 
 func accepts_exploration_input() -> bool:
@@ -474,12 +475,16 @@ func _build_body() -> void:
 	_mount_workspace(_screen_id)
 
 
+func _workspace_layout_rect() -> Rect2:
+	return _modal_layout_rect if _screen_id == &"vault" else _workspace_rect
+
+
 func _build_splash_overlay() -> void:
 	_splash_overlay = PanelContainer.new()
 	_splash_overlay.name = "SplashScreen"
 	_splash_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	var surface := StyleBoxFlat.new()
-	surface.bg_color = Color("101317")
+	surface.bg_color = Color(0.0, 0.0, 0.0, 0.0)
 	surface.border_color = Color("4b5157")
 	surface.set_border_width_all(1)
 	surface.content_margin_left = 24.0
@@ -540,7 +545,7 @@ func _mount_workspace(screen_id: StringName) -> void:
 	_workspace_view.name = "WorkspaceFrame"
 	add_child(_workspace_view)
 	move_child(_workspace_view, 0)
-	_workspace_view.set_workspace_rect(_workspace_rect)
+	_workspace_view.set_workspace_rect(_workspace_layout_rect())
 	_body_frame = _workspace_view
 	_body_scroll = _workspace_view.scroll
 	_body = _workspace_view.body
@@ -612,7 +617,7 @@ func _build_setup_overlay() -> void:
 	_setup_overlay.name = "PartySetup"
 	_setup_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	var setup_surface := StyleBoxFlat.new()
-	setup_surface.bg_color = Color("121519")
+	setup_surface.bg_color = Color(0.0, 0.0, 0.0, 0.0)
 	setup_surface.border_color = Color("4b5157")
 	setup_surface.set_border_width_all(1)
 	setup_surface.content_margin_left = 10.0
@@ -766,14 +771,7 @@ func _build_setup_overlay() -> void:
 func _build_setup_character_inspection() -> void:
 	_setup_inspection_overlay = PanelContainer.new()
 	_setup_inspection_overlay.name = "PartySetupCharacterInspection"
-	var inspection_surface := StyleBoxFlat.new()
-	inspection_surface.bg_color = Color("121519")
-	inspection_surface.border_color = Color("4b5157")
-	inspection_surface.set_border_width_all(1)
-	inspection_surface.content_margin_left = 10.0
-	inspection_surface.content_margin_top = 8.0
-	inspection_surface.content_margin_right = 10.0
-	inspection_surface.content_margin_bottom = 8.0
+	var inspection_surface := ClassicUiTheme.get_stylebox("panel", "ClassicInset").duplicate() as StyleBoxTexture
 	_setup_inspection_overlay.add_theme_stylebox_override("panel", inspection_surface)
 	_setup_inspection_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	_setup_inspection_overlay.clip_contents = true
@@ -1608,6 +1606,8 @@ func _render_screen() -> void:
 	var previous_scroll_horizontal := _body_scroll.scroll_horizontal if _body_scroll != null else 0
 	var previous_scroll_vertical := _body_scroll.scroll_vertical if _body_scroll != null else 0
 	_mount_workspace(_screen_id)
+	if _workspace_view != null:
+		_workspace_view.set_workspace_rect(_workspace_layout_rect())
 	if _body == null:
 		return
 	_clear(_body)
@@ -1892,6 +1892,7 @@ func _show_vault_from_campaign() -> void:
 	_setup_overlay.visible = false
 	_screen_id = &"vault"
 	_body_frame.visible = true
+	screen_changed.emit(_screen_id)
 	_render_screen()
 
 
@@ -1905,6 +1906,7 @@ func _show_vault_from_splash() -> void:
 	_setup_overlay.visible = false
 	_screen_id = &"vault"
 	_body_frame.visible = true
+	screen_changed.emit(_screen_id)
 	_render_screen()
 
 

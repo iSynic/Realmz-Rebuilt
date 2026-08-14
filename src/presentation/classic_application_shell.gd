@@ -572,6 +572,7 @@ func _on_screen_changed(screen_id: StringName) -> void:
 func _set_play_regions_visible(visible: bool) -> void:
 	_stage_frame.visible = visible
 	_bottom_region.visible = visible
+	_party_roster.visible = visible
 	play_stage_visibility_changed.emit(visible)
 
 

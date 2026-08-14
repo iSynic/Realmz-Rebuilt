@@ -84,6 +84,8 @@ func _test_startup_shell() -> void:
 	router._build_campaign_overlay()
 	router._build_setup_overlay()
 	router.show_splash()
+	var profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
+	router.set_layout_profile(profile, Vector2(960, 600))
 	assert_true(router._splash_overlay.visible, "Realmz Rebuilt opens on its application splash instead of dropping directly into package selection")
 	assert_false(router._campaign_overlay.visible, "the campaign library waits for an explicit splash action")
 	var choose_scenario := router._splash_overlay.find_child("ChooseScenario", true, false) as Button
@@ -95,6 +97,14 @@ func _test_startup_shell() -> void:
 	assert_true(router.handle_back(), "Back from the pre-session campaign library returns to the splash")
 	assert_true(router._splash_overlay.visible, "the startup flow retains a real front door after backing out of campaign selection")
 	assert_contains(character_files.tooltip_text, "selected scenario", "the splash explains why new character generation remains campaign-aware")
+	var route_changes: Array[StringName] = []
+	router.screen_changed.connect(func(screen_id: StringName) -> void: route_changes.append(screen_id))
+	character_files.pressed.emit()
+	assert_equal(router.current_screen(), &"vault", "Character Files opens the advanced reusable-character workspace")
+	assert_true(router.full_stage_overlay_visible(), "Character Files owns the complete stage instead of sharing it with the persistent roster")
+	assert_true(router._vault_return_to_splash, "startup Character Files retains an explicit return to the splash")
+	assert_equal(route_changes[-1], &"vault", "opening Character Files notifies the shell so it can suppress persistent play regions")
+	assert_equal([router._workspace_view.position, router._workspace_view.size], [router._modal_layout_rect.position + Vector2(8.0, 8.0), router._modal_layout_rect.size - Vector2(16.0, 16.0)], "Character Files immediately reapplies the complete modal workspace rectangle")
 	router.free()
 
 
@@ -1109,6 +1119,10 @@ func _test_stone_surface_tiling() -> void:
 		vertical_edges_match = vertical_edges_match and tile_image.get_pixel(coordinate, 0) == tile_image.get_pixel(coordinate, tile_image.get_height() - 1)
 	assert_true(horizontal_edges_match, "the derived stone tile has identical left and right edge pixels")
 	assert_true(vertical_edges_match, "the derived stone tile has identical top and bottom edge pixels")
+	for frame_path: String in ["res://src/presentation/assets/ui/classic-raised-frame.png", "res://src/presentation/assets/ui/classic-inset-frame.png"]:
+		var frame_image := (load(frame_path) as Texture2D).get_image()
+		for corner: Vector2i in [Vector2i.ZERO, Vector2i(frame_image.get_width() - 1, 0), Vector2i(0, frame_image.get_height() - 1), frame_image.get_size() - Vector2i.ONE]:
+			assert_equal(frame_image.get_pixelv(corner).a, 1.0, "generated bevel owns opaque slate at %s corner %s" % [frame_path, str(corner)])
 	var application_scene := load("res://src/presentation/realmz_application.tscn") as PackedScene
 	var application := application_scene.instantiate() as Control
 	var stone := application.get_node("StoneTexture") as TextureRect
@@ -1420,7 +1434,7 @@ func _test_character_creator_workflow() -> void:
 	router._apply_modal_layouts()
 	assert_equal(router._setup_overlay.size.x, 936.0, "party assembly covers the complete application width instead of duplicating the persistent in-game roster")
 	var setup_surface := router._setup_overlay.get_theme_stylebox("panel") as StyleBoxFlat
-	assert_true(setup_surface != null and setup_surface.bg_color.a >= 0.99, "party setup owns an opaque workspace rather than exposing the persistent exploration roster beneath it")
+	assert_true(setup_surface != null and setup_surface.bg_color.a == 0.0, "party setup exposes the one root-aligned slate tile instead of replacing it with a flat fill")
 	assert_equal(router._setup_mode, &"assembly", "party setup opens on stored-character assembly instead of forcing the creator")
 	assert_true(router._setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool: return button.text != "Revision history and archives…"), "advanced revision history and archive controls stay out of ordinary party assembly")
 	assert_not_null(router._stored_character_list, "stored characters remain visible beside the six party slots")
@@ -1469,8 +1483,8 @@ func _test_character_creator_workflow() -> void:
 	var intent_count_before_inspection := intents.size()
 	inspect_setup.pressed.emit()
 	assert_true(router._setup_inspection_overlay.visible, "party setup can open a complete detached character inspection surface before play")
-	var inspection_surface := router._setup_inspection_overlay.get_theme_stylebox("panel") as StyleBoxFlat
-	assert_true(inspection_surface != null and inspection_surface.bg_color.a >= 0.99, "party inspection owns an opaque surface instead of drawing its character sheet over party assembly")
+	var inspection_surface := router._setup_inspection_overlay.get_theme_stylebox("panel") as StyleBoxTexture
+	assert_true(inspection_surface != null and inspection_surface.texture.resource_path.ends_with("classic-inset-frame.png"), "party inspection owns an opaque slate-backed inset instead of compositing its sheet over party assembly")
 	assert_equal([router._setup_inspection_overlay.position, router._setup_inspection_overlay.size, router._setup_inspection_overlay.z_index, router._setup_inspection_overlay.clip_contents], [Vector2.ZERO, router._setup_overlay.size, 1, true], "party inspection fills and clips to the complete setup viewport above its assembly content")
 	assert_not_null(router._setup_inspection_overlay.find_child("PartySetupCharacterSheet", true, false), "setup inspection reuses the complete Classic character sheet instead of a second summary path")
 	assert_equal(intents.size(), intent_count_before_inspection, "opening and browsing setup inspection cannot mutate the session")
@@ -2174,12 +2188,26 @@ func _test_scene_composition() -> void:
 	assert_equal(router.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the full-window router cannot mask menus or sibling controls")
 	assert_true(router.get_index() > roster.get_index() and router.get_index() > bottom_region.get_index(), "modal router children are ordered above roster and textbox input regions")
 	assert_true(router.z_index > bottom_region.z_index, "workspace controls remain clickable where a scrolling route extends into the persistent bottom-region rows")
+	shell._stage_frame = shell.get_node("StageFrame") as NinePatchRect
+	shell._bottom_region = bottom_region as PanelContainer
+	shell._party_roster = roster as ClassicPartyRoster
+	shell._set_play_regions_visible(false)
+	assert_false(roster.visible, "full-stage routes remove the persistent roster rather than leaving a second party surface visible")
+	shell._set_play_regions_visible(true)
+	assert_true(roster.visible, "ordinary exploration and application routes restore the persistent roster")
 	for viewport_size: Vector2 in [Vector2(800, 600), Vector2(960, 600), Vector2(1280, 720), Vector2(1920, 1080)]:
 		var profile := UiLayoutProfile.for_viewport(viewport_size, PresentationSettings.UI_SCALE_AUTO)
 		var campaign_rect := ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
 		var stage_width := viewport_size.x - profile.party_width
 		assert_true(campaign_rect.position.x >= 0.0 and campaign_rect.position.x + campaign_rect.size.x <= stage_width, "campaign controls stay out of the roster hit region at %s" % str(viewport_size))
 		assert_true(campaign_rect.position.y >= profile.menu_height and campaign_rect.position.y + campaign_rect.size.y <= viewport_size.y, "campaign controls stay inside the viewport at %s" % str(viewport_size))
+		var vault_router := ClassicScreenRouter.new()
+		vault_router._screen_id = &"vault"
+		vault_router._workspace_rect = Rect2(0.0, profile.menu_height, stage_width, viewport_size.y - profile.menu_height - profile.bottom_height)
+		vault_router._modal_layout_rect = Rect2(12.0, profile.menu_height + 8.0, viewport_size.x - 24.0, viewport_size.y - profile.menu_height - 16.0)
+		assert_equal(vault_router._workspace_layout_rect(), vault_router._modal_layout_rect, "Character Files receives the complete stage width at %s" % str(viewport_size))
+		assert_true(vault_router.full_stage_overlay_visible(), "Character Files suppresses the roster, textbox, and command deck at %s" % str(viewport_size))
+		vault_router.free()
 	assert_false(shell.has_node("TopBar"), "the dashboard title bar is removed")
 	assert_false(shell.has_node("RightPanel"), "the persistent Chronicle column is removed")
 	shell.free()
@@ -2214,6 +2242,7 @@ func _test_scene_composition() -> void:
 	var texture_path := "res://src/presentation/assets/ui/classic-charcoal-slate.png"
 	assert_true(ResourceLoader.exists(texture_path, "Texture2D"), "the selected low-contrast stone texture imports as a Godot texture")
 	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://src/presentation/assets/ui/spritecook-assets.json"))
+	assert_equal(manifest["schema_version"], 4, "the chrome manifest records the opaque-bevel derivation contract")
 	assert_equal(manifest["selected_asset"]["asset_id"], "3f355030-0f8c-4d4e-b079-26ba8d3dbc32", "the committed texture retains selected SpriteCook provenance")
 	assert_equal(manifest["files"].size(), 4, "the selected surface, seamless tile, and two deterministic frames ship together")
 	for entry: Dictionary in manifest["files"]:

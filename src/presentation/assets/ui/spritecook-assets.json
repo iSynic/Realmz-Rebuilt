@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "selected_asset": {
     "asset_id": "3f355030-0f8c-4d4e-b079-26ba8d3dbc32",
     "label": "Realmz 2 Classic-wide charcoal slate",
@@ -9,7 +9,7 @@
   },
   "derivation": {
     "generator": "tools/ui-assets/build-classic-surfaces.ps1",
-    "algorithm": "system-drawing-bicubic-512-plus-cosine-feathered-512-tile-and-528px-bevel-v2",
+    "algorithm": "system-drawing-bicubic-512-plus-cosine-feathered-512-tile-and-opaque-528px-bevel-v3",
     "seamless_strategy": "64px-cosine-opposite-edge-feather"
   },
   "files": [
@@ -29,13 +29,13 @@
       "path": "res://src/presentation/assets/ui/classic-raised-frame.png",
       "width": 528,
       "height": 528,
-      "sha256": "9a006d9aee02f662d9281cd2af5ff8726ca281d541ba7686d4d927591f8fadf2"
+      "sha256": "975be046918b3f18ef1178d04778382c1ccf98af083476062bd3eaddfb2a7158"
     },
     {
       "path": "res://src/presentation/assets/ui/classic-inset-frame.png",
       "width": 528,
       "height": 528,
-      "sha256": "2922c3fe19af688caf4ec9a4c9ea63584c0d94ea94099a636e8cb0273c6d6f58"
+      "sha256": "8ddf7d4573cf164ae3806d8aa56b6f421f5fa3c2af27679f6f0f690e200f73bc"
     }
   ]
 }

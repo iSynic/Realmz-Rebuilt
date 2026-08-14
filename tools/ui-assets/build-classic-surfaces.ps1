@@ -136,7 +136,10 @@ try {
                 $frame = [Drawing.Bitmap]::new($seamlessTile.Width + 16, $seamlessTile.Height + 16, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
                 $frameGraphics = [Drawing.Graphics]::FromImage($frame)
                 try {
-                    $frameGraphics.DrawImageUnscaled($seamlessTile, 8, 8)
+                    $frameGraphics.Clear([Drawing.Color]::FromArgb(255, 24, 27, 28))
+                    $tileBrush = [Drawing.TextureBrush]::new($seamlessTile, [Drawing.Drawing2D.WrapMode]::Tile)
+                    try { $frameGraphics.FillRectangle($tileBrush, 0, 0, $frame.Width, $frame.Height) }
+                    finally { $tileBrush.Dispose() }
                     $topPen = [Drawing.Pen]::new($definition.Top, 3)
                     $bottomPen = [Drawing.Pen]::new($definition.Bottom, 3)
                     try {
@@ -184,11 +187,11 @@ try {
         finally { $bitmap.Dispose() }
     }
     $manifest = [ordered]@{
-        schema_version = 3
+        schema_version = 4
         selected_asset = $selectedAsset
         derivation = [ordered]@{
             generator = "tools/ui-assets/build-classic-surfaces.ps1"
-            algorithm = "system-drawing-bicubic-512-plus-cosine-feathered-512-tile-and-528px-bevel-v2"
+            algorithm = "system-drawing-bicubic-512-plus-cosine-feathered-512-tile-and-opaque-528px-bevel-v3"
             seamless_strategy = "64px-cosine-opposite-edge-feather"
         }
         files = $records
