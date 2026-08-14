@@ -2,6 +2,7 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const TAMPERED_FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-tampered.realmz2"
+const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v2"
 
 
 func run() -> void:
@@ -12,7 +13,7 @@ func run() -> void:
 		return
 	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "bc97f821af1d19d3517681f027b9d54143145b78fdcedb46ab72ee4e9380093a", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "e15136a07d93c507b81fb7c9f56576199244dfc85f46da940f2f0e069aaaa63f", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -287,15 +288,25 @@ func run() -> void:
 	assert_not_null(dungeon_tileset, "the authoritative dungeon render identity resolves to a package tileset")
 	assert_equal(dungeon_tileset.region_for(1), Rect2i(0, 0, 16, 16), "the first Classic dungeon tile resolves without an off-by-one shift")
 
-	var install_root := "user://realmz2-tests/package-install-schema-v2/%s" % loaded.content.package_hash
+	_cleanup_install_test_root()
+	var install_root := INSTALL_TEST_ROOT.path_join(loaded.content.package_hash)
 	var installed := repository.install_package(FIXTURE_PATH, install_root)
-	assert_true(installed.is_ok(), "a validated package installs through temporary typed readback: %s" % installed.error_message)
+	assert_true(installed.is_ok(), "a Providence-validated package installs through temporary byte readback: %s" % installed.error_message)
 	if installed.is_ok():
 		assert_true(FileAccess.file_exists(installed.installed_path), "the immutable installed package exists at its content-hash path")
+		assert_true(FileAccess.file_exists(installed.installed_path + ".receipt.json"), "installation writes a durable validation receipt beside the immutable package")
 		assert_contains(installed.installed_path, loaded.content.package_hash, "the installation path carries the package identity")
 		var repeated := repository.install_package(FIXTURE_PATH, install_root)
 		assert_true(repeated.is_ok(), "reinstalling identical immutable content is idempotent")
 		assert_equal(repeated.installed_path, installed.installed_path, "idempotent installation resolves to the same package")
+		var installed_phases: Array[StringName] = []
+		var reopened := PackageRepository.new().install_package(installed.installed_path, install_root, func(phase: StringName, _completed: int, _total: int) -> void:
+			if not installed_phases.has(phase):
+				installed_phases.append(phase)
+		)
+		assert_true(reopened.is_ok(), "a fresh application process opens the app-owned installed package from its validation receipt")
+		assert_true(installed_phases.has(&"checking-install"), "installed startup checks the durable receipt and immutable file identity")
+		assert_false(installed_phases.has(&"validating-integrity"), "installed startup does not repeat Providence payload validation")
 		var duplicate_path := installed.installed_path.get_base_dir().path_join("zz-duplicate.realmz2")
 		if FileAccess.file_exists(duplicate_path):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(duplicate_path))
@@ -320,6 +331,15 @@ func run() -> void:
 				listed_path = candidate.path
 		assert_equal(listed_campaigns, 1, "campaign discovery collapses immutable revisions to one current campaign entry")
 		assert_equal(listed_path, duplicate_path, "campaign discovery selects the most recently installed valid revision")
+		var altered_install := FileAccess.open(installed.installed_path, FileAccess.READ_WRITE)
+		assert_not_null(altered_install, "the receipt test can alter its isolated installed fixture")
+		if altered_install != null:
+			altered_install.seek_end()
+			altered_install.store_8(0)
+			altered_install.close()
+			var changed_install := PackageRepository.new().install_package(installed.installed_path, install_root)
+			assert_false(changed_install.is_ok(), "an installed archive changed outside the installer invalidates its receipt")
+			assert_contains(changed_install.error_message, "byte count", "changed installed bytes report the invalid immutable-file identity")
 
 	var picture := PackageMediaAsset.new("fixture.picture", "Fixture", "picture", "image/png", "PICT", 128, 0, "0000000000000000000000000000000000000000000000000000000000000000", "assets/media/0000000000000000000000000000000000000000000000000000000000000000.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
 	assert_true(picture.is_picture(), "package media classifies pictures by typed MIME and resource identity")
@@ -385,3 +405,25 @@ func run() -> void:
 	var sandbox_error := PackageRepository.package_capability_error("realmz.scenario.gdscript-actions-v1")
 	assert_contains(sandbox_error, "no secure external host", "the manifest readiness path rejects deferred GDScript backends at the security boundary")
 	assert_contains(PackageRepository.package_capability_error("realmz.scenario.unknown-v1"), "unknown capability", "the same readiness path rejects unrecognized package capabilities")
+	_cleanup_install_test_root()
+
+
+func _cleanup_install_test_root() -> void:
+	var expected := ProjectSettings.globalize_path("user://").simplify_path().path_join("realmz2-tests").path_join("package-install-schema-v2")
+	var actual := ProjectSettings.globalize_path(INSTALL_TEST_ROOT).simplify_path()
+	if actual != expected or not DirAccess.dir_exists_absolute(actual):
+		return
+	_remove_install_tree(actual, actual)
+
+
+func _remove_install_tree(path: String, verified_root: String) -> void:
+	if path != verified_root and not path.begins_with(verified_root + "/"):
+		return
+	var directory := DirAccess.open(path)
+	if directory == null:
+		return
+	for file_name: String in directory.get_files():
+		DirAccess.remove_absolute(path.path_join(file_name))
+	for directory_name: String in directory.get_directories():
+		_remove_install_tree(path.path_join(directory_name), verified_root)
+	DirAccess.remove_absolute(path)

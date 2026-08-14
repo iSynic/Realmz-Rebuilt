@@ -1,7 +1,9 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "8167835e4db54d97eb90a263967d472f8108dbf63c3bc0ebd5d723441bdadbaf"
+const EXPECTED_SCHEMA_HASH: String = "bf783219fa80ea72e72919d23ee30f09c591d2b24ea33887dadd25ad4825fc64"
+const INSTALL_RECEIPT_KIND: String = "realmz2.install-receipt"
+const INSTALL_RECEIPT_VERSION: int = 1
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",
@@ -49,6 +51,12 @@ func load_package(path: String, progress_callback: Callable = Callable(), cancel
 
 
 func install_package(source_path: String, install_root: String = "user://packages", progress_callback: Callable = Callable(), cancel_callback: Callable = Callable()) -> PackageInstallResult:
+	var installed_source := _load_installed_package(source_path, install_root, progress_callback, cancel_callback)
+	if installed_source != null:
+		if installed_source.is_ok():
+			_report_progress(progress_callback, &"complete", 1, 1)
+			return PackageInstallResult.succeeded(source_path, installed_source)
+		return PackageInstallResult.failed(installed_source.error_code, installed_source.error_message)
 	_report_progress(progress_callback, &"validating-source", 0, 1)
 	var source := load_package(source_path, progress_callback, cancel_callback)
 	if not source.is_ok():
@@ -64,9 +72,15 @@ func install_package(source_path: String, install_root: String = "user://package
 	var target_path := campaign_root.path_join("%s.realmz2" % source.content.package_hash)
 	if FileAccess.file_exists(target_path):
 		if _same_package_path(source_path, target_path):
+			if not _write_install_receipt(target_path, source.content, _sha256_file(target_path)):
+				return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
 			_report_progress(progress_callback, &"complete", 1, 1)
 			return PackageInstallResult.succeeded(target_path, source)
-		var existing := load_package(target_path, progress_callback, cancel_callback)
+		var existing := _load_installed_package(target_path, install_root, progress_callback, cancel_callback)
+		if existing == null:
+			existing = load_package(target_path, progress_callback, cancel_callback)
+			if existing.is_ok() and not _write_install_receipt(target_path, existing.content, _sha256_file(target_path)):
+				return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
 		if existing.is_ok() and existing.content.package_hash == source.content.package_hash:
 			_report_progress(progress_callback, &"complete", 1, 1)
 			return PackageInstallResult.succeeded(target_path, existing)
@@ -88,17 +102,19 @@ func install_package(source_path: String, install_root: String = "user://package
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
 		return PackageInstallResult.failed(&"package_cancelled", "Package operation cancelled.")
 	_report_progress(progress_callback, &"validating-install", 0, 1)
-	var verified := load_package(temporary_path, progress_callback, cancel_callback)
-	if not verified.is_ok() or verified.content.package_hash != source.content.package_hash:
+	var archive_sha256 := _sha256(source_bytes)
+	var installed_bytes := FileAccess.get_file_as_bytes(temporary_path)
+	if installed_bytes.size() != source_bytes.size() or _sha256(installed_bytes) != archive_sha256:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
-		if verified.error_code == &"package_cancelled":
-			return PackageInstallResult.failed(verified.error_code, verified.error_message)
-		return PackageInstallResult.failed("package_install_readback_failed", "Temporary package installation failed typed readback validation.")
+		return PackageInstallResult.failed("package_install_readback_failed", "Temporary package installation failed byte-for-byte readback validation.")
 	var rename_error := DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary_path), ProjectSettings.globalize_path(target_path))
 	if rename_error != OK:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
 		return PackageInstallResult.failed("package_install_commit_failed", "Could not atomically install the verified package (error %d)." % rename_error)
-	var installed := PackageLoadResult.succeeded(verified.content, PackageMediaCatalog.new(target_path, verified.content.package_hash, verified.media.assets()))
+	if not _write_install_receipt(target_path, source.content, archive_sha256):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(target_path))
+		return PackageInstallResult.failed("package_receipt_write_failed", "Could not write the validated package installation receipt.")
+	var installed := PackageLoadResult.succeeded(source.content, PackageMediaCatalog.new(target_path, source.content.package_hash, source.media.assets()))
 	_loaded_packages[_package_cache_key(target_path)] = installed
 	_report_progress(progress_callback, &"complete", 1, 1)
 	return PackageInstallResult.succeeded(target_path, installed)
@@ -185,7 +201,115 @@ func _same_package_path(left: String, right: String) -> bool:
 	return ProjectSettings.globalize_path(left).simplify_path().to_lower() == ProjectSettings.globalize_path(right).simplify_path().to_lower()
 
 
-func _load_open_archive(archive: ZIPReader, source_path: String, progress_callback: Callable = Callable(), cancel_callback: Callable = Callable()) -> PackageLoadResult:
+func _load_installed_package(path: String, install_root: String, progress_callback: Callable = Callable(), cancel_callback: Callable = Callable()) -> PackageLoadResult:
+	if not _is_installed_package_path(path, install_root):
+		return null
+	var receipt_path := _install_receipt_path(path)
+	if not FileAccess.file_exists(receipt_path):
+		return null
+	_report_progress(progress_callback, &"checking-install", 0, 1)
+	if _cancel_requested(cancel_callback):
+		return PackageLoadResult.failed(&"package_cancelled", "Package operation cancelled.")
+	var receipt_value: Variant = JSON.parse_string(FileAccess.get_file_as_string(receipt_path))
+	if not receipt_value is Dictionary or not _validate_install_receipt(receipt_value, path):
+		return PackageLoadResult.failed(&"package_install_receipt_invalid", _last_error if not _last_error.is_empty() else "Installed package receipt is invalid.")
+	var receipt: Dictionary = receipt_value
+	var cache_key := _package_cache_key(path)
+	if _loaded_packages.has(cache_key):
+		_report_progress(progress_callback, &"complete", 1, 1)
+		return _loaded_packages[cache_key] as PackageLoadResult
+	var archive := ZIPReader.new()
+	var open_error := archive.open(path)
+	if open_error != OK:
+		return PackageLoadResult.failed(&"package_open_failed", "Could not open installed package '%s' (error %d)." % [path, open_error])
+	var result := _load_open_archive(archive, path, progress_callback, cancel_callback, receipt)
+	archive.close()
+	if result.is_ok():
+		_loaded_packages[cache_key] = result
+		_report_progress(progress_callback, &"complete", 1, 1)
+	return result
+
+
+func _is_installed_package_path(path: String, install_root: String) -> bool:
+	var absolute_root := ProjectSettings.globalize_path(install_root).simplify_path().replace("\\", "/").trim_suffix("/").to_lower()
+	var absolute_path := ProjectSettings.globalize_path(path).simplify_path().replace("\\", "/").to_lower()
+	if not absolute_path.begins_with(absolute_root + "/"):
+		return false
+	var relative_path := absolute_path.trim_prefix(absolute_root + "/")
+	var parts := relative_path.split("/", false)
+	if parts.size() != 2 or not _safe_path_component(parts[0]) or not parts[1].ends_with(".realmz2"):
+		return false
+	return _is_sha256(parts[1].trim_suffix(".realmz2"))
+
+
+func _install_receipt_path(package_path: String) -> String:
+	return package_path + ".receipt.json"
+
+
+func _validate_install_receipt(receipt: Dictionary, package_path: String) -> bool:
+	var fields: Array[String] = ["kind", "formatVersion", "schemaHash", "campaignId", "packageHash", "archiveSha256", "archiveBytes", "archiveModifiedTime"]
+	if not _exact_fields(receipt, fields):
+		return _reject("Installed package receipt has an unsupported shape.")
+	if receipt["kind"] != INSTALL_RECEIPT_KIND or _integer(receipt["formatVersion"]) != INSTALL_RECEIPT_VERSION:
+		return _reject("Installed package receipt has an unsupported version.")
+	if receipt["schemaHash"] != EXPECTED_SCHEMA_HASH or not _safe_path_component(receipt["campaignId"]):
+		return _reject("Installed package receipt does not match the runtime contract.")
+	if not _is_sha256(receipt["packageHash"]) or not _is_sha256(receipt["archiveSha256"]):
+		return _reject("Installed package receipt contains malformed identities.")
+	if not _is_integer(receipt["archiveBytes"]) or _integer(receipt["archiveBytes"]) != FileAccess.get_size(package_path):
+		return _reject("Installed package byte count no longer matches its validated receipt.")
+	if not _is_integer(receipt["archiveModifiedTime"]) or _integer(receipt["archiveModifiedTime"]) != FileAccess.get_modified_time(package_path):
+		return _reject("Installed package modification identity no longer matches its validated receipt.")
+	var expected_name := "%s.realmz2" % receipt["packageHash"]
+	if package_path.get_file().to_lower() != expected_name:
+		return _reject("Installed package filename does not match its validated identity.")
+	if package_path.get_base_dir().get_file().to_lower() != String(receipt["campaignId"]).to_lower():
+		return _reject("Installed package campaign directory does not match its validated identity.")
+	return true
+
+
+func _receipt_matches_manifest(receipt: Dictionary, manifest: Dictionary) -> bool:
+	if receipt["schemaHash"] != manifest["schemaHash"] or receipt["campaignId"] != manifest["campaignId"] or receipt["packageHash"] != manifest["packageHash"]:
+		return _reject("Installed package manifest no longer matches its validated receipt.")
+	return true
+
+
+func _write_install_receipt(package_path: String, content: RealmzContent, archive_sha256: String) -> bool:
+	if archive_sha256.is_empty() or not _is_sha256(archive_sha256):
+		return false
+	var receipt := {
+		"kind": INSTALL_RECEIPT_KIND,
+		"formatVersion": INSTALL_RECEIPT_VERSION,
+		"schemaHash": EXPECTED_SCHEMA_HASH,
+		"campaignId": content.campaign_id,
+		"packageHash": content.package_hash,
+		"archiveSha256": archive_sha256,
+		"archiveBytes": FileAccess.get_size(package_path),
+		"archiveModifiedTime": FileAccess.get_modified_time(package_path),
+	}
+	var receipt_path := _install_receipt_path(package_path)
+	var temporary_path := receipt_path + ".installing"
+	if FileAccess.file_exists(temporary_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
+	var file := FileAccess.open(temporary_path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(CanonicalJson.encode(receipt))
+	file.flush()
+	file.close()
+	var readback: Variant = JSON.parse_string(FileAccess.get_file_as_string(temporary_path))
+	if not readback is Dictionary or CanonicalJson.encode(readback) != CanonicalJson.encode(receipt):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
+		return false
+	if FileAccess.file_exists(receipt_path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(receipt_path))
+	if DirAccess.rename_absolute(ProjectSettings.globalize_path(temporary_path), ProjectSettings.globalize_path(receipt_path)) != OK:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary_path))
+		return false
+	return true
+
+
+func _load_open_archive(archive: ZIPReader, source_path: String, progress_callback: Callable = Callable(), cancel_callback: Callable = Callable(), trusted_receipt: Dictionary = {}) -> PackageLoadResult:
 	var archive_entries_value: Variant = _zip_entries(archive)
 	var archive_entries: Array[String] = []
 	if archive_entries_value != null:
@@ -196,7 +320,9 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 	if manifest_value == null:
 		return _validation_failure()
 	var manifest: Dictionary = manifest_value
-	if not _validate_manifest(manifest, archive, archive_entries, progress_callback, cancel_callback):
+	if trusted_receipt.is_empty() and not _validate_manifest(manifest, archive, archive_entries, progress_callback, cancel_callback):
+		return _validation_failure()
+	if not trusted_receipt.is_empty() and (not _validate_manifest_structure(manifest, archive_entries) or not _receipt_matches_manifest(trusted_receipt, manifest)):
 		return _validation_failure()
 	_report_progress(progress_callback, &"constructing-content", 0, 1)
 	var content_value: Variant = _read_document(archive, "content.json")
@@ -211,12 +337,13 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 	var asset_document: Dictionary = asset_value
 	if not _validate_document_header(content_document, "realmz2.content") or not _validate_document_header(world_document, "realmz2.world") or not _validate_document_header(scenario_document, "realmz2.scenario") or not _validate_document_header(asset_document, "realmz2.assets"):
 		return _validation_failure()
-	if not _validate_assets(asset_document, manifest["files"]):
-		return _validation_failure()
-	if not _validate_presentation_capabilities(manifest, asset_document):
-		return _validation_failure()
-	if not _validate_render_references(asset_document, world_document):
-		return _validation_failure()
+	if trusted_receipt.is_empty():
+		if not _validate_assets(asset_document, manifest["files"]):
+			return _validation_failure()
+		if not _validate_presentation_capabilities(manifest, asset_document):
+			return _validation_failure()
+		if not _validate_render_references(asset_document, world_document):
+			return _validation_failure()
 	var runtime_assets := _construct_assets(asset_document)
 	var runtime_content := _construct_content(manifest, content_document, world_document, scenario_document, runtime_assets)
 	if runtime_content == null:
@@ -1367,7 +1494,7 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_set
 		map_ids[record["id"]] = true
 		var width := _integer(record.get("width"))
 		var height := _integer(record.get("height"))
-		if width < 1 or height < 1 or width > 256 or height > 256 or not record.get("cells") is Array or record["cells"].size() != width * height:
+		if width < 1 or height < 1 or width > 256 or height > 256 or record.get("topologyFormat") != "realmz2.compact-cell-rows.v1" or not record.get("cells") is Array or record["cells"].size() != width * height:
 			_reject("Map '%s' dimensions do not match its topology cells." % record["id"])
 			return null
 		var regions_value: Variant = _construct_random_regions(record.get("randomRectangles"), width, height, record["id"])
@@ -1377,17 +1504,9 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_set
 		var region_ids: Dictionary = {}
 		for region: RandomEncounterRegion in regions:
 			region_ids[region.id] = true
-		var cells: Array[MapCell] = []
-		var coordinates: Dictionary = {}
-		for cell_record: Variant in record["cells"]:
-			var cell := _construct_cell(cell_record, width, height, trigger_ids, region_ids)
-			if cell == null:
+		for cell_index: int in record["cells"].size():
+			if not _validate_compact_cell(record["cells"][cell_index], record["id"], cell_index, trigger_ids, region_ids):
 				return null
-			if coordinates.has(cell.coordinate):
-				_reject("Map '%s' contains duplicate topology coordinate %s." % [record["id"], cell.coordinate])
-				return null
-			coordinates[cell.coordinate] = true
-			cells.append(cell)
 		var level_index := _integer(record.get("levelIndex"))
 		var level_type: Variant = record.get("levelType")
 		if level_index < 0 or not level_type is String or level_type not in ["land", "dungeon"]:
@@ -1412,8 +1531,63 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_set
 		if terrain_set != null and ((level_type == "land" and terrain_set.landlook != landlook) or (level_type == "dungeon" and terrain_set.landlook != -1)):
 			_reject("Map '%s' references a battle terrain set for the wrong level type or landlook." % record["id"])
 			return null
-		maps.append(MapDefinition.new(record["id"], record["name"], StringName(level_type), level_index, MapTopology.new(width, height, cells), metadata["dark"], metadata["usesLos"], landlook, regions, terrain_set_id))
+		var topology := MapTopology.from_compact_rows(record["id"], width, height, record["cells"])
+		maps.append(MapDefinition.new(record["id"], record["name"], StringName(level_type), level_index, topology, metadata["dark"], metadata["usesLos"], landlook, regions, terrain_set_id))
 	return maps
+
+
+func _validate_compact_cell(value: Variant, map_id: String, cell_index: int, trigger_ids: Dictionary, region_ids: Dictionary) -> bool:
+	if not value is Array or value.size() != 11:
+		return _reject("Map '%s' compact topology row %d is malformed." % [map_id, cell_index])
+	var row: Array = value
+	if not row[0] is String or row[0].is_empty() or not _is_integer(row[1]) or _integer(row[1]) < 1 or not _is_integer(row[2]) or _integer(row[2]) < 0 or _integer(row[2]) > 255:
+		return _reject("Map '%s' compact topology row %d has malformed terrain facts." % [map_id, cell_index])
+	if row[3] != null and not _is_integer(row[3]):
+		return _reject("Map '%s' compact topology row %d has malformed movement sound." % [map_id, cell_index])
+	var cell_triggers_value: Variant = _string_array(row[4], "compact cell trigger IDs")
+	var random_rects_value: Variant = _string_array(row[5], "compact cell random rectangle IDs")
+	if cell_triggers_value == null or random_rects_value == null:
+		return false
+	for trigger_id: String in cell_triggers_value:
+		if not trigger_ids.has(trigger_id):
+			return _reject("Topology cell references unknown trigger '%s'." % trigger_id)
+	for region_id: String in random_rects_value:
+		if not region_ids.has(region_id):
+			return _reject("Topology cell references unknown random rectangle '%s'." % region_id)
+	if not row[7] is Array:
+		return _reject("Map '%s' compact topology row %d has malformed features." % [map_id, cell_index])
+	var feature_kinds_by_id: Dictionary = {}
+	for feature_value: Variant in row[7]:
+		if not feature_value is Array or feature_value.size() != 4:
+			return _reject("Map '%s' compact topology row %d contains a malformed feature." % [map_id, cell_index])
+		var feature: Array = feature_value
+		if not feature[0] is String or feature[0].is_empty() or feature_kinds_by_id.has(feature[0]) or not feature[1] is String or not FEATURE_KINDS.has(feature[1]):
+			return _reject("Map '%s' compact topology row %d contains a malformed or duplicate feature." % [map_id, cell_index])
+		if feature[2] != null and not feature[2] is String:
+			return _reject("Topology feature '%s' state is malformed." % feature[0])
+		if feature[3] != null and (not feature[3] is String or not DIRECTIONS.has(feature[3]) and feature[3] not in ["horizontal", "vertical"]):
+			return _reject("Topology feature '%s' orientation is malformed." % feature[0])
+		feature_kinds_by_id[feature[0]] = feature[1]
+	if not row[6] is Array or row[6].size() != 4:
+		return _reject("Map '%s' compact topology row %d has malformed edges." % [map_id, cell_index])
+	for edge_value: Variant in row[6]:
+		if not edge_value is Array or edge_value.size() != 4:
+			return _reject("Map '%s' compact topology row %d contains a malformed edge." % [map_id, cell_index])
+		var edge: Array = edge_value
+		if not edge[0] is String or not EDGE_KINDS.has(edge[0]) or not _is_integer(edge[1]) or _integer(edge[1]) < 0 or _integer(edge[1]) > 7:
+			return _reject("Map '%s' compact topology row %d contains invalid edge facts." % [map_id, cell_index])
+		for reference_index: int in [2, 3]:
+			if edge[reference_index] != null and (not edge[reference_index] is String or edge[reference_index].is_empty()):
+				return _reject("Map '%s' compact topology row %d contains an invalid edge reference." % [map_id, cell_index])
+		var door_id := "" if edge[2] == null else String(edge[2])
+		var secret_id := "" if edge[3] == null else String(edge[3])
+		if not door_id.is_empty() and feature_kinds_by_id.get(door_id) != "door":
+			return _reject("Topology edge references unknown door '%s'." % door_id)
+		if not secret_id.is_empty() and feature_kinds_by_id.get(secret_id) != "secret":
+			return _reject("Topology edge references unknown secret '%s'." % secret_id)
+	if not _is_integer(row[8]) or not row[9] is String or row[9].is_empty() or row[10] != null and (not row[10] is String or row[10].is_empty()):
+		return _reject("Map '%s' compact topology row %d has malformed render facts." % [map_id, cell_index])
+	return true
 
 
 func _construct_player_maps(value: Variant, maps: Array[MapDefinition], media_assets: Array[PackageMediaAsset]) -> Variant:
@@ -2202,14 +2376,14 @@ func _validate_render_references(assets: Dictionary, world: Dictionary) -> bool:
 	if not world.get("maps") is Array:
 		return _reject("World maps must be available for tileset validation.")
 	for map: Variant in world["maps"]:
-		if not map is Dictionary or not map.get("cells") is Array:
+		if not map is Dictionary or map.get("topologyFormat") != "realmz2.compact-cell-rows.v1" or not map.get("cells") is Array:
 			return _reject("World map is malformed during tileset validation.")
 		for cell: Variant in map["cells"]:
-			if not cell is Dictionary or not cell.get("render") is Dictionary or not cell["render"].get("tilesetId") is String or not cell["render"].has("overlayAssetId"):
+			if not cell is Array or cell.size() != 11 or not cell[9] is String:
 				return _reject("Topology render facts are malformed during tileset validation.")
-			if not tileset_ids.has(cell["render"]["tilesetId"]):
-				return _reject("Topology references missing tileset asset '%s'." % cell["render"]["tilesetId"])
-			var overlay_asset_id: Variant = cell["render"]["overlayAssetId"]
+			if not tileset_ids.has(cell[9]):
+				return _reject("Topology references missing tileset asset '%s'." % cell[9])
+			var overlay_asset_id: Variant = cell[10]
 			if overlay_asset_id != null and (not overlay_asset_id is String or not image_ids.has(overlay_asset_id)):
 				return _reject("Topology references missing image overlay asset '%s'." % overlay_asset_id)
 	return true
@@ -2495,6 +2669,20 @@ func _sha256(bytes: PackedByteArray) -> String:
 	var context := HashingContext.new()
 	context.start(HashingContext.HASH_SHA256)
 	context.update(bytes)
+	return context.finish().hex_encode()
+
+
+func _sha256_file(path: String) -> String:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return ""
+	var context := HashingContext.new()
+	if context.start(HashingContext.HASH_SHA256) != OK:
+		file.close()
+		return ""
+	while file.get_position() < file.get_length():
+		context.update(file.get_buffer(mini(1024 * 1024, file.get_length() - file.get_position())))
+	file.close()
 	return context.finish().hex_encode()
 
 

@@ -575,97 +575,53 @@
       },
       "additionalProperties": false
     },
-    "cell": {
-      "type": "object",
-      "required": [
-        "id",
-        "x",
-        "y",
-        "terrainId",
-        "movement",
-        "visibility",
-        "semantics",
-        "metadata",
-        "triggerIds",
-        "randomRectIds",
-        "edges",
-        "features",
-        "render"
+    "compactTopologyEdge": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "enum": ["open", "wall", "door", "secret", "archway", "map-boundary"] },
+        { "type": "integer", "minimum": 0, "maximum": 7 },
+        { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] }
       ],
-      "properties": {
-        "id": { "$ref": "#/$defs/identifier" },
-        "x": { "type": "integer", "minimum": 0 },
-        "y": { "type": "integer", "minimum": 0 },
-        "terrainId": { "$ref": "#/$defs/identifier" },
-        "movement": {
-          "type": "object",
-          "required": ["passable", "cost"],
-          "properties": {
-            "passable": { "type": "boolean" },
-            "cost": { "type": "integer", "minimum": 1 }
-          },
-          "additionalProperties": false
-        },
-        "visibility": {
-          "type": "object",
-          "required": ["blocksLos"],
-          "properties": { "blocksLos": { "type": "boolean" } },
-          "additionalProperties": false
-        },
-        "semantics": {
-          "type": "object",
-          "required": ["land", "water", "shore", "path", "boatRequired", "flyFloatRequired"],
-          "properties": {
-            "land": { "type": "boolean" },
-            "water": { "type": "boolean" },
-            "shore": { "type": "boolean" },
-            "path": { "type": "boolean" },
-            "boatRequired": { "type": "boolean" },
-            "flyFloatRequired": { "type": "boolean" }
-          },
-          "additionalProperties": false
-        },
-        "metadata": {
-          "type": "object",
-          "required": ["movementSoundId"],
-          "properties": { "movementSoundId": { "type": ["integer", "null"] } },
-          "additionalProperties": false
-        },
-        "triggerIds": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
-        "randomRectIds": { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
-        "edges": {
-          "type": "object",
-          "required": ["north", "east", "south", "west"],
-          "properties": {
-            "north": { "$ref": "#/$defs/topologyEdge" },
-            "east": { "$ref": "#/$defs/topologyEdge" },
-            "south": { "$ref": "#/$defs/topologyEdge" },
-            "west": { "$ref": "#/$defs/topologyEdge" }
-          },
-          "additionalProperties": false
-        },
-        "features": { "type": "array", "items": { "$ref": "#/$defs/topologyFeature" }, "uniqueItems": true },
-        "render": {
-          "type": "object",
-          "required": ["tile", "tilesetId", "overlayAssetId"],
-          "properties": {
-            "tile": { "type": "integer" },
-            "tilesetId": { "$ref": "#/$defs/identifier" },
-            "overlayAssetId": {
-              "anyOf": [
-                { "$ref": "#/$defs/identifier" },
-                { "type": "null" }
-              ]
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
+      "items": false
+    },
+    "compactTopologyFeature": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        { "$ref": "#/$defs/identifier" },
+        { "enum": ["door", "secret", "stairs", "column", "unmapped", "note", "action-point", "archway", "no-wall-in-battle"] },
+        { "type": ["string", "null"] },
+        { "enum": ["horizontal", "vertical", "north", "east", "south", "west", null] }
+      ],
+      "items": false
+    },
+    "compactCell": {
+      "$comment": "Row-major tuple: terrainId, movementCost, semantic bit flags, movementSoundId, triggerIds, randomRectIds, N/E/S/W edges, features, renderTile, tilesetId, overlayAssetId.",
+      "type": "array",
+      "minItems": 11,
+      "maxItems": 11,
+      "prefixItems": [
+        { "$ref": "#/$defs/identifier" },
+        { "type": "integer", "minimum": 1 },
+        { "type": "integer", "minimum": 0, "maximum": 255 },
+        { "type": ["integer", "null"] },
+        { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
+        { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
+        { "type": "array", "minItems": 4, "maxItems": 4, "items": { "$ref": "#/$defs/compactTopologyEdge" } },
+        { "type": "array", "items": { "$ref": "#/$defs/compactTopologyFeature" }, "uniqueItems": true },
+        { "type": "integer" },
+        { "$ref": "#/$defs/identifier" },
+        { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] }
+      ],
+      "items": false
     },
     "map": {
       "type": "object",
-      "required": ["id", "name", "levelType", "levelIndex", "width", "height", "metadata", "cells", "randomRectangles"],
+      "required": ["id", "name", "levelType", "levelIndex", "width", "height", "metadata", "topologyFormat", "cells", "randomRectangles"],
       "properties": {
         "id": { "$ref": "#/$defs/identifier" },
         "name": { "type": "string" },
@@ -689,7 +645,8 @@
           },
           "additionalProperties": false
         },
-        "cells": { "type": "array", "items": { "$ref": "#/$defs/cell" }, "minItems": 1 },
+        "topologyFormat": { "const": "realmz2.compact-cell-rows.v1" },
+        "cells": { "type": "array", "items": { "$ref": "#/$defs/compactCell" }, "minItems": 1 },
         "randomRectangles": { "type": "array", "items": { "$ref": "#/$defs/randomRectangle" } }
       },
       "additionalProperties": false

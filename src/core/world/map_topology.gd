@@ -5,6 +5,9 @@ var width: int
 var height: int
 var _cells: Array[MapCell]
 var _cells_by_coordinate: Dictionary = {}
+var _compact_map_id: String = ""
+var _compact_rows: Array = []
+var _compact_cells_by_index: Dictionary = {}
 
 
 func _init(map_width: int, map_height: int, map_cells: Array[MapCell]) -> void:
@@ -15,15 +18,39 @@ func _init(map_width: int, map_height: int, map_cells: Array[MapCell]) -> void:
 		_cells_by_coordinate[cell.coordinate] = cell
 
 
+static func from_compact_rows(map_id: String, map_width: int, map_height: int, rows: Array) -> MapTopology:
+	var topology := MapTopology.new(map_width, map_height, [])
+	topology._compact_map_id = map_id
+	topology._compact_rows = rows
+	return topology
+
+
 func contains(coordinate: Vector2i) -> bool:
 	return coordinate.x >= 0 and coordinate.y >= 0 and coordinate.x < width and coordinate.y < height
 
 
 func cell_at(coordinate: Vector2i) -> MapCell:
+	if not contains(coordinate):
+		return null
+	if not _compact_rows.is_empty():
+		var index := coordinate.y * width + coordinate.x
+		var cached := _compact_cells_by_index.get(index) as MapCell
+		if cached != null:
+			return cached
+		var decoded := _decode_compact_cell(index, coordinate)
+		if decoded != null:
+			_compact_cells_by_index[index] = decoded
+		return decoded
 	return _cells_by_coordinate.get(coordinate) as MapCell
 
 
 func cells() -> Array[MapCell]:
+	if not _compact_rows.is_empty():
+		var result: Array[MapCell] = []
+		result.resize(_compact_rows.size())
+		for index: int in _compact_rows.size():
+			result[index] = cell_at(Vector2i(index % width, index / width))
+		return result
 	return _cells.duplicate()
 
 
@@ -91,10 +118,68 @@ func has_line_of_sight(from: Vector2i, to: Vector2i, world_state: WorldState) ->
 
 func visible_cells(origin: Vector2i, radius: int, world_state: WorldState, use_los: bool) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	for cell: MapCell in _cells:
-		if not use_los or origin.distance_squared_to(cell.coordinate) <= radius * radius and has_line_of_sight(origin, cell.coordinate, world_state):
-			result.append(cell.coordinate)
+	for y: int in height:
+		for x: int in width:
+			var coordinate := Vector2i(x, y)
+			if not use_los or origin.distance_squared_to(coordinate) <= radius * radius and has_line_of_sight(origin, coordinate, world_state):
+				result.append(coordinate)
 	return result
+
+
+func _decode_compact_cell(index: int, coordinate: Vector2i) -> MapCell:
+	if index < 0 or index >= _compact_rows.size():
+		return null
+	var row: Array = _compact_rows[index]
+	var flags := int(row[2])
+	var trigger_ids: Array[String] = []
+	trigger_ids.assign(row[4])
+	var random_rect_ids: Array[String] = []
+	random_rect_ids.assign(row[5])
+	var edges: Dictionary = {}
+	var edge_rows: Array = row[6]
+	var directions: Array[StringName] = [&"north", &"east", &"south", &"west"]
+	for direction_index: int in directions.size():
+		var edge_row: Array = edge_rows[direction_index]
+		var edge_flags := int(edge_row[1])
+		edges[directions[direction_index]] = MapEdge.new(
+			StringName(edge_row[0]),
+			bool(edge_flags & 1),
+			bool(edge_flags & 2),
+			"" if edge_row[2] == null else String(edge_row[2]),
+			"" if edge_row[3] == null else String(edge_row[3]),
+			bool(edge_flags & 4)
+		)
+	var features: Array[MapFeature] = []
+	for feature_value: Variant in row[7]:
+		var feature_row: Array = feature_value
+		features.append(MapFeature.new(
+			String(feature_row[0]),
+			StringName(feature_row[1]),
+			&"" if feature_row[2] == null else StringName(feature_row[2]),
+			&"" if feature_row[3] == null else StringName(feature_row[3])
+		))
+	return MapCell.new(
+		"%s:cell:%d,%d" % [_compact_map_id, coordinate.x, coordinate.y],
+		coordinate,
+		String(row[0]),
+		bool(flags & 1),
+		int(row[1]),
+		bool(flags & 2),
+		bool(flags & 4),
+		bool(flags & 8),
+		bool(flags & 16),
+		bool(flags & 32),
+		bool(flags & 64),
+		bool(flags & 128),
+		-1 if row[3] == null else int(row[3]),
+		int(row[8]),
+		String(row[9]),
+		trigger_ids,
+		random_rect_ids,
+		edges,
+		features,
+		"" if row[10] == null else String(row[10])
+	)
 
 
 func find_path(origin: Vector2i, destination: Vector2i, world_state: WorldState, level_type: StringName) -> Array[Vector2i]:

@@ -119,6 +119,7 @@ func _join_thread() -> void:
 static func _message_for(operation_phase: StringName, completed_units: int, total_units: int) -> String:
 	match operation_phase:
 		&"opening": return "Opening package…"
+		&"checking-install": return "Opening installed campaign…"
 		&"validating-source": return "Preparing source validation…"
 		&"validating-integrity": return "Validating package files %d of %d…" % [completed_units, total_units]
 		&"constructing-content": return "Constructing validated Realmz content…"

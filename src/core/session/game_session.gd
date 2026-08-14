@@ -1988,18 +1988,20 @@ func _search() -> SessionStep:
 	var current_map := _content.world.map_by_id(_state.party.map_id)
 	var discovered: Array[String] = []
 	var first_roll: int = 0
-	for cell: MapCell in current_map.topology.cells():
-		if absi(cell.coordinate.x - _state.party.coordinate.x) > 1 or absi(cell.coordinate.y - _state.party.coordinate.y) > 1:
-			continue
-		for feature: MapFeature in cell.features():
-			if feature.kind != &"secret" or _state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+	for y: int in range(_state.party.coordinate.y - 1, _state.party.coordinate.y + 2):
+		for x: int in range(_state.party.coordinate.x - 1, _state.party.coordinate.x + 2):
+			var cell := current_map.topology.cell_at(Vector2i(x, y))
+			if cell == null:
 				continue
-			var roll := _rng.draw(100, StringName("exploration.search.%s" % feature.id))
-			if first_roll == 0:
-				first_roll = roll
-			if roll <= 100:
-				_state.world.discover_secret(feature.id)
-				discovered.append(feature.id)
+			for feature: MapFeature in cell.features():
+				if feature.kind != &"secret" or _state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
+					continue
+				var roll := _rng.draw(100, StringName("exploration.search.%s" % feature.id))
+				if first_roll == 0:
+					first_roll = roll
+				if roll <= 100:
+					_state.world.discover_secret(feature.id)
+					discovered.append(feature.id)
 	var events: Array[DomainEvent] = [DomainEvent.new("search_completed", {"mapId": _state.party.map_id, "x": _state.party.coordinate.x, "y": _state.party.coordinate.y, "roll": first_roll, "discoveredSecrets": discovered})]
 	events.append_array(_rules.clock.advance_minutes(_state, _content, 1))
 	for secret_id: String in discovered:
