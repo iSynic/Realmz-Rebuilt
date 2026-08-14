@@ -1153,7 +1153,7 @@ func _update_creator_actions() -> void:
 	else:
 		_creator_next_button.disabled = false
 		_creator_next_button.tooltip_text = ""
-	_creator_cancel_button.disabled = _creator_step == 0 and _draft_name.is_empty() and (_view == null or _view.character_draft == null)
+	_creator_cancel_button.disabled = false
 
 
 func _race_selected(index: int) -> void:

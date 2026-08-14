@@ -1454,6 +1454,11 @@ func _test_character_creator_workflow() -> void:
 	create_button.pressed.emit()
 	assert_equal([router._setup_mode, router._creator_step], [&"creator", 0], "Create switches the left pane to Identity while retaining the party pane")
 	assert_not_null(router._creator_page.get_node_or_null("CharacterName"), "Identity alone owns the character-name field")
+	assert_false(router._creator_cancel_button.disabled, "a pristine Identity step can always cancel back to Character Files")
+	router._creator_cancel_button.pressed.emit()
+	assert_equal(router._setup_mode, &"assembly", "Cancel character immediately restores Character Files without requiring a draft mutation")
+	assert_true(router._stored_character_list.visible, "canceling creation restores the stored-character picker")
+	create_button.pressed.emit()
 	var starting_level := router._creator_page.get_node_or_null("StartingLevel") as OptionButton
 	assert_not_null(starting_level, "Identity exposes the Classic starting-level boundary instead of silently omitting it")
 	assert_equal([starting_level.get_item_id(0), starting_level.get_item_id(1), starting_level.get_item_id(2), starting_level.get_item_id(3)], [1, 3, 5, 7], "Identity exposes Castle's fixed choices only through the campaign's maximum level")
