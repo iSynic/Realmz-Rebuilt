@@ -319,6 +319,10 @@ func _apply_modal_layouts() -> void:
 		_setup_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		_setup_overlay.position = _modal_layout_rect.position
 		_setup_overlay.size = _modal_layout_rect.size
+		if _setup_inspection_overlay != null:
+			_setup_inspection_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			_setup_inspection_overlay.position = Vector2.ZERO
+			_setup_inspection_overlay.size = _setup_overlay.size
 	if _campaign_overlay != null:
 		_campaign_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		_campaign_overlay.position = _campaign_layout_rect.position
@@ -681,12 +685,25 @@ func _build_setup_overlay() -> void:
 func _build_setup_character_inspection() -> void:
 	_setup_inspection_overlay = PanelContainer.new()
 	_setup_inspection_overlay.name = "PartySetupCharacterInspection"
-	_setup_inspection_overlay.theme_type_variation = &"ClassicSharedStone"
-	_setup_inspection_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var inspection_surface := StyleBoxFlat.new()
+	inspection_surface.bg_color = Color("121519")
+	inspection_surface.border_color = Color("4b5157")
+	inspection_surface.set_border_width_all(1)
+	inspection_surface.content_margin_left = 10.0
+	inspection_surface.content_margin_top = 8.0
+	inspection_surface.content_margin_right = 10.0
+	inspection_surface.content_margin_bottom = 8.0
+	_setup_inspection_overlay.add_theme_stylebox_override("panel", inspection_surface)
 	_setup_inspection_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	_setup_inspection_overlay.clip_contents = true
+	_setup_inspection_overlay.z_index = 1
 	_setup_inspection_overlay.visible = false
 	_setup_overlay.add_child(_setup_inspection_overlay)
+	_setup_inspection_overlay.position = Vector2.ZERO
+	_setup_inspection_overlay.size = _setup_overlay.size
 	_setup_inspection_body = VBoxContainer.new()
+	_setup_inspection_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_setup_inspection_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_setup_inspection_body.add_theme_constant_override("separation", 8)
 	_setup_inspection_overlay.add_child(_setup_inspection_body)
 

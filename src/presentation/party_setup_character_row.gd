@@ -6,12 +6,19 @@ signal import_requested(character_id: String, revision_hash: String)
 const ROW_HEIGHT: float = 44.0
 const PORTRAIT_SIZE: float = 44.0
 const ACTION_WIDTH: float = 58.0
+const DRAG_CURSOR_SHAPES: Array[Input.CursorShape] = [
+	Input.CURSOR_ARROW,
+	Input.CURSOR_DRAG,
+	Input.CURSOR_CAN_DROP,
+	Input.CURSOR_FORBIDDEN,
+]
 
 var character_id: String
 var revision_hash: String
 var import_enabled: bool = false
 var _drag_label: String = ""
 var _drag_portrait: Texture2D
+var _drag_cursor_texture: Texture2D
 
 
 func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: String, portrait: Texture2D = null) -> void:
@@ -82,7 +89,7 @@ static func _summary_text(character_name: String, level: int, race_name: String,
 func _get_drag_data(_position: Vector2) -> Variant:
 	if not import_enabled:
 		return null
-	set_drag_preview(_drag_preview())
+	_start_drag_cursor()
 	return drag_payload()
 
 
@@ -94,18 +101,47 @@ func drag_payload() -> Dictionary:
 	}
 
 
-func _drag_preview() -> Control:
-	var preview := TextureRect.new()
-	preview.name = "PortraitDragPreview"
-	preview.custom_minimum_size = Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)
-	preview.texture = _drag_portrait
-	preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	preview.modulate = Color(1.0, 1.0, 1.0, 0.62)
-	preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	preview.tooltip_text = "Dragging %s" % _drag_label
-	return preview
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_DRAG_END:
+		_clear_drag_cursor()
+
+
+func _exit_tree() -> void:
+	_clear_drag_cursor()
+
+
+func _start_drag_cursor() -> void:
+	_clear_drag_cursor()
+	_drag_cursor_texture = _make_drag_cursor_texture()
+	if _drag_cursor_texture == null:
+		return
+	var hotspot := Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE) * 0.5
+	for shape: Input.CursorShape in DRAG_CURSOR_SHAPES:
+		Input.set_custom_mouse_cursor(_drag_cursor_texture, shape, hotspot)
+
+
+func _make_drag_cursor_texture() -> Texture2D:
+	if _drag_portrait == null:
+		return null
+	var image := _drag_portrait.get_image()
+	if image == null or image.is_empty() or image.get_width() > 256 or image.get_height() > 256:
+		return null
+	image = image.duplicate()
+	image.convert(Image.FORMAT_RGBA8)
+	for y: int in range(image.get_height()):
+		for x: int in range(image.get_width()):
+			var color := image.get_pixel(x, y)
+			color.a *= 0.62
+			image.set_pixel(x, y, color)
+	return ImageTexture.create_from_image(image)
+
+
+func _clear_drag_cursor() -> void:
+	if _drag_cursor_texture == null:
+		return
+	for shape: Input.CursorShape in DRAG_CURSOR_SHAPES:
+		Input.set_custom_mouse_cursor(null, shape)
+	_drag_cursor_texture = null
 
 
 static func row_style() -> StyleBoxFlat:

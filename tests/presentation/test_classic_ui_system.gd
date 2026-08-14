@@ -1421,11 +1421,10 @@ func _test_character_creator_workflow() -> void:
 	assert_not_null(party_portrait, "each occupied party position reserves the same portrait surface")
 	assert_equal(party_portrait.texture, icon_texture, "the assembled party repeats the exact character portrait for visual matching")
 	assert_equal(party_portrait.custom_minimum_size, Vector2(44.0, 44.0), "Current Party also keeps the native portrait at full size")
-	var drag_preview := stored_row._drag_preview() as TextureRect
-	assert_not_null(drag_preview, "dragging a stored character uses the portrait itself as the cursor preview")
-	assert_equal([drag_preview.texture, drag_preview.custom_minimum_size, drag_preview.texture_filter], [icon_texture, Vector2(44.0, 44.0), CanvasItem.TEXTURE_FILTER_NEAREST], "the drag cursor preserves the exact full-size package portrait")
-	assert_true(is_equal_approx(drag_preview.modulate.a, 0.62), "the portrait drag cursor is translucent so the drop destination stays visible")
-	drag_preview.free()
+	var drag_cursor := stored_row._make_drag_cursor_texture()
+	assert_not_null(drag_cursor, "dragging a stored character converts the exact portrait into a hardware cursor texture")
+	assert_equal(drag_cursor.get_size(), Vector2(2.0, 2.0), "the drag cursor preserves the source portrait dimensions")
+	assert_true(absf(drag_cursor.get_image().get_pixel(0, 0).a - 0.62) < 0.005, "the hardware drag cursor is translucent so the drop destination stays visible")
 	assert_equal(router._creator_page.size_flags_stretch_ratio, (router._party_list.get_parent().get_parent() as Control).size_flags_stretch_ratio, "Character Files and Current Party receive identical horizontal layout weight")
 	var character_heading := router._setup_overlay.find_child("CharacterFilesHeading", true, false) as CenterContainer
 	var party_heading := router._setup_overlay.find_child("PartyHeading", true, false) as CenterContainer
@@ -1443,6 +1442,9 @@ func _test_character_creator_workflow() -> void:
 	var intent_count_before_inspection := intents.size()
 	inspect_setup.pressed.emit()
 	assert_true(router._setup_inspection_overlay.visible, "party setup can open a complete detached character inspection surface before play")
+	var inspection_surface := router._setup_inspection_overlay.get_theme_stylebox("panel") as StyleBoxFlat
+	assert_true(inspection_surface != null and inspection_surface.bg_color.a >= 0.99, "party inspection owns an opaque surface instead of drawing its character sheet over party assembly")
+	assert_equal([router._setup_inspection_overlay.position, router._setup_inspection_overlay.size, router._setup_inspection_overlay.z_index, router._setup_inspection_overlay.clip_contents], [Vector2.ZERO, router._setup_overlay.size, 1, true], "party inspection fills and clips to the complete setup viewport above its assembly content")
 	assert_not_null(router._setup_inspection_overlay.find_child("PartySetupCharacterSheet", true, false), "setup inspection reuses the complete Classic character sheet instead of a second summary path")
 	assert_equal(intents.size(), intent_count_before_inspection, "opening and browsing setup inspection cannot mutate the session")
 	assert_true(router.handle_back(), "Back closes setup character inspection before leaving party setup")
