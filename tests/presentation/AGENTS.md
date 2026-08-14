@@ -31,6 +31,7 @@
 - System workspace fixtures cover detached current and backup save facts, distinct load operations, and disabled corrupt-record reasons without reading host files.
 - Lifecycle fixtures distinguish End Adventure from process Quit, cover each field/combat/no-session option set, and prove save-failure suppression, explicit no-save, Cancel, and response identity without closing the test process or treating the host prompt as gameplay state.
 - Package-library fixtures distinguish manifest availability from full readiness and cover determinate worker progress, competing-action suppression, Cancel signaling, and terminal cleanup without opening archives from presentation.
+- Startup-shell fixtures cover the pre-session splash, scenario selection, Character Files entry, and return navigation. Party-setup fixtures assert that advanced revision/archive controls stay out of ordinary assembly. Menu-state fixtures cover no-session and party-setup route suppression, disabled parent menus, and opaque popup borders.
 - Appearance fixtures cover both exact package roles, recommendation-first browsing, presentation-only preview, one typed Apply request, no-op Discard, long labels, and visible core-owned unavailable reasons.
 - Use MCP after `play_scene` to confirm mouse activation for campaign selection, AP Continue responses, and original-bitmap encounter actions; keyboard activation alone is insufficient pointer evidence.
 

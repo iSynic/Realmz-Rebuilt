@@ -8,6 +8,7 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 
 
 func run() -> void:
+	_test_startup_shell()
 	_test_route_catalog()
 	_test_layout_profiles()
 	_test_settings_schema_and_migration()
@@ -72,6 +73,28 @@ func _test_package_operation_presentation() -> void:
 	assert_equal(cancel_count[0], 1, "package Cancel crosses one host signal without mutating a session")
 	router.set_package_operation(PackageOperationStatusScript.new())
 	assert_equal(router.find_child("CancelPackageOperation", true, false), null, "completed package work removes the transient Cancel action")
+	router.free()
+
+
+func _test_startup_shell() -> void:
+	var router := ClassicScreenRouter.new()
+	router._body_frame = PanelContainer.new()
+	router.add_child(router._body_frame)
+	router._build_splash_overlay()
+	router._build_campaign_overlay()
+	router._build_setup_overlay()
+	router.show_splash()
+	assert_true(router._splash_overlay.visible, "Realmz Rebuilt opens on its application splash instead of dropping directly into package selection")
+	assert_false(router._campaign_overlay.visible, "the campaign library waits for an explicit splash action")
+	var choose_scenario := router._splash_overlay.find_child("ChooseScenario", true, false) as Button
+	var character_files := router._splash_overlay.find_child("CharacterFiles", true, false) as Button
+	assert_not_null(choose_scenario, "the splash exposes scenario selection as a primary path")
+	assert_not_null(character_files, "the splash exposes reusable character files independently of party setup")
+	choose_scenario.pressed.emit()
+	assert_true(router._campaign_overlay.visible and not router._splash_overlay.visible, "scenario selection replaces the splash with the campaign library")
+	assert_true(router.handle_back(), "Back from the pre-session campaign library returns to the splash")
+	assert_true(router._splash_overlay.visible, "the startup flow retains a real front door after backing out of campaign selection")
+	assert_contains(character_files.tooltip_text, "selected scenario", "the splash explains why new character generation remains campaign-aware")
 	router.free()
 
 
@@ -997,7 +1020,7 @@ func _test_lifecycle_interaction() -> void:
 	buttons.clear()
 	for node: Node in quit_component.find_children("*", "Button", true, false):
 		buttons.append(node as Button)
-	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and quit Realmz 2", "Quit Realmz 2", "Cancel"], "Quit uses explicit modern host wording instead of pretending to know Castle's resource text")
+	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and quit Realmz Rebuilt", "Quit Realmz Rebuilt", "Cancel"], "Quit uses explicit modern host wording instead of pretending to know Castle's resource text")
 	var quit_order: Array[String] = []
 	assert_equal(ApplicationLifecycleScript.execute_quit(&"save-and-quit", func() -> bool: quit_order.append("save"); return false, func() -> void: quit_order.append("quit")), &"save-failed", "failed Quit save keeps the application open")
 	assert_equal(quit_order, ["save"], "failed Quit save never invokes process termination")
@@ -1099,6 +1122,9 @@ func _test_stone_surface_tiling() -> void:
 	assert_true(stage_frame.texture is AtlasTexture and (stage_frame.texture as AtlasTexture).region.size.x == 520.0, "the open-right stage frame crops only the source texture's eight-pixel right edge")
 	application.free()
 	var ui_theme := load("res://src/presentation/classic_ui_theme.tres") as Theme
+	var popup_panel := ui_theme.get_stylebox("panel", "PopupMenu") as StyleBoxFlat
+	assert_true(popup_panel != null and popup_panel.bg_color.a == 1.0, "open menus own an opaque background through the complete popup rectangle")
+	assert_true(popup_panel.get_border_width(SIDE_LEFT) > 0 and popup_panel.get_border_width(SIDE_RIGHT) > 0, "popup backgrounds include their outer edge instead of exposing a transparent fringe")
 	var menu_normal := ui_theme.get_stylebox("normal", "MenuButton")
 	for menu_state: StringName in [&"hover", &"pressed", &"disabled"]:
 		var menu_style := ui_theme.get_stylebox(menu_state, "MenuButton")
@@ -1396,6 +1422,7 @@ func _test_character_creator_workflow() -> void:
 	var setup_surface := router._setup_overlay.get_theme_stylebox("panel") as StyleBoxFlat
 	assert_true(setup_surface != null and setup_surface.bg_color.a >= 0.99, "party setup owns an opaque workspace rather than exposing the persistent exploration roster beneath it")
 	assert_equal(router._setup_mode, &"assembly", "party setup opens on stored-character assembly instead of forcing the creator")
+	assert_true(router._setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool: return button.text != "Revision history and archives…"), "advanced revision history and archive controls stay out of ordinary party assembly")
 	assert_not_null(router._stored_character_list, "stored characters remain visible beside the six party slots")
 	assert_equal(router._party_list.get_child_count(), 6, "party assembly always exposes the campaign's complete slot capacity")
 	var party_scroll := router._party_list.get_parent() as ScrollContainer
@@ -2197,6 +2224,18 @@ func _test_scene_composition() -> void:
 
 
 func _test_automatic_workflow_routes() -> void:
+	var no_session := GameView.new(0, false, null)
+	assert_equal(ClassicApplicationShell.route_change_reason(no_session), "Choose a campaign first.", "gameplay routes are disabled on the splash and campaign library")
+	var setup_view := GameView.new(1, true, null)
+	setup_view.party_setup_available = true
+	assert_equal(ClassicApplicationShell.route_change_reason(setup_view), "Begin the adventure first.", "Explore and other browsing routes stay disabled until party setup commits Begin Adventure")
+	var startup_menu_shell := ClassicApplicationShell.new()
+	startup_menu_shell._current_view = setup_view
+	var setup_menu := MenuButton.new()
+	startup_menu_shell.add_child(setup_menu)
+	startup_menu_shell._fill_menu(setup_menu, [{"label": "Explore", "route": &"exploration"}, {"label": "Characters", "route": &"character"}])
+	assert_true(setup_menu.disabled and setup_menu.get_popup().is_item_disabled(0) and setup_menu.get_popup().is_item_disabled(1), "a menu with no valid setup actions is itself visibly disabled")
+	startup_menu_shell.free()
 	var view := GameView.new(1, true, null)
 	view.combat_view = CombatView.new(CombatState.new("classic.battle.route"))
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"exploration", view), &"combat", "battle setup opens the tactical workspace")

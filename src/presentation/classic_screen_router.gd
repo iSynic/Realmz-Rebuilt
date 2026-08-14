@@ -33,6 +33,7 @@ var _body_scroll: ScrollContainer
 var _body: VBoxContainer
 var _body_frame: PanelContainer
 var _workspace_view: ClassicRouteScreen
+var _splash_overlay: PanelContainer
 var _campaign_overlay: PanelContainer
 var _campaign_list: VBoxContainer
 var _campaign_scroll: ScrollContainer
@@ -73,7 +74,6 @@ var _add_character_button: Button
 var _creator_back_button: Button
 var _creator_next_button: Button
 var _creator_cancel_button: Button
-var _setup_import_button: Button
 var _setup_inspection_overlay: PanelContainer
 var _setup_inspection_body: VBoxContainer
 var _setup_inspection_character_id: String = ""
@@ -112,6 +112,7 @@ var _appearance_textures: Dictionary = {}
 var _combat_icon_touched: bool = false
 var _vault_return_to_setup: bool = false
 var _vault_return_to_campaign: bool = false
+var _vault_return_to_splash: bool = false
 var _vault_inspection_revision_hash: String = ""
 var _ordinary_money_workspace_open: bool = false
 var _save_previews: Array = []
@@ -124,9 +125,10 @@ func _ready() -> void:
 	# input; the router itself must not cover menus or other shell controls.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_body()
+	_build_splash_overlay()
 	_build_campaign_overlay()
 	_build_setup_overlay()
-	show_campaign_selection()
+	show_splash()
 
 
 func present(view: GameView) -> void:
@@ -152,6 +154,8 @@ func present(view: GameView) -> void:
 		if _awaiting_draft_finalization and view.character_draft == null:
 			_awaiting_draft_finalization = false
 			_reset_creator(true)
+		if _splash_overlay != null:
+			_splash_overlay.visible = false
 		_campaign_overlay.visible = false
 		_setup_overlay.visible = true
 		_body_frame.visible = false
@@ -164,6 +168,8 @@ func present(view: GameView) -> void:
 	if completed_party_setup:
 		_finish_party_setup_navigation()
 	_setup_overlay.visible = false
+	if _splash_overlay != null:
+		_splash_overlay.visible = false
 	_campaign_overlay.visible = false
 	_render_screen()
 
@@ -315,6 +321,10 @@ static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2) 
 
 
 func _apply_modal_layouts() -> void:
+	if _splash_overlay != null:
+		_splash_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
+		_splash_overlay.position = _modal_layout_rect.position
+		_splash_overlay.size = _modal_layout_rect.size
 	if _setup_overlay != null:
 		_setup_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		_setup_overlay.position = _modal_layout_rect.position
@@ -340,9 +350,25 @@ func _prepare_campaign_selection() -> void:
 	_campaign_scroll.scroll_vertical = 0
 
 
+func show_splash() -> void:
+	if _splash_overlay == null:
+		return
+	_vault_return_to_campaign = false
+	_vault_return_to_setup = false
+	_vault_return_to_splash = false
+	_splash_overlay.visible = true
+	_campaign_overlay.visible = false
+	_setup_overlay.visible = false
+	_body_frame.visible = false
+	call_deferred("_focus_first", _splash_overlay)
+
+
 func show_campaign_selection() -> void:
 	_vault_return_to_campaign = false
 	_vault_return_to_setup = false
+	_vault_return_to_splash = false
+	if _splash_overlay != null:
+		_splash_overlay.visible = false
 	_campaign_overlay.visible = true
 	_setup_overlay.visible = false
 	_body_frame.visible = false
@@ -350,11 +376,11 @@ func show_campaign_selection() -> void:
 
 
 func full_stage_overlay_visible() -> bool:
-	return _campaign_overlay != null and _campaign_overlay.visible or _setup_overlay != null and _setup_overlay.visible
+	return _splash_overlay != null and _splash_overlay.visible or _campaign_overlay != null and _campaign_overlay.visible or _setup_overlay != null and _setup_overlay.visible
 
 
 func accepts_exploration_input() -> bool:
-	return not _campaign_overlay.visible and not _setup_overlay.visible and _screen_id == &"exploration"
+	return (_splash_overlay == null or not _splash_overlay.visible) and not _campaign_overlay.visible and not _setup_overlay.visible and _screen_id == &"exploration"
 
 
 func open_screen(screen_id: StringName) -> void:
@@ -367,6 +393,8 @@ func open_screen(screen_id: StringName) -> void:
 	if screen_id != _screen_id:
 		_route_history.append(_screen_id)
 	_screen_id = screen_id
+	if _splash_overlay != null:
+		_splash_overlay.visible = false
 	_campaign_overlay.visible = false
 	_setup_overlay.visible = false
 	_sync_ordinary_money_workspace_audio(screen_id)
@@ -392,11 +420,17 @@ func handle_back() -> bool:
 	if _screen_id == &"vault" and _vault_return_to_campaign:
 		show_campaign_selection()
 		return true
+	if _screen_id == &"vault" and _vault_return_to_splash:
+		show_splash()
+		return true
 	if _campaign_overlay.visible:
 		if _view != null and _view.session_started:
 			_campaign_overlay.visible = false
 			_render_screen()
 			return true
+		show_splash()
+		return true
+	if _splash_overlay != null and _splash_overlay.visible:
 		return false
 	if _setup_overlay.visible:
 		if _creator_step > 0:
@@ -438,6 +472,57 @@ func current_screen() -> StringName:
 
 func _build_body() -> void:
 	_mount_workspace(_screen_id)
+
+
+func _build_splash_overlay() -> void:
+	_splash_overlay = PanelContainer.new()
+	_splash_overlay.name = "SplashScreen"
+	_splash_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	var surface := StyleBoxFlat.new()
+	surface.bg_color = Color("101317")
+	surface.border_color = Color("4b5157")
+	surface.set_border_width_all(1)
+	surface.content_margin_left = 24.0
+	surface.content_margin_top = 20.0
+	surface.content_margin_right = 24.0
+	surface.content_margin_bottom = 20.0
+	_splash_overlay.add_theme_stylebox_override("panel", surface)
+	_splash_overlay.z_index = MAXIMUM_MODAL_Z_INDEX
+	add_child(_splash_overlay)
+	var center := CenterContainer.new()
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_splash_overlay.add_child(center)
+	var column := VBoxContainer.new()
+	column.custom_minimum_size.x = 360.0
+	column.add_theme_constant_override("separation", 12)
+	center.add_child(column)
+	var title := _label("Realmz Rebuilt", GOLD, 34)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(title)
+	var subtitle := _label("Classic adventures, reconstructed", MUTED, 16)
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(subtitle)
+	column.add_child(HSeparator.new())
+	var scenarios := Button.new()
+	scenarios.name = "ChooseScenario"
+	scenarios.text = "Choose a scenario"
+	scenarios.custom_minimum_size.y = 42.0
+	scenarios.pressed.connect(show_campaign_selection)
+	column.add_child(scenarios)
+	var characters := Button.new()
+	characters.name = "CharacterFiles"
+	characters.text = "Character files"
+	characters.tooltip_text = "Review reusable characters. New characters are created for a selected scenario so its race, class, and level rules can be applied."
+	characters.custom_minimum_size.y = 42.0
+	characters.pressed.connect(_show_vault_from_splash)
+	column.add_child(characters)
+	var quit := Button.new()
+	quit.name = "Quit"
+	quit.text = "Quit"
+	quit.custom_minimum_size.y = 42.0
+	quit.pressed.connect(func() -> void: system_action_requested.emit(&"quit", null))
+	column.add_child(quit)
 
 
 func _mount_workspace(screen_id: StringName) -> void:
@@ -659,9 +744,6 @@ func _build_setup_overlay() -> void:
 	_creator_next_button.text = "Continue"
 	_creator_next_button.pressed.connect(_creator_next)
 	_creator_action_bar.add_child(_creator_next_button)
-	_setup_import_button = Button.new()
-	_setup_import_button.text = "Revision history and archives…"
-	_setup_import_button.pressed.connect(_show_vault_for_setup)
 	_setup_body.add_child(_creator_action_bar)
 	var setup_footer := HBoxContainer.new()
 	_create_character_button = Button.new()
@@ -669,7 +751,6 @@ func _build_setup_overlay() -> void:
 	_create_character_button.text = "Create new character"
 	_create_character_button.pressed.connect(_start_creator)
 	setup_footer.add_child(_create_character_button)
-	setup_footer.add_child(_setup_import_button)
 	setup_footer.add_spacer(true)
 	_begin_button = Button.new()
 	_begin_button.text = "Begin adventure"
@@ -732,7 +813,6 @@ func _refresh_setup_options() -> void:
 	_refresh_party_list()
 	_refresh_party_setup_options()
 	var setup_count := _view.party_members.size()
-	_apply_availability(_setup_import_button, &"import_vault_character")
 	_apply_availability(_begin_button, &"begin_adventure")
 	_begin_button.text = "Begin adventure (%d/%d)" % [setup_count, _maximum_party_size()]
 	_render_creator_step()
@@ -1532,7 +1612,7 @@ func _render_screen() -> void:
 		return
 	_clear(_body)
 	_content_parent = _body
-	_body_frame.visible = not _campaign_overlay.visible and not _setup_overlay.visible and _screen_id not in [&"exploration", &"combat"]
+	_body_frame.visible = (_splash_overlay == null or not _splash_overlay.visible) and not _campaign_overlay.visible and not _setup_overlay.visible and _screen_id not in [&"exploration", &"combat"]
 	if _screen_id in [&"exploration", &"combat"]:
 		return
 	if (_view == null or not _view.session_started) and _screen_id != &"vault":
@@ -1802,18 +1882,25 @@ func _confirm_vault_archive(revision: CharacterVaultRevisionView) -> void:
 	confirmation.popup_centered(Vector2i(480, 180))
 
 
-func _show_vault_for_setup() -> void:
-	_vault_return_to_setup = true
-	_vault_return_to_campaign = false
-	_setup_overlay.visible = false
-	_campaign_overlay.visible = false
-	_screen_id = &"vault"
-	_render_screen()
-
-
 func _show_vault_from_campaign() -> void:
 	_vault_return_to_campaign = true
 	_vault_return_to_setup = false
+	_vault_return_to_splash = false
+	if _splash_overlay != null:
+		_splash_overlay.visible = false
+	_campaign_overlay.visible = false
+	_setup_overlay.visible = false
+	_screen_id = &"vault"
+	_body_frame.visible = true
+	_render_screen()
+
+
+func _show_vault_from_splash() -> void:
+	_vault_return_to_splash = true
+	_vault_return_to_campaign = false
+	_vault_return_to_setup = false
+	if _splash_overlay != null:
+		_splash_overlay.visible = false
 	_campaign_overlay.visible = false
 	_setup_overlay.visible = false
 	_screen_id = &"vault"
@@ -2080,7 +2167,7 @@ func _render_services() -> void:
 	if _view.services.is_empty():
 		_add_empty_state("No active service", "Shops, temples, banks, storage, and treasure open here only when the session supplies a typed service interaction.")
 		for title: String in ["Shop", "Temple", "Bank", "Storage", "Treasure"]:
-			_add_card(title, "Unavailable at this location", "No service facts were supplied; Realmz 2 does not infer availability from the map or scenario name.")
+			_add_card(title, "Unavailable at this location", "No service facts were supplied; Realmz Rebuilt does not infer availability from the map or scenario name.")
 		return
 	for service: ServiceView in _view.services:
 		_add_card(service.title, String(service.service_kind).replace("_", " ").capitalize(), "Available actions: %s" % [", ".join(service.actions)])
@@ -2295,7 +2382,7 @@ func _render_system() -> void:
 	var end_adventure := Button.new()
 	end_adventure.text = "End adventure"
 	end_adventure.disabled = _view.pending_interaction != null and _view.pending_interaction.kind != InteractionRequest.COMBAT
-	end_adventure.tooltip_text = "Resolve the current interaction first." if end_adventure.disabled else "Close this campaign session without quitting Realmz 2."
+	end_adventure.tooltip_text = "Resolve the current interaction first." if end_adventure.disabled else "Close this campaign session without quitting Realmz Rebuilt."
 	end_adventure.pressed.connect(func() -> void: system_action_requested.emit(&"end_adventure", null))
 	save_row.add_child(end_adventure)
 	var refresh_saves := Button.new()
@@ -2449,7 +2536,7 @@ func _add_section_heading(title: String, detail: String = "") -> void:
 
 
 func _add_empty_state(title: String, detail: String) -> void:
-	_add_card(title, detail, "Realmz 2 shows only facts supplied by the detached session view.")
+	_add_card(title, detail, "Realmz Rebuilt shows only facts supplied by the detached session view.")
 
 
 func _add_disabled_action(parent: Container, label: String, action_id: StringName) -> Button:

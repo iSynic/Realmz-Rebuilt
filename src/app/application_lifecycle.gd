@@ -26,12 +26,12 @@ static func end_adventure_request(in_combat: bool) -> InteractionRequest:
 static func quit_application_request(has_active_session: bool, in_combat: bool) -> InteractionRequest:
 	var options: Array[Dictionary] = []
 	if has_active_session and not in_combat:
-		options.append({"action": SAVE_AND_QUIT, "label": "Save and quit Realmz 2"})
-	options.append({"action": QUIT_WITHOUT_SAVING, "label": "Quit Realmz 2"})
+		options.append({"action": SAVE_AND_QUIT, "label": "Save and quit Realmz Rebuilt"})
+	options.append({"action": QUIT_WITHOUT_SAVING, "label": "Quit Realmz Rebuilt"})
 	options.append({"action": CANCEL, "label": "Cancel"})
 	return InteractionRequest.new(QUIT_APPLICATION_REQUEST_ID, InteractionRequest.SESSION_LIFECYCLE, {
 		"operation": "quit-application",
-		"prompt": "Quit Realmz 2?",
+		"prompt": "Quit Realmz Rebuilt?",
 		"hasActiveSession": has_active_session,
 		"inCombat": in_combat,
 		"options": options,

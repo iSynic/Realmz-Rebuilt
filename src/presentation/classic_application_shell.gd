@@ -111,6 +111,7 @@ func present(game_view: GameView) -> void:
 		_party_roster.present(game_view)
 		_router.present(game_view)
 		_set_play_regions_visible(false)
+		_build_menus()
 		_update_command_availability()
 		return
 	if previous_campaign_id != game_view.campaign_id:
@@ -262,8 +263,14 @@ func selected_fast_spell(slot_index: int) -> Dictionary:
 
 
 static func route_change_reason(game_view: GameView) -> String:
+	if game_view == null or not game_view.session_started:
+		return "Choose a campaign first."
+	if game_view.party_setup_available:
+		return "Begin the adventure first."
 	if game_view != null and game_view.pending_interaction != null:
 		return "Resolve the current interaction first."
+	if game_view.combat_view != null and game_view.combat_view.outcome == &"active":
+		return "Finish the current battle first."
 	return ""
 
 
@@ -287,6 +294,7 @@ func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 func show_campaign_selection() -> void:
 	_router.show_campaign_selection()
 	_set_play_regions_visible(false)
+	_build_menus()
 
 
 func _apply_layout() -> void:
@@ -336,14 +344,14 @@ func _build_menus() -> void:
 	var location_service := _contextual_service()
 	var service_label := location_service.title if location_service != null else "Location Service"
 	_fill_menu($MenuStrip/MenuRow/InfoMenu, [
-		{"label": "About Realmz 2", "route": &"system"},
+		{"label": "About Realmz Rebuilt", "route": &"system"},
 		{"label": "Package identity and readiness", "route": &"system"},
 		{"label": "Diagnostics", "route": &"system"},
 	])
 	_fill_menu($MenuStrip/MenuRow/GameMenu, [
-		{"label": "Campaigns…", "system": &"campaigns"},
-		{"label": "Quick Save", "system": &"save", "disabled_reason": _session_reason()},
-		{"label": "Quick Load", "system": &"load", "disabled_reason": _session_reason()},
+		{"label": "Campaigns…", "system": &"campaigns", "disabled_reason": _campaign_library_reason()},
+		{"label": "Quick Save", "system": &"save", "disabled_reason": _save_reason()},
+		{"label": "Quick Load", "system": &"load", "disabled_reason": _load_reason()},
 		{"label": "End Adventure…", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
 		{"label": "Quit", "system": &"quit"},
 	])
@@ -383,10 +391,10 @@ func _build_menus() -> void:
 		{"label": "Character — Spells", "route": &"spells"},
 		{"label": "Character — Vault", "route": &"vault"},
 		{"label": "Maps / Notes", "route": &"journal"},
-		{"label": "Game — Quick Save", "system": &"save", "disabled_reason": _session_reason()},
-		{"label": "Game — Quick Load", "system": &"load", "disabled_reason": _session_reason()},
+		{"label": "Game — Quick Save", "system": &"save", "disabled_reason": _save_reason()},
+		{"label": "Game — Quick Load", "system": &"load", "disabled_reason": _load_reason()},
 		{"label": "Game — End Adventure", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
-		{"label": "Game — Campaigns", "system": &"campaigns"},
+		{"label": "Game — Campaigns", "system": &"campaigns", "disabled_reason": _campaign_library_reason()},
 		{"label": "Preferences", "route": &"system"},
 		{"label": "Info / Diagnostics", "route": &"system"},
 		{"label": "Quit", "system": &"quit"},
@@ -398,6 +406,7 @@ func _fill_menu(menu: MenuButton, entries: Array[Dictionary]) -> void:
 	var popup := menu.get_popup()
 	popup.clear()
 	var actions: Dictionary = {}
+	var enabled_count := 0
 	for index: int in entries.size():
 		var entry := entries[index]
 		popup.add_item(String(entry["label"]), index)
@@ -410,7 +419,10 @@ func _fill_menu(menu: MenuButton, entries: Array[Dictionary]) -> void:
 		if not reason.is_empty():
 			popup.set_item_disabled(index, true)
 			popup.set_item_tooltip(index, reason)
+		else:
+			enabled_count += 1
 	_menu_actions[menu.get_instance_id()] = actions
+	menu.disabled = enabled_count == 0
 	if not _menus_connected.has(menu.get_instance_id()):
 		popup.id_pressed.connect(_on_menu_item_pressed.bind(menu))
 		_menus_connected[menu.get_instance_id()] = true
@@ -552,6 +564,7 @@ func _on_screen_changed(screen_id: StringName) -> void:
 	var play_regions_visible := _current_view != null and _current_view.session_started and not _router.full_stage_overlay_visible()
 	_set_play_regions_visible(play_regions_visible)
 	set_status(String(screen_id).replace("_", " ").capitalize())
+	_build_menus()
 	_rebuild_command_deck()
 	route_changed.emit(screen_id)
 
@@ -648,13 +661,48 @@ func _availability_reason(action_id: StringName) -> String:
 
 
 func _session_reason() -> String:
-	return "" if _current_view != null and _current_view.session_started else "Begin a campaign first."
+	if _current_view == null or not _current_view.session_started:
+		return "Choose a campaign first."
+	if _current_view.party_setup_available:
+		return "Begin the adventure first."
+	return ""
 
 
-func _end_adventure_reason() -> String:
+func _save_reason() -> String:
 	var session_reason := _session_reason()
 	if not session_reason.is_empty():
 		return session_reason
+	if _current_view.combat_view != null and _current_view.combat_view.outcome == &"active":
+		return "Saving is unavailable during battle."
+	return ""
+
+
+func _load_reason() -> String:
+	var session_reason := _session_reason()
+	if not session_reason.is_empty():
+		return session_reason
+	if _current_view.pending_interaction != null:
+		return "Resolve the current interaction first."
+	if _current_view.combat_view != null and _current_view.combat_view.outcome == &"active":
+		return "Loading is unavailable during battle."
+	return ""
+
+
+func _campaign_library_reason() -> String:
+	if _current_view == null or not _current_view.session_started:
+		return ""
+	if _current_view.party_setup_available:
+		return "End party setup before choosing another campaign."
+	if _current_view.pending_interaction != null:
+		return "Resolve the current interaction first."
+	if _current_view.combat_view != null and _current_view.combat_view.outcome == &"active":
+		return "Finish the current battle first."
+	return ""
+
+
+func _end_adventure_reason() -> String:
+	if _current_view == null or not _current_view.session_started:
+		return "Choose a campaign first."
 	if _current_view.pending_interaction != null and _current_view.pending_interaction.kind != InteractionRequest.COMBAT:
 		return "Resolve the current interaction first."
 	return ""

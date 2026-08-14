@@ -146,7 +146,7 @@ func _on_quit_requested() -> void:
 	var in_combat := combat_view != null and combat_view.outcome == &"active"
 	_host_interaction = ApplicationLifecycleScript.quit_application_request(current_view.session_started, in_combat)
 	presentation_coordinator.present_host_interaction(_host_interaction)
-	_shell_presenter.set_status("Confirm whether to quit Realmz 2.")
+	_shell_presenter.set_status("Confirm whether to quit Realmz Rebuilt.")
 
 
 func _on_end_adventure_requested() -> void:

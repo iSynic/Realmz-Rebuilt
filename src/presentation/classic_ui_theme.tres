@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=24 format=3]
+[gd_resource type="Theme" load_steps=25 format=3]
 
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-raised-frame.png" id="1_raised"]
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-inset-frame.png" id="2_inset"]
@@ -43,6 +43,18 @@ content_margin_left = 10.0
 content_margin_top = 8.0
 content_margin_right = 10.0
 content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="PopupPanel"]
+bg_color = Color(0.045, 0.052, 0.052, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.32, 0.36, 0.37, 1)
+content_margin_left = 4.0
+content_margin_top = 4.0
+content_margin_right = 4.0
+content_margin_bottom = 4.0
 
 [sub_resource type="StyleBoxTexture" id="ButtonNormal"]
 texture = ExtResource("1_raised")
@@ -224,7 +236,7 @@ PanelContainer/styles/panel = SubResource("RaisedPanel")
 PopupMenu/colors/font_color = Color(0.93, 0.93, 0.89, 1)
 PopupMenu/colors/font_accelerator_color = Color(0.48, 0.82, 0.89, 1)
 PopupMenu/fonts/font = ExtResource("3_ui")
-PopupMenu/styles/panel = SubResource("RaisedPanel")
+PopupMenu/styles/panel = SubResource("PopupPanel")
 PopupMenu/styles/hover = SubResource("Selection")
 RichTextLabel/colors/default_color = Color(0.93, 0.92, 0.84, 1)
 RichTextLabel/fonts/normal_font = ExtResource("5_narrative")
