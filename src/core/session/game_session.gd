@@ -3954,7 +3954,7 @@ func _build_map_view() -> MapView:
 		var direction_name := MapTopology.direction_name(direction)
 		var probe := _probe_movement(direction)
 		movement_options[direction_name] = {"allowed": probe.allowed, "reason": String(probe.reason)}
-	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, _state.party.coordinate, cells, _state.world.map_is_dark(map), _state.world.visited_coordinates(map.id), movement_options)
+	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, _state.party.coordinate, cells, _state.world.map_is_dark(map), _state.world.visited_coordinates(map.id), movement_options, _state.last_move_direction)
 
 
 func _build_player_map_view(definition: PlayerMapDefinition) -> PlayerMapView:

@@ -6,7 +6,9 @@ signal movement_requested(direction: Vector2i)
 const MOUSE_REPEAT_DELAY: float = 0.28
 const MOUSE_REPEAT_INTERVAL: float = 0.11
 const DETACHED_VIEW_DIAMETER: int = 25
-const PARTY_MARKER_ASSET_ID: StringName = &"map.party.right"
+const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
+const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
+const PARTY_MARKER_ASSET_ID: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2(0.0, 24.0)
@@ -22,12 +24,14 @@ var _party_rect: Rect2
 var _minimap_rect: Rect2
 var _held_direction: Vector2i = Vector2i.ZERO
 var _mouse_repeat_remaining: float = 0.0
-var _party_marker_texture: Texture2D
+var _party_marker_textures: Dictionary = {}
+var _party_marker_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	_party_marker_texture = ClassicUiAssetCatalog.texture(PARTY_MARKER_ASSET_ID)
+	_party_marker_textures[PARTY_MARKER_LEFT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_LEFT_ASSET_ID)
+	_party_marker_textures[PARTY_MARKER_RIGHT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_RIGHT_ASSET_ID)
 	set_process(true)
 
 
@@ -58,6 +62,8 @@ func _gui_input(event: InputEvent) -> void:
 func present(game_view: GameView) -> void:
 	_view = game_view
 	visible = game_view != null and game_view.session_started and game_view.map_view != null
+	if visible:
+		_party_marker_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_marker_asset_id)
 	if not visible:
 		_held_direction = Vector2i.ZERO
 	queue_redraw()
@@ -119,11 +125,20 @@ func _draw() -> void:
 
 
 func _draw_party_marker(party_rect: Rect2) -> void:
-	if _party_marker_texture != null:
-		draw_texture_rect(_party_marker_texture, party_rect, false)
+	var party_marker_texture: Texture2D = _party_marker_textures.get(_party_marker_asset_id) as Texture2D
+	if party_marker_texture != null:
+		draw_texture_rect(party_marker_texture, party_rect, false)
 		return
 	draw_circle(party_rect.get_center(), 10.0, Color(0.92, 0.78, 0.34))
 	draw_circle(party_rect.get_center(), 5.0, Color(0.17, 0.12, 0.06))
+
+
+static func party_marker_asset_id_for_direction(direction: Vector2i, current_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID) -> StringName:
+	if direction.x < 0:
+		return PARTY_MARKER_LEFT_ASSET_ID
+	if direction.x > 0:
+		return PARTY_MARKER_RIGHT_ASSET_ID
+	return current_asset_id
 
 
 static func camera_top_left(party_coordinate: Vector2i, map_size: Vector2i, viewport_cells: Vector2i) -> Vector2i:

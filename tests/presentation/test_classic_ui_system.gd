@@ -1218,7 +1218,7 @@ func _test_classic_choice_context() -> void:
 func _test_classic_asset_catalog() -> void:
 	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://src/presentation/assets/classic-ui-assets.json"))
 	assert_equal(manifest["source_commit"], "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61", "Classic controls retain exact Remake commit provenance")
-	assert_equal(manifest["assets"].size(), 61, "the curated Classic UI and map-marker corpus is complete")
+	assert_equal(manifest["assets"].size(), 62, "the curated Classic UI and map-marker corpus is complete")
 	var ids: Dictionary = {}
 	for entry: Dictionary in manifest["assets"]:
 		ids[entry["id"]] = true
@@ -1232,6 +1232,20 @@ func _test_classic_asset_catalog() -> void:
 	assert_equal(ids.size(), manifest["assets"].size(), "Classic semantic asset IDs are unique")
 	assert_not_null(ClassicUiAssetCatalog.texture(&"command.camp"), "runtime asset catalog resolves the Camp bitmap")
 	assert_not_null(ClassicUiAssetCatalog.texture(&"command.rest"), "runtime asset catalog resolves the separate held-Rest bitmap")
+	var left_party_marker_id: StringName = ClassicMapPresenter.PARTY_MARKER_LEFT_ASSET_ID
+	var right_party_marker_id: StringName = ClassicMapPresenter.PARTY_MARKER_RIGHT_ASSET_ID
+	var left_party_marker: Dictionary = ClassicUiAssetCatalog.definition(left_party_marker_id)
+	var right_party_marker: Dictionary = ClassicUiAssetCatalog.definition(right_party_marker_id)
+	assert_not_null(ClassicUiAssetCatalog.texture(left_party_marker_id), "the land presenter resolves the left-facing mounted Classic party CICN")
+	assert_not_null(ClassicUiAssetCatalog.texture(right_party_marker_id), "the land presenter resolves the right-facing mounted Classic party CICN")
+	assert_equal(ClassicUiAssetCatalog.native_size(left_party_marker_id), Vector2i(32, 32), "the left-facing mounted party CICN retains its native map-cell dimensions")
+	assert_equal(ClassicUiAssetCatalog.native_size(right_party_marker_id), Vector2i(32, 32), "the right-facing mounted party CICN retains its native map-cell dimensions")
+	assert_equal(int(left_party_marker["source_resource_id"]), 175, "left-facing party-marker provenance records exact built-in CICN 175")
+	assert_equal(int(right_party_marker["source_resource_id"]), 186, "right-facing party-marker provenance records exact built-in CICN 186")
+	assert_equal(ClassicMapPresenter.party_marker_asset_id_for_direction(Vector2i(-1, 0), right_party_marker_id), left_party_marker_id, "westward movement selects the left-facing mounted party CICN")
+	assert_equal(ClassicMapPresenter.party_marker_asset_id_for_direction(Vector2i(1, 0), left_party_marker_id), right_party_marker_id, "eastward movement selects the right-facing mounted party CICN")
+	assert_equal(ClassicMapPresenter.party_marker_asset_id_for_direction(Vector2i(0, -1), left_party_marker_id), left_party_marker_id, "northward movement preserves the prior left-facing party CICN")
+	assert_equal(ClassicMapPresenter.party_marker_asset_id_for_direction(Vector2i(0, 1), right_party_marker_id), right_party_marker_id, "southward movement preserves the prior right-facing party CICN")
 	var party_marker := ClassicUiAssetCatalog.definition(ClassicMapPresenter.PARTY_MARKER_ASSET_ID)
 	assert_not_null(ClassicUiAssetCatalog.texture(ClassicMapPresenter.PARTY_MARKER_ASSET_ID), "the land presenter resolves the built-in mounted Classic party CICN")
 	assert_equal(ClassicUiAssetCatalog.native_size(ClassicMapPresenter.PARTY_MARKER_ASSET_ID), Vector2i(32, 32), "the mounted party CICN retains its native map-cell dimensions")

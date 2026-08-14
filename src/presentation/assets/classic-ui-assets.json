@@ -317,6 +317,35 @@
       }
     },
     {
+      "id": "map.party.left",
+      "path": "res://src/presentation/assets/classic-controls/map/party-left.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "545d8efe48a472a3e745f9abc6ebeff9bbb29883292507bcb4cc12b318eb89ce",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/centerpict.c:198-238",
+        "note": "Castle buttonchoice sets face to zero for westward input and preserves it during vertical movement; centerpict then selects exact built-in CICN 175 for the left-facing mounted party image.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 175
+    },
+    {
       "id": "map.party.right",
       "path": "res://src/presentation/assets/classic-controls/map/party-right.png",
       "source_repository": "Realmz Castle Realmz",
@@ -329,7 +358,7 @@
       "classic_evidence": {
         "status": "source-control-flow",
         "path": "src/realmz_orig/centerpict.c:198-238",
-        "note": "Castle centerpict selects built-in CICN 175 + 11 * face for ordinary land travel. This is exact built-in CICN 186, the right-facing mounted party image, extracted from The Family Jewels resource fork rather than a scenario-local resource with the same numeric ID.",
+        "note": "Castle buttonchoice sets face to one for eastward input and preserves it during vertical movement; centerpict then selects exact built-in CICN 186 for the right-facing mounted party image.",
         "repository": "Realmz Castle Realmz",
         "commit": "491816ad60037394f92c428e99c004494d3c28b3"
       },

@@ -33,11 +33,13 @@ func run() -> void:
 	var diagonal_step := diagonal_session.submit_intent(PlayerIntent.move(Vector2i(-1, -1)))
 	assert_equal(diagonal_step.state, SessionStep.State.COMPLETED, "a diagonal land move commits as one ordinary movement step")
 	assert_equal(diagonal_session.view().party_coordinate, Vector2i.ZERO, "diagonal land movement changes both coordinates together")
+	assert_equal(diagonal_session.view().map_view.last_move_direction, Vector2i(-1, -1), "the detached map view exposes the committed movement vector for Classic party facing")
 	assert_equal(diagonal_session._state.clock.total_minutes(), content.world.map_by_id("land:0").topology.cell_at(Vector2i.ZERO).movement_cost * 5, "outdoor movement scales the authored Classic timeclick count to five-minute clicks")
 	assert_equal(diagonal_session.snapshot().game_state.last_move_direction, Vector2i(-1, -1), "the save aggregate retains the complete diagonal movement vector")
 	var restored_diagonal := GameSession.new()
 	assert_equal(restored_diagonal.restore(content, SaveEnvelope.from_data(diagonal_session.snapshot().to_data())).state, SessionStep.State.COMPLETED, "diagonal movement state restores transactionally")
 	assert_equal(restored_diagonal.snapshot().game_state.last_move_direction, Vector2i(-1, -1), "save/reload preserves a diagonal backup direction")
+	assert_equal(restored_diagonal.view().map_view.last_move_direction, Vector2i(-1, -1), "the restored detached map view preserves the movement vector used by presentation")
 	var layout_maps: Array[MapDefinition] = [content.world.map_by_id("land:0"), content.world.map_by_id("land:1")]
 	var layout_transitions: Array[MapTransition] = [MapTransition.new("layout:land:0:northwest:land:1", "land:0", &"northwest", "land:1", &"southeast")]
 	var diagonal_layout_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, "land:0", Vector2i.ZERO, WorldDefinition.new(layout_maps, layout_transitions), ScenarioDefinition.new([], []), [], [], [], content.race_definitions(), content.caste_definitions())
