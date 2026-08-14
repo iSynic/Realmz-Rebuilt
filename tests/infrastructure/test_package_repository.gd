@@ -316,6 +316,7 @@ func run() -> void:
 			if candidate.package_hash == loaded.content.package_hash:
 				matching_installations += 1
 				assert_true(candidate.ready, "discovery reports manifest/schema/capability availability without hashing or constructing the campaign")
+				assert_equal(candidate.display_name, loaded.content.campaign.title, "discovery exposes the Providence-authored manifest name instead of inventing one from the campaign ID")
 		assert_equal(matching_installations, 1, "discovery returns the immutable package identity exactly once")
 		var duplicate := FileAccess.open(duplicate_path, FileAccess.WRITE)
 		assert_not_null(duplicate, "the campaign-discovery fixture can create a second immutable revision path")

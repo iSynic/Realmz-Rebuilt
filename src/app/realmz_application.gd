@@ -110,7 +110,7 @@ func _process(_delta: float) -> void:
 	_shell_presenter.set_package_operation(PackageOperationStatusScript.new())
 	_last_package_operation_key = ""
 	if operation.state == PackageOperationStatusScript.CANCELLED:
-		_shell_presenter.set_status("Package validation cancelled.")
+		_shell_presenter.set_status("Campaign preparation cancelled.")
 		return
 	_complete_package_install(installation, _pending_package_seed)
 
@@ -167,14 +167,16 @@ func _on_end_adventure_requested() -> void:
 
 
 func start_package(package_path: String, initial_seed: int) -> SessionStep:
-	if session_controller.view().session_started:
+	var current_view := session_controller.view()
+	if current_view.session_started and not current_view.party_setup_available:
 		return SessionStep.failed(session_controller.view().revision, &"session_already_started", "End the active adventure before starting another campaign.")
 	var installation := package_repository.install_package(package_path)
 	return _complete_package_install(installation, initial_seed)
 
 
 func _begin_package_start(package_path: String, initial_seed: int) -> void:
-	if session_controller.view().session_started:
+	var current_view := session_controller.view()
+	if current_view.session_started and not current_view.party_setup_available:
 		_shell_presenter.set_status("End the active adventure before starting another campaign.", true)
 		return
 	if _package_install_task.snapshot().is_running():
@@ -184,7 +186,7 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 		_shell_presenter.set_status(_package_install_task.snapshot().message, true)
 		return
 	_shell_presenter.set_package_operation(_package_install_task.snapshot())
-	_shell_presenter.set_status("Preparing package validation…")
+	_shell_presenter.set_status("Preparing campaign…")
 
 
 func _cancel_package_start() -> void:

@@ -24,7 +24,7 @@ func start(source_path: String, install_root: String = "user://packages") -> boo
 	_phase = &"queued"
 	_completed = 0
 	_total = 0
-	_message = "Preparing package validation…"
+	_message = "Preparing campaign…"
 	_cancel_requested = false
 	_result = null
 	_mutex.unlock()
@@ -33,7 +33,7 @@ func start(source_path: String, install_root: String = "user://packages") -> boo
 		return true
 	_mutex.lock()
 	_state = PackageOperationStatusScript.FAILED
-	_message = "Could not start package validation (error %d)." % error
+	_message = "Could not start campaign preparation (error %d)." % error
 	_mutex.unlock()
 	return false
 
@@ -84,13 +84,13 @@ func _run_install(source_path: String, install_root: String) -> void:
 		_phase = &"complete"
 		_completed = 1
 		_total = 1
-		_message = "Package validation complete."
+		_message = "Campaign ready."
 	elif result != null and result.error_code == &"package_cancelled":
 		_state = PackageOperationStatusScript.CANCELLED
-		_message = "Package validation cancelled."
+		_message = "Campaign preparation cancelled."
 	else:
 		_state = PackageOperationStatusScript.FAILED
-		_message = result.error_message if result != null else "Package validation failed."
+		_message = result.error_message if result != null else "Campaign preparation failed."
 	_mutex.unlock()
 
 
@@ -118,12 +118,12 @@ func _join_thread() -> void:
 
 static func _message_for(operation_phase: StringName, completed_units: int, total_units: int) -> String:
 	match operation_phase:
-		&"opening": return "Opening package…"
+		&"opening": return "Opening campaign package…"
 		&"checking-install": return "Opening installed campaign…"
-		&"validating-source": return "Preparing source validation…"
-		&"validating-integrity": return "Validating package files %d of %d…" % [completed_units, total_units]
-		&"constructing-content": return "Constructing validated Realmz content…"
+		&"validating-source": return "Checking external package before installation…"
+		&"validating-integrity": return "Checking external package files %d of %d…" % [completed_units, total_units]
+		&"constructing-content": return "Loading compiled Realmz content…"
 		&"copying-package": return "Installing immutable package…"
-		&"validating-install": return "Validating installed copy…"
-		&"complete": return "Package validation complete."
-	return "Checking package…"
+		&"validating-install": return "Checking installed copy…"
+		&"complete": return "Campaign ready."
+	return "Preparing campaign…"

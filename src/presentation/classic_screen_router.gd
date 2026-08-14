@@ -39,9 +39,7 @@ var _splash_overlay: PanelContainer
 var _campaign_overlay: PanelContainer
 var _campaign_list: VBoxContainer
 var _campaign_scroll: ScrollContainer
-var _campaign_detail: RichTextLabel
 var _package_path: LineEdit
-var _seed: SpinBox
 var _setup_overlay: PanelContainer
 var _setup_body: VBoxContainer
 var _creator_scroll: ScrollContainer
@@ -61,6 +59,7 @@ var _starting_level_option: OptionButton
 var _portrait_option: OptionButton
 var _combat_icon_option: OptionButton
 var _party_list: VBoxContainer
+var _party_preparation_label: Label
 var _stored_character_list: VBoxContainer
 var _party_setup_options: HBoxContainer
 var _difficulty_option: OptionButton
@@ -98,7 +97,8 @@ var _focus_keys: Dictionary = {}
 var _workspace_rect := Rect2(220.0, 100.0, 512.0, 430.0)
 var _layout_profile: StringName = UiLayoutProfile.STANDARD
 var _modal_layout_rect := Rect2(12.0, 36.0, 680.0, 556.0)
-var _campaign_layout_rect := Rect2(12.0, 36.0, 680.0, 556.0)
+var _campaign_layout_rect := Rect2(12.0, 36.0, 228.0, 556.0)
+var _setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
 var _content_parent: Container
 var _inventory_query: String = ""
 var _inventory_character_id: String = ""
@@ -150,6 +150,8 @@ func present(view: GameView) -> void:
 		_character_sheet_character_id = ""
 		_character_sheet_tab = &"overview"
 	_presented_campaign_id = view.campaign_id
+	if _campaign_list != null:
+		_render_campaign_list()
 	if view.party_setup_available:
 		if _awaiting_draft_generation and view.character_draft != null:
 			_awaiting_draft_generation = false
@@ -158,7 +160,7 @@ func present(view: GameView) -> void:
 			_reset_creator(true)
 		if _splash_overlay != null:
 			_splash_overlay.visible = false
-		_campaign_overlay.visible = false
+		_campaign_overlay.visible = true
 		_setup_overlay.visible = true
 		_body_frame.visible = false
 		_refresh_setup_options()
@@ -235,25 +237,35 @@ func _render_campaign_list() -> void:
 		_campaign_list.add_child(operation_row)
 	if _campaigns.is_empty():
 		if not _package_operation_status.is_running():
-			_add_label(_campaign_list, "No installed packages. Open a Providence .realmz2 export.", MUTED)
+			_add_label(_campaign_list, "No installed scenarios. Install a Providence .realmz2 package below.", MUTED)
 		call_deferred("_refresh_campaign_layout")
 		return
+	var ready_count: int = 0
+	var hidden_count: int = 0
 	for campaign: PackageDiscoveryResult in _campaigns:
-		var row := HBoxContainer.new()
-		row.custom_minimum_size = Vector2(0, 48)
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var label := Label.new()
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		label.text = "%s\n%s" % [_display_name(campaign), "Available • validates before play" if campaign.ready else "Rejected • %s" % campaign.error_message]
-		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		label.tooltip_text = campaign.path
-		row.add_child(label)
+		if not campaign.ready:
+			hidden_count += 1
+			continue
+		ready_count += 1
 		var action := Button.new()
-		action.text = "Play" if campaign.ready else "Details"
+		action.name = "Scenario_%s" % (campaign.campaign_id if not campaign.campaign_id.is_empty() else campaign.path.get_file()).validate_node_name()
+		action.custom_minimum_size = Vector2(0, 58)
+		action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		action.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		action.clip_text = true
+		action.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		var status := "Installed • ready"
+		if campaign.campaign_id == _presented_campaign_id:
+			status = "Selected • party setup open"
+		action.text = "%s\n%s" % [_display_name(campaign), status]
+		action.tooltip_text = campaign.path
 		action.disabled = not campaign.ready or _package_operation_status.is_running()
 		action.pressed.connect(_campaign_pressed.bind(campaign))
-		row.add_child(action)
-		_campaign_list.add_child(row)
+		_campaign_list.add_child(action)
+	if ready_count == 0 and not _package_operation_status.is_running():
+		_add_label(_campaign_list, "No playable scenarios. Install a package from the current Providence exporter.", MUTED)
+	if hidden_count > 0:
+		_add_label(_campaign_list, "%d incompatible or stale installation%s hidden." % [hidden_count, "" if hidden_count == 1 else "s"], MUTED, 11)
 	# Container minimum-size propagation runs after rows enter the tree. Restore
 	# the bounded modal rect once that layout pass has settled.
 	call_deferred("_refresh_campaign_layout")
@@ -311,6 +323,7 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2) -> voi
 	_workspace_rect = Rect2(0.0, top, maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top - bottom))
 	_modal_layout_rect = Rect2(12.0, top + 8.0, maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - top - 16.0))
 	_campaign_layout_rect = ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
+	_setup_layout_rect = _modal_layout_rect
 	if _setup_overlay != null:
 		_apply_creator_layout(profile.id)
 		_creator_scroll.custom_minimum_size.y = 140.0 if profile.id == UiLayoutProfile.COMPACT else 220.0
@@ -326,12 +339,9 @@ func _apply_creator_layout(profile_id: StringName) -> void:
 
 
 static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2) -> Rect2:
-	var modal_rect := Rect2(12.0, profile.menu_height + 8.0, maxf(320.0, viewport_size.x - profile.party_width - 24.0), maxf(300.0, viewport_size.y - profile.menu_height - 16.0))
-	var campaign_width := minf(680.0 * profile.ui_scale, modal_rect.size.x)
-	return Rect2(
-		Vector2(modal_rect.position.x + (modal_rect.size.x - campaign_width) * 0.5, modal_rect.position.y),
-		Vector2(campaign_width, modal_rect.size.y)
-	)
+	var modal_rect := Rect2(12.0, profile.menu_height + 8.0, maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - profile.menu_height - 16.0))
+	var campaign_width := clampf(228.0 * profile.ui_scale, 200.0, minf(268.0, modal_rect.size.x * 0.32))
+	return Rect2(modal_rect.position, Vector2(campaign_width, modal_rect.size.y))
 
 
 func _apply_modal_layouts() -> void:
@@ -343,16 +353,17 @@ func _apply_modal_layouts() -> void:
 		_splash_overlay.size = _modal_layout_rect.size
 	if _setup_overlay != null:
 		_setup_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		_setup_overlay.position = _modal_layout_rect.position
-		_setup_overlay.size = _modal_layout_rect.size
+		_setup_overlay.position = _setup_layout_rect.position
+		_setup_overlay.size = _setup_layout_rect.size
 		if _setup_inspection_overlay != null:
 			_setup_inspection_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 			_setup_inspection_overlay.position = Vector2.ZERO
 			_setup_inspection_overlay.size = _setup_overlay.size
 	if _campaign_overlay != null:
-		_campaign_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		_campaign_overlay.position = _campaign_layout_rect.position
-		_campaign_overlay.size = _campaign_layout_rect.size
+		if _campaign_overlay.get_parent() == self:
+			_campaign_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			_campaign_overlay.position = _campaign_layout_rect.position
+			_campaign_overlay.size = _campaign_layout_rect.size
 
 
 func _refresh_campaign_layout() -> void:
@@ -386,8 +397,10 @@ func show_campaign_selection() -> void:
 	if _splash_overlay != null:
 		_splash_overlay.visible = false
 	_campaign_overlay.visible = true
-	_setup_overlay.visible = false
+	_setup_overlay.visible = true
 	_body_frame.visible = false
+	if _view == null or not _view.party_setup_available:
+		_refresh_setup_options()
 	call_deferred("_prepare_campaign_selection")
 
 
@@ -440,8 +453,12 @@ func handle_back() -> bool:
 		show_splash()
 		return true
 	if _campaign_overlay.visible:
+		if _view != null and _view.party_setup_available:
+			show_splash()
+			return true
 		if _view != null and _view.session_started:
 			_campaign_overlay.visible = false
+			_setup_overlay.visible = false
 			_render_screen()
 			return true
 		show_splash()
@@ -568,20 +585,18 @@ func _mount_workspace(screen_id: StringName) -> void:
 
 func _build_campaign_overlay() -> void:
 	_campaign_overlay = PanelContainer.new()
-	_campaign_overlay.name = "CampaignLibrary"
+	_campaign_overlay.name = "ScenarioColumn"
 	_campaign_overlay.theme_type_variation = &"ClassicSharedStone"
-	_campaign_overlay.set_anchors_preset(Control.PRESET_CENTER)
-	_campaign_overlay.offset_left = -300.0
-	_campaign_overlay.offset_top = -220.0
-	_campaign_overlay.offset_right = 300.0
-	_campaign_overlay.offset_bottom = 220.0
-	_campaign_overlay.z_index = MAXIMUM_MODAL_Z_INDEX
+	_campaign_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_campaign_overlay.custom_minimum_size.x = 228.0
+	_campaign_overlay.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_campaign_overlay.z_index = 0
 	add_child(_campaign_overlay)
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 10)
+	column.add_theme_constant_override("separation", 8)
 	_campaign_overlay.add_child(column)
-	_add_label(column, "Choose a Realmz campaign", GOLD, 24)
-	_add_label(column, "Providence packages are validated before play.", MUTED)
+	_add_label(column, "Scenarios", GOLD, 20)
+	_add_label(column, "Installed Providence packages ready for play.", MUTED, 12)
 	_campaign_list = VBoxContainer.new()
 	_campaign_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_campaign_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -593,36 +608,22 @@ func _build_campaign_overlay() -> void:
 	column.add_child(_campaign_scroll)
 	var details := HBoxContainer.new()
 	_package_path = LineEdit.new()
-	_package_path.placeholder_text = "Path to .realmz2 package"
+	_package_path.placeholder_text = "Path to Providence .realmz2"
 	_package_path.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	details.add_child(_package_path)
 	_details_button(details)
 	column.add_child(details)
-	var seed_row := HBoxContainer.new()
-	_seed = SpinBox.new()
-	_seed.name = "Seed"
-	_seed.min_value = 1
-	_seed.max_value = 2147483647
-	_seed.value = 1
-	_seed.tooltip_text = "Deterministic Realmz seed"
-	seed_row.add_child(_label("Seed"))
-	seed_row.add_child(_seed)
-	column.add_child(seed_row)
 	var refresh := Button.new()
-	refresh.text = "Refresh installed packages"
+	refresh.text = "Refresh scenarios"
 	refresh.pressed.connect(func() -> void: refresh_requested.emit())
 	var library_actions := HBoxContainer.new()
 	library_actions.add_child(refresh)
-	var vault := Button.new()
-	vault.text = "Character vault"
-	vault.pressed.connect(_show_vault_from_campaign)
-	library_actions.add_child(vault)
 	column.add_child(library_actions)
 
 
 func _details_button(row: HBoxContainer) -> void:
 	var open := Button.new()
-	open.text = "Open path"
+	open.text = "Install .realmz2…"
 	open.pressed.connect(_open_typed_path)
 	row.add_child(open)
 
@@ -648,9 +649,18 @@ func _build_setup_overlay() -> void:
 	_setup_overlay.z_index = 25
 	add_child(_setup_overlay)
 	_setup_body = VBoxContainer.new()
+	_setup_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_setup_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_setup_body.add_theme_constant_override("separation", 6)
-	_setup_overlay.add_child(_setup_body)
+	var integrated_workspace := HBoxContainer.new()
+	integrated_workspace.name = "ScenarioPartyWorkspace"
+	integrated_workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	integrated_workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	integrated_workspace.add_theme_constant_override("separation", 8)
+	remove_child(_campaign_overlay)
+	integrated_workspace.add_child(_campaign_overlay)
+	integrated_workspace.add_child(_setup_body)
+	_setup_overlay.add_child(integrated_workspace)
 	_setup_campaign_label = _add_label(_setup_body, "Assemble your party", GOLD, 24)
 	_setup_campaign_label.custom_minimum_size.y = 28.0
 	_setup_campaign_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -702,6 +712,9 @@ func _build_setup_overlay() -> void:
 	party_heading_content.add_child(party_count)
 	party_heading.add_child(party_heading_content)
 	party_column.add_child(party_heading)
+	_party_preparation_label = _label("Select a scenario to assemble its eligible party.", MUTED, 12)
+	_party_preparation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	party_column.add_child(_party_preparation_label)
 	var party_scroll := ScrollContainer.new()
 	party_scroll.name = "PartySlotScroll"
 	party_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -803,8 +816,15 @@ func _build_setup_character_inspection() -> void:
 
 
 func _refresh_setup_options() -> void:
-	if _view == null:
+	if _view == null or not _view.party_setup_available:
+		_setup_campaign_label.text = "Select a scenario"
+		_setup_restriction_label.text = "Character Files, restrictions, difficulty, and party eligibility are prepared from the selected Providence package."
+		_party_preparation_label.visible = true
+		_refresh_party_list()
+		_refresh_party_setup_options()
+		_render_creator_step()
 		return
+	_party_preparation_label.visible = false
 	var summary := _view.campaign_summary
 	if summary != null:
 		var title_parts: Array[String] = [summary.title]
@@ -1327,80 +1347,79 @@ func _refresh_party_list() -> void:
 	var party_count := _setup_overlay.find_child("PartyCount", true, false) as Label
 	if party_count != null:
 		party_count.text = "• %d / %d" % [_view.party_members.size() if _view != null else 0, _maximum_party_size()]
-	if _view != null:
-		for slot_index: int in _maximum_party_size():
-			if slot_index >= _view.party_members.size():
-				var empty := PanelContainer.new()
-				empty.name = "EmptyPartySlot%d" % (slot_index + 1)
-				empty.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
-				empty.add_theme_stylebox_override("panel", PartySetupCharacterRowScript.row_style())
-				empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				var empty_row := HBoxContainer.new()
-				empty_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				empty_row.add_theme_constant_override("separation", 6)
-				empty.add_child(empty_row)
-				var portrait_space := Control.new()
-				portrait_space.custom_minimum_size = Vector2(PartySetupCharacterRowScript.PORTRAIT_SIZE, PartySetupCharacterRowScript.PORTRAIT_SIZE)
-				portrait_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				empty_row.add_child(portrait_space)
-				var empty_label := Label.new()
-				empty_label.text = "%d. Empty position" % (slot_index + 1)
-				empty_label.modulate = MUTED
-				empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-				empty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				empty_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				empty_row.add_child(empty_label)
-				var action_space := Control.new()
-				action_space.custom_minimum_size.x = 130.0
-				action_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				empty_row.add_child(action_space)
-				_party_list.add_child(empty)
-				continue
-			var character: CharacterView = _view.party_members[slot_index]
-			var row_panel := PanelContainer.new()
-			row_panel.name = "PartySlot_%s" % character.id.validate_node_name()
-			row_panel.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
-			row_panel.add_theme_stylebox_override("panel", PartySetupCharacterRowScript.row_style())
-			row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 6)
-			row_panel.add_child(row)
-			var portrait_view := TextureRect.new()
-			portrait_view.name = "Portrait"
-			portrait_view.custom_minimum_size = Vector2(PartySetupCharacterRowScript.PORTRAIT_SIZE, PartySetupCharacterRowScript.PORTRAIT_SIZE)
-			portrait_view.texture = _appearance_textures.get(character.portrait_id) as Texture2D
-			portrait_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			portrait_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			portrait_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			portrait_view.tooltip_text = "%s's portrait" % character.name
-			row.add_child(portrait_view)
-			var label := Label.new()
-			label.text = PartySetupCharacterRowScript._summary_text(character.name, character.level, character.race_name, character.caste_name, character, slot_index + 1)
-			label.add_theme_font_size_override("font_size", 10)
-			label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-			label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			label.modulate = Color("e0e2e5")
-			row.add_child(label)
-			var inspect_button := Button.new()
-			inspect_button.text = "Inspect"
-			inspect_button.tooltip_text = "Open %s's complete character record without changing party state." % character.name
-			inspect_button.pressed.connect(_inspect_setup_character.bind(character.id))
-			row.add_child(inspect_button)
-			var remove_button := Button.new()
-			remove_button.text = "Remove"
-			_apply_availability(remove_button, &"remove_party_member")
-			remove_button.pressed.connect(_remove_setup_character.bind(character.id))
-			row.add_child(remove_button)
-			_party_list.add_child(row_panel)
+	for slot_index: int in _maximum_party_size():
+		if _view == null or not _view.party_setup_available or slot_index >= _view.party_members.size():
+			var empty := PanelContainer.new()
+			empty.name = "EmptyPartySlot%d" % (slot_index + 1)
+			empty.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
+			empty.add_theme_stylebox_override("panel", PartySetupCharacterRowScript.row_style())
+			empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var empty_row := HBoxContainer.new()
+			empty_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			empty_row.add_theme_constant_override("separation", 6)
+			empty.add_child(empty_row)
+			var portrait_space := Control.new()
+			portrait_space.custom_minimum_size = Vector2(PartySetupCharacterRowScript.PORTRAIT_SIZE, PartySetupCharacterRowScript.PORTRAIT_SIZE)
+			portrait_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			empty_row.add_child(portrait_space)
+			var empty_label := Label.new()
+			empty_label.text = "%d. Empty position" % (slot_index + 1)
+			empty_label.modulate = MUTED
+			empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			empty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			empty_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			empty_row.add_child(empty_label)
+			var action_space := Control.new()
+			action_space.custom_minimum_size.x = 130.0
+			action_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			empty_row.add_child(action_space)
+			_party_list.add_child(empty)
+			continue
+		var character: CharacterView = _view.party_members[slot_index]
+		var row_panel := PanelContainer.new()
+		row_panel.name = "PartySlot_%s" % character.id.validate_node_name()
+		row_panel.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
+		row_panel.add_theme_stylebox_override("panel", PartySetupCharacterRowScript.row_style())
+		row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		row_panel.add_child(row)
+		var portrait_view := TextureRect.new()
+		portrait_view.name = "Portrait"
+		portrait_view.custom_minimum_size = Vector2(PartySetupCharacterRowScript.PORTRAIT_SIZE, PartySetupCharacterRowScript.PORTRAIT_SIZE)
+		portrait_view.texture = _appearance_textures.get(character.portrait_id) as Texture2D
+		portrait_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		portrait_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		portrait_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		portrait_view.tooltip_text = "%s's portrait" % character.name
+		row.add_child(portrait_view)
+		var label := Label.new()
+		label.text = PartySetupCharacterRowScript._summary_text(character.name, character.level, character.race_name, character.caste_name, character, slot_index + 1)
+		label.add_theme_font_size_override("font_size", 10)
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		label.modulate = Color("e0e2e5")
+		row.add_child(label)
+		var inspect_button := Button.new()
+		inspect_button.text = "Inspect"
+		inspect_button.tooltip_text = "Open %s's complete character record without changing party state." % character.name
+		inspect_button.pressed.connect(_inspect_setup_character.bind(character.id))
+		row.add_child(inspect_button)
+		var remove_button := Button.new()
+		remove_button.text = "Remove"
+		_apply_availability(remove_button, &"remove_party_member")
+		remove_button.pressed.connect(_remove_setup_character.bind(character.id))
+		row.add_child(remove_button)
+		_party_list.add_child(row_panel)
 
 
 func _render_party_assembly() -> void:
 	_create_character_button.visible = true
-	_create_character_button.disabled = _view != null and _view.party_members.size() >= _maximum_party_size()
-	_create_character_button.tooltip_text = "This party already has %d characters." % _maximum_party_size() if _create_character_button.disabled else "Create a new character for this campaign."
+	_create_character_button.disabled = _view == null or not _view.party_setup_available or _view.party_members.size() >= _maximum_party_size()
+	_create_character_button.tooltip_text = "Select a scenario before creating a campaign-aware character." if _view == null or not _view.party_setup_available else ("This party already has %d characters." % _maximum_party_size() if _create_character_button.disabled else "Create a new character for this campaign.")
 	_creator_steps.visible = false
 	_creator_action_bar.visible = false
-	_party_setup_options.visible = true
+	_party_setup_options.visible = _view != null and _view.party_setup_available
 	_setup_message.visible = false
 	_clear(_creator_page)
 	_ensure_appearance_textures()
@@ -1426,6 +1445,11 @@ func _render_party_assembly() -> void:
 	_stored_character_list.add_theme_constant_override("separation", 2)
 	stored_scroll.add_child(_stored_character_list)
 	var current_revisions := _current_vault_revisions()
+	if _view == null or not _view.party_setup_available:
+		var select_prompt := _label("Select an installed scenario to calculate Character File eligibility and assemble its party.", MUTED)
+		select_prompt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_stored_character_list.add_child(select_prompt)
+		return
 	if current_revisions.is_empty():
 		var empty := _label("No stored characters are available. Create one to begin assembling this party.", MUTED)
 		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1450,8 +1474,14 @@ func _render_party_assembly() -> void:
 
 
 func _refresh_party_setup_options() -> void:
-	if _view == null or _view.party_setup == null or _difficulty_option == null:
+	if _difficulty_option == null:
 		return
+	if _view == null or not _view.party_setup_available or _view.party_setup == null:
+		_party_setup_options.visible = false
+		_begin_button.disabled = true
+		_begin_button.text = "Begin adventure (0/6)"
+		return
+	_party_setup_options.visible = _setup_mode == &"assembly"
 	_monster_set_option.clear()
 	var ordered_monster_sets: Array[int] = []
 	for preferred_set_id: int in [0, -1, 1]:
@@ -1612,13 +1642,13 @@ func _option_name(list: ItemList, option_id: String) -> String:
 func _campaign_pressed(campaign: PackageDiscoveryResult) -> void:
 	if not campaign.ready:
 		return
-	start_requested.emit(campaign.path, int(_seed.value) if _seed != null else 1)
+	start_requested.emit(campaign.path, 1)
 
 
 func _open_typed_path() -> void:
 	var path := _package_path.text.strip_edges()
 	if not path.is_empty():
-		start_requested.emit(path, int(_seed.value))
+		start_requested.emit(path, 1)
 
 
 func _render_screen() -> void:
@@ -2696,6 +2726,8 @@ func _focus_first(parent: Node) -> void:
 
 
 func _display_name(campaign: PackageDiscoveryResult) -> String:
+	if not campaign.display_name.strip_edges().is_empty():
+		return campaign.display_name.strip_edges()
 	return campaign.campaign_id.replace("-", " ").capitalize()
 
 

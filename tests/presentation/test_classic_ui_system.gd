@@ -93,8 +93,102 @@ func _test_startup_shell() -> void:
 	assert_not_null(choose_scenario, "the splash exposes scenario selection as a primary path")
 	assert_not_null(character_files, "the splash exposes reusable character files independently of party setup")
 	choose_scenario.pressed.emit()
-	assert_true(router._campaign_overlay.visible and not router._splash_overlay.visible, "scenario selection replaces the splash with the campaign library")
-	assert_true(router.handle_back(), "Back from the pre-session campaign library returns to the splash")
+	var setup_workspace := router.find_child("PartySetup", true, false) as Control
+	var scenario_picker := router.find_child("ScenarioColumn", true, false) as Control
+	if scenario_picker == null:
+		scenario_picker = router.find_child("CampaignLibrary", true, false) as Control
+	assert_true(setup_workspace != null and setup_workspace.visible and not router._splash_overlay.visible, "scenario selection opens the integrated scenario and party setup workspace")
+	assert_true(scenario_picker != null and setup_workspace != null and scenario_picker.visible and setup_workspace.is_ancestor_of(scenario_picker), "scenario selection is a left-column picker inside the integrated workspace, not an obsolete separate campaign modal")
+	router.set_campaigns([
+		PackageDiscoveryResult.new("res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2", true, "installed-scenario", "", "", "", "Installed Scenario"),
+		PackageDiscoveryResult.new("user://packages/stale.realmz2", false, "stale-scenario", "", "", "Package schema hash does not match the runtime contract mirror.", "Stale Scenario"),
+	])
+	var scenario_copy: Array[String] = []
+	if scenario_picker != null:
+		for node: Node in scenario_picker.find_children("*", "Label", true, false):
+			var label := node as Label
+			if label.visible:
+				scenario_copy.append(label.text)
+		for node: Node in scenario_picker.find_children("*", "Button", true, false):
+			var button := node as Button
+			if button.visible:
+				scenario_copy.append(button.text)
+	assert_true(router._campaign_list is VBoxContainer and router._campaign_list.get_parent() is ScrollContainer, "installed scenarios use one single-column picker surface")
+	assert_true(scenario_copy.any(func(text: String) -> bool: return text.to_lower().contains("installed scenario")), "the installed-scenario picker identifies its ready scenario row")
+	assert_false(scenario_copy.any(func(text: String) -> bool: return text.contains("Stale Scenario")), "incompatible installations do not become ordinary scenario rows")
+	assert_true(scenario_copy.any(func(text: String) -> bool: return text.to_lower().contains("installation hidden")), "the picker reports hidden incompatible installations without flooding the scenario list")
+	assert_true(scenario_copy.any(func(text: String) -> bool: return text.to_lower().contains("ready") or text.to_lower().contains("opening")), "installed scenario copy says the package is ready or opening")
+	assert_false(scenario_copy.any(func(text: String) -> bool:
+		var lower := text.to_lower()
+		return lower.contains("compiled") or lower.contains("fully validated") or lower.contains("validates before play")
+	), "installed scenario copy does not claim compilation or full validation on every Play click")
+	var scenario_buttons: Array[String] = []
+	if scenario_picker != null:
+		for node: Node in scenario_picker.find_children("*", "Button", true, false):
+			var button := node as Button
+			if button.visible:
+				scenario_buttons.append(button.text)
+	assert_false(scenario_buttons.any(func(text: String) -> bool: return text == "Play"), "scenario rows do not expose the obsolete per-row Play action")
+	var workspace_labels: Array[String] = []
+	if setup_workspace != null:
+		for node: Node in setup_workspace.find_children("*", "Label", true, false):
+			var label := node as Label
+			if label.visible:
+				workspace_labels.append(label.text)
+	assert_true(scenario_copy.any(func(text: String) -> bool: return text.to_lower().contains("scenarios") or text.to_lower().contains("installed scenario")), "the left column is the installed-scenario picker in the integrated workspace")
+	assert_true(workspace_labels.any(func(text: String) -> bool: return text == "Character Files"), "the integrated workspace keeps Character Files in its center column")
+	assert_true(workspace_labels.any(func(text: String) -> bool: return text == "Current Party"), "the integrated workspace keeps Current Party in its right column")
+	var install_buttons: Array[String] = []
+	if scenario_picker != null:
+		for node: Node in scenario_picker.find_children("*", "Button", true, false):
+			var button := node as Button
+			if button.visible:
+				install_buttons.append(button.text)
+	assert_true(install_buttons.any(func(text: String) -> bool: return text.begins_with("Install .realmz2")), "the external package action uses installation language")
+	assert_false(install_buttons.any(func(text: String) -> bool: return text == "Open path" or text.to_lower().contains("play")), "the integrated workspace does not label external installation as Play")
+	var setup_seed: Node = null
+	if setup_workspace != null:
+		setup_seed = setup_workspace.find_child("Seed", true, false)
+	assert_true(setup_seed == null, "developer seed controls are absent from the ordinary scenario and party workspace")
+	assert_true(router.find_child("Seed", true, false) == null, "developer seed controls are absent from the ordinary integrated workspace")
+	var character_heading: Control = null
+	var party_heading: Control = null
+	if setup_workspace != null:
+		character_heading = setup_workspace.find_child("CharacterFilesHeading", true, false) as Control
+		party_heading = setup_workspace.find_child("PartyHeading", true, false) as Control
+	assert_true(character_heading != null and party_heading != null, "the pre-session workspace mounts both setup columns before a campaign session exists")
+	var character_column: Node = character_heading.get_parent() if character_heading != null else null
+	var party_column: Node = party_heading.get_parent() if party_heading != null else null
+	var character_guidance: Array[String] = []
+	if character_column != null:
+		for node: Node in character_column.find_children("*", "Label", true, false):
+			var label := node as Label
+			if label.visible:
+				character_guidance.append(label.text)
+	var party_guidance: Array[String] = []
+	if party_column != null:
+		for node: Node in party_column.find_children("*", "Label", true, false):
+			var label := node as Label
+			if label.visible:
+				party_guidance.append(label.text)
+	assert_true(character_guidance.any(func(text: String) -> bool:
+		var lower := text.to_lower()
+		return (lower.contains("choose") or lower.contains("select")) and (lower.contains("scenario") or lower.contains("campaign"))
+	), "Character Files shows explicit pre-session scenario guidance")
+	assert_true(party_guidance.any(func(text: String) -> bool:
+		var lower := text.to_lower()
+		return (lower.contains("choose") or lower.contains("select")) and (lower.contains("scenario") or lower.contains("campaign")) and (lower.contains("party") or lower.contains("character"))
+	), "Current Party shows explicit pre-session setup guidance")
+	assert_true((character_column == null or character_column.find_children("*", "BaseButton", true, false).all(func(button: Node) -> bool: return (button as BaseButton).disabled)) and (party_column == null or party_column.find_children("*", "BaseButton", true, false).all(func(button: Node) -> bool: return (button as BaseButton).disabled)), "pre-session Character Files and Current Party guidance is noninteractive")
+	var empty_party_slots: Node = null
+	if setup_workspace != null:
+		empty_party_slots = setup_workspace.find_child("PartySlots", true, false)
+	assert_not_null(empty_party_slots, "the integrated workspace owns one named Current Party slot list before session preparation")
+	assert_equal(empty_party_slots.get_child_count() if empty_party_slots != null else -1, 6, "pre-session Current Party renders all six empty positions")
+	if empty_party_slots != null:
+		for slot_number: int in range(1, 7):
+			assert_not_null(empty_party_slots.find_child("EmptyPartySlot%d" % slot_number, true, false), "pre-session Current Party preserves empty slot %d" % slot_number)
+	assert_true(router.handle_back(), "Back from the integrated pre-session workspace returns to the splash")
 	assert_true(router._splash_overlay.visible, "the startup flow retains a real front door after backing out of campaign selection")
 	assert_contains(character_files.tooltip_text, "selected scenario", "the splash explains why new character generation remains campaign-aware")
 	var route_changes: Array[StringName] = []
@@ -1442,7 +1536,14 @@ func _test_character_creator_workflow() -> void:
 	assert_equal(router._setup_message.modulate, ClassicScreenRouter.ERROR, "party setup distinguishes a rejected import from ordinary helper text")
 	router._render_party_assembly()
 	assert_false(router._setup_message.visible, "a committed party refresh clears the previous inline setup failure")
+	assert_true(router._setup_overlay.visible and router._setup_overlay.find_child("ScenarioPartyWorkspace", true, false) != null, "a party-setup GameView keeps the integrated full-stage workspace visible")
+	assert_not_null(router._setup_overlay.find_child("CharacterFilesHeading", true, false), "party-setup GameView keeps the eligible Character Files column mounted")
+	assert_not_null(router._setup_overlay.find_child("PartyHeading", true, false), "party-setup GameView keeps the Current Party column mounted")
 	assert_true(router._setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool: return button.text != "Revision history and archives…"), "advanced revision history and archive controls stay out of ordinary party assembly")
+	assert_true(router._setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool:
+		var lower := button.text.to_lower()
+		return not lower.contains("archive") and not lower.contains("revision history") and not lower.contains("restore as current")
+	), "ordinary party assembly does not expose revision, archive, or restore controls")
 	assert_not_null(router._stored_character_list, "stored characters remain visible beside the six party slots")
 	assert_equal(router._party_list.get_child_count(), 6, "party assembly always exposes the campaign's complete slot capacity")
 	var party_scroll := router._party_list.get_parent() as ScrollContainer
@@ -1476,9 +1577,12 @@ func _test_character_creator_workflow() -> void:
 	var character_heading := router._setup_overlay.find_child("CharacterFilesHeading", true, false) as CenterContainer
 	var party_heading := router._setup_overlay.find_child("PartyHeading", true, false) as CenterContainer
 	assert_equal([character_heading.custom_minimum_size.y, party_heading.custom_minimum_size.y], [20.0, 20.0], "both transfer sections use identically sized centered headings")
-	assert_equal([router._creator_page.get_child(1).name, (router._party_list.get_parent() as ScrollContainer).name], [&"StoredCharacterScroll", &"PartySlotScroll"], "both lists begin immediately beneath their aligned headings")
+	var stored_scroll := router._setup_overlay.find_child("StoredCharacterScroll", true, false) as ScrollContainer
+	var party_slot_scroll := router._setup_overlay.find_child("PartySlotScroll", true, false) as ScrollContainer
+	assert_true(stored_scroll != null and party_slot_scroll != null and stored_scroll.get_parent() == character_heading.get_parent() and party_slot_scroll.get_parent() == party_heading.get_parent(), "Character Files and Current Party lists remain directly beneath their aligned headings")
 	var add_stored := stored_row.find_child("AddCharacter", true, false) as Button
 	assert_not_null(add_stored, "the balanced Character Files row keeps an explicit Add action")
+	assert_true(add_stored != null and not add_stored.disabled, "an eligible Character Files revision remains importable in party setup")
 	add_stored.pressed.emit()
 	assert_equal([intents[-1].kind, intents[-1].target_id, intents[-1].revision_hash], [PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id, stored.revision_hash], "click Add submits the stable stored-character revision through the existing typed intent")
 	var intent_count_before_drop := intents.size()

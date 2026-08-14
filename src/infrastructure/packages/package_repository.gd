@@ -133,10 +133,14 @@ func discover_packages(search_roots: Array[String]) -> Array[PackageDiscoveryRes
 
 func discover_campaigns(search_roots: Array[String]) -> Array[PackageDiscoveryResult]:
 	var selected_by_campaign: Dictionary = {}
+	var rejected_by_key: Dictionary = {}
 	var visible: Array[PackageDiscoveryResult] = []
 	for candidate: PackageDiscoveryResult in discover_packages(search_roots):
 		if not candidate.ready:
-			visible.append(candidate)
+			var rejection_key := candidate.campaign_id if not candidate.campaign_id.is_empty() else "error:%s" % candidate.error_message
+			var selected_rejection := rejected_by_key.get(rejection_key) as PackageDiscoveryResult
+			if selected_rejection == null or _package_revision_is_newer(candidate, selected_rejection):
+				rejected_by_key[rejection_key] = candidate
 			continue
 		var selected := selected_by_campaign.get(candidate.campaign_id) as PackageDiscoveryResult
 		if selected == null or _package_revision_is_newer(candidate, selected):
@@ -146,6 +150,14 @@ func discover_campaigns(search_roots: Array[String]) -> Array[PackageDiscoveryRe
 	campaign_ids.sort()
 	for campaign_id: String in campaign_ids:
 		visible.append(selected_by_campaign[campaign_id] as PackageDiscoveryResult)
+	var rejection_keys: Array[String] = []
+	rejection_keys.assign(rejected_by_key.keys())
+	rejection_keys.sort()
+	for rejection_key: String in rejection_keys:
+		var rejected := rejected_by_key[rejection_key] as PackageDiscoveryResult
+		if not rejected.campaign_id.is_empty() and selected_by_campaign.has(rejected.campaign_id):
+			continue
+		visible.append(rejected)
 	return visible
 
 
@@ -171,11 +183,16 @@ func _inspect_package(path: String) -> PackageDiscoveryResult:
 	var entries: Array[String] = []
 	entries.assign(entries_value)
 	var manifest: Dictionary = manifest_value
+	var campaign_id := String(manifest.get("campaignId", "")) if manifest.get("campaignId") is String else ""
+	var package_hash := String(manifest.get("packageHash", "")) if manifest.get("packageHash") is String else ""
+	var display_name := String(manifest.get("name", "")) if manifest.get("name") is String else ""
+	var engine: Variant = manifest.get("engine")
+	var rules_version := String(engine.get("rulesVersion", "")) if engine is Dictionary and engine.get("rulesVersion") is String else ""
 	if not _validate_manifest_structure(manifest, entries):
 		archive.close()
-		return PackageDiscoveryResult.new(path, false, "", "", "", _last_error if not _last_error.is_empty() else "Package manifest is invalid.")
+		return PackageDiscoveryResult.new(path, false, campaign_id, package_hash, rules_version, _last_error if not _last_error.is_empty() else "Package manifest is invalid.", display_name)
 	archive.close()
-	return PackageDiscoveryResult.new(path, true, manifest["campaignId"], manifest["packageHash"], manifest["engine"]["rulesVersion"])
+	return PackageDiscoveryResult.new(path, true, manifest["campaignId"], manifest["packageHash"], manifest["engine"]["rulesVersion"], "", display_name)
 
 
 func _collect_package_paths(root: String, paths: Array[String], depth: int) -> void:
