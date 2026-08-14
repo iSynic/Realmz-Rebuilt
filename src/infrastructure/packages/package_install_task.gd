@@ -5,6 +5,7 @@ const PackageRepositoryScript := preload("res://src/infrastructure/packages/pack
 const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
 
 var _thread := Thread.new()
+var _repository := PackageRepositoryScript.new()
 var _mutex := Mutex.new()
 var _state: StringName = PackageOperationStatusScript.IDLE
 var _phase: StringName = &""
@@ -75,8 +76,7 @@ func shutdown() -> void:
 
 
 func _run_install(source_path: String, install_root: String) -> void:
-	var repository := PackageRepositoryScript.new()
-	var result := repository.install_package(source_path, install_root, _on_progress, _is_cancel_requested)
+	var result := _repository.install_package(source_path, install_root, _on_progress, _is_cancel_requested)
 	_mutex.lock()
 	_result = result
 	if result != null and result.is_ok():

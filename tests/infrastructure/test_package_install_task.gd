@@ -58,6 +58,16 @@ func _test_successful_task(campaign_id: String, package_hash: String) -> void:
 	assert_true(task.take_result() == null, "a package result is consumed exactly once")
 	var idle: RefCounted = task.snapshot()
 	assert_equal([idle.state, idle.phase, idle.completed, idle.total], [PackageOperationStatusScript.IDLE, &"", 0, 0], "taking the result resets the task to idle")
+	var retained_repository: RefCounted = task._repository
+	assert_true(task.start(FIXTURE_PATH, TEST_ROOT), "the same host worker can reopen an unchanged installed package")
+	var cached_phases: Array[StringName] = []
+	var cached_terminal := _wait_for_terminal(task, cached_phases)
+	assert_not_null(cached_terminal, "the repeated package task reaches a bounded terminal state")
+	if cached_terminal != null:
+		assert_equal(cached_terminal.state, PackageOperationStatusScript.SUCCEEDED, "the repeated unchanged package remains valid")
+	assert_equal(task._repository, retained_repository, "one package worker retains its validated in-memory package cache across starts")
+	assert_false(cached_phases.has(&"validating-integrity"), "an unchanged package in the same application process skips repeated payload hashing and typed construction")
+	assert_not_null(task.take_result(), "the cached package result remains an ordinary one-shot handoff")
 	task.shutdown()
 	_cleanup_test_root()
 
