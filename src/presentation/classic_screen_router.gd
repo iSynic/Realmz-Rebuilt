@@ -23,6 +23,7 @@ const INK := Color("17191d")
 const PANEL := Color("272b31")
 const PANEL_DARK := Color("1d2025")
 const MUTED := Color("9aa0a8")
+const ERROR := Color("ef7770")
 const SWAP_OPEN_SOUND_ID: int = 3003
 const SWAP_DONE_SOUND_ID: int = 141
 const MAXIMUM_MODAL_Z_INDEX: int = 30
@@ -264,6 +265,20 @@ func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 		_render_screen()
 	elif _view != null and _view.party_setup_available and _setup_overlay != null and _setup_overlay.visible:
 		_refresh_setup_options()
+
+
+func present_party_setup_status(text: String, is_error: bool = false) -> void:
+	if _view == null or not _view.party_setup_available or _setup_mode != &"assembly":
+		return
+	if _setup_overlay == null or not _setup_overlay.visible or _setup_inspection_overlay.visible:
+		return
+	_setup_message.text = text
+	_setup_message.tooltip_text = text
+	_setup_message.modulate = ERROR if is_error else MUTED
+	_setup_message.custom_minimum_size.y = 20.0
+	_setup_message.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_setup_message.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_setup_message.visible = not text.strip_edges().is_empty()
 
 
 func set_save_previews(previews: Array) -> void:
@@ -827,6 +842,11 @@ func _render_creator_step() -> void:
 	_creator_steps.visible = true
 	_creator_action_bar.visible = true
 	_setup_message.visible = true
+	_setup_message.tooltip_text = ""
+	_setup_message.modulate = MUTED
+	_setup_message.custom_minimum_size.y = 32.0
+	_setup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_setup_message.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	_setup_message.text = _creator_step_message()
 	_clear(_creator_page)
 	_race_list = null

@@ -1436,6 +1436,12 @@ func _test_character_creator_workflow() -> void:
 	var setup_surface := router._setup_overlay.get_theme_stylebox("panel") as StyleBoxFlat
 	assert_true(setup_surface != null and setup_surface.bg_color.a == 0.0, "party setup exposes the one root-aligned slate tile instead of replacing it with a flat fill")
 	assert_equal(router._setup_mode, &"assembly", "party setup opens on stored-character assembly instead of forcing the creator")
+	router.present_party_setup_status("Action failed • That vault character is already represented in the party.", true)
+	assert_true(router._setup_message.visible, "party setup exposes action failures inside its full-stage surface instead of hiding them in the suppressed shell status region")
+	assert_equal(router._setup_message.text, "Action failed • That vault character is already represented in the party.", "party setup preserves the core rejection reason rather than making Add appear inert")
+	assert_equal(router._setup_message.modulate, ClassicScreenRouter.ERROR, "party setup distinguishes a rejected import from ordinary helper text")
+	router._render_party_assembly()
+	assert_false(router._setup_message.visible, "a committed party refresh clears the previous inline setup failure")
 	assert_true(router._setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool: return button.text != "Revision history and archives…"), "advanced revision history and archive controls stay out of ordinary party assembly")
 	assert_not_null(router._stored_character_list, "stored characters remain visible beside the six party slots")
 	assert_equal(router._party_list.get_child_count(), 6, "party assembly always exposes the campaign's complete slot capacity")

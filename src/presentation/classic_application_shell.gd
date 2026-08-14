@@ -277,6 +277,7 @@ static func route_change_reason(game_view: GameView) -> String:
 func set_status(text: String, is_error: bool = false) -> void:
 	_status_label.text = text
 	_status_label.modulate = ERROR if is_error else TEXT
+	_router.present_party_setup_status(text, is_error)
 
 
 func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
