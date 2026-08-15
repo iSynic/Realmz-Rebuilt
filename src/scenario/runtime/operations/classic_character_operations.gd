@@ -15,7 +15,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules:
 
 
 func opcode_ids() -> Array[int]:
-	return [-14, 14, 15, 16, 17, 18, 30, 40, 43, 50, 52, 69, 87, 88, 89, 105, 108]
+	return [-14, 14, 15, 16, 17, 18, 30, 31, 40, 43, 50, 52, 69, 82, 83, 87, 88, 89, 90, 102, 105, 108]
 
 
 func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
@@ -28,6 +28,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Dicti
 			return _with_age_update_interactions(apply_scenario_spell(action, action.opcode == 18), request_id)
 		30:
 			return _filter_character_selection(action)
+		31:
+			return _request_character_ability(action, request_id)
 		40:
 			return _branch_on_party_condition(action)
 		43:
@@ -38,6 +40,13 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Dicti
 			return _select_characters_by_misc(action)
 		69:
 			return _set_spellcasting_flags(action)
+		82, 83:
+			_game_state.priest_turning_allowed = action.opcode == 83
+			var turning_message := "You regain your ability to turn undead and nether spawn." if _game_state.priest_turning_allowed else "You may not use your ability to turn undead or nether spawn."
+			return ScenarioRuntimeOperationResult.completed(_game_state.priest_turning_allowed, [
+				DomainEvent.new(&"priest_turning_availability_changed", {"allowed": _game_state.priest_turning_allowed, "source": "classic"}),
+				DomainEvent.new(&"message_shown", {"text": turning_message, "source": "classic"}),
+			])
 		87:
 			return _branch_on_ally(action)
 		88:
@@ -45,12 +54,51 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Dicti
 			return ScenarioRuntimeOperationResult.completed(removed, [DomainEvent.new(&"allies_removed", {"classicMonsterId": absi(action.operand_id), "count": removed})])
 		89:
 			return _add_classic_ally(absi(action.operand_id))
+		90:
+			return _take_experience(action)
+		102:
+			return _level_selected_characters()
 		105:
 			_game_state.allies_suspended = action.operand_id != 0
 			return ScenarioRuntimeOperationResult.completed(_game_state.allies_suspended, [DomainEvent.new(&"ally_participation_changed", {"suspended": _game_state.allies_suspended, "source": "classic"})])
 		108:
 			return _alter_selected_characters(action)
 	return super.execute(action, request_id, context)
+
+
+func _take_experience(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	var amount := action.operand_id
+	var mode := 0
+	if not action.extra_code.is_empty():
+		amount = action.extra_code[0]
+		mode = action.extra_code[1] if action.extra_code.size() > 1 else 0
+	var targets: Array[CharacterState] = []
+	match mode:
+		1:
+			targets = _game_state.selected_characters()
+		2:
+			targets = _game_state.party.characters()
+			if not targets.is_empty():
+				amount = int(float(amount) / float(targets.size()))
+		_:
+			targets = _game_state.party.characters()
+	for character: CharacterState in targets:
+		character.experience -= amount
+	return ScenarioRuntimeOperationResult.completed(targets.size(), [DomainEvent.new(&"experience_taken", {"amountEach": amount, "mode": mode, "targetIds": targets.map(func(character: CharacterState) -> String: return character.id), "source": "classic"})])
+
+
+func _level_selected_characters() -> ScenarioRuntimeOperationResult:
+	var leveled: Array[String] = []
+	for character: CharacterState in _game_state.selected_characters():
+		var race := _content.race_by_id(character.race_id)
+		var caste := _content.caste_by_id(character.caste_id)
+		if race == null or caste == null:
+			return ScenarioRuntimeOperationResult.failed(&"unknown_character_profile", "Classic opcode 102 requires source-defined race and caste profiles.")
+		character.experience = 1
+		if _rules.characters.level_up(character, race, caste, _rng) == null:
+			return ScenarioRuntimeOperationResult.failed(&"character_level_failed", "Classic opcode 102 could not level character '%s'." % character.id)
+		leveled.append(character.id)
+	return ScenarioRuntimeOperationResult.completed(leveled, [DomainEvent.new(&"characters_leveled", {"characterIds": leveled, "source": "classic"})])
 
 
 func _request_character_selection(action: ClassicActionDefinition, request_id: String, invert: bool) -> ScenarioRuntimeOperationResult:
@@ -65,6 +113,22 @@ func _request_character_selection(action: ClassicActionDefinition, request_id: S
 		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic character picker has no eligible party members.")
 	count = mini(count, eligible.size())
 	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": count, "eligible": eligible, "allowDead": action.operand_id < 0}), ScenarioRuntimeContinuation.character_selection(count, action.operand_id < 0, invert))
+
+
+func _request_character_ability(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 31 requires a five-value Extra Code row.")
+	var check_index := int(action.extra_code[0])
+	var attribute_check := int(action.extra_code[2]) != 0
+	if not attribute_check and (check_index < 0 or check_index >= 15):
+		return ScenarioRuntimeOperationResult.failed(&"unsupported_character_ability_index", "Classic opcode 31 ability index %d is outside the source character record." % check_index)
+	var eligible: Array[Dictionary] = []
+	for character: CharacterState in _game_state.party.characters():
+		if character.current_health > 0:
+			eligible.append({"id": character.id, "name": character.name})
+	if eligible.is_empty():
+		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic ability check has no living party member.")
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": 1, "eligible": eligible, "allowDead": false}), ScenarioRuntimeContinuation.character_ability(action.extra_code, action.gosub))
 
 
 func _apply_health(action: ClassicActionDefinition, whole_party: bool) -> ScenarioRuntimeOperationResult:

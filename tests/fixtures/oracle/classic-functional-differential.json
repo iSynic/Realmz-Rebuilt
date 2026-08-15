@@ -3993,7 +3993,7 @@
         "expectedRepresentation": "Providence emits at most twenty stable typed player-map definitions in source order, separate acquired and unavailable names, exact signed mode/resource identities, crop geometry, ordered CICN markers, notes, and deterministic referenced PICT/CICN/TEXT assets without conflating player maps with playable topology. Scenario-owned resources take precedence over shared Realmz references for the same exact Classic resource key."
       },
       "realmz2": {
-        "owner": { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func _acquire_player_map" },
+        "owner": { "path": "src/scenario/runtime/handlers/classic_world_time_opcode_handler.gd", "symbol": "func _acquire_player_map" },
         "expectedTrace": ["resolve the signed operand against an immutable player-map record rather than a land level", "validate the bounded Classic record identity", "acquire its stable ID once", "persist the acquisition flag", "publish an immediate typed display event for negative operands", "detach acquired definitions and current-position eligibility", "browse and render from exact type-plus-ID media or authoritative topology", "leave viewing presentation-owned and mutation-free"],
         "tests": [
           { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_player_map_workflow" },
@@ -5048,7 +5048,7 @@
       },
       "realmz2": {
         "owner": {
-          "path": "src/scenario/runtime/realmz_runtime_api.gd",
+          "path": "src/scenario/runtime/operations/classic_character_operations.gd",
           "symbol": "func _request_character_ability"
         },
         "expectedTrace": [

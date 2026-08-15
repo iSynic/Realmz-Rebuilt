@@ -13,10 +13,10 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> voi
 
 
 func opcode_ids() -> Array[int]:
-	return [-23, 12, 13, 23, 47, 61, 63, 66, 76, 101, 103, 104, 106]
+	return [-23, 12, 13, 20, 23, 29, 37, 45, 47, 61, 63, 66, 76, 101, 103, 104, 106]
 
 
-func execute(action: ClassicActionDefinition, _request_id: String, _context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		-23, 23:
 			return _mutate_random_region(action, action.opcode == -23)
@@ -24,6 +24,14 @@ func execute(action: ClassicActionDefinition, _request_id: String, _context: Dic
 			return _mutate_tile(action)
 		13:
 			return _mutate_triggers(action)
+		20:
+			return _move_between_maps(action, false, true)
+		29:
+			return _acquire_player_map(action, request_id)
+		37:
+			return _move_between_maps(action, true)
+		45:
+			return _move_between_maps(action, false, false)
 		47:
 			var quest_id := absi(action.operand_id)
 			if not _game_state.set_quest_value(quest_id, 0 if action.operand_id < 0 else 1):
@@ -47,7 +55,55 @@ func execute(action: ClassicActionDefinition, _request_id: String, _context: Dic
 			return ScenarioRuntimeOperationResult.completed(_game_state.random_encounters_enabled, [DomainEvent.new(&"random_encounters_changed", {"enabled": _game_state.random_encounters_enabled})])
 		106:
 			return _set_map_darkness(action)
-	return super.execute(action, _request_id, _context)
+	return super.execute(action, request_id, context)
+
+
+func _acquire_player_map(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
+	var classic_id := absi(action.operand_id)
+	var definition := _content.world.player_map_by_classic_id(classic_id)
+	if definition == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_player_map", "Classic opcode 29 references unavailable player-map record %d." % classic_id)
+	var already_acquired: bool = _game_state.world.has_map(definition.id)
+	_game_state.world.acquire_map(definition.id)
+	var events: Array[DomainEvent] = [DomainEvent.new(&"player_map_acquired", {"playerMapId": definition.id, "classicId": definition.classic_id, "name": definition.name, "alreadyAcquired": already_acquired, "source": "classic"})]
+	if action.operand_id >= 0:
+		events.append(DomainEvent.new(&"message_shown", {"text": "You gain a map, to view the map use Maps/Notes in the Menu.", "source": "classic-player-map"}))
+		return ScenarioRuntimeOperationResult.completed(definition.id, events)
+	var request := InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": definition.name, "presentation": "player-map", "playerMapId": definition.id})
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.player_map(definition.id), events)
+
+
+func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, activate_destination: bool = false) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 4:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic map movement requires a five-value Extra Code row.")
+	var current_map := _content.world.map_by_id(_game_state.party.map_id)
+	if current_map == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic map movement requires the party's current map.")
+	var target_type := (&"dungeon" if action.extra_code[0] == 0 else &"land") if dungeon_move else current_map.level_type
+	var map_index := action.extra_code[1] if dungeon_move else current_map.level_index if action.extra_code[0] < 0 else action.extra_code[0]
+	var coordinate := Vector2i(action.extra_code[2], action.extra_code[3]) if dungeon_move else Vector2i(_game_state.party.coordinate.x if action.extra_code[1] < 0 else action.extra_code[1], _game_state.party.coordinate.y if action.extra_code[2] < 0 else action.extra_code[2])
+	var target_map := _content.world.map_by_type_and_index(target_type, map_index)
+	if target_map == null or target_map.topology.cell_at(coordinate) == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_teleport", "Classic map movement references an unavailable destination.")
+	var source_map_id := _game_state.party.map_id
+	var source_coordinate := _game_state.party.coordinate
+	_game_state.party.map_id = target_map.id
+	_game_state.party.coordinate = coordinate
+	_game_state.world.mark_visited(target_map.id, coordinate)
+	var sound_id := action.extra_code[4] if dungeon_move else action.extra_code[3]
+	var message_id := 0 if dungeon_move else action.extra_code[4]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"party_teleported", {"sourceMapId": source_map_id, "sourceX": source_coordinate.x, "sourceY": source_coordinate.y, "mapId": target_map.id, "x": coordinate.x, "y": coordinate.y, "soundId": sound_id, "messageId": message_id, "source": "classic"})]
+	if sound_id != 0:
+		events.append(DomainEvent.new(&"sound_requested", {"soundId": sound_id, "source": "classic-teleport"}))
+	if message_id != 0:
+		var message := _content.message_by_id(absi(message_id))
+		if message == null:
+			return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic teleport references unavailable message %d." % message_id)
+		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-teleport"}))
+	if activate_destination:
+		events.append(DomainEvent.new(&"destination_trigger_recheck_requested", {"mapId": target_map.id, "x": coordinate.x, "y": coordinate.y, "source": "classic-opcode-20"}))
+		return ScenarioRuntimeOperationResult.completed(target_map.id, events, ScenarioVmDirective.finish())
+	return ScenarioRuntimeOperationResult.completed(target_map.id, events)
 
 
 func _mutate_random_region(action: ClassicActionDefinition, dungeon: bool) -> ScenarioRuntimeOperationResult:

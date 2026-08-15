@@ -2,20 +2,24 @@ class_name ClassicPresentationOpcodeHandler
 extends ClassicOpcodeHandler
 
 var _content: RealmzContent
+var _game_state: GameState
 var _rng: RealmzRng
 
 
-func _init(content: RealmzContent, rng: RealmzRng) -> void:
+func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng) -> void:
 	_content = content
+	_game_state = game_state
 	_rng = rng
 
 
 func opcode_ids() -> Array[int]:
-	return [9, 19, 27, 28, 62]
+	return [1, 9, 19, 26, 27, 28, 62]
 
 
-func execute(action: ClassicActionDefinition, _request_id: String, _context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
+		1:
+			return _show_message(action, request_id)
 		9:
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"sound_requested", {
 				"soundId": absi(action.operand_id),
@@ -24,6 +28,11 @@ func execute(action: ClassicActionDefinition, _request_id: String, _context: Dic
 			})])
 		19:
 			return _show_random_message(action)
+		26:
+			return ScenarioRuntimeOperationResult.waiting(
+				InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": "Continue", "soundId": 30005}),
+				ScenarioRuntimeContinuation.empty(ScenarioRuntimeContinuation.CLASSIC_ACKNOWLEDGE)
+			)
 		27:
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"picture_requested", {
 				"pictureId": absi(action.operand_id),
@@ -40,7 +49,26 @@ func execute(action: ClassicActionDefinition, _request_id: String, _context: Dic
 				"text": scrolling_message.text,
 				"source": "classic",
 			})])
-	return super.execute(action, _request_id, _context)
+	return super.execute(action, request_id, context)
+
+
+func _show_message(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
+	var message_id := absi(action.operand_id)
+	var message := _content.message_by_id(message_id)
+	if message == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 1 references unavailable message %d." % action.operand_id)
+	var event := DomainEvent.new(&"message_shown", {"messageId": message_id, "text": message.text, "source": "classic", "classicClick": action.operand_id > 0})
+	if action.operand_id <= 0:
+		return ScenarioRuntimeOperationResult.completed(null, [event])
+	var journal_eligible := GameState.journal_message_id_is_valid(message_id)
+	var request := InteractionRequest.from_payload(request_id, &"acknowledge", {
+		"prompt": message.text,
+		"messageId": message_id,
+		"presentation": "classic-textbox",
+		"journalEligible": journal_eligible,
+		"journalRecorded": journal_eligible and _game_state.journal_message_is_recorded(message_id),
+	})
+	return ScenarioRuntimeOperationResult.waiting(request, ScenarioRuntimeContinuation.textbox(message_id), [event])
 
 
 func _show_random_message(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
