@@ -188,7 +188,7 @@ func _adjust_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeOper
 		return ScenarioRuntimeOperationResult.completed(value, [event])
 	if action.extra_code[2] != 1:
 		return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic opcode 76 auto-branch target type %d is unavailable." % action.extra_code[2])
-	var branch := ScenarioRuntimeOperationResult.completed(true, [], {"kind": "branch-xap", "targetId": action.extra_code[4], "gosub": action.gosub})
+	var branch := ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_xap(action.extra_code[4], action.gosub))
 	branch.events.append(event)
 	return branch
 
@@ -230,7 +230,7 @@ func _set_map_darkness(action: ClassicActionDefinition) -> ScenarioRuntimeOperat
 	var dark := action.extra_code[0] == 2
 	var unchanged := _game_state.world.map_is_dark(map) == dark
 	if unchanged and action.extra_code[1] != 0:
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"map_darkness_unchanged", {"mapId": map.id, "dark": dark})], {"kind": "finish"})
+		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"map_darkness_unchanged", {"mapId": map.id, "dark": dark})], ScenarioVmDirective.finish())
 	_game_state.world.set_map_darkness(map.id, dark)
 	return ScenarioRuntimeOperationResult.completed(dark, [DomainEvent.new(&"map_darkness_changed", {"mapId": map.id, "dark": dark, "source": "classic"})])
 
@@ -247,4 +247,4 @@ func _test_or_set_party_mode(action: ClassicActionDefinition) -> ScenarioRuntime
 	elif action.extra_code[2] == 2:
 		_game_state.party_in_boat = false
 	var event := DomainEvent.new(&"party_mode_checked", {"inBoat": _game_state.party_in_boat, "camping": _game_state.party_camping, "finished": should_finish, "source": "classic"})
-	return ScenarioRuntimeOperationResult.completed(not should_finish, [event], {"kind": "finish"} if should_finish else {})
+	return ScenarioRuntimeOperationResult.completed(not should_finish, [event], ScenarioVmDirective.finish() if should_finish else null)

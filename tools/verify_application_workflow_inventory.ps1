@@ -190,7 +190,7 @@ function New-StatusReport([object]$Inventory) {
     [void]$builder.AppendLine("| --- | --- | --- | --- | --- |")
     foreach ($target in @($batch.targets)) {
         $ownedGaps = @($target.gapIds) -join ", "
-        $expectedEvidence = if ([string]::IsNullOrWhiteSpace([string]$target.expectedEvidence)) { "—" } else { [string]$target.expectedEvidence }
+        $expectedEvidence = if ([string]::IsNullOrWhiteSpace([string]$target.expectedEvidence)) { "-" } else { [string]$target.expectedEvidence }
         [void]$builder.AppendLine("| ``$($target.workflowId)`` | $($target.mode) | $($target.priority) | $expectedEvidence | $ownedGaps |")
     }
     [void]$builder.AppendLine()
@@ -275,7 +275,7 @@ function New-StatusReport([object]$Inventory) {
     [void]$builder.AppendLine("Blockers: **$($blockers.Count)**. Major gaps: **$($majors.Count)**.")
     [void]$builder.AppendLine()
     foreach ($entry in @($blockers + $majors | Sort-Object @{Expression={$_.Gap.severity}}, @{Expression={$_.Workflow.id}}, @{Expression={$_.Gap.id}})) {
-        [void]$builder.AppendLine("- **$($entry.Gap.severity)** ``$($entry.Workflow.id)`` — $($entry.Gap.summary) Next: $($entry.Gap.nextAction)")
+        [void]$builder.AppendLine("- **$($entry.Gap.severity)** ``$($entry.Workflow.id)`` - $($entry.Gap.summary) Next: $($entry.Gap.nextAction)")
     }
     if (($blockers.Count + $majors.Count) -eq 0) { [void]$builder.AppendLine("- None.") }
     [void]$builder.AppendLine()
@@ -284,7 +284,7 @@ function New-StatusReport([object]$Inventory) {
     [void]$builder.AppendLine("## Oracle-required unknowns")
     [void]$builder.AppendLine()
     foreach ($workflow in $oracleRequired | Sort-Object id) {
-        [void]$builder.AppendLine("- ``$($workflow.id)`` — $($workflow.name)")
+        [void]$builder.AppendLine("- ``$($workflow.id)`` - $($workflow.name)")
     }
     if ($oracleRequired.Count -eq 0) { [void]$builder.AppendLine("- None.") }
     [void]$builder.AppendLine()
@@ -296,7 +296,7 @@ function New-StatusReport([object]$Inventory) {
         [void]$builder.AppendLine()
         $queueRows = @($allGaps | Where-Object { $_.Gap.queue -eq $queue } | Sort-Object @{Expression={$_.Gap.severity}}, @{Expression={$_.Workflow.id}}, @{Expression={$_.Gap.id}})
         foreach ($entry in $queueRows) {
-            [void]$builder.AppendLine("- ``$($entry.Workflow.id)`` — $($entry.Gap.summary)")
+            [void]$builder.AppendLine("- ``$($entry.Workflow.id)`` - $($entry.Gap.summary)")
         }
         if ($queueRows.Count -eq 0) { [void]$builder.AppendLine("- None.") }
         [void]$builder.AppendLine()

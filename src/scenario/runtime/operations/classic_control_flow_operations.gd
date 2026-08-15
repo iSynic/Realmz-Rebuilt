@@ -23,7 +23,7 @@ func execute(action: ClassicActionDefinition, _request_id: String, context: Dict
 		8:
 			return branch_to_trigger_program(action, context)
 		24:
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"action_point_kept", {"triggerId": String(context.get("triggerId", "")), "source": "classic"})], {"kind": "finish"})
+			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"action_point_kept", {"triggerId": String(context.get("triggerId", "")), "source": "classic"})], ScenarioVmDirective.finish())
 		25:
 			var trigger_id := String(context.get("triggerId", ""))
 			if trigger_id.is_empty():
@@ -57,13 +57,13 @@ func _percent_branch(action: ClassicActionDefinition, context: Dictionary) -> Sc
 			var trigger_id := String(context.get("triggerId", ""))
 			if not trigger_id.is_empty():
 				_game_state.world.disable_trigger(trigger_id)
-			return ScenarioRuntimeOperationResult.completed(true, [event], {"kind": "finish"})
+			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish())
 		1:
 			var branch := _branch_from_values(action.extra_code, false)
 			branch.events.append(event)
 			return branch
 		2:
-			return ScenarioRuntimeOperationResult.completed(true, [event], {"kind": "finish"})
+			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.completed(true, [event])
 
 
@@ -177,7 +177,7 @@ func _branch_from_values(values: Array[int], gosub: bool) -> ScenarioRuntimeOper
 		0:
 			return _branch_xap(values[3], gosub)
 		3:
-			return ScenarioRuntimeOperationResult.completed(true, [], {"kind": "finish"})
+			return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_mode", "Classic branch mode %d is not available in this execution context." % values[2])
 
 
@@ -186,7 +186,7 @@ func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRunt
 
 
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
-	return ScenarioRuntimeOperationResult.completed(false) if target_id == 0 else ScenarioRuntimeOperationResult.completed(true, [], {"kind": "branch-xap", "targetId": target_id, "gosub": gosub})
+	return ScenarioRuntimeOperationResult.completed(false) if target_id == 0 else ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_xap(target_id, gosub))
 
 
 func resolve_program_id(program_id: String) -> String:
@@ -240,4 +240,4 @@ func branch_to_trigger_program(action: ClassicActionDefinition, context: Diction
 	var target_trigger := _content.trigger_by_map_record(current_trigger.map_id, action.operand_id)
 	if target_trigger == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_trigger", "Classic opcode 8 references unavailable Action Point record %d on map '%s'." % [action.operand_id, current_trigger.map_id])
-	return ScenarioRuntimeOperationResult.completed(target_trigger.program_id, [DomainEvent.new(&"scenario_program_redirected", {"triggerId": current_trigger.id, "targetTriggerId": target_trigger.id, "source": "classic"})], {"kind": "branch-program", "programId": target_trigger.program_id, "gosub": false, "context": context.duplicate(true)})
+	return ScenarioRuntimeOperationResult.completed(target_trigger.program_id, [DomainEvent.new(&"scenario_program_redirected", {"triggerId": current_trigger.id, "targetTriggerId": target_trigger.id, "source": "classic"})], ScenarioVmDirective.branch_program(target_trigger.program_id, false, context))

@@ -63,7 +63,7 @@ func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 			var message := _content.message_by_id(values[4])
 			if message == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic item branch references unavailable message %d." % values[4])
-			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-item-check"})], {"kind": "finish"})
+			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-item-check"})], ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.failed(&"invalid_item_branch", "Classic item possession branch has an invalid failure mode.")
 
 
@@ -138,7 +138,7 @@ func _branch_from_values(values: Array[int], gosub: bool) -> ScenarioRuntimeOper
 		0:
 			return _branch_xap(values[3], gosub)
 		3:
-			return ScenarioRuntimeOperationResult.completed(true, [], {"kind": "finish"})
+			return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_mode", "Classic branch mode %d is not available in this execution context." % values[2])
 
 
@@ -151,7 +151,7 @@ func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRunt
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
 	if target_id == 0:
 		return ScenarioRuntimeOperationResult.completed(false)
-	return ScenarioRuntimeOperationResult.completed(true, [], {"kind": "branch-xap", "targetId": target_id, "gosub": gosub})
+	return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_xap(target_id, gosub))
 
 
 func _configure_banking() -> ScenarioRuntimeOperationResult:

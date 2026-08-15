@@ -315,37 +315,35 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 	return ScenarioVmResult.completed(operation.events)
 
 
-func _apply_classic_directive(directive: Dictionary, inherited_context: Dictionary = {}) -> ScenarioVmResult:
-	if directive.is_empty():
+func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context: Dictionary = {}) -> ScenarioVmResult:
+	if directive == null:
 		return ScenarioVmResult.completed()
-	match directive.get("kind"):
-		"finish":
+	match directive.kind:
+		ScenarioVmDirective.FINISH:
 			_return_from_frame(null)
 			return ScenarioVmResult.completed()
-		"branch-xap":
-			var program_id := "xap:%d" % int(directive.get("targetId", -1))
+		ScenarioVmDirective.BRANCH_XAP:
+			var program_id := "xap:%d" % directive.target_id
 			if _definition.program_by_id(program_id) == null:
-				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic branch references unavailable XAP %d." % int(directive.get("targetId", -1)))
+				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic branch references unavailable XAP %d." % directive.target_id)
 			var target_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
 			target_frame.set_context(inherited_context)
-			if bool(directive.get("gosub", false)):
+			if directive.gosub:
 				if _classic_call_depth() >= CLASSIC_CALL_LIMIT:
 					return ScenarioVmResult.failed(&"classic_gosub_limit", "Classic GOSUB stack exceeded 20 frames.")
 				target_frame.counts_as_classic_call = true
 				_frames.append(target_frame)
 			else:
 				_frames[_frames.size() - 1] = target_frame
-			_append_trace({"event": "classic-branch", "programId": program_id, "gosub": bool(directive.get("gosub", false))})
+			_append_trace({"event": "classic-branch", "programId": program_id, "gosub": directive.gosub})
 			return ScenarioVmResult.completed()
-		"branch-program":
-			var program_id: String = str(directive.get("programId", ""))
+		ScenarioVmDirective.BRANCH_PROGRAM:
+			var program_id: String = directive.program_id
 			if _definition.program_by_id(program_id) == null:
 				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic branch references unavailable program '%s'." % program_id)
 			var target_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
-			target_frame.counts_as_classic_call = bool(directive.get("gosub", false))
-			var context: Variant = directive.get("context", {})
-			if not context is Dictionary:
-				return ScenarioVmResult.failed(&"invalid_vm_directive", "Classic branch context is malformed.")
+			target_frame.counts_as_classic_call = directive.gosub
+			var context: Dictionary = directive.context
 			var merged_context := inherited_context.duplicate(true)
 			for key: Variant in context:
 				merged_context[key] = context[key]

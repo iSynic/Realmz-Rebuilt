@@ -36,6 +36,7 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 ## Work Guidance
 
 - PowerShell is the primary Windows automation surface. Fail immediately on command errors.
+- PowerShell scripts must parse under Windows PowerShell 5.1 from UTF-8-without-BOM checkouts; keep generated Markdown literals ASCII-safe unless the script explicitly reads or writes UTF-8 with a declared encoding.
 - Every meaningful tool change receives the applicable DOX pass: re-read the nearest `AGENTS.md`, check the allowed scope, preserve repository-relative paths, and report the exact focused or batch-level evidence used.
 
 ## Verification

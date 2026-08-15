@@ -255,7 +255,7 @@ func _branch_on_ally(action: ClassicActionDefinition) -> ScenarioRuntimeOperatio
 			var message := _content.message_by_id(action.extra_code[4])
 			if message == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 87 references unavailable message %d." % action.extra_code[4])
-			return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-ally-check"})], {"kind": "finish"})
+			return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-ally-check"})], ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.failed(&"invalid_ally_branch", "Classic opcode 87 has an invalid absent-ally behavior.")
 
 
@@ -355,7 +355,7 @@ func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRunt
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
 	if target_id == 0:
 		return ScenarioRuntimeOperationResult.completed(false)
-	return ScenarioRuntimeOperationResult.completed(true, [], {"kind": "branch-xap", "targetId": target_id, "gosub": gosub})
+	return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_xap(target_id, gosub))
 
 
 func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -369,7 +369,7 @@ func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, re
 		"updates": updates,
 		"index": 1,
 		"value": operation.value,
-		"directive": operation.directive.duplicate(true),
+		"directive": {} if operation.directive == null else operation.directive.to_data(),
 	}
 	var events: Array[DomainEvent] = []
 	events.assign(operation.events)

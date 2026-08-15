@@ -17,6 +17,7 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	_test_classic_encounter_action_xap_trace(loaded.content)
+	_test_vm_directive_wire_contract()
 	_test_classic_choice_labels_and_sound_wait(loaded.content)
 	_test_session_save_resume_boundary(loaded.content)
 	_test_age_update_precedes_post_move(loaded.content)
@@ -75,6 +76,16 @@ func run() -> void:
 	_test_spell_queued_death_macro(loaded.content)
 	_test_aogm_dispatch_has_no_fallback(loaded.content)
 	_test_classic_shell_domain_route(loaded.content)
+
+
+func _test_vm_directive_wire_contract() -> void:
+	var branch := ScenarioVmDirective.branch_program("xap:7", true, {"triggerId": "ap.fixture"})
+	var restored := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(branch.to_data())))
+	assert_not_null(restored, "VM directive survives its strict JSON-safe wire contract")
+	assert_equal([restored.kind, restored.program_id, restored.gosub, restored.context], [ScenarioVmDirective.BRANCH_PROGRAM, "xap:7", true, {"triggerId": "ap.fixture"}], "VM directive restore preserves its complete typed branch state")
+	assert_equal(ScenarioVmDirective.from_data({"kind": "finish", "extra": true}), null, "VM directive restore rejects unknown fields")
+	assert_equal(ScenarioVmDirective.from_data({"kind": "branch-xap", "targetId": "7", "gosub": false}), null, "VM directive restore rejects malformed field types")
+	assert_equal(ScenarioVmDirective.from_data({"kind": "branch-program", "programId": "", "gosub": false, "context": {}}), null, "VM directive restore rejects an empty program identity")
 
 
 func _test_classic_encounter_action_xap_trace(content: RealmzContent) -> void:
@@ -873,11 +884,11 @@ func _test_classic_game_time(content: RealmzContent) -> void:
 	state.clock.set_total_minutes(8 * 60 + 30)
 	var action := ClassicActionDefinition.new(0, 64, 64, 0, true, [-1, 8, 59, 11, 12])
 	var early := api.execute_classic(action, "request.time-early")
-	assert_equal(early.directive.get("targetId"), 11, "Classic opcode 64 takes the before-or-equal game-time branch")
-	assert_true(early.directive.get("gosub"), "game-time branch preserves Classic GOSUB identity")
+	assert_equal(early.directive.target_id, 11, "Classic opcode 64 takes the before-or-equal game-time branch")
+	assert_true(early.directive.gosub, "game-time branch preserves Classic GOSUB identity")
 	state.clock.set_total_minutes(9 * 60)
 	var late := api.execute_classic(action, "request.time-late")
-	assert_equal(late.directive.get("targetId"), 12, "Classic opcode 64 takes the after-time branch")
+	assert_equal(late.directive.target_id, 12, "Classic opcode 64 takes the after-time branch")
 	assert_true(_event_has(late.events, &"game_time_branch_checked"), "game-time branch publishes the observed day/hour comparison")
 
 
@@ -903,12 +914,12 @@ func _test_classic_ally_branch(content: RealmzContent) -> void:
 	var action := ClassicActionDefinition.new(0, 87, 87, 0, true, [1, 0, 1, 7, 0])
 	var absent := api.execute_classic(action, "request.ally-absent")
 	assert_equal(absent.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 87 can continue when an ally is absent")
-	assert_true(absent.directive.is_empty(), "absent ally behavior one does not invent a branch")
+	assert_equal(absent.directive, null, "absent ally behavior one does not invent a branch")
 	party.add_ally(MonsterState.new("ally.instance", monster.id, monster.name, 5, 5))
 	var present := api.execute_classic(action, "request.ally-present")
-	assert_equal(present.directive.get("kind"), "branch-xap", "present ally branches through the ordinary Classic VM directive")
-	assert_equal(present.directive.get("targetId"), 7, "ally branch keeps its authored XAP target")
-	assert_true(present.directive.get("gosub"), "negative ally opcode retains Classic GOSUB behavior")
+	assert_equal(present.directive.kind, ScenarioVmDirective.BRANCH_XAP, "present ally branches through the ordinary Classic VM directive")
+	assert_equal(present.directive.target_id, 7, "ally branch keeps its authored XAP target")
+	assert_true(present.directive.gosub, "negative ally opcode retains Classic GOSUB behavior")
 	assert_true(_event_has(present.events, &"ally_branch_checked"), "ally branch publishes the tested identity and result")
 
 
@@ -919,13 +930,13 @@ func _test_classic_misc_branch(content: RealmzContent) -> void:
 	var state := GameState.new(party, RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
 	var level_branch := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, true, [7, 3, 0, 8, 0]), "request.misc-level")
-	assert_equal(level_branch.directive.get("kind"), "branch-xap", "Classic opcode 86 branches on total party level")
-	assert_equal(level_branch.directive.get("targetId"), 8, "miscellaneous branch uses its matched target")
+	assert_equal(level_branch.directive.kind, ScenarioVmDirective.BRANCH_XAP, "Classic opcode 86 branches on total party level")
+	assert_equal(level_branch.directive.target_id, 8, "miscellaneous branch uses its matched target")
 	var boat_branch := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 0, 9, 0]), "request.misc-boat")
-	assert_true(boat_branch.directive.is_empty(), "boat test continues while the party is not in a boat")
+	assert_equal(boat_branch.directive, null, "boat test continues while the party is not in a boat")
 	state.party_in_boat = true
 	boat_branch = api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 0, 9, 0]), "request.misc-boat-present")
-	assert_equal(boat_branch.directive.get("targetId"), 9, "boat status is session-owned branch state")
+	assert_equal(boat_branch.directive.target_id, 9, "boat status is session-owned branch state")
 	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	assert_not_null(round_trip, "boat and camping branch state remains inside the save aggregate")
 	assert_true(round_trip.party_in_boat and not round_trip.party_camping, "miscellaneous status flags restore exactly")
@@ -963,7 +974,7 @@ func _test_classic_map_darkness(content: RealmzContent) -> void:
 	assert_not_null(round_trip, "map darkness overlay serializes with the authoritative world state")
 	assert_true(round_trip.map_is_dark(map), "restored map darkness overrides immutable map metadata")
 	var unchanged := api.execute_classic(ClassicActionDefinition.new(0, 106, 106, 0, false, [2, 1, 0, 0, 0]), "request.dark-unchanged")
-	assert_equal(unchanged.directive.get("kind"), "finish", "opcode 106 can discontinue the issuing script when darkness already matches")
+	assert_equal(unchanged.directive.kind, ScenarioVmDirective.FINISH, "opcode 106 can discontinue the issuing script when darkness already matches")
 
 
 func _test_classic_player_map_workflow(content: RealmzContent) -> void:
@@ -1035,7 +1046,7 @@ func _test_classic_teleport_and_recheck(content: RealmzContent) -> void:
 	assert_equal(party.coordinate, target, "teleport mutates the session-owned party location")
 	assert_true(_event_has(teleported.events, &"sound_requested"), "opcode 20 publishes its authored post-teleport sound")
 	assert_equal(_message_texts(teleported.events), ["The Realmz 2.0 fixture is deterministic."], "opcode 20 displays its authored post-teleport message")
-	assert_equal(teleported.directive.get("kind"), "finish", "opcode 20 ends the current script before destination AP activation")
+	assert_equal(teleported.directive.kind, ScenarioVmDirective.FINISH, "opcode 20 ends the current script before destination AP activation")
 	assert_true(_event_has(teleported.events, &"destination_trigger_recheck_requested"), "opcode 20 requests destination trigger discovery through GameSession")
 
 
@@ -1047,11 +1058,11 @@ func _test_classic_quest_values(content: RealmzContent) -> void:
 	assert_equal(adjusted.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 76 adjusts a session-owned quest value")
 	assert_equal(state.quest_value(13), 127, "quest adjustment preserves Castle's signed-byte clamp")
 	var matched := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, true, [13, 100, 0, 7, 8]), "request.quest-branch")
-	assert_equal(matched.directive.get("targetId"), 8, "Classic opcode 77 branches when quest value reaches its threshold")
-	assert_true(matched.directive.get("gosub"), "quest-value branch preserves Classic GOSUB identity")
+	assert_equal(matched.directive.target_id, 8, "Classic opcode 77 branches when quest value reaches its threshold")
+	assert_true(matched.directive.gosub, "quest-value branch preserves Classic GOSUB identity")
 	state.set_quest_value(13, 10)
 	var missing := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [13, 100, 0, 7, 8]), "request.quest-branch-low")
-	assert_equal(missing.directive.get("targetId"), 7, "quest-value branch uses its below-threshold target")
+	assert_equal(missing.directive.target_id, 7, "quest-value branch uses its below-threshold target")
 
 
 func _test_registration_marker(content: RealmzContent) -> void:
@@ -1066,12 +1077,12 @@ func _test_classic_party_mode(content: RealmzContent) -> void:
 	var state := GameState.new(party, RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
 	var requires_boat := api.execute_classic(ClassicActionDefinition.new(0, 103, 103, 0, false, [1, 0, 0, 0, 0]), "request.require-boat")
-	assert_equal(requires_boat.directive.get("kind"), "finish", "Classic opcode 103 ends the script when required boat state is absent")
+	assert_equal(requires_boat.directive.kind, ScenarioVmDirective.FINISH, "Classic opcode 103 ends the script when required boat state is absent")
 	var enter_boat := api.execute_classic(ClassicActionDefinition.new(0, 103, 103, 0, false, [0, 0, 1, 0, 0]), "request.enter-boat")
 	assert_true(state.party_in_boat, "Classic opcode 103 can place the party in a boat")
-	assert_true(enter_boat.directive.is_empty(), "party-mode mutation continues when no status check fails")
+	assert_equal(enter_boat.directive, null, "party-mode mutation continues when no status check fails")
 	var excludes_boat := api.execute_classic(ClassicActionDefinition.new(0, 103, 103, 0, false, [2, 0, 0, 0, 0]), "request.exclude-boat")
-	assert_equal(excludes_boat.directive.get("kind"), "finish", "Classic opcode 103 can require the party to be outside a boat")
+	assert_equal(excludes_boat.directive.kind, ScenarioVmDirective.FINISH, "Classic opcode 103 can require the party to be outside a boat")
 
 
 func _test_scrolling_text_event(content: RealmzContent) -> void:
@@ -1321,13 +1332,13 @@ func _test_classic_battle_macro_controls(content: RealmzContent) -> void:
 	state.combat.round_number = 2
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
 	var round_branch := api.execute_classic(ClassicActionDefinition.new(0, 126, 126, 0, false, [0, 1, 0, 11, 0]), "request.round-macro")
-	assert_equal(round_branch.directive.get("targetId"), 11, "Classic opcode 126 branches to the authored battle macro on its matching completed round")
+	assert_equal(round_branch.directive.target_id, 11, "Classic opcode 126 branches to the authored battle macro on its matching completed round")
 	assert_equal(state.combat.macro_id, 0, "single-use battle macro clears its mutable session-owned hook")
 	var present := api.execute_classic(ClassicActionDefinition.new(0, 127, 127, 1, false, []), "request.monster-present")
-	assert_true(present.directive.is_empty(), "Classic opcode 127 continues while its living monster identity is present")
+	assert_equal(present.directive, null, "Classic opcode 127 continues while its living monster identity is present")
 	monster.current_health = 0
 	var absent := api.execute_classic(ClassicActionDefinition.new(0, 127, 127, 1, false, []), "request.monster-absent")
-	assert_equal(absent.directive.get("kind"), "finish", "monster-presence failure ends the active battle macro")
+	assert_equal(absent.directive.kind, ScenarioVmDirective.FINISH, "monster-presence failure ends the active battle macro")
 	var round_trip := CombatState.from_data(JSON.parse_string(JSON.stringify(state.combat.to_data())))
 	assert_not_null(round_trip, "mutable battle macro identity serializes with combat state")
 	assert_equal(round_trip.macro_id, state.combat.macro_id, "restored battle macro identity is exact")
@@ -1454,14 +1465,14 @@ func _test_classic_character_ability_picker(content: RealmzContent) -> void:
 	var inert := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [10, 0, 1, 12, 13]), "request.ability.inert")
 	assert_equal([inert.state, inert.interaction.kind, rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.WAITING, &"character_selection", 0], "AOGM's attribute index 10 retains Castle's living-character picker before its inert check")
 	var inert_result := api.resume_classic(inert.continuation, InteractionResponse.from_data(inert.interaction.request_id, &"character_selection", {"characterIds": [second.id]}), "request.ability.inert.resume")
-	assert_equal([inert_result.state, inert_result.directive.is_empty(), state.selected_character_ids(), rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, true, [second.id], 1], "Castle's undefined attribute index consumes one Rand(25) draw and continues without either authored branch")
+	assert_equal([inert_result.state, inert_result.directive == null, state.selected_character_ids(), rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, true, [second.id], 1], "Castle's undefined attribute index consumes one Rand(25) draw and continues without either authored branch")
 	assert_equal(inert_result.events[0].payload.get("branch"), "none", "the source-defined inert result is explicit in the committed trace")
 	var passed := api.resume_classic(saved_continuation, InteractionResponse.from_data(saved_request.request_id, &"character_selection", {"characterIds": [first.id]}), "request.ability.resume")
-	assert_equal([passed.directive.get("targetId"), state.selected_character_ids(), rng.snapshot().draw_count], [12, [first.id], 2], "selected ability, pass branch, and one RNG draw commit together after restore")
+	assert_equal([passed.directive.target_id, state.selected_character_ids(), rng.snapshot().draw_count], [12, [first.id], 2], "selected ability, pass branch, and one RNG draw commit together after restore")
 	assert_true(_event_has(passed.events, &"character_ability_checked"), "ability picker publishes the source-ordered committed result")
 	var repeated := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12, 13]), "request.ability.second")
 	var failed := api.resume_classic(repeated.continuation, InteractionResponse.from_data(repeated.interaction.request_id, &"character_selection", {"characterIds": [second.id]}), "request.ability.second.resume")
-	assert_equal([failed.directive.get("targetId"), state.selected_character_ids(), rng.snapshot().draw_count], [13, [second.id], 3], "failed ability check branches to the authored alternate XAP without reusing the prior draw")
+	assert_equal([failed.directive.target_id, state.selected_character_ids(), rng.snapshot().draw_count], [13, [second.id], 3], "failed ability check branches to the authored alternate XAP without reusing the prior draw")
 	var forged := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12, 13]), "request.ability.forged")
 	var rejected := api.resume_classic(forged.continuation, InteractionResponse.from_data(forged.interaction.request_id, &"character_selection", {"characterIds": ["missing.character"]}), "request.ability.forged.resume")
 	assert_equal(rejected.error_code, &"invalid_interaction_response", "ability picker rejects an unavailable character identity before drawing RNG")
@@ -1535,7 +1546,7 @@ func _test_classic_death_macro_revival(content: RealmzContent) -> void:
 	var revived := api.execute_classic(ClassicActionDefinition.new(0, 119, 119, 0, false, []), "request.revive-party")
 	assert_equal(character.current_health, 1, "Classic opcode 119 revives a defeated party at one stamina")
 	assert_equal(character.conditions.value(ConditionRules.ANIMATED), 0, "party revival clears animated death state")
-	assert_equal(revived.directive.get("kind"), "finish", "whole-party revival exits its death macro as Castle does")
+	assert_equal(revived.directive.kind, ScenarioVmDirective.FINISH, "whole-party revival exits its death macro as Castle does")
 
 
 func _test_automatic_monster_death_macro(content: RealmzContent) -> void:

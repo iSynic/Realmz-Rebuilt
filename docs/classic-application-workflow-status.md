@@ -159,92 +159,92 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 Blockers: **1**. Major gaps: **18**.
 
-- **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
-- **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
-- **major** `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
-- **major** `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
-- **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Characterize the suspicious mode-5 incidental/RNG branches and mode-10 restart field with controlled Castle fixtures, then implement each distinct runtime continuation without changing schema v2 unless the fixture disproves positional preservation.
-- **major** `classic.combat.undo` — Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
-- **major** `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved. Next: Use controlled fixtures for zero/negative land tiles, boat/shore cancellation, special dungeon wall bits, and attempted-coordinate timed gates before broadening the topology result.
-- **major** `classic.inventory.identify-item` — Shop identification works, but non-shop identification remains unclassified after removing the redundant generic intent. Next: Trace spell, item, and scenario identification paths and implement only the source-backed entry points that exist.
-- **major** `classic.inventory.join-item` — Classic exposes Join, but Rebuilt has no implementation and Castle's load, overflow, and equipment outcomes need observation. Next: Run mixed-state and large-total Castle fixtures, record a fidelity decision where needed, then implement the typed Join intent and inventory presentation.
-- **major** `classic.inventory.split-item` — Classic exposes Split, but Rebuilt has no implementation and Castle's post-split load behavior is suspicious. Next: Observe load and warning resources in a controlled Castle fixture, then implement the typed Split intent and inventory presentation without copying an unverified load bug.
-- **major** `classic.inventory.use-item` — Fixed-power charged items and field/combat scroll use now preserve exact targets, charges/load, five-slot state, fixed power, action cost, sound, save/resume, and transactional cancellation; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit. Next: Exercise an ordinary AOGM charged item and combat scroll route, then characterize discard, case-transfer, door/XAP, random-power combat, and broader special behavior separately.
-- **major** `classic.maps.location-notes` — Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
-- **major** `classic.maps.view-acquired` — Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
-- **major** `classic.maps.view-acquired` — Acquisition and browsing have synthetic proof but no ordinary AOGM acceptance. Next: Acquire an AOGM player map, save and reload at the immediate display boundary, then browse it from Maps/Notes through the ordinary shell.
-- **major** `classic.rewards.treasure-distribution` — Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced. Next: Use controlled Castle RNG fixtures for ordinary, XP-only, and bonus-treasure battle rewards before implementing or correcting the random drops.
-- **major** `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
-- **major** `classic.scenario.random-timed-encounter` — Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture. Next: Add a synthetic timed AP that changes map or coordinate, yields, applies any source-owned AP destination semantics, resumes the remaining scan, and performs the final random check at the resulting location.
-- **major** `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise field and combat scroll workflows in ordinary AOGM play, then implement discard/case-transfer branches only from bounded differential evidence.
-- **major** `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
+- **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
+- **major** `classic.character.allies-bestiary` - The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
+- **major** `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
+- **major** `classic.combat.resolve-outcome` - Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
+- **major** `classic.combat.resolve-outcome` - Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Characterize the suspicious mode-5 incidental/RNG branches and mode-10 restart field with controlled Castle fixtures, then implement each distinct runtime continuation without changing schema v2 unless the fixture disproves positional preservation.
+- **major** `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
+- **major** `classic.exploration.travel` - Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved. Next: Use controlled fixtures for zero/negative land tiles, boat/shore cancellation, special dungeon wall bits, and attempted-coordinate timed gates before broadening the topology result.
+- **major** `classic.inventory.identify-item` - Shop identification works, but non-shop identification remains unclassified after removing the redundant generic intent. Next: Trace spell, item, and scenario identification paths and implement only the source-backed entry points that exist.
+- **major** `classic.inventory.join-item` - Classic exposes Join, but Rebuilt has no implementation and Castle's load, overflow, and equipment outcomes need observation. Next: Run mixed-state and large-total Castle fixtures, record a fidelity decision where needed, then implement the typed Join intent and inventory presentation.
+- **major** `classic.inventory.split-item` - Classic exposes Split, but Rebuilt has no implementation and Castle's post-split load behavior is suspicious. Next: Observe load and warning resources in a controlled Castle fixture, then implement the typed Split intent and inventory presentation without copying an unverified load bug.
+- **major** `classic.inventory.use-item` - Fixed-power charged items and field/combat scroll use now preserve exact targets, charges/load, five-slot state, fixed power, action cost, sound, save/resume, and transactional cancellation; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit. Next: Exercise an ordinary AOGM charged item and combat scroll route, then characterize discard, case-transfer, door/XAP, random-power combat, and broader special behavior separately.
+- **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
+- **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
+- **major** `classic.maps.view-acquired` - Acquisition and browsing have synthetic proof but no ordinary AOGM acceptance. Next: Acquire an AOGM player map, save and reload at the immediate display boundary, then browse it from Maps/Notes through the ordinary shell.
+- **major** `classic.rewards.treasure-distribution` - Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced. Next: Use controlled Castle RNG fixtures for ordinary, XP-only, and bonus-treasure battle rewards before implementing or correcting the random drops.
+- **major** `classic.scenario.complex-interaction` - Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
+- **major** `classic.scenario.random-timed-encounter` - Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture. Next: Add a synthetic timed AP that changes map or coordinate, yields, applies any source-owned AP destination semantics, resumes the remaining scan, and performs the final random check at the resulting location.
+- **major** `classic.spellcasting.field-camp-cast` - Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise field and combat scroll workflows in ordinary AOGM play, then implement discard/case-transfer branches only from bounded differential evidence.
+- **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
 ## Oracle-required unknowns
 
-- `classic.combat.undo` — Undo the active combat activation
-- `classic.exploration.travel` — Travel on land and in dungeons
-- `classic.inventory.identify-item` — Identify an item
-- `classic.inventory.join-item` — Join matching charged item stacks
-- `classic.inventory.manage-equipment` — Equip and unequip carried items
-- `classic.inventory.split-item` — Split a charged item stack
-- `classic.inventory.use-item` — Use an item
-- `classic.maps.authored-journal` — Read the authored journal
-- `classic.maps.location-notes` — Read and edit location notes
-- `classic.scenario.complex-interaction` — Resolve a complex or thief encounter
-- `classic.scenario.random-timed-encounter` — Enter a random or timed encounter
-- `classic.system.preferences` — Change Classic application preferences
+- `classic.combat.undo` - Undo the active combat activation
+- `classic.exploration.travel` - Travel on land and in dungeons
+- `classic.inventory.identify-item` - Identify an item
+- `classic.inventory.join-item` - Join matching charged item stacks
+- `classic.inventory.manage-equipment` - Equip and unequip carried items
+- `classic.inventory.split-item` - Split a charged item stack
+- `classic.inventory.use-item` - Use an item
+- `classic.maps.authored-journal` - Read the authored journal
+- `classic.maps.location-notes` - Read and edit location notes
+- `classic.scenario.complex-interaction` - Resolve a complex or thief encounter
+- `classic.scenario.random-timed-encounter` - Enter a random or timed encounter
+- `classic.system.preferences` - Change Classic application preferences
 
 ## Prioritized remaining-work queues
 
 ### aogm
 
-- `classic.combat.resolve-outcome` — Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
-- `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved.
-- `classic.inventory.use-item` — Fixed-power charged items and field/combat scroll use now preserve exact targets, charges/load, five-slot state, fixed power, action cost, sound, save/resume, and transactional cancellation; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit.
-- `classic.maps.view-acquired` — Acquisition and browsing have synthetic proof but no ordinary AOGM acceptance.
-- `classic.scenario.random-timed-encounter` — Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture.
-- `classic.spellcasting.field-camp-cast` — Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
+- `classic.combat.resolve-outcome` - Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
+- `classic.exploration.travel` - Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved.
+- `classic.inventory.use-item` - Fixed-power charged items and field/combat scroll use now preserve exact targets, charges/load, five-slot state, fixed power, action cost, sound, save/resume, and transactional cancellation; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit.
+- `classic.maps.view-acquired` - Acquisition and browsing have synthetic proof but no ordinary AOGM acceptance.
+- `classic.scenario.random-timed-encounter` - Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture.
+- `classic.spellcasting.field-camp-cast` - Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 
 ### other-campaign
 
-- `classic.character.age-update` — Age updates have no ordinary-campaign observation because the trigger is rare.
-- `classic.exploration.travel` — Dungeon and boat variants lack ordinary campaign certification.
-- `classic.maps.authored-journal` — Authored journal discovery and browsing have synthetic proof only.
-- `classic.maps.location-notes` — Location-note creation, editing, removal, and restoration have synthetic proof only.
-- `classic.scenario.present-message-media` — Only AOGM's opening media sequence has ordinary-play evidence.
-- `classic.services.bank` — The complete bank-backed Swap lifecycle has no ordinary campaign certification.
-- `classic.startup.select-scenario` — Only AOGM has ordinary campaign-selection evidence in 2.0.
-- `host.package.discover-install` — Only AOGM package installation has ordinary evidence.
-- `host.vault.import-publish` — Cross-campaign reuse is tested but has no ordinary AOGM-to-War evidence.
+- `classic.character.age-update` - Age updates have no ordinary-campaign observation because the trigger is rare.
+- `classic.exploration.travel` - Dungeon and boat variants lack ordinary campaign certification.
+- `classic.maps.authored-journal` - Authored journal discovery and browsing have synthetic proof only.
+- `classic.maps.location-notes` - Location-note creation, editing, removal, and restoration have synthetic proof only.
+- `classic.scenario.present-message-media` - Only AOGM's opening media sequence has ordinary-play evidence.
+- `classic.services.bank` - The complete bank-backed Swap lifecycle has no ordinary campaign certification.
+- `classic.startup.select-scenario` - Only AOGM has ordinary campaign-selection evidence in 2.0.
+- `host.package.discover-install` - Only AOGM package installation has ordinary evidence.
+- `host.vault.import-publish` - Cross-campaign reuse is tested but has no ordinary AOGM-to-War evidence.
 
 ### parity
 
-- `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete.
-- `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately.
-- `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end.
-- `classic.combat.undo` — Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved.
-- `classic.inventory.identify-item` — Shop identification works, but non-shop identification remains unclassified after removing the redundant generic intent.
-- `classic.inventory.join-item` — Classic exposes Join, but Rebuilt has no implementation and Castle's load, overflow, and equipment outcomes need observation.
-- `classic.inventory.split-item` — Classic exposes Split, but Rebuilt has no implementation and Castle's post-split load behavior is suspicious.
-- `classic.maps.location-notes` — Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
-- `classic.maps.view-acquired` — Exact dungeon player-map composition is not yet proven against Castle.
-- `classic.rewards.treasure-distribution` — Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced.
-- `classic.scenario.complex-interaction` — Thief encounter action availability and result routing are not fully traced or represented.
-- `classic.character.view-sheet` — Several nonzero Classic ability slots lack verified display names.
-- `classic.maps.authored-journal` — Castle's Auto Note preference and unsafe journal cursor boundary remain outside the verified authored-journal subset.
-- `classic.maps.location-notes` — Castle's two dialog exit labels and exact cancellation semantics are not established by source alone.
-- `classic.maps.view-acquired` — Classic scrolling TEXT encoding and style resources remain only partially represented.
-- `classic.maps.view-acquired` — Malformed crop starts and authored picture rectangles lack boundary observations.
-- `classic.services.shop` — Normalized shop stock omits native empty-slot provenance.
-- `classic.system.preferences` — Classic's editable stock spell/race/caste names are not represented and may conflict with immutable package content.
+- `classic.character.allies-bestiary` - The allies and bestiary workspaces are absent and the known-entry display contract is incomplete.
+- `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately.
+- `classic.combat.resolve-outcome` - Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end.
+- `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved.
+- `classic.inventory.identify-item` - Shop identification works, but non-shop identification remains unclassified after removing the redundant generic intent.
+- `classic.inventory.join-item` - Classic exposes Join, but Rebuilt has no implementation and Castle's load, overflow, and equipment outcomes need observation.
+- `classic.inventory.split-item` - Classic exposes Split, but Rebuilt has no implementation and Castle's post-split load behavior is suspicious.
+- `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
+- `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle.
+- `classic.rewards.treasure-distribution` - Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced.
+- `classic.scenario.complex-interaction` - Thief encounter action availability and result routing are not fully traced or represented.
+- `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
+- `classic.maps.authored-journal` - Castle's Auto Note preference and unsafe journal cursor boundary remain outside the verified authored-journal subset.
+- `classic.maps.location-notes` - Castle's two dialog exit labels and exact cancellation semantics are not established by source alone.
+- `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.
+- `classic.maps.view-acquired` - Malformed crop starts and authored picture rectangles lack boundary observations.
+- `classic.services.shop` - Normalized shop stock omits native empty-slot provenance.
+- `classic.system.preferences` - Classic's editable stock spell/race/caste names are not represented and may conflict with immutable package content.
 
 ### polish
 
-- `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate.
-- `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished.
-- `classic.startup.end-adventure` — Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
-- `classic.system.preferences` — Classic's reduced-sound preference is not represented.
-- `classic.system.quit` — Typed Quit choices and host transaction ordering are characterized, but the real window-close notification and save-repository failure path lack composition-root proof.
+- `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate.
+- `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished.
+- `classic.startup.end-adventure` - Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
+- `classic.system.preferences` - Classic's reduced-sound preference is not represented.
+- `classic.system.quit` - Typed Quit choices and host transaction ordering are characterized, but the real window-close notification and save-repository failure path lack composition-root proof.
 
 ## Coverage caveats
 

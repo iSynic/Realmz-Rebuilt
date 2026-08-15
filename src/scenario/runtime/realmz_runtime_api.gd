@@ -188,7 +188,7 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 126 requires a five-value Extra Code row.")
 	var combat := _game_state.combat
 	if combat.macro_id > 0:
-		return ScenarioRuntimeOperationResult.completed(false, [], {"kind": "finish"})
+		return ScenarioRuntimeOperationResult.completed(false, [], ScenarioVmDirective.finish())
 	var mode := action.extra_code[0]
 	var matched := false
 	match mode:
@@ -199,7 +199,7 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_battle_macro_test", "Classic opcode 126 has an invalid round test mode.")
 	if not matched:
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"battle_macro_tested", {"matched": false, "mode": mode, "round": combat.round_number, "source": "classic"})], {"kind": "finish"})
+		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"battle_macro_tested", {"matched": false, "mode": mode, "round": combat.round_number, "source": "classic"})], ScenarioVmDirective.finish())
 	if action.extra_code[2] != 1:
 		combat.macro_id = 0
 	var target_id := action.extra_code[3]
@@ -207,7 +207,7 @@ func _branch_battle_round_macro(action: ClassicActionDefinition) -> ScenarioRunt
 		target_id = _rng.draw_between(action.extra_code[3], action.extra_code[4], &"classic.battle-round-macro-target")
 	if target_id <= 0:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_macro_target", "Classic opcode 126 references an invalid Extra Action Point target.")
-	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"battle_macro_tested", {"matched": true, "mode": mode, "round": combat.round_number, "targetId": target_id, "repeating": action.extra_code[2] == 1, "source": "classic"})], {"kind": "branch-xap", "targetId": target_id, "gosub": false})
+	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"battle_macro_tested", {"matched": true, "mode": mode, "round": combat.round_number, "targetId": target_id, "repeating": action.extra_code[2] == 1, "source": "classic"})], ScenarioVmDirective.branch_xap(target_id, false))
 
 
 func _continue_if_monster_present(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -222,7 +222,7 @@ func _continue_if_monster_present(action: ClassicActionDefinition) -> ScenarioRu
 		if present_definition != null and present_definition.classic_id == definition.classic_id and monster.current_health > 0:
 			present = true
 			break
-	var directive: Dictionary = {} if present else {"kind": "finish"}
+	var directive: ScenarioVmDirective = null if present else ScenarioVmDirective.finish()
 	return ScenarioRuntimeOperationResult.completed(present, [DomainEvent.new(&"battle_monster_presence_checked", {"classicMonsterId": definition.classic_id, "present": present, "source": "classic"})], directive)
 
 
@@ -294,7 +294,7 @@ func _revive_after_combat_macro(context: Dictionary) -> ScenarioRuntimeOperation
 			character.current_health = 1
 			character.conditions.set_value(ConditionRules.ANIMATED, 0)
 			revived_party.append(character.id)
-		return ScenarioRuntimeOperationResult.completed(revived_party, [DomainEvent.new(&"party_revived", {"characterIds": revived_party, "source": "classic-death-macro"})], {"kind": "finish"})
+		return ScenarioRuntimeOperationResult.completed(revived_party, [DomainEvent.new(&"party_revived", {"characterIds": revived_party, "source": "classic-death-macro"})], ScenarioVmDirective.finish())
 	if _game_state.combat == null:
 		return ScenarioRuntimeOperationResult.failed(&"revival_outside_combat", "Classic opcode 119 has no combatant to revive.")
 	var combatant_id := str(context.get("combatantId", ""))
@@ -541,7 +541,7 @@ func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, re
 		"updates": updates,
 		"index": 1,
 		"value": operation.value,
-		"directive": operation.directive.duplicate(true),
+		"directive": {} if operation.directive == null else operation.directive.to_data(),
 	}
 	var events: Array[DomainEvent] = []
 	events.assign(operation.events)
@@ -564,8 +564,13 @@ func _resume_age_update_interactions(continuation: Dictionary, response: Interac
 		next_continuation["index"] = index + 1
 		events.append(CharacterAgingResult.sound_event(next_payload))
 		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update(request_id, next_payload), next_continuation, events)
-	var directive: Variant = continuation.get("directive", {})
-	return ScenarioRuntimeOperationResult.completed(continuation.get("value"), events, directive if directive is Dictionary else {})
+	var directive_data: Variant = continuation.get("directive", {})
+	if not directive_data is Dictionary:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_continuation", "Classic age-update directive is malformed.")
+	var directive := ScenarioVmDirective.from_data(directive_data)
+	if not directive_data.is_empty() and directive == null:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_continuation", "Classic age-update directive is invalid.")
+	return ScenarioRuntimeOperationResult.completed(continuation.get("value"), events, directive)
 
 
 func _resume_simple_encounter(continuation: Dictionary, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
@@ -578,7 +583,7 @@ func _resume_simple_encounter(continuation: Dictionary, response: InteractionRes
 	if choice.cancelled:
 		if not encounter.can_back_out:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Simple Encounter cannot be cancelled.")
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "simple", "encounterId": encounter.id})], {"kind": "finish"})
+		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "simple", "encounterId": encounter.id})], ScenarioVmDirective.finish())
 	var selected_index := choice.index
 	var option_indexes: Variant = continuation.get("optionIndexes", [])
 	if option_indexes is Array and not option_indexes.is_empty():
@@ -589,7 +594,7 @@ func _resume_simple_encounter(continuation: Dictionary, response: InteractionRes
 	if selected == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Simple Encounter response index is outside the authored choices.")
 	_game_state.record_encounter_attempt(&"simple", encounter.id)
-	return ScenarioRuntimeOperationResult.completed(selected.id, [DomainEvent.new(&"encounter_response_selected", {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index})], {"kind": "branch-program", "programId": selected.result_program_id, "gosub": bool(continuation.get("gosub", false)), "context": {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index}})
+	return ScenarioRuntimeOperationResult.completed(selected.id, [DomainEvent.new(&"encounter_response_selected", {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index})], ScenarioVmDirective.branch_program(selected.result_program_id, bool(continuation.get("gosub", false)), {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index}))
 
 
 func _resume_complex_encounter(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -607,7 +612,7 @@ func _resume_complex_encounter(continuation: Dictionary, response: InteractionRe
 		"back":
 			if not encounter.can_back_out:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Complex Encounter cannot be cancelled.")
-			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "complex", "encounterId": encounter.id})], {"kind": "finish"})
+			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "complex", "encounterId": encounter.id})], ScenarioVmDirective.finish())
 		"choice":
 			if selection.slot < 0:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex action response requires an authored slot.")
@@ -647,7 +652,7 @@ func _complex_outcome(encounter: ComplexEncounterDefinition, outcome: int, gosub
 	var program_id := encounter.result_program_id(outcome)
 	if program_id.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Complex Encounter result is outside 1 through 4.")
-	return ScenarioRuntimeOperationResult.completed(outcome, events, {"kind": "branch-program", "programId": program_id, "gosub": gosub, "context": context})
+	return ScenarioRuntimeOperationResult.completed(outcome, events, ScenarioVmDirective.branch_program(program_id, gosub, context))
 
 
 func _complex_word_outcome(encounter: ComplexEncounterDefinition, entered_word: String) -> int:
@@ -748,7 +753,7 @@ func _resume_classic_choice(continuation: Dictionary, response: InteractionRespo
 		return ScenarioRuntimeOperationResult.completed(false)
 	match int(values[1]):
 		0:
-			return ScenarioRuntimeOperationResult.completed(true, [], {"kind": "finish"})
+			return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.finish())
 		1:
 			return _branch_xap(int(values[2]), bool(continuation.get("gosub", false)))
 		4:
@@ -837,7 +842,7 @@ func _party_has_classic_item(classic_item_id: int, minimum_charges: int = -1, eq
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
 	if target_id == 0:
 		return ScenarioRuntimeOperationResult.completed(false)
-	return ScenarioRuntimeOperationResult.completed(true, [], {"kind": "branch-xap", "targetId": target_id, "gosub": gosub})
+	return ScenarioRuntimeOperationResult.completed(true, [], ScenarioVmDirective.branch_xap(target_id, gosub))
 
 
 func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, activate_destination: bool = false) -> ScenarioRuntimeOperationResult:
@@ -869,7 +874,7 @@ func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, act
 		events.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-teleport"}))
 	if activate_destination:
 		events.append(DomainEvent.new(&"destination_trigger_recheck_requested", {"mapId": target_map.id, "x": coordinate.x, "y": coordinate.y, "source": "classic-opcode-20"}))
-		return ScenarioRuntimeOperationResult.completed(target_map.id, events, {"kind": "finish"})
+		return ScenarioRuntimeOperationResult.completed(target_map.id, events, ScenarioVmDirective.finish())
 	return ScenarioRuntimeOperationResult.completed(target_map.id, events)
 
 
@@ -1438,13 +1443,13 @@ func complete_party_defeat_handoff(handoff: Dictionary) -> ScenarioRuntimeOperat
 		return ScenarioRuntimeOperationResult.failed(&"classic_battle_loss_return_unresolved", "Classic opcode 56 uses a distinct experience-loss and party-backup return that is not yet available.")
 	var combat := _game_state.combat
 	var battle_id := combat.battle_id
-	var directive: Dictionary = {}
+	var directive: ScenarioVmDirective
 	if caller.get("kind") == "classic":
 		match int(caller["opcode"]):
 			56:
-				directive = {"kind": "branch-xap", "targetId": int(caller["branchTarget"]), "gosub": bool(caller["gosub"])}
+				directive = ScenarioVmDirective.branch_xap(int(caller["branchTarget"]), bool(caller["gosub"]))
 			107:
-				directive = {"kind": "branch-xap", "targetId": int(caller["branchTarget"]), "gosub": false}
+				directive = ScenarioVmDirective.branch_xap(int(caller["branchTarget"]), false)
 	combat.outcome = &"retreated"
 	_game_state.last_battle_outcome = &"retreated"
 	var events: Array[DomainEvent] = [
