@@ -19,7 +19,7 @@ func present(view: PlayerMapView, media: ClassicMediaCatalog) -> void:
 		text.custom_minimum_size = Vector2(320, 320)
 		text.fit_content = false
 		text.bbcode_enabled = false
-		var asset: PackageMediaAsset = media.asset_by_id(view.scrolling_text_asset_id) if media != null else null
+		var asset: MediaAsset = media.asset_by_id(view.scrolling_text_asset_id) if media != null else null
 		text.text = media.read_bytes(asset).get_string_from_utf8() if asset != null else "Scrolling map text is unavailable."
 		add_child(text)
 	else:

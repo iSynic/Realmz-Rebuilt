@@ -8,6 +8,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 
 - Direct Realmz definitions and mutable playthrough state, including characters, equipment, wealth, conditions, encounters, battles, shops, treasures, spells, monsters, races, castes, and immutable compiled scenario programs.
 - Typed intents/events/interactions/views and the core state carried by session snapshots.
+- Pure host-facing value contracts shared across adapters and presentation, including immutable media descriptors/read ports and presentation settings. These records never enter `GameSession` or alter Classic rules.
 - `RealmzRules`, `RealmzClock`, `RealmzRng`, topology queries, and world overlays.
 
 ## Local Contracts
@@ -16,6 +17,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - Rule modules may retain the smaller rule dependencies they use, but may not strongly retain their owning `RealmzRules` aggregate; core ownership graphs must remain acyclic so headless and host teardown release complete sessions.
 - No scenes, autoloads, filesystem/resource APIs, audio, OS services, wall-clock time, or Godot randomness.
 - JSON dictionaries stop at validating infrastructure factories. Domain state is typed and does not expose writable backing dictionaries.
+- `MediaAsset` is the immutable content descriptor and `MediaSource` is the read-only byte-source port. Presentation may consume only these core contracts; archive/file access remains in infrastructure adapters.
 - `PlayerIntent`, `InteractionRequest`, and `InteractionResponse` use closed typed payload families. Request bodies may serialize only at the save/event wire boundary; core, scenario, and presentation behavior consumes their typed variants directly.
 - `SessionSnapshot` is the detached typed save boundary. Core constructs and validates snapshots but does not encode `.r2save` JSON or own filesystem persistence.
 - Classic option-label records are immutable typed content distinct from ordinary messages; runtime choice resolution may query them but never mutate their source table.

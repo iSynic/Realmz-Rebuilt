@@ -226,17 +226,17 @@ func run() -> void:
 			assert_false(changed_install.is_ok(), "an installed archive changed outside the installer invalidates its receipt")
 			assert_contains(changed_install.error_message, "byte count", "changed installed bytes report the invalid immutable-file identity")
 
-	var picture := PackageMediaAsset.new("fixture.picture", "Fixture", "picture", "image/png", "PICT", 128, 0, "0000000000000000000000000000000000000000000000000000000000000000", "assets/media/0000000000000000000000000000000000000000000000000000000000000000.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
+	var picture := MediaAsset.new("fixture.picture", "Fixture", "picture", "image/png", "PICT", 128, 0, "0000000000000000000000000000000000000000000000000000000000000000", "assets/media/0000000000000000000000000000000000000000000000000000000000000000.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
 	assert_true(picture.is_picture(), "package media classifies pictures by typed MIME and resource identity")
 	assert_false(picture.is_sound(), "picture media cannot be selected by the sound presenter")
-	var icon := PackageMediaAsset.new("fixture.icon", "Fixture Icon", "icon", "image/png", "cicn", 128, 0, "1111111111111111111111111111111111111111111111111111111111111111", "assets/media/1111111111111111111111111111111111111111111111111111111111111111.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
-	var colliding_assets: Array[PackageMediaAsset] = [picture, icon]
+	var icon := MediaAsset.new("fixture.icon", "Fixture Icon", "icon", "image/png", "cicn", 128, 0, "1111111111111111111111111111111111111111111111111111111111111111", "assets/media/1111111111111111111111111111111111111111111111111111111111111111.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
+	var colliding_assets: Array[MediaAsset] = [picture, icon]
 	var colliding_catalog := PackageMediaCatalog.new("", "", colliding_assets)
 	assert_equal(colliding_catalog.asset_by_resource("PICT", 128), picture, "exact PICT lookup cannot collide with CICN identity")
 	assert_equal(colliding_catalog.asset_by_resource("cicn", 128), icon, "exact cicn lookup is collision-free")
 	assert_true(colliding_catalog.asset_by_resource("CICN", 128) == null, "Classic resource type bytes are not case-normalized")
 	assert_true(colliding_catalog.asset_by_resource("ICON", 128) == null, "unavailable resource types do not fall back by numeric ID")
-	var duplicate_picture := PackageMediaAsset.new("fixture.picture.duplicate", "Duplicate Fixture", "picture", "image/png", "PICT", 128, 0, "2222222222222222222222222222222222222222222222222222222222222222", "assets/media/2222222222222222222222222222222222222222222222222222222222222222.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
+	var duplicate_picture := MediaAsset.new("fixture.picture.duplicate", "Duplicate Fixture", "picture", "image/png", "PICT", 128, 0, "2222222222222222222222222222222222222222222222222222222222222222", "assets/media/2222222222222222222222222222222222222222222222222222222222222222.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
 	var ambiguous_catalog := PackageMediaCatalog.new("", "", [picture, duplicate_picture])
 	assert_true(ambiguous_catalog.asset_by_resource("PICT", 128) == null, "an ambiguous exact resource key never degrades to first-match lookup")
 	assert_equal(ambiguous_catalog.resolution_diagnostic("PICT", 128, "test-picture")["status"], "ambiguous", "developer media diagnostics expose an ambiguous resource key")

@@ -1,15 +1,15 @@
 class_name PackageMediaValidatorResolver
 extends PackageDecoderBase
 
-func _validate_monster_media(monsters: Array[MonsterDefinition], media_assets: Array[PackageMediaAsset]) -> bool:
+func _validate_monster_media(monsters: Array[MonsterDefinition], media_assets: Array[MediaAsset]) -> bool:
 	var assets_by_resource: Dictionary = {}
-	for asset: PackageMediaAsset in media_assets:
+	for asset: MediaAsset in media_assets:
 		if not asset.resource_type.is_empty():
 			assets_by_resource[JSON.stringify([asset.resource_type, asset.resource_id])] = asset
 	for monster: MonsterDefinition in monsters:
 		if monster.icon_id <= 0:
 			continue
-		var asset := assets_by_resource.get(JSON.stringify(["cicn", monster.icon_id])) as PackageMediaAsset
+		var asset := assets_by_resource.get(JSON.stringify(["cicn", monster.icon_id])) as MediaAsset
 		if asset == null or asset.mime_type != "image/png" or asset.width < 1 or asset.height < 1:
 			return _reject("Monster '%s' requires unavailable Classic cicn %d." % [monster.id, monster.icon_id])
 	return true
@@ -101,10 +101,10 @@ func _validate_render_references(assets: Dictionary, world: Dictionary) -> bool:
 				return _reject("Topology references missing image overlay asset '%s'." % overlay_asset_id)
 	return true
 
-func _construct_assets(document: Dictionary) -> Array[PackageMediaAsset]:
-	var assets: Array[PackageMediaAsset] = []
+func _construct_assets(document: Dictionary) -> Array[MediaAsset]:
+	var assets: Array[MediaAsset] = []
 	for record: Dictionary in document["assets"]:
-		assets.append(PackageMediaAsset.new(
+		assets.append(MediaAsset.new(
 			record["id"],
 			record["label"],
 			record["kind"],
@@ -128,9 +128,9 @@ func _construct_assets(document: Dictionary) -> Array[PackageMediaAsset]:
 		))
 	return assets
 
-func _construct_character_appearance_options(assets: Array[PackageMediaAsset], races: Array[RaceDefinition]) -> Array[CharacterAppearanceDefinition]:
+func _construct_character_appearance_options(assets: Array[MediaAsset], races: Array[RaceDefinition]) -> Array[CharacterAppearanceDefinition]:
 	var result: Array[CharacterAppearanceDefinition] = []
-	for asset: PackageMediaAsset in assets:
+	for asset: MediaAsset in assets:
 		var kind := CharacterAppearanceDefinition.PORTRAIT if asset.kind == "portrait" else CharacterAppearanceDefinition.COMBAT_ICON if asset.kind == "combat-icon" else &""
 		if kind == &"":
 			continue
@@ -146,4 +146,3 @@ func _construct_character_appearance_options(assets: Array[PackageMediaAsset], r
 		result.append(CharacterAppearanceDefinition.new(asset.id, asset.label, kind, asset.resource_id, recommended_races))
 	result.sort_custom(func(left: CharacterAppearanceDefinition, right: CharacterAppearanceDefinition) -> bool: return left.classic_resource_id < right.classic_resource_id)
 	return result
-

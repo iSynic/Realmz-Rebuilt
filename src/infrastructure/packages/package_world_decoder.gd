@@ -238,7 +238,7 @@ func _validate_compact_cell(value: Variant, map_id: String, cell_index: int, tri
 		return _reject("Map '%s' compact topology row %d has malformed render facts." % [map_id, cell_index])
 	return true
 
-func _construct_player_maps(value: Variant, maps: Array[MapDefinition], media_assets: Array[PackageMediaAsset]) -> Variant:
+func _construct_player_maps(value: Variant, maps: Array[MapDefinition], media_assets: Array[MediaAsset]) -> Variant:
 	if not value is Array or value.size() > 20:
 		_reject("World player maps must be an array of no more than twenty records.")
 		return null
@@ -246,7 +246,7 @@ func _construct_player_maps(value: Variant, maps: Array[MapDefinition], media_as
 	for map: MapDefinition in maps:
 		maps_by_id[map.id] = map
 	var assets_by_id: Dictionary = {}
-	for asset: PackageMediaAsset in media_assets:
+	for asset: MediaAsset in media_assets:
 		assets_by_id[asset.id] = asset
 	var result: Array[PlayerMapDefinition] = []
 	var ids: Dictionary = {}
@@ -280,7 +280,7 @@ func _construct_player_maps(value: Variant, maps: Array[MapDefinition], media_as
 		var picture_asset_id := "" if record["pictureAssetId"] == null else String(record["pictureAssetId"])
 		var scrolling_text_asset_id := "" if record["scrollingTextAssetId"] == null else String(record["scrollingTextAssetId"])
 		var party_marker_asset_id := "" if record["partyMarkerAssetId"] == null else String(record["partyMarkerAssetId"])
-		var party_marker_asset := assets_by_id.get(party_marker_asset_id) as PackageMediaAsset
+		var party_marker_asset := assets_by_id.get(party_marker_asset_id) as MediaAsset
 		if record["mapId"] != null and (not record["mapId"] is String or map_id.is_empty()) or record["pictureAssetId"] != null and (not record["pictureAssetId"] is String or picture_asset_id.is_empty()) or record["scrollingTextAssetId"] != null and (not record["scrollingTextAssetId"] is String or scrolling_text_asset_id.is_empty()) or record["partyMarkerAssetId"] != null and (not record["partyMarkerAssetId"] is String or party_marker_asset_id.is_empty()):
 			_reject("Player-map content references are malformed.")
 			return null
@@ -312,7 +312,7 @@ func _construct_player_maps(value: Variant, maps: Array[MapDefinition], media_as
 			if not marker_value is Dictionary or not _exact_fields(marker_value, ["classicIconId", "iconAssetId", "x", "y"]) or not _is_integer(marker_value["classicIconId"]) or not marker_value["iconAssetId"] is String or marker_value["iconAssetId"].is_empty() or not _is_integer(marker_value["x"]) or not _is_integer(marker_value["y"]):
 				_reject("Player-map marker is malformed.")
 				return null
-			var marker_asset := assets_by_id.get(marker_value["iconAssetId"]) as PackageMediaAsset
+			var marker_asset := assets_by_id.get(marker_value["iconAssetId"]) as MediaAsset
 			if not _player_map_asset_matches(marker_asset, "cicn") or marker_asset.resource_id != _integer(marker_value["classicIconId"]):
 				_reject("Player-map marker does not match its exact cicn resource identity.")
 				return null
@@ -325,7 +325,7 @@ func _construct_player_maps(value: Variant, maps: Array[MapDefinition], media_as
 	return result
 
 func _player_map_asset_matches(value: Variant, resource_type: String) -> bool:
-	return value is PackageMediaAsset and value.resource_type == resource_type
+	return value is MediaAsset and value.resource_type == resource_type
 
 func _construct_random_regions(value: Variant, width: int, height: int, map_id: String) -> Variant:
 	if not value is Array:

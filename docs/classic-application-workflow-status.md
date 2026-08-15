@@ -6,10 +6,25 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 66 | 1 | 16 | 48 | 1 |
+| classic | 68 | 3 | 16 | 48 | 1 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
+
+## Maintenance pause
+
+Parity work is temporarily paused by **rebuilt-architecture-hardening** from baseline `a918a6a35b49646e14b41571c9fb7c09230d756e`. Parity delivery is temporarily paused while typed protocols, coordinator ownership, package installation, host routing, resource bounds, and owning tests are hardened without changing workflow counts.
+
+The workflow denominator, delivery states, and current parity batch remain unchanged. After the maintenance exit gate passes, work resumes at `aogm-application-entry-exit-certification`.
+
+Exit gate:
+
+- `typed-session-and-save-contracts`
+- `decomposed-session-and-scenario-ownership`
+- `realmz3-package-installation-receipts`
+- `decomposed-presentation-and-host`
+- `bounded-resources-and-rationalized-tests`
+- `ordinary-aogm-regression`
 
 ## Current parity-convergence batch
 
@@ -29,7 +44,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
-| classic | missing | 1 | 1 | 0 |
+| classic | missing | 3 | 3 | 0 |
 | classic | partial | 16 | 16 | 0 |
 | classic | functional | 48 | 48 | 0 |
 | classic | certified | 1 | 1 | 0 |
@@ -46,7 +61,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Exploration | 6 | 0 | 1 | 5 | 0 |
 | Scenario interaction | 6 | 0 | 2 | 4 | 0 |
 | Character management | 5 | 1 | 1 | 3 | 0 |
-| Inventory and equipment | 7 | 0 | 3 | 4 | 0 |
+| Inventory and equipment | 9 | 2 | 3 | 4 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 2 | 11 | 1 |
@@ -61,13 +76,13 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 9 |
-| required | 10 |
+| required | 12 |
 | completed | 47 |
 
 | Remake | Count |
 | --- | ---: |
 | absent | 6 |
-| partial | 35 |
+| partial | 37 |
 | implemented | 14 |
 | divergent | 11 |
 | not-applicable | 0 |
@@ -77,25 +92,25 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | not-required | 19 |
 | missing | 0 |
 | partial | 3 |
-| complete | 44 |
+| complete | 46 |
 
 | simulation | Count |
 | --- | ---: |
 | not-applicable | 2 |
-| absent | 0 |
+| absent | 2 |
 | partial | 11 |
 | complete | 53 |
 
 | persistence | Count |
 | --- | ---: |
 | not-applicable | 6 |
-| absent | 0 |
+| absent | 2 |
 | partial | 1 |
 | verified | 59 |
 
 | presentation | Count |
 | --- | ---: |
-| absent | 1 |
+| absent | 3 |
 | fixture-shell | 0 |
 | functional | 64 |
 | accepted | 1 |
@@ -142,7 +157,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **17**.
+Blockers: **1**. Major gaps: **18**.
 
 - **blocker** `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` — The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -151,8 +166,9 @@ Blockers: **1**. Major gaps: **17**.
 - **major** `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Characterize the suspicious mode-5 incidental/RNG branches and mode-10 restart field with controlled Castle fixtures, then implement each distinct runtime continuation without changing schema v2 unless the fixture disproves positional preservation.
 - **major** `classic.combat.undo` — Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
 - **major** `classic.exploration.travel` — Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved. Next: Use controlled fixtures for zero/negative land tiles, boat/shore cancellation, special dungeon wall bits, and attempted-coordinate timed gates before broadening the topology result.
-- **major** `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified. Next: Trace spell, item, and scenario identification paths and assign or remove the generic intent.
-- **major** `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow. Next: Trace every items.c branch before deleting the intents or implementing a stack operation.
+- **major** `classic.inventory.identify-item` — Shop identification works, but non-shop identification remains unclassified after removing the redundant generic intent. Next: Trace spell, item, and scenario identification paths and implement only the source-backed entry points that exist.
+- **major** `classic.inventory.join-item` — Classic exposes Join, but Rebuilt has no implementation and Castle's load, overflow, and equipment outcomes need observation. Next: Run mixed-state and large-total Castle fixtures, record a fidelity decision where needed, then implement the typed Join intent and inventory presentation.
+- **major** `classic.inventory.split-item` — Classic exposes Split, but Rebuilt has no implementation and Castle's post-split load behavior is suspicious. Next: Observe load and warning resources in a controlled Castle fixture, then implement the typed Split intent and inventory presentation without copying an unverified load bug.
 - **major** `classic.inventory.use-item` — Fixed-power charged items and field/combat scroll use now preserve exact targets, charges/load, five-slot state, fixed power, action cost, sound, save/resume, and transactional cancellation; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit. Next: Exercise an ordinary AOGM charged item and combat scroll route, then characterize discard, case-transfer, door/XAP, random-power combat, and broader special behavior separately.
 - **major** `classic.maps.location-notes` — Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` — Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
@@ -168,7 +184,9 @@ Blockers: **1**. Major gaps: **17**.
 - `classic.combat.undo` — Undo the active combat activation
 - `classic.exploration.travel` — Travel on land and in dungeons
 - `classic.inventory.identify-item` — Identify an item
+- `classic.inventory.join-item` — Join matching charged item stacks
 - `classic.inventory.manage-equipment` — Equip and unequip carried items
+- `classic.inventory.split-item` — Split a charged item stack
 - `classic.inventory.use-item` — Use an item
 - `classic.maps.authored-journal` — Read the authored journal
 - `classic.maps.location-notes` — Read and edit location notes
@@ -205,8 +223,9 @@ Blockers: **1**. Major gaps: **17**.
 - `classic.character.view-sheet` — Castle's lifetime combat record and prestige cannot yet be calculated accurately.
 - `classic.combat.resolve-outcome` — Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end.
 - `classic.combat.undo` — Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved.
-- `classic.inventory.identify-item` — Shop identification works, but IDENTIFY_ITEM is dead and non-shop identification is unclassified.
-- `classic.inventory.manage-equipment` — The declared split/join intents are dead and may not represent a real Classic player workflow.
+- `classic.inventory.identify-item` — Shop identification works, but non-shop identification remains unclassified after removing the redundant generic intent.
+- `classic.inventory.join-item` — Classic exposes Join, but Rebuilt has no implementation and Castle's load, overflow, and equipment outcomes need observation.
+- `classic.inventory.split-item` — Classic exposes Split, but Rebuilt has no implementation and Castle's post-split load behavior is suspicious.
 - `classic.maps.location-notes` — Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
 - `classic.maps.view-acquired` — Exact dungeon player-map composition is not yet proven against Castle.
 - `classic.rewards.treasure-distribution` — Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced.
@@ -223,7 +242,6 @@ Blockers: **1**. Major gaps: **17**.
 
 - `host.release.platform-certification` — There is no cross-platform release certification and no accepted release candidate.
 - `host.settings.accessibility` — Control customization and complete multi-scale layout acceptance remain unfinished.
-- `classic.spellcasting.choose-power-target` — SELECT_SPELL_POWER and SELECT_SPELL_TARGET are dead scaffolding beside the complete CAST_SPELL payload.
 - `classic.startup.end-adventure` — Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
 - `classic.system.preferences` — Classic's reduced-sound preference is not represented.
 - `classic.system.quit` — Typed Quit choices and host transaction ordering are characterized, but the real window-close notification and save-repository failure path lack composition-root proof.

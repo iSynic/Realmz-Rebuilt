@@ -77,7 +77,10 @@ static func from_data(data: Variant) -> SaveEnvelope:
 		untrusted_continuation["kind"] = continuation_wire["kind"]
 		normalized_continuation = _normalize_session_continuation(untrusted_continuation)
 		if normalized_continuation is Dictionary:
-			typed_continuation = SessionContinuation.from_legacy_data(normalized_continuation)
+			var normalized_payload: Dictionary = normalized_continuation.duplicate(true)
+			var normalized_kind: String = normalized_payload["kind"]
+			normalized_payload.erase("kind")
+			typed_continuation = SessionContinuation.from_data({"kind": normalized_kind, "version": SessionContinuation.VERSION, "data": normalized_payload})
 	var session_request: InteractionRequest = null
 	if not data["sessionInteraction"].is_empty():
 		session_request = InteractionRequest.from_data(data["sessionInteraction"])

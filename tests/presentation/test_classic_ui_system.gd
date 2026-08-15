@@ -921,7 +921,7 @@ func _test_classic_application_media() -> void:
 	assert_equal([spell_frame.kind, spell_frame.width, spell_frame.height], ["icon", 32, 32], "application spell frames retain their decoded native dimensions")
 	assert_true(application_media.asset_by_resource("cicn", 11992) == null, "lookStart zero retains Castle's absent cast-start family instead of substituting another effect")
 
-	var package_override := PackageMediaAsset.new("scenario-snd-147", "Scenario sound 147", "sound", "audio/wav", "snd ", 147, 0, "1".repeat(64), "assets/media/scenario-147.wav", 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1)
+	var package_override := MediaAsset.new("scenario-snd-147", "Scenario sound 147", "sound", "audio/wav", "snd ", 147, 0, "1".repeat(64), "assets/media/scenario-147.wav", 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1)
 	var layered := ClassicMediaCatalog.new(PackageMediaCatalog.new("", "package-hash", [package_override]), application_media)
 	assert_equal(layered.asset_by_resource("snd ", 147), package_override, "an exact scenario resource overrides the application fallback like Castle's later-opened resource fork")
 	var override_diagnostic := layered.resolution_diagnostic("snd ", 147, "test-sound")
@@ -929,7 +929,7 @@ func _test_classic_application_media() -> void:
 	var fallback_diagnostic := layered.resolution_diagnostic("snd ", 30005, "test-sound")
 	assert_equal([fallback_diagnostic["sourceOwner"], fallback_diagnostic["resolvedAssetId"]], ["classic-application", "realmz-application-snd-30005"], "an absent scenario key resolves through the application catalog with explicit ownership")
 
-	var duplicate_override := PackageMediaAsset.new("scenario-snd-147-duplicate", "Duplicate scenario sound 147", "sound", "audio/wav", "snd ", 147, 0, "2".repeat(64), "assets/media/scenario-147-duplicate.wav", 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1)
+	var duplicate_override := MediaAsset.new("scenario-snd-147-duplicate", "Duplicate scenario sound 147", "sound", "audio/wav", "snd ", 147, 0, "2".repeat(64), "assets/media/scenario-147-duplicate.wav", 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1)
 	var ambiguous := ClassicMediaCatalog.new(PackageMediaCatalog.new("", "package-hash", [package_override, duplicate_override]), application_media)
 	assert_true(ambiguous.asset_by_resource("snd ", 147) == null, "an ambiguous scenario key never falls through to a plausible built-in sound")
 	assert_equal([ambiguous.resolution_diagnostic("snd ", 147, "test-sound")["status"], ambiguous.resolution_diagnostic("snd ", 147, "test-sound")["sourceOwner"]], ["ambiguous", "scenario-package"], "developer diagnostics preserve malformed package ambiguity")

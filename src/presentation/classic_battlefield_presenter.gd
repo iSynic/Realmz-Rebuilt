@@ -13,10 +13,10 @@ const MAX_VISIBLE_ROWS: int = 14
 
 var _view: GameView
 var _media: ClassicMediaCatalog
-var _atlas_asset: PackageMediaAsset
+var _atlas_asset: MediaAsset
 var _atlas_texture: Texture2D
 var _upper_atlas_id: String = ""
-var _upper_atlas_asset: PackageMediaAsset
+var _upper_atlas_asset: MediaAsset
 var _upper_atlas_texture: Texture2D
 var _actor_textures: Dictionary = {}
 var _movement_costs_visible: bool = false
@@ -642,7 +642,7 @@ func _draw_actor(rect: Rect2, texture: Texture2D, label: String, active: bool, t
 		draw_rect(rect.grow(2.0), Color(0.98, 0.82, 0.25), false, 3.0)
 
 
-func _texture_for(asset: PackageMediaAsset) -> Texture2D:
+func _texture_for(asset: MediaAsset) -> Texture2D:
 	if asset == null:
 		return null
 	if _actor_textures.has(asset.id):
@@ -652,7 +652,7 @@ func _texture_for(asset: PackageMediaAsset) -> Texture2D:
 	return texture
 
 
-func _load_image_texture(asset: PackageMediaAsset) -> Texture2D:
+func _load_image_texture(asset: MediaAsset) -> Texture2D:
 	if asset == null or _media == null:
 		return null
 	var bytes := _media.read_bytes(asset)

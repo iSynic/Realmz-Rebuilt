@@ -967,11 +967,11 @@ func _appearance_option_by_id(option_id: String, portrait: bool) -> CharacterApp
 func _ensure_appearance_textures() -> void:
 	if media == null or not _appearance_textures.is_empty():
 		return
-	var assets: Array[PackageMediaAsset] = []
+	var assets: Array[MediaAsset] = []
 	assets.append_array(media.assets_of_kind("portrait"))
 	assets.append_array(media.assets_of_kind("combat-icon"))
 	var payloads := media.read_bytes_batch(assets)
-	for asset: PackageMediaAsset in assets:
+	for asset: MediaAsset in assets:
 		var bytes: PackedByteArray = payloads.get(asset.id, PackedByteArray())
 		if bytes.is_empty():
 			continue

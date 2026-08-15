@@ -168,7 +168,6 @@ func _render_item_detail(parent: VBoxContainer, item: ItemView, character: Chara
 	else:
 		_add_item_intent_action(actions, &"inventory.action.equipped", "Equip", item.actions.equip, PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, item.instance_id, character.id))
 	_add_item_intent_action(actions, &"inventory.action.use", "Use", item.actions.use, PlayerIntent.use_item(item.instance_id, character.id))
-	_add_item_intent_action(actions, &"inventory.action.identify", "Identify", item.actions.identify, PlayerIntent.item_action(PlayerIntent.Kind.IDENTIFY_ITEM, item.instance_id, character.id))
 	_add_item_intent_action(actions, &"inventory.action.join", "Join", item.actions.join, PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, item.instance_id, character.id))
 	_add_item_intent_action(actions, &"inventory.action.split", "Split", item.actions.split, PlayerIntent.item_action(PlayerIntent.Kind.SPLIT_ITEM, item.instance_id, character.id))
 	_add_item_intent_action(actions, &"inventory.action.drop", "Drop", item.actions.drop, PlayerIntent.item_action(PlayerIntent.Kind.DROP_ITEM, item.instance_id, character.id))
@@ -204,7 +203,7 @@ func _render_item_detail(parent: VBoxContainer, item: ItemView, character: Chara
 func _content_icon(resource_type: String, resource_id: int, media: ClassicMediaCatalog) -> Control:
 	var frame := PanelContainer.new()
 	frame.custom_minimum_size = Vector2(52.0, 52.0)
-	var asset: PackageMediaAsset = media.asset_by_resource(resource_type, resource_id) if media != null and resource_id != 0 else null
+	var asset: MediaAsset = media.asset_by_resource(resource_type, resource_id) if media != null and resource_id != 0 else null
 	if asset != null:
 		var bytes := media.read_bytes(asset)
 		var image := Image.new()

@@ -1,12 +1,12 @@
 class_name ApplicationMediaCatalog
-extends RefCounted
+extends MediaSource
 
 const MANIFEST_PATH := "res://src/presentation/assets/classic-application-media.json"
 const CASTLE_SOURCE_COMMIT := "491816ad60037394f92c428e99c004494d3c28b3"
 
 var source_commit: String = ""
 var last_error: String = ""
-var _assets: Array[PackageMediaAsset] = []
+var _assets: Array[MediaAsset] = []
 var _assets_by_id: Dictionary = {}
 var _assets_by_resource: Dictionary = {}
 var _ambiguous_resource_keys: Dictionary = {}
@@ -20,18 +20,18 @@ func is_valid() -> bool:
 	return last_error.is_empty() and not _assets.is_empty()
 
 
-func assets() -> Array[PackageMediaAsset]:
+func assets() -> Array[MediaAsset]:
 	return _assets.duplicate()
 
 
-func asset_by_id(asset_id: String) -> PackageMediaAsset:
-	return _assets_by_id.get(asset_id) as PackageMediaAsset
+func asset_by_id(asset_id: String) -> MediaAsset:
+	return _assets_by_id.get(asset_id) as MediaAsset
 
 
-func asset_by_resource(resource_type: String, resource_id: int) -> PackageMediaAsset:
+func asset_by_resource(resource_type: String, resource_id: int) -> MediaAsset:
 	if resource_type.is_empty():
 		return null
-	return _assets_by_resource.get(_resource_key(resource_type, resource_id)) as PackageMediaAsset
+	return _assets_by_resource.get(_resource_key(resource_type, resource_id)) as MediaAsset
 
 
 func resource_status(resource_type: String, resource_id: int) -> StringName:
@@ -43,11 +43,11 @@ func resource_status(resource_type: String, resource_id: int) -> StringName:
 	return &"resolved" if _assets_by_resource.has(key) else &"missing"
 
 
-func owns_asset(asset: PackageMediaAsset) -> bool:
+func owns_asset(asset: MediaAsset) -> bool:
 	return asset != null and _assets.has(asset)
 
 
-func read_bytes(asset: PackageMediaAsset) -> PackedByteArray:
+func read_bytes(asset: MediaAsset) -> PackedByteArray:
 	if not owns_asset(asset):
 		return PackedByteArray()
 	var bytes := FileAccess.get_file_as_bytes(asset.path)
@@ -56,7 +56,7 @@ func read_bytes(asset: PackageMediaAsset) -> PackedByteArray:
 	return bytes
 
 
-func audio_stream(asset: PackageMediaAsset) -> AudioStream:
+func audio_stream(asset: MediaAsset) -> AudioStream:
 	if not owns_asset(asset) or not asset.is_sound():
 		return null
 	return load(asset.path) as AudioStream
@@ -80,7 +80,7 @@ func _load_manifest(manifest_path: String) -> void:
 			last_error = "Classic application media contains a malformed asset."
 			return
 		var record := value as Dictionary
-		var asset := PackageMediaAsset.new(
+		var asset := MediaAsset.new(
 			String(record.get("id", "")),
 			String(record.get("label", "")),
 			String(record.get("kind", "")),

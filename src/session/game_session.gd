@@ -68,8 +68,9 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 		replacement_state.experience_multiplier = _party_experience_multiplier(replacement_state.party.characters(), replacement_state.difficulty, content.campaign_definition())
 	if replacement_state.combat != null:
 		if not replacement_state.combat.return_continuation.is_empty():
-			var battle_return: Dictionary = replacement_state.combat.return_continuation.to_legacy_data()
-			if battle_return.get("kind") != "post-clock" or battle_return.get("resumeKind") != "move" or not _valid_post_time_continuation(content, replacement_state, battle_return, null, null):
+			var battle_return := replacement_state.combat.return_continuation
+			var battle_exploration := battle_return.exploration()
+			if battle_return.kind != &"post-clock" or battle_exploration == null or battle_exploration.resume_kind != &"move" or not _valid_post_time_continuation(content, replacement_state, battle_return, null, null):
 				return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved battle return references an unavailable exploration continuation.")
 		for item: ItemInstance in replacement_state.combat.fumbled_items():
 			if content.item_by_id(item.definition_id) == null:
@@ -112,7 +113,7 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 		replacement_session_interaction = InteractionRequest.from_data(save_envelope.session_interaction.to_data())
 		if replacement_session_interaction == null:
 			return SessionStep.failed(_view_revision, &"invalid_session_interaction", "The saved session interaction is invalid.")
-	if not replacement_continuation.is_empty() and not _valid_session_continuation(content, replacement_state, replacement_continuation.to_legacy_data(), replacement_vm.pending_request(), replacement_session_interaction):
+	if not replacement_continuation.is_empty() and not _valid_session_continuation(content, replacement_state, replacement_continuation, replacement_vm.pending_request(), replacement_session_interaction):
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The saved session continuation is invalid.")
 	if replacement_continuation.is_empty() and replacement_session_interaction != null:
 		return SessionStep.failed(_view_revision, &"invalid_session_interaction", "The saved session interaction has no owning continuation.")
@@ -262,12 +263,12 @@ func respond(response: InteractionResponse) -> SessionStep:
 	var result := _scenario_vm.resume(response, _runtime_api)
 	var events: Array[DomainEvent] = []
 	events.append_array(result.events)
-	if _continuation_value("kind") == "application-hook" and _events_have(result.events, &"party_revived"):
-		_set_continuation_value("partyRevived", true)
+	if _session_continuation.kind == &"application-hook" and _events_have(result.events, &"party_revived"):
+		_session_continuation.application().party_revived = true
 	if result.state == ScenarioVmResult.State.SUSPENDED:
 		return _begin_scenario_handoff(result, events)
 	if result.state == ScenarioVmResult.State.WAITING:
-		if _continuation_value("kind") == "post-clock" and not String(_continuation_value("activeTimedProgramId", "")).is_empty() and not _rebase_post_time_location():
+		if _session_continuation.kind == &"post-clock" and not _session_continuation.exploration().active_timed_program_id.is_empty() and not _rebase_post_time_location():
 			_session_continuation.clear()
 			return _finish_failed(&"invalid_timed_encounter_location", "The timed encounter moved the party to an unavailable location.", events)
 		return _finish_waiting(result.interaction, events)
@@ -275,7 +276,7 @@ func respond(response: InteractionResponse) -> SessionStep:
 		_session_continuation.clear()
 		return _finish_failed(result.error_code, result.error_message, events)
 	if not _session_continuation.is_empty():
-		if _continuation_value("kind") == "combat-death-macro":
+		if _session_continuation.kind == &"combat-death-macro":
 			return _continue_session_death_macro(events)
 		return _continue_exploration_continuation(events)
 	return _finish_completed(events)
@@ -289,16 +290,9 @@ func _workflow_context(events: Array[DomainEvent] = []) -> SessionWorkflowContex
 	return SessionWorkflowContext.new(_content, _state, _rules, _rng, _scenario_vm, _scenario_action_state, events)
 
 
-func _set_continuation_data(data: Dictionary) -> void:
-	assert(_session_continuation.replace_from_legacy(data), "Session continuation must match one typed continuation variant")
-
-
-func _continuation_value(field: String, default_value: Variant = null) -> Variant:
-	return _session_continuation.value(field, default_value)
-
-
-func _set_continuation_value(field: String, value: Variant) -> void:
-	assert(_session_continuation.set_value(field, value), "Session continuation field must belong to its typed variant")
+func _set_continuation(continuation: SessionContinuation) -> void:
+	assert(continuation != null and not continuation.is_empty(), "A live continuation must have a typed body")
+	_session_continuation = continuation
 
 
 func _character_spell_candidates(character: CharacterState, caste: CasteDefinition) -> Array[SpellDefinition]:
@@ -402,9 +396,9 @@ func _camp() -> SessionStep:
 		if _state.clock.day() == previous_day:
 			return _finish_with_age_updates(events, "completed")
 		_set_post_time_continuation(map, "completed", Vector2i.ZERO, false, _state.clock.day(), _state.party.coordinate)
-		return _finish_with_age_updates(events, "post-clock", _session_continuation.to_legacy_data())
+		return _finish_with_age_updates(events, &"post-clock", _session_continuation.copy())
 	_set_post_time_continuation(map, "completed", Vector2i.ZERO, true, _state.clock.day() if _state.clock.day() != previous_day else 0, _state.party.coordinate)
-	return _finish_with_age_updates(events, "post-clock", _session_continuation.to_legacy_data())
+	return _finish_with_age_updates(events, &"post-clock", _session_continuation.copy())
 
 
 func _rest() -> SessionStep:
@@ -424,7 +418,7 @@ func _rest() -> SessionStep:
 	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, 5, _classic_time_scale(map), true))
 	events.append(DomainEvent.new(&"party_rested", {"timeclicks": 5, "mapId": map.id, "source": "classic"}))
 	_set_post_time_continuation(map, "completed", Vector2i.ZERO, true, _state.clock.day() if _state.clock.day() != previous_day else 0, _state.party.coordinate)
-	return _finish_with_age_updates(events, "post-clock", _session_continuation.to_legacy_data())
+	return _finish_with_age_updates(events, &"post-clock", _session_continuation.copy())
 
 
 func _use_item(intent: PlayerIntent) -> SessionStep:
@@ -480,7 +474,14 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 		if not random_power_checkpoint.is_empty():
 			_rng.rollback(random_power_checkpoint)
 		return SessionStep.failed(_view_revision, &"invalid_item_use_target", "The item requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
-	_set_continuation_data({"kind": "item-use-target-selection", "characterId": character.id, "instanceId": instance.id, "spellId": spell.id, "power": power, "targetCount": required_count, "startingCharges": instance.charges})
+	var targeting := SessionContinuation.TargetingBody.new()
+	targeting.character_id = character.id
+	targeting.instance_id = instance.id
+	targeting.spell_id = spell.id
+	targeting.power = power
+	targeting.target_count = required_count
+	targeting.starting_charges = instance.charges
+	_set_continuation(SessionContinuation.targeting_selection(&"item-use-target-selection", targeting))
 	_session_interaction = _item_target_request("session.item-use:%s:%d" % [instance.id, _view_revision + 1], character, instance.id, item, spell, required_count, _state.party.characters())
 	return _finish_waiting(_session_interaction, [DomainEvent.new(&"item_target_requested", {"characterId": character.id, "instanceId": instance.id, "itemId": item.id, "spellId": spell.id, "power": power, "targetCount": required_count, "source": "classic"})])
 
@@ -611,7 +612,10 @@ func _request_drop_item(intent: PlayerIntent) -> SessionStep:
 	var probe := _rules.inventory.classic_drop_probe(character, instance)
 	if not probe.allowed:
 		return SessionStep.failed(_view_revision, &"item_cannot_drop", probe.reason)
-	_set_continuation_data({"kind": "drop-item-confirmation", "characterId": character.id, "instanceId": instance.id})
+	var targeting := SessionContinuation.TargetingBody.new()
+	targeting.character_id = character.id
+	targeting.instance_id = instance.id
+	_set_continuation(SessionContinuation.targeting_selection(&"drop-item-confirmation", targeting))
 	var display_name := definition.name if instance.identified else definition.unidentified_name
 	_session_interaction = _drop_item_confirmation_request("session.drop-item:%s:%d" % [instance.id, _view_revision + 1], display_name)
 	return _finish_waiting(_session_interaction, [DomainEvent.new(&"item_drop_requested", {"characterId": character.id, "instanceId": instance.id})])
@@ -716,7 +720,13 @@ func _use_scroll(payload: PlayerIntent.SpellPayload) -> SessionStep:
 		return _commit_field_scroll(character.id, payload.scroll_slot, spell.id, scroll.power, target_ids)
 	if not target_ids.is_empty():
 		return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
-	_set_continuation_data({"kind": "scroll-target-selection", "characterId": character.id, "scrollSlot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "targetCount": required_count})
+	var targeting := SessionContinuation.TargetingBody.new()
+	targeting.character_id = character.id
+	targeting.scroll_slot = payload.scroll_slot
+	targeting.spell_id = spell.id
+	targeting.power = scroll.power
+	targeting.target_count = required_count
+	_set_continuation(SessionContinuation.targeting_selection(&"scroll-target-selection", targeting))
 	_session_interaction = _scroll_target_request("session.scroll:%s:%d:%d" % [character.id, payload.scroll_slot, _view_revision + 1], character, payload.scroll_slot, spell, required_count, _state.party.characters())
 	return _finish_waiting(_session_interaction, [DomainEvent.new(&"scroll_target_requested", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "targetCount": required_count, "source": "classic"})])
 
@@ -844,7 +854,13 @@ func _cast_field_spell(payload: PlayerIntent.SpellPayload) -> SessionStep:
 		return _commit_field_spell(character.id, spell.id, payload.power, target_ids)
 	if not target_ids.is_empty():
 		return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
-	_set_continuation_data({"kind": "field-spell-target-selection", "characterId": character.id, "spellId": spell.id, "power": payload.power, "targetCount": required_count, "startingSpellPoints": character.spell_points})
+	var targeting := SessionContinuation.TargetingBody.new()
+	targeting.character_id = character.id
+	targeting.spell_id = spell.id
+	targeting.power = payload.power
+	targeting.target_count = required_count
+	targeting.starting_spell_points = character.spell_points
+	_set_continuation(SessionContinuation.targeting_selection(&"field-spell-target-selection", targeting))
 	_session_interaction = _field_spell_target_request("session.field-spell:%s:%d" % [spell.id, _view_revision + 1], character, spell, required_count, _state.party.characters())
 	return _finish_waiting(_session_interaction, [DomainEvent.new(&"field_spell_target_requested", {"characterId": character.id, "spellId": spell.id, "power": payload.power, "targetCount": required_count, "source": "classic"})])
 
@@ -1033,7 +1049,12 @@ func _finish_combat_result(result: CombatFlowResult) -> SessionStep:
 func _request_session_retreat(actor_id: String, mode: StringName, destination: Vector2i) -> SessionStep:
 	if _state.combat == null or _state.combat.active_actor_id() != actor_id:
 		return SessionStep.failed(_view_revision, &"invalid_combat_actor", "The active character cannot retreat.")
-	_set_continuation_data({"kind": "combat-retreat-confirmation", "battleId": _state.combat.battle_id, "actorId": actor_id, "mode": String(mode), "destination": [destination.x, destination.y]})
+	var combat := SessionContinuation.CombatBody.new()
+	combat.battle_id = _state.combat.battle_id
+	combat.actor_id = actor_id
+	combat.mode = mode
+	combat.destination = destination
+	_set_continuation(SessionContinuation.combat_state(&"combat-retreat-confirmation", combat))
 	_session_interaction = _retreat_confirmation_request("session.combat-retreat:%d" % (_view_revision + 1))
 	return _finish_waiting(_session_interaction, [])
 
@@ -1271,7 +1292,7 @@ func _finalize_character(_intent: PlayerIntent) -> SessionStep:
 	var remaining := maxi(0, total - spent)
 	if remaining > 0:
 		var request_id := "character-spells:%s:%d" % [draft.generated_character.id, _view_revision + 1]
-		_set_continuation_data({"kind": "character-spell-confirmation", "characterId": draft.generated_character.id, "remaining": remaining})
+		_set_continuation(SessionContinuation.character_spell_confirmation(draft.generated_character.id, remaining))
 		_session_interaction = _character_spell_confirmation_request(request_id, remaining)
 		return _finish_waiting(_session_interaction, [DomainEvent.new(&"character_spell_confirmation_requested", {"characterId": draft.generated_character.id, "remaining": remaining})])
 	return _commit_character_draft()
@@ -1297,7 +1318,7 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionStep:
 	_state.character_draft = null
 	events.append(DomainEvent.new(&"character_finalized", {"characterId": character.id}))
 	var request_id := "character-vault:%s:%d" % [character.id, _view_revision + 1]
-	_set_continuation_data({"kind": "character-vault-publication", "characterId": character.id})
+	_set_continuation(SessionContinuation.character_vault_publication(character.id))
 	_session_interaction = _character_vault_confirmation_request(request_id, character.name)
 	events.append(DomainEvent.new(&"character_vault_confirmation_requested", {"characterId": character.id}))
 	return _finish_waiting(_session_interaction, events)
@@ -1546,7 +1567,7 @@ func _move(direction: Vector2i) -> SessionStep:
 		_state.bank_available = false
 		return _move_after_pooled_wealth(direction, [DomainEvent.new(&"pooled_wealth_banked_before_movement", {"wealth": banked, "direction": [direction.x, direction.y]})])
 	if not _state.bank_available and _has_pooled_wealth(_state.party):
-		_set_continuation_data({"kind": "pooled-wealth-departure", "stage": "warning", "directionX": direction.x, "directionY": direction.y})
+		_set_continuation(SessionContinuation.pooled_wealth_departure(&"warning", direction))
 		_session_interaction = _pooled_wealth_departure_warning("pooled-wealth-departure:%d" % (_view_revision + 1))
 		return _finish_waiting(_session_interaction, [
 			DomainEvent.new(&"pooled_wealth_departure_warning", {"wealth": _state.party.pooled_wealth.to_data(), "direction": [direction.x, direction.y]}),
@@ -1577,7 +1598,7 @@ func _depart_camp_and_move(direction: Vector2i, preceding_events: Array[DomainEv
 	var previous_day := _state.clock.day()
 	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, timeclicks, _classic_time_scale(map), true))
 	_set_post_time_continuation(map, "move", direction, true, _state.clock.day() if _state.clock.day() != previous_day else 0, _state.party.coordinate + direction)
-	return _finish_with_age_updates(events, "post-clock", _session_continuation.to_legacy_data())
+	return _finish_with_age_updates(events, &"post-clock", _session_continuation.copy())
 
 
 func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> SessionStep:
@@ -1593,7 +1614,7 @@ func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []
 			var previous_day := _state.clock.day()
 			blocked_events.append_array(_rules.clock.advance_classic_field_time(_state, _content, attempt_cost, _classic_time_scale(movement.source_map), true))
 			_set_post_time_continuation(movement.source_map, "completed", Vector2i.ZERO, true, _state.clock.day() if _state.clock.day() != previous_day else 0, movement.target_coordinate)
-			return _finish_with_age_updates(blocked_events, "post-clock", _session_continuation.to_legacy_data())
+			return _finish_with_age_updates(blocked_events, &"post-clock", _session_continuation.copy())
 		return _finish_completed(blocked_events)
 	var target_map := movement.target_map
 	var target_coordinate := movement.target_coordinate
@@ -1625,7 +1646,7 @@ func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []
 	if transition != null:
 		events.append(DomainEvent.new("map_transitioned", {"transitionId": transition.id, "sourceMapId": source_map_id, "targetMapId": target_map.id}))
 	_set_post_time_continuation(target_map, "post-move", Vector2i.ZERO, false, _state.clock.day() if _state.clock.day() != previous_day else 0, target_coordinate)
-	return _finish_with_age_updates(events, "post-clock", _session_continuation.to_legacy_data())
+	return _finish_with_age_updates(events, &"post-clock", _session_continuation.copy())
 
 
 func _classic_time_scale(map: MapDefinition) -> int:
@@ -1642,52 +1663,52 @@ func _blocked_land_attempt_cost(movement: WorldMovementResult) -> int:
 
 func _set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> void:
 	var cell := map.topology.cell_at(_state.party.coordinate)
-	_set_continuation_data({
-		"kind": "post-clock",
-		"mapId": map.id,
-		"x": _state.party.coordinate.x,
-		"y": _state.party.coordinate.y,
-		"timedDay": timed_day,
-		"timedEncounterIndex": 0,
-		"activeTimedProgramId": "",
-		"midnightRecoveryPending": timed_day > 0,
-		"timedCheckX": timed_coordinate.x,
-		"timedCheckY": timed_coordinate.y,
-		"checkRandom": check_random,
-		"randomRegionIds": [] if cell == null else cell.random_rect_ids(),
-		"randomRegionIndex": -1 if cell == null else cell.random_rect_ids().size() - 1,
-		"activeRandomProgramId": "",
-		"activeRandomRegionId": "",
-		"randomBattleStage": "",
-		"resumeKind": resume_kind,
-		"directionX": direction.x,
-		"directionY": direction.y,
-	})
+	var exploration := SessionContinuation.ExplorationBody.new()
+	exploration.map_id = map.id
+	exploration.coordinate = _state.party.coordinate
+	exploration.timed_day = timed_day
+	exploration.timed_encounter_index = 0
+	exploration.active_timed_program_id = ""
+	exploration.midnight_recovery_pending = timed_day > 0
+	exploration.timed_check_coordinate = timed_coordinate
+	exploration.check_random = check_random
+	exploration.random_region_ids.assign([] if cell == null else cell.random_rect_ids())
+	exploration.random_region_index = -1 if cell == null else cell.random_rect_ids().size() - 1
+	exploration.active_random_program_id = ""
+	exploration.active_random_region_id = ""
+	exploration.random_battle_stage = &""
+	exploration.resume_kind = StringName(resume_kind)
+	exploration.direction = direction
+	_set_continuation(SessionContinuation.post_clock(exploration))
 
 
 func _continue_post_time(events: Array[DomainEvent]) -> SessionStep:
-	var active_timed_program_id := String(_continuation_value("activeTimedProgramId", ""))
+	var exploration := _session_continuation.exploration()
+	if _session_continuation.kind != &"post-clock" or exploration == null:
+		_session_continuation.clear()
+		return _finish_failed(&"invalid_session_continuation", "Post-clock exploration continuation is unavailable.", events)
+	var active_timed_program_id := exploration.active_timed_program_id
 	if not active_timed_program_id.is_empty() and not _rebase_post_time_location():
 		_session_continuation.clear()
 		return _finish_failed(&"invalid_timed_encounter_location", "The completed timed encounter left the party at an unavailable location.", events)
-	var map := _content.world.map_by_id(String(_continuation_value("mapId", "")))
-	if map == null or _state.party.map_id != map.id or _state.party.coordinate != Vector2i(int(_continuation_value("x", -1)), int(_continuation_value("y", -1))):
+	var map := _content.world.map_by_id(exploration.map_id)
+	if map == null or _state.party.map_id != map.id or _state.party.coordinate != exploration.coordinate:
 		_session_continuation.clear()
 		return _finish_failed(&"invalid_session_continuation", "Post-clock exploration continuation is unavailable.", events)
 	if not active_timed_program_id.is_empty():
-		_set_continuation_value("activeTimedProgramId", "")
+		exploration.active_timed_program_id = ""
 	var timed_step := _continue_timed_encounters(events)
 	if timed_step != null:
 		return timed_step
-	map = _content.world.map_by_id(String(_continuation_value("mapId", "")))
+	map = _content.world.map_by_id(exploration.map_id)
 	if map == null:
 		_session_continuation.clear()
 		return _finish_failed(&"invalid_timed_encounter_location", "Timed encounter continuation references an unavailable map.", events)
-	var active_program_id := String(_continuation_value("activeRandomProgramId", ""))
+	var active_program_id := exploration.active_random_program_id
 	if not active_program_id.is_empty():
-		_set_continuation_value("activeRandomProgramId", "")
+		exploration.active_random_program_id = ""
 		return _complete_post_time(events)
-	if bool(_continuation_value("checkRandom", false)) and _continuation_value("resumeKind") != "post-move":
+	if exploration.check_random and exploration.resume_kind != &"post-move":
 		var random_step := _continue_random_regions(map, events)
 		if random_step != null:
 			return random_step
@@ -1695,29 +1716,36 @@ func _continue_post_time(events: Array[DomainEvent]) -> SessionStep:
 
 
 func _complete_post_time(events: Array[DomainEvent]) -> SessionStep:
-	var resume_kind := String(_continuation_value("resumeKind", ""))
-	var direction := Vector2i(int(_continuation_value("directionX", 0)), int(_continuation_value("directionY", 0)))
+	var exploration := _session_continuation.exploration()
+	if _session_continuation.kind != &"post-clock" or exploration == null:
+		_session_continuation.clear()
+		return _finish_failed(&"invalid_session_continuation", "Post-clock exploration continuation is unavailable.", events)
+	var resume_kind := exploration.resume_kind
+	var direction := exploration.direction
 	_session_continuation.clear()
-	if resume_kind == "move":
+	if resume_kind == &"move":
 		return _commit_move(direction, events)
-	if resume_kind == "post-move":
+	if resume_kind == &"post-move":
 		var map := _content.world.map_by_id(_state.party.map_id)
 		_set_post_move_continuation(map, _state.party.coordinate)
 		return _continue_post_move(events)
-	if resume_kind == "completed":
+	if resume_kind == &"completed":
 		return _finish_completed(events)
 	return _finish_failed(&"invalid_session_continuation", "Post-clock exploration continuation has no valid completion path.", events)
 
 
 func _continue_timed_encounters(events: Array[DomainEvent]) -> SessionStep:
-	var timed_day := int(_continuation_value("timedDay", 0))
+	var exploration := _session_continuation.exploration()
+	if _session_continuation.kind != &"post-clock" or exploration == null:
+		return _finish_failed(&"invalid_session_continuation", "Timed encounters require a post-clock continuation.", events)
+	var timed_day := exploration.timed_day
 	if timed_day <= 0:
 		return null
 	var encounters := _content.timed_encounters()
-	while int(_continuation_value("timedEncounterIndex", 0)) < encounters.size():
-		var index := int(_continuation_value("timedEncounterIndex"))
+	while exploration.timed_encounter_index < encounters.size():
+		var index := exploration.timed_encounter_index
 		var encounter := encounters[index]
-		_set_continuation_value("timedEncounterIndex", index + 1)
+		exploration.timed_encounter_index = index + 1
 		var effective := _state.timed_encounter_override(encounter.id)
 		var effective_day := int(effective.get("day", encounter.day))
 		if effective_day != timed_day:
@@ -1741,9 +1769,9 @@ func _continue_timed_encounters(events: Array[DomainEvent]) -> SessionStep:
 		if trigger == null:
 			_session_continuation.clear()
 			return _finish_failed(&"unknown_timed_encounter_trigger", "Timed Encounter %d references unavailable Action Point record %d on map '%s'." % [encounter.id, encounter.trigger_record_index, map.id], events)
-		_set_continuation_value("activeTimedProgramId", trigger.program_id)
+		exploration.active_timed_program_id = trigger.program_id
 		events.append(DomainEvent.new(&"timed_encounter_triggered", {"encounterId": encounter.id, "triggerId": trigger.id, "programId": trigger.program_id}))
-		var started := _scenario_vm.start_program(trigger.program_id, {"callingContext": "action", "triggerId": trigger.id, "mapId": map.id, "x": _continuation_value("timedCheckX"), "y": _continuation_value("timedCheckY"), "timedEncounterId": encounter.id})
+		var started := _scenario_vm.start_program(trigger.program_id, {"callingContext": "action", "triggerId": trigger.id, "mapId": map.id, "x": exploration.timed_check_coordinate.x, "y": exploration.timed_check_coordinate.y, "timedEncounterId": encounter.id})
 		if started.state == ScenarioVmResult.State.FAILED:
 			_session_continuation.clear()
 			return _finish_failed(started.error_code, started.error_message, events)
@@ -1759,34 +1787,36 @@ func _continue_timed_encounters(events: Array[DomainEvent]) -> SessionStep:
 		if result.state == ScenarioVmResult.State.FAILED:
 			_session_continuation.clear()
 			return _finish_failed(result.error_code, result.error_message, events)
-		_set_continuation_value("activeTimedProgramId", "")
+		exploration.active_timed_program_id = ""
 		if not _rebase_post_time_location():
 			_session_continuation.clear()
 			return _finish_failed(&"invalid_timed_encounter_location", "The completed timed encounter left the party at an unavailable location.", events)
 	_apply_pending_midnight_recovery(events)
-	_set_continuation_value("timedDay", 0)
+	exploration.timed_day = 0
 	return null
 
 
 func _apply_pending_midnight_recovery(events: Array[DomainEvent]) -> void:
-	if not bool(_continuation_value("midnightRecoveryPending", false)):
+	var exploration := _session_continuation.exploration()
+	if exploration == null or not exploration.midnight_recovery_pending:
 		return
-	_set_continuation_value("midnightRecoveryPending", false)
+	exploration.midnight_recovery_pending = false
 	events.append_array(_rules.clock.restore_half_day_health(_state.party, _content))
 
 
 func _rebase_post_time_location() -> bool:
+	var exploration := _session_continuation.exploration()
+	if _session_continuation.kind != &"post-clock" or exploration == null:
+		return false
 	var map := _content.world.map_by_id(_state.party.map_id)
 	var cell: MapCell = null if map == null else map.topology.cell_at(_state.party.coordinate)
 	if cell == null:
 		return false
-	_set_continuation_value("mapId", map.id)
-	_set_continuation_value("x", _state.party.coordinate.x)
-	_set_continuation_value("y", _state.party.coordinate.y)
-	_set_continuation_value("timedCheckX", _state.party.coordinate.x)
-	_set_continuation_value("timedCheckY", _state.party.coordinate.y)
-	_set_continuation_value("randomRegionIds", cell.random_rect_ids())
-	_set_continuation_value("randomRegionIndex", cell.random_rect_ids().size() - 1)
+	exploration.map_id = map.id
+	exploration.coordinate = _state.party.coordinate
+	exploration.timed_check_coordinate = _state.party.coordinate
+	exploration.random_region_ids.assign(cell.random_rect_ids())
+	exploration.random_region_index = cell.random_rect_ids().size() - 1
 	return true
 
 
@@ -1801,7 +1831,10 @@ func _timed_encounter_requirements_met(encounter: TimedEncounterDefinition, map:
 		return false
 	if map.level_index != encounter.required_level:
 		return false
-	var coordinate := Vector2i(int(_continuation_value("timedCheckX", -1)), int(_continuation_value("timedCheckY", -1)))
+	var exploration := _session_continuation.exploration()
+	if exploration == null:
+		return false
+	var coordinate := exploration.timed_check_coordinate
 	if encounter.required_random_rectangle > -1:
 		var region := map.random_region_by_index(encounter.required_random_rectangle)
 		if region == null or not region.bounds.has_point(coordinate):
@@ -1826,21 +1859,19 @@ func _party_has_classic_item(classic_item_id: int) -> bool:
 
 func _set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, destination_depth: int = 0) -> void:
 	var cell := map.topology.cell_at(coordinate)
-	_set_continuation_data({
-		"kind": "post-move",
-		"mapId": map.id,
-		"x": coordinate.x,
-		"y": coordinate.y,
-		"triggerIds": _selected_placed_trigger_ids(_content, cell),
-		"triggerIndex": 0,
-		"activeTriggerId": "",
-		"randomRegionIds": cell.random_rect_ids(),
-		"randomRegionIndex": cell.random_rect_ids().size() - 1,
-		"activeRandomProgramId": "",
-		"activeRandomRegionId": "",
-		"randomBattleStage": "",
-		"actionPointDestinationDepth": destination_depth,
-	})
+	var exploration := SessionContinuation.ExplorationBody.new()
+	exploration.map_id = map.id
+	exploration.coordinate = coordinate
+	exploration.trigger_ids.assign(_selected_placed_trigger_ids(_content, cell))
+	exploration.trigger_index = 0
+	exploration.active_trigger_id = ""
+	exploration.random_region_ids.assign(cell.random_rect_ids())
+	exploration.random_region_index = cell.random_rect_ids().size() - 1
+	exploration.active_random_program_id = ""
+	exploration.active_random_region_id = ""
+	exploration.random_battle_stage = &""
+	exploration.action_point_destination_depth = destination_depth
+	_set_continuation(SessionContinuation.post_move(exploration))
 
 
 func _normalize_age_groups(state: GameState, content: RealmzContent, rules: RealmzRules) -> void:
@@ -1852,54 +1883,59 @@ func _normalize_age_groups(state: GameState, content: RealmzContent, rules: Real
 
 
 func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
-	if _events_have(events, &"destination_trigger_recheck_requested") and int(_continuation_value("actionPointDestinationDepth", 0)) == 0:
+	var exploration := _session_continuation.exploration()
+	if _session_continuation.kind != &"post-move" or exploration == null:
+		_session_continuation.clear()
+		return _finish_failed(&"invalid_session_continuation", "Post-movement topology continuation is unavailable.", events)
+	if _events_have(events, &"destination_trigger_recheck_requested") and exploration.action_point_destination_depth == 0:
 		var requested_map := _content.world.map_by_id(_state.party.map_id)
 		if requested_map == null:
 			_session_continuation.clear()
 			return _finish_failed(&"invalid_teleport", "Destination trigger recheck references an unavailable map.", events)
 		_set_post_move_continuation(requested_map, _state.party.coordinate, 1)
-	var map := _content.world.map_by_id(String(_continuation_value("mapId", "")))
-	var coordinate := Vector2i(int(_continuation_value("x", -1)), int(_continuation_value("y", -1)))
+		exploration = _session_continuation.exploration()
+	var map := _content.world.map_by_id(exploration.map_id)
+	var coordinate := exploration.coordinate
 	var cell: MapCell = null if map == null else map.topology.cell_at(coordinate)
 	if cell == null:
 		_session_continuation.clear()
 		return _finish_failed(&"invalid_session_continuation", "Post-movement topology continuation is unavailable.", events)
-	var active_random_program_id := String(_continuation_value("activeRandomProgramId", ""))
+	var active_random_program_id := exploration.active_random_program_id
 	if not active_random_program_id.is_empty():
 		_session_continuation.clear()
 		return _finish_completed(events)
-	var active_trigger_id := String(_continuation_value("activeTriggerId", ""))
+	var active_trigger_id := exploration.active_trigger_id
 	if not active_trigger_id.is_empty():
 		var completed_trigger := _content.trigger_by_id(active_trigger_id)
 		if completed_trigger == null:
 			_session_continuation.clear()
 			return _finish_failed(&"invalid_session_continuation", "Completed trigger continuation is unavailable.", events)
 		_finalize_completed_trigger(completed_trigger, events)
-		if _apply_trigger_destination(completed_trigger, events, int(_continuation_value("actionPointDestinationDepth", 0)) == 0):
+		if _apply_trigger_destination(completed_trigger, events, exploration.action_point_destination_depth == 0):
 			var destination_map := _content.world.map_by_id(_state.party.map_id)
 			_set_post_move_continuation(destination_map, _state.party.coordinate, 1)
 			return _continue_post_move(events)
-		_set_continuation_value("activeTriggerId", "")
-		_set_continuation_value("triggerIndex", _continuation_value("triggerIds").size())
-	var trigger_ids: Array = _continuation_value("triggerIds")
-	while int(_continuation_value("triggerIndex")) < trigger_ids.size():
-		var trigger_index: int = int(_continuation_value("triggerIndex"))
+		exploration.active_trigger_id = ""
+		exploration.trigger_index = exploration.trigger_ids.size()
+	var trigger_ids := exploration.trigger_ids
+	while exploration.trigger_index < trigger_ids.size():
+		var trigger_index := exploration.trigger_index
 		var trigger_id: String = String(trigger_ids[trigger_index])
 		var trigger := _content.trigger_by_id(trigger_id)
 		if trigger == null or not trigger.active or _state.world.trigger_is_disabled(trigger_id):
-			_set_continuation_value("triggerIndex", trigger_ids.size())
+			exploration.trigger_index = trigger_ids.size()
 			break
 		var trigger_chance := _state.world.trigger_chance(trigger.id, trigger.chance_percent)
 		if trigger_chance < 1:
-			_set_continuation_value("triggerIndex", trigger_ids.size())
+			exploration.trigger_index = trigger_ids.size()
 			break
 		if trigger_chance < 100:
 			var chance_roll := _rng.draw(100, StringName("trigger.%s" % trigger.id))
 			if chance_roll > trigger_chance:
-				_set_continuation_value("triggerIndex", trigger_ids.size())
+				exploration.trigger_index = trigger_ids.size()
 				break
 		events.append(DomainEvent.new("trigger_fired", {"triggerId": trigger.id}))
-		_set_continuation_value("activeTriggerId", trigger.id)
+		exploration.active_trigger_id = trigger.id
 		var started := _scenario_vm.start_program(trigger.program_id, {"callingContext": "action", "triggerId": trigger.id, "mapId": map.id, "x": coordinate.x, "y": coordinate.y})
 		if started.state == ScenarioVmResult.State.FAILED:
 			_session_continuation.clear()
@@ -1921,12 +1957,12 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 				return _finish_failed(&"invalid_teleport", "Destination trigger recheck references an unavailable map.", events)
 			_set_post_move_continuation(requested_map, _state.party.coordinate, 1)
 			return _continue_post_move(events)
-		if _apply_trigger_destination(trigger, events, int(_continuation_value("actionPointDestinationDepth", 0)) == 0):
+		if _apply_trigger_destination(trigger, events, exploration.action_point_destination_depth == 0):
 			var destination_map := _content.world.map_by_id(_state.party.map_id)
 			_set_post_move_continuation(destination_map, _state.party.coordinate, 1)
 			return _continue_post_move(events)
-		_set_continuation_value("activeTriggerId", "")
-		_set_continuation_value("triggerIndex", trigger_ids.size())
+		exploration.active_trigger_id = ""
+		exploration.trigger_index = trigger_ids.size()
 	var random_step := _continue_random_regions(map, events)
 	if random_step != null:
 		return random_step
@@ -1935,11 +1971,11 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 
 
 func _continue_exploration_continuation(events: Array[DomainEvent]) -> SessionStep:
-	if _continuation_value("kind") == "application-hook":
+	if _session_continuation.kind == &"application-hook":
 		return _continue_application_hook(events)
-	if _continuation_value("kind") == "post-clock":
+	if _session_continuation.kind == &"post-clock":
 		return _continue_post_time(events)
-	if _continuation_value("kind") == "post-move":
+	if _session_continuation.kind == &"post-move":
 		return _continue_post_move(events)
 	return _finish_failed(&"invalid_session_continuation", "The completed scenario has no valid exploration continuation.", events)
 
@@ -1963,7 +1999,7 @@ func _start_application_hook(hook: StringName, resume_kind: StringName, service_
 	events.append(DomainEvent.new(&"application_hook_started", {"hook": String(hook), "programId": program_id}))
 	events.append_array(result.events)
 	if _events_have(result.events, &"party_revived"):
-		_set_continuation_value("partyRevived", true)
+		body.party_revived = true
 	if result.state == ScenarioVmResult.State.SUSPENDED:
 		return _finish_failed(&"nested_party_defeat_handoff", "An application hook cannot suspend another total-party defeat.", events)
 	if result.state == ScenarioVmResult.State.FAILED:
@@ -1984,7 +2020,7 @@ func _continue_application_hook(events: Array[DomainEvent]) -> SessionStep:
 	var service_id := body.service_id
 	var party_revived := body.party_revived
 	var suspended_vm: Dictionary = body.suspended_vm.duplicate(true)
-	var suspended_owner: Dictionary = {} if body.suspended_owner == null else body.suspended_owner.to_legacy_data()
+	var suspended_owner := body.suspended_owner
 	var vm_handoff: Dictionary = body.vm_handoff.duplicate(true)
 	_session_continuation.clear()
 	if not program_id.is_empty():
@@ -2022,7 +2058,7 @@ func _begin_scenario_handoff(result: ScenarioVmResult, events: Array[DomainEvent
 	if result == null or result.state != ScenarioVmResult.State.SUSPENDED or not result.handoff.get("runtime") is Dictionary:
 		_session_continuation.clear()
 		return _finish_failed(&"invalid_vm_handoff", "The Scenario VM did not provide a typed application handoff.", events)
-	if _continuation_value("kind") not in ["post-clock", "post-move"]:
+	if _session_continuation.kind not in [&"post-clock", &"post-move"]:
 		_session_continuation.clear()
 		return _finish_failed(&"unsupported_vm_handoff_owner", "Total-party defeat cannot suspend this scenario caller.", events)
 	var saved := _scenario_vm.snapshot()
@@ -2031,13 +2067,13 @@ func _begin_scenario_handoff(result: ScenarioVmResult, events: Array[DomainEvent
 		return _finish_failed(&"invalid_party_defeat_handoff", "The Scenario VM total-party defeat handoff is invalid.", events)
 	var suspended := SessionContinuation.ApplicationBody.new()
 	suspended.suspended_vm = saved.to_data()
-	suspended.suspended_owner = SessionContinuation.from_data(_session_continuation.to_data())
+	suspended.suspended_owner = _session_continuation.copy()
 	suspended.vm_handoff = result.handoff.duplicate(true)
 	_scenario_vm.reset()
 	return _start_application_hook(ScenarioApplicationHooks.PARTY_DEATH, &"scenario-party-defeat", "", events, suspended)
 
 
-func _resume_scenario_party_defeat(suspended_vm_data: Dictionary, suspended_owner: Dictionary, vm_handoff: Dictionary, events: Array[DomainEvent]) -> SessionStep:
+func _resume_scenario_party_defeat(suspended_vm_data: Dictionary, suspended_owner: SessionContinuation, vm_handoff: Dictionary, events: Array[DomainEvent]) -> SessionStep:
 	var saved := ScenarioVmSnapshot.from_data(suspended_vm_data)
 	if not ScenarioVm.handoff_is_valid(vm_handoff, saved) or not RealmzRuntimeApi.party_defeat_handoff_is_valid(_content, _state, vm_handoff.get("runtime")) or not _valid_suspended_scenario_owner(_content, _state, suspended_owner, saved):
 		return _finish_failed(&"invalid_party_defeat_handoff", "The saved scenario defeat continuation is invalid.", events)
@@ -2051,7 +2087,7 @@ func _resume_scenario_party_defeat(suspended_vm_data: Dictionary, suspended_owne
 	_scenario_vm = restored_vm
 	var resumed := _scenario_vm.resume_handoff(vm_handoff, operation, _runtime_api)
 	events.append_array(resumed.events)
-	_set_continuation_data(suspended_owner.duplicate(true))
+	_set_continuation(suspended_owner.copy())
 	if resumed.state == ScenarioVmResult.State.SUSPENDED:
 		return _begin_scenario_handoff(resumed, events)
 	if resumed.state == ScenarioVmResult.State.WAITING:
@@ -2115,13 +2151,12 @@ func _start_session_death_macro(preceding_events: Array[DomainEvent]) -> Session
 	var monster := combat.monster_by_id(combatant_id)
 	if monster == null or _content.scenario.program_by_id(program_id) == null:
 		return _finish_failed(&"invalid_death_macro_request", "Monster death-macro execution references unavailable content.", preceding_events)
-	_set_continuation_data({
-		"kind": "combat-death-macro",
-		"battleId": combat.battle_id,
-		"combatantId": combatant_id,
-		"programId": program_id,
-		"resetTraitorOnComplete": bool(request.get("resetTraitorOnComplete", true)),
-	})
+	var continuation_body := SessionContinuation.CombatBody.new()
+	continuation_body.battle_id = combat.battle_id
+	continuation_body.combatant_id = combatant_id
+	continuation_body.program_id = program_id
+	continuation_body.reset_traitor_on_complete = bool(request.get("resetTraitorOnComplete", true))
+	_set_continuation(SessionContinuation.combat_state(&"combat-death-macro", continuation_body))
 	var started := _scenario_vm.start_program(program_id, {
 		"callingContext": "monster-death-macro",
 		"battleId": combat.battle_id,
@@ -2150,14 +2185,17 @@ func _start_session_death_macro(preceding_events: Array[DomainEvent]) -> Session
 
 func _continue_session_death_macro(events: Array[DomainEvent]) -> SessionStep:
 	var combat := _state.combat
-	var battle_id := str(_continuation_value("battleId", ""))
-	var combatant_id := str(_continuation_value("combatantId", ""))
-	var program_id := str(_continuation_value("programId", ""))
+	var continuation := _session_continuation.combat()
+	if continuation == null:
+		return _finish_failed(&"invalid_battle_continuation", "Monster death-macro continuation is unavailable.", events)
+	var battle_id := continuation.battle_id
+	var combatant_id := continuation.combatant_id
+	var program_id := continuation.program_id
 	if combat == null or combat.battle_id != battle_id:
 		_session_continuation.clear()
 		return _finish_failed(&"invalid_battle_continuation", "Monster death-macro completion lost its battle.", events)
 	var monster := combat.monster_by_id(combatant_id)
-	if monster != null and bool(_continuation_value("resetTraitorOnComplete", true)):
+	if monster != null and continuation.reset_traitor_on_complete:
 		monster.traitor = false
 	events.append(DomainEvent.new(&"monster_death_macro_completed", {"battleId": battle_id, "combatantId": combatant_id, "programId": program_id, "revived": monster != null and monster.current_health > 0}))
 	_session_continuation.clear()
@@ -2191,7 +2229,9 @@ func _finish_direct_battle(events: Array[DomainEvent]) -> SessionStep:
 	var payload := _rules.combat_flow.ally_selection_payload(_state, _content)
 	if not payload.is_empty():
 		var request_id := "session.ally-selection.%d" % (_view_revision + 1)
-		_set_continuation_data({"kind": "combat-ally-selection", "battleId": _state.combat.battle_id})
+		var combat := SessionContinuation.CombatBody.new()
+		combat.battle_id = _state.combat.battle_id
+		_set_continuation(SessionContinuation.combat_state(&"combat-ally-selection", combat))
 		_session_interaction = InteractionRequest.from_payload(request_id, &"ally_selection", payload)
 		return _finish_waiting(_session_interaction, events)
 	return _finish_direct_battle_recovery(events)
@@ -2201,7 +2241,9 @@ func _finish_direct_battle_recovery(events: Array[DomainEvent]) -> SessionStep:
 	var payload := _rules.combat_flow.fumble_recovery_payload(_state, _content)
 	if not payload.is_empty():
 		var request_id := "session.fumble-recovery.%d" % (_view_revision + 1)
-		_set_continuation_data({"kind": "combat-fumble-recovery", "battleId": _state.combat.battle_id})
+		var combat := SessionContinuation.CombatBody.new()
+		combat.battle_id = _state.combat.battle_id
+		_set_continuation(SessionContinuation.combat_state(&"combat-fumble-recovery", combat))
 		_session_interaction = InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload)
 		return _finish_waiting(_session_interaction, events)
 	return _begin_direct_battle_reward(events)
@@ -2211,7 +2253,7 @@ func _finish_direct_battle_without_rewards(events: Array[DomainEvent]) -> Sessio
 	if _state.combat == null or not _state.combat.completed:
 		return _finish_failed(&"invalid_battle_continuation", "Suppressed battle rewards require a completed battle.", events)
 	var battle_id := _state.combat.battle_id
-	var return_continuation: Dictionary = _state.combat.return_continuation.to_legacy_data()
+	var return_continuation := _state.combat.return_continuation.copy()
 	var battle_outcome := _state.combat.outcome
 	events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": String(battle_outcome)}))
 	_state.combat = null
@@ -2219,7 +2261,7 @@ func _finish_direct_battle_without_rewards(events: Array[DomainEvent]) -> Sessio
 
 
 func _begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionStep:
-	var return_continuation: Dictionary = _state.combat.return_continuation.to_legacy_data()
+	var return_continuation := _state.combat.return_continuation.copy()
 	var battle_outcome := _state.combat.outcome
 	var request_id := "session.battle-reward.%d" % (_view_revision + 1)
 	var operation := _runtime_api.begin_completed_battle_reward(request_id)
@@ -2227,7 +2269,7 @@ func _begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionStep:
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return _finish_failed(operation.error_code, operation.error_message, events)
 	if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
-		_set_continuation_data({"kind": "combat-reward", "battleId": _state.combat.battle_id, "runtimeContinuation": operation.continuation.duplicate(true)})
+		_set_continuation(SessionContinuation.combat_reward(_state.combat.battle_id, operation.continuation))
 		_session_interaction = operation.interaction
 		return _finish_waiting(_session_interaction, events)
 	_session_interaction = null
@@ -2235,19 +2277,22 @@ func _begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionStep:
 	return _finish_after_direct_battle(events, return_continuation, battle_outcome)
 
 
-func _finish_after_direct_battle(events: Array[DomainEvent], return_continuation: Dictionary, battle_outcome: StringName) -> SessionStep:
-	if return_continuation.is_empty() or battle_outcome == &"defeat" or not _events_have(events, &"battle_returned"):
+func _finish_after_direct_battle(events: Array[DomainEvent], return_continuation: SessionContinuation, battle_outcome: StringName) -> SessionStep:
+	if return_continuation == null or return_continuation.is_empty() or battle_outcome == &"defeat" or not _events_have(events, &"battle_returned"):
 		return _finish_completed(events)
-	_set_continuation_data(return_continuation.duplicate(true))
+	_set_continuation(return_continuation.copy())
 	return _continue_post_time(events)
 
 
 func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) -> SessionStep:
 	if not _state.random_encounters_enabled:
 		return null
-	var region_ids: Array = _continuation_value("randomRegionIds")
-	while int(_continuation_value("randomRegionIndex")) >= 0:
-		var region_index: int = int(_continuation_value("randomRegionIndex"))
+	var exploration := _session_continuation.exploration()
+	if exploration == null:
+		return _finish_failed(&"invalid_session_continuation", "Random encounters require an exploration continuation.", events)
+	var region_ids := exploration.random_region_ids
+	while exploration.random_region_index >= 0:
+		var region_index := exploration.random_region_index
 		var region_id: String = String(region_ids[region_index])
 		var region := map.random_region_by_id(region_id)
 		if region == null:
@@ -2270,7 +2315,7 @@ func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) ->
 				effective.consume_random_door(door_index)
 				_state.world.set_random_region(effective)
 				var program_id := "xap:%d" % door_ids[door_index]
-				_set_continuation_value("activeRandomProgramId", program_id)
+				exploration.active_random_program_id = program_id
 				events.append(DomainEvent.new(&"random_door_triggered", {"regionId": region.id, "programId": program_id, "oneShot": door_percents[door_index] > 0}))
 				var started := _scenario_vm.start_program(program_id, {"callingContext": "action", "mapId": map.id, "x": _state.party.coordinate.x, "y": _state.party.coordinate.y, "randomRegionId": region.id})
 				if started.state == ScenarioVmResult.State.FAILED:
@@ -2298,8 +2343,8 @@ func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) ->
 				if good_surprise_roll < region.option:
 					var message := _content.message_by_id(absi(region.text_id))
 					var prompt := message.text if message != null else "Take the advantage and enter battle?"
-					_set_continuation_value("activeRandomRegionId", region.id)
-					_set_continuation_value("randomBattleStage", "surprise-choice")
+					exploration.active_random_region_id = region.id
+					exploration.random_battle_stage = &"surprise-choice"
 					var request_id := "random-surprise:%s:%d" % [region.id, _rng.snapshot().draw_count]
 					_session_interaction = InteractionRequest.from_payload(request_id, &"yes_no", {"prompt": prompt, "yesLabel": "Enter battle", "noLabel": "Avoid battle", "regionId": region.id})
 					if region.sound_id > 0:
@@ -2308,15 +2353,15 @@ func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) ->
 				var bad_surprise_roll := _rng.draw(100, StringName("random-region.%s.bad-surprise" % region.id))
 				var surprise := -1 if bad_surprise_roll < 10 else 0
 				return _start_random_battle(region, surprise, events)
-		_set_continuation_value("randomRegionIndex", region_index - 1)
+		exploration.random_region_index = region_index - 1
 		if region.only:
 			break
 	return null
 
 
 func _complete_random_program(events: Array[DomainEvent]) -> SessionStep:
-	if _continuation_value("kind") == "post-clock":
-		_set_continuation_value("activeRandomProgramId", "")
+	if _session_continuation.kind == &"post-clock":
+		_session_continuation.exploration().active_random_program_id = ""
 		return _complete_post_time(events)
 	_session_continuation.clear()
 	return _finish_completed(events)
@@ -2350,72 +2395,77 @@ func _pending_interaction() -> InteractionRequest:
 
 
 func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
-	if _continuation_value("kind") == "pooled-wealth-departure":
-		return _respond_pooled_wealth_departure(response)
-	if _continuation_value("kind") == "service-interaction":
-		return _respond_runtime_service(response)
-	if _continuation_value("kind") == "drop-item-confirmation":
-		return _respond_drop_item(response)
-	if _continuation_value("kind") == "item-use-target-selection":
-		return _respond_item_use_target(response)
-	if _continuation_value("kind") == "field-spell-target-selection":
-		return _respond_field_spell_target(response)
-	if _continuation_value("kind") == "scroll-target-selection":
-		return _respond_scroll_target(response)
-	if _continuation_value("kind") == "character-spell-confirmation":
-		return _respond_character_spell_confirmation(response)
-	if _continuation_value("kind") == "character-vault-publication":
-		return _respond_character_vault_publication(response)
-	if _continuation_value("kind") == "age-updates":
-		return _respond_session_age_update(response)
-	if _continuation_value("kind") == "combat-ally-selection":
-		return _respond_session_ally_selection(response)
-	if _continuation_value("kind") == "combat-fumble-recovery":
-		return _respond_session_fumble_recovery(response)
-	if _continuation_value("kind") == "combat-reward":
-		return _respond_session_battle_reward(response)
-	if _continuation_value("kind") == "combat-retreat-confirmation":
-		return _respond_session_retreat(response)
+	match _session_continuation.kind:
+		&"pooled-wealth-departure":
+			return _respond_pooled_wealth_departure(response)
+		&"service-interaction":
+			return _respond_runtime_service(response)
+		&"drop-item-confirmation":
+			return _respond_drop_item(response)
+		&"item-use-target-selection":
+			return _respond_item_use_target(response)
+		&"field-spell-target-selection":
+			return _respond_field_spell_target(response)
+		&"scroll-target-selection":
+			return _respond_scroll_target(response)
+		&"character-spell-confirmation":
+			return _respond_character_spell_confirmation(response)
+		&"character-vault-publication":
+			return _respond_character_vault_publication(response)
+		&"age-updates":
+			return _respond_session_age_update(response)
+		&"combat-ally-selection":
+			return _respond_session_ally_selection(response)
+		&"combat-fumble-recovery":
+			return _respond_session_fumble_recovery(response)
+		&"combat-reward":
+			return _respond_session_battle_reward(response)
+		&"combat-retreat-confirmation":
+			return _respond_session_retreat(response)
 	var surprise_body := response.body as InteractionResponse.YesNoBody
 	if response.kind != &"yes_no" or surprise_body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "The random encounter response must be a yes/no choice.")
-	if _continuation_value("randomBattleStage", "") != "surprise-choice":
+	var exploration := _session_continuation.exploration()
+	if exploration == null or exploration.random_battle_stage != &"surprise-choice":
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The random encounter choice has no matching continuation.")
-	var map := _content.world.map_by_id(String(_continuation_value("mapId", "")))
-	var region_id := String(_continuation_value("activeRandomRegionId", ""))
+	var map := _content.world.map_by_id(exploration.map_id)
+	var region_id := exploration.active_random_region_id
 	var region: RandomEncounterRegion = null if map == null else map.random_region_by_id(region_id)
 	if region == null:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The random encounter choice references unavailable content.")
 	_session_interaction = null
-	_set_continuation_value("activeRandomRegionId", "")
-	_set_continuation_value("randomBattleStage", "")
+	exploration.active_random_region_id = ""
+	exploration.random_battle_stage = &""
 	var events: Array[DomainEvent] = [DomainEvent.new(&"random_surprise_chosen", {"regionId": region.id, "accepted": surprise_body.accepted})]
 	if surprise_body.accepted:
 		return _start_random_battle(region, 1, events)
-	_set_continuation_value("randomRegionIndex", int(_continuation_value("randomRegionIndex")) - 1)
+	exploration.random_region_index -= 1
 	if region.only:
-		if _continuation_value("kind") == "post-clock":
+		if _session_continuation.kind == &"post-clock":
 			return _complete_post_time(events)
 		_session_continuation.clear()
 		return _finish_completed(events)
 	var next_step := _continue_random_regions(map, events)
 	if next_step != null:
 		return next_step
-	if _continuation_value("kind") == "post-clock":
+	if _session_continuation.kind == &"post-clock":
 		return _complete_post_time(events)
 	_session_continuation.clear()
 	return _finish_completed(events)
 
 
 func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionStep:
-	var stage := String(_continuation_value("stage", ""))
-	var direction := Vector2i(int(_continuation_value("directionX", 0)), int(_continuation_value("directionY", 0)))
-	if stage == "warning":
+	var service := _session_continuation.service()
+	if service == null:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The pooled-wealth departure continuation is unavailable.")
+	var stage := service.stage
+	var direction := service.direction
+	if stage == &"warning":
 		var warning_body := response.body as InteractionResponse.YesNoBody
 		if response.kind != InteractionRequest.YES_NO or warning_body == null:
 			return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Pooled-wealth departure requires a yes/no response.")
 		if warning_body.accepted:
-			_set_continuation_value("stage", "distribution")
+			service.stage = &"distribution"
 			_session_interaction = _pooled_wealth_departure_distribution_request("pooled-wealth-departure:%d" % (_view_revision + 1))
 			return _finish_waiting(_session_interaction, [
 				DomainEvent.new(&"pooled_wealth_distribution_opened", {"wealth": _state.party.pooled_wealth.to_data()}),
@@ -2427,7 +2477,7 @@ func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionS
 		_session_continuation.clear()
 		return _move_after_pooled_wealth(direction, [DomainEvent.new(&"pooled_wealth_left_behind", {"wealth": discarded, "movementContinues": true})])
 	var body := response.body as InteractionResponse.BankBody
-	if stage != "distribution" or response.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or body == null:
+	if stage != &"distribution" or response.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Pooled-wealth distribution requires a typed money action.")
 	var action := String(body.action)
 	var selected_character_id := body.character_id
@@ -2532,24 +2582,27 @@ func _respond_item_use_target(response: InteractionResponse) -> SessionStep:
 	if response.kind != InteractionRequest.CHARACTER_SELECTION or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Item use requires an ordered characterIds array.")
 	var target_ids := body.character_ids.duplicate()
-	var character_id := String(_continuation_value("characterId", ""))
-	var instance_id := String(_continuation_value("instanceId", ""))
-	var spell_id := String(_continuation_value("spellId", ""))
-	var power := int(_continuation_value("power", 0))
-	var expected_count := int(_continuation_value("targetCount", 0))
+	var targeting := _session_continuation.targeting()
+	if targeting == null:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The item target continuation is unavailable.")
+	var character_id := targeting.character_id
+	var instance_id := targeting.instance_id
+	var spell_id := targeting.spell_id
+	var power := targeting.power
+	var expected_count := targeting.target_count
 	if target_ids.size() != expected_count:
 		return SessionStep.failed(_view_revision, &"invalid_item_use_target", "The item requires exactly %d target%s." % [expected_count, "" if expected_count == 1 else "s"])
 	var character := _state.party.character_by_id(character_id)
 	var instance := _item_instance(character, instance_id)
-	if instance == null or instance.charges != int(_continuation_value("startingCharges", -100_000)):
+	if instance == null or instance.charges != targeting.starting_charges:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The item awaiting a target no longer matches its committed state.")
-	var saved_continuation := _session_continuation.to_legacy_data()
+	var saved_continuation := _session_continuation.copy()
 	var saved_interaction := _session_interaction
 	_session_continuation.clear()
 	_session_interaction = null
 	var completed := _commit_field_spell_item(character_id, instance_id, spell_id, power, target_ids)
 	if completed.state == SessionStep.State.FAILED:
-		_set_continuation_data(saved_continuation)
+		_set_continuation(saved_continuation)
 		_session_interaction = saved_interaction
 	return completed
 
@@ -2559,22 +2612,25 @@ func _respond_field_spell_target(response: InteractionResponse) -> SessionStep:
 	if response.kind != InteractionRequest.CHARACTER_SELECTION or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Field casting requires an ordered characterIds array.")
 	var target_ids := body.character_ids.duplicate()
-	var expected_count := int(_continuation_value("targetCount", 0))
+	var targeting := _session_continuation.targeting()
+	if targeting == null:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The field-spell target continuation is unavailable.")
+	var expected_count := targeting.target_count
 	if target_ids.size() != expected_count:
 		return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell requires exactly %d target%s." % [expected_count, "" if expected_count == 1 else "s"])
-	var character_id := String(_continuation_value("characterId", ""))
-	var spell_id := String(_continuation_value("spellId", ""))
-	var power := int(_continuation_value("power", 0))
+	var character_id := targeting.character_id
+	var spell_id := targeting.spell_id
+	var power := targeting.power
 	var character := _state.party.character_by_id(character_id)
-	if character == null or character.spell_points != int(_continuation_value("startingSpellPoints", -100_000)):
+	if character == null or character.spell_points != targeting.starting_spell_points:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The field spell awaiting a target no longer matches its committed state.")
-	var saved_continuation := _session_continuation.to_legacy_data()
+	var saved_continuation := _session_continuation.copy()
 	var saved_interaction := _session_interaction
 	_session_continuation.clear()
 	_session_interaction = null
 	var completed := _commit_field_spell(character_id, spell_id, power, target_ids)
 	if completed.state == SessionStep.State.FAILED:
-		_set_continuation_data(saved_continuation)
+		_set_continuation(saved_continuation)
 		_session_interaction = saved_interaction
 	return completed
 
@@ -2584,24 +2640,27 @@ func _respond_scroll_target(response: InteractionResponse) -> SessionStep:
 	if response.kind != InteractionRequest.CHARACTER_SELECTION or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Scroll use requires an ordered characterIds array.")
 	var target_ids := body.character_ids.duplicate()
-	var expected_count := int(_continuation_value("targetCount", 0))
+	var targeting := _session_continuation.targeting()
+	if targeting == null:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The scroll target continuation is unavailable.")
+	var expected_count := targeting.target_count
 	if target_ids.size() != expected_count:
 		return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll requires exactly %d target%s." % [expected_count, "" if expected_count == 1 else "s"])
-	var character_id := String(_continuation_value("characterId", ""))
-	var slot_index := int(_continuation_value("scrollSlot", -1))
-	var spell_id := String(_continuation_value("spellId", ""))
-	var power := int(_continuation_value("power", 0))
+	var character_id := targeting.character_id
+	var slot_index := targeting.scroll_slot
+	var spell_id := targeting.spell_id
+	var power := targeting.power
 	var character := _state.party.character_by_id(character_id)
 	var scroll := character.scroll_at(slot_index) if character != null else null
 	if scroll == null or scroll.spell_id != spell_id or scroll.power != power:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The scroll awaiting a target no longer matches its committed state.")
-	var saved_continuation := _session_continuation.to_legacy_data()
+	var saved_continuation := _session_continuation.copy()
 	var saved_interaction := _session_interaction
 	_session_continuation.clear()
 	_session_interaction = null
 	var completed := _commit_field_scroll(character_id, slot_index, spell_id, power, target_ids)
 	if completed.state == SessionStep.State.FAILED:
-		_set_continuation_data(saved_continuation)
+		_set_continuation(saved_continuation)
 		_session_interaction = saved_interaction
 	return completed
 
@@ -2714,20 +2773,20 @@ func _begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperat
 		return _finish_failed(operation.error_code, operation.error_message, operation.events)
 	if operation.state != ScenarioRuntimeOperationResult.State.WAITING or operation.interaction == null:
 		return _finish_failed(&"service_failed", "The selected service did not produce its required interaction.", operation.events)
-	_set_continuation_data({"kind": "service-interaction", "serviceId": service_id, "runtimeContinuation": operation.continuation.duplicate(true)})
+	_set_continuation(SessionContinuation.service_interaction(service_id, operation.continuation))
 	_session_interaction = operation.interaction
 	return _finish_waiting(_session_interaction, operation.events)
 
 
 func _respond_runtime_service(response: InteractionResponse) -> SessionStep:
-	var runtime_continuation: Variant = _continuation_value("runtimeContinuation")
-	if not runtime_continuation is Dictionary:
+	var service := _session_continuation.service()
+	if service == null or service.runtime_continuation.is_empty():
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The pending service has no runtime continuation.")
-	var result := _runtime_api.resume_classic(runtime_continuation, response, response.request_id)
+	var result := _runtime_api.resume_classic(service.runtime_continuation, response, response.request_id)
 	if result.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return _finish_failed(result.error_code, result.error_message, result.events)
 	if result.state == ScenarioRuntimeOperationResult.State.WAITING:
-		_set_continuation_value("runtimeContinuation", result.continuation.duplicate(true))
+		service.runtime_continuation = result.continuation.duplicate(true)
 		_session_interaction = result.interaction
 		return _finish_waiting(_session_interaction, result.events)
 	_session_interaction = null
@@ -2739,8 +2798,11 @@ func _respond_drop_item(response: InteractionResponse) -> SessionStep:
 	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Dropping an item requires a yes/no response.")
-	var character_id := String(_continuation_value("characterId", ""))
-	var instance_id := String(_continuation_value("instanceId", ""))
+	var targeting := _session_continuation.targeting()
+	if targeting == null:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The item awaiting drop confirmation is unavailable.")
+	var character_id := targeting.character_id
+	var instance_id := targeting.instance_id
 	var character := _state.party.character_by_id(character_id)
 	var instance := _item_instance(character, instance_id)
 	var definition: ItemDefinition = null if instance == null else _content.item_by_id(instance.definition_id)
@@ -2763,7 +2825,10 @@ func _respond_character_spell_confirmation(response: InteractionResponse) -> Ses
 	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Starting-spell confirmation requires a yes/no response.")
-	var character_id := String(_continuation_value("characterId", ""))
+	var application := _session_continuation.application()
+	if application == null:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The character awaiting starting-spell confirmation is unavailable.")
+	var character_id := application.character_id
 	if _state.character_draft == null or _state.character_draft.generated_character == null or _state.character_draft.generated_character.id != character_id:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The character awaiting starting-spell confirmation is unavailable.")
 	_session_interaction = null
@@ -2777,7 +2842,10 @@ func _respond_character_vault_publication(response: InteractionResponse) -> Sess
 	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Character-vault publication requires a yes/no response.")
-	var character_id := String(_continuation_value("characterId", ""))
+	var application := _session_continuation.application()
+	if application == null:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The character awaiting vault publication is unavailable.")
+	var character_id := application.character_id
 	var character := _state.party.character_by_id(character_id)
 	if _state.party_setup_completed or character == null:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The character awaiting vault publication is unavailable.")
@@ -2792,45 +2860,35 @@ func _respond_session_retreat(response: InteractionResponse) -> SessionStep:
 	var body := response.body as InteractionResponse.YesNoBody
 	if response.kind != InteractionRequest.YES_NO or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Escape confirmation requires a yes/no response.")
-	if _state.combat == null or _state.combat.completed or _state.combat.battle_id != _continuation_value("battleId") or _state.combat.active_actor_id() != _continuation_value("actorId"):
+	var continuation := _session_continuation.combat()
+	if continuation == null or _state.combat == null or _state.combat.completed or _state.combat.battle_id != continuation.battle_id or _state.combat.active_actor_id() != continuation.actor_id:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The character awaiting Escape confirmation is unavailable.")
-	var continuation := _session_continuation.to_legacy_data()
 	_session_interaction = null
 	_session_continuation.clear()
 	if not body.accepted:
-		return _finish_completed([DomainEvent.new(&"combat_retreat_declined", {"actorId": continuation["actorId"], "mode": continuation["mode"], "source": "classic"})])
-	var destination := _combat_retreat_destination(continuation["destination"])
-	if destination == Vector2i(-100_000, -100_000) and continuation["mode"] == "edge":
-		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The saved battlefield-edge Escape destination is invalid.")
-	var result := _rules.combat_flow.retreat_character(_state, _content, continuation["actorId"], StringName(continuation["mode"]), destination, _rng)
+		return _finish_completed([DomainEvent.new(&"combat_retreat_declined", {"actorId": continuation.actor_id, "mode": String(continuation.mode), "source": "classic"})])
+	var result := _rules.combat_flow.retreat_character(_state, _content, continuation.actor_id, continuation.mode, continuation.destination, _rng)
 	return _finish_combat_result(result)
 
 
-static func _combat_retreat_destination(value: Variant) -> Vector2i:
-	if not value is Array or value.size() != 2 or not value[0] is int or not value[1] is int:
-		return Vector2i(-100_000, -100_000)
-	return Vector2i(value[0], value[1])
-
-
-func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: String, resume_continuation: Dictionary = {}) -> SessionStep:
+func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName, resume_continuation: SessionContinuation = null) -> SessionStep:
 	var updates := CharacterAgingResult.update_payloads(events)
 	if updates.is_empty():
-		if resume_kind == "post-move":
-			_set_continuation_data(resume_continuation.duplicate(true))
+		if resume_kind == &"post-move":
+			_set_continuation(resume_continuation.copy())
 			return _continue_post_move(events)
-		if resume_kind == "post-clock":
-			_set_continuation_data(resume_continuation.duplicate(true))
+		if resume_kind == &"post-clock":
+			_set_continuation(resume_continuation.copy())
 			return _continue_post_time(events)
-		if resume_kind == "combat-monster-turns":
+		if resume_kind == &"combat-monster-turns":
 			return _continue_after_session_combat_age_update(events)
 		return _finish_completed(events)
-	_set_continuation_data({
-		"kind": "age-updates",
-		"updates": updates,
-		"index": 1,
-		"resumeKind": resume_kind,
-		"resumeContinuation": resume_continuation.duplicate(true),
-	})
+	var age := SessionContinuation.AgeBody.new()
+	age.updates.assign(updates)
+	age.index = 1
+	age.resume_kind = resume_kind
+	age.resume_continuation = null if resume_continuation == null else resume_continuation.copy()
+	_set_continuation(SessionContinuation.age_updates(age))
 	_session_interaction = InteractionRequest.age_update(_session_age_update_request_id(updates[0], 0), updates[0])
 	events.append(CharacterAgingResult.sound_event(updates[0]))
 	return _finish_waiting(_session_interaction, events)
@@ -2839,31 +2897,34 @@ func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: String, r
 func _respond_session_age_update(response: InteractionResponse) -> SessionStep:
 	if response.kind != InteractionRequest.AGE_UPDATE or response.body is not InteractionResponse.EmptyBody:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Classic age updates require an empty age-update acknowledgement.")
-	var updates: Variant = _continuation_value("updates", [])
-	var index := int(_continuation_value("index", -1))
-	if not updates is Array or updates.is_empty() or index < 1 or index > updates.size():
+	var age := _session_continuation.age()
+	if age == null:
+		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The age-update queue is unavailable.")
+	var updates := age.updates
+	var index := age.index
+	if updates.is_empty() or index < 1 or index > updates.size():
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The age-update queue is unavailable.")
 	var acknowledged: Dictionary = updates[index - 1]
 	var events: Array[DomainEvent] = [DomainEvent.new(&"character_age_update_acknowledged", {"characterId": acknowledged.get("characterId", "")})]
 	if index < updates.size():
 		var next_payload: Dictionary = updates[index]
-		_set_continuation_value("index", index + 1)
+		age.index = index + 1
 		_session_interaction = InteractionRequest.age_update(_session_age_update_request_id(next_payload, index), next_payload)
 		events.append(CharacterAgingResult.sound_event(next_payload))
 		return _finish_waiting(_session_interaction, events)
-	var resume_kind := String(_continuation_value("resumeKind", ""))
-	var resume_continuation: Dictionary = _continuation_value("resumeContinuation", {}).duplicate(true)
+	var resume_kind := age.resume_kind
+	var resume_continuation := age.resume_continuation
 	_session_interaction = null
 	_session_continuation.clear()
-	if resume_kind == "post-move":
-		_set_continuation_data(resume_continuation)
+	if resume_kind == &"post-move":
+		_set_continuation(resume_continuation.copy())
 		return _continue_post_move(events)
-	if resume_kind == "post-clock":
-		_set_continuation_data(resume_continuation)
+	if resume_kind == &"post-clock":
+		_set_continuation(resume_continuation.copy())
 		return _continue_post_time(events)
-	if resume_kind == "combat-monster-turns":
+	if resume_kind == &"combat-monster-turns":
 		return _continue_after_session_combat_age_update(events)
-	if resume_kind == "completed":
+	if resume_kind == &"completed":
 		return _finish_completed(events)
 	return _finish_failed(&"invalid_session_continuation", "The age-update queue has no valid completion path.", events)
 
@@ -2890,7 +2951,8 @@ func _respond_session_ally_selection(response: InteractionResponse) -> SessionSt
 	var body := response.body as InteractionResponse.AllySelectionBody
 	if response.kind != &"ally_selection" or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Ally selection requires selectedIds.")
-	if _state.combat == null or not _state.combat.completed or _state.combat.battle_id != _continuation_value("battleId"):
+	var continuation := _session_continuation.combat()
+	if continuation == null or _state.combat == null or not _state.combat.completed or _state.combat.battle_id != continuation.battle_id:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The completed battle is unavailable for ally selection.")
 	# Development saves from before the Castle body-count correction can retain an
 	# impossible empty selection boundary. Re-evaluate the source-backed candidate
@@ -2913,7 +2975,8 @@ func _respond_session_fumble_recovery(response: InteractionResponse) -> SessionS
 	var body := response.body as InteractionResponse.TreasureBody
 	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Fumbled-weapon recovery requires a treasure-distribution response.")
-	if _state.combat == null or not _state.combat.completed or _state.combat.battle_id != _continuation_value("battleId"):
+	var continuation := _session_continuation.combat()
+	if continuation == null or _state.combat == null or not _state.combat.completed or _state.combat.battle_id != continuation.battle_id:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The completed battle is unavailable for fumbled-weapon recovery.")
 	var result := _rules.combat_flow.apply_fumble_recovery(_state, _content, body.action, body.instance_id, body.character_id)
 	if not result.ok:
@@ -2926,18 +2989,18 @@ func _respond_session_fumble_recovery(response: InteractionResponse) -> SessionS
 
 
 func _respond_session_battle_reward(response: InteractionResponse) -> SessionStep:
-	if _state.combat == null or not _state.combat.completed or _state.combat.battle_id != _continuation_value("battleId"):
+	var continuation := _session_continuation.reward()
+	if continuation == null or _state.combat == null or not _state.combat.completed or _state.combat.battle_id != continuation.battle_id:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The completed battle is unavailable for reward distribution.")
-	var runtime_continuation: Variant = _continuation_value("runtimeContinuation")
-	if not runtime_continuation is Dictionary:
+	if continuation.runtime_continuation.is_empty():
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The battle reward continuation is unavailable.")
-	var return_continuation: Dictionary = _state.combat.return_continuation.to_legacy_data()
+	var return_continuation := _state.combat.return_continuation.copy()
 	var battle_outcome := _state.combat.outcome
-	var result := _runtime_api.resume_classic(runtime_continuation, response, response.request_id)
+	var result := _runtime_api.resume_classic(continuation.runtime_continuation, response, response.request_id)
 	if result.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return _finish_failed(result.error_code, result.error_message, result.events)
 	if result.state == ScenarioRuntimeOperationResult.State.WAITING:
-		_set_continuation_value("runtimeContinuation", result.continuation.duplicate(true))
+		continuation.runtime_continuation = result.continuation.duplicate(true)
 		_session_interaction = result.interaction
 		return _finish_waiting(_session_interaction, result.events)
 	_session_interaction = null
@@ -2964,9 +3027,10 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 		_session_continuation.clear()
 		return _finish_failed(battle_result.error_code, battle_result.error_message, events)
 	events.append_array(battle_result.events)
-	if _state.combat != null and _continuation_value("kind") == "post-clock":
-		_set_continuation_value("randomRegionIndex", -1 if region.only else int(_continuation_value("randomRegionIndex", 0)) - 1)
-		_state.combat.return_continuation = SessionContinuation.from_data(_session_continuation.to_data())
+	if _state.combat != null and _session_continuation.kind == &"post-clock":
+		var exploration := _session_continuation.exploration()
+		exploration.random_region_index = -1 if region.only else exploration.random_region_index - 1
+		_state.combat.return_continuation = _session_continuation.copy()
 	if not CharacterAgingResult.update_payloads(battle_result.events).is_empty():
 		_session_interaction = null
 		_session_continuation.clear()
@@ -2982,348 +3046,236 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 	return _finish_completed(events)
 
 
-static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
-	if continuation.get("kind") == "application-hook":
-		var hook_fields: Array[String] = ["kind", "hook", "programId", "resumeKind", "serviceId", "partyRevived"]
-		var scenario_defeat: bool = continuation.get("resumeKind") == "scenario-party-defeat"
-		if scenario_defeat:
-			hook_fields.append_array(["suspendedVm", "suspendedOwner", "vmHandoff"])
-		if continuation.size() != hook_fields.size() or vm_interaction == null or session_interaction != null:
-			return false
-		for field: String in hook_fields:
-			if not continuation.has(field):
-				return false
-		if not continuation["hook"] is String or not continuation["programId"] is String or continuation["programId"].is_empty() or not continuation["resumeKind"] is String or not continuation["serviceId"] is String or not continuation["partyRevived"] is bool:
-			return false
-		var hook := StringName(continuation["hook"])
-		if content.scenario.application_hook_program_id(hook) != continuation["programId"] or content.scenario.program_by_id(continuation["programId"]) == null:
-			return false
-		var resume_kind: String = continuation["resumeKind"]
-		var service_id: String = continuation["serviceId"]
-		match resume_kind:
-			"begin-adventure":
-				return hook == ScenarioApplicationHooks.START_GAME and service_id.is_empty() and state.party_setup_completed and not state.party.characters().is_empty()
-			"service":
-				return hook in [ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE] and not service_id.is_empty() and ((service_id == state.active_shop_id and content.shop_by_id(service_id) != null) or (service_id == "realmz.service.temple" and state.temple_available))
-			"end-adventure":
-				return hook == ScenarioApplicationHooks.END_ADVENTURE and service_id.is_empty()
-			"end-adventure-close":
-				return hook == ScenarioApplicationHooks.PARTY_DEATH and service_id.is_empty()
-			"party-defeat":
-				return hook == ScenarioApplicationHooks.PARTY_DEATH and service_id.is_empty() and state.combat != null and state.combat.completed and state.combat.outcome == &"defeat"
-			"scenario-party-defeat":
-				if hook != ScenarioApplicationHooks.PARTY_DEATH or not service_id.is_empty() or not continuation.get("suspendedVm") is Dictionary or not continuation.get("suspendedOwner") is Dictionary or not continuation.get("vmHandoff") is Dictionary:
-					return false
-				var saved := ScenarioVmSnapshot.from_data(continuation["suspendedVm"])
-				var vm_handoff: Dictionary = continuation["vmHandoff"]
-				return ScenarioVm.handoff_is_valid(vm_handoff, saved) and RealmzRuntimeApi.party_defeat_handoff_is_valid(content, state, vm_handoff.get("runtime")) and _valid_suspended_scenario_owner(content, state, continuation["suspendedOwner"], saved)
+static func _valid_session_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	if continuation == null or continuation.is_empty():
 		return false
-	if continuation.get("kind") == "pooled-wealth-departure":
-		var departure_fields: Array[String] = ["kind", "stage", "directionX", "directionY"]
-		if continuation.size() != departure_fields.size() or vm_interaction != null or session_interaction == null or state.party == null or state.bank_available:
-			return false
-		for field: String in departure_fields:
-			if not continuation.has(field):
+	match continuation.kind:
+		&"application-hook":
+			var application := continuation.application()
+			if application == null or vm_interaction == null or session_interaction != null or application.program_id.is_empty():
 				return false
-		if not continuation["stage"] is String or not continuation["directionX"] is int or not continuation["directionY"] is int:
+			if content.scenario.application_hook_program_id(application.hook) != application.program_id or content.scenario.program_by_id(application.program_id) == null:
+				return false
+			match application.resume_kind:
+				&"begin-adventure":
+					return application.hook == ScenarioApplicationHooks.START_GAME and application.service_id.is_empty() and state.party_setup_completed and not state.party.characters().is_empty()
+				&"service":
+					return application.hook in [ScenarioApplicationHooks.SHOP, ScenarioApplicationHooks.TEMPLE] and not application.service_id.is_empty() and ((application.service_id == state.active_shop_id and content.shop_by_id(application.service_id) != null) or (application.service_id == "realmz.service.temple" and state.temple_available))
+				&"end-adventure":
+					return application.hook == ScenarioApplicationHooks.END_ADVENTURE and application.service_id.is_empty()
+				&"end-adventure-close":
+					return application.hook == ScenarioApplicationHooks.PARTY_DEATH and application.service_id.is_empty()
+				&"party-defeat":
+					return application.hook == ScenarioApplicationHooks.PARTY_DEATH and application.service_id.is_empty() and state.combat != null and state.combat.completed and state.combat.outcome == &"defeat"
+				&"scenario-party-defeat":
+					if application.hook != ScenarioApplicationHooks.PARTY_DEATH or not application.service_id.is_empty() or application.suspended_owner == null:
+						return false
+					var saved := ScenarioVmSnapshot.from_data(application.suspended_vm)
+					return ScenarioVm.handoff_is_valid(application.vm_handoff, saved) and RealmzRuntimeApi.party_defeat_handoff_is_valid(content, state, application.vm_handoff.get("runtime")) and _valid_suspended_scenario_owner(content, state, application.suspended_owner, saved)
 			return false
-		var departure_direction := Vector2i(continuation["directionX"], continuation["directionY"])
-		var departure_probe := content.world.probe_movement(state.party.map_id, state.party.coordinate, departure_direction, state.world)
-		if not departure_probe.allowed and departure_probe.reason == &"invalid_direction":
-			return false
-		match String(continuation["stage"]):
-			"warning":
+		&"pooled-wealth-departure":
+			var service := continuation.service()
+			if service == null or vm_interaction != null or session_interaction == null or state.party == null or state.bank_available:
+				return false
+			var departure_probe := content.world.probe_movement(state.party.map_id, state.party.coordinate, service.direction, state.world)
+			if not departure_probe.allowed and departure_probe.reason == &"invalid_direction":
+				return false
+			if service.stage == &"warning":
 				return _has_pooled_wealth(state.party) and session_interaction.to_data() == _pooled_wealth_departure_warning(session_interaction.request_id).to_data()
-			"distribution":
+			if service.stage == &"distribution":
 				var bank_body := session_interaction.body as InteractionRequest.BankRequestBody
-				if session_interaction.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or bank_body == null or bank_body.mode != &"departure":
-					return false
-				var selected_character_id := bank_body.selected_character_id
-				if state.party.character_by_id(selected_character_id) == null:
-					return false
-				return session_interaction.to_data() == _pooled_wealth_departure_distribution_request_for_state(state, session_interaction.request_id, selected_character_id).to_data()
-		return false
-	if continuation.get("kind") == "service-interaction":
-		if continuation.size() != 3 or vm_interaction != null or session_interaction == null or not continuation.get("serviceId") is String or not continuation.get("runtimeContinuation") is Dictionary:
+				return session_interaction.kind == InteractionRequest.POOLED_WEALTH_DEPARTURE and bank_body != null and bank_body.mode == &"departure" and state.party.character_by_id(bank_body.selected_character_id) != null and session_interaction.to_data() == _pooled_wealth_departure_distribution_request_for_state(state, session_interaction.request_id, bank_body.selected_character_id).to_data()
 			return false
-		var service_id: String = continuation["serviceId"]
-		var runtime: Dictionary = continuation["runtimeContinuation"]
-		var selected_temple_character: Variant = runtime.get("selectedCharacterId")
-		match String(runtime.get("kind", "")):
-			"classic-shop":
-				return service_id == state.active_shop_id and not service_id.is_empty() and content.shop_by_id(service_id) != null and session_interaction.kind == InteractionRequest.SHOP
-			"classic-temple":
-				var temple_body := session_interaction.body as InteractionRequest.TempleRequestBody
-				return service_id == "realmz.service.temple" and state.temple_available and int(runtime.get("costPercent", -100_000)) == state.temple_cost_percent and bool(runtime.get("bankAvailable", false)) == state.bank_available and selected_temple_character is String and state.party.character_by_id(String(selected_temple_character)) != null and session_interaction.kind == InteractionRequest.TEMPLE and temple_body != null and temple_body.selected_character_id == selected_temple_character
-			"classic-temple-exit":
-				return service_id == "realmz.service.temple" and state.temple_available and not state.bank_available and int(runtime.get("costPercent", -100_000)) == state.temple_cost_percent and not bool(runtime.get("bankAvailable", true)) and selected_temple_character is String and state.party.character_by_id(String(selected_temple_character)) != null and session_interaction.kind == InteractionRequest.YES_NO
-			"classic-banking":
-				return service_id == "realmz.service.bank" and state.bank_available and session_interaction.kind == InteractionRequest.BANK
-		return false
-	if continuation.get("kind") == "drop-item-confirmation":
-		var drop_fields: Array[String] = ["kind", "characterId", "instanceId"]
-		if continuation.size() != drop_fields.size() or vm_interaction != null or session_interaction == null:
-			return false
-		for field: String in drop_fields:
-			if not continuation.has(field) or not continuation[field] is String or continuation[field].is_empty():
+		&"service-interaction":
+			var service := continuation.service()
+			if service == null or vm_interaction != null or session_interaction == null:
 				return false
-		var character := state.party.character_by_id(continuation["characterId"])
-		if character == null:
+			var runtime := service.runtime_continuation
+			var selected_temple_character: Variant = runtime.get("selectedCharacterId")
+			match StringName(runtime.get("kind", "")):
+				&"classic-shop":
+					return service.service_id == state.active_shop_id and not service.service_id.is_empty() and content.shop_by_id(service.service_id) != null and session_interaction.kind == InteractionRequest.SHOP
+				&"classic-temple":
+					var temple_body := session_interaction.body as InteractionRequest.TempleRequestBody
+					return service.service_id == "realmz.service.temple" and state.temple_available and int(runtime.get("costPercent", -100_000)) == state.temple_cost_percent and bool(runtime.get("bankAvailable", false)) == state.bank_available and selected_temple_character is String and state.party.character_by_id(String(selected_temple_character)) != null and session_interaction.kind == InteractionRequest.TEMPLE and temple_body != null and temple_body.selected_character_id == selected_temple_character
+				&"classic-temple-exit":
+					return service.service_id == "realmz.service.temple" and state.temple_available and not state.bank_available and int(runtime.get("costPercent", -100_000)) == state.temple_cost_percent and not bool(runtime.get("bankAvailable", true)) and selected_temple_character is String and state.party.character_by_id(String(selected_temple_character)) != null and session_interaction.kind == InteractionRequest.YES_NO
+				&"classic-banking":
+					return service.service_id == "realmz.service.bank" and state.bank_available and session_interaction.kind == InteractionRequest.BANK
 			return false
-		var instance: ItemInstance = null
-		for carried: ItemInstance in character.inventory():
-			if carried.id == continuation["instanceId"]:
-				instance = carried
-				break
+		&"drop-item-confirmation", &"item-use-target-selection", &"field-spell-target-selection", &"scroll-target-selection":
+			return _valid_targeting_continuation(content, state, continuation, vm_interaction, session_interaction)
+		&"character-spell-confirmation":
+			var application := continuation.application()
+			if application == null or vm_interaction != null or session_interaction == null or state.party_setup_completed or state.character_draft == null or state.character_draft.generated_character == null:
+				return false
+			var character := state.character_draft.generated_character
+			if application.character_id != character.id or application.remaining < 1:
+				return false
+			var rules := RealmzRules.new()
+			var spent := 0
+			for spell_id: String in character.known_spells():
+				spent += rules.characters.spell_selection_cost(content.spell_by_id(spell_id))
+			var remaining := maxi(0, rules.characters.spell_selection_total(character, content.caste_by_id(character.caste_id)) - spent)
+			return remaining == application.remaining and session_interaction.to_data() == _character_spell_confirmation_request(session_interaction.request_id, remaining).to_data()
+		&"character-vault-publication":
+			var application := continuation.application()
+			if application == null or vm_interaction != null or session_interaction == null or state.party_setup_completed:
+				return false
+			var character := state.party.character_by_id(application.character_id)
+			return character != null and session_interaction.to_data() == _character_vault_confirmation_request(session_interaction.request_id, character.name).to_data()
+		&"combat-retreat-confirmation":
+			var combat := continuation.combat()
+			if combat == null or combat.mode not in [&"explicit", &"edge"] or vm_interaction != null or session_interaction == null or session_interaction.to_data() != _retreat_confirmation_request(session_interaction.request_id).to_data():
+				return false
+			if state.combat == null or state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.active_actor_id() != combat.actor_id:
+				return false
+			var rules := RealmzRules.new()
+			var probe: Variant = rules.combat_flow.probe_character_retreat(state.combat, state.party.characters(), combat.actor_id) if combat.mode == &"explicit" else rules.combat_flow.probe_edge_retreat(state.combat, combat.actor_id, combat.destination)
+			return probe.allowed and not probe.forced
+		&"age-updates":
+			var age := continuation.age()
+			if age == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.AGE_UPDATE or age.updates.is_empty() or age.index < 1 or age.index > age.updates.size():
+				return false
+			for update: Variant in age.updates:
+				if not _valid_age_update_payload(state, update):
+					return false
+			var current_update: Dictionary = age.updates[age.index - 1]
+			var expected_age_request := InteractionRequest.from_payload("validation.age-update", InteractionRequest.AGE_UPDATE, current_update)
+			var actual_age_body := session_interaction.body as InteractionRequest.AgeUpdateBody
+			var expected_age_body: InteractionRequest.AgeUpdateBody = null if expected_age_request == null else expected_age_request.body as InteractionRequest.AgeUpdateBody
+			if actual_age_body == null or not actual_age_body.same_values(expected_age_body):
+				return false
+			if age.resume_kind == &"completed":
+				return age.resume_continuation == null
+			if age.resume_kind == &"combat-monster-turns":
+				return age.resume_continuation == null and state.combat != null and not state.combat.completed and state.combat.pending_monster_attack != null
+			if age.resume_kind == &"post-clock":
+				return _valid_post_time_continuation(content, state, age.resume_continuation, vm_interaction, null)
+			return age.resume_kind == &"post-move" and _valid_ready_post_move_continuation(content, state, age.resume_continuation)
+		&"combat-death-macro":
+			var combat := continuation.combat()
+			if combat == null or session_interaction != null or vm_interaction == null or state.combat == null or state.combat.battle_id != combat.battle_id:
+				return false
+			var death_monster := state.combat.monster_by_id(combat.combatant_id)
+			if death_monster == null or content.scenario.program_by_id(combat.program_id) == null:
+				return false
+			var queued_id := state.combat.pending_spell_death_macro_id()
+			if not queued_id.is_empty():
+				var definition := content.monster_by_id(death_monster.definition_id)
+				return queued_id == combat.combatant_id and not combat.reset_traitor_on_complete and definition != null and combat.program_id == "xap:%d" % definition.death_macro
+			return combat.reset_traitor_on_complete
+		&"combat-ally-selection":
+			var combat := continuation.combat()
+			return combat != null and vm_interaction == null and session_interaction != null and session_interaction.kind == &"ally_selection" and state.combat != null and state.combat.completed and state.combat.battle_id == combat.battle_id
+		&"combat-fumble-recovery":
+			var combat := continuation.combat()
+			if combat == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.TREASURE_DISTRIBUTION or state.combat == null or not state.combat.completed or state.combat.battle_id != combat.battle_id or state.combat.fumbled_items().is_empty():
+				return false
+			var expected_fumble_request := InteractionRequest.from_payload("validation.fumble-recovery", InteractionRequest.TREASURE_DISTRIBUTION, RealmzRules.new().combat_flow.fumble_recovery_payload(state, content))
+			var actual_fumble_body := session_interaction.body as InteractionRequest.TreasureRequestBody
+			var expected_fumble_body: InteractionRequest.TreasureRequestBody = null if expected_fumble_request == null else expected_fumble_request.body as InteractionRequest.TreasureRequestBody
+			return actual_fumble_body != null and actual_fumble_body.same_fumble_values(expected_fumble_body)
+		&"combat-reward":
+			var reward_body := continuation.reward()
+			if reward_body == null or vm_interaction != null:
+				return false
+			var runtime := reward_body.runtime_continuation
+			var reward := ClassicRewardState.from_data(runtime.get("state")) if runtime.size() == 2 and runtime.get("kind") == "classic-reward" else null
+			return reward != null and reward.origin == &"battle" and reward.source_id == reward_body.battle_id and _valid_reward_continuation(content, state, reward, session_interaction)
+		&"post-clock":
+			return _valid_post_time_continuation(content, state, continuation, vm_interaction, session_interaction)
+		&"post-move":
+			return _valid_post_move_continuation(content, state, continuation, vm_interaction, session_interaction)
+	return false
+
+
+static func _valid_targeting_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var targeting := continuation.targeting()
+	if targeting == null or vm_interaction != null or session_interaction == null:
+		return false
+	var character := state.party.character_by_id(targeting.character_id)
+	if continuation.kind == &"drop-item-confirmation":
+		var instance := _item_instance_for_state(character, targeting.instance_id)
 		var definition: ItemDefinition = null if instance == null else content.item_by_id(instance.definition_id)
-		if instance == null or definition == null or not RealmzRules.new().inventory.classic_drop_probe(character, instance).allowed:
+		if character == null or instance == null or definition == null or not RealmzRules.new().inventory.classic_drop_probe(character, instance).allowed:
 			return false
 		var display_name := definition.name if instance.identified else definition.unidentified_name
 		return session_interaction.to_data() == _drop_item_confirmation_request(session_interaction.request_id, display_name).to_data()
-	if continuation.get("kind") == "item-use-target-selection":
-		var item_fields: Array[String] = ["kind", "characterId", "instanceId", "spellId", "power", "targetCount", "startingCharges"]
-		if continuation.size() != item_fields.size() or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.CHARACTER_SELECTION or state.combat != null:
+	if session_interaction.kind != InteractionRequest.CHARACTER_SELECTION or state.combat != null or character == null:
+		return false
+	var spell := content.spell_by_id(targeting.spell_id)
+	if spell == null or targeting.power < 1 or targeting.power > 7:
+		return false
+	if continuation.kind == &"item-use-target-selection":
+		var instance := _item_instance_for_state(character, targeting.instance_id)
+		var definition: ItemDefinition = null if instance == null else content.item_by_id(instance.definition_id)
+		if instance == null or definition == null or definition.special_2 != spell.classic_id or instance.charges != targeting.starting_charges:
 			return false
-		for field: String in item_fields:
-			if not continuation.has(field):
-				return false
-		if not continuation["characterId"] is String or not continuation["instanceId"] is String or not continuation["spellId"] is String or not continuation["power"] is int or not continuation["targetCount"] is int or not continuation["startingCharges"] is int:
-			return false
-		var item_character := state.party.character_by_id(continuation["characterId"])
-		var item_instance: ItemInstance = null
-		if item_character != null:
-			for carried: ItemInstance in item_character.inventory():
-				if carried.id == continuation["instanceId"]:
-					item_instance = carried
-					break
-		var item_definition: ItemDefinition = null if item_instance == null else content.item_by_id(item_instance.definition_id)
-		var item_spell := content.spell_by_id(continuation["spellId"])
-		if item_character == null or item_instance == null or item_definition == null or item_spell == null or item_definition.special_2 != item_spell.classic_id or item_instance.charges != continuation["startingCharges"]:
-			return false
-		var item_power: int = continuation["power"]
-		if item_power < 1 or item_power > 7:
-			return false
-		var authored_power := absi(item_definition.special_1)
-		if authored_power != 8 and item_power != authored_power:
-			return false
-		var expected_count := state.party.characters().size() if item_spell.target_type > 2 else mini(item_power, state.party.characters().size()) if item_spell.target_type == 0 else 1
-		if continuation["targetCount"] != expected_count or item_spell.target_type in [5, 7] or item_spell.target_type < 0 or item_spell.target_type > 12:
-			return false
-		var item_probe := RealmzRules.new().inventory.classic_spell_item_probe(item_character, item_instance, item_definition, item_spell, content.race_by_id(item_character.race_id), content.caste_by_id(item_character.caste_id), false)
-		var item_effect_supported := item_spell.special == 0 and absi(item_spell.damage_type) >= 1 and absi(item_spell.damage_type) <= 6 and absi(item_spell.spell_class) != 9 or absi(item_spell.special) == 57
-		return item_probe.allowed and item_effect_supported and session_interaction.to_data() == _item_target_request(session_interaction.request_id, item_character, item_instance.id, item_definition, item_spell, expected_count, state.party.characters()).to_data()
-	if continuation.get("kind") == "field-spell-target-selection":
-		var field_spell_fields: Array[String] = ["kind", "characterId", "spellId", "power", "targetCount", "startingSpellPoints"]
-		if continuation.size() != field_spell_fields.size() or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.CHARACTER_SELECTION or state.combat != null:
-			return false
-		for field: String in field_spell_fields:
-			if not continuation.has(field):
-				return false
-		if not continuation["characterId"] is String or not continuation["spellId"] is String or not continuation["power"] is int or not continuation["targetCount"] is int or not continuation["startingSpellPoints"] is int:
-			return false
-		var field_character := state.party.character_by_id(continuation["characterId"])
-		var field_spell := content.spell_by_id(continuation["spellId"])
-		var field_power: int = continuation["power"]
-		if field_character == null or field_spell == null or not field_character.known_spells().has(field_spell.id) or field_character.spell_points != continuation["startingSpellPoints"] or field_power < 1 or field_power > 7:
-			return false
-		if state.character_spellcasting_blocked or field_character.current_health < 1 or field_character.spell_points < absi(field_spell.cost * field_power) or not field_spell.in_camp or field_spell.cost < 0 and field_power != 1:
+		var authored_power := absi(definition.special_1)
+		var expected_count := state.party.characters().size() if spell.target_type > 2 else mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
+		var probe := RealmzRules.new().inventory.classic_spell_item_probe(character, instance, definition, spell, content.race_by_id(character.race_id), content.caste_by_id(character.caste_id), false)
+		var supported := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9 or absi(spell.special) == 57
+		return (authored_power == 8 or targeting.power == authored_power) and targeting.target_count == expected_count and spell.target_type not in [5, 7] and spell.target_type >= 0 and spell.target_type <= 12 and probe.allowed and supported and session_interaction.to_data() == _item_target_request(session_interaction.request_id, character, instance.id, definition, spell, expected_count, state.party.characters()).to_data()
+	if continuation.kind == &"field-spell-target-selection":
+		if not character.known_spells().has(spell.id) or character.spell_points != targeting.starting_spell_points or state.character_spellcasting_blocked or character.current_health < 1 or character.spell_points < absi(spell.cost * targeting.power) or not spell.in_camp or spell.cost < 0 and targeting.power != 1:
 			return false
 		for condition: int in [ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS, ConditionRules.STUPID, ConditionRules.ANIMATED]:
-			if field_character.conditions.is_active(condition):
+			if character.conditions.is_active(condition):
 				return false
-		var field_special := absi(field_spell.special)
-		var supported := field_special == 68 or field_special > 0 and field_special < 41 or field_special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or field_special > 99 or field_special == 0 and absi(field_spell.damage_type) >= 1 and absi(field_spell.damage_type) < 8 and (field_spell.damage_min != 0 or field_spell.damage_max != 0 or field_spell.power_damage_min != 0 or field_spell.power_damage_max != 0)
-		var expected_field_count := mini(field_power, state.party.characters().size()) if field_spell.target_type == 0 else 1
-		if continuation["targetCount"] != expected_field_count or field_spell.target_type < 0 or field_spell.target_type > 2 or not supported:
-			return false
-		return session_interaction.to_data() == _field_spell_target_request(session_interaction.request_id, field_character, field_spell, expected_field_count, state.party.characters()).to_data()
-	if continuation.get("kind") == "scroll-target-selection":
-		var scroll_fields: Array[String] = ["kind", "characterId", "scrollSlot", "spellId", "power", "targetCount"]
-		if continuation.size() != scroll_fields.size() or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.CHARACTER_SELECTION or state.combat != null:
-			return false
-		for field: String in scroll_fields:
-			if not continuation.has(field):
-				return false
-		if not continuation["characterId"] is String or not continuation["scrollSlot"] is int or not continuation["spellId"] is String or not continuation["power"] is int or not continuation["targetCount"] is int:
-			return false
-		var scroll_character := state.party.character_by_id(continuation["characterId"])
-		var scroll_slot: int = continuation["scrollSlot"]
-		var scroll_spell := content.spell_by_id(continuation["spellId"])
-		var scroll_power: int = continuation["power"]
-		var scroll_state := scroll_character.scroll_at(scroll_slot) if scroll_character != null else null
-		if scroll_character == null or scroll_state == null or scroll_spell == null or scroll_state.spell_id != scroll_spell.id or scroll_state.power != scroll_power or scroll_power < 1 or scroll_power > 7:
-			return false
-		if scroll_character.current_health < 1 or scroll_character.conditions.is_active(ConditionRules.ANIMATED) or not scroll_spell.in_camp:
+	else:
+		var scroll := character.scroll_at(targeting.scroll_slot)
+		if scroll == null or scroll.spell_id != spell.id or scroll.power != targeting.power or character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED) or not spell.in_camp:
 			return false
 		var has_case := false
-		for carried: ItemInstance in scroll_character.inventory():
+		for carried: ItemInstance in character.inventory():
 			var carried_definition := content.item_by_id(carried.definition_id)
 			if carried.equipped and carried_definition != null and absi(carried_definition.item_type) == 13:
 				has_case = true
 				break
 		if not has_case:
 			return false
-		var scroll_special := absi(scroll_spell.special)
-		var scroll_supported := scroll_special == 68 or scroll_special > 0 and scroll_special < 41 or scroll_special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or scroll_special > 99 or scroll_special == 0 and absi(scroll_spell.damage_type) >= 1 and absi(scroll_spell.damage_type) < 8 and (scroll_spell.damage_min != 0 or scroll_spell.damage_max != 0 or scroll_spell.power_damage_min != 0 or scroll_spell.power_damage_max != 0)
-		var expected_scroll_count := mini(scroll_power, state.party.characters().size()) if scroll_spell.target_type == 0 else 1
-		if continuation["targetCount"] != expected_scroll_count or scroll_spell.target_type < 0 or scroll_spell.target_type > 2 or not scroll_supported:
-			return false
-		return session_interaction.to_data() == _scroll_target_request(session_interaction.request_id, scroll_character, scroll_slot, scroll_spell, expected_scroll_count, state.party.characters()).to_data()
-	if continuation.get("kind") == "character-spell-confirmation":
-		var spell_fields: Array[String] = ["kind", "characterId", "remaining"]
-		if continuation.size() != spell_fields.size() or vm_interaction != null or session_interaction == null:
-			return false
-		for field: String in spell_fields:
-			if not continuation.has(field):
-				return false
-		if state.party_setup_completed or state.character_draft == null or state.character_draft.generated_character == null:
-			return false
-		var character := state.character_draft.generated_character
-		if not continuation["characterId"] is String or continuation["characterId"] != character.id or not continuation["remaining"] is int or continuation["remaining"] < 1:
-			return false
-		var rules := RealmzRules.new()
-		var caste := content.caste_by_id(character.caste_id)
-		var spent := 0
-		for spell_id: String in character.known_spells():
-			spent += rules.characters.spell_selection_cost(content.spell_by_id(spell_id))
-		var remaining := maxi(0, rules.characters.spell_selection_total(character, caste) - spent)
-		return remaining == continuation["remaining"] and session_interaction.to_data() == _character_spell_confirmation_request(session_interaction.request_id, remaining).to_data()
-	if continuation.get("kind") == "character-vault-publication":
-		if continuation.size() != 2 or vm_interaction != null or session_interaction == null or state.party_setup_completed:
-			return false
-		var character_id: Variant = continuation.get("characterId")
-		if not character_id is String or character_id.is_empty():
-			return false
-		var character := state.party.character_by_id(character_id)
-		return character != null and session_interaction.to_data() == _character_vault_confirmation_request(session_interaction.request_id, character.name).to_data()
-	if continuation.get("kind") == "combat-retreat-confirmation":
-		var retreat_fields: Array[String] = ["kind", "battleId", "actorId", "mode", "destination"]
-		if continuation.size() != retreat_fields.size():
-			return false
-		for field: String in retreat_fields:
-			if not continuation.has(field):
-				return false
-		if not continuation["battleId"] is String or continuation["battleId"].is_empty() or not continuation["actorId"] is String or continuation["actorId"].is_empty() or continuation["mode"] not in ["explicit", "edge"]:
-			return false
-		var destination := _combat_retreat_destination(continuation["destination"])
-		if destination == Vector2i(-100_000, -100_000) and continuation["mode"] == "edge":
-			return false
-		if vm_interaction != null or session_interaction == null or session_interaction.to_data() != _retreat_confirmation_request(session_interaction.request_id).to_data():
-			return false
-		if state.combat == null or state.combat.completed or state.combat.battle_id != continuation["battleId"] or state.combat.active_actor_id() != continuation["actorId"]:
-			return false
-		var rules := RealmzRules.new()
-		var probe: Variant = rules.combat_flow.probe_character_retreat(state.combat, state.party.characters(), continuation["actorId"]) if continuation["mode"] == "explicit" else rules.combat_flow.probe_edge_retreat(state.combat, continuation["actorId"], destination)
-		return probe.allowed and not probe.forced
-	if continuation.get("kind") == "age-updates":
-		var age_fields: Array[String] = ["kind", "updates", "index", "resumeKind", "resumeContinuation"]
-		if continuation.size() != age_fields.size() or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.AGE_UPDATE:
-			return false
-		for field: String in age_fields:
-			if not continuation.has(field):
-				return false
-		var updates: Variant = continuation["updates"]
-		var age_index: Variant = continuation["index"]
-		if not updates is Array or updates.is_empty() or not age_index is int or age_index < 1 or age_index > updates.size():
-			return false
-		for update: Variant in updates:
-			if not _valid_age_update_payload(state, update):
-				return false
-		var current_update: Dictionary = updates[age_index - 1]
-		var expected_age_request := InteractionRequest.from_payload("validation.age-update", InteractionRequest.AGE_UPDATE, current_update)
-		var actual_age_body := session_interaction.body as InteractionRequest.AgeUpdateBody
-		var expected_age_body: InteractionRequest.AgeUpdateBody = null if expected_age_request == null else expected_age_request.body as InteractionRequest.AgeUpdateBody
-		if actual_age_body == null or not actual_age_body.same_values(expected_age_body):
-			return false
-		var resume_kind: Variant = continuation["resumeKind"]
-		var resume_continuation: Variant = continuation["resumeContinuation"]
-		if resume_kind == "completed":
-			return resume_continuation is Dictionary and resume_continuation.is_empty()
-		if resume_kind == "combat-monster-turns":
-			return resume_continuation is Dictionary and resume_continuation.is_empty() and state.combat != null and not state.combat.completed and state.combat.pending_monster_attack != null
-		if resume_kind == "post-clock":
-			return resume_continuation is Dictionary and _valid_post_time_continuation(content, state, resume_continuation, vm_interaction, null)
-		return resume_kind == "post-move" and resume_continuation is Dictionary and _valid_ready_post_move_continuation(content, state, resume_continuation)
-	if continuation.get("kind") == "combat-death-macro":
-		var death_fields: Array[String] = ["kind", "battleId", "combatantId", "programId"]
-		if continuation.size() not in [death_fields.size(), death_fields.size() + 1]:
-			return false
-		for field: String in death_fields:
-			if not continuation.has(field) or not continuation[field] is String or continuation[field].is_empty():
-				return false
-		if continuation.has("resetTraitorOnComplete") and not continuation["resetTraitorOnComplete"] is bool:
-			return false
-		if session_interaction != null or vm_interaction == null or state.combat == null or state.combat.battle_id != continuation["battleId"]:
-			return false
-		var death_monster := state.combat.monster_by_id(continuation["combatantId"])
-		if death_monster == null or content.scenario.program_by_id(continuation["programId"]) == null:
-			return false
-		var queued_id := state.combat.pending_spell_death_macro_id()
-		if not queued_id.is_empty():
-			var definition := content.monster_by_id(death_monster.definition_id)
-			return queued_id == continuation["combatantId"] and not bool(continuation.get("resetTraitorOnComplete", true)) and definition != null and continuation["programId"] == "xap:%d" % definition.death_macro
-		return bool(continuation.get("resetTraitorOnComplete", true))
-	if continuation.get("kind") == "combat-ally-selection":
-		var ally_fields: Array[String] = ["kind", "battleId"]
-		if continuation.size() != ally_fields.size() or not continuation.get("battleId") is String or continuation["battleId"].is_empty():
-			return false
-		return vm_interaction == null and session_interaction != null and session_interaction.kind == &"ally_selection" and state.combat != null and state.combat.completed and state.combat.battle_id == continuation["battleId"]
-	if continuation.get("kind") == "combat-fumble-recovery":
-		var recovery_fields: Array[String] = ["kind", "battleId"]
-		if continuation.size() != recovery_fields.size() or not continuation.get("battleId") is String or continuation["battleId"].is_empty():
-			return false
-		if vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.TREASURE_DISTRIBUTION or state.combat == null or not state.combat.completed or state.combat.battle_id != continuation["battleId"] or state.combat.fumbled_items().is_empty():
-			return false
-		var expected_fumble_request := InteractionRequest.from_payload("validation.fumble-recovery", InteractionRequest.TREASURE_DISTRIBUTION, RealmzRules.new().combat_flow.fumble_recovery_payload(state, content))
-		var actual_fumble_body := session_interaction.body as InteractionRequest.TreasureRequestBody
-		var expected_fumble_body: InteractionRequest.TreasureRequestBody = null if expected_fumble_request == null else expected_fumble_request.body as InteractionRequest.TreasureRequestBody
-		return actual_fumble_body != null and actual_fumble_body.same_fumble_values(expected_fumble_body)
-	if continuation.get("kind") == "combat-reward":
-		if continuation.size() != 3 or not continuation.get("battleId") is String or continuation["battleId"].is_empty() or not continuation.get("runtimeContinuation") is Dictionary:
-			return false
-		var runtime: Dictionary = continuation["runtimeContinuation"]
-		var reward := ClassicRewardState.from_data(runtime.get("state")) if runtime.size() == 2 and runtime.get("kind") == "classic-reward" else null
-		if vm_interaction != null or reward == null or reward.origin != &"battle" or reward.source_id != continuation["battleId"]:
-			return false
-		return _valid_reward_continuation(content, state, reward, session_interaction)
-	if continuation.get("kind") == "post-clock":
-		return _valid_post_time_continuation(content, state, continuation, vm_interaction, session_interaction)
-	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
-	if continuation.size() != fields.size():
+	var special := absi(spell.special)
+	var supported := special == 68 or special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or special > 99 or special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+	var expected_count := mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
+	if targeting.target_count != expected_count or spell.target_type < 0 or spell.target_type > 2 or not supported:
 		return false
-	for field: String in fields:
-		if not continuation.has(field):
-			return false
-	if continuation["kind"] != "post-move" or not continuation["mapId"] is String or not continuation["x"] is int or not continuation["y"] is int or not continuation["triggerIds"] is Array or not continuation["triggerIndex"] is int or not continuation["activeTriggerId"] is String or not continuation["randomRegionIds"] is Array or not continuation["randomRegionIndex"] is int or not continuation["activeRandomProgramId"] is String or not continuation["activeRandomRegionId"] is String or not continuation["randomBattleStage"] is String or not continuation["actionPointDestinationDepth"] is int or int(continuation["actionPointDestinationDepth"]) < 0 or int(continuation["actionPointDestinationDepth"]) > 1:
+	return session_interaction.to_data() == (_field_spell_target_request(session_interaction.request_id, character, spell, expected_count, state.party.characters()).to_data() if continuation.kind == &"field-spell-target-selection" else _scroll_target_request(session_interaction.request_id, character, targeting.scroll_slot, spell, expected_count, state.party.characters()).to_data())
+
+
+static func _item_instance_for_state(character: CharacterState, instance_id: String) -> ItemInstance:
+	if character == null:
+		return null
+	for carried: ItemInstance in character.inventory():
+		if carried.id == instance_id:
+			return carried
+	return null
+
+
+static func _valid_post_move_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var exploration := continuation.exploration()
+	if continuation.kind != &"post-move" or exploration == null or exploration.action_point_destination_depth < 0 or exploration.action_point_destination_depth > 1:
 		return false
-	var map := content.world.map_by_id(continuation["mapId"])
-	var coordinate := Vector2i(continuation["x"], continuation["y"])
-	var cell: MapCell = null if map == null else map.topology.cell_at(coordinate)
-	if cell == null or state.party.map_id != map.id or state.party.coordinate != coordinate or continuation["triggerIds"] != _selected_placed_trigger_ids(content, cell) or continuation["randomRegionIds"] != cell.random_rect_ids():
+	var map := content.world.map_by_id(exploration.map_id)
+	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
+	if cell == null or state.party.map_id != map.id or state.party.coordinate != exploration.coordinate or exploration.trigger_ids != _selected_placed_trigger_ids(content, cell) or exploration.random_region_ids != cell.random_rect_ids():
 		return false
-	var random_index: int = continuation["randomRegionIndex"]
-	if random_index < -1 or random_index >= continuation["randomRegionIds"].size():
+	if exploration.random_region_index < -1 or exploration.random_region_index >= exploration.random_region_ids.size():
 		return false
 	if session_interaction != null:
-		if vm_interaction != null or continuation["activeTriggerId"] != "" or continuation["activeRandomProgramId"] != "" or continuation["randomBattleStage"] != "surprise-choice" or session_interaction.kind != &"yes_no":
-			return false
-		var active_region_id: String = continuation["activeRandomRegionId"]
-		return random_index >= 0 and continuation["randomRegionIds"][random_index] == active_region_id and map.random_region_by_id(active_region_id) != null
-	if vm_interaction == null or continuation["randomBattleStage"] != "" or continuation["activeRandomRegionId"] != "":
+		return vm_interaction == null and exploration.active_trigger_id.is_empty() and exploration.active_random_program_id.is_empty() and exploration.random_battle_stage == &"surprise-choice" and session_interaction.kind == &"yes_no" and exploration.random_region_index >= 0 and exploration.random_region_ids[exploration.random_region_index] == exploration.active_random_region_id and map.random_region_by_id(exploration.active_random_region_id) != null
+	if vm_interaction == null or not exploration.random_battle_stage.is_empty() or not exploration.active_random_region_id.is_empty():
 		return false
-	if not continuation["activeRandomProgramId"].is_empty():
-		return continuation["activeTriggerId"].is_empty() and content.scenario.program_by_id(continuation["activeRandomProgramId"]) != null
-	var index: int = continuation["triggerIndex"]
-	if index < 0 or index >= continuation["triggerIds"].size() or continuation["activeTriggerId"].is_empty() or continuation["triggerIds"][index] != continuation["activeTriggerId"]:
-		return false
-	return content.trigger_by_id(continuation["activeTriggerId"]) != null
+	if not exploration.active_random_program_id.is_empty():
+		return exploration.active_trigger_id.is_empty() and content.scenario.program_by_id(exploration.active_random_program_id) != null
+	return exploration.trigger_index >= 0 and exploration.trigger_index < exploration.trigger_ids.size() and not exploration.active_trigger_id.is_empty() and exploration.trigger_ids[exploration.trigger_index] == exploration.active_trigger_id and content.trigger_by_id(exploration.active_trigger_id) != null
 
 
-static func _valid_suspended_scenario_owner(content: RealmzContent, state: GameState, owner: Dictionary, saved: ScenarioVmSnapshot) -> bool:
+static func _valid_suspended_scenario_owner(content: RealmzContent, state: GameState, owner: SessionContinuation, saved: ScenarioVmSnapshot) -> bool:
 	# The full handoff shape is validated by the caller. This guard proves the
 	# detached VM can resume and that its owner is an exploration continuation
 	# which would ordinarily be validated beside a live VM interaction.
-	if owner.get("kind") not in ["post-clock", "post-move"] or saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or not saved.pending_continuation.is_empty():
+	if owner == null or owner.kind not in [&"post-clock", &"post-move"] or saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or not saved.pending_continuation.is_empty():
 		return false
 	var test_vm := ScenarioVm.new()
 	test_vm.configure(content.scenario)
@@ -3333,36 +3285,25 @@ static func _valid_suspended_scenario_owner(content: RealmzContent, state: GameS
 	return _valid_session_continuation(content, state, owner, sentinel, null)
 
 
-static func _valid_post_time_continuation(content: RealmzContent, state: GameState, continuation: Dictionary, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
-	var fields: Array[String] = ["kind", "mapId", "x", "y", "timedDay", "timedEncounterIndex", "activeTimedProgramId", "midnightRecoveryPending", "timedCheckX", "timedCheckY", "checkRandom", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "resumeKind", "directionX", "directionY"]
-	if continuation.size() != fields.size():
+static func _valid_post_time_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	if continuation == null or continuation.kind != &"post-clock":
 		return false
-	for field: String in fields:
-		if not continuation.has(field):
-			return false
-	if not continuation["mapId"] is String or not continuation["x"] is int or not continuation["y"] is int or not continuation["timedDay"] is int or continuation["timedDay"] < 0 or not continuation["timedEncounterIndex"] is int or continuation["timedEncounterIndex"] < 0 or continuation["timedEncounterIndex"] > content.timed_encounters().size() or not continuation["activeTimedProgramId"] is String or not continuation["midnightRecoveryPending"] is bool or not continuation["timedCheckX"] is int or not continuation["timedCheckY"] is int or not continuation["checkRandom"] is bool or not continuation["randomRegionIds"] is Array or not continuation["randomRegionIndex"] is int or not continuation["activeRandomProgramId"] is String or not continuation["activeRandomRegionId"] is String or not continuation["randomBattleStage"] is String or not continuation["resumeKind"] is String or continuation["resumeKind"] not in ["completed", "move", "post-move"] or not continuation["directionX"] is int or not continuation["directionY"] is int:
+	var exploration := continuation.exploration()
+	if exploration == null or exploration.timed_day < 0 or exploration.timed_encounter_index < 0 or exploration.timed_encounter_index > content.timed_encounters().size() or exploration.resume_kind not in [&"completed", &"move", &"post-move"]:
 		return false
-	var map := content.world.map_by_id(continuation["mapId"])
-	var coordinate := Vector2i(continuation["x"], continuation["y"])
-	var cell: MapCell = null if map == null else map.topology.cell_at(coordinate)
-	var direction := Vector2i(continuation["directionX"], continuation["directionY"])
-	if cell == null or state.party.map_id != map.id or state.party.coordinate != coordinate or continuation["randomRegionIds"] != cell.random_rect_ids() or continuation["randomRegionIndex"] < -1 or continuation["randomRegionIndex"] >= continuation["randomRegionIds"].size() or direction.x < -1 or direction.x > 1 or direction.y < -1 or direction.y > 1:
+	var map := content.world.map_by_id(exploration.map_id)
+	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
+	if cell == null or state.party.map_id != map.id or state.party.coordinate != exploration.coordinate or exploration.random_region_ids != cell.random_rect_ids() or exploration.random_region_index < -1 or exploration.random_region_index >= exploration.random_region_ids.size() or exploration.direction.x < -1 or exploration.direction.x > 1 or exploration.direction.y < -1 or exploration.direction.y > 1:
 		return false
-	if continuation["resumeKind"] in ["completed", "post-move"] and direction != Vector2i.ZERO:
-		return false
-	if continuation["resumeKind"] == "move" and direction == Vector2i.ZERO:
+	if exploration.resume_kind in [&"completed", &"post-move"] and exploration.direction != Vector2i.ZERO or exploration.resume_kind == &"move" and exploration.direction == Vector2i.ZERO:
 		return false
 	if session_interaction != null:
-		if vm_interaction != null or continuation["activeRandomProgramId"] != "" or continuation["randomBattleStage"] != "surprise-choice" or session_interaction.kind != InteractionRequest.YES_NO:
-			return false
-		var active_region_id: String = continuation["activeRandomRegionId"]
-		var random_index: int = continuation["randomRegionIndex"]
-		return random_index >= 0 and continuation["randomRegionIds"][random_index] == active_region_id and map.random_region_by_id(active_region_id) != null
+		return vm_interaction == null and exploration.active_random_program_id.is_empty() and exploration.random_battle_stage == &"surprise-choice" and session_interaction.kind == InteractionRequest.YES_NO and exploration.random_region_index >= 0 and exploration.random_region_ids[exploration.random_region_index] == exploration.active_random_region_id and map.random_region_by_id(exploration.active_random_region_id) != null
 	if vm_interaction != null:
-		if not continuation["activeTimedProgramId"].is_empty():
-			return continuation["activeRandomProgramId"].is_empty() and content.scenario.program_by_id(continuation["activeTimedProgramId"]) != null
-		return continuation["randomBattleStage"] == "" and continuation["activeRandomRegionId"] == "" and not continuation["activeRandomProgramId"].is_empty() and content.scenario.program_by_id(continuation["activeRandomProgramId"]) != null
-	return continuation["randomBattleStage"] == "" and continuation["activeRandomRegionId"] == "" and continuation["activeRandomProgramId"] == "" and continuation["activeTimedProgramId"] == ""
+		if not exploration.active_timed_program_id.is_empty():
+			return exploration.active_random_program_id.is_empty() and content.scenario.program_by_id(exploration.active_timed_program_id) != null
+		return exploration.random_battle_stage.is_empty() and exploration.active_random_region_id.is_empty() and not exploration.active_random_program_id.is_empty() and content.scenario.program_by_id(exploration.active_random_program_id) != null
+	return exploration.random_battle_stage.is_empty() and exploration.active_random_region_id.is_empty() and exploration.active_random_program_id.is_empty() and exploration.active_timed_program_id.is_empty()
 
 
 static func _valid_vm_reward_continuation(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:
@@ -3442,22 +3383,18 @@ static func _valid_age_update_payload(state: GameState, value: Variant) -> bool:
 		and changes is Array and changes.size() == 15 and changes.all(func(change: Variant) -> bool: return change is int)
 
 
-static func _valid_ready_post_move_continuation(content: RealmzContent, state: GameState, continuation: Dictionary) -> bool:
-	var fields: Array[String] = ["kind", "mapId", "x", "y", "triggerIds", "triggerIndex", "activeTriggerId", "randomRegionIds", "randomRegionIndex", "activeRandomProgramId", "activeRandomRegionId", "randomBattleStage", "actionPointDestinationDepth"]
-	if continuation.size() != fields.size():
+static func _valid_ready_post_move_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation) -> bool:
+	if continuation == null or continuation.kind != &"post-move":
 		return false
-	for field: String in fields:
-		if not continuation.has(field):
-			return false
-	if continuation["kind"] != "post-move" or not continuation["mapId"] is String or not continuation["x"] is int or not continuation["y"] is int or not continuation["triggerIds"] is Array or continuation["triggerIndex"] != 0 or not continuation["activeTriggerId"] is String or not continuation["activeTriggerId"].is_empty() or not continuation["randomRegionIds"] is Array or not continuation["randomRegionIndex"] is int or not continuation["activeRandomProgramId"] is String or not continuation["activeRandomProgramId"].is_empty() or not continuation["activeRandomRegionId"] is String or not continuation["activeRandomRegionId"].is_empty() or not continuation["randomBattleStage"] is String or not continuation["randomBattleStage"].is_empty() or not continuation["actionPointDestinationDepth"] is int or int(continuation["actionPointDestinationDepth"]) < 0 or int(continuation["actionPointDestinationDepth"]) > 1:
+	var exploration := continuation.exploration()
+	if exploration == null or exploration.trigger_index != 0 or not exploration.active_trigger_id.is_empty() or not exploration.active_random_program_id.is_empty() or not exploration.active_random_region_id.is_empty() or not exploration.random_battle_stage.is_empty() or exploration.action_point_destination_depth < 0 or exploration.action_point_destination_depth > 1:
 		return false
-	var map := content.world.map_by_id(continuation["mapId"])
-	var coordinate := Vector2i(continuation["x"], continuation["y"])
-	var cell: MapCell = null if map == null else map.topology.cell_at(coordinate)
-	return cell != null and state.party.map_id == map.id and state.party.coordinate == coordinate \
-		and continuation["triggerIds"] == _selected_placed_trigger_ids(content, cell) \
-		and continuation["randomRegionIds"] == cell.random_rect_ids() \
-		and int(continuation["randomRegionIndex"]) == continuation["randomRegionIds"].size() - 1
+	var map := content.world.map_by_id(exploration.map_id)
+	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
+	return cell != null and state.party.map_id == map.id and state.party.coordinate == exploration.coordinate \
+		and exploration.trigger_ids == _selected_placed_trigger_ids(content, cell) \
+		and exploration.random_region_ids == cell.random_rect_ids() \
+		and exploration.random_region_index == exploration.random_region_ids.size() - 1
 
 
 static func _selected_placed_trigger_ids(content: RealmzContent, cell: MapCell) -> Array[String]:
@@ -3468,4 +3405,7 @@ static func _selected_placed_trigger_ids(content: RealmzContent, cell: MapCell) 
 		if trigger != null and trigger.classic_record_index < selected_record_index:
 			selected_id = trigger.id
 			selected_record_index = trigger.classic_record_index
-	return [] if selected_id.is_empty() else [selected_id]
+	var selected_ids: Array[String] = []
+	if not selected_id.is_empty():
+		selected_ids.append(selected_id)
+	return selected_ids

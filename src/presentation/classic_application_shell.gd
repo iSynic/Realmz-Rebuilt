@@ -726,7 +726,7 @@ func _end_adventure_reason() -> String:
 	return ""
 
 
-func _decode_image(asset: PackageMediaAsset, bytes: PackedByteArray) -> Image:
+func _decode_image(asset: MediaAsset, bytes: PackedByteArray) -> Image:
 	if bytes.is_empty():
 		return null
 	var image := Image.new()

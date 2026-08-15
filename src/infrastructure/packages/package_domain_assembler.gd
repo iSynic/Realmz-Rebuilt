@@ -2,7 +2,7 @@ class_name PackageDomainAssembler
 extends PackageDecoderBase
 
 
-func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scenario: Dictionary, media_assets: Array[PackageMediaAsset] = [], trusted_install: bool = false) -> RealmzContent:
+func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scenario: Dictionary, media_assets: Array[MediaAsset] = [], trusted_install: bool = false) -> RealmzContent:
 	clear_error()
 	var _content_decoder := PackageContentDecoder.new(_diagnostic)
 	var _scenario_decoder := PackageScenarioDecoder.new(_diagnostic)

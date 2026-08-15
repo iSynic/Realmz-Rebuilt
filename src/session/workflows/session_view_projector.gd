@@ -229,10 +229,8 @@ static func _populate_action_availability(context: SessionWorkflowContext, resul
 	result.set_action_availability(&"change_character_appearance", appearance_available, appearance_reason)
 	for action_id: StringName in [&"equip_item", &"unequip_item", &"drop_item", &"trade_item"]:
 		result.set_action_availability(action_id, ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Inventory changes are unavailable during battle." if battle_active else "")
-	result.set_action_availability(&"identify_item", false, ordinary_reason if not ordinary_reason.is_empty() else "Identification is available only from a shop, temple, or the Identify spell.")
 	result.set_action_availability(&"split_item", false, ordinary_reason if not ordinary_reason.is_empty() else "Classic split-stack load behavior requires a fidelity decision.")
 	result.set_action_availability(&"join_item", false, ordinary_reason if not ordinary_reason.is_empty() else "Classic join-stack load behavior requires a fidelity decision.")
-	result.set_action_availability(&"store_item", false, "Classic has no ordinary player-stash workflow; opcode 36 equipment escrow remains scenario-owned.")
 	result.set_action_availability(&"service_action", ordinary_reason.is_empty() and not battle_active and not result.services.is_empty(), ordinary_reason if not ordinary_reason.is_empty() else "Services are unavailable during battle." if battle_active else "No shop, temple, or bank is available at this location.")
 	result.set_action_availability(&"money_action", ordinary_reason.is_empty() and not battle_active and result.money_workspace != null, ordinary_reason if not ordinary_reason.is_empty() else "Money management is unavailable during battle." if battle_active else "No party money workspace is available.")
 	result.set_action_availability(&"set_location_note", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Location notes are unavailable during battle." if battle_active else "")
@@ -253,9 +251,6 @@ static func _populate_action_availability(context: SessionWorkflowContext, resul
 			if not combat_move_enabled:
 				combat_move_reason = "The active character has no legal tactical step."
 	result.set_action_availability(&"combat_move", combat_move_enabled, combat_move_reason)
-	for action_id: StringName in [&"select_spell_power", &"select_spell_target", &"open_journal"]:
-		result.set_action_availability(action_id, false, "Not implemented in the current gameplay slice.")
-	result.set_action_availability(&"open_maps", not result.player_map_menu_entries.is_empty(), "This campaign supplies no player-map records." if result.player_map_menu_entries.is_empty() else "")
 
 
 static func _populate_spell_actions(context: SessionWorkflowContext, result: GameView) -> void:

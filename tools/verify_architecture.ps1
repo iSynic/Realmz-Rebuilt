@@ -35,6 +35,101 @@ function Remove-GdscriptLineComment {
     return $builder.ToString()
 }
 
+function Get-SanitizedGdscriptLines {
+    param([string]$Content)
+
+    # Replace comments and quoted strings with spaces while preserving line
+    # numbers and executable identifiers.  The architecture scan must not
+    # interpret a dependency-looking example in documentation or a literal
+    # string as a class reference.  Triple-quoted strings are handled as well
+    # because GDScript permits multiline string literals.
+    $lines = [Collections.Generic.List[string]]::new()
+    $builder = [Text.StringBuilder]::new()
+    $inString = $false
+    $tripleString = $false
+    $quote = [char]0
+    $escaped = $false
+    $inLineComment = $false
+    $index = 0
+    while ($index -lt $Content.Length) {
+        $character = $Content[$index]
+        if ($character -eq "`r") {
+            $index++
+            continue
+        }
+        if ($character -eq "`n") {
+            [void]$lines.Add($builder.ToString())
+            [void]$builder.Clear()
+            $inLineComment = $false
+            $escaped = $false
+            $index++
+            continue
+        }
+        if ($inLineComment) {
+            [void]$builder.Append(' ')
+            $index++
+            continue
+        }
+        if ($inString) {
+            if ($tripleString -and $index + 2 -lt $Content.Length -and $Content[$index] -eq $quote -and $Content[$index + 1] -eq $quote -and $Content[$index + 2] -eq $quote) {
+                [void]$builder.Append('   ')
+                $index += 3
+                $inString = $false
+                $tripleString = $false
+                $quote = [char]0
+                $escaped = $false
+                continue
+            }
+            if (-not $tripleString -and $character -eq $quote) {
+                [void]$builder.Append(' ')
+                $index++
+                $inString = $false
+                $quote = [char]0
+                $escaped = $false
+                continue
+            }
+            [void]$builder.Append(' ')
+            if ($escaped) {
+                $escaped = $false
+            } elseif ($character -eq '\') {
+                $escaped = $true
+            }
+            $index++
+            continue
+        }
+        if ($character -eq '#') {
+            [void]$builder.Append(' ')
+            $inLineComment = $true
+            $index++
+            continue
+        }
+        if (($character -eq '"' -or $character -eq "'") -and $index + 2 -lt $Content.Length -and $Content[$index + 1] -eq $character -and $Content[$index + 2] -eq $character) {
+            [void]$builder.Append('   ')
+            $index += 3
+            $inString = $true
+            $tripleString = $true
+            $quote = $character
+            $escaped = $false
+            continue
+        }
+        if ($character -eq '"' -or $character -eq "'") {
+            [void]$builder.Append(' ')
+            $index++
+            $inString = $true
+            $tripleString = $false
+            $quote = $character
+            $escaped = $false
+            continue
+        }
+        [void]$builder.Append($character)
+        $index++
+    }
+    if ($builder.Length -gt 0 -or $Content.EndsWith("`n")) {
+        [void]$lines.Add($builder.ToString())
+    }
+    return [string[]]$lines.ToArray()
+}
+
 function Get-SourceLayer {
     param([string]$RelativePath)
 
@@ -48,18 +143,78 @@ function Get-SourceLayer {
     return $null
 }
 
+function Get-RepositoryRelativePath {
+    param(
+        [string]$RootPath,
+        [string]$TargetPath
+    )
+
+    # Windows PowerShell 5.1 does not expose the newer .NET relative-path API.
+    # Resolve both paths first, then remove the
+    # repository-root prefix without allowing a sibling path such as
+    # C:\repo-other to pass as a child of C:\repo.
+    $resolvedRoot = [IO.Path]::GetFullPath($RootPath).TrimEnd('\')
+    $resolvedTarget = [IO.Path]::GetFullPath($TargetPath)
+    if ($resolvedTarget.Equals($resolvedRoot, [StringComparison]::OrdinalIgnoreCase)) {
+        return ''
+    }
+    $rootPrefix = $resolvedRoot + '\'
+    if (-not $resolvedTarget.StartsWith($rootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Target path '$TargetPath' is outside repository root '$RootPath'."
+    }
+    return $resolvedTarget.Substring($rootPrefix.Length).Replace('/', '\')
+}
+
+function Get-ClassNameSymbolTable {
+    param([string]$RootPath)
+
+    $symbols = @{}
+    foreach ($file in Get-ChildItem (Join-Path $RootPath "src") -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
+        $relativePath = Get-RepositoryRelativePath -RootPath $RootPath -TargetPath $file.FullName
+        $sourceLayer = Get-SourceLayer $relativePath
+        if (-not $sourceLayer) {
+            continue
+        }
+        $lines = Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($file.FullName))
+        for ($index = 0; $index -lt $lines.Count; $index++) {
+            $match = [regex]::Match($lines[$index], '^\s*class_name\s+([A-Za-z_][A-Za-z0-9_]*)')
+            if (-not $match.Success) {
+                continue
+            }
+            $name = $match.Groups[1].Value
+            $entry = [pscustomobject]@{
+                Name = $name
+                RelativePath = $relativePath
+                LineNumber = $index + 1
+                SourceLayer = $sourceLayer
+            }
+            if ($symbols.ContainsKey($name)) {
+                $symbols[$name] = @($symbols[$name]) + $entry
+            } else {
+                $symbols[$name] = @($entry)
+            }
+        }
+    }
+    return $symbols
+}
+
 function Get-SourceDependencyEdges {
     param(
         [string]$FilePath,
-        [string]$RelativePath
+        [string]$RelativePath,
+        [hashtable]$ClassNameSymbols,
+        [string]$ClassNameReferencePattern
     )
 
+    $rawLines = [IO.File]::ReadAllLines($FilePath)
+    $lines = Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($FilePath))
+    $sourceLayer = Get-SourceLayer $RelativePath
     $lineNumber = 0
-    foreach ($line in Get-Content -LiteralPath $FilePath) {
+    foreach ($code in $lines) {
         $lineNumber++
-        $code = Remove-GdscriptLineComment $line
-        foreach ($match in [regex]::Matches($code, '\b(?:preload|load)\s*\(\s*"(res://src/[^"]+)"')) {
-            $targetPath = $match.Groups[1].Value.Substring(6).Replace('/', '\')
+        $importCode = Remove-GdscriptLineComment $rawLines[$lineNumber - 1]
+        foreach ($match in [regex]::Matches($importCode, '\b(preload|load)\s*\(\s*"(res://src/[^"]+)"')) {
+            $targetPath = $match.Groups[2].Value.Substring(6).Replace('/', '\')
             $targetLayer = Get-SourceLayer $targetPath
             if ($targetLayer) {
                 [pscustomobject]@{
@@ -67,7 +222,34 @@ function Get-SourceDependencyEdges {
                     LineNumber = $lineNumber
                     TargetPath = $targetPath
                     TargetLayer = $targetLayer
+                    Symbol = $match.Groups[1].Value
+                    EdgeType = 'path'
                 }
+            }
+        }
+        if ([string]::IsNullOrEmpty($ClassNameReferencePattern)) {
+            continue
+        }
+        foreach ($match in [regex]::Matches($code, $ClassNameReferencePattern, [Text.RegularExpressions.RegexOptions]::CultureInvariant)) {
+            $symbolName = $match.Value
+            $declarations = @($ClassNameSymbols[$symbolName])
+            # GDScript requires global class names to be unique.  If a broken
+            # checkout contains an ambiguous declaration, do not guess which
+            # target the reference resolves to and create a false violation.
+            if ($declarations.Count -ne 1) {
+                continue
+            }
+            $target = $declarations[0]
+            if ($target.SourceLayer -eq $sourceLayer) {
+                continue
+            }
+            [pscustomobject]@{
+                RelativePath = $RelativePath
+                LineNumber = $lineNumber
+                TargetPath = $target.RelativePath
+                TargetLayer = $target.SourceLayer
+                Symbol = $symbolName
+                EdgeType = 'class_name'
             }
         }
     }
@@ -90,12 +272,13 @@ foreach ($file in $coreFiles) {
     }
 }
 
-# Explicit resource imports are the stable, source-level dependency edges in
-# this GDScript project.  Same-layer imports are allowed.  Cross-layer rules
-# are intentionally narrow: they enforce the settled ownership matrix without
-# banning legitimate collaborators or relying on line counts.
+# Explicit resource imports and globally registered class_name references are
+# the stable, source-level dependency edges in this GDScript project.  Same-
+# layer references are allowed.  Cross-layer rules are intentionally narrow:
+# they enforce the settled ownership matrix without banning legitimate
+# collaborators or relying on line counts.
 $dependencyRules = @{
-    core = @('scenario', 'infrastructure', 'presentation', 'app')
+    core = @('scenario', 'session', 'infrastructure', 'presentation', 'app')
     scenario = @('infrastructure', 'presentation', 'app', 'session')
     infrastructure = @('presentation', 'app')
     presentation = @('infrastructure')
@@ -107,19 +290,35 @@ $dependencyRoots = @(
     (Join-Path $repoRoot "src\presentation"),
     (Join-Path $repoRoot "src\app")
 )
+$classNameSymbols = Get-ClassNameSymbolTable -RootPath $repoRoot
+$uniqueClassNameSymbols = @{}
+foreach ($symbolName in $classNameSymbols.Keys) {
+    if (@($classNameSymbols[$symbolName]).Count -eq 1) {
+        $uniqueClassNameSymbols[$symbolName] = $classNameSymbols[$symbolName]
+    }
+}
+$classNameReferencePattern = ''
+if ($uniqueClassNameSymbols.Count -gt 0) {
+    $escapedNames = @($uniqueClassNameSymbols.Keys | Sort-Object { $_.Length } -Descending | ForEach-Object { [regex]::Escape($_) })
+    $classNameReferencePattern = '(?<![A-Za-z0-9_])(?:' + ($escapedNames -join '|') + ')(?![A-Za-z0-9_])'
+}
 foreach ($rootPath in $dependencyRoots) {
     if (-not (Test-Path -LiteralPath $rootPath)) {
         continue
     }
     foreach ($file in Get-ChildItem -LiteralPath $rootPath -Recurse -Filter "*.gd") {
-        $relativePath = [IO.Path]::GetRelativePath($repoRoot, $file.FullName)
+        $relativePath = Get-RepositoryRelativePath -RootPath $repoRoot -TargetPath $file.FullName
         $sourceLayer = Get-SourceLayer $relativePath
         if (-not $sourceLayer -or -not $dependencyRules.ContainsKey($sourceLayer)) {
             continue
         }
-        foreach ($edge in Get-SourceDependencyEdges -FilePath $file.FullName -RelativePath $relativePath) {
+        foreach ($edge in Get-SourceDependencyEdges -FilePath $file.FullName -RelativePath $relativePath -ClassNameSymbols $uniqueClassNameSymbols -ClassNameReferencePattern $classNameReferencePattern) {
             if ($dependencyRules[$sourceLayer] -contains $edge.TargetLayer) {
-                $violations += "$($edge.RelativePath):$($edge.LineNumber) $sourceLayer may not import $($edge.TargetLayer) ($($edge.TargetPath))"
+                if ($edge.EdgeType -eq 'class_name') {
+                    $violations += "$($edge.RelativePath):$($edge.LineNumber) $sourceLayer may not reference globally registered symbol $($edge.Symbol) from $($edge.TargetLayer) ($($edge.TargetPath))"
+                } else {
+                    $violations += "$($edge.RelativePath):$($edge.LineNumber) $sourceLayer may not use $($edge.Symbol) to import $($edge.TargetLayer) ($($edge.TargetPath))"
+                }
             }
         }
     }
@@ -162,7 +361,7 @@ $protocolRoots = @("src\core", "src\scenario", "src\presentation")
 foreach ($protocolRoot in $protocolRoots) {
     $rootPath = Join-Path $repoRoot $protocolRoot
     foreach ($file in Get-ChildItem $rootPath -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
-        $relativePath = [IO.Path]::GetRelativePath($repoRoot, $file.FullName)
+        $relativePath = Get-RepositoryRelativePath -RootPath $repoRoot -TargetPath $file.FullName
         $lineNumber = 0
         foreach ($line in Get-Content $file.FullName) {
             $lineNumber++

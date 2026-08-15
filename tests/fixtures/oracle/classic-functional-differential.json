@@ -2545,7 +2545,7 @@
     },
     {
       "id": "inventory.carried-item-workflow",
-      "workflowIds": ["classic.inventory.manage-equipment","classic.inventory.inspect-item","classic.inventory.use-item","classic.inventory.trade-item","classic.inventory.drop-item"],
+      "workflowIds": ["classic.inventory.manage-equipment","classic.inventory.split-item","classic.inventory.join-item","classic.inventory.inspect-item","classic.inventory.use-item","classic.inventory.trade-item","classic.inventory.drop-item"],
       "domain": "inventory",
       "claim": "Outside an active encounter or battle, ordinary carried-item management selects one party member and one item, applies Classic race/class/category and equipment-slot rules, transfers ordinary equipped records as unequipped, rejects capacity violations, and confirms irreversible dropping without inventing a general player stash.",
       "remake": {

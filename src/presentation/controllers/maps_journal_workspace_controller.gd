@@ -65,7 +65,6 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog) 
 	else:
 		for entry: JournalEntryView in view.journal_entries:
 			_add_card(parent, "Journal entry %d" % entry.message_id, "Authored scenario message", entry.text)
-	_add_disabled_action(parent, view, "Open Classic journal", &"open_journal")
 
 
 func _select_player_map(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, player_map_id: String) -> void:
@@ -160,15 +159,6 @@ func _add_card(parent: VBoxContainer, title: String, subtitle: String, detail: S
 	if not detail.is_empty():
 		_add_label(box, detail, MUTED)
 	parent.add_child(panel)
-
-
-func _add_disabled_action(parent: VBoxContainer, view: GameView, label: String, action_id: StringName) -> void:
-	var button := Button.new()
-	button.text = label
-	var availability := view.availability(action_id)
-	button.disabled = not availability.enabled
-	button.tooltip_text = availability.reason if not availability.enabled else ""
-	parent.add_child(button)
 
 
 func _add_label(parent: Container, text: String, color: Color = Color.WHITE, size: int = 15) -> Label:

@@ -1,19 +1,19 @@
 class_name PackageMediaCatalog
-extends RefCounted
+extends MediaSource
 
 var package_path: String
 var package_hash: String
-var _assets: Array[PackageMediaAsset]
+var _assets: Array[MediaAsset]
 var _assets_by_id: Dictionary = {}
 var _assets_by_resource: Dictionary = {}
 var _ambiguous_resource_keys: Dictionary = {}
 
 
-func _init(source_path: String, content_hash: String, indexed_assets: Array[PackageMediaAsset]) -> void:
+func _init(source_path: String, content_hash: String, indexed_assets: Array[MediaAsset]) -> void:
 	package_path = source_path
 	package_hash = content_hash
 	_assets = indexed_assets.duplicate()
-	for asset: PackageMediaAsset in _assets:
+	for asset: MediaAsset in _assets:
 		_assets_by_id[asset.id] = asset
 		if asset.resource_type.is_empty():
 			continue
@@ -27,27 +27,27 @@ func _init(source_path: String, content_hash: String, indexed_assets: Array[Pack
 		_assets_by_resource[key] = asset
 
 
-func assets() -> Array[PackageMediaAsset]:
+func assets() -> Array[MediaAsset]:
 	return _assets.duplicate()
 
 
-func assets_of_kind(kind: String) -> Array[PackageMediaAsset]:
-	var result: Array[PackageMediaAsset] = []
-	for asset: PackageMediaAsset in _assets:
+func assets_of_kind(kind: String) -> Array[MediaAsset]:
+	var result: Array[MediaAsset] = []
+	for asset: MediaAsset in _assets:
 		if asset.kind == kind:
 			result.append(asset)
-	result.sort_custom(func(left: PackageMediaAsset, right: PackageMediaAsset) -> bool: return left.resource_id < right.resource_id)
+	result.sort_custom(func(left: MediaAsset, right: MediaAsset) -> bool: return left.resource_id < right.resource_id)
 	return result
 
 
-func asset_by_id(asset_id: String) -> PackageMediaAsset:
-	return _assets_by_id.get(asset_id) as PackageMediaAsset
+func asset_by_id(asset_id: String) -> MediaAsset:
+	return _assets_by_id.get(asset_id) as MediaAsset
 
 
-func asset_by_resource(resource_type: String, resource_id: int) -> PackageMediaAsset:
+func asset_by_resource(resource_type: String, resource_id: int) -> MediaAsset:
 	if resource_type.is_empty():
 		return null
-	return _assets_by_resource.get(_resource_key(resource_type, resource_id)) as PackageMediaAsset
+	return _assets_by_resource.get(_resource_key(resource_type, resource_id)) as MediaAsset
 
 
 func resource_status(resource_type: String, resource_id: int) -> StringName:
@@ -59,16 +59,16 @@ func resource_status(resource_type: String, resource_id: int) -> StringName:
 	return &"resolved" if _assets_by_resource.has(key) else &"missing"
 
 
-func owns_asset(asset: PackageMediaAsset) -> bool:
+func owns_asset(asset: MediaAsset) -> bool:
 	return asset != null and _assets.has(asset)
 
 
-func tileset_by_id(tileset_id: String) -> PackageMediaAsset:
+func tileset_by_id(tileset_id: String) -> MediaAsset:
 	var asset := asset_by_id(tileset_id)
 	return asset if asset != null and asset.is_tileset() else null
 
 
-func battle_tileset() -> PackageMediaAsset:
+func battle_tileset() -> MediaAsset:
 	var asset := asset_by_id("classic-battle-tiles-302")
 	return asset if asset != null and asset.is_battle_tileset() else null
 
@@ -96,7 +96,7 @@ func resolution_diagnostic(resource_type: String, resource_id: int, presentation
 	return diagnostic
 
 
-func read_bytes(asset: PackageMediaAsset) -> PackedByteArray:
+func read_bytes(asset: MediaAsset) -> PackedByteArray:
 	if asset == null or not _assets.has(asset):
 		return PackedByteArray()
 	var archive := ZIPReader.new()
@@ -114,14 +114,14 @@ func read_bytes(asset: PackageMediaAsset) -> PackedByteArray:
 	return bytes
 
 
-func read_bytes_batch(requested_assets: Array[PackageMediaAsset]) -> Dictionary:
+func read_bytes_batch(requested_assets: Array[MediaAsset]) -> Dictionary:
 	var result: Dictionary = {}
 	if requested_assets.is_empty():
 		return result
 	var archive := ZIPReader.new()
 	if archive.open(package_path) != OK:
 		return result
-	for asset: PackageMediaAsset in requested_assets:
+	for asset: MediaAsset in requested_assets:
 		if asset == null or not _assets.has(asset):
 			continue
 		var bytes := archive.read_file(asset.path)

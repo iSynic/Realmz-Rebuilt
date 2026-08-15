@@ -15,7 +15,12 @@ func save_round_trip(snapshot: SessionSnapshot) -> SaveEnvelope:
 
 
 func continuation_data(snapshot: SessionSnapshot) -> Dictionary:
-	return {} if snapshot == null or snapshot.continuation == null else snapshot.continuation.to_legacy_data()
+	if snapshot == null or snapshot.continuation == null:
+		return {}
+	var wire := snapshot.continuation.to_data()
+	var payload: Dictionary = wire["data"].duplicate(true)
+	payload["kind"] = wire["kind"]
+	return payload
 
 
 func selected_case_arguments() -> Array:

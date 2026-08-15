@@ -105,7 +105,7 @@ func _on_presentation_sound_requested(sound_id: int, wait_for_completion: bool, 
 	_audio_presenter.present_sound(sound_id, _media, wait_for_completion, stop_existing)
 
 
-func set_package_media(media: PackageMediaCatalog) -> void:
+func set_package_media(media: MediaSource) -> void:
 	_media = ClassicMediaCatalog.new(media, _application_media)
 	_map_presenter.set_media_catalog(_media)
 	_battlefield_presenter.set_media_catalog(_media)

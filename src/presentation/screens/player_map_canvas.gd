@@ -79,7 +79,7 @@ func _draw_cell(cell: MapCellView, destination: Rect2) -> void:
 		draw_texture_rect(overlay, destination, false)
 
 
-func _draw_atlas_region(destination: Rect2, atlas: PackageMediaAsset, texture: Texture2D, tile_id: int) -> void:
+func _draw_atlas_region(destination: Rect2, atlas: MediaAsset, texture: Texture2D, tile_id: int) -> void:
 	var region := atlas.region_for(tile_id)
 	if region.has_area():
 		draw_texture_rect_region(texture, destination, Rect2(region))

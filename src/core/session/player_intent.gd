@@ -23,18 +23,12 @@ enum Kind {
 	UNEQUIP_ITEM,
 	USE_ITEM_ON_TARGET,
 	DROP_ITEM,
-	IDENTIFY_ITEM,
 	SPLIT_ITEM,
 	JOIN_ITEM,
 	TRADE_ITEM,
-	STORE_ITEM,
 	MONEY_ACTION,
 	SERVICE_ACTION,
-	SELECT_SPELL_POWER,
-	SELECT_SPELL_TARGET,
 	COMBAT_MOVE,
-	OPEN_JOURNAL,
-	OPEN_MAPS,
 	SET_LOCATION_NOTE,
 	SET_COMBAT_AUTO,
 	SET_FAST_SPELL,
@@ -273,7 +267,7 @@ func _init(intent_kind: Kind, intent_payload: Payload = null) -> void:
 
 func is_valid() -> bool:
 	match kind:
-		Kind.SEARCH, Kind.CAMP, Kind.REST, Kind.BEGIN_ADVENTURE, Kind.CANCEL_CHARACTER_DRAFT, Kind.FINALIZE_CHARACTER, Kind.OPEN_JOURNAL, Kind.OPEN_MAPS:
+		Kind.SEARCH, Kind.CAMP, Kind.REST, Kind.BEGIN_ADVENTURE, Kind.CANCEL_CHARACTER_DRAFT, Kind.FINALIZE_CHARACTER:
 			return payload is EmptyPayload
 		Kind.MOVE:
 			return payload is MovePayload
@@ -281,7 +275,7 @@ func is_valid() -> bool:
 			return payload is ItemUsePayload
 		Kind.USE_ITEM_ON_TARGET:
 			return payload is ItemTargetPayload
-		Kind.CAST_SPELL, Kind.SELECT_SPELL_POWER, Kind.SELECT_SPELL_TARGET, Kind.SET_FAST_SPELL:
+		Kind.CAST_SPELL, Kind.SET_FAST_SPELL:
 			return payload is SpellPayload
 		Kind.CHOOSE_COMBAT_ACTION:
 			return payload is CombatActionPayload
@@ -299,7 +293,7 @@ func is_valid() -> bool:
 			return payload is CharacterPayload
 		Kind.CHANGE_CHARACTER_APPEARANCE:
 			return payload is AppearancePayload
-		Kind.EQUIP_ITEM, Kind.UNEQUIP_ITEM, Kind.DROP_ITEM, Kind.IDENTIFY_ITEM, Kind.SPLIT_ITEM, Kind.JOIN_ITEM, Kind.TRADE_ITEM, Kind.STORE_ITEM:
+		Kind.EQUIP_ITEM, Kind.UNEQUIP_ITEM, Kind.DROP_ITEM, Kind.SPLIT_ITEM, Kind.JOIN_ITEM, Kind.TRADE_ITEM:
 			return payload is ItemActionPayload
 		Kind.MONEY_ACTION:
 			return payload is MoneyPayload
@@ -426,28 +420,12 @@ static func service_action(service: String, action_kind: StringName, actor: Stri
 	return PlayerIntent.new(Kind.SERVICE_ACTION, ServicePayload.new(service, action_kind, actor, amount_value))
 
 
-static func select_spell_power(spell_id: String, caster_id: String, power: int) -> PlayerIntent:
-	return PlayerIntent.new(Kind.SELECT_SPELL_POWER, SpellPayload.new(&"select-power", spell_id, caster_id, "", [], power))
-
-
-static func select_spell_target(spell_id: String, caster_id: String, target: String, power: int = 1) -> PlayerIntent:
-	return PlayerIntent.new(Kind.SELECT_SPELL_TARGET, SpellPayload.new(&"select-target", spell_id, caster_id, target, [], power))
-
-
 static func combat_move(actor: String, destination: Vector2i) -> PlayerIntent:
 	return PlayerIntent.new(Kind.COMBAT_MOVE, CombatMovePayload.new(actor, destination))
 
 
 static func set_combat_auto(character_id: String, auto_enabled: bool) -> PlayerIntent:
 	return PlayerIntent.new(Kind.SET_COMBAT_AUTO, CombatAutoPayload.new(character_id, auto_enabled))
-
-
-static func open_journal() -> PlayerIntent:
-	return PlayerIntent.new(Kind.OPEN_JOURNAL)
-
-
-static func open_maps() -> PlayerIntent:
-	return PlayerIntent.new(Kind.OPEN_MAPS)
 
 
 static func set_location_note(text: String) -> PlayerIntent:

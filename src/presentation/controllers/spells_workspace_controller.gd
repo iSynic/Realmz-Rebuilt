@@ -163,7 +163,7 @@ func _add_content_card(parent: Container, resource_type: String, icon_id: int, t
 func _content_icon(resource_type: String, resource_id: int) -> Control:
 	var frame := PanelContainer.new()
 	frame.custom_minimum_size = Vector2(52.0, 52.0)
-	var asset: PackageMediaAsset = _media.asset_by_resource(resource_type, resource_id) if _media != null and resource_id != 0 else null
+	var asset: MediaAsset = _media.asset_by_resource(resource_type, resource_id) if _media != null and resource_id != 0 else null
 	if asset != null:
 		var image := Image.new()
 		var bytes := _media.read_bytes(asset)

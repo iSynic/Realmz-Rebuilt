@@ -77,7 +77,7 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	if _media == null:
 		queue_redraw()
 		return
-	for asset: PackageMediaAsset in _media.assets():
+	for asset: MediaAsset in _media.assets():
 		if not asset.is_tileset() and not asset.is_picture():
 			continue
 		var texture := _load_image_texture(asset)
@@ -169,7 +169,7 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 	if not cell.visible:
 		draw_rect(rect, _cell_color(cell, level_type, dark), true)
 		return
-	var atlas_asset: PackageMediaAsset = _atlas_assets.get(cell.tileset_id) as PackageMediaAsset
+	var atlas_asset: MediaAsset = _atlas_assets.get(cell.tileset_id) as MediaAsset
 	var atlas_texture: Texture2D = _atlas_textures.get(cell.tileset_id) as Texture2D
 	if level_type == &"dungeon" and atlas_asset != null and atlas_texture != null and atlas_asset.id == "dungeon-top-down-302":
 		_draw_dungeon_atlas_cell(cell, rect, atlas_asset, atlas_texture)
@@ -188,7 +188,7 @@ func _draw_cell(cell: MapCellView, rect: Rect2, level_type: StringName, dark: bo
 		draw_rect(rect, Color(0.0, 0.0, 0.0, 0.45), true)
 
 
-func _draw_dungeon_atlas_cell(cell: MapCellView, rect: Rect2, atlas_asset: PackageMediaAsset, atlas_texture: Texture2D) -> void:
+func _draw_dungeon_atlas_cell(cell: MapCellView, rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Texture2D) -> void:
 	_draw_atlas_region(rect, atlas_asset, atlas_texture, 16)
 	if cell.terrain_id == "classic.dungeon.wall":
 		_draw_atlas_region(rect, atlas_asset, atlas_texture, 1)
@@ -205,13 +205,13 @@ func _draw_dungeon_atlas_cell(cell: MapCellView, rect: Rect2, atlas_asset: Packa
 			_draw_atlas_region(rect, atlas_asset, atlas_texture, int(feature_tiles[feature_kind]))
 
 
-func _draw_atlas_region(rect: Rect2, atlas_asset: PackageMediaAsset, atlas_texture: Texture2D, tile_id: int) -> void:
+func _draw_atlas_region(rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Texture2D, tile_id: int) -> void:
 	var region := atlas_asset.region_for(tile_id)
 	if region.has_area():
 		draw_texture_rect_region(atlas_texture, rect, Rect2(region))
 
 
-func _load_image_texture(asset: PackageMediaAsset) -> Texture2D:
+func _load_image_texture(asset: MediaAsset) -> Texture2D:
 	var bytes := _media.read_bytes(asset)
 	if bytes.is_empty():
 		return null

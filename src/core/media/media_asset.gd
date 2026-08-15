@@ -1,4 +1,4 @@
-class_name PackageMediaAsset
+class_name MediaAsset
 extends RefCounted
 
 var id: String
