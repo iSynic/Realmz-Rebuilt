@@ -3,12 +3,23 @@ extends RealmzTestCase
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 
 
-func run() -> void:
+func selected_case_arguments() -> Array:
 	var package_result := PackageRepository.new().load_package(FIXTURE_PATH)
-	assert_true(package_result.is_ok(), "integration fixture loads before session work")
-	if not package_result.is_ok():
+	return [package_result.content if package_result.is_ok() else null]
+
+
+func run() -> void:
+	var content: RealmzContent = selected_case_arguments()[0]
+	assert_not_null(content, "integration fixture loads before session work")
+	if content == null:
 		return
-	var content := package_result.content
+	_test_lifecycle_close_persistence(content)
+	_test_snapshot_rng_and_age_persistence(content)
+	_test_party_and_creator_persistence(content)
+	_test_combat_and_reward_persistence(content)
+
+
+func _test_lifecycle_close_persistence(content: RealmzContent) -> void:
 	var closing_session := GameSession.new()
 	assert_equal(closing_session.start(content, 5).state, SessionStep.State.COMPLETED, "a lifecycle fixture starts from validated content")
 	var closing_snapshot := closing_session.snapshot()
@@ -49,6 +60,9 @@ func run() -> void:
 	assert_equal(closing_controller.respond(InteractionResponse.acknowledge(closing_controller.view().pending_interaction)).state, SessionStep.State.COMPLETED, "the host controller commits close after both hook interactions")
 	assert_false(closing_controller.view().session_started, "controller close refreshes the detached view")
 	closing_controller.free()
+
+
+func _test_snapshot_rng_and_age_persistence(content: RealmzContent) -> void:
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "validated content starts synchronously")
 	_begin_fixture_adventure(session, content)
@@ -142,6 +156,8 @@ func run() -> void:
 	assert_equal(restored.restore(content, mismatched).error_code, &"package_mismatch", "package mismatch fails explicitly")
 	assert_equal(save_data(restored.snapshot()), before_failed_restore, "failed restore leaves the current session untouched")
 
+
+func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	var party_session := GameSession.new()
 	party_session.start(content, 7)
 	var setup_view := party_session.view()
@@ -310,7 +326,7 @@ func run() -> void:
 			assert_equal(confirmation.interaction.kind, InteractionRequest.YES_NO, "the unspent-point decision is a typed yes/no interaction")
 			assert_true(restored_spell_session.view().party_setup_available, "the creator remains mounted while its confirmation is pending")
 			var confirmation_save := save_round_trip(restored_spell_session.snapshot())
-			assert_not_null(confirmation_save, "the unspent-point continuation survives the serialized save-v3 boundary")
+			assert_not_null(confirmation_save, "the unspent-point continuation survives the serialized save-v4 boundary")
 			if confirmation_save == null:
 				confirmation_save = restored_spell_session.snapshot()
 			var restored_confirmation := GameSession.new()
@@ -329,6 +345,9 @@ func run() -> void:
 			assert_equal(requested_publication.state, SessionStep.State.COMPLETED, "accepting vault publication returns to committed party setup")
 			assert_true(requested_publication.events.any(func(event: DomainEvent) -> bool: return event.kind == &"character_publication_requested"), "the host receives one typed request to publish the finalized revision")
 
+
+
+func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 	var fumble_item := content.item_by_id("classic.item.6")
 	assert_not_null(fumble_item, "the integration fixture contains a charged Classic melee weapon")
 	if fumble_item != null:

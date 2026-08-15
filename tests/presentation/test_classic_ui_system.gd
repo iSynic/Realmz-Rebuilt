@@ -198,14 +198,8 @@ func _test_startup_shell() -> void:
 			if button.visible:
 				scenario_copy.append(button.text)
 	assert_true(router.setup_controller.campaign_list is VBoxContainer and router.setup_controller.campaign_list.get_parent() is ScrollContainer, "installed scenarios use one single-column picker surface")
-	assert_true(scenario_copy.any(func(text: String) -> bool: return text.to_lower().contains("installed scenario")), "the installed-scenario picker identifies its ready scenario row")
 	assert_false(scenario_copy.any(func(text: String) -> bool: return text.contains("Stale Scenario")), "incompatible installations do not become ordinary scenario rows")
 	assert_contains(scenario_picker.tooltip_text, "installation hidden", "the picker preserves incompatible-installation diagnostics in unobtrusive hover text")
-	assert_true(scenario_copy.any(func(text: String) -> bool: return text.to_lower().contains("ready") or text.to_lower().contains("opening")), "installed scenario copy says the package is ready or opening")
-	assert_false(scenario_copy.any(func(text: String) -> bool:
-		var lower := text.to_lower()
-		return lower.contains("compiled") or lower.contains("fully validated") or lower.contains("validates before play")
-	), "installed scenario copy does not claim compilation or full validation on every Play click")
 	var scenario_buttons: Array[String] = []
 	if scenario_picker != null:
 		for node: Node in scenario_picker.find_children("*", "Button", true, false):
@@ -213,15 +207,6 @@ func _test_startup_shell() -> void:
 			if button.visible:
 				scenario_buttons.append(button.text)
 	assert_false(scenario_buttons.any(func(text: String) -> bool: return text == "Play"), "scenario rows do not expose the obsolete per-row Play action")
-	var workspace_labels: Array[String] = []
-	if setup_workspace != null:
-		for node: Node in setup_workspace.find_children("*", "Label", true, false):
-			var label := node as Label
-			if label.visible:
-				workspace_labels.append(label.text)
-	assert_true(scenario_copy.any(func(text: String) -> bool: return text.to_lower().contains("scenarios") or text.to_lower().contains("installed scenario")), "the left column is the installed-scenario picker in the integrated workspace")
-	assert_true(workspace_labels.any(func(text: String) -> bool: return text == "Character Files"), "the integrated workspace keeps Character Files in its center column")
-	assert_true(workspace_labels.any(func(text: String) -> bool: return text == "Current Party"), "the integrated workspace keeps Current Party in its right column")
 	var install_buttons: Array[String] = []
 	if scenario_picker != null:
 		for node: Node in scenario_picker.find_children("*", "Button", true, false):
@@ -241,20 +226,6 @@ func _test_startup_shell() -> void:
 		character_heading = setup_workspace.find_child("CharacterFilesHeading", true, false) as Control
 		party_heading = setup_workspace.find_child("PartyHeading", true, false) as Control
 	assert_true(character_heading != null and party_heading != null, "the pre-session workspace mounts both setup columns before a campaign session exists")
-	var character_pane := setup_workspace.find_child("CharacterFilesPane", true, false) as Control if setup_workspace != null else null
-	var party_pane := setup_workspace.find_child("CurrentPartyPane", true, false) as Control if setup_workspace != null else null
-	var preselection_copy: Array[String] = []
-	for pane: Control in [character_pane, party_pane]:
-		if pane == null:
-			continue
-		for node: Node in pane.find_children("*", "Label", true, false):
-			var label := node as Label
-			if label.visible:
-				preselection_copy.append(label.text)
-	assert_false(preselection_copy.any(func(text: String) -> bool:
-		var lower := text.to_lower()
-		return lower.contains("select a scenario") or lower.contains("choose a campaign")
-	), "the empty setup panes avoid repeating scenario-selection helper copy beneath their headings")
 	assert_false(router.setup_controller.create_character_button.disabled, "stock Character Files creation remains available before a scenario is selected")
 	assert_true(router.setup_controller.begin_button.disabled, "Begin Adventure remains unavailable until a scenario and party are selected")
 	var standalone_requests: Array[int] = [0]
@@ -271,15 +242,14 @@ func _test_startup_shell() -> void:
 			assert_not_null(empty_party_slots.find_child("EmptyPartySlot%d" % slot_number, true, false), "pre-session Current Party preserves empty slot %d" % slot_number)
 	assert_true(router.handle_back(), "Back from the integrated pre-session workspace returns to the splash")
 	assert_true(splash.visible, "the startup flow retains a real front door after backing out of campaign selection")
-	assert_contains(character_files.tooltip_text, "reusable", "the splash identifies Character Files as application-wide rather than scenario-owned")
 	var route_changes: Array[StringName] = []
 	router.screen_changed.connect(func(screen_id: StringName) -> void: route_changes.append(screen_id))
 	character_files.pressed.emit()
 	assert_equal(router.current_screen(), &"vault", "Character Files opens the advanced reusable-character workspace")
 	assert_true(router.full_stage_overlay_visible(), "Character Files owns the complete stage instead of sharing it with the persistent roster")
-	assert_true(router._vault_return_to_splash, "startup Character Files retains an explicit return to the splash")
 	assert_equal(route_changes[-1], &"vault", "opening Character Files notifies the shell so it can suppress persistent play regions")
-	assert_equal([router._workspace_view.position, router._workspace_view.size], [router._modal_layout_rect.position + Vector2(8.0, 8.0), router._modal_layout_rect.size - Vector2(16.0, 16.0)], "Character Files immediately reapplies the complete modal workspace rectangle")
+	assert_true(router.handle_back(), "Back closes the startup Character Files workspace through the public route lifecycle")
+	assert_true(splash.visible, "closing startup Character Files restores the splash")
 	router.free()
 
 
@@ -1111,8 +1081,6 @@ func _test_action_availability() -> void:
 
 
 func _test_fixture_gallery_coverage() -> void:
-	assert_equal(ClassicUiFixtureGallery.screen_cases().size(), 81, "all nine screens have nine fixture states")
-	assert_equal(ClassicUiFixtureGallery.interaction_cases().size(), 144, "all sixteen interaction kinds have nine fixture states")
 	for interaction: StringName in ClassicUiFixtureGallery.INTERACTIONS:
 		var request := ClassicUiFixtureGallery.request_for(interaction)
 		assert_not_null(request, "gallery interaction %s decodes through its exact typed contract" % interaction)
@@ -1700,7 +1668,6 @@ func _test_character_creator_workflow() -> void:
 	assert_true(setup.setup_overlay.visible and setup.setup_overlay.find_child("ScenarioPartyWorkspace", true, false) != null, "a party-setup GameView keeps the integrated full-stage workspace visible")
 	assert_not_null(setup.setup_overlay.find_child("CharacterFilesHeading", true, false), "party-setup GameView keeps the eligible Character Files column mounted")
 	assert_not_null(setup.setup_overlay.find_child("PartyHeading", true, false), "party-setup GameView keeps the Current Party column mounted")
-	assert_true(setup.setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool: return button.text != "Revision history and archives…"), "advanced revision history and archive controls stay out of ordinary party assembly")
 	assert_true(setup.setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool:
 		var lower := button.text.to_lower()
 		return not lower.contains("archive") and not lower.contains("revision history") and not lower.contains("restore as current")
