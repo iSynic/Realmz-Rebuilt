@@ -3566,13 +3566,16 @@
       "id": "combat.tactical-workspace-presentation",
       "workflowIds": ["classic.combat.turn-control","classic.combat.tactical-movement"],
       "domain": "combat",
-      "claim": "Active combat keeps an actor-centered native 16-by-14 tactical board visible above a full-width command deck, projects any battlefield click outside the active actor's cell to one source direction while committing one adjacent step, reveals core-owned adjacent costs only on request, exposes detached shown-combatant facts plus source-side Reveal Friends, supports Center/Next/Previous recentering without simulation mutation, and composes ordinary terrain from the active landlook with shared Classic battle art from PICT 302.",
+      "claim": "Active combat keeps a native 16-by-14 tactical board visible above a full-width command deck, centers when an actor's turn or an explicit focus begins, holds that camera through ordinary one-square movement until the actor reaches the tactical-window edge, projects any battlefield click outside the active actor's cell to one source direction while committing one adjacent step, reveals core-owned adjacent costs only on request, exposes detached shown-combatant facts plus source-side Reveal Friends, supports Center/Next/Previous recentering without simulation mutation, and composes ordinary terrain from the active landlook with shared Classic battle art from PICT 302.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
-        "behavior": "Remake keeps a dedicated map surface and a separate compact combat-command panel. It is a presentation lead only because its panel dispatches directly through global state and gameplay objects.",
+        "behavior": "Remake keeps a dedicated map surface and compact combat-command panel. Its movement animation preserves the current focus character while the mover remains within the camera threshold and recenters only after is_cam_too_far; turn transitions establish focus once. It remains a presentation lead only because its panel dispatches directly through global state and gameplay objects.",
         "sources": [
           { "path": "src/scenes/UI/HUD/Combat_BR_Panel/combat_br_panel.tscn", "symbol": "[node name=\"CombatBRPanel\" type=\"TextureRect\"]" },
-          { "path": "src/scenes/UI/HUD/Combat_BR_Panel/combat_br_panel.gd", "symbol": "func prepare_for_creab" }
+          { "path": "src/scenes/UI/HUD/Combat_BR_Panel/combat_br_panel.gd", "symbol": "func prepare_for_creab" },
+          { "path": "src/scripts/states/CbAnimationState.gd", "symbol": "func enter" },
+          { "path": "src/scripts/states/CombatState.gd", "symbol": "func is_cam_too_far" },
+          { "path": "src/scenes/Map/Map.gd", "symbol": "func _draw" }
         ],
         "tests": []
       },
@@ -3586,10 +3589,12 @@
           { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice(void)" },
           { "path": "src/realmz_orig/showrange.c", "symbol": "void showrange(short edgemode)" },
           { "path": "src/realmz_orig/centerstage.c", "symbol": "void centerstage(short way)" },
-          { "path": "src/realmz_orig/combatupdate-2.c", "symbol": "void combatupdate2(short body)" }
+          { "path": "src/realmz_orig/combatupdate-2.c", "symbol": "void combatupdate2(short body)" },
+          { "path": "src/realmz_orig/getup.c", "symbol": "void getup(short skip)" },
+          { "path": "src/realmz_orig/movemonster.c", "symbol": "short movemonster(void)" }
         ],
         "authoredInputs": ["active landlook", "PICT 302", "90-by-90 battlefield terrain", "combatant positions", "active actor", "legal movement and target facts"],
-        "observation": "Castle initializes a 640-by-640 battle graphics world from PICT 302, overwrites its upper half with the active landlook, then centerfield draws a 16-by-14 native 32-pixel tactical viewport. A pointer outside the active actor's cell contributes signed x/y deltas and still advances one step. combatupdate2 shows the selected actor's stamina, armor, spell points, movement, weapon/charges, first condition, range/blocked state, and large-screen monster immunities/vulnerabilities. Center, Next, and Previous recenter or inspect and each requests sound 147; Reveal Friends draws green friendly, red enemy, and blue helpless lines until the next mouse or key event.",
+        "observation": "Castle initializes a 640-by-640 battle graphics world from PICT 302, overwrites its upper half with the active landlook, then centerfield draws a 16-by-14 native 32-pixel tactical viewport. getup centers once when a player or monster turn begins. Player and monster movement each commit one square and call centerfield only when the mover reaches the current tactical-window edge; actorless terrain sounds do not select another camera subject. A pointer outside the active actor's cell contributes signed x/y deltas and still advances one step. combatupdate2 shows the selected actor's stamina, armor, spell points, movement, weapon/charges, first condition, range/blocked state, and large-screen monster immunities/vulnerabilities. Center, Next, and Previous recenter or inspect and each requests sound 147; Reveal Friends draws green friendly, red enemy, and blue helpless lines until the next mouse or key event.",
         "unresolved": ["Pointer-owned battlefield center selection for spatial spells remains an interim coordinate control rather than a tactical-board interaction."]
       },
       "providence": {
@@ -3602,15 +3607,16 @@
       },
       "realmz2": {
         "owner": { "path": "src/presentation/classic_battlefield_presenter.gd", "symbol": "class_name ClassicBattlefieldPresenter" },
-        "expectedTrace": ["derive the active landlook identity into the detached battlefield view", "compose terrain IDs 1 through 200 from that landlook and IDs 201 through 400 from PICT 302", "center the bounded native-size camera on the active actor or presentation-selected combatant", "keep movement overlays absent during ordinary combat", "reveal typed adjacent costs while Shift is held", "project any click outside the active actor cell to one signed direction and submit one existing typed move", "expose detached target status, weapon, range, LOS, condition, immunity, and vulnerability facts", "draw source-side Reveal Friends relationships and dismiss them on the next click or key", "keep Center, Next, Previous, and inspection state presentation-owned while requesting sound 147", "suppress spatial input while a spell, item, or target subworkflow owns the controls", "keep implemented and explicitly unavailable Classic commands in a full-width lower deck"],
+        "expectedTrace": ["derive the active landlook identity into the detached battlefield view", "compose terrain IDs 1 through 200 from that landlook and IDs 201 through 400 from PICT 302", "center the bounded native-size camera when an actor turn or explicit presentation focus begins", "retain the moving actor as playback focus across actorless sound frames", "hold the camera through in-window one-square movement and recenter only at the tactical-window edge", "keep movement overlays absent during ordinary combat", "reveal typed adjacent costs while Shift is held", "project any click outside the active actor cell to one signed direction and submit one existing typed move", "expose detached target status, weapon, range, LOS, condition, immunity, and vulnerability facts", "draw source-side Reveal Friends relationships and dismiss them on the next click or key", "keep Center, Next, Previous, and inspection state presentation-owned while requesting sound 147", "suppress spatial input while a spell, item, or target subworkflow owns the controls", "keep implemented and explicitly unavailable Classic commands in a full-width lower deck"],
         "tests": [
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battlefield_presenter()" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_combat_playback_controller()" },
           { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" }
         ]
       },
       "decision": "compiler-defect",
       "availability": "implemented",
-      "status": "shared-battle-atlas-landlook-composition-far-click-one-step-target-information-reveal-camera-on-demand-costs-and-full-width-controls-verified-missing-command-simulation-recorded"
+      "status": "shared-battle-atlas-landlook-composition-far-click-one-step-target-information-reveal-edge-triggered-camera-stable-playback-focus-on-demand-costs-and-full-width-controls-verified-missing-command-simulation-recorded"
     },
     {
       "id": "character.party-order-workflow",

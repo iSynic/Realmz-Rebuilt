@@ -6,6 +6,7 @@ var duration_seconds: float
 var progress: float = 0.0
 var actor_id: String = ""
 var target_id: String = ""
+var camera_focus_id: String = ""
 var from_coordinate := Vector2i(-1, -1)
 var to_coordinate := Vector2i(-1, -1)
 var combatant_positions: Dictionary = {}

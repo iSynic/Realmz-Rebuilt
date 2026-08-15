@@ -1506,6 +1506,29 @@ func _test_combat_playback_controller() -> void:
 	assert_equal(observed_sounds, [632], "sound requests retain their event position and are not bulk-played twice")
 	assert_true(frame_kinds.has(&"defeat") and observed_frames[-1]["kind"] == &"actor_cue", "defeat settles before the next-round active-actor cue")
 
+	var enemy_movement := CombatPlaybackController.new()
+	var enemy_focus_ids: Array[String] = []
+	enemy_movement.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
+		if frame.progress == 0.0 and frame.kind != &"actor_cue":
+			enemy_focus_ids.append(frame.camera_focus_id)
+	)
+	assert_true(enemy_movement.begin(previous, [
+		DomainEvent.new(&"combatant_moved", {"actorId": "monster", "from": [47, 45], "to": [46, 45], "automatic": true}),
+		DomainEvent.new(&"sound_requested", {"soundId": 150, "waitForCompletion": false}),
+		DomainEvent.new(&"combatant_moved", {"actorId": "monster", "from": [46, 45], "to": [45, 45], "automatic": true}),
+		DomainEvent.new(&"sound_requested", {"soundId": 150, "waitForCompletion": false}),
+	], final, false), "multi-step enemy movement creates one ordered playback transaction")
+	while enemy_movement.is_active():
+		enemy_movement.advance(1.0, false)
+	assert_true(not enemy_focus_ids.is_empty() and enemy_focus_ids.all(func(focus_id: String) -> bool: return focus_id == "monster"), "actorless sound frames retain the moving enemy camera focus between adjacent steps")
+	var inspected_frame := CombatPlaybackFrame.new(&"move_start", 0.1)
+	inspected_frame.camera_focus_id = "monster"
+	assert_equal(ClassicBattlefieldPresenter.camera_focus_id_for(inspected_frame, "hero", "hero"), "monster", "combat playback temporarily owns camera focus over a previously inspected combatant")
+	var centered_camera := ClassicBattlefieldPresenter.tracked_camera_top_left(Vector2i(-1, -1), Vector2i(47, 45), Vector2i(16, 14))
+	assert_equal(ClassicBattlefieldPresenter.tracked_camera_top_left(centered_camera, Vector2i(46, 45), Vector2i(16, 14)), centered_camera, "one-square movement inside the tactical window does not recenter the entire battlefield")
+	assert_equal(ClassicBattlefieldPresenter.tracked_camera_top_left(centered_camera, Vector2i(55, 45), Vector2i(16, 14)), ClassicBattlefieldPresenter.camera_top_left(Vector2i(55, 45), Vector2i(16, 14)), "movement recenters only after the actor reaches the current tactical-window edge")
+	assert_equal(ClassicBattlefieldPresenter.tracked_camera_top_left(centered_camera, Vector2i(46, 45), Vector2i(16, 14), true), ClassicBattlefieldPresenter.camera_top_left(Vector2i(46, 45), Vector2i(16, 14)), "a turn or explicit focus change still recenters immediately")
+
 	var defeated_spell := CombatPlaybackController.new()
 	var defeated_spell_frames: Array[StringName] = []
 	defeated_spell.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:

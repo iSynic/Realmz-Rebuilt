@@ -22,6 +22,9 @@ var _actor_textures: Dictionary = {}
 var _movement_costs_visible: bool = false
 var _hovered_coordinate := Vector2i(-1, -1)
 var _camera_focus_id: String = ""
+var _render_camera_top_left := Vector2i(-1, -1)
+var _render_camera_focus_id: String = ""
+var _render_camera_visible_cells := Vector2i.ZERO
 var _reveal_friends: bool = false
 var _playback_frame: CombatPlaybackFrame
 var last_playback_media_diagnostic: Dictionary = {}
@@ -40,6 +43,9 @@ func present(game_view: GameView) -> void:
 		_movement_costs_visible = false
 		_hovered_coordinate = Vector2i(-1, -1)
 		_camera_focus_id = ""
+		_render_camera_top_left = Vector2i(-1, -1)
+		_render_camera_focus_id = ""
+		_render_camera_visible_cells = Vector2i.ZERO
 		_reveal_friends = false
 	elif not _camera_focus_id.is_empty() and actor_position(_view.combat_view, _view.party_members, _camera_focus_id).x < 0:
 		_camera_focus_id = ""
@@ -54,6 +60,8 @@ func present(game_view: GameView) -> void:
 
 
 func present_playback_frame(frame: CombatPlaybackFrame) -> void:
+	if frame != _playback_frame and frame != null and frame.kind == &"actor_cue":
+		_render_camera_focus_id = ""
 	_playback_frame = frame
 	queue_redraw()
 
@@ -95,13 +103,20 @@ func _draw() -> void:
 		return
 	var combat := _view.combat_view
 	var battlefield := combat.battlefield
-	var playback_focus_id := _playback_frame.actor_id if _playback_frame != null and not _playback_frame.actor_id.is_empty() else ""
-	var focus_id := _camera_focus_id if not _camera_focus_id.is_empty() else playback_focus_id if not playback_focus_id.is_empty() else combat.active_actor_id
+	var focus_id := camera_focus_id_for(_playback_frame, _camera_focus_id, combat.active_actor_id)
 	var active_position := _effective_actor_position(combat, focus_id)
 	if active_position.x < 0:
 		active_position = battlefield.party_anchor
 	var visible_cells := viewport_cells_for(size)
-	var camera := camera_top_left(active_position, visible_cells)
+	var camera := tracked_camera_top_left(
+		_render_camera_top_left,
+		active_position,
+		visible_cells,
+		_render_camera_focus_id != focus_id or _render_camera_visible_cells != visible_cells
+	)
+	_render_camera_top_left = camera
+	_render_camera_focus_id = focus_id
+	_render_camera_visible_cells = visible_cells
 	var draw_origin := battlefield_draw_origin(size, visible_cells)
 	_draw_header(combat)
 	for y: int in visible_cells.y:
@@ -173,6 +188,7 @@ func movement_costs_visible() -> bool:
 
 func focus_combatant(combatant_id: String) -> void:
 	_camera_focus_id = combatant_id
+	_render_camera_focus_id = ""
 	queue_redraw()
 
 
@@ -729,6 +745,20 @@ static func camera_top_left(active_position: Vector2i, visible_cells: Vector2i) 
 		clampi(active_position.x - floori(float(visible_cells.x) / 2.0), 0, maximum.x),
 		clampi(active_position.y - floori(float(visible_cells.y) / 2.0), 0, maximum.y)
 	)
+
+
+static func camera_focus_id_for(playback_frame: CombatPlaybackFrame, inspected_focus_id: String, active_actor_id: String) -> String:
+	if playback_frame != null and not playback_frame.camera_focus_id.is_empty():
+		return playback_frame.camera_focus_id
+	if not inspected_focus_id.is_empty():
+		return inspected_focus_id
+	return active_actor_id
+
+
+static func tracked_camera_top_left(current_camera: Vector2i, focus_position: Vector2i, visible_cells: Vector2i, force_recenter: bool = false) -> Vector2i:
+	if force_recenter or current_camera.x < 0 or not coordinate_is_visible(focus_position, current_camera, visible_cells):
+		return camera_top_left(focus_position, visible_cells)
+	return current_camera
 
 
 static func battlefield_draw_origin(control_size: Vector2, visible_cells: Vector2i) -> Vector2:

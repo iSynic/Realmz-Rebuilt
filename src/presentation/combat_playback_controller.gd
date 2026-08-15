@@ -66,6 +66,7 @@ func begin(previous: GameView, events: Array[DomainEvent], final: GameView, redu
 	else:
 		_build_frames(events)
 		_append_next_actor_cue()
+		_assign_camera_focus_ids()
 	if _frames.is_empty():
 		return false
 	_active = true
@@ -372,6 +373,22 @@ func _append_next_actor_cue() -> void:
 	cue.target_id = next_actor
 	cue.display_text = "Round %d" % final_view.combat_view.round_number if final_view.combat_view.round_number != prior_round else ""
 	_frames.append(cue)
+
+
+func _assign_camera_focus_ids() -> void:
+	var latest_focus_id := ""
+	for frame: CombatPlaybackFrame in _frames:
+		var frame_focus_id := frame.actor_id if not frame.actor_id.is_empty() else frame.target_id
+		if not frame_focus_id.is_empty():
+			latest_focus_id = frame_focus_id
+		frame.camera_focus_id = latest_focus_id
+	var next_focus_id := ""
+	for index: int in range(_frames.size() - 1, -1, -1):
+		var frame := _frames[index]
+		if not frame.camera_focus_id.is_empty():
+			next_focus_id = frame.camera_focus_id
+		elif not next_focus_id.is_empty():
+			frame.camera_focus_id = next_focus_id
 
 
 func _new_frame(kind: StringName, duration: float, positions: Dictionary, hidden: Array[String]) -> CombatPlaybackFrame:
