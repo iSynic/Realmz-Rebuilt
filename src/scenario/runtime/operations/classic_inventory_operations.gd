@@ -16,7 +16,7 @@ func opcode_ids() -> Array[int]:
 	return [21, 22, 33, 36, 38, 49, 51, 60, 91]
 
 
-func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		21:
 			return _branch_on_item(action)

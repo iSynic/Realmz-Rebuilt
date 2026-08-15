@@ -54,11 +54,11 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action
 			break
 
 
-func execute_classic(action: ClassicActionDefinition, request_id: String, context: Dictionary = {}) -> ScenarioRuntimeOperationResult:
+func execute_classic(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext = null) -> ScenarioRuntimeOperationResult:
 	if not _handler_registration_error.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_opcode_registry", _handler_registration_error)
 	if _classic_handlers.has_handler(action.opcode):
-		return _classic_handlers.execute(action, request_id, context)
+		return _classic_handlers.execute(action, request_id, ScenarioExecutionContext.empty() if context == null else context)
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_classic_opcode", "No Realmz Runtime API operation owns Classic opcode %d." % action.opcode)
 
 
@@ -292,7 +292,8 @@ func _resume_simple_encounter(continuation: ScenarioRuntimeContinuation, respons
 	if selected == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Simple Encounter response index is outside the authored choices.")
 	_game_state.record_encounter_attempt(&"simple", encounter.id)
-	return ScenarioRuntimeOperationResult.completed(selected.id, [DomainEvent.new(&"encounter_response_selected", {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index})], ScenarioVmDirective.branch_program(selected.result_program_id, choice_continuation.gosub, {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index}))
+	var context := ScenarioExecutionContext.encounter(&"simple", encounter.id, selected.id, selected_index)
+	return ScenarioRuntimeOperationResult.completed(selected.id, [DomainEvent.new(&"encounter_response_selected", {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index})], ScenarioVmDirective.branch_program(selected.result_program_id, choice_continuation.gosub, context))
 
 
 func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -305,7 +306,7 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex Encounter response requires an action.")
 	var action := String(selection.action)
 	var outcome := 0
-	var context: Dictionary = {"encounterKind": "complex", "encounterId": encounter.id, "responseKind": action}
+	var context := ScenarioExecutionContext.encounter(&"complex", encounter.id, "", -1, StringName(action))
 	var events: Array[DomainEvent] = []
 	match action:
 		"back":
@@ -320,7 +321,7 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 			if slot < 0 or slot >= labels.size() or labels[slot].strip_edges() in ["", "*"]:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex action slot is unavailable.")
 			outcome = encounter.action_result
-			context["optionSlot"] = slot
+			context.option_slot = slot
 		"word":
 			if selection.word.is_empty():
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex word response requires text.")
@@ -347,7 +348,7 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 	return _complex_outcome(encounter, outcome, choice_continuation.gosub, context, events)
 
 
-func _complex_outcome(encounter: ComplexEncounterDefinition, outcome: int, gosub: bool, context: Dictionary, events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
+func _complex_outcome(encounter: ComplexEncounterDefinition, outcome: int, gosub: bool, context: ScenarioExecutionContext, events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
 	var program_id := encounter.result_program_id(outcome)
 	if program_id.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Complex Encounter result is outside 1 through 4.")
@@ -413,7 +414,8 @@ func _resume_thief_encounter(encounter: ComplexEncounterDefinition, continuation
 	if outcome < 1 or outcome > 4:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Thief Encounter produced invalid result %d." % outcome)
 	_game_state.record_encounter_attempt(&"complex", encounter.id)
-	return _complex_outcome(encounter, outcome, (continuation.body as ScenarioRuntimeContinuation.ChoiceBody).gosub, {"encounterKind": "complex", "encounterId": encounter.id, "responseKind": "thief", "actionIndex": action_index, "characterId": character.id}, events)
+	var context := ScenarioExecutionContext.encounter(&"complex", encounter.id, "", -1, &"thief").set_thief_action(action_index, character.id)
+	return _complex_outcome(encounter, outcome, (continuation.body as ScenarioRuntimeContinuation.ChoiceBody).gosub, context, events)
 
 
 func _spring_thief_trap(encounter: ComplexEncounterDefinition, thief_encounter: ThiefEncounterDefinition, continuation: ScenarioRuntimeContinuation, character: CharacterState, flags: Array[bool], request_id: String) -> ScenarioRuntimeOperationResult:

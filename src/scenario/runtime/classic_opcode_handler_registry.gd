@@ -24,7 +24,7 @@ func has_handler(opcode: int) -> bool:
 	return _handlers_by_opcode.has(opcode)
 
 
-func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var handler := _handlers_by_opcode.get(action.opcode) as ClassicOpcodeHandler
 	if handler == null:
 		return ScenarioRuntimeOperationResult.failed(&"unsupported_classic_opcode", "Classic opcode %d has no runtime handler." % action.opcode)

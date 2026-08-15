@@ -378,9 +378,24 @@ foreach ($protocolRoot in $protocolRoots) {
     }
 }
 
+# VM execution provenance is a closed typed protocol.  Dictionaries exist only
+# at ScenarioExecutionContext.to_data/from_data; frames, directives, handlers,
+# and runtime calls must not reopen that boundary with an arbitrary context.
+$scenarioRoot = Join-Path $repoRoot "src\scenario"
+foreach ($file in Get-ChildItem $scenarioRoot -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
+    $relativePath = Get-RepositoryRelativePath -RootPath $repoRoot -TargetPath $file.FullName
+    $lineNumber = 0
+    foreach ($line in Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($file.FullName))) {
+        $lineNumber++
+        if ($line -match '\b_?context\s*:\s*Dictionary\b') {
+            $violations += "$($relativePath):$lineNumber scenario execution context must use ScenarioExecutionContext outside its strict wire codec"
+        }
+    }
+}
+
 if ($violations.Count -gt 0) {
     $violations | ForEach-Object { Write-Error $_ }
     exit 1
 }
 
-Write-Host "Architecture dependency matrix, PackageRepository coordinator boundary, and typed request protocol verified."
+Write-Host "Architecture dependency matrix, coordinator boundaries, and typed request/execution protocols verified."

@@ -14,7 +14,7 @@ func opcode_ids() -> Array[int]:
 	return [3, 4, 5, 34, 35, 54]
 
 
-func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		3:
 			return _request_classic_choice(action, request_id)
@@ -43,8 +43,8 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Dicti
 		34:
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_loop_finished", {"source": "classic"})], ScenarioVmDirective.finish())
 		35:
-			var encounter_id := int(context.get("encounterId", -1))
-			if context.get("encounterKind") != "simple" or not _game_state.eliminate_simple_option(encounter_id, action.operand_id - 1):
+			var encounter_id := context.encounter_id
+			if context.encounter_kind != &"simple" or not _game_state.eliminate_simple_option(encounter_id, action.operand_id - 1):
 				return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 35 requires a Simple Encounter response context.")
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_option_eliminated", {"encounterId": encounter_id, "optionIndex": action.operand_id - 1})])
 		54:

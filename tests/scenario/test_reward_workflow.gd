@@ -109,7 +109,7 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	var definition := ScenarioDefinition.new([program], [])
 	var vm := ScenarioVm.new()
 	vm.configure(definition)
-	assert_equal(vm.start_program(program.id, {"callingContext": "action"}).state, ScenarioVmResult.State.COMPLETED, "experience fixture starts through the ordinary VM")
+	assert_equal(vm.start_program(program.id, ScenarioExecutionContext.calling(&"action")).state, ScenarioVmResult.State.COMPLETED, "experience fixture starts through the ordinary VM")
 	var treasure_stage := vm.run(api)
 	assert_equal([treasure_stage.state, treasure_stage.interaction.kind, treasure_stage.interaction.body.to_data()["experienceShare"]], [ScenarioVmResult.State.WAITING, InteractionRequest.TREASURE_DISTRIBUTION, 25_000], "experience is awarded once with the selected party's Classic 250 percent setup multiplier before the empty treasure stage")
 	var level_stage := vm.resume(InteractionResponse.from_data(treasure_stage.interaction.request_id, treasure_stage.interaction.kind, {"action": "done"}), api)

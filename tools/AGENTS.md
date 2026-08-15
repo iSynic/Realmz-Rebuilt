@@ -7,7 +7,7 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 ## Ownership
 
 - Headless Godot verification and architecture boundary guards.
-- `verify_architecture.ps1` enforces the dependency matrix and rejects live protocol dictionary rematerialization outside strict request/continuation serializers and explicitly detached event serialization sites.
+- `verify_architecture.ps1` enforces the dependency matrix and rejects live protocol dictionary rematerialization outside strict request/continuation/execution-context serializers and explicitly detached event serialization sites.
 - Package determinism/schema mirror checks and oracle harness launchers as introduced.
 - `package_probe.gd` exercises the public package repository and session boundary for an arbitrary local `.realmz2` package without installing or committing it; its output separates public package load, session start, view construction, and representative movement timings.
 - `package_discovery_probe.gd` measures manifest-only campaign discovery through the public repository without loading package graphs.

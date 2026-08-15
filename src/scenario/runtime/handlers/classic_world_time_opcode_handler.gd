@@ -16,7 +16,7 @@ func opcode_ids() -> Array[int]:
 	return [-23, 12, 13, 20, 23, 29, 37, 45, 47, 61, 63, 66, 76, 101, 103, 104, 106]
 
 
-func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		-23, 23:
 			return _mutate_random_region(action, action.opcode == -23)

@@ -18,7 +18,7 @@ func opcode_ids() -> Array[int]:
 	return [119, 120, 121, 122, 123, 124, 126, 127]
 
 
-func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		119:
 			return _revive_after_combat_macro(context)
@@ -39,12 +39,12 @@ func execute(action: ClassicActionDefinition, request_id: String, context: Dicti
 	return super.execute(action, request_id, context)
 
 
-func cause_fumble(action: ClassicActionDefinition, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func cause_fumble(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 2:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 122 requires message and sound fields.")
 	if _game_state.combat == null or _game_state.combat.completed:
 		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"combat_fumble_skipped", {"reason": "no-active-battle", "source": "classic"})])
-	var actor_id := str(context.get("combatantId", _game_state.combat.active_actor_id()))
+	var actor_id := context.combatant_id if not context.combatant_id.is_empty() else _game_state.combat.active_actor_id()
 	var result := _rules.combat_flow.cause_active_fumble(_game_state, _content, actor_id)
 	if not result.ok:
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
@@ -66,7 +66,7 @@ func cause_fumble(action: ClassicActionDefinition, context: Dictionary) -> Scena
 	return ScenarioRuntimeOperationResult.completed(changed, events)
 
 
-func _revive_after_combat_macro(context: Dictionary) -> ScenarioRuntimeOperationResult:
+func _revive_after_combat_macro(context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	var living_party := 0
 	for character: CharacterState in _game_state.party.characters():
 		if character.current_health > 0:
@@ -80,7 +80,7 @@ func _revive_after_combat_macro(context: Dictionary) -> ScenarioRuntimeOperation
 		return ScenarioRuntimeOperationResult.completed(revived_party, [DomainEvent.new(&"party_revived", {"characterIds": revived_party, "source": "classic-death-macro"})], ScenarioVmDirective.finish())
 	if _game_state.combat == null:
 		return ScenarioRuntimeOperationResult.failed(&"revival_outside_combat", "Classic opcode 119 has no combatant to revive.")
-	var combatant_id := str(context.get("combatantId", ""))
+	var combatant_id := context.combatant_id
 	var monster := _game_state.combat.monster_by_id(combatant_id)
 	if monster == null:
 		return ScenarioRuntimeOperationResult.failed(&"missing_combatant_context", "Classic opcode 119 requires its death-macro combatant identity.")
@@ -130,13 +130,13 @@ func _deanimate_lower_undead() -> ScenarioRuntimeOperationResult:
 	return ScenarioRuntimeOperationResult.completed(affected, [DomainEvent.new(&"lower_undead_deanimated", {"monsterIds": affected})])
 
 
-func _cause_monsters_to_route(action: ClassicActionDefinition, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func _cause_monsters_to_route(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if _game_state.combat == null or _game_state.combat.completed:
 		return ScenarioRuntimeOperationResult.completed(0, [DomainEvent.new(&"combat_route_applied", {"count": 0, "reason": "no-active-battle", "source": "classic"})])
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 123 requires a five-value Extra Code row.")
 	var source_traitor := true
-	var source_id := str(context.get("combatantId", ""))
+	var source_id := context.combatant_id
 	var source_monster := _game_state.combat.monster_by_id(source_id)
 	if source_monster != null:
 		source_traitor = source_monster.traitor

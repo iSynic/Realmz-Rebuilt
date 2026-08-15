@@ -39,6 +39,8 @@ Every automated check must own one of five proof responsibilities: an architectu
 
 Do not test private methods of `GameSession`, `RealmzRuntimeApi`, `PackageRepository`, or `ClassicScreenRouter`. Do not repeat one behavior at rule, session, save, UI, and route layers unless each layer protects a distinct failure boundary. Prefer table-driven cases, public workflow ownership, and one linked automated proof per differential case. Wording, helper text, and isolated spacing normally receive manual or gallery acceptance rather than a bespoke test. RNG, VM, save, topology, package integrity, and exact-once terminal-combat evidence remain high-value and are not pruned merely to reduce line counts.
 
+Typed live protocols are architecture invariants rather than per-defect tests. Intent payloads, interactions, continuations, and scenario execution context remain typed through runtime code; only their strict package/save/event codecs may materialize dictionaries.
+
 Test and assertion totals are diagnostic measurements, never completion targets. Hardening should reduce duplicated setup and incidental assertions without deleting unique source-backed evidence.
 
 Use this priority order:

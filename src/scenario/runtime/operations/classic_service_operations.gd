@@ -34,7 +34,7 @@ func opcode_ids() -> Array[int]:
 	return [6, 32, 73]
 
 
-func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		6:
 			return _request_shop(action.operand_id, request_id)

@@ -16,16 +16,16 @@ func opcode_ids() -> Array[int]:
 	return [7, 8, 24, 25, 42, 46, 64, 77, 86, 98, 99]
 
 
-func execute(action: ClassicActionDefinition, _request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, _request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		7:
 			return replace_scenario_program(action, context)
 		8:
 			return branch_to_trigger_program(action, context)
 		24:
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"action_point_kept", {"triggerId": String(context.get("triggerId", "")), "source": "classic"})], ScenarioVmDirective.finish())
+			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"action_point_kept", {"triggerId": context.trigger_id, "source": "classic"})], ScenarioVmDirective.finish())
 		25:
-			var trigger_id := String(context.get("triggerId", ""))
+			var trigger_id := context.trigger_id
 			if trigger_id.is_empty():
 				return ScenarioRuntimeOperationResult.failed(&"missing_trigger_context", "Classic opcode 25 requires an Action Point origin.")
 			_game_state.world.disable_trigger(trigger_id)
@@ -45,7 +45,7 @@ func execute(action: ClassicActionDefinition, _request_id: String, context: Dict
 	return super.execute(action, _request_id, context)
 
 
-func _percent_branch(action: ClassicActionDefinition, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func _percent_branch(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 42 requires a five-value Extra Code row.")
 	var roll := _rng.draw(100, &"classic.percent-branch")
@@ -54,7 +54,7 @@ func _percent_branch(action: ClassicActionDefinition, context: Dictionary) -> Sc
 	var event := DomainEvent.new(&"percent_branch_checked", {"chance": action.extra_code[0], "roll": roll, "matched": true})
 	match action.extra_code[1]:
 		-2:
-			var trigger_id := String(context.get("triggerId", ""))
+			var trigger_id := context.trigger_id
 			if not trigger_id.is_empty():
 				_game_state.world.disable_trigger(trigger_id)
 			return ScenarioRuntimeOperationResult.completed(true, [event], ScenarioVmDirective.finish())
@@ -193,7 +193,7 @@ func resolve_program_id(program_id: String) -> String:
 	return _game_state.scenario_program_id(program_id)
 
 
-func replace_scenario_program(action: ClassicActionDefinition, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func replace_scenario_program(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 7 requires a five-value Extra Code row.")
 	var values := action.extra_code
@@ -205,7 +205,7 @@ func replace_scenario_program(action: ClassicActionDefinition, context: Dictiona
 		-2:
 			target_program_id = "complex:%d:result:%d" % [int(values[1]), int(values[4])]
 		_:
-			var current_trigger := _content.trigger_by_id(str(context.get("triggerId", "")))
+			var current_trigger := _content.trigger_by_id(context.trigger_id)
 			var current_map: MapDefinition = null
 			if current_trigger != null and not current_trigger.map_id.is_empty():
 				current_map = _content.world.map_by_id(current_trigger.map_id)
@@ -233,8 +233,8 @@ func replace_scenario_program(action: ClassicActionDefinition, context: Dictiona
 	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"scenario_program_replaced", {"sourceProgramId": target_program_id, "targetProgramId": source_program_id, "source": "classic"})])
 
 
-func branch_to_trigger_program(action: ClassicActionDefinition, context: Dictionary) -> ScenarioRuntimeOperationResult:
-	var current_trigger := _content.trigger_by_id(str(context.get("triggerId", "")))
+func branch_to_trigger_program(action: ClassicActionDefinition, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
+	var current_trigger := _content.trigger_by_id(context.trigger_id)
 	if current_trigger == null:
 		return ScenarioRuntimeOperationResult.failed(&"missing_trigger_context", "Classic opcode 8 requires an Action Point origin.")
 	var target_trigger := _content.trigger_by_map_record(current_trigger.map_id, action.operand_id)

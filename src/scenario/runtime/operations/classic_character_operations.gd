@@ -18,7 +18,7 @@ func opcode_ids() -> Array[int]:
 	return [-14, 14, 15, 16, 17, 18, 30, 31, 40, 43, 50, 52, 69, 82, 83, 87, 88, 89, 90, 102, 105, 108]
 
 
-func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		-14, 14:
 			return _request_character_selection(action, request_id, action.opcode == -14)

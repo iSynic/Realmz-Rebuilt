@@ -1387,7 +1387,8 @@ func _continue_timed_encounters(events: Array[DomainEvent]) -> SessionStep:
 			return _finish_failed(&"unknown_timed_encounter_trigger", "Timed Encounter %d references unavailable Action Point record %d on map '%s'." % [encounter.id, encounter.trigger_record_index, map.id], events)
 		exploration.active_timed_program_id = trigger.program_id
 		events.append(DomainEvent.new(&"timed_encounter_triggered", {"encounterId": encounter.id, "triggerId": trigger.id, "programId": trigger.program_id}))
-		var started := _scenario_vm.start_program(trigger.program_id, {"callingContext": "action", "triggerId": trigger.id, "mapId": map.id, "x": exploration.timed_check_coordinate.x, "y": exploration.timed_check_coordinate.y, "timedEncounterId": encounter.id})
+		var context := ScenarioExecutionContext.trigger(&"action", trigger.id, map.id, exploration.timed_check_coordinate, true).set_timed_encounter(encounter.id)
+		var started := _scenario_vm.start_program(trigger.program_id, context)
 		if started.state == ScenarioVmResult.State.FAILED:
 			_session_continuation.clear()
 			return _finish_failed(started.error_code, started.error_message, events)
@@ -1552,7 +1553,7 @@ func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 				break
 		events.append(DomainEvent.new("trigger_fired", {"triggerId": trigger.id}))
 		exploration.active_trigger_id = trigger.id
-		var started := _scenario_vm.start_program(trigger.program_id, {"callingContext": "action", "triggerId": trigger.id, "mapId": map.id, "x": coordinate.x, "y": coordinate.y})
+		var started := _scenario_vm.start_program(trigger.program_id, ScenarioExecutionContext.trigger(&"action", trigger.id, map.id, coordinate, true))
 		if started.state == ScenarioVmResult.State.FAILED:
 			_session_continuation.clear()
 			return _finish_failed(started.error_code, started.error_message, events)
@@ -1772,13 +1773,10 @@ func _start_session_death_macro(preceding_events: Array[DomainEvent]) -> Session
 	continuation_body.program_id = program_id
 	continuation_body.reset_traitor_on_complete = bool(request.get("resetTraitorOnComplete", true))
 	_set_continuation(SessionContinuation.combat_state(&"combat-death-macro", continuation_body))
-	var started := _scenario_vm.start_program(program_id, {
-		"callingContext": "monster-death-macro",
-		"battleId": combat.battle_id,
-		"combatantId": combatant_id,
-		"classicMonsterId": int(request.get("classicMonsterId", 0)),
-		"traitor": bool(request.get("traitor", monster.traitor)),
-	})
+	var death_context := ScenarioExecutionContext.calling(&"monster-death-macro")
+	death_context.set_battle(combat.battle_id)
+	death_context.set_combatant(combatant_id, int(request.get("classicMonsterId", 0)), bool(request.get("traitor", monster.traitor)), true)
+	var started := _scenario_vm.start_program(program_id, death_context)
 	if started.state == ScenarioVmResult.State.FAILED:
 		_session_continuation.clear()
 		return _finish_failed(started.error_code, started.error_message, preceding_events)
@@ -1933,7 +1931,8 @@ func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) ->
 				var program_id := "xap:%d" % door_ids[door_index]
 				exploration.active_random_program_id = program_id
 				events.append(DomainEvent.new(&"random_door_triggered", {"regionId": region.id, "programId": program_id, "oneShot": door_percents[door_index] > 0}))
-				var started := _scenario_vm.start_program(program_id, {"callingContext": "action", "mapId": map.id, "x": _state.party.coordinate.x, "y": _state.party.coordinate.y, "randomRegionId": region.id})
+				var context := ScenarioExecutionContext.trigger(&"action", "", map.id, _state.party.coordinate, true).set_random_region(region.id)
+				var started := _scenario_vm.start_program(program_id, context)
 				if started.state == ScenarioVmResult.State.FAILED:
 					_session_continuation.clear()
 					return _finish_failed(started.error_code, started.error_message, events)

@@ -10,6 +10,7 @@ Own the single session-constructed VM runtime API and explicit Classic opcode ha
 - Duplicate-safe Classic opcode registration.
 - Domain handler groups for control flow, world/time, character, inventory/economy, encounters, combat/rewards, and presentation-producing operations.
 - Typed battle-caller, runtime-continuation, runtime-handoff, and VM-handoff records used at every wait, nested macro, and party-defeat boundary.
+- `ScenarioExecutionContext`, the closed typed provenance passed through VM frames, directives, opcode handlers, and saved frame serialization.
 
 ## Local Contracts
 
@@ -18,6 +19,7 @@ Own the single session-constructed VM runtime API and explicit Classic opcode ha
 - `ClassicServiceOperations` owns shop/temple/bank opcode execution, request projection, and continuation mutation; `ClassicBattleRewardOperations` owns battle startup, combat/reward continuation mutation, terminal handoff validation, and reward progression. Runtime API wrappers expose those operations to `GameSession` without duplicating their behavior.
 - Nested battle and death-macro VMs call the owning runtime API through a weak reference so the session graph has no `RefCounted` ownership cycle.
 - Classic control-flow results cross the runtime/VM boundary as `ScenarioVmDirective` variants. Raw directive dictionaries are codec data only and may not be inspected or constructed by handlers.
+- Live execution context crosses the runtime/VM boundary only as `ScenarioExecutionContext`. Its sparse dictionary form exists solely inside its strict wire codec; unknown provenance fields fail restoration.
 - Live continuation queues contain typed interaction bodies. Dictionary payloads may enter only from detached domain events and are decoded once before the continuation is constructed.
 - Unknown opcodes fail explicitly. There is no script-name dispatch or GDScript fallback.
 - Handlers are explicitly constructed, retain only session-owned pure dependencies, and never access Nodes or host services.

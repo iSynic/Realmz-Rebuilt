@@ -16,7 +16,7 @@ func opcode_ids() -> Array[int]:
 	return [1, 9, 19, 26, 27, 28, 62]
 
 
-func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		1:
 			return _show_message(action, request_id)

@@ -36,7 +36,7 @@ func reset() -> void:
 	_last_outcome = null
 
 
-func start_program(program_id: String, context: Dictionary = {}) -> ScenarioVmResult:
+func start_program(program_id: String, context: ScenarioExecutionContext = null) -> ScenarioVmResult:
 	if _definition == null:
 		return ScenarioVmResult.failed(&"scenario_not_configured", "Scenario VM has no validated definition.")
 	if _pending_request != null or not _frames.is_empty():
@@ -44,7 +44,7 @@ func start_program(program_id: String, context: Dictionary = {}) -> ScenarioVmRe
 	if _definition.program_by_id(program_id) == null:
 		return ScenarioVmResult.failed(&"unknown_scenario_program", "Scenario program '%s' is unavailable." % program_id)
 	var frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
-	frame.set_context(context)
+	frame.set_context(ScenarioExecutionContext.empty() if context == null else context)
 	_frames.append(frame)
 	_halted = false
 	_step_count = 0
@@ -154,7 +154,7 @@ func resume_handoff(handoff: ScenarioVmHandoff, operation: ScenarioRuntimeOperat
 			if not result_target.is_empty():
 				_frames[frame_index].set_local(result_target, operation.value)
 		ScenarioVmHandoff.CLASSIC_OPERATION:
-			var context: Dictionary = _frames.back().context_data()
+			var context: ScenarioExecutionContext = _frames.back().context()
 			var directive_result := _apply_classic_directive(operation.directive, context)
 			if directive_result.state == ScenarioVmResult.State.FAILED:
 				return ScenarioVmResult.failed(directive_result.error_code, directive_result.error_message, events)
@@ -249,9 +249,8 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 		var resolved_program_id := runtime_api.resolve_program_id(original_program_id)
 		if _definition.program_by_id(resolved_program_id) == null:
 			return ScenarioVmResult.failed(&"unknown_scenario_program", "Scenario program override for '%s' references unavailable program '%s'." % [original_program_id, resolved_program_id])
-		var resolved_context := frame.context_data()
-		resolved_context["_programResolved"] = true
-		resolved_context["originalProgramId"] = original_program_id
+		var resolved_context := frame.context()
+		resolved_context.mark_program_resolved(original_program_id)
 		frame.set_context(resolved_context)
 		frame.definition_id = resolved_program_id
 		if resolved_program_id != original_program_id:
@@ -269,7 +268,7 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 		if not arguments_result["ok"]:
 			return ScenarioVmResult.failed(&"safe_expression_failed", arguments_result["error"])
 		frame.cursor += 1
-		return _push_action(action_call.action_id, arguments_result["value"], action_call.result_target, _calling_context(frame, program), frame.context_data(), true)
+		return _push_action(action_call.action_id, arguments_result["value"], action_call.result_target, _calling_context(frame, program), frame.context(), true)
 	if not instruction is ClassicActionDefinition:
 		return ScenarioVmResult.failed(&"unknown_scenario_instruction", "Scenario program '%s' contains an unknown instruction." % program.id)
 	var action: ClassicActionDefinition = instruction
@@ -281,8 +280,8 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic opcode 39 references unavailable XAP %d." % action.operand_id)
 			var replacement := ScenarioFrame.new(ScenarioFrame.PROGRAM, target_id)
 			replacement.counts_as_classic_call = frame.counts_as_classic_call
-			var transfer_context := frame.context_data()
-			transfer_context["originProgramId"] = program.id
+			var transfer_context := frame.context()
+			transfer_context.mark_program_transfer(program.id)
 			replacement.set_context(transfer_context)
 			_frames[_frames.size() - 1] = replacement
 			_append_trace({"event": "classic-transfer", "programId": target_id})
@@ -296,7 +295,7 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 			_pop_classic_caller_below_top()
 			return ScenarioVmResult.completed()
 	var request_id := _next_request_id()
-	var operation := runtime_api.execute_classic(action, request_id, frame.context_data())
+	var operation := runtime_api.execute_classic(action, request_id, frame.context())
 	frame.cursor += 1
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return ScenarioVmResult.failed(operation.error_code, operation.error_message)
@@ -307,13 +306,13 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 		return ScenarioVmResult.waiting(operation.interaction, operation.events)
 	if operation.state == ScenarioRuntimeOperationResult.State.SUSPENDED:
 		return _suspend_operation(ScenarioVmHandoff.CLASSIC_OPERATION, operation)
-	var directive_result := _apply_classic_directive(operation.directive, frame.context_data())
+	var directive_result := _apply_classic_directive(operation.directive, frame.context())
 	if directive_result.state == ScenarioVmResult.State.FAILED:
 		return directive_result
 	return ScenarioVmResult.completed(operation.events)
 
 
-func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context: Dictionary = {}) -> ScenarioVmResult:
+func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context: ScenarioExecutionContext = null) -> ScenarioVmResult:
 	if directive == null:
 		return ScenarioVmResult.completed()
 	match directive.kind:
@@ -325,7 +324,7 @@ func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context:
 			if _definition.program_by_id(program_id) == null:
 				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic branch references unavailable XAP %d." % directive.target_id)
 			var target_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
-			target_frame.set_context(inherited_context)
+			target_frame.set_context(ScenarioExecutionContext.empty() if inherited_context == null else inherited_context)
 			if directive.gosub:
 				if _classic_call_depth() >= CLASSIC_CALL_LIMIT:
 					return ScenarioVmResult.failed(&"classic_gosub_limit", "Classic GOSUB stack exceeded 20 frames.")
@@ -341,10 +340,8 @@ func _apply_classic_directive(directive: ScenarioVmDirective, inherited_context:
 				return ScenarioVmResult.failed(&"unknown_scenario_program", "Classic branch references unavailable program '%s'." % program_id)
 			var target_frame := ScenarioFrame.new(ScenarioFrame.PROGRAM, program_id)
 			target_frame.counts_as_classic_call = directive.gosub
-			var context: Dictionary = directive.context
-			var merged_context := inherited_context.duplicate(true)
-			for key: Variant in context:
-				merged_context[key] = context[key]
+			var base_context := ScenarioExecutionContext.empty() if inherited_context == null else inherited_context
+			var merged_context: ScenarioExecutionContext = base_context.merged(directive.context)
 			target_frame.set_context(merged_context)
 			if target_frame.counts_as_classic_call:
 				if _classic_call_depth() >= CLASSIC_CALL_LIMIT:
@@ -394,7 +391,7 @@ func _execute_action_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) 
 			if not arguments_result["ok"]:
 				return ScenarioVmResult.failed(&"safe_expression_failed", arguments_result["error"])
 			frame.cursor += 1
-			return _push_action(instruction.action_id, arguments_result["value"], instruction.result_target, StringName(frame.context_value("callingContext")), frame.context_data(), false)
+			return _push_action(instruction.action_id, arguments_result["value"], instruction.result_target, StringName(frame.context_value("callingContext")), frame.context(), false)
 		SafeInstructionDefinition.Kind.SET_VALUE:
 			var evaluated := _evaluate(instruction.value, frame, runtime_api)
 			if not evaluated["ok"]:
@@ -451,7 +448,7 @@ func _suspend_operation(kind: StringName, operation: ScenarioRuntimeOperationRes
 	return ScenarioVmResult.suspended(handoff, events)
 
 
-func _push_action(action_id: String, arguments: Dictionary, return_target: String, calling_context: StringName, inherited_context: Dictionary, require_public: bool) -> ScenarioVmResult:
+func _push_action(action_id: String, arguments: Dictionary, return_target: String, calling_context: StringName, inherited_context: ScenarioExecutionContext, require_public: bool) -> ScenarioVmResult:
 	var action := _definition.action_by_id(action_id)
 	if action == null:
 		return ScenarioVmResult.failed(&"unknown_scenario_action", "Scenario Action '%s' is unavailable." % action_id)
@@ -470,8 +467,8 @@ func _push_action(action_id: String, arguments: Dictionary, return_target: Strin
 	var frame := ScenarioFrame.new(ScenarioFrame.ACTION, action_id)
 	frame.return_target = return_target
 	frame.set_parameters(arguments)
-	var context := inherited_context.duplicate(true)
-	context["callingContext"] = String(calling_context)
+	var context: ScenarioExecutionContext = ScenarioExecutionContext.empty() if inherited_context == null else inherited_context.copy()
+	context.calling_context = calling_context
 	frame.set_context(context)
 	_frames.append(frame)
 	_append_trace({"event": "call-action", "actionId": action_id, "depth": _action_call_depth()})

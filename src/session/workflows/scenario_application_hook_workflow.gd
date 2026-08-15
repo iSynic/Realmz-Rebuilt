@@ -22,12 +22,8 @@ static func continuation(content: RealmzContent, hook: StringName, resume_kind: 
 	return SessionContinuation.new(&"application-hook", body)
 
 
-static func start_context(hook: StringName, service_id: String) -> Dictionary:
-	return {
-		"callingContext": "lifecycle",
-		"applicationHook": String(hook),
-		"serviceId": service_id,
-	}
+static func start_context(hook: StringName, service_id: String) -> ScenarioExecutionContext:
+	return ScenarioExecutionContext.calling(&"lifecycle").set_application_hook(hook, service_id)
 
 
 static func completion_event(body: SessionContinuation.ApplicationBody) -> DomainEvent:

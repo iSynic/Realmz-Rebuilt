@@ -27,7 +27,7 @@ func opcode_ids() -> Array[int]:
 	return [2, 10, 11, 48, 56, 65, 107]
 
 
-func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+func execute(action: ClassicActionDefinition, request_id: String, context: ScenarioExecutionContext) -> ScenarioRuntimeOperationResult:
 	match action.opcode:
 		2, 48, 56, 107:
 			return _start_classic_battle(action, request_id)
@@ -387,7 +387,8 @@ func _run_battle_macro(source_kind: StringName, caller: ScenarioBattleCaller, pr
 	var program_id := "xap:%d" % absi(combat.macro_id)
 	var vm := ScenarioVm.new()
 	vm.configure(_content.scenario)
-	var started := vm.start_program(program_id, {"callingContext": "battle-macro", "battleId": combat.battle_id})
+	var macro_context := ScenarioExecutionContext.calling(&"battle-macro").set_battle(combat.battle_id)
+	var started := vm.start_program(program_id, macro_context)
 	if started.state == ScenarioVmResult.State.FAILED:
 		return ScenarioRuntimeOperationResult.failed(started.error_code, started.error_message)
 	var result := vm.run(_runtime_api())
@@ -448,13 +449,10 @@ func _run_combat_death_macro(source_kind: StringName, caller: ScenarioBattleCall
 		return ScenarioRuntimeOperationResult.failed(&"invalid_death_macro_request", "Monster death-macro execution references unavailable content.")
 	var vm := ScenarioVm.new()
 	vm.configure(_content.scenario)
-	var started := vm.start_program(program_id, {
-		"callingContext": "monster-death-macro",
-		"battleId": combat.battle_id,
-		"combatantId": combatant_id,
-		"classicMonsterId": int(request.get("classicMonsterId", 0)),
-		"traitor": bool(request.get("traitor", monster.traitor)),
-	})
+	var death_context := ScenarioExecutionContext.calling(&"monster-death-macro")
+	death_context.set_battle(combat.battle_id)
+	death_context.set_combatant(combatant_id, int(request.get("classicMonsterId", 0)), bool(request.get("traitor", monster.traitor)), true)
+	var started := vm.start_program(program_id, death_context)
 	if started.state == ScenarioVmResult.State.FAILED:
 		return ScenarioRuntimeOperationResult.failed(started.error_code, started.error_message)
 	var result := vm.run(_runtime_api())

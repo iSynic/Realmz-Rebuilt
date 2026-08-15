@@ -11,7 +11,7 @@ var return_target: String = ""
 var counts_as_classic_call: bool = false
 var _parameters: Dictionary = {}
 var _locals: Dictionary = {}
-var _context: Dictionary = {}
+var _context: ScenarioExecutionContext = ScenarioExecutionContext.empty()
 var _iterators: Array[Dictionary] = []
 
 
@@ -45,16 +45,16 @@ func erase_local(name: String) -> void:
 	_locals.erase(name)
 
 
-func set_context(values: Dictionary) -> void:
-	_context = values.duplicate(true)
+func set_context(values: ScenarioExecutionContext) -> void:
+	_context = ScenarioExecutionContext.empty() if values == null else values.copy()
 
 
 func context_value(name: String) -> Variant:
-	return _context.get(name)
+	return _context.value(name)
 
 
-func context_data() -> Dictionary:
-	return _context.duplicate(true)
+func context() -> ScenarioExecutionContext:
+	return _context.copy()
 
 
 func push_iterator(iterator: Dictionary) -> void:
@@ -87,7 +87,7 @@ func to_data() -> Dictionary:
 		"countsAsClassicCall": counts_as_classic_call,
 		"parameters": _parameters.duplicate(true),
 		"locals": _locals.duplicate(true),
-		"context": _context.duplicate(true),
+		"context": _context.to_data(),
 		"iterators": _iterators.duplicate(true),
 	}
 
@@ -103,12 +103,15 @@ static func from_data(data: Variant) -> ScenarioFrame:
 		return null
 	if not data["parameters"] is Dictionary or not data["locals"] is Dictionary or not data["context"] is Dictionary or not data["iterators"] is Array:
 		return null
+	var context := ScenarioExecutionContext.from_data(data["context"])
+	if context == null:
+		return null
 	var frame := ScenarioFrame.new(StringName(data["kind"]), data["definitionId"], saved_cursor)
 	frame.return_target = data["returnTarget"]
 	frame.counts_as_classic_call = data["countsAsClassicCall"]
 	frame._parameters = data["parameters"].duplicate(true)
 	frame._locals = data["locals"].duplicate(true)
-	frame._context = data["context"].duplicate(true)
+	frame._context = context
 	for iterator: Variant in data["iterators"]:
 		if not iterator is Dictionary:
 			return null
