@@ -515,7 +515,7 @@
         "expectedRepresentation": "Compiled content contains the effective stock or scenario-overlaid Race and Caste definitions. The separately provenance-pinned application catalog contains stock identity tables, appearance media, spells, standard items, and only stock-caste-referenced supply defaults. Caste spellcaster rows retain all three start/max columns. Standard spells retain packed Classic IDs and Castle resource names; the runtime distinguishes the first twelve character slots from the resource table's remaining name slots."
       },
       "realmz2": {
-        "owner": { "path": "src/session/game_session.gd", "symbol": "func _generate_character_draft" },
+        "owner": { "path": "src/session/workflows/lifecycle_party_workflow.gd", "symbol": "static func generate_character_draft" },
         "expectedTrace": ["open stock Character Files creation without a selected scenario or use selected-scenario definitions", "typed creation specification", "one committed Classic roll and RNG boundary", "saveable Review or reroll", "typed twelve-slot spell choices", "optional saveable unspent-point confirmation", "accept without another creation roll", "publish one reusable revision or return to scenario party setup"],
         "tests": [
           { "path": "tests/core/test_character_creation_session.gd", "symbol": "func run" },

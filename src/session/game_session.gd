@@ -67,7 +67,7 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 	if not content.available_monster_sets().has(replacement_state.monster_set):
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved game selects a monster set unavailable in this package.")
 	if replacement_state.party_setup_completed and replacement_state.experience_multiplier < 0.0:
-		replacement_state.experience_multiplier = _party_experience_multiplier(replacement_state.party.characters(), replacement_state.difficulty, content.campaign_definition())
+		replacement_state.experience_multiplier = LifecyclePartyWorkflow.party_experience_multiplier(replacement_state.party.characters(), replacement_state.difficulty, content.campaign_definition())
 	if replacement_state.combat != null:
 		for item: ItemInstance in replacement_state.combat.fumbled_items():
 			if content.item_by_id(item.definition_id) == null:
@@ -92,7 +92,7 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved journal references unavailable or unrepresentable Classic messages.")
 	if not _acquired_player_maps_are_valid(content, replacement_state):
 		return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved acquired maps reference unavailable package content.")
-	if not _character_draft_is_valid(content, replacement_state, replacement_rules):
+	if not LifecyclePartyWorkflow.character_draft_is_valid(content, replacement_state, replacement_rules):
 		return SessionStep.failed(_view_revision, &"invalid_character_draft", "The saved character-creation draft is invalid for this campaign.")
 	var replacement_vm := ScenarioVm.new()
 	replacement_vm.configure(content.scenario)
@@ -217,17 +217,17 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		PlayerIntent.Kind.SET_COMBAT_AUTO:
 			return _set_combat_auto(intent)
 		PlayerIntent.Kind.CREATE_PARTY:
-			return _create_party((intent.payload as PlayerIntent.PartyPayload).members)
+			return _commit_workflow_result(LifecyclePartyWorkflow.create_party(_workflow_context(), _pending_interaction() != null, (intent.payload as PlayerIntent.PartyPayload).members))
 		PlayerIntent.Kind.BEGIN_ADVENTURE:
 			return _begin_adventure()
 		PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
-			return _import_vault_character(intent)
+			return _commit_workflow_result(LifecyclePartyWorkflow.import_vault_character(_workflow_context(), _pending_interaction() != null, intent.payload as PlayerIntent.VaultImportPayload))
 		PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT:
-			return _generate_character_draft(intent)
+			return _commit_workflow_result(LifecyclePartyWorkflow.generate_character_draft(_workflow_context(), _pending_interaction() != null, intent.payload as PlayerIntent.CharacterDraftPayload))
 		PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT:
-			return _cancel_character_draft()
+			return _commit_workflow_result(LifecyclePartyWorkflow.cancel_character_draft(_workflow_context(), _pending_interaction() != null))
 		PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS:
-			return _set_character_draft_spells((intent.payload as PlayerIntent.StringListPayload).values)
+			return _commit_workflow_result(LifecyclePartyWorkflow.set_character_draft_spells(_workflow_context(), _pending_interaction() != null, (intent.payload as PlayerIntent.StringListPayload).values))
 		PlayerIntent.Kind.FINALIZE_CHARACTER:
 			return _finalize_character(intent)
 		PlayerIntent.Kind.REMOVE_PARTY_MEMBER:
@@ -302,65 +302,6 @@ func _workflow_context(events: Array[DomainEvent] = []) -> SessionWorkflowContex
 func _set_continuation(continuation: SessionContinuation) -> void:
 	assert(continuation != null and not continuation.is_empty(), "A live continuation must have a typed body")
 	_session_continuation = continuation
-
-
-func _character_spell_candidates(character: CharacterState, caste: CasteDefinition) -> Array[SpellDefinition]:
-	var result: Array[SpellDefinition] = []
-	if character == null or caste == null or character.spellcaster_type < 1:
-		return result
-	var maximum_level := _rules.characters.maximum_spell_selection_level(caste)
-	for spell: SpellDefinition in _content.spell_definitions():
-		if int(spell.classic_id / 1000) != character.spellcaster_type:
-			continue
-		var tier := spell.classic_tier()
-		var slot := spell.classic_slot()
-		if tier >= 0 and tier < maximum_level and slot >= 1 and slot <= 12:
-			result.append(spell)
-	result.sort_custom(func(left: SpellDefinition, right: SpellDefinition) -> bool: return left.classic_id < right.classic_id)
-	return result
-
-
-func _character_draft_is_valid(content: RealmzContent, state: GameState, rules: RealmzRules) -> bool:
-	if state.character_draft == null:
-		return true
-	if state.party_setup_completed or state.character_draft.finalized or state.character_draft.generated_character == null:
-		return false
-	var draft := state.character_draft
-	var character := draft.generated_character
-	if character.name != draft.name or character.gender != draft.gender or character.race_id != draft.race_id or character.caste_id != draft.caste_id or character.portrait_id != draft.portrait_id or character.combat_icon_id != draft.combat_icon_id:
-		return false
-	var race := content.race_by_id(character.race_id)
-	var caste := content.caste_by_id(character.caste_id)
-	if race == null or caste == null:
-		return false
-	var restrictions := content.campaign_definition().restrictions
-	if restrictions.banned_races.has(race.id) or restrictions.banned_castes.has(caste.id):
-		return false
-	if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
-		return false
-	if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
-		return false
-	for current: CharacterState in state.party.characters():
-		if current.id == character.id or current.name.to_lower() == character.name.to_lower():
-			return false
-	var candidate_ids: Dictionary = {}
-	for spell: SpellDefinition in content.spell_definitions():
-		if int(spell.classic_id / 1000) == character.spellcaster_type:
-			var tier := spell.classic_tier()
-			if tier >= 0 and tier < rules.characters.maximum_spell_selection_level(caste):
-				candidate_ids[spell.id] = spell
-	var spent := 0
-	for spell_id: String in character.known_spells():
-		if not candidate_ids.has(spell_id):
-			return false
-		var spell: SpellDefinition = candidate_ids[spell_id]
-		spent += rules.characters.spell_selection_cost(spell)
-	if spent > rules.characters.spell_selection_total(character, caste):
-		return false
-	for item: ItemInstance in character.inventory():
-		if content.item_by_id(item.definition_id) == null:
-			return false
-	return true
 
 
 func snapshot() -> SessionSnapshot:
@@ -1081,350 +1022,35 @@ static func _character_vault_confirmation_request(request_id: String, character_
 	return InteractionRequest.yes_no(request_id, "Publish %s as a reusable character-vault revision?" % character_name, "Publish to vault", "Keep in this party only")
 
 
-func _create_party(specs: Array[CharacterCreationSpec]) -> SessionStep:
-	if _state.party_setup_completed or _pending_interaction() != null:
-		return SessionStep.failed(_view_revision, &"party_setup_closed", "Party creation is available only during party setup.")
-	if _state.character_draft != null:
-		return SessionStep.failed(_view_revision, &"character_draft_active", "Finish or cancel the character currently being created.")
-	var maximum_party_size := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
-	if specs.is_empty() or specs.size() > maximum_party_size:
-		return SessionStep.failed(_view_revision, &"invalid_party_size", "This campaign allows one through %d characters." % maximum_party_size)
-	var requested_levels := 0
-	for requested: CharacterCreationSpec in specs:
-		requested_levels += requested.starting_level
-	var campaign := _content.campaign_definition()
-	if campaign != null and campaign.guidance_authored and campaign.maximum_party_levels > 0 and requested_levels > campaign.maximum_party_levels:
-		return SessionStep.failed(_view_revision, &"party_level_limit_exceeded", "This party's combined %d levels exceed the scenario maximum of %d." % [requested_levels, campaign.maximum_party_levels])
-	var created: Array[CharacterState] = []
-	var names: Dictionary = {}
-	for index: int in specs.size():
-		var spec: CharacterCreationSpec = specs[index]
-		var validation := _character_creation_error(spec, names)
-		if not validation.is_empty():
-			return SessionStep.failed(_view_revision, StringName(validation["code"]), String(validation["message"]))
-		var character := _create_character_from_spec(spec, "party.character.%d" % (index + 1), true, created)
-		if character == null:
-			return SessionStep.failed(_view_revision, &"character_creation_failed", "Realmz rules rejected a party member.")
-		names[spec.name.to_lower()] = true
-		created.append(character)
-	var replacement := PartyState.new(_state.party.map_id, _state.party.coordinate, created)
-	_state.party = replacement
-	_state.experience_multiplier = _party_experience_multiplier(created, _state.difficulty, _content.campaign_definition())
-	_state.party_setup_completed = true
-	var character_ids: Array[String] = []
-	for character: CharacterState in created:
-		character_ids.append(character.id)
-	return _finish_completed([DomainEvent.new(&"party_created", {"characterIds": character_ids})])
-
-
 func _begin_adventure() -> SessionStep:
-	if _state.party_setup_completed or _pending_interaction() != null:
-		return SessionStep.failed(_view_revision, &"party_setup_closed", "Party setup is no longer active.")
-	if _state.character_draft != null:
-		return SessionStep.failed(_view_revision, &"character_draft_active", "Finish or cancel the character currently being created before beginning.")
-	var characters := _state.party.characters()
-	if characters.is_empty():
-		return SessionStep.failed(_view_revision, &"empty_party", "Add or import at least one character before beginning.")
-	var aggregate_error := _aggregate_party_level_error(characters)
-	if not aggregate_error.is_empty():
-		return SessionStep.failed(_view_revision, &"party_level_limit_exceeded", aggregate_error)
-	_state.experience_multiplier = _party_experience_multiplier(characters, _state.difficulty, _content.campaign_definition())
-	_state.party_setup_completed = true
-	var character_ids: Array[String] = []
-	for character: CharacterState in characters:
-		character_ids.append(character.id)
-	return _start_application_hook(ScenarioApplicationHooks.START_GAME, "begin-adventure", "", [DomainEvent.new(&"party_created", {"characterIds": character_ids})])
-
-
-func _import_vault_character(intent: PlayerIntent) -> SessionStep:
-	var payload := intent.payload as PlayerIntent.VaultImportPayload
-	if _state.party_setup_completed or _pending_interaction() != null:
-		return SessionStep.failed(_view_revision, &"party_setup_closed", "Vault import is available only during party setup.")
-	if _state.character_draft != null:
-		return SessionStep.failed(_view_revision, &"character_draft_active", "Finish or cancel the character currently being created before importing from the vault.")
-	if payload.character_id.is_empty() or payload.revision_hash.is_empty() or payload.character_state == null:
-		return SessionStep.failed(_view_revision, &"invalid_vault_import", "A validated vault character revision is required.")
-	var imported := CharacterState.from_data(payload.character_state.to_data())
-	if imported == null or imported.id != payload.character_id:
-		return SessionStep.failed(_view_revision, &"invalid_vault_import", "The vault character state is malformed.")
-	var restrictions := _content.campaign_definition().restrictions
-	var maximum_party_size := clampi(restrictions.maximum_party_size, 1, 6)
-	var current_characters := _state.party.characters()
-	if current_characters.size() >= maximum_party_size:
-		return SessionStep.failed(_view_revision, &"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
-	if _content.race_by_id(imported.race_id) == null or _content.caste_by_id(imported.caste_id) == null:
-		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's race or class is not defined by this campaign.")
-	if restrictions.banned_races.has(imported.race_id) or restrictions.banned_castes.has(imported.caste_id):
-		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The campaign restrictions reject this vault character.")
-	if restrictions.maximum_level > 0 and imported.level > restrictions.maximum_level:
-		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character exceeds this campaign's maximum level.")
-	var prospective_party := current_characters.duplicate()
-	prospective_party.append(imported)
-	var aggregate_error := _aggregate_party_level_error(prospective_party)
-	if not aggregate_error.is_empty():
-		return SessionStep.failed(_view_revision, &"vault_character_ineligible", aggregate_error)
-	var race := _content.race_by_id(imported.race_id)
-	var caste := _content.caste_by_id(imported.caste_id)
-	_rules.characters.ensure_age_group(imported, race, caste)
-	if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
-		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's race cannot use that class.")
-	if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
-		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's class is not available to that race.")
-	for item: ItemInstance in imported.inventory():
-		if _content.item_by_id(item.definition_id) == null:
-			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character carries an item unavailable in this campaign.")
-	var imported_load := _rules.inventory.calculated_load(imported, _content.item_definitions())
-	if imported_load < 0 or imported_load > imported.maximum_load:
-		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's carried wealth and items exceed this character's load limit.")
-	# Vault revisions preserve item identity and equipment state, but load is derived
-	# again from the target package so stale local revisions cannot bypass capacity.
-	imported.carried_load = imported_load
-	for spell_id: String in imported.known_spells():
-		if _content.spell_by_id(spell_id) == null:
-			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character knows a spell unavailable in this campaign.")
-	for scroll: SpellScrollState in imported.scroll_case():
-		if not scroll.is_empty() and _content.spell_by_id(scroll.spell_id) == null:
-			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's scroll case contains a spell unavailable in this campaign.")
-	for binding: FastSpellBindingState in imported.fast_spells():
-		if binding.is_empty():
-			continue
-		var bound_spell := _content.spell_by_id(binding.spell_id)
-		if bound_spell == null or not imported.known_spells().has(binding.spell_id):
-			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's Fast Spell bindings reference an unavailable or unknown spell.")
-		if binding.power < 1 or binding.power > 7 or bound_spell.cost < 0 and binding.power != 1:
-			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character's Fast Spell bindings contain an invalid power.")
-	if _content.has_character_appearance_catalog():
-		var portrait := _content.appearance_by_id(imported.portrait_id) if not imported.portrait_id.is_empty() else null
-		if (portrait != null and portrait.kind != CharacterAppearanceDefinition.PORTRAIT) or (not imported.portrait_id.is_empty() and portrait == null):
-			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character uses a portrait unavailable in this campaign package.")
-		var combat_icon := _content.appearance_by_id(imported.combat_icon_id) if not imported.combat_icon_id.is_empty() else null
-		if (combat_icon != null and combat_icon.kind != CharacterAppearanceDefinition.COMBAT_ICON) or (not imported.combat_icon_id.is_empty() and combat_icon == null):
-			return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The vault character uses a combat icon unavailable in this campaign package.")
-	for current: CharacterState in current_characters:
-		if current.id == imported.id or current.name.to_lower() == imported.name.to_lower():
-			return SessionStep.failed(_view_revision, &"duplicate_party_member", "That vault character is already represented in the party.")
-	if not _state.party.add_character(imported):
-		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The validated vault character could not be added to the party.")
-	return _finish_completed([DomainEvent.new(&"vault_character_imported", {"characterId": imported.id, "revisionHash": payload.revision_hash, "sourceCampaignId": payload.source_campaign_id})])
-
-
-func _generate_character_draft(intent: PlayerIntent) -> SessionStep:
-	var payload := intent.payload as PlayerIntent.CharacterDraftPayload
-	if _state.party_setup_completed or _pending_interaction() != null:
-		return SessionStep.failed(_view_revision, &"party_setup_closed", "Character creation is available only during party setup.")
-	if payload.spec == null:
-		return SessionStep.failed(_view_revision, &"invalid_character_spec", "Generate Character requires exactly one typed specification.")
-	var maximum_party_size := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
-	var current_characters := _state.party.characters()
-	if current_characters.size() >= maximum_party_size:
-		return SessionStep.failed(_view_revision, &"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
-	var names: Dictionary = {}
-	for current: CharacterState in current_characters:
-		names[current.name.to_lower()] = true
-	var spec := payload.spec
-	var validation := _character_creation_error(spec, names)
-	if not validation.is_empty():
-		return SessionStep.failed(_view_revision, StringName(validation["code"]), String(validation["message"]))
-	var character_id := _state.character_draft.generated_character.id if _state.character_draft != null and _state.character_draft.generated_character != null else _next_party_character_id()
-	var character := _create_character_from_spec(spec, character_id)
-	if character == null:
-		return SessionStep.failed(_view_revision, &"character_creation_failed", "Realmz rules rejected the character draft.")
-	var draft := CharacterDraft.new()
-	draft.name = spec.name
-	draft.gender = spec.gender
-	draft.starting_level = spec.starting_level
-	draft.race_id = spec.race_id
-	draft.caste_id = spec.caste_id
-	draft.portrait_id = character.portrait_id
-	draft.combat_icon_id = character.combat_icon_id
-	draft.generated_character = character
-	_state.character_draft = draft
-	return _finish_completed([DomainEvent.new(&"character_draft_generated", {"characterId": character.id, "name": character.name})])
-
-
-func _cancel_character_draft() -> SessionStep:
-	if _state.party_setup_completed or _pending_interaction() != null:
-		return SessionStep.failed(_view_revision, &"party_setup_closed", "Character creation is available only during party setup.")
-	if _state.character_draft == null:
-		return SessionStep.failed(_view_revision, &"no_character_draft", "There is no generated character to cancel.")
-	var character_id := _state.character_draft.generated_character.id if _state.character_draft.generated_character != null else ""
-	_state.character_draft = null
-	return _finish_completed([DomainEvent.new(&"character_draft_cancelled", {"characterId": character_id})])
-
-
-func _set_character_draft_spells(spell_ids: Array[String]) -> SessionStep:
-	if _state.party_setup_completed or _pending_interaction() != null:
-		return SessionStep.failed(_view_revision, &"party_setup_closed", "Spell selection is available only during character creation.")
-	if _state.character_draft == null or _state.character_draft.generated_character == null:
-		return SessionStep.failed(_view_revision, &"no_character_draft", "Generate the character before choosing spells.")
-	var character := _state.character_draft.generated_character
-	var caste := _content.caste_by_id(character.caste_id)
-	var candidates := _character_spell_candidates(character, caste)
-	var candidate_ids: Dictionary = {}
-	for spell: SpellDefinition in candidates:
-		candidate_ids[spell.id] = spell
-	var selected: Array[String] = []
-	var spent := 0
-	for spell_id: String in spell_ids:
-		if selected.has(spell_id) or not candidate_ids.has(spell_id):
-			return SessionStep.failed(_view_revision, &"invalid_character_spell", "The selected spell is not available to this character.")
-		selected.append(spell_id)
-		var spell: SpellDefinition = candidate_ids[spell_id]
-		spent += _rules.characters.spell_selection_cost(spell)
-	var total := _rules.characters.spell_selection_total(character, caste)
-	if spent > total:
-		return SessionStep.failed(_view_revision, &"character_spell_budget_exceeded", "The selected spells exceed this character's Classic selection points.")
-	character.set_known_spells(selected)
-	return _finish_completed([DomainEvent.new(&"character_draft_spells_changed", {"characterId": character.id, "spellIds": selected, "remaining": total - spent})])
+	var result := LifecyclePartyWorkflow.begin_adventure(_workflow_context(), _pending_interaction() != null)
+	if not result.ok:
+		return _finish_failed(result.error_code, result.error_message, result.events)
+	return _start_application_hook(ScenarioApplicationHooks.START_GAME, "begin-adventure", "", result.events)
 
 
 func _finalize_character(_intent: PlayerIntent) -> SessionStep:
-	if _state.party_setup_completed or _pending_interaction() != null:
-		return SessionStep.failed(_view_revision, &"party_setup_closed", "Character creation is available only during party setup.")
-	if _state.character_draft == null or _state.character_draft.generated_character == null:
-		return SessionStep.failed(_view_revision, &"no_character_draft", "Generate and review the character before finalizing it.")
-	var maximum_party_size := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
-	var current_characters := _state.party.characters()
-	if current_characters.size() >= maximum_party_size:
-		return SessionStep.failed(_view_revision, &"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size)
-	var draft := _state.character_draft
-	var names: Dictionary = {}
-	for current: CharacterState in current_characters:
-		names[current.name.to_lower()] = true
-	var validation := _character_creation_error(draft.to_creation_spec(), names)
-	if not validation.is_empty():
-		return SessionStep.failed(_view_revision, StringName(validation["code"]), String(validation["message"]))
-	var caste := _content.caste_by_id(draft.generated_character.caste_id)
-	var total := _rules.characters.spell_selection_total(draft.generated_character, caste)
-	var spent := 0
-	for spell_id: String in draft.generated_character.known_spells():
-		spent += _rules.characters.spell_selection_cost(_content.spell_by_id(spell_id))
-	var remaining := maxi(0, total - spent)
-	if remaining > 0:
-		var request_id := "character-spells:%s:%d" % [draft.generated_character.id, _view_revision + 1]
-		_set_continuation(SessionContinuation.character_spell_confirmation(draft.generated_character.id, remaining))
-		_session_interaction = _character_spell_confirmation_request(request_id, remaining)
-		return _finish_waiting(_session_interaction, [DomainEvent.new(&"character_spell_confirmation_requested", {"characterId": draft.generated_character.id, "remaining": remaining})])
+	var result := LifecyclePartyWorkflow.prepare_character_finalize(_workflow_context(), _pending_interaction() != null)
+	if not result.ok:
+		return _finish_failed(result.error_code, result.error_message, result.events)
+	if result.remaining_spell_points > 0:
+		var request_id := "character-spells:%s:%d" % [result.character_id, _view_revision + 1]
+		_set_continuation(SessionContinuation.character_spell_confirmation(result.character_id, result.remaining_spell_points))
+		_session_interaction = _character_spell_confirmation_request(request_id, result.remaining_spell_points)
+		return _finish_waiting(_session_interaction, [DomainEvent.new(&"character_spell_confirmation_requested", {"characterId": result.character_id, "remaining": result.remaining_spell_points})])
 	return _commit_character_draft()
 
 
 func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionStep:
-	if _state.character_draft == null or _state.character_draft.generated_character == null:
-		return _finish_failed(&"no_character_draft", "The generated character is no longer available.", events)
-	var maximum_party_size := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
-	if _state.party.characters().size() >= maximum_party_size:
-		return _finish_failed(&"invalid_party_size", "This campaign allows no more than %d characters." % maximum_party_size, events)
-	var draft := _state.character_draft
-	var character := CharacterState.from_data(draft.generated_character.to_data())
-	if character == null:
-		return _finish_failed(&"character_creation_failed", "Realmz rules rejected the generated character.", events)
-	var party_context := _state.party.characters()
-	party_context.append(character)
-	var aggregate_error := _aggregate_party_level_error(party_context)
-	if not aggregate_error.is_empty():
-		return _finish_failed(&"party_level_limit_exceeded", aggregate_error, events)
-	if not _materialize_initial_inventory(character, _content.caste_by_id(character.caste_id), party_context) or not _state.party.add_character(character):
-		return _finish_failed(&"character_creation_failed", "Realmz rules rejected the generated character.", events)
-	_state.character_draft = null
-	events.append(DomainEvent.new(&"character_finalized", {"characterId": character.id}))
-	var request_id := "character-vault:%s:%d" % [character.id, _view_revision + 1]
-	_set_continuation(SessionContinuation.character_vault_publication(character.id))
-	_session_interaction = _character_vault_confirmation_request(request_id, character.name)
-	events.append(DomainEvent.new(&"character_vault_confirmation_requested", {"characterId": character.id}))
+	var result := LifecyclePartyWorkflow.commit_character_draft(_workflow_context())
+	if not result.ok:
+		return _finish_failed(result.error_code, result.error_message, events)
+	events.append_array(result.events)
+	var request_id := "character-vault:%s:%d" % [result.character_id, _view_revision + 1]
+	_set_continuation(SessionContinuation.character_vault_publication(result.character_id))
+	_session_interaction = _character_vault_confirmation_request(request_id, result.character_name)
+	events.append(DomainEvent.new(&"character_vault_confirmation_requested", {"characterId": result.character_id}))
 	return _finish_waiting(_session_interaction, events)
-
-
-func _aggregate_party_level_error(characters: Array[CharacterState]) -> String:
-	var campaign := _content.campaign_definition()
-	if campaign == null or not campaign.guidance_authored or campaign.maximum_party_levels <= 0:
-		return ""
-	var current_levels := 0
-	for character: CharacterState in characters:
-		current_levels += character.level
-	if current_levels <= campaign.maximum_party_levels:
-		return ""
-	return "This party's combined %d levels exceed the scenario maximum of %d." % [current_levels, campaign.maximum_party_levels]
-
-
-static func _party_experience_multiplier(characters: Array[CharacterState], difficulty: int, campaign: CampaignDefinition) -> float:
-	if campaign == null or not campaign.guidance_authored or campaign.recommended_party_levels <= 0:
-		return 1.0
-	var current_levels := 0
-	for character: CharacterState in characters:
-		current_levels += character.level
-	var multiplier := PartySetupRules.experience_multiplier(campaign.recommended_party_levels, current_levels, difficulty)
-	return 1.0 if multiplier <= 0.0 else multiplier
-
-
-func _character_creation_error(spec: CharacterCreationSpec, existing_names: Dictionary) -> Dictionary:
-	if spec == null:
-		return {"code": &"invalid_character_spec", "message": "A character specification is required."}
-	if spec.name.is_empty() or spec.name.length() > 24 or spec.gender not in [1, 2]:
-		return {"code": &"invalid_character_spec", "message": "Every party member requires a valid name and gender."}
-	if not CharacterRules.STARTING_LEVELS.has(spec.starting_level):
-		return {"code": &"invalid_starting_level", "message": "Starting level must be one of Castle's fixed character-creation choices."}
-	if existing_names.has(spec.name.to_lower()):
-		return {"code": &"duplicate_character_name", "message": "Party member names must be unique."}
-	var race := _content.race_by_id(spec.race_id)
-	var caste := _content.caste_by_id(spec.caste_id)
-	if race == null or caste == null:
-		return {"code": &"unknown_character_definition", "message": "Party creation references an unavailable race or caste."}
-	var restrictions := _content.campaign_definition().restrictions
-	if restrictions.banned_races.has(race.id):
-		return {"code": &"restricted_race", "message": "This campaign does not allow the selected race."}
-	if restrictions.banned_castes.has(caste.id):
-		return {"code": &"restricted_caste", "message": "This campaign does not allow the selected class."}
-	if restrictions.maximum_level > 0 and spec.starting_level > restrictions.maximum_level:
-		return {"code": &"restricted_starting_level", "message": "This campaign allows characters only through level %d." % restrictions.maximum_level}
-	if not race.eligible_caste_ids.is_empty() and not race.eligible_caste_ids.has(caste.id):
-		return {"code": &"incompatible_race_class", "message": "The selected race cannot use that class."}
-	if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
-		return {"code": &"incompatible_class_race", "message": "The selected class is not available to that race."}
-	if _content.has_character_appearance_catalog():
-		var appearance := _resolved_character_appearance(spec, race)
-		if appearance.is_empty():
-			return {"code": &"invalid_character_appearance", "message": "The selected portrait or combat icon is unavailable in this campaign package."}
-	return {}
-
-
-func _create_character_from_spec(spec: CharacterCreationSpec, character_id: String, add_starting_items: bool = false, party_context: Array[CharacterState] = []) -> CharacterState:
-	var race := _content.race_by_id(spec.race_id)
-	var character := _rules.characters.create_character(character_id, spec.name, race, _content.caste_by_id(spec.caste_id), spec.gender, _rng, false, spec.starting_level)
-	if character == null:
-		return null
-	var appearance := _resolved_character_appearance(spec, race)
-	character.portrait_id = String(appearance.get("portraitId", spec.portrait_id))
-	character.combat_icon_id = String(appearance.get("combatIconId", spec.combat_icon_id))
-	if add_starting_items:
-		var equipment_context := party_context.duplicate()
-		equipment_context.append(character)
-		if not _materialize_initial_inventory(character, _content.caste_by_id(spec.caste_id), equipment_context):
-			return null
-	return character
-
-
-func _materialize_initial_inventory(character: CharacterState, caste: CasteDefinition, party_context: Array[CharacterState]) -> bool:
-	if character == null or caste == null or not character.inventory().is_empty():
-		return false
-	var definitions := _content.item_definitions()
-	character.carried_load = _rules.inventory.calculated_load(character, definitions)
-	if character.carried_load < 0 or character.carried_load > character.maximum_load:
-		return false
-	var added: Array[ItemInstance] = []
-	for index: int in caste.start_items().size():
-		var definition := _content.item_by_id(caste.start_items()[index])
-		if definition == null:
-			return false
-		var instance := _rules.inventory.add_item(character, definition, "%s.item.%d" % [character.id, index], true)
-		# Castle tests capacity before writing the item record. Its separate numitems
-		# counter advances too early; the direct model keeps only records that fit.
-		if instance != null:
-			added.append(instance)
-	var race := _content.race_by_id(character.race_id)
-	for instance: ItemInstance in added:
-		var definition := _content.item_by_id(instance.definition_id)
-		_rules.inventory.equip_classic(character, instance, definition, race, caste, party_context, definitions)
-	return _rules.inventory.calculated_load(character, definitions) == character.carried_load
 
 
 static func _party_inventory_is_valid(content: RealmzContent, state: GameState, rules: RealmzRules) -> bool:
@@ -1517,26 +1143,6 @@ static func _acquired_player_maps_are_valid(content: RealmzContent, state: GameS
 		if content.world.player_map_by_id(player_map_id) == null:
 			return false
 	return true
-
-
-func _resolved_character_appearance(spec: CharacterCreationSpec, race: RaceDefinition) -> Dictionary:
-	if not _content.has_character_appearance_catalog():
-		return {"portraitId": spec.portrait_id, "combatIconId": spec.combat_icon_id}
-	var default_portrait_resource := 257 if race.default_icon_set == 0 else 251 + race.default_icon_set * 6
-	var portrait := _content.appearance_by_id(spec.portrait_id) if not spec.portrait_id.is_empty() else _content.appearance_by_resource(CharacterAppearanceDefinition.PORTRAIT, default_portrait_resource)
-	if portrait == null or portrait.kind != CharacterAppearanceDefinition.PORTRAIT:
-		return {}
-	var icon := _content.appearance_by_id(spec.combat_icon_id) if not spec.combat_icon_id.is_empty() else _content.appearance_by_resource(CharacterAppearanceDefinition.COMBAT_ICON, 9000 - 257 + portrait.classic_resource_id)
-	if icon == null or icon.kind != CharacterAppearanceDefinition.COMBAT_ICON:
-		return {}
-	return {"portraitId": portrait.id, "combatIconId": icon.id}
-
-
-func _next_party_character_id() -> String:
-	var character_id := _state.next_instance_id("party.character")
-	while _state.party.character_by_id(character_id) != null:
-		character_id = _state.next_instance_id("party.character")
-	return character_id
 
 
 func _search() -> SessionStep:
