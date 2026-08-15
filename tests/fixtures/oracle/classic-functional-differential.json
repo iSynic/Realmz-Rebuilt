@@ -2909,7 +2909,7 @@
         "expectedRepresentation": "Schema v2 already preserves opcode 49 and the session save owns all three banked, pooled, and personal denominations. No immutable compiler field or package migration is required."
       },
       "realmz2": {
-        "owner": { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func _resume_banking(" },
+        "owner": { "path": "src/scenario/runtime/operations/classic_service_operations.gd", "symbol": "func _resume_banking(" },
         "expectedTrace": ["execute opcode 49 and expose contextual bank availability", "enter through one typed service intent", "move every banked denomination to the pool once", "render detached Pool, Share, selected-character, exact-increment, balance, load, and reason facts", "revalidate and commit one typed money response", "request source sounds for open, Pool or Share, transfer direction, and Done", "serialize the bank interaction and complete wealth state without a second drain", "close Done without re-banking", "return all remaining pooled denominations and disable banking on location departure"],
         "tests": [
           { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_bank_swap_lifecycle(content: RealmzContent)" },

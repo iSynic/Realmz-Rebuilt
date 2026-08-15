@@ -15,7 +15,7 @@ Own the single session-constructed VM runtime API and explicit Classic opcode ha
 
 - Each Classic opcode has one owner. Registration rejects duplicate opcode IDs and VM-owned control-flow opcodes.
 - `RealmzRuntimeApi` may coordinate typed waits and resumes but must delegate source-backed domain mutation to a handler or shared core workflow/rule operation.
-- `ClassicServiceOperations` owns shop/temple/bank opcode execution and request projection; `ClassicBattleRewardOperations` owns battle startup, combat/reward continuation mutation, terminal handoff validation, and reward progression. Runtime API wrappers expose those operations to `GameSession` without duplicating their behavior.
+- `ClassicServiceOperations` owns shop/temple/bank opcode execution, request projection, and continuation mutation; `ClassicBattleRewardOperations` owns battle startup, combat/reward continuation mutation, terminal handoff validation, and reward progression. Runtime API wrappers expose those operations to `GameSession` without duplicating their behavior.
 - Nested battle and death-macro VMs call the owning runtime API through a weak reference so the session graph has no `RefCounted` ownership cycle.
 - Classic control-flow results cross the runtime/VM boundary as `ScenarioVmDirective` variants. Raw directive dictionaries are codec data only and may not be inspected or constructed by handlers.
 - Live continuation queues contain typed interaction bodies. Dictionary payloads may enter only from detached domain events and are decoded once before the continuation is constructed.
