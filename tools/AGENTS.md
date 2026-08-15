@@ -9,7 +9,8 @@ Own reproducible local verification, contract checks, fixture tooling, and relea
 - Headless Godot verification and architecture boundary guards.
 - `verify_architecture.ps1` rejects request-body dictionary rematerialization outside the strict request serializer and an explicitly detached event serialization site.
 - Package determinism/schema mirror checks and oracle harness launchers as introduced.
-- `package_probe.gd` independently validates and starts an arbitrary local `.realmz2` package without installing or committing it; its output separates manifest, document parse, typed construction, session start, view construction, and representative movement timings.
+- `package_probe.gd` exercises the public package repository and session boundary for an arbitrary local `.realmz2` package without installing or committing it; its output separates public package load, session start, view construction, and representative movement timings.
+- `package_discovery_probe.gd` measures manifest-only campaign discovery through the public repository without loading package graphs.
 - `route_acceptance.gd` loads an external package and route, drives trigger programs through the normal session/VM boundary, answers typed interactions, and emits a deterministic local report. It must not embed campaign route records or bypass rules except for its explicit deterministic battle-victory setup.
 - `corpus_acceptance.ps1` runs package probes and optional external routes from caller-supplied campaign descriptors; it never discovers or embeds commercial paths.
 - Synthetic package provenance and fixture-byte checks used by the aggregate gate.

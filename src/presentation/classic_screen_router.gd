@@ -1,8 +1,8 @@
 class_name ClassicScreenRouter
 extends Control
 
-const SaveSlotPreviewScript := preload("res://src/infrastructure/saves/save_slot_preview.gd")
-const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
+const SaveSlotPreviewScript := preload("res://src/core/view/save_slot_preview.gd")
+const PackageOperationViewScript := preload("res://src/app/package_operation_view.gd")
 const PartySetupCharacterRowScript := preload("res://src/presentation/party_setup_character_row.gd")
 const PartySetupPartyListScript := preload("res://src/presentation/party_setup_party_list.gd")
 const ClassicUiTheme := preload("res://src/presentation/classic_ui_theme.tres")
@@ -117,7 +117,7 @@ var _vault_return_to_splash: bool = false
 var _vault_inspection_revision_hash: String = ""
 var _ordinary_money_workspace_open: bool = false
 var _save_previews: Array = []
-var _package_operation_status: RefCounted = PackageOperationStatusScript.new()
+var _package_operation_status: RefCounted = PackageOperationViewScript.new()
 var _standalone_character_creation_available: bool = false
 var _standalone_character_creation_reason: String = "The Classic character library is unavailable."
 var _standalone_character_creation_active: bool = false
@@ -207,7 +207,7 @@ func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
 
 
 func set_package_operation(status: RefCounted) -> void:
-	_package_operation_status = status if status != null else PackageOperationStatusScript.new()
+	_package_operation_status = status if status != null else PackageOperationViewScript.new()
 	_render_campaign_list()
 
 

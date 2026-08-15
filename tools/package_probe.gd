@@ -6,46 +6,38 @@ const GAME_SESSION_SCRIPT := preload("res://src/session/game_session.gd")
 
 func _initialize() -> void:
 	var arguments := OS.get_cmdline_user_args()
-	if arguments.size() != 1:
-		printerr("Usage: godot --headless --path <project> --script res://tools/package_probe.gd -- <package.realmz2>")
+	if arguments.size() != 1 and arguments.size() != 3:
+		printerr("Usage: godot --headless --path <project> --script res://tools/package_probe.gd -- <package.realmz2> [--install-root <directory>]")
 		call_deferred("_quit_cleanly", 2)
 		return
 	var package_path: String = arguments[0]
+	var install_root := ""
+	if arguments.size() == 3:
+		if arguments[1] != "--install-root":
+			printerr("PACKAGE_REJECTED arguments: expected --install-root")
+			call_deferred("_quit_cleanly", 2)
+			return
+		install_root = arguments[2]
 	var repository := PACKAGE_REPOSITORY_SCRIPT.new()
-	var archive := ZIPReader.new()
 	var started_at := Time.get_ticks_msec()
-	var open_error := archive.open(package_path)
-	if open_error != OK:
-		printerr("PACKAGE_REJECTED package_open_failed: ZIP error %d" % open_error)
+	var package_result: PackageLoadResult
+	if install_root.is_empty():
+		package_result = repository.load_package(package_path)
+	else:
+		var install_result := repository.install_package(package_path, install_root)
+		if not install_result.is_ok():
+			printerr("PACKAGE_REJECTED %s: %s" % [install_result.error_code, install_result.error_message])
+			call_deferred("_quit_cleanly", 1)
+			return
+		package_path = install_result.installed_path
+		package_result = install_result.package
+	var package_load_ms := Time.get_ticks_msec() - started_at
+	if not package_result.is_ok():
+		printerr("PACKAGE_REJECTED %s: %s" % [package_result.error_code, package_result.error_message])
 		call_deferred("_quit_cleanly", 1)
 		return
-	var archive_entries: Array[String] = repository._zip_entries(archive)
-	var manifest: Variant = repository._read_document(archive, "manifest.json")
-	if manifest == null or not repository._validate_manifest(manifest, archive, archive_entries):
-		printerr("PACKAGE_REJECTED manifest: %s" % repository._last_error)
-		call_deferred("_quit_cleanly", 1)
-		return
-	print("PROBE manifest_ms=%d" % (Time.get_ticks_msec() - started_at))
-	var documents_started := Time.get_ticks_msec()
-	var content_document: Variant = repository._read_document(archive, "content.json")
-	var world_document: Variant = repository._read_document(archive, "world.json")
-	var scenario_document: Variant = repository._read_document(archive, "scenario.json")
-	var asset_document: Variant = repository._read_document(archive, "assets/index.json")
-	print("PROBE documents_ms=%d" % (Time.get_ticks_msec() - documents_started))
-	if content_document == null or world_document == null or scenario_document == null or asset_document == null:
-		printerr("PACKAGE_REJECTED documents: %s" % repository._last_error)
-		call_deferred("_quit_cleanly", 1)
-		return
-	var construction_started := Time.get_ticks_msec()
-	var runtime_assets := repository._construct_assets(asset_document)
-	var content: Variant = repository.call("_construct_content", manifest, content_document, world_document, scenario_document, runtime_assets)
-	print("PROBE construction_ms=%d" % (Time.get_ticks_msec() - construction_started))
-	if content == null:
-		printerr("PACKAGE_REJECTED construction: %s" % repository._last_error)
-		call_deferred("_quit_cleanly", 1)
-		return
-	var media := PackageMediaCatalog.new(package_path, manifest["packageHash"], runtime_assets)
-	archive.close()
+	var content: RealmzContent = package_result.content
+	var media: PackageMediaCatalog = package_result.media
 	var session := GAME_SESSION_SCRIPT.new()
 	var session_started_at := Time.get_ticks_msec()
 	var step: Variant = session.call("start", content, 1)
@@ -73,6 +65,7 @@ func _initialize() -> void:
 		"campaignId": content.campaign_id,
 		"firstViewMs": first_view_ms,
 		"packageHash": content.package_hash,
+		"packagePath": package_path,
 		"rulesVersion": content.rules_version,
 		"startMapId": view.party_map_id,
 		"startX": view.party_coordinate.x,
@@ -80,6 +73,7 @@ func _initialize() -> void:
 		"partySetupAvailable": view.party_setup_available,
 		"pendingInteraction": step.interaction != null,
 		"mediaAssets": media.assets().size(),
+		"packageLoadMs": package_load_ms,
 		"postMoveViewMs": post_move_view_ms,
 		"sessionStartMs": session_start_ms,
 		"tenRepeatViewsMs": ten_repeat_views_ms,

@@ -54,8 +54,8 @@
       "properties": {
         "kind": { "const": "realmz2.manifest" },
         "format": { "const": "realmz2" },
-        "formatVersion": { "const": 1 },
-        "schemaVersion": { "const": 2 },
+        "formatVersion": { "const": 2 },
+        "schemaVersion": { "const": 3 },
         "schemaHash": { "$ref": "#/$defs/sha256" },
         "campaignId": { "$ref": "#/$defs/identifier" },
         "contentId": { "$ref": "#/$defs/sha256" },
@@ -267,7 +267,7 @@
       ],
       "properties": {
         "kind": { "const": "realmz2.content" },
-        "schemaVersion": { "const": 2 },
+        "schemaVersion": { "const": 3 },
         "campaign": {
           "type": "object",
           "required": ["id", "name", "version", "author", "contact", "description", "splashAssetId", "recommendedPartyLevels", "maximumPartyLevels", "guidanceAuthored", "restrictions"],
@@ -656,7 +656,7 @@
       "required": ["kind", "schemaVersion", "battleTerrainSets", "maps", "playerMaps", "triggers", "transitions", "landLayout", "timedEncounters"],
       "properties": {
         "kind": { "const": "realmz2.world" },
-        "schemaVersion": { "const": 2 },
+        "schemaVersion": { "const": 3 },
         "battleTerrainSets": { "type": "array", "items": { "$ref": "#/$defs/battleTerrainSet" } },
         "maps": { "type": "array", "items": { "$ref": "#/$defs/map" }, "minItems": 1 },
         "playerMaps": { "type": "array", "items": { "$ref": "#/$defs/playerMap" }, "maxItems": 20 },
@@ -956,7 +956,7 @@
       "required": ["kind", "schemaVersion", "applicationHooks", "programs", "scenarioActions", "stateDefinitions", "migrations"],
       "properties": {
         "kind": { "const": "realmz2.scenario" },
-        "schemaVersion": { "const": 2 },
+        "schemaVersion": { "const": 3 },
         "applicationHooks": { "$ref": "#/$defs/applicationHooks" },
         "programs": { "type": "array", "items": { "$ref": "#/$defs/scenarioProgram" } },
         "scenarioActions": { "type": "array", "items": { "$ref": "#/$defs/scenarioAction" } },
@@ -997,7 +997,7 @@
       "required": ["kind", "schemaVersion", "assets"],
       "properties": {
         "kind": { "const": "realmz2.assets" },
-        "schemaVersion": { "const": 2 },
+        "schemaVersion": { "const": 3 },
         "assets": { "type": "array", "items": { "$ref": "#/$defs/asset" } }
       },
       "additionalProperties": false

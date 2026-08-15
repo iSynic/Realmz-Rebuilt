@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Own package loading, schema/hash validation, save persistence, migrations, and external host adapters.
+Own package loading, schema/hash validation, strict save persistence, and external host adapters.
 
 ## Ownership
 
@@ -59,8 +59,8 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 
 ## Verification
 
-- Contract tests cover hash/schema/reference rejection, package mismatch, corrupt saves, backup recovery, and migrations.
+- Contract tests cover hash/schema/reference rejection, package mismatch, explicit legacy-save rejection, corrupt saves, and backup recovery.
 
 ## Child DOX Index
 
-- No child AGENTS.md files are currently required.
+- `packages/AGENTS.md` owns package-v3 installation, discovery, decoding, validation, receipts, and bounded cache responsibilities.

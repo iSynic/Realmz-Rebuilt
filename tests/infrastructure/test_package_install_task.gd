@@ -28,14 +28,15 @@ func run() -> void:
 
 	_test_successful_task(campaign_id, package_hash)
 	_test_tampered_task(campaign_id, package_hash)
-	_test_deterministic_cancellation(campaign_id, package_hash)
+	_test_cancel_before_start(campaign_id, package_hash)
 	_test_shutdown_joins_worker()
 	_cleanup_test_root()
 
 
 func _test_successful_task(campaign_id: String, package_hash: String) -> void:
 	_cleanup_test_root()
-	var task: RefCounted = PackageInstallTaskScript.new()
+	var task_repository := PackageRepository.new()
+	var task: RefCounted = PackageInstallTaskScript.new(task_repository)
 	assert_true(task.start(FIXTURE_PATH, TEST_ROOT), "a package install task starts from the positive fixture")
 	var observed_phases: Array[StringName] = []
 	var terminal := _wait_for_terminal(task, observed_phases)
@@ -58,16 +59,6 @@ func _test_successful_task(campaign_id: String, package_hash: String) -> void:
 	assert_true(task.take_result() == null, "a package result is consumed exactly once")
 	var idle: RefCounted = task.snapshot()
 	assert_equal([idle.state, idle.phase, idle.completed, idle.total], [PackageOperationStatusScript.IDLE, &"", 0, 0], "taking the result resets the task to idle")
-	var retained_repository: RefCounted = task._repository
-	assert_true(task.start(FIXTURE_PATH, TEST_ROOT), "the same host worker can reopen an unchanged installed package")
-	var cached_phases: Array[StringName] = []
-	var cached_terminal := _wait_for_terminal(task, cached_phases)
-	assert_not_null(cached_terminal, "the repeated package task reaches a bounded terminal state")
-	if cached_terminal != null:
-		assert_equal(cached_terminal.state, PackageOperationStatusScript.SUCCEEDED, "the repeated unchanged package remains valid")
-	assert_equal(task._repository, retained_repository, "one package worker retains its validated in-memory package cache across starts")
-	assert_false(cached_phases.has(&"validating-integrity"), "an unchanged package in the same application process skips repeated payload hashing and typed construction")
-	assert_not_null(task.take_result(), "the cached package result remains an ordinary one-shot handoff")
 	task.shutdown()
 	_cleanup_test_root()
 
@@ -96,24 +87,13 @@ func _test_tampered_task(campaign_id: String, package_hash: String) -> void:
 	_cleanup_test_root()
 
 
-func _test_deterministic_cancellation(campaign_id: String, package_hash: String) -> void:
+func _test_cancel_before_start(campaign_id: String, package_hash: String) -> void:
 	_cleanup_test_root()
-	var cancellation_calls: Array[int] = [0]
-	var repository := PackageRepository.new()
-	var cancelled := repository.install_package(FIXTURE_PATH, TEST_ROOT, Callable(), func() -> bool:
-		cancellation_calls[0] += 1
-		return true
-	)
-	assert_true(cancellation_calls[0] > 0, "the repository cancellation seam is consulted before package work")
-	assert_equal(cancelled.error_code, &"package_cancelled", "the deterministic cancellation seam returns the typed cancellation error")
-	assert_false(cancelled.is_ok(), "a cancelled package operation cannot install successfully")
-	assert_true(cancelled.installed_path.is_empty(), "a cancelled package result has no installed path")
-	assert_false(FileAccess.file_exists(_installed_path(campaign_id, package_hash)), "deterministic cancellation leaves no immutable installation")
-
 	var task: RefCounted = PackageInstallTaskScript.new()
 	task.cancel()
 	var before_start: RefCounted = task.snapshot()
 	assert_equal([before_start.state, before_start.phase], [PackageOperationStatusScript.IDLE, &""], "cancellation before start is a deterministic no-op")
+	assert_false(FileAccess.file_exists(_installed_path(campaign_id, package_hash)), "cancellation before start leaves no immutable installation")
 	task.shutdown()
 	_cleanup_test_root()
 

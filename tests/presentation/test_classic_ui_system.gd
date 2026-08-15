@@ -1,7 +1,7 @@
 extends RealmzTestCase
 
-const SaveSlotPreviewScript := preload("res://src/infrastructure/saves/save_slot_preview.gd")
-const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
+const SaveSlotPreviewScript := preload("res://src/core/view/save_slot_preview.gd")
+const PackageOperationStatusScript := preload("res://src/app/package_operation_view.gd")
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
 const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"

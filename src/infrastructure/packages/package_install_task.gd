@@ -5,7 +5,7 @@ const PackageRepositoryScript := preload("res://src/infrastructure/packages/pack
 const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
 
 var _thread := Thread.new()
-var _repository := PackageRepositoryScript.new()
+var _repository: PackageRepository
 var _mutex := Mutex.new()
 var _state: StringName = PackageOperationStatusScript.IDLE
 var _phase: StringName = &""
@@ -14,6 +14,10 @@ var _total: int = 0
 var _message: String = ""
 var _cancel_requested: bool = false
 var _result: PackageInstallResult
+
+
+func _init(repository: PackageRepository = null) -> void:
+	_repository = repository if repository != null else PackageRepositoryScript.new()
 
 
 func start(source_path: String, install_root: String = "user://packages") -> bool:

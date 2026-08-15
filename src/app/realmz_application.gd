@@ -6,6 +6,7 @@ const PresentationCoordinatorScript := preload("res://src/presentation/presentat
 const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
 const PackageInstallTaskScript := preload("res://src/infrastructure/packages/package_install_task.gd")
 const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
+const PackageOperationViewScript := preload("res://src/app/package_operation_view.gd")
 const SaveRepositoryScript := preload("res://src/infrastructure/saves/save_repository.gd")
 const CharacterVaultRepositoryScript := preload("res://src/infrastructure/characters/character_vault_repository.gd")
 const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
@@ -14,7 +15,7 @@ const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle
 const CharacterCreationSessionScript := preload("res://src/session/character_creation_session.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
-const CLASSIC_CHARACTER_LIBRARY_HASH := "55753323199fb3a4e4567a9df441b0e5f54af94a2cdcc39f2abcb49d9beb13bb"
+const CLASSIC_CHARACTER_LIBRARY_HASH := "c5a2776901de4c7c3891c4a019f5d4909943817ca50fbfd2fca7d52850aea07f"
 
 @onready var _status_label: Label = $ClassicShell/BottomRegion/BottomRow/NarrativeWell/NarrativeColumn/Facts/Status
 @onready var _smoke_button: Button = $ClassicShell/SmokeAction
@@ -48,7 +49,7 @@ func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
 	UiInputActions.ensure_defaults()
 	package_repository = PackageRepositoryScript.new()
-	_package_install_task = PackageInstallTaskScript.new()
+	_package_install_task = PackageInstallTaskScript.new(package_repository)
 	save_repository = SaveRepositoryScript.new()
 	character_vault_repository = CharacterVaultRepositoryScript.new()
 	settings_repository = SettingsRepositoryScript.new()
@@ -113,12 +114,12 @@ func _process(_delta: float) -> void:
 	var operation_key := "%s:%s:%d:%d:%s" % [operation.state, operation.phase, operation.completed, operation.total, operation.message]
 	if operation_key != _last_package_operation_key:
 		_last_package_operation_key = operation_key
-		_shell_presenter.set_package_operation(operation)
+		_shell_presenter.set_package_operation(PackageOperationViewScript.from_status(operation))
 		_shell_presenter.set_status(operation.message, operation.state == PackageOperationStatusScript.FAILED)
 	if operation.is_running() or operation.state == PackageOperationStatusScript.IDLE:
 		return
 	var installation: PackageInstallResult = _package_install_task.take_result()
-	_shell_presenter.set_package_operation(PackageOperationStatusScript.new())
+	_shell_presenter.set_package_operation(PackageOperationViewScript.new())
 	_last_package_operation_key = ""
 	if operation.state == PackageOperationStatusScript.CANCELLED:
 		_shell_presenter.set_status("Campaign preparation cancelled.")
@@ -129,6 +130,8 @@ func _process(_delta: float) -> void:
 func _exit_tree() -> void:
 	if _package_install_task != null:
 		_package_install_task.shutdown()
+	if package_repository != null:
+		package_repository.close()
 
 
 func _on_smoke_action_pressed() -> void:
@@ -196,7 +199,7 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 	if not _package_install_task.start(package_path):
 		_shell_presenter.set_status(_package_install_task.snapshot().message, true)
 		return
-	_shell_presenter.set_package_operation(_package_install_task.snapshot())
+	_shell_presenter.set_package_operation(PackageOperationViewScript.from_status(_package_install_task.snapshot()))
 	_shell_presenter.set_status("Preparing campaign…")
 
 
@@ -221,6 +224,7 @@ func _complete_package_install(installation: PackageInstallResult, initial_seed:
 		_shell_presenter.set_status(_status_label.text, true)
 		return step
 	_active_content = package_result.content
+	package_repository.promote_installed_package(installation.installed_path)
 	presentation_coordinator.set_package_media(package_result.media)
 	presentation_coordinator.refresh()
 	_refresh_save_previews()
@@ -480,6 +484,8 @@ func _respond_quit_interaction(action: StringName) -> void:
 func _quit_application() -> void:
 	if _package_install_task != null:
 		_package_install_task.shutdown()
+	if package_repository != null:
+		package_repository.close()
 	get_tree().quit()
 
 

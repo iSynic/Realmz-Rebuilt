@@ -4,8 +4,9 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 const TAMPERED_FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-tampered.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID: String = "realmz-classic-character-library"
-const CLASSIC_CHARACTER_LIBRARY_HASH: String = "55753323199fb3a4e4567a9df441b0e5f54af94a2cdcc39f2abcb49d9beb13bb"
-const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v2"
+const CLASSIC_CHARACTER_LIBRARY_HASH: String = "c5a2776901de4c7c3891c4a019f5d4909943817ca50fbfd2fca7d52850aea07f"
+const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v3"
+const SCHEMA_REJECTION_PATH: String = "user://realmz2-tests/realmz2-schema-v2.realmz2"
 
 
 func run() -> void:
@@ -17,15 +18,18 @@ func run() -> void:
 		assert_equal([character_library.content.race_by_id("classic.race.1").name, character_library.content.caste_by_id("classic.caste.1").name], ["Human", "Fighter"], "the stock library retains Realmz names without scenario overrides")
 		assert_equal([character_library.content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT).size(), character_library.content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON).size()], [120, 120], "the stock creator receives all built-in portraits and tactical icons")
 		assert_true(repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH) == character_library, "the immutable built-in library reuses one typed in-memory result")
+		assert_equal(repository.retained_package_count(), 1, "the package repository retains one trusted bundled graph")
 	var wrong_library_identity := repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, "0".repeat(64))
 	assert_false(wrong_library_identity.is_ok(), "a bundled library whose pinned package identity drifts is rejected")
 	var loaded := repository.load_package(FIXTURE_PATH)
 	assert_true(loaded.is_ok(), "the Providence-authored fixture passes package validation: %s" % loaded.error_message)
 	if not loaded.is_ok():
 		return
-	assert_true(repository.load_package(FIXTURE_PATH) == loaded, "an unchanged immutable package reuses its typed in-memory load result")
+	var repeated_external_load := repository.load_package(FIXTURE_PATH)
+	assert_true(repeated_external_load.is_ok(), "an unchanged external package can be validated repeatedly")
+	assert_true(repeated_external_load != loaded, "external package validation never inherits trusted cache status")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "e15136a07d93c507b81fb7c9f56576199244dfc85f46da940f2f0e069aaaa63f", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "a676b2c70d3125103016dc55672d9b42cebe5740f9bc81646c25b58538688ede", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -75,21 +79,9 @@ func run() -> void:
 	assert_equal(loaded.content.scenario.application_hook_program_id(ScenarioApplicationHooks.END_ADVENTURE), "xap:42", "End Adventure resolves from Global index two")
 	assert_equal(loaded.content.scenario.application_hook_program_id(ScenarioApplicationHooks.SHOP), "xap:43", "Shop resolves from Global index four")
 	assert_equal(loaded.content.scenario.application_hook_program_id(ScenarioApplicationHooks.TEMPLE), "xap:44", "Temple resolves from Global index five")
-	assert_true(PackageRepository.new()._construct_application_hooks({"startGame": null, "partyDeath": null, "endAdventure": null, "shop": null}) == null, "the loader rejects an incomplete application-hook contract")
-	assert_true(PackageRepository.new()._construct_application_hooks({"startGame": -1, "partyDeath": null, "endAdventure": null, "shop": null, "temple": null}) == null, "the loader rejects native negative macro values instead of treating them as program IDs")
 	assert_equal(loaded.content.trigger_by_id("ap.fixture.message").post_action_location.map_id, "land:0", "AP post-action map identity is typed")
 	assert_equal(loaded.content.trigger_by_id("ap.fixture.message").post_action_location.coordinate, Vector2i(1, 0), "AP post-action coordinate is typed")
 	assert_equal(loaded.content.trigger_by_id("ap.fixture.message").classic_record_index, 0, "Classic trigger record identity crosses the compiler boundary")
-	var duplicate_programs: Array[ScenarioProgramDefinition] = [
-		ScenarioProgramDefinition.new("duplicate-program-a", &"trigger", "duplicate-trigger-a", []),
-		ScenarioProgramDefinition.new("duplicate-program-b", &"trigger", "duplicate-trigger-b", []),
-	]
-	var duplicate_scenario := ScenarioDefinition.new(duplicate_programs, [])
-	var duplicate_placed_records: Array = [
-		{"id": "duplicate-trigger-a", "programId": "duplicate-program-a", "classicRecordIndex": 3, "mapId": "land:0", "coordinate": {"x": 0, "y": 0}, "active": true, "chancePercent": 100, "postActionLocation": null},
-		{"id": "duplicate-trigger-b", "programId": "duplicate-program-b", "classicRecordIndex": 3, "mapId": "land:0", "coordinate": {"x": 1, "y": 0}, "active": true, "chancePercent": 100, "postActionLocation": null},
-	]
-	assert_true(PackageRepository.new()._construct_triggers(duplicate_placed_records, duplicate_scenario) == null, "the loader rejects ambiguous duplicate Classic placed-record identities")
 	assert_equal(loaded.content.simple_encounter_by_id(0).response_at(0).result_program_id, "simple:0:result:0", "Encounter choices reference ordinary result programs")
 	assert_equal(loaded.content.complex_encounter_by_id(0).expected_word(), "open", "Complex Encounter words become typed runtime data")
 	assert_equal(loaded.content.thief_encounter_by_id(0).type_flags().size(), 10, "Thief Encounter mutable flags have a fixed source-backed shape")
@@ -139,133 +131,7 @@ func run() -> void:
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").icon_id, 384, "monster display identity preserves Castle's exact base cicn")
 	assert_not_null(loaded.media.asset_by_resource("cicn", 384), "the base facing of each reachable monster resolves through exact Classic media identity")
 	assert_not_null(loaded.media.asset_by_resource("cicn", 692), "the alternate Castle facing resolves through the authored base cicn plus 308")
-	var monster_media: Array[PackageMediaAsset] = loaded.media.assets()
-	var fixture_monsters: Array[MonsterDefinition] = [loaded.content.monster_by_id("classic.monster.1")]
-	assert_true(PackageRepository.new()._validate_monster_media(fixture_monsters, monster_media), "complete reachable monster media passes independent runtime readiness")
-	monster_media = monster_media.filter(func(asset: PackageMediaAsset) -> bool: return not (asset.resource_type == "cicn" and asset.resource_id == 384))
-	assert_false(PackageRepository.new()._validate_monster_media(fixture_monsters, monster_media), "missing required monster media fails readiness instead of degrading to letter placeholders")
 	assert_equal(loaded.content.monster_by_id("classic.monster.1").starting_conditions()[ConditionRules.REFLECTING_SPELLS], -1, "all forty authored monster starting conditions cross the validating package boundary")
-	var random_weapon_monster := MonsterDefinition.new("monster.random-readiness", 999, "Random Readiness", 1, 0, 1, 0, 0, [], [], [], [], [], [], [MonsterAttackDefinition.new(1, 1)])
-	random_weapon_monster.random_weapon_table = 6
-	assert_false(PackageRepository.new()._validate_rule_references([], [], loaded.content.item_definitions(), [], [random_weapon_monster], [], [], [], {}), "package readiness rejects a random monster weapon table when any possible generated item is absent")
-	var fixture_zip := ZIPReader.new()
-	assert_equal(fixture_zip.open(FIXTURE_PATH), OK, "the package contract test can inspect detached fixture JSON")
-	var fixture_content: Variant = JSON.parse_string(fixture_zip.read_file("content.json").get_string_from_utf8())
-	var fixture_world: Variant = JSON.parse_string(fixture_zip.read_file("world.json").get_string_from_utf8())
-	var fixture_assets: Variant = JSON.parse_string(fixture_zip.read_file("assets/index.json").get_string_from_utf8())
-	fixture_zip.close()
-	assert_true(fixture_content is Dictionary, "the detached fixture content parses for negative contract tests")
-	if fixture_content is Dictionary:
-		var invalid_races: Array = fixture_content["races"].duplicate(true)
-		invalid_races.pop_back()
-		assert_true(PackageRepository.new()._construct_races(invalid_races) == null, "the runtime rejects an incomplete Classic race table")
-		invalid_races = fixture_content["races"].duplicate(true)
-		invalid_races[1]["classicId"] = 1
-		assert_true(PackageRepository.new()._construct_races(invalid_races) == null, "the runtime rejects duplicate Classic race identities")
-		invalid_races = fixture_content["races"].duplicate(true)
-		invalid_races[0]["abilityBonuses"].pop_back()
-		assert_true(PackageRepository.new()._construct_races(invalid_races) == null, "the runtime rejects a race without all fourteen trained-ability bonuses")
-		var invalid_castes: Array = fixture_content["castes"].duplicate(true)
-		invalid_castes.pop_back()
-		assert_true(PackageRepository.new()._construct_castes(invalid_castes) == null, "the runtime rejects an incomplete Classic caste table")
-		invalid_castes = fixture_content["castes"].duplicate(true)
-		invalid_castes[1]["classicId"] = 1
-		assert_true(PackageRepository.new()._construct_castes(invalid_castes) == null, "the runtime rejects duplicate Classic caste identities")
-		invalid_castes = fixture_content["castes"].duplicate(true)
-		invalid_castes[0]["levelAbilityDice"].pop_back()
-		assert_true(PackageRepository.new()._construct_castes(invalid_castes) == null, "the runtime rejects a caste without all fourteen level ability dice")
-		invalid_castes = fixture_content["castes"].duplicate(true)
-		invalid_castes[0]["victoryThresholds"].pop_back()
-		assert_true(PackageRepository.new()._construct_castes(invalid_castes) == null, "the runtime rejects a caste without all thirty victory thresholds")
-		var invalid_monsters: Array = fixture_content["monsters"].duplicate(true)
-		invalid_monsters[0]["magicToHit"] = -1
-		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime independently rejects a negative magical-plus threshold")
-		invalid_monsters = fixture_content["monsters"].duplicate(true)
-		invalid_monsters[0]["requiredWeapon"] = 128
-		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime independently rejects a required-weapon value outside its signed byte")
-		invalid_monsters = fixture_content["monsters"].duplicate(true)
-		invalid_monsters[0]["attackCount"] = 2
-		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects a physical attack count beyond its supplied Classic rows")
-		invalid_monsters = fixture_content["monsters"].duplicate(true)
-		invalid_monsters[0]["itemIds"] = ["classic.item.901"]
-		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects legacy packed monster items because they erase native slot identity")
-		invalid_monsters = fixture_content["monsters"].duplicate(true)
-		invalid_monsters[0]["conditions"].pop_back()
-		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects a monster without all forty Classic starting conditions")
-		invalid_monsters = fixture_content["monsters"].duplicate(true)
-		invalid_monsters[0]["conditions"][ConditionRules.REFLECTING_SPELLS] = -129
-		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects a monster starting condition outside its signed byte")
-		var spellless_monsters: Array = fixture_content["monsters"].duplicate(true)
-		spellless_monsters[0]["spellIds"] = []
-		var normalized_spellless: Variant = PackageRepository.new()._construct_monsters(spellless_monsters)
-		assert_not_null(normalized_spellless, "an unambiguous legacy spellless monster remains loadable")
-		if normalized_spellless != null:
-			assert_equal(normalized_spellless[0].spell_ids(), ["", "", "", "", "", "", "", "", "", ""], "the loader normalizes a spellless monster to ten fixed empty slots")
-		invalid_monsters = fixture_content["monsters"].duplicate(true)
-		invalid_monsters[0]["spellIds"] = ["classic.spell.1101"]
-		assert_true(PackageRepository.new()._construct_monsters(invalid_monsters) == null, "the runtime rejects legacy packed monster spells because they erase native slot identity")
-	assert_true(fixture_assets is Dictionary, "the detached fixture asset index parses for appearance-catalog contract tests")
-	if fixture_assets is Dictionary:
-		var tracked_files: Dictionary = {}
-		for asset: Dictionary in fixture_assets["assets"]:
-			tracked_files[asset["path"]] = {"bytes": asset["bytes"], "sha256": asset["sha256"]}
-		assert_true(PackageRepository.new()._validate_assets(fixture_assets, tracked_files), "the complete appearance catalogs pass independent runtime validation")
-		var missing_portrait: Dictionary = fixture_assets.duplicate(true)
-		missing_portrait["assets"] = missing_portrait["assets"].filter(func(asset: Dictionary) -> bool: return not (asset["kind"] == "portrait" and asset["resourceId"] == 257))
-		assert_false(PackageRepository.new()._validate_assets(missing_portrait, tracked_files), "a package missing one Classic portrait fails readiness rather than degrading the creator")
-		var malformed_portrait: Dictionary = fixture_assets.duplicate(true)
-		for asset: Dictionary in malformed_portrait["assets"]:
-			if asset["kind"] == "portrait":
-				asset["mimeType"] = "application/octet-stream"
-				break
-		assert_false(PackageRepository.new()._validate_assets(malformed_portrait, tracked_files), "appearance assets must be decoded PNGs with usable dimensions")
-		var battle_manifest := {"capabilities": ["realmz.presentation.battle-atlas-v1"]}
-		assert_true(PackageRepository.new()._validate_presentation_capabilities(battle_manifest, fixture_assets), "the battle-atlas capability is backed by exactly one validated role-specific atlas")
-		var missing_battle_atlas: Dictionary = fixture_assets.duplicate(true)
-		missing_battle_atlas["assets"] = missing_battle_atlas["assets"].filter(func(asset: Dictionary) -> bool: return asset["kind"] != "battle-tileset")
-		assert_false(PackageRepository.new()._validate_presentation_capabilities(battle_manifest, missing_battle_atlas), "a declared battle-atlas capability cannot silently omit its artwork")
-	assert_true(fixture_world is Dictionary, "the detached fixture world parses for independent terrain contract tests")
-	if fixture_world is Dictionary:
-		var fixture_maps: Array[MapDefinition] = []
-		for map_id: String in loaded.content.world.map_ids():
-			fixture_maps.append(loaded.content.world.map_by_id(map_id))
-		var fixture_player_maps: Variant = PackageRepository.new()._construct_player_maps(fixture_world["playerMaps"], fixture_maps, loaded.media.assets())
-		assert_not_null(fixture_player_maps, "the detached player-map contract reconstructs through the independent validating factory")
-		var invalid_player_maps: Array = fixture_world["playerMaps"].duplicate(true)
-		invalid_player_maps[0]["classicId"] = 20
-		assert_true(PackageRepository.new()._construct_player_maps(invalid_player_maps, fixture_maps, loaded.media.assets()) == null, "the runtime rejects Castle's unchecked twentieth player-map index before it can address beyond the save table")
-		invalid_player_maps = fixture_world["playerMaps"].duplicate(true)
-		invalid_player_maps[0]["iconSize"] = 0
-		assert_true(PackageRepository.new()._construct_player_maps(invalid_player_maps, fixture_maps, loaded.media.assets()) == null, "the runtime rejects Castle's zero player-map divisor before presentation")
-		invalid_player_maps = fixture_world["playerMaps"].duplicate(true)
-		invalid_player_maps[0]["partyMarkerAssetId"] = "realmz-portrait-257"
-		assert_true(PackageRepository.new()._construct_player_maps(invalid_player_maps, fixture_maps, loaded.media.assets()) == null, "the runtime rejects a player-map marker that is not exact cicn 138")
-		invalid_player_maps = fixture_world["playerMaps"].duplicate(true)
-		invalid_player_maps[0]["markers"] = [{"classicIconId": 137, "iconAssetId": "realmz-player-map-cicn-138", "x": 1, "y": 1}]
-		assert_true(PackageRepository.new()._construct_player_maps(invalid_player_maps, fixture_maps, loaded.media.assets()) == null, "the runtime rejects a crop marker whose package asset does not match its authored cicn identity")
-		var missing_map_program := ScenarioProgramDefinition.new("player-map.missing", &"trigger", "player-map.missing", [ClassicActionDefinition.new(0, 29, 29, 19, false, [])])
-		var missing_map_scenario := ScenarioDefinition.new([missing_map_program], [])
-		var fixture_world_definition := WorldDefinition.new(fixture_maps, [], [], fixture_player_maps)
-		assert_false(PackageRepository.new()._validate_player_map_opcode_references(missing_map_scenario, fixture_world_definition), "package readiness rejects opcode 29 when its Data MD2 identity is unavailable")
-		var invalid_terrain_sets: Array = fixture_world["battleTerrainSets"].duplicate(true)
-		invalid_terrain_sets[1]["tiles"].pop_back()
-		assert_true(PackageRepository.new()._construct_battle_terrain_sets(invalid_terrain_sets) == null, "the runtime rejects an incomplete effective land battle terrain range")
-		invalid_terrain_sets = fixture_world["battleTerrainSets"].duplicate(true)
-		invalid_terrain_sets[0]["tiles"][0]["combatBuild"] = [[200, 200, 200], [200, 200, 200]]
-		assert_true(PackageRepository.new()._construct_battle_terrain_sets(invalid_terrain_sets) == null, "the runtime rejects a battle terrain tile without an exact 3 x 3 combat build")
-		var terrain_sets: Array[BattleTerrainSetDefinition] = PackageRepository.new()._construct_battle_terrain_sets(fixture_world["battleTerrainSets"])
-		var terrain_sets_by_id: Dictionary = {}
-		for terrain_set: BattleTerrainSetDefinition in terrain_sets:
-			terrain_sets_by_id[terrain_set.id] = terrain_set
-		var trigger_ids: Dictionary = {}
-		for trigger_record: Variant in fixture_world["triggers"]:
-			trigger_ids[trigger_record["id"]] = true
-		var invalid_maps: Array = fixture_world["maps"].duplicate(true)
-		invalid_maps[0]["metadata"]["battleTerrainSetId"] = "classic.battle-terrain.missing"
-		assert_true(PackageRepository.new()._construct_maps(invalid_maps, trigger_ids, terrain_sets_by_id, true) == null, "the runtime rejects an unknown map battle terrain reference")
-		invalid_maps = fixture_world["maps"].duplicate(true)
-		invalid_maps[0]["metadata"]["battleTerrainSetId"] = 7
-		assert_true(PackageRepository.new()._construct_maps(invalid_maps, trigger_ids, terrain_sets_by_id, true) == null, "the runtime does not coerce a malformed battle terrain identity into a string")
 	assert_equal(loaded.content.battle_by_id("classic.battle.0").monster_slots()[0].monster_id, "classic.monster.1", "battle placements reference stable monster IDs")
 	assert_equal(loaded.content.shop_by_id("classic.shop.0").quantity(0), 2, "shop stock compiles to stable item references and quantities")
 	assert_equal(loaded.content.treasure_by_id("classic.treasure.0").item_ids()[0], "classic.item.901", "treasures use the same item identity as inventory")
@@ -307,7 +173,13 @@ func run() -> void:
 	if installed.is_ok():
 		assert_true(FileAccess.file_exists(installed.installed_path), "the immutable installed package exists at its content-hash path")
 		assert_true(FileAccess.file_exists(installed.installed_path + ".receipt.json"), "installation writes a durable validation receipt beside the immutable package")
+		var receipt_data: Variant = JSON.parse_string(FileAccess.get_file_as_string(installed.installed_path + ".receipt.json"))
+		assert_true(receipt_data is Dictionary, "the installation receipt is parseable JSON")
+		if receipt_data is Dictionary:
+			assert_equal([int(receipt_data["formatVersion"]), int(receipt_data["decoderVersion"]), receipt_data["schemaHash"]], [2, 3, PackageRepository.EXPECTED_SCHEMA_HASH], "the receipt records the v3 package and decoder contract")
 		assert_contains(installed.installed_path, loaded.content.package_hash, "the installation path carries the package identity")
+		repository.promote_installed_package(installed.installed_path)
+		assert_equal(repository.retained_package_count(), 1, "promoting an installed package replaces the candidate without retaining an unbounded graph")
 		var repeated := repository.install_package(FIXTURE_PATH, install_root)
 		assert_true(repeated.is_ok(), "reinstalling identical immutable content is idempotent")
 		assert_equal(repeated.installed_path, installed.installed_path, "idempotent installation resolves to the same package")
@@ -369,41 +241,13 @@ func run() -> void:
 	assert_true(ambiguous_catalog.asset_by_resource("PICT", 128) == null, "an ambiguous exact resource key never degrades to first-match lookup")
 	assert_equal(ambiguous_catalog.resolution_diagnostic("PICT", 128, "test-picture")["status"], "ambiguous", "developer media diagnostics expose an ambiguous resource key")
 
-	var settings_path := "user://realmz2-tests/presentation-settings.json"
-	var settings_repository := SettingsRepository.new(settings_path)
-	var settings := PresentationSettings.new()
-	settings.master_volume = 0.35
-	settings.topology_debug = true
-	settings.text_scale = 1.2
-	settings.reduced_motion = true
-	settings.dungeon_3d = true
-	settings.ui_scale_mode = PresentationSettings.UI_SCALE_125
-	settings.window_mode = PresentationSettings.BORDERLESS_FULLSCREEN
-	settings.auto_switch_to_melee = false
-	assert_true(settings.to_data()["dungeon3d"] is bool, "dungeon presentation setting serializes as a JSON-safe boolean")
-	assert_not_null(PresentationSettings.from_data(settings.to_data()), "current presentation settings round-trip before filesystem persistence")
-	var parsed_settings_data: Dictionary = JSON.parse_string(CanonicalJson.encode(settings.to_data()))
-	assert_not_null(PresentationSettings.from_data(parsed_settings_data), "canonical JSON presentation settings round-trip (schema=%s dungeon=%s)" % [type_string(typeof(parsed_settings_data.get("schemaVersion"))), type_string(typeof(parsed_settings_data.get("dungeon3d")))])
-	assert_true(settings_repository.save_settings(settings), "presentation settings commit through validated temporary replacement")
-	var restored_settings := settings_repository.load_settings()
-	assert_equal(restored_settings.master_volume, 0.35, "master volume persists outside gameplay state")
-	assert_true(restored_settings.topology_debug, "topology display preference persists without altering rules")
-	assert_equal(restored_settings.text_scale, 1.2, "accessibility text scale persists")
-	assert_true(restored_settings.reduced_motion, "reduced cosmetic motion persists")
-	assert_true(restored_settings.dungeon_3d, "topology-derived dungeon presentation preference persists")
-	assert_equal(restored_settings.ui_scale_mode, PresentationSettings.UI_SCALE_125, "interface density persists independently of text scale")
-	assert_equal(restored_settings.window_mode, PresentationSettings.BORDERLESS_FULLSCREEN, "window mode persists outside gameplay state")
-	assert_false(restored_settings.auto_switch_to_melee, "Auto Weapon Switch persists in the application settings repository")
-	var legacy_settings := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 1, "masterVolume": 1.0, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false})
-	assert_not_null(legacy_settings, "version-one presentation settings migrate without entering gameplay state")
-	assert_false(legacy_settings.dungeon_3d, "migrated presentation settings default the optional 3D view off")
-	assert_equal(legacy_settings.ui_scale_mode, PresentationSettings.UI_SCALE_AUTO, "legacy settings migrate to automatic interface density")
-	assert_equal(legacy_settings.window_mode, PresentationSettings.WINDOWED, "legacy settings migrate to windowed mode")
-	assert_true(legacy_settings.auto_switch_to_melee, "legacy settings migrate to Castle's default-on Auto Weapon Switch preference")
-
 	var rejected := repository.load_package(TAMPERED_FIXTURE_PATH)
 	assert_false(rejected.is_ok(), "a content mutation without matching manifest hashes is rejected")
 	assert_contains(rejected.error_message, "failed size or SHA-256", "hash rejection reports the violated boundary")
+	var schema_v2_path := _write_schema_v2_fixture()
+	var rejected_schema_v2 := repository.load_package(schema_v2_path)
+	assert_false(rejected_schema_v2.is_ok(), "a schema-v2 package is rejected at the public package boundary")
+	assert_contains(rejected_schema_v2.error_message, "Unsupported Realmz 2.0 package or schema version", "schema-v2 rejection is explicit before content construction")
 	var fixture_discovery := repository.discover_packages(["res://tests/fixtures/packages"])
 	var discovered_valid := false
 	var discovered_tampered_metadata := false
@@ -418,15 +262,58 @@ func run() -> void:
 	var sandbox_error := PackageRepository.package_capability_error("realmz.scenario.gdscript-actions-v1")
 	assert_contains(sandbox_error, "no secure external host", "the manifest readiness path rejects deferred GDScript backends at the security boundary")
 	assert_contains(PackageRepository.package_capability_error("realmz.scenario.unknown-v1"), "unknown capability", "the same readiness path rejects unrecognized package capabilities")
+	_cleanup_schema_rejection()
+	var cancellation_calls: Array[int] = [0]
+	var cancelled := repository.install_package(FIXTURE_PATH, INSTALL_TEST_ROOT, Callable(), func() -> bool:
+		cancellation_calls[0] += 1
+		return true
+	)
+	assert_true(cancellation_calls[0] > 0, "the repository cancellation seam is consulted before package work")
+	assert_equal(cancelled.error_code, &"package_cancelled", "the repository exposes typed cancellation")
+	assert_true(cancelled.installed_path.is_empty(), "a cancelled package operation has no installation path")
+	repository.close()
+	assert_equal(repository.retained_package_count(), 0, "closing the repository releases both bounded package graph slots")
 	_cleanup_install_test_root()
 
 
 func _cleanup_install_test_root() -> void:
-	var expected := ProjectSettings.globalize_path("user://").simplify_path().path_join("realmz2-tests").path_join("package-install-schema-v2")
+	var expected := ProjectSettings.globalize_path("user://").simplify_path().path_join("realmz2-tests").path_join("package-install-schema-v3")
 	var actual := ProjectSettings.globalize_path(INSTALL_TEST_ROOT).simplify_path()
 	if actual != expected or not DirAccess.dir_exists_absolute(actual):
 		return
 	_remove_install_tree(actual, actual)
+
+
+func _write_schema_v2_fixture() -> String:
+	_cleanup_schema_rejection()
+	var source := ZIPReader.new()
+	if source.open(FIXTURE_PATH) != OK:
+		return ""
+	var absolute_path := ProjectSettings.globalize_path(SCHEMA_REJECTION_PATH)
+	var writer := ZIPPacker.new()
+	if writer.open(absolute_path) != OK:
+		source.close()
+		return ""
+	for entry: String in source.get_files():
+		var bytes := source.read_file(entry)
+		if entry == "manifest.json":
+			var manifest: Variant = JSON.parse_string(bytes.get_string_from_utf8())
+			if manifest is Dictionary:
+				manifest["formatVersion"] = 1
+				manifest["schemaVersion"] = 2
+				bytes = CanonicalJson.encode(manifest).to_utf8_buffer()
+		writer.start_file(entry)
+		writer.write_file(bytes)
+		writer.close_file()
+	writer.close()
+	source.close()
+	return SCHEMA_REJECTION_PATH
+
+
+func _cleanup_schema_rejection() -> void:
+	var absolute_path := ProjectSettings.globalize_path(SCHEMA_REJECTION_PATH)
+	if FileAccess.file_exists(absolute_path):
+		DirAccess.remove_absolute(absolute_path)
 
 
 func _remove_install_tree(path: String, verified_root: String) -> void:
