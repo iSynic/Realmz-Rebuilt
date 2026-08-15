@@ -370,7 +370,7 @@ foreach ($protocolRoot in $protocolRoots) {
             }
             $isWireSerializer = ($relativePath -eq "src\core\session\interaction_request.gd" -and $line -match '"payload": body\.to_data\(\)') -or
                 ($relativePath -eq "src\scenario\runtime\scenario_runtime_continuation.gd" -and $line -match 'continuation_data\s*:=\s*body\.to_data\(\)')
-            $isDetachedEvent = $relativePath -eq "src\scenario\runtime\realmz_runtime_api.gd" -and $line -match 'DomainEvent\.new\(&"reward_wealth_transferred", body\.to_data\(\)\)'
+            $isDetachedEvent = $relativePath -eq "src\scenario\runtime\operations\classic_battle_reward_operations.gd" -and $line -match 'DomainEvent\.new\(&"reward_wealth_transferred", body\.to_data\(\)\)'
             if (-not $isWireSerializer -and -not $isDetachedEvent) {
                 $violations += "$($file.FullName):$lineNumber interaction request bodies must remain typed outside codecs and detached event serialization"
             }

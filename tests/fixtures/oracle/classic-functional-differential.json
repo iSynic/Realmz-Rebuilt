@@ -2960,7 +2960,7 @@
         "expectedRepresentation": "Schema v2 already emits treasure wealth, experience, and stable item references plus complete item load, charge, uniqueness, and display fields. No compiler change is required for the implemented ordinary workspace."
       },
       "realmz2": {
-        "owner": { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func _begin_reward" },
+        "owner": { "path": "src/scenario/runtime/operations/classic_battle_reward_operations.gd", "symbol": "func _begin_reward" },
         "expectedTrace": ["roll the authored reward once", "validate every referenced item", "create exact pending instances", "commit experience and pooled wealth", "yield one typed treasure request", "revalidate each assignment or wealth action", "confirm any abandoned remainder", "serialize the complete continuation and RNG", "resume the issuing VM once"],
         "tests": [
           { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_ordinary_distribution_and_restore" },
@@ -3008,7 +3008,7 @@
         "expectedRepresentation": "Schema v2 already emits spell special identity, item magic/display fields, and character spell state inputs required by the typed reward request."
       },
       "realmz2": {
-        "owner": { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func _apply_reward_detection" },
+        "owner": { "path": "src/scenario/runtime/operations/classic_battle_reward_operations.gd", "symbol": "func _apply_reward_detection" },
         "expectedTrace": ["derive eligible casters from immutable spell definitions and current character state", "render exact costs and disabled reason", "revalidate selected caster", "spend spell points", "persist detection or identification on the reward continuation", "regenerate the same typed workspace"],
         "tests": [
           { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_ordinary_distribution_and_restore" },
@@ -3056,7 +3056,7 @@
         "expectedRepresentation": "Schema v2 already emits caste thresholds, spellcaster rows, spell records, race and caste rule inputs, and complete character state."
       },
       "realmz2": {
-        "owner": { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func _begin_reward_progression" },
+        "owner": { "path": "src/scenario/runtime/operations/classic_battle_reward_operations.gd", "symbol": "func _begin_reward_progression" },
         "expectedTrace": ["record eligible recipients and one divided share", "commit experience exactly once", "queue positive recipients in party order", "subtract one threshold", "run the source-backed character level transaction", "serialize and acknowledge the result", "serialize and confirm spell selection", "complete and resume once"],
         "tests": [
           { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_experience_level_and_spell_restore" },
