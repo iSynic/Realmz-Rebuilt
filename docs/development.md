@@ -45,6 +45,8 @@ Restore behavior has one public ownership proof: `GameSession.restore` asks `Ses
 
 Test and assertion totals are diagnostic measurements, never completion targets. Hardening should reduce duplicated setup and incidental assertions without deleting unique source-backed evidence.
 
+The hardening review reduced test GDScript from the 13,000-line baseline to 11,935 lines while retaining 179 named public cases. That is an 8.2 percent reduction, below the original 25–35 percent directional estimate. A delegated redundancy audit found only another roughly 200–400 lines that could be removed safely without a deeper combat/rules evidence review, so the estimate is not treated as a quota. Further pruning must name the surviving owning proof before deletion; unique RNG, VM, save, topology, reward, and Castle-differential evidence stays intact.
+
 Use this priority order:
 
 1. AOGM blocker or ordinary-play certification gap.

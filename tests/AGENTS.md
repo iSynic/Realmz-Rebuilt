@@ -22,6 +22,7 @@ Own deterministic automated proofs, synthetic fixtures, oracle provenance, route
 - A test owns exactly one justified responsibility: architecture/wire invariant, non-obvious source-backed rule, complete public session workflow, general presentation lifecycle/layout invariant, or ordinary campaign route.
 - Map a defect to an existing owning invariant before admitting a new test. Prefer table-driven cases and general lifecycle/layout proofs over one test per symptom.
 - Do not test private methods of `GameSession`, `RealmzRuntimeApi`, `PackageRepository`, or `ClassicScreenRouter`. Do not duplicate one behavior across layers unless each layer protects a distinct failure responsibility.
+- During rationalization, remove private presentation-helper assertions when an existing public lifecycle/layout invariant already owns the outcome. Do not replace a deleted incidental assertion with a larger helper-level test merely to preserve assertion counts.
 - UI wording, helper copy, and isolated spacing normally receive gallery/manual acceptance rather than bespoke regression tests.
 - Differential cases link to one owning automated proof. Assertion counts, suite counts, and differential-case counts are diagnostics, never completion metrics.
 - RNG, VM, save, authoritative topology, package integrity, and exact-once terminal-combat coverage are high-value and may not be removed merely to reduce line count.

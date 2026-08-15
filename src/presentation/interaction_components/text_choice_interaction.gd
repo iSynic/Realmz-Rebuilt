@@ -9,19 +9,19 @@ func build(request: InteractionRequest) -> void:
 			if body == null: return
 			for index: int in body.options.size():
 				var option := body.options[index]
-				add_response(option.label if not option.label.is_empty() else "Option %d" % (index + 1), {"index": index})
+				add_response(option.label if not option.label.is_empty() else "Option %d" % (index + 1), InteractionResponse.ChoiceBody.new(index))
 			if request.kind == &"encounter_choice" and body.can_back_out:
-				add_response("Back out", {"cancelled": true})
+				add_response("Back out", InteractionResponse.ChoiceBody.new(-1, true))
 		&"yes_no":
 			var body := request.body as InteractionRequest.YesNoRequestBody
 			if body == null: return
-			add_response(body.yes_label, {"accepted": true})
-			add_response(body.no_label, {"accepted": false})
+			add_response(body.yes_label, InteractionResponse.YesNoBody.new(true))
+			add_response(body.no_label, InteractionResponse.YesNoBody.new(false))
 		&"acknowledge":
 			var body := request.body as InteractionRequest.AcknowledgeBody
 			if body == null: return
 			if body.journal_eligible and not body.journal_recorded:
-				add_response("Take note", {"takeNote": true})
+				add_response("Take note", InteractionResponse.AcknowledgeBody.new(true))
 			elif body.journal_recorded:
 				add_hint("Already recorded in the journal.")
-			add_response("Continue", {})
+			add_response("Continue", InteractionResponse.AcknowledgeBody.new())

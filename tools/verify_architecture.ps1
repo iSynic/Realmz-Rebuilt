@@ -398,6 +398,36 @@ foreach ($protocolRoot in $protocolRoots) {
     }
 }
 
+# Player interactions cross presentation and application boundaries as typed
+# bodies or explicit presentation-only signals.  These retired identifiers
+# represent the old dictionary command bus; reintroducing any of them would
+# silently reopen an unvalidated live protocol even though dictionary-backed
+# widget configuration and detached DomainEvent payloads remain legitimate.
+$retiredLiveProtocolPatterns = @(
+    @{ Pattern = '\bsignal\s+payload_submitted\b'; Reason = "interaction components must emit typed response bodies" },
+    @{ Pattern = '\bsignal\s+presentation_action_requested\b'; Reason = "presentation-only commands require explicit typed signals" },
+    @{ Pattern = '\bsignal\s+tactical_action_requested\b'; Reason = "battlefield actions must emit InteractionResponse.CombatBody" },
+    @{ Pattern = '\bsubmit_active_payload\s*\('; Reason = "InteractionPresenter accepts typed response bodies" },
+    @{ Pattern = '\bcombat_payload_with_preferences\s*\('; Reason = "combat preferences apply to InteractionResponse.CombatBody" },
+    @{ Pattern = '\bcommitted_payload\s*\('; Reason = "combat targeting commits a typed CombatBody" },
+    @{ Pattern = '\bselection_data\s*\('; Reason = "combat targeting state must remain typed" }
+)
+foreach ($protocolRoot in @("src\presentation", "src\app")) {
+    $rootPath = Join-Path $repoRoot $protocolRoot
+    foreach ($file in Get-ChildItem $rootPath -Recurse -Filter "*.gd" -ErrorAction SilentlyContinue) {
+        $relativePath = Get-RepositoryRelativePath -RootPath $repoRoot -TargetPath $file.FullName
+        $lineNumber = 0
+        foreach ($line in Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($file.FullName))) {
+            $lineNumber++
+            foreach ($rule in $retiredLiveProtocolPatterns) {
+                if ($line -match $rule.Pattern) {
+                    $violations += "$($relativePath):$lineNumber $($rule.Reason)"
+                }
+            }
+        }
+    }
+}
+
 # VM execution provenance is a closed typed protocol.  Dictionaries exist only
 # at ScenarioExecutionContext.to_data/from_data; frames, directives, handlers,
 # and runtime calls must not reopen that boundary with an arbitrary context.

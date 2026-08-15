@@ -11,4 +11,4 @@ func build(request: InteractionRequest) -> void:
 		var label := option.label.strip_edges()
 		if action.is_empty() or label.is_empty():
 			continue
-		add_response(label, {"action": action})
+		add_response(label, InteractionResponse.LifecycleBody.new(action))

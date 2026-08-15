@@ -258,47 +258,21 @@ func scenario_trace() -> Array[Dictionary]:
 
 
 func _camp() -> SessionStep:
-	if _state.combat != null and not _state.combat.completed:
-		return SessionStep.failed(_view_revision, &"camp_during_battle", "The party cannot camp during battle.")
-	if not _state.camping_allowed and not _state.party_camping:
-		return SessionStep.failed(_view_revision, &"camping_disabled", "Camping is not allowed at this location.")
-	_state.party_camping = not _state.party_camping
-	var events: Array[DomainEvent] = [DomainEvent.new(&"camp_mode_changed", {"camping": _state.party_camping, "source": "classic"})]
-	if _state.party_camping:
-		_state.clear_location_services()
-	var map := _content.world.map_by_id(_state.party.map_id)
-	if map == null:
-		return _finish_failed(&"unknown_map", "The current map is unavailable for Camp.", events)
-	var time_scale := _classic_time_scale(map)
-	var previous_day := _state.clock.day()
-	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, 5 if _state.party_camping else 2, time_scale, true))
-	if not _state.party_camping:
-		if _state.clock.day() == previous_day:
-			return _finish_with_age_updates(events, "completed")
-		_set_post_time_continuation(map, "completed", Vector2i.ZERO, false, _state.clock.day(), _state.party.coordinate)
-		return _finish_with_age_updates(events, &"post-clock", _session_continuation.copy())
-	_set_post_time_continuation(map, "completed", Vector2i.ZERO, true, _state.clock.day() if _state.clock.day() != previous_day else 0, _state.party.coordinate)
-	return _finish_with_age_updates(events, &"post-clock", _session_continuation.copy())
+	var result := ExplorationTimeWorkflow.toggle_camp(_workflow_context())
+	if not result.ok:
+		return _finish_failed(result.error_code, result.error_message, result.events)
+	if not _state.party_camping and result.timed_day == 0:
+		return _finish_with_age_updates(result.events, "completed")
+	_set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _state.party.coordinate)
+	return _finish_with_age_updates(result.events, &"post-clock", _session_continuation.copy())
 
 
 func _rest() -> SessionStep:
-	if _state.combat != null and not _state.combat.completed:
-		return SessionStep.failed(_view_revision, &"rest_during_battle", "The party cannot rest during battle.")
-	if not _state.party_camping:
-		return SessionStep.failed(_view_revision, &"rest_outside_camp", "Make camp before resting.")
-	var map := _content.world.map_by_id(_state.party.map_id)
-	if map == null:
-		return SessionStep.failed(_view_revision, &"unknown_map", "The current map is unavailable for Rest.")
-	var previous_fatigue := _state.party.fatigue
-	_rules.clock.change_fatigue(_state.party, -2)
-	var events: Array[DomainEvent] = [
-		DomainEvent.new(&"fatigue_changed", {"previous": previous_fatigue, "current": _state.party.fatigue, "reason": "rest", "source": "classic"}),
-	]
-	var previous_day := _state.clock.day()
-	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, 5, _classic_time_scale(map), true))
-	events.append(DomainEvent.new(&"party_rested", {"timeclicks": 5, "mapId": map.id, "source": "classic"}))
-	_set_post_time_continuation(map, "completed", Vector2i.ZERO, true, _state.clock.day() if _state.clock.day() != previous_day else 0, _state.party.coordinate)
-	return _finish_with_age_updates(events, &"post-clock", _session_continuation.copy())
+	var result := ExplorationTimeWorkflow.rest(_workflow_context())
+	if not result.ok:
+		return _finish_failed(result.error_code, result.error_message, result.events)
+	_set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _state.party.coordinate)
+	return _finish_with_age_updates(result.events, &"post-clock", _session_continuation.copy())
 
 
 func _use_item(intent: PlayerIntent) -> SessionStep:
@@ -575,31 +549,10 @@ func _commit_character_draft(events: Array[DomainEvent] = []) -> SessionStep:
 
 
 func _search() -> SessionStep:
-	if _state.party_camping:
-		return SessionStep.failed(_view_revision, &"search_while_camped", "Search is replaced by scroll scribing while camped.")
-	_state.mark_searched(_state.party.map_id, _state.party.coordinate)
-	var current_map := _content.world.map_by_id(_state.party.map_id)
-	var discovered: Array[String] = []
-	var first_roll: int = 0
-	for y: int in range(_state.party.coordinate.y - 1, _state.party.coordinate.y + 2):
-		for x: int in range(_state.party.coordinate.x - 1, _state.party.coordinate.x + 2):
-			var cell := current_map.topology.cell_at(Vector2i(x, y))
-			if cell == null:
-				continue
-			for feature: MapFeature in cell.features():
-				if feature.kind != &"secret" or _state.world.secret_is_discovered(feature.id, feature.initial_state == &"revealed"):
-					continue
-				var roll := _rng.draw(100, StringName("exploration.search.%s" % feature.id))
-				if first_roll == 0:
-					first_roll = roll
-				if roll <= 100:
-					_state.world.discover_secret(feature.id)
-					discovered.append(feature.id)
-	var events: Array[DomainEvent] = [DomainEvent.new("search_completed", {"mapId": _state.party.map_id, "x": _state.party.coordinate.x, "y": _state.party.coordinate.y, "roll": first_roll, "discoveredSecrets": discovered})]
-	events.append_array(_rules.clock.advance_minutes(_state, _content, 1))
-	for secret_id: String in discovered:
-		events.append(DomainEvent.new("secret_discovered", {"secretId": secret_id}))
-	return _finish_with_age_updates(events, "completed")
+	var result := ExplorationTimeWorkflow.search(_workflow_context())
+	if not result.ok:
+		return _finish_failed(result.error_code, result.error_message, result.events)
+	return _finish_with_age_updates(result.events, "completed")
 
 
 func _move(direction: Vector2i) -> SessionStep:
@@ -695,7 +648,7 @@ func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []
 
 
 func _classic_time_scale(map: MapDefinition) -> int:
-	return 1 if map != null and map.level_type == &"dungeon" else 5
+	return ExplorationTimeWorkflow.classic_time_scale(map)
 
 
 func _blocked_land_attempt_cost(movement: WorldMovementResult) -> int:

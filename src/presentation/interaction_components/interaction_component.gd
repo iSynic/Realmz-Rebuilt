@@ -1,27 +1,39 @@
 class_name InteractionComponent
 extends VBoxContainer
 
-signal payload_submitted(payload: Dictionary)
+signal response_body_submitted(body: InteractionResponse.Body)
 @warning_ignore("unused_signal")
-signal presentation_action_requested(action: StringName, payload: Dictionary)
+signal combat_targeting_requested(request: CombatTargetingRequest)
+@warning_ignore("unused_signal")
+signal combat_targeting_confirm_requested
+@warning_ignore("unused_signal")
+signal combat_targeting_cancel_requested
+@warning_ignore("unused_signal")
+signal combatant_focus_requested(combatant_id: String, play_sound: bool)
+@warning_ignore("unused_signal")
+signal reveal_friends_requested
+@warning_ignore("unused_signal")
+signal presentation_sound_requested(sound_id: int)
+@warning_ignore("unused_signal")
+signal presentation_status_requested(text: String, is_error: bool)
 
 
 func build(_request: InteractionRequest) -> void:
 	pass
 
 
-func add_response(label: String, payload: Dictionary, enabled: bool = true, reason: String = "") -> Button:
-	return add_response_to(self, label, payload, enabled, reason)
+func add_response(label: String, body: InteractionResponse.Body, enabled: bool = true, reason: String = "") -> Button:
+	return add_response_to(self, label, body, enabled, reason)
 
 
-func add_response_to(parent: Container, label: String, payload: Dictionary, enabled: bool = true, reason: String = "") -> Button:
+func add_response_to(parent: Container, label: String, body: InteractionResponse.Body, enabled: bool = true, reason: String = "") -> Button:
 	var button := Button.new()
 	button.text = label
 	button.custom_minimum_size.y = 36.0
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.disabled = not enabled
 	button.tooltip_text = reason
-	button.pressed.connect(func() -> void: payload_submitted.emit(payload))
+	button.pressed.connect(func() -> void: response_body_submitted.emit(body))
 	parent.add_child(button)
 	return button
 

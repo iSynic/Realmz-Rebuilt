@@ -44,7 +44,7 @@ func build(request: InteractionRequest) -> void:
 func _submit_service(service_id: String) -> void:
 	if _picker == null or _picker.item_count < 1:
 		return
-	payload_submitted.emit({"action": "service", "serviceId": service_id, "characterId": String(_picker.get_selected_metadata())})
+	response_body_submitted.emit(InteractionResponse.TempleBody.new(&"service", String(_picker.get_selected_metadata()), service_id))
 
 
 func _add_temple_action(label: String, action: String) -> void:
@@ -57,10 +57,8 @@ func _add_temple_action(label: String, action: String) -> void:
 
 
 func _submit_temple_action(action: String) -> void:
-	var payload := {"action": action}
-	if _picker != null and _picker.item_count > 0:
-		payload["selectedCharacterId"] = String(_picker.get_selected_metadata())
-	payload_submitted.emit(payload)
+	var selected_character_id := String(_picker.get_selected_metadata()) if _picker != null and _picker.item_count > 0 else ""
+	response_body_submitted.emit(InteractionResponse.TempleBody.new(StringName(action), selected_character_id))
 
 
 func _refresh_selected_character() -> void:

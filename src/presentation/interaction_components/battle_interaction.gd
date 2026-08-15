@@ -53,15 +53,13 @@ func build(request: InteractionRequest) -> void:
 		var candidate_ids: Array[String] = []
 		for target: InteractionRequestValue.CombatTarget in targets:
 			if not target.id.is_empty(): candidate_ids.append(target.id)
-		_add_targeting_button(target_panel, "Choose Fire target on battlefield" if weapon_mode == "missile" else "Choose attack target on battlefield", {
-			"mode": "combatant",
-			"responsePayload": {"actorId": actor_id, "action": "attack", "targetId": ""},
-			"candidateIds": candidate_ids,
-		})
+		var attack_targeting := CombatTargetingRequest.new(&"combatant", InteractionResponse.CombatBody.new(&"attack", actor_id))
+		attack_targeting.candidate_ids = candidate_ids
+		_add_targeting_button(target_panel, "Choose Fire target on battlefield" if weapon_mode == "missile" else "Choose attack target on battlefield", attack_targeting)
 	elif weapon_mode == "melee" and not body.melee_attack_reason.is_empty():
 		_add_hint_to(target_panel, body.melee_attack_reason)
 	if weapon_mode == "missile" and not action_ids.has("attack"):
-		add_response_to(target_panel, "Fire unavailable", {}, false, body.ranged_attack.reason)
+		add_response_to(target_panel, "Fire unavailable", InteractionResponse.CombatBody.new(&"attack", actor_id), false, body.ranged_attack.reason)
 	_spell_casts = body.spell_casts
 	_fast_spells = body.fast_spells
 	if action_ids.has("cast_spell") and not body.spell_casts.is_empty():
@@ -78,7 +76,7 @@ func build(request: InteractionRequest) -> void:
 		cast_button.disabled = spell_picker.item_count == 0
 		var refresh_cast_button := func(_index: int) -> void:
 			if _targeting_active:
-				presentation_action_requested.emit(&"cancel_battlefield_targeting", {})
+				combat_targeting_cancel_requested.emit()
 			var selected := spell_picker.get_selected_metadata() as InteractionRequestValue.CastOption
 			var mode := String(selected.target_mode) if selected != null else "combatant"
 			cast_button.text = "Cast selected spell" if mode == "automatic" else "Choose spell target on battlefield"
@@ -86,18 +84,20 @@ func build(request: InteractionRequest) -> void:
 		cast_button.pressed.connect(func() -> void:
 			var option := spell_picker.get_selected_metadata() as InteractionRequestValue.CastOption
 			if option == null: return
-			var payload := {"actorId": actor_id, "action": "cast_spell", "targetId": "", "spellId": option.spell_id, "power": option.power}
+			var response_body := InteractionResponse.CombatBody.new(&"cast_spell", actor_id)
+			response_body.spell_id = option.spell_id
+			response_body.power = option.power
 			var mode := String(option.target_mode)
 			if mode == "automatic":
-				payload_submitted.emit(payload)
+				response_body_submitted.emit(response_body)
 				return
-			var configuration := _spell_targeting_configuration(body.spell_casts, option, payload)
+			var configuration := _spell_targeting_configuration(body.spell_casts, option, response_body)
 			_start_targeting(configuration, spell_panel)
 		)
 		spell_panel.add_child(cast_button)
 		refresh_cast_button.call(spell_picker.selected)
 	elif not body.spell_cast_reason.is_empty():
-		add_response_to(spell_panel, "Cast unavailable", {}, false, body.spell_cast_reason)
+		add_response_to(spell_panel, "Cast unavailable", InteractionResponse.CombatBody.new(&"cast_spell", actor_id), false, body.spell_cast_reason)
 	if action_ids.has("use_scroll") and not body.scroll_casts.is_empty():
 		var scroll_picker := OptionButton.new()
 		scroll_picker.name = "CombatScrollPicker"
@@ -113,7 +113,7 @@ func build(request: InteractionRequest) -> void:
 		use_scroll_button.disabled = scroll_picker.item_count == 0
 		var refresh_scroll_button := func(_index: int) -> void:
 			if _targeting_active:
-				presentation_action_requested.emit(&"cancel_battlefield_targeting", {})
+				combat_targeting_cancel_requested.emit()
 			var selected := scroll_picker.get_selected_metadata() as InteractionRequestValue.CastOption
 			var mode := String(selected.target_mode) if selected != null else "combatant"
 			use_scroll_button.text = "Use selected scroll" if mode == "automatic" else "Choose scroll target on battlefield"
@@ -121,18 +121,19 @@ func build(request: InteractionRequest) -> void:
 		use_scroll_button.pressed.connect(func() -> void:
 			var option := scroll_picker.get_selected_metadata() as InteractionRequestValue.CastOption
 			if option == null: return
-			var payload := {"actorId": actor_id, "action": "use_scroll", "targetId": "", "scrollSlot": option.scroll_slot}
+			var response_body := InteractionResponse.CombatBody.new(&"use_scroll", actor_id)
+			response_body.scroll_slot = option.scroll_slot
 			var mode := String(option.target_mode)
 			if mode == "automatic":
-				payload_submitted.emit(payload)
+				response_body_submitted.emit(response_body)
 				return
-			var configuration := _spell_targeting_configuration(body.scroll_casts, option, payload)
+			var configuration := _spell_targeting_configuration(body.scroll_casts, option, response_body)
 			_start_targeting(configuration, scroll_panel)
 		)
 		scroll_panel.add_child(use_scroll_button)
 		refresh_scroll_button.call(scroll_picker.selected)
 	elif not body.scroll_cast_reason.is_empty():
-		add_response_to(scroll_panel, "Use scroll unavailable", {}, false, body.scroll_cast_reason)
+		add_response_to(scroll_panel, "Use scroll unavailable", InteractionResponse.CombatBody.new(&"use_scroll", actor_id), false, body.scroll_cast_reason)
 	if action_ids.has("use_item") and not body.item_casts.is_empty():
 		var item_row := HBoxContainer.new()
 		item_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -152,18 +153,21 @@ func build(request: InteractionRequest) -> void:
 		use_button.pressed.connect(func() -> void:
 			var option := item_picker.get_selected_metadata() as InteractionRequestValue.CastOption
 			if option == null: return
-			var payload := {"actorId": actor_id, "action": "use_item", "targetId": "", "itemInstanceId": option.item_instance_id}
+			var response_body := InteractionResponse.CombatBody.new(&"use_item", actor_id)
+			response_body.item_instance_id = option.item_instance_id
 			if option.target_mode == &"automatic":
-				payload_submitted.emit(payload)
+				response_body_submitted.emit(response_body)
 				return
 			var candidate_ids: Array[String] = []
 			for candidate: InteractionRequestValue.CastOption in body.item_casts:
 				if candidate.item_instance_id == option.item_instance_id and not candidate.target_id.is_empty(): candidate_ids.append(candidate.target_id)
-			_start_targeting({"mode": "combatant", "responsePayload": payload, "candidateIds": candidate_ids}, item_panel)
+			var targeting := CombatTargetingRequest.new(&"combatant", response_body)
+			targeting.candidate_ids = candidate_ids
+			_start_targeting(targeting, item_panel)
 		)
 		item_row.add_child(use_button)
 	elif not body.item_cast_reason.is_empty():
-		add_response_to(item_panel, "Use item unavailable", {}, false, body.item_cast_reason)
+		add_response_to(item_panel, "Use item unavailable", InteractionResponse.CombatBody.new(&"use_item", actor_id), false, body.item_cast_reason)
 
 
 func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
@@ -172,36 +176,38 @@ func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
 	var binding := _fast_spells[slot_index]
 	var shortcut := "0" if slot_index == 9 else str(slot_index + 1)
 	if binding.spell_id.is_empty():
-		presentation_action_requested.emit(&"fast_spell_status", {"text": "Fast Spell %s • Undefined Spell" % shortcut})
-		presentation_action_requested.emit(&"play_sound", {"soundId": 143})
+		presentation_status_requested.emit("Fast Spell %s • Undefined Spell" % shortcut, false)
+		presentation_sound_requested.emit(143)
 		return true
 	var summary := "Fast Spell %s • %s P%d" % [shortcut, binding.spell_name, binding.power]
 	if not use_spell:
-		presentation_action_requested.emit(&"fast_spell_status", {"text": summary})
-		presentation_action_requested.emit(&"play_sound", {"soundId": 145})
+		presentation_status_requested.emit(summary, false)
+		presentation_sound_requested.emit(145)
 		return true
 	if not binding.enabled:
-		presentation_action_requested.emit(&"fast_spell_status", {"text": "%s • %s" % [summary, binding.reason], "error": true})
-		presentation_action_requested.emit(&"play_sound", {"soundId": 143})
+		presentation_status_requested.emit("%s • %s" % [summary, binding.reason], true)
+		presentation_sound_requested.emit(143)
 		return true
 	for candidate: InteractionRequestValue.CastOption in _spell_casts:
 		if candidate.spell_id == binding.spell_id and candidate.power == binding.power:
-			var payload := {"actorId": _actor_id, "action": "cast_spell", "targetId": "", "spellId": binding.spell_id, "power": binding.power}
+			var response_body := InteractionResponse.CombatBody.new(&"cast_spell", _actor_id)
+			response_body.spell_id = binding.spell_id
+			response_body.power = binding.power
 			if candidate.target_mode == &"automatic":
-				payload_submitted.emit(payload)
+				response_body_submitted.emit(response_body)
 				return true
-			_start_targeting(_spell_targeting_configuration(_spell_casts, candidate, payload), _spell_panel)
+			_start_targeting(_spell_targeting_configuration(_spell_casts, candidate, response_body), _spell_panel)
 			return true
-	presentation_action_requested.emit(&"fast_spell_status", {"text": "%s • No legal target is available." % summary, "error": true})
-	presentation_action_requested.emit(&"play_sound", {"soundId": 143})
+	presentation_status_requested.emit("%s • No legal target is available." % summary, true)
+	presentation_sound_requested.emit(143)
 	return true
 
 
-func update_battlefield_targeting(selection: Dictionary) -> void:
+func update_battlefield_targeting(selection: CombatTargetingState) -> void:
 	if not _targeting_active or _targeting_status_label == null or _targeting_confirm_button == null:
 		return
-	_targeting_status_label.text = String(selection.get("status", "Choose a target on the battlefield."))
-	_targeting_confirm_button.disabled = not bool(selection.get("canConfirm", false))
+	_targeting_status_label.text = selection.status_text
+	_targeting_confirm_button.disabled = not selection.can_confirm()
 
 
 func battlefield_targeting_cancelled() -> void:
@@ -212,27 +218,25 @@ func battlefield_targeting_cancelled() -> void:
 		_targeting_confirm_button.disabled = true
 
 
-func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.CastOption], selected: InteractionRequestValue.CastOption, response_payload: Dictionary) -> Dictionary:
-	var mode := String(selected.target_mode)
+func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.CastOption], selected: InteractionRequestValue.CastOption, response_body: InteractionResponse.CombatBody) -> CombatTargetingRequest:
+	var mode := selected.target_mode
 	var candidate_ids: Array[String] = []
-	if mode == "sequence":
+	if mode == &"sequence":
 		for candidate: InteractionRequestValue.CombatTarget in selected.target_candidates:
 			if not candidate.id.is_empty(): candidate_ids.append(candidate.id)
-	elif mode == "combatant":
+	elif mode == &"combatant":
 		for candidate: InteractionRequestValue.CastOption in spell_casts:
 			if candidate.spell_id == selected.spell_id and candidate.power == selected.power and candidate.scroll_slot == selected.scroll_slot and candidate.target_mode == &"combatant" and not candidate.target_id.is_empty(): candidate_ids.append(candidate.target_id)
-	return {
-		"mode": mode,
-		"responsePayload": response_payload,
-		"candidateIds": candidate_ids,
-		"maximumTargets": selected.maximum_targets,
-		"areaOffsets": selected.area_offsets.map(func(value: Vector2i) -> Array[int]: return [value.x, value.y]),
-		"defaultTargetCoordinate": [selected.default_target_coordinate.x, selected.default_target_coordinate.y],
-		"legalTargetCoordinates": selected.legal_target_coordinates.map(func(value: Vector2i) -> Array[int]: return [value.x, value.y]),
-	}
+	var result := CombatTargetingRequest.new(mode, response_body)
+	result.candidate_ids = candidate_ids
+	result.maximum_targets = selected.maximum_targets
+	result.area_offsets = selected.area_offsets.duplicate()
+	result.default_target_coordinate = selected.default_target_coordinate
+	result.legal_coordinates = selected.legal_target_coordinates.duplicate()
+	return result
 
 
-func _add_targeting_button(parent: Container, text: String, configuration: Dictionary) -> void:
+func _add_targeting_button(parent: Container, text: String, configuration: CombatTargetingRequest) -> void:
 	var button := Button.new()
 	button.text = text
 	button.custom_minimum_size.y = 36.0
@@ -241,7 +245,7 @@ func _add_targeting_button(parent: Container, text: String, configuration: Dicti
 	parent.add_child(button)
 
 
-func _start_targeting(configuration: Dictionary, parent: Container) -> void:
+func _start_targeting(configuration: CombatTargetingRequest, parent: Container) -> void:
 	_targeting_active = true
 	if _targeting_controls != null and is_instance_valid(_targeting_controls):
 		_targeting_controls.queue_free()
@@ -255,15 +259,15 @@ func _start_targeting(configuration: Dictionary, parent: Container) -> void:
 	_targeting_confirm_button.text = "Confirm target"
 	_targeting_confirm_button.disabled = true
 	_targeting_confirm_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_targeting_confirm_button.pressed.connect(func() -> void: presentation_action_requested.emit(&"confirm_battlefield_targeting", {}))
+	_targeting_confirm_button.pressed.connect(func() -> void: combat_targeting_confirm_requested.emit())
 	target_actions.add_child(_targeting_confirm_button)
 	var cancel := Button.new()
 	cancel.text = "Cancel targeting"
 	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cancel.pressed.connect(func() -> void: presentation_action_requested.emit(&"cancel_battlefield_targeting", {}))
+	cancel.pressed.connect(func() -> void: combat_targeting_cancel_requested.emit())
 	target_actions.add_child(cancel)
 	_targeting_controls.add_child(target_actions)
-	presentation_action_requested.emit(&"begin_battlefield_targeting", configuration.duplicate(true))
+	combat_targeting_requested.emit(configuration)
 
 
 func inspect_combatant(combatant_id: String) -> void:
@@ -323,14 +327,14 @@ func _perform_presentation_action(action: StringName) -> void:
 		var delta := -1 if action == &"inspect_previous" else 1
 		_inspected_index = posmod(_inspected_index + delta, _combatants.size())
 		_refresh_inspected_label()
-		presentation_action_requested.emit(&"focus_combatant", {"combatantId": _combatants[_inspected_index].id, "playSound": true})
+		combatant_focus_requested.emit(_combatants[_inspected_index].id, true)
 		return
 	if action == &"center_active":
 		inspect_combatant(_actor_id)
-		presentation_action_requested.emit(&"focus_combatant", {"combatantId": _actor_id, "playSound": true})
+		combatant_focus_requested.emit(_actor_id, true)
 		return
 	if action == &"reveal_friends":
-		presentation_action_requested.emit(&"toggle_reveal_friends", {})
+		reveal_friends_requested.emit()
 
 
 func _refresh_inspected_label() -> void:
@@ -385,9 +389,9 @@ func _add_primary_action_row(body: InteractionRequest.CombatRequestBody, actor_i
 	overview.add_child(action_row)
 	if action_ids.has("switch_weapon"):
 		var target_mode := String(body.weapon_switch.target_mode)
-		add_response_to(action_row, "Weapon: %s" % target_mode.capitalize(), {"actorId": actor_id, "action": "switch_weapon", "targetId": ""})
+		add_response_to(action_row, "Weapon: %s" % target_mode.capitalize(), InteractionResponse.CombatBody.new(&"switch_weapon", actor_id))
 	if action_ids.has("defend"):
-		add_response_to(action_row, "Guard", {"actorId": actor_id, "action": "defend", "targetId": ""})
+		add_response_to(action_row, "Guard", InteractionResponse.CombatBody.new(&"defend", actor_id))
 	var weapon_mode := String(body.weapon_mode)
 	var target_enabled: bool = action_ids.has("attack") and not targets.is_empty()
 	var target_reason := body.melee_attack_reason if weapon_mode == "melee" else body.ranged_attack.reason
@@ -396,17 +400,17 @@ func _add_primary_action_row(body: InteractionRequest.CombatRequestBody, actor_i
 	_add_panel_toggle(action_row, "Scrolls", scroll_panel, mode_panels, overview, action_ids.has("use_scroll") and not body.scroll_casts.is_empty(), body.scroll_cast_reason, 647)
 	_add_panel_toggle(action_row, "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and not body.item_casts.is_empty(), body.item_cast_reason)
 	if action_ids.has("finish"):
-		add_response_to(action_row, "Finish", {"actorId": actor_id, "action": "finish", "targetId": ""})
+		add_response_to(action_row, "Finish", InteractionResponse.CombatBody.new(&"finish", actor_id))
 	var retreat_enabled := action_ids.has("retreat") and body.retreat.enabled
 	var retreat_reason := body.retreat.reason
-	add_response_to(action_row, "Escape", {"actorId": actor_id, "action": "retreat", "targetId": ""}, retreat_enabled, retreat_reason)
+	add_response_to(action_row, "Escape", InteractionResponse.CombatBody.new(&"retreat", actor_id), retreat_enabled, retreat_reason)
 	_add_classic_turn_commands(action_row, body, actor_id, bandage_panel, mode_panels, overview)
 
 
 func _add_classic_turn_commands(parent: Container, body: InteractionRequest.CombatRequestBody, actor_id: String, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
-	add_response_to(parent, "Auto", {"actorId": actor_id, "action": "auto", "targetId": ""}, body.auto_turn.enabled, body.auto_turn.reason)
+	add_response_to(parent, "Auto", InteractionResponse.CombatBody.new(&"auto", actor_id), body.auto_turn.enabled, body.auto_turn.reason)
 
-	add_response_to(parent, "Delay", {"actorId": actor_id, "action": "delay", "targetId": ""}, body.delay.enabled, body.delay.reason)
+	add_response_to(parent, "Delay", InteractionResponse.CombatBody.new(&"delay", actor_id), body.delay.enabled, body.delay.reason)
 
 	var bandage_enabled := body.bandage.enabled and not body.bandage_targets.is_empty()
 	var bandage_reason := body.bandage.reason
@@ -417,9 +421,9 @@ func _add_classic_turn_commands(parent: Container, body: InteractionRequest.Comb
 
 	var turn_label := "Turn Undead"
 	if body.turn_undead.enabled: turn_label = "Turn Undead (%d)" % body.turn_undead_targets.size()
-	add_response_to(parent, turn_label, {"actorId": actor_id, "action": "turn_undead", "targetId": ""}, body.turn_undead.enabled, body.turn_undead.reason)
+	add_response_to(parent, turn_label, InteractionResponse.CombatBody.new(&"turn_undead", actor_id), body.turn_undead.enabled, body.turn_undead.reason)
 
-	add_response_to(parent, "Undo", {"actorId": actor_id, "action": "undo", "targetId": ""}, body.undo.enabled, body.undo.reason)
+	add_response_to(parent, "Undo", InteractionResponse.CombatBody.new(&"undo", actor_id), body.undo.enabled, body.undo.reason)
 
 
 func _add_bandage_panel(parent: Control, actor_id: String, targets: Array[InteractionRequestValue.CombatTarget]) -> void:
@@ -444,7 +448,7 @@ func _add_bandage_panel(parent: Control, actor_id: String, targets: Array[Intera
 		var target_id := String(picker.get_selected_metadata())
 		if target_id.is_empty():
 			return
-		payload_submitted.emit({"actorId": actor_id, "action": "bandage", "targetId": target_id})
+		response_body_submitted.emit(InteractionResponse.CombatBody.new(&"bandage", actor_id, target_id))
 	)
 	parent.add_child(submit)
 
@@ -462,7 +466,7 @@ func _add_panel_toggle(parent: Container, label: String, panel: Control, panels:
 			candidate.visible = should_show and candidate == panel
 		overview.visible = not should_show
 		if should_show and presentation_sound_id > 0:
-			presentation_action_requested.emit(&"play_sound", {"soundId": presentation_sound_id})
+			presentation_sound_requested.emit(presentation_sound_id)
 	)
 	parent.add_child(button)
 	return button
@@ -475,7 +479,7 @@ func _add_mode_back_button(panel: Container, overview: Control, panels: Array[Co
 	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	back.pressed.connect(func() -> void:
 		if _targeting_active:
-			presentation_action_requested.emit(&"cancel_battlefield_targeting", {})
+			combat_targeting_cancel_requested.emit()
 		for candidate: Control in panels:
 			candidate.visible = false
 		overview.visible = true

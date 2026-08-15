@@ -20,7 +20,7 @@ func _build_result(body: InteractionRequest.LevelUpRequestBody) -> void:
 		return
 	add_hint("%s reached level %d." % [body.character_name, body.level])
 	add_hint("Stamina +%d • Spell points +%d • To hit +%d • Magic resistance +%d" % [body.gains.stamina, body.gains.spell_points, body.gains.to_hit, body.gains.magic_resistance])
-	add_response("Continue", {"action": "continue", "characterId": body.character_id})
+	add_response("Continue", InteractionResponse.LevelUpBody.new(&"continue", body.character_id))
 
 
 func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void:
@@ -46,6 +46,6 @@ func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void
 		var selected_ids: Array[String] = []
 		for index: int in checklist.get_selected_items():
 			selected_ids.append(String(checklist.get_item_metadata(index)))
-		payload_submitted.emit({"action": "confirm-spells", "characterId": body.character_id, "spellIds": selected_ids})
+		response_body_submitted.emit(InteractionResponse.LevelUpBody.new(&"confirm-spells", body.character_id, selected_ids))
 	)
 	add_child(confirm)

@@ -2,7 +2,7 @@ class_name CombatTargetingState
 extends RefCounted
 
 var mode: StringName
-var response_payload: Dictionary
+var response_body: InteractionResponse.CombatBody
 var candidate_ids: Array[String] = []
 var area_offsets: Array[Vector2i] = []
 var legal_coordinates: Array[Vector2i] = []
@@ -13,9 +13,15 @@ var hovered_coordinate := Vector2i(-1, -1)
 var status_text: String = "Choose a target on the battlefield."
 
 
-func _init(target_mode: StringName, base_response_payload: Dictionary) -> void:
-	mode = target_mode
-	response_payload = base_response_payload.duplicate(true)
+func _init(request: CombatTargetingRequest) -> void:
+	mode = request.mode
+	response_body = request.response_body.duplicate_body()
+	candidate_ids = request.candidate_ids.duplicate()
+	area_offsets = request.area_offsets.duplicate()
+	legal_coordinates = request.legal_coordinates.duplicate()
+	maximum_targets = request.maximum_targets
+	if mode == &"area" and request.default_target_coordinate.x >= 0:
+		select_coordinate(request.default_target_coordinate)
 
 
 func select_combatant(combatant_id: String) -> bool:
@@ -58,29 +64,19 @@ func can_confirm() -> bool:
 	return false
 
 
-func committed_payload() -> Dictionary:
+func committed_body() -> InteractionResponse.CombatBody:
 	if not can_confirm():
-		return {}
-	var payload := response_payload.duplicate(true)
+		return null
+	var result := response_body.duplicate_body()
 	match mode:
 		&"combatant":
-			payload["targetId"] = selected_ids[0]
+			result.target_id = selected_ids[0]
 		&"sequence":
-			payload["targetId"] = ""
-			payload["targetIds"] = selected_ids.duplicate()
+			result.target_id = ""
+			result.target_ids = selected_ids.duplicate()
 		&"area":
-			payload["targetId"] = ""
-			payload["targetCoordinate"] = [selected_coordinate.x, selected_coordinate.y]
-			payload["rotation"] = 0
-	return payload
-
-
-func selection_data() -> Dictionary:
-	return {
-		"mode": String(mode),
-		"selectedIds": selected_ids.duplicate(),
-		"selectedCoordinate": [selected_coordinate.x, selected_coordinate.y],
-		"maximumTargets": maximum_targets,
-		"canConfirm": can_confirm(),
-		"status": status_text,
-	}
+			result.target_id = ""
+			result.target_coordinate = selected_coordinate
+			result.has_target_coordinate = true
+			result.rotation = 0
+	return result

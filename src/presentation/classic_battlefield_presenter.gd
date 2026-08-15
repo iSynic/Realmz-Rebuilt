@@ -1,9 +1,9 @@
 class_name ClassicBattlefieldPresenter
 extends Control
 
-signal tactical_action_requested(payload: Dictionary)
+signal combat_body_submitted(body: InteractionResponse.CombatBody)
 signal combatant_inspected(combatant_id: String)
-signal targeting_changed(selection: Dictionary)
+signal targeting_changed(selection: CombatTargetingState)
 signal targeting_cancelled
 
 const NATIVE_CELL_SIZE: float = 32.0
@@ -250,33 +250,14 @@ func _notification(what: int) -> void:
 		queue_redraw()
 
 
-func begin_targeting(configuration: Dictionary) -> bool:
+func begin_targeting(configuration: CombatTargetingRequest) -> bool:
 	if _playback_frame != null or _view == null or _view.combat_view == null:
 		return false
-	var mode := StringName(configuration.get("mode", &""))
-	var response_payload: Variant = configuration.get("responsePayload", {})
-	if mode not in [&"combatant", &"sequence", &"area"] or not response_payload is Dictionary:
+	if configuration == null or not configuration.is_valid():
 		return false
-	var state := CombatTargetingState.new(mode, response_payload)
-	for value: Variant in configuration.get("candidateIds", []):
-		var candidate_id := String(value)
-		if not candidate_id.is_empty() and not state.candidate_ids.has(candidate_id):
-			state.candidate_ids.append(candidate_id)
-	for value: Variant in configuration.get("areaOffsets", []):
-		var offset_coordinate := _array_coordinate(value)
-		if offset_coordinate.x > -BattlefieldState.SIZE and offset_coordinate.y > -BattlefieldState.SIZE:
-			state.area_offsets.append(offset_coordinate)
-	for value: Variant in configuration.get("legalTargetCoordinates", []):
-		var legal_coordinate := _array_coordinate(value)
-		if legal_coordinate.x >= 0 and legal_coordinate.y >= 0:
-			state.legal_coordinates.append(legal_coordinate)
-	state.maximum_targets = maxi(1, int(configuration.get("maximumTargets", 1)))
-	var default_coordinate := _array_coordinate(configuration.get("defaultTargetCoordinate", []))
-	if mode == &"area" and default_coordinate.x >= 0:
-		state.select_coordinate(default_coordinate)
-	_targeting = state
+	_targeting = CombatTargetingState.new(configuration)
 	_reveal_friends = false
-	targeting_changed.emit(_targeting.selection_data())
+	targeting_changed.emit(_targeting)
 	queue_redraw()
 	return true
 
@@ -284,13 +265,13 @@ func begin_targeting(configuration: Dictionary) -> bool:
 func confirm_targeting() -> bool:
 	if _targeting == null:
 		return false
-	var payload := _targeting.committed_payload()
-	if payload.is_empty():
-		targeting_changed.emit(_targeting.selection_data())
+	var body := _targeting.committed_body()
+	if body == null:
+		targeting_changed.emit(_targeting)
 		return false
 	_targeting = null
 	queue_redraw()
-	tactical_action_requested.emit(payload)
+	combat_body_submitted.emit(body)
 	return true
 
 
@@ -328,7 +309,7 @@ func _handle_targeting_input(event: InputEvent) -> void:
 	else:
 		var combatant_id := combatant_at(_view.combat_view, _view.party_members, coordinate)
 		_targeting.select_combatant(combatant_id)
-	targeting_changed.emit(_targeting.selection_data())
+	targeting_changed.emit(_targeting)
 	queue_redraw()
 	accept_event()
 
@@ -382,15 +363,10 @@ func _movement_option_toward_local_position(local_position: Vector2) -> CombatMo
 func _submit_movement_option(option: CombatMoveOptionView) -> bool:
 	if option == null or not option.enabled or _view == null or _view.combat_view == null:
 		return false
-	var payload := {
-		"actorId": _view.combat_view.active_actor_id,
-		"action": "retreat_edge" if option.retreats_from_battle else "move",
-		"targetId": "",
-		"destination": [option.destination.x, option.destination.y],
-	}
-	if option.retreats_from_battle:
-		payload["forced"] = option.forced_retreat
-	tactical_action_requested.emit(payload)
+	var body := InteractionResponse.CombatBody.new(&"retreat_edge" if option.retreats_from_battle else &"move", _view.combat_view.active_actor_id)
+	body.destination = option.destination
+	body.has_destination = true
+	combat_body_submitted.emit(body)
 	return true
 
 

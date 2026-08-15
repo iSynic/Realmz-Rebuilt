@@ -59,7 +59,7 @@ func _submit_characters(required: int) -> void:
 	if ids.size() != required:
 		add_hint("Choose exactly %d character%s." % [required, "" if required == 1 else "s"])
 		return
-	payload_submitted.emit({"characterIds": ids})
+	response_body_submitted.emit(InteractionResponse.SelectionBody.new(ids))
 
 
 func _submit_allies(maximum: int) -> void:
@@ -67,7 +67,7 @@ func _submit_allies(maximum: int) -> void:
 	if ids.size() > maximum:
 		add_hint("Choose no more than %d allies." % maximum)
 		return
-	payload_submitted.emit({"selectedIds": ids})
+	response_body_submitted.emit(InteractionResponse.AllySelectionBody.new(ids))
 
 
 func _selected_ids() -> Array[String]:

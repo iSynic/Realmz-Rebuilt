@@ -18,6 +18,7 @@ Own the pure transaction coordinator that joins core Realmz state and rules to t
 - This layer may depend on `src/core` and `src/scenario`; neither lower layer may depend on `src/session`.
 - All classes are pure `RefCounted` or value-like data. They never retain Nodes, repositories, presenters, or the owning application.
 - Workflow services receive an explicit ephemeral `SessionWorkflowContext`; they never retain the owning `GameSession`.
+- Exploration state mutations such as Camp, Rest, Search, clock advancement, fatigue, and secret discovery belong to `ExplorationTimeWorkflow`. `GameSession` only chooses the continuation and commits the returned events/error as one transaction.
 - `GameSession` alone owns rollback, request matching, revision changes, and exact-once commit.
 - Restore validation must never mutate the live session. Candidate state, rules, RNG, VM, continuations, and interaction are replacement objects until the final `GameSession` assignment block.
 - Scenario-mediated and direct player operations must converge on the same core rules and workflow implementations.

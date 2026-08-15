@@ -26,7 +26,7 @@ func _build_fumble_recovery(body: InteractionRequest.TreasureRequestBody) -> voi
 	var remaining_text := " • %d items remain" % body.remaining if body.remaining > 1 else ""
 	add_hint("%s%s%s" % [body.item.name, charge_text, remaining_text])
 	_add_item_recipients(instance_id, body.characters)
-	add_response("Leave behind", {"action": "discard", "instanceId": instance_id})
+	add_response("Leave behind", InteractionResponse.TreasureBody.new(&"discard", instance_id))
 
 
 func _build_ordinary(body: InteractionRequest.TreasureRequestBody) -> void:
@@ -41,7 +41,7 @@ func _build_ordinary(body: InteractionRequest.TreasureRequestBody) -> void:
 			display_name += " • magic detected"
 		add_hint("%s • %d item%s remain" % [display_name, body.remaining, "" if body.remaining == 1 else "s"])
 		_add_item_recipients(instance_id, body.characters)
-		add_response("Leave this item", {"action": "discard", "instanceId": instance_id})
+		add_response("Leave this item", InteractionResponse.TreasureBody.new(&"discard", instance_id))
 	elif body.remaining == 0:
 		add_hint("No items remain to distribute.")
 	if body.detect != null and body.detect.visible:
@@ -52,30 +52,30 @@ func _build_ordinary(body: InteractionRequest.TreasureRequestBody) -> void:
 	for character: InteractionRequestValue.RewardCharacter in body.characters:
 		if character.wealth != null:
 			has_carried_wealth = has_carried_wealth or character.wealth.gold > 0 or character.wealth.gems > 0 or character.wealth.jewelry > 0
-	add_response("Pool party wealth", {"action": "pool"}, has_carried_wealth, "No adventurer carries wealth to pool.")
+	add_response("Pool party wealth", InteractionResponse.TreasureBody.new(&"pool"), has_carried_wealth, "No adventurer carries wealth to pool.")
 	var has_pool := body.wealth != null and (body.wealth.gold > 0 or body.wealth.gems > 0 or body.wealth.jewelry > 0)
-	add_response("Share pooled wealth", {"action": "share"}, has_pool and body.has_share_capacity, "The pool is empty or no adventurer can carry another unit.")
+	add_response("Share pooled wealth", InteractionResponse.TreasureBody.new(&"share"), has_pool and body.has_share_capacity, "The pool is empty or no adventurer can carry another unit.")
 	_add_swap_controls(body.characters)
-	add_response("Done", {"action": "done"})
+	add_response("Done", InteractionResponse.TreasureBody.new(&"done"))
 
 
 func _build_completion_confirmation(body: InteractionRequest.TreasureRequestBody) -> void:
 	add_hint(body.summary if not body.summary.is_empty() else "Unclaimed treasure will be left behind.")
-	add_response("Return to treasure", {"action": "cancel-completion"})
-	add_response("Leave it behind", {"action": "confirm-completion"})
+	add_response("Return to treasure", InteractionResponse.TreasureBody.new(&"cancel-completion"))
+	add_response("Leave it behind", InteractionResponse.TreasureBody.new(&"confirm-completion"))
 
 
 func _add_item_recipients(instance_id: String, characters: Array[InteractionRequestValue.RewardCharacter]) -> void:
 	for character: InteractionRequestValue.RewardCharacter in characters:
-		add_response("Give to %s" % character.name, {"action": "assign", "instanceId": instance_id, "characterId": character.id}, character.enabled, character.reason)
+		add_response("Give to %s" % character.name, InteractionResponse.TreasureBody.new(&"assign", instance_id, character.id), character.enabled, character.reason)
 
 
 func _add_caster_actions(label: String, action: String, method: InteractionRequestValue.RewardMethod) -> void:
 	if not method.casters.is_empty():
 		for caster: InteractionRequestValue.RewardCaster in method.casters:
-			add_response("%s — %s" % [label, caster.name], {"action": action, "characterId": caster.id})
+			add_response("%s — %s" % [label, caster.name], InteractionResponse.TreasureBody.new(StringName(action), "", caster.id))
 	else:
-		add_response(label, {"action": action}, false, method.reason if not method.reason.is_empty() else "Unavailable.")
+		add_response(label, InteractionResponse.TreasureBody.new(StringName(action)), false, method.reason if not method.reason.is_empty() else "Unavailable.")
 
 
 func _add_swap_controls(characters: Array[InteractionRequestValue.RewardCharacter]) -> void:
@@ -121,7 +121,7 @@ func _add_swap_controls(characters: Array[InteractionRequestValue.RewardCharacte
 func _submit_swap(selector: OptionButton, rows: Array[InteractionRequestValue.RewardCharacter], direction: String, kind: String, amount: int) -> void:
 	if selector.selected < 0 or selector.selected >= rows.size():
 		return
-	payload_submitted.emit({"action": "transfer", "direction": direction, "kind": kind, "amount": amount, "characterId": rows[selector.selected].id})
+	response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"transfer", "", rows[selector.selected].id, StringName(direction), StringName(kind), amount))
 
 
 func _refresh_swap_controls(index: int, selector: OptionButton, rows: Array[InteractionRequestValue.RewardCharacter], summary: Label, buttons: Array[Button], specs: Array[Dictionary]) -> void:

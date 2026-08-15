@@ -19,8 +19,8 @@ func build(request: InteractionRequest) -> void:
 		add_hint("Deposited until departure: %d gold • %d gems • %d jewelry" % [body.banked_wealth.gold, body.banked_wealth.gems, body.banked_wealth.jewelry])
 		add_hint("Opening the bank moves deposited wealth into the pool. Done closes Swap; leaving the location returns the remaining pool to the bank.")
 	_characters = body.characters.duplicate()
-	add_response("Pool party wealth", {"action": "pool"}, body.pool.enabled, body.pool.reason)
-	add_response("Share pooled wealth", {"action": "share"}, body.share.enabled, body.share.reason)
+	add_response("Pool party wealth", InteractionResponse.BankBody.new(&"pool"), body.pool.enabled, body.pool.reason)
+	add_response("Share pooled wealth", InteractionResponse.BankBody.new(&"share"), body.share.enabled, body.share.reason)
 	_picker = character_option(_characters)
 	var selected_character_id := body.selected_character_id
 	for index: int in _picker.item_count:
@@ -32,7 +32,7 @@ func build(request: InteractionRequest) -> void:
 	_summary = add_hint("")
 	_transfer_rows = VBoxContainer.new()
 	add_child(_transfer_rows)
-	add_response("Done", {"action": "leave"})
+	add_response("Done", InteractionResponse.BankBody.new(&"leave"))
 	_refresh_selected_character()
 
 
@@ -73,6 +73,6 @@ func _add_transfer_row(character_id: String, character_name: String, transfer: I
 	label.text = "%s • %d" % [denomination.capitalize(), amount]
 	label.custom_minimum_size.x = 110.0
 	row.add_child(label)
-	add_response_to(row, "To pool", {"action": "to-pool", "characterId": character_id, "denomination": denomination, "amount": amount}, transfer.to_pool.enabled, transfer.to_pool.reason)
-	add_response_to(row, "To %s" % character_name, {"action": "to-character", "characterId": character_id, "denomination": denomination, "amount": amount}, transfer.to_character.enabled, transfer.to_character.reason)
+	add_response_to(row, "To pool", InteractionResponse.BankBody.new(&"to-pool", character_id, denomination, amount), transfer.to_pool.enabled, transfer.to_pool.reason)
+	add_response_to(row, "To %s" % character_name, InteractionResponse.BankBody.new(&"to-character", character_id, denomination, amount), transfer.to_character.enabled, transfer.to_character.reason)
 	_transfer_rows.add_child(row)

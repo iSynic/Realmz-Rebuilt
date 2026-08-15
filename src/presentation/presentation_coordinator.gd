@@ -1,6 +1,8 @@
 class_name PresentationCoordinator
 extends Node
 
+signal playback_step_settled(step: SessionStep)
+
 const CombatPlaybackControllerScript := preload("res://src/presentation/combat_playback_controller.gd")
 
 var _session_controller: GameSessionController
@@ -99,6 +101,7 @@ func _on_combat_playback_finished() -> void:
 	_deferred_view = null
 	if step != null and game_view != null:
 		_present_committed_step(step, game_view, false)
+		playback_step_settled.emit(step)
 
 
 func _on_presentation_sound_requested(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void:

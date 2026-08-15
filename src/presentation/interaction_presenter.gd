@@ -4,7 +4,13 @@ extends PanelContainer
 const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
 
 signal response_submitted(response: InteractionResponse)
-signal presentation_action_requested(action: StringName, payload: Dictionary)
+signal combat_targeting_requested(request: CombatTargetingRequest)
+signal combat_targeting_confirm_requested
+signal combat_targeting_cancel_requested
+signal combatant_focus_requested(combatant_id: String, play_sound: bool)
+signal reveal_friends_requested
+signal presentation_sound_requested(sound_id: int)
+signal presentation_status_requested(text: String, is_error: bool)
 
 @onready var _prompt: Label = %InteractionPrompt
 @onready var _heading: Label = %InteractionHeading
@@ -22,6 +28,11 @@ var _passive_text: bool = false
 var _playback_masked: bool = false
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and visible:
+		_claim_modal_layer()
+
+
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
 	_request = request
 	_passive_text = false
@@ -29,6 +40,8 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_reset_interaction_scroll()
 	_clear_options()
 	visible = request != null
+	if visible:
+		_claim_modal_layer()
 	var full_stage := uses_full_stage_region(request)
 	_stage_opaque_backing.visible = full_stage
 	_stage_backing.visible = full_stage
@@ -55,8 +68,14 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		return
 	_component.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_component.add_theme_constant_override("separation", 8)
-	_component.payload_submitted.connect(_submit_payload)
-	_component.presentation_action_requested.connect(func(action: StringName, payload: Dictionary) -> void: presentation_action_requested.emit(action, payload))
+	_component.response_body_submitted.connect(_submit_body)
+	_component.combat_targeting_requested.connect(func(targeting_request: CombatTargetingRequest) -> void: combat_targeting_requested.emit(targeting_request))
+	_component.combat_targeting_confirm_requested.connect(func() -> void: combat_targeting_confirm_requested.emit())
+	_component.combat_targeting_cancel_requested.connect(func() -> void: combat_targeting_cancel_requested.emit())
+	_component.combatant_focus_requested.connect(func(combatant_id: String, play_sound: bool) -> void: combatant_focus_requested.emit(combatant_id, play_sound))
+	_component.reveal_friends_requested.connect(func() -> void: reveal_friends_requested.emit())
+	_component.presentation_sound_requested.connect(func(sound_id: int) -> void: presentation_sound_requested.emit(sound_id))
+	_component.presentation_status_requested.connect(func(text: String, is_error: bool) -> void: presentation_status_requested.emit(text, is_error))
 	_options.add_child(_component)
 	_component.build(request)
 	_apply_classic_region()
@@ -76,6 +95,7 @@ func present_combat_playback_mask() -> void:
 	_stage_backing.visible = false
 	_add_hint("Resolving combat…  Press Space to skip visual playback.")
 	visible = true
+	_claim_modal_layer()
 	_apply_classic_region()
 
 
@@ -105,6 +125,8 @@ func present_passive_classic_text(text: String) -> void:
 	_prompt.visible = not text.is_empty()
 	_passive_text = not text.is_empty()
 	visible = not text.is_empty()
+	if visible:
+		_claim_modal_layer()
 	_apply_classic_region()
 
 
@@ -112,10 +134,10 @@ func has_blocking_request() -> bool:
 	return _request != null or _playback_masked
 
 
-func submit_active_payload(payload: Dictionary) -> bool:
+func submit_active_body(body: InteractionResponse.CombatBody) -> bool:
 	if _playback_masked or _request == null or _request.kind != InteractionRequest.COMBAT:
 		return false
-	_submit_payload(payload)
+	_submit_body(body)
 	return true
 
 
@@ -132,7 +154,7 @@ func inspect_combatant(combatant_id: String) -> void:
 		(_component as BattleInteraction).inspect_combatant(combatant_id)
 
 
-func update_combat_targeting(selection: Dictionary) -> void:
+func update_combat_targeting(selection: CombatTargetingState) -> void:
 	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
 		(_component as BattleInteraction).update_battlefield_targeting(selection)
 
@@ -178,18 +200,18 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 	return null
 
 
-func _submit_payload(payload: Dictionary) -> void:
+func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null:
 		return
-	var response := InteractionPresenter.response_for(_request, payload)
+	var response := InteractionPresenter.response_for(_request, body)
 	_request = null
 	visible = false
 	response_submitted.emit(response)
 
 
-static func response_for(request: InteractionRequest, payload: Dictionary) -> InteractionResponse:
+static func response_for(request: InteractionRequest, body: InteractionResponse.Body) -> InteractionResponse:
 	assert(request != null, "An interaction response requires its originating request")
-	return InteractionResponse.from_data(request.request_id, request.kind, payload)
+	return InteractionResponse.new(request.request_id, request.kind, body)
 
 
 func _clear_options() -> void:
@@ -262,6 +284,12 @@ func _prepare_interaction_focus() -> void:
 func _reset_interaction_scroll() -> void:
 	_scroll.scroll_horizontal = 0
 	_scroll.scroll_vertical = 0
+
+
+func _claim_modal_layer() -> void:
+	var parent := get_parent()
+	if parent != null and get_index() != parent.get_child_count() - 1:
+		parent.move_child(self, parent.get_child_count() - 1)
 
 
 static func _title_for_kind(kind: StringName) -> String:

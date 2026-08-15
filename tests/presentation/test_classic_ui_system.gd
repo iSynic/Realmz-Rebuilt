@@ -392,7 +392,7 @@ func _test_player_map_workspace() -> void:
 	var immediate := PlayerMapInteraction.new()
 	immediate.configure(view, media)
 	var payloads: Array[Dictionary] = []
-	immediate.payload_submitted.connect(func(payload: Dictionary) -> void: payloads.append(payload))
+	immediate.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: payloads.append(body.to_data()))
 	immediate.build(InteractionRequest.from_payload("player-map.immediate", InteractionRequest.ACKNOWLEDGE, {"prompt": definition.name, "presentation": "player-map", "playerMapId": definition.id}))
 	assert_not_null(immediate.find_child("ImmediatePlayerMap", true, false), "negative opcode 29 uses the same typed presenter as Journal browsing")
 	var continue_button := immediate.find_children("*", "Button", true, false).filter(func(button: Node) -> bool: return (button as Button).text == "Continue")[0] as Button
@@ -462,7 +462,7 @@ func _test_battle_weapon_mode_component() -> void:
 	})
 	var component := BattleInteraction.new()
 	var submitted: Array[Dictionary] = []
-	component.payload_submitted.connect(func(payload: Dictionary) -> void: submitted.append(payload))
+	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
 	var buttons: Array[Button] = []
 	for child: Node in component.find_children("*", "Button", true, false):
@@ -531,7 +531,7 @@ func _test_battle_weapon_mode_component() -> void:
 	})
 	var command_component := BattleInteraction.new()
 	var command_payloads: Array[Dictionary] = []
-	command_component.payload_submitted.connect(func(payload: Dictionary) -> void: command_payloads.append(payload))
+	command_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: command_payloads.append(body.to_data()))
 	command_component.build(command_request)
 	var command_buttons: Array[Button] = []
 	for child: Node in command_component.find_children("*", "Button", true, false):
@@ -557,11 +557,15 @@ func _test_battle_weapon_mode_component() -> void:
 		{"actorId": "character.priest", "action": "bandage", "targetId": "character.bleeding"},
 	], "the command deck returns only typed command and stable recipient identity payloads")
 	command_component.free()
-	var presentation_actions: Array[Array] = []
-	component.presentation_action_requested.connect(func(action: StringName, payload: Dictionary) -> void: presentation_actions.append([action, payload]))
+	var targeting_requests: Array[CombatTargetingRequest] = []
+	var focus_events: Array[Array] = []
+	var reveal_events: Array[bool] = []
+	component.combat_targeting_requested.connect(func(targeting_request: CombatTargetingRequest) -> void: targeting_requests.append(targeting_request))
+	component.combatant_focus_requested.connect(func(combatant_id: String, play_sound: bool) -> void: focus_events.append([combatant_id, play_sound]))
+	component.reveal_friends_requested.connect(func() -> void: reveal_events.append(true))
 	center_button.pressed.emit()
 	reveal_button.pressed.emit()
-	assert_equal(presentation_actions, [[&"focus_combatant", {"combatantId": "character.archer", "playSound": true}], [&"toggle_reveal_friends", {}]], "Center and Reveal remain presentation events rather than gameplay responses")
+	assert_equal([focus_events, reveal_events.size()], [[['character.archer', true]], 1], "Center and Reveal remain explicit presentation events rather than gameplay responses")
 	assert_equal([cast_button.get_parent().visible, use_item_button.get_parent().get_parent().visible], [false, false], "secondary battle workflows begin collapsed instead of overflowing the battlefield")
 	assert_true(component.accepts_spatial_input(), "ordinary battle commands leave keyboard and battlefield movement active")
 	var overview := spell_mode_button.get_parent().get_parent() as Control
@@ -584,25 +588,25 @@ func _test_battle_weapon_mode_component() -> void:
 	spell_picker.select(0)
 	spell_picker.item_selected.emit(0)
 	cast_button.pressed.emit()
-	var combatant_configuration: Dictionary = presentation_actions[-1][1]
-	assert_equal([presentation_actions[-1][0], combatant_configuration.get("mode"), combatant_configuration.get("candidateIds")], [&"begin_battlefield_targeting", "combatant", ["monster.target"]], "single-target casting opens a battlefield-native picker with only core-proven candidates")
+	var combatant_configuration := targeting_requests[-1]
+	assert_equal([combatant_configuration.mode, combatant_configuration.candidate_ids], [&"combatant", ["monster.target"]], "single-target casting opens a battlefield-native picker with only core-proven candidates")
 	spell_picker.select(2)
 	spell_picker.item_selected.emit(2)
 	cast_button.pressed.emit()
-	var area_configuration: Dictionary = presentation_actions[-1][1]
-	assert_equal([area_configuration.get("mode"), area_configuration.get("areaOffsets"), area_configuration.get("legalTargetCoordinates")], ["area", [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]], [[45, 45], [47, 43]]], "area targeting carries the exact core-provided mask and legal centers instead of coordinate spin boxes")
+	var area_configuration := targeting_requests[-1]
+	assert_equal([area_configuration.mode, area_configuration.area_offsets, area_configuration.legal_coordinates], [&"area", [Vector2i(0, -1), Vector2i(-1, 0), Vector2i.ZERO, Vector2i.RIGHT, Vector2i.DOWN], [Vector2i(45, 45), Vector2i(47, 43)]], "area targeting carries the exact core-provided mask and legal centers instead of coordinate spin boxes")
 	assert_equal(component.find_children("*", "SpinBox", true, false).size(), 0, "combat targeting no longer exposes coordinate spin boxes")
 	spell_picker.select(3)
 	spell_picker.item_selected.emit(3)
 	cast_button.pressed.emit()
-	var sequence_configuration: Dictionary = presentation_actions[-1][1]
-	assert_equal([sequence_configuration.get("mode"), sequence_configuration.get("candidateIds"), sequence_configuration.get("maximumTargets")], ["sequence", ["monster.target", "character.ally"], 3], "repeated spells preserve the rules-owned candidates and maximum for ordered battlefield clicks")
+	var sequence_configuration := targeting_requests[-1]
+	assert_equal([sequence_configuration.mode, sequence_configuration.candidate_ids, sequence_configuration.maximum_targets], [&"sequence", ["monster.target", "character.ally"], 3], "repeated spells preserve the rules-owned candidates and maximum for ordered battlefield clicks")
 	item_mode_button.pressed.emit()
 	assert_true(use_item_button.get_parent().get_parent().visible and not cast_button.get_parent().visible, "Items replaces the prior secondary workflow instead of stacking beneath it")
 	assert_false(component.accepts_spatial_input(), "an open item workflow suppresses spatial battle input")
 	use_item_button.pressed.emit()
-	var item_configuration: Dictionary = presentation_actions[-1][1]
-	assert_equal([item_configuration.get("mode"), item_configuration.get("candidateIds"), item_configuration.get("responsePayload", {}).get("itemInstanceId")], ["combatant", ["monster.target"], "item.wand.instance"], "combat items use the same battlefield-native target contract")
+	var item_configuration := targeting_requests[-1]
+	assert_equal([item_configuration.mode, item_configuration.candidate_ids, item_configuration.response_body.item_instance_id], [&"combatant", ["monster.target"], "item.wand.instance"], "combat items use the same battlefield-native target contract")
 	assert_equal(submitted, [
 		{"actorId": "character.archer", "action": "switch_weapon", "targetId": ""},
 		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.wave", "power": 1},
@@ -619,7 +623,7 @@ func _test_battle_weapon_mode_component() -> void:
 	})
 	var melee_component := BattleInteraction.new()
 	var melee_submitted: Array[Dictionary] = []
-	melee_component.payload_submitted.connect(func(payload: Dictionary) -> void: melee_submitted.append(payload))
+	melee_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: melee_submitted.append(body.to_data()))
 	melee_component.build(melee_request)
 	var melee_buttons: Array[Node] = melee_component.find_children("*", "Button", true, false)
 	assert_false(melee_buttons.any(func(button: Button) -> bool: return button.text == "Attack E"), "collision melee remains on the tactical board rather than reappearing as a directional command button")
@@ -667,8 +671,8 @@ func _test_battle_typed_option_contracts() -> void:
 		],
 	})
 	var option_component := BattleInteraction.new()
-	var presentation_actions: Array[Array] = []
-	option_component.presentation_action_requested.connect(func(action: StringName, payload: Dictionary) -> void: presentation_actions.append([action, payload]))
+	var targeting_requests: Array[CombatTargetingRequest] = []
+	option_component.combat_targeting_requested.connect(func(targeting_request: CombatTargetingRequest) -> void: targeting_requests.append(targeting_request))
 	option_component.build(option_request)
 	var option_buttons: Array[Button] = []
 	for child: Node in option_component.find_children("*", "Button", true, false):
@@ -680,20 +684,20 @@ func _test_battle_typed_option_contracts() -> void:
 	var spell_picker := option_component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() is VBoxContainer)[0] as OptionButton
 	var cast_button := spell_picker.get_parent().find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Choose spell target on battlefield")[0] as Button
 	cast_button.pressed.emit()
-	var spell_configuration: Dictionary = presentation_actions[-1][1]
-	assert_equal([presentation_actions[-1][0], spell_configuration.get("candidateIds")], [&"begin_battlefield_targeting", ["target.second", "target.first"]], "combat spell targeting preserves the typed legal target IDs and their supplied order")
+	var spell_configuration := targeting_requests[-1]
+	assert_equal(spell_configuration.candidate_ids, ["target.second", "target.first"], "combat spell targeting preserves the typed legal target IDs and their supplied order")
 	item_mode.pressed.emit()
 	var item_picker := option_component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() is HBoxContainer)[0] as OptionButton
 	var use_item_button := item_picker.get_parent().find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Use selected item")[0] as Button
 	use_item_button.pressed.emit()
-	var item_configuration: Dictionary = presentation_actions[-1][1]
-	assert_equal([item_configuration.get("candidateIds"), item_configuration.get("responsePayload", {}).get("itemInstanceId")], [["target.second", "target.first"], "item.wand.instance"], "combat item targeting preserves the typed legal target IDs and selected stable item instance")
+	var item_configuration := targeting_requests[-1]
+	assert_equal([item_configuration.candidate_ids, item_configuration.response_body.item_instance_id], [["target.second", "target.first"], "item.wand.instance"], "combat item targeting preserves the typed legal target IDs and selected stable item instance")
 	scroll_mode.pressed.emit()
 	var scroll_picker := option_component.find_child("CombatScrollPicker", true, false) as OptionButton
 	var use_scroll_button := scroll_picker.get_parent().find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Choose scroll target on battlefield")[0] as Button
 	use_scroll_button.pressed.emit()
-	var scroll_configuration: Dictionary = presentation_actions[-1][1]
-	assert_equal([scroll_configuration.get("candidateIds"), scroll_configuration.get("responsePayload", {}).get("scrollSlot")], [["target.second", "target.first"], 2], "combat scroll targeting preserves source order and the exact fixed scroll slot")
+	var scroll_configuration := targeting_requests[-1]
+	assert_equal([scroll_configuration.candidate_ids, scroll_configuration.response_body.scroll_slot], [["target.second", "target.first"], 2], "combat scroll targeting preserves source order and the exact fixed scroll slot")
 	option_component.free()
 
 
@@ -753,7 +757,7 @@ func _test_temple_component() -> void:
 	})
 	var component := TempleInteraction.new()
 	var submitted: Array[Dictionary] = []
-	component.payload_submitted.connect(func(payload: Dictionary) -> void: submitted.append(payload))
+	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
 	var buttons: Array[Button] = []
 	for child: Node in component.get_children():
@@ -775,7 +779,7 @@ func _test_temple_component() -> void:
 	pool_button.pressed.emit()
 	assert_equal(submitted, [
 		{"action": "service", "serviceId": "heal-small", "characterId": "character.one"},
-		{"action": "pool", "selectedCharacterId": "character.one"},
+		{"action": "pool", "characterId": "character.one"},
 	], "the temple presenter emits typed service and wealth responses with the current stable character identity")
 	component.free()
 
@@ -802,7 +806,7 @@ func _test_bank_component() -> void:
 	})
 	var component := BankInteraction.new()
 	var submitted: Array[Dictionary] = []
-	component.payload_submitted.connect(func(payload: Dictionary) -> void: submitted.append(payload))
+	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
 	var buttons: Array[Button] = []
 	for node: Node in component.find_children("*", "Button", true, false):
@@ -828,7 +832,7 @@ func _test_bank_component() -> void:
 	var departure_request := InteractionRequest.from_payload("departure.fixture", InteractionRequest.POOLED_WEALTH_DEPARTURE, request.body.to_data().merged({"mode": "departure"}, true))
 	var departure_component := BankInteraction.new()
 	var departure_payloads: Array[Dictionary] = []
-	departure_component.payload_submitted.connect(func(payload: Dictionary) -> void: departure_payloads.append(payload))
+	departure_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: departure_payloads.append(body.to_data()))
 	departure_component.build(departure_request)
 	var departure_labels: Array[String] = []
 	for node: Node in departure_component.find_children("*", "Label", true, false):
@@ -839,7 +843,7 @@ func _test_bank_component() -> void:
 	var departure_done := departure_component.find_children("*", "Button", true, false).filter(func(button: Node) -> bool: return (button as Button).text == "Done")[0] as Button
 	departure_done.pressed.emit()
 	assert_equal(departure_payloads, [{"action": "leave"}], "pooled departure emits the same exact typed Done payload as Swap")
-	var typed_response := InteractionPresenter.response_for(departure_request, departure_payloads[0])
+	var typed_response := InteractionPresenter.response_for(departure_request, InteractionResponse.BankBody.new(&"leave"))
 	assert_equal([typed_response.request_id, typed_response.kind, typed_response.body.to_data()], ["departure.fixture", InteractionRequest.POOLED_WEALTH_DEPARTURE, {"action": "leave"}], "pooled departure preserves request identity through the typed presenter boundary")
 	departure_component.free()
 
@@ -961,10 +965,14 @@ func _test_settings_schema_and_migration() -> void:
 	var malformed_current := settings.to_data()
 	malformed_current.erase("autoSwitchToMelee")
 	assert_equal(PresentationSettings.from_data(malformed_current), null, "schema-four settings reject a missing Auto Weapon Switch field")
-	var move_payload := RealmzApplication.combat_payload_with_preferences({"action": "move", "actorId": "character.test", "destination": [46, 45]}, restored)
-	assert_false(move_payload.get("autoSwitchToMelee"), "the application injects the persisted preference only into a typed manual movement response")
-	var attack_payload := RealmzApplication.combat_payload_with_preferences({"action": "attack", "actorId": "character.test", "targetId": "monster.test"}, restored)
-	assert_false(attack_payload.has("autoSwitchToMelee"), "direct attacks and automatic combat paths never consult Auto Weapon Switch")
+	var move_body := InteractionResponse.CombatBody.new(&"move", "character.test")
+	move_body.destination = Vector2i(46, 45)
+	move_body.has_destination = true
+	var preferred_move := RealmzApplication.combat_body_with_preferences(move_body, restored)
+	assert_false(preferred_move.auto_switch_to_melee, "the application injects the persisted preference only into a typed manual movement response")
+	var attack_body := InteractionResponse.CombatBody.new(&"attack", "character.test", "monster.test")
+	var preferred_attack := RealmzApplication.combat_body_with_preferences(attack_body, restored)
+	assert_false(preferred_attack.auto_switch_to_melee, "direct attacks and automatic combat paths never consult Auto Weapon Switch")
 
 
 func _test_movement_input() -> void:
@@ -1121,7 +1129,7 @@ func _test_fixture_gallery_coverage() -> void:
 
 func _test_interaction_identity() -> void:
 	var request := InteractionRequest.yes_no("request-identity", "Proceed?", "Yes", "No")
-	var response := InteractionPresenter.response_for(request, {"accepted": true})
+	var response := InteractionPresenter.response_for(request, InteractionResponse.YesNoBody.new(true))
 	assert_equal(response.request_id, request.request_id, "interaction response preserves request identity")
 	assert_equal(response.kind, request.kind, "interaction response preserves request kind")
 	assert_true(response.body is InteractionResponse.YesNoBody and (response.body as InteractionResponse.YesNoBody).accepted, "interaction response preserves the exact typed selection")
@@ -1133,15 +1141,15 @@ func _test_lifecycle_interaction() -> void:
 	assert_not_null(InteractionRequest.from_data(request.to_data()), "the typed lifecycle request retains the established interaction wire shape")
 	var component := LifecycleInteractionScript.new()
 	var submitted: Array[Dictionary] = []
-	component.payload_submitted.connect(func(payload: Dictionary) -> void: submitted.append(payload))
+	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
 	var buttons: Array[Button] = []
 	for node: Node in component.find_children("*", "Button", true, false):
 		buttons.append(node as Button)
 	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and end adventure", "End adventure without saving", "Cancel"], "the dedicated presenter does not reinterpret lifecycle choices as scenario options")
 	buttons[2].pressed.emit()
-	assert_equal(submitted, [{"action": &"cancel"}], "Cancel emits one typed host response")
-	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.from_data(request.request_id, request.kind, submitted[0])), &"cancel", "the host accepts only an action declared by its request")
+	assert_equal(submitted, [{"action": "cancel"}], "Cancel emits one typed host response")
+	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionPresenter.response_for(request, InteractionResponse.LifecycleBody.new(&"cancel"))), &"cancel", "the host accepts only an action declared by its request")
 	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.from_data(request.request_id, request.kind, {"action": "invented"})), &"", "undeclared lifecycle actions fail explicitly")
 	assert_false(ApplicationLifecycleScript.allows_close(&"save-and-end", false), "a rejected save cannot close the active session")
 	assert_true(ApplicationLifecycleScript.allows_close(&"save-and-end", true), "a validated save permits the requested close")
@@ -1190,15 +1198,10 @@ func _test_lifecycle_interaction() -> void:
 
 
 func _test_classic_choice_context() -> void:
-	var classic_request := InteractionRequest.from_payload("classic-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"})
-	assert_equal(InteractionPresenter._prompt_for(classic_request, "Will you enter the ruined keep?"), "Will you enter the ruined keep?", "a label-only Classic choice retains its source-authored textbox context")
-	assert_equal(InteractionPresenter._prompt_for(classic_request, ""), "Choose Yes or No to continue.", "a context-free Classic choice explains the required decision without presenting button labels as a prompt")
-	var explicit_request := InteractionRequest.yes_no("explicit-choice", "Enter battle?", "Fight", "Avoid")
-	assert_equal(InteractionPresenter._prompt_for(explicit_request, "Stale textbox text"), "Enter battle?", "an explicit typed prompt remains authoritative over prior Classic textbox context")
 	var journal_request := InteractionRequest.from_payload("journal-text", InteractionRequest.ACKNOWLEDGE, {"prompt": "A source message", "journalEligible": true, "journalRecorded": false})
 	var journal_component := TextChoiceInteraction.new()
 	var journal_payloads: Array[Dictionary] = []
-	journal_component.payload_submitted.connect(func(payload: Dictionary) -> void: journal_payloads.append(payload))
+	journal_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: journal_payloads.append(body.to_data()))
 	journal_component.build(journal_request)
 	var journal_buttons: Array[Node] = journal_component.find_children("*", "Button", true, false)
 	assert_equal(journal_buttons.map(func(button: Button) -> String: return button.text), ["Take note", "Continue"], "eligible Classic text offers source-shaped journal discovery before ordinary continuation")
@@ -1424,11 +1427,13 @@ func _test_battlefield_presenter() -> void:
 	presenter.set_movement_costs_visible(true)
 	assert_true(presenter.movement_costs_visible(), "the explicit inspection state reveals typed movement costs without changing combat")
 	var payloads: Array[Dictionary] = []
-	presenter.tactical_action_requested.connect(func(payload: Dictionary) -> void: payloads.append(payload))
+	presenter.combat_body_submitted.connect(func(body: InteractionResponse.CombatBody) -> void: payloads.append(body.to_data()))
 	assert_true(presenter.submit_movement_direction(Vector2i.RIGHT), "keyboard movement selects the matching core-provided tactical option")
 	assert_equal(payloads, [{"actorId": "hero", "action": "move", "targetId": "", "destination": [46, 45]}], "the spatial battlefield emits the existing typed combat response payload")
 	assert_false(presenter.submit_movement_direction(Vector2i.LEFT), "the battlefield cannot fabricate a movement option absent from the detached view")
-	assert_true(presenter.begin_targeting({"mode": "combatant", "responsePayload": {"actorId": "hero", "action": "attack", "targetId": ""}, "candidateIds": ["monster"]}), "the tactical board accepts a typed target mode")
+	var attack_targeting := CombatTargetingRequest.new(&"combatant", InteractionResponse.CombatBody.new(&"attack", "hero"))
+	attack_targeting.candidate_ids.assign(["monster"])
+	assert_true(presenter.begin_targeting(attack_targeting), "the tactical board accepts a typed target mode")
 	presenter._targeting.select_combatant("monster")
 	assert_false(presenter.submit_movement_direction(Vector2i.RIGHT), "target mode suppresses ordinary tactical movement")
 	assert_true(presenter.confirm_targeting(), "a legal board selection confirms through the ordinary combat response path")
@@ -1437,22 +1442,30 @@ func _test_battlefield_presenter() -> void:
 
 
 func _test_combat_targeting_state() -> void:
-	var sequence := CombatTargetingState.new(&"sequence", {"actorId": "hero", "action": "cast_spell", "targetId": "", "spellId": "spell.darts", "power": 3})
-	sequence.candidate_ids.assign(["monster.one", "ally.one", "monster.two"])
-	sequence.maximum_targets = 2
+	var sequence_body := InteractionResponse.CombatBody.new(&"cast_spell", "hero")
+	sequence_body.spell_id = "spell.darts"
+	sequence_body.power = 3
+	var sequence_request := CombatTargetingRequest.new(&"sequence", sequence_body)
+	sequence_request.candidate_ids.assign(["monster.one", "ally.one", "monster.two"])
+	sequence_request.maximum_targets = 2
+	var sequence := CombatTargetingState.new(sequence_request)
 	assert_true(sequence.select_combatant("ally.one"), "the first repeated-spell click is accepted from the typed candidate set")
 	assert_true(sequence.select_combatant("monster.one"), "the second repeated-spell click preserves its selection order")
 	assert_false(sequence.select_combatant("monster.two"), "the presentation-owned selector enforces the core-provided maximum without submitting")
-	assert_equal(sequence.committed_payload().get("targetIds"), ["ally.one", "monster.one"], "repeated spell confirmation preserves click order")
+	assert_equal(sequence.committed_body().target_ids, ["ally.one", "monster.one"], "repeated spell confirmation preserves click order")
 	assert_true(sequence.select_combatant("ally.one"), "clicking an already selected repeated target removes it without a session action")
-	assert_equal(sequence.committed_payload().get("targetIds"), ["monster.one"], "removal does not reorder the remaining repeated targets")
+	assert_equal(sequence.committed_body().target_ids, ["monster.one"], "removal does not reorder the remaining repeated targets")
 
-	var area := CombatTargetingState.new(&"area", {"actorId": "hero", "action": "cast_spell", "spellId": "spell.burst", "power": 2})
-	area.area_offsets.assign([Vector2i.ZERO, Vector2i.LEFT, Vector2i.RIGHT])
-	area.legal_coordinates.assign([Vector2i(45, 45)])
+	var area_body := InteractionResponse.CombatBody.new(&"cast_spell", "hero")
+	area_body.spell_id = "spell.burst"
+	area_body.power = 2
+	var area_request := CombatTargetingRequest.new(&"area", area_body)
+	area_request.area_offsets.assign([Vector2i.ZERO, Vector2i.LEFT, Vector2i.RIGHT])
+	area_request.legal_coordinates.assign([Vector2i(45, 45)])
+	var area := CombatTargetingState.new(area_request)
 	assert_false(area.select_coordinate(Vector2i(46, 45)), "an area center absent from the rules-owned legal set cannot be confirmed")
 	assert_true(area.select_coordinate(Vector2i(45, 45)), "a rules-owned legal area center remains presentation selectable")
-	assert_equal(area.committed_payload(), {"actorId": "hero", "action": "cast_spell", "spellId": "spell.burst", "power": 2, "targetId": "", "targetCoordinate": [45, 45], "rotation": 0}, "area confirmation returns the exact coordinate and fixed rotation ABI")
+	assert_equal(area.committed_body().to_data(), {"actorId": "hero", "action": "cast_spell", "spellId": "spell.burst", "power": 2, "targetId": "", "targetCoordinate": [45, 45], "rotation": 0}, "area confirmation returns the exact coordinate and fixed rotation ABI")
 
 
 func _test_combat_playback_controller() -> void:
@@ -2117,35 +2130,9 @@ func _test_money_workspace() -> void:
 
 
 func _test_exploration_money_and_service_commands() -> void:
-	var view := GameView.new(1, true, null)
-	view.campaign_id = "ordinary-command-fixture"
-	view.campaign_summary = CampaignSummaryView.new()
-	view.campaign_summary.title = "Ordinary Command Fixture"
-	view.money_workspace = MoneyWorkspaceView.new()
-	view.set_action_availability(&"money_action", true)
-	view.set_action_availability(&"service_action", true)
-	for action_id: StringName in [&"search", &"camp", &"rest"]:
-		view.set_action_availability(action_id, false, "Unavailable in this fixture.")
-	var shop := ServiceView.new()
-	shop.service_id = "classic.shop.7"
-	shop.service_kind = &"shop"
-	shop.title = "Shop 7"
-	shop.actions = [&"enter"]
-	view.services = [shop]
 	var exploration_commands := ClassicCommandCatalog.for_context(&"exploration")
 	assert_true(exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == &"money" and definition["availability"] == &"money_action"), "ordinary exploration exposes Castle's Money/Swap workspace without a hidden route shortcut")
 	assert_true(exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == &"service" and definition["availability"] == &"service_action"), "ordinary exploration exposes the current location service")
-	var shell := ClassicApplicationShell.new()
-	shell._current_view = view
-	var presented_service := shell._presentation_command_definition(ClassicCommandCatalog.command(&"service"))
-	assert_equal([presented_service["label"], presented_service["asset_id"]], ["Shop 7", &""], "the single contextual service command names the core-provided shop without inventing unverified bitmap art")
-	var intents: Array[PlayerIntent] = []
-	shell.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
-	shell._activate_command(&"service")
-	assert_equal(intents.size(), 1, "entering the contextual service emits exactly one typed intent")
-	var service_payload := intents[0].payload as PlayerIntent.ServicePayload
-	assert_equal([intents[0].kind, service_payload.service_id, service_payload.action], [PlayerIntent.Kind.SERVICE_ACTION, shop.service_id, &"enter"], "the contextual command preserves the stable service ID and source action")
-	shell.free()
 
 
 func _test_party_order_workspace() -> void:
@@ -2390,13 +2377,6 @@ func _test_scene_composition() -> void:
 	assert_equal(router.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the full-window router cannot mask menus or sibling controls")
 	assert_true(router.get_index() > roster.get_index() and router.get_index() > bottom_region.get_index(), "modal router children are ordered above roster and textbox input regions")
 	assert_true(router.z_index > bottom_region.z_index, "workspace controls remain clickable where a scrolling route extends into the persistent bottom-region rows")
-	shell._stage_frame = shell.get_node("StageFrame") as NinePatchRect
-	shell._bottom_region = bottom_region as PanelContainer
-	shell._party_roster = roster as ClassicPartyRoster
-	shell._set_play_regions_visible(false)
-	assert_false(roster.visible, "full-stage routes remove the persistent roster rather than leaving a second party surface visible")
-	shell._set_play_regions_visible(true)
-	assert_true(roster.visible, "ordinary exploration and application routes restore the persistent roster")
 	for viewport_size: Vector2 in [Vector2(800, 600), Vector2(960, 600), Vector2(1280, 720), Vector2(1920, 1080)]:
 		var profile := UiLayoutProfile.for_viewport(viewport_size, PresentationSettings.UI_SCALE_AUTO)
 		var campaign_rect := ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
@@ -2427,6 +2407,8 @@ func _test_scene_composition() -> void:
 	var application_shell := application.get_node("ClassicShell") as Control
 	var application_router := application.get_node("ClassicShell/ScreenRouter") as Control
 	var interaction := application.get_node("InteractionPanel") as InteractionPresenter
+	interaction.visible = true
+	assert_true(interaction.get_index() > application.get_node("BattlefieldMap").get_index(), "a visible mandatory interaction claims pointer order above the tactical battlefield")
 	assert_true(interaction.z_index > CampaignPartySetupController.MAXIMUM_MODAL_Z_INDEX + application_router.z_index + application_shell.z_index, "the dedicated interaction layer draws above every nested setup modal instead of allowing stale workspace labels through")
 	assert_equal(interaction.mouse_filter, Control.MOUSE_FILTER_STOP, "the blocking interaction surface, not its decorative backing, owns every pointer inside the tactical stage")
 	var standard_textbox_rect := RealmzApplication.classic_textbox_rect(Rect2(0.0, 28.0, 704.0, 396.0), 176.0)
@@ -2445,7 +2427,6 @@ func _test_scene_composition() -> void:
 	assert_equal([ally_stage_backing.stretch_mode, ally_stage_backing.texture_repeat], [TextureRect.STRETCH_TILE, CanvasItem.TEXTURE_REPEAT_ENABLED], "full-stage interactions own one seamless opaque surface over stale tactical content")
 	assert_false(InteractionPresenter.uses_textbox_region(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP)), "stage interactions retain their independent inset frame")
 	assert_equal(interaction.custom_minimum_size, Vector2.ZERO, "textbox interactions may shrink to the bottom-region rectangle instead of retaining a stage-modal minimum")
-	assert_equal(InteractionPresenter._heading_for_kind(&"acknowledge"), "", "ordinary narrative text does not label itself Classic Textbox")
 	assert_false((interaction.get_node("InteractionScroll/InteractionContent/InteractionHeading") as Label).visible, "the unused narrative heading consumes no textbox height")
 	application.free()
 	var texture_path := "res://src/presentation/assets/ui/classic-charcoal-slate.png"
@@ -2462,31 +2443,20 @@ func _test_scene_composition() -> void:
 
 
 func _test_automatic_workflow_routes() -> void:
+	var terminal_step := SessionStep.completed(1, [DomainEvent.new(&"session_ended", {"reason": "party-defeat"})])
+	assert_true(RealmzApplication.should_defer_session_close(terminal_step, true), "terminal host navigation waits until committed combat playback releases its retained battlefield")
+	assert_false(RealmzApplication.should_defer_session_close(terminal_step, false), "terminal host navigation proceeds immediately when no presentation playback owns the prior view")
 	var no_session := GameView.new(0, false, null)
 	assert_equal(ClassicApplicationShell.route_change_reason(no_session), "Choose a campaign first.", "gameplay routes are disabled on the splash and campaign library")
 	var setup_view := GameView.new(1, true, null)
 	setup_view.party_setup_available = true
 	assert_equal(ClassicApplicationShell.route_change_reason(setup_view), "Begin the adventure first.", "Explore and other browsing routes stay disabled until party setup commits Begin Adventure")
-	var startup_menu_shell := ClassicApplicationShell.new()
-	startup_menu_shell._current_view = setup_view
-	var setup_menu := MenuButton.new()
-	startup_menu_shell.add_child(setup_menu)
-	startup_menu_shell._fill_menu(setup_menu, [{"label": "Explore", "route": &"exploration"}, {"label": "Characters", "route": &"character"}])
-	assert_true(setup_menu.disabled and setup_menu.get_popup().is_item_disabled(0) and setup_menu.get_popup().is_item_disabled(1), "a menu with no valid setup actions is itself visibly disabled")
-	startup_menu_shell.free()
 	var view := GameView.new(1, true, null)
 	view.combat_view = CombatView.new(CombatState.new("classic.battle.route"))
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"exploration", view), &"combat", "battle setup opens the tactical workspace")
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"inventory", view), &"combat", "battle setup replaces a browsing workspace so combat controls cannot overlap it")
 	view.pending_interaction = ClassicUiFixtureGallery.request_for(InteractionRequest.ALLY_SELECTION)
 	assert_equal(ClassicApplicationShell.route_change_reason(view), "Resolve the current interaction first.", "a mandatory post-battle response disables misleading route changes such as Adventure Explore")
-	var menu_shell := ClassicApplicationShell.new()
-	menu_shell._current_view = view
-	var pending_menu := MenuButton.new()
-	menu_shell.add_child(pending_menu)
-	menu_shell._fill_menu(pending_menu, [{"label": "Explore", "route": &"exploration"}, {"label": "Characters", "route": &"character"}])
-	assert_true(pending_menu.get_popup().is_item_disabled(0) and pending_menu.get_popup().is_item_disabled(1), "every browsing route is visibly disabled while the mandatory response owns its workspace")
-	menu_shell.free()
 	view.pending_interaction = null
 	view.combat_view = null
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"combat", view), &"exploration", "completed battle cleanup returns the ordinary shell to exploration")

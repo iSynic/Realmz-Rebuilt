@@ -55,4 +55,4 @@ func build(request: InteractionRequest) -> void:
 		grid.add_child(value)
 	if grid.get_child_count() == 0:
 		add_hint("This transition changes no listed statistics.")
-	add_response("Continue", {})
+	add_response("Continue", InteractionResponse.EmptyBody.new())

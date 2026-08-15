@@ -38,6 +38,7 @@ var _last_package_operation_key: String = ""
 var _character_library_content: RealmzContent
 var _character_library_media: PackageMediaCatalog
 var _character_creation_host: CharacterCreationHostController
+var _session_close_waits_for_playback: bool = false
 
 
 func _ready() -> void:
@@ -56,10 +57,17 @@ func _ready() -> void:
 	add_child(presentation_coordinator)
 	add_child(_dungeon_presenter)
 	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
+	presentation_coordinator.playback_step_settled.connect(_on_playback_step_settled)
 	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
-	_interaction_presenter.presentation_action_requested.connect(_on_combat_presentation_action_requested)
+	_interaction_presenter.combat_targeting_requested.connect(_on_combat_targeting_requested)
+	_interaction_presenter.combat_targeting_confirm_requested.connect(_battlefield_presenter.confirm_targeting)
+	_interaction_presenter.combat_targeting_cancel_requested.connect(_battlefield_presenter.cancel_targeting)
+	_interaction_presenter.combatant_focus_requested.connect(_on_combatant_focus_requested)
+	_interaction_presenter.reveal_friends_requested.connect(_on_reveal_friends_requested)
+	_interaction_presenter.presentation_sound_requested.connect(_on_interaction_sound_requested)
+	_interaction_presenter.presentation_status_requested.connect(_shell_presenter.set_status)
 	_map_presenter.movement_requested.connect(_on_map_movement_requested)
-	_battlefield_presenter.tactical_action_requested.connect(_on_battlefield_action_requested)
+	_battlefield_presenter.combat_body_submitted.connect(_on_battlefield_action_requested)
 	_battlefield_presenter.combatant_inspected.connect(_on_battlefield_combatant_inspected)
 	_battlefield_presenter.targeting_changed.connect(_interaction_presenter.update_combat_targeting)
 	_battlefield_presenter.targeting_cancelled.connect(_interaction_presenter.combat_targeting_cancelled)
@@ -339,16 +347,16 @@ func _on_map_movement_requested(direction: Vector2i) -> void:
 	_submit_movement(direction)
 
 
-func _on_battlefield_action_requested(payload: Dictionary) -> void:
+func _on_battlefield_action_requested(body: InteractionResponse.CombatBody) -> void:
 	var pending := session_controller.view().pending_interaction
 	if pending != null and pending.kind == InteractionRequest.COMBAT:
-		_interaction_presenter.submit_active_payload(combat_payload_with_preferences(payload, _presentation_settings))
+		_interaction_presenter.submit_active_body(combat_body_with_preferences(body, _presentation_settings))
 
 
-static func combat_payload_with_preferences(payload: Dictionary, settings: PresentationSettings) -> Dictionary:
-	var result := payload.duplicate(true)
-	if result.get("action") == "move":
-		result["autoSwitchToMelee"] = settings != null and settings.auto_switch_to_melee
+static func combat_body_with_preferences(body: InteractionResponse.CombatBody, settings: PresentationSettings) -> InteractionResponse.CombatBody:
+	var result := body.duplicate_body()
+	if result.action == &"move":
+		result.auto_switch_to_melee = settings != null and settings.auto_switch_to_melee
 	return result
 
 
@@ -356,30 +364,26 @@ func _on_battlefield_combatant_inspected(combatant_id: String) -> void:
 	_interaction_presenter.inspect_combatant(combatant_id)
 
 
-func _on_combat_presentation_action_requested(action: StringName, payload: Dictionary) -> void:
-	match action:
-		&"focus_combatant":
-			var combatant_id := String(payload.get("combatantId", ""))
-			_battlefield_presenter.focus_combatant(combatant_id)
-			_interaction_presenter.inspect_combatant(combatant_id)
-			if bool(payload.get("playSound", false)):
-				_audio_presenter.present_sound(147, presentation_coordinator.package_media())
-		&"toggle_reveal_friends":
-			_battlefield_presenter.toggle_reveal_friends()
-			_audio_presenter.present_sound(137, presentation_coordinator.package_media())
-		&"begin_battlefield_targeting":
-			if not _battlefield_presenter.begin_targeting(payload):
-				_shell_presenter.set_status("Battlefield targeting is unavailable for this action.", true)
-		&"confirm_battlefield_targeting":
-			_battlefield_presenter.confirm_targeting()
-		&"cancel_battlefield_targeting":
-			_battlefield_presenter.cancel_targeting()
-		&"play_sound":
-			var sound_id := int(payload.get("soundId", 0))
-			if sound_id > 0:
-				_audio_presenter.present_sound(sound_id, presentation_coordinator.package_media())
-		&"fast_spell_status":
-			_shell_presenter.set_status(String(payload.get("text", "Fast Spell")), bool(payload.get("error", false)))
+func _on_combat_targeting_requested(request: CombatTargetingRequest) -> void:
+	if not _battlefield_presenter.begin_targeting(request):
+		_shell_presenter.set_status("Battlefield targeting is unavailable for this action.", true)
+
+
+func _on_combatant_focus_requested(combatant_id: String, play_sound: bool) -> void:
+	_battlefield_presenter.focus_combatant(combatant_id)
+	_interaction_presenter.inspect_combatant(combatant_id)
+	if play_sound:
+		_audio_presenter.present_sound(147, presentation_coordinator.package_media())
+
+
+func _on_reveal_friends_requested() -> void:
+	_battlefield_presenter.toggle_reveal_friends()
+	_audio_presenter.present_sound(137, presentation_coordinator.package_media())
+
+
+func _on_interaction_sound_requested(sound_id: int) -> void:
+	if sound_id > 0:
+		_audio_presenter.present_sound(sound_id, presentation_coordinator.package_media())
 
 
 func _submit_movement(direction: Vector2i) -> void:
@@ -495,6 +499,7 @@ func _quit_application() -> void:
 
 
 func _complete_closed_session() -> void:
+	_session_close_waits_for_playback = false
 	_host_interaction = null
 	_active_content = null
 	presentation_coordinator.set_package_media(_character_library_media)
@@ -506,6 +511,21 @@ func _complete_closed_session() -> void:
 	_shell_presenter.set_status(_status_label.text)
 
 
+func _on_playback_step_settled(step: SessionStep) -> void:
+	if _session_close_waits_for_playback and step_ends_session(step):
+		_complete_closed_session()
+
+
+static func should_defer_session_close(step: SessionStep, playback_active: bool) -> bool:
+	return playback_active and step_ends_session(step)
+
+
+static func step_ends_session(step: SessionStep) -> bool:
+	if step == null:
+		return false
+	return step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"session_ended")
+
+
 func _present_step_status(step: SessionStep) -> void:
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Action failed • %s" % step.error_message
@@ -513,6 +533,9 @@ func _present_step_status(step: SessionStep) -> void:
 		return
 	for event: DomainEvent in step.events:
 		if event.kind == &"session_ended":
+			if should_defer_session_close(step, presentation_coordinator.is_combat_playback_active()):
+				_session_close_waits_for_playback = true
+				return
 			_complete_closed_session()
 			return
 		match event.kind:

@@ -293,6 +293,22 @@ class CombatBody:
 	func is_valid() -> bool:
 		return not action.is_empty() and not actor_id.is_empty()
 
+	func duplicate_body() -> CombatBody:
+		var result := CombatBody.new(action, actor_id, target_id)
+		result.enabled = enabled
+		result.destination = destination
+		result.has_destination = has_destination
+		result.auto_switch_to_melee = auto_switch_to_melee
+		result.spell_id = spell_id
+		result.power = power
+		result.target_coordinate = target_coordinate
+		result.has_target_coordinate = has_target_coordinate
+		result.rotation = rotation
+		result.target_ids = target_ids.duplicate()
+		result.item_instance_id = item_instance_id
+		result.scroll_slot = scroll_slot
+		return result
+
 	func to_data() -> Dictionary:
 		var data := {"actorId": actor_id, "action": String(action), "targetId": target_id}
 		if action == &"set_auto":
@@ -306,7 +322,6 @@ class CombatBody:
 			data["power"] = power
 		if has_target_coordinate:
 			data["targetCoordinate"] = [target_coordinate.x, target_coordinate.y]
-		if rotation != 0:
 			data["rotation"] = rotation
 		if not target_ids.is_empty():
 			data["targetIds"] = target_ids.duplicate()

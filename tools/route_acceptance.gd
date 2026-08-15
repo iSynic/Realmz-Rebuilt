@@ -141,7 +141,8 @@ func _run_program_step(step_id: String, step_definition: Dictionary, trigger: Tr
 	_session._state.party.coordinate = coordinate
 	_session._state.world.mark_visited(map.id, coordinate)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"trigger_fired", {"triggerId": trigger.id, "source": "route-program"})]
-	var started := _session._scenario_vm.start_program(trigger.program_id, {"callingContext": "action", "triggerId": trigger.id, "mapId": map.id, "x": coordinate.x, "y": coordinate.y})
+	var execution_context := ScenarioExecutionContext.trigger(&"action", trigger.id, map.id, coordinate, true)
+	var started := _session._scenario_vm.start_program(trigger.program_id, execution_context)
 	var result: SessionStep
 	if started.state == ScenarioVmResult.State.FAILED:
 		result = SessionStep.failed(0, started.error_code, started.error_message, events)

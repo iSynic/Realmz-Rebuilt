@@ -21,10 +21,10 @@ func build(request: InteractionRequest) -> void:
 				break
 	if selected == null:
 		add_hint("The acquired map is unavailable in the current detached view.")
-		add_response("Continue", {})
+		add_response("Continue", InteractionResponse.AcknowledgeBody.new())
 		return
 	var presenter := PlayerMapPresenter.new()
 	presenter.name = "ImmediatePlayerMap"
 	presenter.present(selected, _media)
 	add_child(presenter)
-	add_response("Continue", {})
+	add_response("Continue", InteractionResponse.AcknowledgeBody.new())

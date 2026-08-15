@@ -9,9 +9,9 @@ func build(request: InteractionRequest) -> void:
 	for entry: InteractionRequestValue.EncounterAction in body.actions:
 		match entry.kind:
 			"choice":
-				_add_bitmap_response(&"encounter.action", entry.label, {"action": "choice", "slot": entry.slot})
+				_add_bitmap_response(&"encounter.action", entry.label, InteractionResponse.ComplexEncounterBody.new(&"choice", entry.slot))
 			"back":
-				_add_bitmap_response(&"encounter.stop", entry.label, {"action": "back"})
+				_add_bitmap_response(&"encounter.stop", entry.label, InteractionResponse.ComplexEncounterBody.new(&"back"))
 			"word":
 				_add_word_action(entry)
 			"item":
@@ -27,7 +27,7 @@ func _add_word_action(entry: InteractionRequestValue.EncounterAction) -> void:
 	word.placeholder_text = "Speak a word"
 	add_child(word)
 	var button := _bitmap_button(&"encounter.speak", entry.label)
-	button.command_requested.connect(func(_command_id: StringName) -> void: payload_submitted.emit({"action": "word", "word": word.text}))
+	button.command_requested.connect(func(_command_id: StringName) -> void: response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"word", -1, word.text)))
 	add_child(button)
 
 
@@ -43,9 +43,9 @@ func _add_catalog_action(action: String, values: Array[InteractionRequestValue.E
 	button.tooltip_text = "No eligible options were supplied." if button.disabled else ""
 	button.command_requested.connect(func(_command_id: StringName) -> void:
 		if catalog.item_count > 0:
-			var payload := {"action": action}
-			payload["classicItemId" if action == "item" else "classicSpellId"] = int(catalog.get_selected_metadata())
-			payload_submitted.emit(payload)
+			var classic_id := int(catalog.get_selected_metadata())
+			var response_body := InteractionResponse.ComplexEncounterBody.new(StringName(action), -1, "", classic_id if action == "spell" else 0, classic_id if action == "item" else 0)
+			response_body_submitted.emit(response_body)
 	)
 	add_child(button)
 
@@ -61,15 +61,15 @@ func _add_thief_action(characters: Array[InteractionRequestValue.NamedCharacter]
 	button.tooltip_text = "No eligible character was supplied." if button.disabled else ""
 	button.command_requested.connect(func(_command_id: StringName) -> void:
 		if picker.item_count > 0:
-			payload_submitted.emit({"action": "thief", "actionIndex": entry.action_index, "characterId": String(picker.get_selected_metadata())})
+			response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"thief", -1, "", 0, 0, entry.action_index, String(picker.get_selected_metadata())))
 	)
 	add_child(button)
 
 
-func _add_bitmap_response(asset_id: StringName, label: String, payload: Dictionary) -> void:
+func _add_bitmap_response(asset_id: StringName, label: String, response_body: InteractionResponse.ComplexEncounterBody) -> void:
 	var row := HBoxContainer.new()
 	var button := _bitmap_button(asset_id, label)
-	button.command_requested.connect(func(_command_id: StringName) -> void: payload_submitted.emit(payload))
+	button.command_requested.connect(func(_command_id: StringName) -> void: response_body_submitted.emit(response_body))
 	row.add_child(button)
 	var text := Label.new()
 	text.text = label
