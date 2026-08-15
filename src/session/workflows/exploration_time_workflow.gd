@@ -2,6 +2,20 @@ class_name ExplorationTimeWorkflow
 extends RefCounted
 
 
+static func selected_placed_trigger_ids(content: RealmzContent, cell: MapCell) -> Array[String]:
+	var selected_id := ""
+	var selected_record_index := 2_147_483_647
+	for trigger_id: String in cell.trigger_ids():
+		var trigger := content.trigger_by_id(trigger_id)
+		if trigger != null and trigger.classic_record_index < selected_record_index:
+			selected_id = trigger.id
+			selected_record_index = trigger.classic_record_index
+	var selected_ids: Array[String] = []
+	if not selected_id.is_empty():
+		selected_ids.append(selected_id)
+	return selected_ids
+
+
 static func set_location_note(context: SessionWorkflowContext, text: String) -> SessionWorkflowResult:
 	var map := context.content.world.map_by_id(context.state.party.map_id)
 	if map == null or map.topology.cell_at(context.state.party.coordinate) == null:

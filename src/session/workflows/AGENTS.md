@@ -20,6 +20,7 @@ Own domain-oriented, presentation-independent operations invoked by the session 
 - `InventoryMagicServicesWorkflow` owns field item, spell, and scroll eligibility, target normalization, deterministic mutations, and domain-event construction. `GameSession` retains interaction identity, typed target continuations, rollback, age-update routing, and combat/death-macro orchestration.
 - A workflow returns typed results or existing core result types. It does not construct `SessionStep` values or call another public session operation.
 - Direct intents and scenario handlers must converge on the same core rule operation when they represent the same Realmz action.
+- `ExplorationTimeWorkflow` owns source-ordered placed-trigger selection shared by live continuation construction and restore validation; restore infrastructure must not become a live exploration dependency.
 - View projection is read-only and must not create gameplay truth or mutate state. It may retain a bounded revision-keyed cache of detached projections; cache identity includes the current map and party coordinate and is cleared across session replacement/close.
 
 ## Verification

@@ -19,6 +19,19 @@ func run() -> void:
 	assert_not_null(first, "a committed setup boundary can be indexed")
 	if first == null:
 		return
+	var valid_root := save_data(first)
+	var malformed_roots: Array[Dictionary] = []
+	var unknown_field := valid_root.duplicate(true)
+	unknown_field["unexpected"] = true
+	malformed_roots.append({"name": "unknown field", "data": unknown_field})
+	var missing_field := valid_root.duplicate(true)
+	missing_field.erase("rulesVersion")
+	malformed_roots.append({"name": "missing required field", "data": missing_field})
+	var unsupported_version := valid_root.duplicate(true)
+	unsupported_version["formatVersion"] = 3
+	malformed_roots.append({"name": "unsupported version", "data": unsupported_version})
+	for malformed: Dictionary in malformed_roots:
+		assert_equal(SaveEnvelope.from_data(malformed["data"]), null, "save v4 root rejects %s" % malformed["name"])
 	first.game_state.party.add_character(CharacterState.new("preview.hero", "Mira", 10, 10))
 	var repository := SaveRepository.new(TEST_ROOT)
 	assert_true(repository.save(campaign_id, "quick", first), "the first preview save is installed")

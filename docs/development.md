@@ -41,6 +41,8 @@ Do not test private methods of `GameSession`, `RealmzRuntimeApi`, `PackageReposi
 
 Typed live protocols are architecture invariants rather than per-defect tests. Intent payloads, interactions, continuations, and scenario execution context remain typed through runtime code; only their strict package/save/event codecs may materialize dictionaries.
 
+Restore behavior has one public ownership proof: `GameSession.restore` asks `SessionRestoreValidator` to construct and validate detached replacement state, then commits the candidate only after every save, content, RNG, VM, continuation, interaction, and battle-return check succeeds. Tests should exercise transactional restore through that public operation rather than calling validator helpers or asserting their incidental order.
+
 Test and assertion totals are diagnostic measurements, never completion targets. Hardening should reduce duplicated setup and incidental assertions without deleting unique source-backed evidence.
 
 Use this priority order:

@@ -42,7 +42,7 @@ func run() -> void:
 	assert_equal(session.view().party_members[0].fast_spells[0].spell_name, "Field Bolt", "the detached character view resolves a bound spell without exposing mutable state")
 	var bound_save := save_round_trip(session.snapshot())
 	var bound_restored := GameSession.new()
-	assert_equal(bound_restored.restore(content, bound_save).state, SessionStep.State.COMPLETED, "Fast Spell state restores through the unchanged v3 save envelope")
+	assert_equal(bound_restored.restore(content, bound_save).state, SessionStep.State.COMPLETED, "Fast Spell state restores through the save v4 envelope")
 	assert_equal(bound_restored.view().party_members[0].fast_spells[0].power, 2, "restoration retains the exact Fast Spell power")
 	var invalid_binding := session.submit_intent(PlayerIntent.set_fast_spell(active_caster.id, 1, "classic.spell.missing", 1))
 	assert_equal(invalid_binding.error_code, &"invalid_fast_spell", "Fast Spell binding rejects package-unknown spell identities")

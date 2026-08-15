@@ -239,9 +239,11 @@ func _test_session_save_resume_boundary(content: RealmzContent) -> void:
 	assert_not_null(reloaded, "pending VM save reloads from disk: %s" % saves.last_error)
 	if reloaded == null:
 		return
+	var held_request_data := held.scenario_vm.pending_request.to_data()
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, reloaded).state, SessionStep.State.COMPLETED, "GameSession restores the VM and post-move continuation transactionally")
 	var request: InteractionRequest = restored.view().pending_interaction
+	assert_equal([restored.snapshot().view_revision, request.to_data()], [held.view_revision, held_request_data], "restore preserves the committed view revision and exact pending request identity and payload")
 	var result_text := restored.respond(InteractionResponse.from_data(request.request_id, &"encounter_choice", {"index": 0}))
 	assert_equal(result_text.state, SessionStep.State.WAITING_FOR_INTERACTION, "encounter response reaches the result's committed Classic textbox boundary")
 	var message_texts := _message_texts(result_text.events)

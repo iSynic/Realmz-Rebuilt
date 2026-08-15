@@ -280,12 +280,14 @@ foreach ($file in $coreFiles) {
 $dependencyRules = @{
     core = @('scenario', 'session', 'infrastructure', 'presentation', 'app')
     scenario = @('infrastructure', 'presentation', 'app', 'session')
+    session = @('infrastructure', 'presentation', 'app')
     infrastructure = @('presentation', 'app')
     presentation = @('infrastructure')
 }
 $dependencyRoots = @(
     (Join-Path $repoRoot "src\core"),
     (Join-Path $repoRoot "src\scenario"),
+    (Join-Path $repoRoot "src\session"),
     (Join-Path $repoRoot "src\infrastructure"),
     (Join-Path $repoRoot "src\presentation"),
     (Join-Path $repoRoot "src\app")
@@ -295,6 +297,24 @@ $uniqueClassNameSymbols = @{}
 foreach ($symbolName in $classNameSymbols.Keys) {
     if (@($classNameSymbols[$symbolName]).Count -eq 1) {
         $uniqueClassNameSymbols[$symbolName] = $classNameSymbols[$symbolName]
+    }
+}
+
+# GameSession owns public dispatch and the final all-or-nothing restore commit;
+# construction and validation of a detached restore candidate belong to the
+# typed validator. This guards responsibility rather than imposing a line cap.
+$gameSessionPath = Join-Path $repoRoot "src\session\game_session.gd"
+if (Test-Path -LiteralPath $gameSessionPath) {
+    $gameSessionContent = [IO.File]::ReadAllText($gameSessionPath)
+    if ($gameSessionContent -notmatch '\bSessionRestoreValidator\.validate\s*\(') {
+        $violations += "src/session/game_session.gd GameSession.restore must delegate candidate validation to SessionRestoreValidator"
+    }
+    $lineNumber = 0
+    foreach ($line in Get-SanitizedGdscriptLines -Content $gameSessionContent) {
+        $lineNumber++
+        if ($line -match '^\s*(?:static\s+)?func\s+_(?:valid_|party_.*_is_valid|shop_state_is_valid|location_notes_are_valid|journal_messages_are_valid|acquired_player_maps_are_valid)') {
+            $violations += "src/session/game_session.gd:$lineNumber GameSession must not own restore-validation helpers"
+        }
     }
 }
 $classNameReferencePattern = ''
