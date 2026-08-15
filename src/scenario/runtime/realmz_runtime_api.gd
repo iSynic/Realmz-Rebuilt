@@ -22,6 +22,11 @@ var _character_operations: ClassicCharacterOperations
 var _combat_operations: ClassicCombatOperations
 var _control_flow_operations: ClassicControlFlowOperations
 var _inventory_operations: ClassicInventoryOperations
+var _presentation_operations: ClassicPresentationOpcodeHandler
+var _world_time_operations: ClassicWorldTimeOpcodeHandler
+var _encounter_operations: ClassicEncounterOpcodeHandler
+var _classic_handlers: ClassicOpcodeHandlerRegistry
+var _handler_registration_error: String = ""
 
 
 func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action_state: ScenarioActionState, rules: RealmzRules = null) -> void:
@@ -32,16 +37,24 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action
 	_rules = rules if rules != null else RealmzRules.new()
 	_character_operations = ClassicCharacterOperations.new(_content, _game_state, _rng, _rules)
 	_combat_operations = ClassicCombatOperations.new(_content, _game_state, _rules)
-	_control_flow_operations = ClassicControlFlowOperations.new(_content, _game_state)
+	_control_flow_operations = ClassicControlFlowOperations.new(_content, _game_state, _rng)
 	_inventory_operations = ClassicInventoryOperations.new(_content, _game_state, _rules)
+	_presentation_operations = ClassicPresentationOpcodeHandler.new(_content, _rng)
+	_world_time_operations = ClassicWorldTimeOpcodeHandler.new(_content, _game_state, _rng)
+	_encounter_operations = ClassicEncounterOpcodeHandler.new(_content, _game_state)
+	_classic_handlers = ClassicOpcodeHandlerRegistry.new()
+	for handler: ClassicOpcodeHandler in [_control_flow_operations, _character_operations, _inventory_operations, _combat_operations, _presentation_operations, _world_time_operations, _encounter_operations]:
+		if not _classic_handlers.register(handler):
+			_handler_registration_error = _classic_handlers.registration_error()
+			break
 
 
 func execute_classic(action: ClassicActionDefinition, request_id: String, context: Dictionary = {}) -> ScenarioRuntimeOperationResult:
+	if not _handler_registration_error.is_empty():
+		return ScenarioRuntimeOperationResult.failed(&"invalid_opcode_registry", _handler_registration_error)
+	if _classic_handlers.has_handler(action.opcode):
+		return _classic_handlers.execute(action, request_id, context)
 	match action.opcode:
-		-23, 23:
-			return _mutate_random_region(action, action.opcode == -23)
-		-14, 14:
-			return _request_character_selection(action, request_id, action.opcode == -14)
 		1:
 			var message_id := absi(action.operand_id)
 			var message := _content.message_by_id(message_id)
@@ -59,160 +72,33 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 				})
 				return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-textbox", "messageId": message_id}, [event])
 			return ScenarioRuntimeOperationResult.completed(null, [event])
-		4:
-			var encounter := _content.simple_encounter_by_id(action.operand_id)
-			if encounter == null:
-				return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic opcode 4 references unavailable Simple Encounter %d." % action.operand_id)
-			var prompt := _content.message_by_id(absi(encounter.prompt_message_id))
-			if prompt == null:
-				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Simple Encounter %d references unavailable prompt message %d." % [encounter.id, encounter.prompt_message_id])
-			var options: Array[Dictionary] = []
-			var option_indexes: Array[int] = []
-			var responses := encounter.responses()
-			for option_index: int in responses.size():
-				if _game_state.simple_option_is_eliminated(encounter.id, option_index):
-					continue
-				var response: SimpleEncounterResponse = responses[option_index]
-				options.append({"id": response.id, "label": response.label})
-				option_indexes.append(option_index)
-			if options.is_empty():
-				return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Simple Encounter %d has no remaining responses." % encounter.id)
-			var request := InteractionRequest.from_payload(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text, "options": options, "canBackOut": encounter.can_back_out})
-			return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-simple-encounter", "encounterId": encounter.id, "gosub": action.gosub, "optionIndexes": option_indexes})
-		5:
-			return _request_complex_encounter(action, request_id)
-		3:
-			return _request_classic_choice(action, request_id)
 		6:
 			return _request_shop(action.operand_id, request_id)
-		7:
-			return _control_flow_operations.replace_scenario_program(action, context)
-		8:
-			return _control_flow_operations.branch_to_trigger_program(action, context)
 		2, 48, 56, 107:
 			return _start_classic_battle(action, request_id)
-		9:
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"sound_requested", {"soundId": absi(action.operand_id), "waitForCompletion": action.operand_id < 0, "source": "classic"})])
 		10:
 			return _grant_treasure(action.operand_id, request_id)
 		11:
 			var no_experience_items: Array[String] = []
 			return _begin_reward(&"scenario", "classic.experience.%d" % action.operand_id, maxi(0, action.operand_id), WealthState.new(), no_experience_items, request_id)
-		12:
-			return _mutate_tile(action)
-		13:
-			return _mutate_triggers(action)
-		15, 16:
-			return _apply_health(action, action.opcode == 16)
-		17, 18:
-			return _with_age_update_interactions(_character_operations.apply_scenario_spell(action, action.opcode == 18), request_id, "classic-age-updates")
-		19:
-			return _show_random_message(action)
 		20:
 			return _move_between_maps(action, false, true)
-		21:
-			return _branch_on_item(action)
-		22:
-			return _mutate_items(action)
-		24:
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"action_point_kept", {"triggerId": String(context.get("triggerId", "")), "source": "classic"})], {"kind": "finish"})
-		25:
-			var trigger_id := String(context.get("triggerId", ""))
-			if trigger_id.is_empty():
-				return ScenarioRuntimeOperationResult.failed(&"missing_trigger_context", "Classic opcode 25 requires an Action Point origin.")
-			_game_state.world.disable_trigger(trigger_id)
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"trigger_disabled", {"triggerId": trigger_id, "source": "classic"})])
 		26:
 			return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": "Continue", "soundId": 30005}), {"kind": "classic-acknowledge"})
-		27:
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"picture_requested", {"pictureId": absi(action.operand_id), "source": "classic"})])
-		28:
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"map_redraw_requested", {"source": "classic"})])
 		29:
 			return _acquire_player_map(action, request_id)
-		30:
-			return _filter_character_selection(action)
 		31:
 			return _request_character_ability(action, request_id)
 		32:
 			return _configure_temple(action)
-		33:
-			var values := action.extra_code
-			var amount := absi(action.operand_id) if values.is_empty() else absi(values[0])
-			var kind := WealthState.Kind.GOLD if values.size() < 2 else clampi(values[1], WealthState.Kind.GOLD, WealthState.Kind.JEWELRY) as WealthState.Kind
-			var paid := _rules.economy.take(_game_state.party, amount, kind)
-			return ScenarioRuntimeOperationResult.completed(paid, [DomainEvent.new(&"wealth_taken", {"amount": amount, "kind": kind, "paid": paid, "source": "classic"})])
-		34:
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_loop_finished", {"source": "classic"})], {"kind": "finish"})
-		35:
-			var encounter_id := int(context.get("encounterId", -1))
-			if context.get("encounterKind") != "simple" or not _game_state.eliminate_simple_option(encounter_id, action.operand_id - 1):
-				return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_context", "Classic opcode 35 requires a Simple Encounter response context.")
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_option_eliminated", {"encounterId": encounter_id, "optionIndex": action.operand_id - 1})])
-		36:
-			return _inventory_operations.toggle_equipment_storage(action.operand_id != 0)
 		37:
 			return _move_between_maps(action, true)
-		38:
-			return _branch_on_item_result(action)
-		40:
-			return _branch_on_party_condition(action)
-		42:
-			return _percent_branch(action, context)
-		43:
-			return _apply_classic_condition(action)
 		45:
 			return _move_between_maps(action, false, false)
-		46:
-			return _branch_on_quest(action)
-		47:
-			var quest_id := absi(action.operand_id)
-			if not _game_state.set_quest_value(quest_id, 0 if action.operand_id < 0 else 1):
-				return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 47 references quest %d outside 0 through 99." % quest_id)
-			return ScenarioRuntimeOperationResult.completed(_game_state.quest_value(quest_id), [DomainEvent.new(&"quest_changed", {"questId": quest_id, "value": _game_state.quest_value(quest_id)})])
-		49:
-			return _configure_banking()
-		50:
-			return _select_characters_by_identity(action)
-		51:
-			return _mutate_shop(action)
-		52:
-			return _select_characters_by_misc(action)
-		54:
-			return _mutate_timed_encounter(action)
-		60:
-			return _clear_character_money(action)
-		61:
-			return _shift_party(action)
-		62:
-			var scrolling_message := _content.message_by_id(absi(action.operand_id))
-			if scrolling_message == null:
-				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 62 references unavailable scrolling text %d." % action.operand_id)
-			return ScenarioRuntimeOperationResult.completed(scrolling_message.id, [DomainEvent.new(&"scrolling_text_requested", {"messageId": scrolling_message.id, "text": scrolling_message.text, "source": "classic"})])
-		63:
-			return _alter_game_time(action)
-		64:
-			return _branch_on_game_time(action)
 		65:
 			return _grant_random_items(action, request_id)
-		66:
-			_game_state.camping_allowed = action.operand_id == 0
-			return ScenarioRuntimeOperationResult.completed(_game_state.camping_allowed, [DomainEvent.new(&"camping_availability_changed", {"allowed": _game_state.camping_allowed, "source": "classic"})])
-		69:
-			if action.operand_id == 0:
-				return ScenarioRuntimeOperationResult.completed(false)
-			if action.extra_code.size() < 3:
-				return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 69 requires a five-value Extra Code row.")
-			_game_state.character_spellcasting_blocked = action.extra_code[0] != 0
-			_game_state.monster_spellcasting_blocked = action.extra_code[1] != 0
-			_game_state.spell_charging = action.extra_code[2] != 0
-			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"spellcasting_flags_changed", {"characterCastingBlocked": _game_state.character_spellcasting_blocked, "monsterCastingBlocked": _game_state.monster_spellcasting_blocked, "charging": _game_state.spell_charging, "source": "classic"})])
 		73:
 			return _configure_shop(action, request_id)
-		76:
-			return _adjust_quest_value(action)
-		77:
-			return _branch_on_quest_value(action)
 		82, 83:
 			_game_state.priest_turning_allowed = action.opcode == 83
 			var turning_message := "You regain your ability to turn undead and nether spawn." if _game_state.priest_turning_allowed else "You may not use your ability to turn undead or nether spawn."
@@ -220,50 +106,16 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 				DomainEvent.new(&"priest_turning_availability_changed", {"allowed": _game_state.priest_turning_allowed, "source": "classic"}),
 				DomainEvent.new(&"message_shown", {"text": turning_message, "source": "classic"}),
 			])
-		86:
-			return _branch_on_misc(action)
-		87:
-			return _branch_on_ally(action)
-		88:
-			var removed := _remove_classic_ally(absi(action.operand_id))
-			return ScenarioRuntimeOperationResult.completed(removed, [DomainEvent.new(&"allies_removed", {"classicMonsterId": absi(action.operand_id), "count": removed})])
-		89:
-			return _add_classic_ally(absi(action.operand_id))
 		90:
 			return _take_experience(action)
-		91:
-			var dropped := 0
-			for character: CharacterState in _game_state.party.characters():
-				dropped += character.inventory().size()
-				character.set_inventory([])
-				character.carried_load = 0
-			return ScenarioRuntimeOperationResult.completed(dropped, [DomainEvent.new(&"party_equipment_dropped", {"count": dropped, "source": "classic"})])
-		98, 99:
-			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"classic_control_marker", {"opcode": action.opcode, "operandId": action.operand_id})])
-		101:
-			return _back_up_party()
 		102:
 			return _level_selected_characters()
-		103:
-			return _test_or_set_party_mode(action)
-		104:
-			_game_state.random_encounters_enabled = action.operand_id != 0
-			return ScenarioRuntimeOperationResult.completed(_game_state.random_encounters_enabled, [DomainEvent.new(&"random_encounters_changed", {"enabled": _game_state.random_encounters_enabled})])
-		105:
-			_game_state.allies_suspended = action.operand_id != 0
-			return ScenarioRuntimeOperationResult.completed(_game_state.allies_suspended, [DomainEvent.new(&"ally_participation_changed", {"suspended": _game_state.allies_suspended, "source": "classic"})])
-		106:
-			return _set_map_darkness(action)
-		108:
-			return _alter_selected_characters(action)
 		119:
 			return _revive_after_combat_macro(context)
 		120:
 			return _alter_combat_monsters(action)
 		121:
 			return _deanimate_lower_undead()
-		122:
-			return _combat_operations.cause_fumble(action, context)
 		123:
 			return _cause_monsters_to_route(action, context)
 		124:
@@ -295,55 +147,6 @@ func _take_experience(action: ClassicActionDefinition) -> ScenarioRuntimeOperati
 	for character: CharacterState in targets:
 		character.experience -= amount
 	return ScenarioRuntimeOperationResult.completed(targets.size(), [DomainEvent.new(&"experience_taken", {"amountEach": amount, "mode": mode, "targetIds": targets.map(func(character: CharacterState) -> String: return character.id), "source": "classic"})])
-
-
-func _clear_character_money(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 2:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 60 requires a five-value Extra Code row.")
-	var classic_kind := action.extra_code[0]
-	if classic_kind < 1 or classic_kind > 3:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_wealth_kind", "Classic opcode 60 references wealth kind %d outside 1 through 3." % classic_kind)
-	var kind := (classic_kind - 1) as WealthState.Kind
-	var targets := _game_state.party.characters() if action.extra_code[1] == 0 else _game_state.selected_characters()
-	var removed := 0
-	for character: CharacterState in targets:
-		var amount := character.money.amount(kind)
-		removed += amount
-		character.carried_load = maxi(0, character.carried_load - amount * (15 if kind == WealthState.Kind.JEWELRY else 1))
-		character.money.set_amount(kind, 0)
-	return ScenarioRuntimeOperationResult.completed(removed, [DomainEvent.new(&"character_wealth_cleared", {"kind": kind, "amount": removed, "characterIds": targets.map(func(character: CharacterState) -> String: return character.id), "source": "classic"})])
-
-
-func _select_characters_by_identity(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 50 requires a five-value Extra Code row.")
-	var selector := action.extra_code[0]
-	if selector < 0 or selector > 4:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_character_identity_selector", "Classic opcode 50 has an invalid identity selector.")
-	var selected: Array[String] = []
-	for character: CharacterState in _game_state.party.characters():
-		if action.extra_code[4] != 0 and character.current_health <= 0:
-			continue
-		var race := _content.race_by_id(character.race_id)
-		var caste := _content.caste_by_id(character.caste_id)
-		var matches := false
-		match selector:
-			0:
-				matches = race != null and race.classic_id == action.extra_code[2]
-			1:
-				matches = character.gender == action.extra_code[1]
-			2:
-				matches = caste != null and caste.classic_id == action.extra_code[2]
-			3:
-				if action.extra_code[2] < 1 or action.extra_code[2] > 32:
-					return ScenarioRuntimeOperationResult.failed(&"invalid_race_descriptor", "Classic opcode 50 race descriptor is outside 1 through 32.")
-				matches = race != null and (race.descriptor_flags & (1 << (action.extra_code[2] - 1))) != 0
-			4:
-				matches = caste != null and caste.caste_class == action.extra_code[2]
-		if matches:
-			selected.append(character.id)
-	_game_state.set_selected_character_ids(selected)
-	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"characters_selected_by_identity", {"selector": selector, "characterIds": selected, "livingOnly": action.extra_code[4] != 0, "source": "classic"})])
 
 
 func _grant_random_items(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -421,49 +224,6 @@ func _continue_if_monster_present(action: ClassicActionDefinition) -> ScenarioRu
 			break
 	var directive: Dictionary = {} if present else {"kind": "finish"}
 	return ScenarioRuntimeOperationResult.completed(present, [DomainEvent.new(&"battle_monster_presence_checked", {"classicMonsterId": definition.classic_id, "present": present, "source": "classic"})], directive)
-
-
-func _alter_selected_characters(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 2:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 108 requires a five-value Extra Code row.")
-	var alteration := action.extra_code[0]
-	var amount := action.extra_code[1]
-	if alteration < 1 or alteration > 12:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_character_alteration", "Classic opcode 108 references alteration %d outside 1 through 12." % alteration)
-	var targets := _game_state.selected_characters()
-	for character: CharacterState in targets:
-		match alteration:
-			1:
-				character.attack_bonus = maxi(0, character.attack_bonus + amount)
-			2:
-				if character.maximum_spell_attacks != 0:
-					character.maximum_spell_attacks = maxi(1, character.maximum_spell_attacks + amount)
-			3:
-				character.maximum_movement = maxi(3, character.maximum_movement + amount)
-				character.movement = mini(character.movement, character.maximum_movement)
-			4:
-				character.damage_bonus = maxi(0, character.damage_bonus + amount)
-			5:
-				if character.maximum_spell_points != 0:
-					character.maximum_spell_points = maxi(0, character.maximum_spell_points + amount)
-					character.spell_points = mini(character.spell_points, character.maximum_spell_points)
-			6:
-				if character.hand_to_hand != 0:
-					character.hand_to_hand = maxi(1, character.hand_to_hand + amount)
-			7:
-				character.maximum_health = maxi(2, character.maximum_health + amount)
-				character.current_health = mini(character.current_health, character.maximum_health)
-			8:
-				character.armor = maxi(0, character.armor + amount)
-			9:
-				character.to_hit = maxi(2, character.to_hit + amount)
-			10:
-				character.missile = maxi(2, character.missile + amount)
-			11:
-				character.magic_resistance = maxi(0, character.magic_resistance + amount)
-			12:
-				character.prestige_penalty -= amount
-	return ScenarioRuntimeOperationResult.completed(targets.size(), [DomainEvent.new(&"selected_characters_altered", {"alteration": alteration, "amount": amount, "characterIds": targets.map(func(character: CharacterState) -> String: return character.id), "source": "classic"})])
 
 
 func _alter_combat_monsters(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
@@ -832,70 +592,6 @@ func _resume_simple_encounter(continuation: Dictionary, response: InteractionRes
 	return ScenarioRuntimeOperationResult.completed(selected.id, [DomainEvent.new(&"encounter_response_selected", {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index})], {"kind": "branch-program", "programId": selected.result_program_id, "gosub": bool(continuation.get("gosub", false)), "context": {"encounterKind": "simple", "encounterId": encounter.id, "responseId": selected.id, "optionIndex": selected_index}})
 
 
-func _request_complex_encounter(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
-	var encounter := _content.complex_encounter_by_id(action.operand_id)
-	if encounter == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "Classic opcode 5 references unavailable Complex Encounter %d." % action.operand_id)
-	var request := _complex_encounter_request(encounter, request_id)
-	if request == null:
-		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter %d has no available responses." % encounter.id)
-	return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-complex-encounter", "encounterId": encounter.id, "gosub": action.gosub})
-
-
-func _complex_encounter_request(encounter: ComplexEncounterDefinition, request_id: String) -> InteractionRequest:
-	var prompt := _content.message_by_id(absi(encounter.prompt_message_id))
-	if prompt == null:
-		return null
-	var actions: Array[Dictionary] = []
-	if encounter.action_result != 0:
-		var labels := encounter.action_labels()
-		for slot: int in labels.size():
-			var label := labels[slot].strip_edges()
-			if not label.is_empty() and label != "*":
-				actions.append({"id": "choice:%d" % slot, "kind": "choice", "slot": slot, "label": label})
-	if encounter.word_result != 0:
-		actions.append({"id": "word", "kind": "word", "label": "Speak a word"})
-	for spell_id: int in encounter.spell_ids():
-		if spell_id != 0:
-			actions.append({"id": "spell", "kind": "spell", "label": "Cast a spell"})
-			break
-	for item_id: int in encounter.item_ids():
-		if item_id != 0:
-			actions.append({"id": "item", "kind": "item", "label": "Use an item"})
-			break
-	if encounter.thief:
-		var thief_encounter := _content.thief_encounter_by_id(encounter.thief_success)
-		if thief_encounter != null:
-			var flags := _game_state.thief_encounter_type_flags(thief_encounter)
-			var labels: Array[String] = ["Acrobatics", "Detect Trap", "Disarm Trap", "Hear Noise", "Force Lock", "Move Silently", "Pick Lock", "Pick Pocket"]
-			for index: int in labels.size():
-				if flags[index]:
-					actions.append({"id": "thief:%d" % index, "kind": "thief", "actionIndex": index, "label": labels[index]})
-	if encounter.can_back_out:
-		actions.append({"id": "back", "kind": "back", "label": "Back out"})
-	if actions.is_empty():
-		return null
-	var characters: Array[Dictionary] = []
-	var items: Array[Dictionary] = []
-	var spells: Array[Dictionary] = []
-	var seen_items: Dictionary = {}
-	var seen_spells: Dictionary = {}
-	for character: CharacterState in _game_state.party.characters():
-		if character.current_health > 0:
-			characters.append({"id": character.id, "name": character.name})
-		for instance: ItemInstance in character.inventory():
-			var item := _content.item_by_id(instance.definition_id)
-			if item != null and not seen_items.has(item.classic_id):
-				seen_items[item.classic_id] = true
-				items.append({"classicItemId": item.classic_id, "name": item.name})
-		for spell_id: String in character.known_spells():
-			var spell := _content.spell_by_id(spell_id)
-			if spell != null and not seen_spells.has(spell.classic_id):
-				seen_spells[spell.classic_id] = true
-				spells.append({"classicSpellId": spell.classic_id, "name": spell.name})
-	return InteractionRequest.from_payload(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text, "actions": actions, "characters": characters, "items": items, "spells": spells, "canBackOut": encounter.can_back_out})
-
-
 func _resume_complex_encounter(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var encounter := _content.complex_encounter_by_id(int(continuation.get("encounterId", -1)))
 	if encounter == null:
@@ -1006,7 +702,7 @@ func _resume_thief_encounter(encounter: ComplexEncounterDefinition, continuation
 	var sound_ids := thief_encounter.success_sounds() if succeeded else thief_encounter.failure_sounds()
 	var events: Array[DomainEvent] = [DomainEvent.new(&"thief_action_resolved", {"encounterId": encounter.id, "thiefEncounterId": thief_encounter.id, "characterId": character.id, "actionIndex": action_index, "chancePercent": chance, "succeeded": succeeded, "messageId": text_ids[action_index], "soundId": sound_ids[action_index]})]
 	if outcome == 0:
-		var request := _complex_encounter_request(encounter, request_id)
+		var request := _encounter_operations.complex_encounter_request(encounter, request_id)
 		if request == null:
 			return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter has no available responses after the Thief action.")
 		return ScenarioRuntimeOperationResult.waiting(request, continuation, events)
@@ -1025,7 +721,7 @@ func _spring_thief_trap(encounter: ComplexEncounterDefinition, thief_encounter: 
 	if damage > 0:
 		character.current_health = maxi(-32_768, character.current_health - damage)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"thief_trap_sprung", {"encounterId": encounter.id, "thiefEncounterId": thief_encounter.id, "characterId": character.id, "damage": damage, "spellId": thief_encounter.spell_id})]
-	var request := _complex_encounter_request(encounter, request_id)
+	var request := _encounter_operations.complex_encounter_request(encounter, request_id)
 	if request == null:
 		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter has no available responses after its trap.")
 	return ScenarioRuntimeOperationResult.waiting(request, continuation, events)
@@ -1038,37 +734,6 @@ func _state_identity(arguments: Dictionary) -> Array[String]:
 	if state_scope.is_empty() or name_value == null or (not name_value is String and not name_value is int):
 		return []
 	return [state_scope, owner_id, str(name_value)]
-
-
-func _request_classic_choice(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 3 requires a five-value Extra Code row.")
-	var yes_id := action.extra_code[3]
-	var no_id := action.extra_code[4]
-	var yes_label_value: Variant
-	var no_label_value: Variant
-	if yes_id == 0:
-		yes_label_value = "Yes"
-		no_label_value = "No"
-	else:
-		yes_label_value = _classic_choice_label(yes_id)
-		no_label_value = _classic_choice_label(no_id)
-	if yes_label_value == null or no_label_value == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_option_label", "Classic opcode 3 references an unavailable option label.")
-	var request := InteractionRequest.from_payload(request_id, &"yes_no", {"yesId": yes_id, "yesLabel": yes_label_value, "noId": no_id, "noLabel": no_label_value})
-	return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-choice", "values": action.extra_code.duplicate(), "gosub": action.gosub})
-
-
-func _classic_choice_label(label_id: int) -> Variant:
-	if _content.has_option_labels():
-		var option_label := _content.option_label_by_id(absi(label_id))
-		if option_label == null:
-			return null
-		return option_label.text
-	var message := _content.message_by_id(absi(label_id))
-	if message == null:
-		return null
-	return message.text
 
 
 func _resume_classic_choice(continuation: Dictionary, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
@@ -1089,20 +754,6 @@ func _resume_classic_choice(continuation: Dictionary, response: InteractionRespo
 		4:
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"encounter_option_elimination_requested")])
 	return ScenarioRuntimeOperationResult.failed(&"unsupported_choice_target", "Classic choice branch mode %d is not available." % int(values[1]))
-
-
-func _request_character_selection(action: ClassicActionDefinition, request_id: String, invert: bool) -> ScenarioRuntimeOperationResult:
-	var count := absi(action.operand_id)
-	if count < 1:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_character_count", "Classic character picker requests no characters.")
-	var eligible: Array[Dictionary] = []
-	for character: CharacterState in _game_state.party.characters():
-		if action.operand_id < 0 or character.current_health > 0:
-			eligible.append({"id": character.id, "name": character.name, "currentHealth": character.current_health})
-	if eligible.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic character picker has no eligible party members.")
-	count = mini(count, eligible.size())
-	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": count, "eligible": eligible, "allowDead": action.operand_id < 0}), {"kind": "classic-character-selection", "count": count, "allowDead": action.operand_id < 0, "invert": invert})
 
 
 func _resume_character_selection(continuation: Dictionary, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
@@ -1172,133 +823,6 @@ func _resume_character_ability(continuation: Dictionary, response: InteractionRe
 	return branch
 
 
-func _filter_character_selection(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 4:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 30 requires a five-value Extra Code row.")
-	var values := action.extra_code
-	var candidates := _game_state.selected_characters()
-	if int(values[2]) in [1, 2]:
-		candidates = []
-		for character: CharacterState in _game_state.party.characters():
-			if int(values[2]) == 1 or character.current_health > 0:
-				candidates.append(character)
-	var selected: Array[String] = []
-	var checks: Array[Dictionary] = []
-	var attribute_check := int(values[3]) != 0
-	var check_index := absi(int(values[0]))
-	for character: CharacterState in candidates:
-		var check_value := _character_attribute(character, check_index) if attribute_check else character.ability_value(check_index)
-		var roll := _rng.draw(25 if attribute_check else 100, &"classic.filter-character")
-		var passed := roll - int(values[1]) < check_value if attribute_check else roll <= check_value + int(values[1])
-		if passed != (int(values[0]) < 0):
-			selected.append(character.id)
-		checks.append({"characterId": character.id, "roll": roll, "value": check_value, "passed": passed})
-	_game_state.set_selected_character_ids(selected)
-	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"character_selection_filtered", {"characterIds": selected, "checks": checks})])
-
-
-func _apply_health(action: ClassicActionDefinition, whole_party: bool) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5 or action.extra_code[2] < action.extra_code[1]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_health_effect", "Classic health action requires a valid Extra Code roll range.")
-	var targets := _game_state.party.characters() if whole_party else _game_state.selected_characters()
-	var hits: Array[Dictionary] = []
-	for character: CharacterState in targets:
-		var roll := _rng.draw_between(action.extra_code[1], action.extra_code[2], &"classic.health-effect")
-		var amount := action.extra_code[0] * roll
-		var previous := character.current_health
-		character.current_health = mini(character.maximum_health, maxi(-32_768, character.current_health + amount))
-		hits.append({"characterId": character.id, "previousHealth": previous, "health": character.current_health, "amount": character.current_health - previous})
-	return ScenarioRuntimeOperationResult.completed(hits, [DomainEvent.new(&"party_health_changed", {"targets": "party" if whole_party else "selected", "hits": hits, "soundId": action.extra_code[3], "messageId": action.extra_code[4]})])
-
-
-func _show_random_message(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	var message_ids: Array[int] = []
-	for value: int in action.extra_code:
-		if value != 0 and _content.message_by_id(value) != null:
-			message_ids.append(value)
-	if message_ids.is_empty() and _content.message_by_id(action.operand_id) != null:
-		message_ids.append(action.operand_id)
-	if message_ids.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 19 has no available message.")
-	var selected_id := message_ids[_rng.draw_between(0, message_ids.size() - 1, &"classic.random-message")]
-	return ScenarioRuntimeOperationResult.completed(selected_id, [DomainEvent.new(&"message_shown", {"messageId": selected_id, "text": _content.message_by_id(selected_id).text, "source": "classic-random"})])
-
-
-func _branch_on_item(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 21 requires a five-value Extra Code row.")
-	var values := action.extra_code
-	var possessed := _party_has_classic_item(absi(values[0]))
-	if possessed:
-		return _branch_target_mode(values[1], values[3], action.gosub)
-	match int(values[2]):
-		0:
-			return _branch_target_mode(values[1], values[4], action.gosub)
-		1:
-			return ScenarioRuntimeOperationResult.completed(false)
-		2:
-			var message := _content.message_by_id(values[4])
-			if message == null:
-				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic item branch references unavailable message %d." % values[4])
-			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-item-check"})], {"kind": "finish"})
-	return ScenarioRuntimeOperationResult.failed(&"invalid_item_branch", "Classic item possession branch has an invalid failure mode.")
-
-
-func _branch_on_item_result(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 38 requires a five-value Extra Code row.")
-	var possessed := _party_has_classic_item(absi(action.extra_code[0]))
-	var test_mode := action.extra_code[1]
-	if test_mode == 2 or test_mode == 0 and not possessed or test_mode == 1 and possessed:
-		return _branch_from_values(action.extra_code, false)
-	if test_mode not in [0, 1, 2]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_item_branch", "Classic item result branch has an invalid test mode.")
-	return ScenarioRuntimeOperationResult.completed(false)
-
-
-func _mutate_items(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 22 requires a five-value Extra Code row.")
-	var source := _content.item_by_classic_id(absi(action.extra_code[0]))
-	if source == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Classic item mutation references unavailable item %d." % action.extra_code[0])
-	var operation := action.extra_code[2]
-	var maximum := action.extra_code[1]
-	if maximum < 0 or operation not in [1, 2, 3]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_item_mutation", "Classic item mutation has an invalid count or operation.")
-	var replacement := _content.item_by_classic_id(absi(action.extra_code[4])) if operation == 3 else null
-	if operation == 3 and replacement == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Classic item replacement is unavailable.")
-	var changed := 0
-	for character: CharacterState in _game_state.party.characters():
-		var items := character.inventory()
-		for index: int in range(items.size() - 1, -1, -1):
-			if maximum > 0 and changed >= maximum:
-				break
-			var instance: ItemInstance = items[index]
-			if instance.definition_id != source.id:
-				continue
-			match operation:
-				1:
-					_rules.inventory.remove_item(character, instance.id, source)
-				2:
-					var previous_weight := source.instance_weight(instance.charges)
-					instance.charges = clampi(instance.charges + action.extra_code[3], -1, 32_767)
-					character.carried_load = maxi(0, character.carried_load - previous_weight + source.instance_weight(instance.charges))
-				3:
-					var was_equipped := instance.equipped
-					_rules.inventory.remove_item(character, instance.id, source)
-					var replacement_instance := _rules.inventory.add_item(character, replacement, _game_state.next_instance_id("classic.replacement"), false)
-					if replacement_instance == null:
-						return ScenarioRuntimeOperationResult.failed(&"inventory_full", "Classic replacement item no longer fits the character inventory.")
-					if was_equipped and _rules.inventory.can_equip(character, replacement):
-						replacement_instance.equipped = true
-			changed += 1
-		if maximum > 0 and changed >= maximum:
-			break
-	return ScenarioRuntimeOperationResult.completed(changed, [DomainEvent.new(&"party_items_changed", {"itemId": source.id, "operation": operation, "changed": changed})])
-
-
 func _party_has_classic_item(classic_item_id: int, minimum_charges: int = -1, equipped_only: bool = false) -> bool:
 	var definition := _content.item_by_classic_id(classic_item_id)
 	if definition == null:
@@ -1310,130 +834,10 @@ func _party_has_classic_item(classic_item_id: int, minimum_charges: int = -1, eq
 	return false
 
 
-func _percent_branch(action: ClassicActionDefinition, context: Dictionary) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 42 requires a five-value Extra Code row.")
-	var roll := _rng.draw(100, &"classic.percent-branch")
-	if roll > action.extra_code[0]:
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"percent_branch_checked", {"chance": action.extra_code[0], "roll": roll, "matched": false})])
-	var event := DomainEvent.new(&"percent_branch_checked", {"chance": action.extra_code[0], "roll": roll, "matched": true})
-	match action.extra_code[1]:
-		-2:
-			var trigger_id := String(context.get("triggerId", ""))
-			if not trigger_id.is_empty():
-				_game_state.world.disable_trigger(trigger_id)
-			return ScenarioRuntimeOperationResult.completed(true, [event], {"kind": "finish"})
-		1:
-			var branch := _branch_from_values(action.extra_code, false)
-			branch.events.append(event)
-			return branch
-		2:
-			return ScenarioRuntimeOperationResult.completed(true, [event], {"kind": "finish"})
-	return ScenarioRuntimeOperationResult.completed(true, [event])
-
-
-func _branch_on_quest(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 46 requires a five-value Extra Code row.")
-	var is_set := _game_state.quest_is_set(action.extra_code[0])
-	var condition := action.extra_code[1]
-	var should_branch := condition == 2 or condition == 1 and is_set or condition == 0 and not is_set
-	if not should_branch:
-		return ScenarioRuntimeOperationResult.completed(false)
-	return _branch_from_values(action.extra_code, action.gosub)
-
-
-func _branch_on_party_condition(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 4:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 40 requires a five-value Extra Code row.")
-	var required_state := action.extra_code[0]
-	var condition_index := action.extra_code[3]
-	if required_state not in [1, 2] or condition_index < 0 or condition_index >= ConditionSet.PARTY_COUNT:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_party_condition", "Classic party-condition branch has an invalid state or condition.")
-	var active := _game_state.party.conditions.is_active(condition_index)
-	if required_state == 1 and not active or required_state == 2 and active:
-		return ScenarioRuntimeOperationResult.completed(false)
-	return _branch_target_mode(action.extra_code[1] - 1, action.extra_code[2], action.gosub)
-
-
-func _branch_from_values(values: Array[int], gosub: bool) -> ScenarioRuntimeOperationResult:
-	match values[2]:
-		0:
-			return _branch_xap(values[3], gosub)
-		3:
-			return ScenarioRuntimeOperationResult.completed(true, [], {"kind": "finish"})
-	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_mode", "Classic branch mode %d is not available in this execution context." % values[2])
-
-
-func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
-	if mode == 0:
-		return _branch_xap(target_id, gosub)
-	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is not available in this execution context." % mode)
-
-
 func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
 	if target_id == 0:
 		return ScenarioRuntimeOperationResult.completed(false)
 	return ScenarioRuntimeOperationResult.completed(true, [], {"kind": "branch-xap", "targetId": target_id, "gosub": gosub})
-
-
-func _mutate_random_region(action: ClassicActionDefinition, dungeon: bool) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic random-region mutation requires a five-value Extra Code row.")
-	var map := _content.world.map_by_type_and_index(&"dungeon" if dungeon else &"land", action.extra_code[0])
-	if map == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic random-region mutation references unavailable map %d." % action.extra_code[0])
-	var region := map.random_region_by_index(action.extra_code[1])
-	if region == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_random_region", "Classic random-region mutation references unavailable rectangle %d." % action.extra_code[1])
-	var previous := _game_state.world.random_region(region)
-	var battle_min := previous.battle_minimum if action.extra_code[3] < 0 else action.extra_code[3]
-	var battle_max := previous.battle_maximum if action.extra_code[4] < 0 else action.extra_code[4]
-	var updated := RandomRegionState.new(region.id, action.extra_code[2], battle_min, battle_max, previous.random_door_percents())
-	_game_state.world.set_random_region(updated)
-	return ScenarioRuntimeOperationResult.completed(updated.id, [DomainEvent.new(&"random_region_changed", {"regionId": updated.id, "chanceTenThousand": updated.chance_ten_thousand, "battleMinimum": updated.battle_minimum, "battleMaximum": updated.battle_maximum})])
-
-
-func _mutate_tile(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 12 requires a five-value Extra Code row.")
-	var dungeon := action.extra_code[4] != 0
-	var map := _content.world.map_by_type_and_index(&"dungeon" if dungeon else &"land", action.extra_code[0])
-	var coordinate := Vector2i(action.extra_code[2], action.extra_code[1]) if dungeon else Vector2i(action.extra_code[1], action.extra_code[2])
-	if map == null or map.topology.cell_at(coordinate) == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_map_cell", "Classic tile mutation references an unavailable map cell.")
-	var terrain_id := "classic.terrain.%d" % action.extra_code[3]
-	_game_state.world.replace_terrain(map.id, coordinate, terrain_id)
-	return ScenarioRuntimeOperationResult.completed(terrain_id, [DomainEvent.new(&"tile_replaced", {"mapId": map.id, "x": coordinate.x, "y": coordinate.y, "terrainId": terrain_id, "source": "classic"})])
-
-
-func _mutate_triggers(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 13 requires a five-value Extra Code row.")
-	var current_map := _content.world.map_by_id(_game_state.party.map_id)
-	var level_type := current_map.level_type
-	if action.extra_code[3] < 0:
-		level_type = &"dungeon"
-	elif action.extra_code[3] > 0:
-		level_type = &"land"
-	var map := _content.world.map_by_type_and_index(level_type, action.extra_code[0])
-	if map == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic trigger mutation references unavailable map %d." % action.extra_code[0])
-	var record_indexes: Array[int] = []
-	if action.extra_code[1] != 0:
-		record_indexes.append(action.extra_code[1])
-	if action.extra_code[3] != 0:
-		for record_index: int in range(absi(action.extra_code[3]), absi(action.extra_code[4]) + 1):
-			if not record_indexes.has(record_index):
-				record_indexes.append(record_index)
-	var changed: Array[String] = []
-	for record_index: int in record_indexes:
-		var trigger := _content.trigger_by_map_record(map.id, record_index)
-		if trigger == null:
-			return ScenarioRuntimeOperationResult.failed(&"unknown_trigger", "Classic trigger mutation references unavailable record %d on map '%s'." % [record_index, map.id])
-		_game_state.world.set_trigger_chance(trigger.id, action.extra_code[2])
-		changed.append(trigger.id)
-	return ScenarioRuntimeOperationResult.completed(changed, [DomainEvent.new(&"trigger_chances_changed", {"triggerIds": changed, "chancePercent": action.extra_code[2]})])
 
 
 func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, activate_destination: bool = false) -> ScenarioRuntimeOperationResult:
@@ -1467,296 +871,6 @@ func _move_between_maps(action: ClassicActionDefinition, dungeon_move: bool, act
 		events.append(DomainEvent.new(&"destination_trigger_recheck_requested", {"mapId": target_map.id, "x": coordinate.x, "y": coordinate.y, "source": "classic-opcode-20"}))
 		return ScenarioRuntimeOperationResult.completed(target_map.id, events, {"kind": "finish"})
 	return ScenarioRuntimeOperationResult.completed(target_map.id, events)
-
-
-func _shift_party(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 4:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 61 requires a five-value Extra Code row.")
-	var current_map := _content.world.map_by_id(_game_state.party.map_id)
-	if current_map == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 61 requires the party's current map.")
-	var delta := Vector2i(action.extra_code[1], action.extra_code[2])
-	var random_shift := action.extra_code[3] != 0
-	if random_shift:
-		if action.extra_code[1] < 1 or action.extra_code[2] < 1:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_shift_range", "Classic opcode 61 random shift ranges must be positive.")
-		var x_sign := 1 if _rng.draw(100, &"classic.opcode61.x-sign") < 50 else -1
-		var x_magnitude := _rng.draw_between(1, action.extra_code[1], &"classic.opcode61.x-magnitude")
-		var y_sign := 1 if _rng.draw(100, &"classic.opcode61.y-sign") < 50 else -1
-		var y_magnitude := _rng.draw_between(1, action.extra_code[2], &"classic.opcode61.y-magnitude")
-		delta = Vector2i(x_sign * x_magnitude, y_sign * y_magnitude)
-	var source_coordinate := _game_state.party.coordinate
-	var target_coordinate := source_coordinate + delta
-	if current_map.topology.cell_at(target_coordinate) == null:
-		return ScenarioRuntimeOperationResult.failed(&"shift_out_of_bounds", "Classic opcode 61 shifts the party outside the current map.")
-	_game_state.party.coordinate = target_coordinate
-	_game_state.world.mark_visited(current_map.id, target_coordinate)
-	return ScenarioRuntimeOperationResult.completed(target_coordinate, [DomainEvent.new(&"party_shifted", {
-		"mapId": current_map.id,
-		"sourceX": source_coordinate.x,
-		"sourceY": source_coordinate.y,
-		"x": target_coordinate.x,
-		"y": target_coordinate.y,
-		"deltaX": delta.x,
-		"deltaY": delta.y,
-		"random": random_shift,
-		"source": "classic",
-	})])
-
-
-func _alter_game_time(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 4:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 63 requires a five-value Extra Code row.")
-	var mode := action.extra_code[0]
-	var target_minutes := _game_state.clock.total_minutes()
-	match mode:
-		1:
-			var day := _game_state.clock.day() if action.extra_code[1] == -1 else action.extra_code[1]
-			var hour := _game_state.clock.hour() if action.extra_code[2] == -1 else action.extra_code[2]
-			var minute := _game_state.clock.minute() if action.extra_code[3] == -1 else action.extra_code[3]
-			if day < 1 or hour < 0 or hour > 23 or minute < 0 or minute > 59:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_game_time", "Classic opcode 63 absolute time is outside the Realmz clock.")
-			target_minutes = (day - 1) * RealmzClock.MINUTES_PER_DAY + hour * 60 + minute
-		2:
-			target_minutes += action.extra_code[1] * RealmzClock.MINUTES_PER_DAY + action.extra_code[2] * 60 + action.extra_code[3]
-		_:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_game_time_mode", "Classic opcode 63 requires set or offset mode.")
-	if not _game_state.clock.set_total_minutes(target_minutes):
-		return ScenarioRuntimeOperationResult.failed(&"invalid_game_time", "Classic opcode 63 cannot move before the start of the Realmz clock.")
-	return ScenarioRuntimeOperationResult.completed(target_minutes, [DomainEvent.new(&"game_time_changed", {
-		"mode": mode,
-		"day": _game_state.clock.day(),
-		"hour": _game_state.clock.hour(),
-		"minute": _game_state.clock.minute(),
-		"totalMinutes": target_minutes,
-		"source": "classic",
-	})])
-
-
-func _branch_on_game_time(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 64 requires a five-value Extra Code row.")
-	var day_limit := action.extra_code[0]
-	var hour_limit := action.extra_code[1]
-	if day_limit < -1 or hour_limit < -1 or hour_limit > 23:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_game_time_test", "Classic opcode 64 has an invalid day or hour limit.")
-	var before_or_equal := (day_limit == -1 or _game_state.clock.day() <= day_limit) and (hour_limit == -1 or _game_state.clock.hour() <= hour_limit)
-	var target_id := action.extra_code[3] if before_or_equal else action.extra_code[4]
-	var branch := _branch_xap(target_id, action.gosub)
-	branch.events.append(DomainEvent.new(&"game_time_branch_checked", {
-		"day": _game_state.clock.day(),
-		"hour": _game_state.clock.hour(),
-		"dayLimit": day_limit,
-		"hourLimit": hour_limit,
-		"beforeOrEqual": before_or_equal,
-		"targetId": target_id,
-	}))
-	return branch
-
-
-func _adjust_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 76 requires a five-value Extra Code row.")
-	var quest_id := action.extra_code[0]
-	if quest_id < 0 or quest_id >= 100:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 76 references quest %d outside 0 through 99." % quest_id)
-	var value := clampi(_game_state.quest_value(quest_id) + action.extra_code[1], -127, 127)
-	_game_state.set_quest_value(quest_id, value)
-	var event := DomainEvent.new(&"quest_value_changed", {"questId": quest_id, "value": value, "delta": action.extra_code[1], "source": "classic"})
-	if action.extra_code[3] == 0 or value < action.extra_code[3]:
-		return ScenarioRuntimeOperationResult.completed(value, [event])
-	if action.extra_code[2] != 1:
-		return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic opcode 76 auto-branch target type %d is unavailable." % action.extra_code[2])
-	var branch := _branch_xap(action.extra_code[4], action.gosub)
-	branch.events.append(event)
-	return branch
-
-
-func _branch_on_quest_value(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 77 requires a five-value Extra Code row.")
-	var quest_id := action.extra_code[0]
-	if quest_id < 0 or quest_id >= 100:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_quest", "Classic opcode 77 references quest %d outside 0 through 99." % quest_id)
-	var matched := _game_state.quest_value(quest_id) >= action.extra_code[1]
-	var target_id := action.extra_code[4] if matched else action.extra_code[3]
-	var event := DomainEvent.new(&"quest_value_branch_checked", {"questId": quest_id, "value": _game_state.quest_value(quest_id), "minimum": action.extra_code[1], "matched": matched, "targetId": target_id})
-	if target_id == 0:
-		return ScenarioRuntimeOperationResult.completed(matched, [event])
-	var branch := _branch_target_mode(action.extra_code[2], target_id, action.gosub)
-	branch.events.append(event)
-	return branch
-
-
-func _branch_on_ally(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 87 requires a five-value Extra Code row.")
-	var monster := _content.monster_by_classic_id_for_set(absi(action.extra_code[0]), _game_state.monster_set)
-	var present := false
-	if monster != null:
-		for ally: MonsterState in _game_state.party.allies():
-			var ally_definition := _content.monster_by_id(ally.definition_id)
-			if ally_definition != null and ally_definition.classic_id == monster.classic_id:
-				present = true
-				break
-	var event := DomainEvent.new(&"ally_branch_checked", {"classicMonsterId": absi(action.extra_code[0]), "present": present})
-	if present:
-		var matched := _branch_target_mode(action.extra_code[1], action.extra_code[3], action.gosub)
-		matched.events.append(event)
-		return matched
-	match action.extra_code[2]:
-		0:
-			var missing := _branch_target_mode(action.extra_code[1], action.extra_code[4], action.gosub)
-			missing.events.append(event)
-			return missing
-		1:
-			return ScenarioRuntimeOperationResult.completed(false, [event])
-		2:
-			var message := _content.message_by_id(action.extra_code[4])
-			if message == null:
-				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 87 references unavailable message %d." % action.extra_code[4])
-			return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-ally-check"})], {"kind": "finish"})
-	return ScenarioRuntimeOperationResult.failed(&"invalid_ally_branch", "Classic opcode 87 has an invalid absent-ally behavior.")
-
-
-func _branch_on_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 86 requires a five-value Extra Code row.")
-	var test_kind := action.extra_code[0]
-	var expected := action.extra_code[1]
-	var selected_only := expected < 0 and test_kind in [0, 1, 2, 5, 6]
-	var characters := _game_state.selected_characters() if selected_only else _game_state.party.characters()
-	var matched := false
-	match test_kind:
-		0:
-			for character: CharacterState in characters:
-				var caste := _content.caste_by_id(character.caste_id)
-				if caste != null and caste.classic_id == absi(expected):
-					matched = true
-					break
-		1:
-			for character: CharacterState in characters:
-				var race := _content.race_by_id(character.race_id)
-				if race != null and race.classic_id == absi(expected):
-					matched = true
-					break
-		2:
-			for character: CharacterState in characters:
-				if character.gender == absi(expected):
-					matched = true
-					break
-		3:
-			matched = _game_state.party_in_boat
-		4:
-			matched = _game_state.party_camping
-		5:
-			for character: CharacterState in characters:
-				var caste := _content.caste_by_id(character.caste_id)
-				if caste != null and caste.caste_class == absi(expected):
-					matched = true
-					break
-		6:
-			if absi(expected) < 1 or absi(expected) > 32:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_race_descriptor", "Classic opcode 86 race descriptor is outside 1 through 32.")
-			var descriptor_mask := 1 << (absi(expected) - 1)
-			for character: CharacterState in characters:
-				var race := _content.race_by_id(character.race_id)
-				if race != null and (race.descriptor_flags & descriptor_mask) != 0:
-					matched = true
-					break
-		7:
-			var total_level := 0
-			for character: CharacterState in _game_state.party.characters():
-				total_level += character.level
-			matched = total_level > expected
-		8:
-			var selected_level := 0
-			for character: CharacterState in _game_state.selected_characters():
-				selected_level += character.level
-			matched = selected_level > expected
-		_:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_misc_branch", "Classic opcode 86 test kind is unavailable.")
-	var target_id := action.extra_code[3] if matched else action.extra_code[4]
-	var event := DomainEvent.new(&"misc_branch_checked", {"testKind": test_kind, "expected": expected, "matched": matched, "targetId": target_id})
-	if target_id == 0:
-		return ScenarioRuntimeOperationResult.completed(matched, [event])
-	var branch := _branch_target_mode(action.extra_code[2], target_id, action.gosub)
-	branch.events.append(event)
-	return branch
-
-
-func _back_up_party() -> ScenarioRuntimeOperationResult:
-	var current_map := _content.world.map_by_id(_game_state.party.map_id)
-	if current_map == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 101 requires the party's current map.")
-	if current_map.level_type == &"dungeon":
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"party_backup_ignored", {"reason": "dungeon", "source": "classic"})])
-	if _game_state.last_move_direction == Vector2i.ZERO:
-		return ScenarioRuntimeOperationResult.failed(&"missing_move_direction", "Classic opcode 101 requires a prior party movement direction.")
-	var source_coordinate := _game_state.party.coordinate
-	var target_coordinate := source_coordinate - _game_state.last_move_direction
-	if current_map.topology.cell_at(target_coordinate) == null:
-		return ScenarioRuntimeOperationResult.failed(&"backup_out_of_bounds", "Classic opcode 101 backs the party outside the current map.")
-	_game_state.party.coordinate = target_coordinate
-	_game_state.world.mark_visited(current_map.id, target_coordinate)
-	return ScenarioRuntimeOperationResult.completed(target_coordinate, [DomainEvent.new(&"party_backed_up", {
-		"mapId": current_map.id,
-		"sourceX": source_coordinate.x,
-		"sourceY": source_coordinate.y,
-		"x": target_coordinate.x,
-		"y": target_coordinate.y,
-		"directionX": _game_state.last_move_direction.x,
-		"directionY": _game_state.last_move_direction.y,
-		"source": "classic",
-	})])
-
-
-func _set_map_darkness(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 2:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 106 requires a five-value Extra Code row.")
-	if action.extra_code[0] not in [1, 2]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_darkness", "Classic opcode 106 darkness value must be 1 or 2.")
-	var map := _content.world.map_by_id(_game_state.party.map_id)
-	if map == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_map", "Classic opcode 106 requires the party's current map.")
-	var dark := action.extra_code[0] == 2
-	var unchanged := _game_state.world.map_is_dark(map) == dark
-	if unchanged and action.extra_code[1] != 0:
-		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"map_darkness_unchanged", {"mapId": map.id, "dark": dark})], {"kind": "finish"})
-	_game_state.world.set_map_darkness(map.id, dark)
-	return ScenarioRuntimeOperationResult.completed(dark, [DomainEvent.new(&"map_darkness_changed", {"mapId": map.id, "dark": dark, "source": "classic"})])
-
-
-func _test_or_set_party_mode(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 3:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 103 requires a five-value Extra Code row.")
-	if action.extra_code[0] not in [0, 1, 2] or action.extra_code[1] not in [0, 1, 2] or action.extra_code[2] not in [0, 1, 2]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_party_mode", "Classic opcode 103 has an invalid boat or camping mode.")
-	var should_finish := action.extra_code[0] == 1 and not _game_state.party_in_boat or action.extra_code[0] == 2 and _game_state.party_in_boat
-	should_finish = should_finish or action.extra_code[1] == 1 and not _game_state.party_camping or action.extra_code[1] == 2 and _game_state.party_camping
-	if action.extra_code[2] == 1:
-		_game_state.party_in_boat = true
-	elif action.extra_code[2] == 2:
-		_game_state.party_in_boat = false
-	var event := DomainEvent.new(&"party_mode_checked", {"inBoat": _game_state.party_in_boat, "camping": _game_state.party_camping, "finished": should_finish, "source": "classic"})
-	return ScenarioRuntimeOperationResult.completed(not should_finish, [event], {"kind": "finish"} if should_finish else {})
-
-
-func _mutate_timed_encounter(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 5:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 54 requires a five-value Extra Code row.")
-	var encounter_id := action.extra_code[0]
-	var current := _game_state.timed_encounter_override(encounter_id)
-	if action.extra_code[1] > -1:
-		current["percent"] = action.extra_code[1]
-	if action.extra_code[2] > -1:
-		current["increment"] = action.extra_code[2]
-	if action.extra_code[3] != 0:
-		current["day"] = _game_state.clock.day()
-	if action.extra_code[4] > -1:
-		current["day"] = int(current.get("day", 0)) + action.extra_code[4]
-	_game_state.set_timed_encounter_override(encounter_id, current)
-	return ScenarioRuntimeOperationResult.completed(current, [DomainEvent.new(&"timed_encounter_changed", {"encounterId": encounter_id, "state": current})])
 
 
 func _request_shop(classic_shop_id: int, request_id: String, accept_ranges: Array[int] = []) -> ScenarioRuntimeOperationResult:
@@ -1976,26 +1090,6 @@ static func _shop_accepts_item(item: ItemDefinition, accept_ranges: Array[int]) 
 	return failures < 2
 
 
-func _mutate_shop(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 4:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 51 requires a five-value Extra Code row.")
-	var shop := _content.shop_by_classic_id(absi(action.extra_code[0]))
-	if shop == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "Classic shop mutation references unavailable shop %d." % action.extra_code[0])
-	var inflation := maxi(0, _game_state.shop_inflation(shop) + action.extra_code[1])
-	_game_state.set_shop_inflation(shop, inflation)
-	var stock_index := -1
-	if action.extra_code[2] != 0:
-		var item := _content.item_by_classic_id(absi(action.extra_code[2]))
-		if item == null:
-			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Classic shop mutation references unavailable item %d." % action.extra_code[2])
-		stock_index = shop.item_ids().find(item.id)
-		if stock_index < 0:
-			return ScenarioRuntimeOperationResult.failed(&"shop_item_unavailable", "Classic shop mutation item is not stocked by the shop.")
-		_game_state.set_shop_quantity(shop, stock_index, _game_state.shop_quantity(shop, stock_index) + action.extra_code[3])
-	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"shop_changed", {"shopId": shop.id, "inflationPercent": inflation, "stockIndex": stock_index, "quantity": _game_state.shop_quantity(shop, stock_index) if stock_index >= 0 else 0})])
-
-
 func _configure_temple(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
 	if not _game_state.set_active_temple(action.operand_id):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_temple_cost", "Classic opcode 32 temple cost is outside signed 16-bit range.")
@@ -2136,14 +1230,6 @@ func _has_pooled_wealth() -> bool:
 	return _game_state.party.pooled_wealth.gold != 0 or _game_state.party.pooled_wealth.gems != 0 or _game_state.party.pooled_wealth.jewelry != 0
 
 
-func _configure_banking() -> ScenarioRuntimeOperationResult:
-	_game_state.bank_available = true
-	return ScenarioRuntimeOperationResult.completed(true, [
-		DomainEvent.new(&"bank_available"),
-		DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-bank-offer"}),
-	])
-
-
 func _request_banking(request_id: String) -> ScenarioRuntimeOperationResult:
 	_rules.economy.bank_to_pool(_game_state.party)
 	return ScenarioRuntimeOperationResult.waiting(_bank_request(request_id), {"kind": "classic-banking"}, [
@@ -2256,49 +1342,6 @@ func _resume_banking(continuation: Dictionary, response: InteractionResponse, re
 
 static func _economy_probe_data(probe: EconomyActionProbe) -> Dictionary:
 	return {"enabled": probe != null and probe.allowed, "reason": "" if probe != null and probe.allowed else "Action availability is unavailable." if probe == null else probe.reason}
-
-
-func _select_characters_by_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 3:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 52 requires a five-value Extra Code row.")
-	var selector := action.extra_code[0]
-	var value := action.extra_code[1]
-	var source_mode := action.extra_code[2]
-	if selector < 0 or selector > 8 or source_mode < 0 or source_mode > 2:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_character_selector", "Classic miscellaneous character selector is invalid.")
-	var candidates := _game_state.selected_characters()
-	if source_mode != 2:
-		candidates = []
-		for character: CharacterState in _game_state.party.characters():
-			if source_mode == 0 or character.current_health > 0:
-				candidates.append(character)
-	var selected: Array[String] = []
-	var party := _game_state.party.characters()
-	for character: CharacterState in candidates:
-		var matches := false
-		match selector:
-			0:
-				matches = character.movement < value
-			1:
-				matches = party.find(character) < value
-			2:
-				matches = _character_has_classic_item(character, absi(value), false)
-			3:
-				matches = _rng.draw(100, &"classic.misc-character-percent") <= value
-			4:
-				matches = _rng.draw(25, &"classic.misc-character-attribute") >= _character_attribute(character, absi(value))
-			5:
-				matches = _rng.draw(100, &"classic.misc-character-save") > character.save_value(absi(value))
-			6:
-				matches = not _game_state.selected_character_ids().is_empty() and _game_state.selected_character_ids()[0] == character.id
-			7:
-				matches = _character_has_classic_item(character, absi(value), true)
-			8:
-				matches = party.find(character) == value
-		if matches:
-			selected.append(character.id)
-	_game_state.set_selected_character_ids(selected)
-	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"characters_selected_by_rule", {"selector": selector, "value": value, "characterIds": selected})])
 
 
 func _character_has_classic_item(character: CharacterState, classic_item_id: int, equipped_only: bool) -> bool:
@@ -3576,52 +2619,6 @@ func _grant_item(character_id: String, item_id: String, identified: bool) -> Sce
 	if instance == null:
 		return ScenarioRuntimeOperationResult.failed(&"inventory_full", "The character cannot carry the granted item.")
 	return ScenarioRuntimeOperationResult.completed(instance.id, [DomainEvent.new(&"item_granted", {"characterId": character.id, "itemId": item.id, "instanceId": instance.id, "identified": identified})])
-
-
-func _apply_classic_condition(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
-	if action.extra_code.size() < 3:
-		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 43 requires a five-value Extra Code row.")
-	var target_mode := action.extra_code[0]
-	var condition_index := action.extra_code[1]
-	var duration := action.extra_code[2]
-	if target_mode < 0 or target_mode > 2 or condition_index < 0 or condition_index >= ConditionSet.CHARACTER_COUNT:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_condition", "Classic opcode 43 has an invalid target or condition index.")
-	var targets: Array[CharacterState] = []
-	if target_mode == 1:
-		targets = _game_state.selected_characters()
-	else:
-		for character: CharacterState in _game_state.party.characters():
-			if target_mode == 0 or character.current_health > 0:
-				targets.append(character)
-	for character: CharacterState in targets:
-		character.conditions.set_value(condition_index, duration)
-	var ids: Array[String] = []
-	for character: CharacterState in targets:
-		ids.append(character.id)
-	return ScenarioRuntimeOperationResult.completed(ids, [DomainEvent.new(&"condition_applied", {"characterIds": ids, "condition": condition_index, "duration": duration, "soundId": action.extra_code[3] if action.extra_code.size() > 3 else 0})])
-
-
-func _remove_classic_ally(classic_monster_id: int) -> int:
-	var removed := 0
-	var retained: Array[MonsterState] = []
-	for ally: MonsterState in _game_state.party.allies():
-		var definition := _content.monster_by_id(ally.definition_id)
-		if definition != null and definition.classic_id == classic_monster_id:
-			removed += 1
-		else:
-			retained.append(ally)
-	_game_state.party.set_allies(retained)
-	return removed
-
-
-func _add_classic_ally(classic_monster_id: int) -> ScenarioRuntimeOperationResult:
-	var definition := _content.monster_by_classic_id_for_set(classic_monster_id, _game_state.monster_set)
-	if definition == null:
-		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 89 references unavailable monster %d." % classic_monster_id)
-	var ally := _rules.monsters.build_monster(definition, _game_state.next_instance_id("party.ally"), 0, _game_state.difficulty, _game_state.clock.day(), _rng)
-	if ally == null or not _game_state.party.add_ally(ally):
-		return ScenarioRuntimeOperationResult.failed(&"ally_add_failed", "The ally could not join the party.")
-	return ScenarioRuntimeOperationResult.completed(ally.id, [DomainEvent.new(&"ally_added", {"allyId": ally.id, "monsterId": definition.id})])
 
 
 func _deanimate_lower_undead() -> ScenarioRuntimeOperationResult:

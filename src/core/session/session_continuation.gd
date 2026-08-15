@@ -148,9 +148,50 @@ var kind: StringName
 var body: Body
 
 
-func _init(continuation_kind: StringName, continuation_body: Body) -> void:
+func _init(continuation_kind: StringName = &"", continuation_body: Body = null) -> void:
 	kind = continuation_kind
 	body = continuation_body
+
+
+func is_empty() -> bool:
+	return kind.is_empty() or body == null
+
+
+func clear() -> void:
+	kind = &""
+	body = null
+
+
+func value(field: String, default_value: Variant = null) -> Variant:
+	if is_empty():
+		return default_value
+	var data := to_legacy_data()
+	return data.get(field, default_value)
+
+
+func set_value(field: String, field_value: Variant) -> bool:
+	if is_empty() or field == "kind":
+		return false
+	var data := to_legacy_data()
+	data[field] = field_value
+	var replacement := from_legacy_data(data)
+	if replacement == null:
+		return false
+	kind = replacement.kind
+	body = replacement.body
+	return true
+
+
+func replace_from_legacy(data: Dictionary) -> bool:
+	if data.is_empty():
+		clear()
+		return true
+	var replacement := from_legacy_data(data)
+	if replacement == null:
+		return false
+	kind = replacement.kind
+	body = replacement.body
+	return true
 
 
 func to_legacy_data() -> Dictionary:

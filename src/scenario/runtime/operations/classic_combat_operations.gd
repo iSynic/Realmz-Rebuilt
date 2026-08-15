@@ -1,5 +1,5 @@
 class_name ClassicCombatOperations
-extends RefCounted
+extends ClassicOpcodeHandler
 
 var _content: RealmzContent
 var _game_state: GameState
@@ -10,6 +10,16 @@ func _init(content: RealmzContent, game_state: GameState, rules: RealmzRules) ->
 	_content = content
 	_game_state = game_state
 	_rules = rules
+
+
+func opcode_ids() -> Array[int]:
+	return [122]
+
+
+func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+	if action.opcode != 122:
+		return super.execute(action, request_id, context)
+	return cause_fumble(action, context)
 
 
 func cause_fumble(action: ClassicActionDefinition, context: Dictionary) -> ScenarioRuntimeOperationResult:

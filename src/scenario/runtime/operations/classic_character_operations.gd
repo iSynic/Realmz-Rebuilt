@@ -1,5 +1,5 @@
 class_name ClassicCharacterOperations
-extends RefCounted
+extends ClassicOpcodeHandler
 
 var _content: RealmzContent
 var _game_state: GameState
@@ -12,6 +12,369 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, rules:
 	_game_state = game_state
 	_rng = rng
 	_rules = rules
+
+
+func opcode_ids() -> Array[int]:
+	return [-14, 14, 15, 16, 17, 18, 30, 40, 43, 50, 52, 69, 87, 88, 89, 105, 108]
+
+
+func execute(action: ClassicActionDefinition, request_id: String, context: Dictionary) -> ScenarioRuntimeOperationResult:
+	match action.opcode:
+		-14, 14:
+			return _request_character_selection(action, request_id, action.opcode == -14)
+		15, 16:
+			return _apply_health(action, action.opcode == 16)
+		17, 18:
+			return _with_age_update_interactions(apply_scenario_spell(action, action.opcode == 18), request_id)
+		30:
+			return _filter_character_selection(action)
+		40:
+			return _branch_on_party_condition(action)
+		43:
+			return _apply_classic_condition(action)
+		50:
+			return _select_characters_by_identity(action)
+		52:
+			return _select_characters_by_misc(action)
+		69:
+			return _set_spellcasting_flags(action)
+		87:
+			return _branch_on_ally(action)
+		88:
+			var removed := _remove_classic_ally(absi(action.operand_id))
+			return ScenarioRuntimeOperationResult.completed(removed, [DomainEvent.new(&"allies_removed", {"classicMonsterId": absi(action.operand_id), "count": removed})])
+		89:
+			return _add_classic_ally(absi(action.operand_id))
+		105:
+			_game_state.allies_suspended = action.operand_id != 0
+			return ScenarioRuntimeOperationResult.completed(_game_state.allies_suspended, [DomainEvent.new(&"ally_participation_changed", {"suspended": _game_state.allies_suspended, "source": "classic"})])
+		108:
+			return _alter_selected_characters(action)
+	return super.execute(action, request_id, context)
+
+
+func _request_character_selection(action: ClassicActionDefinition, request_id: String, invert: bool) -> ScenarioRuntimeOperationResult:
+	var count := absi(action.operand_id)
+	if count < 1:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_character_count", "Classic character picker requests no characters.")
+	var eligible: Array[Dictionary] = []
+	for character: CharacterState in _game_state.party.characters():
+		if action.operand_id < 0 or character.current_health > 0:
+			eligible.append({"id": character.id, "name": character.name, "currentHealth": character.current_health})
+	if eligible.is_empty():
+		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic character picker has no eligible party members.")
+	count = mini(count, eligible.size())
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": count, "eligible": eligible, "allowDead": action.operand_id < 0}), {"kind": "classic-character-selection", "count": count, "allowDead": action.operand_id < 0, "invert": invert})
+
+
+func _apply_health(action: ClassicActionDefinition, whole_party: bool) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5 or action.extra_code[2] < action.extra_code[1]:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_health_effect", "Classic health action requires a valid Extra Code roll range.")
+	var targets := _game_state.party.characters() if whole_party else _game_state.selected_characters()
+	var hits: Array[Dictionary] = []
+	for character: CharacterState in targets:
+		var roll := _rng.draw_between(action.extra_code[1], action.extra_code[2], &"classic.health-effect")
+		var amount := action.extra_code[0] * roll
+		var previous := character.current_health
+		character.current_health = mini(character.maximum_health, maxi(-32_768, character.current_health + amount))
+		hits.append({"characterId": character.id, "previousHealth": previous, "health": character.current_health, "amount": character.current_health - previous})
+	return ScenarioRuntimeOperationResult.completed(hits, [DomainEvent.new(&"party_health_changed", {"targets": "party" if whole_party else "selected", "hits": hits, "soundId": action.extra_code[3], "messageId": action.extra_code[4]})])
+
+
+func _filter_character_selection(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 4:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 30 requires a five-value Extra Code row.")
+	var values := action.extra_code
+	var candidates := _game_state.selected_characters()
+	if int(values[2]) in [1, 2]:
+		candidates = []
+		for character: CharacterState in _game_state.party.characters():
+			if int(values[2]) == 1 or character.current_health > 0:
+				candidates.append(character)
+	var selected: Array[String] = []
+	var checks: Array[Dictionary] = []
+	var attribute_check := int(values[3]) != 0
+	var check_index := absi(int(values[0]))
+	for character: CharacterState in candidates:
+		var check_value := _character_attribute(character, check_index) if attribute_check else character.ability_value(check_index)
+		var roll := _rng.draw(25 if attribute_check else 100, &"classic.filter-character")
+		var passed := roll - int(values[1]) < check_value if attribute_check else roll <= check_value + int(values[1])
+		if passed != (int(values[0]) < 0):
+			selected.append(character.id)
+		checks.append({"characterId": character.id, "roll": roll, "value": check_value, "passed": passed})
+	_game_state.set_selected_character_ids(selected)
+	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"character_selection_filtered", {"characterIds": selected, "checks": checks})])
+
+
+func _branch_on_party_condition(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 4:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 40 requires a five-value Extra Code row.")
+	var required_state := action.extra_code[0]
+	var condition_index := action.extra_code[3]
+	if required_state not in [1, 2] or condition_index < 0 or condition_index >= ConditionSet.PARTY_COUNT:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_party_condition", "Classic party-condition branch has an invalid state or condition.")
+	var active := _game_state.party.conditions.is_active(condition_index)
+	if required_state == 1 and not active or required_state == 2 and active:
+		return ScenarioRuntimeOperationResult.completed(false)
+	return _branch_target_mode(action.extra_code[1] - 1, action.extra_code[2], action.gosub)
+
+
+func _apply_classic_condition(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 3:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 43 requires a five-value Extra Code row.")
+	var target_mode := action.extra_code[0]
+	var condition_index := action.extra_code[1]
+	var duration := action.extra_code[2]
+	if target_mode < 0 or target_mode > 2 or condition_index < 0 or condition_index >= ConditionSet.CHARACTER_COUNT:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_condition", "Classic opcode 43 has an invalid target or condition index.")
+	var targets: Array[CharacterState] = []
+	if target_mode == 1:
+		targets = _game_state.selected_characters()
+	else:
+		for character: CharacterState in _game_state.party.characters():
+			if target_mode == 0 or character.current_health > 0:
+				targets.append(character)
+	for character: CharacterState in targets:
+		character.conditions.set_value(condition_index, duration)
+	var ids: Array[String] = []
+	for character: CharacterState in targets:
+		ids.append(character.id)
+	return ScenarioRuntimeOperationResult.completed(ids, [DomainEvent.new(&"condition_applied", {"characterIds": ids, "condition": condition_index, "duration": duration, "soundId": action.extra_code[3] if action.extra_code.size() > 3 else 0})])
+
+
+func _select_characters_by_identity(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 50 requires a five-value Extra Code row.")
+	var selector := action.extra_code[0]
+	if selector < 0 or selector > 4:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_character_identity_selector", "Classic opcode 50 has an invalid identity selector.")
+	var selected: Array[String] = []
+	for character: CharacterState in _game_state.party.characters():
+		if action.extra_code[4] != 0 and character.current_health <= 0:
+			continue
+		var race := _content.race_by_id(character.race_id)
+		var caste := _content.caste_by_id(character.caste_id)
+		var matches := false
+		match selector:
+			0:
+				matches = race != null and race.classic_id == action.extra_code[2]
+			1:
+				matches = character.gender == action.extra_code[1]
+			2:
+				matches = caste != null and caste.classic_id == action.extra_code[2]
+			3:
+				if action.extra_code[2] < 1 or action.extra_code[2] > 32:
+					return ScenarioRuntimeOperationResult.failed(&"invalid_race_descriptor", "Classic opcode 50 race descriptor is outside 1 through 32.")
+				matches = race != null and (race.descriptor_flags & (1 << (action.extra_code[2] - 1))) != 0
+			4:
+				matches = caste != null and caste.caste_class == action.extra_code[2]
+		if matches:
+			selected.append(character.id)
+	_game_state.set_selected_character_ids(selected)
+	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"characters_selected_by_identity", {"selector": selector, "characterIds": selected, "livingOnly": action.extra_code[4] != 0, "source": "classic"})])
+
+
+func _select_characters_by_misc(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 3:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 52 requires a five-value Extra Code row.")
+	var selector := action.extra_code[0]
+	var value := action.extra_code[1]
+	var source_mode := action.extra_code[2]
+	if selector < 0 or selector > 8 or source_mode < 0 or source_mode > 2:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_character_selector", "Classic miscellaneous character selector is invalid.")
+	var candidates := _game_state.selected_characters()
+	if source_mode != 2:
+		candidates = []
+		for character: CharacterState in _game_state.party.characters():
+			if source_mode == 0 or character.current_health > 0:
+				candidates.append(character)
+	var selected: Array[String] = []
+	var party := _game_state.party.characters()
+	for character: CharacterState in candidates:
+		var matches := false
+		match selector:
+			0:
+				matches = character.movement < value
+			1:
+				matches = party.find(character) < value
+			2:
+				matches = _character_has_classic_item(character, absi(value), false)
+			3:
+				matches = _rng.draw(100, &"classic.misc-character-percent") <= value
+			4:
+				matches = _rng.draw(25, &"classic.misc-character-attribute") >= _character_attribute(character, absi(value))
+			5:
+				matches = _rng.draw(100, &"classic.misc-character-save") > character.save_value(absi(value))
+			6:
+				matches = not _game_state.selected_character_ids().is_empty() and _game_state.selected_character_ids()[0] == character.id
+			7:
+				matches = _character_has_classic_item(character, absi(value), true)
+			8:
+				matches = party.find(character) == value
+		if matches:
+			selected.append(character.id)
+	_game_state.set_selected_character_ids(selected)
+	return ScenarioRuntimeOperationResult.completed(selected, [DomainEvent.new(&"characters_selected_by_rule", {"selector": selector, "value": value, "characterIds": selected})])
+
+
+func _set_spellcasting_flags(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.operand_id == 0:
+		return ScenarioRuntimeOperationResult.completed(false)
+	if action.extra_code.size() < 3:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 69 requires a five-value Extra Code row.")
+	_game_state.character_spellcasting_blocked = action.extra_code[0] != 0
+	_game_state.monster_spellcasting_blocked = action.extra_code[1] != 0
+	_game_state.spell_charging = action.extra_code[2] != 0
+	return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"spellcasting_flags_changed", {"characterCastingBlocked": _game_state.character_spellcasting_blocked, "monsterCastingBlocked": _game_state.monster_spellcasting_blocked, "charging": _game_state.spell_charging, "source": "classic"})])
+
+
+func _branch_on_ally(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 5:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 87 requires a five-value Extra Code row.")
+	var monster := _content.monster_by_classic_id_for_set(absi(action.extra_code[0]), _game_state.monster_set)
+	var present := false
+	if monster != null:
+		for ally: MonsterState in _game_state.party.allies():
+			var ally_definition := _content.monster_by_id(ally.definition_id)
+			if ally_definition != null and ally_definition.classic_id == monster.classic_id:
+				present = true
+				break
+	var event := DomainEvent.new(&"ally_branch_checked", {"classicMonsterId": absi(action.extra_code[0]), "present": present})
+	if present:
+		var matched := _branch_target_mode(action.extra_code[1], action.extra_code[3], action.gosub)
+		matched.events.append(event)
+		return matched
+	match action.extra_code[2]:
+		0:
+			var missing := _branch_target_mode(action.extra_code[1], action.extra_code[4], action.gosub)
+			missing.events.append(event)
+			return missing
+		1:
+			return ScenarioRuntimeOperationResult.completed(false, [event])
+		2:
+			var message := _content.message_by_id(action.extra_code[4])
+			if message == null:
+				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode 87 references unavailable message %d." % action.extra_code[4])
+			return ScenarioRuntimeOperationResult.completed(false, [event, DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-ally-check"})], {"kind": "finish"})
+	return ScenarioRuntimeOperationResult.failed(&"invalid_ally_branch", "Classic opcode 87 has an invalid absent-ally behavior.")
+
+
+func _remove_classic_ally(classic_monster_id: int) -> int:
+	var removed := 0
+	var retained: Array[MonsterState] = []
+	for ally: MonsterState in _game_state.party.allies():
+		var definition := _content.monster_by_id(ally.definition_id)
+		if definition != null and definition.classic_id == classic_monster_id:
+			removed += 1
+		else:
+			retained.append(ally)
+	_game_state.party.set_allies(retained)
+	return removed
+
+
+func _add_classic_ally(classic_monster_id: int) -> ScenarioRuntimeOperationResult:
+	var definition := _content.monster_by_classic_id_for_set(classic_monster_id, _game_state.monster_set)
+	if definition == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Classic opcode 89 references unavailable monster %d." % classic_monster_id)
+	var ally := _rules.monsters.build_monster(definition, _game_state.next_instance_id("party.ally"), 0, _game_state.difficulty, _game_state.clock.day(), _rng)
+	if ally == null or not _game_state.party.add_ally(ally):
+		return ScenarioRuntimeOperationResult.failed(&"ally_add_failed", "The ally could not join the party.")
+	return ScenarioRuntimeOperationResult.completed(ally.id, [DomainEvent.new(&"ally_added", {"allyId": ally.id, "monsterId": definition.id})])
+
+
+func _alter_selected_characters(action: ClassicActionDefinition) -> ScenarioRuntimeOperationResult:
+	if action.extra_code.size() < 2:
+		return ScenarioRuntimeOperationResult.failed(&"missing_extra_code", "Classic opcode 108 requires a five-value Extra Code row.")
+	var alteration := action.extra_code[0]
+	var amount := action.extra_code[1]
+	if alteration < 1 or alteration > 12:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_character_alteration", "Classic opcode 108 references alteration %d outside 1 through 12." % alteration)
+	var targets := _game_state.selected_characters()
+	for character: CharacterState in targets:
+		match alteration:
+			1:
+				character.attack_bonus = maxi(0, character.attack_bonus + amount)
+			2:
+				if character.maximum_spell_attacks != 0:
+					character.maximum_spell_attacks = maxi(1, character.maximum_spell_attacks + amount)
+			3:
+				character.maximum_movement = maxi(3, character.maximum_movement + amount)
+				character.movement = mini(character.movement, character.maximum_movement)
+			4:
+				character.damage_bonus = maxi(0, character.damage_bonus + amount)
+			5:
+				if character.maximum_spell_points != 0:
+					character.maximum_spell_points = maxi(1, character.maximum_spell_points + amount)
+					character.spell_points = mini(character.spell_points, character.maximum_spell_points)
+			6:
+				if character.hand_to_hand != 0:
+					character.hand_to_hand = maxi(1, character.hand_to_hand + amount)
+			7:
+				character.maximum_health = maxi(2, character.maximum_health + amount)
+				character.current_health = mini(character.current_health, character.maximum_health)
+			8:
+				character.armor = maxi(0, character.armor + amount)
+			9:
+				character.to_hit = maxi(2, character.to_hit + amount)
+			10:
+				character.missile = maxi(2, character.missile + amount)
+			11:
+				character.magic_resistance = maxi(0, character.magic_resistance + amount)
+			12:
+				character.prestige_penalty -= amount
+	return ScenarioRuntimeOperationResult.completed(targets.size(), [DomainEvent.new(&"selected_characters_altered", {"alteration": alteration, "amount": amount, "characterIds": targets.map(func(character: CharacterState) -> String: return character.id), "source": "classic"})])
+
+
+func _character_has_classic_item(character: CharacterState, classic_item_id: int, equipped_only: bool) -> bool:
+	var definition := _content.item_by_classic_id(classic_item_id)
+	if definition == null:
+		return false
+	for instance: ItemInstance in character.inventory():
+		if instance.definition_id == definition.id and (not equipped_only or instance.equipped):
+			return true
+	return false
+
+
+static func _character_attribute(character: CharacterState, index: int) -> int:
+	match index:
+		0: return character.brawn
+		1: return character.knowledge
+		2: return character.judgment
+		3: return character.agility
+		4: return character.vitality
+		5, 6: return character.luck
+	return 0
+
+
+func _branch_target_mode(mode: int, target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
+	if mode == 0:
+		return _branch_xap(target_id, gosub)
+	return ScenarioRuntimeOperationResult.failed(&"unsupported_branch_target", "Classic branch target mode %d is not available in this execution context." % mode)
+
+
+func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
+	if target_id == 0:
+		return ScenarioRuntimeOperationResult.completed(false)
+	return ScenarioRuntimeOperationResult.completed(true, [], {"kind": "branch-xap", "targetId": target_id, "gosub": gosub})
+
+
+func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, request_id: String) -> ScenarioRuntimeOperationResult:
+	if operation == null or operation.state != ScenarioRuntimeOperationResult.State.COMPLETED:
+		return operation
+	var updates := CharacterAgingResult.update_payloads(operation.events)
+	if updates.is_empty():
+		return operation
+	var continuation := {
+		"kind": "classic-age-updates",
+		"updates": updates,
+		"index": 1,
+		"value": operation.value,
+		"directive": operation.directive.duplicate(true),
+	}
+	var events: Array[DomainEvent] = []
+	events.assign(operation.events)
+	events.append(CharacterAgingResult.sound_event(updates[0]))
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update(request_id, updates[0]), continuation, events)
 
 
 func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool) -> ScenarioRuntimeOperationResult:

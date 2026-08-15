@@ -141,7 +141,7 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 	assert_equal(invalid_random_target.error_code, &"invalid_item_use_target", "an invented direct target rejects a random-power item before commit")
 	assert_equal([restored._rng.snapshot().draw_count, restored._state.party.character_by_id(carried_user.id).inventory()[0].charges], [0, 1], "rejected direct random-power targeting rolls back its staged draw and preserves the charge")
 	var random_requested := restored.submit_intent(PlayerIntent.use_item(wand_instance.id, carried_user.id))
-	assert_equal([random_requested.state, restored._session_continuation.get("power"), restored._rng.trace()[0].get("tag")], [SessionStep.State.WAITING_FOR_INTERACTION, 7, "item.use.power.inventory.instance.healing-wand"], "random-power field item rolls Castle Rand(7) once before staging its target")
+	assert_equal([random_requested.state, restored._session_continuation.value("power"), restored._rng.trace()[0].get("tag")], [SessionStep.State.WAITING_FOR_INTERACTION, 7, "item.use.power.inventory.instance.healing-wand"], "random-power field item rolls Castle Rand(7) once before staging its target")
 	assert_equal(restored._state.party.character_by_id(carried_user.id).inventory()[0].charges, 1, "random power selection still cannot consume the charge before a target commits")
 	var random_completed := restored.respond(InteractionResponse.from_data(random_requested.interaction.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [carried_target.id]}))
 	assert_equal(random_completed.state, SessionStep.State.COMPLETED, "the staged random power survives through the target response")

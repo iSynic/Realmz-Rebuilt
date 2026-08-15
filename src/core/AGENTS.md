@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness, and complete session state.
+Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness, and complete mutable playthrough state.
 
 ## Ownership
 
-- Direct Realmz definitions and mutable playthrough state, including characters, equipment, wealth, conditions, encounters, battles, shops, treasures, spells, monsters, races, and castes.
-- `GameSession`, typed intents/events/interactions/views, and snapshot boundaries.
+- Direct Realmz definitions and mutable playthrough state, including characters, equipment, wealth, conditions, encounters, battles, shops, treasures, spells, monsters, races, castes, and immutable compiled scenario programs.
+- Typed intents/events/interactions/views and the core state carried by session snapshots.
 - `RealmzRules`, `RealmzClock`, `RealmzRng`, topology queries, and world overlays.
 
 ## Local Contracts
@@ -19,8 +19,9 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `PlayerIntent`, `InteractionRequest`, and `InteractionResponse` use closed typed payload families. Request bodies may serialize only at the save/event wire boundary; core, scenario, and presentation behavior consumes their typed variants directly.
 - `SessionSnapshot` is the detached typed save boundary. Core constructs and validates snapshots but does not encode `.r2save` JSON or own filesystem persistence.
 - Classic option-label records are immutable typed content distinct from ordinary messages; runtime choice resolution may query them but never mutate their source table.
-- Every gameplay mutation is committed synchronously by `GameSession`.
-- `GameSession` owns scenario execution state and is the only object allowed to connect VM operations to domain mutations.
+- Every gameplay mutation is committed synchronously by the `src/session` transaction coordinator.
+- Core never imports scenario, session-orchestration, infrastructure, presentation, or app classes.
+- `core/scenario` owns only immutable compiled definitions. VM frames, execution, handlers, and runtime coordination remain under `src/scenario` and depend inward on these records.
 - Session state owns encounter attempts/type flags, equipment escrow, mutable base-shop quantities, normalized buyback stock, combat, and scenario-program replacement. These are save data, never mutations of installed package definitions.
 - Session state owns the selected Classic difficulty and Monster Set from party setup. Difficulty uses Castle's five signed choices; party commitment freezes the source-authored experience multiplier, while money continues to use the saved difficulty multiplier. Monster Set resolves every constructed monster through the package's complete typed replacement catalog. New sessions deliberately reset both choices to Normal instead of preserving Castle's stale process globals.
 - Combat state owns the active actor's action, retained target, and next authored monster attack row. Its nonterminal outcome sentinel is the explicit `active` value; an empty outcome is not an active-battle test. Character attack capacity remains a signed integer half-unit field on `CharacterState`; save/resume may not recompute or round either boundary.

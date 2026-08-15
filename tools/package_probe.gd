@@ -1,7 +1,7 @@
 extends SceneTree
 
 const PACKAGE_REPOSITORY_SCRIPT := preload("res://src/infrastructure/packages/package_repository.gd")
-const GAME_SESSION_SCRIPT := preload("res://src/core/session/game_session.gd")
+const GAME_SESSION_SCRIPT := preload("res://src/session/game_session.gd")
 
 
 func _initialize() -> void:

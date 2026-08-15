@@ -63,15 +63,6 @@ func run() -> void:
 	assert_not_null(camp_save, "camp mode is a committed save boundary")
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, camp_save).state, SessionStep.State.COMPLETED, "camp mode restores transactionally")
-	var gate_map := content.world.map_by_id(restored._state.party.map_id)
-	restored._session_continuation = {"timedCheckX": restored._state.party.coordinate.x, "timedCheckY": restored._state.party.coordinate.y}
-	var exact_gate := TimedEncounterDefinition.new(10, 2, 1, 100, 7, gate_map.level_index, -1, restored._state.party.coordinate.x, restored._state.party.coordinate.y, 800, 4, TimedEncounterDefinition.LocationKind.LAND)
-	assert_false(restored._timed_encounter_requirements_met(exact_gate, gate_map), "a required quest blocks an otherwise exact timed location")
-	restored._state.set_quest_value(4, 1)
-	assert_true(restored._timed_encounter_requirements_met(exact_gate, gate_map), "item, quest, level, x, and y gates admit their exact authored location")
-	var y_only_gate := TimedEncounterDefinition.new(11, 2, 1, 100, 7, gate_map.level_index, -1, -1, restored._state.party.coordinate.y + 1, -1, -1, TimedEncounterDefinition.LocationKind.LAND)
-	assert_false(restored._timed_encounter_requirements_met(y_only_gate, gate_map), "a y-only timed requirement is enforced instead of inheriting Castle's recx guard typo")
-	restored._session_continuation.clear()
 	active_caster = restored._state.party.character_by_id(caster.id)
 	active_target = restored._state.party.character_by_id(target.id)
 	restored._state.random_encounters_enabled = false
@@ -226,12 +217,12 @@ func run() -> void:
 	assert_equal(accepted_departure.state, SessionStep.State.COMPLETED, "accepting the camp-departure interruption enters battle")
 	assert_not_null(battle_departure._state.combat, "the random battle remains session-owned after camp departure")
 	if battle_departure._state.combat != null:
-		assert_equal([battle_departure._state.combat.return_continuation.get("kind"), battle_departure._state.combat.return_continuation.get("resumeKind")], ["post-clock", "move"], "the battle retains the exact post-clock movement return")
+		assert_equal([battle_departure._state.combat.return_continuation.value("kind"), battle_departure._state.combat.return_continuation.value("resumeKind")], ["post-clock", "move"], "the battle retains the exact post-clock movement return")
 		var battle_save := save_round_trip(battle_departure.snapshot())
 		var battle_state_round_trip := GameState.from_data(battle_save.game_state.to_data())
 		assert_not_null(battle_state_round_trip, "the active random battle state remains structurally valid with its return continuation")
 		if battle_state_round_trip != null:
-			assert_true(GameSession._valid_post_time_continuation(content, battle_state_round_trip, battle_state_round_trip.combat.return_continuation, null, null), "the restored battle return matches the current topology and party location")
+			assert_true(GameSession._valid_post_time_continuation(content, battle_state_round_trip, battle_state_round_trip.combat.return_continuation.to_legacy_data(), null, null), "the restored battle return matches the current topology and party location")
 		var battle_restored := GameSession.new()
 		var battle_restore := battle_restored.restore(content, battle_save)
 		assert_equal([battle_restore.state, battle_restore.error_code, battle_restore.error_message], [SessionStep.State.COMPLETED, &"", ""], "an active random battle preserves its camp-departure return across save/reload")

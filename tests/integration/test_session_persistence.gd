@@ -339,7 +339,7 @@ func run() -> void:
 		# boundaries were removed. Continue must heal it into the next real stage.
 		var stale_ally_request := InteractionRequest.from_payload("fixture.stale-empty-ally", InteractionRequest.ALLY_SELECTION, {"prompt": "Choose the allies who will continue with the party.", "candidates": [], "maximum": 4, "selectedIds": [], "requiredIds": []})
 		fumble_session._session_interaction = stale_ally_request
-		fumble_session._session_continuation = {"kind": "combat-ally-selection", "battleId": fumble_session._state.combat.battle_id}
+		fumble_session._session_continuation = SessionContinuation.from_legacy_data({"kind": "combat-ally-selection", "battleId": fumble_session._state.combat.battle_id})
 		var recovery_step := fumble_session.respond(InteractionResponse.from_data(stale_ally_request.request_id, stale_ally_request.kind, {"selectedIds": []}))
 		assert_equal(recovery_step.state, SessionStep.State.WAITING_FOR_INTERACTION, "retreat still enters the typed fumbled-weapon recovery boundary")
 		assert_false(recovery_step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"allies_selected"), "a stale empty body-count stage is bypassed rather than manufactured")
@@ -417,8 +417,8 @@ func run() -> void:
 		scenario_defeat._state.combat.outcome = &"defeat"
 		scenario_defeat._state.last_battle_outcome = &"defeat"
 		scenario_defeat._set_post_move_continuation(content.world.map_by_id("land:1"), Vector2i(1, 1))
-		scenario_defeat._session_continuation["activeTriggerId"] = placed_trigger.id
-		scenario_defeat._session_continuation["randomRegionIndex"] = -1
+		assert_true(scenario_defeat._session_continuation.set_value("activeTriggerId", placed_trigger.id), "the synthetic caller records its exact active trigger")
+		assert_true(scenario_defeat._session_continuation.set_value("randomRegionIndex", -1), "the synthetic caller disables later random rectangles")
 		assert_equal(scenario_defeat._scenario_vm.start_program(placed_trigger.program_id, {"callingContext": "action", "triggerId": placed_trigger.id, "mapId": "land:1", "x": 1, "y": 1}).state, ScenarioVmResult.State.COMPLETED, "the placed Action Point owns the battle caller before total defeat")
 		scenario_defeat._scenario_vm._frames[0].cursor = 1
 		var caller := {"kind": "classic", "opcode": 2, "gosub": false, "mode": 0, "branchTarget": 0}

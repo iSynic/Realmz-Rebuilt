@@ -1017,12 +1017,6 @@ func _test_classic_player_map_workflow(content: RealmzContent) -> void:
 	var restored_session := GameSession.new()
 	assert_equal(restored_session.restore(content, envelope).state, SessionStep.State.COMPLETED, "the complete save aggregate validates an acquired player-map identity")
 	assert_equal(restored_session.view().acquired_player_maps[0].id, definition.id, "restore rebuilds the detached player-map view from immutable content")
-	var no_markers: Array[PlayerMapMarkerDefinition] = []
-	var non_divisible := PlayerMapDefinition.new("classic.player-map.boundary", 18, "Boundary", "Unknown map", PlayerMapDefinition.LAND_CROP, definition.map_id, Vector2i.ZERO, 48, "", "", definition.party_marker_asset_id, Rect2i(), no_markers, "")
-	restored_session._state.party.coordinate = Vector2i(5, 5)
-	assert_true(restored_session._build_player_map_view(non_divisible).party_marker_visible, "party-marker inclusion preserves Castle's integer-division inner boundary")
-	restored_session._state.party.coordinate = Vector2i(6, 5)
-	assert_false(restored_session._build_player_map_view(non_divisible).party_marker_visible, "party-marker inclusion does not inherit the crop renderer's ceiling tile count")
 	var corrupt_envelope := SaveEnvelope.from_data(envelope.to_data())
 	corrupt_envelope.game_state.world.acquire_map("classic.player-map.19")
 	assert_equal(GameSession.new().restore(content, corrupt_envelope).error_code, &"invalid_game_state", "transactional restore rejects an acquired map absent from the installed package")

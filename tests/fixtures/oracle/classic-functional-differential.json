@@ -89,7 +89,7 @@
         "expectedRepresentation": "Each normalized cell retains its exact Classic timeclick count and passability facts; the runtime applies the land or dungeon scale, so no additional package field is required for the bounded ordinary branches."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _blocked_land_attempt_cost" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _blocked_land_attempt_cost" },
         "expectedTrace": ["destination probe", "movement or movement_blocked", "authored timeclick count", "land/dungeon scale", "hour-boundary rules", "current-cell random checks"],
         "tests": [
           { "path": "tests/core/test_map_topology.gd", "symbol": "func run" },
@@ -136,7 +136,7 @@
         "expectedRepresentation": "Each cell carries trigger references in native placed-record order and each trigger retains classicRecordIndex."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _continue_post_move" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _continue_post_move" },
         "expectedTrace": ["select first placed AP", "chance decision", "optional VM continuation", "single destination recheck"],
         "tests": [
           { "path": "tests/integration/test_exploration_session.gd", "symbol": "func run" },
@@ -331,8 +331,8 @@
       },
       "realmz2": {
         "owner": {
-          "path": "src/core/session/game_session.gd",
-          "symbol": "func _set_party_setup_options"
+		  "path": "src/session/workflows/lifecycle_party_workflow.gd",
+		  "symbol": "static func set_party_setup_options"
         },
         "expectedTrace": [
           "start empty party setup with Normal defaults",
@@ -515,7 +515,7 @@
         "expectedRepresentation": "Compiled content contains the effective stock or scenario-overlaid Race and Caste definitions. The separately provenance-pinned application catalog contains stock identity tables, appearance media, spells, standard items, and only stock-caste-referenced supply defaults. Caste spellcaster rows retain all three start/max columns. Standard spells retain packed Classic IDs and Castle resource names; the runtime distinguishes the first twelve character slots from the resource table's remaining name slots."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _generate_character_draft" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _generate_character_draft" },
         "expectedTrace": ["open stock Character Files creation without a selected scenario or use selected-scenario definitions", "typed creation specification", "one committed Classic roll and RNG boundary", "saveable Review or reroll", "typed twelve-slot spell choices", "optional saveable unspent-point confirmation", "accept without another creation roll", "publish one reusable revision or return to scenario party setup"],
         "tests": [
           { "path": "tests/core/test_character_creation_session.gd", "symbol": "func run" },
@@ -715,7 +715,7 @@
         "expectedRepresentation": "Existing schema-v2 character media identities and race names, ranges, and fifteen-value change rows provide all immutable inputs; interaction and sound sequencing remain runtime behavior."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _finish_with_age_updates" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _finish_with_age_updates" },
         "expectedTrace": ["committed age transition", "typed age_update request", "sound 3002", "saveable owning continuation", "typed acknowledgement", "next ordered update or original continuation"],
         "tests": [
           { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_age_update_precedes_post_move" },
@@ -2812,7 +2812,7 @@
         "expectedRepresentation": "Ordinary Swap requires no immutable campaign field beyond the already validated character race/class state used by movement recalculation."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _money_action(intent: PlayerIntent)" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _money_action(intent: PlayerIntent)" },
         "expectedTrace": ["select one detached character", "choose an exact denomination and direction", "submit one Classic increment through MONEY_ACTION", "revalidate stable character identity, pool balance, personal balance, and complete load", "move wealth and load once", "recalculate party movement", "request directional Swap sound", "publish a revised detached workspace", "save and restore complete balances and movement", "request presentation-owned button sound 141, stop existing channels, and request modal sound 3003 on ordinary workspace entry", "leave the workspace without mutation and request presentation-owned Done sound 141"],
         "tests": [
           { "path": "tests/integration/test_money_workflow.gd", "symbol": "func _test_session_money_workflow(content: RealmzContent)" },
@@ -2862,7 +2862,7 @@
         "expectedRepresentation": "No immutable package field is required. Pool balances, bank availability, movement direction, and the typed continuation are mutable session/save state."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _respond_pooled_wealth_departure(response: InteractionResponse)" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _respond_pooled_wealth_departure(response: InteractionResponse)" },
         "expectedTrace": ["reject an invalid direction before opening a question", "warn before camp departure and before resolving a valid blocked or open destination", "request question sound 20005", "serialize the exact direction and yes/no request", "decline by clearing the pool and resolving that direction once", "accept by opening typed pooled-wealth distribution with sound 3003", "revalidate Pool, Share, exact transfer identity, denomination, increment, balance, and load", "issue a fresh request identity after every committed transfer", "serialize warning, empty or nonempty distribution, and post-mutation stages", "Done requests sound 141, clears the remainder, and resumes the saved ordinary movement"],
         "tests": [
           { "path": "tests/integration/test_money_workflow.gd", "symbol": "func _test_pooled_wealth_departure(content: RealmzContent)" },
@@ -3107,7 +3107,7 @@
         "expectedRepresentation": "Schema v2 preserves the ordinary battle, monster reward, after-message, and scenario continuation inputs plus the exact five positional EDCD words needed for modes 5/10 and opcode 48. Runtime semantics and some compiler validation remain incomplete; no schema change is currently required."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _finish_direct_battle" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _finish_direct_battle" },
         "expectedTrace": ["finish pending death macros", "stage ally selection only when at least one eligible survivor exists", "stage exact fumble recovery", "prevalidate complete monster rewards", "claim reward ownership and consume reward RNG once", "resolve ordinary treasure and level stages", "append the after-message", "mark rewards complete", "clear combat and resume the saved origin once"],
         "tests": [
           { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_terminal_battle_rewards_once" },
@@ -3201,7 +3201,7 @@
         "expectedRepresentation": "Schema v2 already emits item type, category and restriction masks, initial charges, per-charge weight, drop-on-empty, sound, special1 through special5, and the referenced spell records required by the bounded charged-spell path."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _use_item" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _use_item" },
         "expectedTrace": ["probe exact owner, item instance, immutable definition, race and caste permission, context, charge, spell, power, and target", "stage and serialize field target selection when required", "consume one positive charge and per-charge load only after a valid response", "resolve with the central RNG and no spell-point cost", "publish exact item, spell, target, sound, and remaining-charge events", "return to the combat or exploration workflow"],
         "tests": [
           { "path": "tests/integration/test_inventory_session.gd", "symbol": "func _test_field_spell_item_use" },
@@ -3293,7 +3293,7 @@
         "expectedRepresentation": "Schema v2 preserves the spell's signed rule inputs, context flags, targeting, specials, and sounds."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _cast_field_spell" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _cast_field_spell" },
         "expectedTrace": ["probe caster, known spell, context, power, cost, target type, and supported effect", "stage a typed target request without mutation", "validate the response and unchanged spell points", "spend the absolute cost once", "roll shared duration and damage", "apply saves and effects without field magic resistance", "publish sound and result events", "resume from the committed session boundary"],
         "tests": [
           { "path": "tests/integration/test_field_spell_workflow.gd", "symbol": "func run" },
@@ -3349,7 +3349,7 @@
         "expectedRepresentation": "Schema v2 preserves map level type and scenario-owned camp permission; Camp mode and clock progress remain mutable session state."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _camp" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _camp" },
         "expectedTrace": ["validate combat and camp permission", "toggle session-owned camp mode and clear location services", "advance the source-scaled Camp entry or exit cost", "on Rest subtract two fatigue before advancing five time clicks", "apply hourly poison damage and positive-condition decay before fatigue and spell-point recovery", "apply half-day health/ration work using the post-decay Poisoned value", "scan source-ordered timed encounters before one midnight recovery and later random rectangles", "persist age, timed, random choice, battle, and post-time movement continuations", "resume the requested movement once after an interrupting battle returns"],
         "tests": [
           { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" }
@@ -3441,7 +3441,7 @@
         "expectedRepresentation": "Schema v2 preserves ordered timed-encounter records, trigger identity, date mutation fields, chance, and every authored eligibility gate."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _continue_timed_encounters" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _continue_timed_encounters" },
         "expectedTrace": ["cross a midnight boundary", "scan effective timed records in Castle order", "persist record-day mutation and scan cursor before dispatch", "consume the chance draw before item, quest, map, rectangle, and corrected coordinate gates", "perform one pending half-day recovery before the first dispatch or after an ineligible scan", "yield through the authored trigger and typed interactions", "resume remaining timed records and eligible random rectangles once"],
         "tests": [
           { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" },
@@ -3488,7 +3488,7 @@
         "expectedRepresentation": "No additional package field is required; the correction concerns runtime ordering of preserved timed records."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _apply_pending_midnight_recovery" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _apply_pending_midnight_recovery" },
         "expectedTrace": ["defer midnight recovery while the timed scan begins", "advance and check matching records", "clear the recovery flag and recover once before the first dispatch", "serialize the cleared flag with any pending interaction", "recover once after the scan when no record dispatches"],
         "tests": [
           { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" },
@@ -3650,7 +3650,7 @@
         "expectedRepresentation": "No immutable package field is required; party order is mutable session and save state."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _reorder_party" },
+		"owner": { "path": "src/session/workflows/lifecycle_party_workflow.gd", "symbol": "static func reorder_party" },
         "expectedTrace": ["stage presentation-only slot moves", "validate every current stable identity exactly once", "commit one PartyState permutation", "publish previous and current order", "persist the character array order", "cancel without mutation"],
         "tests": [
           { "path": "tests/integration/test_party_order_workflow.gd", "symbol": "func run" },
@@ -3758,7 +3758,7 @@
         "expectedRepresentation": "Schema v2 preserves all 120 portraits, all 120 tactical icons, exact role and resource identity, and each race's Classic ID and defaultIconSet. No compiler change is required."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _change_character_appearance" },
+		"owner": { "path": "src/session/workflows/lifecycle_party_workflow.gd", "symbol": "static func change_character_appearance" },
         "expectedTrace": ["present complete detached package catalogs", "sort each role by its source-backed race recommendation", "stage independent presentation previews", "discard without a session call or Apply one exact stable-ID role mutation", "publish previous and current appearance identity", "consume no RNG or time", "persist both IDs", "reject missing or wrong-role identities on restore", "leave immutable vault revisions unchanged"],
         "tests": [
           { "path": "tests/integration/test_character_appearance_workflow.gd", "symbol": "func run" },
@@ -3804,7 +3804,7 @@
         "expectedRepresentation": "Schema v2 emits the Global Start Game slot as the nullable startGame application hook and preserves its compiled program in the scenario program table."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _begin_adventure" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _begin_adventure" },
         "expectedTrace": ["validate and commit the eligible setup party", "start the authored Global Start Game program through the session-owned VM", "yield one typed Classic interaction at a time", "serialize the hook continuation and RNG through save v3", "resume the exact hook frame", "publish adventure_begun only after the hook completes"],
         "tests": [
           { "path": "tests/integration/test_session_persistence.gd", "symbol": "func _begin_fixture_adventure" },
@@ -3849,8 +3849,8 @@
         "expectedRepresentation": "Schema v2 emits the nullable partyDeath application hook and preserves its compiled program, while ordinary battle content remains independently represented."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _begin_scenario_handoff" },
-        "owners": [{ "path": "src/core/session/game_session.gd", "symbol": "func _begin_scenario_handoff" }, { "path": "src/core/session/game_session.gd", "symbol": "func _resume_scenario_party_defeat" }, { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func complete_party_defeat_handoff" }, { "path": "src/scenario/vm/scenario_vm.gd", "symbol": "func resume_handoff" }],
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func _begin_scenario_handoff" },
+        "owners": [{ "path": "src/session/game_session.gd", "symbol": "func _begin_scenario_handoff" }, { "path": "src/session/game_session.gd", "symbol": "func _resume_scenario_party_defeat" }, { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func complete_party_defeat_handoff" }, { "path": "src/scenario/vm/scenario_vm.gd", "symbol": "func resume_handoff" }],
         "expectedTrace": ["detect terminal total-party defeat", "advance and suspend the issuing Classic or Safe operation", "start the authored Global Party Death program before releasing combat", "save and restore the hook, original VM, caller metadata, and exploration owner together", "if opcode 119 revives the party, suppress rewards, release combat once, and resume the exact caller", "otherwise close the session aggregate without executing later instructions", "reject unresolved special callers explicitly"],
         "tests": [
           { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" },
@@ -3894,7 +3894,7 @@
         "expectedRepresentation": "Providence parses source-backed Global slot 2 as Quit, includes its referenced program in reachability, and serializes the lifecycle-hook-to-program mapping in scenario.json so the runtime can identify the authored program before close."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func close" },
+        "owner": { "path": "src/session/game_session.gd", "symbol": "func close" },
         "expectedTrace": ["open one host-owned typed confirmation without changing the gameplay save", "keep noncombat gameplay interactions modal while permitting the active combat command boundary", "offer save only outside active combat", "write and validate the committed snapshot before a save-and-end close", "keep the active session after cancellation or save failure", "execute the authored Global quit hook through a serializable continuation", "close the session aggregate exactly once", "clear package presentation identity and return to campaign selection", "preserve the intentional exclusion of Castle's implicit standalone Character Files writes"],
         "tests": [
           { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" },
@@ -4037,7 +4037,7 @@
         "expectedRepresentation": "No package field is required. Player location notes are mutable GameSession state keyed to validated immutable map definitions and are never Providence-authored content."
       },
       "realmz2": {
-        "owner": { "path": "src/core/session/game_session.gd", "symbol": "func _set_location_note" },
+		"owner": { "path": "src/session/workflows/exploration_time_workflow.gd", "symbol": "static func set_location_note" },
         "expectedTrace": ["validate the current package map and topology cell", "enforce the 255-byte text boundary", "select the separate land or dungeon stream", "preserve or allocate the first free source ordinal", "capture map level, native location ID, and darkness metadata", "commit current-location text or remove the record without RNG or clock movement", "serialize the complete typed record in world overlays", "validate map identity, ordinal uniqueness, bounds, and topology transactionally on restore", "detach only the current map-kind stream in source order", "keep unsaved draft reversion presentation-owned"],
         "tests": [
           { "path": "tests/integration/test_exploration_session.gd", "symbol": "func _test_location_notes" },
@@ -4959,8 +4959,8 @@
       },
       "realmz2": {
         "owner": {
-          "path": "src/core/session/game_session.gd",
-          "symbol": "func _set_fast_spell"
+		  "path": "src/session/workflows/inventory_magic_services_workflow.gd",
+		  "symbol": "static func set_fast_spell"
         },
         "expectedTrace": [
           "bind a known spell and valid power to one of ten character-owned slots",

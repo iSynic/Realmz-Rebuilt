@@ -10,38 +10,33 @@ const AOGM_ACTIVE_OPCODES: Array[int] = [
 ]
 
 const OWNER_BY_OPCODE: Dictionary = {
-	-23: &"world",
-	-14: &"characters",
-	0: &"control-flow",
-	1: &"presentation", 2: &"combat", 3: &"encounters", 4: &"encounters",
-	5: &"encounters", 6: &"inventory", 7: &"rules-state", 8: &"rules-state",
-	9: &"presentation", 10: &"inventory", 11: &"characters", 12: &"world",
-	13: &"world", 14: &"characters", 15: &"characters", 16: &"characters",
-	17: &"characters", 18: &"characters", 19: &"presentation", 20: &"world",
-	21: &"inventory", 22: &"inventory", 23: &"world", 24: &"control-flow",
-	25: &"control-flow", 26: &"presentation", 27: &"presentation", 28: &"world",
-	29: &"world", 30: &"characters", 31: &"characters", 32: &"inventory",
-	33: &"inventory", 34: &"encounters", 35: &"encounters", 36: &"inventory",
-	37: &"world", 38: &"inventory", 39: &"control-flow", 40: &"characters",
-	41: &"encounters", 42: &"control-flow", 43: &"characters", 44: &"encounters",
-	45: &"world", 46: &"control-flow", 47: &"rules-state", 48: &"combat",
-	49: &"inventory", 50: &"characters", 51: &"inventory", 52: &"characters",
-	53: &"characters", 54: &"world", 55: &"characters", 56: &"combat",
-	57: &"world", 58: &"control-flow", 60: &"inventory", 61: &"world",
-	62: &"presentation", 63: &"world", 64: &"control-flow", 65: &"inventory",
-	66: &"world", 67: &"inventory", 68: &"characters", 69: &"characters",
-	70: &"world", 72: &"control-flow", 73: &"inventory", 76: &"control-flow",
-	77: &"control-flow", 78: &"control-flow", 81: &"characters", 82: &"combat",
-	83: &"combat", 84: &"control-flow", 85: &"control-flow", 86: &"control-flow",
-	87: &"characters", 88: &"characters", 89: &"characters", 90: &"characters",
-	91: &"inventory", 92: &"world", 93: &"world", 94: &"world", 95: &"world",
-	96: &"world", 97: &"world", 98: &"control-flow", 99: &"control-flow",
-	100: &"combat", 101: &"world", 102: &"characters", 103: &"world",
-	104: &"world", 105: &"characters", 106: &"world", 107: &"combat",
-	108: &"characters", 111: &"control-flow", 112: &"control-flow", 119: &"combat",
-	120: &"combat", 121: &"combat", 122: &"combat", 123: &"combat",
-	124: &"combat", 125: &"combat", 126: &"combat", 127: &"combat",
+	-23: &"world-time", -14: &"character",
+	1: &"presentation", 2: &"combat-rewards", 3: &"encounters", 4: &"encounters",
+	5: &"encounters", 6: &"inventory-economy", 7: &"control-flow", 8: &"control-flow",
+	9: &"presentation", 10: &"combat-rewards", 11: &"combat-rewards", 12: &"world-time",
+	13: &"world-time", 14: &"character", 15: &"character", 16: &"character",
+	17: &"character", 18: &"character", 19: &"presentation", 20: &"world-time",
+	21: &"inventory-economy", 22: &"inventory-economy", 23: &"world-time", 24: &"control-flow",
+	25: &"control-flow", 26: &"presentation", 27: &"presentation", 28: &"presentation",
+	29: &"world-time", 30: &"character", 31: &"character", 32: &"inventory-economy",
+	33: &"inventory-economy", 34: &"encounters", 35: &"encounters", 36: &"inventory-economy",
+	37: &"world-time", 38: &"inventory-economy", 39: &"vm-control-flow", 40: &"character",
+	42: &"control-flow", 43: &"character", 45: &"world-time", 46: &"control-flow",
+	47: &"world-time", 48: &"combat-rewards", 49: &"inventory-economy", 50: &"character",
+	51: &"inventory-economy", 52: &"character", 54: &"encounters", 56: &"combat-rewards",
+	60: &"inventory-economy", 61: &"world-time", 62: &"presentation", 63: &"world-time",
+	64: &"control-flow", 65: &"inventory-economy", 66: &"world-time", 69: &"character",
+	73: &"inventory-economy", 76: &"world-time", 77: &"control-flow", 82: &"combat-rewards",
+	83: &"combat-rewards", 86: &"control-flow", 87: &"character", 88: &"character",
+	89: &"character", 90: &"combat-rewards", 91: &"inventory-economy", 98: &"control-flow",
+	99: &"control-flow", 101: &"world-time", 102: &"combat-rewards", 103: &"world-time",
+	104: &"world-time", 105: &"character", 106: &"world-time", 107: &"combat-rewards",
+	108: &"character", 111: &"vm-control-flow", 112: &"vm-control-flow", 119: &"combat-rewards",
+	120: &"combat-rewards", 121: &"combat-rewards", 122: &"combat-rewards", 123: &"combat-rewards",
+	124: &"combat-rewards", 126: &"combat-rewards", 127: &"combat-rewards",
 }
+
+const VM_CONTROL_FLOW_OPCODES: Array[int] = [39, 111, 112]
 
 const EXECUTABLE_OPCODES: Array[int] = [
 	-23, -14,
@@ -66,3 +61,12 @@ static func is_owned(opcode: int) -> bool:
 
 static func is_executable(opcode: int) -> bool:
 	return EXECUTABLE_OPCODES.has(opcode)
+
+
+static func runtime_handler_opcodes() -> Array[int]:
+	var result: Array[int] = []
+	for opcode: int in EXECUTABLE_OPCODES:
+		if not VM_CONTROL_FLOW_OPCODES.has(opcode):
+			result.append(opcode)
+	result.sort()
+	return result
