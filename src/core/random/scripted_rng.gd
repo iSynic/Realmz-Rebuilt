@@ -6,7 +6,9 @@ var _script_index: int = 0
 
 
 func _init(values: Array[int]) -> void:
-	super(1)
+	# Scripted sources are explicit test/oracle fixtures and retain their complete
+	# trace so a long source vector can be inspected without production limits.
+	super(1, RealmzRng.UNLIMITED_TRACE)
 	_scripted_values = values.duplicate()
 
 

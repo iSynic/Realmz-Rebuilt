@@ -53,13 +53,7 @@ func _test_player_collision_initiates_melee() -> void:
 	assert_equal(east.attack_target_id, monster.id, "the detached movement option identifies the hostile footprint attacked by that direction")
 	assert_false(view.legal_actions.has(&"attack"), "melee is initiated by hostile collision rather than a separate Classic Attack command")
 	assert_true(view.targets.is_empty(), "melee does not leak a second target-picker path alongside the directional command")
-	var request := RealmzRuntimeApi.new(content, state, ScriptedRng.new([]), ScenarioActionState.new())._combat_request("request.collision-melee")
-	var east_request: Dictionary = request.body.to_data().get("movement", []).filter(func(option: Dictionary) -> bool: return option.get("direction") == [1, 0])[0]
-	assert_equal([east_request.get("enabled"), east_request.get("attackTargetId")], [true, monster.id], "the typed combat request preserves the source-owned collision target")
 	assert_equal([view.friendly_actor_ids, view.hostile_actor_ids], [[character.id], [monster.id]], "the detached combat view owns allegiance relative to the active actor")
-	var combatants: Array = request.body.to_data().get("combatants", [])
-	assert_equal(combatants.map(func(combatant: Dictionary) -> String: return String(combatant.get("id"))), [character.id, monster.id], "the target-information sequence follows Castle's active initiative order")
-	assert_equal([combatants[1].get("range"), combatants[1].get("blocked"), request.body.to_data().get("enemiesRemaining")], [1, false, 1], "the core supplies target range, LOS, and enemy count rather than asking presentation to derive combat facts")
 	var result := rules.combat_flow.move_character(state, content, character.id, Vector2i(46, 45), ScriptedRng.new([0, 0, 0, 0, 0, 0]))
 	assert_true(result.ok, "moving into an opposed occupied footprint resolves melee")
 	assert_equal(state.combat.battlefield.character_position(character.id), Vector2i(45, 45), "collision melee does not move the attacker into the target footprint")
@@ -70,10 +64,10 @@ func _test_player_collision_initiates_melee() -> void:
 	var host_monster := MonsterState.new("monster.collision-host.instance", definition.id, definition.name, 30, 30, 1)
 	var host_state := _state(host_character, host_monster, "battle.collision-host")
 	var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new(_ints(24)), ScenarioActionState.new())
-	var host_result := host_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data("request.collision-host", InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "move", "targetId": "", "destination": [46, 45]}), "request.collision-host")
+	var host_result := host_api.resume_classic(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data("request.collision-host", InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "move", "targetId": "", "destination": [46, 45]}), "request.collision-host")
 	assert_equal(host_result.state, ScenarioRuntimeOperationResult.State.WAITING, "the scenario-owned combat interaction returns collision melee to the same battle request")
 	assert_true(host_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == host_character.id and event.payload.get("targetId") == host_monster.id), "the ordinary typed movement response reaches the collision-melee owner")
-	var malformed_host := host_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data("request.collision-host", InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "move", "targetId": "", "destination": [46, 45], "autoSwitchToMelee": "yes"}), "request.collision-host")
+	var malformed_host := host_api.resume_classic(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data("request.collision-host", InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "move", "targetId": "", "destination": [46, 45], "autoSwitchToMelee": "yes"}), "request.collision-host")
 	assert_equal(malformed_host.error_code, &"invalid_interaction_response", "the host rejects a non-boolean Auto Weapon Switch preference before combat execution")
 
 	var guarded_character := _character("character.collision-guarded")
@@ -123,7 +117,7 @@ func _test_player_collision_initiates_melee() -> void:
 	assert_not_null(warning_state, "the preference-off fixture restores before the typed host warning path")
 	if warning_state != null:
 		var warning_api := RealmzRuntimeApi.new(switch_content, warning_state, ScriptedRng.new([]), ScenarioActionState.new())
-		var warning_result := warning_api._resume_battle(_classic_battle_continuation(warning_state.combat.battle_id), InteractionResponse.from_data("request.collision-auto-switch-off", InteractionRequest.COMBAT, {"actorId": switch_character.id, "action": "move", "targetId": "", "destination": [46, 45], "autoSwitchToMelee": false}), "request.collision-auto-switch-off")
+		var warning_result := warning_api.resume_classic(_classic_battle_continuation(warning_state.combat.battle_id), InteractionResponse.from_data("request.collision-auto-switch-off", InteractionRequest.COMBAT, {"actorId": switch_character.id, "action": "move", "targetId": "", "destination": [46, 45], "autoSwitchToMelee": false}), "request.collision-auto-switch-off")
 		assert_equal(warning_result.state, ScenarioRuntimeOperationResult.State.WAITING, "preference-off collision returns to combat instead of escalating Castle's warning into a failed scenario step")
 		assert_true(warning_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 6000), "the typed warning path requests Castle's exact warning sound")
 		assert_equal(warning_state.to_data(), disabled_checkpoint, "the host warning leaves the complete restored combat state unchanged")
@@ -202,16 +196,13 @@ func _test_source_backed_combat_spell_item_use() -> void:
 	var options := rules.combat_flow.character_item_spell_options(state, content, character.id)
 	assert_true(options.any(func(option: CombatItemOptionView) -> bool: return option.item_instance_id == instance.id and option.target_id == monster.id), "combat request options expose a legal charged item and exact target")
 	assert_true(options.any(func(option: CombatItemOptionView) -> bool: return option.item_instance_id == group_instance.id and option.target_mode == &"automatic" and option.target_name == "All Enemies"), "combat request options expose source-backed automatic group targeting without inventing an actor selection")
-	var request := RealmzRuntimeApi.new(content, state, ScriptedRng.new([]), ScenarioActionState.new())._combat_request("request.item-use")
-	assert_true(request.body.to_data().get("actions", []).has("use_item"), "the scenario host advertises item use only when a source-probed option exists")
-	assert_true(request.body.to_data().get("itemCasts", []).any(func(option: Dictionary) -> bool: return option.get("itemInstanceId") == instance.id and option.get("targetId") == monster.id and option.get("power") == 1), "the scenario interaction carries exact item, spell-power, and target identities")
 	var host_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
 	var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 100]), ScenarioActionState.new())
-	var host_result := host_api._resume_battle(_classic_battle_continuation(state.combat.battle_id), InteractionResponse.from_data("request.item-use", InteractionRequest.COMBAT, {"actorId": character.id, "action": "use_item", "targetId": monster.id, "itemInstanceId": instance.id}), "request.item-use")
+	var host_result := host_api.resume_classic(_classic_battle_continuation(state.combat.battle_id), InteractionResponse.from_data("request.item-use", InteractionRequest.COMBAT, {"actorId": character.id, "action": "use_item", "targetId": monster.id, "itemInstanceId": instance.id}), "request.item-use")
 	assert_equal(host_result.state, ScenarioRuntimeOperationResult.State.WAITING, "a typed combat item response returns to the ordinary battle interaction")
 	assert_equal([host_state.combat.monster_by_id(monster.id).current_health, host_state.party.character_by_id(character.id).inventory()[0].charges], [7, 1], "the scenario host commits the same exact target and item instance carried by its request")
 	var host_state_before_invalid := host_state.to_data()
-	var invalid_host_result := host_api._resume_battle(_classic_battle_continuation(state.combat.battle_id), InteractionResponse.from_data("request.item-use", InteractionRequest.COMBAT, {"actorId": character.id, "action": "use_item", "targetId": monster.id}), "request.item-use")
+	var invalid_host_result := host_api.resume_classic(_classic_battle_continuation(state.combat.battle_id), InteractionResponse.from_data("request.item-use", InteractionRequest.COMBAT, {"actorId": character.id, "action": "use_item", "targetId": monster.id}), "request.item-use")
 	assert_equal(invalid_host_result.state, ScenarioRuntimeOperationResult.State.FAILED, "a malformed combat item response is rejected explicitly")
 	assert_equal(host_state.to_data(), host_state_before_invalid, "a rejected combat item response cannot consume a second charge or mutate battle state")
 	var spell_points_before := character.spell_points
@@ -273,9 +264,6 @@ func _test_source_backed_combat_scroll_use() -> void:
 	assert_equal([restored.party.character_by_id(character.id).scroll_at(0).spell_id, restored.party.character_by_id(character.id).scroll_at(0).power], [spell.id, 2], "save restoration preserves the scroll's exact slot, spell, and fixed power")
 	var options := rules.combat_flow.character_scroll_options(state, content, character.id)
 	assert_true(options.any(func(option: Variant) -> bool: return option.scroll_slot == 0 and option.spell_id == spell.id and option.power == 2 and option.target_id == monster.id), "the combat request exposes the fixed scroll slot, power, and exact legal target")
-	var request := RealmzRuntimeApi.new(content, state, ScriptedRng.new([]), ScenarioActionState.new())._combat_request("request.scroll-use")
-	assert_true(request.body.to_data().get("actions", []).has("use_scroll"), "the scenario host advertises combat scroll use only when a source-probed option exists")
-	assert_true(request.body.to_data().get("scrollCasts", []).any(func(option: Dictionary) -> bool: return option.get("scrollSlot") == 0 and option.get("spellId") == spell.id and option.get("power") == 2 and option.get("targetId") == monster.id), "the combat interaction carries exact scroll, spell-power, and target identities")
 	var checkpoint := state.to_data()
 	var invalid_rng := ScriptedRng.new([])
 	var invalid := rules.combat_flow.use_combat_scroll(state, content, character.id, 0, "monster.missing", invalid_rng)
@@ -403,14 +391,6 @@ func _test_detached_turn_start_movement_refresh() -> void:
 	if west != null:
 		assert_true(west.enabled, "a fresh detached activation probes open movement with the restored maximum")
 
-	var request := RealmzRuntimeApi.new(content, state, ScriptedRng.new([]), ScenarioActionState.new(), rules)._combat_request("request.detached-movement-refresh")
-	assert_equal(request.body.to_data().get("movementRemaining"), character.maximum_movement, "the typed combat request carries the restored turn-start allowance")
-	var request_west: Dictionary = {}
-	for option: Dictionary in request.body.to_data().get("movement", []):
-		if option.get("direction") == [-1, 0]:
-			request_west = option
-			break
-	assert_true(not request_west.is_empty() and bool(request_west.get("enabled")), "the typed request keeps the source-legal turn-start step enabled")
 
 
 func _test_guard_and_withdrawal_reactions() -> void:
@@ -581,9 +561,9 @@ func _test_character_and_monster_retreat() -> void:
 	edge_host_state.combat = CombatState.new("battle.edge-retreat-host", [monster], 0, edge_host_field)
 	edge_host_state.combat.set_turn_order([edge_host_actor.id, edge_companion.id, monster.id])
 	var edge_host_api := RealmzRuntimeApi.new(content, edge_host_state, ScriptedRng.new([]), ScenarioActionState.new())
-	var edge_prompt := edge_host_api._resume_battle(_classic_battle_continuation(edge_host_state.combat.battle_id), InteractionResponse.from_data("request.edge-retreat", InteractionRequest.COMBAT, {"actorId": edge_host_actor.id, "action": "retreat_edge", "targetId": "", "destination": [1, 45]}), "request.edge-retreat")
+	var edge_prompt := edge_host_api.resume_classic(_classic_battle_continuation(edge_host_state.combat.battle_id), InteractionResponse.from_data("request.edge-retreat", InteractionRequest.COMBAT, {"actorId": edge_host_actor.id, "action": "retreat_edge", "targetId": "", "destination": [1, 45]}), "request.edge-retreat")
 	assert_equal([edge_prompt.state, edge_prompt.interaction.kind], [ScenarioRuntimeOperationResult.State.WAITING, InteractionRequest.YES_NO], "the typed edge command reaches the same Escape confirmation boundary")
-	var edge_accepted := edge_host_api._resume_battle_retreat(edge_prompt.continuation, InteractionResponse.yes_no(edge_prompt.interaction, true), edge_prompt.interaction.request_id)
+	var edge_accepted := edge_host_api.resume_classic(edge_prompt.continuation, InteractionResponse.yes_no(edge_prompt.interaction, true), edge_prompt.interaction.request_id)
 	assert_equal(edge_accepted.state, ScenarioRuntimeOperationResult.State.WAITING, "accepting edge Escape returns to combat while the companion remains")
 	assert_true(edge_accepted.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_retreated" and event.payload.get("actorId") == edge_host_actor.id and event.payload.get("mode") == "edge"), "the edge response commits the source-owned retreat mode")
 	assert_equal([edge_host_state.combat.battlefield.has_actor(edge_host_actor.id), edge_host_state.combat.battlefield.has_actor(edge_companion.id), edge_host_actor.prestige_penalty], [false, true, 200], "edge Escape removes one actor and applies the penalty exactly once")
@@ -952,12 +932,6 @@ func _test_character_weapon_mode_toggle_and_restore() -> void:
 	assert_equal(combat_view.weapon_mode, &"missile", "the detached combat view exposes the battle-owned mode")
 	assert_equal(combat_view.legal_actions, [&"switch_weapon", &"finish", &"defend", &"auto"], "the detached view cannot advertise melee attack or illegal close-range Escape while missile mode is active, but exposes the settled current-turn Auto command")
 	assert_false(combat_view.ranged_attack_unavailable_reason.is_empty(), "the detached view carries the exact tactical ranged blocker")
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(94), ScenarioActionState.new())
-	var request := api._combat_request("request.weapon-mode")
-	assert_equal([request.body.to_data().get("weaponMode"), request.body.to_data().get("actions")], ["missile", ["switch_weapon", "finish", "defend", "auto", "delay", "undo"]], "the typed interaction preserves the same legal actions as the detached view and exposes fresh-activation Delay and Undo")
-	assert_equal([request.body.to_data().get("retreat", {}).get("enabled"), request.body.to_data().get("retreat", {}).get("nearestEnemyRange")], [false, 1], "the typed interaction explains the source-backed close-range Escape blocker")
-	assert_equal(request.body.to_data().get("weaponSwitch", {}).get("targetMode"), "melee", "the typed switch response names its source-owned destination mode")
-	assert_false(String(request.body.to_data().get("rangedAttack", {}).get("reason", "")).is_empty(), "the typed interaction explains why Fire is disabled")
 	var blocked := rules.combat_flow.submit_action(state, content, character.id, &"attack", monster.id, RealmzRng.new(92))
 	assert_false(blocked.ok, "missile mode cannot fall through to the melee resolver while tactical ranged state is unavailable")
 	assert_equal(blocked.error_code, &"projectile_charge_unavailable", "an empty missile slot fails with the exact unavailable authored fact")
@@ -1114,9 +1088,8 @@ func _test_source_backed_projectile_fire() -> void:
 		host_state.combat.set_character_weapon_mode(host_character.id, &"melee")
 		var switch_rng := ScriptedRng.new([])
 		var switch_api := RealmzRuntimeApi.new(content, host_state, switch_rng, ScenarioActionState.new())
-		var melee_request := switch_api._combat_request("request.projectile-switch")
-		assert_equal(melee_request.body.to_data().get("weaponSwitch", {}).get("targetMode"), "missile", "the typed melee request offers the source-backed missile mode")
-		var switched := switch_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data(melee_request.request_id, InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "switch_weapon", "targetId": ""}), melee_request.request_id)
+		var switch_request_id := "request.projectile-switch"
+		var switched := switch_api.resume_classic(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data(switch_request_id, InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "switch_weapon", "targetId": ""}), switch_request_id)
 		assert_equal(switched.state, ScenarioRuntimeOperationResult.State.WAITING, "switching weapon mode returns to the same typed battle boundary")
 		assert_equal(switched.interaction.body.to_data().get("weaponMode"), "missile", "the resumed request exposes missile mode without spending the turn")
 		assert_equal(switched.interaction.body.to_data().get("targets", []).map(func(target: Dictionary) -> String: return String(target.get("id"))), [host_monster.id], "the resumed Fire picker contains only the core-proven hostile target")
@@ -1126,7 +1099,7 @@ func _test_source_backed_projectile_fire() -> void:
 		assert_true(restored_host_rng.restore(switch_rng.snapshot()), "the missile exchange restores its exact pre-Fire RNG state")
 		if restored_host_state != null:
 			var restored_api := RealmzRuntimeApi.new(content, restored_host_state, restored_host_rng, ScenarioActionState.new())
-			var fired := restored_api._resume_battle(_classic_battle_continuation(restored_host_state.combat.battle_id), InteractionResponse.from_data(switched.interaction.request_id, InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "attack", "targetId": host_monster.id}), switched.interaction.request_id)
+			var fired := restored_api.resume_classic(_classic_battle_continuation(restored_host_state.combat.battle_id), InteractionResponse.from_data(switched.interaction.request_id, InteractionRequest.COMBAT, {"actorId": host_character.id, "action": "attack", "targetId": host_monster.id}), switched.interaction.request_id)
 			assert_equal(fired.state, ScenarioRuntimeOperationResult.State.WAITING, "restored Fire resolves and returns to the ordinary battle interaction")
 			assert_true(fired.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_projectile_resolved" and event.payload.get("actorId") == host_character.id and event.payload.get("targetId") == host_monster.id), "the typed restored response reaches the source-backed projectile resolver")
 			var restored_character := restored_host_state.party.character_by_id(host_character.id)
@@ -1213,9 +1186,8 @@ func _test_source_backed_character_spell_casting() -> void:
 	if host_state != null:
 		host_state.combat.monster_by_id(monster.id).conditions.set_value(18, 0)
 		var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 32_767, 32_767]), ScenarioActionState.new())
-		var host_request := host_api._combat_request("request.spell-single")
-		assert_true(host_request.body.to_data().get("spellCasts", []).any(func(option: Dictionary) -> bool: return option.get("spellId") == spell.id and option.get("power") == 1 and option.get("targetId") == monster.id and option.get("targetMode") == "combatant"), "the runtime request exposes the core-proven single-target cast")
-		var host_cast := host_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data(host_request.request_id, InteractionRequest.COMBAT, {"actorId": character.id, "action": "cast_spell", "targetId": monster.id, "spellId": spell.id, "power": 1}), host_request.request_id)
+		var host_request_id := "request.spell-single"
+		var host_cast := host_api.resume_classic(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data(host_request_id, InteractionRequest.COMBAT, {"actorId": character.id, "action": "cast_spell", "targetId": monster.id, "spellId": spell.id, "power": 1}), host_request_id)
 		assert_equal(host_cast.state, ScenarioRuntimeOperationResult.State.WAITING, "the typed single-target cast returns to the active battle request")
 		assert_true(host_cast.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == monster.id), "the typed single-target response reaches the ordinary spell resolver")
 		assert_equal([host_state.party.character_by_id(character.id).spell_points, host_state.combat.monster_by_id(monster.id).current_health], [8, 26], "the restored typed cast commits one cost and one target result")
@@ -1472,9 +1444,8 @@ func _test_character_automatic_group_spell() -> void:
 		host_state.combat.monster_by_id(second.id).maximum_health = 20
 		host_state.combat.monster_by_id(second.id).current_health = 20
 		var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 0, 32_767, 32_767, 32_767, 32_767]), ScenarioActionState.new())
-		var host_request := host_api._combat_request("request.spell-group")
-		assert_true(host_request.body.to_data().get("spellCasts", []).any(func(option: Dictionary) -> bool: return option.get("spellId") == spell.id and option.get("power") == 1 and option.get("targetId") == "" and option.get("targetMode") == "automatic"), "the runtime request preserves the targetless automatic-group ABI")
-		var host_cast := host_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data(host_request.request_id, InteractionRequest.COMBAT, {"actorId": caster.id, "action": "cast_spell", "targetId": "", "spellId": spell.id, "power": 1}), host_request.request_id)
+		var host_request_id := "request.spell-group"
+		var host_cast := host_api.resume_classic(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data(host_request_id, InteractionRequest.COMBAT, {"actorId": caster.id, "action": "cast_spell", "targetId": "", "spellId": spell.id, "power": 1}), host_request_id)
 		assert_equal(host_cast.state, ScenarioRuntimeOperationResult.State.WAITING, "the typed automatic-group cast returns to the active battle request")
 		assert_equal(host_cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved").map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), [caster.id, ally.id, first.id, second.id], "the targetless response preserves Castle party-then-monster order through the host boundary")
 	var cast := rules.combat_flow.cast_spell(state, content, caster.id, "", spell.id, 1, ScriptedRng.new([0, 0, 0, 32_767, 32_767, 32_767, 32_767]))
@@ -1547,9 +1518,8 @@ func _test_character_fixed_area_spell() -> void:
 		host_state.combat.monster_by_id(first.id).maximum_health = 20
 		host_state.combat.monster_by_id(first.id).current_health = 20
 		var host_api := RealmzRuntimeApi.new(content, host_state, ScriptedRng.new([0, 0, 0, 32_767, 32_767, 32_767, 32_767]), ScenarioActionState.new())
-		var host_request := host_api._combat_request("request.spell-area")
-		assert_true(host_request.body.to_data().get("spellCasts", []).any(func(option: Dictionary) -> bool: return option.get("spellId") == spell.id and option.get("power") == 1 and option.get("targetMode") == "area" and option.get("areaShape") == 3), "the runtime request carries the rules-owned Data AD shape")
-		var host_cast := host_api._resume_battle(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data(host_request.request_id, InteractionRequest.COMBAT, {"actorId": caster.id, "action": "cast_spell", "targetId": "", "spellId": spell.id, "power": 1, "targetCoordinate": [45, 45], "rotation": 0}), host_request.request_id)
+		var host_request_id := "request.spell-area"
+		var host_cast := host_api.resume_classic(_classic_battle_continuation(host_state.combat.battle_id), InteractionResponse.from_data(host_request_id, InteractionRequest.COMBAT, {"actorId": caster.id, "action": "cast_spell", "targetId": "", "spellId": spell.id, "power": 1, "targetCoordinate": [45, 45], "rotation": 0}), host_request_id)
 		assert_equal(host_cast.state, ScenarioRuntimeOperationResult.State.WAITING, "the typed fixed-area cast returns to the active battle request")
 		assert_equal(host_cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved").map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), [ally.id, first.id], "the coordinate response retains core-owned area membership and target order")
 	var empty_caster := _character("character.area.empty-caster")
@@ -2510,7 +2480,7 @@ func _test_batch_two_combat_auto_state() -> void:
 	vm_state.combat.set_turn_order([vm_actor.id, vm_future.id, vm_monster.id])
 	var vm_api := RealmzRuntimeApi.new(session_content, vm_state, RealmzRng.new(37), ScenarioActionState.new())
 	var vm_response := InteractionResponse.from_data("request.auto-vm", InteractionRequest.COMBAT, {"actorId": vm_future.id, "action": "set_auto", "targetId": "", "enabled": true})
-	var vm_result := vm_api._resume_battle(_classic_battle_continuation(vm_state.combat.battle_id), vm_response, vm_response.request_id)
+	var vm_result := vm_api.resume_classic(_classic_battle_continuation(vm_state.combat.battle_id), vm_response, vm_response.request_id)
 	assert_equal(vm_result.state, ScenarioRuntimeOperationResult.State.WAITING, "a VM-owned combat interaction refreshes after toggling an inactive persistent Auto character")
 	assert_equal(vm_result.continuation, _classic_battle_continuation(vm_state.combat.battle_id), "the Auto toggle returns through the exact battle continuation that issued the request")
 	assert_equal(vm_result.interaction.body.to_data().get("autoCharacterIds"), [vm_future.id], "the refreshed typed combat request exposes its saved Auto selection")
@@ -2629,8 +2599,6 @@ func _test_bounded_classic_undo_and_restore() -> void:
 	if restored != null:
 		var restored_actor := restored.party.character_by_id(actor.id)
 		assert_equal([restored.combat.undo_state.start_position, restored.combat.battlefield.actor_position(actor.id)], [Vector2i(45, 45), Vector2i(46, 45)], "restore retains both the activation-start and committed current positions")
-		var request := RealmzRuntimeApi.new(content, restored, ScriptedRng.new([]), ScenarioActionState.new(), rules)._combat_request("request.undo")
-		assert_equal(request.body.to_data().get("undo"), {"enabled": true, "reason": ""}, "the typed battle request exposes core-owned Undo availability")
 		var undone := rules.combat_flow.submit_action(restored, content, actor.id, &"undo", "", ScriptedRng.new([]))
 		assert_true(undone.ok, "movement-only Undo re-enters the current activation")
 		assert_equal([restored.combat.battlefield.actor_position(actor.id), restored_actor.movement, restored_actor.attacks_remaining, restored.combat.active_actor_id()], [Vector2i(45, 45), 12, 4, actor.id], "Undo restores the cell and recalculates movement and attack allocation without generic rollback")

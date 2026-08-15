@@ -1,13 +1,9 @@
 class_name ClassicScreenRouter
 extends Control
 
-const SaveSlotPreviewScript := preload("res://src/core/view/save_slot_preview.gd")
-const PackageOperationViewScript := preload("res://src/app/package_operation_view.gd")
-const PartySetupCharacterRowScript := preload("res://src/presentation/party_setup_character_row.gd")
-const PartySetupPartyListScript := preload("res://src/presentation/party_setup_party_list.gd")
-const ClassicUiTheme := preload("res://src/presentation/classic_ui_theme.tres")
-
 signal screen_changed(screen_id: StringName)
+signal route_exiting(screen_id: StringName)
+signal workspace_focus_restored(screen_id: StringName, focus_key: String)
 signal start_requested(package_path: String, seed: int)
 signal cancel_package_requested
 signal refresh_requested
@@ -20,78 +16,20 @@ signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, st
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
 
-const GOLD := Color("d5b45d")
-const INK := Color("17191d")
-const PANEL := Color("272b31")
-const PANEL_DARK := Color("1d2025")
 const MUTED := Color("9aa0a8")
 const ERROR := Color("ef7770")
 const SWAP_OPEN_SOUND_ID: int = 3003
 const SWAP_DONE_SOUND_ID: int = 141
-const MAXIMUM_MODAL_Z_INDEX: int = 30
-
 var _view: GameView
-var _campaigns: Array[PackageDiscoveryResult] = []
 var _screen_id: StringName = &"exploration"
 var _body_scroll: ScrollContainer
 var _body: VBoxContainer
 var _body_frame: PanelContainer
 var _workspace_view: ClassicRouteScreen
-var _splash_overlay: PanelContainer
-var _campaign_overlay: PanelContainer
-var _campaign_list: VBoxContainer
-var _campaign_scroll: ScrollContainer
-var _package_path: LineEdit
-var _setup_overlay: PanelContainer
-var _setup_body: HBoxContainer
-var _creator_scroll: ScrollContainer
-var _creator: BoxContainer
-var _creator_page: VBoxContainer
-var _creator_steps: HBoxContainer
-var _creator_action_bar: HBoxContainer
-var _creator_step_labels: Array[Label] = []
-var _race_class_columns: BoxContainer
-var _race_list: ItemList
-var _caste_list: ItemList
-var _name_edit: LineEdit
-var _gender_option: OptionButton
-var _starting_level_option: OptionButton
-var _portrait_option: OptionButton
-var _combat_icon_option: OptionButton
-var _party_list: VBoxContainer
-var _stored_character_list: VBoxContainer
-var _party_setup_options: VBoxContainer
-var _difficulty_option: OptionButton
-var _monster_set_option: OptionButton
-var _party_guidance_label: Label
-var _create_character_button: Button
-var _setup_message: Label
-var _review_label: Label
-var _spell_label: Label
-var _spell_list: ItemList
-var _begin_button: Button
-var _add_character_button: Button
-var _creator_back_button: Button
-var _creator_next_button: Button
-var _creator_cancel_button: Button
-var _setup_inspection_overlay: PanelContainer
-var _setup_inspection_body: VBoxContainer
-var _setup_inspection_character_id: String = ""
-var _vault_revisions: Array[CharacterVaultRevisionView] = []
-var _selected_race_id: String = ""
-var _selected_caste_id: String = ""
-var _creator_step: int = 0
-var _setup_mode: StringName = &"assembly"
-var _draft_name: String = ""
-var _draft_gender: int = 1
-var _draft_starting_level: int = 1
-var _draft_portrait_id: String = ""
-var _draft_combat_icon_id: String = ""
-var _awaiting_draft_generation: bool = false
-var _awaiting_draft_finalization: bool = false
 var _settings: PresentationSettings = PresentationSettings.new()
 var _media: ClassicMediaCatalog
 var _route_history: Array[StringName] = []
+var _route_transition_revision: int = 0
 var _focus_keys: Dictionary = {}
 var _workspace_rect := Rect2(220.0, 100.0, 512.0, 430.0)
 var _layout_profile: StringName = UiLayoutProfile.STANDARD
@@ -99,39 +37,67 @@ var _modal_layout_rect := Rect2(12.0, 36.0, 680.0, 556.0)
 var _campaign_layout_rect := Rect2(12.0, 36.0, 228.0, 556.0)
 var _setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
 var _content_parent: Container
-var _inventory_query: String = ""
-var _inventory_character_id: String = ""
-var _inventory_item_id: String = ""
-var _money_character_id: String = ""
-var _selected_player_map_id: String = ""
-var _party_order_source_ids: Array[String] = []
-var _party_order_draft_ids: Array[String] = []
 var _character_sheet_character_id: String = ""
 var _character_sheet_tab: StringName = &"overview"
 var _presented_campaign_id: String = ""
-var _appearance_textures: Dictionary = {}
-var _combat_icon_touched: bool = false
 var _vault_return_to_setup: bool = false
 var _vault_return_to_campaign: bool = false
 var _vault_return_to_splash: bool = false
-var _vault_inspection_revision_hash: String = ""
 var _ordinary_money_workspace_open: bool = false
-var _save_previews: Array = []
-var _package_operation_status: RefCounted = PackageOperationViewScript.new()
-var _standalone_character_creation_available: bool = false
-var _standalone_character_creation_reason: String = "The Classic character library is unavailable."
-var _standalone_character_creation_active: bool = false
+var _system_controller := SystemWorkspaceController.new()
+var _character_controller := CharacterWorkspaceController.new()
+var _inventory_controller := InventoryWorkspaceController.new()
+var _services_controller := ServicesWorkspaceController.new()
+var _maps_journal_controller := MapsJournalWorkspaceController.new()
+var _spells_controller := SpellsWorkspaceController.new()
+var setup_controller := CampaignPartySetupController.new()
+var _initialized: bool = false
+
+
+func _init() -> void:
+	setup_controller.attach(self)
+	setup_controller.start_requested.connect(func(package_path: String, seed: int) -> void: start_requested.emit(package_path, seed))
+	setup_controller.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
+	setup_controller.refresh_requested.connect(func() -> void: refresh_requested.emit())
+	setup_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
+	setup_controller.standalone_character_creation_requested.connect(func() -> void: standalone_character_creation_requested.emit())
+	setup_controller.standalone_character_creation_cancelled.connect(func() -> void: standalone_character_creation_cancelled.emit())
+	setup_controller.campaign_selection_requested.connect(show_campaign_selection)
+	setup_controller.vault_requested.connect(_show_vault_from_splash)
+	setup_controller.quit_requested.connect(func() -> void: system_action_requested.emit(&"quit", null))
+	_system_controller.action_requested.connect(func(action_id: StringName, value: Variant) -> void: system_action_requested.emit(action_id, value))
+	_system_controller.setting_changed.connect(func(setting_id: StringName, value: Variant) -> void: presentation_setting_changed.emit(setting_id, value))
+	_character_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
+	_character_controller.refresh_requested.connect(func() -> void: _render_screen())
+	_character_controller.vault_back_requested.connect(func() -> void: handle_back())
+	_character_controller.vault_archive_requested.connect(func(character_id: String) -> void: vault_archive_requested.emit(character_id))
+	_character_controller.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: vault_restore_requested.emit(character_id, revision_hash))
+	_inventory_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
+	_inventory_controller.refresh_requested.connect(func() -> void: _render_screen())
+	_services_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
+	_services_controller.route_requested.connect(func(screen_id: StringName) -> void: open_screen(screen_id))
+	_maps_journal_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
+	_spells_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intent_submitted.emit(intent))
+	_spells_controller.route_requested.connect(func(screen_id: StringName) -> void: open_screen(screen_id))
+	_spells_controller.sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void: presentation_sound_requested.emit(sound_id, wait_for_completion, stop_existing))
 
 
 func _ready() -> void:
+	initialize()
+
+
+func initialize() -> void:
+	if _initialized:
+		return
+	_initialized = true
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	# The router spans the window for layout only. Its panels and workspace own
 	# input; the router itself must not cover menus or other shell controls.
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_build_body()
-	_build_splash_overlay()
-	_build_campaign_overlay()
-	_build_setup_overlay()
+	setup_controller.build_splash_overlay()
+	setup_controller.build_campaign_overlay()
+	setup_controller.build_setup_overlay()
 	show_splash()
 
 
@@ -142,41 +108,28 @@ func present(view: GameView) -> void:
 		_body_frame.visible = false
 		return
 	if not _presented_campaign_id.is_empty() and _presented_campaign_id != view.campaign_id:
-		_reset_creator(true)
-		_inventory_character_id = ""
-		_inventory_item_id = ""
-		_money_character_id = ""
-		_selected_player_map_id = ""
-		_party_order_source_ids.clear()
-		_party_order_draft_ids.clear()
+		setup_controller.reset_creator(true)
+		_character_controller.reset()
+		_inventory_controller.reset()
 		_character_sheet_character_id = ""
 		_character_sheet_tab = &"overview"
 	_presented_campaign_id = view.campaign_id
-	if _campaign_list != null:
-		_render_campaign_list()
+	setup_controller.present(view)
 	if view.party_setup_available:
-		if _awaiting_draft_generation and view.character_draft != null:
-			_awaiting_draft_generation = false
-		if _awaiting_draft_finalization and view.character_draft == null:
-			_awaiting_draft_finalization = false
-			_reset_creator(true)
-		if _splash_overlay != null:
-			_splash_overlay.visible = false
-		_campaign_overlay.visible = true
-		_setup_overlay.visible = true
+		if setup_controller.splash_overlay != null:
+			setup_controller.splash_overlay.visible = false
+		setup_controller.campaign_overlay.visible = true
+		setup_controller.setup_overlay.visible = true
 		_body_frame.visible = false
-		_refresh_setup_options()
-		if not _setup_inspection_character_id.is_empty():
-			_render_setup_character_inspection()
 		call_deferred("_apply_modal_layouts")
-		call_deferred("_focus_first", _setup_overlay)
+		call_deferred("_focus_first", setup_controller.setup_overlay)
 		return
 	if completed_party_setup:
 		_finish_party_setup_navigation()
-	_setup_overlay.visible = false
-	if _splash_overlay != null:
-		_splash_overlay.visible = false
-	_campaign_overlay.visible = false
+	setup_controller.setup_overlay.visible = false
+	if setup_controller.splash_overlay != null:
+		setup_controller.splash_overlay.visible = false
+	setup_controller.campaign_overlay.visible = false
 	_render_screen()
 
 
@@ -187,11 +140,8 @@ static func _party_setup_completed(previous_view: GameView, next_view: GameView)
 func _finish_party_setup_navigation() -> void:
 	_vault_return_to_setup = false
 	_vault_return_to_campaign = false
-	_vault_inspection_revision_hash = ""
-	_setup_inspection_character_id = ""
-	if _setup_inspection_overlay != null:
-		_setup_inspection_overlay.visible = false
-	_reset_creator(true)
+	_character_controller.clear_vault_inspection()
+	setup_controller.finish_party_setup_navigation()
 	_route_history.clear()
 	if _screen_id == &"exploration":
 		return
@@ -200,139 +150,48 @@ func _finish_party_setup_navigation() -> void:
 	screen_changed.emit(_screen_id)
 
 
-func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
-	_campaigns = campaigns.duplicate()
-	_campaigns.sort_custom(_campaign_precedes)
-	_render_campaign_list()
+func set_campaigns(campaigns: Array[CampaignPackageView]) -> void:
+	setup_controller.set_campaigns(campaigns)
 
 
 func set_package_operation(status: RefCounted) -> void:
-	_package_operation_status = status if status != null else PackageOperationViewScript.new()
-	_render_campaign_list()
-
-
-func _render_campaign_list() -> void:
-	_clear(_campaign_list)
-	if _package_operation_status.is_running():
-		var operation_row := VBoxContainer.new()
-		operation_row.name = "PackageOperationRow"
-		operation_row.custom_minimum_size = Vector2(0, 76)
-		operation_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		operation_row.add_theme_constant_override("separation", 4)
-		var operation_label := Label.new()
-		operation_label.name = "PackageOperationStatus"
-		operation_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		operation_label.text = _package_operation_status.message
-		operation_label.tooltip_text = _package_operation_status.message
-		operation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		operation_row.add_child(operation_label)
-		var operation_controls := HBoxContainer.new()
-		operation_controls.name = "PackageOperationControls"
-		operation_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var progress := ProgressBar.new()
-		progress.name = "PackageOperationProgress"
-		progress.custom_minimum_size = Vector2(80, 24)
-		progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		progress.show_percentage = _package_operation_status.total > 0
-		progress.indeterminate = _package_operation_status.total <= 0
-		progress.max_value = maxf(1.0, float(_package_operation_status.total))
-		progress.value = clampf(float(_package_operation_status.completed), 0.0, progress.max_value)
-		operation_controls.add_child(progress)
-		var cancel := Button.new()
-		cancel.name = "CancelPackageOperation"
-		cancel.text = "Cancel"
-		cancel.pressed.connect(func() -> void: cancel_package_requested.emit())
-		operation_controls.add_child(cancel)
-		operation_row.add_child(operation_controls)
-		_campaign_list.add_child(operation_row)
-	if _campaigns.is_empty():
-		if not _package_operation_status.is_running():
-			_add_label(_campaign_list, "No installed scenarios. Install a Providence .realmz2 package below.", MUTED)
-		call_deferred("_refresh_campaign_layout")
-		return
-	var ready_count: int = 0
-	var hidden_count: int = 0
-	for campaign: PackageDiscoveryResult in _campaigns:
-		if not campaign.ready:
-			hidden_count += 1
-			continue
-		ready_count += 1
-		var action := Button.new()
-		action.name = "Scenario_%s" % (campaign.campaign_id if not campaign.campaign_id.is_empty() else campaign.path.get_file()).validate_node_name()
-		action.custom_minimum_size = Vector2(0, 58)
-		action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		action.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		action.clip_text = true
-		action.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		var status := "Installed • ready"
-		if campaign.campaign_id == _presented_campaign_id:
-			status = "Selected • party setup open"
-		action.text = "%s\n%s" % [_display_name(campaign), status]
-		action.tooltip_text = campaign.path
-		action.disabled = not campaign.ready or _package_operation_status.is_running()
-		action.pressed.connect(_campaign_pressed.bind(campaign))
-		_campaign_list.add_child(action)
-	if ready_count == 0 and not _package_operation_status.is_running():
-		_add_label(_campaign_list, "No playable scenarios. Install a package from the current Providence exporter.", MUTED)
-	if hidden_count > 0:
-		_campaign_overlay.tooltip_text = "%d incompatible or stale installation%s hidden from the ordinary scenario list." % [hidden_count, "" if hidden_count == 1 else "s"]
-	else:
-		_campaign_overlay.tooltip_text = "Installed Providence scenarios."
-	# Container minimum-size propagation runs after rows enter the tree. Restore
-	# the bounded modal rect once that layout pass has settled.
-	call_deferred("_refresh_campaign_layout")
+	setup_controller.set_package_operation(status)
 
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
-	_vault_revisions = revisions.duplicate()
+	_character_controller.set_vault_revisions(revisions)
+	setup_controller.set_vault_revisions(revisions)
 	if _screen_id == &"vault":
 		_render_screen()
-	elif _setup_overlay != null and _setup_overlay.visible:
-		_refresh_setup_options()
+	elif setup_controller.setup_overlay != null and setup_controller.setup_overlay.visible:
+		setup_controller.refresh_setup_options()
 
 
 func set_standalone_character_creation_available(enabled: bool, reason: String = "") -> void:
-	_standalone_character_creation_available = enabled
-	_standalone_character_creation_reason = reason if not reason.is_empty() else "The Classic character library is unavailable."
-	if _setup_overlay != null and _setup_overlay.visible and _setup_mode == &"assembly":
-		_refresh_setup_options()
+	setup_controller.set_standalone_character_creation_available(enabled, reason)
 
 
 func begin_standalone_character_creation() -> void:
-	_standalone_character_creation_active = true
-	_setup_mode = &"creator"
-	_reset_creator(false)
-	_render_creator_step()
+	setup_controller.begin_standalone_character_creation()
 
 
 func finish_standalone_character_creation() -> void:
-	_standalone_character_creation_active = false
-	_reset_creator(true)
+	setup_controller.finish_standalone_character_creation()
 
 
 func present_party_setup_status(text: String, is_error: bool = false) -> void:
-	if _view == null or not _view.party_setup_available or _setup_mode != &"assembly":
-		return
-	if _setup_overlay == null or not _setup_overlay.visible or _setup_inspection_overlay.visible:
-		return
-	_setup_message.text = text
-	_setup_message.tooltip_text = text
-	_setup_message.modulate = ERROR if is_error else MUTED
-	_setup_message.custom_minimum_size.y = 20.0
-	_setup_message.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_setup_message.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_setup_message.visible = not text.strip_edges().is_empty()
+	setup_controller.present_party_setup_status(text, is_error)
 
 
-func set_save_previews(previews: Array) -> void:
-	_save_previews = previews.duplicate()
+func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
+	_system_controller.set_save_previews(previews)
 	if _screen_id == &"system" and _view != null and _view.session_started:
 		_render_screen()
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
-	_appearance_textures.clear()
+	setup_controller.set_media_catalog(media)
 	if _view != null and _view.session_started:
 		_render_screen()
 
@@ -341,6 +200,7 @@ func set_presentation_settings(settings: PresentationSettings) -> void:
 	if settings == null:
 		return
 	_settings = settings
+	setup_controller.set_presentation_settings(settings)
 	if _screen_id == &"system":
 		_render_screen()
 
@@ -355,18 +215,10 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2) -> voi
 	_modal_layout_rect = Rect2(12.0, top + 8.0, maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - top - 16.0))
 	_campaign_layout_rect = ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
 	_setup_layout_rect = _modal_layout_rect
-	if _setup_overlay != null:
-		_apply_creator_layout(profile.id)
-		_creator_scroll.custom_minimum_size.y = 140.0 if profile.id == UiLayoutProfile.COMPACT else 220.0
+	if setup_controller.setup_overlay != null:
+		setup_controller.apply_layout(profile, _campaign_layout_rect, _setup_layout_rect)
 	_apply_modal_layouts()
 	_render_screen()
-
-
-func _apply_creator_layout(profile_id: StringName) -> void:
-	if _creator != null:
-		_creator.vertical = profile_id == UiLayoutProfile.COMPACT
-	if _race_class_columns != null:
-		_race_class_columns.vertical = profile_id == UiLayoutProfile.COMPACT
 
 
 static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2) -> Rect2:
@@ -378,69 +230,47 @@ static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2) 
 func _apply_modal_layouts() -> void:
 	if _workspace_view != null:
 		_workspace_view.set_workspace_rect(_workspace_layout_rect())
-	if _splash_overlay != null:
-		_splash_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		_splash_overlay.position = _modal_layout_rect.position
-		_splash_overlay.size = _modal_layout_rect.size
-	if _setup_overlay != null:
-		_setup_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-		_setup_overlay.position = _setup_layout_rect.position
-		_setup_overlay.size = _setup_layout_rect.size
-		if _setup_inspection_overlay != null:
-			_setup_inspection_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-			_setup_inspection_overlay.position = Vector2.ZERO
-			_setup_inspection_overlay.size = _setup_overlay.size
-	if _campaign_overlay != null:
-		if _campaign_overlay.get_parent() == self:
-			_campaign_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-			_campaign_overlay.position = _campaign_layout_rect.position
-			_campaign_overlay.size = _campaign_layout_rect.size
+	setup_controller.apply_modal_layouts()
 
 
 func _refresh_campaign_layout() -> void:
 	_apply_modal_layouts()
-	_campaign_scroll.scroll_vertical = 0
+	if setup_controller.campaign_scroll != null:
+		setup_controller.campaign_scroll.scroll_vertical = 0
 
 
 func _prepare_campaign_selection() -> void:
 	_refresh_campaign_layout()
-	_focus_first(_campaign_overlay)
-	_campaign_scroll.scroll_vertical = 0
+	setup_controller._focus_first(setup_controller.setup_overlay)
+	if setup_controller.campaign_scroll != null:
+		setup_controller.campaign_scroll.scroll_vertical = 0
 
 
 func show_splash() -> void:
-	if _splash_overlay == null:
+	if setup_controller.splash_overlay == null:
 		return
 	_vault_return_to_campaign = false
 	_vault_return_to_setup = false
 	_vault_return_to_splash = false
-	_splash_overlay.visible = true
-	_campaign_overlay.visible = false
-	_setup_overlay.visible = false
+	setup_controller.show_splash()
 	_body_frame.visible = false
-	call_deferred("_focus_first", _splash_overlay)
 
 
 func show_campaign_selection() -> void:
 	_vault_return_to_campaign = false
 	_vault_return_to_setup = false
 	_vault_return_to_splash = false
-	if _splash_overlay != null:
-		_splash_overlay.visible = false
-	_campaign_overlay.visible = true
-	_setup_overlay.visible = true
+	setup_controller.show_campaign_selection()
 	_body_frame.visible = false
-	if _view == null or not _view.party_setup_available:
-		_refresh_setup_options()
 	call_deferred("_prepare_campaign_selection")
 
 
 func full_stage_overlay_visible() -> bool:
-	return _splash_overlay != null and _splash_overlay.visible or _campaign_overlay != null and _campaign_overlay.visible or _setup_overlay != null and _setup_overlay.visible or _screen_id == &"vault"
+	return setup_controller.full_stage_overlay_visible() or _screen_id == &"vault"
 
 
 func accepts_exploration_input() -> bool:
-	return (_splash_overlay == null or not _splash_overlay.visible) and not _campaign_overlay.visible and not _setup_overlay.visible and _screen_id == &"exploration"
+	return not setup_controller.full_stage_overlay_visible() and _screen_id == &"exploration"
 
 
 func open_screen(screen_id: StringName) -> void:
@@ -451,31 +281,24 @@ func open_screen(screen_id: StringName) -> void:
 		_vault_return_to_setup = false
 	_store_focus()
 	if screen_id != _screen_id:
+		route_exiting.emit(_screen_id)
 		_route_history.append(_screen_id)
 	_screen_id = screen_id
-	if _splash_overlay != null:
-		_splash_overlay.visible = false
-	_campaign_overlay.visible = false
-	_setup_overlay.visible = false
+	setup_controller.hide_overlays()
 	_sync_ordinary_money_workspace_audio(screen_id)
-	screen_changed.emit(screen_id)
-	_render_screen()
+	_render_screen(true)
 
 
 func handle_back() -> bool:
-	if _setup_overlay.visible and _setup_inspection_overlay != null and _setup_inspection_overlay.visible:
-		_close_setup_character_inspection()
+	if setup_controller.handle_back():
 		return true
-	if _screen_id == &"vault" and not _vault_inspection_revision_hash.is_empty():
-		_vault_inspection_revision_hash = ""
-		_refresh_vault_workspace()
+	if _screen_id == &"vault" and _character_controller.handle_vault_back():
 		return true
 	if _screen_id == &"vault" and _vault_return_to_setup and _view != null and _view.party_setup_available:
 		_vault_return_to_setup = false
 		_screen_id = &"exploration"
-		_setup_overlay.visible = true
+		setup_controller.show_party_setup()
 		_body_frame.visible = false
-		_refresh_setup_options()
 		return true
 	if _screen_id == &"vault" and _vault_return_to_campaign:
 		show_campaign_selection()
@@ -483,36 +306,32 @@ func handle_back() -> bool:
 	if _screen_id == &"vault" and _vault_return_to_splash:
 		show_splash()
 		return true
-	if _campaign_overlay.visible:
+	if setup_controller.campaign_overlay.visible:
 		if _view != null and _view.party_setup_available:
 			show_splash()
 			return true
 		if _view != null and _view.session_started:
-			_campaign_overlay.visible = false
-			_setup_overlay.visible = false
+			setup_controller.hide_overlays()
 			_render_screen()
 			return true
 		show_splash()
 		return true
-	if _splash_overlay != null and _splash_overlay.visible:
+	if setup_controller.splash_visible():
 		return false
-	if _setup_overlay.visible:
-		if _creator_step > 0:
-			_creator_back()
-			return true
+	if setup_controller.setup_overlay.visible:
 		return false
 	if not _route_history.is_empty():
 		var previous: StringName = _route_history.pop_back()
+		route_exiting.emit(_screen_id)
 		_screen_id = previous
 		_sync_ordinary_money_workspace_audio(previous)
-		screen_changed.emit(previous)
-		_render_screen()
+		_render_screen(true)
 		return true
 	if _screen_id != &"exploration":
+		route_exiting.emit(_screen_id)
 		_screen_id = &"exploration"
 		_sync_ordinary_money_workspace_audio(_screen_id)
-		screen_changed.emit(_screen_id)
-		_render_screen()
+		_render_screen(true)
 		return true
 	return false
 
@@ -534,63 +353,32 @@ func current_screen() -> StringName:
 	return _screen_id
 
 
+func primary_workspace_id() -> StringName:
+	return _workspace_view.route_id if _workspace_view != null else &""
+
+
+func mounted_primary_workspace_count() -> int:
+	var count := 0
+	for child: Node in get_children():
+		if child is ClassicRouteScreen:
+			count += 1
+	return count
+
+
+func primary_workspace_visible() -> bool:
+	return _workspace_view != null and _workspace_view.visible
+
+
+func party_order_draft_ids() -> Array[String]:
+	return _character_controller.draft_order_ids()
+
+
 func _build_body() -> void:
 	_mount_workspace(_screen_id)
 
 
 func _workspace_layout_rect() -> Rect2:
 	return _modal_layout_rect if _screen_id == &"vault" else _workspace_rect
-
-
-func _build_splash_overlay() -> void:
-	_splash_overlay = PanelContainer.new()
-	_splash_overlay.name = "SplashScreen"
-	_splash_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	var surface := StyleBoxFlat.new()
-	surface.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	surface.border_color = Color("4b5157")
-	surface.set_border_width_all(1)
-	surface.content_margin_left = 24.0
-	surface.content_margin_top = 20.0
-	surface.content_margin_right = 24.0
-	surface.content_margin_bottom = 20.0
-	_splash_overlay.add_theme_stylebox_override("panel", surface)
-	_splash_overlay.z_index = MAXIMUM_MODAL_Z_INDEX
-	add_child(_splash_overlay)
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_splash_overlay.add_child(center)
-	var column := VBoxContainer.new()
-	column.custom_minimum_size.x = 360.0
-	column.add_theme_constant_override("separation", 12)
-	center.add_child(column)
-	var title := _label("Realmz Rebuilt", GOLD, 34)
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(title)
-	var subtitle := _label("Classic adventures, reconstructed", MUTED, 16)
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(subtitle)
-	column.add_child(HSeparator.new())
-	var scenarios := Button.new()
-	scenarios.name = "ChooseScenario"
-	scenarios.text = "Choose a scenario"
-	scenarios.custom_minimum_size.y = 42.0
-	scenarios.pressed.connect(show_campaign_selection)
-	column.add_child(scenarios)
-	var characters := Button.new()
-	characters.name = "CharacterFiles"
-	characters.text = "Character files"
-	characters.tooltip_text = "Review reusable Character Files. Stock Realmz characters can be created without selecting a scenario; scenario-specific races and classes require that scenario."
-	characters.custom_minimum_size.y = 42.0
-	characters.pressed.connect(_show_vault_from_splash)
-	column.add_child(characters)
-	var quit := Button.new()
-	quit.name = "Quit"
-	quit.text = "Quit"
-	quit.custom_minimum_size.y = 42.0
-	quit.pressed.connect(func() -> void: system_action_requested.emit(&"quit", null))
-	column.add_child(quit)
 
 
 func _mount_workspace(screen_id: StringName) -> void:
@@ -610,1136 +398,34 @@ func _mount_workspace(screen_id: StringName) -> void:
 	move_child(_workspace_view, 0)
 	_workspace_view.set_workspace_rect(_workspace_layout_rect())
 	_body_frame = _workspace_view
-	_body_scroll = _workspace_view.scroll
-	_body = _workspace_view.body
+	_body_scroll = _workspace_view.scroll_control()
+	_body = _workspace_view.body_control()
 
 
-func _build_campaign_overlay() -> void:
-	_campaign_overlay = PanelContainer.new()
-	_campaign_overlay.name = "ScenarioColumn"
-	_campaign_overlay.theme_type_variation = &"ClassicInset"
-	_campaign_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_campaign_overlay.custom_minimum_size.x = 210.0
-	_campaign_overlay.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_campaign_overlay.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_campaign_overlay.size_flags_stretch_ratio = 0.72
-	_campaign_overlay.z_index = 0
-	add_child(_campaign_overlay)
-	var column := VBoxContainer.new()
-	column.name = "ScenarioPaneContent"
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation", 8)
-	_campaign_overlay.add_child(column)
-	var scenario_heading := _add_label(column, "Scenarios", GOLD, 20)
-	scenario_heading.name = "ScenarioHeading"
-	_campaign_list = VBoxContainer.new()
-	_campaign_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_campaign_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_campaign_scroll = ScrollContainer.new()
-	_campaign_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_campaign_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_campaign_scroll.follow_focus = true
-	_campaign_scroll.add_child(_campaign_list)
-	column.add_child(_campaign_scroll)
-	var details := HBoxContainer.new()
-	_package_path = LineEdit.new()
-	_package_path.placeholder_text = "Path to Providence .realmz2"
-	_package_path.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	details.add_child(_package_path)
-	_details_button(details)
-	column.add_child(details)
-	var refresh := Button.new()
-	refresh.text = "Refresh scenarios"
-	refresh.pressed.connect(func() -> void: refresh_requested.emit())
-	var library_actions := HBoxContainer.new()
-	library_actions.add_child(refresh)
-	column.add_child(library_actions)
 
 
-func _details_button(row: HBoxContainer) -> void:
-	var open := Button.new()
-	open.text = "Install .realmz2…"
-	open.pressed.connect(_open_typed_path)
-	row.add_child(open)
-
-
-func _build_setup_overlay() -> void:
-	_setup_overlay = PanelContainer.new()
-	_setup_overlay.name = "PartySetup"
-	_setup_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	var setup_surface := StyleBoxFlat.new()
-	setup_surface.bg_color = Color(0.0, 0.0, 0.0, 0.0)
-	setup_surface.set_border_width_all(0)
-	setup_surface.content_margin_left = 10.0
-	setup_surface.content_margin_top = 10.0
-	setup_surface.content_margin_right = 10.0
-	setup_surface.content_margin_bottom = 10.0
-	_setup_overlay.add_theme_stylebox_override("panel", setup_surface)
-	_setup_overlay.set_anchors_preset(Control.PRESET_CENTER)
-	_setup_overlay.offset_left = -440.0
-	_setup_overlay.offset_top = -238.0
-	_setup_overlay.offset_right = 440.0
-	_setup_overlay.offset_bottom = 238.0
-	_setup_overlay.z_index = 25
-	add_child(_setup_overlay)
-	_setup_body = HBoxContainer.new()
-	_setup_body.name = "ScenarioPartyWorkspace"
-	_setup_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_setup_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_setup_body.add_theme_constant_override("separation", 10)
-	remove_child(_campaign_overlay)
-	_setup_body.add_child(_campaign_overlay)
-	_setup_overlay.add_child(_setup_body)
-
-	var character_pane := PanelContainer.new()
-	character_pane.name = "CharacterFilesPane"
-	character_pane.theme_type_variation = &"ClassicInset"
-	character_pane.custom_minimum_size.x = 286.0
-	character_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	character_pane.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	character_pane.size_flags_stretch_ratio = 1.15
-	_setup_body.add_child(character_pane)
-	var character_column := VBoxContainer.new()
-	character_column.name = "CharacterFilesPaneContent"
-	character_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	character_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	character_column.add_theme_constant_override("separation", 6)
-	character_pane.add_child(character_column)
-
-	var party_pane := PanelContainer.new()
-	party_pane.name = "CurrentPartyPane"
-	party_pane.theme_type_variation = &"ClassicInset"
-	party_pane.custom_minimum_size.x = 286.0
-	party_pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	party_pane.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	party_pane.size_flags_stretch_ratio = 1.15
-	_setup_body.add_child(party_pane)
-	var party_column := VBoxContainer.new()
-	party_column.name = "PartyColumn"
-	party_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	party_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	party_column.add_theme_constant_override("separation", 6)
-	party_pane.add_child(party_column)
-
-	_creator_steps = HBoxContainer.new()
-	_creator_steps.add_theme_constant_override("separation", 6)
-	_creator_steps.custom_minimum_size.y = 24.0
-	for step: String in ["1 Identity", "2 Race & Class", "3 Appearance", "4 Review", "5 Spells"]:
-		var step_label := _label(step, GOLD if step.begins_with("1") else MUTED, 13)
-		step_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		step_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_creator_steps.add_child(step_label)
-		_creator_step_labels.append(step_label)
-	character_column.add_child(_creator_steps)
-	_creator_scroll = ScrollContainer.new()
-	_creator_scroll.name = "CreatorScroll"
-	_creator_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_creator_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_creator_scroll.custom_minimum_size.y = 220.0
-	_creator_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_creator_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	_creator_scroll.follow_focus = true
-	character_column.add_child(_creator_scroll)
-	_creator = BoxContainer.new()
-	_creator.custom_minimum_size.y = 310.0
-	_creator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_creator.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_creator.add_theme_constant_override("separation", 12)
-	_creator_scroll.add_child(_creator)
-	_creator_page = VBoxContainer.new()
-	_creator_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_creator_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_creator_page.size_flags_stretch_ratio = 1.0
-	_creator.add_child(_creator_page)
-	var party_heading := CenterContainer.new()
-	party_heading.name = "PartyHeading"
-	party_heading.custom_minimum_size.y = 28.0
-	var party_heading_content := HBoxContainer.new()
-	party_heading_content.add_child(_label("Current Party", GOLD, 20))
-	var party_count := _label("• 0 / 6", MUTED, 13)
-	party_count.name = "PartyCount"
-	party_heading_content.add_child(party_count)
-	party_heading.add_child(party_heading_content)
-	party_column.add_child(party_heading)
-	var party_scroll := ScrollContainer.new()
-	party_scroll.name = "PartySlotScroll"
-	party_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	party_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	party_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	party_scroll.follow_focus = true
-	_party_list = PartySetupPartyListScript.new()
-	_party_list.name = "PartySlots"
-	_party_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_party_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_party_list.add_theme_constant_override("separation", 2)
-	_party_list.import_requested.connect(_import_stored_character)
-	party_scroll.add_child(_party_list)
-	party_column.add_child(party_scroll)
-	_setup_message = _add_label(character_column, "Enter a name to begin creating a character.", MUTED)
-	_setup_message.custom_minimum_size.y = 32.0
-	_setup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_party_setup_options = VBoxContainer.new()
-	_party_setup_options.name = "PartySetupOptions"
-	_party_setup_options.add_theme_constant_override("separation", 4)
-	_party_guidance_label = _label("", Color("e0e2e5"), 12)
-	_party_guidance_label.name = "PartyLevelGuidance"
-	_party_guidance_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_party_guidance_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_party_setup_options.add_child(_party_guidance_label)
-	var selectors := HBoxContainer.new()
-	selectors.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	selectors.add_theme_constant_override("separation", 6)
-	var monster_column := VBoxContainer.new()
-	monster_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	monster_column.add_child(_label("Monster Set", MUTED, 12))
-	_monster_set_option = OptionButton.new()
-	_monster_set_option.name = "MonsterSetOption"
-	_monster_set_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_monster_set_option.item_selected.connect(_party_setup_option_changed)
-	monster_column.add_child(_monster_set_option)
-	selectors.add_child(monster_column)
-	var difficulty_column := VBoxContainer.new()
-	difficulty_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	difficulty_column.add_child(_label("Difficulty", MUTED, 12))
-	_difficulty_option = OptionButton.new()
-	_difficulty_option.name = "DifficultyOption"
-	_difficulty_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for value: int in range(-2, 3):
-		_difficulty_option.add_item(PartySetupView.difficulty_name(value))
-		_difficulty_option.set_item_metadata(_difficulty_option.item_count - 1, value)
-	_difficulty_option.item_selected.connect(_party_setup_option_changed)
-	difficulty_column.add_child(_difficulty_option)
-	selectors.add_child(difficulty_column)
-	_party_setup_options.add_child(selectors)
-	party_column.add_child(_party_setup_options)
-	_creator_action_bar = HBoxContainer.new()
-	_creator_action_bar.alignment = BoxContainer.ALIGNMENT_CENTER
-	_creator_cancel_button = Button.new()
-	_creator_cancel_button.text = "Cancel character"
-	_creator_cancel_button.pressed.connect(_cancel_creator)
-	_creator_action_bar.add_child(_creator_cancel_button)
-	_creator_action_bar.add_spacer(true)
-	_creator_back_button = Button.new()
-	_creator_back_button.text = "Back"
-	_creator_back_button.pressed.connect(_creator_back)
-	_creator_action_bar.add_child(_creator_back_button)
-	_add_character_button = Button.new()
-	_add_character_button.text = "Reroll"
-	_add_character_button.pressed.connect(_reroll_character)
-	_creator_action_bar.add_child(_add_character_button)
-	_creator_next_button = Button.new()
-	_creator_next_button.text = "Continue"
-	_creator_next_button.pressed.connect(_creator_next)
-	_creator_action_bar.add_child(_creator_next_button)
-	character_column.add_child(_creator_action_bar)
-	var character_footer := HBoxContainer.new()
-	_create_character_button = Button.new()
-	_create_character_button.name = "CreateCharacter"
-	_create_character_button.text = "Create character"
-	_create_character_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_create_character_button.pressed.connect(_start_creator)
-	character_footer.add_child(_create_character_button)
-	character_column.add_child(character_footer)
-	var party_footer := HBoxContainer.new()
-	_begin_button = Button.new()
-	_begin_button.name = "BeginAdventure"
-	_begin_button.text = "Begin adventure"
-	_begin_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_begin_button.custom_minimum_size.y = 34.0
-	_begin_button.disabled = true
-	_begin_button.pressed.connect(_submit_party)
-	party_footer.add_child(_begin_button)
-	party_column.add_child(party_footer)
-	_build_setup_character_inspection()
-	_render_creator_step()
-
-
-func _build_setup_character_inspection() -> void:
-	_setup_inspection_overlay = PanelContainer.new()
-	_setup_inspection_overlay.name = "PartySetupCharacterInspection"
-	var inspection_surface := ClassicUiTheme.get_stylebox("panel", "ClassicInset").duplicate() as StyleBoxTexture
-	_setup_inspection_overlay.add_theme_stylebox_override("panel", inspection_surface)
-	_setup_inspection_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-	_setup_inspection_overlay.clip_contents = true
-	_setup_inspection_overlay.z_index = 1
-	_setup_inspection_overlay.visible = false
-	_setup_overlay.add_child(_setup_inspection_overlay)
-	_setup_inspection_overlay.position = Vector2.ZERO
-	_setup_inspection_overlay.size = _setup_overlay.size
-	_setup_inspection_body = VBoxContainer.new()
-	_setup_inspection_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_setup_inspection_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_setup_inspection_body.add_theme_constant_override("separation", 8)
-	_setup_inspection_overlay.add_child(_setup_inspection_body)
-
-
-func _refresh_setup_options() -> void:
-	if _view == null or not _view.party_setup_available:
-		_campaign_overlay.tooltip_text = "Select an installed scenario to assemble a party."
-		_refresh_party_list()
-		_refresh_party_setup_options()
-		_render_creator_step()
-		return
-	var summary := _view.campaign_summary
-	if summary != null:
-		var title_parts: Array[String] = [summary.title]
-		if not summary.version.is_empty():
-			title_parts.append("v%s" % summary.version)
-		if not summary.author.is_empty():
-			title_parts.append("by %s" % summary.author)
-		var restriction_text := summary.restriction_description.strip_edges()
-		if restriction_text.is_empty():
-			restriction_text = "No authored party restrictions."
-		var limits := "Up to %d characters" % summary.maximum_party_size
-		if summary.maximum_level > 0:
-			limits += " • Maximum level %d" % summary.maximum_level
-		_campaign_overlay.tooltip_text = "%s\n%s\n%s" % [" • ".join(title_parts), restriction_text, limits]
-	else:
-		_campaign_overlay.tooltip_text = "The selected scenario has no campaign summary metadata."
-	_refresh_party_list()
-	_refresh_party_setup_options()
-	var setup_count := _view.party_members.size()
-	_apply_availability(_begin_button, &"begin_adventure")
-	_begin_button.text = "Begin adventure (%d/%d)" % [setup_count, _maximum_party_size()]
-	_render_creator_step()
-
-
-func _render_creator_step() -> void:
-	if _creator_page == null:
-		return
-	if _setup_mode == &"assembly":
-		_render_party_assembly()
-		return
-	_create_character_button.visible = false
-	_begin_button.visible = false
-	_party_setup_options.visible = false
-	_creator_steps.visible = true
-	_creator_action_bar.visible = true
-	_setup_message.visible = true
-	_setup_message.tooltip_text = ""
-	_setup_message.modulate = MUTED
-	_setup_message.custom_minimum_size.y = 32.0
-	_setup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_setup_message.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	_setup_message.text = _creator_step_message()
-	_clear(_creator_page)
-	_race_list = null
-	_caste_list = null
-	_race_class_columns = null
-	_name_edit = null
-	_gender_option = null
-	_portrait_option = null
-	_combat_icon_option = null
-	_review_label = null
-	_spell_label = null
-	_spell_list = null
-	for index: int in _creator_step_labels.size():
-		_creator_step_labels[index].modulate = GOLD if index == _creator_step else Color("e0e2e5") if index < _creator_step else MUTED
-	match _creator_step:
-		0:
-			_build_creator_identity()
-		1:
-			_build_creator_race_class()
-		2:
-			_build_creator_appearance()
-		3:
-			_build_creator_review()
-		4:
-			_build_creator_spells()
-	_update_creator_actions()
-
-
-func _build_creator_identity() -> void:
-	_creator_page.add_child(_label("Identity", GOLD, 20))
-	_add_label(_creator_page, "Name this character and choose the Classic gender value used by creation rules.", MUTED)
-	_name_edit = LineEdit.new()
-	_name_edit.name = "CharacterName"
-	_name_edit.placeholder_text = "Character name"
-	_name_edit.max_length = 24
-	_name_edit.text = _draft_name
-	_name_edit.text_changed.connect(func(value: String) -> void: _draft_name = value)
-	_creator_page.add_child(_name_edit)
-	_gender_option = OptionButton.new()
-	_gender_option.name = "CharacterGender"
-	_gender_option.add_item("Male", 1)
-	_gender_option.add_item("Female", 2)
-	_gender_option.select(0 if _draft_gender == 1 else 1)
-	_gender_option.item_selected.connect(func(_index: int) -> void: _draft_gender = _gender_option.get_selected_id())
-	_creator_page.add_child(_gender_option)
-	_starting_level_option = OptionButton.new()
-	_starting_level_option.name = "StartingLevel"
-	var maximum_level := _view.campaign_summary.maximum_level if _view != null and _view.campaign_summary != null else 0
-	for level: int in CharacterRules.STARTING_LEVELS:
-		if maximum_level > 0 and level > maximum_level:
-			continue
-		_starting_level_option.add_item("Starting level %d" % level, level)
-	var selected_index := _starting_level_option.get_item_index(_draft_starting_level)
-	if selected_index < 0:
-		selected_index = 0
-		_draft_starting_level = _starting_level_option.get_item_id(0)
-	_starting_level_option.select(selected_index)
-	_starting_level_option.item_selected.connect(func(_index: int) -> void: _draft_starting_level = _starting_level_option.get_selected_id())
-	_starting_level_option.tooltip_text = "Castle offers fixed starting levels and runs every intervening ordinary level-up roll. Campaign level restrictions remove unavailable choices."
-	_creator_page.add_child(_starting_level_option)
-	call_deferred("_focus_first", _creator_page)
-
-
-func _build_creator_race_class() -> void:
-	_creator_page.add_child(_label("Race & Class", GOLD, 20))
-	_add_label(_creator_page, "Race is chosen first and filters the classes available on the right.", MUTED)
-	var columns := BoxContainer.new()
-	_race_class_columns = columns
-	columns.vertical = _layout_profile == UiLayoutProfile.COMPACT
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_theme_constant_override("separation", 12)
-	var race_column := VBoxContainer.new()
-	race_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	race_column.add_child(_label("Race", GOLD))
-	_race_list = ItemList.new()
-	_race_list.name = "RaceList"
-	_race_list.custom_minimum_size.y = 190.0
-	_race_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_race_list.item_selected.connect(_race_selected)
-	race_column.add_child(_race_list)
-	columns.add_child(race_column)
-	var caste_column := VBoxContainer.new()
-	caste_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	caste_column.add_child(_label("Class", GOLD))
-	_caste_list = ItemList.new()
-	_caste_list.name = "ClassList"
-	_caste_list.custom_minimum_size.y = 190.0
-	_caste_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_caste_list.item_selected.connect(_caste_selected)
-	caste_column.add_child(_caste_list)
-	columns.add_child(caste_column)
-	_creator_page.add_child(columns)
-	_populate_race_class_options()
-
-
-func _populate_race_class_options() -> void:
-	if _view == null or _race_list == null or _caste_list == null:
-		return
-	for option: DefinitionOptionView in _view.race_options:
-		_race_list.add_item(option.name)
-		_race_list.set_item_metadata(_race_list.item_count - 1, option.id)
-		_race_list.set_item_tooltip(_race_list.item_count - 1, option.description)
-		_race_list.set_item_disabled(_race_list.item_count - 1, _view.campaign_summary != null and _view.campaign_summary.banned_races.has(option.id))
-	for option: DefinitionOptionView in _view.caste_options:
-		_caste_list.add_item(option.name)
-		_caste_list.set_item_metadata(_caste_list.item_count - 1, option.id)
-		_caste_list.set_item_tooltip(_caste_list.item_count - 1, option.description)
-		_caste_list.set_item_disabled(_caste_list.item_count - 1, _view.campaign_summary != null and _view.campaign_summary.banned_castes.has(option.id))
-	if _selected_race_id.is_empty() or not _option_is_enabled(_race_list, _selected_race_id):
-		var first_race := _first_enabled_item(_race_list)
-		if first_race >= 0:
-			_selected_race_id = String(_race_list.get_item_metadata(first_race))
-	_select_item_by_id(_race_list, _selected_race_id)
-	_apply_caste_filter()
-	if _selected_caste_id.is_empty() or not _option_is_enabled(_caste_list, _selected_caste_id):
-		var first_caste := _first_enabled_item(_caste_list)
-		if first_caste >= 0:
-			_selected_caste_id = String(_caste_list.get_item_metadata(first_caste))
-	_select_item_by_id(_caste_list, _selected_caste_id)
-
-
-func _build_creator_appearance() -> void:
-	_creator_page.add_child(_label("Appearance", GOLD, 20))
-	_add_label(_creator_page, "Choose the portrait shown on character screens and the icon used in battle. Castle's six race recommendations appear first.", MUTED)
-	_ensure_appearance_textures()
-	_portrait_option = OptionButton.new()
-	_portrait_option.name = "PortraitOption"
-	_portrait_option.fit_to_longest_item = false
-	var portrait_options := _sorted_appearance_options(_view.portrait_options if _view != null else [])
-	for option: CharacterAppearanceOptionView in portrait_options:
-		_add_appearance_option(_portrait_option, option)
-	_select_appearance_default(_portrait_option, _draft_portrait_id, true)
-	_portrait_option.item_selected.connect(_portrait_selected)
-	_creator_page.add_child(_portrait_option)
-	_combat_icon_option = OptionButton.new()
-	_combat_icon_option.name = "CombatIconOption"
-	_combat_icon_option.fit_to_longest_item = false
-	var combat_options := _sorted_appearance_options(_view.combat_icon_options if _view != null else [])
-	for option: CharacterAppearanceOptionView in combat_options:
-		_add_appearance_option(_combat_icon_option, option)
-	_select_appearance_default(_combat_icon_option, _draft_combat_icon_id, false)
-	_combat_icon_option.item_selected.connect(func(_index: int) -> void: _combat_icon_touched = true)
-	_creator_page.add_child(_combat_icon_option)
-	if portrait_options.is_empty() or combat_options.is_empty():
-		_add_label(_creator_page, "This package does not expose the complete Classic appearance catalog. Character generation is unavailable until the package is re-exported.", Color("ef7770"))
-
-
-func _sorted_appearance_options(source: Array[CharacterAppearanceOptionView]) -> Array[CharacterAppearanceOptionView]:
-	var result := source.duplicate()
-	result.sort_custom(func(left: CharacterAppearanceOptionView, right: CharacterAppearanceOptionView) -> bool:
-		var left_recommended := left.is_recommended_for(_selected_race_id)
-		var right_recommended := right.is_recommended_for(_selected_race_id)
-		if left_recommended != right_recommended:
-			return left_recommended
-		return left.classic_resource_id < right.classic_resource_id
-	)
-	return result
-
-
-func _add_appearance_option(control: OptionButton, option: CharacterAppearanceOptionView) -> void:
-	var prefix := "Recommended • " if option.is_recommended_for(_selected_race_id) else ""
-	var label := "%s%s • CICN %d" % [prefix, option.label, option.classic_resource_id]
-	var texture := _appearance_textures.get(option.id) as Texture2D
-	if texture != null:
-		control.add_icon_item(texture, label)
-	else:
-		control.add_item(label)
-	var index := control.item_count - 1
-	control.set_item_metadata(index, option.id)
-	control.set_item_tooltip(index, "%s character resource %d" % ["Portrait" if option.kind == CharacterAppearanceDefinition.PORTRAIT else "Combat icon", option.classic_resource_id])
-
-
-func _select_appearance_default(control: OptionButton, selected_id: String, portrait: bool) -> void:
-	if control.item_count == 0:
-		return
-	var target_id := selected_id
-	if target_id.is_empty() and portrait:
-		for index: int in control.item_count:
-			var option := _appearance_option_by_id(String(control.get_item_metadata(index)), true)
-			if option != null and option.is_recommended_for(_selected_race_id):
-				target_id = option.id
-				break
-	if target_id.is_empty() and not portrait:
-		var portrait_option := _selected_appearance(_portrait_option, true)
-		if portrait_option != null:
-			var wanted_resource_id := 9000 - 257 + portrait_option.classic_resource_id
-			for option: CharacterAppearanceOptionView in _view.combat_icon_options:
-				if option.classic_resource_id == wanted_resource_id:
-					target_id = option.id
-					break
-	for index: int in control.item_count:
-		if String(control.get_item_metadata(index)) == target_id:
-			control.select(index)
-			return
-	control.select(0)
-
-
-func _portrait_selected(_index: int) -> void:
-	if _combat_icon_touched or _combat_icon_option == null:
-		return
-	var portrait := _selected_appearance(_portrait_option, true)
-	if portrait == null:
-		return
-	var wanted_resource_id := 9000 - 257 + portrait.classic_resource_id
-	for index: int in _combat_icon_option.item_count:
-		var icon := _appearance_option_by_id(String(_combat_icon_option.get_item_metadata(index)), false)
-		if icon != null and icon.classic_resource_id == wanted_resource_id:
-			_combat_icon_option.select(index)
-			return
-
-
-func _selected_appearance(control: OptionButton, portrait: bool) -> CharacterAppearanceOptionView:
-	if control == null or control.selected < 0:
-		return null
-	return _appearance_option_by_id(String(control.get_item_metadata(control.selected)), portrait)
-
-
-func _appearance_option_by_id(option_id: String, portrait: bool) -> CharacterAppearanceOptionView:
-	var options := _view.portrait_options if portrait else _view.combat_icon_options
-	for option: CharacterAppearanceOptionView in options:
-		if option.id == option_id:
-			return option
-	return null
-
-
-func _ensure_appearance_textures() -> void:
-	if _media == null or not _appearance_textures.is_empty():
-		return
-	var assets: Array[PackageMediaAsset] = []
-	assets.append_array(_media.assets_of_kind("portrait"))
-	assets.append_array(_media.assets_of_kind("combat-icon"))
-	var payloads := _media.read_bytes_batch(assets)
-	for asset: PackageMediaAsset in assets:
-		var bytes: PackedByteArray = payloads.get(asset.id, PackedByteArray())
-		if bytes.is_empty():
-			continue
-		var image := Image.new()
-		var error := image.load_png_from_buffer(bytes)
-		if error == OK:
-			_appearance_textures[asset.id] = ImageTexture.create_from_image(image)
-
-
-func _build_creator_review() -> void:
-	_creator_page.add_child(_label("Review Classic Roll", GOLD, 20))
-	_review_label = _add_label(_creator_page, "Generating the character through Classic rules…", MUTED)
-	_review_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_update_creator_review()
-
-
-func _build_creator_spells() -> void:
-	_creator_page.add_child(_label("Starting Spells", GOLD, 20))
-	_spell_label = _add_label(_creator_page, "", MUTED)
-	_spell_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	if _view == null or _view.character_draft == null:
-		_spell_label.text = "Generate and review the character before choosing spells."
-		return
-	if _view.character_draft.spellcaster_type < 1 or _view.character_draft_spell_points_total < 1:
-		_spell_label.text = "Not applicable. This character has no Classic starting-spell selection points."
-		return
-	_spell_label.text = "%d of %d selection points remain. Unspent points may be accepted, as in Classic." % [_view.character_draft_spell_points_remaining, _view.character_draft_spell_points_total]
-	_spell_list = ItemList.new()
-	_spell_list.name = "StartingSpellList"
-	_spell_list.select_mode = ItemList.SELECT_MULTI
-	_spell_list.custom_minimum_size.y = 190.0
-	_spell_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	for option: CharacterSpellOptionView in _view.character_draft_spell_options:
-		_spell_list.add_item("L%d • %s (%d)" % [option.level, option.name, option.selection_cost])
-		var index := _spell_list.item_count - 1
-		_spell_list.set_item_metadata(index, option.id)
-		_spell_list.set_item_tooltip(index, option.description)
-		if option.selected:
-			_spell_list.select(index, false)
-		elif option.selection_cost > _view.character_draft_spell_points_remaining:
-			_spell_list.set_item_disabled(index, true)
-			_spell_list.set_item_tooltip(index, "This spell costs %d points; %d remain." % [option.selection_cost, _view.character_draft_spell_points_remaining])
-	_spell_list.multi_selected.connect(_draft_spell_selection_changed)
-	_creator_page.add_child(_spell_list)
-	if _view.character_draft_spell_options.is_empty():
-		_spell_label.text = "This caster has selection points, but the package exposes no matching Classic spell records. Finalization is blocked."
-
-
-func _creator_next() -> void:
-	match _creator_step:
-		0:
-			_draft_name = _name_edit.text.strip_edges()
-			_draft_gender = _gender_option.get_selected_id()
-			_draft_starting_level = _starting_level_option.get_selected_id()
-			if _draft_name.is_empty():
-				_setup_message.text = "Enter a character name before continuing."
-				return
-			_creator_step = 1
-		1:
-			if _selected_race_id.is_empty() or _selected_caste_id.is_empty():
-				_setup_message.text = "Choose both a race and a compatible class."
-				return
-			_creator_step = 2
-		2:
-			if _view.party_members.size() >= _maximum_party_size():
-				_setup_message.text = "This campaign allows no more than %d characters." % _maximum_party_size()
-				return
-			var portrait := _selected_appearance(_portrait_option, true)
-			var combat_icon := _selected_appearance(_combat_icon_option, false)
-			if portrait == null or combat_icon == null:
-				_setup_message.text = "Choose a package-backed portrait and combat icon before continuing."
-				return
-			_draft_portrait_id = portrait.id
-			_draft_combat_icon_id = combat_icon.id
-			_creator_step = 3
-			_awaiting_draft_generation = true
-			intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
-			return
-		3:
-			if _view.character_draft == null:
-				_setup_message.text = "The Classic character roll did not complete. Review the action error before continuing."
-				return
-			_creator_step = 4
-		4:
-			if _view.character_draft == null:
-				return
-			if _view.character_draft.spellcaster_type > 0 and _view.character_draft_spell_points_total > 0 and _view.character_draft_spell_options.is_empty():
-				_setup_message.text = "Starting spells are unavailable in this package, so this caster cannot be finalized safely."
-				return
-			_awaiting_draft_finalization = true
-			intent_submitted.emit(PlayerIntent.finalize_character())
-			return
-	_setup_message.text = _creator_step_message()
-	_render_creator_step()
-
-
-func _creator_back() -> void:
-	if _creator_step <= 0:
-		return
-	if _creator_step == 3 and _view != null and _view.character_draft != null:
-		_creator_step = 2
-		intent_submitted.emit(PlayerIntent.cancel_character_draft())
-		return
-	_creator_step -= 1
-	_setup_message.text = _creator_step_message()
-	_render_creator_step()
-
-
-func _cancel_creator() -> void:
-	var had_generated_draft := _view != null and _view.character_draft != null
-	_reset_creator(true)
-	if had_generated_draft:
-		intent_submitted.emit(PlayerIntent.cancel_character_draft())
-	if _standalone_character_creation_active:
-		standalone_character_creation_cancelled.emit()
-	elif not had_generated_draft:
-		_render_creator_step()
-
-
-func _reset_creator(return_to_assembly: bool = false) -> void:
-	if return_to_assembly:
-		_setup_mode = &"assembly"
-	_creator_step = 0
-	_draft_name = ""
-	_draft_gender = 1
-	_draft_starting_level = 1
-	_draft_portrait_id = ""
-	_draft_combat_icon_id = ""
-	_combat_icon_touched = false
-	_selected_race_id = ""
-	_selected_caste_id = ""
-	_awaiting_draft_generation = false
-	_awaiting_draft_finalization = false
-	_setup_message.text = "Choose stored characters or create a new one." if _setup_mode == &"assembly" else "Enter a name to begin creating another character."
-
-
-func _reroll_character() -> void:
-	if _creator_step != 3 or _view == null or _view.character_draft == null:
-		return
-	_awaiting_draft_generation = true
-	intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
-
-
-func _draft_spell_selection_changed(_index: int, _selected: bool) -> void:
-	if _spell_list == null:
-		return
-	var selected_ids: Array[String] = []
-	for item_index: int in _spell_list.item_count:
-		if _spell_list.is_selected(item_index):
-			selected_ids.append(String(_spell_list.get_item_metadata(item_index)))
-	intent_submitted.emit(PlayerIntent.set_character_draft_spells(selected_ids))
-
-
-func _character_creation_spec() -> CharacterCreationSpec:
-	return CharacterCreationSpec.new(_draft_name, _selected_race_id, _selected_caste_id, _draft_gender, _draft_portrait_id, _draft_combat_icon_id, _draft_starting_level)
-
-
-func _creator_step_message() -> String:
-	var final_step := "Choose starting spells, then create the Character File." if _standalone_character_creation_active else "Choose starting spells, then add the character to the party."
-	return ["Enter the character's identity.", "Choose a race, then a compatible class.", "Choose the character's appearance.", "Review or reroll the generated Classic character.", final_step][_creator_step]
-
-
-func _update_creator_actions() -> void:
-	if _creator_back_button == null:
-		return
-	_creator_back_button.disabled = _creator_step == 0
-	_add_character_button.visible = _creator_step == 3
-	_apply_availability(_add_character_button, &"generate_character_draft")
-	_creator_next_button.text = ("Create Character File" if _standalone_character_creation_active else "Add to party") if _creator_step == 4 else "Choose spells" if _creator_step == 3 else "Continue"
-	if _creator_step == 4:
-		_apply_availability(_creator_next_button, &"finalize_character")
-	else:
-		_creator_next_button.disabled = false
-		_creator_next_button.tooltip_text = ""
-	_creator_cancel_button.disabled = false
-
-
-func _race_selected(index: int) -> void:
-	if index < 0 or _race_list.is_item_disabled(index):
-		return
-	var selected_id := String(_race_list.get_item_metadata(index))
-	if selected_id != _selected_race_id:
-		_draft_portrait_id = ""
-		_draft_combat_icon_id = ""
-		_combat_icon_touched = false
-	_selected_race_id = selected_id
-	_apply_caste_filter()
-	_setup_message.text = "Race selected. Classes unavailable to this race are disabled on the right."
-
-
-func _caste_selected(index: int) -> void:
-	if index < 0 or _caste_list.is_item_disabled(index):
-		return
-	_selected_caste_id = String(_caste_list.get_item_metadata(index))
-	_setup_message.text = "Class selected. Continue to appearance when ready."
-
-
-func _apply_caste_filter() -> void:
-	if _view == null or _caste_list == null:
-		return
-	var allowed_castes: Array[String] = []
-	for option: DefinitionOptionView in _view.race_options:
-		if option.id == _selected_race_id:
-			allowed_castes = option.related_ids.duplicate()
-			break
-	for index: int in _caste_list.item_count:
-		var caste_id := String(_caste_list.get_item_metadata(index))
-		var restricted := _view.campaign_summary != null and _view.campaign_summary.banned_castes.has(caste_id)
-		var compatible := allowed_castes.is_empty() or allowed_castes.has(caste_id)
-		_caste_list.set_item_disabled(index, restricted or not compatible)
-	if not _selected_caste_id.is_empty() and not _option_is_enabled(_caste_list, _selected_caste_id):
-		_selected_caste_id = ""
-		var first_caste := _first_enabled_item(_caste_list)
-		if first_caste >= 0:
-			_selected_caste_id = String(_caste_list.get_item_metadata(first_caste))
-	_select_item_by_id(_caste_list, _selected_caste_id)
-
-
-func _select_item_by_id(list: ItemList, option_id: String) -> void:
-	if list == null or option_id.is_empty():
-		return
-	for index: int in list.item_count:
-		if String(list.get_item_metadata(index)) == option_id:
-			list.select(index)
-			return
-
-
-func _option_is_enabled(list: ItemList, option_id: String) -> bool:
-	for index: int in list.item_count:
-		if String(list.get_item_metadata(index)) == option_id:
-			return not list.is_item_disabled(index)
-	return false
-
-
-func _first_enabled_item(list: ItemList) -> int:
-	for index: int in list.item_count:
-		if not list.is_item_disabled(index):
-			return index
-	return -1
-
-
-func _refresh_party_list() -> void:
-	_clear(_party_list)
-	_ensure_appearance_textures()
-	var import_available: bool = _view != null and _view.availability(&"import_vault_character").enabled and _view.party_members.size() < _maximum_party_size()
-	var import_reason := "" if import_available else "The party cannot accept another stored character right now."
-	_party_list.configure_drop_target(import_available, import_reason)
-	var party_count := _setup_overlay.find_child("PartyCount", true, false) as Label
-	if party_count != null:
-		party_count.text = "• %d / %d" % [_view.party_members.size() if _view != null else 0, _maximum_party_size()]
-	for slot_index: int in _maximum_party_size():
-		if _view == null or not _view.party_setup_available or slot_index >= _view.party_members.size():
-			var empty := PanelContainer.new()
-			empty.name = "EmptyPartySlot%d" % (slot_index + 1)
-			empty.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
-			empty.add_theme_stylebox_override("panel", PartySetupCharacterRowScript.row_style())
-			empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var empty_row := HBoxContainer.new()
-			empty_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			empty_row.add_theme_constant_override("separation", 6)
-			empty.add_child(empty_row)
-			var portrait_space := Control.new()
-			portrait_space.custom_minimum_size = Vector2(PartySetupCharacterRowScript.PORTRAIT_SIZE, PartySetupCharacterRowScript.PORTRAIT_SIZE)
-			portrait_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			empty_row.add_child(portrait_space)
-			var empty_label := Label.new()
-			empty_label.text = "%d. Empty position" % (slot_index + 1)
-			empty_label.modulate = MUTED
-			empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			empty_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			empty_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			empty_row.add_child(empty_label)
-			var action_space := Control.new()
-			action_space.custom_minimum_size.x = 130.0
-			action_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			empty_row.add_child(action_space)
-			_party_list.add_child(empty)
-			continue
-		var character: CharacterView = _view.party_members[slot_index]
-		var row_panel := PanelContainer.new()
-		row_panel.name = "PartySlot_%s" % character.id.validate_node_name()
-		row_panel.custom_minimum_size.y = PartySetupCharacterRowScript.ROW_HEIGHT
-		row_panel.add_theme_stylebox_override("panel", PartySetupCharacterRowScript.row_style())
-		row_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		row_panel.add_child(row)
-		var portrait_view := TextureRect.new()
-		portrait_view.name = "Portrait"
-		portrait_view.custom_minimum_size = Vector2(PartySetupCharacterRowScript.PORTRAIT_SIZE, PartySetupCharacterRowScript.PORTRAIT_SIZE)
-		portrait_view.texture = _appearance_textures.get(character.portrait_id) as Texture2D
-		portrait_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		portrait_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		portrait_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		portrait_view.tooltip_text = "%s's portrait" % character.name
-		row.add_child(portrait_view)
-		var label := Label.new()
-		label.text = PartySetupCharacterRowScript._summary_text(character.name, character.level, character.race_name, character.caste_name, character, slot_index + 1)
-		label.add_theme_font_size_override("font_size", 10)
-		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		label.modulate = Color("e0e2e5")
-		row.add_child(label)
-		var inspect_button := Button.new()
-		inspect_button.text = "Inspect"
-		inspect_button.tooltip_text = "Open %s's complete character record without changing party state." % character.name
-		inspect_button.pressed.connect(_inspect_setup_character.bind(character.id))
-		row.add_child(inspect_button)
-		var remove_button := Button.new()
-		remove_button.text = "Remove"
-		_apply_availability(remove_button, &"remove_party_member")
-		remove_button.pressed.connect(_remove_setup_character.bind(character.id))
-		row.add_child(remove_button)
-		_party_list.add_child(row_panel)
-
-
-func _render_party_assembly() -> void:
-	var campaign_setup := _view != null and _view.party_setup_available and not _standalone_character_creation_active
-	var party_full := campaign_setup and _view.party_members.size() >= _maximum_party_size()
-	_create_character_button.visible = true
-	_begin_button.visible = true
-	_create_character_button.disabled = party_full or (not campaign_setup and not _standalone_character_creation_available)
-	if party_full:
-		_create_character_button.tooltip_text = "This party already has %d characters." % _maximum_party_size()
-	elif campaign_setup:
-		_create_character_button.tooltip_text = "Create a character using this scenario's standard or custom race and class definitions."
-	elif _standalone_character_creation_available:
-		_create_character_button.tooltip_text = "Create a reusable Character File with the built-in Realmz races and classes."
-	else:
-		_create_character_button.tooltip_text = _standalone_character_creation_reason
-	_creator_steps.visible = false
-	_creator_action_bar.visible = false
-	_party_setup_options.visible = _view != null and _view.party_setup_available
-	_setup_message.visible = false
-	_clear(_creator_page)
-	_ensure_appearance_textures()
-	var heading := CenterContainer.new()
-	heading.name = "CharacterFilesHeading"
-	heading.custom_minimum_size.y = 28.0
-	var heading_content := HBoxContainer.new()
-	heading_content.add_child(_label("Character Files", GOLD, 20))
-	var character_count := _label("• %d available" % _current_vault_revisions().size(), MUTED, 13)
-	character_count.name = "CharacterFileCount"
-	heading_content.add_child(character_count)
-	heading.add_child(heading_content)
-	_creator_page.add_child(heading)
-	var stored_scroll := ScrollContainer.new()
-	stored_scroll.name = "StoredCharacterScroll"
-	stored_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stored_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	stored_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	_creator_page.add_child(stored_scroll)
-	_stored_character_list = VBoxContainer.new()
-	_stored_character_list.name = "StoredCharacterList"
-	_stored_character_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_stored_character_list.add_theme_constant_override("separation", 2)
-	stored_scroll.add_child(_stored_character_list)
-	var current_revisions := _current_vault_revisions()
-	if current_revisions.is_empty():
-		var empty := _label("No Character Files yet. Create one here.", MUTED)
-		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		_stored_character_list.add_child(empty)
-		return
-	var global_available: ActionAvailabilityView = _view.availability(&"import_vault_character") if campaign_setup else ActionAvailabilityView.new(&"import_vault_character", false, "Choose a scenario before adding a Character File to a party.")
-	for revision: CharacterVaultRevisionView in current_revisions:
-		var reason := ""
-		if not campaign_setup:
-			reason = global_available.reason
-		elif not revision.eligible:
-			reason = "\n".join(revision.eligibility_reasons)
-		elif not global_available.enabled:
-			reason = global_available.reason
-		elif party_full:
-			reason = "This party already has %d characters." % _maximum_party_size()
-		var row := PartySetupCharacterRowScript.new()
-		row.name = "StoredCharacter_%s" % revision.character_id.validate_node_name()
-		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
-		var portrait := _appearance_textures.get(portrait_id) as Texture2D
-		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, portrait)
-		row.import_requested.connect(_import_stored_character)
-		_stored_character_list.add_child(row)
-
-
-func _refresh_party_setup_options() -> void:
-	if _difficulty_option == null:
-		return
-	if _view == null or not _view.party_setup_available or _view.party_setup == null:
-		_party_setup_options.visible = false
-		_begin_button.disabled = true
-		_begin_button.text = "Begin adventure (0/6)"
-		return
-	_party_setup_options.visible = _setup_mode == &"assembly"
-	_monster_set_option.clear()
-	var ordered_monster_sets: Array[int] = []
-	for preferred_set_id: int in [0, -1, 1]:
-		if _view.party_setup.available_monster_sets.has(preferred_set_id):
-			ordered_monster_sets.append(preferred_set_id)
-	for set_id: int in _view.party_setup.available_monster_sets:
-		if not ordered_monster_sets.has(set_id):
-			ordered_monster_sets.append(set_id)
-	for set_id: int in ordered_monster_sets:
-		_monster_set_option.add_item(PartySetupView.monster_set_name(set_id))
-		_monster_set_option.set_item_metadata(_monster_set_option.item_count - 1, set_id)
-	_select_option_metadata(_monster_set_option, _view.party_setup.monster_set)
-	_select_option_metadata(_difficulty_option, _view.party_setup.difficulty)
-	var summary := _view.campaign_summary
-	var maximum := "None" if summary == null or summary.maximum_party_levels <= 0 else str(summary.maximum_party_levels)
-	var recommended := "—" if summary == null or not summary.guidance_authored or summary.recommended_party_levels <= 0 else str(summary.recommended_party_levels)
-	var gained := "—" if _view.party_setup.experience_percent <= 0 else "%d%%" % _view.party_setup.experience_percent
-	_party_guidance_label.text = "Maximum %s  •  Recommended %s  •  Current %d\nExperience gained at %s" % [maximum, recommended, _view.party_setup.current_party_levels, gained]
-
-
-func _party_setup_option_changed(_index: int) -> void:
-	if _view == null or _view.party_setup == null:
-		return
-	var difficulty := int(_difficulty_option.get_item_metadata(_difficulty_option.selected))
-	var monster_set := int(_monster_set_option.get_item_metadata(_monster_set_option.selected))
-	intent_submitted.emit(PlayerIntent.set_party_setup_options(difficulty, monster_set))
-
-
-static func _select_option_metadata(option: OptionButton, value: int) -> void:
-	for index: int in option.item_count:
-		if int(option.get_item_metadata(index)) == value:
-			option.select(index)
-			return
-
-
-func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
-	var current_revisions: Array[CharacterVaultRevisionView] = []
-	for revision: CharacterVaultRevisionView in _vault_revisions:
-		if revision.is_current and not revision.archived:
-			current_revisions.append(revision)
-	current_revisions.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool: return left.name.naturalnocasecmp_to(right.name) < 0)
-	return current_revisions
-
-
-func _start_creator() -> void:
-	if _view == null or not _view.party_setup_available:
-		if _standalone_character_creation_available:
-			standalone_character_creation_requested.emit()
-			return
-		else:
-			_setup_message.text = _standalone_character_creation_reason
-			return
-	_setup_mode = &"creator"
-	_reset_creator(false)
-	_render_creator_step()
-
-
-func _import_stored_character(character_id: String, revision_hash: String) -> void:
-	intent_submitted.emit(PlayerIntent.import_vault_character(character_id, revision_hash))
-
-
-func _inspect_setup_character(character_id: String) -> void:
-	_setup_inspection_character_id = character_id
-	_character_sheet_character_id = character_id
-	_character_sheet_tab = &"overview"
-	_render_setup_character_inspection()
-
-
-func _render_setup_character_inspection() -> void:
-	if _setup_inspection_overlay == null or _setup_inspection_body == null or _view == null:
-		return
-	var inspected: CharacterView = null
-	for character: CharacterView in _view.party_members:
-		if character.id == _setup_inspection_character_id:
-			inspected = character
-			break
-	if inspected == null:
-		_close_setup_character_inspection()
-		return
-	_clear(_setup_inspection_body)
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	var back := Button.new()
-	back.name = "BackToPartySetup"
-	back.text = "Back to party setup"
-	back.pressed.connect(_close_setup_character_inspection)
-	header.add_child(back)
-	var heading := _label("Inspect %s" % inspected.name, GOLD, 20)
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(heading)
-	_setup_inspection_body.add_child(header)
-	var scroll := ScrollContainer.new()
-	scroll.name = "CharacterInspectionScroll"
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.follow_focus = true
-	_setup_inspection_body.add_child(scroll)
-	_ensure_appearance_textures()
-	var sheet := ClassicCharacterSheet.new()
-	sheet.name = "PartySetupCharacterSheet"
-	sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sheet.present(
-		_view.party_members,
-		_setup_inspection_character_id,
-		_appearance_textures,
-		_settings.text_scale,
-		_character_sheet_tab,
-		_view.portrait_options,
-		_view.combat_icon_options,
-		ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are available after beginning the adventure.")
-	)
-	sheet.character_selected.connect(func(character_id: String) -> void:
-		_setup_inspection_character_id = character_id
-		_character_sheet_character_id = character_id
-	)
-	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _character_sheet_tab = tab_id)
-	scroll.add_child(sheet)
-	_setup_inspection_overlay.visible = true
-	call_deferred("_focus_first", _setup_inspection_overlay)
-
-
-func _close_setup_character_inspection() -> void:
-	_setup_inspection_character_id = ""
-	if _setup_inspection_overlay != null:
-		_setup_inspection_overlay.visible = false
-	call_deferred("_focus_first", _setup_overlay)
-
-
-func _remove_setup_character(character_id: String) -> void:
-	intent_submitted.emit(PlayerIntent.remove_party_member(character_id))
-
-
-func _submit_party() -> void:
-	if _view == null or _view.party_members.is_empty():
-		return
-	intent_submitted.emit(PlayerIntent.begin_adventure())
-
-
-func _maximum_party_size() -> int:
-	if _view == null or _view.campaign_summary == null:
-		return 6
-	return clampi(_view.campaign_summary.maximum_party_size, 1, 6)
-
-
-func _update_creator_review() -> void:
-	if _review_label == null:
-		return
-	if _view == null or _view.character_draft == null:
-		_review_label.text = "The Classic character roll has not completed."
-		return
-	var character := _view.character_draft
-	_review_label.text = "%s • Level %d %s %s\nHP %d/%d • SP %d/%d • Age %d (%s)\nBrawn %d • Knowledge %d • Judgment %d • Agility %d • Vitality %d • Luck %d\nArmor %d • To Hit %d • Dodge %d • Missile %d • Two-Hand %d • Hand-to-Hand %d • Damage %+d\nMovement %d • Magic Resistance %d%%" % [character.name, character.level, character.race_name, character.caste_name, character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.age_years, character.age_group_name, character.brawn, character.knowledge, character.judgment, character.agility, character.vitality, character.luck, character.armor, character.to_hit, character.dodge, character.missile, character.two_hand, character.hand_to_hand, character.damage_bonus, character.maximum_movement, character.magic_resistance]
-
-
-func _option_name(list: ItemList, option_id: String) -> String:
-	if list == null or option_id.is_empty():
-		return ""
-	for index: int in list.item_count:
-		if String(list.get_item_metadata(index)) == option_id:
-			return list.get_item_text(index)
-	return ""
-
-
-func _campaign_pressed(campaign: PackageDiscoveryResult) -> void:
-	if not campaign.ready:
-		return
-	start_requested.emit(campaign.path, 1)
-
-
-func _open_typed_path() -> void:
-	var path := _package_path.text.strip_edges()
-	if not path.is_empty():
-		start_requested.emit(path, 1)
-
-
-func _render_screen() -> void:
+func _render_screen(notify_route_change: bool = false) -> void:
 	var mounted_new_route := _workspace_view == null or _workspace_view.route_id != _screen_id
 	var previous_scroll_horizontal := _body_scroll.scroll_horizontal if _body_scroll != null else 0
 	var previous_scroll_vertical := _body_scroll.scroll_vertical if _body_scroll != null else 0
 	_mount_workspace(_screen_id)
+	if notify_route_change:
+		screen_changed.emit(_screen_id)
 	if _workspace_view != null:
 		_workspace_view.set_workspace_rect(_workspace_layout_rect())
 	if _body == null:
 		return
+	_route_transition_revision += 1
+	var transition_revision := _route_transition_revision
 	_clear(_body)
 	_content_parent = _body
-	_body_frame.visible = (_splash_overlay == null or not _splash_overlay.visible) and not _campaign_overlay.visible and not _setup_overlay.visible and _screen_id not in [&"exploration", &"combat"]
+	_body_frame.visible = not setup_controller.full_stage_overlay_visible() and _screen_id not in [&"exploration", &"combat"]
 	if _screen_id in [&"exploration", &"combat"]:
+		call_deferred("_complete_route_render", transition_revision, false, previous_scroll_horizontal, previous_scroll_vertical)
 		return
 	if (_view == null or not _view.session_started) and _screen_id != &"vault":
 		_add_label(_body, "No active session. Choose a validated campaign to begin.", MUTED)
+		call_deferred("_complete_route_render", transition_revision, mounted_new_route, previous_scroll_horizontal, previous_scroll_vertical)
 		return
 	match _screen_id:
 		&"exploration":
@@ -1759,260 +445,38 @@ func _render_screen() -> void:
 		&"system":
 			_render_system()
 	_assign_focus_keys(_body)
-	call_deferred("_restore_focus", mounted_new_route, previous_scroll_horizontal, previous_scroll_vertical)
+	call_deferred("_complete_route_render", transition_revision, mounted_new_route, previous_scroll_horizontal, previous_scroll_vertical)
+
+
+func _complete_route_render(transition_revision: int, reset_scroll_to_top: bool, previous_scroll_horizontal: int, previous_scroll_vertical: int) -> void:
+	if transition_revision != _route_transition_revision:
+		return
+	_restore_focus(reset_scroll_to_top, previous_scroll_horizontal, previous_scroll_vertical)
+	var viewport := get_viewport()
+	if viewport == null:
+		workspace_focus_restored.emit(_screen_id, "")
+		return
+	var focus_owner := viewport.gui_get_focus_owner()
+	var focus_key := String(focus_owner.get_meta("focus_key", "")) if focus_owner != null and is_ancestor_of(focus_owner) else ""
+	workspace_focus_restored.emit(_screen_id, focus_key)
 
 
 func _render_characters() -> void:
-	if _view.party_members.is_empty():
-		_add_empty_state("No characters", "Begin a campaign or import an eligible vault character.")
-		return
-	_render_party_order()
-	_ensure_appearance_textures()
-	var sheet := ClassicCharacterSheet.new()
-	sheet.name = "ClassicCharacterSheet"
-	sheet.present(_view.party_members, _character_sheet_character_id, _appearance_textures, _settings.text_scale, _character_sheet_tab, _view.portrait_options, _view.combat_icon_options, _view.availability(&"change_character_appearance"))
-	_character_sheet_character_id = sheet.selected_character_id()
-	sheet.character_selected.connect(func(character_id: String) -> void: _character_sheet_character_id = character_id)
-	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _character_sheet_tab = tab_id)
-	sheet.appearance_change_requested.connect(_submit_character_appearance)
-	_body.add_child(sheet)
-
-
-func _submit_character_appearance(character_id: String, appearance_kind: StringName, appearance_id: String) -> void:
-	_character_sheet_character_id = character_id
-	_character_sheet_tab = &"appearance"
-	intent_submitted.emit(PlayerIntent.change_character_appearance(character_id, appearance_kind, appearance_id))
-
-
-func _render_party_order() -> void:
-	var current_ids: Array[String] = []
-	var characters_by_id: Dictionary = {}
-	for character: CharacterView in _view.party_members:
-		current_ids.append(character.id)
-		characters_by_id[character.id] = character
-	if current_ids != _party_order_source_ids:
-		_party_order_source_ids = current_ids.duplicate()
-		_party_order_draft_ids = current_ids.duplicate()
-	else:
-		var seen_draft_ids: Dictionary = {}
-		var valid_draft := _party_order_draft_ids.size() == current_ids.size()
-		for character_id: String in _party_order_draft_ids:
-			if seen_draft_ids.has(character_id) or not characters_by_id.has(character_id):
-				valid_draft = false
-				break
-			seen_draft_ids[character_id] = true
-		if not valid_draft:
-			_party_order_draft_ids = current_ids.duplicate()
-	_add_section_heading("Party Order", "Selection and battle formation use this order")
-	var availability := _view.availability(&"reorder_party")
-	for index: int in _party_order_draft_ids.size():
-		var character: CharacterView = characters_by_id[_party_order_draft_ids[index]]
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
-		var label := _label("%d. %s • Level %d %s" % [index + 1, character.name, character.level, character.caste_name], Color("e0e2e5"), 14)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(label)
-		var move_up := Button.new()
-		move_up.text = "Move Up"
-		move_up.disabled = not availability.enabled or index == 0
-		move_up.tooltip_text = availability.reason if not availability.enabled else "Already first." if index == 0 else "Move %s one slot earlier." % character.name
-		if not move_up.disabled:
-			move_up.pressed.connect(_move_party_order_draft.bind(index, -1))
-		row.add_child(move_up)
-		var move_down := Button.new()
-		move_down.text = "Move Down"
-		move_down.disabled = not availability.enabled or index == _party_order_draft_ids.size() - 1
-		move_down.tooltip_text = availability.reason if not availability.enabled else "Already last." if index == _party_order_draft_ids.size() - 1 else "Move %s one slot later." % character.name
-		if not move_down.disabled:
-			move_down.pressed.connect(_move_party_order_draft.bind(index, 1))
-		row.add_child(move_down)
-		_body.add_child(row)
-	var actions := HBoxContainer.new()
-	actions.add_theme_constant_override("separation", 6)
-	var apply := Button.new()
-	apply.text = "Apply Party Order"
-	apply.disabled = not availability.enabled or _party_order_draft_ids == current_ids
-	apply.tooltip_text = availability.reason if not availability.enabled else "Choose a different order first." if _party_order_draft_ids == current_ids else "Commit this complete party permutation."
-	if not apply.disabled:
-		apply.pressed.connect(_submit_party_order)
-	actions.add_child(apply)
-	var cancel := Button.new()
-	cancel.text = "Cancel Order Changes"
-	cancel.disabled = _party_order_draft_ids == current_ids
-	cancel.tooltip_text = "The displayed order already matches the session." if cancel.disabled else "Discard the staged order without changing the party."
-	if not cancel.disabled:
-		cancel.pressed.connect(_cancel_party_order_draft)
-	actions.add_child(cancel)
-	_body.add_child(actions)
-	_body.add_child(HSeparator.new())
-
-
-func _move_party_order_draft(index: int, offset: int) -> void:
-	var destination := index + offset
-	if index < 0 or index >= _party_order_draft_ids.size() or destination < 0 or destination >= _party_order_draft_ids.size():
-		return
-	var moved_character_id: String = _party_order_draft_ids[index]
-	_party_order_draft_ids[index] = _party_order_draft_ids[destination]
-	_party_order_draft_ids[destination] = moved_character_id
-	_render_screen()
-
-
-func _cancel_party_order_draft() -> void:
-	_party_order_draft_ids = _party_order_source_ids.duplicate()
-	_render_screen()
-
-
-func _submit_party_order() -> void:
-	intent_submitted.emit(PlayerIntent.reorder_party(_party_order_draft_ids))
+	setup_controller.ensure_appearance_textures()
+	_character_controller.present(_body, _view, setup_controller.appearance_textures(), _settings)
 
 
 func _render_vault() -> void:
-	if not _vault_inspection_revision_hash.is_empty():
-		_render_vault_character_inspection()
-		return
-	var back_button := Button.new()
-	back_button.text = "Back to party setup" if _vault_return_to_setup else "Back to campaigns" if _vault_return_to_campaign else "Back"
-	back_button.pressed.connect(func() -> void: handle_back())
-	_mark_focus(back_button, "vault:back")
-	_body.add_child(back_button)
-	if _vault_revisions.is_empty():
-		_add_empty_state("Character vault is empty", "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party.")
-		return
-	var campaign_label := _view.campaign_summary.title if _view != null and _view.campaign_summary != null else "No campaign selected"
-	_add_label(_body, "Eligibility for %s" % campaign_label, GOLD, 16)
-	var previous_character_id := ""
-	for revision: CharacterVaultRevisionView in _vault_revisions:
-		if revision.character_id != previous_character_id:
-			if not previous_character_id.is_empty():
-				_body.add_child(HSeparator.new())
-			_add_label(_body, revision.name, GOLD, 20)
-			previous_character_id = revision.character_id
-		var state_label := "Current revision" if revision.is_current else "Archived revision" if revision.archived else "Earlier revision"
-		var eligibility_label := "Eligible" if revision.eligible else "Not eligible"
-		var detail := "Level %d • %s / %s\nSource campaign %s • package %s\n%s" % [revision.level, revision.race_id, revision.caste_id, revision.source_campaign_id, revision.source_package_hash.left(12), revision.publication_label]
-		if not revision.eligibility_reasons.is_empty():
-			detail += "\n%s" % "\n".join(revision.eligibility_reasons)
-		_add_card(state_label, "%s • %s" % [eligibility_label, revision.revision_hash.left(12)], detail)
-		var actions := HBoxContainer.new()
-		var inspect_button := Button.new()
-		inspect_button.text = "Inspect character"
-		inspect_button.disabled = revision.character == null
-		inspect_button.tooltip_text = "Open the complete detached character record before deciding whether to import this revision." if not inspect_button.disabled else "This vault revision has no valid character record."
-		if not inspect_button.disabled:
-			inspect_button.pressed.connect(_inspect_vault_character.bind(revision.revision_hash))
-		actions.add_child(inspect_button)
-		var import_button := Button.new()
-		import_button.text = "Import this revision"
-		import_button.tooltip_text = "\n".join(revision.eligibility_reasons)
-		if _view == null or not _view.session_started:
-			import_button.disabled = true
-			import_button.tooltip_text = "Choose a campaign before importing a character."
-		else:
-			_apply_availability(import_button, &"import_vault_character")
-			if not revision.eligible or revision.archived:
-				import_button.disabled = true
-				if revision.archived:
-					import_button.tooltip_text = "Restore an archived revision before importing it."
-		import_button.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.import_vault_character(revision.character_id, revision.revision_hash)))
-		_mark_focus(import_button, "vault:%s" % revision.revision_hash)
-		actions.add_child(import_button)
-		if revision.is_current:
-			var archive_button := Button.new()
-			archive_button.text = "Archive character"
-			archive_button.tooltip_text = "Remove this character from the active vault without deleting immutable history."
-			archive_button.pressed.connect(_confirm_vault_archive.bind(revision))
-			actions.add_child(archive_button)
-		elif revision.archived:
-			var restore_button := Button.new()
-			restore_button.text = "Restore as current"
-			restore_button.pressed.connect(func() -> void: vault_restore_requested.emit(revision.character_id, revision.revision_hash))
-			actions.add_child(restore_button)
-		_body.add_child(actions)
-
-
-func _inspect_vault_character(revision_hash: String) -> void:
-	_vault_inspection_revision_hash = revision_hash
-	_character_sheet_tab = &"overview"
-	_refresh_vault_workspace()
-
-
-func _refresh_vault_workspace() -> void:
-	if _body == null:
-		return
-	var previous_horizontal := _body_scroll.scroll_horizontal if _body_scroll != null else 0
-	var previous_vertical := _body_scroll.scroll_vertical if _body_scroll != null else 0
-	_clear(_body)
-	_render_vault()
-	_assign_focus_keys(_body)
-	if _body_scroll != null:
-		call_deferred("_restore_focus", false, previous_horizontal, previous_vertical)
-
-
-func _render_vault_character_inspection() -> void:
-	var revision: CharacterVaultRevisionView = null
-	for candidate: CharacterVaultRevisionView in _vault_revisions:
-		if candidate.revision_hash == _vault_inspection_revision_hash:
-			revision = candidate
-			break
-	if revision == null or revision.character == null:
-		_vault_inspection_revision_hash = ""
-		_render_vault()
-		return
-	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 8)
-	var back := Button.new()
-	back.text = "Back to character vault"
-	back.pressed.connect(func() -> void:
-		_vault_inspection_revision_hash = ""
-		_refresh_vault_workspace()
-	)
-	header.add_child(back)
-	var heading := _label("Inspect %s" % revision.name, GOLD, 20)
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(heading)
-	_body.add_child(header)
-	var eligibility := "Eligible for this campaign" if revision.eligible else "Not eligible for this campaign"
-	var reasons := "" if revision.eligibility_reasons.is_empty() else "\n%s" % "\n".join(revision.eligibility_reasons)
-	_add_label(_body, "%s%s" % [eligibility, reasons], Color("75c889") if revision.eligible else Color("ef7770"), 13)
-	_ensure_appearance_textures()
-	var sheet := ClassicCharacterSheet.new()
-	sheet.name = "VaultCharacterSheet"
-	sheet.present(
-		[revision.character],
-		revision.character.id,
-		_appearance_textures,
-		_settings.text_scale,
-		_character_sheet_tab,
-		_view.portrait_options if _view != null else [],
-		_view.combat_icon_options if _view != null else [],
-		ActionAvailabilityView.new(&"change_character_appearance", false, "Vault inspection never changes a stored revision.")
-	)
-	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _character_sheet_tab = tab_id)
-	_body.add_child(sheet)
-
-
-func _confirm_vault_archive(revision: CharacterVaultRevisionView) -> void:
-	var confirmation := ConfirmationDialog.new()
-	confirmation.title = "Archive character"
-	confirmation.dialog_text = "Archive %s? Campaign saves are unchanged, and this revision can be restored later." % revision.name
-	confirmation.ok_button_text = "Archive"
-	confirmation.confirmed.connect(func() -> void: vault_archive_requested.emit(revision.character_id))
-	confirmation.visibility_changed.connect(func() -> void:
-		if not confirmation.visible:
-			confirmation.queue_free()
-	)
-	add_child(confirmation)
-	confirmation.popup_centered(Vector2i(480, 180))
+	setup_controller.ensure_appearance_textures()
+	var back_label := "Back to party setup" if _vault_return_to_setup else "Back to campaigns" if _vault_return_to_campaign else "Back"
+	_character_controller.present_vault(_body, _view, setup_controller.appearance_textures(), _settings.text_scale, back_label)
 
 
 func _show_vault_from_campaign() -> void:
 	_vault_return_to_campaign = true
 	_vault_return_to_setup = false
 	_vault_return_to_splash = false
-	if _splash_overlay != null:
-		_splash_overlay.visible = false
-	_campaign_overlay.visible = false
-	_setup_overlay.visible = false
+	setup_controller.hide_overlays()
 	_screen_id = &"vault"
 	_body_frame.visible = true
 	screen_changed.emit(_screen_id)
@@ -2023,10 +487,7 @@ func _show_vault_from_splash() -> void:
 	_vault_return_to_splash = true
 	_vault_return_to_campaign = false
 	_vault_return_to_setup = false
-	if _splash_overlay != null:
-		_splash_overlay.visible = false
-	_campaign_overlay.visible = false
-	_setup_overlay.visible = false
+	setup_controller.hide_overlays()
 	_screen_id = &"vault"
 	_body_frame.visible = true
 	screen_changed.emit(_screen_id)
@@ -2034,545 +495,25 @@ func _show_vault_from_splash() -> void:
 
 
 func _render_inventory() -> void:
-	if _view.party_members.is_empty():
-		_add_empty_state("No party inventory", "The party has no characters.")
-		return
-	var selected_character: CharacterView = null
-	for candidate: CharacterView in _view.party_members:
-		if candidate.id == _inventory_character_id:
-			selected_character = candidate
-			break
-	if selected_character == null:
-		selected_character = _view.party_members[0]
-		_inventory_character_id = selected_character.id
-		_inventory_item_id = ""
-	_add_section_heading("Whose items?", "%d party members" % _view.party_members.size())
-	var character_row := HFlowContainer.new()
-	character_row.add_theme_constant_override("h_separation", 6)
-	character_row.add_theme_constant_override("v_separation", 6)
-	for character: CharacterView in _view.party_members:
-		var character_button := Button.new()
-		character_button.text = "%s  %d/%d" % [character.name, character.carried_load, character.maximum_load]
-		character_button.button_pressed = character.id == selected_character.id
-		character_button.toggle_mode = true
-		character_button.pressed.connect(func() -> void:
-			_inventory_character_id = character.id
-			_inventory_item_id = ""
-			_render_screen()
-		)
-		character_row.add_child(character_button)
-	_body.add_child(character_row)
-	var filter_row := HBoxContainer.new()
-	filter_row.add_theme_constant_override("separation", 6)
-	var search := LineEdit.new()
-	search.placeholder_text = "Filter visible item names…"
-	search.text = _inventory_query
-	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	search.text_submitted.connect(func(value: String) -> void:
-		_inventory_query = value.strip_edges()
-		_render_screen()
-	)
-	filter_row.add_child(search)
-	var clear_filter := Button.new()
-	clear_filter.text = "Clear"
-	clear_filter.disabled = _inventory_query.is_empty()
-	clear_filter.pressed.connect(func() -> void:
-		_inventory_query = ""
-		_render_screen()
-	)
-	filter_row.add_child(clear_filter)
-	_body.add_child(filter_row)
-	var visible_items: Array[ItemView] = []
-	for item: ItemView in selected_character.items:
-		if _inventory_query.is_empty() or item.name.findn(_inventory_query) >= 0:
-			visible_items.append(item)
-	var selected_item: ItemView = null
-	for item: ItemView in visible_items:
-		if item.instance_id == _inventory_item_id:
-			selected_item = item
-			break
-	if selected_item == null and not visible_items.is_empty():
-		selected_item = visible_items[0]
-		_inventory_item_id = selected_item.instance_id
-	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 10)
-	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var item_list := VBoxContainer.new()
-	item_list.custom_minimum_size.x = 250.0
-	item_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.add_child(item_list)
-	_add_label(item_list, "%s's carried items" % selected_character.name, GOLD, 16)
-	if visible_items.is_empty():
-		_add_label(item_list, "No items match this filter." if not _inventory_query.is_empty() else "No carried items.", MUTED)
-	for item: ItemView in visible_items:
-		var item_button := Button.new()
-		item_button.text = "%s%s  %s" % ["◆ " if item.equipped else "", item.name, "(%d)" % item.charges if item.charges > 0 else ""]
-		item_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		item_button.toggle_mode = true
-		item_button.button_pressed = item.instance_id == selected_item.instance_id
-		item_button.tooltip_text = "Equipped" if item.equipped else "Carried"
-		item_button.pressed.connect(func() -> void:
-			_inventory_item_id = item.instance_id
-			_render_screen()
-		)
-		item_list.add_child(item_button)
-	var detail := VBoxContainer.new()
-	detail.custom_minimum_size.x = 300.0
-	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail.add_theme_constant_override("separation", 6)
-	columns.add_child(detail)
-	if selected_item != null:
-		var title_row := HBoxContainer.new()
-		title_row.add_theme_constant_override("separation", 10)
-		title_row.add_child(_content_icon(selected_item.icon_resource_type, selected_item.icon_id))
-		var title_box := VBoxContainer.new()
-		title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_add_label(title_box, selected_item.name, GOLD, 20)
-		_add_label(title_box, "%s • Weight %d • Charges %d" % ["Equipped" if selected_item.equipped else "Carried", selected_item.weight, selected_item.charges], MUTED, 13)
-		title_row.add_child(title_box)
-		detail.add_child(title_row)
-		_add_label(detail, selected_item.description, Color("e0e2e5"))
-		_add_label(detail, "Value %s" % [str(selected_item.value) if selected_item.identified else "Unknown until identified"], MUTED, 13)
-		if not selected_item.facts.is_empty():
-			_add_label(detail, "Classic record", GOLD, 15)
-			var facts := GridContainer.new()
-			facts.columns = 2
-			facts.add_theme_constant_override("h_separation", 14)
-			facts.add_theme_constant_override("v_separation", 3)
-			for fact: ItemFactView in selected_item.facts:
-				_add_label(facts, fact.label, MUTED, 13)
-				_add_label(facts, fact.value, Color("e0e2e5"), 13)
-			detail.add_child(facts)
-		for property: String in selected_item.properties:
-			_add_label(detail, "• %s" % property, Color("e0e2e5"), 13)
-		for restriction: String in selected_item.restrictions:
-			_add_label(detail, restriction, Color("dca9a9"), 13)
-		var actions := HFlowContainer.new()
-		actions.add_theme_constant_override("h_separation", 5)
-		actions.add_theme_constant_override("v_separation", 5)
-		if selected_item.equipped:
-			_add_item_intent_action(actions, &"inventory.action.equipped", "Unequip", selected_item.actions.unequip, PlayerIntent.item_action(PlayerIntent.Kind.UNEQUIP_ITEM, selected_item.instance_id, selected_character.id))
-		else:
-			_add_item_intent_action(actions, &"inventory.action.equipped", "Equip", selected_item.actions.equip, PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, selected_item.instance_id, selected_character.id))
-		_add_item_intent_action(actions, &"inventory.action.use", "Use", selected_item.actions.use, PlayerIntent.use_item(selected_item.instance_id, selected_character.id))
-		_add_item_intent_action(actions, &"inventory.action.identify", "Identify", selected_item.actions.identify, PlayerIntent.item_action(PlayerIntent.Kind.IDENTIFY_ITEM, selected_item.instance_id, selected_character.id))
-		_add_item_intent_action(actions, &"inventory.action.join", "Join", selected_item.actions.join, PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, selected_item.instance_id, selected_character.id))
-		_add_item_intent_action(actions, &"inventory.action.split", "Split", selected_item.actions.split, PlayerIntent.item_action(PlayerIntent.Kind.SPLIT_ITEM, selected_item.instance_id, selected_character.id))
-		_add_item_intent_action(actions, &"inventory.action.drop", "Drop", selected_item.actions.drop, PlayerIntent.item_action(PlayerIntent.Kind.DROP_ITEM, selected_item.instance_id, selected_character.id))
-		detail.add_child(actions)
-		var disabled_actions: Array[String] = []
-		var action_labels: Array[String] = ["Equip", "Unequip", "Use", "Identify", "Join", "Split", "Drop", "Trade"]
-		var action_views: Array[ActionAvailabilityView] = [selected_item.actions.equip, selected_item.actions.unequip, selected_item.actions.use, selected_item.actions.identify, selected_item.actions.join, selected_item.actions.split, selected_item.actions.drop, selected_item.actions.trade]
-		for index: int in action_views.size():
-			if action_views[index] != null and not action_views[index].enabled and not action_views[index].reason.is_empty():
-				disabled_actions.append("%s — %s" % [action_labels[index], action_views[index].reason])
-		if not disabled_actions.is_empty():
-			_add_label(detail, "Unavailable actions", GOLD, 14)
-			for reason: String in disabled_actions:
-				_add_label(detail, reason, MUTED, 12)
-		_add_label(detail, "Trade with", GOLD, 15)
-		if selected_item.actions.trade_targets.is_empty():
-			_add_label(detail, "No other party member is available.", MUTED, 13)
-		else:
-			var trade_row := HFlowContainer.new()
-			trade_row.add_theme_constant_override("h_separation", 5)
-			for target: ItemTransferTargetView in selected_item.actions.trade_targets:
-				var trade_button := Button.new()
-				trade_button.text = "Give to %s" % target.character_name
-				trade_button.disabled = not target.enabled
-				trade_button.tooltip_text = target.reason
-				if target.enabled:
-					trade_button.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.trade_item(selected_item.instance_id, selected_character.id, target.character_id)))
-				trade_row.add_child(trade_button)
-			detail.add_child(trade_row)
-		_add_label(detail, "Classic has no ordinary party stash. Scenario opcode 36 equipment escrow is automatic and does not appear here.", MUTED, 12)
-	_body.add_child(columns)
+	_inventory_controller.present(_body, _view, _media, _settings.text_scale)
 
 
 func _render_spells() -> void:
-	var any_spells := false
-	if _view.party_summary != null:
-		_add_section_heading("Field spellbook", "Camped" if _view.party_summary.camping else "Exploring")
-	for character: CharacterView in _view.party_members:
-		_add_section_heading(character.name, "SP %d/%d" % [character.spell_points, character.maximum_spell_points])
-		_add_section_heading("Fast Spells", "Top-row 1–0 • Ctrl/Command-number casts")
-		for binding: FastSpellBindingView in character.fast_spells:
-			var fast_row := HBoxContainer.new()
-			fast_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			fast_row.add_theme_constant_override("separation", 6)
-			var fast_label := _add_label(fast_row, "Slot %s" % binding.shortcut_label, GOLD, 13)
-			fast_label.custom_minimum_size.x = 52.0
-			var picker := OptionButton.new()
-			picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			picker.add_item("Undefined Spell")
-			picker.set_item_metadata(0, {"spellId": "", "power": 0})
-			for known_spell: SpellView in character.spells:
-				var powers: Array[int] = []
-				powers.assign([1] if known_spell.cost < 0 else [1, 2, 3, 4, 5, 6, 7])
-				for power: int in powers:
-					picker.add_item("%s • P%d" % [known_spell.name, power])
-					picker.set_item_metadata(picker.item_count - 1, {"spellId": known_spell.id, "power": power})
-					if known_spell.id == binding.spell_id and power == binding.power:
-						picker.select(picker.item_count - 1)
-			fast_row.add_child(picker)
-			var set_button := Button.new()
-			set_button.text = "Set"
-			set_button.tooltip_text = "Store the selected spell and power in Fast Spell %s." % binding.shortcut_label
-			var fast_binding_availability := _view.availability(&"set_fast_spell")
-			set_button.disabled = not fast_binding_availability.enabled
-			if set_button.disabled:
-				set_button.tooltip_text = fast_binding_availability.reason
-			set_button.pressed.connect(_set_fast_spell_from_picker.bind(character.id, binding.slot_index, picker))
-			fast_row.add_child(set_button)
-			var clear_button := Button.new()
-			clear_button.text = "Clear"
-			clear_button.disabled = binding.spell_id.is_empty()
-			if not fast_binding_availability.enabled:
-				clear_button.disabled = true
-				clear_button.tooltip_text = fast_binding_availability.reason
-			clear_button.pressed.connect(_clear_fast_spell.bind(character.id, binding.slot_index))
-			fast_row.add_child(clear_button)
-			_body.add_child(fast_row)
-		for spell: SpellView in character.spells:
-			any_spells = true
-			var context := "Combat%s • Camp%s" % [" yes" if spell.castable_in_combat else " no", " yes" if spell.castable_in_camp else " no"]
-			_add_content_card(spell.icon_resource_type, spell.icon_id, spell.name, "%s • Cost %d" % [character.name, spell.cost], "%s\nRange %d–%d • Duration %d–%d • %s" % [spell.description, spell.range_min, spell.range_max, spell.duration_min, spell.duration_max, context])
-			var row := HFlowContainer.new()
-			row.add_theme_constant_override("h_separation", 5)
-			row.add_theme_constant_override("v_separation", 5)
-			if spell.power_levels.is_empty():
-				_add_item_intent_action(row, &"spells.action.cast", "Cast", spell.field_cast, PlayerIntent.cast_spell(spell.id, character.id))
-			else:
-				for power: int in spell.power_levels:
-					var cost := absi(spell.cost * power)
-					_add_item_intent_action(row, &"", "Cast P%d (%d SP)" % [power, cost], spell.field_cast, PlayerIntent.cast_spell(spell.id, character.id, "", power))
-			if spell.scroll_power_levels.is_empty():
-				_add_item_intent_action(row, &"", "Make Scroll", spell.make_scroll, PlayerIntent.make_scroll(spell.id, character.id))
-			else:
-				for power: int in spell.scroll_power_levels:
-					var scribing_cost := absi(spell.cost * power * 2)
-					_add_item_intent_action(row, &"", "Make P%d Scroll (%d SP)" % [power, scribing_cost], spell.make_scroll, PlayerIntent.make_scroll(spell.id, character.id, power))
-			var abort := _bitmap_button(&"spells.action.abort", "Abort")
-			abort.tooltip_text = "Return to exploration without casting."
-			abort.command_requested.connect(func(_command_id: StringName) -> void: open_screen(&"exploration"))
-			row.add_child(abort)
-			_body.add_child(row)
-		_add_section_heading("%s's scroll case" % character.name, "Five fixed Classic slots")
-		for scroll: SpellScrollView in character.scrolls:
-			var scroll_row := HBoxContainer.new()
-			scroll_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			scroll_row.add_theme_constant_override("separation", 8)
-			var scroll_label := _add_label(scroll_row, "Slot %d • %s%s" % [scroll.slot_index + 1, scroll.spell_name, "" if scroll.power == 0 else " • Power %d" % scroll.power], MUTED if scroll.power == 0 else Color("e0e2e5"), 13)
-			scroll_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			scroll_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			_add_item_intent_action(scroll_row, &"", "Use", scroll.use, PlayerIntent.use_scroll(character.id, scroll.slot_index))
-			_body.add_child(scroll_row)
-	if _view.party_members.is_empty():
-		_add_empty_state("No spellbooks", "The party has no characters.")
-	elif not any_spells:
-		_add_empty_state("No known spells", "No party member currently knows a spell.")
-
-
-func _set_fast_spell_from_picker(character_id: String, slot_index: int, picker: OptionButton) -> void:
-	var selected: Variant = picker.get_selected_metadata()
-	if not selected is Dictionary:
-		return
-	presentation_sound_requested.emit(144, false, false)
-	intent_submitted.emit(PlayerIntent.set_fast_spell(character_id, slot_index, String(selected.get("spellId", "")), int(selected.get("power", 0))))
-
-
-func _clear_fast_spell(character_id: String, slot_index: int) -> void:
-	presentation_sound_requested.emit(144, false, false)
-	intent_submitted.emit(PlayerIntent.set_fast_spell(character_id, slot_index))
+	_spells_controller.present(_body, _view, _media, _settings.text_scale)
 
 
 func _render_services() -> void:
-	_render_money_workspace()
-	_add_section_heading("Location services", "%d available" % _view.services.size())
-	if _view.services.is_empty():
-		_add_empty_state("No active service", "Shops, temples, banks, storage, and treasure open here only when the session supplies a typed service interaction.")
-		for title: String in ["Shop", "Temple", "Bank", "Storage", "Treasure"]:
-			_add_card(title, "Unavailable at this location", "No service facts were supplied; Realmz Rebuilt does not infer availability from the map or scenario name.")
-		return
-	for service: ServiceView in _view.services:
-		_add_card(service.title, String(service.service_kind).replace("_", " ").capitalize(), "Available actions: %s" % [", ".join(service.actions)])
-		for action: StringName in service.actions:
-			var button := Button.new()
-			button.text = String(action).capitalize()
-			var reason := String(service.disabled_reasons.get(action, ""))
-			var availability := _view.availability(&"service_action")
-			button.disabled = not reason.is_empty() or not availability.enabled
-			button.tooltip_text = reason if not reason.is_empty() else availability.reason if not availability.enabled else "Enter %s" % service.title
-			if not button.disabled:
-				button.pressed.connect(_submit_service_action.bind(service.service_id, action))
-			_body.add_child(button)
-
-
-func _render_money_workspace() -> void:
-	_add_section_heading("Money", "Classic Pool, Share, and Swap")
-	var workspace := _view.money_workspace
-	if workspace == null:
-		_add_empty_state("Money management unavailable", "Begin the adventure before pooling or transferring wealth.")
-		return
-	_add_card("Party pool", "%d gold • %d gems • %d jewelry" % [workspace.pooled_gold, workspace.pooled_gems, workspace.pooled_jewelry], "Banked: %d gold • %d gems • %d jewelry" % [workspace.banked_gold, workspace.banked_gems, workspace.banked_jewelry])
-	var party_actions := HFlowContainer.new()
-	party_actions.add_theme_constant_override("h_separation", 5)
-	party_actions.add_theme_constant_override("v_separation", 5)
-	_add_money_intent_action(party_actions, "Pool party wealth", workspace.pool, PlayerIntent.money_action(&"pool"))
-	_add_money_intent_action(party_actions, "Share pooled wealth", workspace.share, PlayerIntent.money_action(&"share"))
-	_body.add_child(party_actions)
-	if workspace.characters.is_empty():
-		_add_empty_state("No adventurers", "A party member is required for Classic Swap.")
-		return
-	if workspace.character(_money_character_id) == null:
-		_money_character_id = workspace.characters[0].character_id
-	var selector := OptionButton.new()
-	selector.tooltip_text = "Choose the adventurer whose carried wealth will be exchanged with the party pool."
-	for character: MoneyCharacterView in workspace.characters:
-		selector.add_item("%s • Load %d/%d" % [character.name, character.carried_load, character.maximum_load])
-		selector.set_item_metadata(selector.item_count - 1, character.character_id)
-		if character.character_id == _money_character_id:
-			selector.select(selector.item_count - 1)
-	selector.item_selected.connect(func(index: int) -> void:
-		_money_character_id = String(selector.get_item_metadata(index))
-		_render_screen()
-	)
-	_body.add_child(selector)
-	var selected := workspace.character(_money_character_id)
-	_add_card(selected.name, "%d gold • %d gems • %d jewelry" % [selected.gold, selected.gems, selected.jewelry], "Carried load %d/%d" % [selected.carried_load, selected.maximum_load])
-	for transfer: MoneyTransferView in selected.transfers:
-		var denomination_label := String(transfer.denomination).capitalize()
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 5)
-		var label := _label("%s • %d per step" % [denomination_label, transfer.amount], MUTED, 14)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(label)
-		_add_money_intent_action(row, "To pool", transfer.to_pool, PlayerIntent.money_action(&"to-pool", selected.character_id, String(transfer.denomination), transfer.amount))
-		_add_money_intent_action(row, "To %s" % selected.name, transfer.to_character, PlayerIntent.money_action(&"to-character", selected.character_id, String(transfer.denomination), transfer.amount))
-		_body.add_child(row)
-	var done := Button.new()
-	done.text = "Done"
-	done.tooltip_text = "Return to exploration without another money mutation."
-	done.pressed.connect(func() -> void: open_screen(&"exploration"))
-	_body.add_child(done)
-
-
-func _add_money_intent_action(parent: Container, label: String, local_availability: ActionAvailabilityView, intent: PlayerIntent) -> Button:
-	var button := Button.new()
-	button.text = label
-	var workspace_availability := _view.availability(&"money_action")
-	button.disabled = not workspace_availability.enabled or local_availability == null or not local_availability.enabled
-	if not workspace_availability.enabled:
-		button.tooltip_text = workspace_availability.reason
-	elif local_availability == null:
-		button.tooltip_text = "This money action is unavailable."
-	elif not local_availability.enabled:
-		button.tooltip_text = local_availability.reason
-	else:
-		button.pressed.connect(func() -> void: intent_submitted.emit(intent))
-	parent.add_child(button)
-	return button
-
-
-func _submit_service_action(service_id: String, action: StringName) -> void:
-	intent_submitted.emit(PlayerIntent.service_action(service_id, action))
+	_services_controller.set_text_scale(_settings.text_scale)
+	_services_controller.present(_body, _view)
 
 
 func _render_journal() -> void:
-	_add_section_heading("Location notes", "Saved with this adventure")
-	_render_location_note_editor()
-	_add_section_heading("Acquired maps", "%d available" % _view.party_summary.acquired_map_ids.size() if _view.party_summary != null else "0 available")
-	if _view.player_map_menu_entries.is_empty():
-		_add_empty_state("No player-map records", "This campaign supplies no Maps/Notes entries.")
-	else:
-		var selected: PlayerMapView
-		for player_map: PlayerMapView in _view.acquired_player_maps:
-			if player_map.id == _selected_player_map_id:
-				selected = player_map
-				break
-		if selected == null and not _view.acquired_player_maps.is_empty():
-			selected = _view.acquired_player_maps[0]
-			_selected_player_map_id = selected.id
-		var chooser := GridContainer.new()
-		chooser.name = "AcquiredMapChooser"
-		chooser.columns = 2
-		chooser.add_theme_constant_override("h_separation", 6)
-		chooser.add_theme_constant_override("v_separation", 4)
-		for player_map: PlayerMapView in _view.player_map_menu_entries:
-			var button := Button.new()
-			button.text = player_map.name if player_map.acquired else player_map.unavailable_name
-			button.toggle_mode = true
-			button.disabled = not player_map.acquired
-			button.tooltip_text = "Map not acquired." if button.disabled else player_map.name
-			button.button_pressed = selected != null and player_map.id == selected.id
-			if not button.disabled:
-				button.pressed.connect(_select_player_map.bind(player_map.id))
-			chooser.add_child(button)
-		_body.add_child(chooser)
-		if selected == null:
-			_add_empty_state("No acquired maps", "Maps remain unavailable until the session records their acquisition.")
-		else:
-			var presenter := PlayerMapPresenter.new()
-			presenter.name = "AcquiredPlayerMap"
-			presenter.present(selected, _media)
-			_body.add_child(presenter)
-	_add_section_heading("Journal entries", "%d entries" % _view.journal_entries.size())
-	if _view.journal_entries.is_empty():
-		_add_empty_state("The journal is empty", "No journal records were supplied by the current session.")
-	else:
-		for entry: JournalEntryView in _view.journal_entries:
-			_add_card("Journal entry %d" % entry.message_id, "Authored scenario message", entry.text)
-	_add_disabled_action(_body, "Open Classic journal", &"open_journal")
-
-
-func _select_player_map(player_map_id: String) -> void:
-	_selected_player_map_id = player_map_id
-	_render_screen()
-
-
-func _render_location_note_editor() -> void:
-	var current := _view.current_location_note
-	if current == null:
-		_add_empty_state("No mapped location", "A location note can be edited only while the party occupies a validated map cell.")
-		return
-	var panel := PanelContainer.new()
-	panel.name = "CurrentLocationNote"
-	panel.theme_type_variation = &"ClassicInset"
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 6)
-	panel.add_child(column)
-	_add_label(column, "Current location • %s %d,%d" % [current.map_name, current.coordinate.x, current.coordinate.y], Color("e7d078"), 17)
-	_add_label(column, "Only the note at the party's current location can be edited. Saved notes below remain readable.", MUTED)
-	var editor := TextEdit.new()
-	editor.name = "CurrentLocationNoteText"
-	editor.custom_minimum_size = Vector2(0, 96)
-	editor.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	editor.placeholder_text = "Write a location note…"
-	editor.text = current.text
-	column.add_child(editor)
-	var count_label := Label.new()
-	count_label.name = "LocationNoteByteCount"
-	column.add_child(count_label)
-	var actions := HBoxContainer.new()
-	column.add_child(actions)
-	var save := Button.new()
-	save.name = "SaveLocationNote"
-	save.text = "Save note"
-	actions.add_child(save)
-	var revert := Button.new()
-	revert.name = "CancelLocationNoteEdit"
-	revert.text = "Revert draft"
-	actions.add_child(revert)
-	var availability := _view.availability(&"set_location_note")
-	var refresh := func() -> void:
-		var byte_count := editor.text.to_utf8_buffer().size()
-		count_label.text = "%d / %d encoded bytes" % [byte_count, LocationNoteState.MAX_TEXT_BYTES]
-		count_label.modulate = Color("d96f6f") if byte_count > LocationNoteState.MAX_TEXT_BYTES else MUTED
-		save.disabled = not availability.enabled or editor.text == current.text or byte_count > LocationNoteState.MAX_TEXT_BYTES
-		save.tooltip_text = availability.reason if not availability.enabled else "Change the note before saving." if editor.text == current.text else "Classic location notes are limited to 255 encoded bytes." if byte_count > LocationNoteState.MAX_TEXT_BYTES else ""
-		revert.disabled = editor.text == current.text
-	editor.text_changed.connect(refresh)
-	save.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.set_location_note(editor.text)))
-	revert.pressed.connect(func() -> void:
-		editor.text = current.text
-		refresh.call()
-	)
-	refresh.call()
-	_content_parent.add_child(panel)
-	_add_section_heading("Saved %s notes" % String(current.level_type).capitalize(), "%d notes • source order" % _view.location_notes.size())
-	if _view.location_notes.is_empty():
-		_add_empty_state("No location notes", "Write a note at the current location to create the first record.")
-		return
-	for note: LocationNoteView in _view.location_notes:
-		_add_card(note.map_name, "Record %d • %s • %d,%d%s" % [note.record_ordinal + 1, String(note.level_type).capitalize(), note.coordinate.x, note.coordinate.y, " • current" if note.current else ""], note.text)
+	_maps_journal_controller.set_text_scale(_settings.text_scale)
+	_maps_journal_controller.present(_body, _view, _media)
 
 
 func _render_system() -> void:
-	_add_card("Current campaign", _view.campaign_summary.title if _view.campaign_summary != null else _view.campaign_id, "Package %s\nRules %s" % [_view.campaign_summary.package_hash if _view.campaign_summary != null else "Unavailable", _view.rules_version])
-	_add_section_heading("Save and restore", "Committed session boundaries only")
-	var save_row := HBoxContainer.new()
-	var save := Button.new()
-	save.text = "Quick save"
-	save.pressed.connect(func() -> void: system_action_requested.emit(&"save", "quick"))
-	save_row.add_child(save)
-	var load := Button.new()
-	load.text = "Quick load"
-	load.pressed.connect(func() -> void: system_action_requested.emit(&"load", "quick"))
-	save_row.add_child(load)
-	var campaigns := Button.new()
-	campaigns.text = "Campaign library"
-	campaigns.pressed.connect(func() -> void: system_action_requested.emit(&"campaigns", null))
-	save_row.add_child(campaigns)
-	var end_adventure := Button.new()
-	end_adventure.text = "End adventure"
-	end_adventure.disabled = _view.pending_interaction != null and _view.pending_interaction.kind != InteractionRequest.COMBAT
-	end_adventure.tooltip_text = "Resolve the current interaction first." if end_adventure.disabled else "Close this campaign session without quitting Realmz Rebuilt."
-	end_adventure.pressed.connect(func() -> void: system_action_requested.emit(&"end_adventure", null))
-	save_row.add_child(end_adventure)
-	var refresh_saves := Button.new()
-	refresh_saves.text = "Refresh saves"
-	refresh_saves.pressed.connect(func() -> void: system_action_requested.emit(&"refresh_saves", null))
-	save_row.add_child(refresh_saves)
-	_body.add_child(save_row)
-	_add_section_heading("Save slots", "%d record%s" % [_save_previews.size(), "" if _save_previews.size() == 1 else "s"])
-	if _save_previews.is_empty():
-		_add_empty_state("No saves for this campaign", "Quick save creates the first validated slot.")
-	else:
-		for preview: RefCounted in _save_previews:
-			var party_text: String = ", ".join(preview.character_names) if not preview.character_names.is_empty() else "No party members"
-			var detail: String = preview.error_message
-			if preview.status == SaveSlotPreviewScript.VALID:
-				detail = "Day %d • %02d:%02d • %s %d,%d\n%s\nPackage %s" % [preview.realmz_day, preview.realmz_hour, preview.realmz_minute, preview.map_id, preview.coordinate.x, preview.coordinate.y, party_text, preview.package_hash.left(12)]
-			var card := VBoxContainer.new()
-			_add_card_to(card, "%s • %s" % [preview.slot_id, preview.source_label()], "%s • %s" % [preview.status_label(), preview.rules_version if not preview.rules_version.is_empty() else "Unknown rules"], detail)
-			var load_preview := Button.new()
-			load_preview.text = "Load backup" if preview.source == SaveSlotPreviewScript.BACKUP else "Load save"
-			load_preview.disabled = not preview.can_load
-			load_preview.tooltip_text = preview.error_message if not preview.can_load else "Restore this validated %s record." % preview.source_label().to_lower()
-			if preview.can_load:
-				var action: StringName = &"load_backup" if preview.source == SaveSlotPreviewScript.BACKUP else &"load"
-				load_preview.pressed.connect(func() -> void: system_action_requested.emit(action, preview.slot_id))
-			card.add_child(load_preview)
-			_body.add_child(card)
-	_add_section_heading("Display", "Interface scale and text size are independent")
-	var ui_scale := OptionButton.new()
-	for entry: Dictionary in [{"label": "UI scale: Auto", "id": PresentationSettings.UI_SCALE_AUTO}, {"label": "UI scale: 100%", "id": PresentationSettings.UI_SCALE_100}, {"label": "UI scale: 125%", "id": PresentationSettings.UI_SCALE_125}, {"label": "UI scale: 150%", "id": PresentationSettings.UI_SCALE_150}]:
-		ui_scale.add_item(entry["label"])
-		ui_scale.set_item_metadata(ui_scale.item_count - 1, entry["id"])
-		if entry["id"] == _settings.ui_scale_mode:
-			ui_scale.select(ui_scale.item_count - 1)
-	ui_scale.item_selected.connect(func(index: int) -> void: presentation_setting_changed.emit(&"ui_scale_mode", String(ui_scale.get_item_metadata(index))))
-	_body.add_child(ui_scale)
-	var text_scale := HSlider.new()
-	text_scale.min_value = 0.8
-	text_scale.max_value = 1.5
-	text_scale.step = 0.1
-	text_scale.value = _settings.text_scale
-	text_scale.tooltip_text = "Text scale %d%%" % int(round(_settings.text_scale * 100.0))
-	text_scale.value_changed.connect(func(value: float) -> void: presentation_setting_changed.emit(&"text_scale", value))
-	_body.add_child(text_scale)
-	var window_mode := OptionButton.new()
-	window_mode.add_item("Windowed")
-	window_mode.set_item_metadata(0, PresentationSettings.WINDOWED)
-	window_mode.add_item("Borderless fullscreen")
-	window_mode.set_item_metadata(1, PresentationSettings.BORDERLESS_FULLSCREEN)
-	window_mode.select(1 if _settings.window_mode == PresentationSettings.BORDERLESS_FULLSCREEN else 0)
-	window_mode.item_selected.connect(func(index: int) -> void: presentation_setting_changed.emit(&"window_mode", String(window_mode.get_item_metadata(index))))
-	_body.add_child(window_mode)
-	_add_section_heading("Accessibility and presentation", "These preferences never change simulation")
-	_add_setting_toggle("Reduced motion", _settings.reduced_motion, &"reduced_motion")
-	_add_setting_toggle("Auto Switch To Melee Weapon", _settings.auto_switch_to_melee, &"auto_switch_to_melee")
-	_add_setting_toggle("Use topology-derived 3D dungeons", _settings.dungeon_3d, &"dungeon_3d")
-	_add_setting_toggle("Show topology diagnostics", _settings.topology_debug, &"topology_debug")
-	var volume := HSlider.new()
-	volume.min_value = 0.0
-	volume.max_value = 1.0
-	volume.step = 0.05
-	volume.value = _settings.master_volume
-	volume.tooltip_text = "Master volume"
-	volume.value_changed.connect(func(value: float) -> void: presentation_setting_changed.emit(&"master_volume", value))
-	_body.add_child(volume)
+	_system_controller.present(_body, _view, _settings)
 
 
 func _add_card(title: String, subtitle: String, detail: String) -> void:
@@ -2594,153 +535,6 @@ func _add_card_to(parent: Container, title: String, subtitle: String, detail: St
 	parent.add_child(panel)
 
 
-func _add_content_card(resource_type: String, icon_id: int, title: String, subtitle: String, detail: String) -> void:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size.x = 280.0
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	panel.add_child(row)
-	row.add_child(_content_icon(resource_type, icon_id))
-	var box := VBoxContainer.new()
-	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	box.add_theme_constant_override("separation", 3)
-	row.add_child(box)
-	_add_label(box, title, Color("e7d078"), 17)
-	_add_label(box, subtitle, Color("e0e2e5"))
-	if not detail.is_empty():
-		_add_label(box, detail, MUTED)
-	_content_parent.add_child(panel)
-
-
-func _content_icon(resource_type: String, resource_id: int) -> Control:
-	var frame := PanelContainer.new()
-	frame.custom_minimum_size = Vector2(52.0, 52.0)
-	var asset: PackageMediaAsset = _media.asset_by_resource(resource_type, resource_id) if _media != null and resource_id != 0 else null
-	if asset != null:
-		var bytes := _media.read_bytes(asset)
-		var image := Image.new()
-		var error := ERR_UNAVAILABLE
-		match asset.path.get_extension().to_lower():
-			"png":
-				error = image.load_png_from_buffer(bytes)
-			"jpg", "jpeg":
-				error = image.load_jpg_from_buffer(bytes)
-			"webp":
-				error = image.load_webp_from_buffer(bytes)
-		if error == OK:
-			var texture := TextureRect.new()
-			texture.texture = ImageTexture.create_from_image(image)
-			texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			texture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			texture.tooltip_text = asset.label
-			frame.add_child(texture)
-			return frame
-	var fallback := Label.new()
-	fallback.text = "◈\n%d" % resource_id if resource_id != 0 else "◈"
-	fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	fallback.add_theme_color_override("font_color", MUTED)
-	fallback.tooltip_text = "Package media unavailable for %s %d." % [resource_type, resource_id] if resource_id != 0 else "No package media identity was supplied."
-	frame.add_child(fallback)
-	return frame
-
-
-func _add_section_heading(title: String, detail: String = "") -> void:
-	var row := HBoxContainer.new()
-	var heading := _label(title, GOLD, 18)
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(heading)
-	if not detail.is_empty():
-		var note := _label(detail, MUTED, 13)
-		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		row.add_child(note)
-	_body.add_child(row)
-
-
-func _add_empty_state(title: String, detail: String) -> void:
-	_add_card(title, detail, "Realmz Rebuilt shows only facts supplied by the detached session view.")
-
-
-func _add_disabled_action(parent: Container, label: String, action_id: StringName) -> Button:
-	var button := Button.new()
-	button.text = label
-	_apply_availability(button, action_id)
-	parent.add_child(button)
-	return button
-
-
-func _bitmap_button(asset_id: StringName, label: String) -> ClassicBitmapButton:
-	var button := ClassicBitmapButton.new()
-	button.configure({
-		"id": asset_id,
-		"asset_id": asset_id,
-		"tooltip": label,
-		"accelerator": "",
-	}, 1)
-	return button
-
-
-func _add_bitmap_intent_action(parent: Container, asset_id: StringName, label: String, action_id: StringName, intent: PlayerIntent) -> ClassicBitmapButton:
-	var button := _bitmap_button(asset_id, label)
-	_apply_availability(button, action_id)
-	if not button.disabled:
-		button.command_requested.connect(func(_command_id: StringName) -> void: intent_submitted.emit(intent))
-	parent.add_child(button)
-	return button
-
-
-func _add_item_intent_action(parent: Container, asset_id: StringName, label: String, availability: ActionAvailabilityView, intent: PlayerIntent) -> BaseButton:
-	var button: BaseButton
-	if ClassicUiAssetCatalog.definition(asset_id).is_empty():
-		var text_button := Button.new()
-		text_button.text = label
-		text_button.custom_minimum_size = Vector2(64.0, 56.0)
-		button = text_button
-	else:
-		button = _bitmap_button(asset_id, label)
-	button.disabled = availability == null or not availability.enabled
-	button.tooltip_text = "Unavailable" if availability == null else availability.reason if not availability.enabled else label
-	if not button.disabled:
-		if button is ClassicBitmapButton:
-			(button as ClassicBitmapButton).command_requested.connect(func(_command_id: StringName) -> void: intent_submitted.emit(intent))
-		else:
-			button.pressed.connect(func() -> void: intent_submitted.emit(intent))
-	parent.add_child(button)
-	return button
-
-
-func _apply_availability(button: BaseButton, action_id: StringName) -> void:
-	var availability := _view.availability(action_id) if _view != null else ActionAvailabilityView.new(action_id, false, "No active session.")
-	button.disabled = not availability.enabled
-	button.tooltip_text = availability.reason if not availability.enabled else ""
-
-
-func _add_setting_toggle(label: String, enabled: bool, setting_id: StringName) -> void:
-	var toggle := CheckButton.new()
-	toggle.text = label
-	toggle.button_pressed = enabled
-	toggle.toggled.connect(func(value: bool) -> void: presentation_setting_changed.emit(setting_id, value))
-	_body.add_child(toggle)
-
-
-func _screen_definition(screen_id: StringName) -> Dictionary:
-	return UiRouteCatalog.route(screen_id)
-
-
-func _display_screen_label(screen_id: StringName) -> String:
-	var definition := _screen_definition(screen_id)
-	if not definition.is_empty():
-		return String(definition["label"])
-	return "Realmz"
-
-
-func _mark_focus(control: Control, key: String) -> void:
-	control.set_meta("focus_key", key)
-
-
 func _assign_focus_keys(parent: Node, next_index: int = 0) -> int:
 	for child: Node in parent.get_children():
 		if child is Control and (child as Control).focus_mode != Control.FOCUS_NONE:
@@ -2752,7 +546,10 @@ func _assign_focus_keys(parent: Node, next_index: int = 0) -> int:
 
 
 func _store_focus() -> void:
-	var owner := get_viewport().gui_get_focus_owner()
+	var viewport := get_viewport()
+	if viewport == null:
+		return
+	var owner := viewport.gui_get_focus_owner()
 	if owner != null and is_ancestor_of(owner) and owner.has_meta("focus_key"):
 		_focus_keys[_screen_id] = String(owner.get_meta("focus_key"))
 
@@ -2796,18 +593,6 @@ func _focus_first(parent: Node) -> void:
 		var focus_owner := viewport.gui_get_focus_owner() if viewport != null else null
 		if focus_owner != null and parent.is_ancestor_of(focus_owner):
 			return
-
-
-func _display_name(campaign: PackageDiscoveryResult) -> String:
-	if not campaign.display_name.strip_edges().is_empty():
-		return campaign.display_name.strip_edges()
-	return campaign.campaign_id.replace("-", " ").capitalize()
-
-
-func _campaign_precedes(left: PackageDiscoveryResult, right: PackageDiscoveryResult) -> bool:
-	if left.ready != right.ready:
-		return left.ready
-	return _display_name(left).naturalnocasecmp_to(_display_name(right)) < 0
 
 
 func _label(text: String, color: Color = Color.WHITE, size: int = 15) -> Label:

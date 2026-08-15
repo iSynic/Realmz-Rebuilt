@@ -747,9 +747,9 @@ static func camera_top_left(active_position: Vector2i, visible_cells: Vector2i) 
 	)
 
 
-static func camera_focus_id_for(playback_frame: CombatPlaybackFrame, inspected_focus_id: String, active_actor_id: String) -> String:
-	if playback_frame != null and not playback_frame.camera_focus_id.is_empty():
-		return playback_frame.camera_focus_id
+static func camera_focus_id_for(frame: CombatPlaybackFrame, inspected_focus_id: String, active_actor_id: String) -> String:
+	if frame != null and not frame.camera_focus_id.is_empty():
+		return frame.camera_focus_id
 	if not inspected_focus_id.is_empty():
 		return inspected_focus_id
 	return active_actor_id

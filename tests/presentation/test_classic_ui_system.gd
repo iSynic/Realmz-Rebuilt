@@ -17,6 +17,7 @@ func run() -> void:
 	_test_startup_shell()
 	_test_startup_party_setup_composition()
 	_test_route_catalog()
+	_test_primary_workspace_lifecycle()
 	_test_layout_profiles()
 	_test_settings_schema_and_migration()
 	_test_movement_input()
@@ -63,10 +64,7 @@ func run() -> void:
 func _test_startup_party_setup_composition() -> void:
 	var router := ClassicScreenRouter.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
-	router._body_frame = PanelContainer.new()
-	router.add_child(router._body_frame)
-	router._build_campaign_overlay()
-	router._build_setup_overlay()
+	router.initialize()
 	var profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
 	router.set_layout_profile(profile, Vector2(960, 600))
 	router.set_standalone_character_creation_available(true)
@@ -98,8 +96,8 @@ func _test_startup_party_setup_composition() -> void:
 
 func _test_package_operation_presentation() -> void:
 	var router := ClassicScreenRouter.new()
-	router._campaign_list = VBoxContainer.new()
-	router.add_child(router._campaign_list)
+	(Engine.get_main_loop() as SceneTree).root.add_child(router)
+	router.initialize()
 	var cancel_count: Array[int] = [0]
 	router.cancel_package_requested.connect(func() -> void: cancel_count[0] += 1)
 	var status := PackageOperationStatusScript.new(&"running", &"validating-integrity", 2, 5, "Validating package files 2 of 5…")
@@ -121,10 +119,7 @@ func _test_package_operation_presentation() -> void:
 
 	var integrated_router := ClassicScreenRouter.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(integrated_router)
-	integrated_router._body_frame = PanelContainer.new()
-	integrated_router.add_child(integrated_router._body_frame)
-	integrated_router._build_campaign_overlay()
-	integrated_router._build_setup_overlay()
+	integrated_router.initialize()
 	var profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
 	integrated_router.set_layout_profile(profile, Vector2(960, 600))
 	integrated_router.show_campaign_selection()
@@ -146,21 +141,39 @@ func _test_package_operation_presentation() -> void:
 	integrated_router.free()
 
 
+func _test_primary_workspace_lifecycle() -> void:
+	var router := ClassicScreenRouter.new()
+	router.initialize()
+	var view := GameView.new(1, true, null)
+	view.campaign_id = "workspace-fixture"
+	view.rules_version = "realmz-classic-1"
+	view.party_summary = PartySummaryView.new()
+	router.present(view)
+	var entered: Array[StringName] = []
+	router.screen_changed.connect(func(route_id: StringName) -> void: entered.append(route_id))
+	for route_id: StringName in [&"character", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"]:
+		router.open_screen(route_id)
+		assert_equal(router.current_screen(), route_id, "route selection commits the requested primary workspace")
+		assert_equal(router.primary_workspace_id(), route_id, "the mounted scene and route registry cannot diverge")
+		assert_equal(router.mounted_primary_workspace_count(), 1, "a route transition leaves exactly one primary workspace mounted")
+		assert_equal(router.primary_workspace_visible(), route_id not in [&"exploration", &"combat"], "only spatial play routes suppress their explanatory workspace body")
+	assert_equal(entered, [&"character", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"], "each primary transition publishes exactly one entered route after replacing the prior workspace")
+	router.free()
+
+
 func _test_startup_shell() -> void:
 	var router := ClassicScreenRouter.new()
-	router._body_frame = PanelContainer.new()
-	router.add_child(router._body_frame)
-	router._build_splash_overlay()
-	router._build_campaign_overlay()
-	router._build_setup_overlay()
+	(Engine.get_main_loop() as SceneTree).root.add_child(router)
+	router.initialize()
 	router.show_splash()
 	var profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
 	router.set_layout_profile(profile, Vector2(960, 600))
 	router.set_standalone_character_creation_available(true)
-	assert_true(router._splash_overlay.visible, "Realmz Rebuilt opens on its application splash instead of dropping directly into package selection")
-	assert_false(router._campaign_overlay.visible, "the campaign library waits for an explicit splash action")
-	var choose_scenario := router._splash_overlay.find_child("ChooseScenario", true, false) as Button
-	var character_files := router._splash_overlay.find_child("CharacterFiles", true, false) as Button
+	var splash := router.find_child("SplashScreen", true, false) as Control
+	assert_true(splash != null and splash.visible, "Realmz Rebuilt opens on its application splash instead of dropping directly into package selection")
+	assert_false(router.setup_controller.campaign_overlay.visible, "the campaign library waits for an explicit splash action")
+	var choose_scenario := splash.find_child("ChooseScenario", true, false) as Button
+	var character_files := splash.find_child("CharacterFiles", true, false) as Button
 	assert_not_null(choose_scenario, "the splash exposes scenario selection as a primary path")
 	assert_not_null(character_files, "the splash exposes reusable character files independently of party setup")
 	choose_scenario.pressed.emit()
@@ -168,11 +181,11 @@ func _test_startup_shell() -> void:
 	var scenario_picker := router.find_child("ScenarioColumn", true, false) as Control
 	if scenario_picker == null:
 		scenario_picker = router.find_child("CampaignLibrary", true, false) as Control
-	assert_true(setup_workspace != null and setup_workspace.visible and not router._splash_overlay.visible, "scenario selection opens the integrated scenario and party setup workspace")
+	assert_true(setup_workspace != null and setup_workspace.visible and not splash.visible, "scenario selection opens the integrated scenario and party setup workspace")
 	assert_true(scenario_picker != null and setup_workspace != null and scenario_picker.visible and setup_workspace.is_ancestor_of(scenario_picker), "scenario selection is a left-column picker inside the integrated workspace, not an obsolete separate campaign modal")
 	router.set_campaigns([
-		PackageDiscoveryResult.new("res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2", true, "installed-scenario", "", "", "", "Installed Scenario"),
-		PackageDiscoveryResult.new("user://packages/stale.realmz2", false, "stale-scenario", "", "", "Package schema hash does not match the runtime contract mirror.", "Stale Scenario"),
+		CampaignPackageView.new("res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2", true, "installed-scenario", "", "", "", "Installed Scenario"),
+		CampaignPackageView.new("user://packages/stale.realmz2", false, "stale-scenario", "", "", "Package schema hash does not match the runtime contract mirror.", "Stale Scenario"),
 	])
 	var scenario_copy: Array[String] = []
 	if scenario_picker != null:
@@ -184,7 +197,7 @@ func _test_startup_shell() -> void:
 			var button := node as Button
 			if button.visible:
 				scenario_copy.append(button.text)
-	assert_true(router._campaign_list is VBoxContainer and router._campaign_list.get_parent() is ScrollContainer, "installed scenarios use one single-column picker surface")
+	assert_true(router.setup_controller.campaign_list is VBoxContainer and router.setup_controller.campaign_list.get_parent() is ScrollContainer, "installed scenarios use one single-column picker surface")
 	assert_true(scenario_copy.any(func(text: String) -> bool: return text.to_lower().contains("installed scenario")), "the installed-scenario picker identifies its ready scenario row")
 	assert_false(scenario_copy.any(func(text: String) -> bool: return text.contains("Stale Scenario")), "incompatible installations do not become ordinary scenario rows")
 	assert_contains(scenario_picker.tooltip_text, "installation hidden", "the picker preserves incompatible-installation diagnostics in unobtrusive hover text")
@@ -242,11 +255,11 @@ func _test_startup_shell() -> void:
 		var lower := text.to_lower()
 		return lower.contains("select a scenario") or lower.contains("choose a campaign")
 	), "the empty setup panes avoid repeating scenario-selection helper copy beneath their headings")
-	assert_false(router._create_character_button.disabled, "stock Character Files creation remains available before a scenario is selected")
-	assert_true(router._begin_button.disabled, "Begin Adventure remains unavailable until a scenario and party are selected")
+	assert_false(router.setup_controller.create_character_button.disabled, "stock Character Files creation remains available before a scenario is selected")
+	assert_true(router.setup_controller.begin_button.disabled, "Begin Adventure remains unavailable until a scenario and party are selected")
 	var standalone_requests: Array[int] = [0]
 	router.standalone_character_creation_requested.connect(func() -> void: standalone_requests[0] += 1)
-	router._create_character_button.pressed.emit()
+	router.setup_controller.create_character_button.pressed.emit()
 	assert_equal(standalone_requests[0], 1, "pre-session Create Character requests the application-owned stock creator")
 	var empty_party_slots: Node = null
 	if setup_workspace != null:
@@ -257,7 +270,7 @@ func _test_startup_shell() -> void:
 		for slot_number: int in range(1, 7):
 			assert_not_null(empty_party_slots.find_child("EmptyPartySlot%d" % slot_number, true, false), "pre-session Current Party preserves empty slot %d" % slot_number)
 	assert_true(router.handle_back(), "Back from the integrated pre-session workspace returns to the splash")
-	assert_true(router._splash_overlay.visible, "the startup flow retains a real front door after backing out of campaign selection")
+	assert_true(splash.visible, "the startup flow retains a real front door after backing out of campaign selection")
 	assert_contains(character_files.tooltip_text, "reusable", "the splash identifies Character Files as application-wide rather than scenario-owned")
 	var route_changes: Array[StringName] = []
 	router.screen_changed.connect(func(screen_id: StringName) -> void: route_changes.append(screen_id))
@@ -306,20 +319,17 @@ func _test_save_preview_workspace() -> void:
 	backup.can_load = true
 	var corrupt := SaveSlotPreviewScript.new("broken", SaveSlotPreviewScript.PRIMARY, SaveSlotPreviewScript.CORRUPT)
 	corrupt.error_message = "This save is corrupt or uses an unsupported schema."
-	var router := ClassicScreenRouter.new()
-	router._body = VBoxContainer.new()
-	router._content_parent = router._body
-	router.add_child(router._body)
-	router._view = view
-	router._save_previews = [current, backup, corrupt]
+	var controller := SystemWorkspaceController.new()
+	var body := VBoxContainer.new()
+	controller.set_save_previews([current, backup, corrupt])
 	var actions: Array[Dictionary] = []
-	router.system_action_requested.connect(func(action: StringName, value: Variant) -> void: actions.append({"action": action, "value": value}))
-	router._render_system()
+	controller.action_requested.connect(func(action: StringName, value: Variant) -> void: actions.append({"action": action, "value": value}))
+	controller.present(body, view, PresentationSettings.new())
 	var buttons: Array[Button] = []
 	var labels: Array[String] = []
-	for node: Node in router.find_children("*", "Button", true, false):
+	for node: Node in body.find_children("*", "Button", true, false):
 		buttons.append(node as Button)
-	for node: Node in router.find_children("*", "Label", true, false):
+	for node: Node in body.find_children("*", "Label", true, false):
 		labels.append((node as Label).text)
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Day 2") and text.contains("land:4 12,9")), "valid save previews expose detached time and location facts")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Mira, Borin")), "valid save previews expose detached party identity")
@@ -331,7 +341,7 @@ func _test_save_preview_workspace() -> void:
 	current_load.pressed.emit()
 	backup_load.pressed.emit()
 	assert_equal(actions, [{"action": &"load", "value": "quick"}, {"action": &"load_backup", "value": "quick"}], "current and backup previews emit distinct host operations")
-	router.free()
+	body.free()
 
 
 func _test_location_note_workspace() -> void:
@@ -349,17 +359,14 @@ func _test_location_note_workspace() -> void:
 	view.set_action_availability(&"set_location_note", true)
 	view.set_action_availability(&"open_journal", false, "Authored journal entries are unavailable in this fixture.")
 	view.set_action_availability(&"open_maps", false, "Player-map definitions are unavailable in this fixture.")
-	var router := ClassicScreenRouter.new()
-	router._body = VBoxContainer.new()
-	router._content_parent = router._body
-	router.add_child(router._body)
-	router._view = view
+	var body := VBoxContainer.new()
+	var controller := MapsJournalWorkspaceController.new()
 	var intents: Array[PlayerIntent] = []
-	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
-	router._render_journal()
-	var editor := router.find_child("CurrentLocationNoteText", true, false) as TextEdit
-	var save := router.find_child("SaveLocationNote", true, false) as Button
-	var cancel := router.find_child("CancelLocationNoteEdit", true, false) as Button
+	controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	controller.present(body, view, null)
+	var editor := body.find_child("CurrentLocationNoteText", true, false) as TextEdit
+	var save := body.find_child("SaveLocationNote", true, false) as Button
+	var cancel := body.find_child("CancelLocationNoteEdit", true, false) as Button
 	assert_not_null(editor, "the Journal route exposes a multiline current-location note editor")
 	assert_equal(editor.text, "Watch the ridge.", "the editor begins from detached committed note text")
 	assert_true(save.disabled, "an unchanged note cannot emit a redundant mutation")
@@ -379,12 +386,12 @@ func _test_location_note_workspace() -> void:
 	editor.text_changed.emit()
 	assert_true(save.disabled, "the note editor prevents an oversized UTF-8 payload before submission")
 	var labels: Array[String] = []
-	for node: Node in router.find_children("*", "Label", true, false):
+	for node: Node in body.find_children("*", "Label", true, false):
 		labels.append((node as Label).text)
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("A safe campsite.")), "saved location notes remain readable while only the current record is editable")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Journal entry 4")), "the Journal route labels authored records by their stable source message identity")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("A long authored entry")), "long authored journal text remains present in the scrollable workspace")
-	router.free()
+	body.free()
 
 
 func _test_player_map_workspace() -> void:
@@ -400,19 +407,15 @@ func _test_player_map_workspace() -> void:
 	var view := session.view()
 	assert_equal([view.acquired_player_maps.size(), view.acquired_player_maps[0].id, view.acquired_player_maps[0].cells.size()], [1, definition.id, 100], "the detached player-map view derives its 320-pixel crop from authoritative topology")
 	assert_equal(view.player_map_menu_entries.size(), 4, "the detached menu retains every package player-map slot, not only acquired definitions")
-	var router := ClassicScreenRouter.new()
-	router._body = VBoxContainer.new()
-	router._content_parent = router._body
-	router.add_child(router._body)
-	router._view = view
-	router._media = media
-	router._render_journal()
-	assert_not_null(router.find_child("AcquiredMapChooser", true, false), "the Journal route exposes a presentation-owned acquired-map chooser")
-	var map_buttons: Array[Node] = router.find_child("AcquiredMapChooser", true, false).find_children("*", "Button", true, false)
+	var body := VBoxContainer.new()
+	var controller := MapsJournalWorkspaceController.new()
+	controller.present(body, view, media)
+	assert_not_null(body.find_child("AcquiredMapChooser", true, false), "the Journal route exposes a presentation-owned acquired-map chooser")
+	var map_buttons: Array[Node] = body.find_child("AcquiredMapChooser", true, false).find_children("*", "Button", true, false)
 	assert_equal(map_buttons.size(), 4, "Maps/Notes retains acquired and unavailable package menu slots")
 	assert_true(map_buttons.any(func(button: Node) -> bool: return (button as Button).disabled and (button as Button).text == "Dungeon map unavailable"), "unacquired slots use their separate Classic unavailable name and cannot open")
-	assert_not_null(router.find_child("PlayerMapCanvas", true, false), "the selected crop renders through the dedicated player-map canvas")
-	var note := router.find_child("PlayerMapNote", true, false) as Label
+	assert_not_null(body.find_child("PlayerMapCanvas", true, false), "the selected crop renders through the dedicated player-map canvas")
+	var note := body.find_child("PlayerMapNote", true, false) as Label
 	assert_not_null(note, "non-scrolling maps retain their authored note")
 	if note != null:
 		assert_contains(note.text, "deterministic map", "the displayed note comes from immutable player-map content")
@@ -449,7 +452,7 @@ func _test_player_map_workspace() -> void:
 	scrolling_presenter.free()
 	picture_canvas.free()
 	immediate.free()
-	router.free()
+	body.free()
 
 
 func _test_battle_weapon_mode_component() -> void:
@@ -873,20 +876,24 @@ func _test_bank_component() -> void:
 
 func _test_money_workspace_audio() -> void:
 	var router := ClassicScreenRouter.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(router)
+	router.initialize()
 	var view := GameView.new(1, true, null)
-	router._view = view
+	view.campaign_summary = CampaignSummaryView.new()
+	router.present(view)
 	var sounds: Array[Dictionary] = []
 	router.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void: sounds.append({"soundId": sound_id, "waitForCompletion": wait_for_completion, "stopExisting": stop_existing}))
-	router._sync_ordinary_money_workspace_audio(&"services")
-	router._sync_ordinary_money_workspace_audio(&"services")
-	router._sync_ordinary_money_workspace_audio(&"exploration")
+	router.open_screen(&"services")
+	router.open_screen(&"services")
+	router.open_screen(&"exploration")
 	assert_equal(sounds, [
 		{"soundId": 141, "waitForCompletion": false, "stopExisting": false},
 		{"soundId": 3003, "waitForCompletion": false, "stopExisting": true},
 		{"soundId": 141, "waitForCompletion": false, "stopExisting": false},
 	], "ordinary Swap route requests the source button, quiet-and-open, and Done sequence without duplicates")
 	view.pending_interaction = _fixture_request("shop.audio", InteractionRequest.SHOP)
-	router._sync_ordinary_money_workspace_audio(&"services")
+	router.present(view)
+	router.open_screen(&"services")
 	assert_equal(sounds.size(), 3, "a Services route opened for a typed location service does not masquerade as ordinary Swap")
 	var audio := ClassicAudioPresenter.new()
 	var observed: Array[int] = []
@@ -1626,11 +1633,9 @@ func _combat_playback_view(monster_health: int, hero_position: Vector2i, monster
 
 func _test_character_creator_workflow() -> void:
 	var router := ClassicScreenRouter.new()
+	var setup := router.setup_controller
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
-	router._body_frame = PanelContainer.new()
-	router.add_child(router._body_frame)
-	router._build_campaign_overlay()
-	router._build_setup_overlay()
+	router.initialize()
 	var view := GameView.new(1, true, null)
 	view.campaign_id = "fixture-creator"
 	view.party_setup_available = true
@@ -1676,48 +1681,46 @@ func _test_character_creator_workflow() -> void:
 	var icon_image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
 	icon_image.fill(Color("67b789"))
 	var icon_texture := ImageTexture.create_from_image(icon_image)
-	router._appearance_textures[stored_state.portrait_id] = icon_texture
+	setup.set_appearance_texture(stored_state.portrait_id, icon_texture)
 	(view.party_members[0] as CharacterView).portrait_id = stored_state.portrait_id
 	router.set_vault_revisions([stored])
 	router.present(view)
 	var standard_profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
-	router._layout_profile = standard_profile.id
-	router._modal_layout_rect = Rect2(12.0, standard_profile.menu_height + 8.0, 936.0, 548.0)
-	router._apply_modal_layouts()
-	assert_equal(router._setup_overlay.size.x, 936.0, "party assembly covers the complete application width instead of duplicating the persistent in-game roster")
-	var setup_surface := router._setup_overlay.get_theme_stylebox("panel") as StyleBoxFlat
+	router.set_layout_profile(standard_profile, Vector2(960, 600))
+	assert_equal(setup.setup_overlay.size.x, 936.0, "party assembly covers the complete application width instead of duplicating the persistent in-game roster")
+	var setup_surface := setup.setup_overlay.get_theme_stylebox("panel") as StyleBoxFlat
 	assert_true(setup_surface != null and setup_surface.bg_color.a == 0.0, "party setup exposes the one root-aligned slate tile instead of replacing it with a flat fill")
-	assert_equal(router._setup_mode, &"assembly", "party setup opens on stored-character assembly instead of forcing the creator")
+	assert_equal(setup.setup_mode, &"assembly", "party setup opens on stored-character assembly instead of forcing the creator")
 	router.present_party_setup_status("Action failed • That vault character is already represented in the party.", true)
-	assert_true(router._setup_message.visible, "party setup exposes action failures inside its full-stage surface instead of hiding them in the suppressed shell status region")
-	assert_equal(router._setup_message.text, "Action failed • That vault character is already represented in the party.", "party setup preserves the core rejection reason rather than making Add appear inert")
-	assert_equal(router._setup_message.modulate, ClassicScreenRouter.ERROR, "party setup distinguishes a rejected import from ordinary helper text")
-	router._render_party_assembly()
-	assert_false(router._setup_message.visible, "a committed party refresh clears the previous inline setup failure")
-	assert_true(router._setup_overlay.visible and router._setup_overlay.find_child("ScenarioPartyWorkspace", true, false) != null, "a party-setup GameView keeps the integrated full-stage workspace visible")
-	assert_not_null(router._setup_overlay.find_child("CharacterFilesHeading", true, false), "party-setup GameView keeps the eligible Character Files column mounted")
-	assert_not_null(router._setup_overlay.find_child("PartyHeading", true, false), "party-setup GameView keeps the Current Party column mounted")
-	assert_true(router._setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool: return button.text != "Revision history and archives…"), "advanced revision history and archive controls stay out of ordinary party assembly")
-	assert_true(router._setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool:
+	assert_true(setup.setup_message.visible, "party setup exposes action failures inside its full-stage surface instead of hiding them in the suppressed shell status region")
+	assert_equal(setup.setup_message.text, "Action failed • That vault character is already represented in the party.", "party setup preserves the core rejection reason rather than making Add appear inert")
+	assert_equal(setup.setup_message.modulate, ClassicScreenRouter.ERROR, "party setup distinguishes a rejected import from ordinary helper text")
+	setup.render_party_assembly()
+	assert_false(setup.setup_message.visible, "a committed party refresh clears the previous inline setup failure")
+	assert_true(setup.setup_overlay.visible and setup.setup_overlay.find_child("ScenarioPartyWorkspace", true, false) != null, "a party-setup GameView keeps the integrated full-stage workspace visible")
+	assert_not_null(setup.setup_overlay.find_child("CharacterFilesHeading", true, false), "party-setup GameView keeps the eligible Character Files column mounted")
+	assert_not_null(setup.setup_overlay.find_child("PartyHeading", true, false), "party-setup GameView keeps the Current Party column mounted")
+	assert_true(setup.setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool: return button.text != "Revision history and archives…"), "advanced revision history and archive controls stay out of ordinary party assembly")
+	assert_true(setup.setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool:
 		var lower := button.text.to_lower()
 		return not lower.contains("archive") and not lower.contains("revision history") and not lower.contains("restore as current")
 	), "ordinary party assembly does not expose revision, archive, or restore controls")
-	assert_not_null(router._stored_character_list, "stored characters remain visible beside the six party slots")
-	assert_equal(router._party_list.get_child_count(), 6, "party assembly always exposes the campaign's complete slot capacity")
-	var party_scroll := router._party_list.get_parent() as ScrollContainer
+	assert_not_null(setup.stored_character_list, "stored characters remain visible beside the six party slots")
+	assert_equal(setup.party_list.get_child_count(), 6, "party assembly always exposes the campaign's complete slot capacity")
+	var party_scroll := setup.party_list.get_parent() as ScrollContainer
 	var party_heading_control := party_scroll.get_parent().get_node("PartyHeading") as Control
-	var party_controls_height := router._party_list.get_combined_minimum_size().y + party_heading_control.custom_minimum_size.y + router._party_setup_options.get_combined_minimum_size().y + router._begin_button.custom_minimum_size.y
-	assert_true(party_controls_height <= router._setup_overlay.size.y - 20.0, "all six party positions, setup options, and Begin action fit the standard 960 by 600 assembly viewport without scrolling")
+	var party_controls_height: float = setup.party_list.get_combined_minimum_size().y + party_heading_control.custom_minimum_size.y + setup.party_setup_options.get_combined_minimum_size().y + setup.begin_button.custom_minimum_size.y
+	assert_true(party_controls_height <= setup.setup_overlay.size.y - 20.0, "all six party positions, setup options, and Begin action fit the standard 960 by 600 assembly viewport without scrolling")
 	assert_equal(party_scroll.vertical_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED, "the six-slot Current Party surface never hides its final member behind a scrollbar")
-	assert_equal([router._difficulty_option.item_count, router._monster_set_option.item_count], [5, 3], "party assembly exposes all five Classic difficulty choices and only packaged monster sets")
-	assert_equal([router._monster_set_option.get_item_text(0), router._monster_set_option.get_item_text(1), router._monster_set_option.get_item_text(2)], ["Normal Monsters", "Mega Monsters", "Monster Monsters"], "Monster Set is presented in Classic's Normal, Mega, Monster order")
-	assert_true(router._party_guidance_label.text.contains("Maximum 12") and router._party_guidance_label.text.contains("Recommended 6") and router._party_guidance_label.text.contains("Current 9") and router._party_guidance_label.text.contains("66%"), "aggregate level and experience guidance is visible beside setup options")
+	assert_equal([setup.difficulty_option.item_count, setup.monster_set_option.item_count], [5, 3], "party assembly exposes all five Classic difficulty choices and only packaged monster sets")
+	assert_equal([setup.monster_set_option.get_item_text(0), setup.monster_set_option.get_item_text(1), setup.monster_set_option.get_item_text(2)], ["Normal Monsters", "Mega Monsters", "Monster Monsters"], "Monster Set is presented in Classic's Normal, Mega, Monster order")
+	assert_true(setup.party_guidance_label.text.contains("Maximum 12") and setup.party_guidance_label.text.contains("Recommended 6") and setup.party_guidance_label.text.contains("Current 9") and setup.party_guidance_label.text.contains("66%"), "aggregate level and experience guidance is visible beside setup options")
 	var setup_intent_count := intents.size()
-	router._difficulty_option.select(3)
-	router._party_setup_option_changed(3)
+	setup.difficulty_option.select(3)
+	setup.party_setup_option_changed(3)
 	var setup_payload := intents[-1].payload as PlayerIntent.PartySetupOptionsPayload
 	assert_equal([intents.size(), intents[-1].kind, setup_payload.difficulty, setup_payload.monster_set], [setup_intent_count + 1, PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS, 1, 0], "party option changes emit stable typed values rather than widget indexes")
-	var stored_row := router._stored_character_list.find_child("StoredCharacter_*", false, false) as PartySetupCharacterRow
+	var stored_row := setup.stored_character_list.find_child("StoredCharacter_*", false, false) as PartySetupCharacterRow
 	assert_not_null(stored_row, "the current eligible stored revision is an ordinary Add row")
 	var stored_portrait := stored_row.find_child("Portrait", true, false) as TextureRect
 	assert_not_null(stored_portrait, "each Character Files row exposes the stored character's portrait surface")
@@ -1725,7 +1728,7 @@ func _test_character_creator_workflow() -> void:
 	assert_equal(stored_portrait.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST, "party-picker portraits retain crisp Classic pixels without filtered outlines")
 	assert_equal(stored_portrait.custom_minimum_size, Vector2(44.0, 44.0), "Character Files keeps each native 44 by 44 portrait at full size")
 	assert_equal([stored_row.mouse_filter, stored_portrait.mouse_filter, (stored_row.find_child("Summary", true, false) as Label).mouse_filter], [Control.MOUSE_FILTER_STOP, Control.MOUSE_FILTER_IGNORE, Control.MOUSE_FILTER_IGNORE], "the visible portrait and summary route drag gestures to the draggable Character Files row")
-	var party_portrait := router._party_list.find_child("Portrait", true, false) as TextureRect
+	var party_portrait := setup.party_list.find_child("Portrait", true, false) as TextureRect
 	assert_not_null(party_portrait, "each occupied party position reserves the same portrait surface")
 	assert_equal(party_portrait.texture, icon_texture, "the assembled party repeats the exact character portrait for visual matching")
 	assert_equal(party_portrait.custom_minimum_size, Vector2(44.0, 44.0), "Current Party also keeps the native portrait at full size")
@@ -1733,14 +1736,14 @@ func _test_character_creator_workflow() -> void:
 	assert_not_null(drag_cursor, "dragging a stored character converts the exact portrait into a hardware cursor texture")
 	assert_equal(drag_cursor.get_size(), Vector2(2.0, 2.0), "the drag cursor preserves the source portrait dimensions")
 	assert_true(absf(drag_cursor.get_image().get_pixel(0, 0).a - 0.62) < 0.005, "the hardware drag cursor is translucent so the drop destination stays visible")
-	var character_pane := router._setup_overlay.find_child("CharacterFilesPane", true, false) as Control
-	var party_pane := router._setup_overlay.find_child("CurrentPartyPane", true, false) as Control
+	var character_pane := setup.setup_overlay.find_child("CharacterFilesPane", true, false) as Control
+	var party_pane := setup.setup_overlay.find_child("CurrentPartyPane", true, false) as Control
 	assert_equal(character_pane.size_flags_stretch_ratio, party_pane.size_flags_stretch_ratio, "Character Files and Current Party receive identical horizontal layout weight")
-	var character_heading := router._setup_overlay.find_child("CharacterFilesHeading", true, false) as CenterContainer
-	var party_heading := router._setup_overlay.find_child("PartyHeading", true, false) as CenterContainer
+	var character_heading := setup.setup_overlay.find_child("CharacterFilesHeading", true, false) as CenterContainer
+	var party_heading := setup.setup_overlay.find_child("PartyHeading", true, false) as CenterContainer
 	assert_equal([character_heading.custom_minimum_size.y, party_heading.custom_minimum_size.y], [28.0, 28.0], "both transfer sections use identically sized centered headings")
-	var stored_scroll := router._setup_overlay.find_child("StoredCharacterScroll", true, false) as ScrollContainer
-	var party_slot_scroll := router._setup_overlay.find_child("PartySlotScroll", true, false) as ScrollContainer
+	var stored_scroll := setup.setup_overlay.find_child("StoredCharacterScroll", true, false) as ScrollContainer
+	var party_slot_scroll := setup.setup_overlay.find_child("PartySlotScroll", true, false) as ScrollContainer
 	assert_true(stored_scroll != null and party_slot_scroll != null and stored_scroll.get_parent() == character_heading.get_parent() and party_slot_scroll.get_parent() == party_heading.get_parent(), "Character Files and Current Party lists remain directly beneath their aligned headings")
 	var add_stored := stored_row.find_child("AddCharacter", true, false) as Button
 	assert_not_null(add_stored, "the balanced Character Files row keeps an explicit Add action")
@@ -1749,48 +1752,48 @@ func _test_character_creator_workflow() -> void:
 	var clicked_import := intents[-1].payload as PlayerIntent.VaultImportPayload
 	assert_equal([intents[-1].kind, clicked_import.character_id, clicked_import.revision_hash], [PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id, stored.revision_hash], "click Add submits the stable stored-character revision through the existing typed intent")
 	var intent_count_before_drop := intents.size()
-	assert_true(router._party_list._can_drop_data(Vector2.ZERO, stored_row.drag_payload()), "the real draggable row payload is accepted by the complete party-list drop surface")
-	router._party_list._drop_data(Vector2.ZERO, {"kind": "party-setup-character", "characterId": stored.character_id, "revisionHash": stored.revision_hash})
+	assert_true(setup.party_list._can_drop_data(Vector2.ZERO, stored_row.drag_payload()), "the real draggable row payload is accepted by the complete party-list drop surface")
+	setup.party_list._drop_data(Vector2.ZERO, {"kind": "party-setup-character", "characterId": stored.character_id, "revisionHash": stored.revision_hash})
 	assert_equal([intents.size(), intents[-1].kind, (intents[-1].payload as PlayerIntent.VaultImportPayload).character_id], [intent_count_before_drop + 1, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id], "dragging onto the party list is a pointer convenience over the same typed import path")
-	var inspect_setup := router._party_list.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Inspect")[0] as Button
+	var inspect_setup := setup.party_list.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Inspect")[0] as Button
 	var intent_count_before_inspection := intents.size()
 	inspect_setup.pressed.emit()
-	assert_true(router._setup_inspection_overlay.visible, "party setup can open a complete detached character inspection surface before play")
-	var inspection_surface := router._setup_inspection_overlay.get_theme_stylebox("panel") as StyleBoxTexture
+	assert_true(setup.setup_inspection_overlay.visible, "party setup can open a complete detached character inspection surface before play")
+	var inspection_surface := setup.setup_inspection_overlay.get_theme_stylebox("panel") as StyleBoxTexture
 	assert_true(inspection_surface != null and inspection_surface.texture.resource_path.ends_with("classic-inset-frame.png"), "party inspection owns an opaque slate-backed inset instead of compositing its sheet over party assembly")
-	assert_equal([router._setup_inspection_overlay.position, router._setup_inspection_overlay.size, router._setup_inspection_overlay.z_index, router._setup_inspection_overlay.clip_contents], [Vector2.ZERO, router._setup_overlay.size, 1, true], "party inspection fills and clips to the complete setup viewport above its assembly content")
-	assert_not_null(router._setup_inspection_overlay.find_child("PartySetupCharacterSheet", true, false), "setup inspection reuses the complete Classic character sheet instead of a second summary path")
+	assert_equal([setup.setup_inspection_overlay.position, setup.setup_inspection_overlay.size, setup.setup_inspection_overlay.z_index, setup.setup_inspection_overlay.clip_contents], [Vector2.ZERO, setup.setup_overlay.size, 1, true], "party inspection fills and clips to the complete setup viewport above its assembly content")
+	assert_not_null(setup.setup_inspection_overlay.find_child("PartySetupCharacterSheet", true, false), "setup inspection reuses the complete Classic character sheet instead of a second summary path")
 	assert_equal(intents.size(), intent_count_before_inspection, "opening and browsing setup inspection cannot mutate the session")
 	assert_true(router.handle_back(), "Back closes setup character inspection before leaving party setup")
-	assert_false(router._setup_inspection_overlay.visible, "closing inspection restores the creator and party assembly surface")
-	var create_button := router._create_character_button
+	assert_false(setup.setup_inspection_overlay.visible, "closing inspection restores the creator and party assembly surface")
+	var create_button: Button = setup.create_character_button
 	assert_not_null(create_button, "Create new character is an explicit secondary party-assembly action")
 	create_button.pressed.emit()
-	assert_equal([router._setup_mode, router._creator_step], [&"creator", 0], "Create switches the left pane to Identity while retaining the party pane")
-	assert_not_null(router._creator_page.get_node_or_null("CharacterName"), "Identity alone owns the character-name field")
-	assert_false(router._creator_cancel_button.disabled, "a pristine Identity step can always cancel back to Character Files")
-	router._creator_cancel_button.pressed.emit()
-	assert_equal(router._setup_mode, &"assembly", "Cancel character immediately restores Character Files without requiring a draft mutation")
-	assert_true(router._stored_character_list.visible, "canceling creation restores the stored-character picker")
+	assert_equal([setup.setup_mode, setup.creator_step], [&"creator", 0], "Create switches the left pane to Identity while retaining the party pane")
+	assert_not_null(setup.creator_page.get_node_or_null("CharacterName"), "Identity alone owns the character-name field")
+	assert_false(setup.creator_cancel_button.disabled, "a pristine Identity step can always cancel back to Character Files")
+	setup.creator_cancel_button.pressed.emit()
+	assert_equal(setup.setup_mode, &"assembly", "Cancel character immediately restores Character Files without requiring a draft mutation")
+	assert_true(setup.stored_character_list.visible, "canceling creation restores the stored-character picker")
 	create_button.pressed.emit()
-	var starting_level := router._creator_page.get_node_or_null("StartingLevel") as OptionButton
+	var starting_level := setup.creator_page.get_node_or_null("StartingLevel") as OptionButton
 	assert_not_null(starting_level, "Identity exposes the Classic starting-level boundary instead of silently omitting it")
 	assert_equal([starting_level.get_item_id(0), starting_level.get_item_id(1), starting_level.get_item_id(2), starting_level.get_item_id(3)], [1, 3, 5, 7], "Identity exposes Castle's fixed choices only through the campaign's maximum level")
 	assert_false(starting_level.disabled, "source-backed higher-level creation is an ordinary selectable campaign workflow")
 	starting_level.select(starting_level.get_item_index(3))
-	assert_equal(router._creator_page.find_children("*", "ItemList", true, false).size(), 0, "Identity does not spill race, class, or spell lists into the same viewport")
-	router._draft_name = "Mira"
-	router._name_edit.text = "Mira"
-	router._creator_next()
-	assert_equal(router._creator_step, 1, "Continue advances from Identity to Race and Class")
-	assert_equal([router._race_list.get_item_text(0), router._caste_list.get_item_text(0)], ["Human", "Sorcerer"], "Race renders on the left and filters the class list on the right")
+	assert_equal(setup.creator_page.find_children("*", "ItemList", true, false).size(), 0, "Identity does not spill race, class, or spell lists into the same viewport")
+	setup.draft_name = "Mira"
+	setup.name_edit.text = "Mira"
+	setup.creator_next()
+	assert_equal(setup.creator_step, 1, "Continue advances from Identity to Race and Class")
+	assert_equal([setup.race_list.get_item_text(0), setup.caste_list.get_item_text(0)], ["Human", "Sorcerer"], "Race renders on the left and filters the class list on the right")
 	var compact := UiLayoutProfile.for_viewport(Vector2(800, 600), PresentationSettings.UI_SCALE_AUTO)
-	router._apply_creator_layout(compact.id)
-	assert_true(router._creator.vertical and router._race_class_columns.vertical, "compact setup stacks both the creator-party split and Race-Class columns instead of clipping them")
-	router._creator_next()
-	assert_equal(router._creator_step, 2, "Race and Class advances to the dedicated Appearance page")
-	router._creator_next()
-	assert_equal(router._creator_step, 3, "Appearance advances to Review only after requesting a core-owned roll")
+	setup.apply_creator_layout(compact.id)
+	assert_true(setup.creator.vertical and setup.race_class_columns.vertical, "compact setup stacks both the creator-party split and Race-Class columns instead of clipping them")
+	setup.creator_next()
+	assert_equal(setup.creator_step, 2, "Race and Class advances to the dedicated Appearance page")
+	setup.creator_next()
+	assert_equal(setup.creator_step, 3, "Appearance advances to Review only after requesting a core-owned roll")
 	assert_equal(intents[-1].kind, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, "Review is populated through the typed draft-generation intent")
 	var draft_payload := intents[-1].payload as PlayerIntent.CharacterDraftPayload
 	assert_equal([draft_payload.spec.portrait_id, draft_payload.spec.combat_icon_id], ["portrait.human.1", "icon.human.1"], "Appearance emits stable package identities rather than filenames or numeric widget IDs")
@@ -1816,18 +1819,20 @@ func _test_character_creator_workflow() -> void:
 	view.character_draft_spell_options = [CharacterSpellOptionView.new(spell, 1, false)]
 	view.set_action_availability(&"finalize_character", true)
 	router.present(view)
-	assert_true(router._review_label.text.contains("Brawn 11") and router._review_label.text.contains("SP 21/21") and router._review_label.text.contains("Two-Hand 34"), "Review renders the generated character and its source-owned combat statistics rather than a pre-roll placeholder")
-	assert_equal(router._setup_message.text, "Review or reroll the generated Classic character.", "the setup guidance advances with the asynchronously populated Review page")
-	router._creator_next()
-	assert_equal(router._creator_step, 4, "Review advances to the dedicated starting-spell page")
-	assert_equal(router._spell_list.item_count, 1, "the spell page renders core-provided Classic options and selection costs")
-	router._creator_next()
+	assert_true(setup.review_label.text.contains("Brawn 11") and setup.review_label.text.contains("SP 21/21") and setup.review_label.text.contains("Two-Hand 34"), "Review renders the generated character and its source-owned combat statistics rather than a pre-roll placeholder")
+	assert_equal(setup.setup_message.text, "Review or reroll the generated Classic character.", "the setup guidance advances with the asynchronously populated Review page")
+	setup.creator_next()
+	assert_equal(setup.creator_step, 4, "Review advances to the dedicated starting-spell page")
+	assert_equal(setup.spell_list.item_count, 1, "the spell page renders core-provided Classic options and selection costs")
+	setup.creator_next()
 	assert_equal(intents[-1].kind, PlayerIntent.Kind.FINALIZE_CHARACTER, "Add to party accepts the reviewed draft without carrying another creation specification")
 	router.free()
 
 
 func _test_begin_adventure_closes_setup_vault() -> void:
 	var router := ClassicScreenRouter.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(router)
+	router.initialize()
 	var setup_view := GameView.new(1, true, null)
 	setup_view.campaign_id = "fixture-setup-route"
 	setup_view.party_setup_available = true
@@ -1835,42 +1840,21 @@ func _test_begin_adventure_closes_setup_vault() -> void:
 	setup_view.campaign_summary.title = "Setup Route Fixture"
 	setup_view.party_members = [CharacterView.new(CharacterState.new("party.route.hero", "Klang", 12, 12))]
 	setup_view.set_action_availability(&"import_vault_character", true)
-	router._view = setup_view
-	router._screen_id = &"vault"
-	router._vault_return_to_setup = true
-	router._route_history = [&"exploration"]
-	router._campaign_overlay = PanelContainer.new()
-	router._setup_overlay = PanelContainer.new()
-	router.add_child(router._campaign_overlay)
-	router.add_child(router._setup_overlay)
-	var exploration_workspace := ClassicRouteScreen.new()
-	exploration_workspace.route_id = &"exploration"
-	exploration_workspace.scroll = ScrollContainer.new()
-	exploration_workspace.body = VBoxContainer.new()
-	exploration_workspace.add_child(exploration_workspace.scroll)
-	exploration_workspace.scroll.add_child(exploration_workspace.body)
-	router.add_child(exploration_workspace)
-	router._workspace_view = exploration_workspace
-	router._body_frame = exploration_workspace
-	router._body_scroll = exploration_workspace.scroll
-	router._body = exploration_workspace.body
-	router._setup_message = Label.new()
-	router._setup_overlay.add_child(router._setup_message)
+	router.present(setup_view)
+	router.open_screen(&"vault")
 	assert_equal(router.current_screen(), &"vault", "party setup may open the character vault before play")
-	assert_true(router._vault_return_to_setup, "the setup vault retains its setup-only return destination before Begin")
 
 	var active_view := GameView.new(2, true, null)
 	active_view.campaign_id = setup_view.campaign_id
 	active_view.campaign_summary = setup_view.campaign_summary
 	active_view.party_members = setup_view.party_members
-	assert_true(ClassicScreenRouter._party_setup_completed(setup_view, active_view), "the router recognizes the committed Begin Adventure view transition")
 	router.present(active_view)
 	assert_equal(router.current_screen(), &"exploration", "completing party setup dismisses the setup-only vault and opens exploration")
 	assert_false(router.full_stage_overlay_visible(), "no setup or campaign overlay survives the Begin Adventure boundary")
-	assert_false(router._vault_return_to_setup, "the completed setup cannot retain a stale Back to party setup destination")
-	assert_true(router._route_history.is_empty(), "setup-only route history cannot reopen the vault after the adventure begins")
 	assert_true(router.accepts_exploration_input(), "the newly active campaign accepts exploration input immediately")
-	assert_false(ClassicScreenRouter._party_setup_completed(active_view, active_view), "ordinary active-session refreshes do not force the player out of a deliberately opened workspace")
+	router.open_screen(&"character")
+	router.present(active_view)
+	assert_equal(router.current_screen(), &"character", "ordinary active-session refreshes preserve the deliberately opened primary workspace")
 	router.free()
 
 
@@ -1886,16 +1870,14 @@ func _test_character_vault_workspace() -> void:
 	var detached_revision := CharacterVaultRevisionView.from_record(source_record, source_eligibility, true, false)
 	assert_equal(detached_revision.eligibility_reasons, ["Source-backed mismatch reason"], "vault eligibility converts into a typed detached reason array")
 	var router := ClassicScreenRouter.new()
-	router._body = VBoxContainer.new()
-	router._content_parent = router._body
-	router.add_child(router._body)
+	(Engine.get_main_loop() as SceneTree).root.add_child(router)
+	router.initialize()
 	var view := GameView.new(3, true, null)
 	view.campaign_id = "fixture-vault"
 	view.campaign_summary = CampaignSummaryView.new()
 	view.campaign_summary.title = "Vault Campaign"
 	view.set_action_availability(&"import_vault_character", true)
-	router._view = view
-	router._vault_return_to_setup = true
+	router.present(view)
 	var current := CharacterVaultRevisionView.new()
 	current.character_id = "vault.hero"
 	current.revision_hash = "a".repeat(64)
@@ -1923,7 +1905,8 @@ func _test_character_vault_workspace() -> void:
 	archived.eligibility_reasons = ["Item 'classic.item.missing' is not defined by this campaign."]
 	archived.character = CharacterView.new(source_character)
 	router.set_vault_revisions([current, archived])
-	router._render_vault()
+	router.open_screen(&"vault")
+	var vault_body := router.find_child("ScreenBody", true, false) as VBoxContainer
 	var labels: Array[String] = []
 	for node: Node in router.find_children("*", "Label", true, false):
 		labels.append((node as Label).text)
@@ -1938,7 +1921,7 @@ func _test_character_vault_workspace() -> void:
 	var restore_button: Button
 	for node: Node in router.find_children("*", "Button", true, false):
 		var button := node as Button
-		if button.text == "Back to party setup":
+		if button.text == "Back":
 			back_button = button
 		elif button.text == "Import this revision":
 			import_buttons.append(button)
@@ -1950,29 +1933,27 @@ func _test_character_vault_workspace() -> void:
 			restore_button = button
 	assert_equal(import_buttons.size(), 2, "each immutable revision renders its own import decision")
 	assert_equal(inspect_buttons.size(), 2, "eligible and ineligible vault revisions both expose mutation-free inspection")
-	assert_not_null(back_button, "vault entry from party setup exposes a visible return action")
+	assert_not_null(back_button, "vault workspace exposes a visible return action")
 	assert_true(import_buttons.any(func(button: Button) -> bool: return not button.disabled), "the current eligible revision can be imported")
 	assert_true(import_buttons.any(func(button: Button) -> bool: return button.disabled and button.tooltip_text.contains("Restore")), "archived revisions must be restored before import")
 	assert_not_null(archive_button, "the current revision exposes recoverable archive rather than delete")
 	assert_not_null(restore_button, "archived history exposes an explicit recovery action")
 	inspect_buttons[-1].pressed.emit()
-	assert_not_null(router._body.find_child("VaultCharacterSheet", true, false), "vault inspection reuses the complete detached character sheet")
-	var inspection_labels := router._body.find_children("*", "Label", true, false)
+	assert_not_null(vault_body.find_child("VaultCharacterSheet", true, false), "vault inspection reuses the complete detached character sheet")
+	var inspection_labels := vault_body.find_children("*", "Label", true, false)
 	assert_true(inspection_labels.any(func(label: Label) -> bool: return label.text.contains("Not eligible") or label.text.contains("classic.item.missing")), "ineligible inspection keeps exact campaign mismatch reasons visible")
-	var inspection_back := router._body.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Back to character vault")[0] as Button
+	var inspection_back := vault_body.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Back to character vault")[0] as Button
 	inspection_back.pressed.emit()
-	assert_true(router._body.find_children("*", "Button", true, false).any(func(button: Button) -> bool: return button.text == "Inspect character"), "Back returns from vault inspection to the revision list")
-	if restore_button != null:
-		restore_button.pressed.emit()
+	assert_true(vault_body.find_children("*", "Button", true, false).any(func(button: Button) -> bool: return button.text == "Inspect character"), "Back returns from vault inspection to the revision list")
+	var refreshed_restore := vault_body.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Restore as current")[0] as Button
+	refreshed_restore.pressed.emit()
 	assert_equal(restore_events, [[archived.character_id, archived.revision_hash]], "recovery identifies the exact immutable revision")
 	router.free()
 
 
 func _test_field_spell_workspace() -> void:
-	var router := ClassicScreenRouter.new()
-	router._body = VBoxContainer.new()
-	router._content_parent = router._body
-	router.add_child(router._body)
+	var body := VBoxContainer.new()
+	var controller := SpellsWorkspaceController.new()
 	var view := GameView.new(5, true, null)
 	view.party_summary = PartySummaryView.new()
 	view.party_summary.camping = false
@@ -2000,22 +1981,21 @@ func _test_field_spell_workspace() -> void:
 	view.party_members = [character_view]
 	view.set_action_availability(&"cast_spell", true)
 	view.set_action_availability(&"set_fast_spell", true)
-	router._view = view
 	var intents: Array[PlayerIntent] = []
-	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
-	router._render_spells()
+	controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	controller.present(body, view, null, 1.0)
 	var cast_power_two: Button = null
 	var make_power_two: Button = null
 	var use_scroll: Button = null
 	var scroll_slot_label: Label = null
 	var fast_slot_label: Label = null
-	for label: Label in router._body.find_children("*", "Label", true, false):
+	for label: Label in body.find_children("*", "Label", true, false):
 		if label.text.begins_with("Slot 1"):
 			if label.text == "Slot 1":
 				fast_slot_label = label
 			else:
 				scroll_slot_label = label
-	for button: Button in router._body.find_children("*", "Button", true, false):
+	for button: Button in body.find_children("*", "Button", true, false):
 		if button.text == "Cast P2 (4 SP)":
 			cast_power_two = button
 		if button.text == "Make P2 Scroll (8 SP)":
@@ -2027,7 +2007,7 @@ func _test_field_spell_workspace() -> void:
 	assert_not_null(use_scroll, "the field spell workspace renders the character's fixed scroll-case slots")
 	assert_not_null(scroll_slot_label, "the field spell workspace labels each fixed scroll slot")
 	assert_not_null(fast_slot_label, "the spellbook renders all ten character-owned Fast Spell rows")
-	assert_equal(router._body.find_children("*", "OptionButton", true, false).filter(func(option: OptionButton) -> bool: return option.get_parent() is HBoxContainer).size(), 10, "each Fast Spell slot exposes one explicit binding picker")
+	assert_equal(body.find_children("*", "OptionButton", true, false).filter(func(option: OptionButton) -> bool: return option.get_parent() is HBoxContainer).size(), 10, "each Fast Spell slot exposes one explicit binding picker")
 	if scroll_slot_label != null:
 		assert_true(scroll_slot_label.get_parent() is HBoxContainer, "scroll-slot identity and action share one fixed row instead of reflowing into narrow columns")
 		assert_equal(scroll_slot_label.size_flags_horizontal, Control.SIZE_EXPAND_FILL, "scroll-slot text receives the row's available width at the minimum viewport")
@@ -2045,7 +2025,7 @@ func _test_field_spell_workspace() -> void:
 		assert_equal([intents[0].kind, cast_payload.power], [PlayerIntent.Kind.CAST_SPELL, 2], "the selected field power crosses the typed intent boundary")
 		assert_equal([scribe_payload.operation, scribe_payload.power], [&"make-scroll", 2], "scroll scribing crosses the same typed spell intent boundary")
 		assert_equal([scroll_payload.operation, scroll_payload.scroll_slot], [&"use-scroll", 0], "scroll use carries the exact fixed slot through the typed intent boundary")
-	router.free()
+	body.free()
 
 
 func _test_inventory_workspace() -> void:
@@ -2073,19 +2053,16 @@ func _test_inventory_workspace() -> void:
 	source_view.items.append(item_view)
 	var view := GameView.new(4, true, null)
 	view.party_members = [source_view, CharacterView.new(destination)]
-	var router := ClassicScreenRouter.new()
-	router._body = VBoxContainer.new()
-	router._content_parent = router._body
-	router.add_child(router._body)
-	router._view = view
+	var workspace := InventoryWorkspaceController.new()
+	var body := VBoxContainer.new()
 	var intents: Array[PlayerIntent] = []
-	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
-	router._render_inventory()
+	workspace.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	workspace.present(body, view, null, 1.0)
 	var buttons: Array[BaseButton] = []
 	var labels: Array[String] = []
-	for node: Node in router.find_children("*", "BaseButton", true, false):
+	for node: Node in body.find_children("*", "BaseButton", true, false):
 		buttons.append(node as BaseButton)
-	for node: Node in router.find_children("*", "Label", true, false):
+	for node: Node in body.find_children("*", "Label", true, false):
 		labels.append((node as Label).text)
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Alis") and (button as Button).text.contains("12/100")), "inventory workspace selects a character before an item")
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Longsword")), "inventory workspace renders a selectable carried-item list")
@@ -2108,7 +2085,7 @@ func _test_inventory_workspace() -> void:
 	if not intents.is_empty():
 		assert_equal(intents[0].kind, PlayerIntent.Kind.TRADE_ITEM, "trade never mutates gameplay from presentation")
 		assert_equal((intents[0].payload as PlayerIntent.ItemActionPayload).destination_character_id, destination.id, "trade intent carries the stable recipient identity")
-	router.free()
+	body.free()
 
 
 func _test_money_workspace() -> void:
@@ -2137,19 +2114,16 @@ func _test_money_workspace() -> void:
 	view.money_workspace = workspace
 	view.set_action_availability(&"money_action", true)
 	view.set_action_availability(&"service_action", false, "No location service is available.")
-	var router := ClassicScreenRouter.new()
-	router._body = VBoxContainer.new()
-	router._content_parent = router._body
-	router.add_child(router._body)
-	router._view = view
+	var body := VBoxContainer.new()
+	var controller := ServicesWorkspaceController.new()
 	var intents: Array[PlayerIntent] = []
-	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
-	router._render_services()
+	controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
+	controller.present(body, view)
 	var buttons: Array[Button] = []
 	var labels: Array[String] = []
-	for node: Node in router.find_children("*", "Button", true, false):
+	for node: Node in body.find_children("*", "Button", true, false):
 		buttons.append(node as Button)
-	for node: Node in router.find_children("*", "Label", true, false):
+	for node: Node in body.find_children("*", "Label", true, false):
 		labels.append((node as Label).text)
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("15 gold") and text.contains("1 jewelry")), "money workspace renders every detached pooled denomination")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Banked: 50 gold")), "banked wealth remains visible without being merged into ordinary Swap")
@@ -2172,16 +2146,7 @@ func _test_money_workspace() -> void:
 	assert_equal([to_pool_payload.action, to_pool_payload.character_id, to_pool_payload.denomination, to_pool_payload.amount], [&"to-pool", source.id, "gold", 5], "character-to-pool Swap carries stable identity and exact Classic increment")
 	assert_equal([to_character_payload.action, to_character_payload.character_id, to_character_payload.denomination, to_character_payload.amount], [&"to-character", source.id, "gold", 5], "pool-to-character Swap carries stable identity and exact Classic increment")
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Done"), "Swap has a presentation-only cancellation path with no gameplay mutation")
-	var scroll := ScrollContainer.new()
-	scroll.scroll_horizontal = 37
-	scroll.scroll_vertical = 542
-	router._body_scroll = scroll
-	router._restore_focus(true)
-	assert_equal([scroll.scroll_horizontal, scroll.scroll_vertical], [0, 0], "a newly mounted route resets focus-driven scroll so Money remains visible at the top")
-	router._restore_focus(false, 37, 100)
-	assert_equal([scroll.scroll_horizontal, scroll.scroll_vertical], [37, 100], "a same-route money mutation preserves the player's prior scroll instead of jumping to the final control")
-	scroll.free()
-	router.free()
+	body.free()
 
 
 func _test_exploration_money_and_service_commands() -> void:
@@ -2231,30 +2196,19 @@ func _test_party_order_workspace() -> void:
 	view.party_members = [CharacterView.new(alis), CharacterView.new(borin), CharacterView.new(cerys)]
 	view.set_action_availability(&"reorder_party", true)
 	var router := ClassicScreenRouter.new()
-	var workspace := (load("res://src/presentation/screens/character_screen.tscn") as PackedScene).instantiate() as ClassicRouteScreen
-	workspace.scroll = workspace.get_node("WorkspaceColumn/ScreenBodyScroll") as ScrollContainer
-	workspace.body = workspace.get_node("WorkspaceColumn/ScreenBodyScroll/ScreenBody") as VBoxContainer
-	workspace._header = workspace.get_node("WorkspaceColumn/WorkspaceHeader") as BoxContainer
-	router._workspace_view = workspace
-	router._body_frame = workspace
-	router._body_scroll = workspace.scroll
-	router._body = workspace.body
-	router.add_child(workspace)
-	router._campaign_overlay = PanelContainer.new()
-	router._setup_overlay = PanelContainer.new()
-	router.add_child(router._campaign_overlay)
-	router.add_child(router._setup_overlay)
-	router._screen_id = &"character"
+	(Engine.get_main_loop() as SceneTree).root.add_child(router)
+	router.initialize()
 	var intents: Array[PlayerIntent] = []
 	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
 	router.present(view)
-	assert_equal(router._party_order_draft_ids, [alis.id, borin.id, cerys.id], "the Party Order workspace starts from detached session order")
+	router.open_screen(&"character")
+	assert_equal(router.party_order_draft_ids(), [alis.id, borin.id, cerys.id], "the Party Order workspace starts from detached session order")
 	var buttons: Array[Button] = []
 	for node: Node in router.find_children("*", "Button", true, false):
 		buttons.append(node as Button)
 	var first_down: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Move Down" and not button.disabled)[0]
 	first_down.pressed.emit()
-	assert_equal(router._party_order_draft_ids, [borin.id, alis.id, cerys.id], "Move Down changes presentation-owned draft order only")
+	assert_equal(router.party_order_draft_ids(), [borin.id, alis.id, cerys.id], "Move Down changes presentation-owned draft order only")
 	assert_equal(intents.size(), 0, "staging a slot move cannot mutate the session")
 	buttons.clear()
 	for node: Node in router.find_children("*", "Button", true, false):
@@ -2262,7 +2216,7 @@ func _test_party_order_workspace() -> void:
 	var cancel: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Cancel Order Changes")[0]
 	assert_false(cancel.disabled, "a changed draft exposes safe cancellation")
 	cancel.pressed.emit()
-	assert_equal(router._party_order_draft_ids, [alis.id, borin.id, cerys.id], "Cancel restores detached order without reproducing Castle's cleared-track write")
+	assert_equal(router.party_order_draft_ids(), [alis.id, borin.id, cerys.id], "Cancel restores detached order without reproducing Castle's cleared-track write")
 	assert_equal(intents.size(), 0, "Cancel emits no gameplay intent")
 	buttons.clear()
 	for node: Node in router.find_children("*", "Button", true, false):
@@ -2483,10 +2437,17 @@ func _test_scene_composition() -> void:
 		assert_true(campaign_rect.position.x >= 0.0 and campaign_rect.position.x + campaign_rect.size.x <= stage_width, "campaign controls stay out of the roster hit region at %s" % str(viewport_size))
 		assert_true(campaign_rect.position.y >= profile.menu_height and campaign_rect.position.y + campaign_rect.size.y <= viewport_size.y, "campaign controls stay inside the viewport at %s" % str(viewport_size))
 		var vault_router := ClassicScreenRouter.new()
-		vault_router._screen_id = &"vault"
-		vault_router._workspace_rect = Rect2(0.0, profile.menu_height, stage_width, viewport_size.y - profile.menu_height - profile.bottom_height)
-		vault_router._modal_layout_rect = Rect2(12.0, profile.menu_height + 8.0, viewport_size.x - 24.0, viewport_size.y - profile.menu_height - 16.0)
-		assert_equal(vault_router._workspace_layout_rect(), vault_router._modal_layout_rect, "Character Files receives the complete stage width at %s" % str(viewport_size))
+		(Engine.get_main_loop() as SceneTree).root.add_child(vault_router)
+		vault_router.initialize()
+		vault_router.set_layout_profile(profile, viewport_size)
+		vault_router.open_screen(&"vault")
+		var vault_workspaces := vault_router.get_children().filter(func(child: Node) -> bool: return child is ClassicRouteScreen)
+		var vault_workspace := vault_workspaces[0] as ClassicRouteScreen if not vault_workspaces.is_empty() else null
+		var modal_rect := Rect2(12.0, profile.menu_height + 8.0, viewport_size.x - 24.0, viewport_size.y - profile.menu_height - 16.0)
+		var expected_vault_rect := Rect2(modal_rect.position + Vector2(8.0, 8.0), modal_rect.size - Vector2(16.0, 16.0))
+		assert_not_null(vault_workspace, "Character Files mounts one typed primary workspace at %s" % str(viewport_size))
+		if vault_workspace != null:
+			assert_equal([vault_workspace.position, vault_workspace.size], [expected_vault_rect.position, expected_vault_rect.size], "Character Files receives the complete stage width at %s" % str(viewport_size))
 		assert_true(vault_router.full_stage_overlay_visible(), "Character Files suppresses the roster, textbox, and command deck at %s" % str(viewport_size))
 		vault_router.free()
 	assert_false(shell.has_node("TopBar"), "the dashboard title bar is removed")
@@ -2499,7 +2460,7 @@ func _test_scene_composition() -> void:
 	var application_shell := application.get_node("ClassicShell") as Control
 	var application_router := application.get_node("ClassicShell/ScreenRouter") as Control
 	var interaction := application.get_node("InteractionPanel") as InteractionPresenter
-	assert_true(interaction.z_index > ClassicScreenRouter.MAXIMUM_MODAL_Z_INDEX + application_router.z_index + application_shell.z_index, "the dedicated interaction layer draws above every nested router modal instead of allowing stale workspace labels through")
+	assert_true(interaction.z_index > CampaignPartySetupController.MAXIMUM_MODAL_Z_INDEX + application_router.z_index + application_shell.z_index, "the dedicated interaction layer draws above every nested setup modal instead of allowing stale workspace labels through")
 	assert_equal(interaction.mouse_filter, Control.MOUSE_FILTER_STOP, "the blocking interaction surface, not its decorative backing, owns every pointer inside the tactical stage")
 	var standard_textbox_rect := RealmzApplication.classic_textbox_rect(Rect2(0.0, 28.0, 704.0, 396.0), 176.0)
 	assert_equal(standard_textbox_rect, Rect2(0.0, 424.0, 704.0, 176.0), "textbox interactions replace the complete shell bottom region without exposing an inset frame")

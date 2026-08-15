@@ -3,6 +3,7 @@ extends RealmzTestCase
 
 func run() -> void:
 	var rng := RealmzRng.new(1)
+	assert_equal(rng.trace_limit(), RealmzRng.DEFAULT_TRACE_LIMIT, "production RNG uses the bounded 4,096-entry diagnostic window by default")
 	assert_equal(rng.draw(100, "vector.first"), 52, "QuickDraw seed 1 first Castle-scaled roll matches")
 	assert_equal(rng.draw(100, "vector.second"), 47, "QuickDraw seed 1 second Castle-scaled roll matches")
 	assert_equal(rng.draw(100, "vector.third"), 65, "QuickDraw seed 1 third Castle-scaled roll matches")
@@ -32,3 +33,15 @@ func run() -> void:
 	assert_true(transactional.rollback(checkpoint), "a failed simulation operation can restore RNG state without erasing prior trace evidence")
 	assert_equal([transactional.snapshot().draw_count, transactional.trace().map(func(entry: Dictionary) -> String: return entry["tag"])], [1, ["transaction.before"]], "rollback removes only speculative draws")
 	assert_equal(transactional.draw(10, "transaction.replayed"), 10, "ScriptedRng also restores its fixture cursor for deterministic failure tests")
+
+	var bounded := RealmzRng.new(1, 3)
+	for index: int in 5:
+		bounded.draw(10, "bounded.%d" % index)
+	assert_equal(bounded.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["bounded.2", "bounded.3", "bounded.4"], "production traces retain only the configured newest entries")
+	var bounded_checkpoint := bounded.checkpoint()
+	bounded.draw(10, "bounded.speculative")
+	assert_true(bounded.rollback(bounded_checkpoint), "bounded trace rollback restores entries evicted by speculative work")
+	assert_equal(bounded.trace().map(func(entry: Dictionary) -> String: return entry["tag"]), ["bounded.2", "bounded.3", "bounded.4"], "rollback restores the complete bounded diagnostic window")
+	var untraced := RealmzRng.new(1, 0)
+	assert_equal([untraced.draw_between(2, 4, &"untraced.range"), untraced.trace()], [3, []], "disabling diagnostics never changes inclusive gameplay draws")
+	assert_equal(ScriptedRng.new([]).trace_limit(), RealmzRng.UNLIMITED_TRACE, "scripted oracle sources explicitly retain unlimited trace evidence")

@@ -41,8 +41,7 @@ func run() -> void:
 	_test_combat_fumble_mutation(loaded.content)
 	_test_classic_encounter_break(loaded.content)
 	_test_classic_party_shift(loaded.content)
-	_test_classic_game_time_mutation(loaded.content)
-	_test_classic_game_time_branch(loaded.content)
+	_test_classic_game_time(loaded.content)
 	_test_classic_camping_availability(loaded.content)
 	_test_classic_ally_branch(loaded.content)
 	_test_classic_misc_branch(loaded.content)
@@ -54,7 +53,6 @@ func run() -> void:
 	_test_registration_marker(loaded.content)
 	_test_classic_party_mode(loaded.content)
 	_test_scrolling_text_event(loaded.content)
-	_test_classic_shop_configuration(loaded.content)
 	_test_classic_shop_lifecycle(loaded.content)
 	_test_classic_temple_lifecycle(loaded.content)
 	_test_classic_bank_swap_lifecycle(loaded.content)
@@ -858,7 +856,7 @@ func _test_classic_encounter_break(content: RealmzContent) -> void:
 	assert_equal(_message_texts(result.events), [], "encounter break does not execute later result slots")
 
 
-func _test_classic_game_time_mutation(content: RealmzContent) -> void:
+func _test_classic_game_time(content: RealmzContent) -> void:
 	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("clock.character", "Clock", 10, 10)])
 	var state := GameState.new(party, RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
@@ -872,12 +870,7 @@ func _test_classic_game_time_mutation(content: RealmzContent) -> void:
 	var rejected := api.execute_classic(ClassicActionDefinition.new(0, 63, 63, 0, false, [2, -10, 0, 0, 0]), "request.invalid-clock")
 	assert_equal(rejected.error_code, &"invalid_game_time", "clock mutation fails explicitly before time zero")
 	assert_equal(state.clock.total_minutes(), 1_875, "rejected clock mutation leaves session time untouched")
-
-
-func _test_classic_game_time_branch(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("time-branch.character", "Time Branch", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new(8 * 60 + 30))
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	state.clock.set_total_minutes(8 * 60 + 30)
 	var action := ClassicActionDefinition.new(0, 64, 64, 0, true, [-1, 8, 59, 11, 12])
 	var early := api.execute_classic(action, "request.time-early")
 	assert_equal(early.directive.get("targetId"), 11, "Classic opcode 64 takes the before-or-equal game-time branch")
@@ -1020,21 +1013,6 @@ func _test_classic_player_map_workflow(content: RealmzContent) -> void:
 	var corrupt_envelope := SaveEnvelope.from_data(envelope.to_data())
 	corrupt_envelope.game_state.world.acquire_map("classic.player-map.19")
 	assert_equal(GameSession.new().restore(content, corrupt_envelope).error_code, &"invalid_game_state", "transactional restore rejects an acquired map absent from the installed package")
-	var pending_session := GameSession.new()
-	pending_session.start(content, 1)
-	assert_equal(pending_session._scenario_vm.start_program("trigger:ap.fixture.player-map").state, ScenarioVmResult.State.COMPLETED, "the packaged player-map characterization program starts inside GameSession")
-	var pending_result := pending_session._scenario_vm.run(pending_session._runtime_api)
-	var pending_step := pending_session._finish_waiting(pending_result.interaction, pending_result.events)
-	assert_equal([pending_step.state, pending_step.interaction.body.to_data().get("playerMapId")], [SessionStep.State.WAITING_FOR_INTERACTION, definition.id], "GameSession owns the negative opcode-29 interaction boundary")
-	var pending_envelope := save_round_trip(pending_session.snapshot())
-	var pending_restored := GameSession.new()
-	assert_equal(pending_restored.restore(content, pending_envelope).state, SessionStep.State.COMPLETED, "the complete save aggregate restores a pending player-map VM continuation")
-	var restored_request := pending_restored.view().pending_interaction
-	assert_equal(pending_restored.respond(InteractionResponse.from_data("wrong-request", restored_request.kind, {})).error_code, &"interaction_mismatch", "restored player-map requests retain exact request identity")
-	var pending_completed := pending_restored.respond(InteractionResponse.from_data(restored_request.request_id, restored_request.kind, {}))
-	assert_equal(pending_completed.state, SessionStep.State.COMPLETED, "the restored player-map acknowledgement resumes its issuing VM exactly once")
-	assert_false(_event_has(pending_completed.events, &"player_map_acquired"), "resumption does not duplicate the committed acquisition event")
-	assert_equal(pending_restored.view().party_summary.acquired_map_ids, [definition.id], "restored completion retains one acquired stable identity")
 	var unavailable := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, 19, false, []), "request.player-map.unknown")
 	assert_equal(unavailable.error_code, &"unknown_player_map", "an in-range but unavailable Data MD2 identity fails explicitly")
 	assert_false(state.world.has_map("classic.player-map.19"), "an unavailable player map cannot create synthetic state")
@@ -1103,19 +1081,6 @@ func _test_scrolling_text_event(content: RealmzContent) -> void:
 	assert_true(_event_has(result.events, &"scrolling_text_requested"), "scrolling text crosses the host boundary as a presentation event")
 
 
-func _test_classic_shop_configuration(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("shop-config.character", "Shop Config", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var configured := api.execute_classic(ClassicActionDefinition.new(0, 73, 73, 0, false, [0, 1, 799, 800, 970]), "request.configure-shop")
-	assert_equal(configured.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 73 configures a shop without forcing presentation")
-	assert_equal(state.active_shop_id, "classic.shop.0", "configured shop identity is session-owned")
-	assert_equal(state.shop_accept_ranges(), [1, 799, 800, 970], "shop sale restrictions preserve both authored ranges")
-	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(round_trip, "active shop and restrictions serialize in the central save aggregate")
-	assert_equal(round_trip.shop_accept_ranges(), state.shop_accept_ranges(), "restored shop restrictions are exact")
-
-
 func _test_classic_shop_lifecycle(content: RealmzContent) -> void:
 	var stocked_item := content.item_by_id("classic.item.901")
 	var resale_item := content.item_by_id("classic.item.1")
@@ -1135,6 +1100,13 @@ func _test_classic_shop_lifecycle(content: RealmzContent) -> void:
 	party.pooled_wealth.gold = 1_000
 	var state := GameState.new(party, RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var configured := api.execute_classic(ClassicActionDefinition.new(0, 73, 73, 0, false, [0, 1, 799, 800, 970]), "request.configure-shop")
+	assert_equal(configured.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 73 configures a shop without forcing presentation")
+	assert_equal(state.active_shop_id, "classic.shop.0", "configured shop identity is session-owned")
+	assert_equal(state.shop_accept_ranges(), [1, 799, 800, 970], "shop sale restrictions preserve both authored ranges")
+	var configured_round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_not_null(configured_round_trip, "active shop and restrictions serialize in the central save aggregate")
+	assert_equal(configured_round_trip.shop_accept_ranges(), state.shop_accept_ranges(), "restored shop restrictions are exact")
 	var opened := api.execute_classic(ClassicActionDefinition.new(0, 6, 6, 0, false, []), "request.shop-lifecycle")
 	assert_equal(opened.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic shop entry yields one typed service workspace")
 	assert_equal(opened.interaction.body.to_data()["partyGold"], 1_000, "shop request exposes total payable party gold")

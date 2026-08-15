@@ -41,6 +41,8 @@ func run() -> void:
 	corrupt.close()
 	var previews := repository.list_previews(campaign_id, loaded.content.package_hash)
 	assert_equal(previews.size(), 5, "primary, backup, mismatch, incompatible, and corrupt records are indexed independently")
+	var host_previews: Array[SaveSlotPreview] = SaveHostController.new(repository).previews(loaded.content)
+	assert_equal(host_previews.size(), previews.size(), "the app host preserves the typed save-preview boundary")
 	var current := _preview(previews, "quick", SaveSlotPreviewScript.PRIMARY)
 	var backup := _preview(previews, "quick", SaveSlotPreviewScript.BACKUP)
 	var wrong_package := _preview(previews, "mismatch", SaveSlotPreviewScript.PRIMARY)

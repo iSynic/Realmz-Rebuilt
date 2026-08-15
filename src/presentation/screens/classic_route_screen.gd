@@ -23,3 +23,11 @@ func set_workspace_rect(workspace_rect: Rect2) -> void:
 	size = workspace_rect.size - Vector2(16.0, 16.0)
 	if _header != null:
 		_header.vertical = workspace_rect.size.x < 620.0
+
+
+func scroll_control() -> ScrollContainer:
+	return scroll if scroll != null else get_node("WorkspaceColumn/ScreenBodyScroll") as ScrollContainer
+
+
+func body_control() -> VBoxContainer:
+	return body if body != null else get_node("WorkspaceColumn/ScreenBodyScroll/ScreenBody") as VBoxContainer

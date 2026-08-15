@@ -4,14 +4,23 @@ extends RefCounted
 const MULTIPLIER: int = 16_807
 const MODULUS: int = 2_147_483_647
 const RAW_SCALE: int = 32_768
+const DEFAULT_TRACE_LIMIT: int = 4_096
+const UNLIMITED_TRACE: int = -1
 
 var _state: int
 var _draw_count: int = 0
 var _trace: Array[Dictionary] = []
+var _trace_limit: int
+var _trace_start: int = 0
 
 
-func _init(initial_seed: int = 1) -> void:
+func _init(initial_seed: int = 1, trace_limit: int = DEFAULT_TRACE_LIMIT) -> void:
 	_state = _normalize_seed(initial_seed)
+	_trace_limit = trace_limit if trace_limit >= 0 else UNLIMITED_TRACE
+
+
+static func for_oracle(initial_seed: int = 1) -> RealmzRng:
+	return RealmzRng.new(initial_seed, UNLIMITED_TRACE)
 
 
 func draw(range_max: int, semantic_tag: StringName) -> int:
@@ -33,7 +42,7 @@ func _draw_scaled(range_value: int, semantic_tag: StringName) -> int:
 	var positive_raw: int = -raw if raw < 0 else raw
 	# C integer division truncates toward zero for Castle's signed Rand parameter.
 	var result: int = 1 + int(float(positive_raw * range_value) / float(RAW_SCALE))
-	_trace.append({
+	_append_trace({
 		"drawIndex": _draw_count,
 		"tag": String(semantic_tag),
 		"range": range_value,
@@ -49,9 +58,11 @@ func draw_between(low: int, high: int, semantic_tag: StringName) -> int:
 		push_error("RealmzRng inclusive range is invalid.")
 		return low
 	var result := draw(high - low + 1, semantic_tag) - 1 + low
-	_trace[-1]["low"] = low
-	_trace[-1]["high"] = high
-	_trace[-1]["result"] = result
+	var latest := _latest_trace_entry()
+	if not latest.is_empty():
+		latest["low"] = low
+		latest["high"] = high
+		latest["result"] = result
 	return result
 
 
@@ -63,22 +74,30 @@ func checkpoint() -> Dictionary:
 	return {
 		"generatorState": _state,
 		"drawCount": _draw_count,
-		"traceSize": _trace.size(),
+		"trace": trace(),
 		"sourcePosition": _source_position(),
 	}
 
 
 func rollback(checkpoint_data: Dictionary) -> bool:
-	if not checkpoint_data.has("generatorState") or not checkpoint_data.has("drawCount") or not checkpoint_data.has("traceSize") or not checkpoint_data.has("sourcePosition"):
+	if not checkpoint_data.has("generatorState") or not checkpoint_data.has("drawCount") or not checkpoint_data.has("trace") or not checkpoint_data.has("sourcePosition"):
 		return false
 	var generator_state := int(checkpoint_data["generatorState"])
 	var draw_count := int(checkpoint_data["drawCount"])
-	var trace_size := int(checkpoint_data["traceSize"])
-	if generator_state <= 0 or generator_state >= MODULUS or draw_count < 0 or trace_size < 0 or trace_size > _trace.size() or not _restore_source_position(checkpoint_data["sourcePosition"]):
+	var trace_value: Variant = checkpoint_data["trace"]
+	if generator_state <= 0 or generator_state >= MODULUS or draw_count < 0 or not trace_value is Array or (_trace_limit >= 0 and trace_value.size() > _trace_limit):
+		return false
+	var restored_trace: Array[Dictionary] = []
+	for entry: Variant in trace_value:
+		if not entry is Dictionary:
+			return false
+		restored_trace.append((entry as Dictionary).duplicate(true))
+	if not _restore_source_position(checkpoint_data["sourcePosition"]):
 		return false
 	_state = generator_state
 	_draw_count = draw_count
-	_trace.resize(trace_size)
+	_trace = restored_trace
+	_trace_start = 0
 	return true
 
 
@@ -88,11 +107,36 @@ func restore(state: RealmzRngState) -> bool:
 	_state = state.generator_state
 	_draw_count = state.draw_count
 	_trace.clear()
+	_trace_start = 0
 	return true
 
 
 func trace() -> Array[Dictionary]:
-	return _trace.duplicate(true)
+	var ordered: Array[Dictionary] = []
+	for offset: int in _trace.size():
+		ordered.append(_trace[(_trace_start + offset) % _trace.size()].duplicate(true))
+	return ordered
+
+
+func trace_limit() -> int:
+	return _trace_limit
+
+
+func _append_trace(entry: Dictionary) -> void:
+	if _trace_limit == 0:
+		return
+	if _trace_limit < 0 or _trace.size() < _trace_limit:
+		_trace.append(entry)
+		return
+	_trace[_trace_start] = entry
+	_trace_start = (_trace_start + 1) % _trace_limit
+
+
+func _latest_trace_entry() -> Dictionary:
+	if _trace.is_empty():
+		return {}
+	var index := (_trace_start + _trace.size() - 1) % _trace.size()
+	return _trace[index]
 
 
 func _next_raw() -> int:

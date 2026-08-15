@@ -183,6 +183,14 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 	var defeat := RealmzRuntimeApi.new(content, defeat_state, defeat_rng, ScenarioActionState.new(), RealmzRules.new()).begin_completed_battle_reward("battle.defeat")
 	assert_equal([defeat.state, defeat_state.combat, defeat_state.last_battle_outcome, defeat_rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, null, &"defeat", 0], "defeat closes and releases the terminal chain without inventing loot or reward draws")
 	assert_equal(defeat.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "defeat publishes one terminal battle-return event")
+	var mode_ten_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.mode-ten", "Mode Ten", 500, -100_000)]), RealmzClock.new())
+	mode_ten_state.combat = CombatState.new(battle.id)
+	mode_ten_state.combat.completed = true
+	mode_ten_state.combat.outcome = &"defeat"
+	mode_ten_state.last_battle_outcome = &"defeat"
+	var mode_ten_api := RealmzRuntimeApi.new(content, mode_ten_state, RealmzRng.new(31), ScenarioActionState.new(), RealmzRules.new())
+	var mode_ten_handoff := {"kind": "party-defeat", "battleId": battle.id, "sourceKind": "classic-combat", "caller": {"kind": "classic", "opcode": 2, "gosub": false, "mode": 10, "branchTarget": 0}}
+	assert_equal(mode_ten_api.complete_party_defeat_handoff(mode_ten_handoff).error_code, &"classic_mode_10_defeat_unresolved", "Classic mode 10 defeat remains explicit because Castle bypasses Party Death and restarts the encounter")
 
 	var retreat_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.retreat", "Retreated", 500, -100_000)]), RealmzClock.new())
 	retreat_state.combat = CombatState.new(battle.id)

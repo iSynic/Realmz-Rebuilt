@@ -9,6 +9,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 - `RealmzApplication` constructs the dependency graph explicitly.
 - `GameSessionController` owns the replaceable `GameSession` instance and publishes committed steps.
 - `GameSessionController` materializes one detached `GameView` per committed revision and shares it with host input checks and presenters; host code must not rebuild the same revision repeatedly.
+- Detached campaign, vault, and host view models live under `src/app/view`; `CharacterVaultRevisionView` is app-owned while remaining `class_name`-compatible.
 - This boundary coordinates repositories and presenters but contains no Realmz rules.
 
 ## Local Contracts
@@ -18,7 +19,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 - Interaction UI responses enter through `GameSession.respond`; presenters never resume the VM or mutate state themselves.
 - A committed `character_publication_requested` event is the only creator-to-vault write boundary. `RealmzApplication` snapshots the already-finalized session character and asks `CharacterVaultRepository` to publish an immutable revision; rejected/declined interactions and ordinary campaign mutations perform no vault write.
 - `RealmzApplication` owns the no-scenario Character Files workshop. It loads the pinned Providence-built stock catalog, runs the same typed creator transaction through `CharacterCreationSession`, and publishes the completed detached character directly to the vault. Selecting a scenario continues to use that scenario's `GameSession`, so package-specific Race/Caste definitions and restrictions never leak into the application-wide stock creator.
-- Vault listing converts each validated immutable revision into a detached character view against the selected campaign content so setup can inspect eligible and ineligible records without importing or mutating them.
+- Vault listing converts each validated immutable revision into a detached `CharacterVaultRevisionView` against the selected campaign content so setup can inspect eligible and ineligible records without importing or mutating them. Its public fields and `from_record` factory behavior remain unchanged; presentation consumes the view without defining, duplicating, or compatibility-wrapping it.
 - Restore constructs and validates a replacement before swapping the active session.
 - End Adventure is a host-owned typed confirmation over the public `GameSession.close` boundary. The host prompt never enters `.r2save`; after confirmation, the session runs End Adventure and then Party Death package hooks, exposes any typed hook interactions, and closes only after both return without revival. Save-and-end starts that chain only after transactional save success, active combat never offers a save, and noncombat gameplay interactions remain modal. Campaign-library browsing alone does not close gameplay.
 - Process Quit is a separate host-owned typed confirmation. Menu and window-manager requests share one path after disabling Godot's automatic quit acceptance; an active noncombat session may save first, battle cannot save, and cancellation or save failure must leave the process and session untouched. Quit never runs the scenario Global quit hook.
@@ -42,4 +43,4 @@ Own the Godot composition root and translate host input/output into the pure ses
 
 ## Child DOX Index
 
-- No child AGENTS.md files are currently required.
+- `controllers/AGENTS.md` owns host package, save, vault, and creator controller boundaries.

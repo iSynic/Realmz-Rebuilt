@@ -3,8 +3,13 @@ extends RefCounted
 
 const MAP_VIEW_RADIUS: int = 12
 
+var _cached_map_revision: int = -1
+var _cached_map_id: String = ""
+var _cached_map_coordinate: Vector2i = Vector2i(-1, -1)
+var _cached_map_view: MapView
 
-static func project(context: SessionWorkflowContext, pending_interaction: InteractionRequest, revision: int, started: bool) -> GameView:
+
+func project(context: SessionWorkflowContext, pending_interaction: InteractionRequest, revision: int, started: bool) -> GameView:
 	if not started:
 		return GameView.new(revision, false, null)
 	var content := context.content
@@ -16,7 +21,7 @@ static func project(context: SessionWorkflowContext, pending_interaction: Intera
 		member_view.apply_equipment(rules.inventory.combat_equipment(character, content.item_definitions()))
 		members.append(member_view)
 	var current_combat := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow, state) if state.combat != null else null
-	var result := GameView.new(revision, true, pending_interaction, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _build_map_view(context), members, state.party.fatigue, state.party.pooled_wealth.gold, current_combat)
+	var result := GameView.new(revision, true, pending_interaction, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision), members, state.party.fatigue, state.party.pooled_wealth.gold, current_combat)
 	result.campaign_id = content.campaign_id
 	result.rules_version = content.rules_version
 	result.party_setup_available = not state.party_setup_completed
@@ -92,6 +97,23 @@ static func project(context: SessionWorkflowContext, pending_interaction: Intera
 	_populate_services(context, result)
 	_populate_action_availability(context, result)
 	return result
+
+
+func clear() -> void:
+	_cached_map_revision = -1
+	_cached_map_id = ""
+	_cached_map_coordinate = Vector2i(-1, -1)
+	_cached_map_view = null
+
+
+func _map_view(context: SessionWorkflowContext, revision: int) -> MapView:
+	if _cached_map_view != null and _cached_map_revision == revision and _cached_map_id == context.state.party.map_id and _cached_map_coordinate == context.state.party.coordinate:
+		return _cached_map_view
+	_cached_map_revision = revision
+	_cached_map_id = context.state.party.map_id
+	_cached_map_coordinate = context.state.party.coordinate
+	_cached_map_view = _build_map_view(context)
+	return _cached_map_view
 
 
 static func _populate_services(context: SessionWorkflowContext, result: GameView) -> void:

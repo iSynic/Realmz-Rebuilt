@@ -12,6 +12,7 @@ var _session_continuation: SessionContinuation = SessionContinuation.new()
 var _session_interaction: InteractionRequest
 var _started: bool = false
 var _view_revision: int = 0
+var _view_projector := SessionViewProjector.new()
 
 
 func start(content: RealmzContent, initial_seed: int) -> SessionStep:
@@ -38,6 +39,7 @@ func start(content: RealmzContent, initial_seed: int) -> SessionStep:
 	_runtime_api = RealmzRuntimeApi.new(_content, _state, _rng, _scenario_action_state, _rules)
 	_session_continuation.clear()
 	_session_interaction = null
+	_view_projector.clear()
 	_started = true
 	_view_revision = 1
 	return SessionStep.completed(_view_revision, [DomainEvent.new("session_started", {"campaignId": content.campaign_id})])
@@ -123,6 +125,7 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 	_runtime_api = RealmzRuntimeApi.new(_content, _state, _rng, _scenario_action_state, _rules)
 	_session_continuation = replacement_continuation
 	_session_interaction = replacement_session_interaction
+	_view_projector.clear()
 	_view_revision = save_envelope.view_revision
 	_started = true
 	return SessionStep.completed(_view_revision, [DomainEvent.new("session_restored")])
@@ -156,6 +159,7 @@ func _commit_close(events: Array[DomainEvent], reason: String) -> SessionStep:
 	_rng = null
 	_state = null
 	_content = null
+	_view_projector.clear()
 	_started = false
 	_view_revision += 1
 	var completed_events: Array[DomainEvent] = []
@@ -278,7 +282,7 @@ func respond(response: InteractionResponse) -> SessionStep:
 
 
 func view() -> GameView:
-	return SessionViewProjector.project(_workflow_context(), _pending_interaction(), _view_revision, _started)
+	return _view_projector.project(_workflow_context(), _pending_interaction(), _view_revision, _started)
 
 
 func _workflow_context(events: Array[DomainEvent] = []) -> SessionWorkflowContext:

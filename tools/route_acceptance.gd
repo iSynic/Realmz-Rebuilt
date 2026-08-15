@@ -102,7 +102,7 @@ func _run_step(step_definition: Dictionary) -> void:
 	_session._state.party.map_id = trigger.map_id
 	_session._state.party.coordinate = trigger.coordinate
 	_session._state.world.mark_visited(trigger.map_id, trigger.coordinate)
-	_session._session_continuation = {
+	_session._session_continuation = SessionContinuation.from_legacy_data({
 		"kind": "post-move",
 		"mapId": trigger.map_id,
 		"x": trigger.coordinate.x,
@@ -116,7 +116,11 @@ func _run_step(step_definition: Dictionary) -> void:
 		"activeRandomRegionId": "",
 		"randomBattleStage": "",
 		"actionPointDestinationDepth": 0,
-	}
+	})
+	if _session._session_continuation == null:
+		_fail("%s could not construct its typed post-move continuation" % step_id)
+		_stage(step_id, failure_count)
+		return
 	var events: Array[DomainEvent] = []
 	var result := _session._continue_post_move([])
 	result = _drain_interactions(result, events, step_id)
@@ -184,21 +188,27 @@ func _default_response(request: InteractionRequest, step_id: String) -> Interact
 	match request.kind:
 		&"combat_action":
 			_force_victory()
-			return InteractionResponse.new(request.request_id, request.kind, {"actorId": String(request.payload.get("actorId", "")), "action": "defend", "targetId": ""})
+			var combat_body := request.body as InteractionRequest.CombatRequestBody
+			if combat_body == null:
+				return null
+			return InteractionResponse.from_data(request.request_id, request.kind, {"actorId": combat_body.actor_id, "action": "defend", "targetId": ""})
 		&"acknowledge":
-			return InteractionResponse.new(request.request_id, request.kind)
+			return InteractionResponse.acknowledge(request)
 		&"encounter_choice", &"scenario_choice":
-			return InteractionResponse.new(request.request_id, request.kind, {"index": 0})
+			return InteractionResponse.indexed_choice(request, 0)
 		&"yes_no":
-			return InteractionResponse.new(request.request_id, request.kind, {"accepted": true})
+			return InteractionResponse.yes_no(request, true)
 		&"complex_encounter":
-			return InteractionResponse.new(request.request_id, request.kind, {"action": "choice", "slot": 0})
+			return InteractionResponse.from_data(request.request_id, request.kind, {"action": "choice", "slot": 0})
 		&"shop_action", &"temple_action":
-			return InteractionResponse.new(request.request_id, request.kind, {"action": "leave"})
+			return InteractionResponse.from_data(request.request_id, request.kind, {"action": "leave"})
 		&"bank_action":
-			return InteractionResponse.new(request.request_id, request.kind, {"action": "leave", "amount": 0})
+			return InteractionResponse.from_data(request.request_id, request.kind, {"action": "leave", "amount": 0})
 		&"ally_selection":
-			return InteractionResponse.new(request.request_id, request.kind, {"selectedIds": request.payload.get("selectedIds", []).duplicate()})
+			var ally_body := request.body as InteractionRequest.SelectionRequestBody
+			if ally_body == null:
+				return null
+			return InteractionResponse.from_data(request.request_id, request.kind, {"selectedIds": ally_body.selected_ids.duplicate()})
 	_fail("%s yielded unsupported interaction %s" % [step_id, request.kind])
 	return null
 

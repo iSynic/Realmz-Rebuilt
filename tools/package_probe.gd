@@ -47,7 +47,7 @@ func _initialize() -> void:
 		call_deferred("_quit_cleanly", 1)
 		return
 	var view_started_at := Time.get_ticks_msec()
-	var view := session.view()
+	var view: GameView = session.call("view")
 	var first_view_ms := Time.get_ticks_msec() - view_started_at
 	var repeat_views_started_at := Time.get_ticks_msec()
 	for index: int in 10:

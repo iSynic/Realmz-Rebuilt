@@ -1,3 +1,4 @@
+class_name SaveSlotPreview
 extends RefCounted
 
 const PRIMARY: StringName = &"primary"
@@ -50,4 +51,3 @@ func status_label() -> String:
 			return "Different package"
 		_:
 			return "Unavailable"
-

@@ -22,6 +22,9 @@ func run() -> void:
 	assert_equal(land.topology.probe_entry(Vector2i.ZERO, Vector2i(-1, -1), world_state).reason, &"invalid_direction", "edge-based topology entry remains cardinal for dungeons and pathfinding")
 	assert_equal(land.topology.find_path(Vector2i(1, 1), Vector2i.ZERO, world_state, &"land"), [Vector2i.ZERO], "land pathfinding uses the same direct diagonal probe without corner blocking")
 	assert_equal(land.topology.visible_cells(Vector2i(1, 1), 8, world_state, false).size(), 8100, "non-LOS land view derives every Classic map cell from topology")
+	var bounded_visibility := land.topology.visible_cells(Vector2i(1, 1), 2, world_state, true)
+	assert_true(bounded_visibility.all(func(coordinate: Vector2i) -> bool: return coordinate.x <= 3 and coordinate.y <= 3), "LOS visibility probes only the bounded radius neighborhood")
+	assert_true(bounded_visibility.size() <= 16, "edge-clamped LOS visibility never traverses the complete map")
 
 	var dungeon := loaded.content.world.map_by_id("dungeon:0")
 	assert_equal(dungeon.topology.probe_entry(Vector2i.ZERO, Vector2i.LEFT, world_state).reason, &"terrain_blocked", "dungeon wall blocks movement")

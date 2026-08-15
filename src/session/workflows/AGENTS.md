@@ -19,7 +19,7 @@ Own domain-oriented, presentation-independent operations invoked by the session 
 - Domain mutations use core rules and state; callers own transaction rollback, request IDs, revisions, pending interactions, and exact-once commit.
 - A workflow returns typed results or existing core result types. It does not construct `SessionStep` values or call another public session operation.
 - Direct intents and scenario handlers must converge on the same core rule operation when they represent the same Realmz action.
-- View projection is read-only and must not create gameplay truth or mutate state.
+- View projection is read-only and must not create gameplay truth or mutate state. It may retain a bounded revision-keyed cache of detached projections; cache identity includes the current map and party coordinate and is cleared across session replacement/close.
 
 ## Verification
 

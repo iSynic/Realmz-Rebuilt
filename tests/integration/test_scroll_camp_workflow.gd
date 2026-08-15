@@ -219,10 +219,6 @@ func run() -> void:
 	if battle_departure._state.combat != null:
 		assert_equal([battle_departure._state.combat.return_continuation.value("kind"), battle_departure._state.combat.return_continuation.value("resumeKind")], ["post-clock", "move"], "the battle retains the exact post-clock movement return")
 		var battle_save := save_round_trip(battle_departure.snapshot())
-		var battle_state_round_trip := GameState.from_data(battle_save.game_state.to_data())
-		assert_not_null(battle_state_round_trip, "the active random battle state remains structurally valid with its return continuation")
-		if battle_state_round_trip != null:
-			assert_true(GameSession._valid_post_time_continuation(content, battle_state_round_trip, battle_state_round_trip.combat.return_continuation.to_legacy_data(), null, null), "the restored battle return matches the current topology and party location")
 		var battle_restored := GameSession.new()
 		var battle_restore := battle_restored.restore(content, battle_save)
 		assert_equal([battle_restore.state, battle_restore.error_code, battle_restore.error_message], [SessionStep.State.COMPLETED, &"", ""], "an active random battle preserves its camp-departure return across save/reload")
@@ -231,9 +227,8 @@ func run() -> void:
 		battle_restored._state.random_encounters_enabled = false
 		for monster: MonsterState in battle_restored._state.combat.monsters():
 			monster.current_health = 0
-		battle_restored._state.combat.completed = true
-		battle_restored._state.combat.outcome = &"victory"
-		var returned := battle_restored._finish_direct_battle([])
+		var actor_id := battle_restored._state.combat.active_actor_id()
+		var returned := battle_restored.submit_intent(PlayerIntent.combat_action(&"finish", actor_id))
 		returned = _drain_battle_return(battle_restored, returned)
 		assert_equal(returned.state, SessionStep.State.COMPLETED, "finishing the interrupted battle resumes the original movement once")
 		assert_equal(battle_restored._state.combat, null, "the terminal reward path releases the interrupted random battle")

@@ -138,7 +138,7 @@ func present(game_view: GameView) -> void:
 	_rebuild_command_deck()
 
 
-func set_save_previews(previews: Array) -> void:
+func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
 	_router.set_save_previews(previews)
 
 
@@ -284,7 +284,7 @@ func set_status(text: String, is_error: bool = false) -> void:
 	_router.present_party_setup_status(text, is_error)
 
 
-func set_campaigns(campaigns: Array[PackageDiscoveryResult]) -> void:
+func set_campaigns(campaigns: Array[CampaignPackageView]) -> void:
 	_router.set_campaigns(campaigns)
 
 

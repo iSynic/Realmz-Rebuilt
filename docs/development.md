@@ -15,7 +15,7 @@ The project uses `application/config/use_custom_user_dir` with the stable name `
 
 Normal player-visible work is planned as a coherent batch of 3–5 related workflows. Each workflow has one focused-verified commit. In the roadmap, a rolling pass means this workflow batch; the roadmap does not create a new rolling pass for a tiny edit, and a tiny edit does not pay the batch closeout gate by itself.
 
-The architecture-hardening tranche is a bounded maintenance exception, not a player-workflow batch. While its inventory pause is active, workflow counts and the selected parity batch remain frozen. The tranche may change public wire contracts only at its named high-risk gates, and it must finish with ordinary AOGM proof before parity work resumes.
+The completed architecture-hardening tranche was a bounded maintenance exception, not a player-workflow batch. Its inventory pause kept workflow counts and the selected parity batch frozen while public wire contracts changed at named high-risk gates. The pause may be reactivated only by an explicit maintenance plan with its own exit gate; ordinary parity delivery otherwise follows the audit-guided batch cadence below.
 
 Use the lowest tier that covers the changed boundary:
 

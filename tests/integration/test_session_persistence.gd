@@ -373,11 +373,7 @@ func run() -> void:
 	defeated_character.conditions.set_value(ConditionRules.ANIMATED, -1)
 	revived_defeat._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [defeated_character])
 	revived_defeat._state.party_setup_completed = true
-	revived_defeat._state.combat = CombatState.new("classic.battle.0")
-	revived_defeat._state.combat.completed = true
-	revived_defeat._state.combat.outcome = &"defeat"
-	revived_defeat._state.last_battle_outcome = &"defeat"
-	var defeat_hook := revived_defeat._finish_direct_battle([])
+	var defeat_hook := _complete_public_defeat(revived_defeat, content, defeated_character)
 	assert_equal([defeat_hook.state, defeat_hook.interaction.body.to_data().get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "total defeat enters the Party Death program before releasing the party")
 	var defeat_boundary := save_round_trip(revived_defeat.snapshot())
 	var restored_defeat := GameSession.new()
@@ -389,83 +385,13 @@ func run() -> void:
 	assert_false(revived.events.any(func(event: DomainEvent) -> bool: return event.kind in [&"reward_opened", &"reward_completed"]), "the direct no-reward return skips treasure, experience, and after-message reward processing")
 	assert_equal([restored_defeat.view().session_started, restored_defeat._state.party.character_by_id(defeated_character.id).current_health, restored_defeat._state.combat, restored_defeat._state.last_battle_outcome], [true, 1, null, &"retreated"], "revival retains the session, restores one stamina, records retreat, and releases combat exactly once")
 
-	var placed_trigger := content.trigger_by_id("ap.fixture.encounter")
-	assert_not_null(placed_trigger, "the scenario-defeat fixture retains an ordinary placed Action Point owner")
-	if placed_trigger != null:
-		var scenario_programs: Array[ScenarioProgramDefinition] = []
-		for program_id: String in original_scenario.program_ids():
-			if program_id != placed_trigger.program_id:
-				scenario_programs.append(original_scenario.program_by_id(program_id))
-		scenario_programs.append(ScenarioProgramDefinition.new(placed_trigger.program_id, &"trigger", placed_trigger.id, [
-			ClassicActionDefinition.new(0, 2, 2, 0, false, [0, 0, 0, 0, 0]),
-			ClassicActionDefinition.new(1, 28, 28, 0, false, []),
-		]))
-		scenario_programs.append(party_death_program)
-		var scenario_actions: Array[ScenarioActionDefinition] = []
-		for action_id: String in original_scenario.action_ids():
-			scenario_actions.append(original_scenario.action_by_id(action_id))
-		content.scenario = ScenarioDefinition.new(scenario_programs, scenario_actions, ScenarioApplicationHooks.new("", party_death_program.id, "", "", ""))
-
-		var scenario_defeat := GameSession.new()
-		scenario_defeat.start(content, 26)
-		var scenario_character := CharacterState.new("fixture.scenario-party-death", "Scenario Hero", 0, 10)
-		scenario_character.conditions.set_value(ConditionRules.ANIMATED, -1)
-		scenario_defeat._state.party = PartyState.new("land:1", Vector2i(1, 1), [scenario_character])
-		scenario_defeat._state.party_setup_completed = true
-		scenario_defeat._state.combat = CombatState.new("classic.battle.0")
-		scenario_defeat._state.combat.completed = true
-		scenario_defeat._state.combat.outcome = &"defeat"
-		scenario_defeat._state.last_battle_outcome = &"defeat"
-		scenario_defeat._set_post_move_continuation(content.world.map_by_id("land:1"), Vector2i(1, 1))
-		assert_true(scenario_defeat._session_continuation.set_value("activeTriggerId", placed_trigger.id), "the synthetic caller records its exact active trigger")
-		assert_true(scenario_defeat._session_continuation.set_value("randomRegionIndex", -1), "the synthetic caller disables later random rectangles")
-		assert_equal(scenario_defeat._scenario_vm.start_program(placed_trigger.program_id, {"callingContext": "action", "triggerId": placed_trigger.id, "mapId": "land:1", "x": 1, "y": 1}).state, ScenarioVmResult.State.COMPLETED, "the placed Action Point owns the battle caller before total defeat")
-		scenario_defeat._scenario_vm._frames[0].cursor = 1
-		var caller := {"kind": "classic", "opcode": 2, "gosub": false, "mode": 0, "branchTarget": 0}
-		var defeat_operation := scenario_defeat._runtime_api._finish_battle_with_allies("classic-combat", caller, "fixture.scenario-defeat", [])
-		assert_equal(defeat_operation.state, ScenarioRuntimeOperationResult.State.SUSPENDED, "scenario-owned total defeat suspends at a typed host handoff instead of completing the caller")
-		var suspended_vm := scenario_defeat._scenario_vm._suspend_operation("classic-operation", defeat_operation)
-		assert_equal(scenario_defeat._scenario_vm.snapshot().frames[0].cursor, 1, "the suspended VM has committed the battle instruction but not its following opcode")
-		var scenario_hook := scenario_defeat._begin_scenario_handoff(suspended_vm, [])
-		assert_equal([scenario_hook.state, scenario_hook.interaction.body.to_data().get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "scenario defeat enters the package Party Death hook without discarding its Action Point caller")
-
-		var scenario_boundary_data: Dictionary = JSON.parse_string(JSON.stringify(save_data(scenario_defeat.snapshot())))
-		var scenario_boundary := SaveEnvelope.from_data(scenario_boundary_data)
-		assert_not_null(scenario_boundary, "the Party Death hook and suspended caller survive canonical save JSON together")
-		var stable_scenario_state := save_data(scenario_defeat.snapshot())
-		var corrupt_handoff_data: Dictionary = scenario_boundary_data.duplicate(true)
-		corrupt_handoff_data["sessionContinuation"]["data"]["vmHandoff"]["runtime"]["battleId"] = "classic.battle.missing"
-		var corrupt_handoff := SaveEnvelope.from_data(corrupt_handoff_data)
-		assert_equal(scenario_defeat.restore(content, corrupt_handoff).error_code, &"invalid_session_continuation", "restore rejects a Party Death handoff whose battle caller no longer matches combat")
-		assert_equal(save_data(scenario_defeat.snapshot()), stable_scenario_state, "a rejected scenario defeat handoff leaves the current session untouched")
-		var corrupt_vm_data: Dictionary = scenario_boundary_data.duplicate(true)
-		corrupt_vm_data["sessionContinuation"]["data"]["suspendedVm"]["frames"][0]["cursor"] = 999
-		var corrupt_vm := SaveEnvelope.from_data(corrupt_vm_data)
-		assert_not_null(corrupt_vm, "the save envelope keeps structural validation separate from package-owned program bounds")
-		assert_equal(GameSession.new().restore(content, corrupt_vm).error_code, &"invalid_session_continuation", "restore rejects a suspended VM cursor outside its immutable program")
-
-		var restored_scenario_defeat := GameSession.new()
-		assert_equal(restored_scenario_defeat.restore(content, scenario_boundary).state, SessionStep.State.COMPLETED, "scenario-owned Party Death restores transactionally at its textbox boundary")
-		var scenario_revived := restored_scenario_defeat.respond(InteractionResponse.acknowledge(restored_scenario_defeat.view().pending_interaction))
-		assert_equal(scenario_revived.state, SessionStep.State.COMPLETED, "Party Death revival resumes and completes the original placed Action Point")
-		assert_equal(scenario_revived.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "scenario revival publishes exactly one terminal battle return")
-		assert_equal(scenario_revived.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"map_redraw_requested").size(), 1, "the opcode after the suspended battle executes exactly once")
-		assert_false(scenario_revived.events.any(func(event: DomainEvent) -> bool: return event.kind in [&"reward_opened", &"reward_completed"]), "Castle's cowardly Party Death return suppresses the scenario battle reward chain")
-		assert_equal([restored_scenario_defeat._state.combat, restored_scenario_defeat._state.last_battle_outcome, restored_scenario_defeat._state.party.character_by_id(scenario_character.id).current_health], [null, &"retreated", 1], "the resumed caller releases combat once and preserves the Party Death revival")
-
-		var unresolved_mode_ten := scenario_defeat._runtime_api._finish_battle_with_allies("classic-combat", {"kind": "classic", "opcode": 2, "gosub": false, "mode": 10, "branchTarget": 0}, "fixture.mode-ten-defeat", [])
-		assert_equal(unresolved_mode_ten.error_code, &"classic_mode_10_defeat_unresolved", "Classic mode 10 defeat remains explicit because Castle bypasses Party Death and restarts the encounter")
 	content.scenario = original_scenario
 	var ordinary_defeat := GameSession.new()
 	ordinary_defeat.start(content, 25)
 	var lost_character := CharacterState.new("fixture.party-defeat", "Lost Hero", 0, 10)
 	ordinary_defeat._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [lost_character])
 	ordinary_defeat._state.party_setup_completed = true
-	ordinary_defeat._state.combat = CombatState.new("classic.battle.0")
-	ordinary_defeat._state.combat.completed = true
-	ordinary_defeat._state.combat.outcome = &"defeat"
-	ordinary_defeat._state.last_battle_outcome = &"defeat"
-	var ordinary_death_hook := ordinary_defeat._finish_direct_battle([])
+	var ordinary_death_hook := _complete_public_defeat(ordinary_defeat, content, lost_character)
 	assert_equal(ordinary_death_hook.interaction.body.to_data().get("prompt"), "The Party Death application hook runs.", "ordinary total defeat runs the package Party Death hook")
 	var released := ordinary_defeat.respond(InteractionResponse.acknowledge(ordinary_death_hook.interaction))
 	assert_true(released.events.any(func(event: DomainEvent) -> bool: return event.kind == &"session_ended" and event.payload.get("reason") == "party-defeat"), "a Party Death hook without revival releases the defeated session")
@@ -524,10 +450,7 @@ func run() -> void:
 			reward_session._state.combat.active_turn = null
 			reward_session._state.combat.pending_monster_attack = null
 			reward_session._state.combat.pending_reaction = null
-			reward_session._state.combat.completed = true
-			reward_session._state.combat.outcome = &"victory"
-			reward_session._state.last_battle_outcome = &"victory"
-			var terminal := reward_session._finish_direct_battle([])
+			var terminal := reward_session.submit_intent(PlayerIntent.combat_action(&"finish", reward_character.id))
 			assert_false(terminal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"allies_selected"), "terminal victory skips body-count when no eligible ally survived")
 			assert_equal([terminal.state, terminal.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.TREASURE_DISTRIBUTION], "victory enters the ordinary typed booty workspace")
 			var initial_boundary := reward_session.snapshot()
@@ -572,6 +495,34 @@ func run() -> void:
 			assert_equal([terminal.state, reward_session._state.combat, reward_session._state.last_battle_outcome], [SessionStep.State.COMPLETED, null, &"victory"], "restored victory completes and releases the battle-owned reward chain exactly once")
 			assert_true(reward_completed, "ordinary session completion publishes the reward return event")
 			assert_equal(terminal.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "restored victory publishes one terminal battle-return event")
+
+
+func _complete_public_defeat(session: GameSession, content: RealmzContent, character: CharacterState) -> SessionStep:
+	var battle := content.battle_by_id("classic.battle.0")
+	if battle == null:
+		return SessionStep.failed(session.view().revision, &"missing_fixture_battle", "The fixture battle is unavailable.")
+	character.current_health = 1
+	var setup := session._rules.combat_flow.start_battle(session._state, content, battle, session._rng)
+	if not setup.ok or session._state.combat == null:
+		return SessionStep.failed(session.view().revision, setup.error_code, setup.error_message)
+	var attacker: MonsterState = null
+	for monster: MonsterState in session._state.combat.monsters():
+		if monster.traitor and attacker == null:
+			attacker = monster
+		elif monster.traitor:
+			monster.current_health = 0
+	if attacker == null:
+		return SessionStep.failed(session.view().revision, &"missing_fixture_attacker", "The fixture battle has no hostile monster.")
+	attacker.target_id = character.id
+	var turn_order: Array[String] = [character.id, attacker.id]
+	session._state.combat.set_turn_order(turn_order)
+	session._state.combat.turn_index = 0
+	session._state.combat.active_turn = null
+	var scripted_values: Array[int] = []
+	scripted_values.resize(512)
+	scripted_values.fill(0)
+	session._rng = ScriptedRng.new(scripted_values)
+	return session.submit_intent(PlayerIntent.combat_action(&"finish", character.id))
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:

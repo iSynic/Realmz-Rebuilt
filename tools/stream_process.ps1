@@ -27,7 +27,7 @@ function Invoke-StreamingProcess {
         $lines = @(Get-Content -LiteralPath $Path -ErrorAction SilentlyContinue)
         for ($index = $Count.Value; $index -lt $lines.Count; $index++) {
             $line = [string]$lines[$index]
-            $Capture.Add($line)
+			$null = $Capture.Add($line)
             Write-Host $line
         }
         $Count.Value = $lines.Count
@@ -35,7 +35,21 @@ function Invoke-StreamingProcess {
 
     try {
         Write-Host "Starting $Label$(if ($TimeoutSeconds -gt 0) { " with a ${TimeoutSeconds}-second process budget" })..."
-        $process = Start-Process -FilePath $FilePath -ArgumentList $quotedArguments -PassThru -NoNewWindow -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+		if ($env:OS -eq "Windows_NT") {
+			# Windows PowerShell 5 does not reliably populate ExitCode when
+			# Start-Process combines -PassThru with redirected streams. Let cmd
+			# own file redirection and start it through the .NET process API so
+			# polling, streaming, and the final exit code remain trustworthy.
+			$commandLine = ('"{0}" {1} 1> "{2}" 2> "{3}"' -f $FilePath.Replace('"', '""'), ($quotedArguments -join ' '), $stdoutPath, $stderrPath)
+			$startInfo = [System.Diagnostics.ProcessStartInfo]::new()
+			$startInfo.FileName = $env:ComSpec
+			$startInfo.Arguments = '/d /s /c "' + $commandLine + '"'
+			$startInfo.UseShellExecute = $false
+			$startInfo.CreateNoWindow = $true
+			$process = [System.Diagnostics.Process]::Start($startInfo)
+		} else {
+			$process = Start-Process -FilePath $FilePath -ArgumentList $quotedArguments -PassThru -NoNewWindow -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+		}
         while (-not $process.HasExited) {
             Write-NewProcessOutput -Path $stdoutPath -Count ([ref]$stdoutCount) -Capture $captured
             Write-NewProcessOutput -Path $stderrPath -Count ([ref]$stderrCount) -Capture $captured
@@ -60,6 +74,9 @@ function Invoke-StreamingProcess {
             Start-Sleep -Milliseconds 250
             $process.Refresh()
         }
+        # Start-Process may report HasExited before its managed Process object
+        # has populated ExitCode. Complete the handle wait before reading it.
+        $process.WaitForExit()
         Write-NewProcessOutput -Path $stdoutPath -Count ([ref]$stdoutCount) -Capture $captured
         Write-NewProcessOutput -Path $stderrPath -Count ([ref]$stderrCount) -Capture $captured
         $elapsedMilliseconds = [int]([DateTime]::UtcNow - $startedAt).TotalMilliseconds

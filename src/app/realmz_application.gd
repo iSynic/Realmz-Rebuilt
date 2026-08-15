@@ -3,16 +3,13 @@ extends Control
 
 const GameSessionControllerScript := preload("res://src/app/game_session_controller.gd")
 const PresentationCoordinatorScript := preload("res://src/presentation/presentation_coordinator.gd")
-const PackageRepositoryScript := preload("res://src/infrastructure/packages/package_repository.gd")
-const PackageInstallTaskScript := preload("res://src/infrastructure/packages/package_install_task.gd")
-const PackageOperationStatusScript := preload("res://src/infrastructure/packages/package_operation_status.gd")
-const PackageOperationViewScript := preload("res://src/app/package_operation_view.gd")
-const SaveRepositoryScript := preload("res://src/infrastructure/saves/save_repository.gd")
-const CharacterVaultRepositoryScript := preload("res://src/infrastructure/characters/character_vault_repository.gd")
+const PackageHostControllerScript := preload("res://src/app/controllers/package_host_controller.gd")
+const SaveHostControllerScript := preload("res://src/app/controllers/save_host_controller.gd")
+const CharacterVaultControllerScript := preload("res://src/app/controllers/character_vault_controller.gd")
+const CharacterCreationHostControllerScript := preload("res://src/app/controllers/character_creation_host_controller.gd")
 const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
 const DungeonMap3DPresenterScript := preload("res://src/presentation/dungeon_map_3d_presenter.gd")
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
-const CharacterCreationSessionScript := preload("res://src/session/character_creation_session.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
 const CLASSIC_CHARACTER_LIBRARY_HASH := "c5a2776901de4c7c3891c4a019f5d4909943817ca50fbfd2fca7d52850aea07f"
@@ -28,30 +25,28 @@ const CLASSIC_CHARACTER_LIBRARY_HASH := "c5a2776901de4c7c3891c4a019f5d4909943817
 
 var session_controller: GameSessionController
 var presentation_coordinator: PresentationCoordinator
-var package_repository: PackageRepository
-var save_repository: SaveRepository
-var character_vault_repository: CharacterVaultRepository
 var settings_repository: SettingsRepository
 var _active_content: RealmzContent
 var _presentation_settings: PresentationSettings
 var _dungeon_presenter: DungeonMap3DPresenter
 var _host_interaction: InteractionRequest
-var _package_install_task: RefCounted
+var _package_host: PackageHostController
+var _save_host: SaveHostController
+var _vault_host: CharacterVaultController
 var _pending_package_seed: int = 1
 var _last_package_operation_key: String = ""
 var _character_library_content: RealmzContent
 var _character_library_media: PackageMediaCatalog
-var _character_creation_session: RefCounted
-var _standalone_character_creation_active: bool = false
+var _character_creation_host: CharacterCreationHostController
 
 
 func _ready() -> void:
 	get_tree().set_auto_accept_quit(false)
 	UiInputActions.ensure_defaults()
-	package_repository = PackageRepositoryScript.new()
-	_package_install_task = PackageInstallTaskScript.new(package_repository)
-	save_repository = SaveRepositoryScript.new()
-	character_vault_repository = CharacterVaultRepositoryScript.new()
+	_package_host = PackageHostControllerScript.new()
+	_save_host = SaveHostControllerScript.new()
+	_vault_host = CharacterVaultControllerScript.new()
+	_character_creation_host = CharacterCreationHostControllerScript.new()
 	settings_repository = SettingsRepositoryScript.new()
 	_presentation_settings = settings_repository.load_settings()
 	session_controller = GameSessionControllerScript.new()
@@ -108,30 +103,28 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
-	if _package_install_task == null:
+	if _package_host == null:
 		return
-	var operation: RefCounted = _package_install_task.snapshot()
+	var operation := _package_host.operation_view()
 	var operation_key := "%s:%s:%d:%d:%s" % [operation.state, operation.phase, operation.completed, operation.total, operation.message]
 	if operation_key != _last_package_operation_key:
 		_last_package_operation_key = operation_key
-		_shell_presenter.set_package_operation(PackageOperationViewScript.from_status(operation))
-		_shell_presenter.set_status(operation.message, operation.state == PackageOperationStatusScript.FAILED)
-	if operation.is_running() or operation.state == PackageOperationStatusScript.IDLE:
+		_shell_presenter.set_package_operation(operation)
+		_shell_presenter.set_status(operation.message, operation.state == PackageOperationView.FAILED)
+	if operation.is_running() or operation.state == PackageOperationView.IDLE:
 		return
-	var installation: PackageInstallResult = _package_install_task.take_result()
-	_shell_presenter.set_package_operation(PackageOperationViewScript.new())
+	var prepared := _package_host.take_prepared_package()
+	_shell_presenter.set_package_operation(PackageOperationView.new())
 	_last_package_operation_key = ""
-	if operation.state == PackageOperationStatusScript.CANCELLED:
+	if operation.state == PackageOperationView.CANCELLED:
 		_shell_presenter.set_status("Campaign preparation cancelled.")
 		return
-	_complete_package_install(installation, _pending_package_seed)
+	_complete_package_install(prepared, _pending_package_seed)
 
 
 func _exit_tree() -> void:
-	if _package_install_task != null:
-		_package_install_task.shutdown()
-	if package_repository != null:
-		package_repository.close()
+	if _package_host != null:
+		_package_host.close()
 
 
 func _on_smoke_action_pressed() -> void:
@@ -184,8 +177,7 @@ func start_package(package_path: String, initial_seed: int) -> SessionStep:
 	var current_view := session_controller.view()
 	if current_view.session_started and not current_view.party_setup_available:
 		return SessionStep.failed(session_controller.view().revision, &"session_already_started", "End the active adventure before starting another campaign.")
-	var installation := package_repository.install_package(package_path)
-	return _complete_package_install(installation, initial_seed)
+	return _complete_package_install(_package_host.install_sync(package_path), initial_seed)
 
 
 func _begin_package_start(package_path: String, initial_seed: int) -> void:
@@ -193,39 +185,38 @@ func _begin_package_start(package_path: String, initial_seed: int) -> void:
 	if current_view.session_started and not current_view.party_setup_available:
 		_shell_presenter.set_status("End the active adventure before starting another campaign.", true)
 		return
-	if _package_install_task.snapshot().is_running():
+	if _package_host.operation_view().is_running():
 		return
 	_pending_package_seed = initial_seed
-	if not _package_install_task.start(package_path):
-		_shell_presenter.set_status(_package_install_task.snapshot().message, true)
+	if not _package_host.start_install(package_path):
+		_shell_presenter.set_status(_package_host.operation_view().message, true)
 		return
-	_shell_presenter.set_package_operation(PackageOperationViewScript.from_status(_package_install_task.snapshot()))
+	_shell_presenter.set_package_operation(_package_host.operation_view())
 	_shell_presenter.set_status("Preparing campaign…")
 
 
 func _cancel_package_start() -> void:
-	if _package_install_task != null:
-		_package_install_task.cancel()
+	if _package_host != null:
+		_package_host.cancel()
 
 
-func _complete_package_install(installation: PackageInstallResult, initial_seed: int) -> SessionStep:
-	if installation == null:
+func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> SessionStep:
+	if prepared == null:
 		_status_label.text = "Package rejected • package operation returned no result"
 		_shell_presenter.set_status(_status_label.text, true)
 		return SessionStep.failed(0, &"package_operation_failed", "Package operation returned no result.")
-	if not installation.is_ok():
-		_status_label.text = "Package rejected • %s" % installation.error_message
+	if not prepared.is_ok():
+		_status_label.text = "Package rejected • %s" % prepared.error_message
 		_shell_presenter.set_status(_status_label.text, true)
-		return SessionStep.failed(0, installation.error_code, installation.error_message)
-	var package_result := installation.package
-	var step := session_controller.start(package_result.content, initial_seed)
+		return SessionStep.failed(0, prepared.error_code, prepared.error_message)
+	var step := session_controller.start(prepared.content, initial_seed)
 	if step.state == SessionStep.State.FAILED:
 		_status_label.text = "Session start failed • %s" % step.error_message
 		_shell_presenter.set_status(_status_label.text, true)
 		return step
-	_active_content = package_result.content
-	package_repository.promote_installed_package(installation.installed_path)
-	presentation_coordinator.set_package_media(package_result.media)
+	_active_content = prepared.content
+	_package_host.promote(prepared)
+	presentation_coordinator.set_package_media(prepared.media)
 	presentation_coordinator.refresh()
 	_refresh_save_previews()
 	_refresh_vault_views()
@@ -281,12 +272,10 @@ func _input(event: InputEvent) -> void:
 			if combat_direction != Vector2i.ZERO and _interaction_presenter.accepts_combat_spatial_input() and _battlefield_presenter.submit_movement_direction(combat_direction):
 				get_viewport().set_input_as_handled()
 		return
-	if _shell_presenter.handle_route_shortcut(event):
+	if accepts_route_input() and _shell_presenter.handle_route_shortcut(event):
 		get_viewport().set_input_as_handled()
 		return
-	if not session_controller.view().session_started:
-		return
-	if not _shell_presenter.accepts_exploration_input():
+	if not accepts_exploration_input():
 		return
 	var fast_spell_slot := UiInputActions.fast_spell_slot(event)
 	if fast_spell_slot >= 0:
@@ -309,6 +298,23 @@ func _input(event: InputEvent) -> void:
 	if direction != Vector2i.ZERO:
 		_submit_movement(direction)
 		get_viewport().set_input_as_handled()
+
+
+func accepts_route_input() -> bool:
+	if _host_interaction != null or presentation_coordinator == null or _interaction_presenter == null:
+		return false
+	if presentation_coordinator.is_combat_playback_active() or _interaction_presenter.has_blocking_request():
+		return false
+	return ClassicApplicationShell.route_change_reason(session_controller.view()).is_empty()
+
+
+func accepts_exploration_input() -> bool:
+	if _host_interaction != null or presentation_coordinator == null or _interaction_presenter == null or _shell_presenter == null:
+		return false
+	if presentation_coordinator.is_combat_playback_active() or _interaction_presenter.has_blocking_request():
+		return false
+	var view := session_controller.view()
+	return view != null and view.session_started and view.pending_interaction == null and _shell_presenter.accepts_exploration_input()
 
 
 func _handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
@@ -386,26 +392,27 @@ func _submit_movement(direction: Vector2i) -> void:
 
 
 func _submit_intent(intent: PlayerIntent) -> SessionStep:
-	if _standalone_character_creation_active:
-		var creator_step: SessionStep = _character_creation_session.submit_intent(intent)
+	if _character_creation_host.is_active():
+		var creator_step: SessionStep = _character_creation_host.submit(intent)
 		_present_standalone_character_step(creator_step)
 		return creator_step
 	if intent != null and intent.kind == PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
 		var vault_import := intent.payload as PlayerIntent.VaultImportPayload
-		var record := character_vault_repository.load_revision(vault_import.character_id, vault_import.revision_hash)
-		if record == null:
-			var failed := SessionStep.failed(session_controller.view().revision, &"vault_load_failed", character_vault_repository.last_error if not character_vault_repository.last_error.is_empty() else "The requested vault revision is unavailable.")
+		var import_intent := _vault_host.import_intent(vault_import.character_id, vault_import.revision_hash)
+		if import_intent == null:
+			var message := _vault_host.last_error() if not _vault_host.last_error().is_empty() else "The requested vault revision is unavailable."
+			var failed := SessionStep.failed(session_controller.view().revision, &"vault_load_failed", message)
 			_present_step_status(failed)
 			return failed
-		intent = PlayerIntent.import_vault_character(record.character_id, record.revision_hash, record.state, record.source_campaign_id, record.source_package_hash)
+		intent = import_intent
 	var step := session_controller.submit_intent(intent)
 	_present_step_status(step)
 	return step
 
 
 func _on_interaction_response_submitted(response: InteractionResponse) -> void:
-	if _standalone_character_creation_active:
-		_present_standalone_character_step(_character_creation_session.respond(response))
+	if _character_creation_host.is_active():
+		_present_standalone_character_step(_character_creation_host.respond(response))
 		return
 	if _host_interaction != null:
 		_respond_host_interaction(response)
@@ -482,10 +489,8 @@ func _respond_quit_interaction(action: StringName) -> void:
 
 
 func _quit_application() -> void:
-	if _package_install_task != null:
-		_package_install_task.shutdown()
-	if package_repository != null:
-		package_repository.close()
+	if _package_host != null:
+		_package_host.close()
 	get_tree().quit()
 
 
@@ -568,10 +573,8 @@ func _publish_character_revision(character_id: String) -> bool:
 	if character == null:
 		_status_label.text = "Vault publication failed • the character state is invalid"
 		return false
-	var record := CharacterVaultRecord.new(character.id, _active_content.rules_version, _active_content.campaign_id, _active_content.package_hash, character)
-	record.publication_metadata = {"name": character.name, "level": character.level, "source": "character-creation"}
-	if not character_vault_repository.publish_revision(record):
-		_status_label.text = "Vault publication failed • %s" % character_vault_repository.last_error
+	if not _vault_host.publish(character, _active_content.rules_version, _active_content.campaign_id, _active_content.package_hash, "character-creation"):
+		_status_label.text = "Vault publication failed • %s" % _vault_host.last_error()
 		return false
 	_refresh_vault_views()
 	_status_label.text = "Published %s to the character vault" % character.name
@@ -579,33 +582,17 @@ func _publish_character_revision(character_id: String) -> bool:
 
 
 func _refresh_vault_views() -> void:
-	var revisions: Array[CharacterVaultRevisionView] = []
-	var display_content := _active_content if _active_content != null else _character_library_content
-	for character_id: String in character_vault_repository.list_character_ids():
-		var current_hash := character_vault_repository.current_revision_hash(character_id)
-		var character_archived := current_hash.is_empty()
-		for record: CharacterVaultRecord in character_vault_repository.list_revisions(character_id):
-			var eligibility := character_vault_repository.campaign_eligibility(record, _active_content) if _active_content != null else null
-			revisions.append(CharacterVaultRevisionView.from_record(record, eligibility, record.revision_hash == current_hash, character_archived, display_content))
-	revisions.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool:
-		var character_order := left.character_id.naturalnocasecmp_to(right.character_id)
-		if character_order != 0:
-			return character_order < 0
-		if left.is_current != right.is_current:
-			return left.is_current
-		return left.revision_hash < right.revision_hash
-	)
-	_classic_shell.set_vault_revisions(revisions)
+	_classic_shell.set_vault_revisions(_vault_host.revisions(_active_content, _character_library_content))
 
 
 func _load_classic_character_library() -> void:
-	var result := package_repository.load_bundled_package(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH)
-	if not result.is_ok():
-		_classic_shell.set_standalone_character_creation_available(false, result.error_message)
-		_shell_presenter.set_status("Character Files creation unavailable • %s" % result.error_message, true)
+	var prepared := _package_host.load_bundled(CLASSIC_CHARACTER_LIBRARY_PATH, CLASSIC_CHARACTER_LIBRARY_ID, CLASSIC_CHARACTER_LIBRARY_HASH)
+	if not prepared.is_ok():
+		_classic_shell.set_standalone_character_creation_available(false, prepared.error_message)
+		_shell_presenter.set_status("Character Files creation unavailable • %s" % prepared.error_message, true)
 		return
-	_character_library_content = result.content
-	_character_library_media = result.media
+	_character_library_content = prepared.content
+	_character_library_media = prepared.media
 	presentation_coordinator.set_package_media(_character_library_media)
 	_classic_shell.set_standalone_character_creation_available(true)
 
@@ -617,34 +604,31 @@ func _begin_standalone_character_creation() -> void:
 	if _character_library_content == null:
 		_shell_presenter.set_status("Character Files creation is unavailable because the built-in Classic definitions did not load.", true)
 		return
-	var identity := _next_character_file_identity()
-	_character_creation_session = CharacterCreationSessionScript.new()
-	var step: SessionStep = _character_creation_session.start(_character_library_content, int(identity["seed"]), String(identity["id"]))
+	var identity := _vault_host.next_character_file_identity()
+	var step := _character_creation_host.start(_character_library_content, identity)
 	if step.state == SessionStep.State.FAILED:
 		_shell_presenter.set_status("Character Files creation failed • %s" % step.error_message, true)
-		_character_creation_session = null
 		return
-	_standalone_character_creation_active = true
 	presentation_coordinator.set_package_media(_character_library_media)
-	presentation_coordinator.present_host_workflow(_character_creation_session.view(), step)
+	presentation_coordinator.present_host_workflow(_character_creation_host.view(), step)
 	_classic_shell.begin_standalone_character_creation()
 	_shell_presenter.set_status("Create a reusable character with the built-in Realmz races and classes.")
 
 
 func _cancel_standalone_character_creation() -> void:
-	if not _standalone_character_creation_active:
+	if not _character_creation_host.is_active():
 		return
 	_finish_standalone_character_creation("Character creation cancelled.")
 
 
 func _present_standalone_character_step(step: SessionStep) -> void:
-	if not _standalone_character_creation_active or _character_creation_session == null:
+	if not _character_creation_host.is_active():
 		return
 	if step.state == SessionStep.State.FAILED:
-		presentation_coordinator.present_host_workflow(_character_creation_session.view(), step)
+		presentation_coordinator.present_host_workflow(_character_creation_host.view(), step)
 		_shell_presenter.set_status("Character creation failed • %s" % step.error_message, true)
 		return
-	presentation_coordinator.present_host_workflow(_character_creation_session.view(), step)
+	presentation_coordinator.present_host_workflow(_character_creation_host.view(), step)
 	for event: DomainEvent in step.events:
 		if event.kind == &"character_publication_requested":
 			_publish_standalone_character_revision()
@@ -652,22 +636,19 @@ func _present_standalone_character_step(step: SessionStep) -> void:
 
 
 func _publish_standalone_character_revision() -> void:
-	var character: CharacterState = _character_creation_session.completed_character()
+	var character := _character_creation_host.completed_character()
 	if character == null:
 		_shell_presenter.set_status("Character File publication failed • the completed character is unavailable.", true)
 		return
-	var record := CharacterVaultRecord.new(character.id, _character_library_content.rules_version, "", _character_library_content.package_hash, character)
-	record.publication_metadata = {"name": character.name, "level": character.level, "source": "classic-application"}
-	if not character_vault_repository.publish_revision(record):
-		_shell_presenter.set_status("Character File publication failed • %s" % character_vault_repository.last_error, true)
+	if not _vault_host.publish(character, _character_library_content.rules_version, "", _character_library_content.package_hash, "classic-application"):
+		_shell_presenter.set_status("Character File publication failed • %s" % _vault_host.last_error(), true)
 		return
-	_character_creation_session.publication_committed()
+	_character_creation_host.publication_committed()
 	_finish_standalone_character_creation("Created Character File for %s." % character.name)
 
 
 func _finish_standalone_character_creation(status: String) -> void:
-	_standalone_character_creation_active = false
-	_character_creation_session = null
+	_character_creation_host.finish()
 	_classic_shell.finish_standalone_character_creation()
 	presentation_coordinator.set_package_media(_character_library_media)
 	presentation_coordinator.refresh()
@@ -676,19 +657,9 @@ func _finish_standalone_character_creation(status: String) -> void:
 	_shell_presenter.set_status(status)
 
 
-func _next_character_file_identity() -> Dictionary:
-	var occupied: Dictionary = {}
-	for character_id: String in character_vault_repository.list_character_ids():
-		occupied[character_id] = true
-	var sequence := 1
-	while occupied.has("realmz.character.%d" % sequence):
-		sequence += 1
-	return {"id": "realmz.character.%d" % sequence, "seed": sequence * 7919 + 1}
-
-
 func _archive_vault_character(character_id: String) -> void:
-	if not character_vault_repository.archive_character(character_id):
-		_status_label.text = "Vault archive failed • %s" % character_vault_repository.last_error
+	if not _vault_host.archive(character_id):
+		_status_label.text = "Vault archive failed • %s" % _vault_host.last_error()
 		_shell_presenter.set_status(_status_label.text, true)
 		return
 	_refresh_vault_views()
@@ -697,8 +668,8 @@ func _archive_vault_character(character_id: String) -> void:
 
 
 func _restore_vault_revision(character_id: String, revision_hash: String) -> void:
-	if not character_vault_repository.restore_revision(character_id, revision_hash):
-		_status_label.text = "Vault restore failed • %s" % character_vault_repository.last_error
+	if not _vault_host.restore(character_id, revision_hash):
+		_status_label.text = "Vault restore failed • %s" % _vault_host.last_error()
 		_shell_presenter.set_status(_status_label.text, true)
 		return
 	_refresh_vault_views()
@@ -711,8 +682,8 @@ func save_active_session(slot_id: String) -> bool:
 		_status_label.text = "Save failed • no package loaded"
 		_shell_presenter.set_status(_status_label.text, true)
 		return false
-	var saved := save_repository.save(_active_content.campaign_id, slot_id, session_controller.session().snapshot())
-	_status_label.text = "Saved %s" % slot_id if saved else "Save failed • %s" % save_repository.last_error
+	var saved := _save_host.save(_active_content, slot_id, session_controller.session().snapshot())
+	_status_label.text = "Saved %s" % slot_id if saved else "Save failed • %s" % _save_host.last_error()
 	_shell_presenter.set_status(_status_label.text, not saved)
 	if saved:
 		_refresh_save_previews()
@@ -732,11 +703,11 @@ func _load_session_record(slot_id: String, backup: bool) -> SessionStep:
 		_status_label.text = "Load failed • no package loaded"
 		_shell_presenter.set_status(_status_label.text, true)
 		return SessionStep.failed(0, "no_package_loaded", "Load a package before restoring a save.")
-	var envelope := save_repository.load_backup(_active_content.campaign_id, slot_id, _active_content.package_hash) if backup else save_repository.load(_active_content.campaign_id, slot_id, _active_content.package_hash)
+	var envelope := _save_host.load(_active_content, slot_id, backup)
 	if envelope == null:
-		_status_label.text = "Load failed • %s" % save_repository.last_error
+		_status_label.text = "Load failed • %s" % _save_host.last_error()
 		_shell_presenter.set_status(_status_label.text, true)
-		return SessionStep.failed(session_controller.view().revision, "save_load_failed", save_repository.last_error)
+		return SessionStep.failed(session_controller.view().revision, "save_load_failed", _save_host.last_error())
 	var step := session_controller.restore(_active_content, envelope)
 	_status_label.text = "Loaded %s %s" % ["backup" if backup else "save", slot_id] if step.state != SessionStep.State.FAILED else "Load failed • %s" % step.error_message
 	_shell_presenter.set_status(_status_label.text, step.state == SessionStep.State.FAILED)
@@ -744,16 +715,13 @@ func _load_session_record(slot_id: String, backup: bool) -> SessionStep:
 
 
 func _refresh_save_previews() -> void:
-	var previews: Array = []
-	if _active_content != null:
-		previews = save_repository.list_previews(_active_content.campaign_id, _active_content.package_hash)
-	_shell_presenter.set_save_previews(previews)
+	_shell_presenter.set_save_previews(_save_host.previews(_active_content))
 
 
 func _refresh_campaigns() -> void:
-	if _package_install_task != null and _package_install_task.snapshot().is_running():
+	if _package_host != null and _package_host.operation_view().is_running():
 		return
-	_shell_presenter.set_campaigns(package_repository.discover_campaigns(["user://packages"]))
+	_shell_presenter.set_campaigns(_package_host.discover_campaigns(["user://packages"]))
 
 
 func _on_topology_debug_changed(enabled: bool) -> void:

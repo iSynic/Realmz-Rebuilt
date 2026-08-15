@@ -118,8 +118,12 @@ func has_line_of_sight(from: Vector2i, to: Vector2i, world_state: WorldState) ->
 
 func visible_cells(origin: Vector2i, radius: int, world_state: WorldState, use_los: bool) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	for y: int in height:
-		for x: int in width:
+	var first_x := 0 if not use_los else maxi(0, origin.x - radius)
+	var first_y := 0 if not use_los else maxi(0, origin.y - radius)
+	var last_x := width if not use_los else mini(width, origin.x + radius + 1)
+	var last_y := height if not use_los else mini(height, origin.y + radius + 1)
+	for y: int in range(first_y, last_y):
+		for x: int in range(first_x, last_x):
 			var coordinate := Vector2i(x, y)
 			if not use_los or origin.distance_squared_to(coordinate) <= radius * radius and has_line_of_sight(origin, coordinate, world_state):
 				result.append(coordinate)
