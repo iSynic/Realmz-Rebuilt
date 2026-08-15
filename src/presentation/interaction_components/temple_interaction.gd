@@ -1,8 +1,8 @@
 class_name TempleInteraction
 extends InteractionComponent
 
-var _characters: Array[Dictionary] = []
-var _services: Array[Dictionary] = []
+var _characters: Array[InteractionRequestValue.ServiceCharacter] = []
+var _services: Array[InteractionRequestValue.TempleService] = []
 var _picker: OptionButton
 var _summary: Label
 var _service_buttons: Dictionary = {}
@@ -10,21 +10,14 @@ var _pooled_gold: int = 0
 
 
 func build(request: InteractionRequest) -> void:
-	var characters: Variant = request.payload.get("characters", [])
-	if characters is Array:
-		for character: Variant in characters:
-			if character is Dictionary:
-				_characters.append(character.duplicate(true))
-	var services: Variant = request.payload.get("services", [])
-	if services is Array:
-		for service: Variant in services:
-			if service is Dictionary:
-				_services.append(service.duplicate(true))
-	var pooled: Variant = request.payload.get("pooledWealth", {})
-	_pooled_gold = int(pooled.get("gold", 0)) if pooled is Dictionary else 0
-	add_hint("Temple services • %d%% rate • pooled gold %d" % [int(request.payload.get("costPercent", 100)), _pooled_gold])
+	var body := request.body as InteractionRequest.TempleRequestBody
+	if body == null: return
+	_characters = body.characters.duplicate()
+	_services = body.services.duplicate()
+	_pooled_gold = body.pooled_wealth.gold
+	add_hint("Temple services • %d%% rate • pooled gold %d" % [body.cost_percent, _pooled_gold])
 	_picker = character_option(_characters)
-	var selected_character_id := String(request.payload.get("selectedCharacterId", ""))
+	var selected_character_id := body.selected_character_id
 	for index: int in _picker.item_count:
 		if String(_picker.get_item_metadata(index)) == selected_character_id:
 			_picker.select(index)
@@ -32,10 +25,10 @@ func build(request: InteractionRequest) -> void:
 	_picker.item_selected.connect(func(_index: int) -> void: _refresh_selected_character())
 	add_child(_picker)
 	_summary = add_hint("")
-	for service: Dictionary in _services:
-		var service_id := String(service.get("id", ""))
+	for service: InteractionRequestValue.TempleService in _services:
+		var service_id := service.id
 		var button := Button.new()
-		button.text = "%s • %d gold" % [service.get("label", "Service"), int(service.get("cost", 0))]
+		button.text = "%s • %d gold" % [service.label, service.cost]
 		button.custom_minimum_size.y = 36.0
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.pressed.connect(_submit_service.bind(service_id))
@@ -78,33 +71,33 @@ func _refresh_selected_character() -> void:
 			button.tooltip_text = "No eligible character was supplied."
 		return
 	var character_id := String(_picker.get_selected_metadata())
-	var character: Dictionary = {}
-	for candidate: Dictionary in _characters:
-		if candidate.get("id") == character_id:
+	var character: InteractionRequestValue.ServiceCharacter
+	for candidate: InteractionRequestValue.ServiceCharacter in _characters:
+		if candidate.id == character_id:
 			character = candidate
 			break
+	if character == null:
+		_summary.text = "The selected character is unavailable."
+		return
 	var condition_names: Array[String] = []
-	var conditions: Variant = character.get("conditions", [])
-	if conditions is Array:
-		for condition: Variant in conditions:
-			if condition is Dictionary:
-				condition_names.append(String(condition.get("name", "Condition")))
+	for condition: InteractionRequestValue.Condition in character.conditions:
+		condition_names.append(condition.name)
 	var condition_text := "None shown" if condition_names.is_empty() else ", ".join(condition_names)
 	_summary.text = "%s • HP %d/%d • personal gold %d • load %d/%d\nConditions: %s" % [
-		character.get("name", "Character"),
-		int(character.get("currentHealth", 0)),
-		int(character.get("maximumHealth", 0)),
-		int(character.get("personalGold", 0)),
-		int(character.get("load", 0)),
-		int(character.get("maximumLoad", 0)),
+		character.name,
+		character.current_health,
+		character.maximum_health,
+		character.personal_gold,
+		character.load,
+		character.maximum_load,
 		condition_text,
 	]
-	var available := int(character.get("availableGold", _pooled_gold + int(character.get("personalGold", 0))))
-	for service: Dictionary in _services:
-		var service_id := String(service.get("id", ""))
+	var available := character.available_gold
+	for service: InteractionRequestValue.TempleService in _services:
+		var service_id := service.id
 		var button: Button = _service_buttons.get(service_id)
 		if button == null:
 			continue
-		var cost := int(service.get("cost", 0))
+		var cost := service.cost
 		button.disabled = cost > available
-		button.tooltip_text = "Requires %d gold from the pool and selected character." % cost if button.disabled else String(service.get("description", ""))
+		button.tooltip_text = "Requires %d gold from the pool and selected character." % cost if button.disabled else service.description

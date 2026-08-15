@@ -40,7 +40,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_set_heading(_heading_for_kind(request.kind))
 	_prompt.text = _prompt_for(request, classic_text_context)
 	_prompt.visible = not _prompt.text.is_empty()
-	if request.payload.get("presentation") == "player-map":
+	if _is_player_map_request(request):
 		_prompt.text = ""
 		_prompt.visible = false
 	if request.kind == &"combat_action":
@@ -148,7 +148,7 @@ func set_text_scale(value: float) -> void:
 
 
 func _component_for(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> InteractionComponent:
-	if request.kind == InteractionRequest.ACKNOWLEDGE and request.payload.get("presentation") == "player-map":
+	if _is_player_map_request(request):
 		var player_map := PlayerMapInteraction.new()
 		player_map.configure(game_view, media)
 		return player_map
@@ -189,7 +189,7 @@ func _submit_payload(payload: Dictionary) -> void:
 
 static func response_for(request: InteractionRequest, payload: Dictionary) -> InteractionResponse:
 	assert(request != null, "An interaction response requires its originating request")
-	return InteractionResponse.new(request.request_id, request.kind, payload)
+	return InteractionResponse.from_data(request.request_id, request.kind, payload)
 
 
 func _clear_options() -> void:
@@ -226,7 +226,7 @@ func _apply_classic_region() -> void:
 
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
-	return passive_text or request != null and request.payload.get("presentation") != "player-map" and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"combat_action"]
+	return passive_text or request != null and not _is_player_map_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"combat_action"]
 
 
 static func uses_full_stage_region(request: InteractionRequest) -> bool:
@@ -269,7 +269,7 @@ static func _title_for_kind(kind: StringName) -> String:
 
 
 static func _prompt_for(request: InteractionRequest, classic_text_context: String) -> String:
-	var explicit_prompt := String(request.payload.get("prompt", "")).strip_edges()
+	var explicit_prompt := request.body.prompt_text().strip_edges()
 	if not explicit_prompt.is_empty():
 		return explicit_prompt
 	if request.kind == InteractionRequest.YES_NO:
@@ -278,6 +278,13 @@ static func _prompt_for(request: InteractionRequest, classic_text_context: Strin
 			return authored_context
 		return "Choose Yes or No to continue."
 	return _title_for_kind(request.kind)
+
+
+static func _is_player_map_request(request: InteractionRequest) -> bool:
+	if request == null or request.kind != InteractionRequest.ACKNOWLEDGE:
+		return false
+	var body := request.body as InteractionRequest.AcknowledgeBody
+	return body != null and body.presentation == &"player-map"
 
 
 static func _heading_for_kind(kind: StringName) -> String:

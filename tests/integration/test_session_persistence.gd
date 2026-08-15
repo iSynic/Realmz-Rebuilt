@@ -14,26 +14,26 @@ func run() -> void:
 	var closing_snapshot := closing_session.snapshot()
 	assert_not_null(closing_snapshot, "End Adventure can preserve the committed boundary before closing")
 	var close_step := closing_session.close()
-	assert_equal([close_step.state, close_step.interaction.payload.get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The End Adventure application hook runs."], "End Adventure runs its Global hook before party release")
+	assert_equal([close_step.state, close_step.interaction.body.to_data().get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The End Adventure application hook runs."], "End Adventure runs its Global hook before party release")
 	var end_hook_snapshot := closing_session.snapshot()
 	assert_not_null(end_hook_snapshot, "the End Adventure hook is a committed save boundary")
-	var end_hook_data := end_hook_snapshot.to_data()
+	var end_hook_data := save_data(end_hook_snapshot)
 	var missing_hook_field: Dictionary = end_hook_data.duplicate(true)
-	missing_hook_field["sessionContinuation"].erase("partyRevived")
+	missing_hook_field["sessionContinuation"]["data"].erase("partyRevived")
 	assert_equal(SaveEnvelope.from_data(missing_hook_field), null, "the save envelope rejects an incomplete application-hook continuation")
 	var wrong_hook_type: Dictionary = end_hook_data.duplicate(true)
-	wrong_hook_type["sessionContinuation"]["partyRevived"] = 1
+	wrong_hook_type["sessionContinuation"]["data"]["partyRevived"] = 1
 	assert_equal(SaveEnvelope.from_data(wrong_hook_type), null, "the save envelope rejects a mistyped application-hook continuation")
 	var wrong_hook_resume: Dictionary = end_hook_data.duplicate(true)
-	wrong_hook_resume["sessionContinuation"]["hook"] = String(ScenarioApplicationHooks.SHOP)
+	wrong_hook_resume["sessionContinuation"]["data"]["hook"] = String(ScenarioApplicationHooks.SHOP)
 	assert_equal(SaveEnvelope.from_data(wrong_hook_resume), null, "the save envelope rejects a hook that cannot own the serialized resume operation")
 	var end_hook_save := SaveEnvelope.from_data(end_hook_data)
 	assert_not_null(end_hook_save, "the exact End Adventure application-hook continuation round-trips")
 	var closing_restored := GameSession.new()
 	assert_equal(closing_restored.restore(content, end_hook_save).state, SessionStep.State.COMPLETED, "the End Adventure hook restores at its exact textbox boundary")
 	var death_hook := closing_restored.respond(InteractionResponse.acknowledge(closing_restored.view().pending_interaction))
-	assert_equal([death_hook.state, death_hook.interaction.payload.get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "Castle party release chains the Party Death hook after End Adventure")
-	var death_hook_save := SaveEnvelope.from_data(closing_restored.snapshot().to_data())
+	assert_equal([death_hook.state, death_hook.interaction.body.to_data().get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "Castle party release chains the Party Death hook after End Adventure")
+	var death_hook_save := save_round_trip(closing_restored.snapshot())
 	var death_hook_restored := GameSession.new()
 	assert_equal(death_hook_restored.restore(content, death_hook_save).state, SessionStep.State.COMPLETED, "the chained Party Death hook restores transactionally")
 	var closed := death_hook_restored.respond(InteractionResponse.acknowledge(death_hook_restored.view().pending_interaction))
@@ -104,34 +104,34 @@ func run() -> void:
 	var first_age_update := age_session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	assert_equal(first_age_update.state, SessionStep.State.WAITING_FOR_INTERACTION, "crossing midnight blocks at the first Classic age-update dialog")
 	assert_equal(first_age_update.interaction.kind, InteractionRequest.AGE_UPDATE, "midnight exposes a dedicated typed age-update request")
-	assert_equal(first_age_update.interaction.payload["characterId"], first_aging_character.id, "party order determines the first Castle age-update dialog")
-	assert_equal(first_age_update.interaction.payload["changes"].size(), 15, "the request preserves all fifteen displayed Castle age deltas")
+	assert_equal(first_age_update.interaction.body.to_data()["characterId"], first_aging_character.id, "party order determines the first Castle age-update dialog")
+	assert_equal(first_age_update.interaction.body.to_data()["changes"].size(), 15, "the request preserves all fifteen displayed Castle age deltas")
 	assert_true(first_age_update.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 3002), "opening the age dialog requests Castle sound 3002")
-	var age_boundary_save := SaveEnvelope.from_data(age_session.snapshot().to_data())
+	var age_boundary_save := save_round_trip(age_session.snapshot())
 	assert_not_null(age_boundary_save, "the first age-update click boundary is centrally saveable")
 	var pending_close_session := GameSession.new()
 	assert_equal(pending_close_session.restore(content, age_boundary_save).state, SessionStep.State.COMPLETED, "a pending interaction restores for lifecycle closure")
-	var pending_close_snapshot := pending_close_session.snapshot().to_data()
+	var pending_close_snapshot := save_data(pending_close_session.snapshot())
 	assert_equal(pending_close_session.close().error_code, &"session_not_committed", "a modal gameplay interaction must resolve before End Adventure")
-	assert_equal(pending_close_session.snapshot().to_data(), pending_close_snapshot, "rejected modal teardown preserves the complete session and continuation")
+	assert_equal(save_data(pending_close_session.snapshot()), pending_close_snapshot, "rejected modal teardown preserves the complete session and continuation")
 	var age_restored := GameSession.new()
 	assert_equal(age_restored.restore(content, age_boundary_save).state, SessionStep.State.COMPLETED, "the ordered age-update queue restores transactionally")
-	assert_equal(age_restored.view().pending_interaction.payload["characterId"], first_aging_character.id, "restore retains the exact current age dialog")
+	assert_equal(age_restored.view().pending_interaction.body.to_data()["characterId"], first_aging_character.id, "restore retains the exact current age dialog")
 	var wrong_age_response := age_restored.respond(InteractionResponse.acknowledge(age_restored.view().pending_interaction))
 	assert_equal(wrong_age_response.error_code, &"invalid_interaction_response", "a generic textbox acknowledgement cannot bypass the age-update contract")
 	var second_age_update := age_restored.respond(InteractionResponse.age_update(age_restored.view().pending_interaction))
 	assert_equal(second_age_update.state, SessionStep.State.WAITING_FOR_INTERACTION, "acknowledging the first character advances to the next ordered age dialog")
-	assert_equal(second_age_update.interaction.payload["characterId"], second_aging_character.id, "the second dialog retains Castle party order")
+	assert_equal(second_age_update.interaction.body.to_data()["characterId"], second_aging_character.id, "the second dialog retains Castle party order")
 	assert_true(second_age_update.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 3002), "each age dialog independently requests Castle sound 3002")
 	var age_completed := age_restored.respond(InteractionResponse.age_update(second_age_update.interaction))
 	assert_equal(age_completed.state, SessionStep.State.COMPLETED, "the final age acknowledgement completes the interrupted session operation")
-	assert_equal(age_restored.snapshot().session_continuation, {}, "the completed age-update queue clears its save continuation")
+	assert_equal(age_restored.snapshot().continuation, null, "the completed age-update queue clears its save continuation")
 	assert_equal([age_restored.view().party_members[0].age_group, age_restored.view().party_members[1].age_group], [2, 2], "both committed age mutations survive the staged presentation boundary")
 
 	var mismatched := SaveEnvelope.new(content.campaign_id, "0".repeat(64), content.rules_version, loaded_save.view_revision, loaded_save.game_state, loaded_save.rng_state)
-	var before_failed_restore := restored.snapshot().to_data()
+	var before_failed_restore := save_data(restored.snapshot())
 	assert_equal(restored.restore(content, mismatched).error_code, &"package_mismatch", "package mismatch fails explicitly")
-	assert_equal(restored.snapshot().to_data(), before_failed_restore, "failed restore leaves the current session untouched")
+	assert_equal(save_data(restored.snapshot()), before_failed_restore, "failed restore leaves the current session untouched")
 
 	var party_session := GameSession.new()
 	party_session.start(content, 7)
@@ -163,21 +163,14 @@ func run() -> void:
 	invalid_multiplier_data["experienceMultiplier"] = -0.5
 	assert_equal(GameState.from_data(invalid_multiplier_data), null, "save restoration rejects experience ratios between the legacy migration sentinel and Castle's minimum twenty percent")
 	assert_equal(restored_party.submit_intent(PlayerIntent.create_party([member])).error_code, &"party_setup_closed", "party setup cannot be replayed after restore")
-	var corrupt_load_save := SaveEnvelope.from_data(party_save.to_data())
+	var corrupt_load_save := SaveEnvelope.from_data(save_data(party_save))
 	corrupt_load_save.game_state.party.characters()[0].carried_load += 1
-	var before_corrupt_load_restore := restored_party.snapshot().to_data()
+	var before_corrupt_load_restore := save_data(restored_party.snapshot())
 	assert_equal(restored_party.restore(content, corrupt_load_save).error_code, &"invalid_game_state", "restore rejects a carried-load value that does not match package item weights and personal wealth")
-	assert_equal(restored_party.snapshot().to_data(), before_corrupt_load_restore, "a rejected carried-load snapshot leaves the active session untouched")
-	var corrupt_multiplier_data := party_save.to_data()
+	assert_equal(save_data(restored_party.snapshot()), before_corrupt_load_restore, "a rejected carried-load snapshot leaves the active session untouched")
+	var corrupt_multiplier_data := save_data(party_save)
 	corrupt_multiplier_data["gameState"]["experienceMultiplier"] = 3.0
 	assert_equal(SaveEnvelope.from_data(corrupt_multiplier_data), null, "restore rejects an out-of-range persisted setup multiplier")
-	var legacy_save_data := party_save.to_data()
-	legacy_save_data["gameState"]["party"]["characters"][0].erase("ageGroup")
-	var legacy_save := SaveEnvelope.from_data(legacy_save_data)
-	assert_not_null(legacy_save, "a prerecord ageGroup character remains readable inside save v3")
-	var legacy_restored := GameSession.new()
-	assert_equal(legacy_restored.restore(content, legacy_save).state, SessionStep.State.COMPLETED, "restore infers missing nested age-group state without changing the save envelope version")
-	assert_equal(legacy_restored.view().party_members[0].age_group, saved_age_group, "legacy inference uses the authored age range for the saved character")
 
 	var staged_setup := GameSession.new()
 	staged_setup.start(content, 11)
@@ -210,7 +203,7 @@ func run() -> void:
 	var finalized := restored_draft.submit_intent(PlayerIntent.finalize_character())
 	assert_equal(finalized.state, SessionStep.State.WAITING_FOR_INTERACTION, "accepting the reviewed draft adds it and reaches Castle's explicit reusable-character decision")
 	assert_equal(finalized.interaction.kind, InteractionRequest.YES_NO, "vault publication is a typed yes/no interaction rather than a presentation-owned filesystem shortcut")
-	var publication_save := SaveEnvelope.from_data(restored_draft.snapshot().to_data())
+	var publication_save := save_round_trip(restored_draft.snapshot())
 	assert_not_null(publication_save, "the pending publication decision survives the serialized save boundary")
 	var publication_session := GameSession.new()
 	assert_equal(publication_session.restore(content, publication_save).state, SessionStep.State.COMPLETED, "the publication decision restores with its exact finalized character")
@@ -253,8 +246,8 @@ func run() -> void:
 	imported.carried_load = 0
 	var wrong_kind_import := CharacterState.from_data(imported.to_data())
 	wrong_kind_import.portrait_id = "realmz-combat-icon-9000"
-	assert_equal(resumed_setup.submit_intent(PlayerIntent.import_vault_character(wrong_kind_import.id, "c".repeat(64), wrong_kind_import.to_data(), "fixture-source", "b".repeat(64))).error_code, &"vault_character_ineligible", "vault import rejects a package asset used in the wrong appearance role")
-	var import_step := resumed_setup.submit_intent(PlayerIntent.import_vault_character(imported.id, "a".repeat(64), imported.to_data(), "fixture-source", "b".repeat(64)))
+	assert_equal(resumed_setup.submit_intent(PlayerIntent.import_vault_character(wrong_kind_import.id, "c".repeat(64), wrong_kind_import, "fixture-source", "b".repeat(64))).error_code, &"vault_character_ineligible", "vault import rejects a package asset used in the wrong appearance role")
+	var import_step := resumed_setup.submit_intent(PlayerIntent.import_vault_character(imported.id, "a".repeat(64), imported, "fixture-source", "b".repeat(64)))
 	assert_equal(import_step.state, SessionStep.State.COMPLETED, "vault import adds another member without completing party setup")
 	assert_equal(resumed_setup.view().party_members.size(), 2, "created and vault characters may share one setup party")
 	assert_equal(resumed_setup._state.party.character_by_id(imported.id).carried_load, 7 + imported_definition.instance_weight(imported_definition.initial_charges), "vault import derives carried load from target-package definitions instead of trusting a stale local total")
@@ -307,7 +300,7 @@ func run() -> void:
 			assert_equal(confirmation.state, SessionStep.State.WAITING_FOR_INTERACTION, "unspent Classic spell points require the source confirmation boundary")
 			assert_equal(confirmation.interaction.kind, InteractionRequest.YES_NO, "the unspent-point decision is a typed yes/no interaction")
 			assert_true(restored_spell_session.view().party_setup_available, "the creator remains mounted while its confirmation is pending")
-			var confirmation_save := SaveEnvelope.from_data(restored_spell_session.snapshot().to_data())
+			var confirmation_save := save_round_trip(restored_spell_session.snapshot())
 			assert_not_null(confirmation_save, "the unspent-point continuation survives the serialized save-v3 boundary")
 			if confirmation_save == null:
 				confirmation_save = restored_spell_session.snapshot()
@@ -315,11 +308,11 @@ func run() -> void:
 			var confirmation_restore := restored_confirmation.restore(content, confirmation_save)
 			assert_equal(confirmation_restore.state, SessionStep.State.COMPLETED, "the unspent-point confirmation restores transactionally: %s" % confirmation_restore.error_message)
 			var confirmation_session := restored_confirmation if confirmation_restore.state == SessionStep.State.COMPLETED else restored_spell_session
-			var declined := confirmation_session.respond(InteractionResponse.new(confirmation.interaction.request_id, InteractionRequest.YES_NO, {"accepted": false}))
+			var declined := confirmation_session.respond(InteractionResponse.from_data(confirmation.interaction.request_id, InteractionRequest.YES_NO, {"accepted": false}))
 			assert_equal(declined.state, SessionStep.State.COMPLETED, "declining returns to starting-spell selection without discarding the draft")
 			assert_not_null(confirmation_session.view().character_draft, "the declined character remains available for another spell choice")
 			confirmation = confirmation_session.submit_intent(PlayerIntent.finalize_character())
-			var accepted := confirmation_session.respond(InteractionResponse.new(confirmation.interaction.request_id, InteractionRequest.YES_NO, {"accepted": true}))
+			var accepted := confirmation_session.respond(InteractionResponse.from_data(confirmation.interaction.request_id, InteractionRequest.YES_NO, {"accepted": true}))
 			assert_equal(accepted.state, SessionStep.State.WAITING_FOR_INTERACTION, "accepting unspent points commits the reviewed character before the reusable-vault decision")
 			assert_equal(confirmation_session.view().party_members.size(), 1, "the accepted caster enters party setup exactly once")
 			assert_equal(confirmation_session.view().party_members[0].spells[0].id, selected_spell.id, "finalization preserves the selected starting spell")
@@ -344,19 +337,19 @@ func run() -> void:
 		assert_true(fumble_session._state.combat.queue_fumbled_item(dropped), "a completed retreat retains its battle-local fumbled weapon")
 		# Simulate a save or live session created before empty Castle body-count
 		# boundaries were removed. Continue must heal it into the next real stage.
-		var stale_ally_request := InteractionRequest.new("fixture.stale-empty-ally", InteractionRequest.ALLY_SELECTION, {"candidates": [], "maximumSelections": 4, "requiredIds": []})
+		var stale_ally_request := InteractionRequest.from_payload("fixture.stale-empty-ally", InteractionRequest.ALLY_SELECTION, {"prompt": "Choose the allies who will continue with the party.", "candidates": [], "maximum": 4, "selectedIds": [], "requiredIds": []})
 		fumble_session._session_interaction = stale_ally_request
 		fumble_session._session_continuation = {"kind": "combat-ally-selection", "battleId": fumble_session._state.combat.battle_id}
-		var recovery_step := fumble_session.respond(InteractionResponse.new(stale_ally_request.request_id, stale_ally_request.kind, {"selectedIds": []}))
+		var recovery_step := fumble_session.respond(InteractionResponse.from_data(stale_ally_request.request_id, stale_ally_request.kind, {"selectedIds": []}))
 		assert_equal(recovery_step.state, SessionStep.State.WAITING_FOR_INTERACTION, "retreat still enters the typed fumbled-weapon recovery boundary")
 		assert_false(recovery_step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"allies_selected"), "a stale empty body-count stage is bypassed rather than manufactured")
 		assert_equal(recovery_step.interaction.kind, InteractionRequest.TREASURE_DISTRIBUTION, "post-battle recovery uses the dedicated treasure-distribution request")
-		var fumble_boundary := SaveEnvelope.from_data(fumble_session.snapshot().to_data())
+		var fumble_boundary := save_round_trip(fumble_session.snapshot())
 		assert_not_null(fumble_boundary, "the pending fumble assignment is centrally saveable")
 		var recovered_session := GameSession.new()
 		assert_equal(recovered_session.restore(content, fumble_boundary).state, SessionStep.State.COMPLETED, "the post-battle recovery request restores transactionally")
 		var restored_fumble_request := recovered_session.view().pending_interaction
-		var recovered_step := recovered_session.respond(InteractionResponse.new(restored_fumble_request.request_id, InteractionRequest.TREASURE_DISTRIBUTION, {"action": "assign", "instanceId": dropped.id, "characterId": recovery_character.id}))
+		var recovered_step := recovered_session.respond(InteractionResponse.from_data(restored_fumble_request.request_id, InteractionRequest.TREASURE_DISTRIBUTION, {"action": "assign", "instanceId": dropped.id, "characterId": recovery_character.id}))
 		assert_equal(recovered_step.state, SessionStep.State.COMPLETED, "assigning the final fumbled weapon completes post-battle processing")
 		var recovered_inventory := recovered_session._state.party.character_by_id(recovery_character.id).inventory()
 		assert_equal(recovered_inventory.size(), 1, "the selected recipient owns one recovered item")
@@ -385,8 +378,8 @@ func run() -> void:
 	revived_defeat._state.combat.outcome = &"defeat"
 	revived_defeat._state.last_battle_outcome = &"defeat"
 	var defeat_hook := revived_defeat._finish_direct_battle([])
-	assert_equal([defeat_hook.state, defeat_hook.interaction.payload.get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "total defeat enters the Party Death program before releasing the party")
-	var defeat_boundary := SaveEnvelope.from_data(revived_defeat.snapshot().to_data())
+	assert_equal([defeat_hook.state, defeat_hook.interaction.body.to_data().get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "total defeat enters the Party Death program before releasing the party")
+	var defeat_boundary := save_round_trip(revived_defeat.snapshot())
 	var restored_defeat := GameSession.new()
 	assert_equal(restored_defeat.restore(content, defeat_boundary).state, SessionStep.State.COMPLETED, "the Party Death hook restores before its revival instruction")
 	var revived := restored_defeat.respond(InteractionResponse.acknowledge(restored_defeat.view().pending_interaction))
@@ -434,18 +427,19 @@ func run() -> void:
 		var suspended_vm := scenario_defeat._scenario_vm._suspend_operation("classic-operation", defeat_operation)
 		assert_equal(scenario_defeat._scenario_vm.snapshot().frames[0].cursor, 1, "the suspended VM has committed the battle instruction but not its following opcode")
 		var scenario_hook := scenario_defeat._begin_scenario_handoff(suspended_vm, [])
-		assert_equal([scenario_hook.state, scenario_hook.interaction.payload.get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "scenario defeat enters the package Party Death hook without discarding its Action Point caller")
+		assert_equal([scenario_hook.state, scenario_hook.interaction.body.to_data().get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Party Death application hook runs."], "scenario defeat enters the package Party Death hook without discarding its Action Point caller")
 
-		var scenario_boundary_data: Dictionary = JSON.parse_string(JSON.stringify(scenario_defeat.snapshot().to_data()))
+		var scenario_boundary_data: Dictionary = JSON.parse_string(JSON.stringify(save_data(scenario_defeat.snapshot())))
 		var scenario_boundary := SaveEnvelope.from_data(scenario_boundary_data)
 		assert_not_null(scenario_boundary, "the Party Death hook and suspended caller survive canonical save JSON together")
-		var stable_scenario_state := scenario_defeat.snapshot().to_data()
-		var corrupt_handoff := SaveEnvelope.from_data(scenario_boundary_data.duplicate(true))
-		corrupt_handoff.session_continuation["vmHandoff"]["runtime"]["battleId"] = "classic.battle.missing"
+		var stable_scenario_state := save_data(scenario_defeat.snapshot())
+		var corrupt_handoff_data: Dictionary = scenario_boundary_data.duplicate(true)
+		corrupt_handoff_data["sessionContinuation"]["data"]["vmHandoff"]["runtime"]["battleId"] = "classic.battle.missing"
+		var corrupt_handoff := SaveEnvelope.from_data(corrupt_handoff_data)
 		assert_equal(scenario_defeat.restore(content, corrupt_handoff).error_code, &"invalid_session_continuation", "restore rejects a Party Death handoff whose battle caller no longer matches combat")
-		assert_equal(scenario_defeat.snapshot().to_data(), stable_scenario_state, "a rejected scenario defeat handoff leaves the current session untouched")
+		assert_equal(save_data(scenario_defeat.snapshot()), stable_scenario_state, "a rejected scenario defeat handoff leaves the current session untouched")
 		var corrupt_vm_data: Dictionary = scenario_boundary_data.duplicate(true)
-		corrupt_vm_data["sessionContinuation"]["suspendedVm"]["frames"][0]["cursor"] = 999
+		corrupt_vm_data["sessionContinuation"]["data"]["suspendedVm"]["frames"][0]["cursor"] = 999
 		var corrupt_vm := SaveEnvelope.from_data(corrupt_vm_data)
 		assert_not_null(corrupt_vm, "the save envelope keeps structural validation separate from package-owned program bounds")
 		assert_equal(GameSession.new().restore(content, corrupt_vm).error_code, &"invalid_session_continuation", "restore rejects a suspended VM cursor outside its immutable program")
@@ -472,7 +466,7 @@ func run() -> void:
 	ordinary_defeat._state.combat.outcome = &"defeat"
 	ordinary_defeat._state.last_battle_outcome = &"defeat"
 	var ordinary_death_hook := ordinary_defeat._finish_direct_battle([])
-	assert_equal(ordinary_death_hook.interaction.payload.get("prompt"), "The Party Death application hook runs.", "ordinary total defeat runs the package Party Death hook")
+	assert_equal(ordinary_death_hook.interaction.body.to_data().get("prompt"), "The Party Death application hook runs.", "ordinary total defeat runs the package Party Death hook")
 	var released := ordinary_defeat.respond(InteractionResponse.acknowledge(ordinary_death_hook.interaction))
 	assert_true(released.events.any(func(event: DomainEvent) -> bool: return event.kind == &"session_ended" and event.payload.get("reason") == "party-defeat"), "a Party Death hook without revival releases the defeated session")
 	assert_false(ordinary_defeat.view().session_started, "ordinary total defeat does not return to exploration")
@@ -521,7 +515,7 @@ func run() -> void:
 				assert_true(spell_ready_view.availability(&"cast_spell").enabled, "the public combat spell action is enabled only when core supplies at least one legal spell, power, and target option: %s" % spell_ready_view.availability(&"cast_spell").reason)
 			assert_false(tactical_view.availability(&"move").enabled, "an active battle cannot advertise exploration movement through the detached application view")
 			assert_false(tactical_view.availability(&"search").enabled, "an active battle cannot advertise exploration Search through the detached application view")
-			reward_session._session_interaction = InteractionRequest.new("fixture.combat-action", InteractionRequest.COMBAT, {})
+			reward_session._session_interaction = InteractionRequest.from_payload("fixture.combat-action", InteractionRequest.COMBAT, {})
 			assert_true(reward_session.view().availability(&"combat_move").enabled, "the typed battle interaction keeps its legal movement action available: %s" % reward_session.view().availability(&"combat_move").reason)
 			reward_session._session_interaction = null
 			for monster: MonsterState in reward_session._state.combat.monsters():
@@ -540,15 +534,16 @@ func run() -> void:
 			assert_not_null(initial_boundary, "the complete direct reward aggregate validates before canonical JSON")
 			if initial_boundary == null:
 				return
-			var corrupt_reward := SaveEnvelope.from_data(initial_boundary.to_data())
-			corrupt_reward.session_continuation["runtimeContinuation"]["state"]["experienceAwards"]["fixture.missing-character"] = 1
-			var stable_reward_state := reward_session.snapshot().to_data()
+			var corrupt_reward_data := save_data(initial_boundary)
+			corrupt_reward_data["sessionContinuation"]["data"]["runtimeContinuation"]["state"]["experienceAwards"]["fixture.missing-character"] = 1
+			var corrupt_reward := SaveEnvelope.from_data(corrupt_reward_data)
+			var stable_reward_state := save_data(reward_session.snapshot())
 			assert_equal(reward_session.restore(content, corrupt_reward).error_code, &"invalid_session_continuation", "restore rejects a reward continuation that references a missing recipient")
-			assert_equal(reward_session.snapshot().to_data(), stable_reward_state, "a rejected reward continuation leaves the active session untouched")
+			assert_equal(save_data(reward_session.snapshot()), stable_reward_state, "a rejected reward continuation leaves the active session untouched")
 			var boundary_count := 0
 			var reward_completed := false
 			while terminal.state == SessionStep.State.WAITING_FOR_INTERACTION and boundary_count < 64:
-				var saved_boundary := SaveEnvelope.from_data(JSON.parse_string(JSON.stringify(reward_session.snapshot().to_data())))
+				var saved_boundary := SaveEnvelope.from_data(JSON.parse_string(JSON.stringify(save_data(reward_session.snapshot()))))
 				assert_not_null(saved_boundary, "terminal reward boundary %d survives canonical save JSON" % boundary_count)
 				if saved_boundary == null:
 					break
@@ -560,17 +555,17 @@ func run() -> void:
 				reward_session = resumed_reward
 				var request: InteractionRequest = reward_session.view().pending_interaction
 				var payload: Dictionary
-				if request.kind == InteractionRequest.LEVEL_UP and request.payload.get("mode") == "result":
-					payload = {"action": "continue", "characterId": request.payload["characterId"]}
+				if request.kind == InteractionRequest.LEVEL_UP and request.body.to_data().get("mode") == "result":
+					payload = {"action": "continue", "characterId": request.body.to_data()["characterId"]}
 				elif request.kind == InteractionRequest.LEVEL_UP:
-					payload = {"action": "confirm-spells", "characterId": request.payload["characterId"], "spellIds": []}
-				elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.payload.get("mode") == "completion-confirmation":
+					payload = {"action": "confirm-spells", "characterId": request.body.to_data()["characterId"], "spellIds": []}
+				elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.body.to_data().get("mode") == "completion-confirmation":
 					payload = {"action": "confirm-completion"}
-				elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.payload.get("item") is Dictionary:
-					payload = {"action": "discard", "instanceId": request.payload["item"]["instanceId"]}
+				elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.body.to_data().get("item") is Dictionary:
+					payload = {"action": "discard", "instanceId": request.body.to_data()["item"]["instanceId"]}
 				else:
 					payload = {"action": "done"}
-				terminal = reward_session.respond(InteractionResponse.new(request.request_id, request.kind, payload))
+				terminal = reward_session.respond(InteractionResponse.from_data(request.request_id, request.kind, payload))
 				reward_completed = reward_completed or terminal.events.any(func(event: DomainEvent) -> bool: return event.kind == &"reward_completed")
 				boundary_count += 1
 			assert_true(boundary_count < 64, "terminal reward return is bounded")
@@ -588,10 +583,10 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
 	character.race_id = races[0].id
 	character.caste_id = castes[0].id
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture vault member enters party setup without consuming RNG")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture vault member enters party setup without consuming RNG")
 	var begin_step := session.submit_intent(PlayerIntent.begin_adventure())
-	assert_equal([begin_step.state, begin_step.interaction.payload.get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Start Game application hook runs."], "fixture party commits before the Start Game hook")
-	var begin_boundary := SaveEnvelope.from_data(session.snapshot().to_data())
+	assert_equal([begin_step.state, begin_step.interaction.body.to_data().get("prompt")], [SessionStep.State.WAITING_FOR_INTERACTION, "The Start Game application hook runs."], "fixture party commits before the Start Game hook")
+	var begin_boundary := save_round_trip(session.snapshot())
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, begin_boundary).state, SessionStep.State.COMPLETED, "the Start Game textbox restores without rerunning the hook")
 	var completed := restored.respond(InteractionResponse.acknowledge(restored.view().pending_interaction))

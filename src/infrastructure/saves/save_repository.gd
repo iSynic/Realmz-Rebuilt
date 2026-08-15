@@ -11,10 +11,13 @@ func _init(root_path: String = "user://saves") -> void:
 	_root_path = root_path.trim_suffix("/")
 
 
-func save(campaign_id: String, slot_id: String, envelope: SaveEnvelope) -> bool:
+func save(campaign_id: String, slot_id: String, snapshot: SessionSnapshot) -> bool:
 	last_error = ""
-	if envelope == null or envelope.campaign_id != campaign_id:
+	if snapshot == null or snapshot.campaign_id != campaign_id:
 		return _fail("Save envelope does not match the requested campaign.")
+	var envelope := SaveEnvelope.from_snapshot(snapshot)
+	if envelope == null:
+		return _fail("The session snapshot could not be encoded.")
 	if not _safe_component(campaign_id) or not _safe_component(slot_id):
 		return _fail("Campaign and slot IDs must be portable path components.")
 	var campaign_path := "%s/%s" % [_root_path, campaign_id]
@@ -98,9 +101,11 @@ func _load_path(campaign_id: String, slot_id: String, expected_package_hash: Str
 		_fail("Campaign and slot IDs must be portable path components.")
 		return null
 	var suffix := ".r2save.bak" if backup else ".r2save"
-	var envelope := _read_envelope("%s/%s/%s%s" % [_root_path, campaign_id, slot_id, suffix])
+	var path := "%s/%s/%s%s" % [_root_path, campaign_id, slot_id, suffix]
+	var envelope := _read_envelope(path)
 	if envelope == null:
-		_fail("Save backup is missing, corrupt, or uses an unsupported schema." if backup else "Save file is missing, corrupt, or uses an unsupported schema.")
+		var incompatibility := _incompatible_schema_message(path)
+		_fail(incompatibility if not incompatibility.is_empty() else ("Save backup is missing or corrupt." if backup else "Save file is missing or corrupt."))
 		return null
 	if envelope.campaign_id != campaign_id or envelope.package_hash != expected_package_hash:
 		_fail("Save package identity does not match the installed campaign.")
@@ -111,9 +116,10 @@ func _load_path(campaign_id: String, slot_id: String, expected_package_hash: Str
 func _preview_for_path(path: String, slot_id: String, source: StringName, expected_campaign_id: String, expected_package_hash: String) -> RefCounted:
 	var envelope := _read_envelope(path)
 	if envelope == null:
-		var corrupt := SaveSlotPreviewScript.new(slot_id, source, SaveSlotPreviewScript.CORRUPT)
+		var incompatibility := _incompatible_schema_message(path)
+		var corrupt := SaveSlotPreviewScript.new(slot_id, source, SaveSlotPreviewScript.INCOMPATIBLE if not incompatibility.is_empty() else SaveSlotPreviewScript.CORRUPT)
 		corrupt.modified_unix = int(FileAccess.get_modified_time(path))
-		corrupt.error_message = "This save is corrupt or uses an unsupported schema."
+		corrupt.error_message = incompatibility if not incompatibility.is_empty() else "This save is corrupt."
 		return corrupt
 	var status: StringName = SaveSlotPreviewScript.VALID
 	var error_message := ""
@@ -142,6 +148,11 @@ func _preview_for_path(path: String, slot_id: String, source: StringName, expect
 
 
 func _read_envelope(path: String) -> SaveEnvelope:
+	var data: Variant = _read_document(path)
+	return SaveEnvelope.from_data(data) if data != null else null
+
+
+func _read_document(path: String) -> Variant:
 	if not FileAccess.file_exists(path):
 		return null
 	var file := FileAccess.open(path, FileAccess.READ)
@@ -152,7 +163,19 @@ func _read_envelope(path: String) -> SaveEnvelope:
 	file.close()
 	if parse_error != OK:
 		return null
-	return SaveEnvelope.from_data(parser.data)
+	return parser.data
+
+
+func _incompatible_schema_message(path: String) -> String:
+	var data: Variant = _read_document(path)
+	if not data is Dictionary or data.get("format") != SaveEnvelope.FORMAT:
+		return ""
+	var version: Variant = data.get("formatVersion")
+	if version is float and is_equal_approx(version, round(version)):
+		version = int(version)
+	if not version is int or version == SaveEnvelope.FORMAT_VERSION:
+		return ""
+	return "Save format v%d is incompatible with Realmz Rebuilt save v%d." % [version, SaveEnvelope.FORMAT_VERSION]
 
 
 func _delete_file(path: String) -> bool:

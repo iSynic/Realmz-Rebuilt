@@ -15,6 +15,8 @@ The project uses `application/config/use_custom_user_dir` with the stable name `
 
 Normal player-visible work is planned as a coherent batch of 3–5 related workflows. Each workflow has one focused-verified commit. In the roadmap, a rolling pass means this workflow batch; the roadmap does not create a new rolling pass for a tiny edit, and a tiny edit does not pay the batch closeout gate by itself.
 
+The architecture-hardening tranche is a bounded maintenance exception, not a player-workflow batch. While its inventory pause is active, workflow counts and the selected parity batch remain frozen. The tranche may change public wire contracts only at its named high-risk gates, and it must finish with ordinary AOGM proof before parity work resumes.
+
 Use the lowest tier that covers the changed boundary:
 
 - **Tier 1 — focused behavior:** run only the affected named test cases, or a genuinely narrow suite when its cases require shared arguments. Do not run the aggregate gate, source intelligence/codemap, MCP, or unrelated routes. Every meaningful change still receives a DOX review; update a contract only when its durable behavior or ownership changed.
@@ -30,6 +32,14 @@ Every Luna prompt states the objective; repository and base; DOX requirements; r
 ### Parity convergence
 
 The workflow inventory schedules parity work; the differential ledger adjudicates only the behavior a scheduled workflow needs. Each batch records 3–5 workflow targets, its baseline commit and delivery-state counts, the gaps it owns, and at least one ordinary-play certification target. Batch closeout reports changes in missing, partial, functional, and certified counts. Assertion totals and differential-case totals are supporting evidence, not delivery progress by themselves.
+
+### Regression admission
+
+Every automated check must own one of five proof responsibilities: an architectural or wire-contract invariant, a non-obvious source-backed rule, a complete public session workflow, a general presentation lifecycle/layout invariant, or an ordinary campaign certification route. A reported defect maps to an existing invariant first; generalize that proof instead of adding a one-off regression whenever the failure responsibility is the same.
+
+Do not test private methods of `GameSession`, `RealmzRuntimeApi`, `PackageRepository`, or `ClassicScreenRouter`. Do not repeat one behavior at rule, session, save, UI, and route layers unless each layer protects a distinct failure boundary. Prefer table-driven cases, public workflow ownership, and one linked automated proof per differential case. Wording, helper text, and isolated spacing normally receive manual or gallery acceptance rather than a bespoke test. RNG, VM, save, topology, package integrity, and exact-once terminal-combat evidence remain high-value and are not pruned merely to reduce line counts.
+
+Test and assertion totals are diagnostic measurements, never completion targets. Hardening should reduce duplicated setup and incidental assertions without deleting unique source-backed evidence.
 
 Use this priority order:
 

@@ -45,7 +45,7 @@ func start(content: RealmzContent, initial_seed: int) -> SessionStep:
 	return SessionStep.completed(_view_revision, [DomainEvent.new("session_started", {"campaignId": content.campaign_id})])
 
 
-func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep:
+func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionStep:
 	if content == null or content.scenario == null or save_envelope == null:
 		return SessionStep.failed(_view_revision, &"invalid_restore", "Validated content and save data are required.")
 	if save_envelope.campaign_id != content.campaign_id or save_envelope.package_hash != content.package_hash:
@@ -104,7 +104,7 @@ func restore(content: RealmzContent, save_envelope: SaveEnvelope) -> SessionStep
 		return SessionStep.failed(_view_revision, &"invalid_vm_state", "The saved Scenario VM reward continuation is invalid.")
 	if not _valid_player_map_vm_continuation(content, replacement_state, replacement_vm):
 		return SessionStep.failed(_view_revision, &"invalid_vm_state", "The saved Scenario VM player-map continuation is invalid.")
-	var replacement_continuation := save_envelope.session_continuation.duplicate(true)
+	var replacement_continuation := {} if save_envelope.continuation == null else save_envelope.continuation.to_legacy_data()
 	var replacement_session_interaction: InteractionRequest = null
 	if save_envelope.session_interaction != null:
 		replacement_session_interaction = InteractionRequest.from_data(save_envelope.session_interaction.to_data())
@@ -169,6 +169,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"session_not_started", "Start or restore the session first.")
 	if intent == null:
 		return SessionStep.failed(_view_revision, &"invalid_intent", "A typed player intent is required.")
+	if not intent.is_valid():
+		return SessionStep.failed(_view_revision, &"invalid_intent_payload", "The player intent payload does not match its kind.")
 	if intent.kind == PlayerIntent.Kind.SET_COMBAT_AUTO:
 		return _set_combat_auto(intent)
 	if _pending_interaction() != null or _scenario_vm.is_active():
@@ -179,7 +181,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"battle_in_progress", "Resolve the active battle before returning to exploration.")
 	match intent.kind:
 		PlayerIntent.Kind.MOVE:
-			return _move(intent.direction)
+			return _move((intent.payload as PlayerIntent.MovePayload).direction)
 		PlayerIntent.Kind.SEARCH:
 			return _search()
 		PlayerIntent.Kind.CAMP:
@@ -201,7 +203,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		PlayerIntent.Kind.SET_COMBAT_AUTO:
 			return _set_combat_auto(intent)
 		PlayerIntent.Kind.CREATE_PARTY:
-			return _create_party(intent.party_members)
+			return _create_party((intent.payload as PlayerIntent.PartyPayload).members)
 		PlayerIntent.Kind.BEGIN_ADVENTURE:
 			return _begin_adventure()
 		PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
@@ -211,15 +213,16 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		PlayerIntent.Kind.CANCEL_CHARACTER_DRAFT:
 			return _cancel_character_draft()
 		PlayerIntent.Kind.SET_CHARACTER_DRAFT_SPELLS:
-			return _set_character_draft_spells(intent.selected_ids)
+			return _set_character_draft_spells((intent.payload as PlayerIntent.StringListPayload).values)
 		PlayerIntent.Kind.FINALIZE_CHARACTER:
 			return _finalize_character(intent)
 		PlayerIntent.Kind.REMOVE_PARTY_MEMBER:
-			return _remove_party_member(intent.target_id)
+			return _remove_party_member((intent.payload as PlayerIntent.CharacterPayload).character_id)
 		PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS:
-			return _set_party_setup_options(intent.difficulty, intent.monster_set)
+			var setup := intent.payload as PlayerIntent.PartySetupOptionsPayload
+			return _set_party_setup_options(setup.difficulty, setup.monster_set)
 		PlayerIntent.Kind.REORDER_PARTY:
-			return _reorder_party(intent.selected_ids)
+			return _reorder_party((intent.payload as PlayerIntent.StringListPayload).values)
 		PlayerIntent.Kind.CHANGE_CHARACTER_APPEARANCE:
 			return _change_character_appearance(intent)
 		PlayerIntent.Kind.EQUIP_ITEM:
@@ -235,7 +238,7 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 		PlayerIntent.Kind.SERVICE_ACTION:
 			return _service_action(intent)
 		PlayerIntent.Kind.SET_LOCATION_NOTE:
-			return _set_location_note(intent.text_value)
+			return _set_location_note((intent.payload as PlayerIntent.LocationNotePayload).text)
 		_:
 			return SessionStep.failed(_view_revision, &"intent_not_implemented", "This Realmz intent is not implemented in the current slice.")
 
@@ -248,6 +251,8 @@ func respond(response: InteractionResponse) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"no_interaction_pending", "There is no interaction to resume.")
 	if response == null or response.request_id != pending.request_id:
 		return SessionStep.failed(_view_revision, &"interaction_mismatch", "The response does not match the pending request.")
+	if not response.is_supported_kind():
+		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "The response payload does not match its interaction kind.")
 	if _session_interaction != null:
 		return _respond_session_interaction(response)
 	var result := _scenario_vm.resume(response, _runtime_api)
@@ -572,21 +577,22 @@ func _populate_spell_actions(result: GameView) -> void:
 func _set_fast_spell(intent: PlayerIntent) -> SessionStep:
 	if _state.combat != null and not _state.combat.completed:
 		return SessionStep.failed(_view_revision, &"fast_spell_binding_in_battle", "Fast Spell bindings cannot be changed during battle.")
-	var character := _state.party.character_by_id(intent.actor_id)
-	if character == null or intent.quantity < 0 or intent.quantity >= 10:
+	var payload := intent.payload as PlayerIntent.SpellPayload
+	var character := _state.party.character_by_id(payload.caster_id)
+	if character == null or payload.scroll_slot < 0 or payload.scroll_slot >= 10:
 		return SessionStep.failed(_view_revision, &"invalid_fast_spell_slot", "The selected Fast Spell slot is unavailable.")
-	if intent.target_id.is_empty():
-		if not character.clear_fast_spell(intent.quantity):
+	if payload.spell_id.is_empty():
+		if not character.clear_fast_spell(payload.scroll_slot):
 			return SessionStep.failed(_view_revision, &"fast_spell_binding_failed", "The Fast Spell slot could not be cleared.")
-		return _finish_completed([DomainEvent.new(&"fast_spell_changed", {"characterId": character.id, "slot": intent.quantity, "spellId": "", "power": 0, "source": "classic"})])
-	var spell := _content.spell_by_id(intent.target_id)
+		return _finish_completed([DomainEvent.new(&"fast_spell_changed", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": "", "power": 0, "source": "classic"})])
+	var spell := _content.spell_by_id(payload.spell_id)
 	if spell == null or not character.known_spells().has(spell.id):
 		return SessionStep.failed(_view_revision, &"invalid_fast_spell", "Fast Spells must reference a spell known by this character.")
-	if intent.power_level < 1 or intent.power_level > 7 or spell.cost < 0 and intent.power_level != 1:
+	if payload.power < 1 or payload.power > 7 or spell.cost < 0 and payload.power != 1:
 		return SessionStep.failed(_view_revision, &"invalid_fast_spell_power", "The selected spell does not support that Fast Spell power.")
-	if not character.bind_fast_spell(intent.quantity, spell.id, intent.power_level):
+	if not character.bind_fast_spell(payload.scroll_slot, spell.id, payload.power):
 		return SessionStep.failed(_view_revision, &"fast_spell_binding_failed", "The Fast Spell binding could not be committed.")
-	return _finish_completed([DomainEvent.new(&"fast_spell_changed", {"characterId": character.id, "slot": intent.quantity, "spellId": spell.id, "power": intent.power_level, "source": "classic"})])
+	return _finish_completed([DomainEvent.new(&"fast_spell_changed", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": payload.power, "source": "classic"})])
 
 
 func _populate_inventory_item_actions(result: GameView) -> void:
@@ -703,11 +709,19 @@ func _character_draft_is_valid(content: RealmzContent, state: GameState, rules: 
 	return true
 
 
-func snapshot() -> SaveEnvelope:
+func snapshot() -> SessionSnapshot:
 	if not _started or (_scenario_vm.is_active() and _scenario_vm.pending_request() == null):
 		return null
-	var envelope := SaveEnvelope.new(_content.campaign_id, _content.package_hash, _content.rules_version, _view_revision, _state, _rng.snapshot(), _scenario_vm.snapshot(), _scenario_action_state, _session_continuation, _session_interaction)
-	return SaveEnvelope.from_data(envelope.to_data())
+	var state := GameState.from_data(_state.to_data())
+	var vm_state := ScenarioVmSnapshot.from_data(_scenario_vm.snapshot().to_data())
+	var action_state := ScenarioActionState.from_data(_scenario_action_state.to_data())
+	var interaction: InteractionRequest = null
+	if _session_interaction != null:
+		interaction = InteractionRequest.from_data(_session_interaction.to_data())
+	if state == null or vm_state == null or action_state == null or _session_interaction != null and interaction == null:
+		return null
+	var continuation := SessionContinuation.from_legacy_data(_session_continuation)
+	return SessionSnapshot.new(_content.campaign_id, _content.package_hash, _content.rules_version, _view_revision, state, _rng.snapshot(), vm_state, action_state, continuation, interaction)
 
 
 func rng_trace() -> Array[Dictionary]:
@@ -763,16 +777,30 @@ func _rest() -> SessionStep:
 
 
 func _use_item(intent: PlayerIntent) -> SessionStep:
-	var character := _state.party.character_by_id(intent.actor_id)
+	var actor_id := ""
+	var item_id := ""
+	var target_id := ""
+	var target_ids: Array[String] = []
+	if intent.payload is PlayerIntent.ItemUsePayload:
+		var use_payload := intent.payload as PlayerIntent.ItemUsePayload
+		actor_id = use_payload.actor_id
+		item_id = use_payload.item_id
+	else:
+		var target_payload := intent.payload as PlayerIntent.ItemTargetPayload
+		actor_id = target_payload.actor_id
+		item_id = target_payload.item_id
+		target_id = target_payload.target_id
+		target_ids = target_payload.target_ids.duplicate()
+	var character := _state.party.character_by_id(actor_id)
 	if character == null:
-		character = _item_owner(intent.target_id)
-	var instance := _item_instance(character, intent.target_id)
+		character = _item_owner(item_id)
+	var instance := _item_instance(character, item_id)
 	var item: ItemDefinition = null if instance == null else _content.item_by_id(instance.definition_id)
 	var spell: SpellDefinition = null if item == null else _content.spell_by_classic_id(item.special_2)
 	if character == null or instance == null or item == null:
 		return SessionStep.failed(_view_revision, &"unknown_item_instance", "The selected character does not carry that item instance.")
 	if _state.combat != null and not _state.combat.completed:
-		var combat_result := _rules.combat_flow.use_spell_item(_state, _content, character.id, intent.secondary_target_id, instance.id, _rng)
+		var combat_result := _rules.combat_flow.use_spell_item(_state, _content, character.id, target_id, instance.id, _rng)
 		if not combat_result.ok:
 			return SessionStep.failed(_view_revision, combat_result.error_code, combat_result.error_message)
 		if not CharacterAgingResult.update_payloads(combat_result.events).is_empty():
@@ -790,7 +818,7 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 	if power == 8:
 		random_power_checkpoint = _rng.checkpoint()
 		power = _rng.draw(7, StringName("item.use.power.%s" % instance.id))
-	var target_ids := _field_item_target_ids(character, spell, intent)
+	target_ids = _field_item_target_ids(character, spell, target_ids, target_id)
 	var required_count := _field_item_target_count(spell, power)
 	if target_ids.size() == required_count:
 		var completed := _commit_field_spell_item(character.id, instance.id, spell.id, power, target_ids)
@@ -821,7 +849,7 @@ func _field_spell_item_probe(character: CharacterState, instance: ItemInstance, 
 	return InventoryActionProbe.permit()
 
 
-func _field_item_target_ids(character: CharacterState, spell: SpellDefinition, intent: PlayerIntent) -> Array[String]:
+func _field_item_target_ids(character: CharacterState, spell: SpellDefinition, requested_targets: Array[String], requested_target: String) -> Array[String]:
 	if spell.target_type == 5:
 		return [character.id]
 	if spell.target_type > 2:
@@ -829,9 +857,9 @@ func _field_item_target_ids(character: CharacterState, spell: SpellDefinition, i
 		for member: CharacterState in _state.party.characters():
 			party_ids.append(member.id)
 		return party_ids
-	var values: Array[String] = intent.selected_ids.duplicate()
-	if values.is_empty() and not intent.secondary_target_id.is_empty():
-		values.append(intent.secondary_target_id)
+	var values: Array[String] = requested_targets.duplicate()
+	if values.is_empty() and not requested_target.is_empty():
+		values.append(requested_target)
 	return values
 
 
@@ -919,12 +947,13 @@ static func _item_target_request(request_id: String, character: CharacterState, 
 		if carried.id == instance_id:
 			display_name = item.name if carried.identified else item.unidentified_name
 			break
-	return InteractionRequest.new(request_id, InteractionRequest.CHARACTER_SELECTION, {"prompt": "%s uses %s. Choose %d target%s." % [character.name, display_name, required_count, "" if required_count == 1 else "s"], "count": required_count, "eligible": eligible, "mode": "item-use", "itemInstanceId": instance_id, "spellId": spell.id})
+	return InteractionRequest.from_payload(request_id, InteractionRequest.CHARACTER_SELECTION, {"prompt": "%s uses %s. Choose %d target%s." % [character.name, display_name, required_count, "" if required_count == 1 else "s"], "count": required_count, "eligible": eligible, "mode": "item-use", "itemInstanceId": instance_id, "spellId": spell.id})
 
 
 func _equip_item(intent: PlayerIntent) -> SessionStep:
-	var character := _state.party.character_by_id(intent.actor_id)
-	var instance := _item_instance(character, intent.target_id)
+	var payload := intent.payload as PlayerIntent.ItemActionPayload
+	var character := _state.party.character_by_id(payload.actor_id)
+	var instance := _item_instance(character, payload.item_id)
 	var definition: ItemDefinition = null if instance == null else _content.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionStep.failed(_view_revision, &"unknown_item_instance", "The selected character does not carry that item instance.")
@@ -935,8 +964,9 @@ func _equip_item(intent: PlayerIntent) -> SessionStep:
 
 
 func _unequip_item(intent: PlayerIntent) -> SessionStep:
-	var character := _state.party.character_by_id(intent.actor_id)
-	var instance := _item_instance(character, intent.target_id)
+	var payload := intent.payload as PlayerIntent.ItemActionPayload
+	var character := _state.party.character_by_id(payload.actor_id)
+	var instance := _item_instance(character, payload.item_id)
 	var definition: ItemDefinition = null if instance == null else _content.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionStep.failed(_view_revision, &"unknown_item_instance", "The selected character does not carry that item instance.")
@@ -947,9 +977,10 @@ func _unequip_item(intent: PlayerIntent) -> SessionStep:
 
 
 func _trade_item(intent: PlayerIntent) -> SessionStep:
-	var source := _state.party.character_by_id(intent.actor_id)
-	var destination := _state.party.character_by_id(intent.secondary_target_id)
-	var instance := _item_instance(source, intent.target_id)
+	var payload := intent.payload as PlayerIntent.ItemActionPayload
+	var source := _state.party.character_by_id(payload.actor_id)
+	var destination := _state.party.character_by_id(payload.destination_character_id)
+	var instance := _item_instance(source, payload.item_id)
 	var definition: ItemDefinition = null if instance == null else _content.item_by_id(instance.definition_id)
 	if source == null or destination == null or instance == null or definition == null:
 		return SessionStep.failed(_view_revision, &"invalid_item_trade", "Trade requires a carried item and two current party members.")
@@ -990,8 +1021,9 @@ func _set_location_note(text: String) -> SessionStep:
 
 
 func _request_drop_item(intent: PlayerIntent) -> SessionStep:
-	var character := _state.party.character_by_id(intent.actor_id)
-	var instance := _item_instance(character, intent.target_id)
+	var payload := intent.payload as PlayerIntent.ItemActionPayload
+	var character := _state.party.character_by_id(payload.actor_id)
+	var instance := _item_instance(character, payload.item_id)
 	var definition: ItemDefinition = null if instance == null else _content.item_by_id(instance.definition_id)
 	if character == null or instance == null or definition == null:
 		return SessionStep.failed(_view_revision, &"unknown_item_instance", "The selected character does not carry that item instance.")
@@ -1018,13 +1050,14 @@ static func _drop_item_confirmation_request(request_id: String, item_name: Strin
 
 
 func _cast_spell(intent: PlayerIntent) -> SessionStep:
-	if intent.action == &"make-scroll":
-		return _make_scroll(intent)
-	if intent.action == &"use-scroll":
-		return _use_scroll(intent)
+	var payload := intent.payload as PlayerIntent.SpellPayload
+	if payload.operation == &"make-scroll":
+		return _make_scroll(payload)
+	if payload.operation == &"use-scroll":
+		return _use_scroll(payload)
 	if _state.combat == null or _state.combat.completed:
-		return _cast_field_spell(intent)
-	var result := _rules.combat_flow.cast_spell(_state, _content, intent.actor_id, intent.secondary_target_id, intent.target_id, intent.power_level, _rng, intent.target_coordinate, intent.rotation, intent.selected_ids)
+		return _cast_field_spell(payload)
+	var result := _rules.combat_flow.cast_spell(_state, _content, payload.caster_id, payload.target_id, payload.spell_id, payload.power, _rng, payload.coordinate, payload.rotation, payload.target_ids)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
@@ -1036,12 +1069,12 @@ func _cast_spell(intent: PlayerIntent) -> SessionStep:
 	return _finish_completed(result.events)
 
 
-func _make_scroll(intent: PlayerIntent) -> SessionStep:
+func _make_scroll(payload: PlayerIntent.SpellPayload) -> SessionStep:
 	if _state.combat != null and not _state.combat.completed:
 		return SessionStep.failed(_view_revision, &"scroll_scribing_in_battle", "Classic scroll scribing is available only while camped.")
-	var character := _state.party.character_by_id(intent.actor_id)
-	var spell := _content.spell_by_id(intent.target_id)
-	var probe := _make_scroll_probe(character, spell, intent.power_level)
+	var character := _state.party.character_by_id(payload.caster_id)
+	var spell := _content.spell_by_id(payload.spell_id)
+	var probe := _make_scroll_probe(character, spell, payload.power)
 	if not probe.allowed:
 		return SessionStep.failed(_view_revision, &"scroll_scribing_unavailable", probe.reason)
 	var slot_index := _first_empty_scroll_slot(character)
@@ -1049,11 +1082,11 @@ func _make_scroll(intent: PlayerIntent) -> SessionStep:
 	var parchment_definition: ItemDefinition = null if parchment == null else _content.item_by_id(parchment.definition_id)
 	if slot_index < 0 or parchment == null or parchment_definition == null or not _rules.inventory.use_charge(character, parchment.id, parchment_definition):
 		return SessionStep.failed(_view_revision, &"scroll_scribing_commit_failed", "The validated scroll materials could not be committed.")
-	var cost := absi(spell.cost * intent.power_level * 2)
+	var cost := absi(spell.cost * payload.power * 2)
 	character.spell_points -= cost
-	if not character.write_scroll(slot_index, spell.id, intent.power_level):
+	if not character.write_scroll(slot_index, spell.id, payload.power):
 		return SessionStep.failed(_view_revision, &"scroll_scribing_commit_failed", "The validated scroll slot could not be committed.")
-	var events: Array[DomainEvent] = [DomainEvent.new(&"scroll_created", {"characterId": character.id, "slot": slot_index, "spellId": spell.id, "power": intent.power_level, "cost": cost, "parchmentInstanceId": parchment.id, "source": "classic"})]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"scroll_created", {"characterId": character.id, "slot": slot_index, "spellId": spell.id, "power": payload.power, "cost": cost, "parchmentInstanceId": parchment.id, "source": "classic"})]
 	var sound_id := spell.sound_start + 600
 	if sound_id != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(sound_id), "waitForCompletion": false, "source": "classic-scroll-scribing"}))
@@ -1080,9 +1113,9 @@ func _make_scroll_probe(character: CharacterState, spell: SpellDefinition, power
 	return InventoryActionProbe.permit()
 
 
-func _use_scroll(intent: PlayerIntent) -> SessionStep:
+func _use_scroll(payload: PlayerIntent.SpellPayload) -> SessionStep:
 	if _state.combat != null and not _state.combat.completed:
-		var combat_result := _rules.combat_flow.use_combat_scroll(_state, _content, intent.actor_id, intent.quantity, intent.secondary_target_id, _rng, intent.target_coordinate, intent.rotation, intent.selected_ids)
+		var combat_result := _rules.combat_flow.use_combat_scroll(_state, _content, payload.caster_id, payload.scroll_slot, payload.target_id, _rng, payload.coordinate, payload.rotation, payload.target_ids)
 		if not combat_result.ok:
 			return SessionStep.failed(_view_revision, combat_result.error_code, combat_result.error_message)
 		if not _event_payload(combat_result.events, &"monster_death_macro_requested").is_empty():
@@ -1090,21 +1123,21 @@ func _use_scroll(intent: PlayerIntent) -> SessionStep:
 		if combat_result.completed:
 			return _finish_direct_battle(combat_result.events)
 		return _finish_completed(combat_result.events)
-	var character := _state.party.character_by_id(intent.actor_id)
-	var scroll := character.scroll_at(intent.quantity) if character != null else null
+	var character := _state.party.character_by_id(payload.caster_id)
+	var scroll := character.scroll_at(payload.scroll_slot) if character != null else null
 	var spell := _content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
-	var probe := _scroll_use_probe(character, intent.quantity, spell)
+	var probe := _scroll_use_probe(character, payload.scroll_slot, spell)
 	if not probe.allowed:
 		return SessionStep.failed(_view_revision, &"scroll_unavailable", probe.reason)
-	var target_ids := _field_spell_target_ids(character, spell, intent)
+	var target_ids := _field_spell_target_ids(character, spell, payload.target_ids, payload.target_id)
 	var required_count := _field_spell_target_count(spell, scroll.power)
 	if target_ids.size() == required_count:
-		return _commit_field_scroll(character.id, intent.quantity, spell.id, scroll.power, target_ids)
+		return _commit_field_scroll(character.id, payload.scroll_slot, spell.id, scroll.power, target_ids)
 	if not target_ids.is_empty():
 		return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
-	_session_continuation = {"kind": "scroll-target-selection", "characterId": character.id, "scrollSlot": intent.quantity, "spellId": spell.id, "power": scroll.power, "targetCount": required_count}
-	_session_interaction = _scroll_target_request("session.scroll:%s:%d:%d" % [character.id, intent.quantity, _view_revision + 1], character, intent.quantity, spell, required_count, _state.party.characters())
-	return _finish_waiting(_session_interaction, [DomainEvent.new(&"scroll_target_requested", {"characterId": character.id, "slot": intent.quantity, "spellId": spell.id, "power": scroll.power, "targetCount": required_count, "source": "classic"})])
+	_session_continuation = {"kind": "scroll-target-selection", "characterId": character.id, "scrollSlot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "targetCount": required_count}
+	_session_interaction = _scroll_target_request("session.scroll:%s:%d:%d" % [character.id, payload.scroll_slot, _view_revision + 1], character, payload.scroll_slot, spell, required_count, _state.party.characters())
+	return _finish_waiting(_session_interaction, [DomainEvent.new(&"scroll_target_requested", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "targetCount": required_count, "source": "classic"})])
 
 
 func _scroll_use_probe(character: CharacterState, slot_index: int, spell: SpellDefinition) -> InventoryActionProbe:
@@ -1215,24 +1248,24 @@ static func _scroll_target_request(request_id: String, character: CharacterState
 	var eligible: Array[Dictionary] = []
 	for member: CharacterState in party:
 		eligible.append({"id": member.id, "name": member.name, "currentHealth": member.current_health, "maximumHealth": member.maximum_health})
-	return InteractionRequest.new(request_id, InteractionRequest.CHARACTER_SELECTION, {"prompt": "%s uses %s from scroll slot %d. Choose %d target%s." % [character.name, spell.name, slot_index + 1, required_count, "" if required_count == 1 else "s"], "count": required_count, "eligible": eligible, "mode": "scroll-use", "scrollSlot": slot_index, "spellId": spell.id})
+	return InteractionRequest.from_payload(request_id, InteractionRequest.CHARACTER_SELECTION, {"prompt": "%s uses %s from scroll slot %d. Choose %d target%s." % [character.name, spell.name, slot_index + 1, required_count, "" if required_count == 1 else "s"], "count": required_count, "eligible": eligible, "mode": "scroll-use", "scrollSlot": slot_index, "spellId": spell.id})
 
 
-func _cast_field_spell(intent: PlayerIntent) -> SessionStep:
-	var character := _state.party.character_by_id(intent.actor_id)
-	var spell := _content.spell_by_id(intent.target_id)
-	var probe := _field_spell_probe(character, spell, intent.power_level)
+func _cast_field_spell(payload: PlayerIntent.SpellPayload) -> SessionStep:
+	var character := _state.party.character_by_id(payload.caster_id)
+	var spell := _content.spell_by_id(payload.spell_id)
+	var probe := _field_spell_probe(character, spell, payload.power)
 	if not probe.allowed:
 		return SessionStep.failed(_view_revision, &"field_spell_unavailable", probe.reason)
-	var target_ids := _field_spell_target_ids(character, spell, intent)
-	var required_count := _field_spell_target_count(spell, intent.power_level)
+	var target_ids := _field_spell_target_ids(character, spell, payload.target_ids, payload.target_id)
+	var required_count := _field_spell_target_count(spell, payload.power)
 	if target_ids.size() == required_count:
-		return _commit_field_spell(character.id, spell.id, intent.power_level, target_ids)
+		return _commit_field_spell(character.id, spell.id, payload.power, target_ids)
 	if not target_ids.is_empty():
 		return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
-	_session_continuation = {"kind": "field-spell-target-selection", "characterId": character.id, "spellId": spell.id, "power": intent.power_level, "targetCount": required_count, "startingSpellPoints": character.spell_points}
+	_session_continuation = {"kind": "field-spell-target-selection", "characterId": character.id, "spellId": spell.id, "power": payload.power, "targetCount": required_count, "startingSpellPoints": character.spell_points}
 	_session_interaction = _field_spell_target_request("session.field-spell:%s:%d" % [spell.id, _view_revision + 1], character, spell, required_count, _state.party.characters())
-	return _finish_waiting(_session_interaction, [DomainEvent.new(&"field_spell_target_requested", {"characterId": character.id, "spellId": spell.id, "power": intent.power_level, "targetCount": required_count, "source": "classic"})])
+	return _finish_waiting(_session_interaction, [DomainEvent.new(&"field_spell_target_requested", {"characterId": character.id, "spellId": spell.id, "power": payload.power, "targetCount": required_count, "source": "classic"})])
 
 
 func _field_spell_probe(character: CharacterState, spell: SpellDefinition, power: int) -> InventoryActionProbe:
@@ -1271,7 +1304,7 @@ func _field_spell_effect_supported(spell: SpellDefinition) -> bool:
 	return special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
 
 
-func _field_spell_target_ids(character: CharacterState, spell: SpellDefinition, intent: PlayerIntent) -> Array[String]:
+func _field_spell_target_ids(character: CharacterState, spell: SpellDefinition, requested_targets: Array[String], requested_target: String) -> Array[String]:
 	if spell.target_type == 5:
 		return [character.id]
 	if spell.target_type > 2:
@@ -1281,9 +1314,9 @@ func _field_spell_target_ids(character: CharacterState, spell: SpellDefinition, 
 		for member: CharacterState in _state.party.characters():
 			party_ids.append(member.id)
 		return party_ids
-	var values: Array[String] = intent.selected_ids.duplicate()
-	if values.is_empty() and not intent.secondary_target_id.is_empty():
-		values.append(intent.secondary_target_id)
+	var values: Array[String] = requested_targets.duplicate()
+	if values.is_empty() and not requested_target.is_empty():
+		values.append(requested_target)
 	return values
 
 
@@ -1353,16 +1386,17 @@ static func _field_spell_target_request(request_id: String, character: Character
 	var eligible: Array[Dictionary] = []
 	for member: CharacterState in party:
 		eligible.append({"id": member.id, "name": member.name, "currentHealth": member.current_health, "maximumHealth": member.maximum_health})
-	return InteractionRequest.new(request_id, InteractionRequest.CHARACTER_SELECTION, {"prompt": "%s casts %s. Choose %d target%s." % [character.name, spell.name, required_count, "" if required_count == 1 else "s"], "count": required_count, "eligible": eligible, "mode": "field-spell", "spellId": spell.id})
+	return InteractionRequest.from_payload(request_id, InteractionRequest.CHARACTER_SELECTION, {"prompt": "%s casts %s. Choose %d target%s." % [character.name, spell.name, required_count, "" if required_count == 1 else "s"], "count": required_count, "eligible": eligible, "mode": "field-spell", "spellId": spell.id})
 
 
 func _combat_action(intent: PlayerIntent) -> SessionStep:
-	if intent.action == &"retreat":
-		var retreat_probe: Variant = _rules.combat_flow.probe_character_retreat(_state.combat, _state.party.characters(), intent.actor_id)
+	var payload := intent.payload as PlayerIntent.CombatActionPayload
+	if payload.action == &"retreat":
+		var retreat_probe: Variant = _rules.combat_flow.probe_character_retreat(_state.combat, _state.party.characters(), payload.actor_id)
 		if not retreat_probe.allowed:
 			return SessionStep.failed(_view_revision, retreat_probe.reason, retreat_probe.reason_text)
-		return _request_session_retreat(intent.actor_id, &"explicit", Vector2i(-100_000, -100_000))
-	var result := _rules.combat_flow.submit_action(_state, _content, intent.actor_id, intent.action, intent.target_id, _rng)
+		return _request_session_retreat(payload.actor_id, &"explicit", Vector2i(-100_000, -100_000))
+	var result := _rules.combat_flow.submit_action(_state, _content, payload.actor_id, payload.action, payload.target_id, _rng)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
 	if not CharacterAgingResult.update_payloads(result.events).is_empty():
@@ -1375,26 +1409,29 @@ func _combat_action(intent: PlayerIntent) -> SessionStep:
 
 
 func _set_combat_auto(intent: PlayerIntent) -> SessionStep:
+	var payload := intent.payload as PlayerIntent.CombatAutoPayload
 	if _state == null or _state.combat == null or _state.combat.completed:
 		return SessionStep.failed(_view_revision, &"combat_auto_unavailable", "Persistent Auto can be changed only during an active battle.")
-	var character := _state.party.character_by_id(intent.actor_id)
+	var character := _state.party.character_by_id(payload.character_id)
 	if character == null or character.current_health <= 0:
 		return SessionStep.failed(_view_revision, &"invalid_combat_auto_character", "Persistent Auto requires a living party character.")
 	var pending := _pending_interaction()
 	if pending != null:
 		if pending.kind != InteractionRequest.COMBAT or _scenario_vm == null or not _scenario_vm.is_active():
 			return SessionStep.failed(_view_revision, &"interaction_pending", "Persistent Auto cannot replace this pending interaction.")
-		return respond(InteractionResponse.new(pending.request_id, pending.kind, {"actorId": intent.actor_id, "action": "set_auto", "targetId": "", "enabled": intent.enabled}))
+		var response_body := InteractionResponse.CombatBody.new(&"set_auto", payload.character_id)
+		response_body.enabled = payload.enabled
+		return respond(InteractionResponse.new(pending.request_id, pending.kind, response_body))
 	var state_checkpoint := _state.to_data()
 	var rng_checkpoint := _rng.checkpoint()
-	if not _state.set_combat_auto(intent.actor_id, intent.enabled):
+	if not _state.set_combat_auto(payload.character_id, payload.enabled):
 		return SessionStep.failed(_view_revision, &"invalid_combat_auto_character", "Persistent Auto could not be changed for this character.")
-	var toggle_sound := 147 if intent.enabled else 139
+	var toggle_sound := 147 if payload.enabled else 139
 	var events: Array[DomainEvent] = [
 		DomainEvent.new(&"sound_requested", {"soundId": toggle_sound, "waitForCompletion": false, "source": "classic-combat-auto-toggle"}),
-		DomainEvent.new(&"combat_auto_changed", {"characterId": intent.actor_id, "enabled": intent.enabled, "source": "classic"}),
+		DomainEvent.new(&"combat_auto_changed", {"characterId": payload.character_id, "enabled": payload.enabled, "source": "classic"}),
 	]
-	if intent.enabled and _state.combat.active_actor_id() == intent.actor_id:
+	if payload.enabled and _state.combat.active_actor_id() == payload.character_id:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
 		var result := _rules.combat_flow.run_persistent_auto_characters(_state, _content, _rng)
 		if not result.ok:
@@ -1412,13 +1449,14 @@ func _set_combat_auto(intent: PlayerIntent) -> SessionStep:
 
 
 func _combat_move(intent: PlayerIntent) -> SessionStep:
-	var edge_probe: Variant = _rules.combat_flow.probe_edge_retreat(_state.combat, intent.actor_id, intent.direction)
+	var payload := intent.payload as PlayerIntent.CombatMovePayload
+	var edge_probe: Variant = _rules.combat_flow.probe_edge_retreat(_state.combat, payload.actor_id, payload.destination)
 	if edge_probe.allowed:
 		if not edge_probe.forced:
-			return _request_session_retreat(intent.actor_id, &"edge", intent.direction)
-		var forced_result := _rules.combat_flow.retreat_character(_state, _content, intent.actor_id, &"edge", intent.direction, _rng)
+			return _request_session_retreat(payload.actor_id, &"edge", payload.destination)
+		var forced_result := _rules.combat_flow.retreat_character(_state, _content, payload.actor_id, &"edge", payload.destination, _rng)
 		return _finish_combat_result(forced_result)
-	var result := _rules.combat_flow.move_character(_state, _content, intent.actor_id, intent.direction, _rng)
+	var result := _rules.combat_flow.move_character(_state, _content, payload.actor_id, payload.destination, _rng)
 	return _finish_combat_result(result)
 
 
@@ -1522,14 +1560,15 @@ func _set_party_setup_options(difficulty: int, monster_set: int) -> SessionStep:
 
 
 func _import_vault_character(intent: PlayerIntent) -> SessionStep:
+	var payload := intent.payload as PlayerIntent.VaultImportPayload
 	if _state.party_setup_completed or _pending_interaction() != null:
 		return SessionStep.failed(_view_revision, &"party_setup_closed", "Vault import is available only during party setup.")
 	if _state.character_draft != null:
 		return SessionStep.failed(_view_revision, &"character_draft_active", "Finish or cancel the character currently being created before importing from the vault.")
-	if intent.target_id.is_empty() or intent.revision_hash.is_empty() or intent.vault_state_data.is_empty():
+	if payload.character_id.is_empty() or payload.revision_hash.is_empty() or payload.character_state == null:
 		return SessionStep.failed(_view_revision, &"invalid_vault_import", "A validated vault character revision is required.")
-	var imported := CharacterState.from_data(intent.vault_state_data)
-	if imported == null or imported.id != intent.target_id:
+	var imported := CharacterState.from_data(payload.character_state.to_data())
+	if imported == null or imported.id != payload.character_id:
 		return SessionStep.failed(_view_revision, &"invalid_vault_import", "The vault character state is malformed.")
 	var restrictions := _content.campaign_definition().restrictions
 	var maximum_party_size := clampi(restrictions.maximum_party_size, 1, 6)
@@ -1589,13 +1628,14 @@ func _import_vault_character(intent: PlayerIntent) -> SessionStep:
 			return SessionStep.failed(_view_revision, &"duplicate_party_member", "That vault character is already represented in the party.")
 	if not _state.party.add_character(imported):
 		return SessionStep.failed(_view_revision, &"vault_character_ineligible", "The validated vault character could not be added to the party.")
-	return _finish_completed([DomainEvent.new(&"vault_character_imported", {"characterId": imported.id, "revisionHash": intent.revision_hash, "sourceCampaignId": intent.vault_source_campaign_id})])
+	return _finish_completed([DomainEvent.new(&"vault_character_imported", {"characterId": imported.id, "revisionHash": payload.revision_hash, "sourceCampaignId": payload.source_campaign_id})])
 
 
 func _generate_character_draft(intent: PlayerIntent) -> SessionStep:
+	var payload := intent.payload as PlayerIntent.CharacterDraftPayload
 	if _state.party_setup_completed or _pending_interaction() != null:
 		return SessionStep.failed(_view_revision, &"party_setup_closed", "Character creation is available only during party setup.")
-	if intent.party_members.size() != 1:
+	if payload.spec == null:
 		return SessionStep.failed(_view_revision, &"invalid_character_spec", "Generate Character requires exactly one typed specification.")
 	var maximum_party_size := clampi(_content.campaign_definition().restrictions.maximum_party_size, 1, 6)
 	var current_characters := _state.party.characters()
@@ -1604,7 +1644,7 @@ func _generate_character_draft(intent: PlayerIntent) -> SessionStep:
 	var names: Dictionary = {}
 	for current: CharacterState in current_characters:
 		names[current.name.to_lower()] = true
-	var spec := intent.party_members[0]
+	var spec := payload.spec
 	var validation := _character_creation_error(spec, names)
 	if not validation.is_empty():
 		return SessionStep.failed(_view_revision, StringName(validation["code"]), String(validation["message"]))
@@ -1762,30 +1802,31 @@ func _reorder_party(character_ids: Array[String]) -> SessionStep:
 
 
 func _change_character_appearance(intent: PlayerIntent) -> SessionStep:
+	var payload := intent.payload as PlayerIntent.AppearancePayload
 	if not _state.party_setup_completed:
 		return SessionStep.failed(_view_revision, &"appearance_change_unavailable", "Begin the adventure before changing appearance.")
 	if _state.combat != null and not _state.combat.completed:
 		return SessionStep.failed(_view_revision, &"appearance_change_unavailable", "Appearance changes are unavailable during battle.")
 	if not _content.has_character_appearance_catalog():
 		return SessionStep.failed(_view_revision, &"appearance_change_unavailable", "This package does not contain the complete Classic portrait and combat-icon catalogs.")
-	var character := _state.party.character_by_id(intent.actor_id)
+	var character := _state.party.character_by_id(payload.character_id)
 	if character == null:
 		return SessionStep.failed(_view_revision, &"unknown_party_member", "The selected character is not in the active party.")
-	if intent.action not in [CharacterAppearanceDefinition.PORTRAIT, CharacterAppearanceDefinition.COMBAT_ICON]:
+	if payload.appearance_kind not in [CharacterAppearanceDefinition.PORTRAIT, CharacterAppearanceDefinition.COMBAT_ICON]:
 		return SessionStep.failed(_view_revision, &"invalid_appearance_kind", "Choose either a portrait or a combat icon.")
-	var appearance := _content.appearance_by_id(intent.target_id)
-	if appearance == null or appearance.kind != intent.action:
+	var appearance := _content.appearance_by_id(payload.appearance_id)
+	if appearance == null or appearance.kind != payload.appearance_kind:
 		return SessionStep.failed(_view_revision, &"invalid_character_appearance", "The selected appearance is unavailable for that role.")
-	var previous_id := character.portrait_id if intent.action == CharacterAppearanceDefinition.PORTRAIT else character.combat_icon_id
+	var previous_id := character.portrait_id if payload.appearance_kind == CharacterAppearanceDefinition.PORTRAIT else character.combat_icon_id
 	if previous_id == appearance.id:
 		return SessionStep.failed(_view_revision, &"appearance_unchanged", "Choose a different appearance before applying the change.")
-	if intent.action == CharacterAppearanceDefinition.PORTRAIT:
+	if payload.appearance_kind == CharacterAppearanceDefinition.PORTRAIT:
 		character.portrait_id = appearance.id
 	else:
 		character.combat_icon_id = appearance.id
 	return _finish_completed([DomainEvent.new(&"character_appearance_changed", {
 		"characterId": character.id,
-		"appearanceKind": String(intent.action),
+		"appearanceKind": String(payload.appearance_kind),
 		"previousAppearanceId": previous_id,
 		"appearanceId": appearance.id,
 		"source": "classic-character-menu",
@@ -2672,7 +2713,7 @@ func _finish_direct_battle(events: Array[DomainEvent]) -> SessionStep:
 	if not payload.is_empty():
 		var request_id := "session.ally-selection.%d" % (_view_revision + 1)
 		_session_continuation = {"kind": "combat-ally-selection", "battleId": _state.combat.battle_id}
-		_session_interaction = InteractionRequest.new(request_id, &"ally_selection", payload)
+		_session_interaction = InteractionRequest.from_payload(request_id, &"ally_selection", payload)
 		return _finish_waiting(_session_interaction, events)
 	return _finish_direct_battle_recovery(events)
 
@@ -2682,7 +2723,7 @@ func _finish_direct_battle_recovery(events: Array[DomainEvent]) -> SessionStep:
 	if not payload.is_empty():
 		var request_id := "session.fumble-recovery.%d" % (_view_revision + 1)
 		_session_continuation = {"kind": "combat-fumble-recovery", "battleId": _state.combat.battle_id}
-		_session_interaction = InteractionRequest.new(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload)
+		_session_interaction = InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload)
 		return _finish_waiting(_session_interaction, events)
 	return _begin_direct_battle_reward(events)
 
@@ -2781,7 +2822,7 @@ func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) ->
 					_session_continuation["activeRandomRegionId"] = region.id
 					_session_continuation["randomBattleStage"] = "surprise-choice"
 					var request_id := "random-surprise:%s:%d" % [region.id, _rng.snapshot().draw_count]
-					_session_interaction = InteractionRequest.new(request_id, &"yes_no", {"prompt": prompt, "yesLabel": "Enter battle", "noLabel": "Avoid battle", "regionId": region.id})
+					_session_interaction = InteractionRequest.from_payload(request_id, &"yes_no", {"prompt": prompt, "yesLabel": "Enter battle", "noLabel": "Avoid battle", "regionId": region.id})
 					if region.sound_id > 0:
 						events.append(DomainEvent.new(&"audio_requested", {"soundId": region.sound_id}))
 					return _finish_waiting(_session_interaction, events)
@@ -2848,7 +2889,8 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 		return _respond_session_battle_reward(response)
 	if _session_continuation.get("kind") == "combat-retreat-confirmation":
 		return _respond_session_retreat(response)
-	if response.kind != &"yes_no" or not response.payload.has("accepted") or not response.payload["accepted"] is bool:
+	var surprise_body := response.body as InteractionResponse.YesNoBody
+	if response.kind != &"yes_no" or surprise_body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "The random encounter response must be a yes/no choice.")
 	if _session_continuation.get("randomBattleStage", "") != "surprise-choice":
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The random encounter choice has no matching continuation.")
@@ -2860,8 +2902,8 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 	_session_interaction = null
 	_session_continuation["activeRandomRegionId"] = ""
 	_session_continuation["randomBattleStage"] = ""
-	var events: Array[DomainEvent] = [DomainEvent.new(&"random_surprise_chosen", {"regionId": region.id, "accepted": response.payload["accepted"]})]
-	if response.payload["accepted"]:
+	var events: Array[DomainEvent] = [DomainEvent.new(&"random_surprise_chosen", {"regionId": region.id, "accepted": surprise_body.accepted})]
+	if surprise_body.accepted:
 		return _start_random_battle(region, 1, events)
 	_session_continuation["randomRegionIndex"] = int(_session_continuation["randomRegionIndex"]) - 1
 	if region.only:
@@ -2882,9 +2924,10 @@ func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionS
 	var stage := String(_session_continuation.get("stage", ""))
 	var direction := Vector2i(int(_session_continuation.get("directionX", 0)), int(_session_continuation.get("directionY", 0)))
 	if stage == "warning":
-		if response.kind != InteractionRequest.YES_NO or not response.payload.get("accepted") is bool:
+		var warning_body := response.body as InteractionResponse.YesNoBody
+		if response.kind != InteractionRequest.YES_NO or warning_body == null:
 			return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Pooled-wealth departure requires a yes/no response.")
-		if response.payload["accepted"]:
+		if warning_body.accepted:
 			_session_continuation["stage"] = "distribution"
 			_session_interaction = _pooled_wealth_departure_distribution_request("pooled-wealth-departure:%d" % (_view_revision + 1))
 			return _finish_waiting(_session_interaction, [
@@ -2896,10 +2939,11 @@ func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionS
 		_session_interaction = null
 		_session_continuation.clear()
 		return _move_after_pooled_wealth(direction, [DomainEvent.new(&"pooled_wealth_left_behind", {"wealth": discarded, "movementContinues": true})])
-	if stage != "distribution" or response.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or not response.payload.get("action") is String:
+	var body := response.body as InteractionResponse.BankBody
+	if stage != "distribution" or response.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Pooled-wealth distribution requires a typed money action.")
-	var action: String = response.payload["action"]
-	var selected_character_id := String(response.payload.get("characterId", response.payload.get("selectedCharacterId", "")))
+	var action := String(body.action)
+	var selected_character_id := body.character_id
 	if not selected_character_id.is_empty() and _state.party.character_by_id(selected_character_id) == null:
 		return SessionStep.failed(_view_revision, &"unknown_money_target", "The selected pooled-wealth character is unavailable.")
 	var events: Array[DomainEvent] = []
@@ -2930,11 +2974,11 @@ func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionS
 			events.append(DomainEvent.new(&"wealth_shared", {"source": "classic-pooled-wealth-departure", "remaining": _state.party.pooled_wealth.to_data()}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-share"}))
 		"to-pool", "to-character":
-			if not response.payload.get("characterId") is String or not response.payload.get("denomination") is String or not response.payload.get("amount") is int:
+			if body.character_id.is_empty() or body.denomination.is_empty() or body.amount < 1:
 				return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Pooled-wealth Swap requires character, denomination, and amount.")
-			var character := _state.party.character_by_id(response.payload["characterId"])
-			var kind := _money_kind(response.payload["denomination"])
-			var amount := int(response.payload["amount"])
+			var character := _state.party.character_by_id(body.character_id)
+			var kind := _money_kind(body.denomination)
+			var amount := body.amount
 			if character == null or kind < 0:
 				return SessionStep.failed(_view_revision, &"unknown_money_target", "The selected pooled-wealth transfer is unavailable.")
 			if amount != EconomyRules.classic_transfer_increment(kind as WealthState.Kind):
@@ -2947,7 +2991,7 @@ func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionS
 			if not transferred:
 				return SessionStep.failed(_view_revision, &"money_action_unavailable", "The selected pooled-wealth transfer is no longer available.")
 			_recalculate_party_movement()
-			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-pooled-wealth-departure", "characterId": character.id, "direction": action, "kind": response.payload["denomination"], "amount": amount}))
+			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-pooled-wealth-departure", "characterId": character.id, "direction": action, "kind": body.denomination, "amount": amount}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-pooled-wealth-departure-swap"}))
 		_:
 			return SessionStep.failed(_view_revision, &"unknown_money_action", "Pooled-wealth action '%s' is unavailable." % action)
@@ -2977,7 +3021,7 @@ static func _pooled_wealth_departure_distribution_request_for_state(state: GameS
 		characters.append({"id": character.id, "name": character.name, "wealth": character.money.to_data(), "load": character.carried_load, "maximumLoad": character.maximum_load, "transfers": transfers})
 	if state.party.character_by_id(selected_character_id) == null and not characters.is_empty():
 		selected_character_id = characters[0]["id"]
-	return InteractionRequest.new(request_id, InteractionRequest.POOLED_WEALTH_DEPARTURE, {
+	return InteractionRequest.from_payload(request_id, InteractionRequest.POOLED_WEALTH_DEPARTURE, {
 		"mode": "departure",
 		"selectedCharacterId": selected_character_id,
 		"pooledWealth": state.party.pooled_wealth.to_data(),
@@ -2997,13 +3041,10 @@ static func _has_pooled_wealth(party: PartyState) -> bool:
 
 
 func _respond_item_use_target(response: InteractionResponse) -> SessionStep:
-	if response.kind != InteractionRequest.CHARACTER_SELECTION or not response.payload.get("characterIds") is Array:
+	var body := response.body as InteractionResponse.SelectionBody
+	if response.kind != InteractionRequest.CHARACTER_SELECTION or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Item use requires an ordered characterIds array.")
-	var target_ids: Array[String] = []
-	for value: Variant in response.payload["characterIds"]:
-		if not value is String:
-			return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Every item target must use a stable character ID.")
-		target_ids.append(value)
+	var target_ids := body.character_ids.duplicate()
 	var character_id := String(_session_continuation.get("characterId", ""))
 	var instance_id := String(_session_continuation.get("instanceId", ""))
 	var spell_id := String(_session_continuation.get("spellId", ""))
@@ -3027,13 +3068,10 @@ func _respond_item_use_target(response: InteractionResponse) -> SessionStep:
 
 
 func _respond_field_spell_target(response: InteractionResponse) -> SessionStep:
-	if response.kind != InteractionRequest.CHARACTER_SELECTION or not response.payload.get("characterIds") is Array:
+	var body := response.body as InteractionResponse.SelectionBody
+	if response.kind != InteractionRequest.CHARACTER_SELECTION or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Field casting requires an ordered characterIds array.")
-	var target_ids: Array[String] = []
-	for value: Variant in response.payload["characterIds"]:
-		if not value is String:
-			return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Every spell target must use a stable character ID.")
-		target_ids.append(value)
+	var target_ids := body.character_ids.duplicate()
 	var expected_count := int(_session_continuation.get("targetCount", 0))
 	if target_ids.size() != expected_count:
 		return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell requires exactly %d target%s." % [expected_count, "" if expected_count == 1 else "s"])
@@ -3055,13 +3093,10 @@ func _respond_field_spell_target(response: InteractionResponse) -> SessionStep:
 
 
 func _respond_scroll_target(response: InteractionResponse) -> SessionStep:
-	if response.kind != InteractionRequest.CHARACTER_SELECTION or not response.payload.get("characterIds") is Array:
+	var body := response.body as InteractionResponse.SelectionBody
+	if response.kind != InteractionRequest.CHARACTER_SELECTION or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Scroll use requires an ordered characterIds array.")
-	var target_ids: Array[String] = []
-	for value: Variant in response.payload["characterIds"]:
-		if not value is String:
-			return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Every scroll target must use a stable character ID.")
-		target_ids.append(value)
+	var target_ids := body.character_ids.duplicate()
 	var expected_count := int(_session_continuation.get("targetCount", 0))
 	if target_ids.size() != expected_count:
 		return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll requires exactly %d target%s." % [expected_count, "" if expected_count == 1 else "s"])
@@ -3085,18 +3120,19 @@ func _respond_scroll_target(response: InteractionResponse) -> SessionStep:
 
 
 func _service_action(intent: PlayerIntent) -> SessionStep:
-	if intent.action != &"enter":
+	var payload := intent.payload as PlayerIntent.ServicePayload
+	if payload.action != &"enter":
 		return SessionStep.failed(_view_revision, &"unknown_service_action", "Only entering an available service is implemented through this intent.")
-	if intent.target_id == "realmz.service.temple":
+	if payload.service_id == "realmz.service.temple":
 		if not _state.temple_available:
 			return SessionStep.failed(_view_revision, &"service_unavailable", "The selected temple is not available at this location.")
-		return _start_application_hook(ScenarioApplicationHooks.TEMPLE, "service", intent.target_id, [])
-	elif intent.target_id == "realmz.service.bank":
-		return _open_contextual_service(intent.target_id, [])
-	elif intent.target_id == _state.active_shop_id:
-		if intent.target_id.is_empty() or _content.shop_by_id(intent.target_id) == null:
+		return _start_application_hook(ScenarioApplicationHooks.TEMPLE, "service", payload.service_id, [])
+	elif payload.service_id == "realmz.service.bank":
+		return _open_contextual_service(payload.service_id, [])
+	elif payload.service_id == _state.active_shop_id:
+		if payload.service_id.is_empty() or _content.shop_by_id(payload.service_id) == null:
 			return SessionStep.failed(_view_revision, &"service_unavailable", "The selected shop is not available at this location.")
-		return _start_application_hook(ScenarioApplicationHooks.SHOP, "service", intent.target_id, [])
+		return _start_application_hook(ScenarioApplicationHooks.SHOP, "service", payload.service_id, [])
 	else:
 		return SessionStep.failed(_view_revision, &"service_unavailable", "The selected service is not available at this location.")
 
@@ -3117,11 +3153,12 @@ func _open_contextual_service(service_id: String, preceding_events: Array[Domain
 
 
 func _money_action(intent: PlayerIntent) -> SessionStep:
+	var payload := intent.payload as PlayerIntent.MoneyPayload
 	var movement_error := _money_movement_context_error()
 	if not movement_error.is_empty():
 		return SessionStep.failed(_view_revision, &"invalid_money_context", movement_error)
 	var events: Array[DomainEvent] = []
-	match intent.action:
+	match payload.action:
 		&"pool":
 			var probe := _rules.economy.pool_probe(_state.party)
 			if not probe.allowed:
@@ -3137,26 +3174,26 @@ func _money_action(intent: PlayerIntent) -> SessionStep:
 			events.append(DomainEvent.new(&"wealth_shared", {"source": "classic-money", "remaining": _state.party.pooled_wealth.to_data()}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-money-share"}))
 		&"to-pool", &"to-character":
-			var character := _state.party.character_by_id(intent.actor_id)
-			var kind := _money_kind(intent.target_id)
+			var character := _state.party.character_by_id(payload.character_id)
+			var kind := _money_kind(payload.denomination)
 			if character == null:
 				return SessionStep.failed(_view_revision, &"unknown_character", "The selected money-transfer character is unavailable.")
 			if kind < 0:
 				return SessionStep.failed(_view_revision, &"unknown_wealth_kind", "The selected denomination is unavailable.")
 			var expected_amount := EconomyRules.classic_transfer_increment(kind as WealthState.Kind)
-			if intent.amount != expected_amount:
+			if payload.amount != expected_amount:
 				return SessionStep.failed(_view_revision, &"invalid_money_increment", "Classic Swap moves five gold or one gem or jewelry per action.")
-			var to_character := intent.action == &"to-character"
-			var probe := _rules.economy.transfer_probe(_state.party, character, kind as WealthState.Kind, intent.amount, to_character)
+			var to_character := payload.action == &"to-character"
+			var probe := _rules.economy.transfer_probe(_state.party, character, kind as WealthState.Kind, payload.amount, to_character)
 			if not probe.allowed:
 				return SessionStep.failed(_view_revision, &"money_action_unavailable", probe.reason)
-			var transferred := _rules.economy.transfer_pool_to_character(_state.party, character, kind as WealthState.Kind, intent.amount) if to_character else _rules.economy.transfer_character_to_pool(_state.party, character, kind as WealthState.Kind, intent.amount)
+			var transferred := _rules.economy.transfer_pool_to_character(_state.party, character, kind as WealthState.Kind, payload.amount) if to_character else _rules.economy.transfer_character_to_pool(_state.party, character, kind as WealthState.Kind, payload.amount)
 			if not transferred:
 				return SessionStep.failed(_view_revision, &"money_action_unavailable", "The selected wealth transfer is no longer available.")
-			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-money", "characterId": character.id, "direction": String(intent.action), "kind": String(intent.target_id), "amount": intent.amount}))
+			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-money", "characterId": character.id, "direction": String(payload.action), "kind": payload.denomination, "amount": payload.amount}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-money-swap"}))
 		_:
-			return SessionStep.failed(_view_revision, &"unknown_money_action", "Money action '%s' is unavailable." % intent.action)
+			return SessionStep.failed(_view_revision, &"unknown_money_action", "Money action '%s' is unavailable." % payload.action)
 	_recalculate_party_movement()
 	return _finish_completed(events)
 
@@ -3212,7 +3249,8 @@ func _respond_runtime_service(response: InteractionResponse) -> SessionStep:
 
 
 func _respond_drop_item(response: InteractionResponse) -> SessionStep:
-	if response.kind != InteractionRequest.YES_NO or response.payload.get("accepted") is not bool:
+	var body := response.body as InteractionResponse.YesNoBody
+	if response.kind != InteractionRequest.YES_NO or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Dropping an item requires a yes/no response.")
 	var character_id := String(_session_continuation.get("characterId", ""))
 	var instance_id := String(_session_continuation.get("instanceId", ""))
@@ -3226,7 +3264,7 @@ func _respond_drop_item(response: InteractionResponse) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"item_cannot_drop", probe.reason)
 	_session_interaction = null
 	_session_continuation.clear()
-	if not response.payload["accepted"]:
+	if not body.accepted:
 		return _finish_completed([DomainEvent.new(&"item_drop_declined", {"characterId": character.id, "instanceId": instance.id})])
 	var removed := _rules.inventory.remove_item(character, instance.id, definition)
 	if removed == null:
@@ -3235,20 +3273,22 @@ func _respond_drop_item(response: InteractionResponse) -> SessionStep:
 
 
 func _respond_character_spell_confirmation(response: InteractionResponse) -> SessionStep:
-	if response.kind != InteractionRequest.YES_NO or response.payload.get("accepted") is not bool:
+	var body := response.body as InteractionResponse.YesNoBody
+	if response.kind != InteractionRequest.YES_NO or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Starting-spell confirmation requires a yes/no response.")
 	var character_id := String(_session_continuation.get("characterId", ""))
 	if _state.character_draft == null or _state.character_draft.generated_character == null or _state.character_draft.generated_character.id != character_id:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The character awaiting starting-spell confirmation is unavailable.")
 	_session_interaction = null
 	_session_continuation.clear()
-	if not response.payload["accepted"]:
+	if not body.accepted:
 		return _finish_completed([DomainEvent.new(&"character_spell_confirmation_declined", {"characterId": character_id})])
 	return _commit_character_draft([DomainEvent.new(&"character_spell_confirmation_accepted", {"characterId": character_id})])
 
 
 func _respond_character_vault_publication(response: InteractionResponse) -> SessionStep:
-	if response.kind != InteractionRequest.YES_NO or response.payload.get("accepted") is not bool:
+	var body := response.body as InteractionResponse.YesNoBody
+	if response.kind != InteractionRequest.YES_NO or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Character-vault publication requires a yes/no response.")
 	var character_id := String(_session_continuation.get("characterId", ""))
 	var character := _state.party.character_by_id(character_id)
@@ -3256,20 +3296,21 @@ func _respond_character_vault_publication(response: InteractionResponse) -> Sess
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The character awaiting vault publication is unavailable.")
 	_session_interaction = null
 	_session_continuation.clear()
-	if response.payload["accepted"]:
+	if body.accepted:
 		return _finish_completed([DomainEvent.new(&"character_publication_requested", {"characterId": character_id})])
 	return _finish_completed([DomainEvent.new(&"character_publication_declined", {"characterId": character_id})])
 
 
 func _respond_session_retreat(response: InteractionResponse) -> SessionStep:
-	if response.kind != InteractionRequest.YES_NO or response.payload.get("accepted") is not bool:
+	var body := response.body as InteractionResponse.YesNoBody
+	if response.kind != InteractionRequest.YES_NO or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Escape confirmation requires a yes/no response.")
 	if _state.combat == null or _state.combat.completed or _state.combat.battle_id != _session_continuation.get("battleId") or _state.combat.active_actor_id() != _session_continuation.get("actorId"):
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The character awaiting Escape confirmation is unavailable.")
 	var continuation := _session_continuation.duplicate(true)
 	_session_interaction = null
 	_session_continuation.clear()
-	if not response.payload["accepted"]:
+	if not body.accepted:
 		return _finish_completed([DomainEvent.new(&"combat_retreat_declined", {"actorId": continuation["actorId"], "mode": continuation["mode"], "source": "classic"})])
 	var destination := _combat_retreat_destination(continuation["destination"])
 	if destination == Vector2i(-100_000, -100_000) and continuation["mode"] == "edge":
@@ -3309,7 +3350,7 @@ func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: String, r
 
 
 func _respond_session_age_update(response: InteractionResponse) -> SessionStep:
-	if response.kind != InteractionRequest.AGE_UPDATE or not response.payload.is_empty():
+	if response.kind != InteractionRequest.AGE_UPDATE or response.body is not InteractionResponse.EmptyBody:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Classic age updates require an empty age-update acknowledgement.")
 	var updates: Variant = _session_continuation.get("updates", [])
 	var index := int(_session_continuation.get("index", -1))
@@ -3359,7 +3400,8 @@ func _session_age_update_request_id(payload: Dictionary, index: int) -> String:
 
 
 func _respond_session_ally_selection(response: InteractionResponse) -> SessionStep:
-	if response.kind != &"ally_selection" or not response.payload.has("selectedIds"):
+	var body := response.body as InteractionResponse.AllySelectionBody
+	if response.kind != &"ally_selection" or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Ally selection requires selectedIds.")
 	if _state.combat == null or not _state.combat.completed or _state.combat.battle_id != _session_continuation.get("battleId"):
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The completed battle is unavailable for ally selection.")
@@ -3370,7 +3412,7 @@ func _respond_session_ally_selection(response: InteractionResponse) -> SessionSt
 		_session_interaction = null
 		_session_continuation.clear()
 		return _finish_direct_battle_recovery([])
-	var result := _rules.combat_flow.apply_ally_selection(_state, _content, response.payload["selectedIds"])
+	var result := _rules.combat_flow.apply_ally_selection(_state, _content, body.selected_ids)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
 	_session_interaction = null
@@ -3381,11 +3423,12 @@ func _respond_session_ally_selection(response: InteractionResponse) -> SessionSt
 
 
 func _respond_session_fumble_recovery(response: InteractionResponse) -> SessionStep:
-	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION:
+	var body := response.body as InteractionResponse.TreasureBody
+	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION or body == null:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Fumbled-weapon recovery requires a treasure-distribution response.")
 	if _state.combat == null or not _state.combat.completed or _state.combat.battle_id != _session_continuation.get("battleId"):
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The completed battle is unavailable for fumbled-weapon recovery.")
-	var result := _rules.combat_flow.apply_fumble_recovery(_state, _content, response.payload)
+	var result := _rules.combat_flow.apply_fumble_recovery(_state, _content, body.action, body.instance_id, body.character_id)
 	if not result.ok:
 		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
 	_session_interaction = null
@@ -3505,9 +3548,10 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			"warning":
 				return _has_pooled_wealth(state.party) and session_interaction.to_data() == _pooled_wealth_departure_warning(session_interaction.request_id).to_data()
 			"distribution":
-				if session_interaction.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or session_interaction.payload.get("mode") != "departure" or not session_interaction.payload.get("selectedCharacterId") is String:
+				var bank_body := session_interaction.body as InteractionRequest.BankRequestBody
+				if session_interaction.kind != InteractionRequest.POOLED_WEALTH_DEPARTURE or bank_body == null or bank_body.mode != &"departure":
 					return false
-				var selected_character_id: String = session_interaction.payload["selectedCharacterId"]
+				var selected_character_id := bank_body.selected_character_id
 				if state.party.character_by_id(selected_character_id) == null:
 					return false
 				return session_interaction.to_data() == _pooled_wealth_departure_distribution_request_for_state(state, session_interaction.request_id, selected_character_id).to_data()
@@ -3522,7 +3566,8 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			"classic-shop":
 				return service_id == state.active_shop_id and not service_id.is_empty() and content.shop_by_id(service_id) != null and session_interaction.kind == InteractionRequest.SHOP
 			"classic-temple":
-				return service_id == "realmz.service.temple" and state.temple_available and int(runtime.get("costPercent", -100_000)) == state.temple_cost_percent and bool(runtime.get("bankAvailable", false)) == state.bank_available and selected_temple_character is String and state.party.character_by_id(String(selected_temple_character)) != null and session_interaction.kind == InteractionRequest.TEMPLE and session_interaction.payload.get("selectedCharacterId") == selected_temple_character
+				var temple_body := session_interaction.body as InteractionRequest.TempleRequestBody
+				return service_id == "realmz.service.temple" and state.temple_available and int(runtime.get("costPercent", -100_000)) == state.temple_cost_percent and bool(runtime.get("bankAvailable", false)) == state.bank_available and selected_temple_character is String and state.party.character_by_id(String(selected_temple_character)) != null and session_interaction.kind == InteractionRequest.TEMPLE and temple_body != null and temple_body.selected_character_id == selected_temple_character
 			"classic-temple-exit":
 				return service_id == "realmz.service.temple" and state.temple_available and not state.bank_available and int(runtime.get("costPercent", -100_000)) == state.temple_cost_percent and not bool(runtime.get("bankAvailable", true)) and selected_temple_character is String and state.party.character_by_id(String(selected_temple_character)) != null and session_interaction.kind == InteractionRequest.YES_NO
 			"classic-banking":
@@ -3698,7 +3743,10 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			if not _valid_age_update_payload(state, update):
 				return false
 		var current_update: Dictionary = updates[age_index - 1]
-		if session_interaction.payload != current_update:
+		var expected_age_request := InteractionRequest.from_payload("validation.age-update", InteractionRequest.AGE_UPDATE, current_update)
+		var actual_age_body := session_interaction.body as InteractionRequest.AgeUpdateBody
+		var expected_age_body: InteractionRequest.AgeUpdateBody = null if expected_age_request == null else expected_age_request.body as InteractionRequest.AgeUpdateBody
+		if actual_age_body == null or not actual_age_body.same_values(expected_age_body):
 			return false
 		var resume_kind: Variant = continuation["resumeKind"]
 		var resume_continuation: Variant = continuation["resumeContinuation"]
@@ -3739,7 +3787,10 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			return false
 		if vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.TREASURE_DISTRIBUTION or state.combat == null or not state.combat.completed or state.combat.battle_id != continuation["battleId"] or state.combat.fumbled_items().is_empty():
 			return false
-		return session_interaction.payload == RealmzRules.new().combat_flow.fumble_recovery_payload(state, content)
+		var expected_fumble_request := InteractionRequest.from_payload("validation.fumble-recovery", InteractionRequest.TREASURE_DISTRIBUTION, RealmzRules.new().combat_flow.fumble_recovery_payload(state, content))
+		var actual_fumble_body := session_interaction.body as InteractionRequest.TreasureRequestBody
+		var expected_fumble_body: InteractionRequest.TreasureRequestBody = null if expected_fumble_request == null else expected_fumble_request.body as InteractionRequest.TreasureRequestBody
+		return actual_fumble_body != null and actual_fumble_body.same_fumble_values(expected_fumble_body)
 	if continuation.get("kind") == "combat-reward":
 		if continuation.size() != 3 or not continuation.get("battleId") is String or continuation["battleId"].is_empty() or not continuation.get("runtimeContinuation") is Dictionary:
 			return false
@@ -3847,7 +3898,10 @@ static func _valid_player_map_vm_continuation(content: RealmzContent, state: Gam
 		return true
 	var request := vm.pending_request()
 	var player_map_id := String(runtime.get("playerMapId", ""))
-	return request != null and request.kind == InteractionRequest.ACKNOWLEDGE and request.payload.get("presentation") == "player-map" and request.payload.get("playerMapId") == player_map_id and request.payload.size() == 3 and content.world.player_map_by_id(player_map_id) != null and state.world.has_map(player_map_id)
+	var body: InteractionRequest.AcknowledgeBody = null
+	if request != null:
+		body = request.body as InteractionRequest.AcknowledgeBody
+	return request != null and request.kind == InteractionRequest.ACKNOWLEDGE and body != null and body.presentation == &"player-map" and body.player_map_id == player_map_id and body.has_presentation and body.has_player_map_id and not body.has_message_id and not body.has_journal_state and not body.has_sound_id and content.world.player_map_by_id(player_map_id) != null and state.world.has_map(player_map_id)
 
 
 static func _valid_reward_continuation(content: RealmzContent, state: GameState, reward: ClassicRewardState, request: InteractionRequest) -> bool:
@@ -3871,19 +3925,21 @@ static func _valid_reward_continuation(content: RealmzContent, state: GameState,
 		if String(character_id).is_empty() or state.party.character_by_id(String(character_id)) == null:
 			return false
 	if reward.phase == ClassicRewardState.ITEM_PHASE:
-		if request.kind != InteractionRequest.TREASURE_DISTRIBUTION:
+		var treasure_body := request.body as InteractionRequest.TreasureRequestBody
+		if request.kind != InteractionRequest.TREASURE_DISTRIBUTION or treasure_body == null:
 			return false
-		var expected_mode := "completion-confirmation" if reward.completion_pending else "ordinary"
-		if request.payload.get("mode") != expected_mode:
+		var expected_mode := &"completion-confirmation" if reward.completion_pending else &"ordinary"
+		if treasure_body.mode != expected_mode:
 			return false
 		var pending := reward.first_item()
-		var request_item: Variant = request.payload.get("item")
-		return request_item == null if pending == null else request_item is Dictionary and request_item.get("instanceId") == pending.id
+		return treasure_body.item == null if pending == null else treasure_body.item != null and treasure_body.item.instance_id == pending.id
 	if reward.phase == ClassicRewardState.LEVEL_PHASE:
-		return not reward.pending_level_result.is_empty() and request.kind == InteractionRequest.LEVEL_UP and request.payload.get("mode") == "result" and request.payload.get("characterId") == reward.pending_level_result.get("characterId")
+		var level_body := request.body as InteractionRequest.LevelUpRequestBody
+		return not reward.pending_level_result.is_empty() and request.kind == InteractionRequest.LEVEL_UP and level_body != null and level_body.mode == &"result" and level_body.character_id == reward.pending_level_result.get("characterId")
 	if reward.phase == ClassicRewardState.SPELL_PHASE:
 		var spell_ids := reward.spell_character_ids()
-		return reward.spell_index < spell_ids.size() and request.kind == InteractionRequest.LEVEL_UP and request.payload.get("mode") == "spell-selection" and request.payload.get("characterId") == spell_ids[reward.spell_index]
+		var level_body := request.body as InteractionRequest.LevelUpRequestBody
+		return reward.spell_index < spell_ids.size() and request.kind == InteractionRequest.LEVEL_UP and level_body != null and level_body.mode == &"spell-selection" and level_body.character_id == spell_ids[reward.spell_index]
 	return false
 
 

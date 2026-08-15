@@ -50,7 +50,7 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 			var event := DomainEvent.new(&"message_shown", {"messageId": message_id, "text": message.text, "source": "classic", "classicClick": action.operand_id > 0})
 			if action.operand_id > 0:
 				var journal_eligible := GameState.journal_message_id_is_valid(message_id)
-				var request := InteractionRequest.new(request_id, &"acknowledge", {
+				var request := InteractionRequest.from_payload(request_id, &"acknowledge", {
 					"prompt": message.text,
 					"messageId": message_id,
 					"presentation": "classic-textbox",
@@ -77,7 +77,7 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 				option_indexes.append(option_index)
 			if options.is_empty():
 				return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Simple Encounter %d has no remaining responses." % encounter.id)
-			var request := InteractionRequest.new(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text, "options": options, "canBackOut": encounter.can_back_out})
+			var request := InteractionRequest.from_payload(request_id, &"encounter_choice", {"encounterKind": "simple", "encounterId": encounter.id, "prompt": prompt.text, "options": options, "canBackOut": encounter.can_back_out})
 			return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-simple-encounter", "encounterId": encounter.id, "gosub": action.gosub, "optionIndexes": option_indexes})
 		5:
 			return _request_complex_encounter(action, request_id)
@@ -123,7 +123,7 @@ func execute_classic(action: ClassicActionDefinition, request_id: String, contex
 			_game_state.world.disable_trigger(trigger_id)
 			return ScenarioRuntimeOperationResult.completed(true, [DomainEvent.new(&"trigger_disabled", {"triggerId": trigger_id, "source": "classic"})])
 		26:
-			return ScenarioRuntimeOperationResult.waiting(InteractionRequest.new(request_id, &"acknowledge", {"prompt": "Continue", "soundId": 30005}), {"kind": "classic-acknowledge"})
+			return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": "Continue", "soundId": 30005}), {"kind": "classic-acknowledge"})
 		27:
 			return ScenarioRuntimeOperationResult.completed(null, [DomainEvent.new(&"picture_requested", {"pictureId": absi(action.operand_id), "source": "classic"})])
 		28:
@@ -593,7 +593,7 @@ func execute_safe(capability: String, arguments: Dictionary, request_id: String)
 				if not label is String:
 					return ScenarioRuntimeOperationResult.failed(&"invalid_action_arguments", "Choice option %d is not a string." % index)
 				options.append({"id": "choice:%d" % index, "label": label})
-			var request := InteractionRequest.new(request_id, &"scenario_choice", {"prompt": arguments["prompt"], "options": options})
+			var request := InteractionRequest.from_payload(request_id, &"scenario_choice", {"prompt": arguments["prompt"], "options": options})
 			return ScenarioRuntimeOperationResult.waiting(request, {"kind": "safe-choice", "optionCount": options.size()})
 		"core.state.read":
 			var state_identity := _state_identity(arguments)
@@ -612,14 +612,17 @@ func execute_safe(capability: String, arguments: Dictionary, request_id: String)
 
 
 func resume_safe(continuation: Dictionary, response: InteractionResponse, request_id: String = "") -> ScenarioRuntimeOperationResult:
+	if response == null or not response.is_supported_kind():
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The response payload does not match its interaction kind.")
 	match continuation.get("kind"):
 		"safe-age-updates":
 			return _resume_age_update_interactions(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		"safe-choice":
 			var option_count: int = int(continuation.get("optionCount", 0))
-			if response.kind != &"scenario_choice" or not response.payload.get("index") is int or response.payload["index"] < 0 or response.payload["index"] >= option_count:
+			var choice := response.body as InteractionResponse.ChoiceBody
+			if response.kind != &"scenario_choice" or choice == null or choice.index < 0 or choice.index >= option_count:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Scenario choice response must identify an available option.")
-			return ScenarioRuntimeOperationResult.completed(response.payload["index"])
+			return ScenarioRuntimeOperationResult.completed(choice.index)
 		"safe-combat":
 			return _resume_battle(continuation, response, request_id if not request_id.is_empty() else String(response.request_id))
 		"safe-combat-retreat-confirmation":
@@ -681,6 +684,8 @@ func request_available_bank(request_id: String) -> ScenarioRuntimeOperationResul
 
 
 func resume_classic(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
+	if response == null or not response.is_supported_kind():
+		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The response payload does not match its interaction kind.")
 	match continuation.get("kind"):
 		"classic-age-updates":
 			return _resume_age_update_interactions(continuation, response, request_id)
@@ -693,14 +698,10 @@ func resume_classic(continuation: Dictionary, response: InteractionResponse, req
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Acknowledgement response has the wrong kind.")
 			return ScenarioRuntimeOperationResult.completed(true)
 		"classic-textbox":
-			if response.kind != &"acknowledge":
+			var acknowledgement := response.body as InteractionResponse.AcknowledgeBody
+			if response.kind != &"acknowledge" or acknowledgement == null:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic textbox response must acknowledge the displayed message.")
-			for key: Variant in response.payload:
-				if key != "takeNote":
-					return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic textbox acknowledgement contains an unknown field.")
-			if response.payload.has("takeNote") and not response.payload["takeNote"] is bool:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic textbox take-note selection must be boolean.")
-			if not bool(response.payload.get("takeNote", false)):
+			if not acknowledgement.take_note:
 				return ScenarioRuntimeOperationResult.completed(true)
 			var message_id := int(continuation.get("messageId", -1))
 			if not GameState.journal_message_id_is_valid(message_id):
@@ -713,7 +714,8 @@ func resume_classic(continuation: Dictionary, response: InteractionResponse, req
 				events.append(DomainEvent.new(&"journal_entry_recorded", {"messageId": message_id}))
 			return ScenarioRuntimeOperationResult.completed(true, events)
 		"classic-player-map":
-			if response.kind != &"acknowledge" or not response.payload.is_empty():
+			var map_acknowledgement := response.body as InteractionResponse.AcknowledgeBody
+			if response.kind != &"acknowledge" or map_acknowledgement == null or map_acknowledgement.take_note:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic player-map display requires an empty acknowledgement response.")
 			var player_map_id := String(continuation.get("playerMapId", ""))
 			if _content.world.player_map_by_id(player_map_id) == null or not _game_state.world.has_map(player_map_id):
@@ -764,7 +766,7 @@ func _acquire_player_map(action: ClassicActionDefinition, request_id: String) ->
 	if action.operand_id >= 0:
 		events.append(DomainEvent.new(&"message_shown", {"text": "You gain a map, to view the map use Maps/Notes in the Menu.", "source": "classic-player-map"}))
 		return ScenarioRuntimeOperationResult.completed(definition.id, events)
-	var request := InteractionRequest.new(request_id, &"acknowledge", {"prompt": definition.name, "presentation": "player-map", "playerMapId": definition.id})
+	var request := InteractionRequest.from_payload(request_id, &"acknowledge", {"prompt": definition.name, "presentation": "player-map", "playerMapId": definition.id})
 	return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-player-map", "playerMapId": definition.id}, events)
 
 
@@ -788,7 +790,7 @@ func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, re
 
 
 func _resume_age_update_interactions(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if response.kind != InteractionRequest.AGE_UPDATE or not response.payload.is_empty():
+	if response.kind != InteractionRequest.AGE_UPDATE or not response.body is InteractionResponse.EmptyBody:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic age updates require an empty age-update acknowledgement.")
 	var updates: Variant = continuation.get("updates", [])
 	var index := int(continuation.get("index", -1))
@@ -810,15 +812,14 @@ func _resume_simple_encounter(continuation: Dictionary, response: InteractionRes
 	var encounter := _content.simple_encounter_by_id(int(continuation.get("encounterId", -1)))
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Simple Encounter is unavailable.")
-	if response.kind != &"encounter_choice":
+	var choice := response.body as InteractionResponse.ChoiceBody
+	if response.kind != &"encounter_choice" or choice == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Simple Encounter response has the wrong kind.")
-	if response.payload.get("cancelled", false) == true:
+	if choice.cancelled:
 		if not encounter.can_back_out:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Simple Encounter cannot be cancelled.")
 		return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "simple", "encounterId": encounter.id})], {"kind": "finish"})
-	if not _whole_number(response.payload.get("index")):
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Simple Encounter response must contain a choice index.")
-	var selected_index := int(response.payload["index"])
+	var selected_index := choice.index
 	var option_indexes: Variant = continuation.get("optionIndexes", [])
 	if option_indexes is Array and not option_indexes.is_empty():
 		if selected_index < 0 or selected_index >= option_indexes.size() or not _whole_number(option_indexes[selected_index]):
@@ -892,16 +893,17 @@ func _complex_encounter_request(encounter: ComplexEncounterDefinition, request_i
 			if spell != null and not seen_spells.has(spell.classic_id):
 				seen_spells[spell.classic_id] = true
 				spells.append({"classicSpellId": spell.classic_id, "name": spell.name})
-	return InteractionRequest.new(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text, "actions": actions, "characters": characters, "items": items, "spells": spells, "canBackOut": encounter.can_back_out})
+	return InteractionRequest.from_payload(request_id, &"complex_encounter", {"encounterKind": "complex", "encounterId": encounter.id, "prompt": prompt.text, "actions": actions, "characters": characters, "items": items, "spells": spells, "canBackOut": encounter.can_back_out})
 
 
 func _resume_complex_encounter(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var encounter := _content.complex_encounter_by_id(int(continuation.get("encounterId", -1)))
 	if encounter == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_encounter", "The pending Complex Encounter is unavailable.")
-	if response.kind != &"complex_encounter" or not response.payload.get("action") is String:
+	var selection := response.body as InteractionResponse.ComplexEncounterBody
+	if response.kind != &"complex_encounter" or selection == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex Encounter response requires an action.")
-	var action: String = response.payload["action"]
+	var action := String(selection.action)
 	var outcome := 0
 	var context: Dictionary = {"encounterKind": "complex", "encounterId": encounter.id, "responseKind": action}
 	var events: Array[DomainEvent] = []
@@ -911,26 +913,26 @@ func _resume_complex_encounter(continuation: Dictionary, response: InteractionRe
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "This Complex Encounter cannot be cancelled.")
 			return ScenarioRuntimeOperationResult.completed(false, [DomainEvent.new(&"encounter_cancelled", {"encounterKind": "complex", "encounterId": encounter.id})], {"kind": "finish"})
 		"choice":
-			if not _whole_number(response.payload.get("slot")):
+			if selection.slot < 0:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex action response requires an authored slot.")
-			var slot := int(response.payload["slot"])
+			var slot := selection.slot
 			var labels := encounter.action_labels()
 			if slot < 0 or slot >= labels.size() or labels[slot].strip_edges() in ["", "*"]:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex action slot is unavailable.")
 			outcome = encounter.action_result
 			context["optionSlot"] = slot
 		"word":
-			if not response.payload.get("word") is String:
+			if selection.word.is_empty():
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex word response requires text.")
-			outcome = _complex_word_outcome(encounter, response.payload["word"])
+			outcome = _complex_word_outcome(encounter, selection.word)
 		"spell":
-			if not _whole_number(response.payload.get("classicSpellId")):
+			if selection.classic_spell_id == 0:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex spell response requires a Classic spell ID.")
-			outcome = _complex_catalog_outcome(encounter.spell_ids(), encounter.spell_results(), int(response.payload["classicSpellId"]))
+			outcome = _complex_catalog_outcome(encounter.spell_ids(), encounter.spell_results(), selection.classic_spell_id)
 		"item":
-			if not _whole_number(response.payload.get("classicItemId")):
+			if selection.classic_item_id == 0:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex item response requires a Classic item ID.")
-			var item_id := int(response.payload["classicItemId"])
+			var item_id := selection.classic_item_id
 			if not _party_has_classic_item(absi(item_id)):
 				return ScenarioRuntimeOperationResult.failed(&"item_not_owned", "The party does not possess the selected Complex Encounter item.")
 			outcome = _complex_catalog_outcome(encounter.item_ids(), encounter.item_results(), item_id)
@@ -971,10 +973,11 @@ func _complex_catalog_outcome(ids: Array[int], results: Array[int], selected_id:
 
 func _resume_thief_encounter(encounter: ComplexEncounterDefinition, continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var thief_encounter := _content.thief_encounter_by_id(encounter.thief_success)
-	if thief_encounter == null or not _whole_number(response.payload.get("actionIndex")) or not response.payload.get("characterId") is String:
+	var selection := response.body as InteractionResponse.ComplexEncounterBody
+	if thief_encounter == null or selection == null or selection.action_index < 0 or selection.character_id.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter response requires an available action and character.")
-	var character := _game_state.party.character_by_id(response.payload["characterId"])
-	var action_index := int(response.payload["actionIndex"])
+	var character := _game_state.party.character_by_id(selection.character_id)
+	var action_index := selection.action_index
 	var flags := _game_state.thief_encounter_type_flags(thief_encounter)
 	if character == null or character.current_health <= 0 or action_index < 0 or action_index >= 8 or not flags[action_index]:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter action or character is unavailable.")
@@ -1052,7 +1055,7 @@ func _request_classic_choice(action: ClassicActionDefinition, request_id: String
 		no_label_value = _classic_choice_label(no_id)
 	if yes_label_value == null or no_label_value == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_option_label", "Classic opcode 3 references an unavailable option label.")
-	var request := InteractionRequest.new(request_id, &"yes_no", {"yesId": yes_id, "yesLabel": yes_label_value, "noId": no_id, "noLabel": no_label_value})
+	var request := InteractionRequest.from_payload(request_id, &"yes_no", {"yesId": yes_id, "yesLabel": yes_label_value, "noId": no_id, "noLabel": no_label_value})
 	return ScenarioRuntimeOperationResult.waiting(request, {"kind": "classic-choice", "values": action.extra_code.duplicate(), "gosub": action.gosub})
 
 
@@ -1069,12 +1072,13 @@ func _classic_choice_label(label_id: int) -> Variant:
 
 
 func _resume_classic_choice(continuation: Dictionary, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
-	if response.kind != &"yes_no" or response.payload.get("accepted") is not bool:
+	var body := response.body as InteractionResponse.YesNoBody
+	if response.kind != &"yes_no" or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic choice response requires an accepted bool.")
 	var values: Array = continuation.get("values", [])
 	if values.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_vm_continuation", "Classic choice continuation is malformed.")
-	var apply_result: bool = bool(response.payload["accepted"]) != (int(values[0]) != 0)
+	var apply_result: bool = body.accepted != (int(values[0]) != 0)
 	if not apply_result:
 		return ScenarioRuntimeOperationResult.completed(false)
 	match int(values[1]):
@@ -1098,13 +1102,14 @@ func _request_character_selection(action: ClassicActionDefinition, request_id: S
 	if eligible.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic character picker has no eligible party members.")
 	count = mini(count, eligible.size())
-	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.new(request_id, &"character_selection", {"count": count, "eligible": eligible, "allowDead": action.operand_id < 0}), {"kind": "classic-character-selection", "count": count, "allowDead": action.operand_id < 0, "invert": invert})
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": count, "eligible": eligible, "allowDead": action.operand_id < 0}), {"kind": "classic-character-selection", "count": count, "allowDead": action.operand_id < 0, "invert": invert})
 
 
 func _resume_character_selection(continuation: Dictionary, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
-	if response.kind != &"character_selection" or response.payload.get("characterIds") is not Array:
+	var body := response.body as InteractionResponse.SelectionBody
+	if response.kind != &"character_selection" or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Character selection response requires characterIds.")
-	var requested: Array = response.payload["characterIds"]
+	var requested: Array[String] = body.character_ids
 	if requested.size() != int(continuation.get("count", 0)):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Character selection returned the wrong number of characters.")
 	var picked: Array[String] = []
@@ -1139,13 +1144,14 @@ func _request_character_ability(action: ClassicActionDefinition, request_id: Str
 			eligible.append({"id": character.id, "name": character.name})
 	if eligible.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic ability check has no living party member.")
-	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.new(request_id, &"character_selection", {"count": 1, "eligible": eligible, "allowDead": false}), {"kind": "classic-character-ability", "values": action.extra_code.duplicate(), "gosub": action.gosub})
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": 1, "eligible": eligible, "allowDead": false}), {"kind": "classic-character-ability", "values": action.extra_code.duplicate(), "gosub": action.gosub})
 
 
 func _resume_character_ability(continuation: Dictionary, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
-	if response.kind != &"character_selection" or response.payload.get("characterIds") is not Array or response.payload["characterIds"].size() != 1 or not response.payload["characterIds"][0] is String:
+	var body := response.body as InteractionResponse.SelectionBody
+	if response.kind != &"character_selection" or body == null or body.character_ids.size() != 1:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic ability check requires one selected character.")
-	var character := _game_state.party.character_by_id(response.payload["characterIds"][0])
+	var character := _game_state.party.character_by_id(body.character_ids[0])
 	var values: Array = continuation.get("values", [])
 	if character == null or character.current_health <= 0 or values.size() < 5:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic ability check selected an unavailable character.")
@@ -1820,7 +1826,7 @@ func _shop_request(shop: ShopDefinition, request_id: String, accept_ranges: Arra
 					"identifyReason": identify_reason,
 				})
 		characters.append({"id": character.id, "name": character.name, "inventory": inventory})
-	return InteractionRequest.new(request_id, &"shop_action", {"shopId": shop.id, "inflationPercent": _game_state.shop_inflation(shop), "partyGold": party_gold, "identifyPrice": 20, "stock": stock, "characters": characters, "acceptRanges": accept_ranges.duplicate(), "actions": ["buy", "sell", "identify", "leave"]})
+	return InteractionRequest.from_payload(request_id, &"shop_action", {"shopId": shop.id, "inflationPercent": _game_state.shop_inflation(shop), "partyGold": party_gold, "identifyPrice": 20, "stock": stock, "characters": characters, "acceptRanges": accept_ranges.duplicate(), "actions": ["buy", "sell", "identify", "leave"]})
 
 
 func _shop_stock_view(item: ItemDefinition, stock_key: String, stock_index: int, quantity: int, shop: ShopDefinition) -> Dictionary:
@@ -1829,12 +1835,13 @@ func _shop_stock_view(item: ItemDefinition, stock_key: String, stock_index: int,
 
 
 func _resume_shop(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if response.kind != &"shop_action" or not response.payload.get("action") is String:
+	var body := response.body as InteractionResponse.ShopBody
+	if response.kind != &"shop_action" or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop response requires an action string.")
 	var shop := _content.shop_by_id(String(continuation.get("shopId", "")))
 	if shop == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_shop", "The pending shop is unavailable.")
-	var operation: String = response.payload["action"]
+	var operation := String(body.action)
 	if operation == "leave":
 		if _game_state.bank_available:
 			_rules.economy.pool_to_bank(_game_state.party)
@@ -1842,12 +1849,12 @@ func _resume_shop(continuation: Dictionary, response: InteractionResponse, reque
 	var events: Array[DomainEvent] = []
 	match operation:
 		"buy":
-			if not response.payload.get("characterId") is String:
+			if body.character_id.is_empty() or body.stock_key.is_empty():
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop buy requires stock identity and characterId.")
-			var stock_entry := _resolve_shop_stock(shop, response.payload)
+			var stock_entry := _resolve_shop_stock(shop, body.stock_key)
 			if stock_entry.is_empty() or int(stock_entry.get("quantity", 0)) < 1:
 				return ScenarioRuntimeOperationResult.failed(&"shop_item_unavailable", "The selected shop item is out of stock.")
-			var character := _game_state.party.character_by_id(response.payload["characterId"])
+			var character := _game_state.party.character_by_id(body.character_id)
 			var item := stock_entry.get("item") as ItemDefinition
 			if character == null or item == null or character.inventory().size() >= InventoryRules.MAX_ITEMS or character.carried_load + item.instance_weight(item.initial_charges) > character.maximum_load:
 				return ScenarioRuntimeOperationResult.failed(&"inventory_full", "The selected character cannot carry this item.")
@@ -1865,14 +1872,14 @@ func _resume_shop(continuation: Dictionary, response: InteractionResponse, reque
 				_game_state.set_shop_buyback_quantity(shop.id, item.id, int(stock_entry["quantity"]) - 1)
 			events.append(DomainEvent.new(&"shop_item_bought", {"shopId": shop.id, "itemId": item.id, "instanceId": instance.id, "characterId": character.id, "price": price}))
 		"sell":
-			if not response.payload.get("characterId") is String or not response.payload.get("instanceId") is String:
+			if body.character_id.is_empty() or body.instance_id.is_empty():
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop sell requires characterId and instanceId.")
-			var character := _game_state.party.character_by_id(response.payload["characterId"])
+			var character := _game_state.party.character_by_id(body.character_id)
 			if character == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_character", "The shop sale character is unavailable.")
 			var instance: ItemInstance = null
 			for candidate: ItemInstance in character.inventory():
-				if candidate.id == response.payload["instanceId"]:
+				if candidate.id == body.instance_id:
 					instance = candidate
 					break
 			if instance == null:
@@ -1898,14 +1905,14 @@ func _resume_shop(continuation: Dictionary, response: InteractionResponse, reque
 				_game_state.set_shop_buyback_quantity(shop.id, item.id, _game_state.shop_buyback_quantity(shop.id, item.id) + 1)
 			events.append(DomainEvent.new(&"shop_item_sold", {"shopId": shop.id, "itemId": item.id, "instanceId": instance.id, "characterId": character.id, "price": price}))
 		"identify":
-			if not response.payload.get("characterId") is String or not response.payload.get("instanceId") is String:
+			if body.character_id.is_empty() or body.instance_id.is_empty():
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Shop identification requires characterId and instanceId.")
-			var character := _game_state.party.character_by_id(response.payload["characterId"])
+			var character := _game_state.party.character_by_id(body.character_id)
 			if character == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_character", "The identification character is unavailable.")
 			var instance: ItemInstance = null
 			for candidate: ItemInstance in character.inventory():
-				if candidate.id == response.payload["instanceId"]:
+				if candidate.id == body.instance_id:
 					instance = candidate
 					break
 			if instance == null:
@@ -1925,8 +1932,7 @@ func _resume_shop(continuation: Dictionary, response: InteractionResponse, reque
 	return ScenarioRuntimeOperationResult.waiting(_shop_request(shop, request_id, ranges), continuation, events)
 
 
-func _resolve_shop_stock(shop: ShopDefinition, payload: Dictionary) -> Dictionary:
-	var stock_key := String(payload.get("stockKey", ""))
+func _resolve_shop_stock(shop: ShopDefinition, stock_key: String) -> Dictionary:
 	if stock_key.begins_with("base:"):
 		var index_text := stock_key.trim_prefix("base:")
 		if not index_text.is_valid_int():
@@ -1940,11 +1946,6 @@ func _resolve_shop_stock(shop: ShopDefinition, payload: Dictionary) -> Dictionar
 		var item_id := stock_key.trim_prefix("buyback:")
 		var quantity := _game_state.shop_buyback_quantity(shop.id, item_id)
 		return {} if quantity < 1 else {"kind": "buyback", "index": -1, "item": _content.item_by_id(item_id), "quantity": quantity}
-	if _whole_number(payload.get("stockIndex")):
-		var index := int(payload["stockIndex"])
-		var item_ids := shop.item_ids()
-		if index >= 0 and index < item_ids.size():
-			return {"kind": "base", "index": index, "item": _content.item_by_id(item_ids[index]), "quantity": _game_state.shop_quantity(shop, index)}
 	return {}
 
 
@@ -2025,7 +2026,7 @@ func _temple_request(cost_percent: int, request_id: String, selected_character_i
 			"portraitId": character.portrait_id,
 			"conditions": conditions,
 		})
-	return InteractionRequest.new(request_id, InteractionRequest.TEMPLE, {
+	return InteractionRequest.from_payload(request_id, InteractionRequest.TEMPLE, {
 		"costPercent": cost_percent,
 		"characters": characters,
 		"services": _rules.temple.service_rows(cost_percent),
@@ -2037,15 +2038,16 @@ func _temple_request(cost_percent: int, request_id: String, selected_character_i
 
 
 func _resume_temple(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if response.kind != InteractionRequest.TEMPLE or not response.payload.get("action") is String:
+	var body := response.body as InteractionResponse.TempleBody
+	if response.kind != InteractionRequest.TEMPLE or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Temple response requires an action.")
-	var operation: String = response.payload["action"]
+	var operation := String(body.action)
 	var cost_percent := int(continuation.get("costPercent", 100))
 	var next_continuation := continuation.duplicate(true)
-	if response.payload.has("selectedCharacterId"):
-		if not response.payload["selectedCharacterId"] is String or _game_state.party.character_by_id(String(response.payload["selectedCharacterId"])) == null:
+	if not body.character_id.is_empty():
+		if _game_state.party.character_by_id(body.character_id) == null:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_character", "The selected temple character is unavailable.")
-		next_continuation["selectedCharacterId"] = response.payload["selectedCharacterId"]
+		next_continuation["selectedCharacterId"] = body.character_id
 	match operation:
 		"leave":
 			if bool(continuation.get("bankAvailable", false)):
@@ -2083,15 +2085,15 @@ func _resume_temple(continuation: Dictionary, response: InteractionResponse, req
 				DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-temple-share"}),
 			])
 		"service":
-			return _apply_temple_service(next_continuation, response, request_id)
+			return _apply_temple_service(next_continuation, body, request_id)
 	return ScenarioRuntimeOperationResult.failed(&"unknown_temple_action", "Temple action '%s' is unavailable." % operation)
 
 
-func _apply_temple_service(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if not response.payload.get("characterId") is String or not response.payload.get("serviceId") is String:
+func _apply_temple_service(continuation: Dictionary, body: InteractionResponse.TempleBody, request_id: String) -> ScenarioRuntimeOperationResult:
+	if body.character_id.is_empty() or body.service_id.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Temple service requires characterId and serviceId.")
-	var character := _game_state.party.character_by_id(response.payload["characterId"])
-	var service_id := StringName(response.payload["serviceId"])
+	var character := _game_state.party.character_by_id(body.character_id)
+	var service_id := StringName(body.service_id)
 	if character == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_character", "Temple service target is unavailable.")
 	if not TempleRules.SERVICE_IDS.has(service_id):
@@ -2113,9 +2115,10 @@ func _apply_temple_service(continuation: Dictionary, response: InteractionRespon
 
 
 func _resume_temple_exit(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if response.kind != InteractionRequest.YES_NO or response.payload.get("accepted") is not bool:
+	var body := response.body as InteractionResponse.YesNoBody
+	if response.kind != InteractionRequest.YES_NO or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Temple exit requires a yes/no response.")
-	if response.payload["accepted"]:
+	if body.accepted:
 		return ScenarioRuntimeOperationResult.waiting(
 			_temple_request(int(continuation.get("costPercent", 100)), request_id, String(continuation.get("selectedCharacterId", ""))),
 			{"kind": "classic-temple", "costPercent": int(continuation.get("costPercent", 100)), "bankAvailable": false, "selectedCharacterId": String(continuation.get("selectedCharacterId", ""))},
@@ -2175,7 +2178,7 @@ func _bank_request(request_id: String, selected_character_id: String = "") -> In
 		})
 	if selected_character_id.is_empty() and not characters.is_empty():
 		selected_character_id = String(characters[0]["id"])
-	return InteractionRequest.new(request_id, InteractionRequest.BANK, {
+	return InteractionRequest.from_payload(request_id, InteractionRequest.BANK, {
 		"selectedCharacterId": selected_character_id,
 		"pooledWealth": _game_state.party.pooled_wealth.to_data(),
 		"bankedWealth": _game_state.party.banked_wealth.to_data(),
@@ -2187,15 +2190,16 @@ func _bank_request(request_id: String, selected_character_id: String = "") -> In
 
 
 func _resume_banking(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if response.kind != InteractionRequest.BANK or not response.payload.get("action") is String:
+	var body := response.body as InteractionResponse.BankBody
+	if response.kind != InteractionRequest.BANK or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Bank response requires an action.")
-	var action: String = response.payload["action"]
+	var action := String(body.action)
 	if action == "leave":
 		return ScenarioRuntimeOperationResult.completed(true, [
 			DomainEvent.new(&"bank_closed", {"pooledWealthReturnedToBank": false}),
 			DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-bank-swap-done"}),
 		])
-	var selected_character_id := String(response.payload.get("characterId", response.payload.get("selectedCharacterId", "")))
+	var selected_character_id := body.character_id
 	var events: Array[DomainEvent] = []
 	match action:
 		"pool":
@@ -2221,14 +2225,14 @@ func _resume_banking(continuation: Dictionary, response: InteractionResponse, re
 			events.append(DomainEvent.new(&"wealth_shared", {"source": "classic-bank", "remaining": _game_state.party.pooled_wealth.to_data()}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-bank-share"}))
 		"to-pool", "to-character":
-			if not response.payload.get("characterId") is String or not response.payload.get("denomination") is String or not _whole_number(response.payload.get("amount")):
+			if body.character_id.is_empty() or body.denomination.is_empty() or body.amount < 1:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Bank-backed Swap requires character, denomination, and amount.")
 			var movement_error := _money_movement_context_error()
 			if not movement_error.is_empty():
 				return ScenarioRuntimeOperationResult.failed(&"invalid_money_context", movement_error)
-			var character := _game_state.party.character_by_id(response.payload["characterId"])
-			var kind := _wealth_kind(response.payload["denomination"])
-			var amount := int(response.payload["amount"])
+			var character := _game_state.party.character_by_id(body.character_id)
+			var kind := _wealth_kind(body.denomination)
+			var amount := body.amount
 			if character == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_character", "The selected bank character is unavailable.")
 			if kind < 0:
@@ -2243,7 +2247,7 @@ func _resume_banking(continuation: Dictionary, response: InteractionResponse, re
 			if not transferred:
 				return ScenarioRuntimeOperationResult.failed(&"money_action_unavailable", "The selected bank transfer is no longer available.")
 			_recalculate_party_movement()
-			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-bank", "characterId": character.id, "direction": action, "kind": response.payload["denomination"], "amount": amount}))
+			events.append(DomainEvent.new(&"wealth_transferred", {"source": "classic-bank", "characterId": character.id, "direction": action, "kind": body.denomination, "amount": amount}))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if to_character else 663, "waitForCompletion": false, "source": "classic-bank-swap"}))
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"unknown_bank_action", "Bank action '%s' is unavailable." % action)
@@ -2430,7 +2434,8 @@ func _start_battle_definition(battle: BattleDefinition, request_id: String, sour
 
 
 func _resume_battle(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if response.kind != &"combat_action" or not response.payload.get("actorId") is String or not response.payload.get("action") is String or response.payload.get("targetId", "") is not String:
+	var body := response.body as InteractionResponse.CombatBody
+	if response.kind != &"combat_action" or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat response requires actorId, action, and optional targetId strings.")
 	if _game_state.combat == null or _game_state.combat.battle_id != continuation.get("battleId"):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The pending battle is unavailable.")
@@ -2439,19 +2444,19 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 	if caller.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The pending battle lost its originating caller.")
 	var result: CombatFlowResult
-	if response.payload["action"] == "set_auto":
-		if response.payload.get("enabled") is not bool or _game_state.party.character_by_id(response.payload["actorId"]) == null:
+	if body.action == &"set_auto":
+		if _game_state.party.character_by_id(body.actor_id) == null:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Persistent Auto requires a party character and an enabled boolean.")
 		var auto_state_checkpoint := _game_state.to_data()
 		var auto_rng_checkpoint := _rng.checkpoint()
-		if not _game_state.set_combat_auto(response.payload["actorId"], response.payload["enabled"]):
+		if not _game_state.set_combat_auto(body.actor_id, body.enabled):
 			return ScenarioRuntimeOperationResult.failed(&"invalid_combat_auto_character", "Persistent Auto could not be changed for this character.")
-		var toggle_sound := 147 if response.payload["enabled"] else 139
+		var toggle_sound := 147 if body.enabled else 139
 		var auto_events: Array[DomainEvent] = [
 			DomainEvent.new(&"sound_requested", {"soundId": toggle_sound, "waitForCompletion": false, "source": "classic-combat-auto-toggle"}),
-			DomainEvent.new(&"combat_auto_changed", {"characterId": response.payload["actorId"], "enabled": response.payload["enabled"], "source": "classic"}),
+			DomainEvent.new(&"combat_auto_changed", {"characterId": body.actor_id, "enabled": body.enabled, "source": "classic"}),
 		]
-		if not response.payload["enabled"] or _game_state.combat.active_actor_id() != response.payload["actorId"]:
+		if not body.enabled or _game_state.combat.active_actor_id() != body.actor_id:
 			return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), continuation, auto_events)
 		auto_events.append(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
 		result = _rules.combat_flow.run_persistent_auto_characters(_game_state, _content, _rng)
@@ -2464,70 +2469,44 @@ func _resume_battle(continuation: Dictionary, response: InteractionResponse, req
 			combined_events.append_array(auto_events)
 			combined_events.append_array(result.events)
 			result.events = combined_events
-	elif response.payload["action"] == "retreat":
-		var retreat_probe: Variant = _rules.combat_flow.probe_character_retreat(_game_state.combat, _game_state.party.characters(), response.payload["actorId"])
+	elif body.action == &"retreat":
+		var retreat_probe: Variant = _rules.combat_flow.probe_character_retreat(_game_state.combat, _game_state.party.characters(), body.actor_id)
 		if not retreat_probe.allowed:
 			return ScenarioRuntimeOperationResult.failed(retreat_probe.reason, retreat_probe.reason_text)
-		return _wait_for_battle_retreat(continuation, response.payload["actorId"], &"explicit", Vector2i(-100_000, -100_000), request_id)
-	elif response.payload["action"] == "retreat_edge":
-		var edge_destination := _combat_destination(response.payload.get("destination"))
-		var edge_probe: Variant = _rules.combat_flow.probe_edge_retreat(_game_state.combat, response.payload["actorId"], edge_destination)
+		return _wait_for_battle_retreat(continuation, body.actor_id, &"explicit", Vector2i(-100_000, -100_000), request_id)
+	elif body.action == &"retreat_edge":
+		var edge_destination := body.destination if body.has_destination else CombatFlow.INVALID_COORDINATE
+		var edge_probe: Variant = _rules.combat_flow.probe_edge_retreat(_game_state.combat, body.actor_id, edge_destination)
 		if not edge_probe.allowed:
 			return ScenarioRuntimeOperationResult.failed(edge_probe.reason, edge_probe.reason_text)
 		if not edge_probe.forced:
-			return _wait_for_battle_retreat(continuation, response.payload["actorId"], &"edge", edge_destination, request_id)
-		result = _rules.combat_flow.retreat_character(_game_state, _content, response.payload["actorId"], &"edge", edge_destination, _rng)
-	elif response.payload["action"] == "move":
-		var destination := _combat_destination(response.payload.get("destination"))
-		if destination == Vector2i(-100_000, -100_000):
+			return _wait_for_battle_retreat(continuation, body.actor_id, &"edge", edge_destination, request_id)
+		result = _rules.combat_flow.retreat_character(_game_state, _content, body.actor_id, &"edge", edge_destination, _rng)
+	elif body.action == &"move":
+		if not body.has_destination:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat movement requires a two-integer destination.")
-		var auto_switch_to_melee: Variant = response.payload.get("autoSwitchToMelee", false)
-		if not auto_switch_to_melee is bool:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat movement's Auto Switch preference must be boolean.")
-		result = _rules.combat_flow.move_character(_game_state, _content, response.payload["actorId"], destination, _rng, auto_switch_to_melee)
-	elif response.payload["action"] == "cast_spell":
-		if response.payload.get("spellId") is not String or response.payload["spellId"].is_empty() or response.payload.get("power") is not int:
+		result = _rules.combat_flow.move_character(_game_state, _content, body.actor_id, body.destination, _rng, body.auto_switch_to_melee)
+	elif body.action == &"cast_spell":
+		if body.spell_id.is_empty():
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat spell casting requires a spellId string and integer power.")
-		var target_coordinate := _combat_destination(response.payload.get("targetCoordinate")) if response.payload.has("targetCoordinate") else CombatFlow.INVALID_COORDINATE
-		var rotation: Variant = response.payload.get("rotation", 0)
-		if not rotation is int:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat spell rotation must be an integer.")
-		var target_ids: Array[String] = []
-		var raw_target_ids: Variant = response.payload.get("targetIds", [])
-		if not raw_target_ids is Array:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Repeated combat spell targets must be an ordered array.")
-		for target_id: Variant in raw_target_ids:
-			if not target_id is String:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Every repeated combat spell target must be a stable string ID.")
-			target_ids.append(target_id)
-		result = _rules.combat_flow.cast_spell(_game_state, _content, response.payload["actorId"], response.payload.get("targetId", ""), response.payload["spellId"], response.payload["power"], _rng, target_coordinate, int(rotation), target_ids)
-	elif response.payload["action"] == "use_item":
-		if response.payload.get("itemInstanceId") is not String or response.payload["itemInstanceId"].is_empty():
+		var target_coordinate := body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE
+		result = _rules.combat_flow.cast_spell(_game_state, _content, body.actor_id, body.target_id, body.spell_id, body.power, _rng, target_coordinate, body.rotation, body.target_ids)
+	elif body.action == &"use_item":
+		if body.item_instance_id.is_empty():
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat item use requires an itemInstanceId string.")
-		result = _rules.combat_flow.use_spell_item(_game_state, _content, response.payload["actorId"], response.payload.get("targetId", ""), response.payload["itemInstanceId"], _rng)
-	elif response.payload["action"] == "use_scroll":
-		if response.payload.get("scrollSlot") is not int:
+		result = _rules.combat_flow.use_spell_item(_game_state, _content, body.actor_id, body.target_id, body.item_instance_id, _rng)
+	elif body.action == &"use_scroll":
+		if body.scroll_slot < 0:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat scroll use requires an integer scrollSlot.")
-		var scroll_target_coordinate := _combat_destination(response.payload.get("targetCoordinate")) if response.payload.has("targetCoordinate") else CombatFlow.INVALID_COORDINATE
-		var scroll_rotation: Variant = response.payload.get("rotation", 0)
-		if not scroll_rotation is int:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat scroll rotation must be an integer.")
-		var scroll_target_ids: Array[String] = []
-		var raw_target_ids: Variant = response.payload.get("targetIds", [])
-		if not raw_target_ids is Array:
-			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Repeated combat scroll targets must be an ordered array.")
-		for target_id: Variant in raw_target_ids:
-			if not target_id is String:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Every repeated combat scroll target must be a stable string ID.")
-			scroll_target_ids.append(target_id)
-		result = _rules.combat_flow.use_combat_scroll(_game_state, _content, response.payload["actorId"], response.payload["scrollSlot"], response.payload.get("targetId", ""), _rng, scroll_target_coordinate, int(scroll_rotation), scroll_target_ids)
+		var scroll_target_coordinate := body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE
+		result = _rules.combat_flow.use_combat_scroll(_game_state, _content, body.actor_id, body.scroll_slot, body.target_id, _rng, scroll_target_coordinate, body.rotation, body.target_ids)
 	else:
-		result = _rules.combat_flow.submit_action(_game_state, _content, response.payload["actorId"], StringName(response.payload["action"]), response.payload.get("targetId", ""), _rng)
+		result = _rules.combat_flow.submit_action(_game_state, _content, body.actor_id, body.action, body.target_id, _rng)
 	if not result.ok:
-		if response.payload["action"] == "move" and result.error_code == &"melee_weapon_mode_required":
+		if body.action == &"move" and result.error_code == &"melee_weapon_mode_required":
 			var warning_events: Array[DomainEvent] = [
 				DomainEvent.new(&"sound_requested", {"soundId": 6000, "waitForCompletion": false, "source": "classic-auto-weapon-switch-warning"}),
-				DomainEvent.new(&"combat_action_unavailable", {"actorId": response.payload["actorId"], "action": "move", "reason": String(result.error_code), "message": result.error_message, "source": "classic"}),
+				DomainEvent.new(&"combat_action_unavailable", {"actorId": body.actor_id, "action": "move", "reason": String(result.error_code), "message": result.error_message, "source": "classic"}),
 			]
 			return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), continuation, warning_events)
 		return ScenarioRuntimeOperationResult.failed(result.error_code, result.error_message)
@@ -2552,7 +2531,8 @@ func _wait_for_battle_retreat(continuation: Dictionary, actor_id: String, mode: 
 
 
 func _resume_battle_retreat(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if response.kind != InteractionRequest.YES_NO or response.payload.get("accepted") is not bool:
+	var body := response.body as InteractionResponse.YesNoBody
+	if response.kind != InteractionRequest.YES_NO or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Escape confirmation requires a yes/no response.")
 	if _game_state.combat == null or _game_state.combat.completed or _game_state.combat.battle_id != continuation.get("battleId") or _game_state.combat.active_actor_id() != continuation.get("actorId"):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The character awaiting Escape confirmation is unavailable.")
@@ -2565,7 +2545,7 @@ func _resume_battle_retreat(continuation: Dictionary, response: InteractionRespo
 	var probe: Variant = _rules.combat_flow.probe_character_retreat(_game_state.combat, _game_state.party.characters(), continuation["actorId"]) if mode == &"explicit" else _rules.combat_flow.probe_edge_retreat(_game_state.combat, continuation["actorId"], destination) if mode == &"edge" else null
 	if probe == null or not probe.allowed or probe.forced:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The saved Escape confirmation no longer represents a promptable Classic action.")
-	if not response.payload["accepted"]:
+	if not body.accepted:
 		return ScenarioRuntimeOperationResult.waiting(_combat_request(request_id), {"kind": source_kind, "battleId": continuation["battleId"], "battleCaller": caller}, [DomainEvent.new(&"combat_retreat_declined", {"actorId": continuation["actorId"], "mode": continuation["mode"], "source": "classic"})])
 	var previous_round := _game_state.combat.round_number
 	var result := _rules.combat_flow.retreat_character(_game_state, _content, continuation["actorId"], mode, destination, _rng)
@@ -2602,7 +2582,7 @@ func _finish_battle_with_allies(source_kind: String, caller: Dictionary, request
 		return ScenarioRuntimeOperationResult.suspended({"kind": "party-defeat", "battleId": combat.battle_id, "sourceKind": source_kind, "caller": caller.duplicate(true)}, events)
 	var payload := _rules.combat_flow.ally_selection_payload(_game_state, _content)
 	if not payload.is_empty():
-		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.new(request_id, &"ally_selection", payload), {
+		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"ally_selection", payload), {
 			"kind": "%s-ally-selection" % source_kind,
 			"sourceKind": source_kind,
 			"battleId": combat.battle_id,
@@ -2617,7 +2597,7 @@ func _finish_battle_with_fumbles(source_kind: String, caller: Dictionary, reques
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Post-battle fumbled-weapon recovery requires a completed battle.")
 	var payload := _rules.combat_flow.fumble_recovery_payload(_game_state, _content)
 	if not payload.is_empty():
-		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.new(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload), {
+		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload), {
 			"kind": "%s-fumble-recovery" % source_kind,
 			"sourceKind": source_kind,
 			"battleId": combat.battle_id,
@@ -2629,13 +2609,14 @@ func _finish_battle_with_fumbles(source_kind: String, caller: Dictionary, reques
 
 
 func _resume_ally_selection(continuation: Dictionary, response: InteractionResponse) -> ScenarioRuntimeOperationResult:
-	if response.kind != &"ally_selection" or not response.payload.has("selectedIds"):
+	var body := response.body as InteractionResponse.AllySelectionBody
+	if response.kind != &"ally_selection" or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Ally selection requires selectedIds.")
 	if _game_state.combat == null or not _game_state.combat.completed or _game_state.combat.battle_id != continuation.get("battleId"):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The completed battle is unavailable for ally selection.")
 	if _rules.combat_flow.ally_selection_payload(_game_state, _content).is_empty():
 		return _finish_battle_with_fumbles(String(continuation.get("sourceKind", "classic-combat")), _battle_caller(continuation), String(response.request_id), [])
-	var selected := _rules.combat_flow.apply_ally_selection(_game_state, _content, response.payload["selectedIds"])
+	var selected := _rules.combat_flow.apply_ally_selection(_game_state, _content, body.selected_ids)
 	if not selected.ok:
 		return ScenarioRuntimeOperationResult.failed(selected.error_code, selected.error_message)
 	var events: Array[DomainEvent] = []
@@ -2644,11 +2625,12 @@ func _resume_ally_selection(continuation: Dictionary, response: InteractionRespo
 
 
 func _resume_fumble_recovery(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION:
+	var body := response.body as InteractionResponse.TreasureBody
+	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Fumbled-weapon recovery requires a treasure-distribution response.")
 	if _game_state.combat == null or not _game_state.combat.completed or _game_state.combat.battle_id != continuation.get("battleId"):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The completed battle is unavailable for fumbled-weapon recovery.")
-	var recovered := _rules.combat_flow.apply_fumble_recovery(_game_state, _content, response.payload)
+	var recovered := _rules.combat_flow.apply_fumble_recovery(_game_state, _content, body.action, body.instance_id, body.character_id)
 	if not recovered.ok:
 		return ScenarioRuntimeOperationResult.failed(recovered.error_code, recovered.error_message)
 	var events: Array[DomainEvent] = []
@@ -2828,7 +2810,7 @@ func _wait_for_combat_age_updates(source_kind: String, caller: Dictionary, reque
 
 
 func _resume_combat_age_updates(continuation: Dictionary, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if response.kind != InteractionRequest.AGE_UPDATE or not response.payload.is_empty():
+	if response.kind != InteractionRequest.AGE_UPDATE or response.body is not InteractionResponse.EmptyBody:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Classic combat age updates require an empty acknowledgement.")
 	if _game_state.combat == null or _game_state.combat.battle_id != continuation.get("battleId") or _game_state.combat.pending_monster_attack == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The monster age-update battle is unavailable.")
@@ -2981,7 +2963,7 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var turn_targets: Array[Dictionary] = []
 	for target: MonsterView in combat_view.turn_undead_targets:
 		turn_targets.append({"id": target.id, "name": target.name, "hitDice": target.hit_dice, "magicResistance": target.magic_resistance})
-	return InteractionRequest.new(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "enemiesRemaining": enemies_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "combatants": combatants, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason, "fastSpells": fast_spells, "itemCasts": item_casts, "itemCastReason": item_cast_reason, "scrollCasts": scroll_casts, "scrollCastReason": scroll_cast_reason, "autoTurn": {"enabled": combat_view.auto_turn.enabled, "reason": combat_view.auto_turn.reason}, "autoCharacterIds": combat_view.auto_character_ids.duplicate(), "delay": {"enabled": combat_view.delay.enabled, "reason": combat_view.delay.reason}, "bandage": {"enabled": combat_view.bandage.enabled, "reason": combat_view.bandage.reason, "targets": bandage_targets}, "turnUndead": {"enabled": combat_view.turn_undead.enabled, "reason": combat_view.turn_undead.reason, "targets": turn_targets}, "undo": {"enabled": combat_view.undo.enabled, "reason": combat_view.undo.reason}})
+	return InteractionRequest.from_payload(request_id, &"combat_action", {"battleId": combat_view.battle_id, "round": combat_view.round_number, "actorId": combat_view.active_actor_id, "attackUnitsRemaining": combat_view.attack_units_remaining, "movementRemaining": combat_view.movement_remaining, "enemiesRemaining": enemies_remaining, "actions": actions, "weaponMode": String(combat_view.weapon_mode), "weaponSwitch": weapon_switch, "rangedAttack": ranged_attack, "retreat": retreat, "meleeAttackReason": combat_view.melee_attack_unavailable_reason, "targets": targets, "combatants": combatants, "movement": movement, "spellCasts": spell_casts, "spellCastReason": spell_cast_reason, "fastSpells": fast_spells, "itemCasts": item_casts, "itemCastReason": item_cast_reason, "scrollCasts": scroll_casts, "scrollCastReason": scroll_cast_reason, "autoTurn": {"enabled": combat_view.auto_turn.enabled, "reason": combat_view.auto_turn.reason}, "autoCharacterIds": combat_view.auto_character_ids.duplicate(), "delay": {"enabled": combat_view.delay.enabled, "reason": combat_view.delay.reason}, "bandage": {"enabled": combat_view.bandage.enabled, "reason": combat_view.bandage.reason, "targets": bandage_targets}, "turnUndead": {"enabled": combat_view.turn_undead.enabled, "reason": combat_view.turn_undead.reason, "targets": turn_targets}, "undo": {"enabled": combat_view.undo.enabled, "reason": combat_view.undo.reason}})
 
 
 static func _character_combatant_payload(character: CharacterView) -> Dictionary:
@@ -3177,7 +3159,7 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 		return _reward_spell_request(reward, request_id)
 	if reward.completion_pending:
 		var summary := "%d unclaimed item%s and %d gold, %d gems, %d jewelry will be left behind." % [reward.items().size(), "" if reward.items().size() == 1 else "s", _game_state.party.pooled_wealth.gold, _game_state.party.pooled_wealth.gems, _game_state.party.pooled_wealth.jewelry]
-		return InteractionRequest.new(request_id, InteractionRequest.TREASURE_DISTRIBUTION, {"mode": "completion-confirmation", "prompt": "Leave the remaining treasure behind?", "summary": summary})
+		return InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, {"mode": "completion-confirmation", "prompt": "Leave the remaining treasure behind?", "summary": summary})
 	var pending := reward.first_item()
 	var item_payload: Variant = null
 	if pending != null:
@@ -3222,7 +3204,7 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 		has_share_capacity = has_share_capacity or character.carried_load < character.maximum_load
 	var detect_rows := _reward_caster_rows(63, 5)
 	var identify_rows := _reward_caster_rows(48, 25)
-	return InteractionRequest.new(request_id, InteractionRequest.TREASURE_DISTRIBUTION, {
+	return InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, {
 		"mode": "ordinary",
 		"prompt": "Distribute the treasure, then choose Done.",
 		"origin": String(reward.origin),
@@ -3249,9 +3231,10 @@ func _resume_reward(continuation: Dictionary, response: InteractionResponse, req
 		return _resume_reward_level(reward, response, request_id)
 	if reward.phase == ClassicRewardState.SPELL_PHASE:
 		return _resume_reward_spells(reward, response, request_id)
-	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION or not response.payload.get("action") is String:
+	var body := response.body as InteractionResponse.TreasureBody
+	if response.kind != InteractionRequest.TREASURE_DISTRIBUTION or body == null:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Treasure distribution requires a typed action.")
-	var action: String = response.payload["action"]
+	var action := String(body.action)
 	var events: Array[DomainEvent] = []
 	if reward.completion_pending:
 		if action == "cancel-completion":
@@ -3269,13 +3252,13 @@ func _resume_reward(continuation: Dictionary, response: InteractionResponse, req
 		return _begin_reward_progression(reward, request_id, events)
 	match action:
 		"assign":
-			var mutation := _assign_reward_item(reward, response.payload)
+			var mutation := _assign_reward_item(reward, body)
 			if not mutation.is_empty():
 				return ScenarioRuntimeOperationResult.failed(StringName(mutation["code"]), mutation["message"])
-			events.append(DomainEvent.new(&"reward_item_assigned", {"instanceId": response.payload.get("instanceId"), "characterId": response.payload.get("characterId")}))
+			events.append(DomainEvent.new(&"reward_item_assigned", {"instanceId": body.instance_id, "characterId": body.character_id}))
 		"discard":
 			var pending := reward.first_item()
-			if pending == null or response.payload.get("instanceId") != pending.id or reward.remove_item(pending.id) == null:
+			if pending == null or body.instance_id != pending.id or reward.remove_item(pending.id) == null:
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The item being left behind is not the current reward item.")
 			events.append(DomainEvent.new(&"reward_item_left", {"instanceId": pending.id, "itemId": pending.definition_id}))
 		"pool":
@@ -3301,16 +3284,16 @@ func _resume_reward(continuation: Dictionary, response: InteractionResponse, req
 			events.append(DomainEvent.new(&"reward_wealth_shared", _game_state.party.pooled_wealth.to_data()))
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": 128, "waitForCompletion": false, "source": "classic-reward-share"}))
 		"transfer":
-			var transfer_error := _transfer_reward_wealth(response.payload)
+			var transfer_error := _transfer_reward_wealth(body)
 			if not transfer_error.is_empty():
 				return ScenarioRuntimeOperationResult.failed(StringName(transfer_error["code"]), transfer_error["message"])
-			events.append(DomainEvent.new(&"reward_wealth_transferred", response.payload))
-			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if response.payload.get("direction") == "to-character" else 663, "waitForCompletion": false, "source": "classic-reward-swap"}))
+			events.append(DomainEvent.new(&"reward_wealth_transferred", body.to_data()))
+			events.append(DomainEvent.new(&"sound_requested", {"soundId": 10051 if body.direction == &"to-character" else 663, "waitForCompletion": false, "source": "classic-reward-swap"}))
 		"detect", "identify":
-			var detection_error := _apply_reward_detection(reward, action, response.payload)
+			var detection_error := _apply_reward_detection(reward, action, body)
 			if not detection_error.is_empty():
 				return ScenarioRuntimeOperationResult.failed(StringName(detection_error["code"]), detection_error["message"])
-			events.append(DomainEvent.new(&"reward_magic_%s" % ("detected" if action == "detect" else "identified"), {"characterId": response.payload.get("characterId")}))
+			events.append(DomainEvent.new(&"reward_magic_%s" % ("detected" if action == "detect" else "identified"), {"characterId": body.character_id}))
 		"done":
 			if not reward.items().is_empty() or _reward_has_pooled_wealth():
 				reward.completion_pending = true
@@ -3321,13 +3304,13 @@ func _resume_reward(continuation: Dictionary, response: InteractionResponse, req
 	return _wait_for_reward(reward, request_id, events)
 
 
-func _assign_reward_item(reward: ClassicRewardState, payload: Dictionary) -> Dictionary:
-	if not payload.get("instanceId") is String or not payload.get("characterId") is String:
+func _assign_reward_item(reward: ClassicRewardState, body: InteractionResponse.TreasureBody) -> Dictionary:
+	if body.instance_id.is_empty() or body.character_id.is_empty():
 		return {"code": "invalid_interaction_response", "message": "Treasure assignment requires item and character IDs."}
 	var pending := reward.first_item()
-	var character := _game_state.party.character_by_id(payload["characterId"])
+	var character := _game_state.party.character_by_id(body.character_id)
 	var definition: ItemDefinition = null if pending == null else _content.item_by_id(pending.definition_id)
-	if pending == null or pending.id != payload["instanceId"] or character == null or definition == null or not _rules.inventory.can_restore_item(character, pending, definition):
+	if pending == null or pending.id != body.instance_id or character == null or definition == null or not _rules.inventory.can_restore_item(character, pending, definition):
 		return {"code": "reward_assignment_unavailable", "message": "The selected character cannot receive the pending item."}
 	if not _rules.inventory.restore_item(character, pending, definition):
 		return {"code": "reward_assignment_failed", "message": "The item assignment could not be committed."}
@@ -3339,26 +3322,26 @@ func _assign_reward_item(reward: ClassicRewardState, payload: Dictionary) -> Dic
 	return {}
 
 
-func _transfer_reward_wealth(payload: Dictionary) -> Dictionary:
-	if not payload.get("characterId") is String or not payload.get("direction") is String or not payload.get("kind") is String or not payload.get("amount") is int:
+func _transfer_reward_wealth(body: InteractionResponse.TreasureBody) -> Dictionary:
+	if body.character_id.is_empty() or body.direction.is_empty() or body.wealth_kind.is_empty() or body.amount < 1:
 		return {"code": "invalid_interaction_response", "message": "Treasure transfer requires character, direction, denomination, and amount."}
-	var character := _game_state.party.character_by_id(payload["characterId"])
-	var kind := _wealth_kind(payload["kind"])
-	var amount: int = payload["amount"]
+	var character := _game_state.party.character_by_id(body.character_id)
+	var kind := _wealth_kind(String(body.wealth_kind))
+	var amount := body.amount
 	if character == null or kind < 0 or amount != (5 if kind == WealthState.Kind.GOLD else 1):
 		return {"code": "invalid_interaction_response", "message": "The requested Classic wealth increment is invalid."}
-	var transferred := _rules.economy.transfer_pool_to_character(_game_state.party, character, kind as WealthState.Kind, amount) if payload["direction"] == "to-character" else _rules.economy.transfer_character_to_pool(_game_state.party, character, kind as WealthState.Kind, amount) if payload["direction"] == "to-pool" else false
+	var transferred := _rules.economy.transfer_pool_to_character(_game_state.party, character, kind as WealthState.Kind, amount) if body.direction == &"to-character" else _rules.economy.transfer_character_to_pool(_game_state.party, character, kind as WealthState.Kind, amount) if body.direction == &"to-pool" else false
 	if transferred:
 		_recalculate_party_movement()
 	return {} if transferred else {"code": "reward_transfer_unavailable", "message": "The selected wealth transfer is no longer available."}
 
 
-func _apply_reward_detection(reward: ClassicRewardState, action: String, payload: Dictionary) -> Dictionary:
-	if not payload.get("characterId") is String:
+func _apply_reward_detection(reward: ClassicRewardState, action: String, body: InteractionResponse.TreasureBody) -> Dictionary:
+	if body.character_id.is_empty():
 		return {"code": "invalid_interaction_response", "message": "Magic detection requires a caster."}
 	var special := 63 if action == "detect" else 48
 	var cost := 5 if action == "detect" else 25
-	var caster_id: String = payload["characterId"]
+	var caster_id := body.character_id
 	var available := false
 	for row: Dictionary in _reward_caster_rows(special, cost):
 		if row["id"] == caster_id:
@@ -3436,11 +3419,12 @@ func _level_result_request(reward: ClassicRewardState, request_id: String) -> In
 	if reward.pending_level_result.is_empty():
 		return null
 	var result := reward.pending_level_result
-	return InteractionRequest.new(request_id, InteractionRequest.LEVEL_UP, {"mode": "result", "prompt": "Review the level gained.", "characterId": result["characterId"], "characterName": result["characterName"], "level": result["level"], "gains": {"stamina": result["stamina"], "spellPoints": result["spellPoints"], "toHit": result["toHit"], "magicResistance": result["magicResistance"]}})
+	return InteractionRequest.from_payload(request_id, InteractionRequest.LEVEL_UP, {"mode": "result", "prompt": "Review the level gained.", "characterId": result["characterId"], "characterName": result["characterName"], "level": result["level"], "gains": {"stamina": result["stamina"], "spellPoints": result["spellPoints"], "toHit": result["toHit"], "magicResistance": result["magicResistance"]}})
 
 
 func _resume_reward_level(reward: ClassicRewardState, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	if response.kind != InteractionRequest.LEVEL_UP or response.payload.get("action") != "continue" or response.payload.get("characterId") != reward.pending_level_result.get("characterId"):
+	var body := response.body as InteractionResponse.LevelUpBody
+	if response.kind != InteractionRequest.LEVEL_UP or body == null or body.action != &"continue" or body.character_id != reward.pending_level_result.get("characterId"):
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The level result must be acknowledged by its character ID.")
 	var character_id := String(reward.pending_level_result.get("characterId", ""))
 	reward.pending_level_result.clear()
@@ -3465,12 +3449,13 @@ func _reward_spell_request(reward: ClassicRewardState, request_id: String) -> In
 	var spells: Array[Dictionary] = []
 	for spell: SpellDefinition in _reward_spell_candidates(character, caste):
 		spells.append({"id": spell.id, "name": spell.name, "classicId": spell.classic_id, "cost": _rules.characters.spell_selection_cost(spell), "selected": character.known_spells().has(spell.id)})
-	return InteractionRequest.new(request_id, InteractionRequest.LEVEL_UP, {"mode": "spell-selection", "prompt": "Choose the spells this character knows.", "characterId": character.id, "characterName": character.name, "pointTotal": _rules.characters.spell_selection_total(character, caste), "spells": spells})
+	return InteractionRequest.from_payload(request_id, InteractionRequest.LEVEL_UP, {"mode": "spell-selection", "prompt": "Choose the spells this character knows.", "characterId": character.id, "characterName": character.name, "pointTotal": _rules.characters.spell_selection_total(character, caste), "spells": spells})
 
 
 func _resume_reward_spells(reward: ClassicRewardState, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
 	var ids := reward.spell_character_ids()
-	if response.kind != InteractionRequest.LEVEL_UP or response.payload.get("action") != "confirm-spells" or reward.spell_index < 0 or reward.spell_index >= ids.size() or response.payload.get("characterId") != ids[reward.spell_index] or not response.payload.get("spellIds") is Array:
+	var body := response.body as InteractionResponse.LevelUpBody
+	if response.kind != InteractionRequest.LEVEL_UP or body == null or body.action != &"confirm-spells" or reward.spell_index < 0 or reward.spell_index >= ids.size() or body.character_id != ids[reward.spell_index]:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Spell selection requires the pending character and spell IDs.")
 	var character := _game_state.party.character_by_id(ids[reward.spell_index])
 	var caste: CasteDefinition = null if character == null else _content.caste_by_id(character.caste_id)
@@ -3481,8 +3466,8 @@ func _resume_reward_spells(reward: ClassicRewardState, response: InteractionResp
 		candidates[spell.id] = spell
 	var selected: Array[String] = []
 	var spent := 0
-	for value: Variant in response.payload["spellIds"]:
-		if not value is String or selected.has(value) or not candidates.has(value):
+	for value: String in body.spell_ids:
+		if selected.has(value) or not candidates.has(value):
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The selected spell list contains an unavailable or duplicate spell.")
 		selected.append(value)
 		spent += _rules.characters.spell_selection_cost(candidates[value])

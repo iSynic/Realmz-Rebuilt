@@ -163,6 +163,20 @@ function New-StatusReport([object]$Inventory) {
     [void]$builder.AppendLine("Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.")
     [void]$builder.AppendLine()
 
+    $pause = $Inventory.maintenancePause
+    if ($null -ne $pause -and $pause.status -eq "active") {
+        [void]$builder.AppendLine("## Maintenance pause")
+        [void]$builder.AppendLine()
+        [void]$builder.AppendLine("Parity work is temporarily paused by **$($pause.id)** from baseline ``$($pause.baselineCommit)``. $($pause.reason)")
+        [void]$builder.AppendLine()
+        [void]$builder.AppendLine("The workflow denominator, delivery states, and current parity batch remain unchanged. After the maintenance exit gate passes, work resumes at ``$($pause.resumeBatchId)``.")
+        [void]$builder.AppendLine()
+        [void]$builder.AppendLine("Exit gate:")
+        [void]$builder.AppendLine()
+        foreach ($gate in @($pause.exitGate)) { [void]$builder.AppendLine("- ``$gate``") }
+        [void]$builder.AppendLine()
+    }
+
     $batch = $Inventory.currentBatch
     [void]$builder.AppendLine("## Current parity-convergence batch")
     [void]$builder.AppendLine()
@@ -317,6 +331,17 @@ Assert-Condition ($inventory.references.providence -eq $lockedById["providence-c
 Assert-Condition ($inventory.references.realmz2 -eq "cff7174399212c1256c52fc6b10d4a766af4174e") "Realmz 2.0 baseline differs from the approved audit base."
 Assert-Condition ($inventory.knowledgeGraph.realmzCommit -eq "4089d550ab606172bac850ac055677c36c6ff547") "Knowledge-graph lock is not the reviewed navigation-only revision."
 Assert-Condition ($inventory.knowledgeGraph.usage -eq "navigation-only") "Knowledge graph must remain navigation-only."
+
+$pause = $inventory.maintenancePause
+Assert-Condition ($null -ne $pause) "Maintenance-pause record is missing."
+Assert-Condition ([string]$pause.id -eq "rebuilt-architecture-hardening") "Maintenance pause has an unexpected ID."
+Assert-Condition ([string]$pause.status -in @("active", "complete")) "Maintenance pause has an invalid status."
+Assert-Condition ([string]$pause.baselineCommit -match '^[0-9a-f]{40}$') "Maintenance pause has no full baseline commit."
+Assert-Condition ([string]$pause.resumeBatchId -eq [string]$inventory.currentBatch.id) "Maintenance pause does not preserve the scheduled parity batch."
+Assert-Condition (-not [string]::IsNullOrWhiteSpace([string]$pause.reason)) "Maintenance pause has no reason."
+$maintenanceExitGate = @($pause.exitGate | ForEach-Object { [string]$_ })
+Assert-Condition ($maintenanceExitGate.Count -eq 6) "Maintenance pause must declare the six approved exit-gate records."
+Assert-Condition (($maintenanceExitGate | Sort-Object -Unique).Count -eq $maintenanceExitGate.Count) "Maintenance pause repeats an exit-gate record."
 
 Assert-ReferenceRoot $CastleRoot $inventory.references.castle "Castle reference"
 Assert-ReferenceRoot $RemakeRoot $inventory.references.remakeFunctional "Remake functional reference"

@@ -7,6 +7,12 @@ const LifecycleInteractionScript := preload("res://src/presentation/interaction_
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 
 
+func _fixture_request(id: String, kind: StringName, overrides: Dictionary = {}) -> InteractionRequest:
+	var payload := ClassicUiFixtureGallery.payload_for(kind)
+	payload.merge(overrides, true)
+	return InteractionRequest.from_payload(id, kind, payload)
+
+
 func run() -> void:
 	_test_startup_shell()
 	_test_startup_party_setup_composition()
@@ -362,7 +368,8 @@ func _test_location_note_workspace() -> void:
 	assert_false(save.disabled, "changing the local draft enables the typed save action")
 	save.pressed.emit()
 	assert_equal(intents.size(), 1, "saving a location note emits one typed intent")
-	assert_equal([intents[0].kind, intents[0].text_value], [PlayerIntent.Kind.SET_LOCATION_NOTE, "Watch the ridge after sundown."], "the presenter submits only detached text through the settled intent boundary")
+	var note_payload := intents[0].payload as PlayerIntent.LocationNotePayload
+	assert_equal([intents[0].kind, note_payload.text], [PlayerIntent.Kind.SET_LOCATION_NOTE, "Watch the ridge after sundown."], "the presenter submits only detached text through the settled intent boundary")
 	editor.text = "Unsaved change"
 	editor.text_changed.emit()
 	cancel.pressed.emit()
@@ -413,7 +420,7 @@ func _test_player_map_workspace() -> void:
 	immediate.configure(view, media)
 	var payloads: Array[Dictionary] = []
 	immediate.payload_submitted.connect(func(payload: Dictionary) -> void: payloads.append(payload))
-	immediate.build(InteractionRequest.new("player-map.immediate", InteractionRequest.ACKNOWLEDGE, {"presentation": "player-map", "playerMapId": definition.id}))
+	immediate.build(InteractionRequest.from_payload("player-map.immediate", InteractionRequest.ACKNOWLEDGE, {"prompt": definition.name, "presentation": "player-map", "playerMapId": definition.id}))
 	assert_not_null(immediate.find_child("ImmediatePlayerMap", true, false), "negative opcode 29 uses the same typed presenter as Journal browsing")
 	var continue_button := immediate.find_children("*", "Button", true, false).filter(func(button: Node) -> bool: return (button as Button).text == "Continue")[0] as Button
 	continue_button.pressed.emit()
@@ -446,7 +453,7 @@ func _test_player_map_workspace() -> void:
 
 
 func _test_battle_weapon_mode_component() -> void:
-	var request := InteractionRequest.new("battle.weapon-mode", &"combat_action", {
+	var request := _fixture_request("battle.weapon-mode", InteractionRequest.COMBAT, {
 		"round": 2,
 		"actorId": "character.archer",
 		"attackUnitsRemaining": 2,
@@ -458,12 +465,12 @@ func _test_battle_weapon_mode_component() -> void:
 		"rangedAttack": {"enabled": false, "reason": "Missile range, line of sight, and projectile resolution are unavailable."},
 		"retreat": {"enabled": false, "reason": "An enemy is too close.", "nearestEnemyRange": 1},
 		"combatants": [
-			{"id": "character.archer", "kind": "character", "name": "Archer", "currentHealth": 9, "maximumHealth": 10, "spellPoints": 6, "maximumSpellPoints": 8, "armor": 7, "magicResistance": 12, "attacks": "2", "movement": 8, "maximumMovement": 12, "conditions": ["Speedy"]},
-			{"id": "monster.target", "kind": "monster", "name": "Target", "currentHealth": 5, "maximumHealth": 5, "spellPoints": 0, "maximumSpellPoints": 0, "armor": 11, "magicResistance": 25, "hitDice": 3, "attacks": "2", "movement": 9, "maximumMovement": 9, "weapon": "Claws", "weaponCharges": 4, "range": 7, "blocked": true, "conditions": ["Poisoned"], "immunities": ["Heat"], "vulnerabilities": ["Cold"]},
+			{"id": "character.archer", "kind": "character", "name": "Archer", "currentHealth": 9, "maximumHealth": 10, "spellPoints": 6, "maximumSpellPoints": 8, "armor": 7, "magicResistance": 12, "attacks": "2", "movement": 8, "maximumMovement": 12, "traitor": false, "helpless": false, "conditions": ["Speedy"]},
+			{"id": "monster.target", "kind": "monster", "name": "Target", "currentHealth": 5, "maximumHealth": 5, "spellPoints": 0, "maximumSpellPoints": 0, "armor": 11, "magicResistance": 25, "hitDice": 3, "attacks": "2", "movement": 9, "maximumMovement": 9, "traitor": false, "helpless": false, "weapon": "Claws", "weaponCharges": 4, "range": 7, "blocked": true, "conditions": ["Poisoned"], "immunities": ["Heat"], "vulnerabilities": ["Cold"]},
 		],
 		"targets": [{"id": "monster.target", "name": "Target", "currentHealth": 5, "maximumHealth": 5}],
 		"spellCasts": [
-			{"spellId": "spell.flame", "spellName": "Flame", "power": 2, "cost": 4, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5},
+			{"spellId": "spell.flame", "spellName": "Flame", "power": 2, "cost": 4, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5, "targetMode": "combatant"},
 			{"spellId": "spell.wave", "spellName": "Wave", "power": 1, "cost": 3, "targetId": "", "targetName": "Everybody", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "automatic"},
 			{"spellId": "spell.burst", "spellName": "Burst", "power": 3, "cost": 6, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 3, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]], "legalTargetCoordinates": [[45, 45], [47, 43]]},
 			{"spellId": "spell.darts", "spellName": "Darts", "power": 3, "cost": 6, "targetId": "", "targetName": "Choose up to 3 actors", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "sequence", "maximumTargets": 3, "targetCandidates": [
@@ -475,9 +482,9 @@ func _test_battle_weapon_mode_component() -> void:
 			{"itemInstanceId": "item.wand.instance", "itemId": "item.wand", "itemName": "Runed Wand", "charges": 3, "spellId": "spell.flame", "spellName": "Flame", "power": 2, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5, "targetMode": "combatant"},
 		],
 		"movement": [
-			{"direction": [0, -1], "destination": [45, 44], "cost": 1, "enabled": true, "reason": ""},
-			{"direction": [1, 0], "destination": [46, 45], "cost": 1, "enabled": false, "reason": "Destination occupied."},
-			{"direction": [-1, 0], "destination": [1, 45], "cost": 0, "enabled": true, "reason": "", "retreat": true, "forcedRetreat": false},
+			{"direction": [0, -1], "destination": [45, 44], "cost": 1, "enabled": true, "reasonCode": "", "reason": "", "retreat": false, "forcedRetreat": false, "attackTargetId": "", "attackTargetName": ""},
+			{"direction": [1, 0], "destination": [46, 45], "cost": 1, "enabled": false, "reasonCode": "occupied", "reason": "Destination occupied.", "retreat": false, "forcedRetreat": false, "attackTargetId": "", "attackTargetName": ""},
+			{"direction": [-1, 0], "destination": [1, 45], "cost": 0, "enabled": true, "reasonCode": "", "reason": "", "retreat": true, "forcedRetreat": false, "attackTargetId": "", "attackTargetName": ""},
 		],
 	})
 	var component := BattleInteraction.new()
@@ -540,7 +547,7 @@ func _test_battle_weapon_mode_component() -> void:
 		assert_equal(matching_buttons.size(), 1, "%s remains visible in the Classic command deck" % unavailable_label)
 		if not matching_buttons.is_empty():
 			assert_true(matching_buttons[0].disabled and not matching_buttons[0].tooltip_text.is_empty(), "%s exposes an explicit typed-workflow gap instead of a fake mutation" % unavailable_label)
-	var command_request := InteractionRequest.new("battle.command-parity", &"combat_action", {
+	var command_request := _fixture_request("battle.command-parity", InteractionRequest.COMBAT, {
 		"actorId": "character.priest",
 		"actions": ["finish", "defend", "auto", "delay", "bandage", "turn_undead", "undo"],
 		"autoTurn": {"enabled": true, "reason": ""},
@@ -629,13 +636,13 @@ func _test_battle_weapon_mode_component() -> void:
 	], "only targetless commands submit directly; targeted actions wait for the battlefield-owned confirmation")
 	component.free()
 
-	var melee_request := InteractionRequest.new("battle.collision-melee", &"combat_action", {
+	var melee_request := _fixture_request("battle.collision-melee", InteractionRequest.COMBAT, {
 		"actorId": "character.fighter",
 		"actions": ["finish", "defend"],
 		"weaponMode": "melee",
 		"meleeAttackReason": "",
 		"targets": [{"id": "monster.contact", "name": "Ogre", "currentHealth": 12, "maximumHealth": 12}],
-		"movement": [{"direction": [1, 0], "destination": [46, 45], "cost": 3, "enabled": true, "reason": "", "attackTargetId": "monster.contact", "attackTargetName": "Ogre"}],
+		"movement": [{"direction": [1, 0], "destination": [46, 45], "cost": 3, "enabled": true, "reasonCode": "", "reason": "", "retreat": false, "forcedRetreat": false, "attackTargetId": "monster.contact", "attackTargetName": "Ogre"}],
 	})
 	var melee_component := BattleInteraction.new()
 	var melee_submitted: Array[Dictionary] = []
@@ -648,7 +655,7 @@ func _test_battle_weapon_mode_component() -> void:
 
 
 func _test_battle_typed_option_contracts() -> void:
-	var unavailable_request := InteractionRequest.new("battle.typed-unavailable", InteractionRequest.COMBAT, {
+	var unavailable_request := _fixture_request("battle.typed-unavailable", InteractionRequest.COMBAT, {
 		"actorId": "character.caster",
 		"actions": ["cast_spell", "use_item", "use_scroll"],
 		"spellCasts": [],
@@ -670,7 +677,7 @@ func _test_battle_typed_option_contracts() -> void:
 	assert_equal([unavailable_spell.tooltip_text, unavailable_item.tooltip_text, unavailable_scroll.tooltip_text], ["No legal Classic combat spell is available.", "No carried item has a supported Classic combat use.", "The equipped scroll case contains no combat-ready spells."], "disabled combat magic workflows expose the exact core-owned reasons")
 	unavailable_component.free()
 
-	var option_request := InteractionRequest.new("battle.typed-options", InteractionRequest.COMBAT, {
+	var option_request := _fixture_request("battle.typed-options", InteractionRequest.COMBAT, {
 		"actorId": "character.caster",
 		"actions": ["cast_spell", "use_item", "use_scroll"],
 		"spellCasts": [
@@ -718,15 +725,15 @@ func _test_battle_typed_option_contracts() -> void:
 
 
 func _test_shop_component() -> void:
-	var request := InteractionRequest.new("shop.fixture", InteractionRequest.SHOP, {
+	var request := _fixture_request("shop.fixture", InteractionRequest.SHOP, {
 		"partyGold": 19,
 		"inflationPercent": 125,
 		"identifyPrice": 20,
 		"characters": [{"id": "character.one", "name": "Hero", "inventory": [
-			{"instanceId": "item.unknown", "name": "Runed wand", "sellPrice": 0, "identified": false, "canSell": true, "sellReason": "", "canIdentify": false, "identifyReason": "Identification costs 20 gold."},
-			{"instanceId": "item.equipped", "name": "Sword", "sellPrice": 25, "identified": true, "canSell": false, "sellReason": "Unequip this item before selling it.", "canIdentify": false, "identifyReason": "This item is already identified."},
+			{"instanceId": "item.unknown", "itemId": "classic.item.40", "name": "Runed wand", "sellPrice": 0, "identified": false, "equipped": false, "charges": 2, "canSell": true, "sellReason": "", "canIdentify": false, "identifyReason": "Identification costs 20 gold."},
+			{"instanceId": "item.equipped", "itemId": "classic.item.1", "name": "Sword", "sellPrice": 25, "identified": true, "equipped": true, "charges": -1, "canSell": false, "sellReason": "Unequip this item before selling it.", "canIdentify": false, "identifyReason": "This item is already identified."},
 		]}],
-		"stock": [{"stockKey": "buyback:classic.item.5", "index": -1, "name": "Dagger", "buyPrice": 40, "quantity": 1, "canBuy": false, "buyReason": "The party cannot afford this item."}],
+		"stock": [{"stockKey": "buyback:classic.item.5", "index": -1, "itemId": "classic.item.5", "name": "Dagger", "buyPrice": 40, "quantity": 1, "canBuy": false, "buyReason": "The party cannot afford this item."}],
 	})
 	var component := ShopInteraction.new()
 	component.build(request)
@@ -758,13 +765,13 @@ func _test_shop_component() -> void:
 
 
 func _test_temple_component() -> void:
-	var request := InteractionRequest.new("temple.fixture", InteractionRequest.TEMPLE, {
+	var request := _fixture_request("temple.fixture", InteractionRequest.TEMPLE, {
 		"costPercent": 125,
 		"selectedCharacterId": "character.two",
 		"pooledWealth": {"gold": 100, "gems": 0, "jewelry": 0},
 		"characters": [
-			{"id": "character.one", "name": "Hero", "currentHealth": 4, "maximumHealth": 12, "personalGold": 300, "availableGold": 400, "load": 20, "maximumLoad": 100, "conditions": [{"index": 9, "name": "Poisoned", "value": 3}]},
-			{"id": "character.two", "name": "Poor Hero", "currentHealth": -12, "maximumHealth": 10, "personalGold": 0, "availableGold": 100, "load": 0, "maximumLoad": 100, "conditions": []},
+			{"id": "character.one", "name": "Hero", "portraitId": "portrait.hero", "currentHealth": 4, "maximumHealth": 12, "personalGold": 300, "availableGold": 400, "load": 20, "maximumLoad": 100, "conditions": [{"index": 9, "name": "Poisoned", "value": 3}]},
+			{"id": "character.two", "name": "Poor Hero", "portraitId": "portrait.poor", "currentHealth": -12, "maximumHealth": 10, "personalGold": 0, "availableGold": 100, "load": 0, "maximumLoad": 100, "conditions": []},
 		],
 		"services": [
 			{"id": "heal-small", "label": "Heal Small Wounds", "description": "Restore 1-8 stamina.", "cost": 312},
@@ -801,7 +808,7 @@ func _test_temple_component() -> void:
 
 
 func _test_bank_component() -> void:
-	var request := InteractionRequest.new("bank.fixture", InteractionRequest.BANK, {
+	var request := _fixture_request("bank.fixture", InteractionRequest.BANK, {
 		"selectedCharacterId": "character.one",
 		"pooledWealth": {"gold": 35, "gems": 2, "jewelry": 1},
 		"bankedWealth": {"gold": 0, "gems": 0, "jewelry": 0},
@@ -845,7 +852,7 @@ func _test_bank_component() -> void:
 	], "bank presenter emits exact typed Swap and Done responses")
 	component.free()
 
-	var departure_request := InteractionRequest.new("departure.fixture", InteractionRequest.POOLED_WEALTH_DEPARTURE, request.payload.merged({"mode": "departure"}, true))
+	var departure_request := InteractionRequest.from_payload("departure.fixture", InteractionRequest.POOLED_WEALTH_DEPARTURE, request.body.to_data().merged({"mode": "departure"}, true))
 	var departure_component := BankInteraction.new()
 	var departure_payloads: Array[Dictionary] = []
 	departure_component.payload_submitted.connect(func(payload: Dictionary) -> void: departure_payloads.append(payload))
@@ -860,7 +867,7 @@ func _test_bank_component() -> void:
 	departure_done.pressed.emit()
 	assert_equal(departure_payloads, [{"action": "leave"}], "pooled departure emits the same exact typed Done payload as Swap")
 	var typed_response := InteractionPresenter.response_for(departure_request, departure_payloads[0])
-	assert_equal([typed_response.request_id, typed_response.kind, typed_response.payload], ["departure.fixture", InteractionRequest.POOLED_WEALTH_DEPARTURE, {"action": "leave"}], "pooled departure preserves request identity through the typed presenter boundary")
+	assert_equal([typed_response.request_id, typed_response.kind, typed_response.body.to_data()], ["departure.fixture", InteractionRequest.POOLED_WEALTH_DEPARTURE, {"action": "leave"}], "pooled departure preserves request identity through the typed presenter boundary")
 	departure_component.free()
 
 
@@ -878,7 +885,7 @@ func _test_money_workspace_audio() -> void:
 		{"soundId": 3003, "waitForCompletion": false, "stopExisting": true},
 		{"soundId": 141, "waitForCompletion": false, "stopExisting": false},
 	], "ordinary Swap route requests the source button, quiet-and-open, and Done sequence without duplicates")
-	view.pending_interaction = InteractionRequest.new("shop.audio", InteractionRequest.SHOP, {"prompt": "Shop"})
+	view.pending_interaction = _fixture_request("shop.audio", InteractionRequest.SHOP)
 	router._sync_ordinary_money_workspace_audio(&"services")
 	assert_equal(sounds.size(), 3, "a Services route opened for a typed location service does not masquerade as ordinary Swap")
 	var audio := ClassicAudioPresenter.new()
@@ -1100,7 +1107,10 @@ func _test_fixture_gallery_coverage() -> void:
 	assert_equal(ClassicUiFixtureGallery.screen_cases().size(), 81, "all nine screens have nine fixture states")
 	assert_equal(ClassicUiFixtureGallery.interaction_cases().size(), 144, "all sixteen interaction kinds have nine fixture states")
 	for interaction: StringName in ClassicUiFixtureGallery.INTERACTIONS:
-		assert_true(ClassicUiFixtureGallery.request_for(interaction).is_supported_kind(), "gallery interaction %s is a supported typed request" % interaction)
+		var request := ClassicUiFixtureGallery.request_for(interaction)
+		assert_not_null(request, "gallery interaction %s decodes through its exact typed contract" % interaction)
+		if request != null:
+			assert_true(request.is_supported_kind(), "gallery interaction %s is a supported typed request" % interaction)
 	var age_component := AgeUpdateInteraction.new()
 	age_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.AGE_UPDATE))
 	assert_true(age_component.get_child_count() >= 4, "the Classic age update renders identity, band, changed statistics, and a response")
@@ -1139,12 +1149,12 @@ func _test_interaction_identity() -> void:
 	var response := InteractionPresenter.response_for(request, {"accepted": true})
 	assert_equal(response.request_id, request.request_id, "interaction response preserves request identity")
 	assert_equal(response.kind, request.kind, "interaction response preserves request kind")
-	assert_equal(response.payload, {"accepted": true}, "interaction response preserves the exact selected payload")
+	assert_true(response.body is InteractionResponse.YesNoBody and (response.body as InteractionResponse.YesNoBody).accepted, "interaction response preserves the exact typed selection")
 
 
 func _test_lifecycle_interaction() -> void:
 	var request := ApplicationLifecycleScript.end_adventure_request(false)
-	assert_equal([request.kind, request.payload["inCombat"], request.payload["options"].size()], [InteractionRequest.SESSION_LIFECYCLE, false, 3], "field End Adventure exposes explicit save, discard, and cancel operations")
+	assert_equal([request.kind, request.body.to_data()["inCombat"], request.body.to_data()["options"].size()], [InteractionRequest.SESSION_LIFECYCLE, false, 3], "field End Adventure exposes explicit save, discard, and cancel operations")
 	assert_not_null(InteractionRequest.from_data(request.to_data()), "the typed lifecycle request retains the established interaction wire shape")
 	var component := LifecycleInteractionScript.new()
 	var submitted: Array[Dictionary] = []
@@ -1156,8 +1166,8 @@ func _test_lifecycle_interaction() -> void:
 	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and end adventure", "End adventure without saving", "Cancel"], "the dedicated presenter does not reinterpret lifecycle choices as scenario options")
 	buttons[2].pressed.emit()
 	assert_equal(submitted, [{"action": &"cancel"}], "Cancel emits one typed host response")
-	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.new(request.request_id, request.kind, submitted[0])), &"cancel", "the host accepts only an action declared by its request")
-	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.new(request.request_id, request.kind, {"action": "invented"})), &"", "undeclared lifecycle actions fail explicitly")
+	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.from_data(request.request_id, request.kind, submitted[0])), &"cancel", "the host accepts only an action declared by its request")
+	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.from_data(request.request_id, request.kind, {"action": "invented"})), &"", "undeclared lifecycle actions fail explicitly")
 	assert_false(ApplicationLifecycleScript.allows_close(&"save-and-end", false), "a rejected save cannot close the active session")
 	assert_true(ApplicationLifecycleScript.allows_close(&"save-and-end", true), "a validated save permits the requested close")
 	assert_true(ApplicationLifecycleScript.allows_close(&"end-without-saving"), "explicit discard permits close without a repository write")
@@ -1177,10 +1187,10 @@ func _test_lifecycle_interaction() -> void:
 	assert_equal([cancelled["state"], operation_order], [&"cancelled", []], "Cancel invokes neither persistence nor session teardown")
 	component.free()
 	var combat_request := ApplicationLifecycleScript.end_adventure_request(true)
-	assert_equal(combat_request.payload["options"].size(), 2, "battle End Adventure never offers an invalid combat save")
-	assert_false(combat_request.payload["options"].any(func(option: Dictionary) -> bool: return StringName(option["action"]) == &"save-and-end"), "battle End Adventure follows Castle's no-save branch")
+	assert_equal(combat_request.body.to_data()["options"].size(), 2, "battle End Adventure never offers an invalid combat save")
+	assert_false(combat_request.body.to_data()["options"].any(func(option: Dictionary) -> bool: return StringName(option["action"]) == &"save-and-end"), "battle End Adventure follows Castle's no-save branch")
 	var quit_request := ApplicationLifecycleScript.quit_application_request(true, false)
-	assert_equal([quit_request.payload["operation"], quit_request.payload["options"].size()], ["quit-application", 3], "field Quit is a distinct typed host operation with save, discard, and cancel")
+	assert_equal([quit_request.body.to_data()["operation"], quit_request.body.to_data()["options"].size()], ["quit-application", 3], "field Quit is a distinct typed host operation with save, discard, and cancel")
 	var quit_component := LifecycleInteractionScript.new()
 	quit_component.build(quit_request)
 	buttons.clear()
@@ -1197,20 +1207,20 @@ func _test_lifecycle_interaction() -> void:
 	assert_equal(ApplicationLifecycleScript.execute_quit(&"cancel", func() -> bool: quit_order.append("save"); return true, func() -> void: quit_order.append("quit")), &"cancelled", "Quit Cancel leaves both persistence and process state untouched")
 	assert_equal(quit_order, [], "Quit Cancel invokes no host operations")
 	var combat_quit := ApplicationLifecycleScript.quit_application_request(true, true)
-	assert_equal(combat_quit.payload["options"].size(), 2, "battle Quit preserves Castle's confirm-or-cancel shape without offering save")
-	assert_false(combat_quit.payload["options"].any(func(option: Dictionary) -> bool: return StringName(option["action"]) == &"save-and-quit"), "battle Quit cannot save before termination")
+	assert_equal(combat_quit.body.to_data()["options"].size(), 2, "battle Quit preserves Castle's confirm-or-cancel shape without offering save")
+	assert_false(combat_quit.body.to_data()["options"].any(func(option: Dictionary) -> bool: return StringName(option["action"]) == &"save-and-quit"), "battle Quit cannot save before termination")
 	var idle_quit := ApplicationLifecycleScript.quit_application_request(false, false)
-	assert_equal(idle_quit.payload["options"].size(), 2, "Quit without an active session offers only quit and cancel")
+	assert_equal(idle_quit.body.to_data()["options"].size(), 2, "Quit without an active session offers only quit and cancel")
 	quit_component.free()
 
 
 func _test_classic_choice_context() -> void:
-	var classic_request := InteractionRequest.new("classic-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"})
+	var classic_request := InteractionRequest.from_payload("classic-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"})
 	assert_equal(InteractionPresenter._prompt_for(classic_request, "Will you enter the ruined keep?"), "Will you enter the ruined keep?", "a label-only Classic choice retains its source-authored textbox context")
 	assert_equal(InteractionPresenter._prompt_for(classic_request, ""), "Choose Yes or No to continue.", "a context-free Classic choice explains the required decision without presenting button labels as a prompt")
 	var explicit_request := InteractionRequest.yes_no("explicit-choice", "Enter battle?", "Fight", "Avoid")
 	assert_equal(InteractionPresenter._prompt_for(explicit_request, "Stale textbox text"), "Enter battle?", "an explicit typed prompt remains authoritative over prior Classic textbox context")
-	var journal_request := InteractionRequest.new("journal-text", InteractionRequest.ACKNOWLEDGE, {"prompt": "A source message", "journalEligible": true, "journalRecorded": false})
+	var journal_request := InteractionRequest.from_payload("journal-text", InteractionRequest.ACKNOWLEDGE, {"prompt": "A source message", "journalEligible": true, "journalRecorded": false})
 	var journal_component := TextChoiceInteraction.new()
 	var journal_payloads: Array[Dictionary] = []
 	journal_component.payload_submitted.connect(func(payload: Dictionary) -> void: journal_payloads.append(payload))
@@ -1705,7 +1715,8 @@ func _test_character_creator_workflow() -> void:
 	var setup_intent_count := intents.size()
 	router._difficulty_option.select(3)
 	router._party_setup_option_changed(3)
-	assert_equal([intents.size(), intents[-1].kind, intents[-1].difficulty, intents[-1].monster_set], [setup_intent_count + 1, PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS, 1, 0], "party option changes emit stable typed values rather than widget indexes")
+	var setup_payload := intents[-1].payload as PlayerIntent.PartySetupOptionsPayload
+	assert_equal([intents.size(), intents[-1].kind, setup_payload.difficulty, setup_payload.monster_set], [setup_intent_count + 1, PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS, 1, 0], "party option changes emit stable typed values rather than widget indexes")
 	var stored_row := router._stored_character_list.find_child("StoredCharacter_*", false, false) as PartySetupCharacterRow
 	assert_not_null(stored_row, "the current eligible stored revision is an ordinary Add row")
 	var stored_portrait := stored_row.find_child("Portrait", true, false) as TextureRect
@@ -1735,11 +1746,12 @@ func _test_character_creator_workflow() -> void:
 	assert_not_null(add_stored, "the balanced Character Files row keeps an explicit Add action")
 	assert_true(add_stored != null and not add_stored.disabled, "an eligible Character Files revision remains importable in party setup")
 	add_stored.pressed.emit()
-	assert_equal([intents[-1].kind, intents[-1].target_id, intents[-1].revision_hash], [PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id, stored.revision_hash], "click Add submits the stable stored-character revision through the existing typed intent")
+	var clicked_import := intents[-1].payload as PlayerIntent.VaultImportPayload
+	assert_equal([intents[-1].kind, clicked_import.character_id, clicked_import.revision_hash], [PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id, stored.revision_hash], "click Add submits the stable stored-character revision through the existing typed intent")
 	var intent_count_before_drop := intents.size()
 	assert_true(router._party_list._can_drop_data(Vector2.ZERO, stored_row.drag_payload()), "the real draggable row payload is accepted by the complete party-list drop surface")
 	router._party_list._drop_data(Vector2.ZERO, {"kind": "party-setup-character", "characterId": stored.character_id, "revisionHash": stored.revision_hash})
-	assert_equal([intents.size(), intents[-1].kind, intents[-1].target_id], [intent_count_before_drop + 1, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id], "dragging onto the party list is a pointer convenience over the same typed import path")
+	assert_equal([intents.size(), intents[-1].kind, (intents[-1].payload as PlayerIntent.VaultImportPayload).character_id], [intent_count_before_drop + 1, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id], "dragging onto the party list is a pointer convenience over the same typed import path")
 	var inspect_setup := router._party_list.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Inspect")[0] as Button
 	var intent_count_before_inspection := intents.size()
 	inspect_setup.pressed.emit()
@@ -1780,8 +1792,9 @@ func _test_character_creator_workflow() -> void:
 	router._creator_next()
 	assert_equal(router._creator_step, 3, "Appearance advances to Review only after requesting a core-owned roll")
 	assert_equal(intents[-1].kind, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, "Review is populated through the typed draft-generation intent")
-	assert_equal([intents[-1].party_members[0].portrait_id, intents[-1].party_members[0].combat_icon_id], ["portrait.human.1", "icon.human.1"], "Appearance emits stable package identities rather than filenames or numeric widget IDs")
-	assert_equal(intents[-1].party_members[0].starting_level, 3, "the selected fixed level crosses the typed intent boundary without presentation-side leveling")
+	var draft_payload := intents[-1].payload as PlayerIntent.CharacterDraftPayload
+	assert_equal([draft_payload.spec.portrait_id, draft_payload.spec.combat_icon_id], ["portrait.human.1", "icon.human.1"], "Appearance emits stable package identities rather than filenames or numeric widget IDs")
+	assert_equal(draft_payload.spec.starting_level, 3, "the selected fixed level crosses the typed intent boundary without presentation-side leveling")
 	var generated := CharacterState.new("party.character.1", "Mira", 8, 8)
 	generated.race_id = "race.human"
 	generated.caste_id = "caste.sorcerer"
@@ -2026,9 +2039,12 @@ func _test_field_spell_workspace() -> void:
 		use_scroll.pressed.emit()
 	assert_equal(intents.size(), 3, "field cast, scroll scribing, and scroll use each emit one intent")
 	if intents.size() == 3:
-		assert_equal([intents[0].kind, intents[0].power_level], [PlayerIntent.Kind.CAST_SPELL, 2], "the selected field power crosses the typed intent boundary")
-		assert_equal([intents[1].action, intents[1].power_level], [&"make-scroll", 2], "scroll scribing crosses the same typed spell intent boundary")
-		assert_equal([intents[2].action, intents[2].quantity], [&"use-scroll", 0], "scroll use carries the exact fixed slot through the typed intent boundary")
+		var cast_payload := intents[0].payload as PlayerIntent.SpellPayload
+		var scribe_payload := intents[1].payload as PlayerIntent.SpellPayload
+		var scroll_payload := intents[2].payload as PlayerIntent.SpellPayload
+		assert_equal([intents[0].kind, cast_payload.power], [PlayerIntent.Kind.CAST_SPELL, 2], "the selected field power crosses the typed intent boundary")
+		assert_equal([scribe_payload.operation, scribe_payload.power], [&"make-scroll", 2], "scroll scribing crosses the same typed spell intent boundary")
+		assert_equal([scroll_payload.operation, scroll_payload.scroll_slot], [&"use-scroll", 0], "scroll use carries the exact fixed slot through the typed intent boundary")
 	router.free()
 
 
@@ -2091,7 +2107,7 @@ func _test_inventory_workspace() -> void:
 	assert_equal(intents.size(), 1, "trade emits exactly one typed intent")
 	if not intents.is_empty():
 		assert_equal(intents[0].kind, PlayerIntent.Kind.TRADE_ITEM, "trade never mutates gameplay from presentation")
-		assert_equal(intents[0].secondary_target_id, destination.id, "trade intent carries the stable recipient identity")
+		assert_equal((intents[0].payload as PlayerIntent.ItemActionPayload).destination_character_id, destination.id, "trade intent carries the stable recipient identity")
 	router.free()
 
 
@@ -2149,9 +2165,12 @@ func _test_money_workspace() -> void:
 	to_pool_buttons[0].pressed.emit()
 	to_character_buttons[0].pressed.emit()
 	assert_equal(intents.size(), 3, "money controls emit exactly one typed intent per mutation")
-	assert_equal([intents[0].kind, intents[0].action], [PlayerIntent.Kind.MONEY_ACTION, &"pool"], "Pool crosses the typed money boundary")
-	assert_equal([intents[1].action, intents[1].actor_id, intents[1].target_id, intents[1].amount], [&"to-pool", source.id, "gold", 5], "character-to-pool Swap carries stable identity and exact Classic increment")
-	assert_equal([intents[2].action, intents[2].actor_id, intents[2].target_id, intents[2].amount], [&"to-character", source.id, "gold", 5], "pool-to-character Swap carries stable identity and exact Classic increment")
+	var pool_payload := intents[0].payload as PlayerIntent.MoneyPayload
+	var to_pool_payload := intents[1].payload as PlayerIntent.MoneyPayload
+	var to_character_payload := intents[2].payload as PlayerIntent.MoneyPayload
+	assert_equal([intents[0].kind, pool_payload.action], [PlayerIntent.Kind.MONEY_ACTION, &"pool"], "Pool crosses the typed money boundary")
+	assert_equal([to_pool_payload.action, to_pool_payload.character_id, to_pool_payload.denomination, to_pool_payload.amount], [&"to-pool", source.id, "gold", 5], "character-to-pool Swap carries stable identity and exact Classic increment")
+	assert_equal([to_character_payload.action, to_character_payload.character_id, to_character_payload.denomination, to_character_payload.amount], [&"to-character", source.id, "gold", 5], "pool-to-character Swap carries stable identity and exact Classic increment")
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Done"), "Swap has a presentation-only cancellation path with no gameplay mutation")
 	var scroll := ScrollContainer.new()
 	scroll.scroll_horizontal = 37
@@ -2192,7 +2211,8 @@ func _test_exploration_money_and_service_commands() -> void:
 	shell.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
 	shell._activate_command(&"service")
 	assert_equal(intents.size(), 1, "entering the contextual service emits exactly one typed intent")
-	assert_equal([intents[0].kind, intents[0].target_id, intents[0].action], [PlayerIntent.Kind.SERVICE_ACTION, shop.service_id, &"enter"], "the contextual command preserves the stable service ID and source action")
+	var service_payload := intents[0].payload as PlayerIntent.ServicePayload
+	assert_equal([intents[0].kind, service_payload.service_id, service_payload.action], [PlayerIntent.Kind.SERVICE_ACTION, shop.service_id, &"enter"], "the contextual command preserves the stable service ID and source action")
 	shell.free()
 
 
@@ -2256,7 +2276,7 @@ func _test_party_order_workspace() -> void:
 	assert_false(apply.disabled, "a changed complete permutation can be applied")
 	apply.pressed.emit()
 	assert_equal(intents.size(), 1, "Apply emits exactly one typed mutation")
-	assert_equal([intents[0].kind, intents[0].selected_ids], [PlayerIntent.Kind.REORDER_PARTY, [borin.id, alis.id, cerys.id]], "the presenter emits the complete stable-ID permutation")
+	assert_equal([intents[0].kind, (intents[0].payload as PlayerIntent.StringListPayload).values], [PlayerIntent.Kind.REORDER_PARTY, [borin.id, alis.id, cerys.id]], "the presenter emits the complete stable-ID permutation")
 	view.set_action_availability(&"reorder_party", false, "Party order is unavailable during battle.")
 	router.present(view)
 	buttons.clear()
@@ -2543,7 +2563,7 @@ func _test_automatic_workflow_routes() -> void:
 	view.combat_view = null
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"combat", view), &"exploration", "completed battle cleanup returns the ordinary shell to exploration")
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"inventory", view), &"inventory", "ordinary non-combat workspaces remain presentation-owned")
-	view.pending_interaction = InteractionRequest.new("shop.route", InteractionRequest.SHOP, {"prompt": "Shop"})
+	view.pending_interaction = _fixture_request("shop.route", InteractionRequest.SHOP)
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"exploration", view), &"services", "application services open their dedicated workspace")
 	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"inventory", view), &"services", "a service interaction replaces an unrelated browsing workspace")
 	view.pending_interaction = null

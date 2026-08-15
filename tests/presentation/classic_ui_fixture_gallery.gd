@@ -65,6 +65,9 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 				"raceName": "Human",
 				"portraitId": "portrait.fixture",
 				"combatIconId": "icon.fixture",
+				"previousAgeDays": 19 * 365,
+				"ageDays": 20 * 365,
+				"previousAgeGroup": 1,
 				"ageGroup": 2,
 				"ageGroupName": "Young",
 				"ageMinimumYears": 20,
@@ -74,68 +77,43 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 				"changes": [1, 0, -1, 2, 0, 0, 5, -1, 1, 2, 3, 4, 5, 6, 7],
 				"presentation": "classic-age-update",
 				"soundId": 3002,
+				"source": "classic",
 			})
 		InteractionRequest.YES_NO:
 			payload.merge({"yesLabel": "Yes", "noLabel": "No"})
 		InteractionRequest.INDEXED_CHOICE, InteractionRequest.ENCOUNTER_CHOICE:
 			payload.merge({"options": [] if empty_values else [{"label": "Proceed"}], "canBackOut": true})
 		InteractionRequest.CHARACTER_SELECTION:
-			payload.merge({"count": 1, "eligible": characters})
+			payload.merge({"count": 1, "eligible": [] if empty_values else [{"id": "hero", "name": "Hero", "currentHealth": 8, "maximumHealth": 10}]})
 		InteractionRequest.ALLY_SELECTION:
-			payload.merge({"maximum": 1, "selectedIds": [], "candidates": characters})
+			payload.merge({"maximum": 1, "selectedIds": [], "requiredIds": [], "candidates": [] if empty_values else [{"id": "ally", "name": "Allied Knight", "currentHealth": 8, "maximumHealth": 10, "classicMonsterId": 4, "required": false, "canSummon": 0}]})
 		InteractionRequest.TREASURE_DISTRIBUTION:
 			payload = _treasure_payload(state, long_text)
 		InteractionRequest.LEVEL_UP:
 			payload = _level_payload(state, long_text)
 		InteractionRequest.WORD_AND_ACTION:
-			payload.merge({"actions": [] if empty_values else [{"kind": "choice", "label": "Proceed", "slot": 0}, {"kind": "word", "label": "Speak"}], "characters": characters, "items": [], "spells": []})
+			payload.merge({"encounterKind": "complex", "encounterId": 1, "actions": [] if empty_values else [{"id": "choice:0", "kind": "choice", "label": "Proceed", "slot": 0}, {"id": "word", "kind": "word", "label": "Speak"}], "characters": [] if empty_values else [{"id": "hero", "name": "Hero"}], "items": [], "spells": [], "canBackOut": false})
 		InteractionRequest.SHOP:
-			payload.merge({"inflationPercent": 100, "partyGold": 25, "identifyPrice": 20, "characters": characters, "stock": [] if empty_values else [{"stockKey": "base:0", "index": 0, "name": "Potion", "buyPrice": 10, "quantity": 1, "canBuy": true, "buyReason": ""}]})
+			payload = _shop_payload(empty_values)
 		InteractionRequest.TEMPLE:
-			payload["characters"] = characters
+			payload = _temple_payload(empty_values)
 		InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE:
-			payload.merge({
+			payload = {
 				"mode": "departure" if kind == InteractionRequest.POOLED_WEALTH_DEPARTURE else "bank",
 				"selectedCharacterId": "hero",
 				"pooledWealth": {"gold": 25, "gems": 2, "jewelry": 1},
 				"bankedWealth": {"gold": 0, "gems": 0, "jewelry": 0},
 				"pool": {"enabled": not empty_values, "reason": "No adventurer carries wealth to pool." if empty_values else ""},
 				"share": {"enabled": not empty_values and state != &"capacity-blocked", "reason": "No adventurer can carry another pooled denomination." if state == &"capacity-blocked" else "The party wealth pool is empty." if empty_values else ""},
+				"actions": ["pool", "share", "transfer", "leave"],
 				"characters": [] if empty_values else [{"id": "hero", "name": characters[0].get("name", "Hero"), "wealth": {"gold": 5, "gems": 1, "jewelry": 0}, "load": 6, "maximumLoad": 20, "transfers": [
 					{"denomination": "gold", "amount": 5, "toPool": {"enabled": true, "reason": ""}, "toCharacter": {"enabled": true, "reason": ""}},
 					{"denomination": "gems", "amount": 1, "toPool": {"enabled": true, "reason": ""}, "toCharacter": {"enabled": true, "reason": ""}},
 					{"denomination": "jewelry", "amount": 1, "toPool": {"enabled": false, "reason": "The character carries no jewelry."}, "toCharacter": {"enabled": state != &"capacity-blocked", "reason": "The character cannot carry that denomination." if state == &"capacity-blocked" else ""}},
 				]}],
-			})
+			}
 		InteractionRequest.COMBAT:
-			payload.merge({
-				"round": 1,
-				"actorId": "hero",
-				"attackUnitsRemaining": 4,
-				"movementRemaining": 8,
-				"enemiesRemaining": 1,
-				"actions": [] if empty_values else ["use_item", "defend", "finish"],
-				"weaponMode": "melee",
-				"combatants": [] if empty_values else [
-					{"id": "hero", "kind": "character", "name": "Hero", "currentHealth": 8, "maximumHealth": 10, "spellPoints": 4, "maximumSpellPoints": 8, "armor": 6, "magicResistance": 10, "attacks": "2", "movement": 8, "maximumMovement": 10, "weapon": "Long Sword", "weaponCharges": -1, "conditions": ["Blessed"]},
-					{"id": "monster", "kind": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4, "spellPoints": 0, "maximumSpellPoints": 0, "armor": 2, "magicResistance": 0, "hitDice": 2, "attacks": "1", "movement": 6, "maximumMovement": 6, "weapon": "Short Sword", "weaponCharges": -1, "range": 2, "blocked": false, "conditions": [], "immunities": [], "vulnerabilities": ["Heat"]},
-				],
-				"friendlyActorIds": ["hero"],
-				"hostileActorIds": ["monster"],
-				"targets": [] if empty_values else [{"id": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4}],
-				"movement": [] if empty_values else [
-					{"direction": [-1, -1], "destination": [44, 44], "cost": 1, "enabled": true, "reason": ""},
-					{"direction": [0, -1], "destination": [45, 44], "cost": 1, "enabled": true, "reason": ""},
-					{"direction": [1, -1], "destination": [46, 44], "cost": 1, "enabled": true, "reason": ""},
-					{"direction": [-1, 0], "destination": [44, 45], "cost": 1, "enabled": true, "reason": ""},
-					{"direction": [1, 0], "destination": [46, 45], "cost": 3, "enabled": true, "reason": "", "attackTargetId": "monster", "attackTargetName": "Goblin"},
-					{"direction": [-1, 1], "destination": [44, 46], "cost": 2, "enabled": true, "reason": ""},
-					{"direction": [0, 1], "destination": [45, 46], "cost": 1, "enabled": true, "reason": ""},
-					{"direction": [1, 1], "destination": [46, 46], "cost": 2, "enabled": true, "reason": ""},
-				],
-				"itemCasts": [] if empty_values else [{"itemInstanceId": "wand.instance", "itemId": "classic.item.41", "itemName": "Runed Wand", "charges": 3, "spellId": "classic.spell.1101", "spellName": "Flame", "power": 2, "targetId": "monster", "targetName": "Goblin", "targetCurrentHealth": 4, "targetMaximumHealth": 4, "targetMode": "combatant"}],
-				"itemCastReason": "No carried item has a supported Classic combat use." if empty_values else "",
-			})
+			payload = _combat_payload(empty_values)
 		InteractionRequest.SESSION_LIFECYCLE:
 			var lifecycle_options: Array[Dictionary] = []
 			if not empty_values:
@@ -149,7 +127,60 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 				"inCombat": false,
 				"options": lifecycle_options,
 			})
-	return InteractionRequest.new("fixture-%s-%s" % [kind, state], kind, payload)
+	return InteractionRequest.from_payload("fixture-%s-%s" % [kind, state], kind, payload)
+
+
+static func payload_for(kind: StringName, state: StringName = &"nominal") -> Dictionary:
+	var request := request_for(kind, state)
+	return {} if request == null else request.body.to_data()
+
+
+static func _shop_payload(empty_values: bool) -> Dictionary:
+	return {
+		"shopId": "classic.shop.0",
+		"inflationPercent": 100,
+		"partyGold": 25,
+		"identifyPrice": 20,
+		"characters": [] if empty_values else [{"id": "hero", "name": "Hero", "inventory": []}],
+		"stock": [] if empty_values else [{"stockKey": "base:0", "index": 0, "itemId": "classic.item.1", "name": "Potion", "buyPrice": 10, "quantity": 1, "canBuy": true, "buyReason": ""}],
+		"acceptRanges": [0, 0, 0, 0, 0, 0],
+		"actions": ["buy", "sell", "identify", "leave"],
+	}
+
+
+static func _temple_payload(empty_values: bool) -> Dictionary:
+	return {
+		"costPercent": 100,
+		"selectedCharacterId": "" if empty_values else "hero",
+		"pooledWealth": {"gold": 25, "gems": 0, "jewelry": 0},
+		"bankAvailable": false,
+		"characters": [] if empty_values else [{"id": "hero", "name": "Hero", "portraitId": "portrait.fixture", "currentHealth": 8, "maximumHealth": 10, "personalGold": 25, "availableGold": 50, "load": 6, "maximumLoad": 20, "conditions": []}],
+		"services": [] if empty_values else [{"id": "heal-small", "label": "Heal Small Wounds", "description": "Restore stamina.", "cost": 10}],
+		"actions": ["service", "pool", "leave"],
+	}
+
+
+static func _combat_payload(empty_values: bool) -> Dictionary:
+	var unavailable := {"enabled": false, "reason": "Unavailable."}
+	var movement_options: Array[Dictionary] = []
+	if not empty_values:
+		for direction: Vector2i in [Vector2i(-1, -1), Vector2i(0, -1), Vector2i(1, -1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(-1, 1), Vector2i(0, 1), Vector2i(1, 1)]:
+			movement_options.append({"direction": [direction.x, direction.y], "destination": [45 + direction.x, 45 + direction.y], "cost": 1, "enabled": true, "reasonCode": "", "reason": "", "retreat": false, "forcedRetreat": false, "attackTargetId": "monster" if direction == Vector2i(1, 0) else "", "attackTargetName": "Goblin" if direction == Vector2i(1, 0) else ""})
+	return {
+		"battleId": "classic.battle.0", "round": 1, "actorId": "hero", "attackUnitsRemaining": 4, "movementRemaining": 8, "enemiesRemaining": 1,
+		"actions": [] if empty_values else ["use_item", "defend", "finish"], "weaponMode": "melee",
+		"weaponSwitch": unavailable.duplicate(), "rangedAttack": unavailable.duplicate(), "retreat": {"enabled": false, "reason": "Unavailable.", "nearestEnemyRange": 1},
+		"meleeAttackReason": "", "targets": [] if empty_values else [{"id": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4}],
+		"combatants": [] if empty_values else [
+			{"id": "hero", "kind": "character", "name": "Hero", "currentHealth": 8, "maximumHealth": 10, "spellPoints": 4, "maximumSpellPoints": 8, "armor": 6, "magicResistance": 10, "attacks": "2", "movement": 8, "maximumMovement": 10, "traitor": false, "helpless": false, "weapon": "Long Sword", "weaponCharges": -1, "conditions": ["Blessed"]},
+			{"id": "monster", "kind": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4, "spellPoints": 0, "maximumSpellPoints": 0, "armor": 2, "magicResistance": 0, "hitDice": 2, "attacks": "1", "movement": 6, "maximumMovement": 6, "traitor": false, "helpless": false, "weapon": "Short Sword", "weaponCharges": -1, "range": 2, "blocked": false, "conditions": [], "immunities": [], "vulnerabilities": ["Heat"]},
+		],
+		"movement": movement_options, "spellCasts": [], "spellCastReason": "No legal Classic combat spell is available.", "fastSpells": [],
+		"itemCasts": [] if empty_values else [{"itemInstanceId": "wand.instance", "itemId": "classic.item.41", "itemName": "Runed Wand", "charges": 3, "spellId": "classic.spell.1101", "spellName": "Flame", "power": 2, "targetId": "monster", "targetName": "Goblin", "targetCurrentHealth": 4, "targetMaximumHealth": 4, "targetMode": "combatant"}],
+		"itemCastReason": "No carried item has a supported Classic combat use." if empty_values else "", "scrollCasts": [], "scrollCastReason": "No scroll is available.",
+		"autoTurn": unavailable.duplicate(), "autoCharacterIds": [], "delay": unavailable.duplicate(),
+		"bandage": {"enabled": false, "reason": "Unavailable.", "targets": []}, "turnUndead": {"enabled": false, "reason": "Unavailable.", "targets": []}, "undo": unavailable.duplicate(),
+	}
 
 
 static func _treasure_payload(state: StringName, prompt: String) -> Dictionary:
@@ -171,11 +202,14 @@ static func _treasure_payload(state: StringName, prompt: String) -> Dictionary:
 			"jewelryReason": "The pool has no jewelry or the character cannot carry one.",
 		})
 	if state == &"missing_media":
+		var recovery_characters: Array[Dictionary] = []
+		for index: int in character_count:
+			recovery_characters.append({"id": "hero-%d" % index, "name": "Hero" if character_count == 1 else "Hero %d" % (index + 1), "currentHealth": 8, "maximumHealth": 10, "enabled": true, "reason": ""})
 		return {
 			"prompt": prompt,
 			"mode": "fumbled-item-recovery",
 			"item": {"instanceId": "item-fumbled", "definitionId": "classic.item.6", "name": "Sting +3", "charges": 7, "identified": true},
-			"characters": characters,
+			"characters": recovery_characters,
 			"remaining": 1,
 		}
 	var has_item := state not in [&"empty", &"loading", &"error"]
@@ -205,5 +239,5 @@ static func _level_payload(state: StringName, prompt: String) -> Dictionary:
 			spells.append({"id": "classic.spell.%d" % (1001 + index), "name": ("A spell with a deliberately extensive display name %d" % (index + 1)) if state == &"oversized" else "Spell %d" % (index + 1), "classicId": 1001 + index, "cost": 1 + index % 6, "selected": index == 0})
 		return {"prompt": prompt, "mode": "spell-selection", "characterId": "hero", "characterName": "A deliberately long spellcaster name" if state == &"oversized" else "Hero", "pointTotal": 18, "spells": spells}
 	if state in [&"empty", &"loading", &"error", &"unavailable"]:
-		return {"prompt": prompt, "mode": "result", "characterId": "", "characterName": "", "level": 0, "gains": {}}
+		return {"prompt": prompt, "mode": "result", "characterId": "", "characterName": "", "level": 0, "gains": {"stamina": 0, "spellPoints": 0, "toHit": 0, "magicResistance": 0}}
 	return {"prompt": prompt, "mode": "result", "characterId": "hero", "characterName": "Hero", "level": 5, "gains": {"stamina": 8, "spellPoints": 3, "toHit": 2, "magicResistance": 1}}

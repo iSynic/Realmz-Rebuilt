@@ -3,114 +3,92 @@ extends InteractionComponent
 
 
 func build(request: InteractionRequest) -> void:
-	var mode := String(request.payload.get("mode", ""))
-	if mode == "fumbled-item-recovery":
-		_build_fumble_recovery(request.payload)
-	elif mode == "ordinary":
-		_build_ordinary(request.payload)
-	elif mode == "completion-confirmation":
-		_build_completion_confirmation(request.payload)
+	var body := request.body as InteractionRequest.TreasureRequestBody
+	if body == null:
+		add_hint("The treasure request is malformed.")
+	elif body.mode == &"fumbled-item-recovery":
+		_build_fumble_recovery(body)
+	elif body.mode == &"ordinary":
+		_build_ordinary(body)
+	elif body.mode == &"completion-confirmation":
+		_build_completion_confirmation(body)
 	else:
 		add_hint("The treasure request is malformed.")
 
 
-func _build_fumble_recovery(payload: Dictionary) -> void:
-	if not payload.get("item") is Dictionary:
+func _build_fumble_recovery(body: InteractionRequest.TreasureRequestBody) -> void:
+	if body.item == null:
 		add_hint("The recovery request is malformed.")
 		return
-	var item: Dictionary = payload["item"]
-	var instance_id := String(item.get("instanceId", ""))
-	var charge_count := int(item.get("charges", 0))
+	var instance_id := body.item.instance_id
+	var charge_count := body.item.charges
 	var charge_text := " • %d charge%s" % [charge_count, "" if charge_count == 1 else "s"] if charge_count > 0 else ""
-	var remaining_text := " • %d items remain" % int(payload.get("remaining", 1)) if int(payload.get("remaining", 1)) > 1 else ""
-	add_hint("%s%s%s" % [String(item.get("name", "Fumbled weapon")), charge_text, remaining_text])
-	_add_item_recipients(instance_id, payload.get("characters", []))
+	var remaining_text := " • %d items remain" % body.remaining if body.remaining > 1 else ""
+	add_hint("%s%s%s" % [body.item.name, charge_text, remaining_text])
+	_add_item_recipients(instance_id, body.characters)
 	add_response("Leave behind", {"action": "discard", "instanceId": instance_id})
 
 
-func _build_ordinary(payload: Dictionary) -> void:
-	var wealth: Variant = payload.get("wealth", {})
-	if wealth is Dictionary:
-		add_hint("Pool: %d gold • %d gems • %d jewelry" % [int(wealth.get("gold", 0)), int(wealth.get("gems", 0)), int(wealth.get("jewelry", 0))])
-	var share := int(payload.get("experienceShare", 0))
-	if share > 0:
-		add_hint("Each eligible adventurer receives %d experience." % share)
-	var item: Variant = payload.get("item")
-	if item is Dictionary:
-		var item_data: Dictionary = item
-		var instance_id := String(item_data.get("instanceId", ""))
-		var display_name := String(item_data.get("name", "Unknown item"))
-		if bool(item_data.get("magical", false)) and not bool(item_data.get("identified", false)):
+func _build_ordinary(body: InteractionRequest.TreasureRequestBody) -> void:
+	if body.wealth != null:
+		add_hint("Pool: %d gold • %d gems • %d jewelry" % [body.wealth.gold, body.wealth.gems, body.wealth.jewelry])
+	if body.experience_share > 0:
+		add_hint("Each eligible adventurer receives %d experience." % body.experience_share)
+	if body.item != null:
+		var instance_id := body.item.instance_id
+		var display_name := body.item.name
+		if body.item.magical and not body.item.identified:
 			display_name += " • magic detected"
-		add_hint("%s • %d item%s remain" % [display_name, int(payload.get("remaining", 1)), "" if int(payload.get("remaining", 1)) == 1 else "s"])
-		_add_item_recipients(instance_id, payload.get("characters", []))
+		add_hint("%s • %d item%s remain" % [display_name, body.remaining, "" if body.remaining == 1 else "s"])
+		_add_item_recipients(instance_id, body.characters)
 		add_response("Leave this item", {"action": "discard", "instanceId": instance_id})
-	elif int(payload.get("remaining", 0)) == 0:
+	elif body.remaining == 0:
 		add_hint("No items remain to distribute.")
-	var detect: Variant = payload.get("detect", {})
-	if detect is Dictionary and bool(detect.get("visible", false)):
-		_add_caster_actions("Detect magic", "detect", detect)
-	var identify: Variant = payload.get("identify", {})
-	if identify is Dictionary and bool(identify.get("visible", false)):
-		_add_caster_actions("Identify treasure", "identify", identify)
-	var characters: Variant = payload.get("characters", [])
+	if body.detect != null and body.detect.visible:
+		_add_caster_actions("Detect magic", "detect", body.detect)
+	if body.identify != null and body.identify.visible:
+		_add_caster_actions("Identify treasure", "identify", body.identify)
 	var has_carried_wealth := false
-	if characters is Array:
-		for value: Variant in characters:
-			if value is Dictionary and value.get("wealth") is Dictionary:
-				var carried: Dictionary = value["wealth"]
-				has_carried_wealth = has_carried_wealth or int(carried.get("gold", 0)) > 0 or int(carried.get("gems", 0)) > 0 or int(carried.get("jewelry", 0)) > 0
+	for character: InteractionRequestValue.RewardCharacter in body.characters:
+		if character.wealth != null:
+			has_carried_wealth = has_carried_wealth or character.wealth.gold > 0 or character.wealth.gems > 0 or character.wealth.jewelry > 0
 	add_response("Pool party wealth", {"action": "pool"}, has_carried_wealth, "No adventurer carries wealth to pool.")
-	var has_pool := wealth is Dictionary and (int(wealth.get("gold", 0)) > 0 or int(wealth.get("gems", 0)) > 0 or int(wealth.get("jewelry", 0)) > 0)
-	add_response("Share pooled wealth", {"action": "share"}, has_pool and bool(payload.get("hasShareCapacity", false)), "The pool is empty or no adventurer can carry another unit.")
-	_add_swap_controls(characters)
+	var has_pool := body.wealth != null and (body.wealth.gold > 0 or body.wealth.gems > 0 or body.wealth.jewelry > 0)
+	add_response("Share pooled wealth", {"action": "share"}, has_pool and body.has_share_capacity, "The pool is empty or no adventurer can carry another unit.")
+	_add_swap_controls(body.characters)
 	add_response("Done", {"action": "done"})
 
 
-func _build_completion_confirmation(payload: Dictionary) -> void:
-	add_hint(String(payload.get("summary", "Unclaimed treasure will be left behind.")))
+func _build_completion_confirmation(body: InteractionRequest.TreasureRequestBody) -> void:
+	add_hint(body.summary if not body.summary.is_empty() else "Unclaimed treasure will be left behind.")
 	add_response("Return to treasure", {"action": "cancel-completion"})
 	add_response("Leave it behind", {"action": "confirm-completion"})
 
 
-func _add_item_recipients(instance_id: String, characters: Variant) -> void:
-	if characters is Array:
-		for value: Variant in characters:
-			if not value is Dictionary:
-				continue
-			var character: Dictionary = value
-			add_response(
-				"Give to %s" % String(character.get("name", "Character")),
-				{"action": "assign", "instanceId": instance_id, "characterId": String(character.get("id", ""))},
-				bool(character.get("enabled", false)),
-				String(character.get("reason", ""))
-			)
+func _add_item_recipients(instance_id: String, characters: Array[InteractionRequestValue.RewardCharacter]) -> void:
+	for character: InteractionRequestValue.RewardCharacter in characters:
+		add_response("Give to %s" % character.name, {"action": "assign", "instanceId": instance_id, "characterId": character.id}, character.enabled, character.reason)
 
 
-func _add_caster_actions(label: String, action: String, data: Dictionary) -> void:
-	var casters: Variant = data.get("casters", [])
-	if casters is Array and not casters.is_empty():
-		for value: Variant in casters:
-			if value is Dictionary:
-				add_response("%s — %s" % [label, String(value.get("name", "Character"))], {"action": action, "characterId": String(value.get("id", ""))})
+func _add_caster_actions(label: String, action: String, method: InteractionRequestValue.RewardMethod) -> void:
+	if not method.casters.is_empty():
+		for caster: InteractionRequestValue.RewardCaster in method.casters:
+			add_response("%s — %s" % [label, caster.name], {"action": action, "characterId": caster.id})
 	else:
-		add_response(label, {"action": action}, false, String(data.get("reason", "Unavailable.")))
+		add_response(label, {"action": action}, false, method.reason if not method.reason.is_empty() else "Unavailable.")
 
 
-func _add_swap_controls(characters: Variant) -> void:
-	if not characters is Array:
-		return
-	var rows: Array[Dictionary] = []
-	for value: Variant in characters:
-		if value is Dictionary and value.get("wealth") is Dictionary and not String(value.get("id", "")).is_empty():
-			rows.append(value)
+func _add_swap_controls(characters: Array[InteractionRequestValue.RewardCharacter]) -> void:
+	var rows: Array[InteractionRequestValue.RewardCharacter] = []
+	for character: InteractionRequestValue.RewardCharacter in characters:
+		if character.wealth != null and not character.id.is_empty(): rows.append(character)
 	if rows.is_empty():
 		return
 	add_hint("Swap wealth in Classic increments: 5 gold, 1 gem, or 1 jewelry.")
 	var selector := OptionButton.new()
 	selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for row: Dictionary in rows:
-		selector.add_item(String(row.get("name", "Character")))
+	for row: InteractionRequestValue.RewardCharacter in rows:
+		selector.add_item(row.name)
 	add_child(selector)
 	var summary := Label.new()
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -140,28 +118,31 @@ func _add_swap_controls(characters: Variant) -> void:
 	_refresh_swap_controls(0, selector, rows, summary, buttons, specs)
 
 
-func _submit_swap(selector: OptionButton, rows: Array[Dictionary], direction: String, kind: String, amount: int) -> void:
+func _submit_swap(selector: OptionButton, rows: Array[InteractionRequestValue.RewardCharacter], direction: String, kind: String, amount: int) -> void:
 	if selector.selected < 0 or selector.selected >= rows.size():
 		return
-	payload_submitted.emit({"action": "transfer", "direction": direction, "kind": kind, "amount": amount, "characterId": String(rows[selector.selected]["id"])})
+	payload_submitted.emit({"action": "transfer", "direction": direction, "kind": kind, "amount": amount, "characterId": rows[selector.selected].id})
 
 
-func _refresh_swap_controls(index: int, selector: OptionButton, rows: Array[Dictionary], summary: Label, buttons: Array[Button], specs: Array[Dictionary]) -> void:
+func _refresh_swap_controls(index: int, selector: OptionButton, rows: Array[InteractionRequestValue.RewardCharacter], summary: Label, buttons: Array[Button], specs: Array[Dictionary]) -> void:
 	if index < 0 or index >= rows.size():
 		return
 	selector.select(index)
-	var row: Dictionary = rows[index]
-	var carried: Dictionary = row["wealth"]
-	summary.text = "%s carries %d gold • %d gems • %d jewelry" % [String(row.get("name", "Character")), int(carried.get("gold", 0)), int(carried.get("gems", 0)), int(carried.get("jewelry", 0))]
+	var row := rows[index]
+	var carried := row.wealth
+	summary.text = "%s carries %d gold • %d gems • %d jewelry" % [row.name, carried.gold, carried.gems, carried.jewelry]
 	for button_index: int in buttons.size():
 		var spec: Dictionary = specs[button_index]
 		var enabled := false
 		var reason := ""
 		if spec["direction"] == "to-character":
-			enabled = bool(row.get(spec["enabled"], false))
-			reason = String(row.get(spec["reason"], "This transfer is unavailable."))
+			match String(spec["kind"]):
+				"gold": enabled = row.can_take_gold; reason = row.gold_reason
+				"gems": enabled = row.can_take_gems; reason = row.gems_reason
+				"jewelry": enabled = row.can_take_jewelry; reason = row.jewelry_reason
 		else:
-			enabled = int(carried.get(spec["kind"], 0)) >= int(spec["amount"])
+			var carried_amount := carried.gold if spec["kind"] == "gold" else carried.gems if spec["kind"] == "gems" else carried.jewelry
+			enabled = carried_amount >= int(spec["amount"])
 			reason = "This adventurer does not carry enough %s." % String(spec["kind"])
 		buttons[button_index].disabled = not enabled
 		buttons[button_index].tooltip_text = "" if enabled else reason

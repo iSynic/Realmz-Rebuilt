@@ -12,10 +12,10 @@ const CANCEL: StringName = &"cancel"
 static func end_adventure_request(in_combat: bool) -> InteractionRequest:
 	var options: Array[Dictionary] = []
 	if not in_combat:
-		options.append({"action": SAVE_AND_END, "label": "Save and end adventure"})
-	options.append({"action": END_WITHOUT_SAVING, "label": "End adventure without saving"})
-	options.append({"action": CANCEL, "label": "Cancel"})
-	return InteractionRequest.new(END_ADVENTURE_REQUEST_ID, InteractionRequest.SESSION_LIFECYCLE, {
+		options.append({"action": String(SAVE_AND_END), "label": "Save and end adventure"})
+	options.append({"action": String(END_WITHOUT_SAVING), "label": "End adventure without saving"})
+	options.append({"action": String(CANCEL), "label": "Cancel"})
+	return InteractionRequest.from_payload(END_ADVENTURE_REQUEST_ID, InteractionRequest.SESSION_LIFECYCLE, {
 		"operation": "end-adventure",
 		"prompt": "End the active adventure?",
 		"inCombat": in_combat,
@@ -26,10 +26,10 @@ static func end_adventure_request(in_combat: bool) -> InteractionRequest:
 static func quit_application_request(has_active_session: bool, in_combat: bool) -> InteractionRequest:
 	var options: Array[Dictionary] = []
 	if has_active_session and not in_combat:
-		options.append({"action": SAVE_AND_QUIT, "label": "Save and quit Realmz Rebuilt"})
-	options.append({"action": QUIT_WITHOUT_SAVING, "label": "Quit Realmz Rebuilt"})
-	options.append({"action": CANCEL, "label": "Cancel"})
-	return InteractionRequest.new(QUIT_APPLICATION_REQUEST_ID, InteractionRequest.SESSION_LIFECYCLE, {
+		options.append({"action": String(SAVE_AND_QUIT), "label": "Save and quit Realmz Rebuilt"})
+	options.append({"action": String(QUIT_WITHOUT_SAVING), "label": "Quit Realmz Rebuilt"})
+	options.append({"action": String(CANCEL), "label": "Cancel"})
+	return InteractionRequest.from_payload(QUIT_APPLICATION_REQUEST_ID, InteractionRequest.SESSION_LIFECYCLE, {
 		"operation": "quit-application",
 		"prompt": "Quit Realmz Rebuilt?",
 		"hasActiveSession": has_active_session,
@@ -43,9 +43,15 @@ static func response_action(request: InteractionRequest, response: InteractionRe
 		return &""
 	if response.request_id != request.request_id or response.kind != request.kind:
 		return &""
-	var action := StringName(response.payload.get("action", &""))
-	for option: Dictionary in request.payload.get("options", []):
-		if StringName(option.get("action", &"")) == action:
+	var body := response.body as InteractionResponse.LifecycleBody
+	if body == null:
+		return &""
+	var action := body.action
+	var request_body := request.body as InteractionRequest.LifecycleRequestBody
+	if request_body == null:
+		return &""
+	for option: InteractionRequestValue.LifecycleOption in request_body.options:
+		if option.action == action:
 			return action
 	return &""
 

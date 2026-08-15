@@ -5,20 +5,23 @@ extends InteractionComponent
 func build(request: InteractionRequest) -> void:
 	match request.kind:
 		&"encounter_choice", &"scenario_choice":
-			var options: Variant = request.payload.get("options", [])
-			if options is Array:
-				for index: int in options.size():
-					var option: Variant = options[index]
-					if option is Dictionary:
-						add_response(String(option.get("label", "Option %d" % (index + 1))), {"index": index})
-			if request.kind == &"encounter_choice" and bool(request.payload.get("canBackOut", false)):
+			var body := request.body as InteractionRequest.ChoiceRequestBody
+			if body == null: return
+			for index: int in body.options.size():
+				var option := body.options[index]
+				add_response(option.label if not option.label.is_empty() else "Option %d" % (index + 1), {"index": index})
+			if request.kind == &"encounter_choice" and body.can_back_out:
 				add_response("Back out", {"cancelled": true})
 		&"yes_no":
-			add_response(String(request.payload.get("yesLabel", "Yes")), {"accepted": true})
-			add_response(String(request.payload.get("noLabel", "No")), {"accepted": false})
+			var body := request.body as InteractionRequest.YesNoRequestBody
+			if body == null: return
+			add_response(body.yes_label, {"accepted": true})
+			add_response(body.no_label, {"accepted": false})
 		&"acknowledge":
-			if bool(request.payload.get("journalEligible", false)) and not bool(request.payload.get("journalRecorded", false)):
+			var body := request.body as InteractionRequest.AcknowledgeBody
+			if body == null: return
+			if body.journal_eligible and not body.journal_recorded:
 				add_response("Take note", {"takeNote": true})
-			elif bool(request.payload.get("journalRecorded", false)):
+			elif body.journal_recorded:
 				add_hint("Already recorded in the journal.")
 			add_response("Continue", {})

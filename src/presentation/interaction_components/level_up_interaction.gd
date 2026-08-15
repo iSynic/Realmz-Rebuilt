@@ -3,44 +3,39 @@ extends InteractionComponent
 
 
 func build(request: InteractionRequest) -> void:
-	var mode := String(request.payload.get("mode", ""))
-	if mode == "result":
-		_build_result(request.payload)
-	elif mode == "spell-selection":
-		_build_spell_selection(request.payload)
+	var body := request.body as InteractionRequest.LevelUpRequestBody
+	if body == null:
+		add_hint("The level-up request is malformed.")
+	elif body.mode == &"result":
+		_build_result(body)
+	elif body.mode == &"spell-selection":
+		_build_spell_selection(body)
 	else:
 		add_hint("The level-up request is malformed.")
 
 
-func _build_result(payload: Dictionary) -> void:
-	var character_id := String(payload.get("characterId", ""))
-	if character_id.is_empty() or not payload.get("gains") is Dictionary:
+func _build_result(body: InteractionRequest.LevelUpRequestBody) -> void:
+	if body.character_id.is_empty() or body.gains == null:
 		add_hint("The level result is unavailable.")
 		return
-	var gains: Dictionary = payload["gains"]
-	add_hint("%s reached level %d." % [String(payload.get("characterName", "Character")), int(payload.get("level", 0))])
-	add_hint("Stamina +%d • Spell points +%d • To hit +%d • Magic resistance +%d" % [int(gains.get("stamina", 0)), int(gains.get("spellPoints", 0)), int(gains.get("toHit", 0)), int(gains.get("magicResistance", 0))])
-	add_response("Continue", {"action": "continue", "characterId": character_id})
+	add_hint("%s reached level %d." % [body.character_name, body.level])
+	add_hint("Stamina +%d • Spell points +%d • To hit +%d • Magic resistance +%d" % [body.gains.stamina, body.gains.spell_points, body.gains.to_hit, body.gains.magic_resistance])
+	add_response("Continue", {"action": "continue", "characterId": body.character_id})
 
 
-func _build_spell_selection(payload: Dictionary) -> void:
-	var character_id := String(payload.get("characterId", ""))
-	var spells: Variant = payload.get("spells", [])
-	if character_id.is_empty() or not spells is Array:
+func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void:
+	if body.character_id.is_empty():
 		add_hint("The spell-selection request is unavailable.")
 		return
-	add_hint("Choose spells for %s. Available points: %d" % [String(payload.get("characterName", "Character")), int(payload.get("pointTotal", 0))])
+	add_hint("Choose spells for %s. Available points: %d" % [body.character_name, body.point_total])
 	var checklist := ItemList.new()
 	checklist.select_mode = ItemList.SELECT_MULTI
 	checklist.custom_minimum_size.y = 260.0
 	checklist.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	for value: Variant in spells:
-		if not value is Dictionary:
-			continue
-		var spell: Dictionary = value
-		checklist.add_item("%s • %d point%s" % [String(spell.get("name", "Spell")), int(spell.get("cost", 0)), "" if int(spell.get("cost", 0)) == 1 else "s"])
-		checklist.set_item_metadata(checklist.item_count - 1, String(spell.get("id", "")))
-		if bool(spell.get("selected", false)):
+	for spell: InteractionRequestValue.SpellChoice in body.spells:
+		checklist.add_item("%s • %d point%s" % [spell.name, spell.cost, "" if spell.cost == 1 else "s"])
+		checklist.set_item_metadata(checklist.item_count - 1, spell.id)
+		if spell.selected:
 			checklist.select(checklist.item_count - 1, false)
 	add_child(checklist)
 	var confirm := Button.new()
@@ -51,6 +46,6 @@ func _build_spell_selection(payload: Dictionary) -> void:
 		var selected_ids: Array[String] = []
 		for index: int in checklist.get_selected_items():
 			selected_ids.append(String(checklist.get_item_metadata(index)))
-		payload_submitted.emit({"action": "confirm-spells", "characterId": character_id, "spellIds": selected_ids})
+		payload_submitted.emit({"action": "confirm-spells", "characterId": body.character_id, "spellIds": selected_ids})
 	)
 	add_child(confirm)

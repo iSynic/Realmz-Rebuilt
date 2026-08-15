@@ -30,7 +30,7 @@ func start(content: RealmzContent, initial_seed: int) -> SessionStep:
 	return step
 
 
-func restore(content: RealmzContent, envelope: SaveEnvelope) -> SessionStep:
+func restore(content: RealmzContent, envelope: SessionSnapshot) -> SessionStep:
 	var replacement := GameSession.new()
 	var step := replacement.restore(content, envelope)
 	if step.state != SessionStep.State.FAILED:

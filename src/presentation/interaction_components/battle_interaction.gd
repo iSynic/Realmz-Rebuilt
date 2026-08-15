@@ -2,7 +2,7 @@ class_name BattleInteraction
 extends InteractionComponent
 
 var _actor_id: String = ""
-var _combatants: Array[Dictionary] = []
+var _combatants: Array[InteractionRequestValue.Combatant] = []
 var _inspected_index: int = -1
 var _inspected_label: Label
 var _mode_panels: Array[Control] = []
@@ -10,24 +10,25 @@ var _targeting_status_label: Label
 var _targeting_confirm_button: Button
 var _targeting_controls: VBoxContainer
 var _targeting_active: bool = false
-var _spell_casts: Array = []
-var _fast_spells: Array = []
+var _spell_casts: Array[InteractionRequestValue.CastOption] = []
+var _fast_spells: Array[InteractionRequestValue.FastSpell] = []
 var _spell_panel: VBoxContainer
 
 
 func build(request: InteractionRequest) -> void:
-	var actor_id := String(request.payload.get("actorId", ""))
+	var body := request.body as InteractionRequest.CombatRequestBody
+	if body == null: return
+	var actor_id := body.actor_id
 	_actor_id = actor_id
 	_mode_panels.clear()
 	_targeting_status_label = null
 	_targeting_confirm_button = null
 	_targeting_controls = null
 	_targeting_active = false
-	_read_combatants(request.payload.get("combatants", []))
-	var actions: Variant = request.payload.get("actions", [])
-	var action_ids: Array = actions if actions is Array else []
-	var weapon_mode := String(request.payload.get("weaponMode", "melee"))
-	var targets: Variant = request.payload.get("targets", [])
+	_read_combatants(body.combatants)
+	var action_ids: Array[String] = body.actions
+	var weapon_mode := String(body.weapon_mode)
+	var targets := body.targets
 	var target_panel := VBoxContainer.new()
 	var spell_panel := VBoxContainer.new()
 	_spell_panel = spell_panel
@@ -40,45 +41,37 @@ func build(request: InteractionRequest) -> void:
 	overview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	overview.add_theme_constant_override("separation", 8)
 	add_child(overview)
-	_build_combatant_information(request, targets, overview)
-	_add_primary_action_row(request, actor_id, action_ids, targets, target_panel, spell_panel, scroll_panel, item_panel, bandage_panel, mode_panels, overview)
+	_build_combatant_information(body, targets, overview)
+	_add_primary_action_row(body, actor_id, action_ids, targets, target_panel, spell_panel, scroll_panel, item_panel, bandage_panel, mode_panels, overview)
 	for panel: Control in mode_panels:
 		panel.visible = false
 		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		panel.add_theme_constant_override("separation", 6)
 		add_child(panel)
 		_add_mode_back_button(panel, overview, mode_panels)
-	if action_ids.has("attack") and targets is Array:
+	if action_ids.has("attack"):
 		var candidate_ids: Array[String] = []
-		for target: Variant in targets:
-			if target is Dictionary and not String(target.get("id", "")).is_empty():
-				candidate_ids.append(String(target.get("id")))
+		for target: InteractionRequestValue.CombatTarget in targets:
+			if not target.id.is_empty(): candidate_ids.append(target.id)
 		_add_targeting_button(target_panel, "Choose Fire target on battlefield" if weapon_mode == "missile" else "Choose attack target on battlefield", {
 			"mode": "combatant",
 			"responsePayload": {"actorId": actor_id, "action": "attack", "targetId": ""},
 			"candidateIds": candidate_ids,
 		})
-	elif weapon_mode == "melee" and not String(request.payload.get("meleeAttackReason", "")).is_empty():
-		_add_hint_to(target_panel, String(request.payload.get("meleeAttackReason", "No adjacent melee target.")))
+	elif weapon_mode == "melee" and not body.melee_attack_reason.is_empty():
+		_add_hint_to(target_panel, body.melee_attack_reason)
 	if weapon_mode == "missile" and not action_ids.has("attack"):
-		var ranged: Variant = request.payload.get("rangedAttack", {})
-		var ranged_reason := String(ranged.get("reason", "Missile attacks are unavailable.") if ranged is Dictionary else "Missile attacks are unavailable.")
-		add_response_to(target_panel, "Fire unavailable", {}, false, ranged_reason)
-	var spell_casts: Variant = request.payload.get("spellCasts", [])
-	_spell_casts = spell_casts if spell_casts is Array else []
-	_fast_spells = request.payload.get("fastSpells", []) if request.payload.get("fastSpells", []) is Array else []
-	if action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty():
+		add_response_to(target_panel, "Fire unavailable", {}, false, body.ranged_attack.reason)
+	_spell_casts = body.spell_casts
+	_fast_spells = body.fast_spells
+	if action_ids.has("cast_spell") and not body.spell_casts.is_empty():
 		var spell_picker := OptionButton.new()
 		spell_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		for option: Variant in spell_casts:
-			if option is Dictionary:
-				var target_health := int(option.get("targetCurrentHealth", -1))
-				var target_label := String(option.get("targetName", "Target"))
-				var label := "%s • P%d • %d SP → %s" % [option.get("spellName", "Spell"), int(option.get("power", 1)), int(option.get("cost", 0)), target_label]
-				if target_health >= 0:
-					label += " (%d/%d HP)" % [target_health, int(option.get("targetMaximumHealth", 0))]
-				spell_picker.add_item(label)
-				spell_picker.set_item_metadata(spell_picker.item_count - 1, option.duplicate(true))
+		for option: InteractionRequestValue.CastOption in body.spell_casts:
+			var label := "%s • P%d • %d SP → %s" % [option.spell_name, option.power, option.cost, option.target_name]
+			if option.target_current_health >= 0: label += " (%d/%d HP)" % [option.target_current_health, option.target_maximum_health]
+			spell_picker.add_item(label)
+			spell_picker.set_item_metadata(spell_picker.item_count - 1, option)
 		spell_panel.add_child(spell_picker)
 		var cast_button := Button.new()
 		cast_button.name = "ChooseSpellTarget"
@@ -86,39 +79,34 @@ func build(request: InteractionRequest) -> void:
 		var refresh_cast_button := func(_index: int) -> void:
 			if _targeting_active:
 				presentation_action_requested.emit(&"cancel_battlefield_targeting", {})
-			var selected: Variant = spell_picker.get_selected_metadata()
-			var mode := String(selected.get("targetMode", "combatant")) if selected is Dictionary else "combatant"
+			var selected := spell_picker.get_selected_metadata() as InteractionRequestValue.CastOption
+			var mode := String(selected.target_mode) if selected != null else "combatant"
 			cast_button.text = "Cast selected spell" if mode == "automatic" else "Choose spell target on battlefield"
 		spell_picker.item_selected.connect(refresh_cast_button)
 		cast_button.pressed.connect(func() -> void:
-			var option: Variant = spell_picker.get_selected_metadata()
-			if not option is Dictionary:
-				return
-			var payload := {"actorId": actor_id, "action": "cast_spell", "targetId": "", "spellId": String(option.get("spellId", "")), "power": int(option.get("power", 1))}
-			var mode := String(option.get("targetMode", "combatant"))
+			var option := spell_picker.get_selected_metadata() as InteractionRequestValue.CastOption
+			if option == null: return
+			var payload := {"actorId": actor_id, "action": "cast_spell", "targetId": "", "spellId": option.spell_id, "power": option.power}
+			var mode := String(option.target_mode)
 			if mode == "automatic":
 				payload_submitted.emit(payload)
 				return
-			var configuration := _spell_targeting_configuration(spell_casts, option, payload)
+			var configuration := _spell_targeting_configuration(body.spell_casts, option, payload)
 			_start_targeting(configuration, spell_panel)
 		)
 		spell_panel.add_child(cast_button)
 		refresh_cast_button.call(spell_picker.selected)
-	elif not String(request.payload.get("spellCastReason", "")).is_empty():
-		add_response_to(spell_panel, "Cast unavailable", {}, false, String(request.payload.get("spellCastReason")))
-	var scroll_casts: Variant = request.payload.get("scrollCasts", [])
-	if action_ids.has("use_scroll") and scroll_casts is Array and not scroll_casts.is_empty():
+	elif not body.spell_cast_reason.is_empty():
+		add_response_to(spell_panel, "Cast unavailable", {}, false, body.spell_cast_reason)
+	if action_ids.has("use_scroll") and not body.scroll_casts.is_empty():
 		var scroll_picker := OptionButton.new()
 		scroll_picker.name = "CombatScrollPicker"
 		scroll_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		for option: Variant in scroll_casts:
-			if option is Dictionary:
-				var label := "Slot %d • %s • P%d → %s" % [int(option.get("scrollSlot", 0)) + 1, option.get("spellName", "Scroll"), int(option.get("power", 1)), option.get("targetName", "Choose target")]
-				var target_health := int(option.get("targetCurrentHealth", -1))
-				if target_health >= 0:
-					label += " (%d/%d HP)" % [target_health, int(option.get("targetMaximumHealth", 0))]
-				scroll_picker.add_item(label)
-				scroll_picker.set_item_metadata(scroll_picker.item_count - 1, option.duplicate(true))
+		for option: InteractionRequestValue.CastOption in body.scroll_casts:
+			var label := "Slot %d • %s • P%d → %s" % [option.scroll_slot + 1, option.spell_name, option.power, option.target_name]
+			if option.target_current_health >= 0: label += " (%d/%d HP)" % [option.target_current_health, option.target_maximum_health]
+			scroll_picker.add_item(label)
+			scroll_picker.set_item_metadata(scroll_picker.item_count - 1, option)
 		scroll_panel.add_child(scroll_picker)
 		var use_scroll_button := Button.new()
 		use_scroll_button.name = "ChooseScrollTarget"
@@ -126,90 +114,80 @@ func build(request: InteractionRequest) -> void:
 		var refresh_scroll_button := func(_index: int) -> void:
 			if _targeting_active:
 				presentation_action_requested.emit(&"cancel_battlefield_targeting", {})
-			var selected: Variant = scroll_picker.get_selected_metadata()
-			var mode := String(selected.get("targetMode", "combatant")) if selected is Dictionary else "combatant"
+			var selected := scroll_picker.get_selected_metadata() as InteractionRequestValue.CastOption
+			var mode := String(selected.target_mode) if selected != null else "combatant"
 			use_scroll_button.text = "Use selected scroll" if mode == "automatic" else "Choose scroll target on battlefield"
 		scroll_picker.item_selected.connect(refresh_scroll_button)
 		use_scroll_button.pressed.connect(func() -> void:
-			var option: Variant = scroll_picker.get_selected_metadata()
-			if not option is Dictionary:
-				return
-			var payload := {"actorId": actor_id, "action": "use_scroll", "targetId": "", "scrollSlot": int(option.get("scrollSlot", -1))}
-			var mode := String(option.get("targetMode", "combatant"))
+			var option := scroll_picker.get_selected_metadata() as InteractionRequestValue.CastOption
+			if option == null: return
+			var payload := {"actorId": actor_id, "action": "use_scroll", "targetId": "", "scrollSlot": option.scroll_slot}
+			var mode := String(option.target_mode)
 			if mode == "automatic":
 				payload_submitted.emit(payload)
 				return
-			var configuration := _spell_targeting_configuration(scroll_casts, option, payload)
+			var configuration := _spell_targeting_configuration(body.scroll_casts, option, payload)
 			_start_targeting(configuration, scroll_panel)
 		)
 		scroll_panel.add_child(use_scroll_button)
 		refresh_scroll_button.call(scroll_picker.selected)
-	elif not String(request.payload.get("scrollCastReason", "")).is_empty():
-		add_response_to(scroll_panel, "Use scroll unavailable", {}, false, String(request.payload.get("scrollCastReason")))
-	var item_casts: Variant = request.payload.get("itemCasts", [])
-	if action_ids.has("use_item") and item_casts is Array and not item_casts.is_empty():
+	elif not body.scroll_cast_reason.is_empty():
+		add_response_to(scroll_panel, "Use scroll unavailable", {}, false, body.scroll_cast_reason)
+	if action_ids.has("use_item") and not body.item_casts.is_empty():
 		var item_row := HBoxContainer.new()
 		item_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		item_panel.add_child(item_row)
 		var item_picker := OptionButton.new()
 		item_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		for option: Variant in item_casts:
-			if not option is Dictionary:
-				continue
-			var charge_label := "∞" if int(option.get("charges", 0)) < 0 else str(int(option.get("charges", 0)))
-			var target_label := String(option.get("targetName", "Automatic"))
-			var label := "%s (%s) • %s P%d → %s" % [option.get("itemName", "Item"), charge_label, option.get("spellName", "Effect"), int(option.get("power", 1)), target_label]
-			var target_health := int(option.get("targetCurrentHealth", -1))
-			if target_health >= 0:
-				label += " (%d/%d HP)" % [target_health, int(option.get("targetMaximumHealth", 0))]
+		for option: InteractionRequestValue.CastOption in body.item_casts:
+			var charge_label := "∞" if option.charges < 0 else str(option.charges)
+			var label := "%s (%s) • %s P%d → %s" % [option.item_name, charge_label, option.spell_name, option.power, option.target_name]
+			if option.target_current_health >= 0: label += " (%d/%d HP)" % [option.target_current_health, option.target_maximum_health]
 			item_picker.add_item(label)
-			item_picker.set_item_metadata(item_picker.item_count - 1, option.duplicate(true))
+			item_picker.set_item_metadata(item_picker.item_count - 1, option)
 		item_row.add_child(item_picker)
 		var use_button := Button.new()
 		use_button.text = "Use selected item"
 		use_button.disabled = item_picker.item_count == 0
 		use_button.pressed.connect(func() -> void:
-			var option: Variant = item_picker.get_selected_metadata()
-			if option is Dictionary:
-				var payload := {"actorId": actor_id, "action": "use_item", "targetId": "", "itemInstanceId": String(option.get("itemInstanceId", ""))}
-				if String(option.get("targetMode", "combatant")) == "automatic":
-					payload_submitted.emit(payload)
-					return
-				var candidate_ids: Array[String] = []
-				for candidate: Variant in item_casts:
-					if candidate is Dictionary and candidate.get("itemInstanceId") == option.get("itemInstanceId") and not String(candidate.get("targetId", "")).is_empty():
-						candidate_ids.append(String(candidate.get("targetId")))
-				_start_targeting({"mode": "combatant", "responsePayload": payload, "candidateIds": candidate_ids}, item_panel)
+			var option := item_picker.get_selected_metadata() as InteractionRequestValue.CastOption
+			if option == null: return
+			var payload := {"actorId": actor_id, "action": "use_item", "targetId": "", "itemInstanceId": option.item_instance_id}
+			if option.target_mode == &"automatic":
+				payload_submitted.emit(payload)
+				return
+			var candidate_ids: Array[String] = []
+			for candidate: InteractionRequestValue.CastOption in body.item_casts:
+				if candidate.item_instance_id == option.item_instance_id and not candidate.target_id.is_empty(): candidate_ids.append(candidate.target_id)
+			_start_targeting({"mode": "combatant", "responsePayload": payload, "candidateIds": candidate_ids}, item_panel)
 		)
 		item_row.add_child(use_button)
-	elif not String(request.payload.get("itemCastReason", "")).is_empty():
-		add_response_to(item_panel, "Use item unavailable", {}, false, String(request.payload.get("itemCastReason")))
+	elif not body.item_cast_reason.is_empty():
+		add_response_to(item_panel, "Use item unavailable", {}, false, body.item_cast_reason)
 
 
 func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
 	if slot_index < 0 or slot_index >= _fast_spells.size():
 		return false
-	var binding: Variant = _fast_spells[slot_index]
-	if not binding is Dictionary:
-		return false
+	var binding := _fast_spells[slot_index]
 	var shortcut := "0" if slot_index == 9 else str(slot_index + 1)
-	if String(binding.get("spellId", "")).is_empty():
+	if binding.spell_id.is_empty():
 		presentation_action_requested.emit(&"fast_spell_status", {"text": "Fast Spell %s • Undefined Spell" % shortcut})
 		presentation_action_requested.emit(&"play_sound", {"soundId": 143})
 		return true
-	var summary := "Fast Spell %s • %s P%d" % [shortcut, binding.get("spellName", "Spell"), int(binding.get("power", 1))]
+	var summary := "Fast Spell %s • %s P%d" % [shortcut, binding.spell_name, binding.power]
 	if not use_spell:
 		presentation_action_requested.emit(&"fast_spell_status", {"text": summary})
 		presentation_action_requested.emit(&"play_sound", {"soundId": 145})
 		return true
-	if not bool(binding.get("enabled", false)):
-		presentation_action_requested.emit(&"fast_spell_status", {"text": "%s • %s" % [summary, binding.get("reason", "Unavailable")], "error": true})
+	if not binding.enabled:
+		presentation_action_requested.emit(&"fast_spell_status", {"text": "%s • %s" % [summary, binding.reason], "error": true})
 		presentation_action_requested.emit(&"play_sound", {"soundId": 143})
 		return true
-	for candidate: Variant in _spell_casts:
-		if candidate is Dictionary and candidate.get("spellId") == binding.get("spellId") and int(candidate.get("power", 0)) == int(binding.get("power", 0)):
-			var payload := {"actorId": _actor_id, "action": "cast_spell", "targetId": "", "spellId": binding["spellId"], "power": int(binding["power"])}
-			if String(candidate.get("targetMode", "combatant")) == "automatic":
+	for candidate: InteractionRequestValue.CastOption in _spell_casts:
+		if candidate.spell_id == binding.spell_id and candidate.power == binding.power:
+			var payload := {"actorId": _actor_id, "action": "cast_spell", "targetId": "", "spellId": binding.spell_id, "power": binding.power}
+			if candidate.target_mode == &"automatic":
 				payload_submitted.emit(payload)
 				return true
 			_start_targeting(_spell_targeting_configuration(_spell_casts, candidate, payload), _spell_panel)
@@ -234,25 +212,23 @@ func battlefield_targeting_cancelled() -> void:
 		_targeting_confirm_button.disabled = true
 
 
-func _spell_targeting_configuration(spell_casts: Array, selected: Dictionary, response_payload: Dictionary) -> Dictionary:
-	var mode := String(selected.get("targetMode", "combatant"))
+func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.CastOption], selected: InteractionRequestValue.CastOption, response_payload: Dictionary) -> Dictionary:
+	var mode := String(selected.target_mode)
 	var candidate_ids: Array[String] = []
 	if mode == "sequence":
-		for candidate: Variant in selected.get("targetCandidates", []):
-			if candidate is Dictionary and not String(candidate.get("id", "")).is_empty():
-				candidate_ids.append(String(candidate.get("id")))
+		for candidate: InteractionRequestValue.CombatTarget in selected.target_candidates:
+			if not candidate.id.is_empty(): candidate_ids.append(candidate.id)
 	elif mode == "combatant":
-		for candidate: Variant in spell_casts:
-			if candidate is Dictionary and candidate.get("spellId") == selected.get("spellId") and int(candidate.get("power", 0)) == int(selected.get("power", 0)) and (not selected.has("scrollSlot") or candidate.get("scrollSlot") == selected.get("scrollSlot")) and candidate.get("targetMode", "combatant") == "combatant" and not String(candidate.get("targetId", "")).is_empty():
-				candidate_ids.append(String(candidate.get("targetId")))
+		for candidate: InteractionRequestValue.CastOption in spell_casts:
+			if candidate.spell_id == selected.spell_id and candidate.power == selected.power and candidate.scroll_slot == selected.scroll_slot and candidate.target_mode == &"combatant" and not candidate.target_id.is_empty(): candidate_ids.append(candidate.target_id)
 	return {
 		"mode": mode,
 		"responsePayload": response_payload,
 		"candidateIds": candidate_ids,
-		"maximumTargets": int(selected.get("maximumTargets", 1)),
-		"areaOffsets": selected.get("areaOffsets", []),
-		"defaultTargetCoordinate": selected.get("defaultTargetCoordinate", []),
-		"legalTargetCoordinates": selected.get("legalTargetCoordinates", []),
+		"maximumTargets": selected.maximum_targets,
+		"areaOffsets": selected.area_offsets.map(func(value: Vector2i) -> Array[int]: return [value.x, value.y]),
+		"defaultTargetCoordinate": [selected.default_target_coordinate.x, selected.default_target_coordinate.y],
+		"legalTargetCoordinates": selected.legal_target_coordinates.map(func(value: Vector2i) -> Array[int]: return [value.x, value.y]),
 	}
 
 
@@ -292,28 +268,26 @@ func _start_targeting(configuration: Dictionary, parent: Container) -> void:
 
 func inspect_combatant(combatant_id: String) -> void:
 	for index: int in _combatants.size():
-		if String(_combatants[index].get("id", "")) == combatant_id:
+		if _combatants[index].id == combatant_id:
 			_inspected_index = index
 			_refresh_inspected_label()
 			return
 
 
-func _read_combatants(value: Variant) -> void:
+func _read_combatants(value: Array[InteractionRequestValue.Combatant]) -> void:
 	_combatants.clear()
-	if value is Array:
-		for combatant: Variant in value:
-			if combatant is Dictionary and not String(combatant.get("id", "")).is_empty():
-				_combatants.append((combatant as Dictionary).duplicate(true))
+	for combatant: InteractionRequestValue.Combatant in value:
+		if not combatant.id.is_empty(): _combatants.append(combatant)
 
 
-func _build_combatant_information(request: InteractionRequest, targets: Variant, parent: Container) -> void:
+func _build_combatant_information(body: InteractionRequest.CombatRequestBody, targets: Array[InteractionRequestValue.CombatTarget], parent: Container) -> void:
 	var information := HBoxContainer.new()
 	information.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	information.add_theme_constant_override("separation", 16)
 	var active_label := Label.new()
 	active_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	active_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	active_label.text = "Active • %s\n%d attack%s • %d movement • %s\nEnemies left • %d" % [_combatant_name(_actor_id), int(request.payload.get("attackUnitsRemaining", 0)), "" if int(request.payload.get("attackUnitsRemaining", 0)) == 1 else "s", int(request.payload.get("movementRemaining", 0)), String(request.payload.get("weaponMode", "melee")).capitalize(), int(request.payload.get("enemiesRemaining", 0))]
+	active_label.text = "Active • %s\n%d attack%s • %d movement • %s\nEnemies left • %d" % [_combatant_name(_actor_id), body.attack_units_remaining, "" if body.attack_units_remaining == 1 else "s", body.movement_remaining, String(body.weapon_mode).capitalize(), body.enemies_remaining]
 	information.add_child(active_label)
 	_inspected_label = Label.new()
 	_inspected_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -321,8 +295,7 @@ func _build_combatant_information(request: InteractionRequest, targets: Variant,
 	information.add_child(_inspected_label)
 	parent.add_child(information)
 	var default_id := _actor_id
-	if targets is Array and not targets.is_empty() and targets[0] is Dictionary:
-		default_id = String(targets[0].get("id", default_id))
+	if not targets.is_empty(): default_id = targets[0].id
 	inspect_combatant(default_id)
 	if _inspected_index < 0 and not _combatants.is_empty():
 		_inspected_index = 0
@@ -350,7 +323,7 @@ func _perform_presentation_action(action: StringName) -> void:
 		var delta := -1 if action == &"inspect_previous" else 1
 		_inspected_index = posmod(_inspected_index + delta, _combatants.size())
 		_refresh_inspected_label()
-		presentation_action_requested.emit(&"focus_combatant", {"combatantId": String(_combatants[_inspected_index].get("id", "")), "playSound": true})
+		presentation_action_requested.emit(&"focus_combatant", {"combatantId": _combatants[_inspected_index].id, "playSound": true})
 		return
 	if action == &"center_active":
 		inspect_combatant(_actor_id)
@@ -367,40 +340,27 @@ func _refresh_inspected_label() -> void:
 		_inspected_label.text = "Shown • No combatant selected"
 		return
 	var combatant := _combatants[_inspected_index]
-	var details: Array[String] = ["HP %d/%d" % [int(combatant.get("currentHealth", 0)), int(combatant.get("maximumHealth", 0))]]
-	if int(combatant.get("maximumSpellPoints", 0)) > 0:
-		details.append("SP %d/%d" % [int(combatant.get("spellPoints", 0)), int(combatant.get("maximumSpellPoints", 0))])
-	details.append("AR %d" % int(combatant.get("armor", 0)))
-	details.append("MR %d" % int(combatant.get("magicResistance", 0)))
-	if combatant.has("hitDice"):
-		details.append("HD %d" % int(combatant.get("hitDice", 0)))
-	if int(combatant.get("range", -1)) >= 0:
-		details.append("Range %d%s" % [int(combatant.get("range", -1)), " • Blocked" if bool(combatant.get("blocked", false)) else ""])
+	var details: Array[String] = ["HP %d/%d" % [combatant.current_health, combatant.maximum_health]]
+	if combatant.maximum_spell_points > 0: details.append("SP %d/%d" % [combatant.spell_points, combatant.maximum_spell_points])
+	details.append("AR %d" % combatant.armor)
+	details.append("MR %d" % combatant.magic_resistance)
+	if combatant.has_hit_dice: details.append("HD %d" % combatant.hit_dice)
+	if combatant.has_position_facts: details.append("Range %d%s" % [combatant.range, " • Blocked" if combatant.blocked else ""])
 	var secondary: Array[String] = []
-	var weapon := String(combatant.get("weapon", ""))
-	if not weapon.is_empty():
-		var charges := int(combatant.get("weaponCharges", -1))
-		secondary.append("%s%s" % [weapon, " (%d)" % charges if charges >= 0 else ""])
-	secondary.append("Attacks %s" % String(combatant.get("attacks", "0")))
-	secondary.append("Move %d" % int(combatant.get("maximumMovement", combatant.get("movement", 0))))
-	var conditions := _string_array(combatant.get("conditions", []))
-	if not conditions.is_empty():
-		secondary.append("Conditions: %s" % ", ".join(conditions))
+	if not combatant.weapon.is_empty(): secondary.append("%s%s" % [combatant.weapon, " (%d)" % combatant.weapon_charges if combatant.has_weapon_charges and combatant.weapon_charges >= 0 else ""])
+	secondary.append("Attacks %s" % combatant.attacks)
+	secondary.append("Move %d" % combatant.maximum_movement)
+	if not combatant.conditions.is_empty(): secondary.append("Conditions: %s" % ", ".join(combatant.conditions))
 	var defenses: Array[String] = []
-	var immunities := _string_array(combatant.get("immunities", []))
-	var vulnerabilities := _string_array(combatant.get("vulnerabilities", []))
-	if not immunities.is_empty():
-		defenses.append("Immune: %s" % ", ".join(immunities))
-	if not vulnerabilities.is_empty():
-		defenses.append("Vulnerable: %s" % ", ".join(vulnerabilities))
+	if not combatant.immunities.is_empty(): defenses.append("Immune: %s" % ", ".join(combatant.immunities))
+	if not combatant.vulnerabilities.is_empty(): defenses.append("Vulnerable: %s" % ", ".join(combatant.vulnerabilities))
 	var defense_line := "\n%s" % " • ".join(defenses) if not defenses.is_empty() else ""
-	_inspected_label.text = "Shown • %s\n%s\n%s%s" % [String(combatant.get("name", "Combatant")), " • ".join(details), " • ".join(secondary), defense_line]
+	_inspected_label.text = "Shown • %s\n%s\n%s%s" % [combatant.name, " • ".join(details), " • ".join(secondary), defense_line]
 
 
 func _combatant_name(combatant_id: String) -> String:
-	for combatant: Dictionary in _combatants:
-		if String(combatant.get("id", "")) == combatant_id:
-			return String(combatant.get("name", combatant_id))
+	for combatant: InteractionRequestValue.Combatant in _combatants:
+		if combatant.id == combatant_id: return combatant.name
 	return combatant_id
 
 
@@ -419,75 +379,59 @@ func accepts_spatial_input() -> bool:
 	return true
 
 
-func _add_primary_action_row(request: InteractionRequest, actor_id: String, action_ids: Array, targets: Variant, target_panel: Control, spell_panel: Control, scroll_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
-	var weapon_switch: Variant = request.payload.get("weaponSwitch", {})
+func _add_primary_action_row(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: Control, spell_panel: Control, scroll_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
 	var action_row := HFlowContainer.new()
 	action_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	overview.add_child(action_row)
-	if action_ids.has("switch_weapon") and weapon_switch is Dictionary:
-		var target_mode := String(weapon_switch.get("targetMode", "melee"))
+	if action_ids.has("switch_weapon"):
+		var target_mode := String(body.weapon_switch.target_mode)
 		add_response_to(action_row, "Weapon: %s" % target_mode.capitalize(), {"actorId": actor_id, "action": "switch_weapon", "targetId": ""})
 	if action_ids.has("defend"):
 		add_response_to(action_row, "Guard", {"actorId": actor_id, "action": "defend", "targetId": ""})
-	var weapon_mode := String(request.payload.get("weaponMode", "melee"))
-	var target_enabled: bool = action_ids.has("attack") and targets is Array and not (targets as Array).is_empty()
-	var ranged: Variant = request.payload.get("rangedAttack", {})
-	var target_reason := String(request.payload.get("meleeAttackReason", "No adjacent target.")) if weapon_mode == "melee" else String(ranged.get("reason", "Fire is unavailable.") if ranged is Dictionary else "Fire is unavailable.")
+	var weapon_mode := String(body.weapon_mode)
+	var target_enabled: bool = action_ids.has("attack") and not targets.is_empty()
+	var target_reason := body.melee_attack_reason if weapon_mode == "melee" else body.ranged_attack.reason
 	_add_panel_toggle(action_row, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason)
-	var spell_casts: Variant = request.payload.get("spellCasts", [])
-	_add_panel_toggle(action_row, "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and spell_casts is Array and not spell_casts.is_empty(), String(request.payload.get("spellCastReason", "Spellcasting is unavailable.")))
-	var scroll_casts: Variant = request.payload.get("scrollCasts", [])
-	_add_panel_toggle(action_row, "Scrolls", scroll_panel, mode_panels, overview, action_ids.has("use_scroll") and scroll_casts is Array and not scroll_casts.is_empty(), String(request.payload.get("scrollCastReason", "Scroll use is unavailable.")), 647)
-	var item_casts: Variant = request.payload.get("itemCasts", [])
-	_add_panel_toggle(action_row, "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and item_casts is Array and not item_casts.is_empty(), String(request.payload.get("itemCastReason", "Item use is unavailable.")))
+	_add_panel_toggle(action_row, "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and not body.spell_casts.is_empty(), body.spell_cast_reason)
+	_add_panel_toggle(action_row, "Scrolls", scroll_panel, mode_panels, overview, action_ids.has("use_scroll") and not body.scroll_casts.is_empty(), body.scroll_cast_reason, 647)
+	_add_panel_toggle(action_row, "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and not body.item_casts.is_empty(), body.item_cast_reason)
 	if action_ids.has("finish"):
 		add_response_to(action_row, "Finish", {"actorId": actor_id, "action": "finish", "targetId": ""})
-	var retreat: Variant = request.payload.get("retreat", {})
-	var retreat_enabled := action_ids.has("retreat") and retreat is Dictionary and bool(retreat.get("enabled", false))
-	var retreat_reason := String(retreat.get("reason", "Retreat is unavailable.") if retreat is Dictionary else "Retreat is unavailable.")
+	var retreat_enabled := action_ids.has("retreat") and body.retreat.enabled
+	var retreat_reason := body.retreat.reason
 	add_response_to(action_row, "Escape", {"actorId": actor_id, "action": "retreat", "targetId": ""}, retreat_enabled, retreat_reason)
-	_add_classic_turn_commands(action_row, request, actor_id, bandage_panel, mode_panels, overview)
+	_add_classic_turn_commands(action_row, body, actor_id, bandage_panel, mode_panels, overview)
 
 
-func _add_classic_turn_commands(parent: Container, request: InteractionRequest, actor_id: String, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
-	var auto_turn := _availability_dictionary(request.payload.get("autoTurn", {}), "Auto Turn is unavailable.")
-	add_response_to(parent, "Auto", {"actorId": actor_id, "action": "auto", "targetId": ""}, bool(auto_turn.get("enabled", false)), String(auto_turn.get("reason", "Auto Turn is unavailable.")))
+func _add_classic_turn_commands(parent: Container, body: InteractionRequest.CombatRequestBody, actor_id: String, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
+	add_response_to(parent, "Auto", {"actorId": actor_id, "action": "auto", "targetId": ""}, body.auto_turn.enabled, body.auto_turn.reason)
 
-	var delay := _availability_dictionary(request.payload.get("delay", {}), "Delay is unavailable.")
-	add_response_to(parent, "Delay", {"actorId": actor_id, "action": "delay", "targetId": ""}, bool(delay.get("enabled", false)), String(delay.get("reason", "Delay is unavailable.")))
+	add_response_to(parent, "Delay", {"actorId": actor_id, "action": "delay", "targetId": ""}, body.delay.enabled, body.delay.reason)
 
-	var bandage := _availability_dictionary(request.payload.get("bandage", {}), "Bandage is unavailable.")
-	var bandage_targets: Array = bandage.get("targets", []) if bandage.get("targets", []) is Array else []
-	var bandage_enabled := bool(bandage.get("enabled", false)) and not bandage_targets.is_empty()
-	var bandage_reason := String(bandage.get("reason", "Bandage is unavailable."))
-	if bandage_targets.is_empty() and bool(bandage.get("enabled", false)):
+	var bandage_enabled := body.bandage.enabled and not body.bandage_targets.is_empty()
+	var bandage_reason := body.bandage.reason
+	if body.bandage_targets.is_empty() and body.bandage.enabled:
 		bandage_reason = "No legal Bandage recipient is available."
-	_add_bandage_panel(bandage_panel, actor_id, bandage_targets)
+	_add_bandage_panel(bandage_panel, actor_id, body.bandage_targets)
 	_add_panel_toggle(parent, "Bandage", bandage_panel, mode_panels, overview, bandage_enabled, bandage_reason)
 
-	var turn_undead := _availability_dictionary(request.payload.get("turnUndead", {}), "Turn Undead is unavailable.")
-	var turn_targets: Variant = turn_undead.get("targets", [])
 	var turn_label := "Turn Undead"
-	if bool(turn_undead.get("enabled", false)) and turn_targets is Array:
-		turn_label = "Turn Undead (%d)" % (turn_targets as Array).size()
-	add_response_to(parent, turn_label, {"actorId": actor_id, "action": "turn_undead", "targetId": ""}, bool(turn_undead.get("enabled", false)), String(turn_undead.get("reason", "Turn Undead is unavailable.")))
+	if body.turn_undead.enabled: turn_label = "Turn Undead (%d)" % body.turn_undead_targets.size()
+	add_response_to(parent, turn_label, {"actorId": actor_id, "action": "turn_undead", "targetId": ""}, body.turn_undead.enabled, body.turn_undead.reason)
 
-	var undo := _availability_dictionary(request.payload.get("undo", {}), "Undo is unavailable.")
-	add_response_to(parent, "Undo", {"actorId": actor_id, "action": "undo", "targetId": ""}, bool(undo.get("enabled", false)), String(undo.get("reason", "Undo is unavailable.")))
+	add_response_to(parent, "Undo", {"actorId": actor_id, "action": "undo", "targetId": ""}, body.undo.enabled, body.undo.reason)
 
 
-func _add_bandage_panel(parent: Control, actor_id: String, targets: Array) -> void:
+func _add_bandage_panel(parent: Control, actor_id: String, targets: Array[InteractionRequestValue.CombatTarget]) -> void:
 	_add_hint_to(parent, "Choose one bleeding party member.")
 	var picker := OptionButton.new()
 	picker.name = "BandageRecipient"
 	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	picker.tooltip_text = "Choose one supplied legal Bandage recipient."
-	for target: Variant in targets:
-		if target is Dictionary and not String(target.get("id", "")).is_empty():
-			var label := String(target.get("name", target.get("id", "Character")))
-			label += " • %d HP" % int(target.get("currentHealth", 0))
-			picker.add_item(label)
-			picker.set_item_metadata(picker.item_count - 1, String(target.get("id", "")))
+	for target: InteractionRequestValue.CombatTarget in targets:
+		if not target.id.is_empty():
+			picker.add_item("%s • %d HP" % [target.name, target.current_health])
+			picker.set_item_metadata(picker.item_count - 1, target.id)
 	picker.disabled = picker.item_count == 0
 	parent.add_child(picker)
 	var submit := Button.new()
@@ -503,12 +447,6 @@ func _add_bandage_panel(parent: Control, actor_id: String, targets: Array) -> vo
 		payload_submitted.emit({"actorId": actor_id, "action": "bandage", "targetId": target_id})
 	)
 	parent.add_child(submit)
-
-
-func _availability_dictionary(value: Variant, fallback_reason: String) -> Dictionary:
-	if value is Dictionary:
-		return (value as Dictionary).duplicate(true)
-	return {"enabled": false, "reason": fallback_reason, "targets": []}
 
 
 func _add_panel_toggle(parent: Container, label: String, panel: Control, panels: Array[Control], overview: Control, enabled: bool, reason: String, presentation_sound_id: int = 0) -> Button:

@@ -5,6 +5,19 @@ var assertions: int = 0
 var failures: Array[String] = []
 
 
+func save_data(snapshot: SessionSnapshot) -> Dictionary:
+	var envelope := SaveEnvelope.from_snapshot(snapshot)
+	return {} if envelope == null else envelope.to_data()
+
+
+func save_round_trip(snapshot: SessionSnapshot) -> SaveEnvelope:
+	return SaveEnvelope.from_data(save_data(snapshot))
+
+
+func continuation_data(snapshot: SessionSnapshot) -> Dictionary:
+	return {} if snapshot == null or snapshot.continuation == null else snapshot.continuation.to_legacy_data()
+
+
 func selected_case_arguments() -> Array:
 	return []
 

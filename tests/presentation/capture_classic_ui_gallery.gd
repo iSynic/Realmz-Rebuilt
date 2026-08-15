@@ -62,7 +62,7 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"journal")
 	await _settle()
 	await _capture("wide-journal-1280x720")
-	_interaction.present(InteractionRequest.new("gallery-classic-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"}), "Will you enter the ruined keep?")
+	_interaction.present(InteractionRequest.from_payload("gallery-classic-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"}), "Will you enter the ruined keep?")
 	await _settle()
 	await _capture("wide-classic-choice-context-1280x720")
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION))

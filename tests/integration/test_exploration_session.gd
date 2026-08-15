@@ -37,7 +37,7 @@ func run() -> void:
 	assert_equal(diagonal_session._state.clock.total_minutes(), content.world.map_by_id("land:0").topology.cell_at(Vector2i.ZERO).movement_cost * 5, "outdoor movement scales the authored Classic timeclick count to five-minute clicks")
 	assert_equal(diagonal_session.snapshot().game_state.last_move_direction, Vector2i(-1, -1), "the save aggregate retains the complete diagonal movement vector")
 	var restored_diagonal := GameSession.new()
-	assert_equal(restored_diagonal.restore(content, SaveEnvelope.from_data(diagonal_session.snapshot().to_data())).state, SessionStep.State.COMPLETED, "diagonal movement state restores transactionally")
+	assert_equal(restored_diagonal.restore(content, save_round_trip(diagonal_session.snapshot())).state, SessionStep.State.COMPLETED, "diagonal movement state restores transactionally")
 	assert_equal(restored_diagonal.snapshot().game_state.last_move_direction, Vector2i(-1, -1), "save/reload preserves a diagonal backup direction")
 	assert_equal(restored_diagonal.view().map_view.last_move_direction, Vector2i(-1, -1), "the restored detached map view preserves the movement vector used by presentation")
 	var layout_maps: Array[MapDefinition] = [content.world.map_by_id("land:0"), content.world.map_by_id("land:1")]
@@ -51,7 +51,7 @@ func run() -> void:
 	assert_equal(diagonal_layout_session.view().party_coordinate, Vector2i(89, 89), "diagonal boundary input wraps to the opposite target corner")
 	assert_true(_has_event(diagonal_layout_step, &"map_transitioned"), "diagonal Layout movement publishes the ordinary transition event")
 	var restored_diagonal_layout := GameSession.new()
-	assert_equal(restored_diagonal_layout.restore(diagonal_layout_content, SaveEnvelope.from_data(diagonal_layout_session.snapshot().to_data())).state, SessionStep.State.COMPLETED, "diagonal Layout movement restores transactionally")
+	assert_equal(restored_diagonal_layout.restore(diagonal_layout_content, save_round_trip(diagonal_layout_session.snapshot())).state, SessionStep.State.COMPLETED, "diagonal Layout movement restores transactionally")
 	assert_equal(restored_diagonal_layout.view().party_coordinate, Vector2i(89, 89), "save/reload retains the diagonal Layout destination")
 
 	var north := session.submit_intent(PlayerIntent.move(Vector2i.UP))
@@ -60,11 +60,11 @@ func run() -> void:
 	assert_equal(north.state, SessionStep.State.WAITING_FOR_INTERACTION, "positive Classic AP text creates a committed acknowledgement boundary")
 	assert_equal(north.interaction.kind, &"acknowledge", "the active AP message uses the dedicated textbox interaction")
 	assert_false(_has_event(north, &"tile_replaced"), "later AP mutations do not run before the player advances the text")
-	var north_snapshot := SaveEnvelope.from_data(session.snapshot().to_data())
+	var north_snapshot := save_round_trip(session.snapshot())
 	assert_not_null(north_snapshot, "the Classic textbox and movement continuation serialize together")
 	var north_restored := GameSession.new()
 	assert_equal(north_restored.restore(content, north_snapshot).state, SessionStep.State.COMPLETED, "the Classic textbox boundary restores transactionally")
-	var north_completed := north_restored.respond(InteractionResponse.new(north_restored.view().pending_interaction.request_id, &"acknowledge", {}))
+	var north_completed := north_restored.respond(InteractionResponse.from_data(north_restored.view().pending_interaction.request_id, &"acknowledge", {}))
 	assert_true(_has_event(north_completed, &"tile_replaced"), "Classic opcode 12 mutates the world overlay after acknowledgement")
 	assert_true(_has_event(north_completed, &"random_region_triggered"), "random rectangle gates after the moved-to AP finishes")
 	var north_trigger_id := content.world.map_by_id("land:0").topology.cell_at(Vector2i(1, 0)).trigger_ids()[0]
@@ -80,7 +80,7 @@ func run() -> void:
 	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "blocked movement does not mutate party location")
 	assert_equal(session._state.clock.total_minutes(), blocked_start_minutes + hidden_destination.movement_cost * 5, "a blocked land attempt pays the attempted tile's five-minute Classic timeclick cost")
 	assert_true(_has_event(blocked, &"random_encounter_checked"), "a timed blocked land attempt performs the downstream random-region check at the committed cell")
-	assert_equal(session.snapshot().session_continuation, {}, "a blocked attempt drains its post-time checks before returning a committed boundary")
+	assert_equal(session.snapshot().continuation, null, "a blocked attempt drains its post-time checks before returning a committed boundary")
 	var search := session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	assert_equal(search.events[0].payload["roll"], 15, "search follows the centralized RNG after the blocked-attempt random-region draw")
 	assert_true(_has_event(search, &"secret_discovered"), "search commits secret discovery")
@@ -89,7 +89,7 @@ func run() -> void:
 	assert_equal(session.view().party_coordinate, Vector2i(0, 1), "discovered secret permits movement")
 	assert_true(_has_event(secret_entry, &"message_shown"), "secret AP uses the ordinary action sequence")
 	assert_equal(secret_entry.state, SessionStep.State.WAITING_FOR_INTERACTION, "secret AP positive text pauses before later player intents")
-	assert_equal(session.respond(InteractionResponse.new(secret_entry.interaction.request_id, &"acknowledge", {})).state, SessionStep.State.COMPLETED, "acknowledging secret AP text completes the action sequence")
+	assert_equal(session.respond(InteractionResponse.from_data(secret_entry.interaction.request_id, &"acknowledge", {})).state, SessionStep.State.COMPLETED, "acknowledging secret AP text completes the action sequence")
 
 	_restore_fixture_position(session, content, "land:0", Vector2i(88, 1))
 	session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
@@ -183,10 +183,10 @@ func run() -> void:
 	var surprise_snapshot := surprise_session.snapshot()
 	assert_not_null(surprise_snapshot, "the random surprise interaction is a committed save boundary")
 	assert_equal(surprise_snapshot.session_interaction.request_id, surprise_wait.interaction.request_id, "the save aggregate owns the non-VM interaction")
-	assert_equal(surprise_snapshot.session_continuation["randomBattleStage"], "surprise-choice", "the save aggregate owns random battle continuation state")
+	assert_equal(continuation_data(surprise_snapshot)["randomBattleStage"], "surprise-choice", "the save aggregate owns random battle continuation state")
 	var restored_surprise := GameSession.new()
-	assert_equal(restored_surprise.restore(content, SaveEnvelope.from_data(surprise_snapshot.to_data())).state, SessionStep.State.COMPLETED, "random surprise save restores transactionally")
-	var accepted := restored_surprise.respond(InteractionResponse.new(surprise_wait.interaction.request_id, &"yes_no", {"accepted": true}))
+	assert_equal(restored_surprise.restore(content, SaveEnvelope.from_data(save_data(surprise_snapshot))).state, SessionStep.State.COMPLETED, "random surprise save restores transactionally")
+	var accepted := restored_surprise.respond(InteractionResponse.from_data(surprise_wait.interaction.request_id, &"yes_no", {"accepted": true}))
 	assert_true(_has_event(accepted, &"random_encounter_triggered"), "accepting the surprise choice starts the selected random battle")
 	assert_equal(_event(accepted, &"battle_started").payload["surprise"], 1, "accepted random surprise gives the party source-backed initiative")
 	var battle_coordinate := restored_surprise.view().party_coordinate
@@ -195,10 +195,10 @@ func run() -> void:
 	assert_equal(restored_surprise.view().party_coordinate, battle_coordinate, "rejected combat-time movement cannot mutate topology state")
 	var declined_surprise := GameSession.new()
 	declined_surprise.restore(content, surprise_snapshot)
-	var declined := declined_surprise.respond(InteractionResponse.new(surprise_wait.interaction.request_id, &"yes_no", {"accepted": false}))
+	var declined := declined_surprise.respond(InteractionResponse.from_data(surprise_wait.interaction.request_id, &"yes_no", {"accepted": false}))
 	assert_equal(declined.state, SessionStep.State.COMPLETED, "declining an only-region surprise cleanly resumes exploration")
 	assert_true(declined_surprise.view().combat_view == null, "declining the random encounter does not create combat state")
-	assert_equal(declined_surprise.snapshot().session_continuation, {}, "declining the only region clears its continuation")
+	assert_equal(declined_surprise.snapshot().continuation, null, "declining the only region clears its continuation")
 
 	var door_session := GameSession.new()
 	door_session.start(content, 1)
@@ -222,25 +222,18 @@ func run() -> void:
 	var relocated := destination_session.submit_intent(PlayerIntent.move(Vector2i.UP))
 	assert_equal(destination_session.view().party_coordinate, Vector2i(0, 0), "the initial movement commits before the source AP textbox is acknowledged")
 	assert_equal(_message_ids(relocated), [5], "the source Action Point presents only its current positive message")
-	var destination_text := destination_session.respond(InteractionResponse.new(relocated.interaction.request_id, &"acknowledge", {}))
+	var destination_text := destination_session.respond(InteractionResponse.from_data(relocated.interaction.request_id, &"acknowledge", {}))
 	assert_equal(destination_session.view().party_coordinate, Vector2i(1, 0), "the Classic AP header relocates the party after its actions")
 	assert_equal(_message_ids(destination_text), [6], "the destination cell Action Point is rechecked exactly once and presents separately")
-	var destination_completed := destination_session.respond(InteractionResponse.new(destination_text.interaction.request_id, &"acknowledge", {}))
+	var destination_completed := destination_session.respond(InteractionResponse.from_data(destination_text.interaction.request_id, &"acknowledge", {}))
 	assert_equal(destination_completed.state, SessionStep.State.COMPLETED, "the destination textbox acknowledgement completes the rechecked AP")
 	assert_equal(_event_count(relocated, &"party_moved") + _event_count(destination_text, &"party_moved") + _event_count(destination_completed, &"party_moved"), 2, "the initial move and one AP relocation occur without recursive movement")
 
-	var v1_data := session.snapshot().to_data()
-	v1_data["formatVersion"] = 1
-	v1_data.erase("sessionInteraction")
-	var migrated_v1 := SaveEnvelope.from_data(v1_data)
-	assert_not_null(migrated_v1, "save v1 migrates through the ordered pure transform")
-	assert_equal(migrated_v1.to_data()["formatVersion"], 3, "migrated saves serialize as the current envelope version")
-	var v2_data := surprise_snapshot.to_data()
-	v2_data["formatVersion"] = 2
-	v2_data["sessionContinuation"].erase("actionPointDestinationDepth")
-	var migrated_v2 := SaveEnvelope.from_data(v2_data)
-	assert_not_null(migrated_v2, "save v2 migrates through the ordered AP-destination transform")
-	assert_equal(migrated_v2.session_continuation["actionPointDestinationDepth"], 0, "save v2 resumes before any AP destination recheck")
+	var current_save_data := save_data(session.snapshot())
+	for legacy_version in [1, 2, 3]:
+		var legacy_data: Dictionary = current_save_data.duplicate(true)
+		legacy_data["formatVersion"] = legacy_version
+		assert_equal(SaveEnvelope.from_data(legacy_data), null, "save v%d is explicitly incompatible with save v4" % legacy_version)
 
 
 func _has_event(step: SessionStep, event_kind: StringName) -> bool:
@@ -313,7 +306,7 @@ func _test_location_notes(content: RealmzContent) -> void:
 	assert_equal(session.submit_intent(PlayerIntent.set_location_note("Dungeon entrance.")).state, SessionStep.State.COMPLETED, "a dungeon note commits into its independent record stream")
 	assert_equal([session.view().location_notes.size(), session.view().location_notes[0].record_ordinal, session.view().location_notes[0].level_type], [1, 0, &"dungeon"], "the detached browser exposes only the current map-kind stream")
 	_restore_fixture_position(session, content, "land:0", original_coordinate)
-	var saved := SaveEnvelope.from_data(JSON.parse_string(JSON.stringify(session.snapshot().to_data())))
+	var saved := SaveEnvelope.from_data(JSON.parse_string(JSON.stringify(save_data(session.snapshot()))))
 	assert_not_null(saved, "location-note state survives canonical save-envelope serialization")
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, saved).state, SessionStep.State.COMPLETED, "location-note state restores transactionally")
@@ -372,7 +365,7 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
 	character.race_id = races[0].id
 	character.caste_id = castes[0].id
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
 	var started := session.submit_intent(PlayerIntent.begin_adventure())
 	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
 		assert_equal(started.state, SessionStep.State.COMPLETED, "exploration content without a Start Game hook leaves party setup synchronously")

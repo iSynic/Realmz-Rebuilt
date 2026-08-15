@@ -4,6 +4,7 @@ const PRIMARY: StringName = &"primary"
 const BACKUP: StringName = &"backup"
 const VALID: StringName = &"valid"
 const CORRUPT: StringName = &"corrupt"
+const INCOMPATIBLE: StringName = &"incompatible"
 const CAMPAIGN_MISMATCH: StringName = &"campaign-mismatch"
 const PACKAGE_MISMATCH: StringName = &"package-mismatch"
 
@@ -41,6 +42,8 @@ func status_label() -> String:
 			return "Identity verified"
 		CORRUPT:
 			return "Corrupt"
+		INCOMPATIBLE:
+			return "Incompatible save"
 		CAMPAIGN_MISMATCH:
 			return "Wrong campaign"
 		PACKAGE_MISMATCH:

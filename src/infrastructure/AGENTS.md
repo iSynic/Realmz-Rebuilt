@@ -7,12 +7,13 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 ## Ownership
 
 - `.realmz2` ZIP verification and typed domain construction.
-- `.r2save` repositories, validation, backup rotation, and pure migrations.
+- Strict `.r2save` v4 encoding/decoding, validation, backup rotation, and explicit rejection of older envelopes.
 - Installed package discovery, current-revision selection, and capability/readiness reporting.
 
 ## Local Contracts
 
 - Treat package and save data as untrusted until all structural, hash, reference, limit, topology, and capability checks pass.
+- `.r2save` v4 encodes the typed `SessionSnapshot` and every closed protocol variant as `{kind, version, data}`. Unknown kinds, fields, or versions fail before constructing a session; v1 through v3 are incompatible and have no migration path.
 - Character vault revisions preserve all ten Fast Spell bindings as character-owned state. Eligibility rejects bindings whose spell identity is absent from the target package, no longer known by the character, or paired with an invalid power; it never silently clears or substitutes a shortcut.
 - Discovery reads the ZIP inventory and verifies manifest/schema/capability metadata without hashing payload bytes or constructing every campaign. Importing an external package performs complete file-integrity and typed-content validation once, installs the exact bytes under the package identity, and atomically writes an app-owned receipt containing the schema, campaign/package identities, compressed archive SHA-256, byte count, and modification identity. Selecting an unchanged installed package verifies that receipt and manifest identity before constructing typed content; it does not rehash the archive or repeat compiler-level payload, media, and reference validation on every Play. A changed size or modification identity invalidates the receipt and requires reinstalling the package.
 - Long package validation and installation run in a host-owned worker with detached, mutex-protected progress and cooperative cancellation between integrity items. The worker may use infrastructure adapters only; it never accesses Nodes, presenters, or the active session, and shutdown joins it before process exit.
@@ -35,7 +36,7 @@ Own package loading, schema/hash validation, save persistence, migrations, and e
 - Realmz 2 packages contain one decoded, role-labelled asset for every selectable Classic portrait 257–376 and tactical icon 9000–9119. Missing or wrong-role appearance data fails readiness before typed content construction.
 - Presentation media lookup matches the exact four-character resource type plus signed numeric ID. It preserves case and trailing spaces and never falls back to another type merely because the number matches. Package construction rejects duplicate exact keys before presentation receives a catalog.
 - Reject a package when a topology cell references a missing tileset or image overlay, when atlas dimensions disagree with its declared tile grid, or when tileset metadata is incomplete. JSON asset records stop at this boundary; presentation receives typed `PackageMediaAsset` values.
-- Save only at committed session boundaries. Save the whole aggregate, including VM and session interactions, post-move/random-region continuation, clock, overlays, action state, and RNG.
+- Save only at committed session boundaries. Save the whole typed aggregate, including VM and session interactions, post-move/random-region continuation, clock, overlays, action state, and RNG state/draw count; debug RNG traces are not persisted.
 - Saves may also contain a pending direct-session monster death macro; its battle, combatant, program, VM request, and RNG position validate as one continuation.
 - Write a temporary save, read and validate it, rotate one backup, then atomically replace the slot.
 - Save browsing enumerates primary and backup records as detached previews. It classifies structural corruption and campaign/package identity mismatches without exposing paths or mutable envelopes; an enabled preview is still fully validated through replacement-session restore before becoming active.

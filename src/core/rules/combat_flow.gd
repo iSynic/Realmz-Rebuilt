@@ -2259,22 +2259,19 @@ func fumble_recovery_payload(state: GameState, content: RealmzContent) -> Dictio
 	}
 
 
-func apply_fumble_recovery(state: GameState, content: RealmzContent, response_payload: Variant) -> CombatFlowResult:
+func apply_fumble_recovery(state: GameState, content: RealmzContent, action: StringName, instance_id: String, character_id: String = "") -> CombatFlowResult:
 	var request_payload := fumble_recovery_payload(state, content)
-	if request_payload.is_empty() or not response_payload is Dictionary:
+	if request_payload.is_empty():
 		return CombatFlowResult.failed(&"invalid_fumble_recovery", "Fumbled-weapon recovery is unavailable.")
-	if not response_payload.get("action") is String or not response_payload.get("instanceId") is String or response_payload["instanceId"] != request_payload["item"]["instanceId"]:
+	if instance_id != request_payload["item"]["instanceId"]:
 		return CombatFlowResult.failed(&"invalid_fumble_recovery", "Fumbled-weapon recovery must identify the pending item and action.")
-	var action: String = response_payload["action"]
-	var instance_id: String = response_payload["instanceId"]
-	if action == "discard":
+	if action == &"discard":
 		var discarded := state.combat.remove_fumbled_item(instance_id)
 		if discarded == null:
 			return CombatFlowResult.failed(&"invalid_fumble_recovery", "The pending fumbled weapon is unavailable.")
 		return CombatFlowResult.succeeded([DomainEvent.new(&"fumbled_item_left_behind", {"battleId": state.combat.battle_id, "instanceId": discarded.id, "itemId": discarded.definition_id})])
-	if action != "assign" or not response_payload.get("characterId") is String:
+	if action != &"assign" or character_id.is_empty():
 		return CombatFlowResult.failed(&"invalid_fumble_recovery", "Fumbled-weapon recovery requires an available character or discard action.")
-	var character_id: String = response_payload["characterId"]
 	var candidate: Dictionary = {}
 	for entry: Dictionary in request_payload["characters"]:
 		if entry["id"] == character_id:

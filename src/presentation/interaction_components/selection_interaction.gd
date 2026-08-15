@@ -12,16 +12,15 @@ func build(request: InteractionRequest) -> void:
 
 
 func _build_character_selection(request: InteractionRequest) -> void:
-	var required := int(request.payload.get("count", 1))
-	var prompt := String(request.payload.get("prompt", ""))
+	var body := request.body as InteractionRequest.CharacterSelectionRequestBody
+	if body == null: return
+	var required := body.count
+	var prompt := body.prompt
 	if not prompt.is_empty():
 		add_hint(prompt)
 	add_hint("Choose %d character%s." % [required, "" if required == 1 else "s"])
-	var eligible: Variant = request.payload.get("eligible", [])
-	if eligible is Array:
-		for entry: Variant in eligible:
-			if entry is Dictionary:
-				_add_character_check(entry, false, false)
+	for entry: InteractionRequestValue.SelectionCandidate in body.eligible:
+		_add_character_check(entry, false, false)
 	var submit := Button.new()
 	submit.text = "Choose"
 	submit.pressed.connect(_submit_characters.bind(required))
@@ -29,27 +28,26 @@ func _build_character_selection(request: InteractionRequest) -> void:
 
 
 func _build_ally_selection(request: InteractionRequest) -> void:
-	var maximum := int(request.payload.get("maximum", 0))
-	var selected: Variant = request.payload.get("selectedIds", [])
+	var body := request.body as InteractionRequest.SelectionRequestBody
+	if body == null: return
+	var maximum := body.maximum
+	var selected := body.selected_ids
 	add_hint("Choose up to %d surviving allies. Required allies stay selected." % maximum)
-	var candidates: Variant = request.payload.get("candidates", [])
-	if candidates is Array:
-		for entry: Variant in candidates:
-			if not entry is Dictionary:
-				continue
-			var ally_id := String(entry.get("id", ""))
-			var required := bool(entry.get("required", false))
-			_add_character_check(entry, required or selected is Array and selected.has(ally_id), required)
+	for entry: InteractionRequestValue.SelectionCandidate in body.candidates:
+		var ally_id := entry.id
+		var required := body.required_ids.has(ally_id)
+		_add_character_check(entry, required or selected.has(ally_id), required)
 	var submit := Button.new()
 	submit.text = "Continue"
 	submit.pressed.connect(_submit_allies.bind(maximum))
 	add_child(submit)
 
 
-func _add_character_check(entry: Dictionary, selected: bool, required: bool) -> void:
+func _add_character_check(entry: InteractionRequestValue.SelectionCandidate, selected: bool, required: bool) -> void:
 	var check := CheckButton.new()
-	check.text = "%s • HP %d/%d%s" % [entry.get("name", "Character"), int(entry.get("currentHealth", 0)), int(entry.get("maximumHealth", entry.get("currentHealth", 0))), " • Required" if required else ""]
-	check.set_meta("character_id", String(entry.get("id", "")))
+	var maximum_health := entry.maximum_health if entry.has_maximum_health else entry.current_health
+	check.text = "%s • HP %d/%d%s" % [entry.name, entry.current_health, maximum_health, " • Required" if required else ""]
+	check.set_meta("character_id", entry.id)
 	check.button_pressed = selected
 	check.disabled = required
 	_checks.append(check)

@@ -81,6 +81,8 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 		return ScenarioVmResult.failed(&"no_interaction_pending", "The Scenario VM has no interaction to resume.")
 	if response == null or response.request_id != _pending_request.request_id:
 		return ScenarioVmResult.failed(&"interaction_mismatch", "The interaction response does not match the issuing VM request.")
+	if not response.is_supported_kind():
+		return ScenarioVmResult.failed(&"invalid_interaction_response", "The response payload does not match its interaction kind.")
 	var events: Array[DomainEvent] = []
 	var continuation := _pending_continuation.duplicate(true)
 	var request_id := _pending_request.request_id

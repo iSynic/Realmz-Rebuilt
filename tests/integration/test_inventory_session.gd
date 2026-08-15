@@ -20,8 +20,8 @@ func run() -> void:
 	assert_equal(session.start(content, 41).state, SessionStep.State.COMPLETED, "inventory session starts")
 	var source := _character("inventory.source", "Alis", content)
 	var destination := _character("inventory.destination", "Borin", content)
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(source.id, "1".repeat(64), source.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "source character enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(destination.id, "2".repeat(64), destination.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "trade recipient enters party setup")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(source.id, "1".repeat(64), source, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "source character enters party setup")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(destination.id, "2".repeat(64), destination, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "trade recipient enters party setup")
 	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "inventory fixture begins the adventure")
 	var carried_source := session._state.party.character_by_id(source.id)
 	var item := content.item_by_id("classic.item.inventory-sword")
@@ -65,7 +65,7 @@ func run() -> void:
 	assert_not_null(pending_snapshot, "Drop confirmation is a saveable committed boundary")
 	if pending_snapshot == null:
 		return
-	var restored_envelope := SaveEnvelope.from_data(pending_snapshot.to_data())
+	var restored_envelope := SaveEnvelope.from_data(save_data(pending_snapshot))
 	assert_not_null(restored_envelope, "Drop confirmation save data validates before restore")
 	if restored_envelope == null:
 		return
@@ -100,8 +100,8 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 	var target := _character("inventory.item-target", "Fenn", content)
 	user.current_health = 4
 	target.current_health = 5
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(user.id, "3".repeat(64), user.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item user enters party setup")
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(target.id, "4".repeat(64), target.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item target enters party setup")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(user.id, "3".repeat(64), user, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item user enters party setup")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(target.id, "4".repeat(64), target, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "item target enters party setup")
 	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "field item-use fixture begins")
 	var carried_user := session._state.party.character_by_id(user.id)
 	var carried_target := session._state.party.character_by_id(target.id)
@@ -112,23 +112,23 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 	assert_true(session.view().party_members[0].items[0].actions.use.enabled, "detached inventory actions expose a source-backed field item use")
 	var load_before := carried_user.carried_load
 	var requested := session.submit_intent(PlayerIntent.use_item(wand_instance.id, carried_user.id))
-	assert_equal([requested.state, requested.interaction.kind, requested.interaction.payload.get("count")], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.CHARACTER_SELECTION, 1], "party-target item use yields one typed character selection")
-	assert_true(String(requested.interaction.payload.get("prompt", "")).contains(wand.unidentified_name) and not String(requested.interaction.payload.get("prompt", "")).contains(wand.name), "field item targeting does not reveal an unidentified item's true name")
+	assert_equal([requested.state, requested.interaction.kind, requested.interaction.body.to_data().get("count")], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.CHARACTER_SELECTION, 1], "party-target item use yields one typed character selection")
+	assert_true(String(requested.interaction.body.to_data().get("prompt", "")).contains(wand.unidentified_name) and not String(requested.interaction.body.to_data().get("prompt", "")).contains(wand.name), "field item targeting does not reveal an unidentified item's true name")
 	assert_equal(wand_instance.charges, 2, "opening target selection does not spend a charge before a valid target commits")
-	var corrupt_power_data := session.snapshot().to_data()
-	corrupt_power_data["sessionContinuation"]["power"] = 7
+	var corrupt_power_data := save_data(session.snapshot())
+	corrupt_power_data["sessionContinuation"]["data"]["power"] = 7
 	var corrupt_power_envelope := SaveEnvelope.from_data(corrupt_power_data)
 	assert_not_null(corrupt_power_envelope, "the wire envelope accepts a structurally valid continuation before content validation")
 	var corrupt_power_restore := GameSession.new()
 	assert_equal(corrupt_power_restore.restore(content, corrupt_power_envelope).error_code, &"invalid_session_continuation", "restore rejects a fixed-power item continuation whose staged power was tampered")
-	var envelope := SaveEnvelope.from_data(session.snapshot().to_data())
+	var envelope := save_round_trip(session.snapshot())
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, envelope).state, SessionStep.State.COMPLETED, "pending item target selection restores transactionally")
 	var pending := restored.view().pending_interaction
-	var rejected := restored.respond(InteractionResponse.new(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": ["missing.character"]}))
+	var rejected := restored.respond(InteractionResponse.from_data(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": ["missing.character"]}))
 	assert_equal(rejected.error_code, &"invalid_item_use_target", "a stale or invented item target is rejected explicitly")
 	assert_equal(restored._state.party.character_by_id(carried_user.id).inventory()[0].charges, 2, "corrupt item target response spends no charge")
-	var completed := restored.respond(InteractionResponse.new(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [carried_target.id]}))
+	var completed := restored.respond(InteractionResponse.from_data(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [carried_target.id]}))
 	assert_equal(completed.state, SessionStep.State.COMPLETED, "valid item target commits the effect")
 	assert_equal(restored._state.party.character_by_id(carried_target.id).current_health, 8, "fixed-power healing item applies its source spell to the selected party member")
 	assert_equal(restored._state.party.character_by_id(carried_user.id).inventory()[0].charges, 1, "committed field item use spends exactly one positive charge")
@@ -143,7 +143,7 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 	var random_requested := restored.submit_intent(PlayerIntent.use_item(wand_instance.id, carried_user.id))
 	assert_equal([random_requested.state, restored._session_continuation.get("power"), restored._rng.trace()[0].get("tag")], [SessionStep.State.WAITING_FOR_INTERACTION, 7, "item.use.power.inventory.instance.healing-wand"], "random-power field item rolls Castle Rand(7) once before staging its target")
 	assert_equal(restored._state.party.character_by_id(carried_user.id).inventory()[0].charges, 1, "random power selection still cannot consume the charge before a target commits")
-	var random_completed := restored.respond(InteractionResponse.new(random_requested.interaction.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [carried_target.id]}))
+	var random_completed := restored.respond(InteractionResponse.from_data(random_requested.interaction.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [carried_target.id]}))
 	assert_equal(random_completed.state, SessionStep.State.COMPLETED, "the staged random power survives through the target response")
 	assert_true(random_completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"item_used" and event.payload.get("power") == 7), "the committed item event retains its one rolled power")
 	wand.special_1 = 1

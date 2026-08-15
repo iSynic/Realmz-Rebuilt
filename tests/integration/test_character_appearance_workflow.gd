@@ -30,7 +30,7 @@ func run() -> void:
 	assert_true(session.view().availability(&"change_character_appearance").enabled, "the active noncombat party exposes appearance editing")
 	assert_equal([session.view().portrait_options.size(), session.view().combat_icon_options.size()], [120, 120], "the detached active-session view exposes the complete package catalogs")
 
-	var state_before := session.snapshot().to_data()
+	var state_before := save_data(session.snapshot())
 	var rng_before := session.snapshot().rng_state.to_data()
 	var portrait_change := session.submit_intent(PlayerIntent.change_character_appearance(character_id, CharacterAppearanceDefinition.PORTRAIT, target_portrait.id))
 	assert_equal(portrait_change.state, SessionStep.State.COMPLETED, "a valid portrait change commits synchronously")
@@ -46,16 +46,16 @@ func run() -> void:
 	var after_icon := session.snapshot().game_state.party.character_by_id(character_id)
 	assert_equal([after_icon.portrait_id, after_icon.combat_icon_id], [target_portrait.id, target_icon.id], "the two active appearance roles remain independent")
 
-	var committed := session.snapshot().to_data()
+	var committed := save_data(session.snapshot())
 	var wrong_role := session.submit_intent(PlayerIntent.change_character_appearance(character_id, CharacterAppearanceDefinition.PORTRAIT, target_icon.id))
 	assert_equal([wrong_role.state, wrong_role.error_code], [SessionStep.State.FAILED, &"invalid_character_appearance"], "a tactical icon cannot be assigned as a portrait")
-	assert_equal(session.snapshot().to_data(), committed, "wrong-role rejection is transactional")
+	assert_equal(save_data(session.snapshot()), committed, "wrong-role rejection is transactional")
 	var unknown_member := session.submit_intent(PlayerIntent.change_character_appearance("character.unknown", CharacterAppearanceDefinition.PORTRAIT, target_portrait.id))
 	assert_equal([unknown_member.state, unknown_member.error_code], [SessionStep.State.FAILED, &"unknown_party_member"], "an unknown character cannot receive an appearance")
-	assert_equal(session.snapshot().to_data(), committed, "unknown-character rejection is transactional")
+	assert_equal(save_data(session.snapshot()), committed, "unknown-character rejection is transactional")
 	var unchanged := session.submit_intent(PlayerIntent.change_character_appearance(character_id, CharacterAppearanceDefinition.COMBAT_ICON, target_icon.id))
 	assert_equal([unchanged.state, unchanged.error_code], [SessionStep.State.FAILED, &"appearance_unchanged"], "an unchanged selection does not fabricate a mutation")
-	assert_equal(session.snapshot().to_data(), committed, "unchanged rejection is transactional")
+	assert_equal(save_data(session.snapshot()), committed, "unchanged rejection is transactional")
 
 	var restored := GameSession.new()
 	var envelope := SaveEnvelope.from_data(committed)
@@ -68,10 +68,10 @@ func run() -> void:
 	tampered_data["gameState"]["party"]["characters"][0]["portraitId"] = target_icon.id
 	var tampered := SaveEnvelope.from_data(tampered_data)
 	assert_not_null(tampered, "wire parsing alone accepts a structurally valid but wrong-role appearance for package validation")
-	var replacement_before := restored.snapshot().to_data()
+	var replacement_before := save_data(restored.snapshot())
 	var rejected_restore := restored.restore(content, tampered)
 	assert_equal([rejected_restore.state, rejected_restore.error_code], [SessionStep.State.FAILED, &"invalid_game_state"], "restore rejects a saved tactical icon in the portrait role")
-	assert_equal(restored.snapshot().to_data(), replacement_before, "failed appearance restore leaves the active session untouched")
+	assert_equal(save_data(restored.snapshot()), replacement_before, "failed appearance restore leaves the active session untouched")
 	var empty_identity_data := committed.duplicate(true)
 	empty_identity_data["gameState"]["party"]["characters"][0]["portraitId"] = ""
 	empty_identity_data["gameState"]["party"]["characters"][0]["combatIconId"] = ""

@@ -387,12 +387,13 @@ func _submit_intent(intent: PlayerIntent) -> SessionStep:
 		_present_standalone_character_step(creator_step)
 		return creator_step
 	if intent != null and intent.kind == PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
-		var record := character_vault_repository.load_revision(intent.target_id, intent.revision_hash)
+		var vault_import := intent.payload as PlayerIntent.VaultImportPayload
+		var record := character_vault_repository.load_revision(vault_import.character_id, vault_import.revision_hash)
 		if record == null:
 			var failed := SessionStep.failed(session_controller.view().revision, &"vault_load_failed", character_vault_repository.last_error if not character_vault_repository.last_error.is_empty() else "The requested vault revision is unavailable.")
 			_present_step_status(failed)
 			return failed
-		intent = PlayerIntent.import_vault_character(record.character_id, record.revision_hash, record.state.to_data(), record.source_campaign_id, record.source_package_hash)
+		intent = PlayerIntent.import_vault_character(record.character_id, record.revision_hash, record.state, record.source_campaign_id, record.source_package_hash)
 	var step := session_controller.submit_intent(intent)
 	_present_step_status(step)
 	return step
@@ -415,7 +416,8 @@ func _respond_host_interaction(response: InteractionResponse) -> void:
 		_shell_presenter.set_status("The lifecycle response was invalid.", true)
 		presentation_coordinator.present_host_interaction(_host_interaction)
 		return
-	var operation := StringName(_host_interaction.payload.get("operation", &""))
+	var host_body := _host_interaction.body as InteractionRequest.LifecycleRequestBody
+	var operation := host_body.operation if host_body != null else &""
 	if operation == &"quit-application":
 		_respond_quit_interaction(action)
 		return
@@ -536,10 +538,12 @@ func _present_step_status(step: SessionStep) -> void:
 			&"movement_blocked":
 				_status_label.text = "Blocked • %s" % event.payload.get("reason", "unknown")
 	if step.state == SessionStep.State.WAITING_FOR_INTERACTION:
-		if step.interaction.kind == &"acknowledge" and step.interaction.payload.get("presentation") == "classic-textbox":
+		var acknowledge := step.interaction.body as InteractionRequest.AcknowledgeBody
+		if step.interaction.kind == &"acknowledge" and acknowledge != null and acknowledge.presentation == &"classic-textbox":
 			_status_label.text = "Scenario text • continue when ready"
 		else:
-			_status_label.text = String(step.interaction.payload.get("prompt", "Choose an option"))
+			var prompt := step.interaction.body.prompt_text()
+			_status_label.text = prompt if not prompt.is_empty() else "Choose an option"
 
 
 func _publish_character_revision(character_id: String) -> bool:

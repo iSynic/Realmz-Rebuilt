@@ -43,4 +43,7 @@ func character_option(value: Variant) -> OptionButton:
 			if character is Dictionary:
 				picker.add_item(String(character.get("name", "Character")))
 				picker.set_item_metadata(picker.item_count - 1, String(character.get("id", "")))
+			elif character is InteractionRequestValue.ServiceCharacter:
+				picker.add_item(character.name)
+				picker.set_item_metadata(picker.item_count - 1, character.id)
 	return picker

@@ -35,11 +35,11 @@ func run() -> void:
 	var parchment := ItemInstance.new("scroll.parchment.instance", "classic.item.parchment", 3, false, true)
 	caster.set_inventory([scroll_case, parchment])
 	caster.carried_load = content.item_by_id(scroll_case.definition_id).instance_weight(0) + content.item_by_id(parchment.definition_id).instance_weight(3)
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(caster.id, "1".repeat(64), caster.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "scroll user enters party setup with an equipped case and parchment")
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(target.id, "2".repeat(64), target.to_data(), "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "scroll target enters party setup")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(caster.id, "1".repeat(64), caster, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "scroll user enters party setup with an equipped case and parchment")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(target.id, "2".repeat(64), target, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "scroll target enters party setup")
 	var invalid := _character("scroll.invalid", "Invalid", content)
 	invalid.write_scroll(0, "classic.spell.missing", 1)
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(invalid.id, "3".repeat(64), invalid.to_data(), "fixture", content.package_hash)).error_code, &"vault_character_ineligible", "vault import rejects an unresolved scroll spell before it can poison later saves")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(invalid.id, "3".repeat(64), invalid, "fixture", content.package_hash)).error_code, &"vault_character_ineligible", "vault import rejects an unresolved scroll spell before it can poison later saves")
 	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "scroll/camp fixture begins")
 	var active_caster := session._state.party.character_by_id(caster.id)
 	var active_target := session._state.party.character_by_id(target.id)
@@ -59,7 +59,7 @@ func run() -> void:
 	assert_true(session.view().availability(&"rest").enabled, "Rest becomes available only after entering camp")
 	assert_equal(session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH)).error_code, &"search_while_camped", "the ordinary Search command is replaced by scroll scribing in camp")
 
-	var camp_save := SaveEnvelope.from_data(session.snapshot().to_data())
+	var camp_save := save_round_trip(session.snapshot())
 	assert_not_null(camp_save, "camp mode is a committed save boundary")
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, camp_save).state, SessionStep.State.COMPLETED, "camp mode restores transactionally")
@@ -124,7 +124,7 @@ func run() -> void:
 	assert_equal(rest_caster.current_health, 7, "charged Iron Rations preserve the full level-divided noon recovery")
 	assert_equal(ration.charges, 1, "noon recovery consumes exactly one Iron Rations charge for the injured character")
 	assert_true(_has_event(noon_rest, &"rest_ration_consumed"), "ration consumption is observable in the deterministic trace")
-	var rest_save := SaveEnvelope.from_data(rest_session.snapshot().to_data())
+	var rest_save := save_round_trip(rest_session.snapshot())
 	var rest_restored := GameSession.new()
 	assert_equal(rest_restored.restore(content, rest_save).state, SessionStep.State.COMPLETED, "Rest recovery and its exact ration charge restore transactionally")
 	assert_equal(rest_restored._state.party.character_by_id(caster.id).inventory()[-1].charges, 1, "save/reload does not replay the recovery draw or consume another ration")
@@ -172,13 +172,13 @@ func run() -> void:
 	assert_equal([timed_caster.current_health, midnight_ration.charges], [7, 1], "midnight recovery runs exactly once immediately before the first eligible dispatch")
 	assert_equal(timed_session.rng_trace()[-1]["tag"], "timed-encounter.0", "the timed chance draw is centralized and semantically tagged")
 	var timed_restored := GameSession.new()
-	assert_equal(timed_restored.restore(content, SaveEnvelope.from_data(timed_session.snapshot().to_data())).state, SessionStep.State.COMPLETED, "the timed interaction and scan cursor restore transactionally")
+	assert_equal(timed_restored.restore(content, save_round_trip(timed_session.snapshot())).state, SessionStep.State.COMPLETED, "the timed interaction and scan cursor restore transactionally")
 	var timed_request := timed_restored.view().pending_interaction
-	var timed_completed := timed_restored.respond(InteractionResponse.new(timed_request.request_id, InteractionRequest.ACKNOWLEDGE, {}))
+	var timed_completed := timed_restored.respond(InteractionResponse.from_data(timed_request.request_id, InteractionRequest.ACKNOWLEDGE, {}))
 	assert_equal(timed_completed.state, SessionStep.State.COMPLETED, "acknowledging the timed Action Point resumes and completes the midnight scan")
 	assert_equal(timed_restored._state.timed_encounter_override(0).get("day"), 5, "save/resume does not advance the same timed record twice")
 	assert_equal([timed_restored._state.party.character_by_id(caster.id).current_health, timed_restored._state.party.character_by_id(caster.id).inventory()[-1].charges], [7, 1], "save/resume does not repeat midnight recovery")
-	assert_equal(timed_restored.snapshot().session_continuation, {}, "the completed timed scan leaves no stale continuation")
+	assert_equal(timed_restored.snapshot().continuation, null, "the completed timed scan leaves no stale continuation")
 
 	var ineligible_timed := GameSession.new()
 	assert_equal(ineligible_timed.restore(content, camp_save).state, SessionStep.State.COMPLETED, "the ineligible timed-event characterization starts from the same camp boundary")
@@ -205,14 +205,14 @@ func run() -> void:
 	interrupted_session._rng = ScriptedRng.new([0, 32767, 32767, 32767, 0])
 	var interrupted := interrupted_session.submit_intent(PlayerIntent.rest())
 	assert_equal([interrupted.state, interrupted.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO], "Rest can stop at the source random-encounter choice")
-	assert_equal(interrupted_session.snapshot().session_continuation.get("kind"), "post-clock", "the pending choice retains its Rest-owned post-clock continuation")
+	assert_equal(interrupted_session.snapshot().continuation.kind, &"post-clock", "the pending choice retains its Rest-owned post-clock continuation")
 	var interrupted_restored := GameSession.new()
-	assert_equal(interrupted_restored.restore(content, SaveEnvelope.from_data(interrupted_session.snapshot().to_data())).state, SessionStep.State.COMPLETED, "an interrupted Rest restores transactionally at the choice boundary")
+	assert_equal(interrupted_restored.restore(content, save_round_trip(interrupted_session.snapshot())).state, SessionStep.State.COMPLETED, "an interrupted Rest restores transactionally at the choice boundary")
 	var interrupted_request := interrupted_restored.view().pending_interaction
-	var declined_interrupt := interrupted_restored.respond(InteractionResponse.new(interrupted_request.request_id, InteractionRequest.YES_NO, {"accepted": false}))
+	var declined_interrupt := interrupted_restored.respond(InteractionResponse.from_data(interrupted_request.request_id, InteractionRequest.YES_NO, {"accepted": false}))
 	assert_equal(declined_interrupt.state, SessionStep.State.COMPLETED, "declining the interrupt returns to camp after the committed Rest pulse")
 	assert_true(interrupted_restored._state.party_camping, "declining a Rest interruption preserves camp mode")
-	assert_equal(interrupted_restored.snapshot().session_continuation, {}, "the completed interrupted Rest leaves no stale continuation")
+	assert_equal(interrupted_restored.snapshot().continuation, null, "the completed interrupted Rest leaves no stale continuation")
 
 	var battle_departure := GameSession.new()
 	assert_equal(battle_departure.restore(content, camp_save).state, SessionStep.State.COMPLETED, "the interrupted-departure fixture starts from the saved camp boundary")
@@ -222,12 +222,12 @@ func run() -> void:
 	var departure_interrupted := battle_departure.submit_intent(PlayerIntent.move(Vector2i.DOWN))
 	assert_equal([departure_interrupted.state, departure_interrupted.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO], "camp departure can stop before movement at Castle's random surprise choice")
 	battle_departure._rng = RealmzRng.new(4711)
-	var accepted_departure := battle_departure.respond(InteractionResponse.new(departure_interrupted.interaction.request_id, InteractionRequest.YES_NO, {"accepted": true}))
+	var accepted_departure := battle_departure.respond(InteractionResponse.from_data(departure_interrupted.interaction.request_id, InteractionRequest.YES_NO, {"accepted": true}))
 	assert_equal(accepted_departure.state, SessionStep.State.COMPLETED, "accepting the camp-departure interruption enters battle")
 	assert_not_null(battle_departure._state.combat, "the random battle remains session-owned after camp departure")
 	if battle_departure._state.combat != null:
 		assert_equal([battle_departure._state.combat.return_continuation.get("kind"), battle_departure._state.combat.return_continuation.get("resumeKind")], ["post-clock", "move"], "the battle retains the exact post-clock movement return")
-		var battle_save := SaveEnvelope.from_data(battle_departure.snapshot().to_data())
+		var battle_save := save_round_trip(battle_departure.snapshot())
 		var battle_state_round_trip := GameState.from_data(battle_save.game_state.to_data())
 		assert_not_null(battle_state_round_trip, "the active random battle state remains structurally valid with its return continuation")
 		if battle_state_round_trip != null:
@@ -250,7 +250,7 @@ func run() -> void:
 		var returned_snapshot := battle_restored.snapshot()
 		assert_not_null(returned_snapshot, "the resumed movement leaves a valid committed save boundary")
 		if returned_snapshot != null:
-			assert_equal(returned_snapshot.session_continuation, {}, "the resumed movement consumes the persisted battle return")
+			assert_equal(returned_snapshot.continuation, null, "the resumed movement consumes the persisted battle return")
 
 	var dungeon_departure := GameSession.new()
 	assert_equal(dungeon_departure.restore(content, camp_save).state, SessionStep.State.COMPLETED, "the dungeon-departure characterization starts from a committed camp boundary")
@@ -263,25 +263,25 @@ func run() -> void:
 	assert_equal(dungeon_departure._state.party.coordinate, Vector2i(3, 0), "dungeon departure resumes the requested move")
 	assert_equal(_events(dungeon_departed, &"time_advanced")[0].payload["minutes"], 2, "dungeon departure advances Castle's two one-minute time clicks before movement")
 
-	var scroll_save := SaveEnvelope.from_data(restored.snapshot().to_data())
+	var scroll_save := save_round_trip(restored.snapshot())
 	var scroll_restored := GameSession.new()
 	assert_equal(scroll_restored.restore(content, scroll_save).state, SessionStep.State.COMPLETED, "the exact five-slot scroll case restores")
 	active_caster = scroll_restored._state.party.character_by_id(caster.id)
 	active_target = scroll_restored._state.party.character_by_id(target.id)
 	scroll_restored._rng = ScriptedRng.new([0, 0])
 	var requested := scroll_restored.submit_intent(PlayerIntent.use_scroll(active_caster.id, 0))
-	assert_equal([requested.state, requested.interaction.kind, requested.interaction.payload.get("mode")], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.CHARACTER_SELECTION, "scroll-use"], "field scroll use yields the typed character picker")
+	assert_equal([requested.state, requested.interaction.kind, requested.interaction.body.to_data().get("mode")], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.CHARACTER_SELECTION, "scroll-use"], "field scroll use yields the typed character picker")
 	assert_equal([active_caster.scroll_at(0).power, active_caster.spell_points, scroll_restored._rng.snapshot().draw_count], [2, starting_spell_points - 8, 0], "opening scroll targeting consumes neither the scroll, spell points, nor effect RNG")
 	assert_false(scroll_restored.view().party_members[0].scrolls[0].use.enabled, "a pending target request disables duplicate scroll use in the detached view")
-	var pending_save := SaveEnvelope.from_data(scroll_restored.snapshot().to_data())
+	var pending_save := save_round_trip(scroll_restored.snapshot())
 	var pending_restored := GameSession.new()
 	assert_equal(pending_restored.restore(content, pending_save).state, SessionStep.State.COMPLETED, "pending scroll targeting restores transactionally")
 	pending_restored._rng = ScriptedRng.new([0, 0])
 	var pending := pending_restored.view().pending_interaction
-	var rejected := pending_restored.respond(InteractionResponse.new(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": ["missing.character"]}))
+	var rejected := pending_restored.respond(InteractionResponse.from_data(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": ["missing.character"]}))
 	assert_equal(rejected.error_code, &"invalid_scroll_target", "an invented scroll target is rejected explicitly")
 	assert_equal([pending_restored._state.party.character_by_id(caster.id).scroll_at(0).power, pending_restored._rng.snapshot().draw_count], [2, 0], "a rejected target preserves the scroll and RNG position")
-	var used := pending_restored.respond(InteractionResponse.new(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [target.id]}))
+	var used := pending_restored.respond(InteractionResponse.from_data(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [target.id]}))
 	assert_equal(used.state, SessionStep.State.COMPLETED, "a valid scroll target commits once")
 	assert_true(pending_restored._state.party.character_by_id(caster.id).scroll_at(0).is_empty(), "the scroll clears only after a valid target resolves")
 	assert_equal(pending_restored._state.party.character_by_id(caster.id).spell_points, starting_spell_points - 8, "using a scroll spends no spell points")
@@ -402,17 +402,17 @@ func _drain_battle_return(session: GameSession, step: SessionStep) -> SessionSte
 		var payload: Dictionary
 		if request.kind == InteractionRequest.ALLY_SELECTION:
 			payload = {"selectedIds": []}
-		elif request.kind == InteractionRequest.LEVEL_UP and request.payload.get("mode") == "result":
-			payload = {"action": "continue", "characterId": request.payload["characterId"]}
+		elif request.kind == InteractionRequest.LEVEL_UP and request.body.to_data().get("mode") == "result":
+			payload = {"action": "continue", "characterId": request.body.to_data()["characterId"]}
 		elif request.kind == InteractionRequest.LEVEL_UP:
-			payload = {"action": "confirm-spells", "characterId": request.payload["characterId"], "spellIds": []}
-		elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.payload.get("mode") == "completion-confirmation":
+			payload = {"action": "confirm-spells", "characterId": request.body.to_data()["characterId"], "spellIds": []}
+		elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.body.to_data().get("mode") == "completion-confirmation":
 			payload = {"action": "confirm-completion"}
-		elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.payload.get("item") is Dictionary:
-			payload = {"action": "discard", "instanceId": request.payload["item"]["instanceId"]}
+		elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.body.to_data().get("item") is Dictionary:
+			payload = {"action": "discard", "instanceId": request.body.to_data()["item"]["instanceId"]}
 		else:
 			payload = {"action": "done"}
-		current = session.respond(InteractionResponse.new(request.request_id, request.kind, payload))
+		current = session.respond(InteractionResponse.from_data(request.request_id, request.kind, payload))
 		boundary_count += 1
 	assert_true(boundary_count < 64, "the interrupted battle return remains bounded")
 	return current
