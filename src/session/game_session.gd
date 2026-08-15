@@ -389,7 +389,7 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 		target_ids = target_payload.target_ids.duplicate()
 	var character := _state.party.character_by_id(actor_id)
 	if character == null:
-		character = _item_owner(item_id)
+		character = InventoryMagicServicesWorkflow.item_owner(_workflow_context(), item_id)
 	var instance := _item_instance(character, item_id)
 	var item: ItemDefinition = null if instance == null else _content.item_by_id(instance.definition_id)
 	var spell: SpellDefinition = null if item == null else _content.spell_by_classic_id(item.special_2)
@@ -406,18 +406,18 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 		if combat_result.completed:
 			return _finish_direct_battle(combat_result.events)
 		return _finish_completed(combat_result.events)
-	var probe := _field_spell_item_probe(character, instance, item, spell)
+	var probe := InventoryMagicServicesWorkflow.field_spell_item_probe(_workflow_context(), character, instance, item, spell)
 	if not probe.allowed:
-		return SessionStep.failed(_view_revision, _item_use_error_code(instance, item, spell), probe.reason)
+		return SessionStep.failed(_view_revision, InventoryMagicServicesWorkflow.item_use_error_code(instance, item, spell), probe.reason)
 	var power := absi(item.special_1)
 	var random_power_checkpoint: Dictionary = {}
 	if power == 8:
 		random_power_checkpoint = _rng.checkpoint()
 		power = _rng.draw(7, StringName("item.use.power.%s" % instance.id))
-	target_ids = _field_item_target_ids(character, spell, target_ids, target_id)
-	var required_count := _field_item_target_count(spell, power)
+	target_ids = InventoryMagicServicesWorkflow.field_item_target_ids(_workflow_context(), character, spell, target_ids, target_id)
+	var required_count := InventoryMagicServicesWorkflow.field_item_target_count(_workflow_context(), spell, power)
 	if target_ids.size() == required_count:
-		var completed := _commit_field_spell_item(character.id, instance.id, spell.id, power, target_ids)
+		var completed := _commit_workflow_result(InventoryMagicServicesWorkflow.commit_field_spell_item(_workflow_context(), character.id, instance.id, spell.id, power, target_ids))
 		if completed.state == SessionStep.State.FAILED and not random_power_checkpoint.is_empty():
 			_rng.rollback(random_power_checkpoint)
 		return completed
@@ -433,124 +433,8 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 	targeting.target_count = required_count
 	targeting.starting_charges = instance.charges
 	_set_continuation(SessionContinuation.targeting_selection(&"item-use-target-selection", targeting))
-	_session_interaction = _item_target_request("session.item-use:%s:%d" % [instance.id, _view_revision + 1], character, instance.id, item, spell, required_count, _state.party.characters())
+	_session_interaction = InventoryMagicServicesWorkflow.item_target_request("session.item-use:%s:%d" % [instance.id, _view_revision + 1], character, instance.id, item, spell, required_count, _state.party.characters())
 	return _finish_waiting(_session_interaction, [DomainEvent.new(&"item_target_requested", {"characterId": character.id, "instanceId": instance.id, "itemId": item.id, "spellId": spell.id, "power": power, "targetCount": required_count, "source": "classic"})])
-
-
-func _field_spell_item_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition) -> InventoryActionProbe:
-	var probe := _rules.inventory.classic_spell_item_probe(character, instance, item, spell, _content.race_by_id(character.race_id) if character != null else null, _content.caste_by_id(character.caste_id) if character != null else null, false)
-	if not probe.allowed:
-		return probe
-	var ordinary := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9
-	var healing := absi(spell.special) == 57
-	if not ordinary and not healing:
-		return InventoryActionProbe.block("This item's Classic field spell effect is not implemented yet.")
-	if spell.target_type == 7:
-		return InventoryActionProbe.block("This item changes party-wide field state that is not implemented yet.")
-	if spell.target_type < 0 or spell.target_type > 12:
-		return InventoryActionProbe.block("This item's Classic field target type is invalid.")
-	return InventoryActionProbe.permit()
-
-
-func _field_item_target_ids(character: CharacterState, spell: SpellDefinition, requested_targets: Array[String], requested_target: String) -> Array[String]:
-	if spell.target_type == 5:
-		return [character.id]
-	if spell.target_type > 2:
-		var party_ids: Array[String] = []
-		for member: CharacterState in _state.party.characters():
-			party_ids.append(member.id)
-		return party_ids
-	var values: Array[String] = requested_targets.duplicate()
-	if values.is_empty() and not requested_target.is_empty():
-		values.append(requested_target)
-	return values
-
-
-func _field_item_target_count(spell: SpellDefinition, power: int) -> int:
-	if spell.target_type == 5:
-		return 1
-	if spell.target_type > 2:
-		return _state.party.characters().size()
-	return mini(power, _state.party.characters().size()) if spell.target_type == 0 else 1
-
-
-func _commit_field_spell_item(character_id: String, instance_id: String, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionStep:
-	var character := _state.party.character_by_id(character_id)
-	var instance := _item_instance(character, instance_id)
-	var item: ItemDefinition = null if instance == null else _content.item_by_id(instance.definition_id)
-	var spell := _content.spell_by_id(spell_id)
-	var probe := _field_spell_item_probe(character, instance, item, spell)
-	if not probe.allowed:
-		return SessionStep.failed(_view_revision, _item_use_error_code(instance, item, spell), probe.reason)
-	var selected: Dictionary = {}
-	for target_id: String in requested_target_ids:
-		if target_id.is_empty() or selected.has(target_id) or _state.party.character_by_id(target_id) == null:
-			return SessionStep.failed(_view_revision, &"invalid_item_use_target", "The item target selection contains an unavailable or duplicate character.")
-		selected[target_id] = true
-	if selected.size() != _field_item_target_count(spell, power):
-		return SessionStep.failed(_view_revision, &"invalid_item_use_target", "The item target selection has the wrong number of characters.")
-	var targets: Array[CharacterState] = []
-	for member: CharacterState in _state.party.characters():
-		if selected.has(member.id):
-			targets.append(member)
-	if targets.size() != selected.size():
-		return SessionStep.failed(_view_revision, &"invalid_item_use_target", "The item target selection is unavailable.")
-	if not _rules.inventory.use_charge(character, instance.id, item):
-		return SessionStep.failed(_view_revision, &"item_charge_commit_failed", "The validated item charge could not be committed.")
-	var castes: Array[CasteDefinition] = []
-	var races: Array[RaceDefinition] = []
-	for target: CharacterState in targets:
-		castes.append(_content.caste_by_id(target.caste_id))
-		races.append(_content.race_by_id(target.race_id))
-	var resolution := _rules.magic.resolve_field_spell(character, targets, spell, power, _rng, castes, races, false)
-	if resolution == null or not resolution.cast:
-		return SessionStep.failed(_view_revision, &"item_spell_failed", "The item spell could not be resolved.")
-	var charges_remaining := -1
-	var dropped := true
-	for carried: ItemInstance in character.inventory():
-		if carried.id == instance_id:
-			charges_remaining = carried.charges
-			dropped = false
-			break
-	var events: Array[DomainEvent] = [DomainEvent.new(&"item_used", {"characterId": character.id, "instanceId": instance_id, "itemId": item.id, "spellId": spell.id, "power": power, "chargesRemaining": charges_remaining, "droppedOnEmpty": dropped, "source": "classic"})]
-	var native_sound_id := item.sound_id + 600
-	if item.sound_id != 0:
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": "classic-item"}))
-	for index: int in resolution.resolutions.size():
-		var target_resolution := resolution.resolutions[index]
-		events.append(DomainEvent.new(&"item_spell_resolved", {"characterId": character.id, "targetId": resolution.target_ids[index], "itemId": item.id, "instanceId": instance_id, "spellId": spell.id, "power": power, "resisted": target_resolution.resisted, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}))
-	return _finish_completed(events)
-
-
-func _item_owner(instance_id: String) -> CharacterState:
-	for character: CharacterState in _state.party.characters():
-		if _item_instance(character, instance_id) != null:
-			return character
-	return null
-
-
-static func _item_use_error_code(instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition) -> StringName:
-	if instance == null or item == null:
-		return &"unknown_item_instance"
-	if instance.charges == 0:
-		return &"item_has_no_charges"
-	if item.special_2 <= 1100:
-		return &"item_has_no_spell_effect"
-	if spell == null:
-		return &"unknown_item_spell"
-	return &"item_cannot_be_used"
-
-
-static func _item_target_request(request_id: String, character: CharacterState, instance_id: String, item: ItemDefinition, spell: SpellDefinition, required_count: int, party: Array[CharacterState]) -> InteractionRequest:
-	var eligible: Array[Dictionary] = []
-	for member: CharacterState in party:
-		eligible.append({"id": member.id, "name": member.name, "currentHealth": member.current_health, "maximumHealth": member.maximum_health})
-	var display_name := item.unidentified_name
-	for carried: ItemInstance in character.inventory():
-		if carried.id == instance_id:
-			display_name = item.name if carried.identified else item.unidentified_name
-			break
-	return InteractionRequest.from_payload(request_id, InteractionRequest.CHARACTER_SELECTION, {"prompt": "%s uses %s. Choose %d target%s." % [character.name, display_name, required_count, "" if required_count == 1 else "s"], "count": required_count, "eligible": eligible, "mode": "item-use", "itemInstanceId": instance_id, "spellId": spell.id})
 
 
 func _request_drop_item(intent: PlayerIntent) -> SessionStep:
@@ -588,7 +472,7 @@ static func _drop_item_confirmation_request(request_id: String, item_name: Strin
 func _cast_spell(intent: PlayerIntent) -> SessionStep:
 	var payload := intent.payload as PlayerIntent.SpellPayload
 	if payload.operation == &"make-scroll":
-		return _make_scroll(payload)
+		return _commit_workflow_result(InventoryMagicServicesWorkflow.make_scroll(_workflow_context(), payload))
 	if payload.operation == &"use-scroll":
 		return _use_scroll(payload)
 	if _state.combat == null or _state.combat.completed:
@@ -605,50 +489,6 @@ func _cast_spell(intent: PlayerIntent) -> SessionStep:
 	return _finish_completed(result.events)
 
 
-func _make_scroll(payload: PlayerIntent.SpellPayload) -> SessionStep:
-	if _state.combat != null and not _state.combat.completed:
-		return SessionStep.failed(_view_revision, &"scroll_scribing_in_battle", "Classic scroll scribing is available only while camped.")
-	var character := _state.party.character_by_id(payload.caster_id)
-	var spell := _content.spell_by_id(payload.spell_id)
-	var probe := _make_scroll_probe(character, spell, payload.power)
-	if not probe.allowed:
-		return SessionStep.failed(_view_revision, &"scroll_scribing_unavailable", probe.reason)
-	var slot_index := _first_empty_scroll_slot(character)
-	var parchment := _parchment_instance(character)
-	var parchment_definition: ItemDefinition = null if parchment == null else _content.item_by_id(parchment.definition_id)
-	if slot_index < 0 or parchment == null or parchment_definition == null or not _rules.inventory.use_charge(character, parchment.id, parchment_definition):
-		return SessionStep.failed(_view_revision, &"scroll_scribing_commit_failed", "The validated scroll materials could not be committed.")
-	var cost := absi(spell.cost * payload.power * 2)
-	character.spell_points -= cost
-	if not character.write_scroll(slot_index, spell.id, payload.power):
-		return SessionStep.failed(_view_revision, &"scroll_scribing_commit_failed", "The validated scroll slot could not be committed.")
-	var events: Array[DomainEvent] = [DomainEvent.new(&"scroll_created", {"characterId": character.id, "slot": slot_index, "spellId": spell.id, "power": payload.power, "cost": cost, "parchmentInstanceId": parchment.id, "source": "classic"})]
-	var sound_id := spell.sound_start + 600
-	if sound_id != 0:
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(sound_id), "waitForCompletion": false, "source": "classic-scroll-scribing"}))
-	return _finish_completed(events)
-
-
-func _make_scroll_probe(character: CharacterState, spell: SpellDefinition, power: int) -> InventoryActionProbe:
-	if character == null or spell == null or not character.known_spells().has(spell.id):
-		return InventoryActionProbe.block("The character does not know that spell.")
-	if not _state.party_camping:
-		return InventoryActionProbe.block("Enter camp before making a scroll.")
-	if character.current_health < 1 or character.spellcaster_type < 1:
-		return InventoryActionProbe.block("The selected character cannot scribe scrolls.")
-	if not _has_equipped_scroll_case(character):
-		return InventoryActionProbe.block("Equip a scroll case before making a scroll.")
-	if _first_empty_scroll_slot(character) < 0:
-		return InventoryActionProbe.block("The scroll case already contains five spells.")
-	if _parchment_instance(character) == null:
-		return InventoryActionProbe.block("The character has no parchment.")
-	if power < 1 or power > 7 or spell.cost < 0 and power != 1:
-		return InventoryActionProbe.block("This spell does not support the selected scroll power.")
-	if character.spell_points < absi(spell.cost * power * 2):
-		return InventoryActionProbe.block("Scribing requires twice the spell's normal spell-point cost.")
-	return InventoryActionProbe.permit()
-
-
 func _use_scroll(payload: PlayerIntent.SpellPayload) -> SessionStep:
 	if _state.combat != null and not _state.combat.completed:
 		var combat_result := _rules.combat_flow.use_combat_scroll(_state, _content, payload.caster_id, payload.scroll_slot, payload.target_id, _rng, payload.coordinate, payload.rotation, payload.target_ids)
@@ -662,13 +502,13 @@ func _use_scroll(payload: PlayerIntent.SpellPayload) -> SessionStep:
 	var character := _state.party.character_by_id(payload.caster_id)
 	var scroll := character.scroll_at(payload.scroll_slot) if character != null else null
 	var spell := _content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
-	var probe := _scroll_use_probe(character, payload.scroll_slot, spell)
+	var probe := InventoryMagicServicesWorkflow.scroll_use_probe(_workflow_context(), character, payload.scroll_slot, spell)
 	if not probe.allowed:
 		return SessionStep.failed(_view_revision, &"scroll_unavailable", probe.reason)
-	var target_ids := _field_spell_target_ids(character, spell, payload.target_ids, payload.target_id)
-	var required_count := _field_spell_target_count(spell, scroll.power)
+	var target_ids := InventoryMagicServicesWorkflow.field_spell_target_ids(_workflow_context(), character, spell, payload.target_ids, payload.target_id)
+	var required_count := InventoryMagicServicesWorkflow.field_spell_target_count(_workflow_context(), spell, scroll.power)
 	if target_ids.size() == required_count:
-		return _commit_field_scroll(character.id, payload.scroll_slot, spell.id, scroll.power, target_ids)
+		return _finish_magic_workflow(InventoryMagicServicesWorkflow.commit_field_scroll(_workflow_context(), character.id, payload.scroll_slot, spell.id, scroll.power, target_ids))
 	if not target_ids.is_empty():
 		return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
 	var targeting := SessionContinuation.TargetingBody.new()
@@ -678,131 +518,20 @@ func _use_scroll(payload: PlayerIntent.SpellPayload) -> SessionStep:
 	targeting.power = scroll.power
 	targeting.target_count = required_count
 	_set_continuation(SessionContinuation.targeting_selection(&"scroll-target-selection", targeting))
-	_session_interaction = _scroll_target_request("session.scroll:%s:%d:%d" % [character.id, payload.scroll_slot, _view_revision + 1], character, payload.scroll_slot, spell, required_count, _state.party.characters())
+	_session_interaction = InventoryMagicServicesWorkflow.scroll_target_request("session.scroll:%s:%d:%d" % [character.id, payload.scroll_slot, _view_revision + 1], character, payload.scroll_slot, spell, required_count, _state.party.characters())
 	return _finish_waiting(_session_interaction, [DomainEvent.new(&"scroll_target_requested", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "targetCount": required_count, "source": "classic"})])
-
-
-func _scroll_use_probe(character: CharacterState, slot_index: int, spell: SpellDefinition) -> InventoryActionProbe:
-	if character == null or slot_index < 0 or slot_index >= 5:
-		return InventoryActionProbe.block("The scroll slot is unavailable.")
-	var scroll := character.scroll_at(slot_index)
-	if scroll == null or scroll.is_empty() or spell == null or spell.id != scroll.spell_id or scroll.power < 1 or scroll.power > 7:
-		return InventoryActionProbe.block("This scroll slot is empty or invalid.")
-	if character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
-		return InventoryActionProbe.block("The selected character cannot use a scroll.")
-	if not _has_equipped_scroll_case(character):
-		return InventoryActionProbe.block("Equip the scroll case before using its spells.")
-	if not spell.in_camp:
-		return InventoryActionProbe.block("This scroll cannot be used outside battle; Classic offers to discard it.")
-	if spell.target_type < 0 or spell.target_type > 12:
-		return InventoryActionProbe.block("This scroll has an invalid Classic field target type.")
-	if spell.target_type in [3, 7, 9] and not _state.party.allies().is_empty():
-		return InventoryActionProbe.block("This scroll also targets allied creatures; that Classic field branch is not implemented yet.")
-	if not _field_spell_effect_supported(spell):
-		return InventoryActionProbe.block("This scroll's Classic field effect is not implemented yet.")
-	return InventoryActionProbe.permit()
-
-
-func _commit_field_scroll(character_id: String, slot_index: int, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionStep:
-	var character := _state.party.character_by_id(character_id)
-	var spell := _content.spell_by_id(spell_id)
-	var probe := _scroll_use_probe(character, slot_index, spell)
-	if not probe.allowed:
-		return SessionStep.failed(_view_revision, &"scroll_unavailable", probe.reason)
-	var selected: Dictionary = {}
-	for target_id: String in requested_target_ids:
-		if target_id.is_empty() or selected.has(target_id) or _state.party.character_by_id(target_id) == null:
-			return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll target selection contains an unavailable or duplicate character.")
-		selected[target_id] = true
-	if selected.size() != _field_spell_target_count(spell, power):
-		return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll target selection has the wrong number of characters.")
-	var targets: Array[CharacterState] = []
-	var castes: Array[CasteDefinition] = []
-	var races: Array[RaceDefinition] = []
-	for member: CharacterState in _state.party.characters():
-		if selected.has(member.id):
-			targets.append(member)
-			castes.append(_content.caste_by_id(member.caste_id))
-			races.append(_content.race_by_id(member.race_id))
-	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
-	var resolution := _rules.magic.resolve_field_spell(character, targets, spell, power, _rng, castes, races, false, allow_empty)
-	if resolution == null or not resolution.cast:
-		return SessionStep.failed(_view_revision, &"scroll_spell_failed", "The scroll spell could not be resolved.")
-	if not character.clear_scroll(slot_index):
-		return SessionStep.failed(_view_revision, &"scroll_commit_failed", "The resolved scroll could not be removed from its case.")
-	var events: Array[DomainEvent] = [DomainEvent.new(&"scroll_used", {"characterId": character.id, "slot": slot_index, "spellId": spell.id, "power": power, "source": "classic"})]
-	var start_sound := spell.sound_start + 600
-	if start_sound != 0:
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(start_sound), "waitForCompletion": true, "source": "classic-scroll"}))
-	var special := absi(spell.special)
-	if special == 68:
-		_state.party.fatigue = 4
-		events.append(DomainEvent.new(&"party_fatigue_changed", {"fatigue": 4, "spellId": spell.id, "source": "classic-scroll"}))
-	elif spell.target_type == 7:
-		var condition_index := 0 if special == 50 else special
-		var next_value := power * 30 - 1 if special == 50 else maxi(_state.party.conditions.value(condition_index), resolution.duration)
-		if special != 50 or power * 30 > _state.party.conditions.value(condition_index):
-			_state.party.conditions.set_value(condition_index, next_value)
-		events.append(DomainEvent.new(&"party_condition_changed", {"condition": condition_index, "value": _state.party.conditions.value(condition_index), "spellId": spell.id, "source": "classic-scroll"}))
-	for index: int in resolution.resolutions.size():
-		var target_resolution := resolution.resolutions[index]
-		events.append(DomainEvent.new(&"scroll_spell_resolved", {"characterId": character.id, "targetId": resolution.target_ids[index], "spellId": spell.id, "power": power, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}))
-		if target_resolution.aging != null and target_resolution.aging.changed_group():
-			var target := _state.party.character_by_id(resolution.target_ids[index])
-			events.append(DomainEvent.new(&"character_age_changed", target_resolution.aging.event_payload(target, _content.race_by_id(target.race_id))))
-	if spell.target_type == 11 and spell.sound_end + 600 != 0:
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(spell.sound_end + 600), "waitForCompletion": false, "source": "classic-scroll"}))
-	if not CharacterAgingResult.update_payloads(events).is_empty():
-		return _finish_with_age_updates(events, "completed")
-	return _finish_completed(events)
-
-
-func _has_equipped_scroll_case(character: CharacterState) -> bool:
-	if character == null:
-		return false
-	for instance: ItemInstance in character.inventory():
-		var definition := _content.item_by_id(instance.definition_id)
-		if instance.equipped and definition != null and absi(definition.item_type) == 13:
-			return true
-	return false
-
-
-func _parchment_instance(character: CharacterState) -> ItemInstance:
-	if character == null:
-		return null
-	for instance: ItemInstance in character.inventory():
-		var definition := _content.item_by_id(instance.definition_id)
-		if definition != null and definition.classic_id == 806 and instance.charges != 0:
-			return instance
-	return null
-
-
-static func _first_empty_scroll_slot(character: CharacterState) -> int:
-	if character == null:
-		return -1
-	for index: int in character.scroll_case().size():
-		if character.scroll_at(index).is_empty():
-			return index
-	return -1
-
-
-static func _scroll_target_request(request_id: String, character: CharacterState, slot_index: int, spell: SpellDefinition, required_count: int, party: Array[CharacterState]) -> InteractionRequest:
-	var eligible: Array[Dictionary] = []
-	for member: CharacterState in party:
-		eligible.append({"id": member.id, "name": member.name, "currentHealth": member.current_health, "maximumHealth": member.maximum_health})
-	return InteractionRequest.from_payload(request_id, InteractionRequest.CHARACTER_SELECTION, {"prompt": "%s uses %s from scroll slot %d. Choose %d target%s." % [character.name, spell.name, slot_index + 1, required_count, "" if required_count == 1 else "s"], "count": required_count, "eligible": eligible, "mode": "scroll-use", "scrollSlot": slot_index, "spellId": spell.id})
 
 
 func _cast_field_spell(payload: PlayerIntent.SpellPayload) -> SessionStep:
 	var character := _state.party.character_by_id(payload.caster_id)
 	var spell := _content.spell_by_id(payload.spell_id)
-	var probe := _field_spell_probe(character, spell, payload.power)
+	var probe := InventoryMagicServicesWorkflow.field_spell_probe(_workflow_context(), character, spell, payload.power)
 	if not probe.allowed:
 		return SessionStep.failed(_view_revision, &"field_spell_unavailable", probe.reason)
-	var target_ids := _field_spell_target_ids(character, spell, payload.target_ids, payload.target_id)
-	var required_count := _field_spell_target_count(spell, payload.power)
+	var target_ids := InventoryMagicServicesWorkflow.field_spell_target_ids(_workflow_context(), character, spell, payload.target_ids, payload.target_id)
+	var required_count := InventoryMagicServicesWorkflow.field_spell_target_count(_workflow_context(), spell, payload.power)
 	if target_ids.size() == required_count:
-		return _commit_field_spell(character.id, spell.id, payload.power, target_ids)
+		return _finish_magic_workflow(InventoryMagicServicesWorkflow.commit_field_spell(_workflow_context(), character.id, spell.id, payload.power, target_ids))
 	if not target_ids.is_empty():
 		return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
 	var targeting := SessionContinuation.TargetingBody.new()
@@ -812,129 +541,8 @@ func _cast_field_spell(payload: PlayerIntent.SpellPayload) -> SessionStep:
 	targeting.target_count = required_count
 	targeting.starting_spell_points = character.spell_points
 	_set_continuation(SessionContinuation.targeting_selection(&"field-spell-target-selection", targeting))
-	_session_interaction = _field_spell_target_request("session.field-spell:%s:%d" % [spell.id, _view_revision + 1], character, spell, required_count, _state.party.characters())
+	_session_interaction = InventoryMagicServicesWorkflow.field_spell_target_request("session.field-spell:%s:%d" % [spell.id, _view_revision + 1], character, spell, required_count, _state.party.characters())
 	return _finish_waiting(_session_interaction, [DomainEvent.new(&"field_spell_target_requested", {"characterId": character.id, "spellId": spell.id, "power": payload.power, "targetCount": required_count, "source": "classic"})])
-
-
-func _field_spell_probe(character: CharacterState, spell: SpellDefinition, power: int) -> InventoryActionProbe:
-	if character == null or spell == null or not character.known_spells().has(spell.id):
-		return InventoryActionProbe.block("The character does not know that spell.")
-	if _state.character_spellcasting_blocked:
-		return InventoryActionProbe.block("Classic scenario state currently blocks character spellcasting.")
-	if character.current_health < 1 or character.spell_points < 1:
-		return InventoryActionProbe.block("The character cannot cast in their current state.")
-	for condition: int in [ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS, ConditionRules.STUPID, ConditionRules.ANIMATED]:
-		if character.conditions.is_active(condition):
-			return InventoryActionProbe.block("The character's current Classic condition prevents spellcasting.")
-	if not spell.in_camp:
-		return InventoryActionProbe.block("This spell cannot be cast outside battle.")
-	if power < 1 or power > 7 or spell.cost < 0 and power != 1:
-		return InventoryActionProbe.block("This spell does not support the selected power level.")
-	if character.spell_points < absi(spell.cost * power):
-		return InventoryActionProbe.block("The character does not have enough spell points.")
-	if spell.target_type < 0 or spell.target_type > 12:
-		return InventoryActionProbe.block("This spell has an invalid Classic field target type.")
-	if spell.target_type in [3, 7, 9] and not _state.party.allies().is_empty():
-		return InventoryActionProbe.block("This spell also targets allied creatures; that Classic field branch is not implemented yet.")
-	if not _field_spell_effect_supported(spell):
-		return InventoryActionProbe.block("This spell's Classic field effect is not implemented yet.")
-	return InventoryActionProbe.permit()
-
-
-func _field_spell_effect_supported(spell: SpellDefinition) -> bool:
-	var special := absi(spell.special)
-	if spell.target_type == 7:
-		return special == 50 or special >= 1 and special < ConditionSet.PARTY_COUNT
-	if special == 68:
-		return true
-	if special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or special > 99:
-		return true
-	return special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
-
-
-func _field_spell_target_ids(character: CharacterState, spell: SpellDefinition, requested_targets: Array[String], requested_target: String) -> Array[String]:
-	if spell.target_type == 5:
-		return [character.id]
-	if spell.target_type > 2:
-		if spell.target_type == 7 or absi(spell.special) == 68:
-			return []
-		var party_ids: Array[String] = []
-		for member: CharacterState in _state.party.characters():
-			party_ids.append(member.id)
-		return party_ids
-	var values: Array[String] = requested_targets.duplicate()
-	if values.is_empty() and not requested_target.is_empty():
-		values.append(requested_target)
-	return values
-
-
-func _field_spell_target_count(spell: SpellDefinition, power: int) -> int:
-	if spell.target_type == 7 or absi(spell.special) == 68:
-		return 0
-	if spell.target_type == 5:
-		return 1
-	if spell.target_type > 2:
-		return _state.party.characters().size()
-	return mini(power, _state.party.characters().size()) if spell.target_type == 0 else 1
-
-
-func _commit_field_spell(character_id: String, spell_id: String, power: int, requested_target_ids: Array[String]) -> SessionStep:
-	var character := _state.party.character_by_id(character_id)
-	var spell := _content.spell_by_id(spell_id)
-	var probe := _field_spell_probe(character, spell, power)
-	if not probe.allowed:
-		return SessionStep.failed(_view_revision, &"field_spell_unavailable", probe.reason)
-	var selected: Dictionary = {}
-	for target_id: String in requested_target_ids:
-		if target_id.is_empty() or selected.has(target_id) or _state.party.character_by_id(target_id) == null:
-			return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell target selection contains an unavailable or duplicate character.")
-		selected[target_id] = true
-	if selected.size() != _field_spell_target_count(spell, power):
-		return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell target selection has the wrong number of characters.")
-	var targets: Array[CharacterState] = []
-	var castes: Array[CasteDefinition] = []
-	var races: Array[RaceDefinition] = []
-	for member: CharacterState in _state.party.characters():
-		if selected.has(member.id):
-			targets.append(member)
-			castes.append(_content.caste_by_id(member.caste_id))
-			races.append(_content.race_by_id(member.race_id))
-	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
-	var resolution := _rules.magic.resolve_field_spell(character, targets, spell, power, _rng, castes, races, true, allow_empty)
-	if resolution == null or not resolution.cast:
-		return SessionStep.failed(_view_revision, &"field_spell_failed", "The field spell could not be resolved.")
-	var events: Array[DomainEvent] = [DomainEvent.new(&"field_spell_cast", {"characterId": character.id, "spellId": spell.id, "power": power, "cost": resolution.cost, "source": "classic"})]
-	var start_sound := spell.sound_start + 600
-	if start_sound != 0:
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(start_sound), "waitForCompletion": true, "source": "classic-field-spell"}))
-	var special := absi(spell.special)
-	if special == 68:
-		_state.party.fatigue = 4
-		events.append(DomainEvent.new(&"party_fatigue_changed", {"fatigue": 4, "spellId": spell.id, "source": "classic"}))
-	elif spell.target_type == 7:
-		var condition_index := 0 if special == 50 else special
-		var next_value := power * 30 - 1 if special == 50 else maxi(_state.party.conditions.value(condition_index), resolution.duration)
-		if special != 50 or power * 30 > _state.party.conditions.value(condition_index):
-			_state.party.conditions.set_value(condition_index, next_value)
-		events.append(DomainEvent.new(&"party_condition_changed", {"condition": condition_index, "value": _state.party.conditions.value(condition_index), "spellId": spell.id, "source": "classic"}))
-	for index: int in resolution.resolutions.size():
-		var target_resolution := resolution.resolutions[index]
-		events.append(DomainEvent.new(&"field_spell_resolved", {"characterId": character.id, "targetId": resolution.target_ids[index], "spellId": spell.id, "power": power, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}))
-		if target_resolution.aging != null and target_resolution.aging.changed_group():
-			var target := _state.party.character_by_id(resolution.target_ids[index])
-			events.append(DomainEvent.new(&"character_age_changed", target_resolution.aging.event_payload(target, _content.race_by_id(target.race_id))))
-	if spell.target_type == 11 and spell.sound_end + 600 != 0:
-		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(spell.sound_end + 600), "waitForCompletion": false, "source": "classic-field-spell"}))
-	if not CharacterAgingResult.update_payloads(events).is_empty():
-		return _finish_with_age_updates(events, "completed")
-	return _finish_completed(events)
-
-
-static func _field_spell_target_request(request_id: String, character: CharacterState, spell: SpellDefinition, required_count: int, party: Array[CharacterState]) -> InteractionRequest:
-	var eligible: Array[Dictionary] = []
-	for member: CharacterState in party:
-		eligible.append({"id": member.id, "name": member.name, "currentHealth": member.current_health, "maximumHealth": member.maximum_health})
-	return InteractionRequest.from_payload(request_id, InteractionRequest.CHARACTER_SELECTION, {"prompt": "%s casts %s. Choose %d target%s." % [character.name, spell.name, required_count, "" if required_count == 1 else "s"], "count": required_count, "eligible": eligible, "mode": "field-spell", "spellId": spell.id})
 
 
 func _combat_action(intent: PlayerIntent) -> SessionStep:
@@ -1993,6 +1601,16 @@ func _commit_workflow_result(result: SessionWorkflowResult) -> SessionStep:
 	return _finish_completed(result.events) if result.ok else SessionStep.failed(_view_revision, result.error_code, result.error_message)
 
 
+func _finish_magic_workflow(result: SessionWorkflowResult) -> SessionStep:
+	if result == null:
+		return SessionStep.failed(_view_revision, &"invalid_workflow_result", "The magic workflow returned no result.")
+	if not result.ok:
+		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	if not CharacterAgingResult.update_payloads(result.events).is_empty():
+		return _finish_with_age_updates(result.events, "completed")
+	return _finish_completed(result.events)
+
+
 func _finish_waiting(request: InteractionRequest, events: Array[DomainEvent]) -> SessionStep:
 	_view_revision += 1
 	return SessionStep.waiting(_view_revision, request, events)
@@ -2215,7 +1833,7 @@ func _respond_item_use_target(response: InteractionResponse) -> SessionStep:
 	var saved_interaction := _session_interaction
 	_session_continuation.clear()
 	_session_interaction = null
-	var completed := _commit_field_spell_item(character_id, instance_id, spell_id, power, target_ids)
+	var completed := _commit_workflow_result(InventoryMagicServicesWorkflow.commit_field_spell_item(_workflow_context(), character_id, instance_id, spell_id, power, target_ids))
 	if completed.state == SessionStep.State.FAILED:
 		_set_continuation(saved_continuation)
 		_session_interaction = saved_interaction
@@ -2243,7 +1861,7 @@ func _respond_field_spell_target(response: InteractionResponse) -> SessionStep:
 	var saved_interaction := _session_interaction
 	_session_continuation.clear()
 	_session_interaction = null
-	var completed := _commit_field_spell(character_id, spell_id, power, target_ids)
+	var completed := _finish_magic_workflow(InventoryMagicServicesWorkflow.commit_field_spell(_workflow_context(), character_id, spell_id, power, target_ids))
 	if completed.state == SessionStep.State.FAILED:
 		_set_continuation(saved_continuation)
 		_session_interaction = saved_interaction
@@ -2273,7 +1891,7 @@ func _respond_scroll_target(response: InteractionResponse) -> SessionStep:
 	var saved_interaction := _session_interaction
 	_session_continuation.clear()
 	_session_interaction = null
-	var completed := _commit_field_scroll(character_id, slot_index, spell_id, power, target_ids)
+	var completed := _finish_magic_workflow(InventoryMagicServicesWorkflow.commit_field_scroll(_workflow_context(), character_id, slot_index, spell_id, power, target_ids))
 	if completed.state == SessionStep.State.FAILED:
 		_set_continuation(saved_continuation)
 		_session_interaction = saved_interaction
@@ -2836,7 +2454,7 @@ static func _valid_targeting_continuation(content: RealmzContent, state: GameSta
 		var expected_count := state.party.characters().size() if spell.target_type > 2 else mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
 		var probe := RealmzRules.new().inventory.classic_spell_item_probe(character, instance, definition, spell, content.race_by_id(character.race_id), content.caste_by_id(character.caste_id), false)
 		var supported := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9 or absi(spell.special) == 57
-		return (authored_power == 8 or targeting.power == authored_power) and targeting.target_count == expected_count and spell.target_type not in [5, 7] and spell.target_type >= 0 and spell.target_type <= 12 and probe.allowed and supported and session_interaction.to_data() == _item_target_request(session_interaction.request_id, character, instance.id, definition, spell, expected_count, state.party.characters()).to_data()
+		return (authored_power == 8 or targeting.power == authored_power) and targeting.target_count == expected_count and spell.target_type not in [5, 7] and spell.target_type >= 0 and spell.target_type <= 12 and probe.allowed and supported and session_interaction.to_data() == InventoryMagicServicesWorkflow.item_target_request(session_interaction.request_id, character, instance.id, definition, spell, expected_count, state.party.characters()).to_data()
 	if continuation.kind == &"field-spell-target-selection":
 		if not character.known_spells().has(spell.id) or character.spell_points != targeting.starting_spell_points or state.character_spellcasting_blocked or character.current_health < 1 or character.spell_points < absi(spell.cost * targeting.power) or not spell.in_camp or spell.cost < 0 and targeting.power != 1:
 			return false
@@ -2860,7 +2478,7 @@ static func _valid_targeting_continuation(content: RealmzContent, state: GameSta
 	var expected_count := mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
 	if targeting.target_count != expected_count or spell.target_type < 0 or spell.target_type > 2 or not supported:
 		return false
-	return session_interaction.to_data() == (_field_spell_target_request(session_interaction.request_id, character, spell, expected_count, state.party.characters()).to_data() if continuation.kind == &"field-spell-target-selection" else _scroll_target_request(session_interaction.request_id, character, targeting.scroll_slot, spell, expected_count, state.party.characters()).to_data())
+	return session_interaction.to_data() == (InventoryMagicServicesWorkflow.field_spell_target_request(session_interaction.request_id, character, spell, expected_count, state.party.characters()).to_data() if continuation.kind == &"field-spell-target-selection" else InventoryMagicServicesWorkflow.scroll_target_request(session_interaction.request_id, character, targeting.scroll_slot, spell, expected_count, state.party.characters()).to_data())
 
 
 static func _item_instance_for_state(character: CharacterState, instance_id: String) -> ItemInstance:
