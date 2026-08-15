@@ -12,8 +12,8 @@ var state: State = State.COMPLETED
 var value: Variant
 var events: Array[DomainEvent] = []
 var interaction: InteractionRequest
-var continuation: Dictionary = {}
-var handoff: Dictionary = {}
+var continuation: ScenarioRuntimeContinuation
+var handoff: ScenarioRuntimeHandoff
 var directive: ScenarioVmDirective
 var error_code: StringName = &""
 var error_message: String = ""
@@ -27,18 +27,18 @@ static func completed(result_value: Variant = null, committed_events: Array[Doma
 	return result
 
 
-static func waiting(request: InteractionRequest, resume_data: Dictionary, committed_events: Array[DomainEvent] = [], vm_directive: ScenarioVmDirective = null) -> ScenarioRuntimeOperationResult:
+static func waiting(request: InteractionRequest, resume_data: ScenarioRuntimeContinuation, committed_events: Array[DomainEvent] = [], vm_directive: ScenarioVmDirective = null) -> ScenarioRuntimeOperationResult:
 	var result := completed(null, committed_events, vm_directive)
 	result.state = State.WAITING
 	result.interaction = request
-	result.continuation = resume_data.duplicate(true)
+	result.continuation = resume_data.copy() if resume_data != null else null
 	return result
 
 
-static func suspended(host_handoff: Dictionary, committed_events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
+static func suspended(host_handoff: ScenarioRuntimeHandoff, committed_events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
 	var result := completed(null, committed_events)
 	result.state = State.SUSPENDED
-	result.handoff = host_handoff.duplicate(true)
+	result.handoff = host_handoff.copy() if host_handoff != null else null
 	return result
 
 

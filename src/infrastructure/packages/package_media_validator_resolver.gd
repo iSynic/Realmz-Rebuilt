@@ -14,7 +14,7 @@ func _validate_monster_media(monsters: Array[MonsterDefinition], media_assets: A
 			return _reject("Monster '%s' requires unavailable Classic cicn %d." % [monster.id, monster.icon_id])
 	return true
 
-func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
+func validate_assets(document: Dictionary, files: Dictionary) -> bool:
 	if not document.get("assets") is Array:
 		return _reject("Asset index must contain an assets array.")
 	var ids: Dictionary = {}
@@ -68,7 +68,7 @@ func _validate_assets(document: Dictionary, files: Dictionary) -> bool:
 			return _reject("Character combat-icon catalog is missing Classic cicn %d." % resource_id)
 	return true
 
-func _validate_presentation_capabilities(manifest: Dictionary, assets: Dictionary) -> bool:
+func validate_presentation_capabilities(manifest: Dictionary, assets: Dictionary) -> bool:
 	var declares_battle_atlas: bool = manifest["capabilities"].has("realmz.presentation.battle-atlas-v1")
 	var battle_atlas_count := 0
 	for asset: Dictionary in assets["assets"]:
@@ -78,7 +78,7 @@ func _validate_presentation_capabilities(manifest: Dictionary, assets: Dictionar
 		return _reject("Battle-atlas capability and packaged battle artwork do not agree.")
 	return true
 
-func _validate_render_references(assets: Dictionary, world: Dictionary) -> bool:
+func validate_render_references(assets: Dictionary, world: Dictionary) -> bool:
 	var tileset_ids: Dictionary = {}
 	var image_ids: Dictionary = {}
 	for asset: Dictionary in assets["assets"]:
@@ -101,7 +101,7 @@ func _validate_render_references(assets: Dictionary, world: Dictionary) -> bool:
 				return _reject("Topology references missing image overlay asset '%s'." % overlay_asset_id)
 	return true
 
-func _construct_assets(document: Dictionary) -> Array[MediaAsset]:
+func construct_assets(document: Dictionary) -> Array[MediaAsset]:
 	var assets: Array[MediaAsset] = []
 	for record: Dictionary in document["assets"]:
 		assets.append(MediaAsset.new(

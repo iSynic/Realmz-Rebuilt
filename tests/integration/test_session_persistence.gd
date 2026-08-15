@@ -60,6 +60,14 @@ func run() -> void:
 	assert_equal(session.snapshot().rng_state.draw_count, 1, "the save aggregate owns the RNG draw count")
 	assert_equal(session.snapshot().game_state.clock.total_minutes(), 1, "the save aggregate owns the Realmz clock")
 	var held_snapshot := session.snapshot()
+	var constructor_state := GameState.from_data(held_snapshot.game_state.to_data())
+	var constructor_vm := ScenarioVmSnapshot.from_data(held_snapshot.scenario_vm.to_data())
+	var constructor_copy := SessionSnapshot.new(held_snapshot.campaign_id, held_snapshot.package_hash, held_snapshot.rules_version, held_snapshot.view_revision, constructor_state, held_snapshot.rng_state, constructor_vm, held_snapshot.scenario_action_state, held_snapshot.continuation, held_snapshot.battle_return_continuation, held_snapshot.session_interaction)
+	var constructor_trace_size := constructor_copy.scenario_vm.trace.size()
+	constructor_state.clock.advance_minutes(5)
+	constructor_vm.trace.append({"event": "mutated-after-construction"})
+	assert_equal(constructor_copy.game_state.clock.total_minutes(), 1, "SessionSnapshot detaches constructor-owned game state")
+	assert_equal(constructor_copy.scenario_vm.trace.size(), constructor_trace_size, "SessionSnapshot detaches constructor-owned VM state")
 	session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	assert_equal(held_snapshot.rng_state.draw_count, 1, "a snapshot is detached from later session RNG mutations")
 	assert_equal(held_snapshot.game_state.clock.total_minutes(), 1, "a snapshot is detached from later game-state mutations")
@@ -109,6 +117,7 @@ func run() -> void:
 	assert_true(first_age_update.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 3002), "opening the age dialog requests Castle sound 3002")
 	var age_boundary_save := save_round_trip(age_session.snapshot())
 	assert_not_null(age_boundary_save, "the first age-update click boundary is centrally saveable")
+	assert_true(age_boundary_save.continuation.age().updates[0] is InteractionRequest.AgeUpdateBody, "save restoration keeps live age-update continuation entries typed")
 	var pending_close_session := GameSession.new()
 	assert_equal(pending_close_session.restore(content, age_boundary_save).state, SessionStep.State.COMPLETED, "a pending interaction restores for lifecycle closure")
 	var pending_close_snapshot := save_data(pending_close_session.snapshot())
@@ -460,7 +469,7 @@ func run() -> void:
 			if initial_boundary == null:
 				return
 			var corrupt_reward_data := save_data(initial_boundary)
-			corrupt_reward_data["sessionContinuation"]["data"]["runtimeContinuation"]["state"]["experienceAwards"]["fixture.missing-character"] = 1
+			corrupt_reward_data["sessionContinuation"]["data"]["runtimeContinuation"]["data"]["state"]["experienceAwards"]["fixture.missing-character"] = 1
 			var corrupt_reward := SaveEnvelope.from_data(corrupt_reward_data)
 			var stable_reward_state := save_data(reward_session.snapshot())
 			assert_equal(reward_session.restore(content, corrupt_reward).error_code, &"invalid_session_continuation", "restore rejects a reward continuation that references a missing recipient")

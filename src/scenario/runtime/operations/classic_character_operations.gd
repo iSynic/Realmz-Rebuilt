@@ -64,7 +64,7 @@ func _request_character_selection(action: ClassicActionDefinition, request_id: S
 	if eligible.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic character picker has no eligible party members.")
 	count = mini(count, eligible.size())
-	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": count, "eligible": eligible, "allowDead": action.operand_id < 0}), {"kind": "classic-character-selection", "count": count, "allowDead": action.operand_id < 0, "invert": invert})
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": count, "eligible": eligible, "allowDead": action.operand_id < 0}), ScenarioRuntimeContinuation.character_selection(count, action.operand_id < 0, invert))
 
 
 func _apply_health(action: ClassicActionDefinition, whole_party: bool) -> ScenarioRuntimeOperationResult:
@@ -361,20 +361,14 @@ func _branch_xap(target_id: int, gosub: bool) -> ScenarioRuntimeOperationResult:
 func _with_age_update_interactions(operation: ScenarioRuntimeOperationResult, request_id: String) -> ScenarioRuntimeOperationResult:
 	if operation == null or operation.state != ScenarioRuntimeOperationResult.State.COMPLETED:
 		return operation
-	var updates := CharacterAgingResult.update_payloads(operation.events)
+	var updates := CharacterAgingResult.update_bodies(operation.events)
 	if updates.is_empty():
 		return operation
-	var continuation := {
-		"kind": "classic-age-updates",
-		"updates": updates,
-		"index": 1,
-		"value": operation.value,
-		"directive": {} if operation.directive == null else operation.directive.to_data(),
-	}
+	var continuation := ScenarioRuntimeContinuation.age_updates(ScenarioRuntimeContinuation.CLASSIC_AGE_UPDATES, updates, 1, operation.value, operation.directive)
 	var events: Array[DomainEvent] = []
 	events.assign(operation.events)
-	events.append(CharacterAgingResult.sound_event(updates[0]))
-	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update(request_id, updates[0]), continuation, events)
+	events.append(CharacterAgingResult.sound_event_for_update(updates[0]))
+	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.age_update_body(request_id, updates[0]), continuation, events)
 
 
 func apply_scenario_spell(action: ClassicActionDefinition, entire_party: bool) -> ScenarioRuntimeOperationResult:

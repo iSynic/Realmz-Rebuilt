@@ -250,16 +250,16 @@ func _load_open_archive(archive: ZIPReader, source_path: String, progress_callba
 		return _validation_failure()
 	if trusted_receipt.is_empty():
 		_media_validator.clear_error()
-		if not _media_validator._validate_assets(asset_document, manifest["files"]):
+		if not _media_validator.validate_assets(asset_document, manifest["files"]):
 			_last_error = _media_validator.error_message()
 			return _validation_failure()
-		if not _media_validator._validate_presentation_capabilities(manifest, asset_document):
+		if not _media_validator.validate_presentation_capabilities(manifest, asset_document):
 			_last_error = _media_validator.error_message()
 			return _validation_failure()
-		if not _media_validator._validate_render_references(asset_document, world_document):
+		if not _media_validator.validate_render_references(asset_document, world_document):
 			_last_error = _media_validator.error_message()
 			return _validation_failure()
-	var runtime_assets := _media_validator._construct_assets(asset_document)
+	var runtime_assets := _media_validator.construct_assets(asset_document)
 	var runtime_content := _domain_assembler.assemble(manifest, content_document, world_document, scenario_document, runtime_assets, not trusted_receipt.is_empty())
 	if runtime_content == null:
 		_last_error = _domain_assembler.error_message()

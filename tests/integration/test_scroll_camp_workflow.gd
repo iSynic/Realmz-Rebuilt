@@ -217,7 +217,7 @@ func run() -> void:
 	assert_equal(accepted_departure.state, SessionStep.State.COMPLETED, "accepting the camp-departure interruption enters battle")
 	assert_not_null(battle_departure._state.combat, "the random battle remains session-owned after camp departure")
 	if battle_departure._state.combat != null:
-		assert_equal([battle_departure._state.combat.return_continuation.kind, battle_departure._state.combat.return_continuation.exploration().resume_kind], [&"post-clock", &"move"], "the battle retains the exact post-clock movement return")
+		assert_equal([battle_departure._battle_return_continuation.kind, battle_departure._battle_return_continuation.exploration().resume_kind], [&"post-clock", &"move"], "the battle retains the exact post-clock movement return")
 		var battle_save := save_round_trip(battle_departure.snapshot())
 		var battle_restored := GameSession.new()
 		var battle_restore := battle_restored.restore(content, battle_save)

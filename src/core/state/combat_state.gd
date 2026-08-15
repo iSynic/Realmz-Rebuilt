@@ -14,7 +14,6 @@ var completed: bool = false
 var outcome: StringName = &"active"
 var rewards_started: bool = false
 var rewards_completed: bool = false
-var return_continuation: SessionContinuation = SessionContinuation.new()
 var battlefield: BattlefieldState
 var pending_monster_attack: PendingMonsterAttack
 var pending_reaction: CombatReactionState
@@ -360,7 +359,7 @@ func to_data() -> Dictionary:
 	weapon_mode_ids.sort()
 	for actor_id: Variant in weapon_mode_ids:
 		weapon_modes[String(actor_id)] = _character_weapon_modes[actor_id]
-	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "rewardsStarted": rewards_started, "rewardsCompleted": rewards_completed, "returnContinuation": {} if return_continuation.is_empty() else return_continuation.to_data(), "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "undoState": undo_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "bleedingCharacterIds": bleeding_character_ids(), "turnUndeadActorIds": turn_undead_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "battlefield": null if battlefield == null else battlefield.to_data()}
+	return {"battleId": battle_id, "macroId": macro_id, "round": round_number, "turnIndex": turn_index, "completed": completed, "outcome": String(outcome), "rewardsStarted": rewards_started, "rewardsCompleted": rewards_completed, "turnOrder": _turn_order.duplicate(), "monsters": monster_data, "pendingMonsterAttack": pending_data, "pendingReaction": reaction_data, "activeTurn": active_turn_data, "undoState": undo_data, "fumbledItems": fumbled_data, "characterWeaponModes": weapon_modes, "guardingActorIds": guarding_actor_ids(), "retreatedCharacterIds": retreated_character_ids(), "attackedActorIds": attacked_actor_ids(), "bleedingCharacterIds": bleeding_character_ids(), "turnUndeadActorIds": turn_undead_actor_ids(), "spellDeathMacroQueue": _spell_death_macro_queue.duplicate(), "spellMacroActorId": _spell_macro_actor_id, "spellMacroAdvancesTurn": _spell_macro_advances_turn, "battlefield": null if battlefield == null else battlefield.to_data()}
 
 
 static func from_data(data: Variant) -> CombatState:
@@ -401,13 +400,6 @@ static func from_data(data: Variant) -> CombatState:
 	result.rewards_completed = data.get("rewardsCompleted", false)
 	if result.rewards_completed and not result.rewards_started:
 		return null
-	var return_data: Variant = data.get("returnContinuation", {})
-	if not return_data is Dictionary:
-		return null
-	if not return_data.is_empty():
-		result.return_continuation = SessionContinuation.from_data(return_data)
-		if result.return_continuation == null:
-			return null
 	result._turn_order = order
 	var guarding_data: Variant = data.get("guardingActorIds", [])
 	if not guarding_data is Array or guarding_data.size() > order.size():

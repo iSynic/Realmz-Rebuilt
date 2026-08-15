@@ -50,12 +50,15 @@ func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:
 	assert_equal([detected.state, caster.spell_points, detected.interaction.body.to_data()["item"]["magical"], detected.interaction.body.to_data()["item"]["identified"]], [ScenarioRuntimeOperationResult.State.WAITING, 25, true, false], "Detect Magic costs five points and reveals magic without identifying the item")
 	var saved_state := GameState.from_data(state.to_data())
 	var saved_rng_state := rng.snapshot()
-	var saved_continuation: Dictionary = JSON.parse_string(JSON.stringify(detected.continuation))
+	var saved_continuation_data: Dictionary = JSON.parse_string(JSON.stringify(detected.continuation.to_data()))
+	var saved_continuation := ScenarioRuntimeContinuation.from_data(saved_continuation_data)
 	assert_not_null(saved_state, "treasure detection state serializes through the central game-state boundary")
-	assert_not_null(ClassicRewardState.from_data(saved_continuation.get("state")), "the exact treasure continuation survives canonical JSON")
-	var fractional_continuation := saved_continuation.duplicate(true)
-	fractional_continuation["state"]["experiencePool"] = 1.5
-	assert_equal(ClassicRewardState.from_data(fractional_continuation["state"]), null, "a non-integral serialized reward total is rejected rather than truncated")
+	var saved_reward_body := saved_continuation.body as ScenarioRuntimeContinuation.RewardBody
+	assert_not_null(saved_reward_body, "the exact treasure continuation survives canonical JSON")
+	assert_not_null(saved_reward_body.state, "the typed reward state survives canonical JSON")
+	var fractional_continuation := saved_continuation_data.duplicate(true)
+	fractional_continuation["data"]["state"]["experiencePool"] = 1.5
+	assert_equal(ScenarioRuntimeContinuation.from_data(fractional_continuation), null, "a non-integral serialized reward total is rejected rather than truncated")
 	var restored_rng := RealmzRng.new(1)
 	assert_true(restored_rng.restore(saved_rng_state), "the treasure boundary restores the exact RNG state")
 	var restored_api := RealmzRuntimeApi.new(content, saved_state, restored_rng, ScenarioActionState.new(), RealmzRules.new())
@@ -123,7 +126,7 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	restored_vm.configure(definition)
 	assert_true(restored_vm.restore(saved_vm), "the pending level result restores against the same scenario definition")
 	var restored_api := RealmzRuntimeApi.new(content, saved_game, restored_rng, ScenarioActionState.new(), RealmzRules.new())
-	var wrong_level := restored_api.resume_classic(saved_vm.pending_continuation["runtime"], InteractionResponse.from_data(saved_vm.pending_request.request_id, InteractionRequest.LEVEL_UP, {"action": "continue", "characterId": "reward.someone-else"}), saved_vm.pending_request.request_id)
+	var wrong_level := restored_api.resume_classic(saved_vm.pending_continuation.runtime, InteractionResponse.from_data(saved_vm.pending_request.request_id, InteractionRequest.LEVEL_UP, {"action": "continue", "characterId": "reward.someone-else"}), saved_vm.pending_request.request_id)
 	assert_equal(wrong_level.error_code, &"invalid_interaction_response", "a level-result response cannot acknowledge a different character")
 	var spell_stage := restored_vm.resume(InteractionResponse.from_data(saved_vm.pending_request.request_id, InteractionRequest.LEVEL_UP, {"action": "continue", "characterId": character.id}), restored_api)
 	assert_equal([spell_stage.state, spell_stage.interaction.kind, spell_stage.interaction.body.to_data()["mode"]], [ScenarioVmResult.State.WAITING, InteractionRequest.LEVEL_UP, "spell-selection"], "a qualifying caster advances to a dedicated spell-selection stage")
@@ -159,8 +162,11 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 	var guard := 2_000
 	while reward.state == ScenarioRuntimeOperationResult.State.WAITING and guard > 0:
 		var response := _reward_response(reward.interaction)
-		var serialized: Dictionary = JSON.parse_string(JSON.stringify(reward.continuation))
-		assert_not_null(ClassicRewardState.from_data(serialized.get("state")), "every terminal reward interaction retains a valid serialized continuation")
+		var serialized_data: Dictionary = JSON.parse_string(JSON.stringify(reward.continuation.to_data()))
+		var serialized := ScenarioRuntimeContinuation.from_data(serialized_data)
+		var serialized_body := serialized.body as ScenarioRuntimeContinuation.RewardBody if serialized != null else null
+		assert_not_null(serialized_body, "every terminal reward interaction retains a valid serialized continuation")
+		assert_not_null(serialized_body.state, "every terminal reward interaction retains typed reward state")
 		reward = api.resume_classic(serialized, response, reward.interaction.request_id + ".next")
 		guard -= 1
 	assert_true(guard > 0, "terminal reward completion stays within the bounded interaction count")
@@ -189,7 +195,7 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 	mode_ten_state.combat.outcome = &"defeat"
 	mode_ten_state.last_battle_outcome = &"defeat"
 	var mode_ten_api := RealmzRuntimeApi.new(content, mode_ten_state, RealmzRng.new(31), ScenarioActionState.new(), RealmzRules.new())
-	var mode_ten_handoff := {"kind": "party-defeat", "battleId": battle.id, "sourceKind": "classic-combat", "caller": {"kind": "classic", "opcode": 2, "gosub": false, "mode": 10, "branchTarget": 0}}
+	var mode_ten_handoff := ScenarioRuntimeHandoff.party_defeat(battle.id, ScenarioRuntimeHandoff.CLASSIC_COMBAT, ScenarioBattleCaller.classic(2, false, 10, 0))
 	assert_equal(mode_ten_api.complete_party_defeat_handoff(mode_ten_handoff).error_code, &"classic_mode_10_defeat_unresolved", "Classic mode 10 defeat remains explicit because Castle bypasses Party Death and restarts the encounter")
 
 	var retreat_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.retreat", "Retreated", 500, -100_000)]), RealmzClock.new())

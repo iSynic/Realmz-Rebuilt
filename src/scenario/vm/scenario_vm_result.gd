@@ -11,7 +11,7 @@ enum State {
 var state: State = State.COMPLETED
 var events: Array[DomainEvent] = []
 var interaction: InteractionRequest
-var handoff: Dictionary = {}
+var handoff: ScenarioVmHandoff
 var error_code: StringName = &""
 var error_message: String = ""
 var outcome: Variant
@@ -31,10 +31,10 @@ static func waiting(request: InteractionRequest, committed_events: Array[DomainE
 	return vm_result
 
 
-static func suspended(host_handoff: Dictionary, committed_events: Array[DomainEvent] = []) -> ScenarioVmResult:
+static func suspended(host_handoff: ScenarioVmHandoff, committed_events: Array[DomainEvent] = []) -> ScenarioVmResult:
 	var vm_result := completed(committed_events)
 	vm_result.state = State.SUSPENDED
-	vm_result.handoff = host_handoff.duplicate(true)
+	vm_result.handoff = host_handoff.copy() if host_handoff != null else null
 	return vm_result
 
 

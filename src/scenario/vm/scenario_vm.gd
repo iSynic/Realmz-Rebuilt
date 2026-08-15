@@ -9,7 +9,7 @@ const TRACE_LIMIT: int = 4096
 var _definition: ScenarioDefinition
 var _frames: Array[ScenarioFrame] = []
 var _pending_request: InteractionRequest
-var _pending_continuation: Dictionary = {}
+var _pending_continuation: ScenarioVmPendingContinuation
 var _trace: Array[Dictionary] = []
 var _request_counter: int = 0
 var _step_count: int = 0
@@ -28,7 +28,7 @@ func configure(definition: ScenarioDefinition, execution_step_limit: int = EXECU
 func reset() -> void:
 	_frames.clear()
 	_pending_request = null
-	_pending_continuation.clear()
+	_pending_continuation = null
 	_trace.clear()
 	_request_counter = 0
 	_step_count = 0
@@ -84,42 +84,44 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 	if not response.is_supported_kind():
 		return ScenarioVmResult.failed(&"invalid_interaction_response", "The response payload does not match its interaction kind.")
 	var events: Array[DomainEvent] = []
-	var continuation := _pending_continuation.duplicate(true)
+	var continuation := _pending_continuation.copy() if _pending_continuation != null else null
 	var request_id := _pending_request.request_id
 	_pending_request = null
-	_pending_continuation.clear()
-	_append_trace({"event": "resume", "requestId": request_id, "kind": continuation.get("kind", "")})
-	match continuation.get("kind"):
-		"safe-operation":
-			var operation := runtime_api.resume_safe(continuation.get("runtime", {}), response, _next_request_id())
+	_pending_continuation = null
+	if continuation == null:
+		return _fail(&"invalid_vm_continuation", "The pending Scenario VM continuation is unavailable.", events)
+	_append_trace({"event": "resume", "requestId": request_id, "kind": String(continuation.kind)})
+	match continuation.kind:
+		ScenarioVmPendingContinuation.SAFE_OPERATION:
+			var operation := runtime_api.resume_safe(continuation.runtime, response, _next_request_id())
 			if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 				return _fail(operation.error_code, operation.error_message, events)
 			events.append_array(operation.events)
 			if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
 				_pending_request = operation.interaction
-				_pending_continuation = {"kind": "safe-operation", "frameIndex": continuation.get("frameIndex", -1), "resultTarget": continuation.get("resultTarget", ""), "runtime": operation.continuation.duplicate(true)}
+				_pending_continuation = ScenarioVmPendingContinuation.safe(operation.continuation, continuation.frame_index, continuation.result_target)
 				_append_trace({"event": "yield", "requestId": operation.interaction.request_id, "kind": String(operation.interaction.kind)})
 				return ScenarioVmResult.waiting(operation.interaction, events)
 			if operation.state == ScenarioRuntimeOperationResult.State.SUSPENDED:
-				return _suspend_operation("safe-operation", operation, continuation.get("frameIndex", -1), continuation.get("resultTarget", ""))
-			var frame_index: int = int(continuation.get("frameIndex", -1))
+				return _suspend_operation(ScenarioVmHandoff.SAFE_OPERATION, operation, continuation.frame_index, continuation.result_target)
+			var frame_index: int = continuation.frame_index
 			if frame_index < 0 or frame_index >= _frames.size() or _frames[frame_index].kind != ScenarioFrame.ACTION:
 				return _fail(&"invalid_vm_continuation", "Scenario Action continuation frame is unavailable.", events)
-			var result_target: String = str(continuation.get("resultTarget", ""))
+			var result_target: String = continuation.result_target
 			if not result_target.is_empty():
 				_frames[frame_index].set_local(result_target, operation.value)
-		"classic-operation":
-			var operation := runtime_api.resume_classic(continuation.get("runtime", {}), response, _next_request_id())
+		ScenarioVmPendingContinuation.CLASSIC_OPERATION:
+			var operation := runtime_api.resume_classic(continuation.runtime, response, _next_request_id())
 			if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 				return _fail(operation.error_code, operation.error_message, events)
 			events.append_array(operation.events)
 			if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
 				_pending_request = operation.interaction
-				_pending_continuation = {"kind": "classic-operation", "runtime": operation.continuation.duplicate(true)}
+				_pending_continuation = ScenarioVmPendingContinuation.classic(operation.continuation)
 				_append_trace({"event": "yield", "requestId": operation.interaction.request_id, "kind": String(operation.interaction.kind)})
 				return ScenarioVmResult.waiting(operation.interaction, events)
 			if operation.state == ScenarioRuntimeOperationResult.State.SUSPENDED:
-				return _suspend_operation("classic-operation", operation)
+				return _suspend_operation(ScenarioVmHandoff.CLASSIC_OPERATION, operation)
 			var directive_result := _apply_classic_directive(operation.directive)
 			if directive_result.state == ScenarioVmResult.State.FAILED:
 				return _fail(directive_result.error_code, directive_result.error_message, events)
@@ -136,29 +138,29 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 	return ScenarioVmResult.completed(events, resumed.outcome)
 
 
-func resume_handoff(handoff: Dictionary, operation: ScenarioRuntimeOperationResult, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
+func resume_handoff(handoff: ScenarioVmHandoff, operation: ScenarioRuntimeOperationResult, runtime_api: RealmzRuntimeApi) -> ScenarioVmResult:
 	if _halted or _frames.is_empty() or _pending_request != null:
 		return ScenarioVmResult.failed(&"invalid_vm_handoff", "The suspended Scenario VM is unavailable.")
-	if operation == null or operation.state != ScenarioRuntimeOperationResult.State.COMPLETED:
+	if handoff == null or operation == null or operation.state != ScenarioRuntimeOperationResult.State.COMPLETED:
 		return ScenarioVmResult.failed(&"invalid_runtime_handoff", "The Realmz runtime did not complete the suspended operation.")
 	var events: Array[DomainEvent] = []
 	events.append_array(operation.events)
-	match String(handoff.get("kind", "")):
-		"safe-operation":
-			var frame_index := int(handoff.get("frameIndex", -1))
+	match handoff.kind:
+		ScenarioVmHandoff.SAFE_OPERATION:
+			var frame_index := handoff.frame_index
 			if frame_index < 0 or frame_index >= _frames.size() or _frames[frame_index].kind != ScenarioFrame.ACTION:
 				return ScenarioVmResult.failed(&"invalid_vm_handoff", "The suspended Scenario Action frame is unavailable.", events)
-			var result_target := String(handoff.get("resultTarget", ""))
+			var result_target := handoff.result_target
 			if not result_target.is_empty():
 				_frames[frame_index].set_local(result_target, operation.value)
-		"classic-operation":
+		ScenarioVmHandoff.CLASSIC_OPERATION:
 			var context: Dictionary = _frames.back().context_data()
 			var directive_result := _apply_classic_directive(operation.directive, context)
 			if directive_result.state == ScenarioVmResult.State.FAILED:
 				return ScenarioVmResult.failed(directive_result.error_code, directive_result.error_message, events)
 		_:
 			return ScenarioVmResult.failed(&"invalid_vm_handoff", "The suspended operation kind is unavailable.", events)
-	_append_trace({"event": "host-handoff-resume", "kind": handoff.get("kind", "")})
+	_append_trace({"event": "host-handoff-resume", "kind": String(handoff.kind)})
 	var resumed := run(runtime_api)
 	events.append_array(resumed.events)
 	if resumed.state == ScenarioVmResult.State.WAITING:
@@ -175,12 +177,12 @@ func snapshot() -> ScenarioVmSnapshot:
 	for frame: ScenarioFrame in _frames:
 		result.frames.append(ScenarioFrame.from_data(frame.to_data()))
 	result.pending_request = InteractionRequest.from_data(_pending_request.to_data()) if _pending_request != null else null
-	result.pending_continuation = _pending_continuation.duplicate(true)
+	result.pending_continuation = _pending_continuation.copy() if _pending_continuation != null else null
 	result.trace = _trace.duplicate(true)
 	result.request_counter = _request_counter
 	result.step_count = _step_count
 	result.halted = _halted
-	result.last_outcome = _last_outcome
+	result.last_outcome = _last_outcome.duplicate(true) if _last_outcome is Array or _last_outcome is Dictionary else _last_outcome
 	return result
 
 
@@ -208,12 +210,12 @@ func restore(value: Variant) -> bool:
 	for frame: ScenarioFrame in saved.frames:
 		_frames.append(ScenarioFrame.from_data(frame.to_data()))
 	_pending_request = InteractionRequest.from_data(saved.pending_request.to_data()) if saved.pending_request != null else null
-	_pending_continuation = saved.pending_continuation.duplicate(true)
+	_pending_continuation = saved.pending_continuation.copy() if saved.pending_continuation != null else null
 	_trace = saved.trace.duplicate(true)
 	_request_counter = saved.request_counter
 	_step_count = saved.step_count
 	_halted = saved.halted
-	_last_outcome = saved.last_outcome
+	_last_outcome = saved.last_outcome.duplicate(true) if saved.last_outcome is Array or saved.last_outcome is Dictionary else saved.last_outcome
 	return true
 
 
@@ -229,18 +231,14 @@ func pending_request() -> InteractionRequest:
 	return _pending_request
 
 
-static func handoff_is_valid(handoff: Variant, saved: ScenarioVmSnapshot) -> bool:
-	if saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or not saved.pending_continuation.is_empty() or not handoff is Dictionary:
+static func handoff_is_valid(handoff: ScenarioVmHandoff, saved: ScenarioVmSnapshot) -> bool:
+	if saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or saved.pending_continuation != null or handoff == null or handoff.runtime == null:
 		return false
-	if not handoff.get("runtime") is Dictionary or handoff["runtime"].is_empty():
-		return false
-	match String(handoff.get("kind", "")):
-		"classic-operation":
-			return handoff.size() == 2 and saved.frames.back().kind == ScenarioFrame.PROGRAM
-		"safe-operation":
-			if handoff.size() != 4 or not handoff.get("frameIndex") is int or not handoff.get("resultTarget") is String:
-				return false
-			var frame_index: int = handoff["frameIndex"]
+	match handoff.kind:
+		ScenarioVmHandoff.CLASSIC_OPERATION:
+			return saved.frames.back().kind == ScenarioFrame.PROGRAM
+		ScenarioVmHandoff.SAFE_OPERATION:
+			var frame_index: int = handoff.frame_index
 			return frame_index >= 0 and frame_index < saved.frames.size() and saved.frames[frame_index].kind == ScenarioFrame.ACTION
 	return false
 
@@ -304,11 +302,11 @@ func _execute_program_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi)
 		return ScenarioVmResult.failed(operation.error_code, operation.error_message)
 	if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
 		_pending_request = operation.interaction
-		_pending_continuation = {"kind": "classic-operation", "runtime": operation.continuation.duplicate(true)}
+		_pending_continuation = ScenarioVmPendingContinuation.classic(operation.continuation)
 		_append_trace({"event": "yield", "requestId": request_id, "kind": String(operation.interaction.kind)})
 		return ScenarioVmResult.waiting(operation.interaction, operation.events)
 	if operation.state == ScenarioRuntimeOperationResult.State.SUSPENDED:
-		return _suspend_operation("classic-operation", operation)
+		return _suspend_operation(ScenarioVmHandoff.CLASSIC_OPERATION, operation)
 	var directive_result := _apply_classic_directive(operation.directive, frame.context_data())
 	if directive_result.state == ScenarioVmResult.State.FAILED:
 		return directive_result
@@ -383,11 +381,11 @@ func _execute_action_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) 
 				return ScenarioVmResult.failed(operation.error_code, operation.error_message)
 			if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
 				_pending_request = operation.interaction
-				_pending_continuation = {"kind": "safe-operation", "frameIndex": _frames.size() - 1, "resultTarget": instruction.result_target, "runtime": operation.continuation.duplicate(true)}
+				_pending_continuation = ScenarioVmPendingContinuation.safe(operation.continuation, _frames.size() - 1, instruction.result_target)
 				_append_trace({"event": "yield", "requestId": request_id, "kind": String(operation.interaction.kind), "actionId": action.id})
 				return ScenarioVmResult.waiting(operation.interaction, operation.events)
 			if operation.state == ScenarioRuntimeOperationResult.State.SUSPENDED:
-				return _suspend_operation("safe-operation", operation, _frames.size() - 1, instruction.result_target)
+				return _suspend_operation(ScenarioVmHandoff.SAFE_OPERATION, operation, _frames.size() - 1, instruction.result_target)
 			if not instruction.result_target.is_empty():
 				frame.set_local(instruction.result_target, operation.value)
 			return ScenarioVmResult.completed(operation.events)
@@ -442,14 +440,11 @@ func _execute_action_frame(frame: ScenarioFrame, runtime_api: RealmzRuntimeApi) 
 	return ScenarioVmResult.failed(&"unknown_scenario_instruction", "Scenario Action contains an unavailable instruction kind.")
 
 
-func _suspend_operation(kind: String, operation: ScenarioRuntimeOperationResult, frame_index: int = -1, result_target: String = "", preceding_events: Array[DomainEvent] = []) -> ScenarioVmResult:
-	if operation.handoff.is_empty():
+func _suspend_operation(kind: StringName, operation: ScenarioRuntimeOperationResult, frame_index: int = -1, result_target: String = "", preceding_events: Array[DomainEvent] = []) -> ScenarioVmResult:
+	if operation.handoff == null:
 		return ScenarioVmResult.failed(&"invalid_runtime_handoff", "The Realmz runtime suspended without a typed host handoff.", preceding_events)
-	var handoff := {"kind": kind, "runtime": operation.handoff.duplicate(true)}
-	if kind == "safe-operation":
-		handoff["frameIndex"] = frame_index
-		handoff["resultTarget"] = result_target
-	_append_trace({"event": "host-handoff", "kind": kind, "runtimeKind": operation.handoff.get("kind", "")})
+	var handoff := ScenarioVmHandoff.safe(operation.handoff, frame_index, result_target) if kind == ScenarioVmHandoff.SAFE_OPERATION else ScenarioVmHandoff.classic(operation.handoff)
+	_append_trace({"event": "host-handoff", "kind": String(kind), "runtimeKind": String(operation.handoff.kind)})
 	var events: Array[DomainEvent] = []
 	events.assign(preceding_events)
 	events.append_array(operation.events)
@@ -758,7 +753,7 @@ func _append_trace(entry: Dictionary) -> void:
 func _fail(code: StringName, message: String, events: Array[DomainEvent]) -> ScenarioVmResult:
 	_frames.clear()
 	_pending_request = null
-	_pending_continuation.clear()
+	_pending_continuation = null
 	_halted = true
 	_append_trace({"event": "error", "code": String(code), "message": message})
 	return ScenarioVmResult.failed(code, message, events)

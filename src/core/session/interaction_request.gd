@@ -446,6 +446,12 @@ static func age_update(id: String, update_payload: Dictionary) -> InteractionReq
 	return _from_payload(id, AGE_UPDATE, update_payload)
 
 
+static func age_update_body(id: String, update: AgeUpdateBody) -> InteractionRequest:
+	if update == null:
+		return null
+	return _from_payload(id, AGE_UPDATE, update.to_data())
+
+
 static func yes_no(id: String, prompt: String, yes_label: String, no_label: String) -> InteractionRequest:
 	var value := YesNoRequestBody.new()
 	value.prompt = prompt

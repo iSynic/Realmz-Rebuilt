@@ -19,7 +19,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - JSON dictionaries stop at validating infrastructure factories. Domain state is typed and does not expose writable backing dictionaries.
 - `MediaAsset` is the immutable content descriptor and `MediaSource` is the read-only byte-source port. Presentation may consume only these core contracts; archive/file access remains in infrastructure adapters.
 - `PlayerIntent`, `InteractionRequest`, and `InteractionResponse` use closed typed payload families. Request bodies may serialize only at the save/event wire boundary; core, scenario, and presentation behavior consumes their typed variants directly.
-- `SessionSnapshot` is the detached typed save boundary. Core constructs and validates snapshots but does not encode `.r2save` JSON or own filesystem persistence.
+- Core supplies the typed state, RNG, intent, interaction, and view records carried by a detached session snapshot. `src/session` owns the aggregate snapshot; infrastructure alone encodes `.r2save` JSON and filesystem persistence.
 - Classic option-label records are immutable typed content distinct from ordinary messages; runtime choice resolution may query them but never mutate their source table.
 - Every gameplay mutation is committed synchronously by the `src/session` transaction coordinator.
 - Core never imports scenario, session-orchestration, infrastructure, presentation, or app classes.

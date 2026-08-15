@@ -9,6 +9,7 @@ var _scenario_vm: ScenarioVm
 var _scenario_action_state: ScenarioActionState
 var _runtime_api: RealmzRuntimeApi
 var _session_continuation: SessionContinuation = SessionContinuation.new()
+var _battle_return_continuation: SessionContinuation = SessionContinuation.new()
 var _session_interaction: InteractionRequest
 var _started: bool = false
 var _view_revision: int = 0
@@ -38,6 +39,7 @@ func start(content: RealmzContent, initial_seed: int) -> SessionStep:
 	_scenario_vm = scenario_vm
 	_runtime_api = RealmzRuntimeApi.new(_content, _state, _rng, _scenario_action_state, _rules)
 	_session_continuation.clear()
+	_battle_return_continuation.clear()
 	_session_interaction = null
 	_view_projector.clear()
 	_started = true
@@ -67,11 +69,6 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 	if replacement_state.party_setup_completed and replacement_state.experience_multiplier < 0.0:
 		replacement_state.experience_multiplier = _party_experience_multiplier(replacement_state.party.characters(), replacement_state.difficulty, content.campaign_definition())
 	if replacement_state.combat != null:
-		if not replacement_state.combat.return_continuation.is_empty():
-			var battle_return := replacement_state.combat.return_continuation
-			var battle_exploration := battle_return.exploration()
-			if battle_return.kind != &"post-clock" or battle_exploration == null or battle_exploration.resume_kind != &"move" or not _valid_post_time_continuation(content, replacement_state, battle_return, null, null):
-				return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved battle return references an unavailable exploration continuation.")
 		for item: ItemInstance in replacement_state.combat.fumbled_items():
 			if content.item_by_id(item.definition_id) == null:
 				return SessionStep.failed(_view_revision, &"invalid_game_state", "The saved fumble queue references unavailable item content.")
@@ -108,6 +105,15 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 	var replacement_continuation := SessionContinuation.new() if save_envelope.continuation == null else SessionContinuation.from_data(save_envelope.continuation.to_data())
 	if replacement_continuation == null:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The saved session continuation is invalid.")
+	var replacement_battle_return := SessionContinuation.new() if save_envelope.battle_return_continuation == null else SessionContinuation.from_data(save_envelope.battle_return_continuation.to_data())
+	if replacement_battle_return == null:
+		return SessionStep.failed(_view_revision, &"invalid_battle_return_continuation", "The saved battle return continuation is invalid.")
+	if replacement_state.combat == null and not replacement_battle_return.is_empty():
+		return SessionStep.failed(_view_revision, &"invalid_battle_return_continuation", "A battle return continuation requires an active battle.")
+	if replacement_state.combat != null and not replacement_battle_return.is_empty():
+		var battle_exploration := replacement_battle_return.exploration()
+		if replacement_battle_return.kind != &"post-clock" or battle_exploration == null or battle_exploration.resume_kind != &"move" or not _valid_post_time_continuation(content, replacement_state, replacement_battle_return, null, null):
+			return SessionStep.failed(_view_revision, &"invalid_battle_return_continuation", "The saved battle return references an unavailable exploration continuation.")
 	var replacement_session_interaction: InteractionRequest = null
 	if save_envelope.session_interaction != null:
 		replacement_session_interaction = InteractionRequest.from_data(save_envelope.session_interaction.to_data())
@@ -125,6 +131,7 @@ func restore(content: RealmzContent, save_envelope: SessionSnapshot) -> SessionS
 	_scenario_vm = replacement_vm
 	_runtime_api = RealmzRuntimeApi.new(_content, _state, _rng, _scenario_action_state, _rules)
 	_session_continuation = replacement_continuation
+	_battle_return_continuation = replacement_battle_return
 	_session_interaction = replacement_session_interaction
 	_view_projector.clear()
 	_view_revision = save_envelope.view_revision
@@ -142,6 +149,7 @@ func close() -> SessionStep:
 	# interrupted combat/VM interaction before the synchronous Global hooks run.
 	if pending != null:
 		_session_continuation.clear()
+		_battle_return_continuation.clear()
 		_session_interaction = null
 		_scenario_vm = ScenarioVm.new()
 		_scenario_vm.configure(_content.scenario)
@@ -152,6 +160,7 @@ func close() -> SessionStep:
 func _commit_close(events: Array[DomainEvent], reason: String) -> SessionStep:
 	var campaign_id := _content.campaign_id
 	_session_continuation.clear()
+	_battle_return_continuation.clear()
 	_session_interaction = null
 	_runtime_api = null
 	_scenario_vm = null
@@ -366,7 +375,8 @@ func snapshot() -> SessionSnapshot:
 	if state == null or vm_state == null or action_state == null or _session_interaction != null and interaction == null:
 		return null
 	var continuation := null if _session_continuation.is_empty() else SessionContinuation.from_data(_session_continuation.to_data())
-	return SessionSnapshot.new(_content.campaign_id, _content.package_hash, _content.rules_version, _view_revision, state, _rng.snapshot(), vm_state, action_state, continuation, interaction)
+	var battle_return := null if _battle_return_continuation.is_empty() else SessionContinuation.from_data(_battle_return_continuation.to_data())
+	return SessionSnapshot.new(_content.campaign_id, _content.package_hash, _content.rules_version, _view_revision, state, _rng.snapshot(), vm_state, action_state, continuation, battle_return, interaction)
 
 
 func rng_trace() -> Array[Dictionary]:
@@ -2019,9 +2029,9 @@ func _continue_application_hook(events: Array[DomainEvent]) -> SessionStep:
 	var resume_kind := String(body.resume_kind)
 	var service_id := body.service_id
 	var party_revived := body.party_revived
-	var suspended_vm: Dictionary = body.suspended_vm.duplicate(true)
+	var suspended_vm := ScenarioVmSnapshot.from_data(body.suspended_vm.to_data()) if body.suspended_vm != null else null
 	var suspended_owner := body.suspended_owner
-	var vm_handoff: Dictionary = body.vm_handoff.duplicate(true)
+	var vm_handoff := body.vm_handoff.copy() if body.vm_handoff != null else null
 	_session_continuation.clear()
 	if not program_id.is_empty():
 		events.append(ScenarioApplicationHookWorkflow.completion_event(body))
@@ -2055,33 +2065,32 @@ func _continue_application_hook(events: Array[DomainEvent]) -> SessionStep:
 
 
 func _begin_scenario_handoff(result: ScenarioVmResult, events: Array[DomainEvent]) -> SessionStep:
-	if result == null or result.state != ScenarioVmResult.State.SUSPENDED or not result.handoff.get("runtime") is Dictionary:
+	if result == null or result.state != ScenarioVmResult.State.SUSPENDED or result.handoff == null or result.handoff.runtime == null:
 		_session_continuation.clear()
 		return _finish_failed(&"invalid_vm_handoff", "The Scenario VM did not provide a typed application handoff.", events)
 	if _session_continuation.kind not in [&"post-clock", &"post-move"]:
 		_session_continuation.clear()
 		return _finish_failed(&"unsupported_vm_handoff_owner", "Total-party defeat cannot suspend this scenario caller.", events)
 	var saved := _scenario_vm.snapshot()
-	if not ScenarioVm.handoff_is_valid(result.handoff, saved) or not RealmzRuntimeApi.party_defeat_handoff_is_valid(_content, _state, result.handoff["runtime"]):
+	if not ScenarioVm.handoff_is_valid(result.handoff, saved) or not RealmzRuntimeApi.party_defeat_handoff_is_valid(_content, _state, result.handoff.runtime):
 		_session_continuation.clear()
 		return _finish_failed(&"invalid_party_defeat_handoff", "The Scenario VM total-party defeat handoff is invalid.", events)
 	var suspended := SessionContinuation.ApplicationBody.new()
-	suspended.suspended_vm = saved.to_data()
+	suspended.suspended_vm = ScenarioVmSnapshot.from_data(saved.to_data())
 	suspended.suspended_owner = _session_continuation.copy()
-	suspended.vm_handoff = result.handoff.duplicate(true)
+	suspended.vm_handoff = result.handoff.copy()
 	_scenario_vm.reset()
 	return _start_application_hook(ScenarioApplicationHooks.PARTY_DEATH, &"scenario-party-defeat", "", events, suspended)
 
 
-func _resume_scenario_party_defeat(suspended_vm_data: Dictionary, suspended_owner: SessionContinuation, vm_handoff: Dictionary, events: Array[DomainEvent]) -> SessionStep:
-	var saved := ScenarioVmSnapshot.from_data(suspended_vm_data)
-	if not ScenarioVm.handoff_is_valid(vm_handoff, saved) or not RealmzRuntimeApi.party_defeat_handoff_is_valid(_content, _state, vm_handoff.get("runtime")) or not _valid_suspended_scenario_owner(_content, _state, suspended_owner, saved):
+func _resume_scenario_party_defeat(saved: ScenarioVmSnapshot, suspended_owner: SessionContinuation, vm_handoff: ScenarioVmHandoff, events: Array[DomainEvent]) -> SessionStep:
+	if not ScenarioVm.handoff_is_valid(vm_handoff, saved) or not RealmzRuntimeApi.party_defeat_handoff_is_valid(_content, _state, vm_handoff.runtime) or not _valid_suspended_scenario_owner(_content, _state, suspended_owner, saved):
 		return _finish_failed(&"invalid_party_defeat_handoff", "The saved scenario defeat continuation is invalid.", events)
 	var restored_vm := ScenarioVm.new()
 	restored_vm.configure(_content.scenario)
 	if not restored_vm.restore(saved):
 		return _finish_failed(&"invalid_vm_state", "The suspended scenario cannot be restored after Party Death.", events)
-	var operation := _runtime_api.complete_party_defeat_handoff(vm_handoff["runtime"])
+	var operation := _runtime_api.complete_party_defeat_handoff(vm_handoff.runtime)
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return _finish_failed(operation.error_code, operation.error_message, events)
 	_scenario_vm = restored_vm
@@ -2253,7 +2262,7 @@ func _finish_direct_battle_without_rewards(events: Array[DomainEvent]) -> Sessio
 	if _state.combat == null or not _state.combat.completed:
 		return _finish_failed(&"invalid_battle_continuation", "Suppressed battle rewards require a completed battle.", events)
 	var battle_id := _state.combat.battle_id
-	var return_continuation := _state.combat.return_continuation.copy()
+	var return_continuation := _battle_return_continuation.copy()
 	var battle_outcome := _state.combat.outcome
 	events.append(DomainEvent.new(&"battle_returned", {"battleId": battle_id, "outcome": String(battle_outcome)}))
 	_state.combat = null
@@ -2261,7 +2270,7 @@ func _finish_direct_battle_without_rewards(events: Array[DomainEvent]) -> Sessio
 
 
 func _begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionStep:
-	var return_continuation := _state.combat.return_continuation.copy()
+	var return_continuation := _battle_return_continuation.copy()
 	var battle_outcome := _state.combat.outcome
 	var request_id := "session.battle-reward.%d" % (_view_revision + 1)
 	var operation := _runtime_api.begin_completed_battle_reward(request_id)
@@ -2278,6 +2287,7 @@ func _begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionStep:
 
 
 func _finish_after_direct_battle(events: Array[DomainEvent], return_continuation: SessionContinuation, battle_outcome: StringName) -> SessionStep:
+	_battle_return_continuation.clear()
 	if return_continuation == null or return_continuation.is_empty() or battle_outcome == &"defeat" or not _events_have(events, &"battle_returned"):
 		return _finish_completed(events)
 	_set_continuation(return_continuation.copy())
@@ -2780,13 +2790,13 @@ func _begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperat
 
 func _respond_runtime_service(response: InteractionResponse) -> SessionStep:
 	var service := _session_continuation.service()
-	if service == null or service.runtime_continuation.is_empty():
+	if service == null or service.runtime_continuation == null:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The pending service has no runtime continuation.")
 	var result := _runtime_api.resume_classic(service.runtime_continuation, response, response.request_id)
 	if result.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return _finish_failed(result.error_code, result.error_message, result.events)
 	if result.state == ScenarioRuntimeOperationResult.State.WAITING:
-		service.runtime_continuation = result.continuation.duplicate(true)
+		service.runtime_continuation = result.continuation.copy()
 		_session_interaction = result.interaction
 		return _finish_waiting(_session_interaction, result.events)
 	_session_interaction = null
@@ -2872,7 +2882,7 @@ func _respond_session_retreat(response: InteractionResponse) -> SessionStep:
 
 
 func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName, resume_continuation: SessionContinuation = null) -> SessionStep:
-	var updates := CharacterAgingResult.update_payloads(events)
+	var updates := CharacterAgingResult.update_bodies(events)
 	if updates.is_empty():
 		if resume_kind == &"post-move":
 			_set_continuation(resume_continuation.copy())
@@ -2884,13 +2894,14 @@ func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringNam
 			return _continue_after_session_combat_age_update(events)
 		return _finish_completed(events)
 	var age := SessionContinuation.AgeBody.new()
-	age.updates.assign(updates)
+	for update: InteractionRequest.AgeUpdateBody in updates:
+		age.updates.append(InteractionRequest.age_update_body("session.age-copy", update).body as InteractionRequest.AgeUpdateBody)
 	age.index = 1
 	age.resume_kind = resume_kind
 	age.resume_continuation = null if resume_continuation == null else resume_continuation.copy()
 	_set_continuation(SessionContinuation.age_updates(age))
-	_session_interaction = InteractionRequest.age_update(_session_age_update_request_id(updates[0], 0), updates[0])
-	events.append(CharacterAgingResult.sound_event(updates[0]))
+	_session_interaction = InteractionRequest.age_update_body(_session_age_update_request_id(updates[0], 0), updates[0])
+	events.append(CharacterAgingResult.sound_event_for_update(updates[0]))
 	return _finish_waiting(_session_interaction, events)
 
 
@@ -2904,13 +2915,13 @@ func _respond_session_age_update(response: InteractionResponse) -> SessionStep:
 	var index := age.index
 	if updates.is_empty() or index < 1 or index > updates.size():
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The age-update queue is unavailable.")
-	var acknowledged: Dictionary = updates[index - 1]
-	var events: Array[DomainEvent] = [DomainEvent.new(&"character_age_update_acknowledged", {"characterId": acknowledged.get("characterId", "")})]
+	var acknowledged: InteractionRequest.AgeUpdateBody = updates[index - 1]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"character_age_update_acknowledged", {"characterId": acknowledged.character_id})]
 	if index < updates.size():
-		var next_payload: Dictionary = updates[index]
+		var next_payload: InteractionRequest.AgeUpdateBody = updates[index]
 		age.index = index + 1
-		_session_interaction = InteractionRequest.age_update(_session_age_update_request_id(next_payload, index), next_payload)
-		events.append(CharacterAgingResult.sound_event(next_payload))
+		_session_interaction = InteractionRequest.age_update_body(_session_age_update_request_id(next_payload, index), next_payload)
+		events.append(CharacterAgingResult.sound_event_for_update(next_payload))
 		return _finish_waiting(_session_interaction, events)
 	var resume_kind := age.resume_kind
 	var resume_continuation := age.resume_continuation
@@ -2943,8 +2954,8 @@ func _continue_after_session_combat_age_update(events: Array[DomainEvent]) -> Se
 	return _finish_completed(events)
 
 
-func _session_age_update_request_id(payload: Dictionary, index: int) -> String:
-	return "session.age-update:%s:%d:%d" % [payload.get("characterId", "character"), _view_revision + 1, index]
+func _session_age_update_request_id(update: InteractionRequest.AgeUpdateBody, index: int) -> String:
+	return "session.age-update:%s:%d:%d" % [update.character_id, _view_revision + 1, index]
 
 
 func _respond_session_ally_selection(response: InteractionResponse) -> SessionStep:
@@ -2992,15 +3003,15 @@ func _respond_session_battle_reward(response: InteractionResponse) -> SessionSte
 	var continuation := _session_continuation.reward()
 	if continuation == null or _state.combat == null or not _state.combat.completed or _state.combat.battle_id != continuation.battle_id:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The completed battle is unavailable for reward distribution.")
-	if continuation.runtime_continuation.is_empty():
+	if continuation.runtime_continuation == null:
 		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The battle reward continuation is unavailable.")
-	var return_continuation := _state.combat.return_continuation.copy()
+	var return_continuation := _battle_return_continuation.copy()
 	var battle_outcome := _state.combat.outcome
 	var result := _runtime_api.resume_classic(continuation.runtime_continuation, response, response.request_id)
 	if result.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return _finish_failed(result.error_code, result.error_message, result.events)
 	if result.state == ScenarioRuntimeOperationResult.State.WAITING:
-		continuation.runtime_continuation = result.continuation.duplicate(true)
+		continuation.runtime_continuation = result.continuation.copy()
 		_session_interaction = result.interaction
 		return _finish_waiting(_session_interaction, result.events)
 	_session_interaction = null
@@ -3030,7 +3041,7 @@ func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: 
 	if _state.combat != null and _session_continuation.kind == &"post-clock":
 		var exploration := _session_continuation.exploration()
 		exploration.random_region_index = -1 if region.only else exploration.random_region_index - 1
-		_state.combat.return_continuation = _session_continuation.copy()
+		_battle_return_continuation = _session_continuation.copy()
 	if not CharacterAgingResult.update_payloads(battle_result.events).is_empty():
 		_session_interaction = null
 		_session_continuation.clear()
@@ -3070,8 +3081,8 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 				&"scenario-party-defeat":
 					if application.hook != ScenarioApplicationHooks.PARTY_DEATH or not application.service_id.is_empty() or application.suspended_owner == null:
 						return false
-					var saved := ScenarioVmSnapshot.from_data(application.suspended_vm)
-					return ScenarioVm.handoff_is_valid(application.vm_handoff, saved) and RealmzRuntimeApi.party_defeat_handoff_is_valid(content, state, application.vm_handoff.get("runtime")) and _valid_suspended_scenario_owner(content, state, application.suspended_owner, saved)
+					var saved := application.suspended_vm
+					return ScenarioVm.handoff_is_valid(application.vm_handoff, saved) and RealmzRuntimeApi.party_defeat_handoff_is_valid(content, state, application.vm_handoff.runtime) and _valid_suspended_scenario_owner(content, state, application.suspended_owner, saved)
 			return false
 		&"pooled-wealth-departure":
 			var service := continuation.service()
@@ -3091,15 +3102,18 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			if service == null or vm_interaction != null or session_interaction == null:
 				return false
 			var runtime := service.runtime_continuation
-			var selected_temple_character: Variant = runtime.get("selectedCharacterId")
-			match StringName(runtime.get("kind", "")):
+			if runtime == null:
+				return false
+			var runtime_body := runtime.body as ScenarioRuntimeContinuation.ServiceBody
+			var selected_temple_character := "" if runtime_body == null else runtime_body.selected_character_id
+			match runtime.kind:
 				&"classic-shop":
 					return service.service_id == state.active_shop_id and not service.service_id.is_empty() and content.shop_by_id(service.service_id) != null and session_interaction.kind == InteractionRequest.SHOP
 				&"classic-temple":
 					var temple_body := session_interaction.body as InteractionRequest.TempleRequestBody
-					return service.service_id == "realmz.service.temple" and state.temple_available and int(runtime.get("costPercent", -100_000)) == state.temple_cost_percent and bool(runtime.get("bankAvailable", false)) == state.bank_available and selected_temple_character is String and state.party.character_by_id(String(selected_temple_character)) != null and session_interaction.kind == InteractionRequest.TEMPLE and temple_body != null and temple_body.selected_character_id == selected_temple_character
+					return runtime_body != null and service.service_id == "realmz.service.temple" and state.temple_available and runtime_body.cost_percent == state.temple_cost_percent and runtime_body.bank_available == state.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.TEMPLE and temple_body != null and temple_body.selected_character_id == selected_temple_character
 				&"classic-temple-exit":
-					return service.service_id == "realmz.service.temple" and state.temple_available and not state.bank_available and int(runtime.get("costPercent", -100_000)) == state.temple_cost_percent and not bool(runtime.get("bankAvailable", true)) and selected_temple_character is String and state.party.character_by_id(String(selected_temple_character)) != null and session_interaction.kind == InteractionRequest.YES_NO
+					return runtime_body != null and service.service_id == "realmz.service.temple" and state.temple_available and not state.bank_available and runtime_body.cost_percent == state.temple_cost_percent and not runtime_body.bank_available and state.party.character_by_id(selected_temple_character) != null and session_interaction.kind == InteractionRequest.YES_NO
 				&"classic-banking":
 					return service.service_id == "realmz.service.bank" and state.bank_available and session_interaction.kind == InteractionRequest.BANK
 			return false
@@ -3137,11 +3151,11 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			var age := continuation.age()
 			if age == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.AGE_UPDATE or age.updates.is_empty() or age.index < 1 or age.index > age.updates.size():
 				return false
-			for update: Variant in age.updates:
+			for update: InteractionRequest.AgeUpdateBody in age.updates:
 				if not _valid_age_update_payload(state, update):
 					return false
-			var current_update: Dictionary = age.updates[age.index - 1]
-			var expected_age_request := InteractionRequest.from_payload("validation.age-update", InteractionRequest.AGE_UPDATE, current_update)
+			var current_update: InteractionRequest.AgeUpdateBody = age.updates[age.index - 1]
+			var expected_age_request := InteractionRequest.age_update_body("validation.age-update", current_update)
 			var actual_age_body := session_interaction.body as InteractionRequest.AgeUpdateBody
 			var expected_age_body: InteractionRequest.AgeUpdateBody = null if expected_age_request == null else expected_age_request.body as InteractionRequest.AgeUpdateBody
 			if actual_age_body == null or not actual_age_body.same_values(expected_age_body):
@@ -3181,7 +3195,8 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			if reward_body == null or vm_interaction != null:
 				return false
 			var runtime := reward_body.runtime_continuation
-			var reward := ClassicRewardState.from_data(runtime.get("state")) if runtime.size() == 2 and runtime.get("kind") == "classic-reward" else null
+			var runtime_body := runtime.body as ScenarioRuntimeContinuation.RewardBody if runtime != null and runtime.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD else null
+			var reward := runtime_body.state if runtime_body != null else null
 			return reward != null and reward.origin == &"battle" and reward.source_id == reward_body.battle_id and _valid_reward_continuation(content, state, reward, session_interaction)
 		&"post-clock":
 			return _valid_post_time_continuation(content, state, continuation, vm_interaction, session_interaction)
@@ -3275,7 +3290,7 @@ static func _valid_suspended_scenario_owner(content: RealmzContent, state: GameS
 	# The full handoff shape is validated by the caller. This guard proves the
 	# detached VM can resume and that its owner is an exploration continuation
 	# which would ordinarily be validated beside a live VM interaction.
-	if owner == null or owner.kind not in [&"post-clock", &"post-move"] or saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or not saved.pending_continuation.is_empty():
+	if owner == null or owner.kind not in [&"post-clock", &"post-move"] or saved == null or saved.halted or saved.frames.is_empty() or saved.pending_request != null or saved.pending_continuation != null:
 		return false
 	var test_vm := ScenarioVm.new()
 	test_vm.configure(content.scenario)
@@ -3308,24 +3323,26 @@ static func _valid_post_time_continuation(content: RealmzContent, state: GameSta
 
 static func _valid_vm_reward_continuation(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:
 	var snapshot := vm.snapshot()
-	if snapshot.pending_continuation.is_empty():
+	if snapshot.pending_continuation == null:
 		return true
-	var runtime: Variant = snapshot.pending_continuation.get("runtime")
-	if not runtime is Dictionary or runtime.get("kind") != "classic-reward":
+	var runtime := snapshot.pending_continuation.runtime
+	if runtime == null or runtime.kind != ScenarioRuntimeContinuation.CLASSIC_REWARD:
 		return true
-	var reward := ClassicRewardState.from_data(runtime.get("state"))
+	var runtime_body := runtime.body as ScenarioRuntimeContinuation.RewardBody
+	var reward := runtime_body.state if runtime_body != null else null
 	return reward != null and _valid_reward_continuation(content, state, reward, vm.pending_request())
 
 
 static func _valid_player_map_vm_continuation(content: RealmzContent, state: GameState, vm: ScenarioVm) -> bool:
 	var snapshot := vm.snapshot()
-	if snapshot.pending_continuation.is_empty():
+	if snapshot.pending_continuation == null:
 		return true
-	var runtime: Variant = snapshot.pending_continuation.get("runtime")
-	if not runtime is Dictionary or runtime.get("kind") != "classic-player-map":
+	var runtime := snapshot.pending_continuation.runtime
+	if runtime == null or runtime.kind != ScenarioRuntimeContinuation.CLASSIC_PLAYER_MAP:
 		return true
 	var request := vm.pending_request()
-	var player_map_id := String(runtime.get("playerMapId", ""))
+	var runtime_body := runtime.body as ScenarioRuntimeContinuation.TextBody
+	var player_map_id := "" if runtime_body == null else runtime_body.player_map_id
 	var body: InteractionRequest.AcknowledgeBody = null
 	if request != null:
 		body = request.body as InteractionRequest.AcknowledgeBody
@@ -3371,16 +3388,12 @@ static func _valid_reward_continuation(content: RealmzContent, state: GameState,
 	return false
 
 
-static func _valid_age_update_payload(state: GameState, value: Variant) -> bool:
-	if not value is Dictionary:
-		return false
-	var character_id: Variant = value.get("characterId")
-	var changes: Variant = value.get("changes")
-	return character_id is String and not character_id.is_empty() and state.party.character_by_id(character_id) != null \
-		and value.get("presentation") == "classic-age-update" and value.get("soundId") is int \
-		and value.get("ageGroup") is int and int(value.get("ageGroup")) >= 1 and int(value.get("ageGroup")) <= 5 \
-		and value.get("transition") is int and int(value.get("transition")) in [-1, 1] \
-		and changes is Array and changes.size() == 15 and changes.all(func(change: Variant) -> bool: return change is int)
+static func _valid_age_update_payload(state: GameState, update: InteractionRequest.AgeUpdateBody) -> bool:
+	return update != null and not update.character_id.is_empty() and state.party.character_by_id(update.character_id) != null \
+		and update.presentation == &"classic-age-update" \
+		and update.age_group >= 1 and update.age_group <= 5 \
+		and update.transition in [-1, 1] \
+		and update.changes.size() == 15
 
 
 static func _valid_ready_post_move_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation) -> bool:

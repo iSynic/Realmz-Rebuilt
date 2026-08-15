@@ -68,5 +68,18 @@ static func update_payloads(events: Array[DomainEvent]) -> Array[Dictionary]:
 	return updates
 
 
+static func update_bodies(events: Array[DomainEvent]) -> Array[InteractionRequest.AgeUpdateBody]:
+	var updates: Array[InteractionRequest.AgeUpdateBody] = []
+	for payload: Dictionary in update_payloads(events):
+		var request := InteractionRequest.age_update("character-aging", payload)
+		assert(request != null and request.body is InteractionRequest.AgeUpdateBody, "A committed character-age event must satisfy the typed interaction contract")
+		updates.append(request.body as InteractionRequest.AgeUpdateBody)
+	return updates
+
+
 static func sound_event(payload: Dictionary) -> DomainEvent:
 	return DomainEvent.new(&"sound_requested", {"soundId": int(payload.get("soundId", 3002)), "waitForCompletion": false, "source": "classic-age-update"})
+
+
+static func sound_event_for_update(update: InteractionRequest.AgeUpdateBody) -> DomainEvent:
+	return DomainEvent.new(&"sound_requested", {"soundId": update.sound_id, "waitForCompletion": false, "source": "classic-age-update"})

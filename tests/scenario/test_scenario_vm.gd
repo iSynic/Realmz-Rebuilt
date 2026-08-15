@@ -17,7 +17,7 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	_test_classic_encounter_action_xap_trace(loaded.content)
-	_test_vm_directive_wire_contract()
+	_test_scenario_wire_contracts()
 	_test_classic_choice_labels_and_sound_wait(loaded.content)
 	_test_session_save_resume_boundary(loaded.content)
 	_test_age_update_precedes_post_move(loaded.content)
@@ -78,7 +78,7 @@ func run() -> void:
 	_test_classic_shell_domain_route(loaded.content)
 
 
-func _test_vm_directive_wire_contract() -> void:
+func _test_scenario_wire_contracts() -> void:
 	var branch := ScenarioVmDirective.branch_program("xap:7", true, {"triggerId": "ap.fixture"})
 	var restored := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(branch.to_data())))
 	assert_not_null(restored, "VM directive survives its strict JSON-safe wire contract")
@@ -86,6 +86,46 @@ func _test_vm_directive_wire_contract() -> void:
 	assert_equal(ScenarioVmDirective.from_data({"kind": "finish", "extra": true}), null, "VM directive restore rejects unknown fields")
 	assert_equal(ScenarioVmDirective.from_data({"kind": "branch-xap", "targetId": "7", "gosub": false}), null, "VM directive restore rejects malformed field types")
 	assert_equal(ScenarioVmDirective.from_data({"kind": "branch-program", "programId": "", "gosub": false, "context": {}}), null, "VM directive restore rejects an empty program identity")
+
+	var caller := ScenarioBattleCaller.classic(2, false, 0, 0)
+	var runtime_handoff := ScenarioRuntimeHandoff.party_defeat("classic.battle.0", ScenarioRuntimeHandoff.CLASSIC_COMBAT, caller)
+	var direct_retreat_body := SessionContinuation.CombatBody.new()
+	direct_retreat_body.battle_id = "classic.battle.0"
+	direct_retreat_body.actor_id = "character.1"
+	direct_retreat_body.mode = &"explicit"
+	direct_retreat_body.destination = Vector2i(-100_000, -100_000)
+	var contracts: Array[Dictionary] = [
+		{"name": "Classic battle caller", "value": caller, "decode": ScenarioBattleCaller.from_data},
+		{"name": "zero-based encounter continuation", "value": ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0]), "decode": ScenarioRuntimeContinuation.from_data},
+		{"name": "unrestricted shop continuation", "value": ScenarioRuntimeContinuation.shop("classic.shop.0", []), "decode": ScenarioRuntimeContinuation.from_data},
+		{"name": "explicit-retreat continuation", "value": ScenarioRuntimeContinuation.combat_retreat(ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.0", caller, "character.1", &"explicit", Vector2i(-100_000, -100_000)), "decode": ScenarioRuntimeContinuation.from_data},
+		{"name": "VM pending continuation", "value": ScenarioVmPendingContinuation.classic(ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0])), "decode": ScenarioVmPendingContinuation.from_data},
+		{"name": "runtime party-defeat handoff", "value": runtime_handoff, "decode": ScenarioRuntimeHandoff.from_data},
+		{"name": "VM party-defeat handoff", "value": ScenarioVmHandoff.classic(runtime_handoff), "decode": ScenarioVmHandoff.from_data},
+		{"name": "session explicit-retreat continuation", "value": SessionContinuation.combat_state(&"combat-retreat-confirmation", direct_retreat_body), "decode": SessionContinuation.from_data},
+	]
+	for contract: Dictionary in contracts:
+		var wire: Dictionary = JSON.parse_string(JSON.stringify(contract["value"].to_data()))
+		var decoded: Variant = contract["decode"].call(wire)
+		assert_not_null(decoded, "%s survives its strict JSON-safe wire contract" % contract["name"])
+		assert_equal(JSON.parse_string(JSON.stringify(decoded.to_data())), wire, "%s round-trip preserves every field" % contract["name"])
+		var unknown_field := wire.duplicate(true)
+		unknown_field["unexpected"] = true
+		assert_equal(contract["decode"].call(unknown_field), null, "%s rejects unknown envelope fields" % contract["name"])
+		var unknown_version := wire.duplicate(true)
+		unknown_version["version"] = 999
+		assert_equal(contract["decode"].call(unknown_version), null, "%s rejects unknown versions" % contract["name"])
+	var snapshot_with_unknown_field := ScenarioVmSnapshot.new().to_data()
+	snapshot_with_unknown_field["unexpected"] = true
+	assert_equal(ScenarioVmSnapshot.from_data(snapshot_with_unknown_field), null, "VM snapshots reject unknown root fields")
+	var post_move_body := SessionContinuation.ExplorationBody.new()
+	post_move_body.map_id = "land:0"
+	post_move_body.coordinate = Vector2i.ZERO
+	post_move_body.trigger_index = 0
+	post_move_body.random_region_index = -1
+	var malformed_post_move := SessionContinuation.post_move(post_move_body).to_data()
+	malformed_post_move["data"]["triggerIds"] = "not-an-array"
+	assert_equal(SessionContinuation.from_data(malformed_post_move), null, "post-move continuations reject malformed trigger arrays cleanly")
 
 
 func _test_classic_encounter_action_xap_trace(content: RealmzContent) -> void:
@@ -235,8 +275,9 @@ func _test_age_update_precedes_post_move(content: RealmzContent) -> void:
 	assert_equal(session.restore(content, boundary).state, SessionStep.State.COMPLETED, "the pre-midnight AP fixture restores")
 	var moved := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	assert_equal(moved.interaction.kind, InteractionRequest.AGE_UPDATE, "the Castle age dialog blocks before destination AP execution")
-	assert_equal(continuation_data(session.snapshot())["resumeKind"], "post-clock", "the age dialog owns the unstarted post-clock continuation")
-	assert_equal(continuation_data(session.snapshot())["resumeContinuation"]["resumeKind"], "post-move", "the post-clock continuation retains destination AP discovery after its timed scan")
+	var age_continuation := session.snapshot().continuation.age()
+	assert_equal(age_continuation.resume_kind, &"post-clock", "the age dialog owns the unstarted post-clock continuation")
+	assert_equal(age_continuation.resume_continuation.exploration().resume_kind, &"post-move", "the post-clock continuation retains destination AP discovery after its timed scan")
 	var held := save_round_trip(session.snapshot())
 	assert_not_null(held, "the age-before-AP boundary serializes with its nested topology continuation")
 	var restored := GameSession.new()
@@ -608,7 +649,7 @@ func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> vo
 	assert_true(_place_monster_at_escape_range(state.combat, character.id, target_id), "battle continuation fixture establishes Castle's exact Escape range")
 	var retreat_prompt := restored.resume(InteractionResponse.from_data(waiting.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "retreat", "targetId": ""}), api)
 	assert_equal([retreat_prompt.state, retreat_prompt.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.YES_NO], "scenario combat yields the same typed Escape confirmation as direct combat")
-	assert_equal(restored.snapshot().pending_continuation.get("runtime", {}).get("kind"), "classic-combat-retreat-confirmation", "the issuing Classic frame owns the pending Escape confirmation")
+	assert_equal(restored.snapshot().pending_continuation.runtime.kind, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, "the issuing Classic frame owns the pending Escape confirmation")
 	var retreat_snapshot := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(restored.snapshot().to_data())))
 	assert_not_null(retreat_snapshot, "the nested Classic Escape confirmation is serializable")
 	var retreat_restored := ScenarioVm.new()
@@ -772,6 +813,10 @@ func _test_scenario_spell_opcodes(content: RealmzContent) -> void:
 	assert_equal(age_dialog.state, ScenarioVmResult.State.WAITING, "an age-changing scenario spell blocks its issuing VM frame")
 	assert_equal(age_dialog.interaction.kind, InteractionRequest.AGE_UPDATE, "the spell uses the dedicated Classic age-update contract")
 	assert_true(age_dialog.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 3002), "the spell dialog requests Castle sound 3002")
+	var malformed_age_continuation := aging_vm.snapshot().pending_continuation.runtime.to_data()
+	malformed_age_continuation["data"].erase("value")
+	malformed_age_continuation["data"]["unexpected"] = null
+	assert_equal(ScenarioRuntimeContinuation.from_data(malformed_age_continuation), null, "age continuations reject an unknown field substituted for the required result value")
 	var aging_snapshot := ScenarioVmSnapshot.from_data(aging_vm.snapshot().to_data())
 	assert_not_null(aging_snapshot, "the age-changing spell continuation serializes")
 	var restored_aging_vm := ScenarioVm.new()
@@ -1460,7 +1505,8 @@ func _test_classic_character_ability_picker(content: RealmzContent) -> void:
 	assert_equal(waiting.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic opcode 31 yields the typed character picker")
 	assert_equal([waiting.interaction.kind, waiting.interaction.body.to_data()["count"], waiting.interaction.body.to_data()["eligible"].size()], [&"character_selection", 1, 2], "ability picker exposes one living-character choice with stable IDs")
 	var saved_request := InteractionRequest.from_data(JSON.parse_string(JSON.stringify(waiting.interaction.to_data())))
-	var saved_continuation: Dictionary = JSON.parse_string(JSON.stringify(waiting.continuation))
+	var saved_continuation_data: Dictionary = JSON.parse_string(JSON.stringify(waiting.continuation.to_data()))
+	var saved_continuation := ScenarioRuntimeContinuation.from_data(saved_continuation_data)
 	assert_not_null(saved_request, "ability picker request survives the JSON-shaped save boundary")
 	var inert := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [10, 0, 1, 12, 13]), "request.ability.inert")
 	assert_equal([inert.state, inert.interaction.kind, rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.WAITING, &"character_selection", 0], "AOGM's attribute index 10 retains Castle's living-character picker before its inert check")
@@ -1761,7 +1807,7 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 	var aged := vm.resume(InteractionResponse.from_data(player_turn.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "finish", "targetId": ""}), api)
 	assert_equal(aged.state, ScenarioVmResult.State.WAITING, "scenario combat pauses at the monster-caused age update")
 	assert_equal(aged.interaction.kind, InteractionRequest.AGE_UPDATE, "monster aging uses the ordinary typed age-update ABI")
-	assert_equal(vm.snapshot().pending_continuation.get("runtime", {}).get("kind"), "classic-combat-age-updates", "the age dialog owns the issuing Classic combat continuation")
+	assert_equal(vm.snapshot().pending_continuation.runtime.kind, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, "the age dialog owns the issuing Classic combat continuation")
 	assert_true(_event_has(aged.events, &"combat_monster_special_resolved") and _event_has(aged.events, &"character_age_changed"), "combat publishes the source-backed special and live-age transition")
 	assert_false(_event_has(aged.events, &"combat_attack_resolved"), "ordinary damage waits behind Castle's age dialog")
 	assert_equal(character.current_health, 100, "the pre-acknowledgement combat save retains pending physical damage")

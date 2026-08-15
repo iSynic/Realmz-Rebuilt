@@ -7,7 +7,7 @@ Own the pure transaction coordinator that joins core Realmz state and rules to t
 ## Ownership
 
 - `GameSession` public operations, transaction checkpoints, exact-once commit, request identity, revision, and aggregate lifetime.
-- Typed snapshots that include both core state and scenario VM state.
+- `SessionSnapshot`, `SessionContinuation`, and the separate battle-return continuation that include core state, RNG, scenario VM/action state, and pending typed interactions.
 - Session workflow contexts and services for lifecycle, exploration, inventory/magic/services, combat/rewards, application hooks, and detached view projection.
 - The standalone character-creation session adapter.
 
@@ -19,6 +19,7 @@ Own the pure transaction coordinator that joins core Realmz state and rules to t
 - `GameSession` alone owns rollback, request matching, revision changes, and exact-once commit.
 - Scenario-mediated and direct player operations must converge on the same core rules and workflow implementations.
 - Dictionaries are permitted only while crossing an explicit package/save/event codec. Live workflow state and continuations are typed.
+- Every continuation body and nested scenario handoff must reject unknown fields and versions, detach mutable values, and round-trip through its strict wire codec before entering a snapshot.
 
 ## Parent Contract
 

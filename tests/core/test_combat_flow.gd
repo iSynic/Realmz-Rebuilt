@@ -2482,7 +2482,7 @@ func _test_batch_two_combat_auto_state() -> void:
 	var vm_response := InteractionResponse.from_data("request.auto-vm", InteractionRequest.COMBAT, {"actorId": vm_future.id, "action": "set_auto", "targetId": "", "enabled": true})
 	var vm_result := vm_api.resume_classic(_classic_battle_continuation(vm_state.combat.battle_id), vm_response, vm_response.request_id)
 	assert_equal(vm_result.state, ScenarioRuntimeOperationResult.State.WAITING, "a VM-owned combat interaction refreshes after toggling an inactive persistent Auto character")
-	assert_equal(vm_result.continuation, _classic_battle_continuation(vm_state.combat.battle_id), "the Auto toggle returns through the exact battle continuation that issued the request")
+	assert_equal(vm_result.continuation.to_data(), _classic_battle_continuation(vm_state.combat.battle_id).to_data(), "the Auto toggle returns through the exact battle continuation that issued the request")
 	assert_equal(vm_result.interaction.body.to_data().get("autoCharacterIds"), [vm_future.id], "the refreshed typed combat request exposes its saved Auto selection")
 	var vm_restored := GameState.from_data(JSON.parse_string(JSON.stringify(vm_state.to_data())))
 	assert_not_null(vm_restored, "the VM Auto toggle remains restorable while the battle interaction is pending")
@@ -2668,8 +2668,12 @@ func _monster_definition(definition_id: String, attacks: Array[MonsterAttackDefi
 	return MonsterDefinition.new(definition_id, 1, "Cadence Monster", 1, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), [], [], attacks)
 
 
-func _classic_battle_continuation(battle_id: String) -> Dictionary:
-	return {"kind": "classic-combat", "battleId": battle_id, "battleCaller": {"kind": "classic", "opcode": 2, "gosub": false, "mode": 0, "branchTarget": 0}}
+func _classic_battle_continuation(battle_id: String) -> ScenarioRuntimeContinuation:
+	return ScenarioRuntimeContinuation.combat(
+		ScenarioRuntimeContinuation.CLASSIC_COMBAT,
+		battle_id,
+		ScenarioBattleCaller.classic(2, false, 0, 0)
+	)
 
 
 func _state(character: CharacterState, monster: MonsterState, battle_id: String) -> GameState:
