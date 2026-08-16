@@ -29,6 +29,44 @@ class ClockTransitionResult:
 		return result
 
 
+class MovementTransitionResult:
+	extends RefCounted
+	var ok: bool
+	var error_code: StringName
+	var error_message: String
+	var events: Array[DomainEvent]
+	var post_clock: bool
+	var map: MapDefinition
+	var resume_kind: StringName
+	var direction: Vector2i
+	var check_random: bool
+	var timed_day: int
+	var timed_coordinate: Vector2i = Vector2i(-1, -1)
+
+	static func failed(code: StringName, message: String, committed_events: Array[DomainEvent] = []) -> MovementTransitionResult:
+		var result := MovementTransitionResult.new()
+		result.error_code = code
+		result.error_message = message
+		result.events = committed_events
+		return result
+
+	static func completed(committed_events: Array[DomainEvent]) -> MovementTransitionResult:
+		var result := MovementTransitionResult.new()
+		result.ok = true
+		result.events = committed_events
+		return result
+
+	static func after_clock(current_map: MapDefinition, committed_events: Array[DomainEvent], completion_kind: StringName, next_direction: Vector2i, should_check_random: bool, midnight_day: int, check_coordinate: Vector2i) -> MovementTransitionResult:
+		var result := completed(committed_events)
+		result.post_clock = true
+		result.map = current_map
+		result.resume_kind = completion_kind
+		result.direction = next_direction
+		result.check_random = should_check_random
+		result.timed_day = midnight_day
+		result.timed_coordinate = check_coordinate
+		return result
+
 static func toggle_camp(context: SessionWorkflowContext) -> ClockTransitionResult:
 	if context.state.combat != null and not context.state.combat.completed:
 		return ClockTransitionResult.failed(&"camp_during_battle", "The party cannot camp during battle.")
@@ -92,6 +130,172 @@ static func search(context: SessionWorkflowContext) -> SessionWorkflowResult:
 	for secret_id: String in discovered:
 		events.append(DomainEvent.new(&"secret_discovered", {"secretId": secret_id}))
 	return SessionWorkflowResult.completed(events)
+
+
+static func depart_camp_for_movement(context: SessionWorkflowContext, direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> MovementTransitionResult:
+	var movement := context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world)
+	if not movement.allowed and movement.reason == &"invalid_direction":
+		return MovementTransitionResult.failed(&"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
+	var map := context.content.world.map_by_id(context.state.party.map_id)
+	if map == null:
+		return MovementTransitionResult.failed(&"unknown_map", "The current map is unavailable for camp departure.")
+	context.state.party_camping = false
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	events.append(DomainEvent.new(&"camp_mode_changed", {"camping": false, "source": "classic-movement"}))
+	events.append(DomainEvent.new(&"camp_departed_for_movement", {"mapId": map.id, "x": context.state.party.coordinate.x, "y": context.state.party.coordinate.y, "direction": [direction.x, direction.y], "source": "classic"}))
+	var previous_day := context.state.clock.day()
+	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 2 if map.level_type == &"dungeon" else 15, classic_time_scale(map), true))
+	return MovementTransitionResult.after_clock(map, events, &"move", direction, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, context.state.party.coordinate + direction)
+
+
+static func commit_move(context: SessionWorkflowContext, direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> MovementTransitionResult:
+	var movement := context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world)
+	if not movement.allowed and movement.reason == &"invalid_direction":
+		return MovementTransitionResult.failed(&"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
+	if not movement.allowed:
+		var blocked_events: Array[DomainEvent] = []
+		blocked_events.assign(preceding_events)
+		blocked_events.append(DomainEvent.new(&"movement_blocked", {"reason": String(movement.reason)}))
+		var attempt_cost := blocked_land_attempt_cost(context.state, movement)
+		if attempt_cost <= 0:
+			return MovementTransitionResult.completed(blocked_events)
+		var previous_day := context.state.clock.day()
+		blocked_events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, attempt_cost, classic_time_scale(movement.source_map), true))
+		return MovementTransitionResult.after_clock(movement.source_map, blocked_events, &"completed", Vector2i.ZERO, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, movement.target_coordinate)
+	var target_map := movement.target_map
+	var target_coordinate := movement.target_coordinate
+	var transition := movement.transition
+	var probe := movement.topology_result
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	if not probe.door_id.is_empty() and not context.state.world.door_is_open(probe.door_id):
+		context.state.world.open_door(probe.door_id)
+		events.append(DomainEvent.new(&"door_opened", {"doorId": probe.door_id}))
+	if not probe.secret_id.is_empty() and not context.state.world.secret_is_discovered(probe.secret_id):
+		context.state.world.discover_secret(probe.secret_id)
+		events.append(DomainEvent.new(&"secret_discovered", {"secretId": probe.secret_id, "byMovement": true}))
+	var source_map_id := context.state.party.map_id
+	var source_coordinate := context.state.party.coordinate
+	var cleared_services := not context.state.active_shop_id.is_empty() or context.state.temple_available or context.state.bank_available
+	if context.state.bank_available:
+		context.rules.economy.pool_to_bank(context.state.party)
+	context.state.clear_location_services()
+	if cleared_services:
+		events.append(DomainEvent.new(&"location_services_cleared", {"mapId": source_map_id, "x": source_coordinate.x, "y": source_coordinate.y}))
+	context.state.party.map_id = target_map.id
+	context.state.party.coordinate = target_coordinate
+	context.state.last_move_direction = direction
+	context.state.world.mark_visited(target_map.id, target_coordinate)
+	events.append(DomainEvent.new(&"party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": target_coordinate.x, "y": target_coordinate.y}))
+	var previous_day := context.state.clock.day()
+	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, probe.target_cell.movement_cost, classic_time_scale(target_map), true))
+	if transition != null:
+		events.append(DomainEvent.new(&"map_transitioned", {"transitionId": transition.id, "sourceMapId": source_map_id, "targetMapId": target_map.id}))
+	return MovementTransitionResult.after_clock(target_map, events, &"post-move", Vector2i.ZERO, false, context.state.clock.day() if context.state.clock.day() != previous_day else 0, target_coordinate)
+
+
+static func blocked_land_attempt_cost(state: GameState, movement: WorldMovementResult) -> int:
+	if movement == null or movement.source_map == null or movement.source_map.level_type != &"land" or state.party_in_boat:
+		return 0
+	if movement.reason not in [&"terrain_blocked", &"secret_hidden"] or movement.topology_result == null or movement.topology_result.target_cell == null:
+		return 0
+	return maxi(0, movement.topology_result.target_cell.movement_cost)
+
+
+static func post_time_continuation(context: SessionWorkflowContext, map: MapDefinition, resume_kind: StringName, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> SessionContinuation:
+	var cell := map.topology.cell_at(context.state.party.coordinate)
+	var exploration := SessionContinuation.ExplorationBody.new()
+	exploration.map_id = map.id
+	exploration.coordinate = context.state.party.coordinate
+	exploration.timed_day = timed_day
+	exploration.timed_encounter_index = 0
+	exploration.active_timed_program_id = ""
+	exploration.midnight_recovery_pending = timed_day > 0
+	exploration.timed_check_coordinate = timed_coordinate
+	exploration.check_random = check_random
+	exploration.random_region_ids.assign([] if cell == null else cell.random_rect_ids())
+	exploration.random_region_index = -1 if cell == null else cell.random_rect_ids().size() - 1
+	exploration.active_random_program_id = ""
+	exploration.active_random_region_id = ""
+	exploration.random_battle_stage = &""
+	exploration.resume_kind = resume_kind
+	exploration.direction = direction
+	return SessionContinuation.post_clock(exploration)
+
+
+static func post_move_continuation(context: SessionWorkflowContext, map: MapDefinition, coordinate: Vector2i, destination_depth: int = 0) -> SessionContinuation:
+	var cell := map.topology.cell_at(coordinate)
+	var exploration := SessionContinuation.ExplorationBody.new()
+	exploration.map_id = map.id
+	exploration.coordinate = coordinate
+	exploration.trigger_ids.assign(selected_placed_trigger_ids(context.content, cell))
+	exploration.trigger_index = 0
+	exploration.active_trigger_id = ""
+	exploration.random_region_ids.assign(cell.random_rect_ids())
+	exploration.random_region_index = cell.random_rect_ids().size() - 1
+	exploration.active_random_program_id = ""
+	exploration.active_random_region_id = ""
+	exploration.random_battle_stage = &""
+	exploration.action_point_destination_depth = destination_depth
+	return SessionContinuation.post_move(exploration)
+
+
+static func rebase_post_time_location(context: SessionWorkflowContext, continuation: SessionContinuation) -> bool:
+	var exploration := continuation.exploration()
+	if continuation.kind != &"post-clock" or exploration == null:
+		return false
+	var map := context.content.world.map_by_id(context.state.party.map_id)
+	var cell: MapCell = null if map == null else map.topology.cell_at(context.state.party.coordinate)
+	if cell == null:
+		return false
+	exploration.map_id = map.id
+	exploration.coordinate = context.state.party.coordinate
+	exploration.timed_check_coordinate = context.state.party.coordinate
+	exploration.random_region_ids.assign(cell.random_rect_ids())
+	exploration.random_region_index = cell.random_rect_ids().size() - 1
+	return true
+
+
+static func apply_pending_midnight_recovery(context: SessionWorkflowContext, exploration: SessionContinuation.ExplorationBody, events: Array[DomainEvent]) -> void:
+	if exploration == null or not exploration.midnight_recovery_pending:
+		return
+	exploration.midnight_recovery_pending = false
+	events.append_array(context.rules.clock.restore_half_day_health(context.state.party, context.content))
+
+
+static func timed_encounter_requirements_met(context: SessionWorkflowContext, encounter: TimedEncounterDefinition, map: MapDefinition, exploration: SessionContinuation.ExplorationBody) -> bool:
+	if encounter.required_item_id > 0 and not party_has_classic_item(context, encounter.required_item_id):
+		return false
+	if encounter.required_quest_id > -1 and not context.state.quest_is_set(encounter.required_quest_id):
+		return false
+	if encounter.location_kind == TimedEncounterDefinition.LocationKind.ANY:
+		return true
+	if encounter.location_kind == TimedEncounterDefinition.LocationKind.LAND and map.level_type != &"land" or encounter.location_kind == TimedEncounterDefinition.LocationKind.DUNGEON and map.level_type != &"dungeon":
+		return false
+	if map.level_index != encounter.required_level or exploration == null:
+		return false
+	var coordinate := exploration.timed_check_coordinate
+	if encounter.required_random_rectangle > -1:
+		var region := map.random_region_by_index(encounter.required_random_rectangle)
+		if region == null or not region.bounds.has_point(coordinate):
+			return false
+	if encounter.required_x > -1 and coordinate.x != encounter.required_x:
+		return false
+	if encounter.required_y > -1 and coordinate.y != encounter.required_y:
+		return false
+	return true
+
+
+static func party_has_classic_item(context: SessionWorkflowContext, classic_item_id: int) -> bool:
+	var definition := context.content.item_by_classic_id(classic_item_id)
+	if definition == null:
+		return false
+	for character: CharacterState in context.state.party.characters():
+		for item: ItemInstance in character.inventory():
+			if item.definition_id == definition.id:
+				return true
+	return false
 
 
 static func classic_time_scale(map: MapDefinition) -> int:

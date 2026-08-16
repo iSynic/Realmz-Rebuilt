@@ -89,7 +89,7 @@
         "expectedRepresentation": "Each normalized cell retains its exact Classic timeclick count and passability facts; the runtime applies the land or dungeon scale, so no additional package field is required for the bounded ordinary branches."
       },
       "realmz2": {
-        "owner": { "path": "src/session/game_session.gd", "symbol": "func _blocked_land_attempt_cost" },
+        "owner": { "path": "src/session/workflows/exploration_time_workflow.gd", "symbol": "static func blocked_land_attempt_cost" },
         "expectedTrace": ["destination probe", "movement or movement_blocked", "authored timeclick count", "land/dungeon scale", "hour-boundary rules", "current-cell random checks"],
         "tests": [
           { "path": "tests/core/test_map_topology.gd", "symbol": "func run" },

@@ -295,7 +295,6 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 		character = InventoryMagicServicesWorkflow.item_owner(_workflow_context(), item_id)
 	var instance := _item_instance(character, item_id)
 	var item: ItemDefinition = null if instance == null else _content.item_by_id(instance.definition_id)
-	var spell: SpellDefinition = null if item == null else _content.spell_by_classic_id(item.special_2)
 	if character == null or instance == null or item == null:
 		return SessionStep.failed(_view_revision, &"unknown_item_instance", "The selected character does not carry that item instance.")
 	if _state.combat != null and not _state.combat.completed:
@@ -309,35 +308,7 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 		if combat_result.completed:
 			return _finish_direct_battle(combat_result.events)
 		return _finish_completed(combat_result.events)
-	var probe := InventoryMagicServicesWorkflow.field_spell_item_probe(_workflow_context(), character, instance, item, spell)
-	if not probe.allowed:
-		return SessionStep.failed(_view_revision, InventoryMagicServicesWorkflow.item_use_error_code(instance, item, spell), probe.reason)
-	var power := absi(item.special_1)
-	var random_power_checkpoint: Dictionary = {}
-	if power == 8:
-		random_power_checkpoint = _rng.checkpoint()
-		power = _rng.draw(7, StringName("item.use.power.%s" % instance.id))
-	target_ids = InventoryMagicServicesWorkflow.field_item_target_ids(_workflow_context(), character, spell, target_ids, target_id)
-	var required_count := InventoryMagicServicesWorkflow.field_item_target_count(_workflow_context(), spell, power)
-	if target_ids.size() == required_count:
-		var completed := _commit_workflow_result(InventoryMagicServicesWorkflow.commit_field_spell_item(_workflow_context(), character.id, instance.id, spell.id, power, target_ids))
-		if completed.state == SessionStep.State.FAILED and not random_power_checkpoint.is_empty():
-			_rng.rollback(random_power_checkpoint)
-		return completed
-	if not target_ids.is_empty():
-		if not random_power_checkpoint.is_empty():
-			_rng.rollback(random_power_checkpoint)
-		return SessionStep.failed(_view_revision, &"invalid_item_use_target", "The item requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
-	var targeting := SessionContinuation.TargetingBody.new()
-	targeting.character_id = character.id
-	targeting.instance_id = instance.id
-	targeting.spell_id = spell.id
-	targeting.power = power
-	targeting.target_count = required_count
-	targeting.starting_charges = instance.charges
-	_set_continuation(SessionContinuation.targeting_selection(&"item-use-target-selection", targeting))
-	_session_interaction = InventoryMagicServicesWorkflow.item_target_request("session.item-use:%s:%d" % [instance.id, _view_revision + 1], character, instance.id, item, spell, required_count, _state.party.characters())
-	return _finish_waiting(_session_interaction, [DomainEvent.new(&"item_target_requested", {"characterId": character.id, "instanceId": instance.id, "itemId": item.id, "spellId": spell.id, "power": power, "targetCount": required_count, "source": "classic"})])
+	return _finish_magic_transition(InventoryMagicServicesWorkflow.begin_field_spell_item(_workflow_context(), actor_id, item_id, target_id, target_ids, _view_revision + 1))
 
 
 func _request_drop_item(intent: PlayerIntent) -> SessionStep:
@@ -398,50 +369,11 @@ func _use_scroll(payload: PlayerIntent.SpellPayload) -> SessionStep:
 		if combat_result.completed:
 			return _finish_direct_battle(combat_result.events)
 		return _finish_completed(combat_result.events)
-	var character := _state.party.character_by_id(payload.caster_id)
-	var scroll := character.scroll_at(payload.scroll_slot) if character != null else null
-	var spell := _content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
-	var probe := InventoryMagicServicesWorkflow.scroll_use_probe(_workflow_context(), character, payload.scroll_slot, spell)
-	if not probe.allowed:
-		return SessionStep.failed(_view_revision, &"scroll_unavailable", probe.reason)
-	var target_ids := InventoryMagicServicesWorkflow.field_spell_target_ids(_workflow_context(), character, spell, payload.target_ids, payload.target_id)
-	var required_count := InventoryMagicServicesWorkflow.field_spell_target_count(_workflow_context(), spell, scroll.power)
-	if target_ids.size() == required_count:
-		return _finish_magic_workflow(InventoryMagicServicesWorkflow.commit_field_scroll(_workflow_context(), character.id, payload.scroll_slot, spell.id, scroll.power, target_ids))
-	if not target_ids.is_empty():
-		return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
-	var targeting := SessionContinuation.TargetingBody.new()
-	targeting.character_id = character.id
-	targeting.scroll_slot = payload.scroll_slot
-	targeting.spell_id = spell.id
-	targeting.power = scroll.power
-	targeting.target_count = required_count
-	_set_continuation(SessionContinuation.targeting_selection(&"scroll-target-selection", targeting))
-	_session_interaction = InventoryMagicServicesWorkflow.scroll_target_request("session.scroll:%s:%d:%d" % [character.id, payload.scroll_slot, _view_revision + 1], character, payload.scroll_slot, spell, required_count, _state.party.characters())
-	return _finish_waiting(_session_interaction, [DomainEvent.new(&"scroll_target_requested", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "targetCount": required_count, "source": "classic"})])
+	return _finish_magic_transition(InventoryMagicServicesWorkflow.begin_field_scroll(_workflow_context(), payload, _view_revision + 1))
 
 
 func _cast_field_spell(payload: PlayerIntent.SpellPayload) -> SessionStep:
-	var character := _state.party.character_by_id(payload.caster_id)
-	var spell := _content.spell_by_id(payload.spell_id)
-	var probe := InventoryMagicServicesWorkflow.field_spell_probe(_workflow_context(), character, spell, payload.power)
-	if not probe.allowed:
-		return SessionStep.failed(_view_revision, &"field_spell_unavailable", probe.reason)
-	var target_ids := InventoryMagicServicesWorkflow.field_spell_target_ids(_workflow_context(), character, spell, payload.target_ids, payload.target_id)
-	var required_count := InventoryMagicServicesWorkflow.field_spell_target_count(_workflow_context(), spell, payload.power)
-	if target_ids.size() == required_count:
-		return _finish_magic_workflow(InventoryMagicServicesWorkflow.commit_field_spell(_workflow_context(), character.id, spell.id, payload.power, target_ids))
-	if not target_ids.is_empty():
-		return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell requires exactly %d valid party target%s." % [required_count, "" if required_count == 1 else "s"])
-	var targeting := SessionContinuation.TargetingBody.new()
-	targeting.character_id = character.id
-	targeting.spell_id = spell.id
-	targeting.power = payload.power
-	targeting.target_count = required_count
-	targeting.starting_spell_points = character.spell_points
-	_set_continuation(SessionContinuation.targeting_selection(&"field-spell-target-selection", targeting))
-	_session_interaction = InventoryMagicServicesWorkflow.field_spell_target_request("session.field-spell:%s:%d" % [spell.id, _view_revision + 1], character, spell, required_count, _state.party.characters())
-	return _finish_waiting(_session_interaction, [DomainEvent.new(&"field_spell_target_requested", {"characterId": character.id, "spellId": spell.id, "power": payload.power, "targetCount": required_count, "source": "classic"})])
+	return _finish_magic_transition(InventoryMagicServicesWorkflow.begin_field_spell(_workflow_context(), payload, _view_revision + 1))
 
 
 func _combat_action(intent: PlayerIntent) -> SessionStep:
@@ -575,109 +507,21 @@ func _move(direction: Vector2i) -> SessionStep:
 
 
 func _move_after_pooled_wealth(direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> SessionStep:
-	if _state.party_camping:
-		return _depart_camp_and_move(direction, preceding_events)
-	return _commit_move(direction, preceding_events)
+	var result := ExplorationTimeWorkflow.depart_camp_for_movement(_workflow_context(), direction, preceding_events) if _state.party_camping else ExplorationTimeWorkflow.commit_move(_workflow_context(), direction, preceding_events)
+	return _finish_exploration_movement(result)
 
 
-func _depart_camp_and_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> SessionStep:
-	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world)
-	if not movement.allowed and movement.reason == &"invalid_direction":
-		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
-	var map := _content.world.map_by_id(_state.party.map_id)
-	if map == null:
-		return SessionStep.failed(_view_revision, &"unknown_map", "The current map is unavailable for camp departure.")
-	_state.party_camping = false
-	var events: Array[DomainEvent] = []
-	events.assign(preceding_events)
-	events.append(DomainEvent.new(&"camp_mode_changed", {"camping": false, "source": "classic-movement"}))
-	events.append(DomainEvent.new(&"camp_departed_for_movement", {"mapId": map.id, "x": _state.party.coordinate.x, "y": _state.party.coordinate.y, "direction": [direction.x, direction.y], "source": "classic"}))
-	var timeclicks := 2 if map.level_type == &"dungeon" else 15
-	var previous_day := _state.clock.day()
-	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, timeclicks, _classic_time_scale(map), true))
-	_set_post_time_continuation(map, "move", direction, true, _state.clock.day() if _state.clock.day() != previous_day else 0, _state.party.coordinate + direction)
-	return _finish_with_age_updates(events, &"post-clock", _session_continuation.copy())
-
-
-func _commit_move(direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> SessionStep:
-	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world)
-	if not movement.allowed and movement.reason == &"invalid_direction":
-		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
-	if not movement.allowed:
-		var blocked_events: Array[DomainEvent] = []
-		blocked_events.assign(preceding_events)
-		blocked_events.append(DomainEvent.new(&"movement_blocked", {"reason": String(movement.reason)}))
-		var attempt_cost := _blocked_land_attempt_cost(movement)
-		if attempt_cost > 0:
-			var previous_day := _state.clock.day()
-			blocked_events.append_array(_rules.clock.advance_classic_field_time(_state, _content, attempt_cost, _classic_time_scale(movement.source_map), true))
-			_set_post_time_continuation(movement.source_map, "completed", Vector2i.ZERO, true, _state.clock.day() if _state.clock.day() != previous_day else 0, movement.target_coordinate)
-			return _finish_with_age_updates(blocked_events, &"post-clock", _session_continuation.copy())
-		return _finish_completed(blocked_events)
-	var target_map := movement.target_map
-	var target_coordinate := movement.target_coordinate
-	var transition := movement.transition
-	var probe := movement.topology_result
-	var events: Array[DomainEvent] = []
-	events.assign(preceding_events)
-	if not probe.door_id.is_empty() and not _state.world.door_is_open(probe.door_id):
-		_state.world.open_door(probe.door_id)
-		events.append(DomainEvent.new("door_opened", {"doorId": probe.door_id}))
-	if not probe.secret_id.is_empty() and not _state.world.secret_is_discovered(probe.secret_id):
-		_state.world.discover_secret(probe.secret_id)
-		events.append(DomainEvent.new("secret_discovered", {"secretId": probe.secret_id, "byMovement": true}))
-	var source_map_id := _state.party.map_id
-	var source_coordinate := _state.party.coordinate
-	var cleared_services := not _state.active_shop_id.is_empty() or _state.temple_available or _state.bank_available
-	if _state.bank_available:
-		_rules.economy.pool_to_bank(_state.party)
-	_state.clear_location_services()
-	if cleared_services:
-		events.append(DomainEvent.new(&"location_services_cleared", {"mapId": source_map_id, "x": source_coordinate.x, "y": source_coordinate.y}))
-	_state.party.map_id = target_map.id
-	_state.party.coordinate = target_coordinate
-	_state.last_move_direction = direction
-	_state.world.mark_visited(target_map.id, target_coordinate)
-	events.append(DomainEvent.new("party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": target_coordinate.x, "y": target_coordinate.y}))
-	var previous_day := _state.clock.day()
-	events.append_array(_rules.clock.advance_classic_field_time(_state, _content, probe.target_cell.movement_cost, _classic_time_scale(target_map), true))
-	if transition != null:
-		events.append(DomainEvent.new("map_transitioned", {"transitionId": transition.id, "sourceMapId": source_map_id, "targetMapId": target_map.id}))
-	_set_post_time_continuation(target_map, "post-move", Vector2i.ZERO, false, _state.clock.day() if _state.clock.day() != previous_day else 0, target_coordinate)
-	return _finish_with_age_updates(events, &"post-clock", _session_continuation.copy())
-
-
-func _classic_time_scale(map: MapDefinition) -> int:
-	return ExplorationTimeWorkflow.classic_time_scale(map)
-
-
-func _blocked_land_attempt_cost(movement: WorldMovementResult) -> int:
-	if movement == null or movement.source_map == null or movement.source_map.level_type != &"land" or _state.party_in_boat:
-		return 0
-	if movement.reason not in [&"terrain_blocked", &"secret_hidden"] or movement.topology_result == null or movement.topology_result.target_cell == null:
-		return 0
-	return maxi(0, movement.topology_result.target_cell.movement_cost)
+func _finish_exploration_movement(result: ExplorationTimeWorkflow.MovementTransitionResult) -> SessionStep:
+	if not result.ok:
+		return _finish_failed(result.error_code, result.error_message, result.events)
+	if not result.post_clock:
+		return _finish_completed(result.events)
+	_set_post_time_continuation(result.map, result.resume_kind, result.direction, result.check_random, result.timed_day, result.timed_coordinate)
+	return _finish_with_age_updates(result.events, &"post-clock", _session_continuation.copy())
 
 
 func _set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> void:
-	var cell := map.topology.cell_at(_state.party.coordinate)
-	var exploration := SessionContinuation.ExplorationBody.new()
-	exploration.map_id = map.id
-	exploration.coordinate = _state.party.coordinate
-	exploration.timed_day = timed_day
-	exploration.timed_encounter_index = 0
-	exploration.active_timed_program_id = ""
-	exploration.midnight_recovery_pending = timed_day > 0
-	exploration.timed_check_coordinate = timed_coordinate
-	exploration.check_random = check_random
-	exploration.random_region_ids.assign([] if cell == null else cell.random_rect_ids())
-	exploration.random_region_index = -1 if cell == null else cell.random_rect_ids().size() - 1
-	exploration.active_random_program_id = ""
-	exploration.active_random_region_id = ""
-	exploration.random_battle_stage = &""
-	exploration.resume_kind = StringName(resume_kind)
-	exploration.direction = direction
-	_set_continuation(SessionContinuation.post_clock(exploration))
+	_set_continuation(ExplorationTimeWorkflow.post_time_continuation(_workflow_context(), map, StringName(resume_kind), direction, check_random, timed_day, timed_coordinate))
 
 
 func _continue_post_time(events: Array[DomainEvent]) -> SessionStep:
@@ -722,7 +566,7 @@ func _complete_post_time(events: Array[DomainEvent]) -> SessionStep:
 	var direction := exploration.direction
 	_session_continuation.clear()
 	if resume_kind == &"move":
-		return _commit_move(direction, events)
+		return _finish_exploration_movement(ExplorationTimeWorkflow.commit_move(_workflow_context(), direction, events))
 	if resume_kind == &"post-move":
 		var map := _content.world.map_by_id(_state.party.map_id)
 		_set_post_move_continuation(map, _state.party.coordinate)
@@ -796,81 +640,19 @@ func _continue_timed_encounters(events: Array[DomainEvent]) -> SessionStep:
 
 
 func _apply_pending_midnight_recovery(events: Array[DomainEvent]) -> void:
-	var exploration := _session_continuation.exploration()
-	if exploration == null or not exploration.midnight_recovery_pending:
-		return
-	exploration.midnight_recovery_pending = false
-	events.append_array(_rules.clock.restore_half_day_health(_state.party, _content))
+	ExplorationTimeWorkflow.apply_pending_midnight_recovery(_workflow_context(), _session_continuation.exploration(), events)
 
 
 func _rebase_post_time_location() -> bool:
-	var exploration := _session_continuation.exploration()
-	if _session_continuation.kind != &"post-clock" or exploration == null:
-		return false
-	var map := _content.world.map_by_id(_state.party.map_id)
-	var cell: MapCell = null if map == null else map.topology.cell_at(_state.party.coordinate)
-	if cell == null:
-		return false
-	exploration.map_id = map.id
-	exploration.coordinate = _state.party.coordinate
-	exploration.timed_check_coordinate = _state.party.coordinate
-	exploration.random_region_ids.assign(cell.random_rect_ids())
-	exploration.random_region_index = cell.random_rect_ids().size() - 1
-	return true
+	return ExplorationTimeWorkflow.rebase_post_time_location(_workflow_context(), _session_continuation)
 
 
 func _timed_encounter_requirements_met(encounter: TimedEncounterDefinition, map: MapDefinition) -> bool:
-	if encounter.required_item_id > 0 and not _party_has_classic_item(encounter.required_item_id):
-		return false
-	if encounter.required_quest_id > -1 and not _state.quest_is_set(encounter.required_quest_id):
-		return false
-	if encounter.location_kind == TimedEncounterDefinition.LocationKind.ANY:
-		return true
-	if encounter.location_kind == TimedEncounterDefinition.LocationKind.LAND and map.level_type != &"land" or encounter.location_kind == TimedEncounterDefinition.LocationKind.DUNGEON and map.level_type != &"dungeon":
-		return false
-	if map.level_index != encounter.required_level:
-		return false
-	var exploration := _session_continuation.exploration()
-	if exploration == null:
-		return false
-	var coordinate := exploration.timed_check_coordinate
-	if encounter.required_random_rectangle > -1:
-		var region := map.random_region_by_index(encounter.required_random_rectangle)
-		if region == null or not region.bounds.has_point(coordinate):
-			return false
-	if encounter.required_x > -1 and coordinate.x != encounter.required_x:
-		return false
-	if encounter.required_y > -1 and coordinate.y != encounter.required_y:
-		return false
-	return true
-
-
-func _party_has_classic_item(classic_item_id: int) -> bool:
-	var definition := _content.item_by_classic_id(classic_item_id)
-	if definition == null:
-		return false
-	for character: CharacterState in _state.party.characters():
-		for item: ItemInstance in character.inventory():
-			if item.definition_id == definition.id:
-				return true
-	return false
+	return ExplorationTimeWorkflow.timed_encounter_requirements_met(_workflow_context(), encounter, map, _session_continuation.exploration())
 
 
 func _set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, destination_depth: int = 0) -> void:
-	var cell := map.topology.cell_at(coordinate)
-	var exploration := SessionContinuation.ExplorationBody.new()
-	exploration.map_id = map.id
-	exploration.coordinate = coordinate
-	exploration.trigger_ids.assign(ExplorationTimeWorkflow.selected_placed_trigger_ids(_content, cell))
-	exploration.trigger_index = 0
-	exploration.active_trigger_id = ""
-	exploration.random_region_ids.assign(cell.random_rect_ids())
-	exploration.random_region_index = cell.random_rect_ids().size() - 1
-	exploration.active_random_program_id = ""
-	exploration.active_random_region_id = ""
-	exploration.random_battle_stage = &""
-	exploration.action_point_destination_depth = destination_depth
-	_set_continuation(SessionContinuation.post_move(exploration))
+	_set_continuation(ExplorationTimeWorkflow.post_move_continuation(_workflow_context(), map, coordinate, destination_depth))
 
 
 func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
@@ -1377,6 +1159,20 @@ func _finish_magic_workflow(result: SessionWorkflowResult) -> SessionStep:
 	return _finish_completed(result.events)
 
 
+func _finish_magic_transition(result: InventoryMagicServicesWorkflow.MagicTransitionResult) -> SessionStep:
+	if result == null:
+		return SessionStep.failed(_view_revision, &"invalid_workflow_result", "The magic workflow returned no result.")
+	if not result.ok:
+		return SessionStep.failed(_view_revision, result.error_code, result.error_message)
+	if result.completed:
+		return _finish_magic_workflow(SessionWorkflowResult.completed(result.events)) if result.process_age_updates else _finish_completed(result.events)
+	if result.continuation == null or result.continuation.is_empty() or result.interaction == null:
+		return SessionStep.failed(_view_revision, &"invalid_workflow_result", "The magic workflow returned an incomplete interaction transition.")
+	_set_continuation(result.continuation)
+	_session_interaction = result.interaction
+	return _finish_waiting(_session_interaction, result.events)
+
+
 func _finish_waiting(request: InteractionRequest, events: Array[DomainEvent]) -> SessionStep:
 	_view_revision += 1
 	return SessionStep.waiting(_view_revision, request, events)
@@ -1545,24 +1341,11 @@ func _respond_item_use_target(response: InteractionResponse) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Item use requires an ordered characterIds array.")
 	var target_ids := body.character_ids.duplicate()
 	var targeting := _session_continuation.targeting()
-	if targeting == null:
-		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The item target continuation is unavailable.")
-	var character_id := targeting.character_id
-	var instance_id := targeting.instance_id
-	var spell_id := targeting.spell_id
-	var power := targeting.power
-	var expected_count := targeting.target_count
-	if target_ids.size() != expected_count:
-		return SessionStep.failed(_view_revision, &"invalid_item_use_target", "The item requires exactly %d target%s." % [expected_count, "" if expected_count == 1 else "s"])
-	var character := _state.party.character_by_id(character_id)
-	var instance := _item_instance(character, instance_id)
-	if instance == null or instance.charges != targeting.starting_charges:
-		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The item awaiting a target no longer matches its committed state.")
 	var saved_continuation := _session_continuation.copy()
 	var saved_interaction := _session_interaction
 	_session_continuation.clear()
 	_session_interaction = null
-	var completed := _commit_workflow_result(InventoryMagicServicesWorkflow.commit_field_spell_item(_workflow_context(), character_id, instance_id, spell_id, power, target_ids))
+	var completed := _finish_magic_transition(InventoryMagicServicesWorkflow.resume_field_spell_item(_workflow_context(), targeting, target_ids))
 	if completed.state == SessionStep.State.FAILED:
 		_set_continuation(saved_continuation)
 		_session_interaction = saved_interaction
@@ -1575,22 +1358,11 @@ func _respond_field_spell_target(response: InteractionResponse) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Field casting requires an ordered characterIds array.")
 	var target_ids := body.character_ids.duplicate()
 	var targeting := _session_continuation.targeting()
-	if targeting == null:
-		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The field-spell target continuation is unavailable.")
-	var expected_count := targeting.target_count
-	if target_ids.size() != expected_count:
-		return SessionStep.failed(_view_revision, &"invalid_field_spell_target", "The spell requires exactly %d target%s." % [expected_count, "" if expected_count == 1 else "s"])
-	var character_id := targeting.character_id
-	var spell_id := targeting.spell_id
-	var power := targeting.power
-	var character := _state.party.character_by_id(character_id)
-	if character == null or character.spell_points != targeting.starting_spell_points:
-		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The field spell awaiting a target no longer matches its committed state.")
 	var saved_continuation := _session_continuation.copy()
 	var saved_interaction := _session_interaction
 	_session_continuation.clear()
 	_session_interaction = null
-	var completed := _finish_magic_workflow(InventoryMagicServicesWorkflow.commit_field_spell(_workflow_context(), character_id, spell_id, power, target_ids))
+	var completed := _finish_magic_transition(InventoryMagicServicesWorkflow.resume_field_spell(_workflow_context(), targeting, target_ids))
 	if completed.state == SessionStep.State.FAILED:
 		_set_continuation(saved_continuation)
 		_session_interaction = saved_interaction
@@ -1603,24 +1375,11 @@ func _respond_scroll_target(response: InteractionResponse) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"invalid_interaction_response", "Scroll use requires an ordered characterIds array.")
 	var target_ids := body.character_ids.duplicate()
 	var targeting := _session_continuation.targeting()
-	if targeting == null:
-		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The scroll target continuation is unavailable.")
-	var expected_count := targeting.target_count
-	if target_ids.size() != expected_count:
-		return SessionStep.failed(_view_revision, &"invalid_scroll_target", "The scroll requires exactly %d target%s." % [expected_count, "" if expected_count == 1 else "s"])
-	var character_id := targeting.character_id
-	var slot_index := targeting.scroll_slot
-	var spell_id := targeting.spell_id
-	var power := targeting.power
-	var character := _state.party.character_by_id(character_id)
-	var scroll := character.scroll_at(slot_index) if character != null else null
-	if scroll == null or scroll.spell_id != spell_id or scroll.power != power:
-		return SessionStep.failed(_view_revision, &"invalid_session_continuation", "The scroll awaiting a target no longer matches its committed state.")
 	var saved_continuation := _session_continuation.copy()
 	var saved_interaction := _session_interaction
 	_session_continuation.clear()
 	_session_interaction = null
-	var completed := _finish_magic_workflow(InventoryMagicServicesWorkflow.commit_field_scroll(_workflow_context(), character_id, slot_index, spell_id, power, target_ids))
+	var completed := _finish_magic_transition(InventoryMagicServicesWorkflow.resume_field_scroll(_workflow_context(), targeting, target_ids))
 	if completed.state == SessionStep.State.FAILED:
 		_set_continuation(saved_continuation)
 		_session_interaction = saved_interaction
