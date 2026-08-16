@@ -160,6 +160,15 @@ func _test_primary_workspace_lifecycle() -> void:
 		assert_equal(router.mounted_primary_workspace_count(), 1, "a route transition leaves exactly one primary workspace mounted")
 		assert_equal(router.primary_workspace_visible(), route_id not in [&"exploration", &"combat"], "only spatial play routes suppress their explanatory workspace body")
 	assert_equal(entered, [&"character", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"], "each primary transition publishes exactly one entered route after replacing the prior workspace")
+	var setup_view := GameView.new(2, true, null)
+	setup_view.party_setup_available = true
+	setup_view.party_members = [CharacterView.new(CharacterState.new("closing.hero", "Closing Hero", 10, 10))]
+	router.present(setup_view)
+	router.show_campaign_selection()
+	assert_equal((router.find_child("PartyCount", true, false) as Label).text, "• 1 / 6", "party setup presents the active assembly count")
+	router.present(GameView.new(3, false, null))
+	router.show_campaign_selection()
+	assert_equal((router.find_child("PartyCount", true, false) as Label).text, "• 0 / 6", "ending an adventure clears the setup controller's stale party count")
 	router.free()
 
 

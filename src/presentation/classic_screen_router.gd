@@ -107,6 +107,7 @@ func present(view: GameView) -> void:
 	_view = view
 	_workspace_presenter.set_view(view)
 	if view == null or not view.session_started:
+		setup_controller.present(view)
 		_body_frame.visible = false
 		return
 	if not _presented_campaign_id.is_empty() and _presented_campaign_id != view.campaign_id:
