@@ -45,13 +45,6 @@ func _labels_in(root: Node) -> Array[String]:
 	return labels
 
 
-func _button_texts_in(root: Node) -> Array[String]:
-	var texts: Array[String] = []
-	for button: Button in _buttons_in(root):
-		texts.append(button.text)
-	return texts
-
-
 func _visible_labels_in(root: Node) -> Array[String]:
 	var labels: Array[String] = []
 	for child: Node in root.find_children("*", "Label", true, false):
@@ -254,10 +247,6 @@ func _test_startup_shell() -> void:
 	var install_buttons: Array[String] = _visible_button_texts_in(scenario_picker) if scenario_picker != null else []
 	assert_true(install_buttons.any(func(text: String) -> bool: return text.begins_with("Install .realmz2")), "the external package action uses installation language")
 	assert_false(install_buttons.any(func(text: String) -> bool: return text == "Open path" or text.to_lower().contains("play")), "the integrated workspace does not label external installation as Play")
-	var setup_seed: Node = null
-	if setup_workspace != null:
-		setup_seed = setup_workspace.find_child("Seed", true, false)
-	assert_true(setup_seed == null, "developer seed controls are absent from the ordinary scenario and party workspace")
 	assert_true(router.find_child("Seed", true, false) == null, "developer seed controls are absent from the ordinary integrated workspace")
 	var character_heading: Control = null
 	var party_heading: Control = null

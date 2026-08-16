@@ -139,13 +139,6 @@ func _test_methods(suite: RealmzTestCase) -> Array[Dictionary]:
 	return methods
 
 
-func _matches_any(value: String, fragments: Array[String]) -> bool:
-	for fragment: String in fragments:
-		if value.contains(fragment):
-			return true
-	return false
-
-
 func _selected_test_methods(suite: RealmzTestCase, fragments: Array[String]) -> Array[Dictionary]:
 	var selected: Array[Dictionary] = []
 	var methods := _test_methods(suite)
