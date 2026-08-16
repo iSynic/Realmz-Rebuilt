@@ -190,6 +190,7 @@ func run() -> void:
 		)
 		assert_true(reopened.is_ok(), "a fresh application process opens the app-owned installed package from its validation receipt")
 		assert_true(installed_phases.has(&"checking-install"), "installed startup checks the durable receipt and immutable file identity")
+		assert_true(installed_phases.has(&"checking-install-integrity"), "installed startup verifies the whole archive SHA-256 before trusting decoded content")
 		assert_false(installed_phases.has(&"validating-integrity"), "installed startup does not repeat Providence payload validation")
 		var duplicate_path := installed.installed_path.get_base_dir().path_join("zz-duplicate.realmz2")
 		if FileAccess.file_exists(duplicate_path):
@@ -216,15 +217,28 @@ func run() -> void:
 				listed_path = candidate.path
 		assert_equal(listed_campaigns, 1, "campaign discovery collapses immutable revisions to one current campaign entry")
 		assert_equal(listed_path, duplicate_path, "campaign discovery selects the most recently installed valid revision")
-		var altered_install := FileAccess.open(installed.installed_path, FileAccess.READ_WRITE)
-		assert_not_null(altered_install, "the receipt test can alter its isolated installed fixture")
-		if altered_install != null:
-			altered_install.seek_end()
-			altered_install.store_8(0)
-			altered_install.close()
-			var changed_install := PackageRepository.new().install_package(installed.installed_path, install_root)
-			assert_false(changed_install.is_ok(), "an installed archive changed outside the installer invalidates its receipt")
-			assert_contains(changed_install.error_message, "byte count", "changed installed bytes report the invalid immutable-file identity")
+		var altered_bytes := FileAccess.get_file_as_bytes(installed.installed_path)
+		assert_true(not altered_bytes.is_empty(), "the receipt test can read its isolated installed fixture")
+		if not altered_bytes.is_empty():
+			altered_bytes[altered_bytes.size() - 1] = altered_bytes[altered_bytes.size() - 1] ^ 1
+			var altered_install := FileAccess.open(installed.installed_path, FileAccess.WRITE)
+			assert_not_null(altered_install, "the receipt test can replace the installed fixture without changing its byte count")
+			if altered_install != null:
+				altered_install.store_buffer(altered_bytes)
+				altered_install.close()
+				var receipt_path := installed.installed_path + ".receipt.json"
+				var altered_receipt: Variant = JSON.parse_string(FileAccess.get_file_as_string(receipt_path))
+				assert_true(altered_receipt is Dictionary, "the same-size mutation retains a parseable receipt fixture")
+				if altered_receipt is Dictionary:
+					altered_receipt["archiveModifiedTime"] = FileAccess.get_modified_time(installed.installed_path)
+					var receipt_file := FileAccess.open(receipt_path, FileAccess.WRITE)
+					assert_not_null(receipt_file, "the fixture can align cheap modification metadata while retaining the validated archive hash")
+					if receipt_file != null:
+						receipt_file.store_string(CanonicalJson.encode(altered_receipt))
+						receipt_file.close()
+				var changed_install := PackageRepository.new().install_package(installed.installed_path, install_root)
+				assert_false(changed_install.is_ok(), "a same-size installed archive mutation invalidates its receipt before cache reuse")
+				assert_contains(changed_install.error_message, "SHA-256", "changed installed bytes report the strong immutable-file identity")
 
 	var picture := MediaAsset.new("fixture.picture", "Fixture", "picture", "image/png", "PICT", 128, 0, "0000000000000000000000000000000000000000000000000000000000000000", "assets/media/0000000000000000000000000000000000000000000000000000000000000000.png", 1, 1, 0, 0, 0, 0, 0, 0, 0, -1, -1)
 	assert_true(picture.is_picture(), "package media classifies pictures by typed MIME and resource identity")

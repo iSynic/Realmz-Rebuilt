@@ -15,7 +15,7 @@ Install, discover, decode, validate, cache, and release immutable Providence pac
 ## Local Contracts
 
 - Providence schema v3 is the only accepted package contract: manifest format version 2, document schema version 3, and mirrored schema SHA-256 `a696ccf50fe1f03475205caa5351729427494a1ad4a35bed25069f05d1220e2c`.
-- External packages receive complete integrity, semantic, topology, media, and cross-reference validation before installation. A valid app-owned receipt permits later startup to verify immutable archive and manifest identity without repeating compiler-level validation.
+- External packages receive complete integrity, semantic, topology, media, and cross-reference validation before installation. A valid app-owned receipt permits later startup to verify cheap file metadata, the complete compressed-archive SHA-256, and manifest identity without repeating compiler-level semantic validation.
 - `PackageRepository` coordinates explicit collaborators. It does not construct domain records, retain unbounded package graphs, or grant external files trusted cache status.
 - The graph cache retains at most the active package and one candidate. Promotion and close release obsolete graphs explicitly.
 - Validation errors are detached strings/results suitable for readiness UI. No collaborator accesses Nodes, presenters, sessions, or mutable gameplay state.

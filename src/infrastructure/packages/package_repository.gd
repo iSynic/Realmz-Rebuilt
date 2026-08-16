@@ -28,7 +28,7 @@ var _domain_assembler := PackageDomainAssembler.new()
 
 func promote_installed_package(path: String) -> void:
 	var receipt := _receipt_store.read(path)
-	if receipt.is_empty():
+	if receipt.is_empty() or not _receipt_store.validate_archive_sha256(receipt, _archive_reader.sha256_file(path)):
 		return
 	_package_cache.promote(_receipt_store.cache_key(path, receipt))
 
@@ -181,6 +181,13 @@ func _load_installed_package(path: String, install_root: String, progress_callba
 	var receipt := _receipt_store.read(path)
 	if receipt.is_empty():
 		return PackageLoadResult.failed(&"package_install_receipt_invalid", _receipt_store.last_error if not _receipt_store.last_error.is_empty() else "Installed package receipt is invalid.")
+	_report_progress(progress_callback, &"checking-install-integrity", 0, 1)
+	var archive_sha256 := _archive_reader.sha256_file(path)
+	if not _receipt_store.validate_archive_sha256(receipt, archive_sha256):
+		return PackageLoadResult.failed(&"package_install_receipt_invalid", _receipt_store.last_error)
+	_report_progress(progress_callback, &"checking-install-integrity", 1, 1)
+	if _cancel_requested(cancel_callback):
+		return PackageLoadResult.failed(&"package_cancelled", "Package operation cancelled.")
 	var cache_key := _receipt_store.cache_key(path, receipt)
 	var cached := _package_cache.get_result(cache_key)
 	if cached != null:

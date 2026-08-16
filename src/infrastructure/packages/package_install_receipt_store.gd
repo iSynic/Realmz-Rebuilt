@@ -69,12 +69,22 @@ func write(package_path: String, content: RealmzContent, archive_sha256: String)
 
 
 func cache_key(package_path: String, receipt: Dictionary) -> String:
-	return "%s:%s:%s:%d" % [
+	return "%s:%s:%s:%s:%d" % [
 		ProjectSettings.globalize_path(package_path).simplify_path().to_lower(),
 		receipt.get("packageHash", ""),
+		receipt.get("archiveSha256", ""),
 		receipt.get("schemaHash", ""),
 		int(receipt.get("decoderVersion", -1)),
 	]
+
+
+func validate_archive_sha256(receipt: Dictionary, actual_sha256: String) -> bool:
+	last_error = ""
+	if not _is_sha256(actual_sha256):
+		return _fail("Installed package archive could not be hashed.")
+	if actual_sha256 != receipt.get("archiveSha256", ""):
+		return _fail("Installed package SHA-256 no longer matches its validated receipt.")
+	return true
 
 
 static func path_for(package_path: String) -> String:
