@@ -9,7 +9,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 - `RealmzApplication` constructs the dependency graph explicitly.
 - `GameSessionController` owns the replaceable `GameSession` instance and publishes committed steps.
 - `GameSessionController` materializes one detached `GameView` per committed revision and shares it with host input checks and presenters; host code must not rebuild the same revision repeatedly.
-- Detached campaign, vault, and host view models live under `src/app/view`; `CharacterVaultRevisionView` is app-owned while remaining `class_name`-compatible.
+- Detached campaign, vault, and host view models live under `src/app/view`; `CharacterVaultRevisionView` is app-owned while remaining `class_name`-compatible. Prepared package views expose the core `MediaSource` abstraction and never leak an infrastructure package catalog into presentation.
 - This boundary coordinates repositories and presenters but contains no Realmz rules.
 
 ## Local Contracts

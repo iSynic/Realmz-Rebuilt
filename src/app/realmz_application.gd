@@ -36,7 +36,7 @@ var _vault_host: CharacterVaultController
 var _pending_package_seed: int = 1
 var _last_package_operation_key: String = ""
 var _character_library_content: RealmzContent
-var _character_library_media: PackageMediaCatalog
+var _character_library_media: MediaSource
 var _character_creation_host: CharacterCreationHostController
 var _session_close_waits_for_playback: bool = false
 

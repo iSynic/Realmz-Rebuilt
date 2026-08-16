@@ -1684,7 +1684,7 @@ func _test_character_creator_workflow() -> void:
 	router.present_party_setup_status("Action failed • That vault character is already represented in the party.", true)
 	assert_true(setup.setup_message.visible, "party setup exposes action failures inside its full-stage surface instead of hiding them in the suppressed shell status region")
 	assert_equal(setup.setup_message.text, "Action failed • That vault character is already represented in the party.", "party setup preserves the core rejection reason rather than making Add appear inert")
-	assert_equal(setup.setup_message.modulate, ClassicScreenRouter.ERROR, "party setup distinguishes a rejected import from ordinary helper text")
+	assert_equal(setup.setup_message.modulate, CampaignPartySetupController.ERROR, "party setup distinguishes a rejected import from ordinary helper text")
 	setup.render_party_assembly()
 	assert_false(setup.setup_message.visible, "a committed party refresh clears the previous inline setup failure")
 	assert_true(setup.setup_overlay.visible and setup.setup_overlay.find_child("ScenarioPartyWorkspace", true, false) != null, "a party-setup GameView keeps the integrated full-stage workspace visible")
@@ -2374,7 +2374,8 @@ func _test_scene_composition() -> void:
 		vault_router.initialize()
 		vault_router.set_layout_profile(profile, viewport_size)
 		vault_router.open_screen(&"vault")
-		var vault_workspaces := vault_router.get_children().filter(func(child: Node) -> bool: return child is ClassicRouteScreen)
+		var workspace_host := vault_router.get_node_or_null("WorkspaceHost") as Control
+		var vault_workspaces := workspace_host.get_children().filter(func(child: Node) -> bool: return child is ClassicRouteScreen) if workspace_host != null else []
 		var vault_workspace := vault_workspaces[0] as ClassicRouteScreen if not vault_workspaces.is_empty() else null
 		var modal_rect := Rect2(12.0, profile.menu_height + 8.0, viewport_size.x - 24.0, viewport_size.y - profile.menu_height - 16.0)
 		var expected_vault_rect := Rect2(modal_rect.position + Vector2(8.0, 8.0), modal_rect.size - Vector2(16.0, 16.0))

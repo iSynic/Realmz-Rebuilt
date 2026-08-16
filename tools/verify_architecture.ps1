@@ -374,6 +374,48 @@ if (Test-Path -LiteralPath $packageRepositoryPath) {
     }
 }
 
+# App-facing prepared package values expose the core media abstraction, never
+# an infrastructure decoder/catalog implementation. Presentation routing has a
+# similarly narrow responsibility: it may mount workspaces and navigate among
+# them, while route-local controllers and rendering belong to the workspace
+# presenter mounted beneath the scene's explicit hosts.
+$preparedPackagePath = Join-Path $repoRoot "src\app\view\prepared_package.gd"
+if (Test-Path -LiteralPath $preparedPackagePath) {
+    $preparedPackageContent = [IO.File]::ReadAllText($preparedPackagePath)
+    if ($preparedPackageContent -match '\bPackageMediaCatalog\b') {
+        $violations += "src/app/view/prepared_package.gd app view models must expose MediaSource instead of the infrastructure PackageMediaCatalog"
+    }
+}
+
+$classicRouterPath = Join-Path $repoRoot "src\presentation\classic_screen_router.gd"
+if (Test-Path -LiteralPath $classicRouterPath) {
+    $routerLines = Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($classicRouterPath))
+    $routeControllerPattern = '\b(?:Character|Inventory|Services|MapsJournal|Spells|System)WorkspaceController\b'
+    for ($index = 0; $index -lt $routerLines.Count; $index++) {
+        $code = $routerLines[$index]
+        $lineNumber = $index + 1
+        if ($code -match $routeControllerPattern) {
+            $violations += "src/presentation/classic_screen_router.gd:$lineNumber ClassicScreenRouter must not construct or call route-domain workspace controllers"
+        }
+        if ($code -match '^\s*func\s+_render_(?:characters|vault|inventory|spells|services|journal|system)\s*\(') {
+            $violations += "src/presentation/classic_screen_router.gd:$lineNumber ClassicScreenRouter must not render route-domain content"
+        }
+        if ($code -match '\bsetup_controller\.attach\s*\(\s*self\s*\)') {
+            $violations += "src/presentation/classic_screen_router.gd:$lineNumber setup overlays must attach to the shell-owned OverlayHost, not the router"
+        }
+    }
+}
+
+$classicShellScenePath = Join-Path $repoRoot "src\presentation\classic_application_shell.tscn"
+if (Test-Path -LiteralPath $classicShellScenePath) {
+    $classicShellScene = [IO.File]::ReadAllText($classicShellScenePath)
+    foreach ($requiredHost in @('WorkspaceHost', 'OverlayHost')) {
+        if ($classicShellScene -notmatch ('\[node\s+name="' + [regex]::Escape($requiredHost) + '"\s+type="Control"\s+parent="ScreenRouter"\]')) {
+            $violations += "src/presentation/classic_application_shell.tscn must provide ScreenRouter/$requiredHost as an explicit scene-owned presentation host"
+        }
+    }
+}
+
 # Typed request bodies may become dictionaries only at their wire serializer or
 # when a detached domain event is deliberately published. Live core, scenario,
 # and presentation behavior must consume the typed request variants directly.
