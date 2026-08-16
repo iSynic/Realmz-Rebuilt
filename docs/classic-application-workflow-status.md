@@ -11,21 +11,6 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
-## Maintenance pause
-
-Parity work is temporarily paused by **rebuilt-architecture-hardening** from baseline `a918a6a35b49646e14b41571c9fb7c09230d756e`. Parity delivery is temporarily paused while typed protocols, coordinator ownership, package installation, host routing, resource bounds, and owning tests are hardened without changing workflow counts.
-
-The workflow denominator, delivery states, and current parity batch remain unchanged. After the maintenance exit gate passes, work resumes at `aogm-application-entry-exit-certification`.
-
-Exit gate:
-
-- `typed-session-and-save-contracts`
-- `decomposed-session-and-scenario-ownership`
-- `realmz3-package-installation-receipts`
-- `decomposed-presentation-and-host`
-- `bounded-resources-and-rationalized-tests`
-- `ordinary-aogm-regression`
-
 ## Current parity-convergence batch
 
 **Ordinary AOGM application entry, picker, and exit certification** (`aogm-application-entry-exit-certification`)

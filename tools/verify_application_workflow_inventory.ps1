@@ -333,15 +333,16 @@ Assert-Condition ($inventory.knowledgeGraph.realmzCommit -eq "4089d550ab606172ba
 Assert-Condition ($inventory.knowledgeGraph.usage -eq "navigation-only") "Knowledge graph must remain navigation-only."
 
 $pause = $inventory.maintenancePause
-Assert-Condition ($null -ne $pause) "Maintenance-pause record is missing."
-Assert-Condition ([string]$pause.id -eq "rebuilt-architecture-hardening") "Maintenance pause has an unexpected ID."
-Assert-Condition ([string]$pause.status -in @("active", "complete")) "Maintenance pause has an invalid status."
-Assert-Condition ([string]$pause.baselineCommit -match '^[0-9a-f]{40}$') "Maintenance pause has no full baseline commit."
-Assert-Condition ([string]$pause.resumeBatchId -eq [string]$inventory.currentBatch.id) "Maintenance pause does not preserve the scheduled parity batch."
-Assert-Condition (-not [string]::IsNullOrWhiteSpace([string]$pause.reason)) "Maintenance pause has no reason."
-$maintenanceExitGate = @($pause.exitGate | ForEach-Object { [string]$_ })
-Assert-Condition ($maintenanceExitGate.Count -eq 6) "Maintenance pause must declare the six approved exit-gate records."
-Assert-Condition (($maintenanceExitGate | Sort-Object -Unique).Count -eq $maintenanceExitGate.Count) "Maintenance pause repeats an exit-gate record."
+if ($null -ne $pause) {
+    Assert-Condition ([string]$pause.id -eq "rebuilt-architecture-hardening") "Maintenance pause has an unexpected ID."
+    Assert-Condition ([string]$pause.status -in @("active", "complete")) "Maintenance pause has an invalid status."
+    Assert-Condition ([string]$pause.baselineCommit -match '^[0-9a-f]{40}$') "Maintenance pause has no full baseline commit."
+    Assert-Condition ([string]$pause.resumeBatchId -eq [string]$inventory.currentBatch.id) "Maintenance pause does not preserve the scheduled parity batch."
+    Assert-Condition (-not [string]::IsNullOrWhiteSpace([string]$pause.reason)) "Maintenance pause has no reason."
+    $maintenanceExitGate = @($pause.exitGate | ForEach-Object { [string]$_ })
+    Assert-Condition ($maintenanceExitGate.Count -eq 6) "Maintenance pause must declare the six approved exit-gate records."
+    Assert-Condition (($maintenanceExitGate | Sort-Object -Unique).Count -eq $maintenanceExitGate.Count) "Maintenance pause repeats an exit-gate record."
+}
 
 Assert-ReferenceRoot $CastleRoot $inventory.references.castle "Castle reference"
 Assert-ReferenceRoot $RemakeRoot $inventory.references.remakeFunctional "Remake functional reference"

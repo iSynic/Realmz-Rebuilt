@@ -15,7 +15,7 @@ The project uses `application/config/use_custom_user_dir` with the stable name `
 
 Normal player-visible work is planned as a coherent batch of 3–5 related workflows. Each workflow has one focused-verified commit. In the roadmap, a rolling pass means this workflow batch; the roadmap does not create a new rolling pass for a tiny edit, and a tiny edit does not pay the batch closeout gate by itself.
 
-The architecture-hardening tranche is an active bounded maintenance exception, not a player-workflow batch. Its inventory pause keeps workflow counts and the selected parity batch frozen while public wire contracts, ownership boundaries, and their tests are completed at named high-risk gates. The pause ends only after the full hardening exit gate and ordinary AOGM regression; ordinary parity delivery otherwise follows the audit-guided batch cadence below.
+The architecture-hardening tranche was a bounded maintenance exception rather than a player-workflow batch. Its inventory pause held workflow counts and the selected parity batch steady while public wire contracts, ownership boundaries, package startup, and owning tests were hardened. The pause closed only after the full aggregate gate and an ordinary AOGM regression; parity delivery now follows the audit-guided batch cadence below.
 
 Use the lowest tier that covers the changed boundary:
 
@@ -45,7 +45,7 @@ Restore behavior has one public ownership proof: `GameSession.restore` asks `Ses
 
 Test and assertion totals are diagnostic measurements, never completion targets. Hardening should reduce duplicated setup and incidental assertions without deleting unique source-backed evidence.
 
-The hardening review reduced test GDScript from the 13,000-line baseline to 11,935 lines while retaining 179 named public cases. That is an 8.2 percent reduction, below the original 25–35 percent directional estimate. A delegated redundancy audit found only another roughly 200–400 lines that could be removed safely without a deeper combat/rules evidence review, so the estimate is not treated as a quota. Further pruning must name the surviving owning proof before deletion; unique RNG, VM, save, topology, reward, and Castle-differential evidence stays intact.
+Measure rationalization with the same method on both revisions. At hardening baseline `a918a6a`, the 27 test GDScript files contain 13,000 raw lines and 12,094 nonblank, non-comment lines across 175 named `_test_` cases. After consolidation and the final dead-scaffolding cleanup through `0c9ec43`, the same files contain 12,754 raw lines and 11,807 substantive lines across 176 named cases: reductions of 1.9 and 2.4 percent respectively. The one additional named case is the required package-v3 integrity proof; no unique behavioral case was deleted. A delegated ownership audit found no direct private calls into the four decomposed coordinators and only a handful of unused or redundant helper lines safe to remove. The earlier 8.2-percent figure compared raw baseline lines with a filtered current count and is invalid. The original 25–35-percent estimate remains directional rather than a deletion quota; further pruning must name the surviving owning proof before deletion, and unique RNG, VM, save, topology, reward, and Castle-differential evidence stays intact.
 
 Use this priority order:
 
