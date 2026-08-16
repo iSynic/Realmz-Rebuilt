@@ -13,6 +13,61 @@ func _fixture_request(id: String, kind: StringName, overrides: Dictionary = {}) 
 	return InteractionRequest.from_payload(id, kind, payload)
 
 
+func _buttons_in(root: Node) -> Array[Button]:
+	var buttons: Array[Button] = []
+	for child: Node in root.find_children("*", "Button", true, false):
+		if child is Button:
+			buttons.append(child as Button)
+	return buttons
+
+
+func _direct_buttons_in(root: Node) -> Array[Button]:
+	var buttons: Array[Button] = []
+	for child: Node in root.get_children():
+		if child is Button:
+			buttons.append(child as Button)
+	return buttons
+
+
+func _base_buttons_in(root: Node) -> Array[BaseButton]:
+	var buttons: Array[BaseButton] = []
+	for child: Node in root.find_children("*", "BaseButton", true, false):
+		if child is BaseButton:
+			buttons.append(child as BaseButton)
+	return buttons
+
+
+func _labels_in(root: Node) -> Array[String]:
+	var labels: Array[String] = []
+	for child: Node in root.find_children("*", "Label", true, false):
+		if child is Label:
+			labels.append((child as Label).text)
+	return labels
+
+
+func _button_texts_in(root: Node) -> Array[String]:
+	var texts: Array[String] = []
+	for button: Button in _buttons_in(root):
+		texts.append(button.text)
+	return texts
+
+
+func _visible_labels_in(root: Node) -> Array[String]:
+	var labels: Array[String] = []
+	for child: Node in root.find_children("*", "Label", true, false):
+		if child is Label and (child as Label).visible:
+			labels.append((child as Label).text)
+	return labels
+
+
+func _visible_button_texts_in(root: Node) -> Array[String]:
+	var texts: Array[String] = []
+	for button: Button in _buttons_in(root):
+		if button.visible:
+			texts.append(button.text)
+	return texts
+
+
 func run() -> void:
 	_test_startup_shell()
 	_test_startup_party_setup_composition()
@@ -189,30 +244,14 @@ func _test_startup_shell() -> void:
 	])
 	var scenario_copy: Array[String] = []
 	if scenario_picker != null:
-		for node: Node in scenario_picker.find_children("*", "Label", true, false):
-			var label := node as Label
-			if label.visible:
-				scenario_copy.append(label.text)
-		for node: Node in scenario_picker.find_children("*", "Button", true, false):
-			var button := node as Button
-			if button.visible:
-				scenario_copy.append(button.text)
+		scenario_copy.append_array(_visible_labels_in(scenario_picker))
+		scenario_copy.append_array(_visible_button_texts_in(scenario_picker))
 	assert_true(router.setup_controller.campaign_list is VBoxContainer and router.setup_controller.campaign_list.get_parent() is ScrollContainer, "installed scenarios use one single-column picker surface")
 	assert_false(scenario_copy.any(func(text: String) -> bool: return text.contains("Stale Scenario")), "incompatible installations do not become ordinary scenario rows")
 	assert_contains(scenario_picker.tooltip_text, "installation hidden", "the picker preserves incompatible-installation diagnostics in unobtrusive hover text")
-	var scenario_buttons: Array[String] = []
-	if scenario_picker != null:
-		for node: Node in scenario_picker.find_children("*", "Button", true, false):
-			var button := node as Button
-			if button.visible:
-				scenario_buttons.append(button.text)
+	var scenario_buttons: Array[String] = _visible_button_texts_in(scenario_picker) if scenario_picker != null else []
 	assert_false(scenario_buttons.any(func(text: String) -> bool: return text == "Play"), "scenario rows do not expose the obsolete per-row Play action")
-	var install_buttons: Array[String] = []
-	if scenario_picker != null:
-		for node: Node in scenario_picker.find_children("*", "Button", true, false):
-			var button := node as Button
-			if button.visible:
-				install_buttons.append(button.text)
+	var install_buttons: Array[String] = _visible_button_texts_in(scenario_picker) if scenario_picker != null else []
 	assert_true(install_buttons.any(func(text: String) -> bool: return text.begins_with("Install .realmz2")), "the external package action uses installation language")
 	assert_false(install_buttons.any(func(text: String) -> bool: return text == "Open path" or text.to_lower().contains("play")), "the integrated workspace does not label external installation as Play")
 	var setup_seed: Node = null
@@ -295,12 +334,8 @@ func _test_save_preview_workspace() -> void:
 	var actions: Array[Dictionary] = []
 	controller.action_requested.connect(func(action: StringName, value: Variant) -> void: actions.append({"action": action, "value": value}))
 	controller.present(body, view, PresentationSettings.new())
-	var buttons: Array[Button] = []
-	var labels: Array[String] = []
-	for node: Node in body.find_children("*", "Button", true, false):
-		buttons.append(node as Button)
-	for node: Node in body.find_children("*", "Label", true, false):
-		labels.append((node as Label).text)
+	var buttons := _buttons_in(body)
+	var labels := _labels_in(body)
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Day 2") and text.contains("land:4 12,9")), "valid save previews expose detached time and location facts")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Mira, Borin")), "valid save previews expose detached party identity")
 	var current_load := buttons.filter(func(button: Button) -> bool: return button.text == "Load save")[0] as Button
@@ -355,9 +390,7 @@ func _test_location_note_workspace() -> void:
 	editor.text = "é".repeat(128)
 	editor.text_changed.emit()
 	assert_true(save.disabled, "the note editor prevents an oversized UTF-8 payload before submission")
-	var labels: Array[String] = []
-	for node: Node in body.find_children("*", "Label", true, false):
-		labels.append((node as Label).text)
+	var labels := _labels_in(body)
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("A safe campsite.")), "saved location notes remain readable while only the current record is editable")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Journal entry 4")), "the Journal route labels authored records by their stable source message identity")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("A long authored entry")), "long authored journal text remains present in the scrollable workspace")
@@ -464,9 +497,7 @@ func _test_battle_weapon_mode_component() -> void:
 	var submitted: Array[Dictionary] = []
 	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
-	var buttons: Array[Button] = []
-	for child: Node in component.find_children("*", "Button", true, false):
-		buttons.append(child as Button)
+	var buttons := _buttons_in(component)
 	assert_false(buttons.any(func(button: Button) -> bool: return button.text.begins_with("Attack ")), "missile mode renders no melee attack target buttons")
 	var fire_button: Button = null
 	var switch_button: Button = null
@@ -533,9 +564,7 @@ func _test_battle_weapon_mode_component() -> void:
 	var command_payloads: Array[Dictionary] = []
 	command_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: command_payloads.append(body.to_data()))
 	command_component.build(command_request)
-	var command_buttons: Array[Button] = []
-	for child: Node in command_component.find_children("*", "Button", true, false):
-		command_buttons.append(child as Button)
+	var command_buttons := _buttons_in(command_component)
 	var auto_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Auto")[0] as Button
 	var delay_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Delay")[0] as Button
 	var bandage_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Bandage")[0] as Button
@@ -644,9 +673,7 @@ func _test_battle_typed_option_contracts() -> void:
 	})
 	var unavailable_component := BattleInteraction.new()
 	unavailable_component.build(unavailable_request)
-	var unavailable_buttons: Array[Button] = []
-	for child: Node in unavailable_component.find_children("*", "Button", true, false):
-		unavailable_buttons.append(child as Button)
+	var unavailable_buttons := _buttons_in(unavailable_component)
 	var unavailable_spell := unavailable_buttons.filter(func(button: Button) -> bool: return button.text == "Spells")[0] as Button
 	var unavailable_item := unavailable_buttons.filter(func(button: Button) -> bool: return button.text == "Items")[0] as Button
 	var unavailable_scroll := unavailable_buttons.filter(func(button: Button) -> bool: return button.text == "Scrolls")[0] as Button
@@ -674,9 +701,7 @@ func _test_battle_typed_option_contracts() -> void:
 	var targeting_requests: Array[CombatTargetingRequest] = []
 	option_component.combat_targeting_requested.connect(func(targeting_request: CombatTargetingRequest) -> void: targeting_requests.append(targeting_request))
 	option_component.build(option_request)
-	var option_buttons: Array[Button] = []
-	for child: Node in option_component.find_children("*", "Button", true, false):
-		option_buttons.append(child as Button)
+	var option_buttons := _buttons_in(option_component)
 	var spell_mode := option_buttons.filter(func(button: Button) -> bool: return button.text == "Spells")[0] as Button
 	var item_mode := option_buttons.filter(func(button: Button) -> bool: return button.text == "Items")[0] as Button
 	var scroll_mode := option_buttons.filter(func(button: Button) -> bool: return button.text == "Scrolls")[0] as Button
@@ -714,10 +739,7 @@ func _test_shop_component() -> void:
 	})
 	var component := ShopInteraction.new()
 	component.build(request)
-	var buttons: Array[Button] = []
-	for child: Node in component.get_children():
-		if child is Button:
-			buttons.append(child)
+	var buttons := _direct_buttons_in(component)
 	var buy_button: Button = null
 	var unknown_sell: Button = null
 	var identify_button: Button = null
@@ -759,10 +781,7 @@ func _test_temple_component() -> void:
 	var submitted: Array[Dictionary] = []
 	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
-	var buttons: Array[Button] = []
-	for child: Node in component.get_children():
-		if child is Button:
-			buttons.append(child)
+	var buttons := _direct_buttons_in(component)
 	var heal_button: Button = buttons.filter(func(button: Button) -> bool: return button.text.begins_with("Heal Small Wounds"))[0]
 	var revive_button: Button = buttons.filter(func(button: Button) -> bool: return button.text.begins_with("Revive Dead"))[0]
 	assert_true(heal_button.disabled, "the request's selected character identity is restored before affordability is rendered")
@@ -808,12 +827,8 @@ func _test_bank_component() -> void:
 	var submitted: Array[Dictionary] = []
 	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
-	var buttons: Array[Button] = []
-	for node: Node in component.find_children("*", "Button", true, false):
-		buttons.append(node as Button)
-	var labels: Array[String] = []
-	for node: Node in component.find_children("*", "Label", true, false):
-		labels.append((node as Label).text)
+	var buttons := _buttons_in(component)
+	var labels := _labels_in(component)
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("35 gold") and text.contains("2 gems") and text.contains("1 jewelry")), "bank workspace renders every pooled denomination")
 	var share_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Share pooled wealth")[0]
 	assert_true(share_button.disabled and share_button.tooltip_text.contains("can carry"), "bank workspace displays the core-owned Share blocker")
@@ -834,9 +849,7 @@ func _test_bank_component() -> void:
 	var departure_payloads: Array[Dictionary] = []
 	departure_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: departure_payloads.append(body.to_data()))
 	departure_component.build(departure_request)
-	var departure_labels: Array[String] = []
-	for node: Node in departure_component.find_children("*", "Label", true, false):
-		departure_labels.append((node as Label).text)
+	var departure_labels := _labels_in(departure_component)
 	assert_true(departure_labels.any(func(text: String) -> bool: return text.contains("Distribute pooled wealth before leaving")), "pooled departure renders its distinct Classic workflow heading")
 	assert_true(departure_labels.any(func(text: String) -> bool: return text.contains("continues this movement attempt")), "pooled departure explains the ordinary checkmoneypool Done outcome")
 	assert_false(departure_labels.any(func(text: String) -> bool: return text.contains("Deposited until departure")), "pooled departure does not present bank-only state as part of no-bank Swap")
@@ -1143,9 +1156,7 @@ func _test_lifecycle_interaction() -> void:
 	var submitted: Array[Dictionary] = []
 	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
-	var buttons: Array[Button] = []
-	for node: Node in component.find_children("*", "Button", true, false):
-		buttons.append(node as Button)
+	var buttons := _buttons_in(component)
 	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and end adventure", "End adventure without saving", "Cancel"], "the dedicated presenter does not reinterpret lifecycle choices as scenario options")
 	buttons[2].pressed.emit()
 	assert_equal(submitted, [{"action": "cancel"}], "Cancel emits one typed host response")
@@ -1176,9 +1187,7 @@ func _test_lifecycle_interaction() -> void:
 	assert_equal([quit_request.body.to_data()["operation"], quit_request.body.to_data()["options"].size()], ["quit-application", 3], "field Quit is a distinct typed host operation with save, discard, and cancel")
 	var quit_component := LifecycleInteractionScript.new()
 	quit_component.build(quit_request)
-	buttons.clear()
-	for node: Node in quit_component.find_children("*", "Button", true, false):
-		buttons.append(node as Button)
+	buttons = _buttons_in(quit_component)
 	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and quit Realmz Rebuilt", "Quit Realmz Rebuilt", "Cancel"], "Quit uses explicit modern host wording instead of pretending to know Castle's resource text")
 	var quit_order: Array[String] = []
 	assert_equal(ApplicationLifecycleScript.execute_quit(&"save-and-quit", func() -> bool: quit_order.append("save"); return false, func() -> void: quit_order.append("quit")), &"save-failed", "failed Quit save keeps the application open")
@@ -1887,9 +1896,7 @@ func _test_character_vault_workspace() -> void:
 	router.set_vault_revisions([current, archived])
 	router.open_screen(&"vault")
 	var vault_body := router.find_child("ScreenBody", true, false) as VBoxContainer
-	var labels: Array[String] = []
-	for node: Node in router.find_children("*", "Label", true, false):
-		labels.append((node as Label).text)
+	var labels := _labels_in(router)
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Eligibility for Vault Campaign")), "the vault states which campaign owns the current eligibility decision")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("classic.item.missing")), "an ineligible revision exposes its exact package mismatch")
 	var restore_events: Array[Array] = []
@@ -1899,8 +1906,7 @@ func _test_character_vault_workspace() -> void:
 	var back_button: Button
 	var archive_button: Button
 	var restore_button: Button
-	for node: Node in router.find_children("*", "Button", true, false):
-		var button := node as Button
+	for button: Button in _buttons_in(router):
 		if button.text == "Back":
 			back_button = button
 		elif button.text == "Import this revision":
@@ -2038,12 +2044,8 @@ func _test_inventory_workspace() -> void:
 	var intents: Array[PlayerIntent] = []
 	workspace.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
 	workspace.present(body, view, null, 1.0)
-	var buttons: Array[BaseButton] = []
-	var labels: Array[String] = []
-	for node: Node in body.find_children("*", "BaseButton", true, false):
-		buttons.append(node as BaseButton)
-	for node: Node in body.find_children("*", "Label", true, false):
-		labels.append((node as Label).text)
+	var buttons := _base_buttons_in(body)
+	var labels := _labels_in(body)
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Alis") and (button as Button).text.contains("12/100")), "inventory workspace selects a character before an item")
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Longsword")), "inventory workspace renders a selectable carried-item list")
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Equip" and not button.disabled), "an action without donor bitmap art remains visible as a labeled typed control")
@@ -2099,12 +2101,8 @@ func _test_money_workspace() -> void:
 	var intents: Array[PlayerIntent] = []
 	controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
 	controller.present(body, view)
-	var buttons: Array[Button] = []
-	var labels: Array[String] = []
-	for node: Node in body.find_children("*", "Button", true, false):
-		buttons.append(node as Button)
-	for node: Node in body.find_children("*", "Label", true, false):
-		labels.append((node as Label).text)
+	var buttons := _buttons_in(body)
+	var labels := _labels_in(body)
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("15 gold") and text.contains("1 jewelry")), "money workspace renders every detached pooled denomination")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Banked: 50 gold")), "banked wealth remains visible without being merged into ordinary Swap")
 	var pool_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Pool party wealth")[0]
@@ -2157,29 +2155,21 @@ func _test_party_order_workspace() -> void:
 	router.present(view)
 	router.open_screen(&"character")
 	assert_equal(router.party_order_draft_ids(), [alis.id, borin.id, cerys.id], "the Party Order workspace starts from detached session order")
-	var buttons: Array[Button] = []
-	for node: Node in router.find_children("*", "Button", true, false):
-		buttons.append(node as Button)
+	var buttons := _buttons_in(router)
 	var first_down: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Move Down" and not button.disabled)[0]
 	first_down.pressed.emit()
 	assert_equal(router.party_order_draft_ids(), [borin.id, alis.id, cerys.id], "Move Down changes presentation-owned draft order only")
 	assert_equal(intents.size(), 0, "staging a slot move cannot mutate the session")
-	buttons.clear()
-	for node: Node in router.find_children("*", "Button", true, false):
-		buttons.append(node as Button)
+	buttons = _buttons_in(router)
 	var cancel: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Cancel Order Changes")[0]
 	assert_false(cancel.disabled, "a changed draft exposes safe cancellation")
 	cancel.pressed.emit()
 	assert_equal(router.party_order_draft_ids(), [alis.id, borin.id, cerys.id], "Cancel restores detached order without reproducing Castle's cleared-track write")
 	assert_equal(intents.size(), 0, "Cancel emits no gameplay intent")
-	buttons.clear()
-	for node: Node in router.find_children("*", "Button", true, false):
-		buttons.append(node as Button)
+	buttons = _buttons_in(router)
 	first_down = buttons.filter(func(button: Button) -> bool: return button.text == "Move Down" and not button.disabled)[0]
 	first_down.pressed.emit()
-	buttons.clear()
-	for node: Node in router.find_children("*", "Button", true, false):
-		buttons.append(node as Button)
+	buttons = _buttons_in(router)
 	var apply: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Apply Party Order")[0]
 	assert_false(apply.disabled, "a changed complete permutation can be applied")
 	apply.pressed.emit()
@@ -2187,9 +2177,7 @@ func _test_party_order_workspace() -> void:
 	assert_equal([intents[0].kind, (intents[0].payload as PlayerIntent.StringListPayload).values], [PlayerIntent.Kind.REORDER_PARTY, [borin.id, alis.id, cerys.id]], "the presenter emits the complete stable-ID permutation")
 	view.set_action_availability(&"reorder_party", false, "Party order is unavailable during battle.")
 	router.present(view)
-	buttons.clear()
-	for node: Node in router.find_children("*", "Button", true, false):
-		buttons.append(node as Button)
+	buttons = _buttons_in(router)
 	var blocked_move: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Move Down")[0]
 	assert_true(blocked_move.disabled and blocked_move.tooltip_text.contains("battle"), "unavailable Party Order remains visible with the core-owned reason")
 	router.free()
@@ -2276,9 +2264,7 @@ func _test_character_sheet_workspace() -> void:
 		CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("combat-icon.9001", "Combat icon 9001", CharacterAppearanceDefinition.COMBAT_ICON, 9001, [character.race_id])),
 	]
 	sheet.present([character_view], character_view.id, {}, 1.0, &"overview", portrait_options, icon_options, ActionAvailabilityView.new(&"change_character_appearance", true))
-	var buttons: Array[Button] = []
-	for node: Node in sheet.find_children("*", "Button", true, false):
-		buttons.append(node as Button)
+	var buttons := _buttons_in(sheet)
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Overview"), "the sheet exposes a bounded overview tab")
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Conditions & Saves"), "the sheet exposes conditions and all saves without raw indices")
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Equipment"), "the sheet retains the Classic equipment subworkspace")

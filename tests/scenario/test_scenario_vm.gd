@@ -16,66 +16,31 @@ func run() -> void:
 	assert_true(loaded.is_ok(), "Scenario VM fixture loads: %s" % loaded.error_message)
 	if not loaded.is_ok():
 		return
-	_test_classic_encounter_action_xap_trace(loaded.content)
 	_test_scenario_wire_contracts()
-	_test_classic_choice_labels_and_sound_wait(loaded.content)
-	_test_session_save_resume_boundary(loaded.content)
-	_test_age_update_precedes_post_move(loaded.content)
-	_test_safe_choice_resume(loaded.content)
-	_test_persistent_action_state(loaded.content)
-	_test_classic_call_limit(loaded.content)
-	_test_classic_transfer_keeps_trigger_context(loaded.content)
-	_test_classic_keep_codes(loaded.content)
-	_test_action_call_limit(loaded.content)
-	_test_execution_step_limit(loaded.content)
-	_test_unknown_opcode_failure(loaded.content)
 	_test_classic_opcode_ownership()
-	_test_gameplay_capabilities_and_battle_resume(loaded.content)
-	_test_complex_encounter_save_resume(loaded.content)
-	_test_equipment_storage_save_resume(loaded.content)
-	_test_program_replacement_and_redirect(loaded.content)
-	_test_scenario_spell_opcodes(loaded.content)
-	_test_monster_aging_attack_continuations(loaded.content)
-	_test_monster_status_attack_flow(loaded.content)
-	_test_monster_resource_drain_flow(loaded.content)
-	_test_monster_charm_and_affliction_flow(loaded.content)
-	_test_combat_fumble_mutation(loaded.content)
-	_test_classic_encounter_break(loaded.content)
-	_test_classic_party_shift(loaded.content)
-	_test_classic_game_time(loaded.content)
-	_test_classic_camping_availability(loaded.content)
-	_test_classic_ally_branch(loaded.content)
-	_test_classic_misc_branch(loaded.content)
-	_test_classic_party_backup(loaded.content)
-	_test_classic_map_darkness(loaded.content)
-	_test_classic_player_map_workflow(loaded.content)
-	_test_classic_teleport_and_recheck(loaded.content)
-	_test_classic_quest_values(loaded.content)
-	_test_registration_marker(loaded.content)
-	_test_classic_party_mode(loaded.content)
-	_test_scrolling_text_event(loaded.content)
-	_test_classic_shop_lifecycle(loaded.content)
-	_test_classic_temple_lifecycle(loaded.content)
-	_test_classic_bank_swap_lifecycle(loaded.content)
-	_test_classic_priest_turning(loaded.content)
-	_test_classic_experience_loss_and_drop(loaded.content)
-	_test_classic_character_money_loss(loaded.content)
-	_test_classic_battle_macro_controls(loaded.content)
-	_test_classic_selected_character_alteration(loaded.content)
-	_test_classic_combat_monster_alteration(loaded.content)
-	_test_classic_ally_participation(loaded.content)
-	_test_classic_bodycount_selection(loaded.content)
-	_test_classic_spellcasting_flags(loaded.content)
-	_test_classic_identity_selection(loaded.content)
-	_test_classic_character_ability_picker(loaded.content)
-	_test_classic_monster_route(loaded.content)
-	_test_classic_random_items(loaded.content)
-	_test_classic_selected_level_up(loaded.content)
-	_test_classic_death_macro_revival(loaded.content)
-	_test_automatic_monster_death_macro(loaded.content)
-	_test_spell_queued_death_macro(loaded.content)
-	_test_aogm_dispatch_has_no_fallback(loaded.content)
-	_test_classic_shell_domain_route(loaded.content)
+	var content_tests: Array[Callable] = [
+		Callable(self, "_test_classic_encounter_action_xap_trace"), Callable(self, "_test_classic_choice_labels_and_sound_wait"), Callable(self, "_test_session_save_resume_boundary"),
+		Callable(self, "_test_age_update_precedes_post_move"), Callable(self, "_test_safe_choice_resume"), Callable(self, "_test_persistent_action_state"),
+		Callable(self, "_test_classic_call_limit"), Callable(self, "_test_classic_transfer_keeps_trigger_context"), Callable(self, "_test_classic_keep_codes"),
+		Callable(self, "_test_action_call_limit"), Callable(self, "_test_execution_step_limit"), Callable(self, "_test_unknown_opcode_failure"),
+		Callable(self, "_test_gameplay_capabilities_and_battle_resume"), Callable(self, "_test_complex_encounter_save_resume"), Callable(self, "_test_equipment_storage_save_resume"),
+		Callable(self, "_test_program_replacement_and_redirect"), Callable(self, "_test_scenario_spell_opcodes"), Callable(self, "_test_monster_aging_attack_continuations"),
+		Callable(self, "_test_monster_status_attack_flow"), Callable(self, "_test_monster_resource_drain_flow"), Callable(self, "_test_monster_charm_and_affliction_flow"),
+		Callable(self, "_test_combat_fumble_mutation"), Callable(self, "_test_classic_encounter_break"), Callable(self, "_test_classic_party_shift"),
+		Callable(self, "_test_classic_game_time"), Callable(self, "_test_classic_ally_branch"), Callable(self, "_test_classic_misc_branch"),
+		Callable(self, "_test_classic_party_backup"), Callable(self, "_test_classic_map_darkness"), Callable(self, "_test_classic_player_map_workflow"),
+		Callable(self, "_test_classic_teleport_and_recheck"), Callable(self, "_test_classic_quest_values"), Callable(self, "_test_registration_marker"),
+		Callable(self, "_test_classic_party_mode"), Callable(self, "_test_scrolling_text_event"), Callable(self, "_test_classic_shop_lifecycle"),
+		Callable(self, "_test_classic_temple_lifecycle"), Callable(self, "_test_classic_bank_swap_lifecycle"), Callable(self, "_test_classic_experience_loss_and_drop"),
+		Callable(self, "_test_classic_character_money_loss"), Callable(self, "_test_classic_battle_macro_controls"), Callable(self, "_test_classic_selected_character_alteration"),
+		Callable(self, "_test_classic_combat_monster_alteration"), Callable(self, "_test_classic_bodycount_selection"),
+		Callable(self, "_test_classic_spellcasting_flags"), Callable(self, "_test_classic_identity_selection"), Callable(self, "_test_classic_character_ability_picker"),
+		Callable(self, "_test_classic_monster_route"), Callable(self, "_test_classic_random_items"), Callable(self, "_test_classic_selected_level_up"),
+		Callable(self, "_test_classic_death_macro_revival"), Callable(self, "_test_automatic_monster_death_macro"), Callable(self, "_test_spell_queued_death_macro"),
+		Callable(self, "_test_aogm_dispatch_has_no_fallback"), Callable(self, "_test_classic_shell_domain_route")
+	]
+	for test: Callable in content_tests:
+		test.call(loaded.content)
 
 
 func _test_scenario_wire_contracts() -> void:
@@ -941,17 +906,6 @@ func _test_classic_game_time(content: RealmzContent) -> void:
 	assert_true(_event_has(late.events, &"game_time_branch_checked"), "game-time branch publishes the observed day/hour comparison")
 
 
-func _test_classic_camping_availability(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("camp.character", "Camp", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var disabled := api.execute_classic(ClassicActionDefinition.new(0, 66, 66, 1, false, []), "request.disable-camp")
-	assert_false(state.camping_allowed, "Classic opcode 66 ID 1 disables camping")
-	assert_true(_event_has(disabled.events, &"camping_availability_changed"), "camping availability change is presentation-observable")
-	api.execute_classic(ClassicActionDefinition.new(0, 66, 66, 0, false, []), "request.enable-camp")
-	assert_true(state.camping_allowed, "Classic opcode 66 ID 0 enables camping")
-
-
 func _test_classic_ally_branch(content: RealmzContent) -> void:
 	var monster := content.monster_by_classic_id(1)
 	assert_not_null(monster, "ally-branch fixture contains a Classic monster identity")
@@ -1315,21 +1269,6 @@ func _test_classic_bank_swap_lifecycle(content: RealmzContent) -> void:
 	assert_equal([party.pooled_wealth.gold, party.banked_wealth.gold], [30, 0], "reopening does not duplicate already-drained bank wealth")
 
 
-func _test_classic_priest_turning(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("turning.character", "Turning", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var disabled := api.execute_classic(ClassicActionDefinition.new(0, 82, 82, 0, false, []), "request.turning-off")
-	assert_false(state.priest_turning_allowed, "Classic opcode 82 disables priest turning in session state")
-	assert_true(_event_has(disabled.events, &"priest_turning_availability_changed"), "turning availability publishes an explicit domain event")
-	var enabled := api.execute_classic(ClassicActionDefinition.new(0, 83, 83, 0, false, []), "request.turning-on")
-	assert_true(state.priest_turning_allowed, "Classic opcode 83 restores priest turning")
-	assert_true(_event_has(enabled.events, &"message_shown"), "Castle's turning feedback crosses the presentation boundary as an event")
-	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(round_trip, "priest-turning availability serializes in the central save aggregate")
-	assert_true(round_trip.priest_turning_allowed, "restored turning availability is exact")
-
-
 func _test_classic_experience_loss_and_drop(content: RealmzContent) -> void:
 	var first := CharacterState.new("penalty.first", "First", 10, 10)
 	var second := CharacterState.new("penalty.second", "Second", 10, 10)
@@ -1430,18 +1369,6 @@ func _test_classic_combat_monster_alteration(content: RealmzContent) -> void:
 	assert_equal(round_trip.icon_id, 27, "restored combat icon identity is exact")
 
 
-func _test_classic_ally_participation(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("suspend.character", "Suspend", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var suspended := api.execute_classic(ClassicActionDefinition.new(0, 105, 105, 1, false, []), "request.suspend-allies")
-	assert_true(state.allies_suspended, "Classic opcode 105 suspends ally battle participation in session state")
-	assert_true(_event_has(suspended.events, &"ally_participation_changed"), "ally participation change is explicit in the domain trace")
-	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(round_trip, "ally participation state serializes in the central save aggregate")
-	assert_true(round_trip.allies_suspended, "restored ally participation state is exact")
-
-
 func _test_classic_bodycount_selection(content: RealmzContent) -> void:
 	var definition := content.monster_by_classic_id(1)
 	assert_not_null(definition, "body-count fixture contains a Classic ally definition")
@@ -1471,14 +1398,29 @@ func _test_classic_bodycount_selection(content: RealmzContent) -> void:
 
 
 func _test_classic_spellcasting_flags(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("casting.character", "Casting", 10, 10)])
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("flags.character", "Flags", 10, 10)])
 	var state := GameState.new(party, RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
+	var camping_disabled := api.execute_classic(ClassicActionDefinition.new(0, 66, 66, 1, false, []), "request.disable-camp")
+	assert_false(state.camping_allowed, "Classic opcode 66 ID 1 disables camping")
+	assert_true(_event_has(camping_disabled.events, &"camping_availability_changed"), "camping availability change is presentation-observable")
+	api.execute_classic(ClassicActionDefinition.new(0, 66, 66, 0, false, []), "request.enable-camp")
+	assert_true(state.camping_allowed, "Classic opcode 66 ID 0 enables camping")
+	var turning_disabled := api.execute_classic(ClassicActionDefinition.new(0, 82, 82, 0, false, []), "request.turning-off")
+	assert_false(state.priest_turning_allowed, "Classic opcode 82 disables priest turning in session state")
+	assert_true(_event_has(turning_disabled.events, &"priest_turning_availability_changed"), "turning availability publishes an explicit domain event")
+	var turning_enabled := api.execute_classic(ClassicActionDefinition.new(0, 83, 83, 0, false, []), "request.turning-on")
+	assert_true(state.priest_turning_allowed, "Classic opcode 83 restores priest turning")
+	assert_true(_event_has(turning_enabled.events, &"message_shown"), "Castle's turning feedback crosses the presentation boundary as an event")
+	var suspended := api.execute_classic(ClassicActionDefinition.new(0, 105, 105, 1, false, []), "request.suspend-allies")
+	assert_true(state.allies_suspended, "Classic opcode 105 suspends ally battle participation in session state")
+	assert_true(_event_has(suspended.events, &"ally_participation_changed"), "ally participation change is explicit in the domain trace")
 	var changed := api.execute_classic(ClassicActionDefinition.new(0, 69, 69, 1, false, [1, 0, 1, 0, 0]), "request.casting-flags")
 	assert_true(state.character_spellcasting_blocked and not state.monster_spellcasting_blocked and state.spell_charging, "Classic opcode 69 owns both blocking flags and the charging flag")
 	assert_true(_event_has(changed.events, &"spellcasting_flags_changed"), "spellcasting flag changes are explicit in the domain trace")
 	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(round_trip, "spellcasting flags serialize in the central save aggregate")
+	assert_not_null(round_trip, "Classic availability and spellcasting flags serialize in the central save aggregate")
+	assert_true(round_trip.camping_allowed and round_trip.priest_turning_allowed and round_trip.allies_suspended, "restored exploration, priest, and ally availability flags are exact")
 	assert_true(round_trip.character_spellcasting_blocked and round_trip.spell_charging, "restored spellcasting blocking flags are exact")
 
 
@@ -1757,17 +1699,8 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 		return
 	var caste: CasteDefinition = castes[0]
 	var hit_dice := maxi(1, ceili(100.0 / float(race.max_age)))
-	var zero8: Array[int] = []
-	zero8.resize(8)
-	zero8.fill(0)
-	var zero6: Array[int] = []
-	zero6.resize(6)
-	zero6.fill(0)
-	var zero3: Array[int] = []
-	zero3.resize(3)
-	zero3.fill(0)
 	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 17), MonsterAttackDefinition.new(2, 2)]
-	var monster_definition := MonsterDefinition.new("monster.age-special", 917, "Age Special", hit_dice, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], attacks)
+	var monster_definition := MonsterDefinition.new("monster.age-special", 917, "Age Special", hit_dice, 0, 100, 0, 0, _zero_monster_array(8), _zero_monster_array(8), _zero_monster_array(6), _zero_monster_array(3), [], [], attacks)
 	monster_definition.damage_bonus = 6
 	monster_definition.traitor = true
 	var aging_weapon := ItemDefinition.new("classic.item.917", 917, "Aging Weapon")
@@ -1879,30 +1812,13 @@ func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
 
 func _test_monster_status_attack_flow(content: RealmzContent) -> void:
 	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 6)]
-	var zero8: Array[int] = []
-	zero8.resize(8)
-	zero8.fill(0)
-	var zero6: Array[int] = []
-	zero6.resize(6)
-	zero6.fill(0)
-	var zero3: Array[int] = []
-	zero3.resize(3)
-	zero3.fill(0)
-	var definition := MonsterDefinition.new("monster.status-flow", 906, "Status Monster", 4, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], attacks)
-	definition.traitor = true
+	var definition := _hostile_monster_definition("monster.status-flow", 906, "Status Monster", attacks)
 	var battle := BattleDefinition.new("battle.status-flow", 906, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, definition.id, false)])
 	var status_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [definition], [battle])
 	var character := CharacterState.new("character.status-flow", "Status Target", 20, 20)
 	character.set_save_value_raw(4, 0)
-	var session := GameSession.new()
-	session.start(status_content, 1)
-	session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	session._state.party_setup_completed = true
 	var monster := MonsterState.new("monster.status-flow.instance", definition.id, definition.name, 10, 10, 4, 100)
-	session._state.combat = CombatState.new(battle.id, [monster])
-	session._state.combat.set_turn_order([character.id, monster.id])
-	_set_adjacent_battlefield(session._state, status_content, character.id, monster.id)
-	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
+	var session := _direct_combat_session(content, status_content, [character], battle.id, [monster], [character.id, monster.id], [0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"finish", character.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster status attacks commit without inventing a player interaction")
 	assert_equal(character.conditions.value(ConditionRules.POISONED), 4, "the direct session owns the resulting status mutation")
@@ -1921,17 +1837,7 @@ func _test_monster_status_attack_flow(content: RealmzContent) -> void:
 
 func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
 	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 8)]
-	var zero8: Array[int] = []
-	zero8.resize(8)
-	zero8.fill(0)
-	var zero6: Array[int] = []
-	zero6.resize(6)
-	zero6.fill(0)
-	var zero3: Array[int] = []
-	zero3.resize(3)
-	zero3.fill(0)
-	var definition := MonsterDefinition.new("monster.resource-flow", 908, "Spell Drainer", 4, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], attacks)
-	definition.traitor = true
+	var definition := _hostile_monster_definition("monster.resource-flow", 908, "Spell Drainer", attacks)
 	definition.spell_points = 2
 	var battle := BattleDefinition.new("battle.resource-flow", 908, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, definition.id, false)])
 	var resource_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [definition], [battle])
@@ -1939,15 +1845,8 @@ func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
 	character.maximum_spell_points = 20
 	character.spell_points = 20
 	character.set_save_value_raw(6, 0)
-	var session := GameSession.new()
-	session.start(resource_content, 1)
-	session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	session._state.party_setup_completed = true
 	var monster := MonsterState.new("monster.resource-flow.instance", definition.id, definition.name, 10, 10, 4, 100, 0, 0, 2)
-	session._state.combat = CombatState.new(battle.id, [monster])
-	session._state.combat.set_turn_order([character.id, monster.id])
-	_set_adjacent_battlefield(session._state, resource_content, character.id, monster.id)
-	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
+	var session := _direct_combat_session(content, resource_content, [character], battle.id, [monster], [character.id, monster.id], [0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var resolved := session.submit_intent(PlayerIntent.combat_action(&"finish", character.id, ""))
 	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster resource drains commit without inventing a player interaction")
 	assert_equal([character.spell_points, monster.spell_points, monster.maximum_spell_points], [8, 14, 2], "the direct session owns both sides of Castle's uncapped spell-point transfer")
@@ -1965,22 +1864,14 @@ func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
 	assert_equal([restored._state.party.character_by_id(character.id).spell_points, restored._state.combat.monster_by_id(monster.id).spell_points, restored._state.combat.monster_by_id(monster.id).maximum_spell_points], [8, 14, 2], "restore retains both sides of an above-maximum spell transfer")
 
 	var experience_attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 9)]
-	var experience_definition := MonsterDefinition.new("monster.experience-flow", 909, "Experience Drainer", 4, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], experience_attacks)
-	experience_definition.traitor = true
+	var experience_definition := _hostile_monster_definition("monster.experience-flow", 909, "Experience Drainer", experience_attacks)
 	var experience_battle := BattleDefinition.new("battle.experience-flow", 909, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, experience_definition.id, false)])
 	var experience_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [experience_definition], [experience_battle])
 	var experience_character := CharacterState.new("character.experience-flow", "Experience Target", 20, 20)
 	experience_character.experience = 100
 	experience_character.set_save_value_raw(5, 0)
-	var experience_session := GameSession.new()
-	experience_session.start(experience_content, 1)
-	experience_session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [experience_character])
-	experience_session._state.party_setup_completed = true
 	var experience_monster := MonsterState.new("monster.experience-flow.instance", experience_definition.id, experience_definition.name, 10, 20, 4, 100)
-	experience_session._state.combat = CombatState.new(experience_battle.id, [experience_monster])
-	experience_session._state.combat.set_turn_order([experience_character.id, experience_monster.id])
-	_set_adjacent_battlefield(experience_session._state, experience_content, experience_character.id, experience_monster.id)
-	experience_session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
+	var experience_session := _direct_combat_session(content, experience_content, [experience_character], experience_battle.id, [experience_monster], [experience_character.id, experience_monster.id], [0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
 	var experience_resolved := experience_session.submit_intent(PlayerIntent.combat_action(&"finish", experience_character.id, ""))
 	assert_equal(experience_character.experience, -300, "the direct session subtracts Castle experience rather than altering a Remake-style level balance")
 	var experience_special_index := _event_index(experience_resolved.events, &"combat_monster_special_resolved")
@@ -1996,18 +1887,8 @@ func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
 
 
 func _test_monster_charm_and_affliction_flow(content: RealmzContent) -> void:
-	var zero8: Array[int] = []
-	zero8.resize(8)
-	zero8.fill(0)
-	var zero6: Array[int] = []
-	zero6.resize(6)
-	zero6.fill(0)
-	var zero3: Array[int] = []
-	zero3.resize(3)
-	zero3.fill(0)
 	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 10)]
-	var definition := MonsterDefinition.new("monster.charm-flow", 910, "Charmer", 4, 0, 100, 0, 0, zero8, zero8, zero6, zero3, [], [], attacks)
-	definition.traitor = true
+	var definition := _hostile_monster_definition("monster.charm-flow", 910, "Charmer", attacks)
 	var battle := BattleDefinition.new("battle.charm-flow", 910, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, definition.id, false)])
 	var charm_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [definition], [battle])
 	var loyal := CharacterState.new("character.charm-flow.loyal", "Loyal", 20, 20)
@@ -2073,6 +1954,32 @@ func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:
 		var action := ClassicActionDefinition.new(0, opcode, opcode, 0, false, [0, 0, 0, 0, 0])
 		var operation := api.execute_classic(action, "request.dispatch", ScenarioExecutionContext.calling(&"action"))
 		assert_true(operation != null and operation.error_code != &"unsupported_classic_opcode", "AOGM opcode %d dispatches to its declared runtime owner" % opcode)
+
+
+func _zero_monster_array(size: int) -> Array[int]:
+	var result: Array[int] = []
+	result.resize(size)
+	result.fill(0)
+	return result
+
+
+func _hostile_monster_definition(id: String, classic_id: int, name: String, attacks: Array[MonsterAttackDefinition]) -> MonsterDefinition:
+	var definition := MonsterDefinition.new(id, classic_id, name, 4, 0, 100, 0, 0, _zero_monster_array(8), _zero_monster_array(8), _zero_monster_array(6), _zero_monster_array(3), [], [], attacks)
+	definition.traitor = true
+	return definition
+
+
+func _direct_combat_session(content: RealmzContent, combat_content: RealmzContent, characters: Array[CharacterState], battle_id: String, monsters: Array[MonsterState], turn_order: Array[String], rng_values: Array[int]) -> GameSession:
+	var session := GameSession.new()
+	session.start(combat_content, 1)
+	session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, characters)
+	session._state.party_setup_completed = true
+	session._state.combat = CombatState.new(battle_id, monsters)
+	session._state.combat.set_turn_order(turn_order)
+	if not characters.is_empty() and not monsters.is_empty():
+		_set_adjacent_battlefield(session._state, combat_content, characters[0].id, monsters[0].id)
+	session._rng = ScriptedRng.new(rng_values)
+	return session
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
