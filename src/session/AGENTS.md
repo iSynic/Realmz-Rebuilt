@@ -11,6 +11,7 @@ Own the pure transaction coordinator that joins core Realmz state and rules to t
 - `SessionRestoreValidator` constructs and validates a detached typed restore candidate. `GameSession.restore` alone commits that candidate to the live aggregate, so every failed validation leaves the current session untouched.
 - `SessionInteractionFactory` is the single owner of session-level request reconstruction shared by live orchestration and restore validation.
 - Session workflow contexts and services for lifecycle, exploration, inventory/magic/services, combat/rewards, application hooks, and detached view projection.
+- Internal exploration, scenario, and response coordinators that own continuation sequencing while leaving transaction commit and rollback in `GameSession`.
 - The standalone character-creation session adapter.
 
 ## Local Contracts
@@ -18,6 +19,7 @@ Own the pure transaction coordinator that joins core Realmz state and rules to t
 - This layer may depend on `src/core` and `src/scenario`; neither lower layer may depend on `src/session`.
 - All classes are pure `RefCounted` or value-like data. They never retain Nodes, repositories, presenters, or the owning application.
 - Workflow services receive an explicit ephemeral `SessionWorkflowContext`; they never retain the owning `GameSession`.
+- Session continuation coordinators are lifetime-bound implementation delegates and may keep only a `WeakRef` to their owning `GameSession`. They own no independent state, never outlive the session, and may not commit, roll back, or expose a second public session boundary.
 - Exploration state mutations such as Camp, Rest, Search, clock advancement, fatigue, and secret discovery belong to `ExplorationTimeWorkflow`. `GameSession` only chooses the continuation and commits the returned events/error as one transaction.
 - `GameSession` alone owns rollback, request matching, revision changes, and exact-once commit.
 - Restore validation must never mutate the live session. Candidate state, rules, RNG, VM, continuations, and interaction are replacement objects until the final `GameSession` assignment block.

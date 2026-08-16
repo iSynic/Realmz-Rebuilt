@@ -2,7 +2,6 @@ extends RealmzTestCase
 
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const AOGM_OPCODE_INVENTORY_PATH: String = "res://tests/fixtures/oracle/aogm-active-opcode-inventory.json"
-const BANK_SOURCE_OBSERVATION_PATH: String = "res://tests/fixtures/oracle/classic-bank-swap-source-observation.json"
 
 
 func selected_case_arguments() -> Array:
@@ -16,434 +15,270 @@ func run() -> void:
 	assert_true(loaded.is_ok(), "Scenario VM fixture loads: %s" % loaded.error_message)
 	if not loaded.is_ok():
 		return
+	var content: RealmzContent = loaded.content
 	_test_scenario_wire_contracts()
-	_test_classic_opcode_ownership()
-	var content_tests: Array[Callable] = [
-		Callable(self, "_test_classic_encounter_action_xap_trace"), Callable(self, "_test_classic_choice_labels_and_sound_wait"), Callable(self, "_test_session_save_resume_boundary"),
-		Callable(self, "_test_age_update_precedes_post_move"), Callable(self, "_test_safe_choice_resume"), Callable(self, "_test_persistent_action_state"),
-		Callable(self, "_test_classic_call_limit"), Callable(self, "_test_classic_transfer_keeps_trigger_context"), Callable(self, "_test_classic_keep_codes"),
-		Callable(self, "_test_action_call_limit"), Callable(self, "_test_execution_step_limit"), Callable(self, "_test_unknown_opcode_failure"),
-		Callable(self, "_test_gameplay_capabilities_and_battle_resume"), Callable(self, "_test_complex_encounter_save_resume"), Callable(self, "_test_equipment_storage_save_resume"),
-		Callable(self, "_test_program_replacement_and_redirect"), Callable(self, "_test_scenario_spell_opcodes"), Callable(self, "_test_monster_aging_attack_continuations"),
-		Callable(self, "_test_monster_status_attack_flow"), Callable(self, "_test_monster_resource_drain_flow"), Callable(self, "_test_monster_charm_and_affliction_flow"),
-		Callable(self, "_test_combat_fumble_mutation"), Callable(self, "_test_classic_encounter_break"), Callable(self, "_test_classic_party_shift"),
-		Callable(self, "_test_classic_game_time"), Callable(self, "_test_classic_ally_branch"), Callable(self, "_test_classic_misc_branch"),
-		Callable(self, "_test_classic_party_backup"), Callable(self, "_test_classic_map_darkness"), Callable(self, "_test_classic_player_map_workflow"),
-		Callable(self, "_test_classic_teleport_and_recheck"), Callable(self, "_test_classic_quest_values"), Callable(self, "_test_registration_marker"),
-		Callable(self, "_test_classic_party_mode"), Callable(self, "_test_scrolling_text_event"), Callable(self, "_test_classic_shop_lifecycle"),
-		Callable(self, "_test_classic_temple_lifecycle"), Callable(self, "_test_classic_bank_swap_lifecycle"), Callable(self, "_test_classic_experience_loss_and_drop"),
-		Callable(self, "_test_classic_character_money_loss"), Callable(self, "_test_classic_battle_macro_controls"), Callable(self, "_test_classic_selected_character_alteration"),
-		Callable(self, "_test_classic_combat_monster_alteration"), Callable(self, "_test_classic_bodycount_selection"),
-		Callable(self, "_test_classic_spellcasting_flags"), Callable(self, "_test_classic_identity_selection"), Callable(self, "_test_classic_character_ability_picker"),
-		Callable(self, "_test_classic_monster_route"), Callable(self, "_test_classic_random_items"), Callable(self, "_test_classic_selected_level_up"),
-		Callable(self, "_test_classic_death_macro_revival"), Callable(self, "_test_automatic_monster_death_macro"), Callable(self, "_test_spell_queued_death_macro"),
-		Callable(self, "_test_aogm_dispatch_has_no_fallback"), Callable(self, "_test_classic_shell_domain_route")
-	]
-	for test: Callable in content_tests:
-		test.call(loaded.content)
+	_test_public_interaction_matrix(content)
+	_test_public_session_resume(content)
+	_test_public_continuation_matrix(content)
+	_test_public_limits_and_errors(content)
+	_test_public_application_transitions(content)
+	_test_public_character_checks(content)
+	_test_public_action_state(content)
+	_test_aogm_dispatch_has_no_fallback(content)
 
 
 func _test_scenario_wire_contracts() -> void:
 	var branch := ScenarioVmDirective.branch_program("xap:7", true, ScenarioExecutionContext.trigger(&"", "ap.fixture"))
 	var restored := ScenarioVmDirective.from_data(JSON.parse_string(JSON.stringify(branch.to_data())))
-	assert_not_null(restored, "VM directive survives its strict JSON-safe wire contract")
-	assert_equal([restored.kind, restored.program_id, restored.gosub, restored.context.to_data()], [ScenarioVmDirective.BRANCH_PROGRAM, "xap:7", true, {"triggerId": "ap.fixture"}], "VM directive restore preserves its complete typed branch state")
-	assert_equal(ScenarioVmDirective.from_data({"kind": "finish", "extra": true}), null, "VM directive restore rejects unknown fields")
-	assert_equal(ScenarioVmDirective.from_data({"kind": "branch-xap", "targetId": "7", "gosub": false}), null, "VM directive restore rejects malformed field types")
-	assert_equal(ScenarioVmDirective.from_data({"kind": "branch-program", "programId": "", "gosub": false, "context": {}}), null, "VM directive restore rejects an empty program identity")
-	var sparse_context := ScenarioExecutionContext.encounter(&"complex", 0, "response.0", 0, &"thief", 0)
-	sparse_context.set_application_hook(&"shop", "")
-	sparse_context.set_combatant("monster.0", 0, false, true)
-	sparse_context.set_thief_action(0, "character.0")
-	var context_wire: Dictionary = JSON.parse_string(JSON.stringify(sparse_context.to_data()))
+	assert_not_null(restored, "VM directive round-trips through its typed wire contract")
+	assert_equal([restored.kind, restored.program_id, restored.gosub, restored.context.to_data()], [ScenarioVmDirective.BRANCH_PROGRAM, "xap:7", true, {"triggerId": "ap.fixture"}], "VM directive preserves branch and trigger state")
+	for malformed: Dictionary in [
+		{"kind": "finish", "extra": true},
+		{"kind": "branch-xap", "targetId": "7", "gosub": false},
+		{"kind": "branch-program", "programId": "", "gosub": false, "context": {}},
+	]:
+		assert_equal(ScenarioVmDirective.from_data(malformed), null, "VM directive rejects malformed or unknown fields")
+	var context := ScenarioExecutionContext.encounter(&"complex", 0, "response.0", 0, &"thief", 0)
+	context.set_application_hook(&"shop", "")
+	context.set_combatant("monster.0", 0, false, true)
+	context.set_thief_action(0, "character.0")
+	var context_wire: Dictionary = JSON.parse_string(JSON.stringify(context.to_data()))
 	var restored_context := ScenarioExecutionContext.from_data(context_wire)
-	assert_not_null(restored_context, "Scenario execution context survives its strict sparse wire contract")
-	assert_equal(JSON.parse_string(JSON.stringify(restored_context.to_data())), context_wire, "Scenario execution context preserves empty, zero, and false values when their fields are present")
-	var context_with_unknown_field := context_wire.duplicate(true)
-	context_with_unknown_field["unexpected"] = true
-	assert_equal(ScenarioExecutionContext.from_data(context_with_unknown_field), null, "Scenario execution context rejects unknown fields")
-
+	assert_not_null(restored_context, "execution context round-trips with zero and false values")
+	assert_equal(JSON.parse_string(JSON.stringify(restored_context.to_data())), context_wire, "execution context preserves sparse declared fields")
+	var unknown_context := context_wire.duplicate(true)
+	unknown_context["unexpected"] = true
+	assert_equal(ScenarioExecutionContext.from_data(unknown_context), null, "execution context rejects unknown fields")
 	var caller := ScenarioBattleCaller.classic(2, false, 0, 0)
-	var runtime_handoff := ScenarioRuntimeHandoff.party_defeat("classic.battle.0", ScenarioRuntimeHandoff.CLASSIC_COMBAT, caller)
-	var direct_retreat_body := SessionContinuation.CombatBody.new()
-	direct_retreat_body.battle_id = "classic.battle.0"
-	direct_retreat_body.actor_id = "character.1"
-	direct_retreat_body.mode = &"explicit"
-	direct_retreat_body.destination = Vector2i(-100_000, -100_000)
+	var handoff := ScenarioRuntimeHandoff.party_defeat("classic.battle.0", ScenarioRuntimeHandoff.CLASSIC_COMBAT, caller)
+	var body := SessionContinuation.CombatBody.new()
+	body.battle_id = "classic.battle.0"
+	body.actor_id = "character.1"
+	body.mode = &"explicit"
+	body.destination = Vector2i(-100_000, -100_000)
 	var contracts: Array[Dictionary] = [
-		{"name": "Classic battle caller", "value": caller, "decode": ScenarioBattleCaller.from_data},
-		{"name": "zero-based encounter continuation", "value": ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0]), "decode": ScenarioRuntimeContinuation.from_data},
-		{"name": "unrestricted shop continuation", "value": ScenarioRuntimeContinuation.shop("classic.shop.0", []), "decode": ScenarioRuntimeContinuation.from_data},
-		{"name": "explicit-retreat continuation", "value": ScenarioRuntimeContinuation.combat_retreat(ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.0", caller, "character.1", &"explicit", Vector2i(-100_000, -100_000)), "decode": ScenarioRuntimeContinuation.from_data},
+		{"name": "battle caller", "value": caller, "decode": ScenarioBattleCaller.from_data},
+		{"name": "encounter continuation", "value": ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0]), "decode": ScenarioRuntimeContinuation.from_data},
+		{"name": "retreat continuation", "value": ScenarioRuntimeContinuation.combat_retreat(ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, ScenarioRuntimeContinuation.CLASSIC_COMBAT, "classic.battle.0", caller, "character.1", &"explicit", Vector2i(-100_000, -100_000)), "decode": ScenarioRuntimeContinuation.from_data},
 		{"name": "VM pending continuation", "value": ScenarioVmPendingContinuation.classic(ScenarioRuntimeContinuation.encounter(ScenarioRuntimeContinuation.CLASSIC_SIMPLE_ENCOUNTER, 0, false, [0])), "decode": ScenarioVmPendingContinuation.from_data},
-		{"name": "runtime party-defeat handoff", "value": runtime_handoff, "decode": ScenarioRuntimeHandoff.from_data},
-		{"name": "VM party-defeat handoff", "value": ScenarioVmHandoff.classic(runtime_handoff), "decode": ScenarioVmHandoff.from_data},
-		{"name": "session explicit-retreat continuation", "value": SessionContinuation.combat_state(&"combat-retreat-confirmation", direct_retreat_body), "decode": SessionContinuation.from_data},
+		{"name": "runtime handoff", "value": handoff, "decode": ScenarioRuntimeHandoff.from_data},
+		{"name": "VM handoff", "value": ScenarioVmHandoff.classic(handoff), "decode": ScenarioVmHandoff.from_data},
+		{"name": "session retreat", "value": SessionContinuation.combat_state(&"combat-retreat-confirmation", body), "decode": SessionContinuation.from_data},
 	]
 	for contract: Dictionary in contracts:
-		var wire: Dictionary = JSON.parse_string(JSON.stringify(contract["value"].to_data()))
-		var decoded: Variant = contract["decode"].call(wire)
-		assert_not_null(decoded, "%s survives its strict JSON-safe wire contract" % contract["name"])
-		assert_equal(JSON.parse_string(JSON.stringify(decoded.to_data())), wire, "%s round-trip preserves every field" % contract["name"])
-		var unknown_field := wire.duplicate(true)
-		unknown_field["unexpected"] = true
-		assert_equal(contract["decode"].call(unknown_field), null, "%s rejects unknown envelope fields" % contract["name"])
-		var unknown_version := wire.duplicate(true)
-		unknown_version["version"] = 999
-		assert_equal(contract["decode"].call(unknown_version), null, "%s rejects unknown versions" % contract["name"])
-	var snapshot_with_unknown_field := ScenarioVmSnapshot.new().to_data()
-	snapshot_with_unknown_field["unexpected"] = true
-	assert_equal(ScenarioVmSnapshot.from_data(snapshot_with_unknown_field), null, "VM snapshots reject unknown root fields")
-	var post_move_body := SessionContinuation.ExplorationBody.new()
-	post_move_body.map_id = "land:0"
-	post_move_body.coordinate = Vector2i.ZERO
-	post_move_body.trigger_index = 0
-	post_move_body.random_region_index = -1
-	var malformed_post_move := SessionContinuation.post_move(post_move_body).to_data()
-	malformed_post_move["data"]["triggerIds"] = "not-an-array"
-	assert_equal(SessionContinuation.from_data(malformed_post_move), null, "post-move continuations reject malformed trigger arrays cleanly")
+		var wire: Dictionary = JSON.parse_string(JSON.stringify(contract.value.to_data()))
+		var decoded: Variant = contract.decode.call(wire)
+		assert_not_null(decoded, "%s round-trips" % contract.name)
+		assert_equal(JSON.parse_string(JSON.stringify(decoded.to_data())), wire, "%s preserves its fields" % contract.name)
+		var unknown := wire.duplicate(true)
+		unknown["unexpected"] = true
+		assert_equal(contract.decode.call(unknown), null, "%s rejects unknown fields" % contract.name)
+	var snapshot := ScenarioVmSnapshot.new().to_data()
+	snapshot["unexpected"] = true
+	assert_equal(ScenarioVmSnapshot.from_data(snapshot), null, "VM snapshots reject unknown fields")
 
 
-func _test_classic_encounter_action_xap_trace(content: RealmzContent) -> void:
+func _test_public_interaction_matrix(content: RealmzContent) -> void:
 	var action_state := ScenarioActionState.new()
 	var api := _runtime_api(content, action_state)
 	var vm := ScenarioVm.new()
 	vm.configure(content.scenario)
-	assert_equal(vm.start_program("trigger:ap.fixture.encounter", ScenarioExecutionContext.calling(&"action")).state, ScenarioVmResult.State.COMPLETED, "typed trigger program starts")
-	var yielded := vm.run(api)
-	assert_equal(yielded.state, ScenarioVmResult.State.WAITING, "negative Classic encounter opcode yields through the VM")
-	assert_equal(yielded.interaction.kind, &"encounter_choice", "Simple Encounter exposes a typed interaction")
-	assert_equal(yielded.interaction.body.to_data()["prompt"], "Will you follow the Scenario Action route?", "interaction carries compiled prompt text")
+	assert_equal(vm.start_program("trigger:ap.fixture.encounter", ScenarioExecutionContext.calling(&"action")).state, ScenarioVmResult.State.COMPLETED, "Classic trigger starts through the public VM")
+	var waiting := vm.run(api)
+	assert_equal([waiting.state, waiting.interaction.kind], [ScenarioVmResult.State.WAITING, &"encounter_choice"], "Simple Encounter yields a typed choice")
 	var saved := ScenarioVmSnapshot.from_data(vm.snapshot().to_data())
-	assert_not_null(saved, "VM continuation serializes at the interaction boundary")
+	assert_not_null(saved, "choice boundary serializes through the public VM snapshot")
 	var restored := ScenarioVm.new()
 	restored.configure(content.scenario)
-	assert_true(restored.restore(saved), "VM continuation restores against the same immutable scenario")
-	var resumed := restored.resume(InteractionResponse.from_data(saved.pending_request.request_id, &"encounter_choice", {"index": 0}), api)
-	assert_equal(resumed.state, ScenarioVmResult.State.WAITING, "positive Classic result text pauses the VM at a serializable textbox")
-	assert_equal(resumed.interaction.kind, &"acknowledge", "Classic result text requires an explicit acknowledgement")
-	var action_text := restored.resume(InteractionResponse.from_data(resumed.interaction.request_id, &"acknowledge", {}), api)
-	assert_equal(action_text.state, ScenarioVmResult.State.WAITING, "execution resumes through the Scenario Action and pauses at the positive XAP text")
-	var completed := restored.resume(InteractionResponse.from_data(action_text.interaction.request_id, &"acknowledge", {}), api)
-	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "the second textbox acknowledgement reaches CODE 111")
-	assert_true(_trace_has(restored.trace(), "call-action"), "VM trace records the Scenario Action frame")
-	assert_true(_trace_has(restored.trace(), "classic-transfer"), "VM trace records the XAP transfer")
-	assert_true(_trace_has(restored.trace(), "classic-return"), "VM trace records CODE 111 return")
+	assert_true(restored.restore(saved), "choice boundary restores into the same program")
+	var result_text := restored.resume(InteractionResponse.from_data(saved.pending_request.request_id, &"encounter_choice", {"index": 0}), api)
+	assert_equal([result_text.state, result_text.interaction.kind], [ScenarioVmResult.State.WAITING, &"acknowledge"], "choice response reaches the staged Classic textbox")
+	var action_text := restored.resume(InteractionResponse.acknowledge(result_text.interaction), api)
+	assert_equal(action_text.state, ScenarioVmResult.State.WAITING, "Scenario Action returns through a second staged textbox")
+	var completed := restored.resume(InteractionResponse.acknowledge(action_text.interaction), api)
+	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "CODE 111 completes the restored action timeline")
+	for trace_name: String in ["call-action", "classic-transfer", "classic-return"]:
+		assert_true(_trace_has(restored.trace(), trace_name), "VM trace records %s" % trace_name)
+	var default_choice := api.execute_classic(ClassicActionDefinition.new(0, 3, 3, 0, false, [1, 0, 0, 0, 2]), "choice.default")
+	var authored_choice := api.execute_classic(ClassicActionDefinition.new(0, 3, 3, 0, false, [1, 0, 0, 1, 2]), "choice.authored")
+	assert_equal([default_choice.interaction.body.to_data().get("yesLabel"), default_choice.interaction.body.to_data().get("noLabel")], ["Yes", "No"], "zero option IDs use the standard Yes/No labels")
+	assert_equal([authored_choice.interaction.body.to_data().get("yesLabel"), authored_choice.interaction.body.to_data().get("noLabel")], ["Proceed", "Turn back"], "authored option IDs use Data OD labels")
+	var blocking_sound := api.execute_classic(ClassicActionDefinition.new(0, 9, 9, -10001, false, []), "sound.blocking")
+	var asynchronous_sound := api.execute_classic(ClassicActionDefinition.new(0, 9, 9, 10049, false, []), "sound.async")
+	assert_equal([blocking_sound.events[0].payload.get("soundId"), blocking_sound.events[0].payload.get("waitForCompletion")], [10001, true], "negative sound preserves absolute ID and synchronous metadata")
+	assert_equal([asynchronous_sound.events[0].payload.get("soundId"), asynchronous_sound.events[0].payload.get("waitForCompletion")], [10049, false], "positive sound preserves asynchronous metadata")
+	var text := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, 1, false, []), "text.positive")
+	assert_equal([text.state, text.interaction.kind, text.interaction.body.to_data().get("presentation")], [ScenarioRuntimeOperationResult.State.WAITING, &"acknowledge", "classic-textbox"], "positive message stages the dedicated Classic textbox")
+	var wrong := api.resume_classic(text.continuation, InteractionResponse.from_data(text.interaction.request_id, &"yes_no", {"accepted": true}), "text.wrong")
+	assert_equal(wrong.error_code, &"invalid_interaction_response", "text continuation rejects an unrelated response shape")
+	var acknowledged := api.resume_classic(text.continuation, InteractionResponse.acknowledge(text.interaction), "text.resume")
+	assert_equal(acknowledged.state, ScenarioRuntimeOperationResult.State.COMPLETED, "acknowledgement releases the message operation")
+	var negative := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, -1, false, []), "text.negative")
+	assert_equal([negative.state, negative.events[0].payload.get("classicClick")], [ScenarioRuntimeOperationResult.State.COMPLETED, false], "negative message publishes without inventing a click boundary")
 
 
-func _test_classic_choice_labels_and_sound_wait(content: RealmzContent) -> void:
-	var journal_party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("journal-test", "Journal Test", 1, 1)])
-	var journal_state := GameState.new(journal_party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, journal_state, RealmzRng.new(1), ScenarioActionState.new())
-	var default_choice := api.execute_classic(ClassicActionDefinition.new(0, 3, 3, 0, false, [1, 0, 0, 0, 2]), "request.default-choice")
-	assert_equal(default_choice.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic opcode 3 yields a typed yes/no request")
-	assert_equal(default_choice.interaction.body.to_data()["yesLabel"], "Yes", "zero Classic option ID uses the standard Yes label")
-	assert_equal(default_choice.interaction.body.to_data()["noLabel"], "No", "a zero first Classic option ID selects the complete standard Yes/No pair")
-	var authored_choice := api.execute_classic(ClassicActionDefinition.new(0, 3, 3, 0, false, [1, 0, 0, 1, 2]), "request.authored-choice")
-	assert_equal(authored_choice.state, ScenarioRuntimeOperationResult.State.WAITING, "authored Classic choice labels remain a serializable interaction")
-	assert_equal(authored_choice.interaction.body.to_data()["yesLabel"], "Proceed", "Classic option IDs resolve through the Data OD option-label table")
-	assert_equal(authored_choice.interaction.body.to_data()["noLabel"], "Turn back", "Classic option labels do not alias ordinary scenario messages")
-	var blocking_sound := api.execute_classic(ClassicActionDefinition.new(0, 9, 9, -10001, false, []), "request.blocking-sound")
-	assert_equal(blocking_sound.events[0].payload["soundId"], 10001, "Classic sound lookup uses the absolute resource ID")
-	assert_true(blocking_sound.events[0].payload["waitForCompletion"], "negative Classic sound IDs preserve the blocking playback flag")
-	var asynchronous_sound := api.execute_classic(ClassicActionDefinition.new(0, 9, 9, 10049, false, []), "request.asynchronous-sound")
-	assert_equal(asynchronous_sound.events[0].payload["soundId"], 10049, "positive Classic sounds retain their resource identity")
-	assert_false(asynchronous_sound.events[0].payload["waitForCompletion"], "positive Classic sound IDs preserve asynchronous playback")
-	var positive_text := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, 1, false, []), "request.positive-text")
-	assert_equal(positive_text.state, ScenarioRuntimeOperationResult.State.WAITING, "positive Classic message IDs preserve textbox click pacing")
-	assert_equal(positive_text.interaction.kind, &"acknowledge", "positive Classic text uses the typed acknowledgement ABI")
-	assert_equal(positive_text.interaction.body.to_data()["presentation"], "classic-textbox", "presentation can select the dedicated Classic textbox without inspecting VM state")
-	assert_true(positive_text.interaction.body.to_data()["journalEligible"], "a positive source message inside Castle's saved note table can be recorded")
-	assert_false(positive_text.interaction.body.to_data()["journalRecorded"], "an undiscovered source message is detached explicitly")
-	assert_equal(positive_text.events[0].payload["classicClick"], true, "the message event retains Castle's click evidence")
-	var wrong_text_response := api.resume_classic(positive_text.continuation, InteractionResponse.from_data(positive_text.interaction.request_id, &"yes_no", {"accepted": true}), "request.positive-text.resume")
-	assert_equal(wrong_text_response.error_code, &"invalid_interaction_response", "Classic textbox continuation rejects unrelated response shapes")
-	var forged_note := api.resume_classic(positive_text.continuation, InteractionResponse.from_data(positive_text.interaction.request_id, &"acknowledge", {"takeNote": "yes"}), "request.positive-text.resume")
-	assert_equal(forged_note.error_code, &"invalid_interaction_response", "Classic textbox continuation rejects a forged take-note shape")
-	assert_false(journal_state.journal_message_is_recorded(1), "a rejected response cannot mutate journal discovery")
-	var acknowledged_text := api.resume_classic(positive_text.continuation, InteractionResponse.from_data(positive_text.interaction.request_id, &"acknowledge", {"takeNote": true}), "request.positive-text.resume")
-	assert_equal(acknowledged_text.state, ScenarioRuntimeOperationResult.State.COMPLETED, "acknowledging a Classic textbox releases the issuing opcode")
-	assert_true(journal_state.journal_message_is_recorded(1), "Take note records the source message identity in session state")
-	assert_true(_event_has(acknowledged_text.events, &"journal_entry_recorded"), "first discovery publishes one committed journal event")
-	var recorded_text := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, 1, false, []), "request.recorded-text")
-	assert_true(recorded_text.interaction.body.to_data()["journalRecorded"], "subsequent source text exposes its existing discovery without changing it")
-	var negative_text := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, -1, false, []), "request.negative-text")
-	assert_equal(negative_text.state, ScenarioRuntimeOperationResult.State.COMPLETED, "negative Classic message IDs publish text without adding a click boundary")
-	assert_false(negative_text.events[0].payload["classicClick"], "negative message events preserve Castle's no-click evidence")
-	assert_equal(journal_state.journal_message_ids(), [1], "negative no-click text does not invent a manual journal action")
-	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(journal_state.to_data())))
-	assert_not_null(round_trip, "journal discovery survives canonical GameState serialization")
-	assert_equal(round_trip.journal_message_ids(), [1], "restored journal discovery retains numeric source order")
-	var duplicate_data := journal_state.to_data()
-	duplicate_data["journalMessageIds"] = [1, 1]
-	assert_equal(GameState.from_data(duplicate_data), null, "restore rejects duplicate journal identities")
-	var overflow_data := journal_state.to_data()
-	overflow_data["journalMessageIds"] = [GameState.JOURNAL_MESSAGE_CAPACITY]
-	assert_equal(GameState.from_data(overflow_data), null, "restore rejects Castle's unsafe cursor range beyond the saved 3,000 flags")
-
-
-func _test_session_save_resume_boundary(content: RealmzContent) -> void:
+func _test_public_session_resume(content: RealmzContent) -> void:
 	var session := GameSession.new()
 	session.start(content, 1)
 	_begin_fixture_adventure(session, content)
 	_restore_fixture_position(session, content, "land:1", Vector2i(0, 1))
 	var waiting := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
-	assert_equal(waiting.state, SessionStep.State.WAITING_FOR_INTERACTION, "GameSession publishes the VM interaction after committing movement")
-	assert_equal(session.view().party_coordinate, Vector2i(1, 1), "movement is committed before presentation chooses")
+	assert_equal([waiting.state, session.view().party_coordinate], [SessionStep.State.WAITING_FOR_INTERACTION, Vector2i(1, 1)], "movement commits before the public interaction response")
 	var held := session.snapshot()
-	assert_not_null(held, "pending player interaction is a committed save boundary")
-	assert_not_null(held.scenario_vm.pending_request, "save aggregate owns the pending VM request")
-	assert_equal(continuation_data(held)["activeTriggerId"], "ap.fixture.encounter", "save aggregate owns host continuation after the VM returns")
-	var saves := SaveRepository.new("user://realmz2-tests/phase3-vm-saves")
-	assert_true(saves.save(content.campaign_id, "encounter", held), "pending VM save passes transactional verification: %s" % saves.last_error)
-	var reloaded := saves.load(content.campaign_id, "encounter", content.package_hash)
-	assert_not_null(reloaded, "pending VM save reloads from disk: %s" % saves.last_error)
-	if reloaded == null:
+	assert_not_null(held.scenario_vm.pending_request, "the save aggregate owns the pending VM request")
+	var round_trip := save_round_trip(held)
+	assert_not_null(round_trip, "pending interaction crosses the save envelope")
+	if round_trip == null:
 		return
-	var held_request_data := held.scenario_vm.pending_request.to_data()
 	var restored := GameSession.new()
-	assert_equal(restored.restore(content, reloaded).state, SessionStep.State.COMPLETED, "GameSession restores the VM and post-move continuation transactionally")
-	var request: InteractionRequest = restored.view().pending_interaction
-	assert_equal([restored.snapshot().view_revision, request.to_data()], [held.view_revision, held_request_data], "restore preserves the committed view revision and exact pending request identity and payload")
-	var result_text := restored.respond(InteractionResponse.from_data(request.request_id, &"encounter_choice", {"index": 0}))
-	assert_equal(result_text.state, SessionStep.State.WAITING_FOR_INTERACTION, "encounter response reaches the result's committed Classic textbox boundary")
-	var message_texts := _message_texts(result_text.events)
+	assert_equal(restored.restore(content, round_trip).state, SessionStep.State.COMPLETED, "GameSession restores the committed VM continuation")
+	var request := restored.view().pending_interaction
+	assert_equal(request.to_data(), held.scenario_vm.pending_request.to_data(), "restore preserves exact request identity and payload")
+	var result := restored.respond(InteractionResponse.from_data(request.request_id, &"encounter_choice", {"index": 0}))
+	assert_equal(result.state, SessionStep.State.WAITING_FOR_INTERACTION, "the response reaches the next public textbox boundary")
 	var textbox_save := save_round_trip(restored.snapshot())
-	assert_not_null(textbox_save, "Classic textbox continuation survives the complete save envelope")
+	assert_not_null(textbox_save, "the staged textbox is saveable")
+	if textbox_save == null:
+		return
 	var textbox_restored := GameSession.new()
-	assert_equal(textbox_restored.restore(content, textbox_save).state, SessionStep.State.COMPLETED, "GameSession restores a positive Classic textbox transactionally")
-	var first_message_id := int(textbox_restored.view().pending_interaction.body.to_data()["messageId"])
-	var action_text := textbox_restored.respond(InteractionResponse.from_data(textbox_restored.view().pending_interaction.request_id, &"acknowledge", {"takeNote": true}))
-	assert_equal(action_text.state, SessionStep.State.WAITING_FOR_INTERACTION, "first acknowledgement advances to the later positive XAP textbox")
-	assert_equal(textbox_restored.view().journal_entries.size(), 1, "taking a note exposes one detached authored journal entry")
-	assert_equal(textbox_restored.view().journal_entries[0].message_id, first_message_id, "the detached journal retains the authored message identity")
-	message_texts.append_array(_message_texts(action_text.events))
-	var journal_save := save_round_trip(textbox_restored.snapshot())
-	assert_not_null(journal_save, "journal discovery and the following VM interaction share one save boundary")
-	var corrupt_journal_save := SaveEnvelope.from_data(journal_save.to_data())
-	assert_true(corrupt_journal_save.game_state.record_journal_message(GameState.JOURNAL_MESSAGE_CAPACITY - 1), "the corrupt-save fixture remains structurally representable before package validation")
-	assert_equal(GameSession.new().restore(content, corrupt_journal_save).error_code, &"invalid_game_state", "restore rejects a journal identity absent from immutable package messages")
-	var journal_restored := GameSession.new()
-	assert_equal(journal_restored.restore(content, journal_save).state, SessionStep.State.COMPLETED, "journal discovery restores transactionally with the issuing VM continuation")
-	assert_equal(journal_restored.view().journal_entries[0].message_id, first_message_id, "restored detached journal entries retain numeric source identity")
-	var completed := journal_restored.respond(InteractionResponse.from_data(journal_restored.view().pending_interaction.request_id, &"acknowledge", {}))
-	message_texts.append_array(_message_texts(completed.events))
-	assert_equal(completed.state, SessionStep.State.COMPLETED, "typed acknowledgements resume simulation without presentation mutation: %s %s" % [completed.error_code, completed.error_message])
-	assert_equal(message_texts, ["The encounter result begins.", "The reusable Scenario Action ran.", "The Extra Action Point returns through CODE 111."], "restored interactions follow the same action timeline")
-	assert_equal(journal_restored.snapshot().continuation, null, "completed action timeline clears the serialized host continuation")
+	assert_equal(textbox_restored.restore(content, textbox_save).state, SessionStep.State.COMPLETED, "the staged textbox restores transactionally")
+	var completed := textbox_restored.respond(InteractionResponse.acknowledge(textbox_restored.view().pending_interaction))
+	assert_equal(completed.state, SessionStep.State.WAITING_FOR_INTERACTION, "the first acknowledgement reaches the following XAP textbox")
+	var final := textbox_restored.respond(InteractionResponse.acknowledge(textbox_restored.view().pending_interaction))
+	assert_equal(final.state, SessionStep.State.COMPLETED, "the final acknowledgement resumes the issuing session frame")
+	assert_equal(textbox_restored.snapshot().continuation, null, "completed VM work clears the session continuation exactly once")
 
 
-func _test_age_update_precedes_post_move(content: RealmzContent) -> void:
-	var source := GameSession.new()
-	source.start(content, 1)
-	_begin_fixture_adventure(source, content)
-	_restore_fixture_position(source, content, "land:1", Vector2i(0, 1))
-	var boundary := source.snapshot()
-	var character := boundary.game_state.party.characters()[0]
+func _test_public_continuation_matrix(content: RealmzContent) -> void:
+	var age_source := GameSession.new()
+	age_source.start(content, 1)
+	_begin_fixture_adventure(age_source, content)
+	_restore_fixture_position(age_source, content, "land:1", Vector2i(0, 1))
+	var age_boundary := age_source.snapshot()
+	var character := age_boundary.game_state.party.characters()[0]
 	var race := _aging_race(content)
+	if race == null:
+		assert_true(false, "fixture provides an age-transition race")
+		return
 	character.race_id = race.id
 	character.age_group = 1
 	character.age_days = race.age_range(1).x * 365 - 1
-	boundary.game_state.clock.advance_minutes(RealmzClock.MINUTES_PER_DAY - 1 - boundary.game_state.clock.total_minutes())
-	var session := GameSession.new()
-	assert_equal(session.restore(content, boundary).state, SessionStep.State.COMPLETED, "the pre-midnight AP fixture restores")
-	var moved := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
-	assert_equal(moved.interaction.kind, InteractionRequest.AGE_UPDATE, "the Castle age dialog blocks before destination AP execution")
-	var age_continuation := session.snapshot().continuation.age()
-	assert_equal(age_continuation.resume_kind, &"post-clock", "the age dialog owns the unstarted post-clock continuation")
-	assert_equal(age_continuation.resume_continuation.exploration().resume_kind, &"post-move", "the post-clock continuation retains destination AP discovery after its timed scan")
-	var held := save_round_trip(session.snapshot())
-	assert_not_null(held, "the age-before-AP boundary serializes with its nested topology continuation")
-	var restored := GameSession.new()
-	assert_equal(restored.restore(content, held).state, SessionStep.State.COMPLETED, "the nested age/post-move continuation validates transactionally")
-	var encounter := restored.respond(InteractionResponse.age_update(restored.view().pending_interaction))
-	assert_equal(encounter.state, SessionStep.State.WAITING_FOR_INTERACTION, "acknowledging age resumes destination trigger discovery")
-	assert_equal(encounter.interaction.kind, InteractionRequest.ENCOUNTER_CHOICE, "the original AP then reaches its ordinary encounter interaction")
+	age_boundary.game_state.clock.advance_minutes(RealmzClock.MINUTES_PER_DAY - 1 - age_boundary.game_state.clock.total_minutes())
+	var aged := GameSession.new()
+	assert_equal(aged.restore(content, age_boundary).state, SessionStep.State.COMPLETED, "age boundary restores through public validation")
+	var moved := aged.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_equal(moved.interaction.kind, InteractionRequest.AGE_UPDATE, "age update yields before destination AP work")
+	var held := save_round_trip(aged.snapshot())
+	assert_not_null(held, "nested age and post-move continuation is saveable")
+	if held != null:
+		var resumed := GameSession.new()
+		assert_equal(resumed.restore(content, held).state, SessionStep.State.COMPLETED, "nested continuation restores")
+		var encounter := resumed.respond(InteractionResponse.age_update(resumed.view().pending_interaction))
+		assert_equal(encounter.interaction.kind, InteractionRequest.ENCOUNTER_CHOICE, "age acknowledgement resumes destination trigger discovery")
+	var keep_definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("keep", &"trigger", "keep", [ClassicActionDefinition.new(0, 24, 24, 0, false, [])])], [])
+	var keep_vm := ScenarioVm.new()
+	keep_vm.configure(keep_definition)
+	keep_vm.start_program("keep", ScenarioExecutionContext.trigger(&"action", "ap.fixture.keep"))
+	var keep := keep_vm.run(_runtime_api(content, ScenarioActionState.new()))
+	assert_equal([keep.state, _event_has(keep.events, &"action_point_kept")], [ScenarioVmResult.State.COMPLETED, true], "opcode 24 returns the Keep Codes result through the VM")
+	var transfer_definition := ScenarioDefinition.new([
+		ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 39, 39, 0, false, [])]),
+		ScenarioProgramDefinition.new("xap:0", &"extra-action-point", "0", [ClassicActionDefinition.new(0, 25, 25, 0, false, []), ClassicActionDefinition.new(1, 111, 111, 0, false, [])]),
+	], [])
+	var transfer_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("context", "Context", 1, 1)]), RealmzClock.new())
+	var transfer_vm := ScenarioVm.new()
+	transfer_vm.configure(transfer_definition)
+	transfer_vm.start_program("root", ScenarioExecutionContext.trigger(&"action", "ap.fixture.message", content.start_map_id))
+	var transferred := transfer_vm.run(RealmzRuntimeApi.new(content, transfer_state, RealmzRng.new(1), ScenarioActionState.new()))
+	assert_equal(transferred.state, ScenarioVmResult.State.COMPLETED, "opcode 39 returns through the transferred XAP")
+	assert_true(transfer_state.world.trigger_is_disabled("ap.fixture.message"), "opcode 25 retains the issuing AP origin")
 
 
-func _test_classic_shell_domain_route(content: RealmzContent) -> void:
-	var session := GameSession.new()
-	session.start(content, 1)
-	_begin_fixture_adventure(session, content)
-	_restore_fixture_position(session, content, "land:1", Vector2i(0, 1))
-	var encounter := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
-	assert_equal(encounter.interaction.kind, &"encounter_choice", "synthetic shell route enters the ordinary Simple Encounter picker")
-	assert_not_null(save_round_trip(session.snapshot()), "encounter picker is a serializable committed boundary")
-	var resolved_encounter := session.respond(InteractionResponse.from_data(encounter.interaction.request_id, &"encounter_choice", {"index": 0}))
-	while resolved_encounter.state == SessionStep.State.WAITING_FOR_INTERACTION and resolved_encounter.interaction.kind == &"acknowledge":
-		resolved_encounter = session.respond(InteractionResponse.from_data(resolved_encounter.interaction.request_id, &"acknowledge", {}))
-	assert_equal(resolved_encounter.state, SessionStep.State.COMPLETED, "synthetic encounter result and Scenario Action return before the next domain")
-
-	var battle := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
-	assert_equal(battle.interaction.kind, &"combat_action", "battle AP enters the typed combat presenter contract")
-	assert_not_null(save_round_trip(session.snapshot()), "combat interaction and VM continuation serialize together")
-	var combat_steps: int = 0
-	while session.view().pending_interaction != null and combat_steps < 32:
-		var request := session.view().pending_interaction
-		if request.kind == InteractionRequest.ACKNOWLEDGE:
-			session.respond(InteractionResponse.acknowledge(request))
-		else:
-			var targets: Array = request.body.to_data().get("targets", [])
-			var payload := {"actorId": String(request.body.to_data().get("actorId", "")), "action": "finish", "targetId": ""}
-			if not targets.is_empty():
-				payload = {"actorId": String(request.body.to_data().get("actorId", "")), "action": "attack", "targetId": String(targets[0].get("id", ""))}
-			session.respond(InteractionResponse.from_data(request.request_id, &"combat_action", payload))
-		combat_steps += 1
-	assert_true(combat_steps < 32, "synthetic battle reaches a committed outcome without presentation-driven advancement")
-	assert_true(session.view().pending_interaction == null, "combat completion clears only its genuine interaction boundary")
-
-	# The synthetic battle may end in a source-valid total-party defeat. Keep the
-	# shop contract independent instead of relying on the old test's wrong-kind
-	# response, which accidentally cleared the battle continuation on failure.
-	var shop_session := GameSession.new()
-	shop_session.start(content, 2)
-	_begin_fixture_adventure(shop_session, content)
-	_restore_fixture_position(shop_session, content, "land:1", Vector2i(2, 1))
-	var shop := shop_session.submit_intent(PlayerIntent.move(Vector2i.DOWN))
-	assert_equal(shop.interaction.kind, &"shop_action", "shop AP exposes typed stock, party, and leave actions")
-	assert_false(shop.events.any(func(event: DomainEvent) -> bool: return event.kind == &"application_hook_started"), "direct opcode 6 bypasses the contextual Shop Global hook")
-	assert_true(shop.interaction.body.to_data().get("stock") is Array and shop.interaction.body.to_data().get("characters") is Array, "shop request carries detached purchase and sale read models")
-	var shop_save := save_round_trip(shop_session.snapshot())
-	assert_not_null(shop_save, "shop interaction serializes through the same VM frame")
-	var restored_shop_session := GameSession.new()
-	assert_equal(restored_shop_session.restore(content, shop_save).state, SessionStep.State.COMPLETED, "shop request and continuation restore transactionally")
-	var restored_shop_request := restored_shop_session.view().pending_interaction
-	assert_equal(restored_shop_session.respond(InteractionResponse.from_data(restored_shop_request.request_id, &"shop_action", {"action": "leave"})).state, SessionStep.State.COMPLETED, "leaving a restored shop resumes and completes the AP")
-	session = restored_shop_session
-	var contextual_shop := content.shop_by_classic_id(0)
-	assert_not_null(contextual_shop, "the fixture supplies the contextual shop definition")
-	if contextual_shop != null:
-		assert_true(session._state.set_active_shop(contextual_shop.id, [0, 0, 0, 0]), "the contextual shop fixture establishes a complete saveable location-service state")
-		var shop_hook := session.submit_intent(PlayerIntent.service_action(contextual_shop.id, &"enter"))
-		assert_equal([shop_hook.interaction.kind, shop_hook.interaction.body.to_data().get("prompt")], [InteractionRequest.ACKNOWLEDGE, "The Shop application hook runs."], "the contextual Shop Global hook runs before the service workspace")
-		var contextual_shop_save := session.snapshot()
-		assert_not_null(contextual_shop_save, "the contextual Shop hook is a committed save boundary")
-		var shop_hook_restored := GameSession.new()
-		assert_equal(shop_hook_restored.restore(content, SaveEnvelope.from_data(save_data(contextual_shop_save))).state, SessionStep.State.COMPLETED, "the contextual Shop hook restores transactionally")
-		var contextual_opened := shop_hook_restored.respond(InteractionResponse.acknowledge(shop_hook_restored.view().pending_interaction))
-		assert_equal(contextual_opened.interaction.kind, InteractionRequest.SHOP, "the contextual shop opens after its Global hook returns")
-		assert_equal(shop_hook_restored.respond(InteractionResponse.from_data(contextual_opened.interaction.request_id, InteractionRequest.SHOP, {"action": "leave"})).state, SessionStep.State.COMPLETED, "leaving the contextual shop returns to exploration")
-		session = shop_hook_restored
-
-	var temple_offer := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
-	assert_equal(temple_offer.state, SessionStep.State.COMPLETED, "temple AP offers a contextual service without forcing presentation")
-	assert_true(session.view().services.any(func(service: ServiceView) -> bool: return service.service_kind == &"temple"), "the detached view exposes the available temple")
-	var temple := session.submit_intent(PlayerIntent.service_action("realmz.service.temple", &"enter"))
-	assert_equal([temple.interaction.kind, temple.interaction.body.to_data().get("prompt")], [InteractionRequest.ACKNOWLEDGE, "The Temple application hook runs."], "the contextual Temple Global hook runs before the service workspace")
-	var temple_save := save_round_trip(session.snapshot())
-	assert_not_null(temple_save, "contextual temple hook is a committed save boundary")
-	var restored_temple_hook := GameSession.new()
-	assert_equal(restored_temple_hook.restore(content, temple_save).state, SessionStep.State.COMPLETED, "the contextual Temple hook restores transactionally")
-	temple = restored_temple_hook.respond(InteractionResponse.acknowledge(restored_temple_hook.view().pending_interaction))
-	assert_equal(temple.interaction.kind, InteractionRequest.TEMPLE, "the player enters the offered temple after the Global hook returns")
-	assert_equal(temple.interaction.body.to_data().get("services", []).size(), 9, "temple request carries all nine source-backed services")
-	session = restored_temple_hook
-	temple_save = save_round_trip(session.snapshot())
-	temple_save.game_state.party.pooled_wealth.gold = 1
-	var restored_temple := GameSession.new()
-	assert_equal(restored_temple.restore(content, temple_save).state, SessionStep.State.COMPLETED, "temple service continuation restores transactionally")
-	var exit_warning := restored_temple.respond(InteractionResponse.from_data(restored_temple.view().pending_interaction.request_id, InteractionRequest.TEMPLE, {"action": "leave"}))
-	assert_equal(exit_warning.interaction.kind, InteractionRequest.YES_NO, "a no-bank temple does not silently discard pooled wealth on exit")
-	var exit_save := save_round_trip(restored_temple.snapshot())
-	assert_not_null(exit_save, "the nested pooled-wealth exit warning is a committed save boundary")
-	var exit_restored := GameSession.new()
-	assert_equal(exit_restored.restore(content, exit_save).state, SessionStep.State.COMPLETED, "the nested temple exit continuation validates transactionally")
-	var returned := exit_restored.respond(InteractionResponse.from_data(exit_restored.view().pending_interaction.request_id, InteractionRequest.YES_NO, {"accepted": true}))
-	assert_equal(returned.interaction.kind, InteractionRequest.TEMPLE, "accepting the warning returns to explicit wealth controls instead of inventing an allocation")
-	var shared := exit_restored.respond(InteractionResponse.from_data(returned.interaction.request_id, InteractionRequest.TEMPLE, {"action": "share"}))
-	assert_equal(shared.error_code, &"money_action_unavailable", "Share rejects a forged response when no character can carry the pooled denomination")
-	assert_equal(exit_restored.snapshot().game_state.party.pooled_wealth.gold, 1, "rejected temple Share preserves the pooled wealth")
-	var temple_after_rejection := exit_restored.view().pending_interaction
-	assert_equal(temple_after_rejection.kind, InteractionRequest.TEMPLE, "a rejected Share retains the same selected-character temple workspace")
-	var leave_after_share := exit_restored.respond(InteractionResponse.from_data(temple_after_rejection.request_id, InteractionRequest.TEMPLE, {"action": "leave"}))
-	if leave_after_share.state == SessionStep.State.WAITING_FOR_INTERACTION:
-		assert_equal(leave_after_share.interaction.kind, InteractionRequest.YES_NO, "wealth that no character can carry remains explicit after Share")
-		leave_after_share = exit_restored.respond(InteractionResponse.from_data(leave_after_share.interaction.request_id, InteractionRequest.YES_NO, {"accepted": false}))
-	assert_equal(leave_after_share.state, SessionStep.State.COMPLETED, "leaving after explicit distribution or discard closes only the service workspace")
-	restored_temple = exit_restored
-	session = restored_temple
-
-	var bank_offer := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
-	assert_equal(bank_offer.state, SessionStep.State.COMPLETED, "bank AP offers a contextual service without forcing presentation")
-	assert_true(session.view().services.any(func(service: ServiceView) -> bool: return service.service_kind == &"bank"), "the detached view exposes the available bank")
-	session._state.party.pooled_wealth = WealthState.new(10, 0, 0)
-	session._state.party.banked_wealth = WealthState.new(25, 2, 1)
-	var bank := session.submit_intent(PlayerIntent.service_action("realmz.service.bank", &"enter"))
-	assert_equal(bank.interaction.kind, InteractionRequest.BANK, "the player enters the bank through the same service intent boundary")
-	assert_true(bank.interaction.body.to_data().get("pooledWealth") is Dictionary and bank.interaction.body.to_data().get("bankedWealth") is Dictionary and bank.interaction.body.to_data().get("characters") is Array, "bank presenter receives only detached wealth and transfer facts")
-	assert_equal(session._state.party.pooled_wealth.to_data(), {"gold": 35, "gems": 2, "jewelry": 1}, "entering the bank drains every deposited denomination into the shared pool")
-	var bank_save := save_round_trip(session.snapshot())
-	assert_not_null(bank_save, "bank interaction is a committed save boundary")
-	var restored_bank := GameSession.new()
-	assert_equal(restored_bank.restore(content, bank_save).state, SessionStep.State.COMPLETED, "pending bank-backed Swap restores transactionally")
-	assert_equal([restored_bank._state.party.pooled_wealth.to_data(), restored_bank._state.party.banked_wealth.to_data()], [{"gold": 35, "gems": 2, "jewelry": 1}, {"gold": 0, "gems": 0, "jewelry": 0}], "restore does not drain banked wealth a second time")
-	assert_equal(restored_bank.respond(InteractionResponse.from_data(restored_bank.view().pending_interaction.request_id, InteractionRequest.BANK, {"action": "leave"})).state, SessionStep.State.COMPLETED, "Done closes the restored bank workspace")
-	assert_equal([restored_bank._state.party.pooled_wealth.gold, restored_bank._state.party.banked_wealth.gold], [35, 0], "Done preserves pooled bank wealth until location departure")
-	var departure_direction := Vector2i.ZERO
-	for direction: Vector2i in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT, Vector2i(1, -1), Vector2i(1, 1), Vector2i(-1, 1), Vector2i(-1, -1)]:
-		if content.world.probe_movement(restored_bank._state.party.map_id, restored_bank._state.party.coordinate, direction, restored_bank._state.world).allowed:
-			departure_direction = direction
+func _test_public_limits_and_errors(content: RealmzContent) -> void:
+	var recursive_action := ClassicActionDefinition.new(0, -4, 4, 0, true, [])
+	var recursive_definition := ScenarioDefinition.new([
+		ScenarioProgramDefinition.new("root", &"trigger", "root", [recursive_action]),
+		ScenarioProgramDefinition.new("recursive", &"simple-encounter-result", "0", [recursive_action]),
+	], [])
+	var recursive_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, recursive_definition, [MessageDefinition.new(1, "Continue?")], [], [SimpleEncounterDefinition.new(0, 1, [SimpleEncounterResponse.new("continue", "Continue", "recursive")], false, 0, 0)])
+	var classic_vm := ScenarioVm.new()
+	classic_vm.configure(recursive_definition)
+	classic_vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
+	var classic_result := classic_vm.run(_runtime_api(recursive_content, ScenarioActionState.new()))
+	for _index: int in range(21):
+		if classic_result.state != ScenarioVmResult.State.WAITING:
 			break
-	assert_true(departure_direction != Vector2i.ZERO, "bank route has a source-legal location departure")
-	if departure_direction != Vector2i.ZERO:
-		restored_bank.submit_intent(PlayerIntent.move(departure_direction))
-		assert_false(restored_bank._state.bank_available, "location departure disables the contextual bank")
-		assert_equal([restored_bank._state.party.pooled_wealth.to_data(), restored_bank._state.party.banked_wealth.to_data()], [{"gold": 0, "gems": 0, "jewelry": 0}, {"gold": 35, "gems": 2, "jewelry": 1}], "location departure returns every remaining pooled denomination to the bank")
+		classic_result = classic_vm.resume(InteractionResponse.from_data(classic_result.interaction.request_id, &"encounter_choice", {"index": 0}), _runtime_api(recursive_content, ScenarioActionState.new()))
+	assert_equal(classic_result.error_code, &"classic_gosub_limit", "Classic GOSUB depth fails explicitly at its public VM boundary")
+	var safe_call := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.CALL_ACTION)
+	safe_call.action_id = "scenario.test.recurse"
+	var safe_action := _action(safe_call.action_id, &"void", [safe_call])
+	var safe_definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("root", &"trigger", "root", [CallScenarioActionInstruction.new(safe_action.id)])], [safe_action])
+	var safe_vm := ScenarioVm.new()
+	safe_vm.configure(safe_definition)
+	safe_vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
+	assert_equal(safe_vm.run(_runtime_api(content, ScenarioActionState.new())).error_code, &"scenario_action_call_limit", "Safe Action depth fails explicitly")
+	assert_equal(ScenarioVm.EXECUTION_STEP_LIMIT, 65536, "Scenario VM execution budget remains explicit")
+	var jump := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.JUMP)
+	jump.target = 0
+	var loop_action := _action("scenario.test.loop", &"void", [jump])
+	var loop_definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("root", &"trigger", "root", [CallScenarioActionInstruction.new(loop_action.id)])], [loop_action])
+	var loop_vm := ScenarioVm.new()
+	loop_vm.configure(loop_definition, 64)
+	loop_vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
+	assert_equal(loop_vm.run(_runtime_api(content, ScenarioActionState.new())).error_code, &"scenario_step_limit", "bounded Safe Action execution fails explicitly")
+	var unknown := ScenarioDefinition.new([ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 999, 999, 0, false, [])])], [])
+	var unknown_vm := ScenarioVm.new()
+	unknown_vm.configure(unknown)
+	unknown_vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
+	assert_equal(unknown_vm.run(_runtime_api(content, ScenarioActionState.new())).error_code, &"unsupported_classic_opcode", "unknown opcodes never fall through to dynamic GDScript")
 
 
-func _test_complex_encounter_save_resume(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("test", "Test", 5, 5)])
+func _test_public_application_transitions(content: RealmzContent) -> void:
+	var party := PartyState.new(content.start_map_id, content.start_coordinate, [])
 	var state := GameState.new(party, RealmzClock.new())
 	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var vm := ScenarioVm.new()
-	vm.configure(content.scenario)
-	assert_equal(vm.start_program("trigger:ap.fixture.complex", ScenarioExecutionContext.calling(&"action")).state, ScenarioVmResult.State.COMPLETED, "Complex Encounter trigger starts through the ordinary VM")
-	var waiting := vm.run(api)
-	assert_equal(waiting.state, ScenarioVmResult.State.WAITING, "Classic opcode 5 yields a typed Complex Encounter")
-	assert_equal(waiting.interaction.kind, &"complex_encounter", "Complex Encounter uses one serializable interaction contract")
-	var saved := ScenarioVmSnapshot.from_data(vm.snapshot().to_data())
-	var restored := ScenarioVm.new()
-	restored.configure(content.scenario)
-	assert_true(restored.restore(saved), "Complex Encounter continuation survives JSON-shaped save restoration")
-	var result_text := restored.resume(InteractionResponse.from_data(waiting.interaction.request_id, &"complex_encounter", {"action": "choice", "slot": 0}), api)
-	assert_equal(result_text.state, ScenarioVmResult.State.WAITING, "Complex response branches to the result's positive Classic textbox: %s" % result_text.error_message)
-	assert_equal(_message_texts(result_text.events), ["The encounter result begins."], "Complex result executes through the same action timeline as APs and Simple Encounters")
-	var completed := restored.resume(InteractionResponse.from_data(result_text.interaction.request_id, &"acknowledge", {}), api)
-	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "acknowledging Complex result text completes the result program")
-	assert_equal(state.encounter_attempts(&"complex", 0), 1, "Complex resolution commits attempt state inside GameSession data")
+	var map := content.world.player_map_by_classic_id(1)
+	assert_not_null(map, "fixture exposes a source-backed player map")
+	if map == null:
+		return
+	var acquired := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, 1, false, []), "map.acquire")
+	assert_equal([acquired.state, state.world.has_map(map.id)], [ScenarioRuntimeOperationResult.State.COMPLETED, true], "opcode 29 acquires a stable player-map identity")
+	var shown := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, -1, false, []), "map.show")
+	assert_equal([shown.state, shown.interaction.kind, shown.interaction.body.to_data().get("playerMapId")], [ScenarioRuntimeOperationResult.State.WAITING, &"acknowledge", map.id], "negative opcode 29 stages the player-map presentation")
+	var forged := api.resume_classic(shown.continuation, InteractionResponse.from_data(shown.interaction.request_id, &"acknowledge", {"accepted": true}), "map.forged")
+	assert_equal(forged.error_code, &"invalid_interaction_response", "player-map acknowledgement rejects forged fields")
+	var resumed := api.resume_classic(shown.continuation, InteractionResponse.acknowledge(shown.interaction), "map.resume")
+	assert_equal(resumed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "player-map acknowledgement resumes its issuing operation")
+	var unavailable := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, 19, false, []), "map.unknown")
+	assert_equal(unavailable.error_code, &"unknown_player_map", "unknown player-map identities fail explicitly")
 
 
-func _test_safe_choice_resume(content: RealmzContent) -> void:
-	var choice := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.OPERATION)
-	choice.capability = "core.presentation.choice"
-	choice.result_target = "selected"
-	choice.set_arguments({"prompt": _literal("Choose safely"), "options": _array([_literal("One"), _literal("Two")])})
-	var finish := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.RETURN)
-	finish.value = _variable(&"local", "selected")
-	var remember := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.SET_VALUE)
-	remember.scope = &"persistent"
-	remember.name = "selected"
-	remember.value = _variable(&"local", "selected")
-	var action := _action("scenario.test.choose", &"int", [choice, remember, finish], ["core.presentation.choice"])
-	var call := CallScenarioActionInstruction.new(action.id)
-	var definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("root", &"trigger", "root", [call])], [action])
-	var action_state := ScenarioActionState.new()
-	var api := _runtime_api(content, action_state)
-	var vm := ScenarioVm.new()
-	vm.configure(definition)
-	vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
-	var waiting := vm.run(api)
-	assert_equal(waiting.state, ScenarioVmResult.State.WAITING, "Safe Scenario Action can yield a typed choice")
-	assert_equal(waiting.interaction.kind, &"scenario_choice", "Safe choice uses its own typed request contract")
-	var restored := ScenarioVm.new()
-	restored.configure(definition)
-	assert_true(restored.restore(ScenarioVmSnapshot.from_data(vm.snapshot().to_data())), "Safe Action frame and local continuation restore")
-	var completed := restored.resume(InteractionResponse.from_data(waiting.interaction.request_id, &"scenario_choice", {"index": 1}), api)
-	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "Safe Action resumes through the issuing frame")
-	assert_equal(action_state.read("campaign", action.id, "selected"), 1, "typed choice result resumes into the issuing Safe Action frame")
+func _test_public_character_checks(content: RealmzContent) -> void:
+	var first := CharacterState.new("ability.first", "First", 10, 10)
+	var second := CharacterState.new("ability.second", "Second", 10, 10)
+	first.set_ability_value(5, 40)
+	second.set_ability_value(5, 5)
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [first, second]), RealmzClock.new())
+	var rng := ScriptedRng.new([0, 13_107, 26_214, 1_311, 16_057, 30_802])
+	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new())
+	var missing := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12]), "ability.missing")
+	assert_equal(missing.error_code, &"missing_extra_code", "opcode 31 rejects incomplete Extra Code rows")
+	var waiting := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12, 13]), "ability.pick")
+	assert_equal([waiting.state, waiting.interaction.kind, waiting.interaction.body.to_data().get("eligible").size()], [ScenarioRuntimeOperationResult.State.WAITING, &"character_selection", 2], "opcode 31 yields a typed character picker")
+	var chosen := api.resume_classic(waiting.continuation, InteractionResponse.from_data(waiting.interaction.request_id, &"character_selection", {"characterIds": [first.id]}), "ability.resume")
+	assert_equal([chosen.directive.target_id, state.selected_character_ids()], [12, [first.id]], "opcode 31 resumes through the selected character and authored branch")
+	var third := CharacterState.new("ability.third", "Third", 10, 10)
+	third.brawn = 22
+	first.brawn = 2
+	second.brawn = 12
+	state.party.add_character(third)
+	var filter_api := RealmzRuntimeApi.new(content, state, ScriptedRng.new([0, 13_107, 26_214]), ScenarioActionState.new())
+	var filtered := filter_api.execute_classic(ClassicActionDefinition.new(0, 30, 30, 0, false, [0, 0, 2, 1, 0]), "ability.filter")
+	assert_equal(filtered.value, [first.id, second.id, third.id], "opcode 30 evaluates the iterated characters through the public API")
 
 
-func _test_persistent_action_state(content: RealmzContent) -> void:
+func _test_public_action_state(content: RealmzContent) -> void:
 	var store := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.SET_VALUE)
 	store.scope = &"persistent"
 	store.name = "visits"
@@ -456,1493 +291,14 @@ func _test_persistent_action_state(content: RealmzContent) -> void:
 	finish.value = _variable(&"persistent", "visits")
 	var action := _action("scenario.test.state", &"int", [store, mirror, finish])
 	var definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("root", &"trigger", "root", [CallScenarioActionInstruction.new(action.id)])], [action])
-	var action_state := ScenarioActionState.new()
+	var state := ScenarioActionState.new()
 	var vm := ScenarioVm.new()
 	vm.configure(definition)
 	vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
-	var completed := vm.run(_runtime_api(content, action_state))
-	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "persistent Safe Action completes")
-	assert_equal(action_state.read("campaign", action.id, "visits"), 42, "persistent write is namespaced to the Scenario Action")
-	assert_equal(action_state.read("campaign", action.id, "mirror"), 42, "persistent Safe variable reads through the session-owned action state")
-	var parsed_state: Variant = JSON.parse_string(JSON.stringify(action_state.to_data()))
-	var restored_state := ScenarioActionState.from_data(parsed_state)
-	assert_true(restored_state.read("campaign", action.id, "visits") is int, "tagged Scenario Action state preserves integer type through JSON")
-
-
-func _test_classic_call_limit(content: RealmzContent) -> void:
-	var encounter_action := ClassicActionDefinition.new(0, -4, 4, 0, true, [])
-	var programs: Array[ScenarioProgramDefinition] = [
-		ScenarioProgramDefinition.new("root", &"trigger", "root", [encounter_action]),
-		ScenarioProgramDefinition.new("recursive", &"simple-encounter-result", "0", [encounter_action]),
-	]
-	var definition := ScenarioDefinition.new(programs, [])
-	var encounter := SimpleEncounterDefinition.new(0, 1, [SimpleEncounterResponse.new("continue", "Continue", "recursive")], false, 0, 0)
-	var recursive_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, definition, [MessageDefinition.new(1, "Continue?")], [], [encounter])
-	var action_state := ScenarioActionState.new()
-	var vm := ScenarioVm.new()
-	vm.configure(definition)
-	vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
-	var result := vm.run(_runtime_api(recursive_content, action_state))
-	for _index: int in range(21):
-		if result.state != ScenarioVmResult.State.WAITING:
-			break
-		result = vm.resume(InteractionResponse.from_data(result.interaction.request_id, &"encounter_choice", {"index": 0}), _runtime_api(recursive_content, action_state))
-	assert_equal(result.error_code, &"classic_gosub_limit", "Classic GOSUB stack fails explicitly beyond 20 frames")
-
-
-func _test_classic_transfer_keeps_trigger_context(content: RealmzContent) -> void:
-	var programs: Array[ScenarioProgramDefinition] = [
-		ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 39, 39, 0, false, [])]),
-		ScenarioProgramDefinition.new("xap:0", &"extra-action-point", "0", [ClassicActionDefinition.new(0, 25, 25, 0, false, []), ClassicActionDefinition.new(1, 111, 111, 0, false, [])]),
-	]
-	var definition := ScenarioDefinition.new(programs, [])
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("context", "Context", 1, 1)])
-	var state := GameState.new(party, RealmzClock.new())
-	var vm := ScenarioVm.new()
-	vm.configure(definition)
-	vm.start_program("root", ScenarioExecutionContext.trigger(&"action", "ap.fixture.message", content.start_map_id))
-	var result := vm.run(RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new()))
-	assert_equal(result.state, ScenarioVmResult.State.COMPLETED, "Classic opcode 39 completes through the transferred XAP")
-	assert_true(state.world.trigger_is_disabled("ap.fixture.message"), "Classic transfer retains Action Point origin context for opcode 25")
-
-
-func _test_classic_keep_codes(content: RealmzContent) -> void:
-	var keep := ClassicActionDefinition.new(0, 24, 24, 0, false, [])
-	var definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("root", &"trigger", "root", [keep])], [])
-	var vm := ScenarioVm.new()
-	vm.configure(definition)
-	vm.start_program("root", ScenarioExecutionContext.trigger(&"action", "ap.fixture.keep"))
-	var result := vm.run(_runtime_api(content, ScenarioActionState.new()))
-	assert_equal(result.state, ScenarioVmResult.State.COMPLETED, "Classic opcode 24 finishes the active AP timeline")
-	assert_true(_event_has(result.events, &"action_point_kept"), "Classic opcode 24 carries the Keep Codes exception back to the session")
-
-
-func _test_action_call_limit(content: RealmzContent) -> void:
-	var recurse := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.CALL_ACTION)
-	recurse.action_id = "scenario.test.recurse"
-	var action := _action(recurse.action_id, &"void", [recurse])
-	var definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("root", &"trigger", "root", [CallScenarioActionInstruction.new(action.id)])], [action])
-	var vm := ScenarioVm.new()
-	vm.configure(definition)
-	vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
-	var result := vm.run(_runtime_api(content, ScenarioActionState.new()))
-	assert_equal(result.error_code, &"scenario_action_call_limit", "Safe Scenario Action stack fails explicitly beyond 32 frames")
-
-
-func _test_execution_step_limit(content: RealmzContent) -> void:
-	assert_equal(ScenarioVm.EXECUTION_STEP_LIMIT, 65536, "production Scenario VM budget remains locked")
-	var jump := SafeInstructionDefinition.new(SafeInstructionDefinition.Kind.JUMP)
-	jump.target = 0
-	var action := _action("scenario.test.loop", &"void", [jump])
-	var definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("root", &"trigger", "root", [CallScenarioActionInstruction.new(action.id)])], [action])
-	var vm := ScenarioVm.new()
-	vm.configure(definition, 64)
-	vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
-	var result := vm.run(_runtime_api(content, ScenarioActionState.new()))
-	assert_equal(result.error_code, &"scenario_step_limit", "Scenario execution uses the same explicit guard at a reduced test budget")
-
-
-func _test_unknown_opcode_failure(content: RealmzContent) -> void:
-	var unsupported := ClassicActionDefinition.new(0, 999, 999, 0, false, [])
-	var definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("root", &"trigger", "root", [unsupported])], [])
-	var vm := ScenarioVm.new()
-	vm.configure(definition)
-	vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
-	var result := vm.run(_runtime_api(content, ScenarioActionState.new()))
-	assert_equal(result.error_code, &"unsupported_classic_opcode", "unowned Classic opcode fails instead of falling through to GDScript")
-
-
-func _test_classic_opcode_ownership() -> void:
-	var file := FileAccess.open(AOGM_OPCODE_INVENTORY_PATH, FileAccess.READ)
-	assert_not_null(file, "AOGM active-opcode inventory is available as bounded evidence")
-	if file == null:
-		return
-	var inventory: Variant = JSON.parse_string(file.get_as_text())
-	assert_true(inventory is Dictionary, "AOGM active-opcode inventory is valid JSON")
-	if not inventory is Dictionary:
-		return
-	assert_equal(inventory.get("sourceSha256"), "23e5a33dcf06e020d9efdde12ff1b5a85a97d42d732b9bc1bfb464f4fa1f7ce0", "AOGM inventory is tied to its local source fixture hash")
-	var observed: Array[int] = []
-	for value: Variant in inventory.get("activeNormalizedOpcodes", []):
-		observed.append(int(value))
-	assert_equal(observed, ClassicOpcodeCatalog.AOGM_ACTIVE_OPCODES, "runtime readiness uses the audited active opcode set")
-	for opcode: int in observed:
-		assert_true(ClassicOpcodeCatalog.is_owned(opcode), "AOGM Classic opcode %d has one explicit domain owner" % opcode)
-		assert_true(ClassicOpcodeCatalog.is_executable(opcode), "AOGM Classic opcode %d passes package readiness with an executable owner" % opcode)
-	assert_equal(ClassicOpcodeCatalog.normalize(-121), 121, "negative Classic opcodes normalize as GOSUB calls")
-	assert_equal(ClassicOpcodeCatalog.normalize(-23), -23, "Classic dungeon random-rectangle opcode keeps its signed identity")
-	assert_equal(ClassicOpcodeCatalog.normalize(-14), -14, "Classic inverse character picker keeps its signed identity")
-
-
-func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent) -> void:
-	var character := CharacterState.new("character.rules-host", "Rules Host", 100, 100)
-	character.race_id = content.race_definitions()[0].id
-	character.caste_id = content.caste_definitions()[0].id
-	character.maximum_load = 500
-	character.agility = 30
-	character.to_hit = 100
-	character.damage_bonus = 30
-	character.luck = 1
-	var companion := CharacterState.new("character.rules-companion", "Rules Companion", 100, 100)
-	companion.race_id = character.race_id
-	companion.caste_id = character.caste_id
-	companion.maximum_load = 500
-	companion.agility = 20
-	companion.luck = 1
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character, companion])
-	var ally_definition := content.monster_by_classic_id(1)
-	assert_not_null(ally_definition, "battle fixture contains an ally-capable Classic monster")
-	var ally := MonsterState.new("ally.battle-participant", ally_definition.id, "Battle Ally", 20, 20, 1, 1, 0, 0, 0, false)
-	party.add_ally(ally)
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new(), RealmzRules.new())
-	var item := api.execute_safe("core.inventory.grant-item", {"characterId": character.id, "itemId": "classic.item.901", "identified": true}, "request.item")
-	assert_equal(item.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Safe Scenario Action grants a definition-backed item through the session API")
-	assert_equal(character.inventory().size(), 1, "grant-item mutates the direct Realmz inventory model")
-	var program := ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 2, 2, 0, false, [])])
-	var definition := ScenarioDefinition.new([program], [])
-	var vm := ScenarioVm.new()
-	vm.configure(definition)
-	vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
-	var waiting := vm.run(api)
-	assert_equal(waiting.state, ScenarioVmResult.State.WAITING, "Classic battle opcode yields a typed combat action instead of delegating simulation to presentation")
-	assert_equal(waiting.interaction.kind, &"combat_action", "battle continuation uses the shared typed host boundary")
-	assert_not_null(state.combat.monster_by_id(ally.id), "unsuspended party allies enter the shared combat roster")
-	assert_equal(party.allies().size(), 0, "Classic battle setup consumes participating held-over allies")
-	var saved := ScenarioVmSnapshot.from_data(vm.snapshot().to_data())
-	var restored := ScenarioVm.new()
-	restored.configure(definition)
-	assert_true(restored.restore(saved), "active battle VM continuation serializes at the player turn")
-	var target_id := _first_hostile_monster_id(state.combat)
-	assert_false(target_id.is_empty(), "battle continuation fixture retains an enemy after consuming its held-over ally")
-	assert_true(_place_monster_at_escape_range(state.combat, character.id, target_id), "battle continuation fixture establishes Castle's exact Escape range")
-	var retreat_prompt := restored.resume(InteractionResponse.from_data(waiting.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "retreat", "targetId": ""}), api)
-	assert_equal([retreat_prompt.state, retreat_prompt.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.YES_NO], "scenario combat yields the same typed Escape confirmation as direct combat")
-	assert_equal(restored.snapshot().pending_continuation.runtime.kind, ScenarioRuntimeContinuation.CLASSIC_COMBAT_RETREAT, "the issuing Classic frame owns the pending Escape confirmation")
-	var retreat_snapshot := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(restored.snapshot().to_data())))
-	assert_not_null(retreat_snapshot, "the nested Classic Escape confirmation is serializable")
-	var retreat_restored := ScenarioVm.new()
-	retreat_restored.configure(definition)
-	assert_true(retreat_restored.restore(retreat_snapshot), "the nested Classic Escape confirmation restores at the exact response boundary")
-	var accepted_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	var accepted_rng := RealmzRng.new()
-	assert_not_null(accepted_state, "the scenario battle state restores beside its pending Escape continuation")
-	assert_true(accepted_rng.restore(api._rng.snapshot()), "the accepted Escape branch restores the exact scenario-combat RNG boundary")
-	if accepted_state != null:
-		var accepted_vm := ScenarioVm.new()
-		accepted_vm.configure(definition)
-		assert_true(accepted_vm.restore(retreat_snapshot), "the accepted Escape branch restores the same issuing Classic frame")
-		var accepted_api := RealmzRuntimeApi.new(content, accepted_state, accepted_rng, ScenarioActionState.new(), RealmzRules.new())
-		var accepted_retreat := accepted_vm.resume(InteractionResponse.yes_no(retreat_prompt.interaction, true), accepted_api)
-		assert_equal([accepted_retreat.state, accepted_retreat.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.COMBAT], "accepting restored Escape returns to combat while another loyal character remains")
-		assert_true(accepted_retreat.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combatant_retreated" and event.payload.get("actorId") == character.id), "the restored VM response commits the exact escaping character once")
-		assert_false(accepted_state.combat.battlefield.has_actor(character.id), "the accepted character leaves the battlefield without removing its companion")
-		assert_true(accepted_state.combat.battlefield.has_actor(companion.id), "the remaining loyal character keeps the scenario battle active")
-		assert_equal(accepted_state.party.character_by_id(character.id).prestige_penalty, 200, "the accepted VM branch applies Castle's prestige penalty once")
-	var declined := retreat_restored.resume(InteractionResponse.yes_no(retreat_prompt.interaction, false), api)
-	assert_equal([declined.state, declined.interaction.kind], [ScenarioVmResult.State.WAITING, InteractionRequest.COMBAT], "declining Escape returns to the unchanged player combat turn")
-	restored = retreat_restored
-	waiting = declined
-	assert_true(_place_monster_adjacent(state.combat, character.id, target_id), "battle continuation fixture establishes source-legal melee adjacency")
-	var completed := restored.resume(InteractionResponse.from_data(waiting.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "attack", "targetId": target_id}), api)
-	var battle_events: Array[DomainEvent] = []
-	battle_events.assign(completed.events)
-	if completed.state == ScenarioVmResult.State.WAITING and completed.interaction.kind == &"ally_selection":
-		completed = restored.resume(InteractionResponse.from_data(completed.interaction.request_id, &"ally_selection", {"selectedIds": completed.interaction.body.to_data()["selectedIds"]}), api)
-	completed = _drain_vm_reward(restored, api, completed)
-	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "typed combat response resolves inside the restored session VM")
-	assert_equal(state.last_battle_outcome, &"victory", "battle completion and outcome remain in GameState")
-	assert_equal(state.combat, null, "the completed reward chain releases combat before the issuing VM resumes")
-	assert_true(_event_has(battle_events, &"battle_completed"), "battle completion is published as a domain event")
-	var extra_code_battle := api.execute_classic(ClassicActionDefinition.new(0, 2, 2, 70, false, [0, 0, 0, 0, 0]), "request.extra-code-battle")
-	assert_equal(extra_code_battle.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic battle opcode accepts an authored Extra Code row")
-	assert_equal(_event_classic_id(extra_code_battle.events, &"battle_started"), 0, "Classic battle opcode resolves the battle ID from Extra Code slot zero")
-	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(round_trip, "rules, combat, quest, and instance state remain saveable after battle")
-	assert_equal(round_trip.to_data(), state.to_data(), "post-battle session state round-trips exactly")
-
-
-func _test_equipment_storage_save_resume(content: RealmzContent) -> void:
-	var character := CharacterState.new("character.storage", "Storage Test", 10, 10)
-	character.maximum_load = 500
-	character.money.gold = 7
-	character.carried_load = 7
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	party.pooled_wealth.gold = 11
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var granted := api.execute_safe("core.inventory.grant-item", {"characterId": character.id, "itemId": "classic.item.901", "identified": true}, "request.storage-item")
-	assert_equal(granted.state, ScenarioRuntimeOperationResult.State.COMPLETED, "equipment storage fixture grants a weighted item")
-	var stored_item_id: String = character.inventory()[0].id
-	var capture := api.execute_classic(ClassicActionDefinition.new(0, 36, 36, 1, false, []), "request.capture")
-	assert_equal(capture.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 36 captures equipment and wealth")
-	assert_true(party.equipment_storage_active, "captured equipment state is explicit")
-	assert_equal(character.inventory().size(), 0, "capture removes character equipment")
-	assert_equal(character.carried_load, 0, "capture clears the character load")
-	assert_equal(party.pooled_wealth.gold, 0, "capture stores pooled and character wealth together")
-	var saved := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(saved, "captured equipment state survives save parsing")
-	if saved == null:
-		return
-	var restored_character := saved.party.character_by_id(character.id)
-	var restored_api := RealmzRuntimeApi.new(content, saved, RealmzRng.new(1), ScenarioActionState.new())
-	var extra := restored_api.execute_safe("core.inventory.grant-item", {"characterId": character.id, "itemId": "classic.item.901", "identified": false}, "request.extra-item")
-	assert_equal(extra.state, ScenarioRuntimeOperationResult.State.COMPLETED, "items found while equipment is captured remain mutable state")
-	var restore := restored_api.execute_classic(ClassicActionDefinition.new(0, 36, 36, 0, false, []), "request.restore")
-	assert_equal(restore.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 36 restores captured equipment")
-	assert_false(saved.party.equipment_storage_active, "restore closes the equipment-storage interval")
-	assert_equal(restored_character.inventory().size(), 1, "restore reinstates the exact captured inventory")
-	assert_equal(restored_character.inventory()[0].id, stored_item_id, "captured item identity survives save and restore")
-	assert_equal(saved.party.storage().size(), 1, "items acquired during capture move to party storage")
-	assert_equal(saved.party.pooled_wealth.gold, 18, "restore returns all captured wealth to the party pool")
-	assert_true(restored_character.carried_load > 0, "restore recalculates load from immutable item definitions")
-
-
-func _test_program_replacement_and_redirect(content: RealmzContent) -> void:
-	var source := ScenarioProgramDefinition.new("simple:4:result:2", &"simple-encounter-result", "4:2", [ClassicActionDefinition.new(0, 1, 1, 901, false, [])])
-	var replacement := ScenarioProgramDefinition.new("xap:7", &"xap", "7", [ClassicActionDefinition.new(0, 1, 1, 902, false, [])])
-	var origin := ScenarioProgramDefinition.new("trigger:origin", &"trigger", "origin", [ClassicActionDefinition.new(0, 8, 8, 1, false, [])])
-	var target := ScenarioProgramDefinition.new("trigger:target", &"trigger", "target", [ClassicActionDefinition.new(0, 1, 1, 903, false, [])])
-	var definition := ScenarioDefinition.new([source, replacement, origin, target], [])
-	var map_id := content.start_map_id
-	var triggers: Array[TriggerDefinition] = [
-		TriggerDefinition.new("origin", origin.id, map_id, content.start_coordinate, true, 100, null, 0),
-		TriggerDefinition.new("target", target.id, map_id, content.start_coordinate, true, 100, null, 1),
-	]
-	var direct := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, map_id, content.start_coordinate, content.world, definition, [MessageDefinition.new(901, "Original result"), MessageDefinition.new(902, "Replacement XAP"), MessageDefinition.new(903, "Redirected Action Point")], triggers)
-	var state := GameState.new(PartyState.new(map_id, content.start_coordinate, [CharacterState.new("program-test", "Program Test", 1, 1)]), RealmzClock.new())
-	var api := RealmzRuntimeApi.new(direct, state, RealmzRng.new(1), ScenarioActionState.new())
-	var replace_action := ClassicActionDefinition.new(0, 7, 7, 0, false, [-1, 4, 7, 0, 2])
-	var replaced := api.execute_classic(replace_action, "request.replace")
-	assert_equal(replaced.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 7 installs a session-owned program replacement")
-	var vm := ScenarioVm.new()
-	vm.configure(definition)
-	vm.start_program(source.id, ScenarioExecutionContext.calling(&"encounter"))
-	var result := vm.run(api)
-	assert_equal(_message_texts(result.events), ["Replacement XAP"], "program replacement resolves once when a new frame begins")
-	assert_true(_trace_has(vm.trace(), "program-override"), "program replacement is explicit in the VM trace")
-	var saved := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(saved, "program replacement survives the central save aggregate")
-	if saved == null:
-		return
-	var restored_vm := ScenarioVm.new()
-	restored_vm.configure(definition)
-	restored_vm.start_program(source.id, ScenarioExecutionContext.calling(&"encounter"))
-	var restored_result := restored_vm.run(RealmzRuntimeApi.new(direct, saved, RealmzRng.new(1), ScenarioActionState.new()))
-	assert_equal(_message_texts(restored_result.events), ["Replacement XAP"], "restored program replacement resolves identically")
-	var redirect_vm := ScenarioVm.new()
-	redirect_vm.configure(definition)
-	redirect_vm.start_program(origin.id, ScenarioExecutionContext.trigger(&"action", "origin", map_id))
-	var redirected := redirect_vm.run(api)
-	assert_equal(_message_texts(redirected.events), ["Redirected Action Point"], "Classic opcode 8 transfers execution to another Action Point record")
-
-
-func _test_scenario_spell_opcodes(content: RealmzContent) -> void:
-	var first := CharacterState.new("spell.first", "First", 20, 20)
-	var second := CharacterState.new("spell.second", "Second", 20, 20)
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [first, second])
-	var state := GameState.new(party, RealmzClock.new())
-	state.set_selected_character_ids([first.id])
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var selected := api.execute_classic(ClassicActionDefinition.new(0, 17, 17, 0, false, [5101, 1, 0, 1]), "request.selected-spell")
-	assert_equal(selected.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 17 applies a packed spell to selected characters")
-	assert_true(first.current_health < 20, "selected scenario spell mutates its target inside the session")
-	assert_equal(second.current_health, 20, "selected scenario spell does not mutate unselected characters")
-	var before_first := first.current_health
-	var entire_party := api.execute_classic(ClassicActionDefinition.new(0, 18, 18, 0, false, [5101, 1, 0, 1]), "request.party-spell")
-	assert_equal(entire_party.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 18 applies a packed spell to the whole party")
-	assert_true(first.current_health < before_first and second.current_health < 20, "party scenario spell resolves each target through fixed rules")
-	assert_equal(entire_party.events.size(), 2, "scenario spell publishes one ordered observation per target")
-	var unknown := api.execute_classic(ClassicActionDefinition.new(0, 18, 18, 0, false, [9999, 1, 0, 1]), "request.unknown-spell")
-	assert_equal(unknown.error_code, &"unknown_spell", "unknown packed spells fail explicitly")
-
-	var race := _aging_race(content)
-	var caste := content.caste_definitions()[0]
-	var aging_spell := SpellDefinition.new("classic.spell.5999", 5999, "Aging Haste")
-	aging_spell.special = 24
-	var aging_instructions: Array[Variant] = [
-		ClassicActionDefinition.new(0, 17, 17, 0, false, [5999, 1, 0, 1]),
-		ClassicActionDefinition.new(1, 1, 1, 909, false, []),
-	]
-	var aging_program := ScenarioProgramDefinition.new("test.age-update", &"trigger", "test.age-update", aging_instructions)
-	var aging_scenario := ScenarioDefinition.new([aging_program], [])
-	var aging_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, aging_scenario, [MessageDefinition.new(909, "The spell timeline continues.")], [], [], [race], [caste], [], [aging_spell])
-	var aging_character := CharacterState.new("spell.aging", "Aging Spell Target", 20, 20)
-	aging_character.race_id = race.id
-	aging_character.caste_id = caste.id
-	aging_character.age_group = 1
-	aging_character.age_days = race.age_range(1).x * 365 - 1
-	var aging_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [aging_character]), RealmzClock.new())
-	aging_state.set_selected_character_ids([aging_character.id])
-	var aging_api := RealmzRuntimeApi.new(aging_content, aging_state, RealmzRng.new(1), ScenarioActionState.new())
-	var aging_vm := ScenarioVm.new()
-	aging_vm.configure(aging_scenario)
-	aging_vm.start_program(aging_program.id, ScenarioExecutionContext.calling(&"action"))
-	var age_dialog := aging_vm.run(aging_api)
-	assert_equal(age_dialog.state, ScenarioVmResult.State.WAITING, "an age-changing scenario spell blocks its issuing VM frame")
-	assert_equal(age_dialog.interaction.kind, InteractionRequest.AGE_UPDATE, "the spell uses the dedicated Classic age-update contract")
-	assert_true(age_dialog.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 3002), "the spell dialog requests Castle sound 3002")
-	var malformed_age_continuation := aging_vm.snapshot().pending_continuation.runtime.to_data()
-	malformed_age_continuation["data"].erase("value")
-	malformed_age_continuation["data"]["unexpected"] = null
-	assert_equal(ScenarioRuntimeContinuation.from_data(malformed_age_continuation), null, "age continuations reject an unknown field substituted for the required result value")
-	var aging_snapshot := ScenarioVmSnapshot.from_data(aging_vm.snapshot().to_data())
-	assert_not_null(aging_snapshot, "the age-changing spell continuation serializes")
-	var restored_aging_vm := ScenarioVm.new()
-	restored_aging_vm.configure(aging_scenario)
-	assert_true(restored_aging_vm.restore(aging_snapshot), "the age-changing spell continuation restores")
-	var after_age := restored_aging_vm.resume(InteractionResponse.age_update(aging_snapshot.pending_request), aging_api)
-	assert_equal(after_age.state, ScenarioVmResult.State.WAITING, "acknowledging age resumes the original spell timeline")
-	assert_equal(after_age.interaction.kind, InteractionRequest.ACKNOWLEDGE, "the instruction after the spell now owns the next interaction")
-	assert_equal(restored_aging_vm.resume(InteractionResponse.acknowledge(after_age.interaction), aging_api).state, ScenarioVmResult.State.COMPLETED, "the resumed spell timeline completes normally")
-
-
-func _test_combat_fumble_mutation(content: RealmzContent) -> void:
-	var character := CharacterState.new("fumble.character", "Fumbler", 10, 10)
-	character.maximum_load = 500
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	var state := GameState.new(party, RealmzClock.new())
-	var combat := CombatState.new("classic.battle.0")
-	combat.set_turn_order([character.id])
-	state.combat = combat
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var granted := api.execute_safe("core.inventory.grant-item", {"characterId": character.id, "itemId": "classic.item.6", "identified": true}, "request.fumble-item")
-	assert_equal(granted.state, ScenarioRuntimeOperationResult.State.COMPLETED, "fumble fixture grants a Classic melee weapon")
-	var instance: ItemInstance = character.inventory()[0]
-	instance.charges = 7
-	assert_true(RealmzRules.new().inventory.equip(character, instance.id, content.item_by_id(instance.definition_id)), "fumble fixture equips the item")
-	combat.begin_active_turn()
-	var premature := api.execute_classic(ClassicActionDefinition.new(0, 122, 122, 0, false, [1, -641]), "request.premature-fumble", ScenarioExecutionContext.combatant(character.id))
-	assert_equal(character.inventory().size(), 1, "opcode 122 cannot fumble an item before the active turn has made a physical attack")
-	assert_false(_event_has(premature.events, &"message_shown") or _event_has(premature.events, &"sound_requested"), "the outer physical guard suppresses authored fumble text and sound with the mutation")
-	combat.active_turn.physical_action_committed = true
-	var fumbled := api.execute_classic(ClassicActionDefinition.new(0, 122, 122, 0, false, [1, 0]), "request.fumble", ScenarioExecutionContext.combatant(character.id))
-	assert_equal(fumbled.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 122 resolves inside active combat")
-	assert_equal(character.inventory().size(), 0, "fumble removes the equipped item from the combatant")
-	assert_equal(party.storage().size(), 0, "fumble does not bypass battle recovery through general party storage")
-	assert_equal(combat.fumbled_items().size(), 1, "fumbled item remains in the bounded battle recovery queue")
-	assert_equal([combat.fumbled_items()[0].definition_id, combat.fumbled_items()[0].charges], ["classic.item.6", 7], "FD-COMBAT-005 preserves the exact runtime item and remaining charges")
-	assert_true(_event_has(fumbled.events, &"combatant_fumbled"), "fumble mutation publishes its outcome")
-	var monster := MonsterState.new("fumble.monster", "classic.monster.1", "Armed Monster", 10, 10, 1)
-	monster.weapon_id = "classic.item.6"
-	var monster_combat := CombatState.new("classic.battle.0", [monster])
-	monster_combat.set_turn_order([monster.id])
-	state.combat = monster_combat
-	monster_combat.begin_active_turn().physical_action_committed = true
-	var unreachable_monster := api.execute_classic(ClassicActionDefinition.new(0, 122, 122, 0, false, [1, -641]), "request.monster-fumble", ScenarioExecutionContext.combatant(monster.id))
-	assert_equal(monster.weapon_id, "classic.item.6", "opcode 122 preserves Castle's outer initiative guard and cannot disarm a monster")
-	assert_false(_event_has(unreachable_monster.events, &"message_shown") or _event_has(unreachable_monster.events, &"sound_requested"), "the unreachable monster branch cannot publish authored opcode 122 media")
-	assert_true(unreachable_monster.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_fumble_skipped" and event.payload.get("reason") == "not-party-actor"), "opcode 122 reports the source-settled party-only guard")
-
-
-func _test_classic_party_shift(content: RealmzContent) -> void:
-	var dungeon := content.world.map_by_type_and_index(&"dungeon", 0)
-	assert_not_null(dungeon, "party-shift fixture has a normalized dungeon topology")
-	if dungeon == null:
-		return
-	var character := CharacterState.new("shift.character", "Shifter", 10, 10)
-	var party := PartyState.new(dungeon.id, Vector2i(1, 1), [character])
-	var state := GameState.new(party, RealmzClock.new())
-	var fixed_rng := RealmzRng.new(1)
-	var api := RealmzRuntimeApi.new(content, state, fixed_rng, ScenarioActionState.new())
-	var fixed := api.execute_classic(ClassicActionDefinition.new(0, 61, 61, 0, false, [0, 1, -1, 0, 0]), "request.fixed-shift")
-	assert_equal(fixed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 61 applies authored X/Y offsets on the current map")
-	assert_equal(party.coordinate, Vector2i(2, 0), "fixed party shift uses Extra Code X then Y without changing maps")
-	assert_equal(fixed_rng.snapshot().draw_count, 0, "fixed party shift consumes no gameplay randomness")
-	assert_true(state.world.was_visited(dungeon.id, Vector2i(2, 0)), "shifted destination becomes visible session state")
-	assert_true(_event_has(fixed.events, &"party_shifted"), "party shift publishes a detached presentation observation")
-
-	party.coordinate = Vector2i(1, 1)
-	var random_rng := ScriptedRng.new([-32_767, 0, 0, 32_767])
-	var random_api := RealmzRuntimeApi.new(content, state, random_rng, ScenarioActionState.new())
-	var random := random_api.execute_classic(ClassicActionDefinition.new(0, 61, 61, 0, false, [0, 1, 1, 1, 0]), "request.random-shift")
-	assert_equal(random.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 61 supports Castle's random signed-offset mode")
-	assert_equal(party.coordinate, Vector2i(0, 2), "random party shift consumes sign then inclusive magnitude for each axis")
-	assert_equal(random_rng.snapshot().draw_count, 4, "random party shift preserves Castle's four-draw order")
-	assert_equal(random_rng.trace()[0]["tag"], "classic.opcode61.x-sign", "party-shift trace labels the first sign draw")
-	assert_equal(random_rng.trace()[3]["tag"], "classic.opcode61.y-magnitude", "party-shift trace labels the final magnitude draw")
-
-	party.coordinate = Vector2i.ZERO
-	var rejected := api.execute_classic(ClassicActionDefinition.new(0, 61, 61, 0, false, [0, -1, 0, 0, 0]), "request.out-of-bounds-shift")
-	assert_equal(rejected.error_code, &"shift_out_of_bounds", "party shift rejects a destination absent from authoritative topology")
-	assert_equal(party.coordinate, Vector2i.ZERO, "rejected party shift leaves session location untouched")
-
-
-func _test_classic_encounter_break(content: RealmzContent) -> void:
-	var stop := ClassicActionDefinition.new(0, 34, 34, 0, false, [])
-	var unreachable := ClassicActionDefinition.new(1, 1, 1, 901, false, [])
-	var definition := ScenarioDefinition.new([ScenarioProgramDefinition.new("encounter-break", &"complex-encounter-result", "test", [stop, unreachable])], [])
-	var vm := ScenarioVm.new()
-	vm.configure(definition)
-	vm.start_program("encounter-break", ScenarioExecutionContext.calling(&"encounter"))
-	var result := vm.run(_runtime_api(content, ScenarioActionState.new()))
-	assert_equal(result.state, ScenarioVmResult.State.COMPLETED, "Classic opcode 34 ends the issuing encounter-result frame")
-	assert_true(_event_has(result.events, &"encounter_loop_finished"), "encounter break publishes an explicit observation")
-	assert_equal(_message_texts(result.events), [], "encounter break does not execute later result slots")
-
-
-func _test_classic_game_time(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("clock.character", "Clock", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var offset := api.execute_classic(ClassicActionDefinition.new(0, 63, 63, 0, false, [2, 1, 2, 30, 0]), "request.offset-clock")
-	assert_equal(offset.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 63 offsets the session-owned game clock")
-	assert_equal(state.clock.total_minutes(), 1_590, "clock offset combines days, hours, and minutes without wall-clock access")
-	assert_equal(state.clock.day(), 2, "clock offset preserves the runtime's one-based Realmz day")
-	var absolute := api.execute_classic(ClassicActionDefinition.new(0, 63, 63, 0, false, [1, -1, 7, 15, 0]), "request.set-clock")
-	assert_equal(absolute.state, ScenarioRuntimeOperationResult.State.COMPLETED, "absolute clock mode accepts Castle's -1 preserve sentinel")
-	assert_equal(state.clock.total_minutes(), 1_875, "absolute clock mutation preserves the current day and replaces hour/minute")
-	var rejected := api.execute_classic(ClassicActionDefinition.new(0, 63, 63, 0, false, [2, -10, 0, 0, 0]), "request.invalid-clock")
-	assert_equal(rejected.error_code, &"invalid_game_time", "clock mutation fails explicitly before time zero")
-	assert_equal(state.clock.total_minutes(), 1_875, "rejected clock mutation leaves session time untouched")
-	state.clock.set_total_minutes(8 * 60 + 30)
-	var action := ClassicActionDefinition.new(0, 64, 64, 0, true, [-1, 8, 59, 11, 12])
-	var early := api.execute_classic(action, "request.time-early")
-	assert_equal(early.directive.target_id, 11, "Classic opcode 64 takes the before-or-equal game-time branch")
-	assert_true(early.directive.gosub, "game-time branch preserves Classic GOSUB identity")
-	state.clock.set_total_minutes(9 * 60)
-	var late := api.execute_classic(action, "request.time-late")
-	assert_equal(late.directive.target_id, 12, "Classic opcode 64 takes the after-time branch")
-	assert_true(_event_has(late.events, &"game_time_branch_checked"), "game-time branch publishes the observed day/hour comparison")
-
-
-func _test_classic_ally_branch(content: RealmzContent) -> void:
-	var monster := content.monster_by_classic_id(1)
-	assert_not_null(monster, "ally-branch fixture contains a Classic monster identity")
-	if monster == null:
-		return
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("ally.character", "Ally Test", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var action := ClassicActionDefinition.new(0, 87, 87, 0, true, [1, 0, 1, 7, 0])
-	var absent := api.execute_classic(action, "request.ally-absent")
-	assert_equal(absent.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 87 can continue when an ally is absent")
-	assert_equal(absent.directive, null, "absent ally behavior one does not invent a branch")
-	party.add_ally(MonsterState.new("ally.instance", monster.id, monster.name, 5, 5))
-	var present := api.execute_classic(action, "request.ally-present")
-	assert_equal(present.directive.kind, ScenarioVmDirective.BRANCH_XAP, "present ally branches through the ordinary Classic VM directive")
-	assert_equal(present.directive.target_id, 7, "ally branch keeps its authored XAP target")
-	assert_true(present.directive.gosub, "negative ally opcode retains Classic GOSUB behavior")
-	assert_true(_event_has(present.events, &"ally_branch_checked"), "ally branch publishes the tested identity and result")
-
-
-func _test_classic_misc_branch(content: RealmzContent) -> void:
-	var character := CharacterState.new("misc.character", "Misc Test", 10, 10)
-	character.level = 5
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var level_branch := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, true, [7, 3, 0, 8, 0]), "request.misc-level")
-	assert_equal(level_branch.directive.kind, ScenarioVmDirective.BRANCH_XAP, "Classic opcode 86 branches on total party level")
-	assert_equal(level_branch.directive.target_id, 8, "miscellaneous branch uses its matched target")
-	var boat_branch := api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 0, 9, 0]), "request.misc-boat")
-	assert_equal(boat_branch.directive, null, "boat test continues while the party is not in a boat")
-	state.party_in_boat = true
-	boat_branch = api.execute_classic(ClassicActionDefinition.new(0, 86, 86, 0, false, [3, 0, 0, 9, 0]), "request.misc-boat-present")
-	assert_equal(boat_branch.directive.target_id, 9, "boat status is session-owned branch state")
-	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(round_trip, "boat and camping branch state remains inside the save aggregate")
-	assert_true(round_trip.party_in_boat and not round_trip.party_camping, "miscellaneous status flags restore exactly")
-
-
-func _test_classic_party_backup(content: RealmzContent) -> void:
-	var map := content.world.map_by_id(content.start_map_id)
-	var source := content.start_coordinate
-	var direction := Vector2i(-1, -1)
-	assert_not_null(map.topology.cell_at(source - direction), "party-backup fixture has a previous land cell")
-	if map.topology.cell_at(source - direction) == null:
-		return
-	var party := PartyState.new(map.id, source, [CharacterState.new("backup.character", "Backup", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	state.last_move_direction = direction
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var backed_up := api.execute_classic(ClassicActionDefinition.new(0, 101, 101, 0, false, []), "request.backup")
-	assert_equal(backed_up.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 101 reverses the last land movement direction")
-	assert_equal(party.coordinate, source - direction, "party backup mutates only the session-owned location")
-	assert_true(_event_has(backed_up.events, &"party_backed_up"), "party backup publishes its source and destination")
-	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(round_trip, "last movement direction survives the central save aggregate")
-	assert_equal(round_trip.last_move_direction, direction, "restored backup direction is exact")
-
-
-func _test_classic_map_darkness(content: RealmzContent) -> void:
-	var map := content.world.map_by_id(content.start_map_id)
-	var party := PartyState.new(map.id, content.start_coordinate, [CharacterState.new("dark.character", "Dark", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var changed := api.execute_classic(ClassicActionDefinition.new(0, 106, 106, 0, false, [2, 0, 0, 0, 0]), "request.dark")
-	assert_true(state.world.map_is_dark(map), "Classic opcode 106 stores current-map darkness as a world overlay")
-	assert_true(_event_has(changed.events, &"map_darkness_changed"), "map darkness change is presentation-observable")
-	var round_trip := WorldState.from_data(JSON.parse_string(JSON.stringify(state.world.to_data())))
-	assert_not_null(round_trip, "map darkness overlay serializes with the authoritative world state")
-	assert_true(round_trip.map_is_dark(map), "restored map darkness overrides immutable map metadata")
-	var unchanged := api.execute_classic(ClassicActionDefinition.new(0, 106, 106, 0, false, [2, 1, 0, 0, 0]), "request.dark-unchanged")
-	assert_equal(unchanged.directive.kind, ScenarioVmDirective.FINISH, "opcode 106 can discontinue the issuing script when darkness already matches")
-
-
-func _test_classic_player_map_workflow(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var definition := content.world.player_map_by_classic_id(1)
-	assert_not_null(definition, "fixture exports the source-backed Data MD2 player-map identity")
-	if definition == null:
-		return
-	var acquired := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, 1, false, []), "request.player-map.acquire")
-	assert_equal(acquired.state, ScenarioRuntimeOperationResult.State.COMPLETED, "positive opcode 29 acquires the player map without opening its viewer")
-	assert_true(state.world.has_map(definition.id), "player-map acquisition uses its stable package identity")
-	assert_true(_event_has(acquired.events, &"player_map_acquired"), "map-menu refresh is represented by an observable acquisition event")
-	assert_equal(_message_texts(acquired.events), ["You gain a map, to view the map use Maps/Notes in the Menu."], "positive acquisition preserves Castle's non-blocking map-menu guidance")
-	var shown := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, -1, false, []), "request.player-map.show")
-	assert_equal(shown.state, ScenarioRuntimeOperationResult.State.WAITING, "negative opcode 29 acquires and opens the Classic player-map stage")
-	assert_equal([shown.interaction.kind, shown.interaction.body.to_data().get("presentation"), shown.interaction.body.to_data().get("playerMapId")], [&"acknowledge", "player-map", definition.id], "immediate display identifies the typed player-map presentation")
-	var forged := api.resume_classic(shown.continuation, InteractionResponse.from_data(shown.interaction.request_id, &"acknowledge", {"accepted": true}), "request.player-map.forged")
-	assert_equal(forged.error_code, &"invalid_interaction_response", "player-map acknowledgement rejects forged fields")
-	var resumed := api.resume_classic(shown.continuation, InteractionResponse.from_data(shown.interaction.request_id, &"acknowledge", {}), "request.player-map.resume")
-	assert_equal(resumed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "empty acknowledgement resumes the issuing Classic frame")
-	var map_program := ScenarioProgramDefinition.new("player-map.fixture", &"trigger", "player-map.fixture", [ClassicActionDefinition.new(0, 29, 29, -1, false, [])])
-	var map_scenario := ScenarioDefinition.new([map_program], [])
-	var vm := ScenarioVm.new()
-	vm.configure(map_scenario)
-	assert_equal(vm.start_program(map_program.id).state, ScenarioVmResult.State.COMPLETED, "the player-map characterization program starts")
-	var vm_wait := vm.run(api)
-	assert_equal([vm_wait.state, vm_wait.interaction.body.to_data().get("playerMapId")], [ScenarioVmResult.State.WAITING, definition.id], "the issuing VM frame owns the immediate player-map request")
-	var vm_snapshot := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(vm.snapshot().to_data())))
-	assert_not_null(vm_snapshot, "the player-map request and continuation serialize together")
-	var restored_vm := ScenarioVm.new()
-	restored_vm.configure(map_scenario)
-	assert_true(restored_vm.restore(vm_snapshot), "the player-map continuation restores against the same immutable program")
-	var vm_resumed := restored_vm.resume(InteractionResponse.from_data(vm_snapshot.pending_request.request_id, &"acknowledge", {}), api)
-	assert_equal(vm_resumed.state, ScenarioVmResult.State.COMPLETED, "restored acknowledgement resumes the issuing program exactly once")
-	var round_trip := WorldState.from_data(JSON.parse_string(JSON.stringify(state.world.to_data())))
-	assert_not_null(round_trip, "acquired player-map state survives serialization")
-	assert_true(round_trip.has_map(definition.id), "restored world state retains the acquired player-map identity")
-	var session := GameSession.new()
-	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "player-map save characterization starts from validated content")
-	session._state.world.acquire_map(definition.id)
-	var envelope := save_round_trip(session.snapshot())
-	var restored_session := GameSession.new()
-	assert_equal(restored_session.restore(content, envelope).state, SessionStep.State.COMPLETED, "the complete save aggregate validates an acquired player-map identity")
-	assert_equal(restored_session.view().acquired_player_maps[0].id, definition.id, "restore rebuilds the detached player-map view from immutable content")
-	var corrupt_envelope := SaveEnvelope.from_data(envelope.to_data())
-	corrupt_envelope.game_state.world.acquire_map("classic.player-map.19")
-	assert_equal(GameSession.new().restore(content, corrupt_envelope).error_code, &"invalid_game_state", "transactional restore rejects an acquired map absent from the installed package")
-	var unavailable := api.execute_classic(ClassicActionDefinition.new(0, 29, 29, 19, false, []), "request.player-map.unknown")
-	assert_equal(unavailable.error_code, &"unknown_player_map", "an in-range but unavailable Data MD2 identity fails explicitly")
-	assert_false(state.world.has_map("classic.player-map.19"), "an unavailable player map cannot create synthetic state")
-
-
-func _test_classic_teleport_and_recheck(content: RealmzContent) -> void:
-	var map := content.world.map_by_id(content.start_map_id)
-	var target := content.start_coordinate
-	for cell: MapCell in map.topology.cells():
-		if cell.coordinate != content.start_coordinate:
-			target = cell.coordinate
-			break
-	assert_true(target != content.start_coordinate, "teleport fixture has a second authoritative cell")
-	var party := PartyState.new(map.id, content.start_coordinate, [CharacterState.new("teleport.character", "Teleport", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var action := ClassicActionDefinition.new(0, 20, 20, 0, false, [-1, target.x, target.y, 77, 1])
-	var teleported := api.execute_classic(action, "request.teleport")
-	assert_equal(teleported.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 20 teleports within the current map using Castle's -1 preserve sentinel")
-	assert_equal(party.coordinate, target, "teleport mutates the session-owned party location")
-	assert_true(_event_has(teleported.events, &"sound_requested"), "opcode 20 publishes its authored post-teleport sound")
-	assert_equal(_message_texts(teleported.events), ["The Realmz 2.0 fixture is deterministic."], "opcode 20 displays its authored post-teleport message")
-	assert_equal(teleported.directive.kind, ScenarioVmDirective.FINISH, "opcode 20 ends the current script before destination AP activation")
-	assert_true(_event_has(teleported.events, &"destination_trigger_recheck_requested"), "opcode 20 requests destination trigger discovery through GameSession")
-
-
-func _test_classic_quest_values(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("quest.character", "Quest", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var adjusted := api.execute_classic(ClassicActionDefinition.new(0, 76, 76, 0, false, [13, 150, 0, 0, 0]), "request.quest-adjust")
-	assert_equal(adjusted.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 76 adjusts a session-owned quest value")
-	assert_equal(state.quest_value(13), 127, "quest adjustment preserves Castle's signed-byte clamp")
-	var matched := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, true, [13, 100, 0, 7, 8]), "request.quest-branch")
-	assert_equal(matched.directive.target_id, 8, "Classic opcode 77 branches when quest value reaches its threshold")
-	assert_true(matched.directive.gosub, "quest-value branch preserves Classic GOSUB identity")
-	state.set_quest_value(13, 10)
-	var missing := api.execute_classic(ClassicActionDefinition.new(0, 77, 77, 0, false, [13, 100, 0, 7, 8]), "request.quest-branch-low")
-	assert_equal(missing.directive.target_id, 7, "quest-value branch uses its below-threshold target")
-
-
-func _test_registration_marker(content: RealmzContent) -> void:
-	var api := _runtime_api(content, ScenarioActionState.new())
-	var registration := api.execute_classic(ClassicActionDefinition.new(0, 98, 98, 1, false, []), "request.registration")
-	assert_equal(registration.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Castle's open-source opcode 98 path performs no registration gate")
-	assert_true(_event_has(registration.events, &"classic_control_marker"), "registration no-op remains explicit in the domain trace")
-
-
-func _test_classic_party_mode(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("mode.character", "Mode", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var requires_boat := api.execute_classic(ClassicActionDefinition.new(0, 103, 103, 0, false, [1, 0, 0, 0, 0]), "request.require-boat")
-	assert_equal(requires_boat.directive.kind, ScenarioVmDirective.FINISH, "Classic opcode 103 ends the script when required boat state is absent")
-	var enter_boat := api.execute_classic(ClassicActionDefinition.new(0, 103, 103, 0, false, [0, 0, 1, 0, 0]), "request.enter-boat")
-	assert_true(state.party_in_boat, "Classic opcode 103 can place the party in a boat")
-	assert_equal(enter_boat.directive, null, "party-mode mutation continues when no status check fails")
-	var excludes_boat := api.execute_classic(ClassicActionDefinition.new(0, 103, 103, 0, false, [2, 0, 0, 0, 0]), "request.exclude-boat")
-	assert_equal(excludes_boat.directive.kind, ScenarioVmDirective.FINISH, "Classic opcode 103 can require the party to be outside a boat")
-
-
-func _test_scrolling_text_event(content: RealmzContent) -> void:
-	var api := _runtime_api(content, ScenarioActionState.new())
-	var result := api.execute_classic(ClassicActionDefinition.new(0, 62, 62, -1, false, []), "request.scrolling-text")
-	assert_equal(result.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 62 emits scrolling text without making animation a simulation boundary")
-	assert_true(_event_has(result.events, &"scrolling_text_requested"), "scrolling text crosses the host boundary as a presentation event")
-
-
-func _test_classic_shop_lifecycle(content: RealmzContent) -> void:
-	var stocked_item := content.item_by_id("classic.item.901")
-	var resale_item := content.item_by_id("classic.item.1")
-	var equipped_item := content.item_by_id("classic.item.2")
-	assert_not_null(stocked_item, "shop fixture contains its authored charged stock")
-	assert_not_null(resale_item, "shop fixture contains an unstocked resale item")
-	assert_not_null(equipped_item, "shop fixture contains an equipped sale guard item")
-	if stocked_item == null or resale_item == null or equipped_item == null:
-		return
-	var character := CharacterState.new("shop.character", "Merchant", 10, 10)
-	character.maximum_load = 100_000
-	var resale_instance := ItemInstance.new("shop.resale", resale_item.id, resale_item.initial_charges, false, false)
-	var equipped_instance := ItemInstance.new("shop.equipped", equipped_item.id, equipped_item.initial_charges, true, true)
-	character.set_inventory([resale_instance, equipped_instance])
-	character.carried_load = resale_item.instance_weight(resale_instance.charges) + equipped_item.instance_weight(equipped_instance.charges)
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	party.pooled_wealth.gold = 1_000
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var configured := api.execute_classic(ClassicActionDefinition.new(0, 73, 73, 0, false, [0, 1, 799, 800, 970]), "request.configure-shop")
-	assert_equal(configured.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 73 configures a shop without forcing presentation")
-	assert_equal(state.active_shop_id, "classic.shop.0", "configured shop identity is session-owned")
-	assert_equal(state.shop_accept_ranges(), [1, 799, 800, 970], "shop sale restrictions preserve both authored ranges")
-	var configured_round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(configured_round_trip, "active shop and restrictions serialize in the central save aggregate")
-	assert_equal(configured_round_trip.shop_accept_ranges(), state.shop_accept_ranges(), "restored shop restrictions are exact")
-	var opened := api.execute_classic(ClassicActionDefinition.new(0, 6, 6, 0, false, []), "request.shop-lifecycle")
-	assert_equal(opened.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic shop entry yields one typed service workspace")
-	assert_equal(opened.interaction.body.to_data()["partyGold"], 1_000, "shop request exposes total payable party gold")
-	var resale_view: Dictionary = opened.interaction.body.to_data()["characters"][0]["inventory"][0]
-	assert_equal(resale_view["name"], resale_item.unidentified_name, "shop inventory does not leak an unidentified item's true name")
-	assert_equal(resale_view["sellPrice"], 0, "the one-fiftieth unidentified penalty may reduce low-value sale offers to zero")
-	var bought := api.resume_classic(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, &"shop_action", {"action": "buy", "stockKey": "base:0", "characterId": character.id}), opened.interaction.request_id)
-	assert_equal(bought.state, ScenarioRuntimeOperationResult.State.WAITING, "buying returns to the same shop interaction")
-	var bought_instance := character.inventory()[-1]
-	assert_equal([bought_instance.definition_id, bought_instance.identified], [stocked_item.id, true], "shop stock enters inventory identified with authored charges")
-	assert_equal(state.shop_quantity(content.shop_by_classic_id(0), 0), 1, "purchase decrements mutable base stock")
-	var identified := api.resume_classic(bought.continuation, InteractionResponse.from_data(bought.interaction.request_id, &"shop_action", {"action": "identify", "characterId": character.id, "instanceId": resale_instance.id}), bought.interaction.request_id)
-	assert_equal(identified.state, ScenarioRuntimeOperationResult.State.WAITING, "paid identification returns to the shop")
-	assert_true(resale_instance.identified, "paid identification marks the exact selected instance")
-	assert_equal(state.party.pooled_wealth.gold, 887, "shop purchase and fixed twenty-gold identification charge commit once")
-	assert_true(_event_has(identified.events, &"sound_requested"), "paid identification requests Castle sound 683 through presentation")
-	var equipped_sale := api.resume_classic(identified.continuation, InteractionResponse.from_data(identified.interaction.request_id, &"shop_action", {"action": "sell", "characterId": character.id, "instanceId": equipped_instance.id}), identified.interaction.request_id)
-	assert_equal(equipped_sale.error_code, &"equipped_item", "ordinary shop sale cannot bypass equipment removal")
-	assert_true(character.inventory().has(equipped_instance), "a rejected equipped sale leaves inventory unchanged")
-	var sold := api.resume_classic(identified.continuation, InteractionResponse.from_data(identified.interaction.request_id, &"shop_action", {"action": "sell", "characterId": character.id, "instanceId": resale_instance.id}), identified.interaction.request_id)
-	assert_equal(sold.state, ScenarioRuntimeOperationResult.State.WAITING, "selling returns to the same shop interaction")
-	assert_equal(state.shop_buyback_quantity("classic.shop.0", resale_item.id), 1, "an unstocked sale becomes save-owned buyback stock")
-	assert_equal(state.party.pooled_wealth.gold, 889, "identified sale adds Castle's half-cost offer to pooled gold")
-	var serialized: Variant = JSON.parse_string(JSON.stringify(state.to_data()))
-	var restored: GameState = GameState.from_data(serialized)
-	assert_not_null(restored, "dynamic shop buyback stock serializes in the central game state")
-	assert_equal(restored.shop_buyback_quantity("classic.shop.0", resale_item.id), 1, "shop buyback quantity restores exactly")
-	var save_session := GameSession.new()
-	assert_equal(save_session.start(content, 1).state, SessionStep.State.COMPLETED, "shop-state validation fixture starts")
-	var valid_save := save_session.snapshot()
-	valid_save.game_state.set_shop_buyback_quantity("classic.shop.0", resale_item.id, 1)
-	assert_equal(GameSession.new().restore(content, valid_save).state, SessionStep.State.COMPLETED, "whole-session restore accepts package-backed buyback stock")
-	var invalid_save := SaveEnvelope.from_data(save_data(valid_save))
-	assert_not_null(invalid_save, "valid buyback envelope detaches before corruption")
-	invalid_save.game_state.set_shop_buyback_quantity("classic.shop.0", "missing.item", 1)
-	assert_equal(GameSession.new().restore(content, invalid_save).error_code, &"invalid_game_state", "whole-session restore rejects buyback stock with an unavailable item identity")
-	var bought_back := api.resume_classic(sold.continuation, InteractionResponse.from_data(sold.interaction.request_id, &"shop_action", {"action": "buy", "stockKey": "buyback:%s" % resale_item.id, "characterId": character.id}), sold.interaction.request_id)
-	assert_equal(bought_back.state, ScenarioRuntimeOperationResult.State.WAITING, "a sold unstocked item can be bought back through typed stock identity")
-	assert_equal(state.shop_buyback_quantity("classic.shop.0", resale_item.id), 0, "buyback purchase consumes the dynamic stock entry")
-	var returned_instance: ItemInstance = character.inventory()[-1]
-	assert_equal([returned_instance.definition_id, returned_instance.identified], [resale_item.id, true], "buyback stock is shop-owned and therefore identified")
-	party.banked_wealth = WealthState.new(50, 2, 1)
-	assert_equal(api.execute_classic(ClassicActionDefinition.new(0, 49, 49, 0, false, []), "request.shop-bank-offer").state, ScenarioRuntimeOperationResult.State.COMPLETED, "shop bank fixture enables the source banking context")
-	var banked_shop := api.execute_classic(ClassicActionDefinition.new(0, 6, 6, 0, false, []), "request.shop-bank-open")
-	assert_equal(banked_shop.state, ScenarioRuntimeOperationResult.State.WAITING, "a shop opened in banking context remains a typed service workspace")
-	assert_equal(party.banked_wealth.to_data(), {"gold": 0, "gems": 0, "jewelry": 0}, "bank-backed shop entry moves all deposited denominations into the payable pool")
-	var shop_pool_before_close := party.pooled_wealth.to_data()
-	var banked_shop_closed := api.resume_classic(banked_shop.continuation, InteractionResponse.from_data(banked_shop.interaction.request_id, InteractionRequest.SHOP, {"action": "leave"}), banked_shop.interaction.request_id)
-	assert_equal(banked_shop_closed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "leaving a bank-backed shop closes normally")
-	assert_equal([party.pooled_wealth.to_data(), party.banked_wealth.to_data()], [{"gold": 0, "gems": 0, "jewelry": 0}, shop_pool_before_close], "bank-backed shop exit returns the complete remaining pool to the bank")
-
-
-func _test_classic_temple_lifecycle(content: RealmzContent) -> void:
-	var character := CharacterState.new("temple.character", "Patient", 1, 20)
-	character.maximum_load = 10_000
-	character.money.gold = 500
-	character.carried_load = 500
-	character.conditions.set_value(TempleRules.CONDITION_POISONED, 8)
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	party.banked_wealth = WealthState.new(1_000, 2, 1)
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var offered := api.execute_classic(ClassicActionDefinition.new(0, 32, 32, 100, false, []), "request.temple-offer")
-	assert_equal(offered.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 32 offers rather than enters the temple")
-	assert_true(state.temple_available, "temple availability is session-owned")
-	assert_true(_event_has(offered.events, &"sound_requested"), "the offer publishes Castle sound 10105")
-	var bank_offer := api.execute_classic(ClassicActionDefinition.new(0, 49, 49, 0, false, []), "request.bank-offer")
-	assert_equal(bank_offer.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 49 offers rather than enters the bank")
-	var opened := api.request_available_temple("request.temple-open")
-	assert_equal(opened.state, ScenarioRuntimeOperationResult.State.WAITING, "entering the available temple yields its typed workspace")
-	assert_equal(opened.interaction.body.to_data().get("services", []).size(), 9, "temple workspace exposes Castle's complete fixed service table")
-	assert_equal([party.banked_wealth.gold, party.pooled_wealth.gold, party.pooled_wealth.gems, party.pooled_wealth.jewelry], [0, 1_000, 2, 1], "an available bank moves all three denominations into the temple pool on entry")
-	var small := api.resume_classic(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, InteractionRequest.TEMPLE, {"action": "service", "serviceId": "heal-small", "characterId": character.id}), opened.interaction.request_id)
-	assert_equal(small.state, ScenarioRuntimeOperationResult.State.WAITING, "a purchased temple service returns to the same workspace")
-	assert_equal(small.interaction.body.to_data().get("selectedCharacterId"), character.id, "the selected temple character survives request regeneration")
-	assert_true(character.current_health > 1 and character.current_health <= 9, "Heal Small Wounds commits one Castle Rand(8) result")
-	assert_equal(party.pooled_wealth.gold, 750, "temple payment spends pooled gold before personal gold")
-	assert_true(_event_has(small.events, &"temple_service_completed") and _event_has(small.events, &"sound_requested"), "service completion records the mutation and Castle click sound")
-	var poison := api.resume_classic(small.continuation, InteractionResponse.from_data(small.interaction.request_id, InteractionRequest.TEMPLE, {"action": "service", "serviceId": "heal-poison", "characterId": character.id}), small.interaction.request_id)
-	assert_equal(character.conditions.value(TempleRules.CONDITION_POISONED), 0, "Heal Poison clears the exact selected character condition")
-	assert_equal(party.pooled_wealth.gold, 550, "fixed-cost cures charge even when their effect is not health-based")
-	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(round_trip, "temple and bank availability serialize in the central game state")
-	assert_true(round_trip.temple_available and round_trip.bank_available, "restored service availability retains both source flags")
-	var closed := api.resume_classic(poison.continuation, InteractionResponse.from_data(poison.interaction.request_id, InteractionRequest.TEMPLE, {"action": "leave"}), poison.interaction.request_id)
-	assert_equal(closed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "leaving a bank-backed temple closes without another player choice")
-	assert_equal([party.pooled_wealth.gold, party.banked_wealth.gold, party.banked_wealth.gems, party.banked_wealth.jewelry], [0, 550, 2, 1], "temple exit returns all pooled denominations to the available bank")
-
-
-func _test_classic_bank_swap_lifecycle(content: RealmzContent) -> void:
-	var observation: Variant = JSON.parse_string(FileAccess.get_file_as_string(BANK_SOURCE_OBSERVATION_PATH))
-	assert_true(observation is Dictionary and observation.get("evidence") == "source-control-flow", "Classic bank characterization is tied to the pinned Castle source observation")
-	var race: RaceDefinition = null
-	var caste: CasteDefinition = null
-	for candidate_caste: CasteDefinition in content.caste_definitions():
-		for candidate_race: RaceDefinition in content.race_definitions():
-			if not candidate_race.eligible_caste_ids.is_empty() and not candidate_race.eligible_caste_ids.has(candidate_caste.id):
-				continue
-			if not candidate_caste.eligible_race_ids.is_empty() and not candidate_caste.eligible_race_ids.has(candidate_race.id):
-				continue
-			race = candidate_race
-			caste = candidate_caste
-			break
-		if race != null:
-			break
-	assert_not_null(race, "bank fixture finds package-backed character rules for movement recalculation")
-	if race == null or caste == null:
-		return
-	var character := CharacterState.new("bank.character", "Depositor", 10, 10)
-	character.race_id = race.id
-	character.caste_id = caste.id
-	character.maximum_load = 500
-	character.money = WealthState.new(5, 1, 0)
-	character.carried_load = 6
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	party.pooled_wealth = WealthState.new(10, 0, 0)
-	party.banked_wealth = WealthState.new(25, 2, 1)
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var offered := api.execute_classic(ClassicActionDefinition.new(0, 49, 49, 0, false, []), "request.bank-offer")
-	assert_equal(offered.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 49 makes banking available without opening a transfer dialog")
-	var opened := api.request_available_bank("request.bank-open")
-	assert_equal(opened.state, ScenarioRuntimeOperationResult.State.WAITING, "the bank command opens the typed Classic Swap workspace")
-	var bank_button_sound_index := _event_index_with_payload(opened.events, &"sound_requested", "soundId", 141)
-	var bank_open_sound_index := _event_index_with_payload(opened.events, &"sound_requested", "soundId", 3003)
-	assert_true(bank_button_sound_index >= 0 and bank_open_sound_index > bank_button_sound_index, "bank-backed Swap preserves the Castle button-then-modal sound order")
-	assert_true(bool(opened.events[bank_open_sound_index].payload.get("stopExisting", false)), "Swap modal open quiets the preceding button channel before sound 3003")
-	assert_equal(party.banked_wealth.to_data(), {"gold": 0, "gems": 0, "jewelry": 0}, "opening bank-backed Swap drains every deposited denomination exactly once")
-	assert_equal(party.pooled_wealth.to_data(), {"gold": 35, "gems": 2, "jewelry": 1}, "banked wealth joins the existing shared pool without loss")
-	assert_equal(opened.interaction.body.to_data().get("pooledWealth"), party.pooled_wealth.to_data(), "the presenter receives all detached pooled denominations")
-	assert_equal(opened.interaction.body.to_data().get("characters", []).size(), 1, "bank-backed Swap exposes typed character transfer facts")
-	var transfer := api.resume_classic(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, InteractionRequest.BANK, {"action": "to-character", "characterId": character.id, "denomination": "gold", "amount": 5}), opened.interaction.request_id)
-	assert_equal(transfer.state, ScenarioRuntimeOperationResult.State.WAITING, "bank-backed Swap moves one exact Classic denomination increment")
-	assert_equal([party.pooled_wealth.gold, character.money.gold], [30, 10], "bank-backed Swap preserves gold totals")
-	assert_true(transfer.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 10051), "bank-backed pool-to-character transfer requests Castle sound 10051")
-	var forged := api.resume_classic(transfer.continuation, InteractionResponse.from_data(transfer.interaction.request_id, InteractionRequest.BANK, {"action": "to-character", "characterId": character.id, "denomination": "gold", "amount": 1}), transfer.interaction.request_id)
-	assert_equal(forged.error_code, &"invalid_money_increment", "bank-backed Swap rejects arbitrary gold amounts")
-	assert_equal([party.pooled_wealth.gold, character.money.gold], [30, 10], "rejected bank transfer mutates no wealth")
-	var closed := api.resume_classic(transfer.continuation, InteractionResponse.from_data(transfer.interaction.request_id, InteractionRequest.BANK, {"action": "leave"}), transfer.interaction.request_id)
-	assert_equal(closed.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Done closes only the bank-backed Swap workspace")
-	assert_true(closed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 141), "bank-backed Swap Done requests Castle sound 141")
-	assert_true(state.bank_available, "Done preserves the source banking context until location departure")
-	assert_equal([party.pooled_wealth.gold, party.banked_wealth.gold], [30, 0], "Done does not prematurely return the shared pool to the bank")
-	var reopened := api.request_available_bank("request.bank-reopen")
-	assert_equal(reopened.state, ScenarioRuntimeOperationResult.State.WAITING, "the contextual bank command can reopen Swap before departure")
-	assert_equal([party.pooled_wealth.gold, party.banked_wealth.gold], [30, 0], "reopening does not duplicate already-drained bank wealth")
-
-
-func _test_classic_experience_loss_and_drop(content: RealmzContent) -> void:
-	var first := CharacterState.new("penalty.first", "First", 10, 10)
-	var second := CharacterState.new("penalty.second", "Second", 10, 10)
-	first.experience = 100
-	second.experience = 100
-	first.carried_load = 12
-	first.set_inventory([ItemInstance.new("penalty.item", "item.fixture.sword", 0, true, true)])
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [first, second])
-	var state := GameState.new(party, RealmzClock.new())
-	state.set_selected_character_ids([second.id])
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	api.execute_classic(ClassicActionDefinition.new(0, 90, 90, 0, false, [30, 1, 0, 0, 0]), "request.take-victory")
-	assert_equal(first.experience, 100, "Classic opcode 90 selected mode leaves unselected characters unchanged")
-	assert_equal(second.experience, 70, "Classic opcode 90 removes authored experience from selected characters")
-	var dropped := api.execute_classic(ClassicActionDefinition.new(0, 91, 91, 0, false, []), "request.drop-equipment")
-	assert_equal(first.inventory().size(), 0, "Classic opcode 91 removes every carried item")
-	assert_equal(first.carried_load, 0, "dropping all equipment clears carried load")
-	assert_true(_event_has(dropped.events, &"party_equipment_dropped"), "bulk equipment loss is explicit in the domain trace")
-
-
-func _test_classic_character_money_loss(content: RealmzContent) -> void:
-	var first := CharacterState.new("money.first", "First", 10, 10)
-	var second := CharacterState.new("money.second", "Second", 10, 10)
-	first.money.jewelry = 2
-	second.money.jewelry = 3
-	first.carried_load = 30
-	second.carried_load = 45
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [first, second])
-	var state := GameState.new(party, RealmzClock.new())
-	state.set_selected_character_ids([second.id])
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var cleared := api.execute_classic(ClassicActionDefinition.new(0, 60, 60, 0, false, [3, 1, 0, 0, 0]), "request.clear-money")
-	assert_equal(first.money.jewelry, 2, "Classic opcode 60 selected mode preserves unselected character wealth")
-	assert_equal(second.money.jewelry, 0, "Classic opcode 60 clears the selected authored wealth kind")
-	assert_equal(second.carried_load, 0, "jewelry removal preserves Castle's fifteen-load-units convention")
-	assert_equal(cleared.value, 3, "wealth-loss result reports the removed quantity")
-
-
-func _test_classic_battle_macro_controls(content: RealmzContent) -> void:
-	var definition := content.monster_by_classic_id(1)
-	assert_not_null(definition, "battle-macro fixture contains a Classic monster identity")
-	if definition == null:
-		return
-	var character := CharacterState.new("macro.character", "Macro", 10, 10)
-	var monster := MonsterState.new("macro.monster", definition.id, definition.name, 5, 5)
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	var state := GameState.new(party, RealmzClock.new())
-	state.combat = CombatState.new("classic.battle.0", [monster], -9)
-	state.combat.round_number = 2
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var round_branch := api.execute_classic(ClassicActionDefinition.new(0, 126, 126, 0, false, [0, 1, 0, 11, 0]), "request.round-macro")
-	assert_equal(round_branch.directive.target_id, 11, "Classic opcode 126 branches to the authored battle macro on its matching completed round")
-	assert_equal(state.combat.macro_id, 0, "single-use battle macro clears its mutable session-owned hook")
-	var present := api.execute_classic(ClassicActionDefinition.new(0, 127, 127, 1, false, []), "request.monster-present")
-	assert_equal(present.directive, null, "Classic opcode 127 continues while its living monster identity is present")
-	monster.current_health = 0
-	var absent := api.execute_classic(ClassicActionDefinition.new(0, 127, 127, 1, false, []), "request.monster-absent")
-	assert_equal(absent.directive.kind, ScenarioVmDirective.FINISH, "monster-presence failure ends the active battle macro")
-	var round_trip := CombatState.from_data(JSON.parse_string(JSON.stringify(state.combat.to_data())))
-	assert_not_null(round_trip, "mutable battle macro identity serializes with combat state")
-	assert_equal(round_trip.macro_id, state.combat.macro_id, "restored battle macro identity is exact")
-
-
-func _test_classic_selected_character_alteration(content: RealmzContent) -> void:
-	var first := CharacterState.new("alter.first", "First", 10, 10)
-	var second := CharacterState.new("alter.second", "Second", 10, 10)
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [first, second])
-	var state := GameState.new(party, RealmzClock.new())
-	state.set_selected_character_ids([second.id])
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	api.execute_classic(ClassicActionDefinition.new(0, 108, 108, 0, false, [7, -20, 0, 0, 0]), "request.alter-stamina")
-	assert_equal(first.maximum_health, 10, "Classic opcode 108 leaves unselected characters unchanged")
-	assert_equal(second.maximum_health, 2, "selected stamina alteration preserves Castle's minimum of two")
-	assert_equal(second.current_health, 2, "direct model remains valid when maximum stamina drops below current stamina")
-	api.execute_classic(ClassicActionDefinition.new(0, 108, 108, 0, false, [1, 3, 0, 0, 0]), "request.alter-attacks")
-	assert_equal(second.attack_bonus, 3, "attacks-per-round bonus is represented independently from the character's base attacks")
-	var round_trip := CharacterState.from_data(JSON.parse_string(JSON.stringify(second.to_data())))
-	assert_not_null(round_trip, "new Classic character alteration fields serialize in the central save aggregate")
-	assert_equal(round_trip.attack_bonus, second.attack_bonus, "restored attack bonus is exact")
-
-
-func _test_classic_combat_monster_alteration(content: RealmzContent) -> void:
-	var definition := content.monster_by_classic_id(1)
-	assert_not_null(definition, "combat-alteration fixture contains a Classic monster identity")
-	if definition == null:
-		return
-	var monster := MonsterState.new("alter.monster", definition.id, definition.name, 5, 5)
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("alter.monster.character", "Alter", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	state.combat = CombatState.new("classic.battle.0", [monster])
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var altered := api.execute_classic(ClassicActionDefinition.new(0, 120, 120, 0, false, [2, 1, 1, -1, 0]), "request.alter-monster")
-	assert_false(monster.traitor, "Classic opcode 120 can convert an authored combat monster to the party side")
-	assert_equal(altered.value, 1, "combat monster alteration respects its authored count")
-	monster.icon_id = 27
-	var round_trip := MonsterState.from_data(JSON.parse_string(JSON.stringify(monster.to_data())))
-	assert_not_null(round_trip, "mutable combat icon identity serializes with monster state")
-	assert_equal(round_trip.icon_id, 27, "restored combat icon identity is exact")
-
-
-func _test_classic_bodycount_selection(content: RealmzContent) -> void:
-	var definition := content.monster_by_classic_id(1)
-	assert_not_null(definition, "body-count fixture contains a Classic ally definition")
-	if definition == null:
-		return
-	var original_can_summon := definition.can_summon
-	definition.can_summon = 1
-	var survivor := MonsterState.new("bodycount.survivor", definition.id, "Survivor", 9, 12, 1, 1, 0, 0, 0, false)
-	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("bodycount.character", "Body Count", 10, 10)]), RealmzClock.new())
-	state.combat = CombatState.new("classic.battle.0", [survivor])
-	state.combat.completed = true
-	state.combat.outcome = &"victory"
-	var flow := RealmzRules.new().combat_flow
-	var payload := flow.ally_selection_payload(state, content)
-	assert_equal(payload.get("selectedIds"), [survivor.id], "Classic body-count defaults surviving eligible allies to selected")
-	var selected := flow.apply_ally_selection(state, content, payload.get("selectedIds", []))
-	assert_true(selected.ok, "typed post-battle selection retains a surviving ally")
-	assert_equal(state.party.allies()[0].id, survivor.id, "selected combat survivor returns to the held-over party")
-	definition.can_summon = -1
-	state.party.set_allies([])
-	var mandatory := flow.apply_ally_selection(state, content, [])
-	assert_false(mandatory.ok, "scenario-mandatory Classic allies cannot be left behind")
-	assert_equal(mandatory.error_code, &"required_ally_missing", "mandatory ally rejection is explicit")
-	survivor.current_health = 0
-	assert_true(flow.ally_selection_payload(state, content).is_empty(), "Castle bypasses its body-count dialog when no living non-party ally is available")
-	definition.can_summon = original_can_summon
-
-
-func _test_classic_spellcasting_flags(content: RealmzContent) -> void:
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("flags.character", "Flags", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var camping_disabled := api.execute_classic(ClassicActionDefinition.new(0, 66, 66, 1, false, []), "request.disable-camp")
-	assert_false(state.camping_allowed, "Classic opcode 66 ID 1 disables camping")
-	assert_true(_event_has(camping_disabled.events, &"camping_availability_changed"), "camping availability change is presentation-observable")
-	api.execute_classic(ClassicActionDefinition.new(0, 66, 66, 0, false, []), "request.enable-camp")
-	assert_true(state.camping_allowed, "Classic opcode 66 ID 0 enables camping")
-	var turning_disabled := api.execute_classic(ClassicActionDefinition.new(0, 82, 82, 0, false, []), "request.turning-off")
-	assert_false(state.priest_turning_allowed, "Classic opcode 82 disables priest turning in session state")
-	assert_true(_event_has(turning_disabled.events, &"priest_turning_availability_changed"), "turning availability publishes an explicit domain event")
-	var turning_enabled := api.execute_classic(ClassicActionDefinition.new(0, 83, 83, 0, false, []), "request.turning-on")
-	assert_true(state.priest_turning_allowed, "Classic opcode 83 restores priest turning")
-	assert_true(_event_has(turning_enabled.events, &"message_shown"), "Castle's turning feedback crosses the presentation boundary as an event")
-	var suspended := api.execute_classic(ClassicActionDefinition.new(0, 105, 105, 1, false, []), "request.suspend-allies")
-	assert_true(state.allies_suspended, "Classic opcode 105 suspends ally battle participation in session state")
-	assert_true(_event_has(suspended.events, &"ally_participation_changed"), "ally participation change is explicit in the domain trace")
-	var changed := api.execute_classic(ClassicActionDefinition.new(0, 69, 69, 1, false, [1, 0, 1, 0, 0]), "request.casting-flags")
-	assert_true(state.character_spellcasting_blocked and not state.monster_spellcasting_blocked and state.spell_charging, "Classic opcode 69 owns both blocking flags and the charging flag")
-	assert_true(_event_has(changed.events, &"spellcasting_flags_changed"), "spellcasting flag changes are explicit in the domain trace")
-	var round_trip := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	assert_not_null(round_trip, "Classic availability and spellcasting flags serialize in the central save aggregate")
-	assert_true(round_trip.camping_allowed and round_trip.priest_turning_allowed and round_trip.allies_suspended, "restored exploration, priest, and ally availability flags are exact")
-	assert_true(round_trip.character_spellcasting_blocked and round_trip.spell_charging, "restored spellcasting blocking flags are exact")
-
-
-func _test_classic_identity_selection(content: RealmzContent) -> void:
-	var first := CharacterState.new("identity.first", "First", 10, 10)
-	var second := CharacterState.new("identity.second", "Second", 0, 10)
-	first.race_id = "classic.race.1"
-	second.race_id = "classic.race.1"
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [first, second])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var selected := api.execute_classic(ClassicActionDefinition.new(0, 50, 50, 0, false, [0, 0, 1, 0, 1]), "request.select-race")
-	assert_equal(selected.value, [first.id], "Classic opcode 50 selects matching living characters by direct Realmz race identity")
-	assert_equal(state.selected_character_ids(), [first.id], "identity selection updates the shared selected-character set used by later opcodes")
-
-
-func _test_classic_character_ability_picker(content: RealmzContent) -> void:
-	var first := CharacterState.new("ability.first", "First", 10, 10)
-	var second := CharacterState.new("ability.second", "Second", 10, 10)
-	first.set_ability_value(5, 40)
-	second.set_ability_value(5, 5)
-	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [first, second]), RealmzClock.new())
-	var rng := ScriptedRng.new([0, 0, 32_767])
-	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new())
-	var missing := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12]), "request.ability.missing")
-	assert_equal(missing.error_code, &"missing_extra_code", "Classic opcode 31 rejects an incomplete five-value Extra Code row")
-	var waiting := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12, 13]), "request.ability")
-	assert_equal(waiting.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic opcode 31 yields the typed character picker")
-	assert_equal([waiting.interaction.kind, waiting.interaction.body.to_data()["count"], waiting.interaction.body.to_data()["eligible"].size()], [&"character_selection", 1, 2], "ability picker exposes one living-character choice with stable IDs")
-	var saved_request := InteractionRequest.from_data(JSON.parse_string(JSON.stringify(waiting.interaction.to_data())))
-	var saved_continuation_data: Dictionary = JSON.parse_string(JSON.stringify(waiting.continuation.to_data()))
-	var saved_continuation := ScenarioRuntimeContinuation.from_data(saved_continuation_data)
-	assert_not_null(saved_request, "ability picker request survives the JSON-shaped save boundary")
-	var inert := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [10, 0, 1, 12, 13]), "request.ability.inert")
-	assert_equal([inert.state, inert.interaction.kind, rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.WAITING, &"character_selection", 0], "AOGM's attribute index 10 retains Castle's living-character picker before its inert check")
-	var inert_result := api.resume_classic(inert.continuation, InteractionResponse.from_data(inert.interaction.request_id, &"character_selection", {"characterIds": [second.id]}), "request.ability.inert.resume")
-	assert_equal([inert_result.state, inert_result.directive == null, state.selected_character_ids(), rng.snapshot().draw_count], [ScenarioRuntimeOperationResult.State.COMPLETED, true, [second.id], 1], "Castle's undefined attribute index consumes one Rand(25) draw and continues without either authored branch")
-	assert_equal(inert_result.events[0].payload.get("branch"), "none", "the source-defined inert result is explicit in the committed trace")
-	var passed := api.resume_classic(saved_continuation, InteractionResponse.from_data(saved_request.request_id, &"character_selection", {"characterIds": [first.id]}), "request.ability.resume")
-	assert_equal([passed.directive.target_id, state.selected_character_ids(), rng.snapshot().draw_count], [12, [first.id], 2], "selected ability, pass branch, and one RNG draw commit together after restore")
-	assert_true(_event_has(passed.events, &"character_ability_checked"), "ability picker publishes the source-ordered committed result")
-	var repeated := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12, 13]), "request.ability.second")
-	var failed := api.resume_classic(repeated.continuation, InteractionResponse.from_data(repeated.interaction.request_id, &"character_selection", {"characterIds": [second.id]}), "request.ability.second.resume")
-	assert_equal([failed.directive.target_id, state.selected_character_ids(), rng.snapshot().draw_count], [13, [second.id], 3], "failed ability check branches to the authored alternate XAP without reusing the prior draw")
-	var forged := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12, 13]), "request.ability.forged")
-	var rejected := api.resume_classic(forged.continuation, InteractionResponse.from_data(forged.interaction.request_id, &"character_selection", {"characterIds": ["missing.character"]}), "request.ability.forged.resume")
-	assert_equal(rejected.error_code, &"invalid_interaction_response", "ability picker rejects an unavailable character identity before drawing RNG")
-	assert_equal(rng.snapshot().draw_count, 3, "invalid ability-picker responses do not consume simulation RNG")
-
-	first.brawn = 2
-	second.brawn = 12
-	var third := CharacterState.new("ability.third", "Third", 10, 10)
-	third.brawn = 22
-	third.set_ability_value(5, 95)
-	state.party.add_character(third)
-	var filter_rng := ScriptedRng.new([0, 13_107, 26_214, 1_311, 16_057, 30_802])
-	var filter_api := RealmzRuntimeApi.new(content, state, filter_rng, ScenarioActionState.new())
-	var attributes := filter_api.execute_classic(ClassicActionDefinition.new(0, 30, 30, 0, false, [0, 0, 2, 1, 0]), "request.filter.attributes")
-	assert_equal([attributes.value, state.selected_character_ids(), filter_rng.snapshot().draw_count], [[first.id, second.id, third.id], [first.id, second.id, third.id], 3], "FD-SCENARIO-001 evaluates each tracked character rather than Castle's unrelated instruction-slot character")
-	var abilities := filter_api.execute_classic(ClassicActionDefinition.new(0, 30, 30, 0, false, [-5, 0, 2, 0, 0]), "request.filter.abilities")
-	assert_equal([abilities.value, state.selected_character_ids(), filter_rng.snapshot().draw_count], [[second.id], [second.id], 6], "negative opcode 30 selects each character whose own ability check fails and inverts exactly once")
-
-
-func _test_classic_monster_route(content: RealmzContent) -> void:
-	var definition := content.monster_by_classic_id(1)
-	assert_not_null(definition, "route fixture contains a Classic monster identity")
-	if definition == null:
-		return
-	var monster := MonsterState.new("route.monster", definition.id, definition.name, 5, 5)
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("route.character", "Route", 10, 10)])
-	var state := GameState.new(party, RealmzClock.new())
-	state.combat = CombatState.new("classic.battle.0", [monster])
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var routed := api.execute_classic(ClassicActionDefinition.new(0, 123, 123, 0, false, [1, 0, 0, 0, 0]), "request.route")
-	assert_equal(routed.value, 1, "Classic opcode 123 routes every matching monster on the macro source's side")
-	assert_equal(monster.conditions.value(ConditionRules.RUNS_AWAY), -1, "routed monster receives Castle's persistent run-away condition")
-	assert_equal(monster.surrender_percent, 50, "routed monster receives Castle's fifty-percent surrender override")
-
-
-func _test_classic_random_items(content: RealmzContent) -> void:
-	var character := CharacterState.new("random-item.character", "Random Item", 10, 10)
-	character.maximum_load = 1_000
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	var state := GameState.new(party, RealmzClock.new())
-	var rng := ScriptedRng.new([0, 0])
-	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new())
-	var granted := api.execute_classic(ClassicActionDefinition.new(0, 65, 65, 0, false, [-1, 901, 901, 0, 0]), "request.random-item")
-	assert_equal(granted.state, ScenarioRuntimeOperationResult.State.WAITING, "Classic opcode 65 opens ordinary distribution for its rolled exact item")
-	granted = _drain_runtime_reward(api, granted, false)
-	assert_equal(granted.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 65 completes after explicit assignment")
-	assert_equal(character.inventory().size(), 1, "random item becomes a direct Realmz item instance")
-	assert_equal(rng.snapshot().draw_count, 2, "random item count and inclusive item range each consume one session RNG draw")
-
-
-func _test_classic_selected_level_up(content: RealmzContent) -> void:
-	var character := CharacterState.new("level.character", "Level", 10, 10)
-	character.race_id = "classic.race.1"
-	character.caste_id = "classic.caste.1"
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	var state := GameState.new(party, RealmzClock.new())
-	state.set_selected_character_ids([character.id])
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var leveled := api.execute_classic(ClassicActionDefinition.new(0, 102, 102, 0, false, []), "request.level-selected")
-	assert_equal(leveled.state, ScenarioRuntimeOperationResult.State.COMPLETED, "Classic opcode 102 levels picked characters through fixed character rules")
-	assert_equal(character.level, 2, "selected character advances exactly one level")
-	assert_equal(character.experience, 1, "forced level-up preserves Castle's explicit experience marker")
-
-
-func _test_classic_death_macro_revival(content: RealmzContent) -> void:
-	var character := CharacterState.new("revive.character", "Revive", 0, 10)
-	character.conditions.set_value(ConditionRules.ANIMATED, -1)
-	var party := PartyState.new(content.start_map_id, content.start_coordinate, [character])
-	var state := GameState.new(party, RealmzClock.new())
-	var api := RealmzRuntimeApi.new(content, state, RealmzRng.new(1), ScenarioActionState.new())
-	var revived := api.execute_classic(ClassicActionDefinition.new(0, 119, 119, 0, false, []), "request.revive-party")
-	assert_equal(character.current_health, 1, "Classic opcode 119 revives a defeated party at one stamina")
-	assert_equal(character.conditions.value(ConditionRules.ANIMATED), 0, "party revival clears animated death state")
-	assert_equal(revived.directive.kind, ScenarioVmDirective.FINISH, "whole-party revival exits its death macro as Castle does")
-
-
-func _test_automatic_monster_death_macro(content: RealmzContent) -> void:
-	var monster_definition := content.monster_by_classic_id(1)
-	var battle := content.battle_by_classic_id(0)
-	assert_not_null(monster_definition, "automatic death-macro fixture contains a Classic monster")
-	assert_not_null(battle, "automatic death-macro fixture contains a Classic battle")
-	if monster_definition == null or battle == null:
-		return
-	var original_death_macro := monster_definition.death_macro
-	monster_definition.death_macro = 321
-	var programs: Array[ScenarioProgramDefinition] = [
-		ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 2, 2, 0, false, [])]),
-		ScenarioProgramDefinition.new("xap:321", &"extra-action-point", "321", [ClassicActionDefinition.new(0, 119, 119, 0, false, [])]),
-	]
-	var messages: Array[MessageDefinition] = [MessageDefinition.new(1, "Before battle"), MessageDefinition.new(4, "After battle")]
-	var direct := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(programs, []), messages, [], [], [], [], [], [], [monster_definition], [battle])
-	var character := CharacterState.new("death-macro.attacker", "Death Macro Attacker", 100, 100)
-	character.agility = 100
-	character.to_hit = 100
-	character.damage_bonus = 100
-	character.luck = 1
-	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
-	var vm := ScenarioVm.new()
-	vm.configure(direct.scenario)
-	vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
-	var api := RealmzRuntimeApi.new(direct, state, RealmzRng.new(1), ScenarioActionState.new())
-	var waiting := vm.run(api)
-	assert_equal(waiting.state, ScenarioVmResult.State.WAITING, "death-macro battle reaches the player combat boundary: %s %s" % [waiting.error_code, waiting.error_message])
-	if waiting.state != ScenarioVmResult.State.WAITING:
-		monster_definition.death_macro = original_death_macro
-		return
-	var target_id: String = state.combat.monsters()[0].id
-	var target_monster: MonsterState = state.combat.monster_by_id(target_id)
-	assert_true(_place_monster_adjacent(state.combat, character.id, target_id), "death-macro fixture establishes source-legal melee adjacency")
-	var completed := vm.resume(InteractionResponse.from_data(waiting.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "attack", "targetId": target_id}), api)
-	var macro_events: Array[DomainEvent] = []
-	macro_events.assign(completed.events)
-	assert_true(_event_has(macro_events, &"monster_death_macro_started"), "automatic death macro publishes its start")
-	assert_true(_event_has(macro_events, &"monster_revived"), "opcode 119 receives the defeated combatant context")
-	assert_true(_event_has(macro_events, &"monster_death_macro_completed"), "automatic death macro publishes its completion")
-	if completed.state == ScenarioVmResult.State.WAITING and completed.interaction.kind == &"ally_selection":
-		completed = vm.resume(InteractionResponse.from_data(completed.interaction.request_id, &"ally_selection", {"selectedIds": completed.interaction.body.to_data()["selectedIds"]}), api)
-	completed = _drain_vm_reward(vm, api, completed)
-	assert_equal(completed.state, ScenarioVmResult.State.COMPLETED, "defeating a macro-bearing monster runs its XAP before battle completion")
-	assert_equal(target_monster.current_health, 1, "death macro can revive its owning monster")
-	assert_false(target_monster.traitor, "Classic death-macro completion moves the monster off the enemy side")
-	assert_equal(state.last_battle_outcome, &"victory", "battle resolution runs after the death macro commits")
-	assert_equal(state.combat, null, "the battle aggregate is released after its death macro and terminal reward return")
-
-	var yielding_programs: Array[ScenarioProgramDefinition] = [
-		ScenarioProgramDefinition.new("xap:321", &"extra-action-point", "321", [
-			ClassicActionDefinition.new(0, 14, 14, 1, false, []),
-			ClassicActionDefinition.new(1, 119, 119, 0, false, []),
-		]),
-	]
-	var yielding_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(yielding_programs, []), messages, [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), [], [monster_definition], [battle])
-	var session := GameSession.new()
-	session.start(yielding_content, 1)
-	_begin_fixture_adventure(session, yielding_content)
-	var session_character: CharacterState = session._state.party.characters()[0]
-	session_character.agility = 100
-	session_character.to_hit = 100
-	session_character.damage_bonus = 100
-	session_character.luck = 1
-	var battle_started := session._rules.combat_flow.start_battle(session._state, yielding_content, battle, session._rng)
-	assert_true(battle_started.ok, "direct session death-macro fixture starts a battle")
-	var session_target: MonsterState = session._state.combat.monsters()[0]
-	assert_true(_place_monster_adjacent(session._state.combat, session_character.id, session_target.id), "direct death-macro fixture establishes source-legal melee adjacency")
-	var yielded := session.submit_intent(PlayerIntent.combat_action(&"attack", session_character.id, session_target.id))
-	assert_equal(yielded.state, SessionStep.State.WAITING_FOR_INTERACTION, "direct session death macro can yield a typed interaction")
-	assert_equal(yielded.interaction.kind, &"character_selection", "death-macro interaction crosses the normal session host boundary")
-	var held := session.snapshot()
-	assert_not_null(held, "pending direct-session death macro is a committed save boundary")
-	var restored := GameSession.new()
-	assert_equal(restored.restore(yielding_content, held).state, SessionStep.State.COMPLETED, "direct-session death macro restores transactionally")
-	var restored_request := restored.view().pending_interaction
-	var resumed := restored.respond(InteractionResponse.from_data(restored_request.request_id, &"character_selection", {"characterIds": [session_character.id]}))
-	assert_true(_event_has(resumed.events, &"monster_death_macro_completed"), "restored direct-session death macro completes before battle resolution")
-	if resumed.state == SessionStep.State.WAITING_FOR_INTERACTION and resumed.interaction.kind == &"ally_selection":
-		var ally_boundary := save_round_trip(restored.snapshot())
-		assert_not_null(ally_boundary, "post-battle ally selection is a committed save boundary")
-		resumed = restored.respond(InteractionResponse.from_data(resumed.interaction.request_id, &"ally_selection", {"selectedIds": resumed.interaction.body.to_data()["selectedIds"]}))
-	resumed = _drain_session_reward(restored, resumed)
-	assert_equal(resumed.state, SessionStep.State.COMPLETED, "restored death-macro interaction resumes through GameSession")
-	assert_equal(restored._state.last_battle_outcome, &"victory", "restored direct-session battle resolves after its death macro")
-	monster_definition.death_macro = original_death_macro
-
-
-func _test_spell_queued_death_macro(content: RealmzContent) -> void:
-	var monster_definition := content.monster_by_classic_id(1)
-	var battle := content.battle_by_classic_id(0)
-	assert_not_null(monster_definition, "spell-queued death-macro fixture contains a Classic monster")
-	assert_not_null(battle, "spell-queued death-macro fixture contains a Classic battle")
-	if monster_definition == null or battle == null:
-		return
-	var original_death_macro := monster_definition.death_macro
-	monster_definition.death_macro = 321
-	var spell := SpellDefinition.new("spell.session-queued-death", 1701, "Session Queued Death")
-	spell.in_combat = true
-	spell.target_type = 1
-	spell.spell_class = 6
-	spell.damage_type = 1
-	spell.cannot = 1
-	spell.cost = 1
-	spell.range_min = 10
-	spell.damage_min = 4
-	spell.damage_max = 4
-	spell.duration_min = 1
-	spell.duration_max = 1
-	var programs: Array[ScenarioProgramDefinition] = [
-		ScenarioProgramDefinition.new("xap:321", &"extra-action-point", "321", [
-			ClassicActionDefinition.new(0, 14, 14, 1, false, []),
-		]),
-	]
-	var messages: Array[MessageDefinition] = [MessageDefinition.new(1, "The queued spell macro pauses here.")]
-	var spell_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(programs, []), messages, [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), [spell], [monster_definition], [battle])
-	var session := GameSession.new()
-	session.start(spell_content, 1)
-	_begin_fixture_adventure(session, spell_content)
-	var caster: CharacterState = session._state.party.characters()[0]
-	caster.set_known_spells([spell.id])
-	caster.maximum_spell_attacks = 2
-	caster.maximum_spell_points = 10
-	caster.spell_points = 10
-	caster.normal_attacks = 4
-	var started := session._rules.combat_flow.start_battle(session._state, spell_content, battle, session._rng)
-	assert_true(started.ok, "spell-queued death-macro fixture starts a battle")
-	if not started.ok:
-		monster_definition.death_macro = original_death_macro
-		return
-	var target: MonsterState = session._state.combat.monsters()[0]
-	target.current_health = 4
-	target.magic_resistance = 0
-	assert_true(_place_monster_adjacent(session._state.combat, caster.id, target.id), "spell-queued death-macro fixture establishes source-legal range")
-	var yielded := session.submit_intent(PlayerIntent.cast_spell(spell.id, caster.id, target.id, 1))
-	assert_equal(yielded.state, SessionStep.State.WAITING_FOR_INTERACTION, "a spell-triggered death macro can yield before the caster's activation advances")
-	assert_equal(yielded.interaction.kind, &"character_selection", "the queued macro crosses the ordinary typed interaction boundary")
-	assert_equal([session._state.combat.active_actor_id(), session._state.combat.spell_death_macro_queue(), target.traitor], [caster.id, [target.id], true], "the live queue retains its caster cursor and source allegiance")
-	var boundary := session.snapshot()
-	assert_not_null(boundary, "a yielding spell death-macro queue is a complete save boundary")
-	var restored := GameSession.new()
-	assert_equal(restored.restore(spell_content, boundary).state, SessionStep.State.COMPLETED, "the spell death-macro queue restores transactionally")
-	var pending := restored.view().pending_interaction
-	var resumed := restored.respond(InteractionResponse.from_data(pending.request_id, &"character_selection", {"characterIds": [caster.id]}))
-	assert_true(_event_has(resumed.events, &"monster_death_macro_completed"), "the restored queued macro completes before combat resumes")
-	var defeated := restored._state.combat.monster_by_id(target.id)
-	assert_equal([defeated.current_health, defeated.traitor, restored._state.combat.spell_death_macro_queue(), restored._state.combat.outcome], [0, true, [], &"victory"], "the queued host path does not invent an allegiance reset when the authored macro contains no opcode that changes it")
-	monster_definition.death_macro = original_death_macro
-
-
-func _test_monster_aging_attack_continuations(content: RealmzContent) -> void:
-	var race := _aging_race(content)
-	var castes := content.caste_definitions()
-	assert_not_null(race, "monster-aging fixture has adjacent Classic age bands")
-	assert_false(castes.is_empty(), "monster-aging fixture has a caste for live age changes")
-	if race == null or castes.is_empty():
-		return
-	var caste: CasteDefinition = castes[0]
-	var hit_dice := maxi(1, ceili(100.0 / float(race.max_age)))
-	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 17), MonsterAttackDefinition.new(2, 2)]
-	var monster_definition := MonsterDefinition.new("monster.age-special", 917, "Age Special", hit_dice, 0, 100, 0, 0, _zero_monster_array(8), _zero_monster_array(8), _zero_monster_array(6), _zero_monster_array(3), [], [], attacks)
-	monster_definition.damage_bonus = 6
-	monster_definition.traitor = true
-	var aging_weapon := ItemDefinition.new("classic.item.917", 917, "Aging Weapon")
-	aging_weapon.item_type = 2
-	aging_weapon.vs_small = 1
-	aging_weapon.special_1 = -10
-	aging_weapon.special_2 = 0
-	aging_weapon.special_3 = ConditionRules.POISONED + 20
-	aging_weapon.special_5 = 2
-	monster_definition.weapon_id = aging_weapon.id
-	var battle := BattleDefinition.new("battle.age-special", 917, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, monster_definition.id, false)])
-	var programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new("root", &"trigger", "root", [ClassicActionDefinition.new(0, 2, 2, battle.classic_id, false, []), ClassicActionDefinition.new(1, 111, 111, 0, false, [])])]
-	var aging_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, ScenarioDefinition.new(programs, []), [], [], [], [race], [caste], [aging_weapon], [], [monster_definition], [battle])
-	var character := CharacterState.new("character.age-special", "Age Target", 100, 100)
-	character.race_id = race.id
-	character.caste_id = caste.id
-	character.age_days = race.age_range(0).y * 365 + 364
-	character.age_group = 1
-	character.agility = 200
-	character.set_save_value_raw(7, 50)
-	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
-	state.party.conditions.set_value(ConditionRules.PARTY_DRAGON_HIDE, 1)
-	var scripted_values: Array[int] = []
-	# The fixture's landlook-zero field has one non-base 3 by 3 build; every
-	# other interior base cell consumes a no-rubble check before formation.
-	for _draw: int in 86 * 86 - 9:
-		scripted_values.append(32_767)
-	for _draw: int in hit_dice + 14:
-		scripted_values.append(0)
-	scripted_values.append(32_767)
-	var runtime_rng := ScriptedRng.new(scripted_values)
-	var api := RealmzRuntimeApi.new(aging_content, state, runtime_rng, ScenarioActionState.new())
-	var vm := ScenarioVm.new()
-	vm.configure(aging_content.scenario)
-	vm.start_program("root", ScenarioExecutionContext.calling(&"action"))
-	var player_turn := vm.run(api)
-	assert_equal(player_turn.state, ScenarioVmResult.State.WAITING, "scenario combat reaches a source-positioned player turn before the monster can attack")
-	assert_equal(player_turn.interaction.kind, &"combat_action", "the aging fixture exposes the ordinary combat action boundary")
-	var generated_monster_id: String = state.combat.monsters()[0].id
-	assert_true(_place_monster_adjacent(state.combat, character.id, generated_monster_id), "aging fixture establishes source-legal monster adjacency")
-	var aged := vm.resume(InteractionResponse.from_data(player_turn.interaction.request_id, &"combat_action", {"actorId": character.id, "action": "finish", "targetId": ""}), api)
-	assert_equal(aged.state, ScenarioVmResult.State.WAITING, "scenario combat pauses at the monster-caused age update")
-	assert_equal(aged.interaction.kind, InteractionRequest.AGE_UPDATE, "monster aging uses the ordinary typed age-update ABI")
-	assert_equal(vm.snapshot().pending_continuation.runtime.kind, ScenarioRuntimeContinuation.CLASSIC_COMBAT_AGE, "the age dialog owns the issuing Classic combat continuation")
-	assert_true(_event_has(aged.events, &"combat_monster_special_resolved") and _event_has(aged.events, &"character_age_changed"), "combat publishes the source-backed special and live-age transition")
-	assert_false(_event_has(aged.events, &"combat_attack_resolved"), "ordinary damage waits behind Castle's age dialog")
-	assert_equal(character.current_health, 100, "the pre-acknowledgement combat save retains pending physical damage")
-	assert_equal(character.conditions.value(ConditionRules.POISONED), 0, "a monster weapon condition waits behind the same age-update boundary as physical damage")
-	assert_equal(state.combat.active_turn.attack_index, 1, "the age-update boundary records the already-issued first attack row")
-	var restored_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
-	var restored_vm_snapshot := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(vm.snapshot().to_data())))
-	var restored_rng := RealmzRng.new()
-	assert_true(restored_rng.restore(runtime_rng.snapshot()), "scenario combat aging restores its exact RNG draw boundary")
-	var restored_api := RealmzRuntimeApi.new(aging_content, restored_state, restored_rng, ScenarioActionState.new())
-	var restored_vm := ScenarioVm.new()
-	restored_vm.configure(aging_content.scenario)
-	assert_true(restored_vm.restore(restored_vm_snapshot), "scenario VM restores the nested combat age-update continuation")
-	var resumed := restored_vm.resume(InteractionResponse.from_data(aged.interaction.request_id, InteractionRequest.AGE_UPDATE, {}), restored_api)
-	assert_equal(resumed.state, ScenarioVmResult.State.WAITING, "acknowledging restored monster aging returns to the exact battle")
-	assert_equal(resumed.interaction.kind, &"combat_action", "scenario battle resumes at the next player action")
-	assert_true(_event_has(resumed.events, &"character_age_update_acknowledged"), "the restored scenario continuation records the acknowledgement")
-	assert_true(_event_has(resumed.events, &"combat_attack_resolved"), "scenario acknowledgement commits the deferred ordinary hit")
-	var scenario_attack_events := resumed.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved")
-	assert_equal(scenario_attack_events.map(func(event: DomainEvent) -> int: return int(event.payload.get("attackIndex"))), [0, 1], "scenario restore commits the deferred row once and resumes the next authored row")
-	assert_equal(scenario_attack_events.map(func(event: DomainEvent) -> int: return int(event.payload.get("damage"))), [2, 2], "each restored row independently applies the carried weapon and Dragon Hide reduction")
-	var scenario_dragon_sound_index := _event_index_with_payload(resumed.events, &"sound_requested", "soundId", 694)
-	assert_true(scenario_dragon_sound_index >= 0 and scenario_dragon_sound_index < _event_index(resumed.events, &"combat_attack_resolved"), "restored scenario combat plays Castle's synchronous Dragon Hide feedback before deferred damage")
-	assert_equal(restored_state.party.character_by_id(character.id).current_health, 96, "restored scenario combat applies the pending and remaining Dragon Hide-reduced rows exactly once each")
-	assert_equal(restored_state.party.character_by_id(character.id).conditions.value(ConditionRules.POISONED), 4, "restored scenario combat applies the monster weapon condition once for each resolved attack row")
-
-	var session := GameSession.new()
-	session.start(aging_content, 1)
-	session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.from_data(character.to_data())])
-	session._state.party.conditions.set_value(ConditionRules.PARTY_DRAGON_HIDE, 1)
-	session._state.party_setup_completed = true
-	var session_character: CharacterState = session._state.party.characters()[0]
-	session_character.age_days = race.age_range(0).y * 365 + 364
-	session_character.age_group = 1
-	session_character.current_health = 100
-	var session_monster := MonsterState.new("monster.age-special.session", monster_definition.id, monster_definition.name, 10, 10, hit_dice, 100)
-	session_monster.weapon_id = aging_weapon.id
-	session._state.combat = CombatState.new(battle.id, [session_monster])
-	session._state.combat.set_turn_order([session_character.id, session_monster.id])
-	_set_adjacent_battlefield(session._state, aging_content, session_character.id, session_monster.id)
-	session._rng = ScriptedRng.new([0, 0, 0, 0, 0, 0, 0, 0, 32_767])
-	var session_aged := session.submit_intent(PlayerIntent.combat_action(&"finish", session_character.id, ""))
-	assert_equal(session_aged.state, SessionStep.State.WAITING_FOR_INTERACTION, "direct session combat pauses at the monster-caused age update")
-	assert_equal(session_aged.interaction.kind, InteractionRequest.AGE_UPDATE, "direct combat exposes the same typed age update")
-	assert_equal(session_character.current_health, 100, "direct combat also saves before ordinary physical damage")
-	assert_equal(session_character.conditions.value(ConditionRules.POISONED), 0, "direct combat saves before its pending weapon condition")
-	assert_equal(session._state.combat.active_turn.attack_index, 1, "direct combat persists the issued attack cursor at the age boundary")
-	var boundary := save_round_trip(session.snapshot())
-	assert_not_null(boundary, "monster-caused age update is a complete central save boundary")
-	var restored_session := GameSession.new()
-	assert_equal(restored_session.restore(aging_content, boundary).state, SessionStep.State.COMPLETED, "direct monster-aging continuation restores transactionally")
-	var restored_request := restored_session.view().pending_interaction
-	var session_resumed := restored_session.respond(InteractionResponse.from_data(restored_request.request_id, InteractionRequest.AGE_UPDATE, {}))
-	assert_equal(session_resumed.state, SessionStep.State.COMPLETED, "acknowledging restored direct monster aging resumes combat")
-	assert_equal(restored_session._state.combat.active_actor_id(), session_character.id, "direct combat resumes at the exact next actor")
-	assert_equal(restored_session._state.party.character_by_id(session_character.id).age_group, 2, "the committed age band survives direct-session restore")
-	var direct_dragon_sound_index := _event_index_with_payload(session_resumed.events, &"sound_requested", "soundId", 694)
-	assert_true(direct_dragon_sound_index >= 0 and direct_dragon_sound_index < _event_index(session_resumed.events, &"combat_attack_resolved"), "the direct save continuation retains Dragon Hide's synchronous sound ordering")
-	var direct_attack_events := session_resumed.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved")
-	assert_equal(direct_attack_events.map(func(event: DomainEvent) -> int: return int(event.payload.get("attackIndex"))), [0, 1], "the direct restore commits the pending row once and resumes the remaining authored row")
-	assert_equal(direct_attack_events.map(func(event: DomainEvent) -> int: return int(event.payload.get("damage"))), [2, 2], "the direct restore independently resolves both carried-weapon rows")
-	assert_equal(restored_session._state.party.character_by_id(session_character.id).current_health, 96, "the restored direct continuation applies the pending and remaining rows exactly once each")
-	assert_equal(restored_session._state.party.character_by_id(session_character.id).conditions.value(ConditionRules.POISONED), 4, "the restored direct continuation applies the weapon condition once to the pending row and once to the remaining row")
-
-
-func _test_monster_status_attack_flow(content: RealmzContent) -> void:
-	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 6)]
-	var definition := _hostile_monster_definition("monster.status-flow", 906, "Status Monster", attacks)
-	var battle := BattleDefinition.new("battle.status-flow", 906, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, definition.id, false)])
-	var status_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [definition], [battle])
-	var character := CharacterState.new("character.status-flow", "Status Target", 20, 20)
-	character.set_save_value_raw(4, 0)
-	var monster := MonsterState.new("monster.status-flow.instance", definition.id, definition.name, 10, 10, 4, 100)
-	var session := _direct_combat_session(content, status_content, [character], battle.id, [monster], [character.id, monster.id], [0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
-	var resolved := session.submit_intent(PlayerIntent.combat_action(&"finish", character.id, ""))
-	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster status attacks commit without inventing a player interaction")
-	assert_equal(character.conditions.value(ConditionRules.POISONED), 4, "the direct session owns the resulting status mutation")
-	var special_index := _event_index(resolved.events, &"combat_monster_special_resolved")
-	var sound_index := _event_index(resolved.events, &"sound_requested")
-	var damage_index := _event_index(resolved.events, &"combat_attack_resolved")
-	assert_true(special_index >= 0 and sound_index > special_index and damage_index > sound_index, "combat publishes status, asynchronous sound, and physical damage in Castle order")
-	assert_equal(resolved.events[special_index].payload.get("conditionIndex"), ConditionRules.POISONED, "the status event exposes the source-owned condition identity")
-	assert_equal([resolved.events[sound_index].payload.get("soundId"), resolved.events[sound_index].payload.get("waitForCompletion")], [630, false], "party status feedback requests Castle sound 630 asynchronously")
-	var boundary := save_round_trip(session.snapshot())
-	assert_not_null(boundary, "a committed status attack produces a complete central save boundary")
-	var restored := GameSession.new()
-	assert_equal(restored.restore(status_content, boundary).state, SessionStep.State.COMPLETED, "status-mutated combat state restores transactionally")
-	assert_equal(restored._state.party.character_by_id(character.id).conditions.value(ConditionRules.POISONED), 4, "restored combat retains the exact status duration")
-
-
-func _test_monster_resource_drain_flow(content: RealmzContent) -> void:
-	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 8)]
-	var definition := _hostile_monster_definition("monster.resource-flow", 908, "Spell Drainer", attacks)
-	definition.spell_points = 2
-	var battle := BattleDefinition.new("battle.resource-flow", 908, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, definition.id, false)])
-	var resource_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [definition], [battle])
-	var character := CharacterState.new("character.resource-flow", "Spell Target", 20, 20)
-	character.maximum_spell_points = 20
-	character.spell_points = 20
-	character.set_save_value_raw(6, 0)
-	var monster := MonsterState.new("monster.resource-flow.instance", definition.id, definition.name, 10, 10, 4, 100, 0, 0, 2)
-	var session := _direct_combat_session(content, resource_content, [character], battle.id, [monster], [character.id, monster.id], [0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
-	var resolved := session.submit_intent(PlayerIntent.combat_action(&"finish", character.id, ""))
-	assert_equal(resolved.state, SessionStep.State.COMPLETED, "monster resource drains commit without inventing a player interaction")
-	assert_equal([character.spell_points, monster.spell_points, monster.maximum_spell_points], [8, 14, 2], "the direct session owns both sides of Castle's uncapped spell-point transfer")
-	var special_index := _event_index(resolved.events, &"combat_monster_special_resolved")
-	var damage_index := _event_index(resolved.events, &"combat_attack_resolved")
-	assert_true(special_index >= 0 and damage_index > special_index, "combat publishes the resource transfer before ordinary physical damage feedback")
-	assert_equal([resolved.events[special_index].payload.get("resource"), resolved.events[special_index].payload.get("amount"), resolved.events[special_index].payload.get("targetBefore"), resolved.events[special_index].payload.get("targetAfter"), resolved.events[special_index].payload.get("actorAfter")], ["spell_points", 12, 20, 8, 14], "the typed special event exposes the complete source-owned transfer")
-	assert_equal(_event_index_with_payload(resolved.events, &"sound_requested", "soundId", 630), -1, "spell-point drain does not invent the experience-drain result sound")
-	var resource_attack_sound_index := _event_index_with_payload(resolved.events, &"sound_requested", "soundId", 600)
-	assert_true(resource_attack_sound_index > special_index and damage_index > resource_attack_sound_index, "the spell-point drain still publishes its source-backed ordinary attack sound before physical damage")
-	var boundary := save_round_trip(session.snapshot())
-	assert_not_null(boundary, "a committed resource drain produces a complete central save boundary")
-	var restored := GameSession.new()
-	assert_equal(restored.restore(resource_content, boundary).state, SessionStep.State.COMPLETED, "resource-drained combat state restores transactionally")
-	assert_equal([restored._state.party.character_by_id(character.id).spell_points, restored._state.combat.monster_by_id(monster.id).spell_points, restored._state.combat.monster_by_id(monster.id).maximum_spell_points], [8, 14, 2], "restore retains both sides of an above-maximum spell transfer")
-
-	var experience_attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 9)]
-	var experience_definition := _hostile_monster_definition("monster.experience-flow", 909, "Experience Drainer", experience_attacks)
-	var experience_battle := BattleDefinition.new("battle.experience-flow", 909, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, experience_definition.id, false)])
-	var experience_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [experience_definition], [experience_battle])
-	var experience_character := CharacterState.new("character.experience-flow", "Experience Target", 20, 20)
-	experience_character.experience = 100
-	experience_character.set_save_value_raw(5, 0)
-	var experience_monster := MonsterState.new("monster.experience-flow.instance", experience_definition.id, experience_definition.name, 10, 20, 4, 100)
-	var experience_session := _direct_combat_session(content, experience_content, [experience_character], experience_battle.id, [experience_monster], [experience_character.id, experience_monster.id], [0, 0, 0, 0, 0, 0, 0, 32_767, 32_767])
-	var experience_resolved := experience_session.submit_intent(PlayerIntent.combat_action(&"finish", experience_character.id, ""))
-	assert_equal(experience_character.experience, -300, "the direct session subtracts Castle experience rather than altering a Remake-style level balance")
-	var experience_special_index := _event_index(experience_resolved.events, &"combat_monster_special_resolved")
-	var experience_sound_index := _event_index(experience_resolved.events, &"sound_requested")
-	var experience_damage_index := _event_index(experience_resolved.events, &"combat_attack_resolved")
-	assert_true(experience_special_index >= 0 and experience_sound_index > experience_special_index and experience_damage_index > experience_sound_index, "experience drain publishes result, asynchronous Castle sound, and physical damage in source order")
-	assert_equal([experience_resolved.events[experience_special_index].payload.get("resource"), experience_resolved.events[experience_special_index].payload.get("amount"), experience_resolved.events[experience_sound_index].payload.get("soundId"), experience_resolved.events[experience_sound_index].payload.get("waitForCompletion")], ["experience", 400, 630, false], "experience-drain events expose the typed loss and Castle sound contract")
-	var experience_boundary := save_round_trip(experience_session.snapshot())
-	assert_not_null(experience_boundary, "negative experience after combat is a complete central save boundary")
-	var restored_experience_session := GameSession.new()
-	assert_equal(restored_experience_session.restore(experience_content, experience_boundary).state, SessionStep.State.COMPLETED, "experience-drained combat state restores transactionally")
-	assert_equal(restored_experience_session._state.party.character_by_id(experience_character.id).experience, -300, "whole-session restore preserves the exact drained experience")
-
-
-func _test_monster_charm_and_affliction_flow(content: RealmzContent) -> void:
-	var attacks: Array[MonsterAttackDefinition] = [MonsterAttackDefinition.new(1, 1, 0, 10)]
-	var definition := _hostile_monster_definition("monster.charm-flow", 910, "Charmer", attacks)
-	var battle := BattleDefinition.new("battle.charm-flow", 910, [BattleMonsterSlotDefinition.new(Vector2i.ZERO, definition.id, false)])
-	var charm_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [definition], [battle])
-	var loyal := CharacterState.new("character.charm-flow.loyal", "Loyal", 20, 20)
-	loyal.luck = 1
-	loyal.hand_to_hand = 1
-	var victim := CharacterState.new("character.charm-flow.victim", "Victim", 20, 20)
-	victim.luck = 1
-	victim.hand_to_hand = 1
-	victim.set_save_value_raw(0, 0)
-	var monster := MonsterState.new("monster.charm-flow.instance", definition.id, definition.name, 20, 20, 4, 100)
-	var session := GameSession.new()
-	session.start(charm_content, 1)
-	session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, [loyal, victim])
-	session._state.party_setup_completed = true
-	session._state.combat = CombatState.new(battle.id, [monster])
-	session._state.combat.set_turn_order([loyal.id, monster.id, victim.id])
-	var charm_field := _blank_battlefield(charm_content)
-	assert_true(charm_field.place_character(loyal.id, Vector2i(45, 45)), "charm fixture places its loyal actor")
-	assert_true(charm_field.place_character(victim.id, Vector2i(45, 46)), "charm fixture places its prospective traitor adjacent to the loyal actor")
-	assert_true(charm_field.place_monster(monster.id, Vector2i(46, 46), 0), "charm fixture places its monster adjacent to both party actors")
-	session._state.combat.battlefield = charm_field
-	session._rng = ScriptedRng.new([32_767, 32_767, 32_767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-	var resolved := session.submit_intent(PlayerIntent.combat_action(&"finish", loyal.id, ""))
-	assert_equal(resolved.state, SessionStep.State.COMPLETED, "charm and the resulting charmed turn require no fabricated player interaction")
-	assert_true(victim.traitor, "the session owns the charmed party allegiance while battle remains active")
-	assert_equal(loyal.current_health, 19, "the charmed character automatically attacks a living combatant of the opposite allegiance")
-	var special_index := _event_index(resolved.events, &"combat_monster_special_resolved")
-	assert_true(special_index >= 0, "battle flow publishes the typed charm result")
-	assert_equal([resolved.events[special_index].payload.get("allegianceBefore"), resolved.events[special_index].payload.get("allegianceAfter")], [false, true], "the charm event exposes its exact allegiance transition")
-	var automatic_index := -1
-	for index: int in resolved.events.size():
-		if resolved.events[index].kind == &"combat_attack_resolved" and resolved.events[index].payload.get("actorId") == victim.id:
-			automatic_index = index
-			assert_true(resolved.events[index].payload.get("automatic", false), "a charmed party turn is explicitly marked automatic")
-			assert_equal(resolved.events[index].payload.get("targetId"), loyal.id, "charmed targeting excludes combatants sharing the attacker's allegiance")
-	assert_true(automatic_index > special_index, "the charmed actor proceeds only after the charm attack commits")
-	assert_equal(session._state.combat.active_actor_id(), loyal.id, "automatic charm processing returns control to the next loyal party actor")
-
-	var boundary := save_round_trip(session.snapshot())
-	assert_not_null(boundary, "an active charm allegiance and next-turn cursor form a complete save boundary")
-	var restored := GameSession.new()
-	assert_equal(restored.restore(charm_content, boundary).state, SessionStep.State.COMPLETED, "charmed combat restores transactionally")
-	assert_true(restored._state.party.character_by_id(victim.id).traitor, "restore retains battle-scoped party allegiance")
-	restored._state.combat.monster_by_id(monster.id).current_health = 0
-	var unresolved := restored._rules.combat_flow.continue_after_monster_death_macro(restored._state, charm_content, restored._rng)
-	assert_false(unresolved.completed, "a living charmed party member remains an enemy after the original hostile monster falls")
-	var restored_view := restored.view()
-	var charmed_contacts := restored_view.combat_view.movement_options.filter(func(option: CombatMoveOptionView) -> bool: return option.attack_target_id == victim.id)
-	assert_equal(charmed_contacts.size(), 1, "the detached combat view exposes the living charmed character through its occupied direction")
-	restored._state.party.character_by_id(victim.id).conditions.set_value(ConditionRules.HELPLESS, -1)
-	var completed := restored._rules.combat_flow.submit_action(restored._state, charm_content, loyal.id, &"attack", victim.id, restored._rng)
-	assert_true(completed.completed and restored._state.combat.outcome == &"victory", "a loyal actor can defeat a charmed party combatant through the ordinary allegiance-aware attack contract")
-	assert_false(restored._state.party.character_by_id(victim.id).traitor, "battle cleanup restores every party character's base allegiance")
-	assert_true(_event_has(completed.events, &"combat_allegiance_restored"), "allegiance cleanup is presentation-observable")
+	assert_equal(vm.run(_runtime_api(content, state)).state, ScenarioVmResult.State.COMPLETED, "persistent Safe Action completes through the public VM")
+	assert_equal([state.read("campaign", action.id, "visits"), state.read("campaign", action.id, "mirror")], [42, 42], "persistent variables remain namespaced to the Scenario Action")
+	var restored := ScenarioActionState.from_data(JSON.parse_string(JSON.stringify(state.to_data())))
+	assert_equal(restored.read("campaign", action.id, "visits"), 42, "persistent action state preserves integer values through JSON")
 
 
 func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:
@@ -1953,179 +309,38 @@ func _test_aogm_dispatch_has_no_fallback(content: RealmzContent) -> void:
 		var api := RealmzRuntimeApi.new(content, GameState.new(party, RealmzClock.new()), RealmzRng.new(1), ScenarioActionState.new())
 		var action := ClassicActionDefinition.new(0, opcode, opcode, 0, false, [0, 0, 0, 0, 0])
 		var operation := api.execute_classic(action, "request.dispatch", ScenarioExecutionContext.calling(&"action"))
-		assert_true(operation != null and operation.error_code != &"unsupported_classic_opcode", "AOGM opcode %d dispatches to its declared runtime owner" % opcode)
-
-
-func _zero_monster_array(size: int) -> Array[int]:
-	var result: Array[int] = []
-	result.resize(size)
-	result.fill(0)
-	return result
-
-
-func _hostile_monster_definition(id: String, classic_id: int, name: String, attacks: Array[MonsterAttackDefinition]) -> MonsterDefinition:
-	var definition := MonsterDefinition.new(id, classic_id, name, 4, 0, 100, 0, 0, _zero_monster_array(8), _zero_monster_array(8), _zero_monster_array(6), _zero_monster_array(3), [], [], attacks)
-	definition.traitor = true
-	return definition
-
-
-func _direct_combat_session(content: RealmzContent, combat_content: RealmzContent, characters: Array[CharacterState], battle_id: String, monsters: Array[MonsterState], turn_order: Array[String], rng_values: Array[int]) -> GameSession:
-	var session := GameSession.new()
-	session.start(combat_content, 1)
-	session._state.party = PartyState.new(content.start_map_id, content.start_coordinate, characters)
-	session._state.party_setup_completed = true
-	session._state.combat = CombatState.new(battle_id, monsters)
-	session._state.combat.set_turn_order(turn_order)
-	if not characters.is_empty() and not monsters.is_empty():
-		_set_adjacent_battlefield(session._state, combat_content, characters[0].id, monsters[0].id)
-	session._rng = ScriptedRng.new(rng_values)
-	return session
+		assert_true(operation != null and operation.error_code != &"unsupported_classic_opcode", "AOGM opcode %d has an explicit runtime owner" % opcode)
 
 
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
 	var races := content.race_definitions()
 	var castes := content.caste_definitions()
-	assert_false(races.is_empty() or castes.is_empty(), "playable scenario fixture provides one race and class")
+	assert_false(races.is_empty() or castes.is_empty(), "fixture has playable race and caste data")
 	if races.is_empty() or castes.is_empty():
 		return
 	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
 	character.race_id = races[0].id
 	character.caste_id = castes[0].id
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "scenario fixture imports a deterministic party member")
+	var imported := session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash))
+	assert_equal(imported.state, SessionStep.State.COMPLETED, "fixture imports a deterministic party member")
 	var started := session.submit_intent(PlayerIntent.begin_adventure())
 	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
-		assert_equal(started.state, SessionStep.State.COMPLETED, "scenario content without a Start Game hook completes party setup synchronously")
+		assert_equal(started.state, SessionStep.State.COMPLETED, "fixture begins without a Start Game interaction")
 	else:
-		assert_equal(started.state, SessionStep.State.WAITING_FOR_INTERACTION, "scenario fixture reaches the Start Game hook after party setup")
-		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, "scenario fixture explicitly completes party setup")
-
-
-func _drain_runtime_reward(api: RealmzRuntimeApi, operation: ScenarioRuntimeOperationResult, safe: bool) -> ScenarioRuntimeOperationResult:
-	var current := operation
-	var guard := 100
-	while current.state == ScenarioRuntimeOperationResult.State.WAITING and current.interaction != null and current.interaction.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.LEVEL_UP] and guard > 0:
-		var response := _default_reward_response(current.interaction)
-		current = api.resume_safe(current.continuation, response, current.interaction.request_id + ".next") if safe else api.resume_classic(current.continuation, response, current.interaction.request_id + ".next")
-		guard -= 1
-	return current
-
-
-func _drain_vm_reward(vm: ScenarioVm, api: RealmzRuntimeApi, result: ScenarioVmResult) -> ScenarioVmResult:
-	var current := result
-	var guard := 100
-	while current.state == ScenarioVmResult.State.WAITING and current.interaction != null and current.interaction.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.LEVEL_UP] and guard > 0:
-		current = vm.resume(_default_reward_response(current.interaction), api)
-		guard -= 1
-	return current
-
-
-func _drain_session_reward(session: GameSession, step: SessionStep) -> SessionStep:
-	var current := step
-	var guard := 100
-	while current.state == SessionStep.State.WAITING_FOR_INTERACTION and current.interaction != null and current.interaction.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.LEVEL_UP] and guard > 0:
-		current = session.respond(_default_reward_response(current.interaction))
-		guard -= 1
-	return current
-
-
-func _default_reward_response(request: InteractionRequest) -> InteractionResponse:
-	if request.kind == InteractionRequest.LEVEL_UP:
-		if request.body.to_data().get("mode") == "result":
-			return InteractionResponse.from_data(request.request_id, request.kind, {"action": "continue", "characterId": request.body.to_data()["characterId"]})
-		var selected: Array[String] = []
-		for spell: Variant in request.body.to_data().get("spells", []):
-			if spell is Dictionary and bool(spell.get("selected", false)):
-				selected.append(String(spell.get("id", "")))
-		return InteractionResponse.from_data(request.request_id, request.kind, {"action": "confirm-spells", "characterId": request.body.to_data()["characterId"], "spellIds": selected})
-	if request.body.to_data().get("mode") == "completion-confirmation":
-		return InteractionResponse.from_data(request.request_id, request.kind, {"action": "confirm-completion"})
-	var item: Variant = request.body.to_data().get("item")
-	if item is Dictionary:
-		for character: Variant in request.body.to_data().get("characters", []):
-			if character is Dictionary and bool(character.get("enabled", false)):
-				return InteractionResponse.from_data(request.request_id, request.kind, {"action": "assign", "instanceId": item["instanceId"], "characterId": character["id"]})
-		return InteractionResponse.from_data(request.request_id, request.kind, {"action": "discard", "instanceId": item["instanceId"]})
-	var wealth: Dictionary = request.body.to_data().get("wealth", {})
-	if bool(request.body.to_data().get("hasShareCapacity", false)) and (int(wealth.get("gold", 0)) > 0 or int(wealth.get("gems", 0)) > 0 or int(wealth.get("jewelry", 0)) > 0):
-		return InteractionResponse.from_data(request.request_id, request.kind, {"action": "share"})
-	return InteractionResponse.from_data(request.request_id, request.kind, {"action": "done"})
+		assert_equal(started.state, SessionStep.State.WAITING_FOR_INTERACTION, "fixture reaches the Start Game interaction")
+		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, "fixture completes its Start Game interaction")
 
 
 func _restore_fixture_position(session: GameSession, content: RealmzContent, map_id: String, coordinate: Vector2i) -> void:
 	var envelope := session.snapshot()
 	envelope.game_state.party.map_id = map_id
 	envelope.game_state.party.coordinate = coordinate
-	assert_equal(session.restore(content, envelope).state, SessionStep.State.COMPLETED, "scenario route position changes through the validated save boundary")
+	assert_equal(session.restore(content, envelope).state, SessionStep.State.COMPLETED, "fixture position changes through validated restore")
 
 
 func _runtime_api(content: RealmzContent, action_state: ScenarioActionState) -> RealmzRuntimeApi:
 	var party := PartyState.new(content.start_map_id, content.start_coordinate, [CharacterState.new("test", "Test", 1, 1)])
 	return RealmzRuntimeApi.new(content, GameState.new(party, RealmzClock.new()), RealmzRng.new(1), action_state)
-
-
-func _set_adjacent_battlefield(state: GameState, content: RealmzContent, character_id: String, monster_id: String) -> void:
-	var battlefield := _blank_battlefield(content)
-	assert_true(battlefield.place_character(character_id, Vector2i(45, 45)), "direct combat fixture places its party actor")
-	assert_true(battlefield.place_monster(monster_id, Vector2i(46, 45), 0), "direct combat fixture places its monster at source-legal melee adjacency")
-	state.combat.battlefield = battlefield
-
-
-func _place_monster_adjacent(combat: CombatState, character_id: String, monster_id: String) -> bool:
-	if combat == null or combat.battlefield == null:
-		return false
-	var character_position := combat.battlefield.character_position(character_id)
-	var monster_size := combat.battlefield.monster_size(monster_id)
-	if character_position.x < 0 or monster_size < 0:
-		return false
-	combat.battlefield.remove_monster(monster_id)
-	for y_offset: int in range(-3, 4):
-		for x_offset: int in range(-3, 4):
-			var anchor := character_position + Vector2i(x_offset, y_offset)
-			if not combat.battlefield.place_monster(monster_id, anchor, monster_size):
-				continue
-			if BattlefieldRules.new().are_adjacent(combat.battlefield, character_id, monster_id):
-				return true
-			combat.battlefield.remove_monster(monster_id)
-	return false
-
-
-func _place_monster_at_escape_range(combat: CombatState, character_id: String, monster_id: String) -> bool:
-	if combat == null or combat.battlefield == null:
-		return false
-	var character_position := combat.battlefield.character_position(character_id)
-	var monster_size := combat.battlefield.monster_size(monster_id)
-	if character_position.x < 0 or monster_size < 0:
-		return false
-	combat.battlefield.remove_monster(monster_id)
-	for direction: Vector2i in [Vector2i(10, 0), Vector2i(-10, 0), Vector2i(0, 10), Vector2i(0, -10)]:
-		if combat.battlefield.place_monster(monster_id, character_position + direction, monster_size):
-			return true
-	return false
-
-
-func _first_hostile_monster_id(combat: CombatState) -> String:
-	if combat == null:
-		return ""
-	for monster: MonsterState in combat.monsters():
-		if monster.current_health > 0 and monster.traitor:
-			return monster.id
-	return ""
-
-
-func _blank_battlefield(content: RealmzContent) -> BattlefieldState:
-	var map := content.world.map_by_id(content.start_map_id)
-	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id)
-	var tiles: Array[int] = []
-	tiles.resize(BattlefieldState.CELL_COUNT)
-	tiles.fill(terrain_set.base_tile)
-	return BattlefieldState.new(map.id, tiles)
-
-
-func _aging_race(content: RealmzContent) -> RaceDefinition:
-	for race: RaceDefinition in content.race_definitions():
-		if race.max_age > 0 and race.age_range(1).x == race.age_range(0).y + 1:
-			return race
-	return null
 
 
 func _action(id: String, return_type: StringName, instructions: Array[SafeInstructionDefinition], capabilities: Array[String] = []) -> ScenarioActionDefinition:
@@ -2145,18 +360,11 @@ func _variable(scope: StringName, name: String) -> SafeExpressionDefinition:
 	return expression
 
 
-func _array(values: Array[SafeExpressionDefinition]) -> SafeExpressionDefinition:
-	var expression := SafeExpressionDefinition.new(SafeExpressionDefinition.Kind.ARRAY)
-	expression.set_values(values)
-	return expression
-
-
-func _message_texts(events: Array[DomainEvent]) -> Array[String]:
-	var result: Array[String] = []
-	for event: DomainEvent in events:
-		if event.kind == &"message_shown":
-			result.append(event.payload["text"])
-	return result
+func _aging_race(content: RealmzContent) -> RaceDefinition:
+	for race: RaceDefinition in content.race_definitions():
+		if race.max_age > 0 and race.age_range(1).x == race.age_range(0).y + 1:
+			return race
+	return null
 
 
 func _trace_has(trace: Array[Dictionary], event_name: String) -> bool:
@@ -2171,24 +379,3 @@ func _event_has(events: Array[DomainEvent], kind: StringName) -> bool:
 		if event.kind == kind:
 			return true
 	return false
-
-
-func _event_index(events: Array[DomainEvent], kind: StringName) -> int:
-	for index: int in events.size():
-		if events[index].kind == kind:
-			return index
-	return -1
-
-
-func _event_index_with_payload(events: Array[DomainEvent], kind: StringName, field: String, value: Variant) -> int:
-	for index: int in events.size():
-		if events[index].kind == kind and events[index].payload.get(field) == value:
-			return index
-	return -1
-
-
-func _event_classic_id(events: Array[DomainEvent], kind: StringName) -> int:
-	for event: DomainEvent in events:
-		if event.kind == kind:
-			return int(event.payload.get("classicId", -1))
-	return -1

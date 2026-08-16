@@ -489,203 +489,217 @@ static func from_data(data: Variant) -> InteractionRequest:
 static func _from_payload(id: String, request_kind: StringName, payload: Dictionary) -> InteractionRequest:
 	var parsed: Body = null
 	match request_kind:
-		ACKNOWLEDGE:
-			if not _fields_are_exact(payload, ["prompt", "messageId", "presentation", "journalEligible", "journalRecorded", "soundId", "playerMapId"], ["prompt"]) or not payload["prompt"] is String or not _optional_ints(payload, ["messageId", "soundId"]) or not _optional_strings(payload, ["presentation", "playerMapId"]) or not _optional_bools(payload, ["journalEligible", "journalRecorded"]): return null
-			if payload.has("journalEligible") != payload.has("journalRecorded"): return null
-			var value := AcknowledgeBody.new()
-			value.prompt = payload["prompt"]
-			value.message_id = int(payload.get("messageId", 0))
-			value.presentation = StringName(payload.get("presentation", ""))
-			value.journal_eligible = bool(payload.get("journalEligible", false))
-			value.journal_recorded = bool(payload.get("journalRecorded", false))
-			value.sound_id = int(payload.get("soundId", 0))
-			value.player_map_id = String(payload.get("playerMapId", ""))
-			value.has_message_id = payload.has("messageId")
-			value.has_presentation = payload.has("presentation")
-			value.has_journal_state = payload.has("journalEligible") or payload.has("journalRecorded")
-			value.has_sound_id = payload.has("soundId")
-			value.has_player_map_id = payload.has("playerMapId")
-			parsed = value
-		AGE_UPDATE:
-			var age_fields: Array[String] = ["characterId", "characterName", "portraitId", "combatIconId", "raceId", "raceName", "previousAgeDays", "ageDays", "previousAgeGroup", "ageGroup", "ageGroupName", "ageMinimumYears", "ageMaximumYears", "transition", "appliedAgeGroup", "changes", "prompt", "presentation", "soundId", "source"]
-			if not _fields_are_exact(payload, age_fields, age_fields) or not _required_strings(payload, ["characterId", "characterName", "portraitId", "combatIconId", "raceId", "raceName", "ageGroupName", "prompt", "presentation", "source"]) or not _required_ints(payload, ["previousAgeDays", "ageDays", "previousAgeGroup", "ageGroup", "ageMinimumYears", "ageMaximumYears", "transition", "appliedAgeGroup", "soundId"]) or not payload["changes"] is Array: return null
-			var value := AgeUpdateBody.new()
-			value.character_id = payload["characterId"]
-			value.character_name = payload["characterName"]
-			value.portrait_id = payload["portraitId"]
-			value.combat_icon_id = payload["combatIconId"]
-			value.race_id = payload["raceId"]
-			value.race_name = payload["raceName"]
-			value.previous_age_days = payload["previousAgeDays"]
-			value.age_days = payload["ageDays"]
-			value.previous_age_group = payload["previousAgeGroup"]
-			value.age_group = payload["ageGroup"]
-			value.age_group_name = payload["ageGroupName"]
-			value.age_minimum_years = payload["ageMinimumYears"]
-			value.age_maximum_years = payload["ageMaximumYears"]
-			value.transition = payload["transition"]
-			value.applied_age_group = payload["appliedAgeGroup"]
-			for change: Variant in payload["changes"]:
-				if not _whole_number(change): return null
-				value.changes.append(int(change))
-			value.prompt = payload["prompt"]
-			value.presentation = StringName(payload["presentation"])
-			value.sound_id = payload["soundId"]
-			value.source = StringName(payload["source"])
-			parsed = value
-		YES_NO:
-			if not _fields_are_exact(payload, ["prompt", "yesId", "yesLabel", "noId", "noLabel", "regionId"], ["yesLabel", "noLabel"]) or not _required_strings(payload, ["yesLabel", "noLabel"]) or not _optional_strings(payload, ["prompt", "regionId"]) or not _optional_ints(payload, ["yesId", "noId"]): return null
-			if payload.has("yesId") != payload.has("noId"): return null
-			var value := YesNoRequestBody.new()
-			value.prompt = String(payload.get("prompt", ""))
-			value.yes_id = int(payload.get("yesId", 0))
-			value.yes_label = payload["yesLabel"]
-			value.no_id = int(payload.get("noId", 0))
-			value.no_label = payload["noLabel"]
-			value.region_id = String(payload.get("regionId", ""))
-			value.has_prompt = payload.has("prompt")
-			value.has_ids = payload.has("yesId") or payload.has("noId")
-			value.has_region_id = payload.has("regionId")
-			parsed = value
-		INDEXED_CHOICE, ENCOUNTER_CHOICE:
-			if not _fields_are_exact(payload, ["prompt", "options", "canBackOut", "encounterKind", "encounterId"], ["prompt", "options"]) or not payload["prompt"] is String or not payload["options"] is Array or not _optional_bools(payload, ["canBackOut"]) or not _optional_strings(payload, ["encounterKind"]) or not _optional_ints(payload, ["encounterId"]): return null
-			var value := ChoiceRequestBody.new()
-			value.prompt = payload["prompt"]
-			for entry: Variant in payload["options"]:
-				var option := InteractionRequestValue.choice_option(entry); if option == null: return null
-				value.options.append(option)
-			value.can_back_out = bool(payload.get("canBackOut", false))
-			value.encounter_kind = StringName(payload.get("encounterKind", ""))
-			value.encounter_id = int(payload.get("encounterId", 0))
-			value.has_can_back_out = payload.has("canBackOut")
-			value.has_encounter = payload.has("encounterKind") or payload.has("encounterId")
-			parsed = value
-		CHARACTER_SELECTION:
-			if not _fields_are_exact(payload, ["prompt", "count", "eligible", "allowDead", "mode", "itemInstanceId", "spellId", "scrollSlot"], ["count", "eligible"]) or not _whole_number(payload["count"]) or not payload["eligible"] is Array or not _optional_strings(payload, ["prompt", "mode", "itemInstanceId", "spellId"]) or not _optional_ints(payload, ["scrollSlot"]) or not _optional_bools(payload, ["allowDead"]): return null
-			var value := CharacterSelectionRequestBody.new()
-			value.prompt = String(payload.get("prompt", ""))
-			value.count = int(payload["count"])
-			for entry: Variant in payload["eligible"]:
-				var candidate := InteractionRequestValue.selection_candidate(entry); if candidate == null: return null
-				value.eligible.append(candidate)
-			value.allow_dead = bool(payload.get("allowDead", false))
-			value.mode = StringName(payload.get("mode", ""))
-			value.item_instance_id = String(payload.get("itemInstanceId", ""))
-			value.spell_id = String(payload.get("spellId", ""))
-			value.scroll_slot = int(payload.get("scrollSlot", -1))
-			parsed = value
-		ALLY_SELECTION:
-			if not _fields_are_exact(payload, ["prompt", "maximum", "selectedIds", "requiredIds", "candidates"], ["prompt", "maximum", "selectedIds", "requiredIds", "candidates"]) or not payload["prompt"] is String or not _whole_number(payload["maximum"]) or not payload["selectedIds"] is Array or not payload["requiredIds"] is Array or not payload["candidates"] is Array: return null
-			var value := SelectionRequestBody.new()
-			value.prompt = payload["prompt"]
-			value.maximum = int(payload["maximum"])
-			if not _array_is_strings(payload["selectedIds"]) or not _array_is_strings(payload["requiredIds"]): return null
-			value.selected_ids = _strings(payload["selectedIds"])
-			value.required_ids = _strings(payload["requiredIds"])
-			for entry: Variant in payload["candidates"]:
-				var candidate := InteractionRequestValue.selection_candidate(entry); if candidate == null: return null
-				value.candidates.append(candidate)
-			parsed = value
-		WORD_AND_ACTION:
-			if not _fields_are_exact(payload, ["encounterKind", "encounterId", "prompt", "actions", "characters", "items", "spells", "canBackOut"], ["encounterKind", "encounterId", "prompt", "actions", "characters", "items", "spells", "canBackOut"]) or not _required_strings(payload, ["encounterKind", "prompt"]) or not _required_ints(payload, ["encounterId"]) or not payload["actions"] is Array or not payload["characters"] is Array or not payload["items"] is Array or not payload["spells"] is Array or not payload["canBackOut"] is bool: return null
-			var value := ComplexEncounterRequestBody.new()
-			value.encounter_kind = StringName(payload["encounterKind"])
-			if value.encounter_kind != &"complex": return null
-			value.encounter_id = int(payload["encounterId"])
-			value.prompt = payload["prompt"]
-			for entry: Variant in payload["actions"]:
-				var action := InteractionRequestValue.encounter_action(entry); if action == null: return null
-				value.actions.append(action)
-			for entry: Variant in payload["characters"]:
-				var character := InteractionRequestValue.named_character(entry); if character == null: return null
-				value.characters.append(character)
-			for entry: Variant in payload["items"]:
-				var item := InteractionRequestValue.encounter_catalog_entry(entry, &"item"); if item == null: return null
-				value.items.append(item)
-			for entry: Variant in payload["spells"]:
-				var spell := InteractionRequestValue.encounter_catalog_entry(entry, &"spell"); if spell == null: return null
-				value.spells.append(spell)
-			value.can_back_out = payload["canBackOut"]
-			parsed = value
+		ACKNOWLEDGE, AGE_UPDATE, YES_NO:
+			parsed = _parse_dialog_body(request_kind, payload)
+		INDEXED_CHOICE, ENCOUNTER_CHOICE, CHARACTER_SELECTION, ALLY_SELECTION, WORD_AND_ACTION:
+			parsed = _parse_selection_body(request_kind, payload)
 		SHOP:
 			parsed = _parse_shop_body(payload)
 		TEMPLE:
 			parsed = _parse_temple_body(payload)
 		BANK, POOLED_WEALTH_DEPARTURE:
 			parsed = _parse_bank_body(payload, request_kind == POOLED_WEALTH_DEPARTURE)
-		TREASURE_DISTRIBUTION:
-			if not _fields_are_exact(payload, ["mode", "prompt", "item", "remaining", "characters", "wealth", "experienceShare", "detect", "identify", "hasShareCapacity", "summary", "battleId", "origin", "sourceId", "experiencePool"], ["mode"]) or not payload["mode"] is String: return null
-			var value := TreasureRequestBody.new()
-			value.mode = StringName(payload["mode"])
-			if value.mode not in [&"fumbled-item-recovery", &"ordinary", &"completion-confirmation"]: return null
-			if not _optional_strings(payload, ["prompt", "summary", "battleId", "origin", "sourceId"]) or not _optional_ints(payload, ["remaining", "experienceShare", "experiencePool"]) or not _optional_bools(payload, ["hasShareCapacity"]): return null
-			value.prompt = String(payload.get("prompt", ""))
-			value.has_item = payload.has("item")
-			if value.has_item and payload["item"] != null:
-				value.item = InteractionRequestValue.reward_item(payload["item"])
-				if value.item == null: return null
-			value.remaining = int(payload.get("remaining", 0))
-			value.has_remaining = payload.has("remaining")
-			if payload.has("characters"):
-				if not payload["characters"] is Array: return null
-				for entry: Variant in payload["characters"]:
-					var character := InteractionRequestValue.reward_character(entry, value.mode)
-					if character == null: return null
-					value.characters.append(character)
-			if payload.has("wealth"):
-				value.wealth = InteractionRequestValue.wealth(payload["wealth"])
-				if value.wealth == null: return null
-			value.experience_share = int(payload.get("experienceShare", 0))
-			if payload.has("detect"):
-				value.detect = InteractionRequestValue.reward_method(payload["detect"])
-				if value.detect == null: return null
-			if payload.has("identify"):
-				value.identify = InteractionRequestValue.reward_method(payload["identify"])
-				if value.identify == null: return null
-			value.has_share_capacity = bool(payload.get("hasShareCapacity", false))
-			value.summary = String(payload.get("summary", ""))
-			value.battle_id = String(payload.get("battleId", ""))
-			value.origin = StringName(payload.get("origin", ""))
-			value.source_id = String(payload.get("sourceId", ""))
-			value.experience_pool = int(payload.get("experiencePool", 0))
-			parsed = value
-		LEVEL_UP:
-			if not _fields_are_exact(payload, ["mode", "prompt", "characterId", "characterName", "level", "gains", "pointTotal", "spells"], ["mode", "prompt", "characterId", "characterName"]) or not _required_strings(payload, ["mode", "prompt", "characterId", "characterName"]): return null
-			var value := LevelUpRequestBody.new()
-			value.mode = StringName(payload["mode"])
-			if value.mode not in [&"result", &"spell-selection"]: return null
-			value.prompt = payload["prompt"]
-			value.character_id = payload["characterId"]
-			value.character_name = payload["characterName"]
-			if value.mode == &"result":
-				if not _fields_are_exact(payload, ["mode", "prompt", "characterId", "characterName", "level", "gains"], ["mode", "prompt", "characterId", "characterName", "level", "gains"]) or not _whole_number(payload["level"]): return null
-				value.level = int(payload["level"])
-				value.gains = InteractionRequestValue.level_gains(payload["gains"])
-				if value.gains == null: return null
-			else:
-				if not _fields_are_exact(payload, ["mode", "prompt", "characterId", "characterName", "pointTotal", "spells"], ["mode", "prompt", "characterId", "characterName", "pointTotal", "spells"]) or not _whole_number(payload["pointTotal"]) or not payload["spells"] is Array: return null
-				value.point_total = int(payload["pointTotal"])
-				for entry: Variant in payload["spells"]:
-					var spell := InteractionRequestValue.spell_choice(entry)
-					if spell == null: return null
-					value.spells.append(spell)
-			parsed = value
+		TREASURE_DISTRIBUTION, LEVEL_UP:
+			parsed = _parse_reward_body(request_kind, payload)
 		COMBAT:
 			parsed = _parse_combat_body(payload)
 		SESSION_LIFECYCLE:
-			if not _fields_are_exact(payload, ["operation", "prompt", "hasActiveSession", "inCombat", "options"], ["operation", "prompt", "inCombat", "options"]) or not _required_strings(payload, ["operation", "prompt"]) or not payload["inCombat"] is bool or not payload["options"] is Array or not _optional_bools(payload, ["hasActiveSession"]): return null
-			var value := LifecycleRequestBody.new()
-			value.operation = StringName(payload["operation"])
-			value.prompt = payload["prompt"]
-			value.has_active_session = bool(payload.get("hasActiveSession", false))
-			value.in_combat = payload["inCombat"]
-			value.includes_active_session = payload.has("hasActiveSession")
-			for entry: Variant in payload["options"]:
-				var option := InteractionRequestValue.lifecycle_option(entry); if option == null: return null
-				value.options.append(option)
-			parsed = value
+			parsed = _parse_lifecycle_body(payload)
 	if parsed == null: return null
 	return InteractionRequest.new(id, request_kind, parsed)
+
+
+static func _parse_dialog_body(request_kind: StringName, payload: Dictionary) -> Body:
+	if request_kind == ACKNOWLEDGE:
+		if not _fields_are_exact(payload, ["prompt", "messageId", "presentation", "journalEligible", "journalRecorded", "soundId", "playerMapId"], ["prompt"]) or not payload["prompt"] is String or not _optional_ints(payload, ["messageId", "soundId"]) or not _optional_strings(payload, ["presentation", "playerMapId"]) or not _optional_bools(payload, ["journalEligible", "journalRecorded"]): return null
+		if payload.has("journalEligible") != payload.has("journalRecorded"): return null
+		var acknowledge_body := AcknowledgeBody.new()
+		acknowledge_body.prompt = payload["prompt"]
+		acknowledge_body.message_id = int(payload.get("messageId", 0))
+		acknowledge_body.presentation = StringName(payload.get("presentation", ""))
+		acknowledge_body.journal_eligible = bool(payload.get("journalEligible", false))
+		acknowledge_body.journal_recorded = bool(payload.get("journalRecorded", false))
+		acknowledge_body.sound_id = int(payload.get("soundId", 0))
+		acknowledge_body.player_map_id = String(payload.get("playerMapId", ""))
+		acknowledge_body.has_message_id = payload.has("messageId")
+		acknowledge_body.has_presentation = payload.has("presentation")
+		acknowledge_body.has_journal_state = payload.has("journalEligible") or payload.has("journalRecorded")
+		acknowledge_body.has_sound_id = payload.has("soundId")
+		acknowledge_body.has_player_map_id = payload.has("playerMapId")
+		return acknowledge_body
+	if request_kind == YES_NO:
+		if not _fields_are_exact(payload, ["prompt", "yesId", "yesLabel", "noId", "noLabel", "regionId"], ["yesLabel", "noLabel"]) or not _required_strings(payload, ["yesLabel", "noLabel"]) or not _optional_strings(payload, ["prompt", "regionId"]) or not _optional_ints(payload, ["yesId", "noId"]): return null
+		if payload.has("yesId") != payload.has("noId"): return null
+		var yes_no_body := YesNoRequestBody.new()
+		yes_no_body.prompt = String(payload.get("prompt", ""))
+		yes_no_body.yes_id = int(payload.get("yesId", 0))
+		yes_no_body.yes_label = payload["yesLabel"]
+		yes_no_body.no_id = int(payload.get("noId", 0))
+		yes_no_body.no_label = payload["noLabel"]
+		yes_no_body.region_id = String(payload.get("regionId", ""))
+		yes_no_body.has_prompt = payload.has("prompt")
+		yes_no_body.has_ids = payload.has("yesId") or payload.has("noId")
+		yes_no_body.has_region_id = payload.has("regionId")
+		return yes_no_body
+	var fields: Array[String] = ["characterId", "characterName", "portraitId", "combatIconId", "raceId", "raceName", "previousAgeDays", "ageDays", "previousAgeGroup", "ageGroup", "ageGroupName", "ageMinimumYears", "ageMaximumYears", "transition", "appliedAgeGroup", "changes", "prompt", "presentation", "soundId", "source"]
+	if request_kind != AGE_UPDATE or not _fields_are_exact(payload, fields, fields) or not _required_strings(payload, ["characterId", "characterName", "portraitId", "combatIconId", "raceId", "raceName", "ageGroupName", "prompt", "presentation", "source"]) or not _required_ints(payload, ["previousAgeDays", "ageDays", "previousAgeGroup", "ageGroup", "ageMinimumYears", "ageMaximumYears", "transition", "appliedAgeGroup", "soundId"]) or not payload["changes"] is Array: return null
+	var age_body := AgeUpdateBody.new()
+	age_body.character_id = payload["characterId"]
+	age_body.character_name = payload["characterName"]
+	age_body.portrait_id = payload["portraitId"]
+	age_body.combat_icon_id = payload["combatIconId"]
+	age_body.race_id = payload["raceId"]
+	age_body.race_name = payload["raceName"]
+	age_body.previous_age_days = payload["previousAgeDays"]
+	age_body.age_days = payload["ageDays"]
+	age_body.previous_age_group = payload["previousAgeGroup"]
+	age_body.age_group = payload["ageGroup"]
+	age_body.age_group_name = payload["ageGroupName"]
+	age_body.age_minimum_years = payload["ageMinimumYears"]
+	age_body.age_maximum_years = payload["ageMaximumYears"]
+	age_body.transition = payload["transition"]
+	age_body.applied_age_group = payload["appliedAgeGroup"]
+	for change: Variant in payload["changes"]:
+		if not _whole_number(change): return null
+		age_body.changes.append(int(change))
+	age_body.prompt = payload["prompt"]
+	age_body.presentation = StringName(payload["presentation"])
+	age_body.sound_id = payload["soundId"]
+	age_body.source = StringName(payload["source"])
+	return age_body
+
+
+static func _parse_selection_body(request_kind: StringName, payload: Dictionary) -> Body:
+	if request_kind in [INDEXED_CHOICE, ENCOUNTER_CHOICE]:
+		if not _fields_are_exact(payload, ["prompt", "options", "canBackOut", "encounterKind", "encounterId"], ["prompt", "options"]) or not payload["prompt"] is String or not payload["options"] is Array or not _optional_bools(payload, ["canBackOut"]) or not _optional_strings(payload, ["encounterKind"]) or not _optional_ints(payload, ["encounterId"]): return null
+		var choice := ChoiceRequestBody.new()
+		choice.prompt = payload["prompt"]
+		for entry: Variant in payload["options"]:
+			var option := InteractionRequestValue.choice_option(entry); if option == null: return null
+			choice.options.append(option)
+		choice.can_back_out = bool(payload.get("canBackOut", false))
+		choice.encounter_kind = StringName(payload.get("encounterKind", ""))
+		choice.encounter_id = int(payload.get("encounterId", 0))
+		choice.has_can_back_out = payload.has("canBackOut")
+		choice.has_encounter = payload.has("encounterKind") or payload.has("encounterId")
+		return choice
+	if request_kind == CHARACTER_SELECTION:
+		if not _fields_are_exact(payload, ["prompt", "count", "eligible", "allowDead", "mode", "itemInstanceId", "spellId", "scrollSlot"], ["count", "eligible"]) or not _whole_number(payload["count"]) or not payload["eligible"] is Array or not _optional_strings(payload, ["prompt", "mode", "itemInstanceId", "spellId"]) or not _optional_ints(payload, ["scrollSlot"]) or not _optional_bools(payload, ["allowDead"]): return null
+		var characters := CharacterSelectionRequestBody.new()
+		characters.prompt = String(payload.get("prompt", ""))
+		characters.count = int(payload["count"])
+		for entry: Variant in payload["eligible"]:
+			var candidate := InteractionRequestValue.selection_candidate(entry); if candidate == null: return null
+			characters.eligible.append(candidate)
+		characters.allow_dead = bool(payload.get("allowDead", false))
+		characters.mode = StringName(payload.get("mode", ""))
+		characters.item_instance_id = String(payload.get("itemInstanceId", ""))
+		characters.spell_id = String(payload.get("spellId", ""))
+		characters.scroll_slot = int(payload.get("scrollSlot", -1))
+		return characters
+	if request_kind == ALLY_SELECTION:
+		if not _fields_are_exact(payload, ["prompt", "maximum", "selectedIds", "requiredIds", "candidates"], ["prompt", "maximum", "selectedIds", "requiredIds", "candidates"]) or not payload["prompt"] is String or not _whole_number(payload["maximum"]) or not payload["selectedIds"] is Array or not payload["requiredIds"] is Array or not payload["candidates"] is Array: return null
+		if not _array_is_strings(payload["selectedIds"]) or not _array_is_strings(payload["requiredIds"]): return null
+		var allies := SelectionRequestBody.new()
+		allies.prompt = payload["prompt"]
+		allies.maximum = int(payload["maximum"])
+		allies.selected_ids = _strings(payload["selectedIds"])
+		allies.required_ids = _strings(payload["requiredIds"])
+		for entry: Variant in payload["candidates"]:
+			var candidate := InteractionRequestValue.selection_candidate(entry); if candidate == null: return null
+			allies.candidates.append(candidate)
+		return allies
+	if request_kind != WORD_AND_ACTION or not _fields_are_exact(payload, ["encounterKind", "encounterId", "prompt", "actions", "characters", "items", "spells", "canBackOut"], ["encounterKind", "encounterId", "prompt", "actions", "characters", "items", "spells", "canBackOut"]) or not _required_strings(payload, ["encounterKind", "prompt"]) or not _required_ints(payload, ["encounterId"]) or not payload["actions"] is Array or not payload["characters"] is Array or not payload["items"] is Array or not payload["spells"] is Array or not payload["canBackOut"] is bool: return null
+	var complex := ComplexEncounterRequestBody.new()
+	complex.encounter_kind = StringName(payload["encounterKind"])
+	if complex.encounter_kind != &"complex": return null
+	complex.encounter_id = int(payload["encounterId"])
+	complex.prompt = payload["prompt"]
+	for entry: Variant in payload["actions"]:
+		var action := InteractionRequestValue.encounter_action(entry); if action == null: return null
+		complex.actions.append(action)
+	for entry: Variant in payload["characters"]:
+		var character := InteractionRequestValue.named_character(entry); if character == null: return null
+		complex.characters.append(character)
+	for entry: Variant in payload["items"]:
+		var item := InteractionRequestValue.encounter_catalog_entry(entry, &"item"); if item == null: return null
+		complex.items.append(item)
+	for entry: Variant in payload["spells"]:
+		var spell := InteractionRequestValue.encounter_catalog_entry(entry, &"spell"); if spell == null: return null
+		complex.spells.append(spell)
+	complex.can_back_out = payload["canBackOut"]
+	return complex
+
+
+static func _parse_reward_body(request_kind: StringName, payload: Dictionary) -> Body:
+	if request_kind == LEVEL_UP:
+		if not _fields_are_exact(payload, ["mode", "prompt", "characterId", "characterName", "level", "gains", "pointTotal", "spells"], ["mode", "prompt", "characterId", "characterName"]) or not _required_strings(payload, ["mode", "prompt", "characterId", "characterName"]): return null
+		var level_up := LevelUpRequestBody.new()
+		level_up.mode = StringName(payload["mode"])
+		if level_up.mode not in [&"result", &"spell-selection"]: return null
+		level_up.prompt = payload["prompt"]
+		level_up.character_id = payload["characterId"]
+		level_up.character_name = payload["characterName"]
+		if level_up.mode == &"result":
+			if not _fields_are_exact(payload, ["mode", "prompt", "characterId", "characterName", "level", "gains"], ["mode", "prompt", "characterId", "characterName", "level", "gains"]) or not _whole_number(payload["level"]): return null
+			level_up.level = int(payload["level"])
+			level_up.gains = InteractionRequestValue.level_gains(payload["gains"])
+			if level_up.gains == null: return null
+		else:
+			if not _fields_are_exact(payload, ["mode", "prompt", "characterId", "characterName", "pointTotal", "spells"], ["mode", "prompt", "characterId", "characterName", "pointTotal", "spells"]) or not _whole_number(payload["pointTotal"]) or not payload["spells"] is Array: return null
+			level_up.point_total = int(payload["pointTotal"])
+			for entry: Variant in payload["spells"]:
+				var spell := InteractionRequestValue.spell_choice(entry); if spell == null: return null
+				level_up.spells.append(spell)
+		return level_up
+	if request_kind != TREASURE_DISTRIBUTION or not _fields_are_exact(payload, ["mode", "prompt", "item", "remaining", "characters", "wealth", "experienceShare", "detect", "identify", "hasShareCapacity", "summary", "battleId", "origin", "sourceId", "experiencePool"], ["mode"]) or not payload["mode"] is String: return null
+	var treasure := TreasureRequestBody.new()
+	treasure.mode = StringName(payload["mode"])
+	if treasure.mode not in [&"fumbled-item-recovery", &"ordinary", &"completion-confirmation"]: return null
+	if not _optional_strings(payload, ["prompt", "summary", "battleId", "origin", "sourceId"]) or not _optional_ints(payload, ["remaining", "experienceShare", "experiencePool"]) or not _optional_bools(payload, ["hasShareCapacity"]): return null
+	treasure.prompt = String(payload.get("prompt", ""))
+	treasure.has_item = payload.has("item")
+	if treasure.has_item and payload["item"] != null:
+		treasure.item = InteractionRequestValue.reward_item(payload["item"])
+		if treasure.item == null: return null
+	treasure.remaining = int(payload.get("remaining", 0))
+	treasure.has_remaining = payload.has("remaining")
+	if payload.has("characters"):
+		if not payload["characters"] is Array: return null
+		for entry: Variant in payload["characters"]:
+			var character := InteractionRequestValue.reward_character(entry, treasure.mode); if character == null: return null
+			treasure.characters.append(character)
+	if payload.has("wealth"):
+		treasure.wealth = InteractionRequestValue.wealth(payload["wealth"])
+		if treasure.wealth == null: return null
+	treasure.experience_share = int(payload.get("experienceShare", 0))
+	if payload.has("detect"):
+		treasure.detect = InteractionRequestValue.reward_method(payload["detect"])
+		if treasure.detect == null: return null
+	if payload.has("identify"):
+		treasure.identify = InteractionRequestValue.reward_method(payload["identify"])
+		if treasure.identify == null: return null
+	treasure.has_share_capacity = bool(payload.get("hasShareCapacity", false))
+	treasure.summary = String(payload.get("summary", ""))
+	treasure.battle_id = String(payload.get("battleId", ""))
+	treasure.origin = StringName(payload.get("origin", ""))
+	treasure.source_id = String(payload.get("sourceId", ""))
+	treasure.experience_pool = int(payload.get("experiencePool", 0))
+	return treasure
+
+
+static func _parse_lifecycle_body(payload: Dictionary) -> LifecycleRequestBody:
+	if not _fields_are_exact(payload, ["operation", "prompt", "hasActiveSession", "inCombat", "options"], ["operation", "prompt", "inCombat", "options"]) or not _required_strings(payload, ["operation", "prompt"]) or not payload["inCombat"] is bool or not payload["options"] is Array or not _optional_bools(payload, ["hasActiveSession"]): return null
+	var value := LifecycleRequestBody.new()
+	value.operation = StringName(payload["operation"])
+	value.prompt = payload["prompt"]
+	value.has_active_session = bool(payload.get("hasActiveSession", false))
+	value.in_combat = payload["inCombat"]
+	value.includes_active_session = payload.has("hasActiveSession")
+	for entry: Variant in payload["options"]:
+		var option := InteractionRequestValue.lifecycle_option(entry); if option == null: return null
+		value.options.append(option)
+	return value
 
 
 static func _parse_shop_body(payload: Dictionary) -> ShopRequestBody:

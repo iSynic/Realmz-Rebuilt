@@ -432,243 +432,14 @@ static func from_data(data: Variant) -> GameState:
 	if party_state == null or realmz_clock == null or world_state == null or not data["searchedCells"] is Array:
 		return null
 	var state := GameState.new(party_state, realmz_clock, world_state)
-	if data.has("combat") and data["combat"] != null:
-		state.combat = CombatState.from_data(data["combat"])
-		if state.combat == null:
-			return null
-		if state.combat.battlefield != null:
-			var battlefield := state.combat.battlefield
-			if battlefield.map_id != party_state.map_id:
-				return null
-			for actor_id: Variant in battlefield.character_positions():
-				if not actor_id is String or party_state.character_by_id(actor_id) == null:
-					return null
-			for actor_id: Variant in battlefield.monster_positions():
-				if not actor_id is String or state.combat.monster_by_id(actor_id) == null:
-					return null
-			for actor_id: String in state.combat.retreated_character_ids():
-				if party_state.character_by_id(actor_id) == null:
-					return null
-			for character: CharacterState in party_state.characters():
-				var on_field := battlefield.character_position(character.id).x >= 0
-				if character.current_health > 0 and not on_field and not state.combat.has_character_retreated(character.id):
-					return null
-				if state.combat.has_character_retreated(character.id) and (character.current_health <= 0 or on_field):
-					return null
-			for monster: MonsterState in state.combat.monsters():
-				if monster.current_health > 0 and battlefield.monster_position(monster.id).x < 0:
-					return null
-		for monster: MonsterState in state.combat.monsters():
-			if not monster.target_id.is_empty() and party_state.character_by_id(monster.target_id) == null and state.combat.monster_by_id(monster.target_id) == null:
-				return null
-		for character_id: String in state.combat.bleeding_character_ids():
-			var bleeding_character := party_state.character_by_id(character_id)
-			if bleeding_character == null or bleeding_character.current_health > 0 or bleeding_character.current_health <= -10:
-				return null
-		for character_id: String in state.combat.turn_undead_actor_ids():
-			if party_state.character_by_id(character_id) == null:
-				return null
-		if state.combat.active_turn != null and not state.combat.active_turn.target_id.is_empty() and party_state.character_by_id(state.combat.active_turn.target_id) == null and state.combat.monster_by_id(state.combat.active_turn.target_id) == null:
-			return null
-		if state.combat.pending_monster_attack != null and party_state.character_by_id(state.combat.pending_monster_attack.target_id) == null:
-			return null
-		if state.combat.pending_reaction != null:
-			var reaction := state.combat.pending_reaction
-			var mover_character := party_state.character_by_id(reaction.mover_id)
-			var mover_monster := state.combat.monster_by_id(reaction.mover_id)
-			if (reaction.kind == CombatReactionState.CHARACTER_MOVE and mover_character == null) or (reaction.kind != CombatReactionState.CHARACTER_MOVE and mover_monster == null):
-				return null
-			for attacker_id: String in reaction.attackers():
-				if party_state.character_by_id(attacker_id) == null and state.combat.monster_by_id(attacker_id) == null:
-					return null
-			for hostile_id: String in reaction.origin_hostiles():
-				if party_state.character_by_id(hostile_id) == null and state.combat.monster_by_id(hostile_id) == null:
-					return null
-			if state.combat.battlefield == null:
-				return null
-			var expected_position := reaction.destination if reaction.phase == CombatReactionState.GUARD_AFTER and reaction.kind != CombatReactionState.MONSTER_CONTACT else reaction.origin
-			if state.combat.battlefield.actor_position(reaction.mover_id) != expected_position:
-				return null
-		var owned_item_ids: Dictionary = {}
-		for character: CharacterState in party_state.characters():
-			for item: ItemInstance in character.inventory():
-				if owned_item_ids.has(item.id):
-					return null
-				owned_item_ids[item.id] = true
-		for item: ItemInstance in party_state.storage():
-			if owned_item_ids.has(item.id):
-				return null
-			owned_item_ids[item.id] = true
-		for item: ItemInstance in state.combat.fumbled_items():
-			if owned_item_ids.has(item.id):
-				return null
-			owned_item_ids[item.id] = true
+	if not _restore_combat_state(state, party_state, data):
+		return null
 	for key: Variant in data["searchedCells"]:
 		if not key is String or key.is_empty():
 			return null
 		state._searched_cells[key] = true
-	if data.has("randomEncountersEnabled"):
-		for field: String in ["randomEncountersEnabled", "campingAllowed", "lastBattleOutcome", "questValues", "selectedCharacterIds", "timedEncounterOverrides", "instanceCounter", "eliminatedSimpleOptions", "shopOverrides", "shopInflationOverrides", "encounterAttempts", "thiefEncounterTypeFlags", "scenarioProgramOverrides"]:
-			if not data.has(field):
-				return null
-		if not data["randomEncountersEnabled"] is bool or not data["campingAllowed"] is bool or not data["lastBattleOutcome"] is String or not data["questValues"] is Dictionary or not data["selectedCharacterIds"] is Array or not data["timedEncounterOverrides"] is Dictionary:
-			return null
-		if data.has("partySetupCompleted") and not data["partySetupCompleted"] is bool:
-			return null
-		var counter := _integer(data["instanceCounter"])
-		if counter < 0:
-			return null
-		state.random_encounters_enabled = data["randomEncountersEnabled"]
-		state.camping_allowed = data["campingAllowed"]
-		if data.has("partyInBoat") and (not data["partyInBoat"] is bool or not data.get("partyCamping") is bool):
-			return null
-		state.party_in_boat = bool(data.get("partyInBoat", false))
-		state.party_camping = bool(data.get("partyCamping", false))
-		if data.has("priestTurningAllowed") and not data["priestTurningAllowed"] is bool:
-			return null
-		state.priest_turning_allowed = bool(data.get("priestTurningAllowed", true))
-		if data.has("alliesSuspended") and not data["alliesSuspended"] is bool:
-			return null
-		state.allies_suspended = bool(data.get("alliesSuspended", false))
-		for field: String in ["characterSpellcasting", "monsterSpellcasting", "spellCharging"]:
-			if data.has(field) and not data[field] is bool:
-				return null
-		state.character_spellcasting_blocked = bool(data.get("characterSpellcasting", false))
-		state.monster_spellcasting_blocked = bool(data.get("monsterSpellcasting", false))
-		state.spell_charging = bool(data.get("spellCharging", false))
-		if data.has("lastMoveX") or data.has("lastMoveY"):
-			var last_x := _signed_integer(data.get("lastMoveX"))
-			var last_y := _signed_integer(data.get("lastMoveY"))
-			var last_direction := Vector2i(last_x, last_y)
-			if last_direction != Vector2i.ZERO and not MapTopology.is_cardinal_direction(last_direction) and not MapTopology.is_diagonal_direction(last_direction):
-				return null
-			state.last_move_direction = last_direction
-		if data.has("activeShopId") or data.has("shopAcceptRanges"):
-			if not data.get("activeShopId") is String or not data.get("shopAcceptRanges") is Array:
-				return null
-			var accept_ranges: Array[int] = []
-			for value: Variant in data["shopAcceptRanges"]:
-				var accepted := _signed_integer(value)
-				if accepted < -32_768 or accepted > 32_767:
-					return null
-				accept_ranges.append(accepted)
-			if not String(data["activeShopId"]).is_empty() and not state.set_active_shop(data["activeShopId"], accept_ranges):
-				return null
-			if String(data["activeShopId"]).is_empty() and not accept_ranges.is_empty():
-				return null
-		if data.has("templeAvailable") or data.has("templeCostPercent") or data.has("bankAvailable"):
-			if not data.get("templeAvailable") is bool or not data.get("bankAvailable") is bool:
-				return null
-			var temple_percent := _signed_integer(data.get("templeCostPercent"))
-			if temple_percent < -32_768 or temple_percent > 32_767:
-				return null
-			state.temple_available = data["templeAvailable"]
-			state.temple_cost_percent = temple_percent
-			state.bank_available = data["bankAvailable"]
-		state.last_battle_outcome = StringName(data["lastBattleOutcome"])
-		state.party_setup_completed = bool(data.get("partySetupCompleted", false))
-		state.difficulty = _signed_integer(data.get("difficulty", 0))
-		state.monster_set = _signed_integer(data.get("monsterSet", 0))
-		var multiplier_value: Variant = data.get("experienceMultiplier", -1.0)
-		if not multiplier_value is int and not multiplier_value is float:
-			return null
-		state.experience_multiplier = float(multiplier_value)
-		var multiplier_is_valid := is_equal_approx(state.experience_multiplier, -1.0) or (state.experience_multiplier >= 0.20 and state.experience_multiplier <= 2.50)
-		if state.difficulty < -2 or state.difficulty > 2 or state.monster_set not in [-1, 0, 1] or is_nan(state.experience_multiplier) or is_inf(state.experience_multiplier) or not multiplier_is_valid:
-			return null
-		if data.has("characterDraft") and data["characterDraft"] != null:
-			state.character_draft = CharacterDraft.from_data(data["characterDraft"])
-			if state.character_draft == null:
-				return null
-		for key: Variant in data["questValues"]:
-			if not key is String or not key.is_valid_int():
-				return null
-			var quest_id: int = String(key).to_int()
-			var loaded_quest_value := _signed_integer(data["questValues"][key])
-			if quest_id < 0 or quest_id >= 100 or loaded_quest_value < -32_768 or loaded_quest_value > 32_767:
-				return null
-			state._quest_values[quest_id] = loaded_quest_value
-		var selected: Array[String] = []
-		for id: Variant in data["selectedCharacterIds"]:
-			if not id is String:
-				return null
-			selected.append(id)
-		if not state.set_selected_character_ids(selected):
-			return null
-		for key: Variant in data["timedEncounterOverrides"]:
-			if not key is String or not key.is_valid_int() or not data["timedEncounterOverrides"][key] is Dictionary:
-				return null
-			state._timed_encounter_overrides[String(key).to_int()] = data["timedEncounterOverrides"][key].duplicate(true)
-		state._instance_counter = counter
-		if not data["eliminatedSimpleOptions"] is Array or not data["shopOverrides"] is Dictionary:
-			return null
-		for key: Variant in data["eliminatedSimpleOptions"]:
-			if not key is String or key.is_empty():
-				return null
-			state._eliminated_simple_options[key] = true
-		for key: Variant in data["shopOverrides"]:
-			var quantity := _integer(data["shopOverrides"][key])
-			if not key is String or key.is_empty() or quantity < 0 or quantity > 32_767:
-				return null
-			state._shop_overrides[key] = quantity
-		if not data["shopInflationOverrides"] is Dictionary:
-			return null
-		for key: Variant in data["shopInflationOverrides"]:
-			var inflation := _integer(data["shopInflationOverrides"][key])
-			if not key is String or key.is_empty() or inflation < 0 or inflation > 32_767:
-				return null
-			state._shop_inflation_overrides[key] = inflation
-		if data.has("shopBuybackOverrides"):
-			if not data["shopBuybackOverrides"] is Dictionary:
-				return null
-			for shop_id: Variant in data["shopBuybackOverrides"]:
-				var shop_items: Variant = data["shopBuybackOverrides"][shop_id]
-				if not shop_id is String or shop_id.is_empty() or not shop_items is Dictionary:
-					return null
-				for item_id: Variant in shop_items:
-					var quantity := _integer(shop_items[item_id])
-					if not item_id is String or item_id.is_empty() or quantity < 1 or quantity > 32_767:
-						return null
-					if not state.set_shop_buyback_quantity(shop_id, item_id, quantity):
-						return null
-		if not data["encounterAttempts"] is Dictionary or not data["thiefEncounterTypeFlags"] is Dictionary:
-			return null
-		for key: Variant in data["encounterAttempts"]:
-			var count := _integer(data["encounterAttempts"][key])
-			if not key is String or key.is_empty() or count < 0 or count > 32_767:
-				return null
-			state._encounter_attempts[key] = count
-		for key: Variant in data["thiefEncounterTypeFlags"]:
-			var flags: Variant = data["thiefEncounterTypeFlags"][key]
-			if not key is String or not String(key).is_valid_int() or not flags is Array or flags.size() != 10:
-				return null
-			var copied: Array[bool] = []
-			for flag: Variant in flags:
-				if not flag is bool:
-					return null
-				copied.append(flag)
-			state._thief_encounter_type_flags[key] = copied
-		if not data["scenarioProgramOverrides"] is Dictionary:
-			return null
-		for key: Variant in data["scenarioProgramOverrides"]:
-			var target: Variant = data["scenarioProgramOverrides"][key]
-			if not key is String or key.is_empty() or not target is String or target.is_empty():
-				return null
-			state._scenario_program_overrides[key] = target
-		if data.has("journalMessageIds"):
-			if not data["journalMessageIds"] is Array:
-				return null
-			for value: Variant in data["journalMessageIds"]:
-				var message_id := _integer(value)
-				if not journal_message_id_is_valid(message_id) or state.journal_message_is_recorded(message_id):
-					return null
-				state._journal_message_ids[message_id] = true
-		if data.has("combatAutoCharacterIds"):
-			if not data["combatAutoCharacterIds"] is Array or data["combatAutoCharacterIds"].size() > 6:
-				return null
-			for character_id: Variant in data["combatAutoCharacterIds"]:
-				if not character_id is String or state._combat_auto_character_ids.has(character_id) or not state.set_combat_auto(character_id, true):
-					return null
+	if data.has("randomEncountersEnabled") and (not _restore_session_settings(state, data) or not _restore_session_collections(state, data)):
+		return null
 	if state.party.characters().is_empty() and (not data.has("partySetupCompleted") or state.party_setup_completed):
 		return null
 	if state.party_setup_completed and state.character_draft != null:
@@ -677,6 +448,205 @@ static func from_data(data: Variant) -> GameState:
 		if character.traitor and (state.combat == null or state.combat.completed):
 			return null
 	return state
+
+
+static func _restore_combat_state(state: GameState, party_state: PartyState, data: Dictionary) -> bool:
+	if not data.has("combat") or data["combat"] == null:
+		return true
+	state.combat = CombatState.from_data(data["combat"])
+	if state.combat == null or not _combat_references_are_valid(state, party_state):
+		return false
+	var owned_item_ids: Dictionary = {}
+	for character: CharacterState in party_state.characters():
+		for item: ItemInstance in character.inventory():
+			if owned_item_ids.has(item.id): return false
+			owned_item_ids[item.id] = true
+	for item: ItemInstance in party_state.storage():
+		if owned_item_ids.has(item.id): return false
+		owned_item_ids[item.id] = true
+	for item: ItemInstance in state.combat.fumbled_items():
+		if owned_item_ids.has(item.id): return false
+		owned_item_ids[item.id] = true
+	return true
+
+
+static func _combat_references_are_valid(state: GameState, party_state: PartyState) -> bool:
+	var combat := state.combat
+	if combat.battlefield != null:
+		var battlefield := combat.battlefield
+		if battlefield.map_id != party_state.map_id: return false
+		for actor_id: Variant in battlefield.character_positions():
+			if not actor_id is String or party_state.character_by_id(actor_id) == null: return false
+		for actor_id: Variant in battlefield.monster_positions():
+			if not actor_id is String or combat.monster_by_id(actor_id) == null: return false
+		for actor_id: String in combat.retreated_character_ids():
+			if party_state.character_by_id(actor_id) == null: return false
+		for character: CharacterState in party_state.characters():
+			var on_field := battlefield.character_position(character.id).x >= 0
+			if character.current_health > 0 and not on_field and not combat.has_character_retreated(character.id): return false
+			if combat.has_character_retreated(character.id) and (character.current_health <= 0 or on_field): return false
+		for monster: MonsterState in combat.monsters():
+			if monster.current_health > 0 and battlefield.monster_position(monster.id).x < 0: return false
+	for monster: MonsterState in combat.monsters():
+		if not monster.target_id.is_empty() and party_state.character_by_id(monster.target_id) == null and combat.monster_by_id(monster.target_id) == null: return false
+	for character_id: String in combat.bleeding_character_ids():
+		var character := party_state.character_by_id(character_id)
+		if character == null or character.current_health > 0 or character.current_health <= -10: return false
+	for character_id: String in combat.turn_undead_actor_ids():
+		if party_state.character_by_id(character_id) == null: return false
+	if combat.active_turn != null and not combat.active_turn.target_id.is_empty() and party_state.character_by_id(combat.active_turn.target_id) == null and combat.monster_by_id(combat.active_turn.target_id) == null: return false
+	if combat.pending_monster_attack != null and party_state.character_by_id(combat.pending_monster_attack.target_id) == null: return false
+	return _combat_reaction_is_valid(combat, party_state)
+
+
+static func _combat_reaction_is_valid(combat: CombatState, party_state: PartyState) -> bool:
+	if combat.pending_reaction == null: return true
+	var reaction := combat.pending_reaction
+	var mover_character := party_state.character_by_id(reaction.mover_id)
+	var mover_monster := combat.monster_by_id(reaction.mover_id)
+	if (reaction.kind == CombatReactionState.CHARACTER_MOVE and mover_character == null) or (reaction.kind != CombatReactionState.CHARACTER_MOVE and mover_monster == null): return false
+	for attacker_id: String in reaction.attackers():
+		if party_state.character_by_id(attacker_id) == null and combat.monster_by_id(attacker_id) == null: return false
+	for hostile_id: String in reaction.origin_hostiles():
+		if party_state.character_by_id(hostile_id) == null and combat.monster_by_id(hostile_id) == null: return false
+	if combat.battlefield == null: return false
+	var expected_position := reaction.destination if reaction.phase == CombatReactionState.GUARD_AFTER and reaction.kind != CombatReactionState.MONSTER_CONTACT else reaction.origin
+	return combat.battlefield.actor_position(reaction.mover_id) == expected_position
+
+
+static func _restore_session_settings(state: GameState, data: Dictionary) -> bool:
+	var required := ["randomEncountersEnabled", "campingAllowed", "lastBattleOutcome", "questValues", "selectedCharacterIds", "timedEncounterOverrides", "instanceCounter", "eliminatedSimpleOptions", "shopOverrides", "shopInflationOverrides", "encounterAttempts", "thiefEncounterTypeFlags", "scenarioProgramOverrides"]
+	for field: String in required:
+		if not data.has(field): return false
+	if not data["randomEncountersEnabled"] is bool or not data["campingAllowed"] is bool or not data["lastBattleOutcome"] is String or not data["questValues"] is Dictionary or not data["selectedCharacterIds"] is Array or not data["timedEncounterOverrides"] is Dictionary: return false
+	if data.has("partySetupCompleted") and not data["partySetupCompleted"] is bool: return false
+	state._instance_counter = _integer(data["instanceCounter"])
+	if state._instance_counter < 0: return false
+	state.random_encounters_enabled = data["randomEncountersEnabled"]
+	state.camping_allowed = data["campingAllowed"]
+	if data.has("partyInBoat") and (not data["partyInBoat"] is bool or not data.get("partyCamping") is bool): return false
+	state.party_in_boat = bool(data.get("partyInBoat", false))
+	state.party_camping = bool(data.get("partyCamping", false))
+	if data.has("priestTurningAllowed") and not data["priestTurningAllowed"] is bool: return false
+	if data.has("alliesSuspended") and not data["alliesSuspended"] is bool: return false
+	state.priest_turning_allowed = bool(data.get("priestTurningAllowed", true))
+	state.allies_suspended = bool(data.get("alliesSuspended", false))
+	for field: String in ["characterSpellcasting", "monsterSpellcasting", "spellCharging"]:
+		if data.has(field) and not data[field] is bool: return false
+	state.character_spellcasting_blocked = bool(data.get("characterSpellcasting", false))
+	state.monster_spellcasting_blocked = bool(data.get("monsterSpellcasting", false))
+	state.spell_charging = bool(data.get("spellCharging", false))
+	if not _restore_location_settings(state, data): return false
+	state.last_battle_outcome = StringName(data["lastBattleOutcome"])
+	state.party_setup_completed = bool(data.get("partySetupCompleted", false))
+	state.difficulty = _signed_integer(data.get("difficulty", 0))
+	state.monster_set = _signed_integer(data.get("monsterSet", 0))
+	var multiplier: Variant = data.get("experienceMultiplier", -1.0)
+	if not multiplier is int and not multiplier is float: return false
+	state.experience_multiplier = float(multiplier)
+	var multiplier_valid := is_equal_approx(state.experience_multiplier, -1.0) or (state.experience_multiplier >= 0.20 and state.experience_multiplier <= 2.50)
+	if state.difficulty < -2 or state.difficulty > 2 or state.monster_set not in [-1, 0, 1] or is_nan(state.experience_multiplier) or is_inf(state.experience_multiplier) or not multiplier_valid: return false
+	if data.has("characterDraft") and data["characterDraft"] != null:
+		state.character_draft = CharacterDraft.from_data(data["characterDraft"])
+		if state.character_draft == null: return false
+	return true
+
+
+static func _restore_location_settings(state: GameState, data: Dictionary) -> bool:
+	if data.has("lastMoveX") or data.has("lastMoveY"):
+		var direction := Vector2i(_signed_integer(data.get("lastMoveX")), _signed_integer(data.get("lastMoveY")))
+		if direction != Vector2i.ZERO and not MapTopology.is_cardinal_direction(direction) and not MapTopology.is_diagonal_direction(direction): return false
+		state.last_move_direction = direction
+	if data.has("activeShopId") or data.has("shopAcceptRanges"):
+		if not data.get("activeShopId") is String or not data.get("shopAcceptRanges") is Array: return false
+		var ranges: Array[int] = []
+		for value: Variant in data["shopAcceptRanges"]:
+			var accepted := _signed_integer(value)
+			if accepted < -32_768 or accepted > 32_767: return false
+			ranges.append(accepted)
+		if not String(data["activeShopId"]).is_empty() and not state.set_active_shop(data["activeShopId"], ranges): return false
+		if String(data["activeShopId"]).is_empty() and not ranges.is_empty(): return false
+	if data.has("templeAvailable") or data.has("templeCostPercent") or data.has("bankAvailable"):
+		if not data.get("templeAvailable") is bool or not data.get("bankAvailable") is bool: return false
+		var percent := _signed_integer(data.get("templeCostPercent"))
+		if percent < -32_768 or percent > 32_767: return false
+		state.temple_available = data["templeAvailable"]
+		state.temple_cost_percent = percent
+		state.bank_available = data["bankAvailable"]
+	return true
+
+
+static func _restore_session_collections(state: GameState, data: Dictionary) -> bool:
+	for key: Variant in data["questValues"]:
+		if not key is String or not key.is_valid_int(): return false
+		var quest_id: int = String(key).to_int()
+		var value := _signed_integer(data["questValues"][key])
+		if quest_id < 0 or quest_id >= 100 or value < -32_768 or value > 32_767: return false
+		state._quest_values[quest_id] = value
+	var selected: Array[String] = []
+	for id: Variant in data["selectedCharacterIds"]:
+		if not id is String: return false
+		selected.append(id)
+	if not state.set_selected_character_ids(selected): return false
+	for key: Variant in data["timedEncounterOverrides"]:
+		if not key is String or not key.is_valid_int() or not data["timedEncounterOverrides"][key] is Dictionary: return false
+		state._timed_encounter_overrides[String(key).to_int()] = data["timedEncounterOverrides"][key].duplicate(true)
+	return _restore_override_collections(state, data) and _restore_optional_collections(state, data)
+
+
+static func _restore_override_collections(state: GameState, data: Dictionary) -> bool:
+	if not data["eliminatedSimpleOptions"] is Array or not data["shopOverrides"] is Dictionary or not data["shopInflationOverrides"] is Dictionary: return false
+	for key: Variant in data["eliminatedSimpleOptions"]:
+		if not key is String or key.is_empty(): return false
+		state._eliminated_simple_options[key] = true
+	for key: Variant in data["shopOverrides"]:
+		var quantity := _integer(data["shopOverrides"][key])
+		if not key is String or key.is_empty() or quantity < 0 or quantity > 32_767: return false
+		state._shop_overrides[key] = quantity
+	for key: Variant in data["shopInflationOverrides"]:
+		var inflation := _integer(data["shopInflationOverrides"][key])
+		if not key is String or key.is_empty() or inflation < 0 or inflation > 32_767: return false
+		state._shop_inflation_overrides[key] = inflation
+	if data.has("shopBuybackOverrides"):
+		if not data["shopBuybackOverrides"] is Dictionary: return false
+		for shop_id: Variant in data["shopBuybackOverrides"]:
+			var items: Variant = data["shopBuybackOverrides"][shop_id]
+			if not shop_id is String or shop_id.is_empty() or not items is Dictionary: return false
+			for item_id: Variant in items:
+				var quantity := _integer(items[item_id])
+				if not item_id is String or item_id.is_empty() or quantity < 1 or quantity > 32_767 or not state.set_shop_buyback_quantity(shop_id, item_id, quantity): return false
+	return true
+
+
+static func _restore_optional_collections(state: GameState, data: Dictionary) -> bool:
+	if not data["encounterAttempts"] is Dictionary or not data["thiefEncounterTypeFlags"] is Dictionary or not data["scenarioProgramOverrides"] is Dictionary: return false
+	for key: Variant in data["encounterAttempts"]:
+		var count := _integer(data["encounterAttempts"][key])
+		if not key is String or key.is_empty() or count < 0 or count > 32_767: return false
+		state._encounter_attempts[key] = count
+	for key: Variant in data["thiefEncounterTypeFlags"]:
+		var flags: Variant = data["thiefEncounterTypeFlags"][key]
+		if not key is String or not String(key).is_valid_int() or not flags is Array or flags.size() != 10: return false
+		var copied: Array[bool] = []
+		for flag: Variant in flags:
+			if not flag is bool: return false
+			copied.append(flag)
+		state._thief_encounter_type_flags[key] = copied
+	for key: Variant in data["scenarioProgramOverrides"]:
+		var target: Variant = data["scenarioProgramOverrides"][key]
+		if not key is String or key.is_empty() or not target is String or target.is_empty(): return false
+		state._scenario_program_overrides[key] = target
+	if data.has("journalMessageIds"):
+		if not data["journalMessageIds"] is Array: return false
+		for value: Variant in data["journalMessageIds"]:
+			var message_id := _integer(value)
+			if not journal_message_id_is_valid(message_id) or state.journal_message_is_recorded(message_id): return false
+			state._journal_message_ids[message_id] = true
+	if data.has("combatAutoCharacterIds"):
+		if not data["combatAutoCharacterIds"] is Array or data["combatAutoCharacterIds"].size() > 6: return false
+		for character_id: Variant in data["combatAutoCharacterIds"]:
+			if not character_id is String or state._combat_auto_character_ids.has(character_id) or not state.set_combat_auto(character_id, true): return false
+	return true
 
 
 static func _cell_key(map_id: String, coordinate: Vector2i) -> String:

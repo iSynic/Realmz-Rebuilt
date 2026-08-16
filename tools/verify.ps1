@@ -53,6 +53,9 @@ if ($LASTEXITCODE -ne 0) { throw "Classic application media verification failed.
 & "$PSScriptRoot\verify_architecture.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Architecture boundary verification failed." }
 
+& "$PSScriptRoot\verify_hotspot_test_budget.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Hotspot and test-budget verification failed." }
+
 & "$PSScriptRoot\verify_export_contract.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Release export contract verification failed." }
 

@@ -467,6 +467,9 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 					break
 			assert_not_null(legal_combat_spell, "the integration fixture contains at least one core-proven combat spell option")
 			if legal_combat_spell != null:
+				# This legacy integration fixture mutates session-owned state directly;
+				# invalidate the detached-view cache before observing that mutation.
+				reward_session._view_projector.clear()
 				var spell_ready_view := reward_session.view()
 				assert_true(spell_ready_view.availability(&"cast_spell").enabled, "the public combat spell action is enabled only when core supplies at least one legal spell, power, and target option: %s" % spell_ready_view.availability(&"cast_spell").reason)
 			assert_false(tactical_view.availability(&"move").enabled, "an active battle cannot advertise exploration movement through the detached application view")

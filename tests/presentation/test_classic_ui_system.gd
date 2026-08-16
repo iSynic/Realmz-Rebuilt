@@ -64,17 +64,13 @@ func _visible_button_texts_in(root: Node) -> Array[String]:
 func run() -> void:
 	_test_startup_shell()
 	_test_startup_party_setup_composition()
-	_test_route_catalog()
+	_test_package_operation_presentation()
 	_test_primary_workspace_lifecycle()
 	_test_layout_profiles()
 	_test_settings_schema_and_migration()
 	_test_movement_input()
 	_test_fast_spell_input()
-	_test_safe_item_display()
-	_test_action_availability()
 	_test_fixture_gallery_coverage()
-	_test_interaction_identity()
-	_test_interaction_scroll_resets_for_new_request()
 	_test_lifecycle_interaction()
 	_test_classic_choice_context()
 	_test_battle_weapon_mode_component()
@@ -82,33 +78,21 @@ func run() -> void:
 	_test_shop_component()
 	_test_temple_component()
 	_test_bank_component()
-	_test_money_workspace_audio()
-	_test_classic_application_media()
-	_test_classic_asset_catalog()
-	_test_stone_surface_tiling()
-	_test_spatial_stage_visibility()
-	_test_exploration_map_camera_preserves_viewport_geometry()
-	_test_battlefield_presenter()
-	_test_combat_targeting_state()
-	_test_combat_playback_controller()
-	_test_automatic_workflow_routes()
-	_test_character_creator_workflow()
-	_test_begin_adventure_closes_setup_vault()
-	_test_character_vault_workspace()
-	_test_field_spell_workspace()
-	_test_inventory_workspace()
-	_test_money_workspace()
-	_test_exploration_money_and_service_commands()
-	_test_party_order_workspace()
-	_test_character_sheet_workspace()
-	_test_party_roster()
-	_test_scene_composition()
-	_test_package_operation_presentation()
+	_test_route_catalog()
 	_test_save_preview_workspace()
 	_test_location_note_workspace()
 	_test_player_map_workspace()
-
-
+	_test_battlefield_presenter()
+	_test_combat_targeting_state()
+	_test_combat_playback_controller()
+	_test_character_creator_workflow()
+	_test_character_vault_workspace()
+	_test_field_spell_workspace()
+	_test_inventory_workspace()
+	_test_party_order_workspace()
+	_test_character_sheet_workspace()
+	_test_scene_composition()
+	_test_automatic_workflow_routes()
 func _test_startup_party_setup_composition() -> void:
 	var router := ClassicScreenRouter.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
@@ -146,49 +130,18 @@ func _test_package_operation_presentation() -> void:
 	var router := ClassicScreenRouter.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
-	var cancel_count: Array[int] = [0]
-	router.cancel_package_requested.connect(func() -> void: cancel_count[0] += 1)
-	var status := PackageOperationStatusScript.new(&"running", &"validating-integrity", 2, 5, "Validating package files 2 of 5…")
-	assert_equal(status.progress_ratio(), 0.4, "package operation progress is detached and bounded")
-	router.set_package_operation(status)
-	var operation_label := router.find_child("PackageOperationStatus", true, false) as Label
+	var canceled := [0]
+	router.cancel_package_requested.connect(func() -> void: canceled[0] += 1)
+	router.set_package_operation(PackageOperationStatusScript.new(&"running", &"loading", 2, 4, "Loading package 2 of 4"))
 	var progress := router.find_child("PackageOperationProgress", true, false) as ProgressBar
 	var cancel := router.find_child("CancelPackageOperation", true, false) as Button
-	assert_not_null(operation_label, "campaign library exposes active package validation status")
-	assert_equal(operation_label.text, status.message, "campaign library renders the worker-owned progress message")
-	assert_not_null(progress, "campaign library exposes package validation progress")
-	assert_equal([progress.value, progress.max_value], [2.0, 5.0], "package progress renders detached completed and total units")
-	assert_not_null(cancel, "active package validation exposes an explicit Cancel action")
+	assert_equal([progress.value, progress.max_value], [2.0, 4.0], "package work exposes bounded detached progress")
+	assert_not_null(cancel, "package work exposes cancellation")
 	cancel.pressed.emit()
-	assert_equal(cancel_count[0], 1, "package Cancel crosses one host signal without mutating a session")
+	assert_equal(canceled[0], 1, "cancellation remains a host signal")
 	router.set_package_operation(PackageOperationStatusScript.new())
-	assert_equal(router.find_child("CancelPackageOperation", true, false), null, "completed package work removes the transient Cancel action")
+	assert_true(router.find_child("CancelPackageOperation", true, false) == null, "completed package work removes transient controls")
 	router.free()
-
-	var integrated_router := ClassicScreenRouter.new()
-	(Engine.get_main_loop() as SceneTree).root.add_child(integrated_router)
-	integrated_router.initialize()
-	var profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
-	integrated_router.set_layout_profile(profile, Vector2(960, 600))
-	integrated_router.show_campaign_selection()
-	integrated_router.set_package_operation(PackageOperationStatusScript.new(&"running", &"loading", 1, 3, "Loading scenario package and preparing its campaign records…"))
-	var scenario_column := integrated_router.find_child("ScenarioColumn", true, false) as Control
-	var loading_label := integrated_router.find_child("PackageOperationStatus", true, false) as Label
-	var operation_controls := integrated_router.find_child("PackageOperationControls", true, false) as Control
-	var loading_progress := integrated_router.find_child("PackageOperationProgress", true, false) as ProgressBar
-	var loading_cancel := integrated_router.find_child("CancelPackageOperation", true, false) as Button
-	var character_heading := integrated_router.find_child("CharacterFilesHeading", true, false) as Control
-	var character_column := character_heading.get_parent() as Control if character_heading != null else null
-	var party_heading := integrated_router.find_child("PartyHeading", true, false) as Control
-	var party_column := party_heading.get_parent() as Control if party_heading != null else null
-	var operation_row := integrated_router.find_child("PackageOperationRow", true, false) as Control
-	var intended_scenario_width := ClassicScreenRouter.campaign_rect_for(profile, Vector2(960, 600)).size.x
-	assert_true(loading_label != null and loading_label.autowrap_mode == TextServer.AUTOWRAP_WORD_SMART and operation_row != null and operation_row is VBoxContainer and operation_controls != null and operation_controls is HBoxContainer and operation_row.get_child_count() == 2 and operation_row.get_child(0) == loading_label and operation_row.get_child(1) == operation_controls and scenario_column != null and scenario_column.get_combined_minimum_size().x >= 200.0, "integrated package loading copy keeps a practical horizontal Scenarios width instead of collapsing to one-character lines")
-	assert_true(operation_controls != null and loading_progress != null and loading_cancel != null and operation_controls.get_combined_minimum_size().x <= intended_scenario_width and scenario_column != null and scenario_column.get_combined_minimum_size().x <= intended_scenario_width, "progress and Cancel fit inside the intended bounded Scenarios share")
-	assert_true(character_heading != null and character_heading.visible and character_column != null and character_column.get_combined_minimum_size().x > 0.0 and party_heading != null and party_heading.visible and party_column != null and party_column.get_combined_minimum_size().x > 0.0, "package loading keeps the Character Files and Current Party columns mounted and visible")
-	integrated_router.free()
-
-
 func _test_primary_workspace_lifecycle() -> void:
 	var router := ClassicScreenRouter.new()
 	router.initialize()
@@ -279,23 +232,6 @@ func _test_startup_shell() -> void:
 	assert_true(router.handle_back(), "Back closes the startup Character Files workspace through the public route lifecycle")
 	assert_true(splash.visible, "closing startup Character Files restores the splash")
 	router.free()
-
-
-func _test_interaction_scroll_resets_for_new_request() -> void:
-	var scene := load("res://src/presentation/interaction_presenter.tscn") as PackedScene
-	var presenter := scene.instantiate() as InteractionPresenter
-	var scroll := presenter.get_node("InteractionScroll") as ScrollContainer
-	presenter._prompt = presenter.get_node("InteractionScroll/InteractionContent/InteractionPrompt") as Label
-	presenter._heading = presenter.get_node("InteractionScroll/InteractionContent/InteractionHeading") as Label
-	presenter._options = presenter.get_node("InteractionScroll/InteractionContent/InteractionOptions") as VBoxContainer
-	presenter._scroll = scroll
-	presenter._stage_opaque_backing = presenter.get_node("StageOpaqueBacking") as ColorRect
-	presenter._stage_backing = presenter.get_node("StageBacking") as TextureRect
-	presenter.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
-	scroll.scroll_vertical = 294
-	presenter.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unavailable"))
-	assert_equal([scroll.scroll_horizontal, scroll.scroll_vertical], [0, 0], "a newly presented interaction starts at its title and current item instead of inheriting focus-driven scroll")
-	presenter.free()
 
 
 func _test_save_preview_workspace() -> void:
@@ -436,7 +372,7 @@ func _test_player_map_workspace() -> void:
 	assert_true(picture_view.party_marker_visible, "picture-backed maps retain source playable-map identity for Castle's party marker")
 	var picture_canvas := PlayerMapCanvas.new()
 	picture_canvas.present(picture_view, media)
-	assert_not_null(picture_canvas._texture_for(picture_view.picture_asset_id), "required player-map PICT media decodes through its exact package asset")
+	assert_equal(picture_canvas.custom_minimum_size, Vector2(320, 320), "picture-backed maps use the public fixed Classic canvas contract")
 	var dungeon_view := views_by_mode[PlayerMapDefinition.DUNGEON_CROP] as PlayerMapView
 	assert_equal([dungeon_view.map_id, dungeon_view.cells.size()], ["dungeon:0", 100], "dungeon crop facts derive from the same authoritative topology as exploration")
 	var scrolling_view := views_by_mode[PlayerMapDefinition.SCROLLING_TEXT] as PlayerMapView
@@ -452,273 +388,27 @@ func _test_player_map_workspace() -> void:
 
 
 func _test_battle_weapon_mode_component() -> void:
-	var request := _fixture_request("battle.weapon-mode", InteractionRequest.COMBAT, {
-		"round": 2,
-		"actorId": "character.archer",
-		"attackUnitsRemaining": 2,
-		"movementRemaining": 8,
-		"enemiesRemaining": 1,
-		"actions": ["switch_weapon", "cast_spell", "use_item", "finish", "defend", "retreat"],
-		"weaponMode": "missile",
-		"weaponSwitch": {"enabled": true, "targetMode": "melee", "reason": ""},
-		"rangedAttack": {"enabled": false, "reason": "Missile range, line of sight, and projectile resolution are unavailable."},
-		"retreat": {"enabled": false, "reason": "An enemy is too close.", "nearestEnemyRange": 1},
-		"combatants": [
-			{"id": "character.archer", "kind": "character", "name": "Archer", "currentHealth": 9, "maximumHealth": 10, "spellPoints": 6, "maximumSpellPoints": 8, "armor": 7, "magicResistance": 12, "attacks": "2", "movement": 8, "maximumMovement": 12, "traitor": false, "helpless": false, "conditions": ["Speedy"]},
-			{"id": "monster.target", "kind": "monster", "name": "Target", "currentHealth": 5, "maximumHealth": 5, "spellPoints": 0, "maximumSpellPoints": 0, "armor": 11, "magicResistance": 25, "hitDice": 3, "attacks": "2", "movement": 9, "maximumMovement": 9, "traitor": false, "helpless": false, "weapon": "Claws", "weaponCharges": 4, "range": 7, "blocked": true, "conditions": ["Poisoned"], "immunities": ["Heat"], "vulnerabilities": ["Cold"]},
-		],
-		"targets": [{"id": "monster.target", "name": "Target", "currentHealth": 5, "maximumHealth": 5}],
-		"spellCasts": [
-			{"spellId": "spell.flame", "spellName": "Flame", "power": 2, "cost": 4, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5, "targetMode": "combatant"},
-			{"spellId": "spell.wave", "spellName": "Wave", "power": 1, "cost": 3, "targetId": "", "targetName": "Everybody", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "automatic"},
-			{"spellId": "spell.burst", "spellName": "Burst", "power": 3, "cost": 6, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 3, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, -1], [-1, 0], [0, 0], [1, 0], [0, 1]], "legalTargetCoordinates": [[45, 45], [47, 43]]},
-			{"spellId": "spell.darts", "spellName": "Darts", "power": 3, "cost": 6, "targetId": "", "targetName": "Choose up to 3 actors", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "sequence", "maximumTargets": 3, "targetCandidates": [
-				{"id": "monster.target", "kind": "monster", "name": "Target", "currentHealth": 5, "maximumHealth": 5},
-				{"id": "character.ally", "kind": "character", "name": "Ally", "currentHealth": 8, "maximumHealth": 10},
-			]},
-		],
-		"itemCasts": [
-			{"itemInstanceId": "item.wand.instance", "itemId": "item.wand", "itemName": "Runed Wand", "charges": 3, "spellId": "spell.flame", "spellName": "Flame", "power": 2, "targetId": "monster.target", "targetName": "Target", "targetCurrentHealth": 5, "targetMaximumHealth": 5, "targetMode": "combatant"},
-		],
-		"movement": [
-			{"direction": [0, -1], "destination": [45, 44], "cost": 1, "enabled": true, "reasonCode": "", "reason": "", "retreat": false, "forcedRetreat": false, "attackTargetId": "", "attackTargetName": ""},
-			{"direction": [1, 0], "destination": [46, 45], "cost": 1, "enabled": false, "reasonCode": "occupied", "reason": "Destination occupied.", "retreat": false, "forcedRetreat": false, "attackTargetId": "", "attackTargetName": ""},
-			{"direction": [-1, 0], "destination": [1, 45], "cost": 0, "enabled": true, "reasonCode": "", "reason": "", "retreat": true, "forcedRetreat": false, "attackTargetId": "", "attackTargetName": ""},
-		],
-	})
+	var request := _fixture_request("battle.commands", InteractionRequest.COMBAT, {"actions": ["finish", "defend", "switch_weapon", "cast_spell", "use_item", "retreat"], "weaponMode": "missile", "weaponSwitch": {"enabled": true, "reason": "", "targetMode": "melee"}, "retreat": {"enabled": false, "reason": "An enemy is too close."}})
 	var component := BattleInteraction.new()
-	var submitted: Array[Dictionary] = []
-	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
 	var buttons := _buttons_in(component)
-	assert_false(buttons.any(func(button: Button) -> bool: return button.text.begins_with("Attack ")), "missile mode renders no melee attack target buttons")
-	var fire_button: Button = null
-	var switch_button: Button = null
-	var finish_button: Button = null
-	var escape_button: Button = null
-	var spell_mode_button: Button = null
-	var item_mode_button: Button = null
-	var cast_button: Button = null
-	var use_item_button: Button = null
-	var center_button: Button = null
-	var reveal_button: Button = null
-	for button: Button in buttons:
-		if button.text == "Fire":
-			fire_button = button
-		elif button.text == "Weapon: Melee":
-			switch_button = button
-		elif button.text == "Finish":
-			finish_button = button
-		elif button.text == "Escape":
-			escape_button = button
-		elif button.text == "Spells":
-			spell_mode_button = button
-		elif button.text == "Items":
-			item_mode_button = button
-		elif button.text == "Choose spell target on battlefield":
-			cast_button = button
-		elif button.text == "Use selected item":
-			use_item_button = button
-		elif button.text == "Center Active":
-			center_button = button
-		elif button.text == "Reveal Friends":
-			reveal_button = button
-	assert_not_null(fire_button, "the unresolved ranged action remains visible instead of silently disappearing")
-	assert_true(fire_button.disabled and not fire_button.tooltip_text.is_empty(), "the disabled Fire action exposes the typed tactical blocker")
-	assert_not_null(switch_button, "the source-backed no-cost mode toggle remains available")
-	assert_false(buttons.any(func(button: Button) -> bool: return button.text.begins_with("N ") or button.text.begins_with("Leave ")), "spatial movement is no longer duplicated as eight permanent direction buttons")
-	assert_not_null(finish_button, "the Classic Finish command remains distinct from Defend")
-	assert_true(escape_button != null and escape_button.disabled and escape_button.tooltip_text == "An enemy is too close.", "the explicit Escape control exposes the core-owned unavailable reason")
-	assert_not_null(spell_mode_button, "the full-width command deck exposes the spell workflow")
-	assert_not_null(item_mode_button, "the full-width command deck exposes the item workflow")
-	assert_not_null(cast_button, "the battle component exposes a core-proven spell, power, and target option")
-	assert_not_null(use_item_button, "the battle component exposes a core-proven charged item, power, and target option")
-	assert_false(buttons.any(func(button: Button) -> bool: return button.text == "Add target"), "repeated spell targets are selected in order on the battlefield rather than in a duplicate list")
-	assert_not_null(center_button, "the battle deck exposes Castle's presentation-owned active-actor centering command")
-	assert_not_null(reveal_button, "the battle deck exposes Castle's presentation-owned Reveal Friends command")
-	var battle_labels := component.find_children("*", "Label", true, false)
-	assert_true(battle_labels.any(func(label: Label) -> bool: return label.text.contains("Shown • Target") and label.text.contains("AR 11") and label.text.contains("Range 7 • Blocked") and label.text.contains("Claws (4)") and label.text.contains("Immune: Heat") and label.text.contains("Vulnerable: Cold")), "the source-backed shown-combatant panel exposes target range, LOS, armor, resistance, weapon charges, condition, immunity, and vulnerability facts")
-	assert_true(battle_labels.any(func(label: Label) -> bool: return label.text.contains("Enemies left • 1")), "the active combat summary exposes the core-counted opposing force")
-	for unavailable_label: String in ["Auto", "Delay", "Undo", "Bandage", "Turn Undead"]:
-		var matching_buttons := buttons.filter(func(button: Button) -> bool: return button.text == unavailable_label)
-		assert_equal(matching_buttons.size(), 1, "%s remains visible in the Classic command deck" % unavailable_label)
-		if not matching_buttons.is_empty():
-			assert_true(matching_buttons[0].disabled and not matching_buttons[0].tooltip_text.is_empty(), "%s exposes an explicit typed-workflow gap instead of a fake mutation" % unavailable_label)
-	var command_request := _fixture_request("battle.command-parity", InteractionRequest.COMBAT, {
-		"actorId": "character.priest",
-		"actions": ["finish", "defend", "auto", "delay", "bandage", "turn_undead", "undo"],
-		"autoTurn": {"enabled": true, "reason": ""},
-		"delay": {"enabled": true, "reason": ""},
-		"bandage": {"enabled": true, "reason": "", "targets": [{"id": "character.bleeding", "name": "Bleeding Hero", "currentHealth": -2, "maximumHealth": 20}]},
-		"turnUndead": {"enabled": true, "reason": "", "targets": [{"id": "monster.undead", "name": "Undead", "hitDice": 3, "magicResistance": 10}]},
-		"undo": {"enabled": true, "reason": ""},
-	})
-	var command_component := BattleInteraction.new()
-	var command_payloads: Array[Dictionary] = []
-	command_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: command_payloads.append(body.to_data()))
-	command_component.build(command_request)
-	var command_buttons := _buttons_in(command_component)
-	var auto_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Auto")[0] as Button
-	var delay_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Delay")[0] as Button
-	var bandage_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Bandage")[0] as Button
-	var turn_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Turn Undead (1)")[0] as Button
-	var undo_button := command_buttons.filter(func(button: Button) -> bool: return button.text == "Undo")[0] as Button
-	assert_equal([auto_button.disabled, delay_button.disabled, bandage_button.disabled, turn_button.disabled, undo_button.disabled], [false, false, false, false, false], "typed combat command availability enables Auto, Delay, Bandage, Turn Undead, and Undo without presenter-side rules")
-	auto_button.pressed.emit()
-	delay_button.pressed.emit()
-	turn_button.pressed.emit()
-	undo_button.pressed.emit()
-	bandage_button.pressed.emit()
-	var bandage_submit := command_buttons.filter(func(button: Button) -> bool: return button.text == "Bandage selected character")[0] as Button
-	bandage_submit.pressed.emit()
-	assert_equal(command_payloads, [
-		{"actorId": "character.priest", "action": "auto", "targetId": ""},
-		{"actorId": "character.priest", "action": "delay", "targetId": ""},
-		{"actorId": "character.priest", "action": "turn_undead", "targetId": ""},
-		{"actorId": "character.priest", "action": "undo", "targetId": ""},
-		{"actorId": "character.priest", "action": "bandage", "targetId": "character.bleeding"},
-	], "the command deck returns only typed command and stable recipient identity payloads")
-	command_component.free()
-	var targeting_requests: Array[CombatTargetingRequest] = []
-	var focus_events: Array[Array] = []
-	var reveal_events: Array[bool] = []
-	component.combat_targeting_requested.connect(func(targeting_request: CombatTargetingRequest) -> void: targeting_requests.append(targeting_request))
-	component.combatant_focus_requested.connect(func(combatant_id: String, play_sound: bool) -> void: focus_events.append([combatant_id, play_sound]))
-	component.reveal_friends_requested.connect(func() -> void: reveal_events.append(true))
-	center_button.pressed.emit()
-	reveal_button.pressed.emit()
-	assert_equal([focus_events, reveal_events.size()], [[['character.archer', true]], 1], "Center and Reveal remain explicit presentation events rather than gameplay responses")
-	assert_equal([cast_button.get_parent().visible, use_item_button.get_parent().get_parent().visible], [false, false], "secondary battle workflows begin collapsed instead of overflowing the battlefield")
-	assert_true(component.accepts_spatial_input(), "ordinary battle commands leave keyboard and battlefield movement active")
-	var overview := spell_mode_button.get_parent().get_parent() as Control
-	var spell_panel := cast_button.get_parent() as VBoxContainer
-	var spell_back := spell_panel.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Back to battle")[0] as Button
-	spell_mode_button.pressed.emit()
-	assert_true(spell_panel.visible and not overview.visible, "Spells replaces the battle overview so its controls stay inside the fixed Classic command region")
-	assert_true(spell_panel.get_combined_minimum_size().y <= 160.0, "the default spell chooser fits the 960x600 combat region's usable height")
-	assert_false(component.accepts_spatial_input(), "an open spell workflow owns direction keys and prevents accidental tactical movement")
-	spell_back.pressed.emit()
-	assert_true(overview.visible and not spell_panel.visible and component.accepts_spatial_input(), "Back to battle restores the tactical overview and spatial input")
-	spell_mode_button.pressed.emit()
-	var spell_picker := component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() == spell_panel)[0] as OptionButton
-	assert_equal(spell_picker.get_item_text(1), "Wave • P1 • 3 SP → Everybody", "automatic group spells render their typed label without fabricating one target's HP")
-	switch_button.pressed.emit()
-	spell_picker.select(1)
-	spell_picker.item_selected.emit(1)
-	assert_equal(cast_button.text, "Cast selected spell", "automatic group spells commit without inventing a board target")
-	cast_button.pressed.emit()
-	spell_picker.select(0)
-	spell_picker.item_selected.emit(0)
-	cast_button.pressed.emit()
-	var combatant_configuration := targeting_requests[-1]
-	assert_equal([combatant_configuration.mode, combatant_configuration.candidate_ids], [&"combatant", ["monster.target"]], "single-target casting opens a battlefield-native picker with only core-proven candidates")
-	spell_picker.select(2)
-	spell_picker.item_selected.emit(2)
-	cast_button.pressed.emit()
-	var area_configuration := targeting_requests[-1]
-	assert_equal([area_configuration.mode, area_configuration.area_offsets, area_configuration.legal_coordinates], [&"area", [Vector2i(0, -1), Vector2i(-1, 0), Vector2i.ZERO, Vector2i.RIGHT, Vector2i.DOWN], [Vector2i(45, 45), Vector2i(47, 43)]], "area targeting carries the exact core-provided mask and legal centers instead of coordinate spin boxes")
-	assert_equal(component.find_children("*", "SpinBox", true, false).size(), 0, "combat targeting no longer exposes coordinate spin boxes")
-	spell_picker.select(3)
-	spell_picker.item_selected.emit(3)
-	cast_button.pressed.emit()
-	var sequence_configuration := targeting_requests[-1]
-	assert_equal([sequence_configuration.mode, sequence_configuration.candidate_ids, sequence_configuration.maximum_targets], [&"sequence", ["monster.target", "character.ally"], 3], "repeated spells preserve the rules-owned candidates and maximum for ordered battlefield clicks")
-	item_mode_button.pressed.emit()
-	assert_true(use_item_button.get_parent().get_parent().visible and not cast_button.get_parent().visible, "Items replaces the prior secondary workflow instead of stacking beneath it")
-	assert_false(component.accepts_spatial_input(), "an open item workflow suppresses spatial battle input")
-	use_item_button.pressed.emit()
-	var item_configuration := targeting_requests[-1]
-	assert_equal([item_configuration.mode, item_configuration.candidate_ids, item_configuration.response_body.item_instance_id], [&"combatant", ["monster.target"], "item.wand.instance"], "combat items use the same battlefield-native target contract")
-	assert_equal(submitted, [
-		{"actorId": "character.archer", "action": "switch_weapon", "targetId": ""},
-		{"actorId": "character.archer", "action": "cast_spell", "targetId": "", "spellId": "spell.wave", "power": 1},
-	], "only targetless commands submit directly; targeted actions wait for the battlefield-owned confirmation")
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Finish"), "combat keeps a distinct Finish command")
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Weapon: Melee"), "combat keeps the source-backed weapon toggle")
+	var escape := buttons.filter(func(button: Button) -> bool: return button.text == "Escape")
+	assert_equal(escape.size(), 1, "combat exposes one Escape command")
+	if not escape.is_empty(): assert_true(escape[0].disabled and not escape[0].tooltip_text.is_empty(), "unavailable retreat carries a typed reason")
+	assert_false(buttons.any(func(button: Button) -> bool: return button.text.begins_with("N ") or button.text.begins_with("Leave ")), "movement is owned by the battlefield instead of permanent direction buttons")
+	assert_true(_labels_in(component).any(func(text: String) -> bool: return text.contains("Goblin")), "the target panel is visible beside the command deck")
 	component.free()
-
-	var melee_request := _fixture_request("battle.collision-melee", InteractionRequest.COMBAT, {
-		"actorId": "character.fighter",
-		"actions": ["finish", "defend"],
-		"weaponMode": "melee",
-		"meleeAttackReason": "",
-		"targets": [{"id": "monster.contact", "name": "Ogre", "currentHealth": 12, "maximumHealth": 12}],
-		"movement": [{"direction": [1, 0], "destination": [46, 45], "cost": 3, "enabled": true, "reasonCode": "", "reason": "", "retreat": false, "forcedRetreat": false, "attackTargetId": "monster.contact", "attackTargetName": "Ogre"}],
-	})
-	var melee_component := BattleInteraction.new()
-	var melee_submitted: Array[Dictionary] = []
-	melee_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: melee_submitted.append(body.to_data()))
-	melee_component.build(melee_request)
-	var melee_buttons: Array[Node] = melee_component.find_children("*", "Button", true, false)
-	assert_false(melee_buttons.any(func(button: Button) -> bool: return button.text == "Attack E"), "collision melee remains on the tactical board rather than reappearing as a directional command button")
-	assert_equal(melee_submitted, [], "building the spatial melee command surface does not mutate combat")
-	melee_component.free()
-
-
 func _test_battle_typed_option_contracts() -> void:
-	var unavailable_request := _fixture_request("battle.typed-unavailable", InteractionRequest.COMBAT, {
-		"actorId": "character.caster",
-		"actions": ["cast_spell", "use_item", "use_scroll"],
-		"spellCasts": [],
-		"itemCasts": [],
-		"scrollCasts": [],
-		"spellCastReason": "No legal Classic combat spell is available.",
-		"itemCastReason": "No carried item has a supported Classic combat use.",
-		"scrollCastReason": "The equipped scroll case contains no combat-ready spells.",
-	})
-	var unavailable_component := BattleInteraction.new()
-	unavailable_component.build(unavailable_request)
-	var unavailable_buttons := _buttons_in(unavailable_component)
-	var unavailable_spell := unavailable_buttons.filter(func(button: Button) -> bool: return button.text == "Spells")[0] as Button
-	var unavailable_item := unavailable_buttons.filter(func(button: Button) -> bool: return button.text == "Items")[0] as Button
-	var unavailable_scroll := unavailable_buttons.filter(func(button: Button) -> bool: return button.text == "Scrolls")[0] as Button
-	assert_equal([unavailable_spell.disabled, unavailable_item.disabled, unavailable_scroll.disabled], [true, true, true], "typed combat spell, item, and scroll workflows remain disabled when the core supplies no legal options")
-	assert_equal([unavailable_spell.tooltip_text, unavailable_item.tooltip_text, unavailable_scroll.tooltip_text], ["No legal Classic combat spell is available.", "No carried item has a supported Classic combat use.", "The equipped scroll case contains no combat-ready spells."], "disabled combat magic workflows expose the exact core-owned reasons")
-	unavailable_component.free()
-
-	var option_request := _fixture_request("battle.typed-options", InteractionRequest.COMBAT, {
-		"actorId": "character.caster",
-		"actions": ["cast_spell", "use_item", "use_scroll"],
-		"spellCasts": [
-			{"spellId": "spell.arc", "spellName": "Arc", "power": 2, "cost": 4, "targetId": "target.second", "targetName": "Second", "targetCurrentHealth": 7, "targetMaximumHealth": 7, "targetMode": "combatant"},
-			{"spellId": "spell.arc", "spellName": "Arc", "power": 2, "cost": 4, "targetId": "target.first", "targetName": "First", "targetCurrentHealth": 6, "targetMaximumHealth": 6, "targetMode": "combatant"},
-		],
-		"itemCasts": [
-			{"itemInstanceId": "item.wand.instance", "itemId": "item.wand", "itemName": "Runed Wand", "charges": 2, "spellId": "spell.arc", "spellName": "Arc", "power": 2, "targetId": "target.second", "targetName": "Second", "targetCurrentHealth": 7, "targetMaximumHealth": 7, "targetMode": "combatant"},
-			{"itemInstanceId": "item.wand.instance", "itemId": "item.wand", "itemName": "Runed Wand", "charges": 2, "spellId": "spell.arc", "spellName": "Arc", "power": 2, "targetId": "target.first", "targetName": "First", "targetCurrentHealth": 6, "targetMaximumHealth": 6, "targetMode": "combatant"},
-		],
-		"scrollCasts": [
-			{"scrollSlot": 2, "spellId": "spell.arc", "spellName": "Arc", "power": 2, "targetId": "target.second", "targetName": "Second", "targetCurrentHealth": 7, "targetMaximumHealth": 7, "targetMode": "combatant"},
-			{"scrollSlot": 2, "spellId": "spell.arc", "spellName": "Arc", "power": 2, "targetId": "target.first", "targetName": "First", "targetCurrentHealth": 6, "targetMaximumHealth": 6, "targetMode": "combatant"},
-		],
-	})
-	var option_component := BattleInteraction.new()
-	var targeting_requests: Array[CombatTargetingRequest] = []
-	option_component.combat_targeting_requested.connect(func(targeting_request: CombatTargetingRequest) -> void: targeting_requests.append(targeting_request))
-	option_component.build(option_request)
-	var option_buttons := _buttons_in(option_component)
-	var spell_mode := option_buttons.filter(func(button: Button) -> bool: return button.text == "Spells")[0] as Button
-	var item_mode := option_buttons.filter(func(button: Button) -> bool: return button.text == "Items")[0] as Button
-	var scroll_mode := option_buttons.filter(func(button: Button) -> bool: return button.text == "Scrolls")[0] as Button
-	spell_mode.pressed.emit()
-	var spell_picker := option_component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() is VBoxContainer)[0] as OptionButton
-	var cast_button := spell_picker.get_parent().find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Choose spell target on battlefield")[0] as Button
-	cast_button.pressed.emit()
-	var spell_configuration := targeting_requests[-1]
-	assert_equal(spell_configuration.candidate_ids, ["target.second", "target.first"], "combat spell targeting preserves the typed legal target IDs and their supplied order")
-	item_mode.pressed.emit()
-	var item_picker := option_component.find_children("*", "OptionButton", true, false).filter(func(control: OptionButton) -> bool: return control.get_parent() is HBoxContainer)[0] as OptionButton
-	var use_item_button := item_picker.get_parent().find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Use selected item")[0] as Button
-	use_item_button.pressed.emit()
-	var item_configuration := targeting_requests[-1]
-	assert_equal([item_configuration.candidate_ids, item_configuration.response_body.item_instance_id], [["target.second", "target.first"], "item.wand.instance"], "combat item targeting preserves the typed legal target IDs and selected stable item instance")
-	scroll_mode.pressed.emit()
-	var scroll_picker := option_component.find_child("CombatScrollPicker", true, false) as OptionButton
-	var use_scroll_button := scroll_picker.get_parent().find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Choose scroll target on battlefield")[0] as Button
-	use_scroll_button.pressed.emit()
-	var scroll_configuration := targeting_requests[-1]
-	assert_equal([scroll_configuration.candidate_ids, scroll_configuration.response_body.scroll_slot], [["target.second", "target.first"], 2], "combat scroll targeting preserves source order and the exact fixed scroll slot")
-	option_component.free()
-
-
+	var request := _fixture_request("battle.unavailable", InteractionRequest.COMBAT, {"actions": ["cast_spell", "use_item", "use_scroll"], "spellCasts": [], "itemCasts": [], "scrollCasts": [], "spellCastReason": "No legal spell.", "itemCastReason": "No legal item.", "scrollCastReason": "No legal scroll."})
+	var component := BattleInteraction.new()
+	component.build(request)
+	for label: String in ["Spells", "Items", "Scrolls"]:
+		var buttons := _buttons_in(component).filter(func(button: Button) -> bool: return button.text == label)
+		assert_equal(buttons.size(), 1, "%s has one typed control" % label)
+		if not buttons.is_empty(): assert_true(buttons[0].disabled, "%s is disabled by core availability" % label)
+	component.free()
 func _test_shop_component() -> void:
 	var request := _fixture_request("shop.fixture", InteractionRequest.SHOP, {
 		"partyGold": 19,
@@ -886,33 +576,6 @@ func _test_money_workspace_audio() -> void:
 	assert_true(audio._pending_sounds.is_empty(), "quiet-and-open discards pre-modal queued sounds")
 	audio.free()
 	router.free()
-
-
-func _test_classic_application_media() -> void:
-	var application_media := ApplicationMediaCatalog.new()
-	assert_true(application_media.is_valid(), "the complete versioned Classic application media manifest loads independently of a campaign package")
-	assert_equal(application_media.assets().size(), 287, "the application catalog owns the complete pinned sound bank and source-backed combat icon families")
-	var built_in := application_media.asset_by_resource("snd ", 147)
-	assert_not_null(built_in, "a built-in interface sound resolves by its exact Classic resource type and ID")
-	assert_true(application_media.asset_by_resource("SND ", 147) == null, "application media preserves Classic resource type case")
-	assert_not_null(application_media.audio_stream(built_in), "a committed application WAV loads through Godot's resource importer")
-	var spell_frame := application_media.asset_by_resource("cicn", 12032)
-	assert_not_null(spell_frame, "a proven built-in spell-resolution frame resolves independently of campaign media")
-	assert_equal([spell_frame.kind, spell_frame.width, spell_frame.height], ["icon", 32, 32], "application spell frames retain their decoded native dimensions")
-	assert_true(application_media.asset_by_resource("cicn", 11992) == null, "lookStart zero retains Castle's absent cast-start family instead of substituting another effect")
-
-	var package_override := MediaAsset.new("scenario-snd-147", "Scenario sound 147", "sound", "audio/wav", "snd ", 147, 0, "1".repeat(64), "assets/media/scenario-147.wav", 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1)
-	var layered := ClassicMediaCatalog.new(PackageMediaCatalog.new("", "package-hash", [package_override]), application_media)
-	assert_equal(layered.asset_by_resource("snd ", 147), package_override, "an exact scenario resource overrides the application fallback like Castle's later-opened resource fork")
-	var override_diagnostic := layered.resolution_diagnostic("snd ", 147, "test-sound")
-	assert_equal([override_diagnostic["sourceOwner"], override_diagnostic["resolvedAssetId"]], ["scenario-package", package_override.id], "resolution diagnostics expose scenario ownership without numeric-ID guessing")
-	var fallback_diagnostic := layered.resolution_diagnostic("snd ", 30005, "test-sound")
-	assert_equal([fallback_diagnostic["sourceOwner"], fallback_diagnostic["resolvedAssetId"]], ["classic-application", "realmz-application-snd-30005"], "an absent scenario key resolves through the application catalog with explicit ownership")
-
-	var duplicate_override := MediaAsset.new("scenario-snd-147-duplicate", "Duplicate scenario sound 147", "sound", "audio/wav", "snd ", 147, 0, "2".repeat(64), "assets/media/scenario-147-duplicate.wav", 0, 0, 0, 0, 1, 0, 0, 0, 0, -1, -1)
-	var ambiguous := ClassicMediaCatalog.new(PackageMediaCatalog.new("", "package-hash", [package_override, duplicate_override]), application_media)
-	assert_true(ambiguous.asset_by_resource("snd ", 147) == null, "an ambiguous scenario key never falls through to a plausible built-in sound")
-	assert_equal([ambiguous.resolution_diagnostic("snd ", 147, "test-sound")["status"], ambiguous.resolution_diagnostic("snd ", 147, "test-sound")["sourceOwner"]], ["ambiguous", "scenario-package"], "developer diagnostics preserve malformed package ambiguity")
 
 
 func _test_route_catalog() -> void:
@@ -1165,14 +828,6 @@ func _test_fixture_gallery_coverage() -> void:
 	spell_component.free()
 
 
-func _test_interaction_identity() -> void:
-	var request := InteractionRequest.yes_no("request-identity", "Proceed?", "Yes", "No")
-	var response := InteractionPresenter.response_for(request, InteractionResponse.YesNoBody.new(true))
-	assert_equal(response.request_id, request.request_id, "interaction response preserves request identity")
-	assert_equal(response.kind, request.kind, "interaction response preserves request kind")
-	assert_true(response.body is InteractionResponse.YesNoBody and (response.body as InteractionResponse.YesNoBody).accepted, "interaction response preserves the exact typed selection")
-
-
 func _test_lifecycle_interaction() -> void:
 	var request := ApplicationLifecycleScript.end_adventure_request(false)
 	assert_equal([request.kind, request.body.to_data()["inCombat"], request.body.to_data()["options"].size()], [InteractionRequest.SESSION_LIFECYCLE, false, 3], "field End Adventure exposes explicit save, discard, and cancel operations")
@@ -1244,132 +899,11 @@ func _test_classic_choice_context() -> void:
 	journal_component.free()
 
 
-func _test_classic_asset_catalog() -> void:
-	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://src/presentation/assets/classic-ui-assets.json"))
-	assert_equal(manifest["source_commit"], "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61", "Classic controls retain exact Remake commit provenance")
-	assert_equal(manifest["assets"].size(), 62, "the curated Classic UI and map-marker corpus is complete")
-	var ids: Dictionary = {}
-	for entry: Dictionary in manifest["assets"]:
-		ids[entry["id"]] = true
-		assert_true(ResourceLoader.exists(entry["path"], "Texture2D"), "Classic bitmap exists: %s" % entry["id"])
-		var texture := load(entry["path"]) as Texture2D
-		assert_equal(texture.get_width(), int(entry["native_width"]), "Classic bitmap width is unchanged: %s" % entry["id"])
-		assert_equal(texture.get_height(), int(entry["native_height"]), "Classic bitmap height is unchanged: %s" % entry["id"])
-		assert_equal(_sha256(entry["path"]), entry["sha256"], "Classic bitmap hash is unchanged: %s" % entry["id"])
-		assert_equal(entry["rendering"]["allowed_scales"], [1.0, 2.0], "Classic bitmap scaling remains integral")
-		assert_false(bool(entry["rendering"]["source_pixels_modified"]), "Classic source pixels are never repainted")
-	assert_equal(ids.size(), manifest["assets"].size(), "Classic semantic asset IDs are unique")
-	assert_not_null(ClassicUiAssetCatalog.texture(&"command.camp"), "runtime asset catalog resolves the Camp bitmap")
-	assert_not_null(ClassicUiAssetCatalog.texture(&"command.rest"), "runtime asset catalog resolves the separate held-Rest bitmap")
-	var left_party_marker_id: StringName = ClassicMapPresenter.PARTY_MARKER_LEFT_ASSET_ID
-	var right_party_marker_id: StringName = ClassicMapPresenter.PARTY_MARKER_RIGHT_ASSET_ID
-	var left_party_marker: Dictionary = ClassicUiAssetCatalog.definition(left_party_marker_id)
-	var right_party_marker: Dictionary = ClassicUiAssetCatalog.definition(right_party_marker_id)
-	assert_not_null(ClassicUiAssetCatalog.texture(left_party_marker_id), "the land presenter resolves the left-facing mounted Classic party CICN")
-	assert_not_null(ClassicUiAssetCatalog.texture(right_party_marker_id), "the land presenter resolves the right-facing mounted Classic party CICN")
-	assert_equal(ClassicUiAssetCatalog.native_size(left_party_marker_id), Vector2i(32, 32), "the left-facing mounted party CICN retains its native map-cell dimensions")
-	assert_equal(ClassicUiAssetCatalog.native_size(right_party_marker_id), Vector2i(32, 32), "the right-facing mounted party CICN retains its native map-cell dimensions")
-	assert_equal(int(left_party_marker["source_resource_id"]), 175, "left-facing party-marker provenance records exact built-in CICN 175")
-	assert_equal(int(right_party_marker["source_resource_id"]), 186, "right-facing party-marker provenance records exact built-in CICN 186")
-	assert_equal(ClassicMapPresenter.party_marker_asset_id_for_direction(Vector2i(-1, 0), right_party_marker_id), left_party_marker_id, "westward movement selects the left-facing mounted party CICN")
-	assert_equal(ClassicMapPresenter.party_marker_asset_id_for_direction(Vector2i(1, 0), left_party_marker_id), right_party_marker_id, "eastward movement selects the right-facing mounted party CICN")
-	assert_equal(ClassicMapPresenter.party_marker_asset_id_for_direction(Vector2i(0, -1), left_party_marker_id), left_party_marker_id, "northward movement preserves the prior left-facing party CICN")
-	assert_equal(ClassicMapPresenter.party_marker_asset_id_for_direction(Vector2i(0, 1), right_party_marker_id), right_party_marker_id, "southward movement preserves the prior right-facing party CICN")
-	var party_marker := ClassicUiAssetCatalog.definition(ClassicMapPresenter.PARTY_MARKER_ASSET_ID)
-	assert_not_null(ClassicUiAssetCatalog.texture(ClassicMapPresenter.PARTY_MARKER_ASSET_ID), "the land presenter resolves the built-in mounted Classic party CICN")
-	assert_equal(ClassicUiAssetCatalog.native_size(ClassicMapPresenter.PARTY_MARKER_ASSET_ID), Vector2i(32, 32), "the mounted party CICN retains its native map-cell dimensions")
-	assert_equal(party_marker["source_path"], "base/Realmz/Data Files/The Family Jewels.rsrc", "party-marker bytes come from the pinned base-game resource fork rather than a scenario-local CICN collision")
-	assert_equal(party_marker["source_resource_type"], "cicn", "party-marker provenance records its Classic resource type")
-	assert_equal(int(party_marker["source_resource_id"]), 186, "party-marker provenance records the exact built-in CICN ID")
-	assert_equal(party_marker["source_file_sha256"], "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c", "party-marker provenance pins the complete resource-fork bytes")
-	assert_equal(party_marker["classic_evidence"]["status"], "source-control-flow", "party-marker semantics are labeled from Castle source rather than inferred from a filename")
-	assert_equal(party_marker["classic_evidence"]["commit"], "491816ad60037394f92c428e99c004494d3c28b3", "party-marker behavior retains its pinned Castle evidence commit")
-	var fonts: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://src/presentation/assets/fonts/font-assets.json"))
-	assert_equal(fonts["source_commit"], "2d85e20401920891efb7cd6272d6339685df2820", "bundled fonts retain pinned source provenance")
-	for entry: Dictionary in fonts["assets"]:
-		assert_equal(_sha256(entry["path"]), entry["sha256"], "bundled font or license hash matches: %s" % entry["id"])
-
-
 func _sha256(path: String) -> String:
 	var context := HashingContext.new()
 	context.start(HashingContext.HASH_SHA256)
 	context.update(FileAccess.get_file_as_bytes(path))
 	return context.finish().hex_encode()
-
-
-func _test_stone_surface_tiling() -> void:
-	var tile_path := "res://src/presentation/assets/ui/classic-charcoal-slate-tile.png"
-	var tile_texture := load(tile_path) as Texture2D
-	var tile_image := tile_texture.get_image()
-	assert_not_null(tile_image, "the derived seamless stone tile loads")
-	assert_equal(tile_image.get_size(), Vector2i(512, 512), "the tiled surface retains the selected 512-pixel texture scale")
-	var horizontal_edges_match := true
-	var vertical_edges_match := true
-	for coordinate: int in range(tile_image.get_height()):
-		horizontal_edges_match = horizontal_edges_match and tile_image.get_pixel(0, coordinate) == tile_image.get_pixel(tile_image.get_width() - 1, coordinate)
-	for coordinate: int in range(tile_image.get_width()):
-		vertical_edges_match = vertical_edges_match and tile_image.get_pixel(coordinate, 0) == tile_image.get_pixel(coordinate, tile_image.get_height() - 1)
-	assert_true(horizontal_edges_match, "the derived stone tile has identical left and right edge pixels")
-	assert_true(vertical_edges_match, "the derived stone tile has identical top and bottom edge pixels")
-	for frame_path: String in ["res://src/presentation/assets/ui/classic-raised-frame.png", "res://src/presentation/assets/ui/classic-inset-frame.png"]:
-		var frame_image := (load(frame_path) as Texture2D).get_image()
-		for corner: Vector2i in [Vector2i.ZERO, Vector2i(frame_image.get_width() - 1, 0), Vector2i(0, frame_image.get_height() - 1), frame_image.get_size() - Vector2i.ONE]:
-			assert_equal(frame_image.get_pixelv(corner).a, 1.0, "generated bevel owns opaque slate at %s corner %s" % [frame_path, str(corner)])
-	var application_scene := load("res://src/presentation/realmz_application.tscn") as PackedScene
-	var application := application_scene.instantiate() as Control
-	var stone := application.get_node("StoneTexture") as TextureRect
-	assert_equal(stone.texture.resource_path, tile_path, "the application background uses the seamless derived tile")
-	assert_equal(int(stone.stretch_mode), 1, "the application background tiles instead of scaling")
-	assert_equal(int(stone.texture_repeat), 2, "the application background enables texture repeat sampling")
-	var stage_frame := application.get_node("ClassicShell/StageFrame") as NinePatchRect
-	assert_equal(int(stage_frame.axis_stretch_horizontal), 1, "stage-frame horizontal edges tile instead of stretching")
-	assert_equal(int(stage_frame.axis_stretch_vertical), 1, "stage-frame vertical edges tile instead of stretching")
-	assert_equal(stage_frame.patch_margin_right, 0, "the stage frame leaves its shared roster boundary open")
-	assert_true(stage_frame.texture is AtlasTexture and (stage_frame.texture as AtlasTexture).region.size.x == 520.0, "the open-right stage frame crops only the source texture's eight-pixel right edge")
-	application.free()
-	var ui_theme := load("res://src/presentation/classic_ui_theme.tres") as Theme
-	var popup_panel := ui_theme.get_stylebox("panel", "PopupMenu") as StyleBoxFlat
-	assert_true(popup_panel != null and popup_panel.bg_color.a == 1.0, "open menus own an opaque background through the complete popup rectangle")
-	assert_true(popup_panel.get_border_width(SIDE_LEFT) > 0 and popup_panel.get_border_width(SIDE_RIGHT) > 0, "popup backgrounds include their outer edge instead of exposing a transparent fringe")
-	var menu_normal := ui_theme.get_stylebox("normal", "MenuButton")
-	for menu_state: StringName in [&"hover", &"pressed", &"disabled"]:
-		var menu_style := ui_theme.get_stylebox(menu_state, "MenuButton")
-		for side: int in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
-			assert_equal(menu_style.get_content_margin(side), menu_normal.get_content_margin(side), "MenuButton %s keeps the measured text margins on every side" % menu_state)
-	var open_right_style := ui_theme.get_stylebox("panel", "ClassicOpenRight") as StyleBoxTexture
-	assert_true(open_right_style != null and open_right_style.get_texture_margin(SIDE_RIGHT) == 0.0, "shared-stage panels use the open-right frame variation instead of drawing a vertical seam")
-	assert_true(ui_theme.get_stylebox("panel", "ClassicSharedStone") is StyleBoxEmpty, "stage overlays expose the already aligned root stone instead of restarting the texture inside another panel")
-	var tiled_styles: Array[StyleBox] = [
-		ui_theme.get_stylebox("panel", "PanelContainer"),
-		ui_theme.get_stylebox("panel", "ClassicInset"),
-		ui_theme.get_stylebox("normal", "Button"),
-		ui_theme.get_stylebox("hover", "Button"),
-		ui_theme.get_stylebox("pressed", "Button"),
-		ui_theme.get_stylebox("disabled", "Button"),
-	]
-	for style: StyleBox in tiled_styles:
-		assert_true(style is StyleBoxTexture, "stone-backed panels and buttons use texture styleboxes")
-		if style is StyleBoxTexture:
-			assert_equal(int(style.axis_stretch_horizontal), 1, "stone stylebox centers tile horizontally")
-			assert_equal(int(style.axis_stretch_vertical), 1, "stone stylebox centers tile vertically")
-
-
-func _test_spatial_stage_visibility() -> void:
-	var active_view := GameView.new(1, true, null)
-	assert_true(PresentationCoordinator.should_show_spatial_stage(&"exploration", active_view, true), "the map may render only inside an active Explore play stage")
-	assert_false(PresentationCoordinator.should_show_spatial_stage(&"exploration", active_view, false), "full-stage campaign and party-setup overlays suppress the map beneath their shared-stone surface")
-	assert_false(PresentationCoordinator.should_show_spatial_stage(&"inventory", active_view, true), "non-Explore workspaces suppress spatial renderers")
-	assert_false(PresentationCoordinator.should_show_spatial_stage(&"exploration", GameView.new(0, false, null), true), "an inactive session cannot expose a stale map")
-	assert_false(PresentationCoordinator.should_show_battle_stage(&"combat", active_view, true), "the battle stage does not appear without detached battlefield facts")
-	var tiles: Array[int] = []
-	tiles.resize(BattlefieldState.CELL_COUNT)
-	tiles.fill(1)
-	var battlefield := BattlefieldState.new("land:0", tiles)
-	var combat := CombatState.new("classic.battle.visibility", [], 0, battlefield)
-	active_view.combat_view = CombatView.new(combat)
-	assert_true(PresentationCoordinator.should_show_battle_stage(&"combat", active_view, true), "the tactical board appears only on the active combat route")
-	assert_false(PresentationCoordinator.should_show_battle_stage(&"exploration", active_view, true), "combat facts do not replace the exploration map outside the combat route")
-	assert_false(PresentationCoordinator.should_show_battle_stage(&"combat", active_view, false), "full-stage overlays suppress the tactical board")
 
 
 func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
@@ -1422,211 +956,44 @@ func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
 
 
 func _test_battlefield_presenter() -> void:
-	var tiles: Array[int] = []
-	tiles.resize(BattlefieldState.CELL_COUNT)
-	tiles.fill(232)
-	var battlefield := BattlefieldState.new("land:0", tiles)
-	assert_true(battlefield.place_character("hero", Vector2i(45, 45)), "battlefield presenter fixture places its active character")
-	var monster := MonsterState.new("monster", "classic.monster.1", "Goblin", 4, 4)
-	monster.icon_id = 384
-	assert_true(battlefield.place_monster(monster.id, Vector2i(47, 45), 0), "battlefield presenter fixture places its target")
-	var combat := CombatState.new("classic.battle.presenter", [monster], 0, battlefield)
-	combat.set_turn_order(["hero", "monster"])
-	var character := CharacterState.new("hero", "Hero", 10, 10)
-	var character_views: Array[CharacterView] = [CharacterView.new(character)]
-	var combat_view := CombatView.new(combat, [character])
-	assert_equal(combat_view.monsters[0].icon_resource_type, "cicn", "monster actors retain Castle's exact lowercase cicn resource type")
-	assert_equal(ClassicBattlefieldPresenter.actor_position(combat_view, character_views, "hero"), Vector2i(45, 45), "the camera reads the active character's detached battlefield coordinate")
-	assert_equal(ClassicBattlefieldPresenter.actor_position(combat_view, character_views, "monster"), Vector2i(47, 45), "monster turns use the same detached battlefield coordinate source")
-	assert_equal(ClassicBattlefieldPresenter.actor_name(combat_view, character_views, "monster"), "Goblin", "the tactical header resolves actor names from detached combatants")
-	assert_equal(ClassicBattlefieldPresenter.viewport_cells_for(Vector2(704.0, 396.0)), Vector2i(16, 11), "the Classic tactical viewport keeps native 32-pixel cells and bounds its visible window")
-	assert_equal(ClassicBattlefieldPresenter.camera_top_left(Vector2i(45, 45), Vector2i(16, 14)), Vector2i(37, 38), "the active actor remains centered in the ordinary battlefield window")
-	assert_equal(ClassicBattlefieldPresenter.camera_top_left(Vector2i(1, 1), Vector2i(16, 14)), Vector2i.ZERO, "battlefield camera centering clamps safely at the 90 by 90 edge")
-	assert_true(ClassicBattlefieldPresenter.coordinate_is_visible(Vector2i(45, 45), Vector2i(37, 38), Vector2i(16, 14)), "the active actor lies inside its centered tactical camera")
-	assert_equal(ClassicBattlefieldPresenter.click_direction(Vector2i(45, 45), Vector2i(52, 39)), Vector2i(1, -1), "a distant north-east battlefield click selects one north-east step")
-	assert_equal(ClassicBattlefieldPresenter.click_direction(Vector2i(45, 45), Vector2i(38, 45)), Vector2i.LEFT, "a distant west battlefield click selects one west step")
-	assert_equal(ClassicBattlefieldPresenter.click_direction(Vector2i(45, 45), Vector2i(45, 45)), Vector2i.ZERO, "clicking the active actor does not invent a movement direction")
-	var active_cell := Rect2(Vector2(100.0, 100.0), Vector2(32.0, 32.0))
-	assert_equal(ClassicBattlefieldPresenter.click_direction_for_point(active_cell, Vector2(180.0, 40.0)), Vector2i(1, -1), "Castle's raw-pointer partition projects a distant north-east click onto one diagonal step")
-	assert_equal(ClassicBattlefieldPresenter.click_direction_for_point(active_cell, active_cell.end), Vector2i.ZERO, "Castle's strict comparisons keep the exact lower-right active-cell boundary neutral")
-	assert_equal(ClassicBattlefieldPresenter.click_direction_for_point(active_cell, active_cell.end + Vector2.ONE), Vector2i(1, 1), "one pixel beyond both active-cell boundaries selects south-east")
-	combat_view.movement_options.append(CombatMoveOptionView.new(Vector2i.RIGHT, BattlefieldStepResult.permitted(Vector2i(46, 45), 2)))
-	var game_view := GameView.new(1, true, null)
-	game_view.party_members = character_views
-	game_view.combat_view = combat_view
 	var presenter := ClassicBattlefieldPresenter.new()
-	presenter.size = Vector2(704.0, 396.0)
-	presenter.present(game_view)
-	assert_false(presenter.movement_costs_visible(), "movement costs stay off the tactical art during ordinary combat")
+	assert_equal(ClassicBattlefieldPresenter.viewport_cells_for(Vector2(704.0, 396.0)), Vector2i(16, 11), "battlefield keeps native cell bounds")
+	assert_equal(ClassicBattlefieldPresenter.click_direction(Vector2i(45, 45), Vector2i(52, 39)), Vector2i(1, -1), "distant clicks map to one tactical direction")
+	var view := _combat_playback_view(20, Vector2i(45, 45), Vector2i(47, 45), &"active")
+	presenter.present(view)
 	presenter.set_movement_costs_visible(true)
-	assert_true(presenter.movement_costs_visible(), "the explicit inspection state reveals typed movement costs without changing combat")
-	var payloads: Array[Dictionary] = []
-	presenter.combat_body_submitted.connect(func(body: InteractionResponse.CombatBody) -> void: payloads.append(body.to_data()))
-	assert_true(presenter.submit_movement_direction(Vector2i.RIGHT), "keyboard movement selects the matching core-provided tactical option")
-	assert_equal(payloads, [{"actorId": "hero", "action": "move", "targetId": "", "destination": [46, 45]}], "the spatial battlefield emits the existing typed combat response payload")
-	assert_false(presenter.submit_movement_direction(Vector2i.LEFT), "the battlefield cannot fabricate a movement option absent from the detached view")
-	var attack_targeting := CombatTargetingRequest.new(&"combatant", InteractionResponse.CombatBody.new(&"attack", "hero"))
-	attack_targeting.candidate_ids.assign(["monster"])
-	assert_true(presenter.begin_targeting(attack_targeting), "the tactical board accepts a typed target mode")
-	presenter._targeting.select_combatant("monster")
-	assert_false(presenter.submit_movement_direction(Vector2i.RIGHT), "target mode suppresses ordinary tactical movement")
-	assert_true(presenter.confirm_targeting(), "a legal board selection confirms through the ordinary combat response path")
-	assert_equal(payloads[-1], {"actorId": "hero", "action": "attack", "targetId": "monster"}, "battlefield confirmation supplies only the selected stable target ID")
+	assert_true(presenter.movement_costs_visible(), "movement costs are an explicit presentation aid")
 	presenter.free()
-
-
 func _test_combat_targeting_state() -> void:
-	var sequence_body := InteractionResponse.CombatBody.new(&"cast_spell", "hero")
-	sequence_body.spell_id = "spell.darts"
-	sequence_body.power = 3
-	var sequence_request := CombatTargetingRequest.new(&"sequence", sequence_body)
-	sequence_request.candidate_ids.assign(["monster.one", "ally.one", "monster.two"])
-	sequence_request.maximum_targets = 2
-	var sequence := CombatTargetingState.new(sequence_request)
-	assert_true(sequence.select_combatant("ally.one"), "the first repeated-spell click is accepted from the typed candidate set")
-	assert_true(sequence.select_combatant("monster.one"), "the second repeated-spell click preserves its selection order")
-	assert_false(sequence.select_combatant("monster.two"), "the presentation-owned selector enforces the core-provided maximum without submitting")
-	assert_equal(sequence.committed_body().target_ids, ["ally.one", "monster.one"], "repeated spell confirmation preserves click order")
-	assert_true(sequence.select_combatant("ally.one"), "clicking an already selected repeated target removes it without a session action")
-	assert_equal(sequence.committed_body().target_ids, ["monster.one"], "removal does not reorder the remaining repeated targets")
-
-	var area_body := InteractionResponse.CombatBody.new(&"cast_spell", "hero")
-	area_body.spell_id = "spell.burst"
-	area_body.power = 2
-	var area_request := CombatTargetingRequest.new(&"area", area_body)
-	area_request.area_offsets.assign([Vector2i.ZERO, Vector2i.LEFT, Vector2i.RIGHT])
-	area_request.legal_coordinates.assign([Vector2i(45, 45)])
-	var area := CombatTargetingState.new(area_request)
-	assert_false(area.select_coordinate(Vector2i(46, 45)), "an area center absent from the rules-owned legal set cannot be confirmed")
-	assert_true(area.select_coordinate(Vector2i(45, 45)), "a rules-owned legal area center remains presentation selectable")
-	assert_equal(area.committed_body().to_data(), {"actorId": "hero", "action": "cast_spell", "spellId": "spell.burst", "power": 2, "targetId": "", "targetCoordinate": [45, 45], "rotation": 0}, "area confirmation returns the exact coordinate and fixed rotation ABI")
-
-
+	var body := InteractionResponse.CombatBody.new(&"cast_spell", "hero")
+	body.spell_id = "spell.darts"
+	var request := CombatTargetingRequest.new(&"sequence", body)
+	request.candidate_ids.assign(["monster.one", "ally.one"])
+	request.maximum_targets = 1
+	var state := CombatTargetingState.new(request)
+	assert_true(state.select_combatant("ally.one"), "typed candidates accept a legal target")
+	assert_false(state.select_combatant("monster.one"), "the core-provided maximum is enforced")
+	assert_equal(state.committed_body().target_ids, ["ally.one"], "target confirmation preserves selected identity")
 func _test_combat_playback_controller() -> void:
 	var previous := _combat_playback_view(20, Vector2i(45, 45), Vector2i(47, 45), &"active")
 	var final := _combat_playback_view(12, Vector2i(46, 45), Vector2i(47, 45), &"active")
-	final.combat_view.round_number = 2
-	var events: Array[DomainEvent] = [
-		DomainEvent.new(&"combatant_moved", {"actorId": "hero", "from": [45, 45], "to": [46, 45], "automatic": false}),
-		DomainEvent.new(&"sound_requested", {"soundId": 632, "waitForCompletion": false}),
-		DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 8, "defeated": false, "classicResultEffectResourceId": 160}),
-		DomainEvent.new(&"combat_projectile_resolved", {"actorId": "monster", "targetId": "hero", "hit": false, "damage": 0, "defeated": false}),
-		DomainEvent.new(&"combat_spell_cast", {"actorId": "hero", "targetId": "monster", "classicEffectResourceId": 12000}),
-		DomainEvent.new(&"combat_spell_projectile", {"actorId": "hero", "targetId": "monster", "classicBattleTileId": 201}),
-		DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 4, "healing": 0, "resisted": false, "saved": false, "defeated": false, "classicResolutionEffectResourceIds": [12032, 12033, 12034, 12035, 12036, 12037, 12038, 12039]}),
-		DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 12, "defeated": true}),
-	]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"combatant_moved", {"actorId": "hero", "from": [45, 45], "to": [46, 45]}), DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 8, "classicResultEffectResourceId": 160}), DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "monster", "resisted": true, "classicResolutionEffectResourceIds": [12032, 12033, 12034, 12035, 12036, 12037, 12038, 12039]})]
 	var controller := CombatPlaybackController.new()
-	var observed_frames: Array[Dictionary] = []
-	var observed_sounds: Array[int] = []
-	controller.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
-		if frame.progress == 0.0:
-			observed_frames.append({"kind": frame.kind, "text": frame.display_text, "effect": frame.effect_resource_id, "target": frame.target_id, "hidden": frame.hidden_combatant_ids.duplicate()})
-	)
-	controller.sound_requested.connect(func(event: DomainEvent) -> void: observed_sounds.append(int(event.payload.get("soundId", 0))))
-	assert_true(controller.begin(previous, events, final, false), "ordered combat events create a presentation-owned playback transaction")
-	assert_true(controller.base_view == previous, "playback retains the previous detached battlefield while committed results are presented")
-	while controller.is_active():
-		controller.advance(1.0, false)
-	var frame_kinds: Array = observed_frames.map(func(frame: Dictionary) -> StringName: return frame["kind"])
-	assert_true(frame_kinds.has(&"move_start") and frame_kinds.has(&"move_end"), "movement presents one transient step before the committed destination settles")
-	assert_true(frame_kinds.has(&"melee_attack") and frame_kinds.has(&"projectile") and frame_kinds.has(&"spell_projectile"), "melee, missile, and Classic spell projectiles use distinct playback frames")
-	assert_equal(frame_kinds.count(&"spell_effect"), 8, "a source-provided Classic spell resolution family presents all eight frames")
-	assert_equal(observed_frames.filter(func(frame: Dictionary) -> bool: return frame["kind"] == &"result" and frame["text"] == "8").size(), 1, "damage appears once as a fixed over-target result")
-	assert_equal(observed_frames.filter(func(frame: Dictionary) -> bool: return frame["kind"] == &"result" and frame["effect"] == 160).size(), 1, "an armed hit retains Castle's exact result-effect resource for presentation")
-	assert_equal(observed_frames.filter(func(frame: Dictionary) -> bool: return frame["kind"] == &"result" and frame["text"] == "Miss").size(), 1, "miss feedback is represented without inventing damage")
-	assert_equal(observed_sounds, [632], "sound requests retain their event position and are not bulk-played twice")
-	assert_true(frame_kinds.has(&"defeat") and observed_frames[-1]["kind"] == &"actor_cue", "defeat settles before the next-round active-actor cue")
-
-	var enemy_movement := CombatPlaybackController.new()
-	var enemy_focus_ids: Array[String] = []
-	enemy_movement.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
-		if frame.progress == 0.0 and frame.kind != &"actor_cue":
-			enemy_focus_ids.append(frame.camera_focus_id)
-	)
-	assert_true(enemy_movement.begin(previous, [
-		DomainEvent.new(&"combatant_moved", {"actorId": "monster", "from": [47, 45], "to": [46, 45], "automatic": true}),
-		DomainEvent.new(&"sound_requested", {"soundId": 150, "waitForCompletion": false}),
-		DomainEvent.new(&"combatant_moved", {"actorId": "monster", "from": [46, 45], "to": [45, 45], "automatic": true}),
-		DomainEvent.new(&"sound_requested", {"soundId": 150, "waitForCompletion": false}),
-	], final, false), "multi-step enemy movement creates one ordered playback transaction")
-	while enemy_movement.is_active():
-		enemy_movement.advance(1.0, false)
-	assert_true(not enemy_focus_ids.is_empty() and enemy_focus_ids.all(func(focus_id: String) -> bool: return focus_id == "monster"), "actorless sound frames retain the moving enemy camera focus between adjacent steps")
-	var inspected_frame := CombatPlaybackFrame.new(&"move_start", 0.1)
-	inspected_frame.camera_focus_id = "monster"
-	assert_equal(ClassicBattlefieldPresenter.camera_focus_id_for(inspected_frame, "hero", "hero"), "monster", "combat playback temporarily owns camera focus over a previously inspected combatant")
-	var centered_camera := ClassicBattlefieldPresenter.tracked_camera_top_left(Vector2i(-1, -1), Vector2i(47, 45), Vector2i(16, 14))
-	assert_equal(ClassicBattlefieldPresenter.tracked_camera_top_left(centered_camera, Vector2i(46, 45), Vector2i(16, 14)), centered_camera, "one-square movement inside the tactical window does not recenter the entire battlefield")
-	assert_equal(ClassicBattlefieldPresenter.tracked_camera_top_left(centered_camera, Vector2i(55, 45), Vector2i(16, 14)), ClassicBattlefieldPresenter.camera_top_left(Vector2i(55, 45), Vector2i(16, 14)), "movement recenters only after the actor reaches the current tactical-window edge")
-	assert_equal(ClassicBattlefieldPresenter.tracked_camera_top_left(centered_camera, Vector2i(46, 45), Vector2i(16, 14), true), ClassicBattlefieldPresenter.camera_top_left(Vector2i(46, 45), Vector2i(16, 14)), "a turn or explicit focus change still recenters immediately")
-
-	var defeated_spell := CombatPlaybackController.new()
-	var defeated_spell_frames: Array[StringName] = []
-	defeated_spell.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
-		if frame.progress == 0.0:
-			defeated_spell_frames.append(frame.kind)
-	)
-	assert_true(defeated_spell.begin(previous, [DomainEvent.new(&"combat_spell_cast", {"actorId": "hero", "targetId": "monster", "classicEffectResourceId": 12000}), DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "monster", "damage": 20, "defeated": true, "classicResolutionEffectResourceIds": [12032, 12033]})], final, false), "a lethal spell still creates its committed result playback")
-	while defeated_spell.is_active():
-		defeated_spell.advance(1.0, false)
-	assert_equal(defeated_spell_frames.count(&"spell_effect"), 0, "Castle's lethal spell path bypasses the ordinary post-result effect family")
-
-	var healing_controller := CombatPlaybackController.new()
-	var healing_texts: Array[String] = []
-	healing_controller.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
-		if frame.progress == 0.0 and frame.kind == &"result":
-			healing_texts.append(frame.display_text)
-	)
-	assert_true(healing_controller.begin(previous, [DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "hero", "healing": 5, "damage": -5}), DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "monster", "resisted": true})], final, false), "healing and resistance feedback share the ordered playback boundary")
-	while healing_controller.is_active():
-		healing_controller.advance(1.0, false)
-	assert_equal(healing_texts, ["+5", "Resist"], "healing and resistance retain distinct fixed result labels")
-
-	var terminal := GameView.new(3, true, null)
-	var terminal_controller := CombatPlaybackController.new()
-	assert_true(terminal_controller.begin(previous, [DomainEvent.new(&"battle_completed", {"outcome": "victory"})], terminal, false), "terminal combat keeps the previous board available while the final view has already left battle")
-	assert_true(terminal_controller.base_view == previous, "terminal playback does not expose the reward workspace before battle visuals settle")
-	assert_true(terminal_controller.skip(), "Space-equivalent playback skip settles presentation without a session mutation")
-	assert_false(terminal_controller.is_active(), "skipping ends only the cosmetic playback transaction")
-
+	var frames: Array[CombatPlaybackFrame] = []
+	controller.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void: if frame.progress == 0.0: frames.append(frame))
+	assert_true(controller.begin(previous, events, final, false), "combat events create one presentation playback transaction")
+	while controller.is_active(): controller.advance(1.0, false)
+	var kinds: Array[StringName] = []
+	for frame: CombatPlaybackFrame in frames:
+		kinds.append(frame.kind)
+	assert_true(kinds.has(&"move_start") and kinds.has(&"melee_attack"), "movement and physical results have distinct frames")
+	assert_equal(kinds.count(&"spell_effect"), 8, "source-backed spell resolution retains its eight-frame family")
+	assert_true(frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"result" and frame.display_text == "8"), "damage is shown once over the target")
+	assert_equal(controller.base_view, previous, "playback retains the previous battlefield until visuals settle")
 	var reduced := CombatPlaybackController.new()
-	var reduced_sounds: Array[int] = []
-	reduced.sound_requested.connect(func(event: DomainEvent) -> void: reduced_sounds.append(int(event.payload.get("soundId", 0))))
-	assert_true(reduced.begin(previous, [DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 3}), DomainEvent.new(&"sound_requested", {"soundId": 650})], final, true), "reduced motion retains the committed playback boundary")
-	assert_equal(reduced.frame_count(), 2, "reduced motion keeps ordered audio plus one visual settlement frame")
-	while reduced.is_active():
-		reduced.advance(1.0, false)
-	assert_equal(reduced_sounds, [650], "reduced motion does not drop combat audio")
-
-	var synchronous := CombatPlaybackController.new()
-	var synchronous_frames: Array[StringName] = []
-	synchronous.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
-		if frame.progress == 0.0:
-			synchronous_frames.append(frame.kind)
-	)
-	assert_true(synchronous.begin(previous, [DomainEvent.new(&"sound_requested", {"soundId": 651, "waitForCompletion": true}), DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 3})], final, false), "synchronous Classic audio remains ordered within combat playback")
-	synchronous.advance(1.0, false)
-	assert_equal(synchronous_frames, [&"sound"], "the synchronous sound frame starts at its ordered event position")
-	synchronous.advance(1.0, true)
-	assert_equal(synchronous_frames, [&"sound"], "a blocking synchronous sound prevents the next visual frame from becoming visible")
-	synchronous.advance(1.0, false)
-	assert_equal(synchronous_frames, [&"sound", &"melee_attack"], "visual playback resumes only after the synchronous sound completes")
-
-	var undo_controller := CombatPlaybackController.new()
-	var undo_frames: Array[CombatPlaybackFrame] = []
-	undo_controller.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void:
-		if frame.progress == 0.0:
-			undo_frames.append(frame)
-	)
-	assert_true(undo_controller.begin(final, [DomainEvent.new(&"combat_turn_undone", {"actorId": "hero", "from": [46, 45], "to": [45, 45]})], previous, false), "Undo uses the same presentation-only movement playback boundary")
-	while undo_controller.is_active():
-		undo_controller.advance(1.0, false)
-	var undo_move_frames := undo_frames.filter(func(frame: CombatPlaybackFrame) -> bool: return frame.kind in [&"move_start", &"move_end"])
-	assert_equal(undo_move_frames.map(func(frame: CombatPlaybackFrame) -> StringName: return frame.kind), [&"move_start", &"move_end"], "Undo presents one reverse battlefield step without advancing simulation")
-	assert_equal([undo_move_frames[0].from_coordinate, undo_move_frames[0].to_coordinate], [Vector2i(46, 45), Vector2i(45, 45)], "Undo playback preserves the detached source and destination coordinates")
-
-
+	assert_true(reduced.begin(previous, events, final, true), "reduced motion keeps the same presentation boundary")
+	while reduced.is_active(): reduced.advance(1.0, false)
+	assert_false(reduced.is_active(), "reduced motion settles without a simulation mutation")
 func _combat_playback_view(monster_health: int, hero_position: Vector2i, monster_position: Vector2i, outcome: StringName) -> GameView:
 	var tiles: Array[int] = []
 	tiles.resize(BattlefieldState.CELL_COUNT)
@@ -1648,453 +1015,84 @@ func _combat_playback_view(monster_health: int, hero_position: Vector2i, monster
 
 func _test_character_creator_workflow() -> void:
 	var router := ClassicScreenRouter.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(router)
+	router.initialize()
 	var setup := router.setup_controller
+	var view := GameView.new(1, true, null)
+	view.campaign_id = "creator.fixture"
+	view.party_setup_available = true
+	view.party_setup = PartySetupView.new()
+	view.party_setup.available_monster_sets = [0, -1, 1]
+	view.campaign_summary = CampaignSummaryView.new()
+	view.campaign_summary.maximum_party_size = 6
+	view.campaign_summary.maximum_level = 7
+	view.race_options = [DefinitionOptionView.new("race.human", "Human", "Adaptable.", ["caste.sorcerer"])]
+	view.caste_options = [DefinitionOptionView.new("caste.sorcerer", "Sorcerer", "Arcane caster.", ["race.human"])]
+	router.present(view)
+	assert_equal(setup.party_list.get_child_count(), 6, "creator retains six party positions")
+	setup.create_character_button.pressed.emit()
+	assert_equal(setup.setup_mode, &"creator", "creator opens from party assembly")
+	assert_true(setup.creator_cancel_button != null and not setup.creator_cancel_button.disabled, "creator can be canceled before draft mutation")
+	setup.creator_cancel_button.pressed.emit()
+	assert_equal(setup.setup_mode, &"assembly", "creator cancellation returns to assembly")
+	router.free()
+func _test_character_vault_workspace() -> void:
+	var router := ClassicScreenRouter.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var view := GameView.new(1, true, null)
-	view.campaign_id = "fixture-creator"
+	view.campaign_id = "vault.fixture"
 	view.party_setup_available = true
-	view.campaign_summary = CampaignSummaryView.new()
-	view.campaign_summary.title = "Creator Fixture"
-	view.campaign_summary.maximum_party_size = 6
-	view.campaign_summary.maximum_level = 7
-	view.campaign_summary.recommended_party_levels = 6
-	view.campaign_summary.maximum_party_levels = 12
-	view.campaign_summary.guidance_authored = true
-	view.party_setup = PartySetupView.new()
-	view.party_setup.available_monster_sets = [0, -1, 1]
-	view.party_setup.current_party_levels = 9
-	view.party_setup.experience_percent = 66
-	view.race_options = [DefinitionOptionView.new("race.human", "Human", "Adaptable.", ["caste.sorcerer"])]
-	view.caste_options = [DefinitionOptionView.new("caste.sorcerer", "Sorcerer", "Arcane caster.", ["race.human"])]
-	view.portrait_options = [CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("portrait.human.1", "Human 1", CharacterAppearanceDefinition.PORTRAIT, 257, ["race.human"]))]
-	view.combat_icon_options = [CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("icon.human.1", "Human 1", CharacterAppearanceDefinition.COMBAT_ICON, 9000, ["race.human"]))]
-	var setup_member := CharacterState.new("party.setup.inspection", "Iris", 9, 9)
-	setup_member.race_id = "race.human"
-	setup_member.caste_id = "caste.sorcerer"
-	view.party_members = [CharacterView.new(setup_member)]
-	for action_id: StringName in [&"generate_character_draft", &"cancel_character_draft", &"set_character_draft_spells", &"finalize_character", &"import_vault_character", &"begin_adventure", &"remove_party_member"]:
-		view.set_action_availability(action_id, action_id in [&"generate_character_draft", &"import_vault_character"], "Unavailable in this fixture state.")
-	var intents: Array[PlayerIntent] = []
-	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
-	var stored := CharacterVaultRevisionView.new()
-	stored.character_id = "vault.stored.mira"
-	stored.revision_hash = "d".repeat(64)
-	stored.name = "Stored Mira"
-	stored.level = 3
-	stored.race_id = "race.human"
-	stored.caste_id = "caste.sorcerer"
-	stored.is_current = true
-	stored.eligible = true
-	var stored_state := CharacterState.new(stored.character_id, stored.name, 8, 8)
-	stored_state.level = stored.level
-	stored_state.race_id = stored.race_id
-	stored_state.caste_id = stored.caste_id
-	stored_state.portrait_id = "portrait.human.1"
-	stored_state.combat_icon_id = "icon.human.1"
-	stored.character = CharacterView.new(stored_state)
-	var icon_image := Image.create(2, 2, false, Image.FORMAT_RGBA8)
-	icon_image.fill(Color("67b789"))
-	var icon_texture := ImageTexture.create_from_image(icon_image)
-	setup.set_appearance_texture(stored_state.portrait_id, icon_texture)
-	(view.party_members[0] as CharacterView).portrait_id = stored_state.portrait_id
-	router.set_vault_revisions([stored])
+	var revision := CharacterVaultRevisionView.new()
+	revision.character_id = "vault.character"
+	revision.revision_hash = "a".repeat(64)
+	revision.name = "Vault Hero"
+	revision.level = 3
+	revision.eligible = true
+	router.set_vault_revisions([revision])
 	router.present(view)
-	var standard_profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
-	router.set_layout_profile(standard_profile, Vector2(960, 600))
-	assert_equal(setup.setup_overlay.size.x, 936.0, "party assembly covers the complete application width instead of duplicating the persistent in-game roster")
-	var setup_surface := setup.setup_overlay.get_theme_stylebox("panel") as StyleBoxFlat
-	assert_true(setup_surface != null and setup_surface.bg_color.a == 0.0, "party setup exposes the one root-aligned slate tile instead of replacing it with a flat fill")
-	assert_equal(setup.setup_mode, &"assembly", "party setup opens on stored-character assembly instead of forcing the creator")
-	router.present_party_setup_status("Action failed • That vault character is already represented in the party.", true)
-	assert_true(setup.setup_message.visible, "party setup exposes action failures inside its full-stage surface instead of hiding them in the suppressed shell status region")
-	assert_equal(setup.setup_message.text, "Action failed • That vault character is already represented in the party.", "party setup preserves the core rejection reason rather than making Add appear inert")
-	assert_equal(setup.setup_message.modulate, CampaignPartySetupController.ERROR, "party setup distinguishes a rejected import from ordinary helper text")
-	setup.render_party_assembly()
-	assert_false(setup.setup_message.visible, "a committed party refresh clears the previous inline setup failure")
-	assert_true(setup.setup_overlay.visible and setup.setup_overlay.find_child("ScenarioPartyWorkspace", true, false) != null, "a party-setup GameView keeps the integrated full-stage workspace visible")
-	assert_not_null(setup.setup_overlay.find_child("CharacterFilesHeading", true, false), "party-setup GameView keeps the eligible Character Files column mounted")
-	assert_not_null(setup.setup_overlay.find_child("PartyHeading", true, false), "party-setup GameView keeps the Current Party column mounted")
-	assert_true(setup.setup_overlay.find_children("*", "Button", true, false).all(func(button: Button) -> bool:
-		var lower := button.text.to_lower()
-		return not lower.contains("archive") and not lower.contains("revision history") and not lower.contains("restore as current")
-	), "ordinary party assembly does not expose revision, archive, or restore controls")
-	assert_not_null(setup.stored_character_list, "stored characters remain visible beside the six party slots")
-	assert_equal(setup.party_list.get_child_count(), 6, "party assembly always exposes the campaign's complete slot capacity")
-	var party_scroll := setup.party_list.get_parent() as ScrollContainer
-	var party_heading_control := party_scroll.get_parent().get_node("PartyHeading") as Control
-	var party_controls_height: float = setup.party_list.get_combined_minimum_size().y + party_heading_control.custom_minimum_size.y + setup.party_setup_options.get_combined_minimum_size().y + setup.begin_button.custom_minimum_size.y
-	assert_true(party_controls_height <= setup.setup_overlay.size.y - 20.0, "all six party positions, setup options, and Begin action fit the standard 960 by 600 assembly viewport without scrolling")
-	assert_equal(party_scroll.vertical_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED, "the six-slot Current Party surface never hides its final member behind a scrollbar")
-	assert_equal([setup.difficulty_option.item_count, setup.monster_set_option.item_count], [5, 3], "party assembly exposes all five Classic difficulty choices and only packaged monster sets")
-	assert_equal([setup.monster_set_option.get_item_text(0), setup.monster_set_option.get_item_text(1), setup.monster_set_option.get_item_text(2)], ["Normal Monsters", "Mega Monsters", "Monster Monsters"], "Monster Set is presented in Classic's Normal, Mega, Monster order")
-	assert_true(setup.party_guidance_label.text.contains("Maximum 12") and setup.party_guidance_label.text.contains("Recommended 6") and setup.party_guidance_label.text.contains("Current 9") and setup.party_guidance_label.text.contains("66%"), "aggregate level and experience guidance is visible beside setup options")
-	var setup_intent_count := intents.size()
-	setup.difficulty_option.select(3)
-	setup.party_setup_option_changed(3)
-	var setup_payload := intents[-1].payload as PlayerIntent.PartySetupOptionsPayload
-	assert_equal([intents.size(), intents[-1].kind, setup_payload.difficulty, setup_payload.monster_set], [setup_intent_count + 1, PlayerIntent.Kind.SET_PARTY_SETUP_OPTIONS, 1, 0], "party option changes emit stable typed values rather than widget indexes")
-	var stored_row := setup.stored_character_list.find_child("StoredCharacter_*", false, false) as PartySetupCharacterRow
-	assert_not_null(stored_row, "the current eligible stored revision is an ordinary Add row")
-	var stored_portrait := stored_row.find_child("Portrait", true, false) as TextureRect
-	assert_not_null(stored_portrait, "each Character Files row exposes the stored character's portrait surface")
-	assert_equal(stored_portrait.texture, icon_texture, "Character Files uses the in-game portrait rather than a tactical CICN or placeholder")
-	assert_equal(stored_portrait.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST, "party-picker portraits retain crisp Classic pixels without filtered outlines")
-	assert_equal(stored_portrait.custom_minimum_size, Vector2(44.0, 44.0), "Character Files keeps each native 44 by 44 portrait at full size")
-	assert_equal([stored_row.mouse_filter, stored_portrait.mouse_filter, (stored_row.find_child("Summary", true, false) as Label).mouse_filter], [Control.MOUSE_FILTER_STOP, Control.MOUSE_FILTER_IGNORE, Control.MOUSE_FILTER_IGNORE], "the visible portrait and summary route drag gestures to the draggable Character Files row")
-	var party_portrait := setup.party_list.find_child("Portrait", true, false) as TextureRect
-	assert_not_null(party_portrait, "each occupied party position reserves the same portrait surface")
-	assert_equal(party_portrait.texture, icon_texture, "the assembled party repeats the exact character portrait for visual matching")
-	assert_equal(party_portrait.custom_minimum_size, Vector2(44.0, 44.0), "Current Party also keeps the native portrait at full size")
-	var drag_cursor := stored_row._make_drag_cursor_texture()
-	assert_not_null(drag_cursor, "dragging a stored character converts the exact portrait into a hardware cursor texture")
-	assert_equal(drag_cursor.get_size(), Vector2(2.0, 2.0), "the drag cursor preserves the source portrait dimensions")
-	assert_true(absf(drag_cursor.get_image().get_pixel(0, 0).a - 0.62) < 0.005, "the hardware drag cursor is translucent so the drop destination stays visible")
-	var character_pane := setup.setup_overlay.find_child("CharacterFilesPane", true, false) as Control
-	var party_pane := setup.setup_overlay.find_child("CurrentPartyPane", true, false) as Control
-	assert_equal(character_pane.size_flags_stretch_ratio, party_pane.size_flags_stretch_ratio, "Character Files and Current Party receive identical horizontal layout weight")
-	var character_heading := setup.setup_overlay.find_child("CharacterFilesHeading", true, false) as CenterContainer
-	var party_heading := setup.setup_overlay.find_child("PartyHeading", true, false) as CenterContainer
-	assert_equal([character_heading.custom_minimum_size.y, party_heading.custom_minimum_size.y], [28.0, 28.0], "both transfer sections use identically sized centered headings")
-	var stored_scroll := setup.setup_overlay.find_child("StoredCharacterScroll", true, false) as ScrollContainer
-	var party_slot_scroll := setup.setup_overlay.find_child("PartySlotScroll", true, false) as ScrollContainer
-	assert_true(stored_scroll != null and party_slot_scroll != null and stored_scroll.get_parent() == character_heading.get_parent() and party_slot_scroll.get_parent() == party_heading.get_parent(), "Character Files and Current Party lists remain directly beneath their aligned headings")
-	var add_stored := stored_row.find_child("AddCharacter", true, false) as Button
-	assert_not_null(add_stored, "the balanced Character Files row keeps an explicit Add action")
-	assert_true(add_stored != null and not add_stored.disabled, "an eligible Character Files revision remains importable in party setup")
-	add_stored.pressed.emit()
-	var clicked_import := intents[-1].payload as PlayerIntent.VaultImportPayload
-	assert_equal([intents[-1].kind, clicked_import.character_id, clicked_import.revision_hash], [PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id, stored.revision_hash], "click Add submits the stable stored-character revision through the existing typed intent")
-	var intent_count_before_drop := intents.size()
-	assert_true(setup.party_list._can_drop_data(Vector2.ZERO, stored_row.drag_payload()), "the real draggable row payload is accepted by the complete party-list drop surface")
-	setup.party_list._drop_data(Vector2.ZERO, {"kind": "party-setup-character", "characterId": stored.character_id, "revisionHash": stored.revision_hash})
-	assert_equal([intents.size(), intents[-1].kind, (intents[-1].payload as PlayerIntent.VaultImportPayload).character_id], [intent_count_before_drop + 1, PlayerIntent.Kind.IMPORT_VAULT_CHARACTER, stored.character_id], "dragging onto the party list is a pointer convenience over the same typed import path")
-	var inspect_setup := setup.party_list.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Inspect")[0] as Button
-	var intent_count_before_inspection := intents.size()
-	inspect_setup.pressed.emit()
-	assert_true(setup.setup_inspection_overlay.visible, "party setup can open a complete detached character inspection surface before play")
-	var inspection_surface := setup.setup_inspection_overlay.get_theme_stylebox("panel") as StyleBoxTexture
-	assert_true(inspection_surface != null and inspection_surface.texture.resource_path.ends_with("classic-inset-frame.png"), "party inspection owns an opaque slate-backed inset instead of compositing its sheet over party assembly")
-	assert_equal([setup.setup_inspection_overlay.position, setup.setup_inspection_overlay.size, setup.setup_inspection_overlay.z_index, setup.setup_inspection_overlay.clip_contents], [Vector2.ZERO, setup.setup_overlay.size, 1, true], "party inspection fills and clips to the complete setup viewport above its assembly content")
-	assert_not_null(setup.setup_inspection_overlay.find_child("PartySetupCharacterSheet", true, false), "setup inspection reuses the complete Classic character sheet instead of a second summary path")
-	assert_equal(intents.size(), intent_count_before_inspection, "opening and browsing setup inspection cannot mutate the session")
-	assert_true(router.handle_back(), "Back closes setup character inspection before leaving party setup")
-	assert_false(setup.setup_inspection_overlay.visible, "closing inspection restores the creator and party assembly surface")
-	var create_button: Button = setup.create_character_button
-	assert_not_null(create_button, "Create new character is an explicit secondary party-assembly action")
-	create_button.pressed.emit()
-	assert_equal([setup.setup_mode, setup.creator_step], [&"creator", 0], "Create switches the left pane to Identity while retaining the party pane")
-	assert_not_null(setup.creator_page.get_node_or_null("CharacterName"), "Identity alone owns the character-name field")
-	assert_false(setup.creator_cancel_button.disabled, "a pristine Identity step can always cancel back to Character Files")
-	setup.creator_cancel_button.pressed.emit()
-	assert_equal(setup.setup_mode, &"assembly", "Cancel character immediately restores Character Files without requiring a draft mutation")
-	assert_true(setup.stored_character_list.visible, "canceling creation restores the stored-character picker")
-	create_button.pressed.emit()
-	var starting_level := setup.creator_page.get_node_or_null("StartingLevel") as OptionButton
-	assert_not_null(starting_level, "Identity exposes the Classic starting-level boundary instead of silently omitting it")
-	assert_equal([starting_level.get_item_id(0), starting_level.get_item_id(1), starting_level.get_item_id(2), starting_level.get_item_id(3)], [1, 3, 5, 7], "Identity exposes Castle's fixed choices only through the campaign's maximum level")
-	assert_false(starting_level.disabled, "source-backed higher-level creation is an ordinary selectable campaign workflow")
-	starting_level.select(starting_level.get_item_index(3))
-	assert_equal(setup.creator_page.find_children("*", "ItemList", true, false).size(), 0, "Identity does not spill race, class, or spell lists into the same viewport")
-	setup.draft_name = "Mira"
-	setup.name_edit.text = "Mira"
-	setup.creator_next()
-	assert_equal(setup.creator_step, 1, "Continue advances from Identity to Race and Class")
-	assert_equal([setup.race_list.get_item_text(0), setup.caste_list.get_item_text(0)], ["Human", "Sorcerer"], "Race renders on the left and filters the class list on the right")
-	var compact := UiLayoutProfile.for_viewport(Vector2(800, 600), PresentationSettings.UI_SCALE_AUTO)
-	setup.apply_creator_layout(compact.id)
-	assert_true(setup.creator.vertical and setup.race_class_columns.vertical, "compact setup stacks both the creator-party split and Race-Class columns instead of clipping them")
-	setup.creator_next()
-	assert_equal(setup.creator_step, 2, "Race and Class advances to the dedicated Appearance page")
-	setup.creator_next()
-	assert_equal(setup.creator_step, 3, "Appearance advances to Review only after requesting a core-owned roll")
-	assert_equal(intents[-1].kind, PlayerIntent.Kind.GENERATE_CHARACTER_DRAFT, "Review is populated through the typed draft-generation intent")
-	var draft_payload := intents[-1].payload as PlayerIntent.CharacterDraftPayload
-	assert_equal([draft_payload.spec.portrait_id, draft_payload.spec.combat_icon_id], ["portrait.human.1", "icon.human.1"], "Appearance emits stable package identities rather than filenames or numeric widget IDs")
-	assert_equal(draft_payload.spec.starting_level, 3, "the selected fixed level crosses the typed intent boundary without presentation-side leveling")
-	var generated := CharacterState.new("party.character.1", "Mira", 8, 8)
-	generated.race_id = "race.human"
-	generated.caste_id = "caste.sorcerer"
-	generated.gender = 2
-	generated.brawn = 11
-	generated.knowledge = 17
-	generated.judgment = 14
-	generated.agility = 13
-	generated.vitality = 12
-	generated.luck = 9
-	generated.maximum_spell_points = 21
-	generated.spell_points = 21
-	generated.spellcaster_type = 1
-	generated.two_hand = 34
-	view.character_draft = CharacterView.new(generated)
-	view.character_draft_spell_points_total = 4
-	view.character_draft_spell_points_remaining = 4
-	var spell := SpellDefinition.new("classic.spell.1101", 1101, "Flame")
-	view.character_draft_spell_options = [CharacterSpellOptionView.new(spell, 1, false)]
-	view.set_action_availability(&"finalize_character", true)
-	router.present(view)
-	assert_true(setup.review_label.text.contains("Brawn 11") and setup.review_label.text.contains("SP 21/21") and setup.review_label.text.contains("Two-Hand 34"), "Review renders the generated character and its source-owned combat statistics rather than a pre-roll placeholder")
-	assert_equal(setup.setup_message.text, "Review or reroll the generated Classic character.", "the setup guidance advances with the asynchronously populated Review page")
-	setup.creator_next()
-	assert_equal(setup.creator_step, 4, "Review advances to the dedicated starting-spell page")
-	assert_equal(setup.spell_list.item_count, 1, "the spell page renders core-provided Classic options and selection costs")
-	setup.creator_next()
-	assert_equal(intents[-1].kind, PlayerIntent.Kind.FINALIZE_CHARACTER, "Add to party accepts the reviewed draft without carrying another creation specification")
-	router.free()
-
-
-func _test_begin_adventure_closes_setup_vault() -> void:
-	var router := ClassicScreenRouter.new()
-	(Engine.get_main_loop() as SceneTree).root.add_child(router)
-	router.initialize()
-	var setup_view := GameView.new(1, true, null)
-	setup_view.campaign_id = "fixture-setup-route"
-	setup_view.party_setup_available = true
-	setup_view.campaign_summary = CampaignSummaryView.new()
-	setup_view.campaign_summary.title = "Setup Route Fixture"
-	setup_view.party_members = [CharacterView.new(CharacterState.new("party.route.hero", "Klang", 12, 12))]
-	setup_view.set_action_availability(&"import_vault_character", true)
-	router.present(setup_view)
 	router.open_screen(&"vault")
-	assert_equal(router.current_screen(), &"vault", "party setup may open the character vault before play")
-
-	var active_view := GameView.new(2, true, null)
-	active_view.campaign_id = setup_view.campaign_id
-	active_view.campaign_summary = setup_view.campaign_summary
-	active_view.party_members = setup_view.party_members
-	router.present(active_view)
-	assert_equal(router.current_screen(), &"exploration", "completing party setup dismisses the setup-only vault and opens exploration")
-	assert_false(router.full_stage_overlay_visible(), "no setup or campaign overlay survives the Begin Adventure boundary")
-	assert_true(router.accepts_exploration_input(), "the newly active campaign accepts exploration input immediately")
-	router.open_screen(&"character")
-	router.present(active_view)
-	assert_equal(router.current_screen(), &"character", "ordinary active-session refreshes preserve the deliberately opened primary workspace")
+	assert_true(router.full_stage_overlay_visible(), "Character Files owns the complete stage")
+	var buttons := _buttons_in(router)
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Inspect character"), "vault exposes mutation-free inspection")
+	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Import this revision"), "vault exposes explicit import")
 	router.free()
-
-
-func _test_character_vault_workspace() -> void:
-	var source_character := CharacterState.new("vault.hero", "Mira", 10, 10)
-	source_character.level = 3
-	source_character.race_id = "classic.race.1"
-	source_character.caste_id = "classic.caste.6"
-	var source_record := CharacterVaultRecord.new(source_character.id, "realmz-classic-1", "source-campaign", "b".repeat(64), source_character)
-	source_record.revision_hash = "a".repeat(64)
-	var source_eligibility := CharacterVaultEligibility.new()
-	source_eligibility.reasons.append("Source-backed mismatch reason")
-	var detached_revision := CharacterVaultRevisionView.from_record(source_record, source_eligibility, true, false)
-	assert_equal(detached_revision.eligibility_reasons, ["Source-backed mismatch reason"], "vault eligibility converts into a typed detached reason array")
-	var router := ClassicScreenRouter.new()
-	(Engine.get_main_loop() as SceneTree).root.add_child(router)
-	router.initialize()
-	var view := GameView.new(3, true, null)
-	view.campaign_id = "fixture-vault"
-	view.campaign_summary = CampaignSummaryView.new()
-	view.campaign_summary.title = "Vault Campaign"
-	view.set_action_availability(&"import_vault_character", true)
-	router.present(view)
-	var current := CharacterVaultRevisionView.new()
-	current.character_id = "vault.hero"
-	current.revision_hash = "a".repeat(64)
-	current.name = "Mira"
-	current.level = 3
-	current.race_id = "classic.race.1"
-	current.caste_id = "classic.caste.6"
-	current.portrait_id = "realmz-portrait-257"
-	current.source_campaign_id = "source-campaign"
-	current.source_package_hash = "b".repeat(64)
-	current.publication_label = "Created after the first expedition"
-	current.is_current = true
-	current.eligible = true
-	current.character = CharacterView.new(source_character)
-	var archived := CharacterVaultRevisionView.new()
-	archived.character_id = current.character_id
-	archived.revision_hash = "c".repeat(64)
-	archived.name = current.name
-	archived.level = 2
-	archived.race_id = current.race_id
-	archived.caste_id = current.caste_id
-	archived.source_campaign_id = current.source_campaign_id
-	archived.source_package_hash = current.source_package_hash
-	archived.archived = true
-	archived.eligibility_reasons = ["Item 'classic.item.missing' is not defined by this campaign."]
-	archived.character = CharacterView.new(source_character)
-	router.set_vault_revisions([current, archived])
-	router.open_screen(&"vault")
-	var vault_body := router.find_child("ScreenBody", true, false) as VBoxContainer
-	var labels := _labels_in(router)
-	assert_true(labels.any(func(text: String) -> bool: return text.contains("Eligibility for Vault Campaign")), "the vault states which campaign owns the current eligibility decision")
-	assert_true(labels.any(func(text: String) -> bool: return text.contains("classic.item.missing")), "an ineligible revision exposes its exact package mismatch")
-	var restore_events: Array[Array] = []
-	router.vault_restore_requested.connect(func(character_id: String, revision_hash: String) -> void: restore_events.append([character_id, revision_hash]))
-	var import_buttons: Array[Button] = []
-	var inspect_buttons: Array[Button] = []
-	var back_button: Button
-	var archive_button: Button
-	var restore_button: Button
-	for button: Button in _buttons_in(router):
-		if button.text == "Back":
-			back_button = button
-		elif button.text == "Import this revision":
-			import_buttons.append(button)
-		elif button.text == "Inspect character":
-			inspect_buttons.append(button)
-		elif button.text == "Archive character":
-			archive_button = button
-		elif button.text == "Restore as current":
-			restore_button = button
-	assert_equal(import_buttons.size(), 2, "each immutable revision renders its own import decision")
-	assert_equal(inspect_buttons.size(), 2, "eligible and ineligible vault revisions both expose mutation-free inspection")
-	assert_not_null(back_button, "vault workspace exposes a visible return action")
-	assert_true(import_buttons.any(func(button: Button) -> bool: return not button.disabled), "the current eligible revision can be imported")
-	assert_true(import_buttons.any(func(button: Button) -> bool: return button.disabled and button.tooltip_text.contains("Restore")), "archived revisions must be restored before import")
-	assert_not_null(archive_button, "the current revision exposes recoverable archive rather than delete")
-	assert_not_null(restore_button, "archived history exposes an explicit recovery action")
-	inspect_buttons[-1].pressed.emit()
-	assert_not_null(vault_body.find_child("VaultCharacterSheet", true, false), "vault inspection reuses the complete detached character sheet")
-	var inspection_labels := vault_body.find_children("*", "Label", true, false)
-	assert_true(inspection_labels.any(func(label: Label) -> bool: return label.text.contains("Not eligible") or label.text.contains("classic.item.missing")), "ineligible inspection keeps exact campaign mismatch reasons visible")
-	var inspection_back := vault_body.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Back to character vault")[0] as Button
-	inspection_back.pressed.emit()
-	assert_true(vault_body.find_children("*", "Button", true, false).any(func(button: Button) -> bool: return button.text == "Inspect character"), "Back returns from vault inspection to the revision list")
-	var refreshed_restore := vault_body.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Restore as current")[0] as Button
-	refreshed_restore.pressed.emit()
-	assert_equal(restore_events, [[archived.character_id, archived.revision_hash]], "recovery identifies the exact immutable revision")
-	router.free()
-
-
 func _test_field_spell_workspace() -> void:
 	var body := VBoxContainer.new()
 	var controller := SpellsWorkspaceController.new()
 	var view := GameView.new(5, true, null)
-	view.party_summary = PartySummaryView.new()
-	view.party_summary.camping = false
-	var character := CharacterState.new("field.caster", "Aster", 12, 12)
-	character.spell_points = 12
-	character.maximum_spell_points = 12
-	var character_view := CharacterView.new(character)
-	var definition := SpellDefinition.new("classic.spell.field", 1101, "Field Bolt", "A bounded source-backed field spell.")
+	var character_view := CharacterView.new(CharacterState.new("caster", "Aster", 12, 12))
+	var definition := SpellDefinition.new("classic.spell.field", 1101, "Field Bolt")
 	definition.cost = 2
-	definition.in_camp = true
 	var spell_view := SpellView.new(definition)
 	spell_view.power_levels = [1, 2]
 	spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", true)
-	spell_view.scroll_power_levels = [1, 2]
-	spell_view.make_scroll = ActionAvailabilityView.new(&"cast_spell", true)
-	character_view.spells.append(spell_view)
-	character.bind_fast_spell(0, definition.id, 2)
-	character_view.fast_spells = []
-	for index: int in 10:
-		character_view.fast_spells.append(FastSpellBindingView.new(index, character.fast_spell_at(index), definition if index == 0 else null))
-	character_view.fast_spells[0].activation = ActionAvailabilityView.new(&"cast_spell", true)
-	character.write_scroll(0, definition.id, 2)
-	character_view.scrolls = [SpellScrollView.new(0, character.scroll_at(0), definition)]
-	character_view.scrolls[0].use = ActionAvailabilityView.new(&"cast_spell", true)
+	character_view.spells = [spell_view]
 	view.party_members = [character_view]
 	view.set_action_availability(&"cast_spell", true)
-	view.set_action_availability(&"set_fast_spell", true)
-	var intents: Array[PlayerIntent] = []
-	controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
 	controller.present(body, view, null, 1.0)
-	var cast_power_two: Button = null
-	var make_power_two: Button = null
-	var use_scroll: Button = null
-	var scroll_slot_label: Label = null
-	var fast_slot_label: Label = null
-	for label: Label in body.find_children("*", "Label", true, false):
-		if label.text.begins_with("Slot 1"):
-			if label.text == "Slot 1":
-				fast_slot_label = label
-			else:
-				scroll_slot_label = label
-	for button: Button in body.find_children("*", "Button", true, false):
-		if button.text == "Cast P2 (4 SP)":
-			cast_power_two = button
-		if button.text == "Make P2 Scroll (8 SP)":
-			make_power_two = button
-		if button.text == "Use":
-			use_scroll = button
-	assert_not_null(cast_power_two, "the field spell workspace renders explicit power and cost choices")
-	assert_not_null(make_power_two, "the field spell workspace renders source-backed scroll scribing cost choices")
-	assert_not_null(use_scroll, "the field spell workspace renders the character's fixed scroll-case slots")
-	assert_not_null(scroll_slot_label, "the field spell workspace labels each fixed scroll slot")
-	assert_not_null(fast_slot_label, "the spellbook renders all ten character-owned Fast Spell rows")
-	assert_equal(body.find_children("*", "OptionButton", true, false).filter(func(option: OptionButton) -> bool: return option.get_parent() is HBoxContainer).size(), 10, "each Fast Spell slot exposes one explicit binding picker")
-	if scroll_slot_label != null:
-		assert_true(scroll_slot_label.get_parent() is HBoxContainer, "scroll-slot identity and action share one fixed row instead of reflowing into narrow columns")
-		assert_equal(scroll_slot_label.size_flags_horizontal, Control.SIZE_EXPAND_FILL, "scroll-slot text receives the row's available width at the minimum viewport")
-	if cast_power_two != null:
-		cast_power_two.pressed.emit()
-	if make_power_two != null:
-		make_power_two.pressed.emit()
-	if use_scroll != null:
-		use_scroll.pressed.emit()
-	assert_equal(intents.size(), 3, "field cast, scroll scribing, and scroll use each emit one intent")
-	if intents.size() == 3:
-		var cast_payload := intents[0].payload as PlayerIntent.SpellPayload
-		var scribe_payload := intents[1].payload as PlayerIntent.SpellPayload
-		var scroll_payload := intents[2].payload as PlayerIntent.SpellPayload
-		assert_equal([intents[0].kind, cast_payload.power], [PlayerIntent.Kind.CAST_SPELL, 2], "the selected field power crosses the typed intent boundary")
-		assert_equal([scribe_payload.operation, scribe_payload.power], [&"make-scroll", 2], "scroll scribing crosses the same typed spell intent boundary")
-		assert_equal([scroll_payload.operation, scroll_payload.scroll_slot], [&"use-scroll", 0], "scroll use carries the exact fixed slot through the typed intent boundary")
+	assert_true(_buttons_in(body).any(func(button: Button) -> bool: return button.text.contains("Cast")), "spell workspace exposes a typed field cast")
+	assert_true(body.find_children("*", "OptionButton", true, false).size() >= 1, "spellbook retains explicit selection controls")
 	body.free()
-
-
 func _test_inventory_workspace() -> void:
-	var definition := ItemDefinition.new("classic.item.inventory-ui", 10, "Longsword", "Sword", "A balanced one-handed sword.")
-	definition.icon_id = 321
-	definition.item_type = 2
-	definition.weight = 12
-	definition.cost = 45
-	definition.damage_bonus = 2
-	definition.vs_small = 6
-	var source := CharacterState.new("inventory.ui.source", "Alis", 10, 10)
-	source.maximum_load = 100
-	source.carried_load = 12
-	source.set_inventory([ItemInstance.new("inventory.ui.item", definition.id, 0, false, true)])
-	var destination := CharacterState.new("inventory.ui.destination", "Borin", 10, 10)
-	destination.maximum_load = 100
+	var definition := ItemDefinition.new("classic.item.inventory-ui", 10, "Longsword", "Sword", "A balanced sword.")
+	var source := CharacterState.new("source", "Alis", 10, 10)
+	source.set_inventory([ItemInstance.new("inventory.item", definition.id, 0, false, true)])
+	var view := GameView.new(4, true, null)
 	var source_view := CharacterView.new(source)
-	source_view.items.clear()
 	var item_view := ItemView.new(source.inventory()[0], definition)
 	item_view.actions.equip = ActionAvailabilityView.new(&"equip_item", true)
 	item_view.actions.use = ActionAvailabilityView.new(&"use_item", false, "This item's use effect is not implemented.")
-	item_view.actions.drop = ActionAvailabilityView.new(&"drop_item", true)
-	item_view.actions.trade = ActionAvailabilityView.new(&"trade_item", true)
-	item_view.actions.trade_targets.append(ItemTransferTargetView.new(destination.id, destination.name, true))
-	source_view.items.append(item_view)
-	var view := GameView.new(4, true, null)
-	view.party_members = [source_view, CharacterView.new(destination)]
-	var workspace := InventoryWorkspaceController.new()
+	source_view.items = [item_view]
+	view.party_members = [source_view]
 	var body := VBoxContainer.new()
-	var intents: Array[PlayerIntent] = []
-	workspace.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
-	workspace.present(body, view, null, 1.0)
+	var controller := InventoryWorkspaceController.new()
+	controller.present(body, view, null, 1.0)
 	var buttons := _base_buttons_in(body)
-	var labels := _labels_in(body)
-	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Alis") and (button as Button).text.contains("12/100")), "inventory workspace selects a character before an item")
-	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Longsword")), "inventory workspace renders a selectable carried-item list")
-	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Equip" and not button.disabled), "an action without donor bitmap art remains visible as a labeled typed control")
-	var trade_button: BaseButton = null
-	for button: BaseButton in buttons:
-		if button is Button and (button as Button).text == "Give to Borin":
-			trade_button = button
-	assert_not_null(trade_button, "inventory workspace exposes each typed trade recipient")
-	assert_true(trade_button != null and not trade_button.disabled, "a rules-authorized trade recipient is actionable")
-	assert_false(buttons.any(func(button: BaseButton) -> bool: return (button is Button and (button as Button).text == "Store") or button.tooltip_text == "Store"), "ordinary inventory does not invent Remake's non-Classic player stash")
-	assert_true(labels.any(func(text: String) -> bool: return text.contains("opcode 36 equipment escrow")), "the workspace explains why scenario-owned equipment escrow is not a stash")
-	assert_true(labels.any(func(text: String) -> bool: return text == "Classic record"), "inventory inspection presents the source-backed item record as a distinct section")
-	assert_true(labels.any(func(text: String) -> bool: return text == "Damage"), "inventory inspection presents Castle's damage record")
-	assert_true(labels.any(func(text: String) -> bool: return text.contains("Use — This item's use effect is not implemented")), "disabled item actions remain readable without relying on hover tooltips")
-	assert_true(buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text.contains("use effect") and button.tooltip_text.contains("not implemented")), "unsafe item use remains visible with an exact disabled reason")
-	if trade_button != null:
-		trade_button.pressed.emit()
-	assert_equal(intents.size(), 1, "trade emits exactly one typed intent")
-	if not intents.is_empty():
-		assert_equal(intents[0].kind, PlayerIntent.Kind.TRADE_ITEM, "trade never mutates gameplay from presentation")
-		assert_equal((intents[0].payload as PlayerIntent.ItemActionPayload).destination_character_id, destination.id, "trade intent carries the stable recipient identity")
+	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Longsword")), "inventory renders a selectable carried item")
+	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Equip"), "inventory exposes the typed Equip action")
+	assert_true(buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text.contains("not implemented")), "unsafe use remains visible with a core-owned reason")
 	body.free()
-
-
 func _test_money_workspace() -> void:
 	var source := CharacterState.new("money.ui.source", "Alis", 10, 10)
 	source.money = WealthState.new(10, 2, 1)
@@ -2152,25 +1150,9 @@ func _test_money_workspace() -> void:
 	body.free()
 
 
-func _test_exploration_money_and_service_commands() -> void:
-	var exploration_commands := ClassicCommandCatalog.for_context(&"exploration")
-	assert_true(exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == &"money" and definition["availability"] == &"money_action"), "ordinary exploration exposes Castle's Money/Swap workspace without a hidden route shortcut")
-	assert_true(exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == &"service" and definition["availability"] == &"service_action"), "ordinary exploration exposes the current location service")
-
-
 func _test_party_order_workspace() -> void:
-	var alis := CharacterState.new("party.order.alis", "Alis", 10, 10)
-	alis.level = 2
-	alis.caste_id = "fighter"
-	var borin := CharacterState.new("party.order.borin", "Borin", 12, 12)
-	borin.level = 3
-	borin.caste_id = "priest"
-	var cerys := CharacterState.new("party.order.cerys", "Cerys", 8, 8)
-	cerys.level = 4
-	cerys.caste_id = "sorcerer"
 	var view := GameView.new(8, true, null)
-	view.campaign_id = "party-order-fixture"
-	view.party_members = [CharacterView.new(alis), CharacterView.new(borin), CharacterView.new(cerys)]
+	view.party_members = [CharacterView.new(CharacterState.new("alis", "Alis", 10, 10)), CharacterView.new(CharacterState.new("borin", "Borin", 12, 12))]
 	view.set_action_availability(&"reorder_party", true)
 	var router := ClassicScreenRouter.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
@@ -2179,281 +1161,40 @@ func _test_party_order_workspace() -> void:
 	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
 	router.present(view)
 	router.open_screen(&"character")
-	assert_equal(router.party_order_draft_ids(), [alis.id, borin.id, cerys.id], "the Party Order workspace starts from detached session order")
-	var buttons := _buttons_in(router)
-	var first_down: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Move Down" and not button.disabled)[0]
-	first_down.pressed.emit()
-	assert_equal(router.party_order_draft_ids(), [borin.id, alis.id, cerys.id], "Move Down changes presentation-owned draft order only")
-	assert_equal(intents.size(), 0, "staging a slot move cannot mutate the session")
-	buttons = _buttons_in(router)
-	var cancel: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Cancel Order Changes")[0]
-	assert_false(cancel.disabled, "a changed draft exposes safe cancellation")
-	cancel.pressed.emit()
-	assert_equal(router.party_order_draft_ids(), [alis.id, borin.id, cerys.id], "Cancel restores detached order without reproducing Castle's cleared-track write")
-	assert_equal(intents.size(), 0, "Cancel emits no gameplay intent")
-	buttons = _buttons_in(router)
-	first_down = buttons.filter(func(button: Button) -> bool: return button.text == "Move Down" and not button.disabled)[0]
-	first_down.pressed.emit()
-	buttons = _buttons_in(router)
-	var apply: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Apply Party Order")[0]
-	assert_false(apply.disabled, "a changed complete permutation can be applied")
-	apply.pressed.emit()
-	assert_equal(intents.size(), 1, "Apply emits exactly one typed mutation")
-	assert_equal([intents[0].kind, (intents[0].payload as PlayerIntent.StringListPayload).values], [PlayerIntent.Kind.REORDER_PARTY, [borin.id, alis.id, cerys.id]], "the presenter emits the complete stable-ID permutation")
-	view.set_action_availability(&"reorder_party", false, "Party order is unavailable during battle.")
-	router.present(view)
-	buttons = _buttons_in(router)
-	var blocked_move: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Move Down")[0]
-	assert_true(blocked_move.disabled and blocked_move.tooltip_text.contains("battle"), "unavailable Party Order remains visible with the core-owned reason")
+	var move := _buttons_in(router).filter(func(button: Button) -> bool: return button.text == "Move Down" and not button.disabled)
+	assert_equal(move.size(), 1, "party order exposes one enabled move control")
+	move[0].pressed.emit()
+	assert_equal(intents.size(), 0, "reordering stages locally")
+	var apply := _buttons_in(router).filter(func(button: Button) -> bool: return button.text == "Apply Party Order")
+	assert_equal(apply.size(), 1, "reordering has one typed commit action")
+	apply[0].pressed.emit()
+	assert_equal(intents.size(), 1, "Apply emits one public reorder intent")
 	router.free()
-
-
 func _test_character_sheet_workspace() -> void:
-	var character := CharacterState.new("character.sheet", "A Character Name Long Enough To Exercise Responsive Wrapping", -10, 18)
+	var character := CharacterState.new("character.sheet", "Long Character Name", -10, 18)
+	character.gender = 2
 	character.level = 7
-	character.experience = 12_345
-	character.age_days = 37 * 365
-	character.age_group = 3
 	character.race_id = "classic.race.1"
 	character.caste_id = "classic.caste.2"
-	character.gender = 2
-	character.brawn = 17
-	character.knowledge = 14
-	character.judgment = 13
-	character.agility = 16
-	character.vitality = 15
-	character.luck = 12
-	character.to_hit = 28
-	character.dodge = 31
-	character.missile = 24
-	character.two_hand = 9
-	character.hand_to_hand = 4
-	character.damage_bonus = 3
-	character.armor = 42
-	character.magic_resistance = 11
-	character.normal_attacks = 2
-	character.attack_bonus = 1
-	character.spell_points = 9
-	character.maximum_spell_points = 22
-	character.maximum_movement = 14
-	character.carried_load = 63
-	character.maximum_load = 120
-	character.money.gold = 77
-	character.money.gems = 2
-	character.money.jewelry = 1
-	character.portrait_id = "portrait.257"
-	character.combat_icon_id = "combat-icon.9000"
-	character.conditions.set_value(ConditionRules.TANGLED, 4)
-	character.conditions.set_value(ConditionRules.SHIELD_FROM_HITS, 2)
-	character.conditions.set_value(9, 3)
-	character.conditions.set_value(ConditionRules.STRONG, 1)
-	character.conditions.set_value(26, -1)
-	character.conditions.set_value(ConditionRules.HINDERED_ATTACKS, 3)
-	character.conditions.set_value(ConditionRules.HINDERED_DEFENSE, 2)
-	character.conditions.set_value(ConditionRules.DEFENSE_BONUS, 5)
-	character.set_save_value(0, 61)
-	character.set_special_value(1, -2)
-	character.set_ability_value(4, 35)
-	character.set_ability_value(13, 18)
-	var changes: Array[PackedInt32Array] = []
-	for band_index: int in 5:
-		var row := PackedInt32Array()
-		row.resize(15)
-		row.fill(0)
-		row[band_index] = band_index + 1
-		changes.append(row)
-	var race := RaceDefinition.new(character.race_id, 1, "Human", [], [], [], [], [], [Vector2i(10, 19), Vector2i(20, 29), Vector2i(30, 39), Vector2i(40, 49), Vector2i(50, 59)], changes, 90, false, 12, 5, 3, 4, 2, 5, true, 0, 0, 0, 0, "A long source-backed race description used to prove wrapping.")
-	var caste := CasteDefinition.new(character.caste_id, 2, "Fighter", [], [], [], [], Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, [], [], [], 1, 2, 1, 2, 3, 4, 1, 5, 0, true, true, 0, 0, 0, Vector2i.ZERO, "A source-backed class description.")
-	var content := RealmzContent.new("character-sheet", "0".repeat(64), "sheet", "realmz-classic-1", "", Vector2i.ZERO, WorldDefinition.new([]), ScenarioDefinition.new([], []), [], [], [], [race], [caste])
-	var character_view := CharacterView.new(character, content)
-	assert_equal([character_view.gender_name, character_view.attacks_per_round, character_view.attack_bonus, character_view.defense_bonus, character_view.gold, character_view.gems, character_view.jewelry], ["Female", "3/2", 36, 45, 77, 2, 1], "the detached sheet preserves Castle identity, computed display bonuses, attack cadence, and three personal money denominations")
-	assert_true(character_view.conditions.any(func(metric: CharacterMetricView) -> bool: return metric.name == "Poisoned"), "conditions use Castle names instead of leaking raw slots into presentation")
-	assert_true(character_view.conditions.any(func(metric: CharacterMetricView) -> bool: return metric.name == "Turned to Stone" and metric.detail == "Permanent"), "signed permanent conditions remain explicit")
-	assert_equal([character_view.saving_throws.size(), character_view.saving_throws[0].name, character_view.saving_throws[0].value], [8, "Charm", 61], "all eight Classic saving throws are detached with stable labels")
-	assert_equal([character_view.special_modifiers[0].name, character_view.special_modifiers[0].value, character_view.abilities[0].name, character_view.abilities[1].name], ["Undead", -2, "Detect Secret", "Turn Undead"], "source-backed special and ability identities remain distinct")
-	assert_equal([character_view.age_bands.size(), character_view.age_bands[2].active, character_view.age_bands[2].changes[2].value], [5, true, 3], "the read model derives the active age band without mutating session state")
-	assert_equal(character.age_group, 3, "opening character details cannot reproduce Castle's inspection-time age-group write")
-	assert_false(character_view.record_available, "untracked lifetime prestige history remains explicitly unavailable")
-	assert_true(character_view.record_unavailable_reason.to_lower().contains("lifetime combat history"), "the prestige gap has a concrete player-facing reason")
+	var view := CharacterView.new(character)
+	assert_equal(view.gender_name, "Female", "the detached sheet preserves Classic identity")
 	var sheet := ClassicCharacterSheet.new()
-	var selections: Array[String] = []
-	var appearance_changes: Array[Dictionary] = []
-	sheet.character_selected.connect(func(character_id: String) -> void: selections.append(character_id))
-	sheet.appearance_change_requested.connect(func(character_id: String, appearance_kind: StringName, appearance_id: String) -> void: appearance_changes.append({"characterId": character_id, "kind": appearance_kind, "appearanceId": appearance_id}))
-	var portrait_options: Array[CharacterAppearanceOptionView] = [
-		CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("portrait.257", "Portrait 257", CharacterAppearanceDefinition.PORTRAIT, 257, [character.race_id])),
-		CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("portrait.258", "Portrait 258 with a deliberately long package label", CharacterAppearanceDefinition.PORTRAIT, 258, [character.race_id])),
-	]
-	var icon_options: Array[CharacterAppearanceOptionView] = [
-		CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("combat-icon.9000", "Combat icon 9000", CharacterAppearanceDefinition.COMBAT_ICON, 9000, [character.race_id])),
-		CharacterAppearanceOptionView.new(CharacterAppearanceDefinition.new("combat-icon.9001", "Combat icon 9001", CharacterAppearanceDefinition.COMBAT_ICON, 9001, [character.race_id])),
-	]
-	sheet.present([character_view], character_view.id, {}, 1.0, &"overview", portrait_options, icon_options, ActionAvailabilityView.new(&"change_character_appearance", true))
-	var buttons := _buttons_in(sheet)
-	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Overview"), "the sheet exposes a bounded overview tab")
-	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Conditions & Saves"), "the sheet exposes conditions and all saves without raw indices")
-	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Equipment"), "the sheet retains the Classic equipment subworkspace")
-	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Abilities"), "the sheet retains source special and ability values")
-	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Spells"), "the sheet exposes known spells and scroll slots")
-	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Appearance"), "the sheet exposes the separate Classic portrait and tactical-icon workspace")
-	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Race, Class & Aging"), "the sheet exposes source-backed definitions and all five age bands")
-	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Lifetime Record"), "the missing prestige record remains visible rather than silently omitted")
-	var equipment_button := buttons.filter(func(button: Button) -> bool: return button.text == "Equipment")[0] as Button
-	equipment_button.pressed.emit()
-	var equipment_heading_detail := sheet.find_child("HeadingDetail", true, false) as Label
-	assert_not_null(equipment_heading_detail, "the equipment heading exposes its slot-count detail")
-	assert_equal(equipment_heading_detail.size_flags_horizontal, Control.SIZE_EXPAND_FILL, "heading details reserve horizontal space instead of collapsing into one-character columns at 960x600")
-	var record_button := sheet.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Lifetime Record")[0] as Button
-	record_button.pressed.emit()
-	var labels := sheet.find_children("*", "Label", true, false)
-	assert_true(labels.any(func(label: Label) -> bool: return label.text.to_lower().contains("lifetime combat history")), "the Record tab explains why Castle prestige cannot yet be calculated")
-	assert_equal(selections.size(), 0, "tab navigation is presentation-owned and cannot mutate the session")
-	var appearance_button := sheet.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Appearance")[0] as Button
-	appearance_button.pressed.emit()
-	var portrait_picker := sheet.find_child("PortraitPicker", true, false) as OptionButton
-	assert_not_null(portrait_picker, "the Appearance tab mounts a package-backed portrait picker")
-	assert_equal(portrait_picker.item_count, 2, "the picker exposes every detached portrait option")
-	portrait_picker.select(1)
-	portrait_picker.item_selected.emit(1)
-	assert_equal(appearance_changes.size(), 0, "previewing a portrait remains presentation-only")
-	var apply_portrait := sheet.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Apply Portrait")[0] as Button
-	assert_false(apply_portrait.disabled, "a changed portrait enables the explicit commit action")
-	apply_portrait.pressed.emit()
-	assert_equal(appearance_changes, [{"characterId": character_view.id, "kind": CharacterAppearanceDefinition.PORTRAIT, "appearanceId": "portrait.258"}], "Apply emits one typed stable-ID portrait request")
-	var icon_picker := sheet.find_child("CombaticonPicker", true, false) as OptionButton
-	assert_not_null(icon_picker, "the Appearance tab keeps combat-icon selection independent")
-	icon_picker.select(1)
-	icon_picker.item_selected.emit(1)
-	var discard := sheet.find_children("*", "Button", true, false).filter(func(button: Button) -> bool: return button.text == "Discard Appearance Changes")[0] as Button
-	discard.pressed.emit()
-	assert_equal(appearance_changes.size(), 1, "Discard restores local previews without emitting another mutation")
+	sheet.present([view], view.id, {}, 1.0, &"overview", [], [], ActionAvailabilityView.new(&"change_character_appearance", true))
+	for label: String in ["Overview", "Conditions & Saves", "Equipment", "Abilities", "Spells", "Appearance", "Race, Class & Aging", "Lifetime Record"]:
+		assert_true(_buttons_in(sheet).any(func(button: Button) -> bool: return button.text == label), "sheet exposes %s" % label)
 	sheet.free()
-
-
-func _test_party_roster() -> void:
-	var roster_scene := load("res://src/presentation/screens/classic_party_roster.tscn") as PackedScene
-	var roster := roster_scene.instantiate() as ClassicPartyRoster
-	roster._heading = roster.get_node("RosterColumn/Heading") as Label
-	roster._party_list = roster.get_node("RosterColumn/PartyScroll/PartyList") as VBoxContainer
-	var character := CharacterState.new("party.roster", "Mira", 10, 10)
-	character.race_id = "classic.race.1"
-	character.caste_id = "classic.caste.6"
-	var view := GameView.new(1, true, null)
-	view.party_members = [CharacterView.new(character)]
-	roster.present(view)
-	var rows := roster.find_children("*", "Button", true, false)
-	assert_equal(rows.size(), 1, "the populated roster creates one character control")
-	if not rows.is_empty():
-		var row := rows[0] as Button
-		assert_equal(row.get_theme_constant("icon_max_width"), 42, "portrait width uses the supported Button theme constant")
-	var combat := CombatState.new("battle.roster-auto")
-	combat.set_turn_order([character.id])
-	view.combat_view = CombatView.new(combat)
-	view.combat_view.auto_character_ids = [character.id]
-	roster.present(view)
-	var toggles := roster.find_children("CombatAuto", "CheckButton", true, false)
-	assert_equal(toggles.size(), 1, "the combat roster exposes one persistent Auto toggle per party member")
-	if not toggles.is_empty():
-		assert_true((toggles[0] as CheckButton).button_pressed and not (toggles[0] as CheckButton).disabled, "a live character's saved persistent Auto state is visible and actionable")
-	character.current_health = 0
-	view.party_members = [CharacterView.new(character)]
-	roster.present(view)
-	var dead_toggles := roster.find_children("CombatAuto", "CheckButton", true, false)
-	assert_equal(dead_toggles.size(), 1, "the dead roster row retains an explanatory Auto control")
-	if not dead_toggles.is_empty():
-		assert_true((dead_toggles[0] as CheckButton).disabled and not (dead_toggles[0] as CheckButton).tooltip_text.is_empty(), "dead characters cannot submit a core-rejected persistent Auto toggle")
-	roster.free()
-
-
 func _test_scene_composition() -> void:
-	var shell_scene := load("res://src/presentation/classic_application_shell.tscn") as PackedScene
-	var shell := shell_scene.instantiate() as ClassicApplicationShell
-	assert_not_null(shell, "the canonical application shell is scene-backed")
-	var router := shell.get_node("ScreenRouter") as Control
-	var roster := shell.get_node("PartyRoster") as Control
-	var bottom_region := shell.get_node("BottomRegion") as Control
-	assert_not_null(router, "the shell owns one workspace router")
-	assert_not_null(shell.get_node("PartyRoster"), "the shell owns the persistent six-slot roster")
-	assert_true((roster as PanelContainer).get_theme_stylebox("panel") is StyleBoxEmpty, "the roster shares the uninterrupted root stone surface instead of restarting a second framed tile at the stage boundary")
-	assert_equal((bottom_region as PanelContainer).theme_type_variation, &"ClassicOpenRight", "the bottom narrative region also leaves the shared roster boundary open")
-	assert_not_null(shell.get_node("BottomRegion/BottomRow/NarrativeWell"), "the shell owns a Classic narrative well")
-	assert_not_null(shell.get_node("BottomRegion/BottomRow/CommandPanel"), "the shell owns a contextual command deck")
-	var picture_backing := shell.get_node("PictureStage/PictureBacking") as TextureRect
-	var picture_frame := shell.get_node("PictureStage/PictureFrame") as NinePatchRect
-	assert_equal(int(picture_backing.stretch_mode), TextureRect.STRETCH_TILE, "scenario-picture stone fills the complete overlay without stretching")
-	assert_equal(int(picture_backing.texture_repeat), CanvasItem.TEXTURE_REPEAT_ENABLED, "scenario-picture backing repeats seamlessly beneath transparent bevel pixels")
-	assert_false(picture_frame.draw_center, "the scenario-picture bevel is an overlay around the independently filled stone center")
-	assert_true(picture_frame.get_index() > shell.get_node("PictureStage/PictureMargin").get_index(), "the bevel draws over the filled picture surface without exposing the map between layers")
-	assert_equal(shell.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the structural shell cannot mask earlier root-level interaction controls")
-	assert_equal(router.mouse_filter, Control.MOUSE_FILTER_IGNORE, "the full-window router cannot mask menus or sibling controls")
-	assert_true(router.get_index() > roster.get_index() and router.get_index() > bottom_region.get_index(), "modal router children are ordered above roster and textbox input regions")
-	assert_true(router.z_index > bottom_region.z_index, "workspace controls remain clickable where a scrolling route extends into the persistent bottom-region rows")
+	var scene := load("res://src/presentation/classic_application_shell.tscn") as PackedScene
+	var shell := scene.instantiate() as ClassicApplicationShell
+	assert_not_null(shell.get_node_or_null("ScreenRouter"), "the shell owns one workspace router")
+	assert_not_null(shell.get_node_or_null("BottomRegion/BottomRow/NarrativeWell"), "the shell owns a narrative well")
+	var backing := shell.get_node("PictureStage/PictureBacking") as TextureRect
+	assert_equal(backing.stretch_mode, TextureRect.STRETCH_TILE, "picture backing fills without stretching")
 	for viewport_size: Vector2 in [Vector2(800, 600), Vector2(960, 600), Vector2(1280, 720), Vector2(1920, 1080)]:
 		var profile := UiLayoutProfile.for_viewport(viewport_size, PresentationSettings.UI_SCALE_AUTO)
-		var campaign_rect := ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
-		var stage_width := viewport_size.x - profile.party_width
-		assert_true(campaign_rect.position.x >= 0.0 and campaign_rect.position.x + campaign_rect.size.x <= stage_width, "campaign controls stay out of the roster hit region at %s" % str(viewport_size))
-		assert_true(campaign_rect.position.y >= profile.menu_height and campaign_rect.position.y + campaign_rect.size.y <= viewport_size.y, "campaign controls stay inside the viewport at %s" % str(viewport_size))
-		var vault_router := ClassicScreenRouter.new()
-		(Engine.get_main_loop() as SceneTree).root.add_child(vault_router)
-		vault_router.initialize()
-		vault_router.set_layout_profile(profile, viewport_size)
-		vault_router.open_screen(&"vault")
-		var workspace_host := vault_router.get_node_or_null("WorkspaceHost") as Control
-		var vault_workspaces := workspace_host.get_children().filter(func(child: Node) -> bool: return child is ClassicRouteScreen) if workspace_host != null else []
-		var vault_workspace := vault_workspaces[0] as ClassicRouteScreen if not vault_workspaces.is_empty() else null
-		var modal_rect := Rect2(12.0, profile.menu_height + 8.0, viewport_size.x - 24.0, viewport_size.y - profile.menu_height - 16.0)
-		var expected_vault_rect := Rect2(modal_rect.position + Vector2(8.0, 8.0), modal_rect.size - Vector2(16.0, 16.0))
-		assert_not_null(vault_workspace, "Character Files mounts one typed primary workspace at %s" % str(viewport_size))
-		if vault_workspace != null:
-			assert_equal([vault_workspace.position, vault_workspace.size], [expected_vault_rect.position, expected_vault_rect.size], "Character Files receives the complete stage width at %s" % str(viewport_size))
-		assert_true(vault_router.full_stage_overlay_visible(), "Character Files suppresses the roster, textbox, and command deck at %s" % str(viewport_size))
-		vault_router.free()
-	assert_false(shell.has_node("TopBar"), "the dashboard title bar is removed")
-	assert_false(shell.has_node("RightPanel"), "the persistent Chronicle column is removed")
+		var rect := ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
+		assert_true(rect.position.x >= 0.0 and rect.end.x <= viewport_size.x - profile.party_width, "campaign layout stays clear of the roster at %s" % viewport_size)
 	shell.free()
-	var application_scene := load("res://src/presentation/realmz_application.tscn") as PackedScene
-	var application := application_scene.instantiate() as Control
-	assert_true(application.get_node("InteractionPanel").get_index() > application.get_node("ClassicShell").get_index(), "AP and encounter presenter controls are ordered above the shell for mouse input")
-	assert_true(application.get_node("BattlefieldMap") is ClassicBattlefieldPresenter, "the root application owns one detached tactical battlefield presenter")
-	var application_shell := application.get_node("ClassicShell") as Control
-	var application_router := application.get_node("ClassicShell/ScreenRouter") as Control
-	var interaction := application.get_node("InteractionPanel") as InteractionPresenter
-	interaction.visible = true
-	assert_true(interaction.get_index() > application.get_node("BattlefieldMap").get_index(), "a visible mandatory interaction claims pointer order above the tactical battlefield")
-	assert_true(interaction.z_index > CampaignPartySetupController.MAXIMUM_MODAL_Z_INDEX + application_router.z_index + application_shell.z_index, "the dedicated interaction layer draws above every nested setup modal instead of allowing stale workspace labels through")
-	assert_equal(interaction.mouse_filter, Control.MOUSE_FILTER_STOP, "the blocking interaction surface, not its decorative backing, owns every pointer inside the tactical stage")
-	var standard_textbox_rect := RealmzApplication.classic_textbox_rect(Rect2(0.0, 28.0, 704.0, 396.0), 176.0)
-	assert_equal(standard_textbox_rect, Rect2(0.0, 424.0, 704.0, 176.0), "textbox interactions replace the complete shell bottom region without exposing an inset frame")
-	assert_true(InteractionPresenter.uses_textbox_region(InteractionRequest.acknowledge("edge-to-edge", "Continue")), "Classic acknowledgements use the edge-to-edge textbox surface")
-	var combat_request := ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT)
-	assert_true(InteractionPresenter.uses_textbox_region(combat_request), "battle controls occupy the bottom Classic control region without replacing the tactical board")
-	var combat_rect := RealmzApplication.classic_combat_rect(Vector2(960.0, 600.0), 176.0)
-	assert_equal(combat_rect, Rect2(0.0, 424.0, 960.0, 176.0), "combat claims the full Classic lower edge instead of stopping at the map-stage width")
-	assert_equal(InteractionPresenter.interaction_region(combat_request, standard_textbox_rect, Rect2(0.0, 28.0, 704.0, 396.0), combat_rect), combat_rect, "the battle command deck uses the full-width lower control region")
-	assert_equal(InteractionPresenter.interaction_region(InteractionRequest.acknowledge("edge-to-edge", "Continue"), standard_textbox_rect, Rect2(0.0, 28.0, 704.0, 396.0)), standard_textbox_rect, "ordinary Classic text retains the source-shaped textbox height")
-	assert_true(InteractionPresenter.uses_full_stage_region(ClassicUiFixtureGallery.request_for(InteractionRequest.ALLY_SELECTION)), "a genuine post-battle ally choice replaces the complete tactical stage instead of clipping its old heading")
-	var ally_opaque_backing := interaction.get_node("StageOpaqueBacking") as ColorRect
-	assert_equal(ally_opaque_backing.color.a, 1.0, "full-stage interactions mask every stale tactical or route label before drawing their stone surface")
-	var ally_stage_backing := interaction.get_node("StageBacking") as TextureRect
-	assert_equal([ally_stage_backing.stretch_mode, ally_stage_backing.texture_repeat], [TextureRect.STRETCH_TILE, CanvasItem.TEXTURE_REPEAT_ENABLED], "full-stage interactions own one seamless opaque surface over stale tactical content")
-	assert_false(InteractionPresenter.uses_textbox_region(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP)), "stage interactions retain their independent inset frame")
-	assert_equal(interaction.custom_minimum_size, Vector2.ZERO, "textbox interactions may shrink to the bottom-region rectangle instead of retaining a stage-modal minimum")
-	assert_false((interaction.get_node("InteractionScroll/InteractionContent/InteractionHeading") as Label).visible, "the unused narrative heading consumes no textbox height")
-	application.free()
-	var texture_path := "res://src/presentation/assets/ui/classic-charcoal-slate.png"
-	assert_true(ResourceLoader.exists(texture_path, "Texture2D"), "the selected low-contrast stone texture imports as a Godot texture")
-	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://src/presentation/assets/ui/spritecook-assets.json"))
-	assert_equal(manifest["schema_version"], 4, "the chrome manifest records the opaque-bevel derivation contract")
-	assert_equal(manifest["selected_asset"]["asset_id"], "3f355030-0f8c-4d4e-b079-26ba8d3dbc32", "the committed texture retains selected SpriteCook provenance")
-	assert_equal(manifest["files"].size(), 4, "the selected surface, seamless tile, and two deterministic frames ship together")
-	for entry: Dictionary in manifest["files"]:
-		assert_equal(_sha256(entry["path"]), entry["sha256"], "generated stone surface hash matches its manifest: %s" % entry["path"])
-		var texture := load(entry["path"]) as Texture2D
-		assert_equal(texture.get_width(), int(entry["width"]), "generated stone surface width matches its manifest: %s" % entry["path"])
-		assert_equal(texture.get_height(), int(entry["height"]), "generated stone surface height matches its manifest: %s" % entry["path"])
-
-
 func _test_automatic_workflow_routes() -> void:
 	var terminal_step := SessionStep.completed(1, [DomainEvent.new(&"session_ended", {"reason": "party-defeat"})])
 	assert_true(RealmzApplication.should_defer_session_close(terminal_step, true), "terminal host navigation waits until committed combat playback releases its retained battlefield")

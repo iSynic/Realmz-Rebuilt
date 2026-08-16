@@ -54,6 +54,9 @@ if (@($changedPaths | Where-Object { $_ -eq "src" -or $_.StartsWith("src/") -or 
     Write-Host "Architecture boundary verification skipped: no product source changed."
 }
 
+& "$PSScriptRoot\verify_hotspot_test_budget.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Hotspot and test-budget verification failed." }
+
 $referenceArguments = @{}
 if (-not [string]::IsNullOrWhiteSpace($CastleRoot)) { $referenceArguments.CastleRoot = $CastleRoot }
 if (-not [string]::IsNullOrWhiteSpace($RemakeRoot)) { $referenceArguments.RemakeRoot = $RemakeRoot }

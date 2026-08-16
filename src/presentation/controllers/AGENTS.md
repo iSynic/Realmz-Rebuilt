@@ -11,7 +11,7 @@ Own route-local presentation state and control construction behind typed detache
 - `ClassicScreenRouter` alone mounts primary workspaces and restores route focus.
 - `ClassicWorkspacePresenter` owns route-local controller composition, detached route state, content rendering, and route-specific audio. The router supplies the mounted route body and navigation-owned back label; it does not render domain content.
 - A controller may preserve selection, filtering, sorting, tabs, and draft text for its own route only.
-- `CampaignLibraryController` owns splash and installed-campaign controls, package-operation presentation, and campaign-list selection. `CampaignPartySetupController` composes it with party assembly and character creation without reimplementing campaign-library state. Both mount under an explicit overlay host supplied by the shell scene, never the owning router itself.
+- `CampaignLibraryController` owns splash and installed-campaign controls, package-operation presentation, and campaign-list selection. Campaign party setup is layered by responsibility: shared setup state and helpers, character inspection, party assembly, five-step creation, then the public `CampaignPartySetupController` coordinator. Each layer owns only its named controls and signals; none reimplements campaign-library state or receives the router. Both public controllers mount under an explicit overlay host supplied by the shell scene.
 
 ## Verification
 

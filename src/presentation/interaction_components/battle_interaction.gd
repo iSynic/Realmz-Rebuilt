@@ -49,17 +49,7 @@ func build(request: InteractionRequest) -> void:
 		panel.add_theme_constant_override("separation", 6)
 		add_child(panel)
 		_add_mode_back_button(panel, overview, mode_panels)
-	if action_ids.has("attack"):
-		var candidate_ids: Array[String] = []
-		for target: InteractionRequestValue.CombatTarget in targets:
-			if not target.id.is_empty(): candidate_ids.append(target.id)
-		var attack_targeting := CombatTargetingRequest.new(&"combatant", InteractionResponse.CombatBody.new(&"attack", actor_id))
-		attack_targeting.candidate_ids = candidate_ids
-		_add_targeting_button(target_panel, "Choose Fire target on battlefield" if weapon_mode == "missile" else "Choose attack target on battlefield", attack_targeting)
-	elif weapon_mode == "melee" and not body.melee_attack_reason.is_empty():
-		_add_hint_to(target_panel, body.melee_attack_reason)
-	if weapon_mode == "missile" and not action_ids.has("attack"):
-		add_response_to(target_panel, "Fire unavailable", InteractionResponse.CombatBody.new(&"attack", actor_id), false, body.ranged_attack.reason)
+	_build_attack_panel(body, actor_id, action_ids, targets, target_panel, weapon_mode)
 	_spell_casts = body.spell_casts
 	_fast_spells = body.fast_spells
 	if action_ids.has("cast_spell") and not body.spell_casts.is_empty():
@@ -168,6 +158,20 @@ func build(request: InteractionRequest) -> void:
 		item_row.add_child(use_button)
 	elif not body.item_cast_reason.is_empty():
 		add_response_to(item_panel, "Use item unavailable", InteractionResponse.CombatBody.new(&"use_item", actor_id), false, body.item_cast_reason)
+
+
+func _build_attack_panel(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: VBoxContainer, weapon_mode: String) -> void:
+	if action_ids.has("attack"):
+		var candidate_ids: Array[String] = []
+		for target: InteractionRequestValue.CombatTarget in targets:
+			if not target.id.is_empty(): candidate_ids.append(target.id)
+		var targeting := CombatTargetingRequest.new(&"combatant", InteractionResponse.CombatBody.new(&"attack", actor_id))
+		targeting.candidate_ids = candidate_ids
+		_add_targeting_button(target_panel, "Choose Fire target on battlefield" if weapon_mode == "missile" else "Choose attack target on battlefield", targeting)
+	elif weapon_mode == "melee" and not body.melee_attack_reason.is_empty():
+		_add_hint_to(target_panel, body.melee_attack_reason)
+	if weapon_mode == "missile" and not action_ids.has("attack"):
+		add_response_to(target_panel, "Fire unavailable", InteractionResponse.CombatBody.new(&"attack", actor_id), false, body.ranged_attack.reason)
 
 
 func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:

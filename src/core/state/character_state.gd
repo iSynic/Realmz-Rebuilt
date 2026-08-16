@@ -235,89 +235,27 @@ static func from_data(data: Variant) -> CharacterState:
 			return null
 	if not data["raceId"] is String or data["raceId"].is_empty() or not data["casteId"] is String or data["casteId"].is_empty() or not data["attributes"] is Array or data["attributes"].size() != 6 or not data["saves"] is Array or data["saves"].size() != 8 or not data["specials"] is Array or data["specials"].size() != 12 or not data["inventory"] is Array or not data["knownSpells"] is Array:
 		return null
+	if not _restore_numeric_fields(result, data) or not _restore_collections(result, data):
+		return null
+	return result
+
+
+static func _restore_numeric_fields(result: CharacterState, data: Dictionary) -> bool:
 	var numeric_values: Dictionary = {}
 	for field: String in ["gender", "level", "experience", "ageDays", "toHit", "dodge", "missile", "handToHand", "damageBonus", "armor", "magicResistance", "movement", "maximumMovement", "normalAttacks", "attacksRemaining", "spellcasterType", "spellPoints", "maximumSpellPoints", "load", "maximumLoad"]:
 		var value := _signed_integer(data[field])
 		if value == -100_000:
-			return null
+			return false
 		numeric_values[field] = value
 	for field: String in ["attackBonus", "maximumSpellAttacks", "prestigePenalty", "twoHand"]:
 		var value := _signed_integer(data.get(field, 0))
 		if value == -100_000:
-			return null
+			return false
 		numeric_values[field] = value
 	var loaded_conditions := ConditionSet.from_data(data["conditions"], ConditionSet.CHARACTER_COUNT)
 	var loaded_money := WealthState.from_data(data["money"])
 	if loaded_conditions == null or loaded_money == null:
-		return null
-	var attributes: Array[int] = []
-	var saves: Array[int] = []
-	var specials: Array[int] = []
-	var abilities: Array[int] = []
-	for value: Variant in data["attributes"]:
-		var parsed := _signed_integer(value)
-		if parsed == -100_000:
-			return null
-		attributes.append(parsed)
-	for value: Variant in data["saves"]:
-		var parsed := _signed_integer(value)
-		if parsed == -100_000:
-			return null
-		saves.append(parsed)
-	for value: Variant in data["specials"]:
-		var parsed := _signed_integer(value)
-		if parsed == -100_000:
-			return null
-		specials.append(parsed)
-	var ability_data: Variant = data.get("abilities", [])
-	if not ability_data is Array or ability_data.size() not in [0, 15]:
-		return null
-	if ability_data.is_empty():
-		abilities.resize(15)
-		abilities.fill(0)
-	else:
-		for value: Variant in ability_data:
-			var parsed := _signed_integer(value)
-			if parsed == -100_000:
-				return null
-			abilities.append(parsed)
-	var items: Array[ItemInstance] = []
-	for item_data: Variant in data["inventory"]:
-		var item := ItemInstance.from_data(item_data)
-		if item == null:
-			return null
-		items.append(item)
-	var spells: Array[String] = []
-	for spell_id: Variant in data["knownSpells"]:
-		if not spell_id is String or spell_id.is_empty():
-			return null
-		spells.append(spell_id)
-	var scrolls: Array[SpellScrollState] = []
-	var scroll_data: Variant = data.get("scrollCase", [])
-	if not scroll_data is Array or scroll_data.size() not in [0, 5]:
-		return null
-	if scroll_data.is_empty():
-		for index: int in 5:
-			scrolls.append(SpellScrollState.new())
-	else:
-		for value: Variant in scroll_data:
-			var scroll := SpellScrollState.from_data(value)
-			if scroll == null:
-				return null
-			scrolls.append(scroll)
-	var fast_spells: Array[FastSpellBindingState] = []
-	var fast_spell_data: Variant = data.get("fastSpells", [])
-	if not fast_spell_data is Array or fast_spell_data.size() not in [0, 10]:
-		return null
-	if fast_spell_data.is_empty():
-		for index: int in 10:
-			fast_spells.append(FastSpellBindingState.new())
-	else:
-		for value: Variant in fast_spell_data:
-			var binding := FastSpellBindingState.from_data(value)
-			if binding == null:
-				return null
-			fast_spells.append(binding)
+		return false
 	result.race_id = data["raceId"]
 	result.caste_id = data["casteId"]
 	result.gender = numeric_values["gender"]
@@ -328,13 +266,7 @@ static func from_data(data: Variant) -> CharacterState:
 	result.age_days = numeric_values["ageDays"]
 	result.age_group = _signed_integer(data.get("ageGroup", 0))
 	if result.age_group < 0 or result.age_group > 5:
-		return null
-	result.brawn = attributes[0]
-	result.knowledge = attributes[1]
-	result.judgment = attributes[2]
-	result.agility = attributes[3]
-	result.vitality = attributes[4]
-	result.luck = attributes[5]
+		return false
 	result.to_hit = numeric_values["toHit"]
 	result.dodge = numeric_values["dodge"]
 	result.missile = numeric_values["missile"]
@@ -356,10 +288,88 @@ static func from_data(data: Variant) -> CharacterState:
 	result.maximum_load = numeric_values["maximumLoad"]
 	result.prestige_penalty = numeric_values["prestigePenalty"]
 	if data.has("traitor") and not data["traitor"] is bool:
-		return null
+		return false
 	result.traitor = bool(data.get("traitor", false))
 	result.conditions = loaded_conditions
 	result.money = loaded_money
+	return true
+
+
+static func _restore_collections(result: CharacterState, data: Dictionary) -> bool:
+	var attributes: Array[int] = []
+	var saves: Array[int] = []
+	var specials: Array[int] = []
+	var abilities: Array[int] = []
+	for value: Variant in data["attributes"]:
+		var parsed := _signed_integer(value)
+		if parsed == -100_000:
+			return false
+		attributes.append(parsed)
+	for value: Variant in data["saves"]:
+		var parsed := _signed_integer(value)
+		if parsed == -100_000:
+			return false
+		saves.append(parsed)
+	for value: Variant in data["specials"]:
+		var parsed := _signed_integer(value)
+		if parsed == -100_000:
+			return false
+		specials.append(parsed)
+	var ability_data: Variant = data.get("abilities", [])
+	if not ability_data is Array or ability_data.size() not in [0, 15]:
+		return false
+	if ability_data.is_empty():
+		abilities.resize(15)
+		abilities.fill(0)
+	else:
+		for value: Variant in ability_data:
+			var parsed := _signed_integer(value)
+			if parsed == -100_000:
+				return false
+			abilities.append(parsed)
+	var items: Array[ItemInstance] = []
+	for item_data: Variant in data["inventory"]:
+		var item := ItemInstance.from_data(item_data)
+		if item == null:
+			return false
+		items.append(item)
+	var spells: Array[String] = []
+	for spell_id: Variant in data["knownSpells"]:
+		if not spell_id is String or spell_id.is_empty():
+			return false
+		spells.append(spell_id)
+	var scrolls: Array[SpellScrollState] = []
+	var scroll_data: Variant = data.get("scrollCase", [])
+	if not scroll_data is Array or scroll_data.size() not in [0, 5]:
+		return false
+	if scroll_data.is_empty():
+		for index: int in 5:
+			scrolls.append(SpellScrollState.new())
+	else:
+		for value: Variant in scroll_data:
+			var scroll := SpellScrollState.from_data(value)
+			if scroll == null:
+				return false
+			scrolls.append(scroll)
+	var fast_spells: Array[FastSpellBindingState] = []
+	var fast_spell_data: Variant = data.get("fastSpells", [])
+	if not fast_spell_data is Array or fast_spell_data.size() not in [0, 10]:
+		return false
+	if fast_spell_data.is_empty():
+		for index: int in 10:
+			fast_spells.append(FastSpellBindingState.new())
+	else:
+		for value: Variant in fast_spell_data:
+			var binding := FastSpellBindingState.from_data(value)
+			if binding == null:
+				return false
+			fast_spells.append(binding)
+	result.brawn = attributes[0]
+	result.knowledge = attributes[1]
+	result.judgment = attributes[2]
+	result.agility = attributes[3]
+	result.vitality = attributes[4]
+	result.luck = attributes[5]
 	result._saves = saves
 	result._specials = specials
 	result._abilities = abilities
@@ -367,7 +377,7 @@ static func from_data(data: Variant) -> CharacterState:
 	result._known_spells = spells
 	result._scroll_case = scrolls
 	result._fast_spells = fast_spells
-	return result
+	return true
 
 
 static func _integer(value: Variant) -> int:

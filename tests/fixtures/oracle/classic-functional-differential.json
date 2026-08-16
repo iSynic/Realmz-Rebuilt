@@ -136,7 +136,7 @@
         "expectedRepresentation": "Each cell carries trigger references in native placed-record order and each trigger retains classicRecordIndex."
       },
       "realmz2": {
-        "owner": { "path": "src/session/game_session.gd", "symbol": "func _continue_post_move" },
+        "owner": { "path": "src/session/coordinators/session_exploration_coordinator.gd", "symbol": "func _continue_post_move" },
         "expectedTrace": ["select first placed AP", "chance decision", "optional VM continuation", "single destination recheck"],
         "tests": [
           { "path": "tests/integration/test_exploration_session.gd", "symbol": "func run" },
@@ -715,11 +715,11 @@
         "expectedRepresentation": "Existing schema-v2 character media identities and race names, ranges, and fifteen-value change rows provide all immutable inputs; interaction and sound sequencing remain runtime behavior."
       },
       "realmz2": {
-        "owner": { "path": "src/session/game_session.gd", "symbol": "func _finish_with_age_updates" },
+        "owner": { "path": "src/session/coordinators/session_responses_coordinator.gd", "symbol": "func _finish_with_age_updates" },
         "expectedTrace": ["committed age transition", "typed age_update request", "sound 3002", "saveable owning continuation", "typed acknowledgement", "next ordered update or original continuation"],
         "tests": [
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_age_update_precedes_post_move" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_scenario_spell_opcodes" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix" },
           { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_fixture_gallery_coverage" }
         ]
@@ -770,7 +770,7 @@
         "expectedTrace": ["ordinary hit roll", "ordinary damage roll", "special potency draw", "save-slot-seven roll", "optional age-day mutation", "optional one-band event and typed age_update", "save pending ordinary hit", "acknowledge age update", "ordinary damage commit", "resume exact next combat actor"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_aging_attack" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_aging_attack_continuations" }
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix" }
         ]
       },
       "decision": "aligned",
@@ -815,7 +815,7 @@
         "expectedTrace": ["ordinary hit roll", "ordinary damage roll", "generic special-potency draw", "optional target-monster resistance whiff", "source-family save roll", "permanent and duration gate", "condition mutation", "special result event", "asynchronous source sound", "ordinary damage result"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_status_attacks" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_status_attack_flow" }
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix" }
         ]
       },
       "decision": "aligned",
@@ -862,7 +862,7 @@
         "expectedTrace": ["ordinary hit roll", "ordinary damage roll", "generic special-potency draw", "optional target-monster resistance whiff", "save-family roll when the target kind has a source branch", "direct resource mutation", "typed special event", "optional asynchronous sound 630 for experience drain", "ordinary damage result", "whole-session persistence"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_resource_drains" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_resource_drain_flow" }
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix" }
         ]
       },
       "decision": "aligned",
@@ -909,7 +909,7 @@
         "expectedTrace": ["ordinary hit and damage rolls", "generic potency draw", "save-zero roll with optional party bonus", "allegiance mutation", "typed special event", "opposed-allegiance automatic turn", "central save and restore", "battle-end allegiance restoration"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_charm_attacks" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_charm_and_affliction_flow" }
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix" }
         ]
       },
       "decision": "aligned",
@@ -1005,7 +1005,7 @@
         "expectedTrace": ["validated equipped-definition snapshot", "optional weapon-condition precheck", "signed luck and inclusive hit roll", "independent magic and required-weapon gates", "optional reflection", "weapon elements against defender saves", "target-tag and physical weapon roll", "two preserved critical draws", "helpless override", "condition and health mutation", "typed combat event", "source-ordered item or unarmed impact, miss, gate, and death sound events"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_combat_magic_and_monsters()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_physical_attack_audio()" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix()" }
         ]
       },
       "fidelityDecision": {
@@ -1108,7 +1108,7 @@
         "expectedTrace": ["ordinary hit and damage rolls", "generic potency draw", "save-slot-seven roll", "permanent condition mutation", "optional force-kill with skipped physical commit", "typed special before attack result", "whole-session persistence"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_permanent_afflictions" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_charm_and_affliction_flow" }
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix" }
         ]
       },
       "decision": "aligned",
@@ -1157,9 +1157,9 @@
         "expectedTrace": ["optional weapon-condition precheck", "party defender-luck draw", "inclusive hit roll", "optional monster required-weapon gate", "weapon or unarmed physical roll", "weapon elemental saves and protection", "matching target-type rolls", "FD-COMBAT-004 nonnegative physical floor", "existing special-attack continuation", "deferred weapon condition and Dragon Hide sound after any age update", "typed combat result and central state mutation", "source-ordered monster row or armed impact, miss, death, and synchronous Dragon Hide sound events"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_monster_ordinary_attacks()" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_aging_attack_continuations(content: RealmzContent)" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix(content: RealmzContent)" },
           { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_physical_attack_audio()" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix()" }
         ]
       },
       "fidelityDecision": {
@@ -1216,10 +1216,10 @@
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func submit_action(" },
         "expectedTrace": ["prepare active character and normalize carry", "add signed half-attack allowance", "commit one melee attempt and consume two units", "retain or advance the exact active actor", "choose one monster action", "draw and retain one target", "resolve ordered authored rows", "serialize active actor, action, target, and next row", "resume deferred age damage once and continue the remaining rows"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_half_attack_cadence_and_restore()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_monster_authored_attack_rows_and_target_retention()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_monster_attack_cursor_restore()" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_aging_attack_continuations(content: RealmzContent)" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_monster_turn_matrix()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_monster_turn_matrix()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix(content: RealmzContent)" },
           { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" }
         ]
       },
@@ -1274,9 +1274,9 @@
         "expectedTrace": ["physical hit roll", "source-scaled fumble draw", "bounded exact-instance queue or active monster weapon clear", "exact signed Classic fumble/drop sound sequence", "serialized battle state", "body-count interaction", "typed one-item recovery after victory, defeat, or retreat", "assign subject to capacity/load or leave behind", "battle after-message and VM/session continuation"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_combat_magic_and_monsters()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_battle_owned_fumble_and_exact_recovery()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_monster_fumble_clears_only_active_weapon()" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_combat_fumble_mutation(content: RealmzContent)" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_continuation_fumble_terminal_matrix()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_continuation_fumble_terminal_matrix()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix(content: RealmzContent)" },
           { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run()" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_fixture_gallery_coverage()" }
         ]
@@ -1336,10 +1336,10 @@
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func submit_action(" },
         "expectedTrace": ["validate unique Classic equipment slots", "initialize melee unless only missile is equipped", "persist character weapon mode in battle state", "emit typed no-cost switch action", "retain attacks, movement, actor, and turn", "block melee resolution while missile mode is active", "inject the application-owned default-on preference only into manual movement", "carry a pending qualifying switch through the one-move Guard continuation", "switch after Guard and before exactly one ordinary collision attack", "leave direct attacks and automatic actors independent of the preference", "expose the same action set through detached view and typed interaction"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_weapon_mode_toggle_and_restore()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix()" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_player_collision_initiates_melee()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_guard_age_update_restore()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_continuation_fumble_terminal_matrix()" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_settings_schema_and_migration()" },
           { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" }
         ]
@@ -1391,8 +1391,8 @@
         "expectedTrace": ["validate complete Classic map and terrain catalog", "build and decorate battlefield", "draw direction and bounded separation", "place party including dead slots", "place held-over allies", "scan authored slots by y then x and place footprints", "construct authored battle monsters in combatsetup draw order", "remove dead party positions", "draw initiative", "commit serializable combat and detached battlefield view"],
         "tests": [
           { "path": "tests/core/test_battlefield_builder.gd", "symbol": "func run()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_weapon_mode_toggle_and_restore()" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_monster_aging_attack_continuations(" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix(" }
         ]
       },
       "fidelityDecision": {
@@ -1451,10 +1451,10 @@
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func move_character(" },
         "expectedTrace": ["restore maximum movement before a fresh character activation", "probe one adjacent eight-direction destination", "validate every destination footprint cell", "identify an opposed occupied destination without committing movement", "adjudicate Castle's collision-initiated melee against the explicit target command", "charge maximum terrain cost plus changed axes for an actual move", "compare complete hostile adjacency before and after", "reject unimplemented guarding or withdrawal reactions without mutation", "commit reaction-free position and movement synchronously", "expose adjacent melee and all eight probes in detached view and interaction", "derive global combat-move availability from enabled detached probes", "suppress exploration movement and Search while combat outcome is active"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_player_collision_initiates_melee()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_tactical_adjacency_movement_and_restore()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_detached_turn_start_movement_refresh()" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_gameplay_capabilities_and_battle_resume(" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix(" },
           { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
         ]
@@ -1500,7 +1500,7 @@
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func continue_after_monster_death_macro(" },
         "expectedTrace": ["resolve killing attack", "retain footprint while death macro is pending", "run and serialize the nested macro", "remove still-dead footprints after completion", "retain a revived monster's original footprint", "validate and save every live combatant position"],
         "tests": [
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_automatic_monster_death_macro(" }
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix(" }
         ]
       },
       "fidelityDecision": {
@@ -1608,7 +1608,7 @@
         "tests": [
           {
             "path": "tests/core/test_combat_flow.gd",
-            "symbol": "func _test_monster_los_targeting_and_movement("
+            "symbol": "func _test_public_monster_turn_matrix("
           },
           {
             "path": "tests/core/test_realmz_rules.gd",
@@ -1686,7 +1686,7 @@
         "tests": [
           {
             "path": "tests/core/test_combat_flow.gd",
-            "symbol": "func _test_monster_los_targeting_and_movement("
+            "symbol": "func _test_public_monster_turn_matrix("
           }
         ]
       },
@@ -1731,10 +1731,10 @@
         "expectedRepresentation": "Schema v2 preserves all six native monster item positions, including empty slots, so item slot zero and item slot one cannot collapse into one another."
       },
       "realmz2": {
-        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _prepare_monster_melee_weapon(" },
+        "owner": { "path": "src/core/rules/combat_flow_automation.gd", "symbol": "func _prepare_monster_melee_weapon(" },
         "expectedTrace": ["inspect the actual attacker's active weapon", "detect an item-linked damage-type-nine projectile", "read only that attacker's native slot zero", "mutate only that attacker's active weapon", "use the same actor-owned path for ordinary attacks and reactions"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_projectile_fire(" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix(" }
         ]
       },
       "fidelityDecision": {
@@ -1797,7 +1797,7 @@
         "tests": [
           { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" },
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_projectile_resolution(" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_projectile_fire(" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix(" }
         ]
       },
       "decision": "runtime-defect",
@@ -1854,9 +1854,9 @@
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func move_character(" },
         "expectedTrace": ["persist Guard and the original source-ordered hostile perimeter", "resolve every non-helpless guard before a legal step", "issue every original enemy no longer adjacent as a plus-twenty withdrawal attack unless the mover is Invisible", "commit movement only for a surviving mover", "resolve destination guards and ordinary monster contact guards", "save and resume age-update or death-macro interruption without replay", "keep icon orientation presentation-only"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_guard_and_withdrawal_reactions(" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_guard_age_update_restore(" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_guard_death_macro_revival_continuation(" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_tactical_reaction_matrix(" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_continuation_fumble_terminal_matrix(" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_continuation_fumble_terminal_matrix(" }
         ]
       },
       "decision": "runtime-defect",
@@ -1912,8 +1912,8 @@
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func retreat_character(" },
         "expectedTrace": ["probe exact explicit range and character gates without consuming RNG", "yield a typed saveable confirmation", "restore the issuing Classic VM frame and combat/RNG state at that response boundary", "remove only the accepting character and record a 200 prestige penalty", "persist explicit escaped-character identity", "continue through the typed combat request while a loyal battlefield character remains", "route an interior-to-edge directional response through the same confirmation and commit path", "move a routed monster away from its retained target through serializable withdrawal reactions", "remove a hostile routed monster at the edge without a death macro", "leave unsafe target and mandatory-ally branches explicitly unavailable"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_and_monster_retreat()" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_gameplay_capabilities_and_battle_resume(" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_command_automation_matrix()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix(" }
         ]
       },
       "decision": "runtime-defect",
@@ -1956,7 +1956,7 @@
         "expectedTrace": ["validate exactly ten package positions", "retain empty native slots", "sample and retry empty positions without repacking", "resolve the bounded ordinary single-party-target spell through session-owned combat"],
         "tests": [
           { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_monster_spell_casting()" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_monster_turn_matrix()" }
         ]
       },
       "decision": "compiler-defect",
@@ -2052,9 +2052,9 @@
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func cast_spell(" },
         "expectedTrace": ["restore the active battle before the typed response", "derive battle picker options from the same mutation-free cast probe used by execution", "return only stable spell, power, and actor target identity through the host", "reject flags, conditions, round-hit state, unknown spell, unsupported shape, cap, cost, range, or line of sight before mutation", "derive zero-based spell tier from Classic ID", "roll duration, damage, resistance, and save in Castle order", "spend spell points, two half-attacks, and twelve movement", "persist spell count and attacked targets", "return to the same battle request while the actor can continue", "retain or advance the actor from the remaining half-attack reserve"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_character_spell_casting()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_magic_matrix()" },
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_combat_magic_and_monsters(" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_spellcasting_flags(" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix(" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
         ]
       },
@@ -2102,11 +2102,11 @@
         "expectedRepresentation": "Schema v2 already emits Classic spell ID, combat/camp flags, target, special, cannot, class, damage type, cost, ranges, and power-scaled damage. No package-contract change is required for special 57."
       },
       "realmz2": {
-        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _is_source_backed_combat_healing_spell(" },
+        "owner": { "path": "src/core/rules/combat_flow_automation.gd", "symbol": "func _is_source_backed_combat_healing_spell(" },
         "expectedTrace": ["derive party-then-monster detached actor options", "validate one source-shaped healing definition", "resolve reflection and resistance before healing", "apply party cap and death or stone exclusions", "apply uncapped signed-16 monster healing", "preserve Castle's monster attacked marker asymmetry", "publish separate signed damage and positive healing facts", "persist health, spell cost, and cast cursor"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_special_healing_and_actor_targeting()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_character_spell_casting()" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_magic_matrix()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_magic_matrix()" }
         ]
       },
       "decision": "runtime-defect",
@@ -2149,11 +2149,11 @@
         "expectedRepresentation": "Schema v2 already emits the spell fields, monster casting counts and percentages, spell points, and exact ten-position spell arrays required by the bounded ordinary path."
       },
       "realmz2": {
-        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _process_monster_cast(" },
+        "owner": { "path": "src/core/rules/combat_flow_automation.gd", "symbol": "func _process_monster_cast(" },
         "expectedTrace": ["consume fixed-slot draws through empty positions", "preserve initial range power while lowering only affordability power", "select a legal party target through native slot draws", "resolve duration, damage, resistance, save, and protection in source order", "clear Guard and movement on commit", "persist cast and retry cursors", "reject unresolved or anomalous branches explicitly"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_monster_spell_casting()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_charm_resistance_continues_after_failed_opposed_save()" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_monster_turn_matrix()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_magic_matrix()" }
         ]
       },
       "decision": "runtime-defect",
@@ -2203,8 +2203,8 @@
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func continue_after_monster_death_macro(" },
         "expectedTrace": ["commit the spell's defeated targets", "queue each positive death macro in source target order", "retain the caster activation and queue cursor", "run one nested macro and any typed interaction", "save and restore the queue, cursor, and host continuation", "remove a still-dead completed subject", "drain the next macro before battle outcome or caster advancement", "change allegiance only through an authored operation"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_spell_death_macro_queue_and_restore()" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_spell_queued_death_macro(" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_continuation_fumble_terminal_matrix()" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix(" }
         ]
       },
       "decision": "runtime-defect",
@@ -2250,11 +2250,11 @@
         "expectedRepresentation": "The editor exposes value 12 as Everybody and accepts 0 through 12; schema v2 already emits the exact numeric targetType without a package-format change."
       },
       "realmz2": {
-        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _cast_character_group_spell(" },
+        "owner": { "path": "src/core/rules/combat_flow_magic.gd", "symbol": "func _cast_character_group_spell(" },
         "expectedTrace": ["restore the active battle before the typed response", "admit one automatic group cast without a fabricated target ID", "return only stable spell and power identity through the host", "select living positioned participants by target type in party then monster order", "spend spell points once", "roll duration and base damage once", "resolve per-target resistance, save, protection, and damage", "queue defeated monster macros in source order", "spend two half-attacks and twelve movement once", "return to the same battle request when no death macro is pending", "defer battle and caster progression until the death-macro queue drains"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_automatic_group_spell()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_spell_death_macro_queue_and_restore()" }
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_magic_matrix()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_continuation_fumble_terminal_matrix()" }
         ]
       },
       "decision": "runtime-defect",
@@ -2302,10 +2302,10 @@
         "expectedRepresentation": "Schema v2 already preserves targetType, size, canRotate, range, queueIcon, and all ordinary spell fields. Data AD is fixed engine rules data, so packages do not duplicate its native bytes or masks."
       },
       "realmz2": {
-        "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func _cast_character_area_spell(" },
+        "owner": { "path": "src/core/rules/combat_flow_magic.gd", "symbol": "func _cast_character_area_spell(" },
         "expectedTrace": ["restore the active battle before the typed response", "admit one typed battlefield center", "expose the rules-owned Data AD shape and default coordinate", "return only the chosen coordinate and rotation through the host", "derive Data AD shape from fixed size or power", "reject an out-of-bounds complete mask", "validate coordinate range and LOS", "deduplicate intersecting footprints", "exclude over-100 monster magic resistance during targeting", "fail transactionally when unresolved reflection is present", "spend spell points once", "roll duration and base damage once", "resolve party then monster defenses", "queue defeated monster macros in source order", "spend two half-attacks and twelve movement once", "return to the same battle request when no death macro is pending"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_fixed_area_spell()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_magic_matrix()" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
         ]
       },
@@ -2361,8 +2361,8 @@
         "owner": { "path": "src/core/rules/combat_flow.gd", "symbol": "func cast_spell(" },
         "expectedTrace": ["offer one ordered-selection option per spell and power", "select one through power distinct actors", "validate every actor's range and LOS before mutation", "spend spell points once at chosen power", "for each selected reflector roll once and optionally replace the effective target with the caster", "reroll duration and base damage for each selected actor", "consume but apply no effect for an over-100 unreflected monster", "resolve and queue deaths in selected order", "for monsters roll separate range and target power", "sample unique native party-gap-monster slots through one per-cast hundred-attempt counter", "permit a partial monster cast while charging chosen power", "spend two half-attacks and twelve movement once"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_character_and_monster_repeated_target_spells()" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_ordinary_spell_reflection_and_opposed_monster_targets()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_magic_matrix()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_magic_matrix()" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component()" }
         ]
       },
@@ -2426,7 +2426,7 @@
         "owner": { "path": "src/core/rules/magic_rules.gd", "symbol": "func resolve_character_targeted_spell(" },
         "expectedTrace": ["validate the selected actor and range before mutation", "spend the committed cast cost once", "draw reflection only when the original target has Reflecting Spells", "replace the effective target with the active caster on results one through thirty-three", "roll duration and damage after target redirection", "apply immunity, resistance, save, protection, damage, and one record-based death macro to the effective target", "complete the monster's authored magic-attack count before draining reflected-caster macros", "preserve duplicate subject records up to Castle's 100-entry queue bound", "retain subject occupancy until its final duplicate record completes", "publish selected and effective target identities", "serialize the complete monster death-macro continuation with the active caster"],
         "tests": [
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_ordinary_spell_reflection_and_opposed_monster_targets()" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_magic_matrix()" },
           { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "all forty authored monster starting conditions cross the validating package boundary" }
         ]
       },
@@ -2659,7 +2659,7 @@
         "expectedTrace": ["execute the contextual Global Shop hook through a serializable continuation", "enter a typed shop continuation", "move all banked denominations into the pool when banking is available", "render identified immutable and save-owned buyback stock", "render only player-knowable carried-item identity", "revalidate buyer capacity or seller equipment and accepted ranges", "take pooled-then-personal gold or add sale gold to the pool", "create an identified purchased instance or remove the exact sold instance", "mutate base or normalized buyback stock", "identify one exact instance for twenty gold and request sound 683", "regenerate the typed shop request", "serialize interaction, stock, wealth, inventory, and identification state", "return the complete remaining pool to the bank on bank-backed shop exit"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_inventory_economy_and_treasure()" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_shop_lifecycle(content: RealmzContent)" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_application_transitions(content: RealmzContent)" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_shop_component()" }
         ]
       },
@@ -2720,7 +2720,7 @@
         "expectedTrace": ["execute opcode 32 and expose contextual temple availability", "execute the contextual Global Temple hook through a serializable continuation", "enter through one typed service intent", "move banked denominations to the pool when opcode 49 made banking available", "render one selected character and all nine exact-cost services", "revalidate affordability and service identity", "play sound 10129 and spend pool before personal gold", "apply the source-ordered health, condition, item, or ability mutation", "regenerate the typed temple request", "serialize service availability, wealth, state, and nested continuation", "return bank-backed pooled denominations on exit"],
         "tests": [
           { "path": "tests/core/test_realmz_rules.gd", "symbol": "func _test_temple_services_and_wealth()" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_temple_lifecycle(content: RealmzContent)" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_application_transitions(content: RealmzContent)" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_temple_component()" }
         ]
       },
@@ -2862,7 +2862,7 @@
         "expectedRepresentation": "No immutable package field is required. Pool balances, bank availability, movement direction, and the typed continuation are mutable session/save state."
       },
       "realmz2": {
-        "owner": { "path": "src/session/game_session.gd", "symbol": "func _respond_pooled_wealth_departure(response: InteractionResponse)" },
+        "owner": { "path": "src/session/coordinators/session_responses_coordinator.gd", "symbol": "func _respond_pooled_wealth_departure(response: InteractionResponse)" },
         "expectedTrace": ["reject an invalid direction before opening a question", "warn before camp departure and before resolving a valid blocked or open destination", "request question sound 20005", "serialize the exact direction and yes/no request", "decline by clearing the pool and resolving that direction once", "accept by opening typed pooled-wealth distribution with sound 3003", "revalidate Pool, Share, exact transfer identity, denomination, increment, balance, and load", "issue a fresh request identity after every committed transfer", "serialize warning, empty or nonempty distribution, and post-mutation stages", "Done requests sound 141, clears the remainder, and resumes the saved ordinary movement"],
         "tests": [
           { "path": "tests/integration/test_money_workflow.gd", "symbol": "func _test_pooled_wealth_departure(content: RealmzContent)" },
@@ -2912,8 +2912,8 @@
         "owner": { "path": "src/scenario/runtime/operations/classic_service_operations.gd", "symbol": "func _resume_banking(" },
         "expectedTrace": ["execute opcode 49 and expose contextual bank availability", "enter through one typed service intent", "move every banked denomination to the pool once", "render detached Pool, Share, selected-character, exact-increment, balance, load, and reason facts", "revalidate and commit one typed money response", "request source sounds for open, Pool or Share, transfer direction, and Done", "serialize the bank interaction and complete wealth state without a second drain", "close Done without re-banking", "return all remaining pooled denominations and disable banking on location departure"],
         "tests": [
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_bank_swap_lifecycle(content: RealmzContent)" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_gameplay_capabilities_and_battle_resume(content: RealmzContent)" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_application_transitions(content: RealmzContent)" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix(content: RealmzContent)" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_bank_component()" }
         ]
       },
@@ -2960,7 +2960,7 @@
         "expectedRepresentation": "Schema v2 already emits treasure wealth, experience, and stable item references plus complete item load, charge, uniqueness, and display fields. No compiler change is required for the implemented ordinary workspace."
       },
       "realmz2": {
-        "owner": { "path": "src/scenario/runtime/operations/classic_battle_reward_operations.gd", "symbol": "func _begin_reward" },
+        "owner": { "path": "src/scenario/runtime/operations/classic_reward_operations.gd", "symbol": "func _begin_reward" },
         "expectedTrace": ["roll the authored reward once", "validate every referenced item", "create exact pending instances", "commit experience and pooled wealth", "yield one typed treasure request", "revalidate each assignment or wealth action", "confirm any abandoned remainder", "serialize the complete continuation and RNG", "resume the issuing VM once"],
         "tests": [
           { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_ordinary_distribution_and_restore" },
@@ -3008,7 +3008,7 @@
         "expectedRepresentation": "Schema v2 already emits spell special identity, item magic/display fields, and character spell state inputs required by the typed reward request."
       },
       "realmz2": {
-        "owner": { "path": "src/scenario/runtime/operations/classic_battle_reward_operations.gd", "symbol": "func _apply_reward_detection" },
+        "owner": { "path": "src/scenario/runtime/operations/classic_reward_operations.gd", "symbol": "func _apply_reward_detection" },
         "expectedTrace": ["derive eligible casters from immutable spell definitions and current character state", "render exact costs and disabled reason", "revalidate selected caster", "spend spell points", "persist detection or identification on the reward continuation", "regenerate the same typed workspace"],
         "tests": [
           { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_ordinary_distribution_and_restore" },
@@ -3056,7 +3056,7 @@
         "expectedRepresentation": "Schema v2 already emits caste thresholds, spellcaster rows, spell records, race and caste rule inputs, and complete character state."
       },
       "realmz2": {
-        "owner": { "path": "src/scenario/runtime/operations/classic_battle_reward_operations.gd", "symbol": "func _begin_reward_progression" },
+        "owner": { "path": "src/scenario/runtime/operations/classic_reward_operations.gd", "symbol": "func _begin_reward_progression" },
         "expectedTrace": ["record eligible recipients and one divided share", "commit experience exactly once", "queue positive recipients in party order", "subtract one threshold", "run the source-backed character level transaction", "serialize and acknowledge the result", "serialize and confirm spell selection", "complete and resume once"],
         "tests": [
           { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_experience_level_and_spell_restore" },
@@ -3205,7 +3205,7 @@
         "expectedTrace": ["probe exact owner, item instance, immutable definition, race and caste permission, context, charge, spell, power, and target", "stage and serialize field target selection when required", "consume one positive charge and per-charge load only after a valid response", "resolve with the central RNG and no spell-point cost", "publish exact item, spell, target, sound, and remaining-charge events", "return to the combat or exploration workflow"],
         "tests": [
           { "path": "tests/integration/test_inventory_session.gd", "symbol": "func _test_field_spell_item_use" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_combat_spell_item_use" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_magic_matrix" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_weapon_mode_component" }
         ]
       },
@@ -3441,7 +3441,7 @@
         "expectedRepresentation": "Schema v2 preserves ordered timed-encounter records, trigger identity, date mutation fields, chance, and every authored eligibility gate."
       },
       "realmz2": {
-        "owner": { "path": "src/session/game_session.gd", "symbol": "func _continue_timed_encounters" },
+        "owner": { "path": "src/session/coordinators/session_exploration_coordinator.gd", "symbol": "func _continue_timed_encounters" },
         "expectedTrace": ["cross a midnight boundary", "scan effective timed records in Castle order", "persist record-day mutation and scan cursor before dispatch", "consume the chance draw before item, quest, map, rectangle, and corrected coordinate gates", "perform one pending half-day recovery before the first dispatch or after an ineligible scan", "yield through the authored trigger and typed interactions", "resume remaining timed records and eligible random rectangles once"],
         "tests": [
           { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" },
@@ -3488,7 +3488,7 @@
         "expectedRepresentation": "No additional package field is required; the correction concerns runtime ordering of preserved timed records."
       },
       "realmz2": {
-        "owner": { "path": "src/session/game_session.gd", "symbol": "func _apply_pending_midnight_recovery" },
+        "owner": { "path": "src/session/coordinators/session_exploration_coordinator.gd", "symbol": "func _apply_pending_midnight_recovery" },
         "expectedTrace": ["defer midnight recovery while the timed scan begins", "advance and check matching records", "clear the recovery flag and recover once before the first dispatch", "serialize the cleared flag with any pending interaction", "recover once after the scan when no record dispatches"],
         "tests": [
           { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" },
@@ -3547,7 +3547,7 @@
         "expectedTrace": ["validate camp, caster, case, free slot, parchment, known spell, power, and double cost", "consume one parchment charge/load and fill the first fixed slot without RNG", "persist all five slots", "validate a stored scroll and its field or combat context", "stage typed targets without mutation", "commit the fixed-power effect with no spell-point cost", "charge combat movement and half-attack units only after legal targeting", "clear the exact slot after a successful result", "publish source-shaped sounds and results"],
         "tests": [
           { "path": "tests/integration/test_scroll_camp_workflow.gd", "symbol": "func run" },
-          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_source_backed_combat_scroll_use" },
+          { "path": "tests/core/test_combat_flow.gd", "symbol": "func _test_public_magic_matrix" },
           { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_field_spell_workspace" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_battle_typed_option_contracts" }
@@ -3849,12 +3849,12 @@
         "expectedRepresentation": "Schema v2 emits the nullable partyDeath application hook and preserves its compiled program, while ordinary battle content remains independently represented."
       },
       "realmz2": {
-        "owner": { "path": "src/session/game_session.gd", "symbol": "func _begin_scenario_handoff" },
-        "owners": [{ "path": "src/session/game_session.gd", "symbol": "func _begin_scenario_handoff" }, { "path": "src/session/game_session.gd", "symbol": "func _resume_scenario_party_defeat" }, { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func complete_party_defeat_handoff" }, { "path": "src/scenario/vm/scenario_vm.gd", "symbol": "func resume_handoff" }],
+        "owner": { "path": "src/session/coordinators/session_scenario_coordinator.gd", "symbol": "func _begin_scenario_handoff" },
+        "owners": [{ "path": "src/session/coordinators/session_scenario_coordinator.gd", "symbol": "func _begin_scenario_handoff" }, { "path": "src/session/coordinators/session_scenario_coordinator.gd", "symbol": "func _resume_scenario_party_defeat" }, { "path": "src/scenario/runtime/realmz_runtime_api.gd", "symbol": "func complete_party_defeat_handoff" }, { "path": "src/scenario/vm/scenario_vm.gd", "symbol": "func resume_handoff" }],
         "expectedTrace": ["detect terminal total-party defeat", "advance and suspend the issuing Classic or Safe operation", "start the authored Global Party Death program before releasing combat", "save and restore the hook, original VM, caller metadata, and exploration owner together", "if opcode 119 revives the party, suppress rewards, release combat once, and resume the exact caller", "otherwise close the session aggregate without executing later instructions", "reject unresolved special callers explicitly"],
         "tests": [
           { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_death_macro_revival" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_continuation_matrix" },
           { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_terminal_battle_rewards_once" }
         ]
       },
@@ -3996,7 +3996,7 @@
         "owner": { "path": "src/scenario/runtime/handlers/classic_world_time_opcode_handler.gd", "symbol": "func _acquire_player_map" },
         "expectedTrace": ["resolve the signed operand against an immutable player-map record rather than a land level", "validate the bounded Classic record identity", "acquire its stable ID once", "persist the acquisition flag", "publish an immediate typed display event for negative operands", "detach acquired definitions and current-position eligibility", "browse and render from exact type-plus-ID media or authoritative topology", "leave viewing presentation-owned and mutation-free"],
         "tests": [
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_player_map_workflow" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_application_transitions" },
           { "path": "tests/infrastructure/test_package_repository.gd", "symbol": "func run" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_player_map_workspace" }
         ]
@@ -4090,8 +4090,8 @@
         "owner": { "path": "src/core/state/game_state.gd", "symbol": "func record_journal_message" },
         "expectedTrace": ["publish positive Classic source text", "yield a typed acknowledgement with journal eligibility", "validate the optional Take note payload", "record the stable message ID once without RNG or time", "resume the exact VM frame", "serialize sorted discovery IDs", "validate package message identities transactionally on restore", "detach immutable message text in numeric source order"],
         "tests": [
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_classic_choice_labels_and_sound_wait" },
-          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_session_save_resume_boundary" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_interaction_matrix" },
+          { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_session_resume" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_classic_choice_context" },
           { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_location_note_workspace" }
         ]
@@ -4278,7 +4278,7 @@
           },
           {
             "path": "tests/core/test_combat_flow.gd",
-            "symbol": "func _test_source_backed_physical_attack_audio()"
+            "symbol": "func _test_public_tactical_reaction_matrix()"
           }
         ]
       },
@@ -4544,7 +4544,7 @@
         "tests": [
           {
             "path": "tests/core/test_combat_flow.gd",
-            "symbol": "func _test_source_backed_physical_attack_audio()"
+            "symbol": "func _test_public_tactical_reaction_matrix()"
           },
           {
             "path": "tests/presentation/test_classic_ui_system.gd",
@@ -4659,7 +4659,7 @@
         "owner": {"path":"src/core/rules/combat_flow.gd","symbol":"func run_auto_turn("},
         "expectedTrace": ["derive availability in core rules", "submit one typed command or Auto toggle", "commit deterministic state and RNG", "stop automatic processing at manual, mandatory, error, or terminal boundaries", "render the refreshed detached combat view"],
         "tests": [
-          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_batch_two_combat_auto_state()"},
+          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_public_command_automation_matrix()"},
           {"path":"tests/presentation/test_classic_ui_system.gd","symbol":"func _test_battle_weapon_mode_component()"}
         ]
       },
@@ -4700,7 +4700,7 @@
         "owner": {"path":"src/core/rules/combat_flow.gd","symbol":"func run_persistent_auto_characters("},
         "expectedTrace": ["toggle stable character ID", "checkpoint GameState and RNG", "run one source-backed activation routine", "continue enabled actors only", "rollback atomically on bounded exhaustion"],
         "tests": [
-          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_batch_two_combat_auto_state()"}
+          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_public_command_automation_matrix()"}
         ]
       },
       "decision": "aligned",
@@ -4737,7 +4737,7 @@
         "owner": {"path":"src/core/state/combat_state.gd","symbol":"func delay_active_actor("},
         "expectedTrace": ["probe fresh activation", "subtract the source attack allocation", "move to current-round tail", "advance a last-slot request to the next round", "persist the exact cursor and order"],
         "tests": [
-          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_batch_two_delay_bandage_and_bleeding()"}
+          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_public_command_automation_matrix()"}
         ]
       },
       "decision": "intentional-correction",
@@ -4776,7 +4776,7 @@
         "owner": {"path":"src/core/rules/combat_flow.gd","symbol":"func probe_bandage("},
         "expectedTrace": ["derive legal bleeding recipients", "select one stable character ID", "clear combat-owned bleeding", "end the activation", "preserve the extra Auto-only sound draw", "clear persistent Auto immediately on defeat", "tick survivors in party order", "draw the default party-wide bleeding warning last"],
         "tests": [
-          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_batch_two_delay_bandage_and_bleeding()"}
+          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_public_command_automation_matrix()"}
         ]
       },
       "decision": "intentional-correction",
@@ -4813,10 +4813,10 @@
         "expectedRepresentation": "Schema v2 already preserves the normalized signed canSummon sentinel and all monster/type inputs."
       },
       "realmz2": {
-        "owner": {"path":"src/core/rules/combat_flow.gd","symbol":"func _turn_undead("},
+        "owner": {"path":"src/core/rules/combat_flow_actions.gd","symbol":"func _turn_undead("},
         "expectedTrace": ["derive eligible targets in MonsterState order", "exclude normalized signed -1", "roll one tagged d100 per target", "commit destroy or allegiance turn", "persist once-per-battle and death-macro continuation"],
         "tests": [
-          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_batch_two_turn_undead_and_restore()"}
+          {"path":"tests/core/test_combat_flow.gd","symbol":"func _test_public_command_automation_matrix()"}
         ]
       },
       "decision": "aligned",
@@ -4879,7 +4879,7 @@
         "tests": [
           {
             "path": "tests/core/test_combat_flow.gd",
-            "symbol": "func _test_bounded_classic_undo_and_restore()"
+            "symbol": "func _test_public_command_automation_matrix()"
           },
           {
             "path": "tests/presentation/test_classic_ui_system.gd",
@@ -5063,7 +5063,7 @@
         "tests": [
           {
             "path": "tests/scenario/test_scenario_vm.gd",
-            "symbol": "func _test_classic_character_ability_picker"
+            "symbol": "func _test_public_character_checks"
           }
         ]
       },
