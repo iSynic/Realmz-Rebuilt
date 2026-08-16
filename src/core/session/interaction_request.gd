@@ -395,6 +395,11 @@ class LifecycleRequestBody:
 var request_id: String
 var kind: StringName
 var body: Body
+# Revision-local detached projection prepared while constructing a combat
+# request. It is deliberately excluded from to_data(); restored requests rebuild
+# it from authoritative state, while live commits can avoid projecting combat
+# twice before their first frame.
+var transient_combat_view: CombatView
 
 
 func _init(id: String, request_kind: StringName, request_body: Body) -> void:

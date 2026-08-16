@@ -19,6 +19,9 @@ var import_enabled: bool = false
 var _drag_label: String = ""
 var _drag_portrait: Texture2D
 var _drag_cursor_texture: Texture2D
+var _portrait_view: TextureRect
+var _summary: Label
+var _add_button: Button
 
 
 func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: String, portrait: Texture2D = null) -> void:
@@ -36,37 +39,44 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 		caste_name = revision.character.caste_name
 	_drag_label = revision.name
 	_drag_portrait = portrait
+	if _add_button != null:
+		_portrait_view.texture = portrait
+		_portrait_view.tooltip_text = "%s's portrait" % revision.name
+		_summary.text = _summary_text(revision.name, revision.level, race_name, caste_name, revision.character)
+		_add_button.disabled = not enabled
+		_add_button.tooltip_text = tooltip_text
+		return
 	var row := HBoxContainer.new()
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 6)
 	add_child(row)
-	var portrait_view := TextureRect.new()
-	portrait_view.name = "Portrait"
-	portrait_view.custom_minimum_size = Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)
-	portrait_view.texture = portrait
-	portrait_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	portrait_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	portrait_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait_view.tooltip_text = "%s's portrait" % revision.name
-	portrait_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(portrait_view)
-	var summary := Label.new()
-	summary.name = "Summary"
-	summary.text = _summary_text(revision.name, revision.level, race_name, caste_name, revision.character)
-	summary.add_theme_font_size_override("font_size", 10)
-	summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(summary)
-	var add_button := Button.new()
-	add_button.name = "AddCharacter"
-	add_button.text = "Add"
-	add_button.custom_minimum_size.x = ACTION_WIDTH
-	add_button.disabled = not enabled
-	add_button.tooltip_text = tooltip_text
-	add_button.pressed.connect(func() -> void: import_requested.emit(character_id, revision_hash))
-	row.add_child(add_button)
+	_portrait_view = TextureRect.new()
+	_portrait_view.name = "Portrait"
+	_portrait_view.custom_minimum_size = Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)
+	_portrait_view.texture = portrait
+	_portrait_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_portrait_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_portrait_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_portrait_view.tooltip_text = "%s's portrait" % revision.name
+	_portrait_view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_portrait_view)
+	_summary = Label.new()
+	_summary.name = "Summary"
+	_summary.text = _summary_text(revision.name, revision.level, race_name, caste_name, revision.character)
+	_summary.add_theme_font_size_override("font_size", 10)
+	_summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_summary)
+	_add_button = Button.new()
+	_add_button.name = "AddCharacter"
+	_add_button.text = "Add"
+	_add_button.custom_minimum_size.x = ACTION_WIDTH
+	_add_button.disabled = not enabled
+	_add_button.tooltip_text = tooltip_text
+	_add_button.pressed.connect(func() -> void: import_requested.emit(character_id, revision_hash))
+	row.add_child(_add_button)
 
 
 static func _summary_text(character_name: String, level: int, race_name: String, caste_name: String, character: CharacterView = null, slot_number: int = 0) -> String:

@@ -3,6 +3,7 @@ extends MediaSource
 
 var package_media: MediaSource
 var application_media: ApplicationMediaCatalog
+var _image_textures: Dictionary = {}
 
 
 func _init(package_catalog: MediaSource, application_catalog: ApplicationMediaCatalog) -> void:
@@ -118,6 +119,26 @@ func read_bytes_batch(requested_assets: Array[MediaAsset]) -> Dictionary:
 	if package_media != null:
 		result.merge(package_media.read_bytes_batch(package_assets), true)
 	return result
+
+
+func image_texture(asset: MediaAsset) -> Texture2D:
+	if asset == null:
+		return null
+	if _image_textures.has(asset.id):
+		return _image_textures[asset.id] as Texture2D
+	var bytes := read_bytes(asset)
+	var texture: Texture2D
+	if not bytes.is_empty():
+		var image := Image.new()
+		var error := ERR_FILE_UNRECOGNIZED
+		match asset.mime_type:
+			"image/png": error = image.load_png_from_buffer(bytes)
+			"image/jpeg": error = image.load_jpg_from_buffer(bytes)
+			"image/webp": error = image.load_webp_from_buffer(bytes)
+		if error == OK and (asset.width <= 0 or asset.height <= 0 or image.get_width() == asset.width and image.get_height() == asset.height):
+			texture = ImageTexture.create_from_image(image)
+	_image_textures[asset.id] = texture
+	return texture
 
 
 func audio_stream_by_resource(resource_type: String, resource_id: int) -> AudioStream:

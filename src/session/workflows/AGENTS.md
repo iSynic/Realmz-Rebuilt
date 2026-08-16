@@ -22,6 +22,7 @@ Own domain-oriented, presentation-independent operations invoked by the session 
 - Direct intents and scenario handlers must converge on the same core rule operation when they represent the same Realmz action.
 - `ExplorationTimeWorkflow` owns movement mutation, source-ordered time advancement, post-clock/post-move continuation construction, and placed-trigger selection shared by live continuation construction and restore validation; restore infrastructure must not become a live exploration dependency.
 - View projection is read-only and must not create gameplay truth or mutate state. It may retain a bounded revision-keyed cache of detached projections; cache identity includes the current map and party coordinate and is cleared across session replacement/close.
+- Strict ordinary movement may reuse overlapping land-cell projections and source-owned fatigue updates whose payload matches committed state. Unknown events, LOS maps, interactions, transitions, triggered encounters, and mismatched fatigue facts force complete projection. While combat is active, unchanged hidden exploration/map projections may be retained until combat releases; the first post-combat projection rebuilds them from current state.
 
 ## Verification
 

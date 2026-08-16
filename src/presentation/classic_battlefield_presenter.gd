@@ -629,25 +629,7 @@ func _texture_for(asset: MediaAsset) -> Texture2D:
 
 
 func _load_image_texture(asset: MediaAsset) -> Texture2D:
-	if asset == null or _media == null:
-		return null
-	var bytes := _media.read_bytes(asset)
-	if bytes.is_empty():
-		return null
-	var image := Image.new()
-	var error := ERR_FILE_UNRECOGNIZED
-	match asset.mime_type:
-		"image/png":
-			error = image.load_png_from_buffer(bytes)
-		"image/jpeg":
-			error = image.load_jpg_from_buffer(bytes)
-		"image/webp":
-			error = image.load_webp_from_buffer(bytes)
-	if error != OK:
-		return null
-	if asset.width > 0 and asset.height > 0 and (image.get_width() != asset.width or image.get_height() != asset.height):
-		return null
-	return ImageTexture.create_from_image(image)
+	return _media.image_texture(asset) if _media != null else null
 
 
 static func actor_position(combat: CombatView, party_members: Array[CharacterView], actor_id: String) -> Vector2i:

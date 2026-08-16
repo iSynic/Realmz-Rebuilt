@@ -8,6 +8,7 @@ var _cached_map_revision: int = -1
 var _cached_map_id: String = ""
 var _cached_map_coordinate: Vector2i = Vector2i(-1, -1)
 var _cached_map_view: MapView
+var _cached_map_cells_by_coordinate: Dictionary = {}
 var _cached_view: GameView
 
 
@@ -33,8 +34,14 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 		var member_view := CharacterView.new(character, content)
 		member_view.apply_equipment(rules.inventory.combat_equipment(character, content.item_definitions()))
 		members.append(member_view)
-	var current_combat := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow, state) if state.combat != null else null
-	var result := GameView.new(revision, true, pending_interaction, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision), members, state.party.fatigue, state.party.pooled_wealth.gold, current_combat)
+	var current_combat: CombatView
+	if state.combat != null:
+		var prepared := pending_interaction.transient_combat_view if pending_interaction != null and pending_interaction.kind == InteractionRequest.COMBAT else null
+		if prepared != null and prepared.battle_id == state.combat.battle_id:
+			current_combat = prepared
+		else:
+			current_combat = CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow, state)
+	var result := GameView.new(revision, true, pending_interaction, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision, false, state.combat != null), members, state.party.fatigue, state.party.pooled_wealth.gold, current_combat)
 	result.campaign_id = content.campaign_id
 	result.rules_version = content.rules_version
 	result.party_setup_available = not state.party_setup_completed
@@ -77,7 +84,10 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	result.party_summary.light_remaining = state.party.conditions.value(0)
 	result.party_summary.camping = state.party_camping
 	result.party_summary.acquired_map_ids = state.world.acquired_map_ids()
-	_populate_movement_map_views(context, result)
+	if state.combat != null and _can_reuse_static_map_projections(state):
+		_reuse_static_map_projections(result, _cached_view)
+	else:
+		_populate_movement_map_views(context, result)
 	for message_id: int in state.journal_message_ids():
 		var journal_message := content.message_by_id(message_id)
 		if journal_message != null:
@@ -105,6 +115,7 @@ func clear() -> void:
 	_cached_map_id = ""
 	_cached_map_coordinate = Vector2i(-1, -1)
 	_cached_map_view = null
+	_cached_map_cells_by_coordinate.clear()
 	_cached_view = null
 
 
@@ -128,6 +139,9 @@ func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_int
 					return false
 				moved_count += 1
 			&"time_advanced": pass
+			&"fatigue_changed":
+				if String(event.payload.get("source", "")) != "classic" or String(event.payload.get("reason", "")) != "hour-boundary" or int(event.payload.get("current", -1)) != context.state.party.fatigue:
+					return false
 			&"random_encounter_checked":
 				if bool(event.payload.get("triggered", false)):
 					return false
@@ -138,7 +152,7 @@ func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_int
 
 func _project_ordinary_movement(context: SessionWorkflowContext, revision: int) -> GameView:
 	var state := context.state
-	var result := GameView.new(revision, true, null, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision), _cached_view.party_members, state.party.fatigue, state.party.pooled_wealth.gold, null)
+	var result := GameView.new(revision, true, null, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision, true), _cached_view.party_members, state.party.fatigue, state.party.pooled_wealth.gold, null)
 	result.campaign_id = _cached_view.campaign_id
 	result.rules_version = _cached_view.rules_version
 	result.party_setup_available = _cached_view.party_setup_available
@@ -156,8 +170,12 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int) 
 	result.journal_entries.assign(_cached_view.journal_entries)
 	result.services.assign(_cached_view.services)
 	result.money_workspace = _cached_view.money_workspace
-	_populate_movement_map_views(context, result)
-	_populate_action_availability(context, result)
+	_populate_ordinary_movement_map_views(context, result, _cached_view)
+	# The strict ordinary-movement classifier excludes every interaction,
+	# overlay, service, combat, inventory, condition, and campaign-state change.
+	# Reuse those already-computed commands; directional movement facts live on
+	# the freshly projected MapView.
+	result.action_availability = _cached_view.action_availability.duplicate()
 	var revisions := ViewDomainRevisionsScript.new()
 	revisions.party = _cached_view.domain_revisions.party
 	revisions.setup = _cached_view.domain_revisions.setup
@@ -170,14 +188,30 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int) 
 	return result
 
 
-func _map_view(context: SessionWorkflowContext, revision: int) -> MapView:
+func _map_view(context: SessionWorkflowContext, revision: int, reuse_ordinary_cells: bool = false, reuse_static: bool = false) -> MapView:
 	if _cached_map_view != null and _cached_map_revision == revision and _cached_map_id == context.state.party.map_id and _cached_map_coordinate == context.state.party.coordinate:
+		return _cached_map_view
+	if reuse_static and _cached_map_view != null and _cached_map_id == context.state.party.map_id and _cached_map_coordinate == context.state.party.coordinate:
 		return _cached_map_view
 	_cached_map_revision = revision
 	_cached_map_id = context.state.party.map_id
 	_cached_map_coordinate = context.state.party.coordinate
-	_cached_map_view = _build_map_view(context)
+	_cached_map_view = _build_map_view(context, _cached_map_cells_by_coordinate if reuse_ordinary_cells else {})
+	_cached_map_cells_by_coordinate.clear()
+	for cell: MapCellView in _cached_map_view.cells():
+		_cached_map_cells_by_coordinate[cell.coordinate] = cell
 	return _cached_map_view
+
+
+func _can_reuse_static_map_projections(state: GameState) -> bool:
+	return _cached_view != null and _cached_view.party_map_id == state.party.map_id and _cached_view.party_coordinate == state.party.coordinate
+
+
+static func _reuse_static_map_projections(result: GameView, previous: GameView) -> void:
+	result.player_map_menu_entries.assign(previous.player_map_menu_entries)
+	result.acquired_player_maps.assign(previous.acquired_player_maps)
+	result.location_notes.assign(previous.location_notes)
+	result.current_location_note = previous.current_location_note
 
 
 static func _populate_movement_map_views(context: SessionWorkflowContext, result: GameView) -> void:
@@ -198,6 +232,27 @@ static func _populate_movement_map_views(context: SessionWorkflowContext, result
 		var note_map := content.world.map_by_id(note.map_id)
 		if note_map != null:
 			result.location_notes.append(LocationNoteView.new(note.map_id, note_map.name, note_map.level_type, note_map.level_index, note.coordinate, note.text, note.darkness_value, note.record_ordinal, note.map_id == state.party.map_id and note.coordinate == state.party.coordinate))
+
+
+static func _populate_ordinary_movement_map_views(context: SessionWorkflowContext, result: GameView, previous: GameView) -> void:
+	var state := context.state
+	for previous_map: PlayerMapView in previous.player_map_menu_entries:
+		var definition := context.content.world.player_map_by_id(previous_map.id)
+		if definition == null:
+			continue
+		var source_map := context.content.world.map_by_id(definition.map_id) if not definition.map_id.is_empty() else null
+		var show_party := _player_map_shows_party(definition, source_map, state.party.map_id, state.party.coordinate)
+		var refreshed := PlayerMapView.new(definition, previous_map.cells, show_party, state.party.coordinate, previous_map.acquired)
+		result.player_map_menu_entries.append(refreshed)
+		if refreshed.acquired:
+			result.acquired_player_maps.append(refreshed)
+	var current_map := context.content.world.map_by_id(state.party.map_id)
+	if current_map == null:
+		return
+	var current_note := state.world.location_note_at(current_map.id, state.party.coordinate)
+	result.current_location_note = LocationNoteView.new(current_map.id, current_map.name, current_map.level_type, current_map.level_index, state.party.coordinate, current_note.text if current_note != null else "", current_note.darkness_value if current_note != null else _current_location_note_darkness(context, current_map), current_note.record_ordinal if current_note != null else -1, true)
+	for previous_note: LocationNoteView in previous.location_notes:
+		result.location_notes.append(LocationNoteView.new(previous_note.map_id, previous_note.map_name, previous_note.level_type, previous_note.level_index, previous_note.coordinate, previous_note.text, previous_note.darkness_value, previous_note.record_ordinal, previous_note.map_id == state.party.map_id and previous_note.coordinate == state.party.coordinate))
 
 
 static func _populate_services(context: SessionWorkflowContext, result: GameView) -> void:
@@ -627,7 +682,7 @@ static func _money_kind(value: StringName) -> int:
 	return -1
 
 
-static func _build_map_view(context: SessionWorkflowContext) -> MapView:
+static func _build_map_view(context: SessionWorkflowContext, reusable_cells: Dictionary = {}) -> MapView:
 	var content := context.content
 	var state := context.state
 	var map := content.world.map_by_id(state.party.map_id)
@@ -648,7 +703,14 @@ static func _build_map_view(context: SessionWorkflowContext) -> MapView:
 			var cell := map.topology.cell_at(Vector2i(x, y))
 			if cell == null:
 				continue
-			cells.append(_build_cell_view(context, map, cell, not map.uses_los or visible.has(cell.coordinate)))
+			# An ordinary land step changes only the destination's visited flag. Keep
+			# overlapping detached cells and build the entering strip plus destination.
+			# LOS maps must rebuild because moving changes visibility across the window.
+			var reusable := reusable_cells.get(cell.coordinate) as MapCellView
+			if not map.uses_los and cell.coordinate != state.party.coordinate and reusable != null:
+				cells.append(reusable)
+			else:
+				cells.append(_build_cell_view(context, map, cell, not map.uses_los or visible.has(cell.coordinate)))
 	var movement_options: Dictionary = {}
 	var directions := MapTopology.land_directions() if map.level_type == &"land" else MapTopology.cardinal_directions()
 	for direction: Vector2i in directions:
@@ -668,12 +730,16 @@ static func _build_player_map_view(context: SessionWorkflowContext, definition: 
 				var cell := source_map.topology.cell_at(Vector2i(x, y))
 				if cell != null:
 					cells.append(_build_cell_view(context, source_map, cell, true))
-	var show_party := false
-	if source_map != null and source_map.id == context.state.party.map_id and definition.mode != PlayerMapDefinition.SCROLLING_TEXT:
-		var visible_tiles := 320 / definition.icon_size
-		var marker_bounds := Rect2i(definition.start - Vector2i.ONE, Vector2i(visible_tiles + 1, visible_tiles + 1))
-		show_party = marker_bounds.has_point(context.state.party.coordinate)
+	var show_party := _player_map_shows_party(definition, source_map, context.state.party.map_id, context.state.party.coordinate)
 	return PlayerMapView.new(definition, cells, show_party, context.state.party.coordinate, true)
+
+
+static func _player_map_shows_party(definition: PlayerMapDefinition, source_map: MapDefinition, party_map_id: String, party_coordinate: Vector2i) -> bool:
+	if source_map == null or source_map.id != party_map_id or definition.mode == PlayerMapDefinition.SCROLLING_TEXT:
+		return false
+	var visible_tiles := 320 / definition.icon_size
+	var marker_bounds := Rect2i(definition.start - Vector2i.ONE, Vector2i(visible_tiles + 1, visible_tiles + 1))
+	return marker_bounds.has_point(party_coordinate)
 
 
 static func _build_cell_view(context: SessionWorkflowContext, map: MapDefinition, cell: MapCell, is_visible: bool) -> MapCellView:

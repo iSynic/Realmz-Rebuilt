@@ -28,7 +28,12 @@ func _initialize() -> void:
 	var direction: Vector2i = pair["direction"]
 	var transaction_samples: Array[int] = []
 	var projection_samples: Array[int] = []
+	var event_kinds: Array[String] = []
+	var event_sequences: Dictionary = {}
+	var fatigue_payload: Dictionary = {}
+	var ordinary_projection_count := 0
 	for index: int in 60:
+		var previous_view := session.view()
 		var started_at := Time.get_ticks_usec()
 		step = session.submit_intent(PlayerIntent.move(direction))
 		var transaction_done := Time.get_ticks_usec()
@@ -38,6 +43,16 @@ func _initialize() -> void:
 			printerr("MOVEMENT_INTERRUPTED step=%d state=%d events=%s" % [index, step.state, step.events.map(func(event: DomainEvent) -> String: return String(event.kind))])
 			call_deferred("_quit_cleanly", 1)
 			return
+		if index == 0:
+			for event: DomainEvent in step.events:
+				event_kinds.append(String(event.kind))
+		var sequence := ",".join(step.events.map(func(event: DomainEvent) -> String: return String(event.kind)))
+		event_sequences[sequence] = int(event_sequences.get(sequence, 0)) + 1
+		for event: DomainEvent in step.events:
+			if event.kind == &"fatigue_changed" and fatigue_payload.is_empty():
+				fatigue_payload = event.payload.duplicate(true)
+		if view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions):
+			ordinary_projection_count += 1
 		if index >= 10:
 			transaction_samples.append(transaction_done - started_at)
 			projection_samples.append(projection_done - transaction_done)
@@ -45,7 +60,7 @@ func _initialize() -> void:
 	var total_samples: Array[int] = []
 	for index: int in transaction_samples.size():
 		total_samples.append(transaction_samples[index] + projection_samples[index])
-	print(CanonicalJson.encode({
+	var output := {
 		"campaignId": loaded.content.campaign_id,
 		"partySize": session.view().party_members.size(),
 		"sampleCount": total_samples.size(),
@@ -54,9 +69,22 @@ func _initialize() -> void:
 		"transactionPlusProjectionP95Ms": _p95_milliseconds(total_samples),
 		"scheduledStepsPerSecond100": 5,
 		"scheduledStepsPerSecond400": 20,
+		"ordinaryProjectionCount": ordinary_projection_count,
+		"eventKinds": event_kinds,
+		"eventSequences": event_sequences,
+		"fatiguePayload": fatigue_payload,
 		"finalX": session.view().party_coordinate.x,
 		"finalY": session.view().party_coordinate.y,
-	}))
+	}
+	print(CanonicalJson.encode(output))
+	if ordinary_projection_count != 60:
+		printerr("MOVEMENT_INCREMENTAL_PROJECTION_MISSED expected=60 actual=%d sequences=%s" % [ordinary_projection_count, event_sequences])
+		call_deferred("_quit_cleanly", 1)
+		return
+	if float(output["transactionPlusProjectionP95Ms"]) >= 50.0:
+		printerr("MOVEMENT_P95_EXCEEDED expectedBelowMs=50 actualMs=%s" % output["transactionPlusProjectionP95Ms"])
+		call_deferred("_quit_cleanly", 1)
+		return
 	call_deferred("_quit_cleanly", 0)
 
 

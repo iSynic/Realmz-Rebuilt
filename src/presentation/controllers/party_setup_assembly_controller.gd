@@ -2,6 +2,7 @@ class_name PartySetupAssemblyController
 extends "res://src/presentation/controllers/party_setup_controller_component.gd"
 
 var _inspection: RefCounted
+var _stored_revision_signature: String = ""
 
 
 func _init(state: RefCounted, inspection: RefCounted) -> void:
@@ -106,6 +107,11 @@ func _render_party_assembly() -> void:
 	creator_action_bar.visible = false
 	party_setup_options.visible = view != null and view.party_setup_available
 	setup_message.visible = false
+	var current_revisions := _current_vault_revisions()
+	var next_signature := _vault_signature(current_revisions)
+	if stored_character_list != null and is_instance_valid(stored_character_list) and stored_character_list.is_inside_tree() and next_signature == _stored_revision_signature:
+		_refresh_stored_character_rows(current_revisions, campaign_setup, party_full)
+		return
 	_clear(creator_page)
 	_ensure_appearance_textures()
 	var heading := CenterContainer.new()
@@ -129,7 +135,7 @@ func _render_party_assembly() -> void:
 	stored_character_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stored_character_list.add_theme_constant_override("separation", 2)
 	stored_scroll.add_child(stored_character_list)
-	var current_revisions := _current_vault_revisions()
+	_stored_revision_signature = next_signature
 	if current_revisions.is_empty():
 		var empty := _label("No Character Files yet. Create one here.", MUTED)
 		empty.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -153,6 +159,36 @@ func _render_party_assembly() -> void:
 		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, portrait)
 		row.import_requested.connect(_import_stored_character)
 		stored_character_list.add_child(row)
+
+
+func _refresh_stored_character_rows(current_revisions: Array[CharacterVaultRevisionView], campaign_setup: bool, party_full: bool) -> void:
+	var count_label := creator_page.find_child("CharacterFileCount", true, false) as Label
+	if count_label != null:
+		count_label.text = "• %d available" % current_revisions.size()
+	var global_available: ActionAvailabilityView = view.availability(&"import_vault_character") if campaign_setup else ActionAvailabilityView.new(&"import_vault_character", false, "Choose a scenario before adding a Character File to a party.")
+	for index: int in current_revisions.size():
+		var revision := current_revisions[index]
+		var row := stored_character_list.get_child(index) as PartySetupCharacterRow
+		if row == null:
+			continue
+		var reason := ""
+		if not campaign_setup:
+			reason = global_available.reason
+		elif not revision.eligible:
+			reason = "\n".join(revision.eligibility_reasons)
+		elif not global_available.enabled:
+			reason = global_available.reason
+		elif party_full:
+			reason = "This party already has %d characters." % _maximum_party_size()
+		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
+		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, _appearance_textures.get(portrait_id) as Texture2D)
+
+
+static func _vault_signature(revisions: Array[CharacterVaultRevisionView]) -> String:
+	var parts: PackedStringArray = []
+	for revision: CharacterVaultRevisionView in revisions:
+		parts.append("%s:%s" % [revision.character_id, revision.revision_hash])
+	return "|".join(parts)
 
 func render_party_assembly() -> void:
 	_render_party_assembly()

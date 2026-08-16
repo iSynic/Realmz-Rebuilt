@@ -209,23 +209,7 @@ func _draw_atlas_region(rect: Rect2, atlas_asset: MediaAsset, atlas_texture: Tex
 
 
 func _load_image_texture(asset: MediaAsset) -> Texture2D:
-	var bytes := _media.read_bytes(asset)
-	if bytes.is_empty():
-		return null
-	var image := Image.new()
-	var load_error := ERR_FILE_UNRECOGNIZED
-	match asset.mime_type:
-		"image/png":
-			load_error = image.load_png_from_buffer(bytes)
-		"image/jpeg":
-			load_error = image.load_jpg_from_buffer(bytes)
-		"image/webp":
-			load_error = image.load_webp_from_buffer(bytes)
-	if load_error != OK:
-		return null
-	if asset.width > 0 and asset.height > 0 and (image.get_width() != asset.width or image.get_height() != asset.height):
-		return null
-	return ImageTexture.create_from_image(image)
+	return _media.image_texture(asset) if _media != null else null
 
 
 func _cell_color(cell: MapCellView, level_type: StringName, dark: bool = false) -> Color:

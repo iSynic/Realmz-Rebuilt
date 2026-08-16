@@ -131,7 +131,11 @@ func present(game_view: GameView) -> void:
 		_selected_character_id = game_view.party_members[0].id
 	var ordinary_exploration_update: bool = previous_view != null and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
 	if not ordinary_exploration_update:
-		_party_roster.present(game_view, _selected_character_id)
+		# Party setup owns its six-slot assembly pane and covers the persistent
+		# gameplay roster. Rebuilding that hidden roster after every import added a
+		# second set of rows and portrait work with no visible result.
+		if not game_view.party_setup_available:
+			_party_roster.present(game_view, _selected_character_id)
 		_router.present(game_view)
 	var play_regions_visible := not _router.full_stage_overlay_visible()
 	_set_play_regions_visible(play_regions_visible)
@@ -140,7 +144,12 @@ func present(game_view: GameView) -> void:
 		_router.open_screen(automatic_route)
 	if not ordinary_exploration_update:
 		_build_menus()
-	_rebuild_command_deck()
+		_rebuild_command_deck()
+	else:
+		# Ordinary movement preserves the command context and its detached
+		# availability facts. Recreating every bitmap button once per square was
+		# pure presentation churn and made held movement visibly stall.
+		_update_command_availability()
 
 
 func set_save_previews(previews: Array[SaveSlotPreview]) -> void:

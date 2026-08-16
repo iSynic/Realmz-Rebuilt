@@ -98,14 +98,7 @@ func _portrait_texture(asset_id: String) -> Texture2D:
 	var asset := _media.asset_by_id(asset_id)
 	if asset == null or not asset.is_picture():
 		return null
-	var bytes := _media.read_bytes(asset)
-	var image := Image.new()
-	var error := ERR_UNAVAILABLE
-	match asset.path.get_extension().to_lower():
-		"png": error = image.load_png_from_buffer(bytes)
-		"jpg", "jpeg": error = image.load_jpg_from_buffer(bytes)
-		"webp": error = image.load_webp_from_buffer(bytes)
-	return ImageTexture.create_from_image(image) if error == OK else null
+	return _media.image_texture(asset)
 
 
 func _condition_summary(values: Array[int]) -> String:

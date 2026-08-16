@@ -117,14 +117,10 @@ func _ensure_appearance_textures() -> void:
 	var assets: Array[MediaAsset] = []
 	assets.append_array(media.assets_of_kind("portrait"))
 	assets.append_array(media.assets_of_kind("combat-icon"))
-	var payloads := media.read_bytes_batch(assets)
 	for asset: MediaAsset in assets:
-		var bytes: PackedByteArray = payloads.get(asset.id, PackedByteArray())
-		if bytes.is_empty():
-			continue
-		var image := Image.new()
-		if image.load_png_from_buffer(bytes) == OK:
-			_appearance_textures[asset.id] = ImageTexture.create_from_image(image)
+		var texture := media.image_texture(asset)
+		if texture != null:
+			_appearance_textures[asset.id] = texture
 
 func _apply_availability(button: BaseButton, action_id: StringName) -> void:
 	var availability := view.availability(action_id) if view != null else ActionAvailabilityView.new(action_id, false, "No active session.")

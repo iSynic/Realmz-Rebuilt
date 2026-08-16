@@ -89,8 +89,13 @@ func request_in_progress() -> bool:
 func _emit_request() -> void:
 	if not is_active() or _request_in_progress:
 		return
+	var started_at := Time.get_ticks_usec()
 	_request_in_progress = true
 	movement_requested.emit(_direction)
 	_request_in_progress = false
 	if is_active():
-		_remaining = interval_seconds()
+		# The speed setting describes visible step cadence, so synchronous view and
+		# presentation work consumes the current interval. A slow transaction still
+		# emits at most once on the next frame; it never queues catch-up steps.
+		var elapsed_seconds := float(Time.get_ticks_usec() - started_at) / 1_000_000.0
+		_remaining = maxf(interval_seconds() - elapsed_seconds, 0.0)

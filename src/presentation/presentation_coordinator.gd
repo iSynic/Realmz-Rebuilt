@@ -121,7 +121,11 @@ func package_media() -> ClassicMediaCatalog:
 
 func set_active_route(route_id: StringName) -> void:
 	_active_route = route_id
-	_present_current_view()
+	# The router has already mounted and rendered the destination workspace when
+	# it emits the route change. Re-presenting the complete view here caused a
+	# nested second projection/presentation pass, most visibly on combat entry.
+	if _session_controller != null:
+		_update_spatial_visibility(_session_controller.view())
 
 
 func set_play_stage_visible(visible: bool) -> void:
