@@ -61,6 +61,20 @@ func present(parent: VBoxContainer, view: GameView, settings: PresentationSettin
 	window_mode.select(1 if settings.window_mode == PresentationSettings.BORDERLESS_FULLSCREEN else 0)
 	window_mode.item_selected.connect(func(index: int) -> void: setting_changed.emit(&"window_mode", String(window_mode.get_item_metadata(index))))
 	parent.add_child(window_mode)
+	var movement_row := HBoxContainer.new()
+	var movement_label := _label("Exploration movement speed", MUTED, 14)
+	movement_label.custom_minimum_size.x = 190.0
+	movement_row.add_child(movement_label)
+	var movement_speed := HSlider.new()
+	movement_speed.min_value = 25.0
+	movement_speed.max_value = 400.0
+	movement_speed.step = 25.0
+	movement_speed.value = settings.exploration_speed_percent
+	movement_speed.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	movement_speed.tooltip_text = "%d%% • %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementController.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
+	movement_speed.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"exploration_speed_percent", int(value)))
+	movement_row.add_child(movement_speed)
+	parent.add_child(movement_row)
 	_add_section_heading(parent, "Accessibility and presentation", "These preferences never change simulation")
 	_add_setting_toggle(parent, "Reduced motion", settings.reduced_motion, &"reduced_motion")
 	_add_setting_toggle(parent, "Auto Switch To Melee Weapon", settings.auto_switch_to_melee, &"auto_switch_to_melee")

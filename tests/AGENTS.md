@@ -25,6 +25,7 @@ Own deterministic automated proofs, synthetic fixtures, oracle provenance, route
 - During rationalization, remove private presentation-helper assertions when an existing public lifecycle/layout invariant already owns the outcome. Do not replace a deleted incidental assertion with a larger helper-level test merely to preserve assertion counts.
 - UI wording, helper copy, and isolated spacing normally receive gallery/manual acceptance rather than bespoke regression tests.
 - Differential cases link to one owning automated proof. Assertion counts, suite counts, and differential-case counts are diagnostics, never completion metrics.
+- The test-budget ratchet begins at 11,807 substantive lines, may only decrease during hotspot maintenance, and closes at no more than 7,900 lines, 20 percent of production, and 1,200 lines per suite. These caps eliminate duplicate/incidental proof; they never authorize removal of a unique high-risk or source-backed owner.
 - RNG, VM, save, authoritative topology, package integrity, and exact-once terminal-combat coverage are high-value and may not be removed merely to reduce line count.
 - A passing delegated-agent result is review input only; Sol validates integration and any audit-status change. Unknown or ambiguous Castle behavior remains explicit.
 

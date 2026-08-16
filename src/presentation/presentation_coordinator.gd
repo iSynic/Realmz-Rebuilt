@@ -180,9 +180,12 @@ func _present_current_view(include_interaction: bool = true) -> void:
 
 
 func _present_view(game_view: GameView, include_interaction: bool = true) -> void:
-	_map_presenter.present(game_view)
-	_battlefield_presenter.present(game_view)
-	_dungeon_presenter.present(game_view)
+	var previous := _presented_view
+	if previous == null or previous.domain_revisions.exploration != game_view.domain_revisions.exploration:
+		_map_presenter.present(game_view)
+		_dungeon_presenter.present(game_view)
+	if previous == null or previous.domain_revisions.combat != game_view.domain_revisions.combat:
+		_battlefield_presenter.present(game_view)
 	_shell_presenter.present(game_view)
 	_update_spatial_visibility(game_view)
 	_presented_view = game_view

@@ -1,10 +1,9 @@
 class_name ClassicMapPresenter
 extends Control
 
-signal movement_requested(direction: Vector2i)
-
-const MOUSE_REPEAT_DELAY: float = 0.28
-const MOUSE_REPEAT_INTERVAL: float = 0.11
+signal movement_hold_started(direction: Vector2i)
+signal movement_hold_updated(direction: Vector2i)
+signal movement_hold_stopped
 const DETACHED_VIEW_DIAMETER: int = 25
 const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
 const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
@@ -23,7 +22,6 @@ var _overlay_textures: Dictionary = {}
 var _party_rect: Rect2
 var _minimap_rect: Rect2
 var _held_direction: Vector2i = Vector2i.ZERO
-var _mouse_repeat_remaining: float = 0.0
 var _party_marker_textures: Dictionary = {}
 var _party_marker_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 
@@ -32,16 +30,6 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_party_marker_textures[PARTY_MARKER_LEFT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_LEFT_ASSET_ID)
 	_party_marker_textures[PARTY_MARKER_RIGHT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_RIGHT_ASSET_ID)
-	set_process(true)
-
-
-func _process(delta: float) -> void:
-	if _held_direction == Vector2i.ZERO or not visible:
-		return
-	_mouse_repeat_remaining -= delta
-	if _mouse_repeat_remaining <= 0.0:
-		movement_requested.emit(_held_direction)
-		_mouse_repeat_remaining = MOUSE_REPEAT_INTERVAL
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -49,14 +37,22 @@ func _gui_input(event: InputEvent) -> void:
 		if event.pressed:
 			_held_direction = _movement_direction_at(event.position)
 			if _held_direction != Vector2i.ZERO:
-				movement_requested.emit(_held_direction)
-				_mouse_repeat_remaining = MOUSE_REPEAT_DELAY
+				movement_hold_started.emit(_held_direction)
 				accept_event()
 		else:
 			_held_direction = Vector2i.ZERO
-			_mouse_repeat_remaining = 0.0
+			movement_hold_stopped.emit()
 	elif event is InputEventMouseMotion and event.button_mask & MOUSE_BUTTON_MASK_LEFT:
-		_held_direction = _movement_direction_at(event.position)
+		var next_direction := _movement_direction_at(event.position)
+		if next_direction == Vector2i.ZERO and _held_direction != Vector2i.ZERO:
+			_held_direction = Vector2i.ZERO
+			movement_hold_stopped.emit()
+		elif next_direction != Vector2i.ZERO and _held_direction == Vector2i.ZERO:
+			_held_direction = next_direction
+			movement_hold_started.emit(_held_direction)
+		elif next_direction != Vector2i.ZERO and next_direction != _held_direction:
+			_held_direction = next_direction
+			movement_hold_updated.emit(_held_direction)
 
 
 func present(game_view: GameView) -> void:
@@ -66,6 +62,7 @@ func present(game_view: GameView) -> void:
 		_party_marker_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_marker_asset_id)
 	if not visible:
 		_held_direction = Vector2i.ZERO
+		movement_hold_stopped.emit()
 	queue_redraw()
 
 

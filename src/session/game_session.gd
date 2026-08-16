@@ -220,8 +220,8 @@ func respond(response: InteractionResponse) -> SessionStep:
 	return _finish_completed(events)
 
 
-func view() -> GameView:
-	return _view_projector.project(_workflow_context(), _pending_interaction(), _view_revision, _started)
+func view(events: Array[DomainEvent] = []) -> GameView:
+	return _view_projector.project(_workflow_context(), _pending_interaction(), _view_revision, _started, events)
 
 
 func _workflow_context(events: Array[DomainEvent] = []) -> SessionWorkflowContext:

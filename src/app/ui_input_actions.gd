@@ -72,3 +72,23 @@ static func movement_direction(event: InputEvent) -> Vector2i:
 	if event.is_action_pressed(&"realmz_move_up_left"):
 		return Vector2i(-1, -1)
 	return Vector2i.ZERO
+
+
+static func released_movement_direction(event: InputEvent) -> Vector2i:
+	if event.is_action_released(&"realmz_move_up"):
+		return Vector2i.UP
+	if event.is_action_released(&"realmz_move_up_right"):
+		return Vector2i(1, -1)
+	if event.is_action_released(&"realmz_move_right"):
+		return Vector2i.RIGHT
+	if event.is_action_released(&"realmz_move_down_right"):
+		return Vector2i(1, 1)
+	if event.is_action_released(&"realmz_move_down"):
+		return Vector2i.DOWN
+	if event.is_action_released(&"realmz_move_down_left"):
+		return Vector2i(-1, 1)
+	if event.is_action_released(&"realmz_move_left"):
+		return Vector2i.LEFT
+	if event.is_action_released(&"realmz_move_up_left"):
+		return Vector2i(-1, -1)
+	return Vector2i.ZERO

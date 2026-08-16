@@ -10,6 +10,7 @@ const CharacterCreationHostControllerScript := preload("res://src/app/controller
 const SettingsRepositoryScript := preload("res://src/infrastructure/settings/settings_repository.gd")
 const DungeonMap3DPresenterScript := preload("res://src/presentation/dungeon_map_3d_presenter.gd")
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
+const HeldMovementControllerScript := preload("res://src/presentation/held_movement_controller.gd")
 const CLASSIC_CHARACTER_LIBRARY_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID := "realmz-classic-character-library"
 const CLASSIC_CHARACTER_LIBRARY_HASH := "c5a2776901de4c7c3891c4a019f5d4909943817ca50fbfd2fca7d52850aea07f"
@@ -39,6 +40,7 @@ var _character_library_content: RealmzContent
 var _character_library_media: MediaSource
 var _character_creation_host: CharacterCreationHostController
 var _session_close_waits_for_playback: bool = false
+var _held_movement: HeldMovementController
 
 
 func _ready() -> void:
@@ -53,9 +55,13 @@ func _ready() -> void:
 	session_controller = GameSessionControllerScript.new()
 	presentation_coordinator = PresentationCoordinatorScript.new()
 	_dungeon_presenter = DungeonMap3DPresenterScript.new()
+	_held_movement = HeldMovementControllerScript.new()
 	add_child(session_controller)
 	add_child(presentation_coordinator)
 	add_child(_dungeon_presenter)
+	add_child(_held_movement)
+	_held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent)
+	_held_movement.movement_requested.connect(_on_held_movement_requested)
 	presentation_coordinator.bind(session_controller, _map_presenter, _battlefield_presenter, _dungeon_presenter, _interaction_presenter, _shell_presenter, _audio_presenter)
 	presentation_coordinator.playback_step_settled.connect(_on_playback_step_settled)
 	_interaction_presenter.response_submitted.connect(_on_interaction_response_submitted)
@@ -66,7 +72,9 @@ func _ready() -> void:
 	_interaction_presenter.reveal_friends_requested.connect(_on_reveal_friends_requested)
 	_interaction_presenter.presentation_sound_requested.connect(_on_interaction_sound_requested)
 	_interaction_presenter.presentation_status_requested.connect(_shell_presenter.set_status)
-	_map_presenter.movement_requested.connect(_on_map_movement_requested)
+	_map_presenter.movement_hold_started.connect(func(direction: Vector2i) -> void: _held_movement.start(&"mouse", direction))
+	_map_presenter.movement_hold_updated.connect(func(direction: Vector2i) -> void: _held_movement.update(&"mouse", direction))
+	_map_presenter.movement_hold_stopped.connect(func() -> void: _held_movement.stop(&"mouse"))
 	_battlefield_presenter.combat_body_submitted.connect(_on_battlefield_action_requested)
 	_battlefield_presenter.combatant_inspected.connect(_on_battlefield_combatant_inspected)
 	_battlefield_presenter.targeting_changed.connect(_interaction_presenter.update_combat_targeting)
@@ -89,8 +97,9 @@ func _ready() -> void:
 	_shell_presenter.window_mode_changed.connect(_on_window_mode_changed)
 	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed)
 	_shell_presenter.auto_switch_to_melee_changed.connect(_on_auto_switch_to_melee_changed)
+	_shell_presenter.exploration_speed_changed.connect(_on_exploration_speed_changed)
 	_shell_presenter.layout_changed.connect(_on_shell_layout_changed)
-	_shell_presenter.route_changed.connect(presentation_coordinator.set_active_route)
+	_shell_presenter.route_changed.connect(_on_route_changed)
 	_shell_presenter.vault_archive_requested.connect(_archive_vault_character)
 	_shell_presenter.vault_restore_requested.connect(_restore_vault_revision)
 	_shell_presenter.standalone_character_creation_requested.connect(_begin_standalone_character_creation)
@@ -111,6 +120,11 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _held_movement != null and _held_movement.is_active():
+		if not accepts_exploration_input():
+			_held_movement.stop()
+		elif _held_movement.active_source() == &"mouse" and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+			_held_movement.stop(&"mouse")
 	if _package_host == null:
 		return
 	var operation := _package_host.operation_view()
@@ -131,6 +145,8 @@ func _process(_delta: float) -> void:
 
 
 func _exit_tree() -> void:
+	if _held_movement != null:
+		_held_movement.stop()
 	if _package_host != null:
 		_package_host.close()
 
@@ -149,11 +165,14 @@ func _on_smoke_action_pressed() -> void:
 
 
 func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and _held_movement != null:
+		_held_movement.stop()
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		_on_quit_requested()
 
 
 func _on_quit_requested() -> void:
+	_held_movement.stop()
 	if _host_interaction != null:
 		return
 	var current_view := session_controller.view()
@@ -165,6 +184,7 @@ func _on_quit_requested() -> void:
 
 
 func _on_end_adventure_requested() -> void:
+	_held_movement.stop()
 	if not session_controller.view().session_started:
 		_shell_presenter.show_campaign_selection()
 		return
@@ -189,6 +209,7 @@ func start_package(package_path: String, initial_seed: int) -> SessionStep:
 
 
 func _begin_package_start(package_path: String, initial_seed: int) -> void:
+	_held_movement.stop()
 	var current_view := session_controller.view()
 	if current_view.session_started and not current_view.party_setup_available:
 		_shell_presenter.set_status("End the active adventure before starting another campaign.", true)
@@ -237,6 +258,9 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 
 
 func _input(event: InputEvent) -> void:
+	var released_direction := UiInputActions.released_movement_direction(event)
+	if released_direction != Vector2i.ZERO and _held_movement != null and _held_movement.active_direction() == released_direction:
+		_held_movement.stop(&"keyboard")
 	if presentation_coordinator != null and presentation_coordinator.is_combat_playback_active():
 		if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_SPACE:
 			presentation_coordinator.skip_combat_playback()
@@ -304,7 +328,8 @@ func _input(event: InputEvent) -> void:
 		return
 	var direction := UiInputActions.movement_direction(event)
 	if direction != Vector2i.ZERO:
-		_submit_movement(direction)
+		if not event is InputEventKey or not (event as InputEventKey).echo:
+			_held_movement.start(&"keyboard", direction)
 		get_viewport().set_input_as_handled()
 
 
@@ -343,8 +368,9 @@ func _handle_field_fast_spell(slot_index: int, use_spell: bool) -> void:
 	_submit_intent(PlayerIntent.cast_spell(binding["spellId"], binding["characterId"], "", binding["power"]))
 
 
-func _on_map_movement_requested(direction: Vector2i) -> void:
-	_submit_movement(direction)
+func _on_held_movement_requested(direction: Vector2i) -> void:
+	if not _submit_movement(direction):
+		_held_movement.stop()
 
 
 func _on_battlefield_action_requested(body: InteractionResponse.CombatBody) -> void:
@@ -386,13 +412,21 @@ func _on_interaction_sound_requested(sound_id: int) -> void:
 		_audio_presenter.present_sound(sound_id, presentation_coordinator.package_media())
 
 
-func _submit_movement(direction: Vector2i) -> void:
+func _submit_movement(direction: Vector2i) -> bool:
 	if not _shell_presenter.accepts_exploration_input() or not session_controller.view().session_started or session_controller.view().pending_interaction != null:
-		return
+		return false
 	var map_view := session_controller.view().map_view
 	if MapTopology.is_diagonal_direction(direction) and (map_view == null or map_view.level_type != &"land"):
-		return
-	_submit_intent(PlayerIntent.move(direction))
+		return false
+	var before := session_controller.view()
+	var step := _submit_intent(PlayerIntent.move(direction))
+	var after := session_controller.view()
+	if step.state == SessionStep.State.FAILED or after == null or after.pending_interaction != null or after.combat_view != null:
+		return false
+	for event: DomainEvent in step.events:
+		if event.kind in [&"movement_blocked", &"map_transitioned", &"trigger_fired", &"timed_encounter_triggered", &"random_region_triggered", &"random_door_triggered", &"random_encounter_triggered"]:
+			return false
+	return before.party_map_id == after.party_map_id and before.party_coordinate != after.party_coordinate and accepts_exploration_input()
 
 
 func _submit_intent(intent: PlayerIntent) -> SessionStep:
@@ -410,6 +444,9 @@ func _submit_intent(intent: PlayerIntent) -> SessionStep:
 			return failed
 		intent = import_intent
 	var step := session_controller.submit_intent(intent)
+	var committed_view := session_controller.view()
+	if _held_movement != null and (step.state != SessionStep.State.COMPLETED or committed_view == null or committed_view.pending_interaction != null or committed_view.combat_view != null):
+		_held_movement.stop()
 	_present_step_status(step)
 	return step
 
@@ -833,3 +870,14 @@ func _on_reduced_motion_changed(enabled: bool) -> void:
 func _on_auto_switch_to_melee_changed(enabled: bool) -> void:
 	_presentation_settings.auto_switch_to_melee = enabled
 	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_exploration_speed_changed(percent: int) -> void:
+	_presentation_settings.exploration_speed_percent = clampi(snappedi(percent, 25), 25, 400)
+	_held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent)
+	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_route_changed(route_id: StringName) -> void:
+	_held_movement.stop()
+	presentation_coordinator.set_active_route(route_id)

@@ -19,6 +19,7 @@ signal ui_scale_mode_changed(value: String)
 signal window_mode_changed(value: String)
 signal reduced_motion_changed(enabled: bool)
 signal auto_switch_to_melee_changed(enabled: bool)
+signal exploration_speed_changed(percent: int)
 signal layout_changed(workspace_rect: Rect2, profile: UiLayoutProfile)
 signal route_changed(route_id: StringName)
 signal play_stage_visibility_changed(visible: bool)
@@ -100,6 +101,7 @@ func _ready() -> void:
 
 
 func present(game_view: GameView) -> void:
+	var previous_view := _current_view
 	var previous_campaign_id := _current_view.campaign_id if _current_view != null and _current_view.session_started else ""
 	var contextual_service_closed := _current_view != null and _current_view.pending_interaction != null and _current_view.pending_interaction.kind in [InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK] and game_view != null and game_view.pending_interaction == null
 	_current_view = game_view
@@ -127,14 +129,17 @@ func present(game_view: GameView) -> void:
 	_package_status.text = game_view.campaign_summary.title if game_view.campaign_summary != null else game_view.campaign_id
 	if _selected_character_id.is_empty() and not game_view.party_members.is_empty():
 		_selected_character_id = game_view.party_members[0].id
-	_party_roster.present(game_view, _selected_character_id)
-	_router.present(game_view)
+	var ordinary_exploration_update := previous_view != null and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
+	if not ordinary_exploration_update:
+		_party_roster.present(game_view, _selected_character_id)
+		_router.present(game_view)
 	var play_regions_visible := not _router.full_stage_overlay_visible()
 	_set_play_regions_visible(play_regions_visible)
 	var automatic_route := automatic_workflow_route(_router.current_screen(), game_view, contextual_service_closed)
 	if automatic_route != _router.current_screen():
 		_router.open_screen(automatic_route)
-	_build_menus()
+	if not ordinary_exploration_update:
+		_build_menus()
 	_rebuild_command_deck()
 
 
@@ -614,6 +619,7 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"window_mode": window_mode_changed.emit(String(value))
 		&"reduced_motion": reduced_motion_changed.emit(bool(value))
 		&"auto_switch_to_melee": auto_switch_to_melee_changed.emit(bool(value))
+		&"exploration_speed_percent": exploration_speed_changed.emit(int(value))
 
 
 func _on_character_selected(character_id: String) -> void:

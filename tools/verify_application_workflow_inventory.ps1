@@ -334,7 +334,7 @@ Assert-Condition ($inventory.knowledgeGraph.usage -eq "navigation-only") "Knowle
 
 $pause = $inventory.maintenancePause
 if ($null -ne $pause) {
-    Assert-Condition ([string]$pause.id -eq "rebuilt-architecture-hardening") "Maintenance pause has an unexpected ID."
+    Assert-Condition ([string]$pause.id -in @("rebuilt-architecture-hardening", "rebuilt-hotspot-test-performance")) "Maintenance pause has an unexpected ID."
     Assert-Condition ([string]$pause.status -in @("active", "complete")) "Maintenance pause has an invalid status."
     Assert-Condition ([string]$pause.baselineCommit -match '^[0-9a-f]{40}$') "Maintenance pause has no full baseline commit."
     Assert-Condition ([string]$pause.resumeBatchId -eq [string]$inventory.currentBatch.id) "Maintenance pause does not preserve the scheduled parity batch."

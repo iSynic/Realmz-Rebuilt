@@ -395,7 +395,9 @@ func _test_player_map_workspace() -> void:
 	var definition := loaded.content.world.player_map_by_classic_id(1)
 	var session := GameSession.new()
 	assert_equal(session.start(loaded.content, 1).state, SessionStep.State.COMPLETED, "the player-map view fixture starts from validated content")
-	session._state.world.acquire_map(definition.id)
+	var map_snapshot := session.snapshot()
+	map_snapshot.game_state.world.acquire_map(definition.id)
+	assert_equal(session.restore(loaded.content, map_snapshot).state, SessionStep.State.COMPLETED, "acquired player-map state enters presentation through the public restore boundary")
 	var view := session.view()
 	assert_equal([view.acquired_player_maps.size(), view.acquired_player_maps[0].id, view.acquired_player_maps[0].cells.size()], [1, definition.id, 100], "the detached player-map view derives its 320-pixel crop from authoritative topology")
 	assert_equal(view.player_map_menu_entries.size(), 4, "the detached menu retains every package player-map slot, not only acquired definitions")
@@ -420,8 +422,10 @@ func _test_player_map_workspace() -> void:
 	var continue_button := immediate.find_children("*", "Button", true, false).filter(func(button: Node) -> bool: return (button as Button).text == "Continue")[0] as Button
 	continue_button.pressed.emit()
 	assert_equal(payloads, [{}], "the immediate player-map stage emits only the empty acknowledgement accepted by the VM")
+	map_snapshot = session.snapshot()
 	for player_map_definition: PlayerMapDefinition in loaded.content.world.player_maps():
-		session._state.world.acquire_map(player_map_definition.id)
+		map_snapshot.game_state.world.acquire_map(player_map_definition.id)
+	assert_equal(session.restore(loaded.content, map_snapshot).state, SessionStep.State.COMPLETED, "the complete acquired-map collection restores through the public session boundary")
 	var complete_view := session.view()
 	var views_by_mode: Dictionary = {}
 	for player_map_view: PlayerMapView in complete_view.acquired_player_maps:
@@ -950,12 +954,14 @@ func _test_settings_schema_and_migration() -> void:
 	settings.window_mode = PresentationSettings.BORDERLESS_FULLSCREEN
 	settings.text_scale = 1.5
 	settings.auto_switch_to_melee = false
+	settings.exploration_speed_percent = 250
 	var restored := PresentationSettings.from_data(settings.to_data())
-	assert_not_null(restored, "schema-four presentation settings round-trip")
+	assert_not_null(restored, "schema-five presentation settings round-trip")
 	assert_equal(restored.ui_scale_mode, PresentationSettings.UI_SCALE_125, "interface density persists separately")
 	assert_equal(restored.window_mode, PresentationSettings.BORDERLESS_FULLSCREEN, "window mode persists")
 	assert_equal(restored.text_scale, 1.5, "text scale remains independent")
 	assert_false(restored.auto_switch_to_melee, "Auto Weapon Switch persists as an application preference rather than battle state")
+	assert_equal(restored.exploration_speed_percent, 250, "exploration speed persists independently of simulation state")
 	var version_two := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 2, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": true})
 	assert_not_null(version_two, "schema-two settings migrate")
 	assert_equal(version_two.ui_scale_mode, PresentationSettings.UI_SCALE_AUTO, "migrated settings default to automatic interface density")
@@ -964,6 +970,9 @@ func _test_settings_schema_and_migration() -> void:
 	var version_three := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 3, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": true, "uiScaleMode": PresentationSettings.UI_SCALE_150, "windowMode": PresentationSettings.WINDOWED})
 	assert_not_null(version_three, "schema-three settings migrate")
 	assert_equal([version_three.ui_scale_mode, version_three.auto_switch_to_melee], [PresentationSettings.UI_SCALE_150, true], "schema-three settings preserve prior display fields and inherit Castle's default-on preference")
+	var version_four := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 4, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": true, "uiScaleMode": PresentationSettings.UI_SCALE_100, "windowMode": PresentationSettings.WINDOWED, "autoSwitchToMelee": false})
+	assert_not_null(version_four, "schema-four settings migrate")
+	assert_equal(version_four.exploration_speed_percent, 100, "older settings inherit the stable exploration cadence")
 	var malformed_current := settings.to_data()
 	malformed_current.erase("autoSwitchToMelee")
 	assert_equal(PresentationSettings.from_data(malformed_current), null, "schema-four settings reject a missing Auto Weapon Switch field")
@@ -994,6 +1003,33 @@ func _test_movement_input() -> void:
 		event.action = action
 		event.pressed = true
 		assert_equal(UiInputActions.movement_direction(event), expected[action], "%s resolves to its complete movement vector" % action)
+		event.pressed = false
+		assert_equal(UiInputActions.released_movement_direction(event), expected[action], "%s release stops the matching held movement" % action)
+	var held := HeldMovementController.new()
+	var pulses: Array[Vector2i] = []
+	held.movement_requested.connect(func(direction: Vector2i) -> void:
+		pulses.append(direction)
+		held.advance(1.0)
+	)
+	held.set_speed_percent(400)
+	held.start(&"keyboard", Vector2i.RIGHT)
+	assert_equal(pulses, [Vector2i.RIGHT], "the first held movement step is immediate")
+	assert_equal(held.active_source(), &"keyboard", "the scheduler exposes its presentation-owned input source")
+	held.advance(0.049)
+	assert_equal(pulses.size(), 1, "the 400 percent cadence waits for its complete interval")
+	held.advance(0.002)
+	assert_equal(pulses.size(), 2, "the 400 percent cadence repeats after 50 milliseconds")
+	held.advance(1.0)
+	assert_equal(pulses.size(), 3, "a slow frame emits one step rather than a queued burst")
+	assert_false(held.request_in_progress(), "a synchronous movement callback settles before the next interval begins")
+	held.set_speed_percent(25)
+	assert_equal(held.interval_seconds(), 0.8, "the slowest movement setting uses the documented 800 millisecond interval")
+	held.set_speed_percent(100)
+	assert_equal(held.interval_seconds(), 0.2, "the default movement setting sustains five scheduled steps per second")
+	held.stop(&"keyboard")
+	held.advance(1.0)
+	assert_equal(pulses.size(), 3, "release stops further held movement")
+	held.free()
 
 
 func _test_fast_spell_input() -> void:

@@ -7,11 +7,23 @@ var _cached_map_revision: int = -1
 var _cached_map_id: String = ""
 var _cached_map_coordinate: Vector2i = Vector2i(-1, -1)
 var _cached_map_view: MapView
+var _cached_view: GameView
 
 
-func project(context: SessionWorkflowContext, pending_interaction: InteractionRequest, revision: int, started: bool) -> GameView:
+func project(context: SessionWorkflowContext, pending_interaction: InteractionRequest, revision: int, started: bool, events: Array[DomainEvent] = []) -> GameView:
+	if _cached_view != null and _cached_view.revision == revision:
+		return _cached_view
 	if not started:
-		return GameView.new(revision, false, null)
+		_cached_view = GameView.new(revision, false, null)
+		return _cached_view
+	if _can_project_ordinary_movement(context, pending_interaction, events):
+		_cached_view = _project_ordinary_movement(context, revision)
+		return _cached_view
+	_cached_view = _project_complete(context, pending_interaction, revision)
+	return _cached_view
+
+
+func _project_complete(context: SessionWorkflowContext, pending_interaction: InteractionRequest, revision: int) -> GameView:
 	var content := context.content
 	var state := context.state
 	var rules := context.rules
@@ -64,24 +76,11 @@ func project(context: SessionWorkflowContext, pending_interaction: InteractionRe
 	result.party_summary.light_remaining = state.party.conditions.value(0)
 	result.party_summary.camping = state.party_camping
 	result.party_summary.acquired_map_ids = state.world.acquired_map_ids()
-	for definition: PlayerMapDefinition in content.world.player_maps():
-		var acquired := state.world.has_map(definition.id)
-		var player_map_view := _build_player_map_view(context, definition) if acquired else PlayerMapView.new(definition, [], false, Vector2i.ZERO, false)
-		result.player_map_menu_entries.append(player_map_view)
-		if acquired:
-			result.acquired_player_maps.append(player_map_view)
+	_populate_movement_map_views(context, result)
 	for message_id: int in state.journal_message_ids():
 		var journal_message := content.message_by_id(message_id)
 		if journal_message != null:
 			result.journal_entries.append(JournalEntryView.new(message_id, journal_message.text))
-	var current_map := content.world.map_by_id(state.party.map_id)
-	if current_map != null:
-		var current_note := state.world.location_note_at(current_map.id, state.party.coordinate)
-		result.current_location_note = LocationNoteView.new(current_map.id, current_map.name, current_map.level_type, current_map.level_index, state.party.coordinate, current_note.text if current_note != null else "", current_note.darkness_value if current_note != null else _current_location_note_darkness(context, current_map), current_note.record_ordinal if current_note != null else -1, true)
-		for note: LocationNoteState in state.world.location_notes_for_kind(current_map.level_type):
-			var note_map := content.world.map_by_id(note.map_id)
-			if note_map != null:
-				result.location_notes.append(LocationNoteView.new(note.map_id, note_map.name, note_map.level_type, note_map.level_index, note.coordinate, note.text, note.darkness_value, note.record_ordinal, note.map_id == state.party.map_id and note.coordinate == state.party.coordinate))
 	if result.party_setup_available:
 		for race: RaceDefinition in content.race_definitions():
 			result.race_options.append(DefinitionOptionView.new(race.id, race.name, race.description, race.eligible_caste_ids))
@@ -96,6 +95,7 @@ func project(context: SessionWorkflowContext, pending_interaction: InteractionRe
 	_populate_money_workspace(context, result)
 	_populate_services(context, result)
 	_populate_action_availability(context, result)
+	result.domain_revisions = ViewDomainRevisions.all_at(revision)
 	return result
 
 
@@ -104,6 +104,61 @@ func clear() -> void:
 	_cached_map_id = ""
 	_cached_map_coordinate = Vector2i(-1, -1)
 	_cached_map_view = null
+	_cached_view = null
+
+
+func _can_project_ordinary_movement(context: SessionWorkflowContext, pending_interaction: InteractionRequest, events: Array[DomainEvent]) -> bool:
+	if _cached_view == null or pending_interaction != null or _cached_view.pending_interaction != null or _cached_view.combat_view != null or events.is_empty():
+		return false
+	if _cached_view.party_map_id != context.state.party.map_id:
+		return false
+	var moved_count := 0
+	for event: DomainEvent in events:
+		match event.kind:
+			&"party_moved":
+				if event.payload.has("source"):
+					return false
+				if String(event.payload.get("fromMapId", "")) != _cached_view.party_map_id or String(event.payload.get("mapId", "")) != context.state.party.map_id:
+					return false
+				var origin := Vector2i(int(event.payload.get("fromX", -100000)), int(event.payload.get("fromY", -100000)))
+				var destination := Vector2i(int(event.payload.get("x", -100000)), int(event.payload.get("y", -100000)))
+				var delta := destination - origin
+				if origin != _cached_view.party_coordinate or destination != context.state.party.coordinate or delta == Vector2i.ZERO or absi(delta.x) > 1 or absi(delta.y) > 1:
+					return false
+				moved_count += 1
+			&"time_advanced": pass
+			&"random_encounter_checked":
+				if bool(event.payload.get("triggered", false)):
+					return false
+			_:
+				return false
+	return moved_count == 1
+
+
+func _project_ordinary_movement(context: SessionWorkflowContext, revision: int) -> GameView:
+	var state := context.state
+	var result := GameView.new(revision, true, null, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision), _cached_view.party_members, state.party.fatigue, state.party.pooled_wealth.gold, null)
+	result.campaign_id = _cached_view.campaign_id
+	result.rules_version = _cached_view.rules_version
+	result.party_setup_available = _cached_view.party_setup_available
+	result.character_draft = _cached_view.character_draft
+	result.character_draft_spell_options.assign(_cached_view.character_draft_spell_options)
+	result.character_draft_spell_points_total = _cached_view.character_draft_spell_points_total
+	result.character_draft_spell_points_remaining = _cached_view.character_draft_spell_points_remaining
+	result.race_options.assign(_cached_view.race_options)
+	result.caste_options.assign(_cached_view.caste_options)
+	result.portrait_options.assign(_cached_view.portrait_options)
+	result.combat_icon_options.assign(_cached_view.combat_icon_options)
+	result.campaign_summary = _cached_view.campaign_summary
+	result.party_setup = _cached_view.party_setup
+	result.party_summary = _cached_view.party_summary
+	result.journal_entries.assign(_cached_view.journal_entries)
+	result.services.assign(_cached_view.services)
+	result.money_workspace = _cached_view.money_workspace
+	_populate_movement_map_views(context, result)
+	_populate_action_availability(context, result)
+	result.domain_revisions = _cached_view.domain_revisions.movement_update(revision)
+	return result
 
 
 func _map_view(context: SessionWorkflowContext, revision: int) -> MapView:
@@ -114,6 +169,26 @@ func _map_view(context: SessionWorkflowContext, revision: int) -> MapView:
 	_cached_map_coordinate = context.state.party.coordinate
 	_cached_map_view = _build_map_view(context)
 	return _cached_map_view
+
+
+static func _populate_movement_map_views(context: SessionWorkflowContext, result: GameView) -> void:
+	var content := context.content
+	var state := context.state
+	for definition: PlayerMapDefinition in content.world.player_maps():
+		var acquired := state.world.has_map(definition.id)
+		var player_map_view := _build_player_map_view(context, definition) if acquired else PlayerMapView.new(definition, [], false, Vector2i.ZERO, false)
+		result.player_map_menu_entries.append(player_map_view)
+		if acquired:
+			result.acquired_player_maps.append(player_map_view)
+	var current_map := content.world.map_by_id(state.party.map_id)
+	if current_map == null:
+		return
+	var current_note := state.world.location_note_at(current_map.id, state.party.coordinate)
+	result.current_location_note = LocationNoteView.new(current_map.id, current_map.name, current_map.level_type, current_map.level_index, state.party.coordinate, current_note.text if current_note != null else "", current_note.darkness_value if current_note != null else _current_location_note_darkness(context, current_map), current_note.record_ordinal if current_note != null else -1, true)
+	for note: LocationNoteState in state.world.location_notes_for_kind(current_map.level_type):
+		var note_map := content.world.map_by_id(note.map_id)
+		if note_map != null:
+			result.location_notes.append(LocationNoteView.new(note.map_id, note_map.name, note_map.level_type, note_map.level_index, note.coordinate, note.text, note.darkness_value, note.record_ordinal, note.map_id == state.party.map_id and note.coordinate == state.party.coordinate))
 
 
 static func _populate_services(context: SessionWorkflowContext, result: GameView) -> void:

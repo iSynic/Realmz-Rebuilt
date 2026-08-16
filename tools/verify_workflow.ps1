@@ -87,7 +87,8 @@ foreach ($path in $changedPaths) {
         throw "Campaign package outside the synthetic fixture boundary must not enter a workflow commit: $path"
     }
     $fullPath = Join-Path $repoRoot $path
-    if ((git -C $repoRoot ls-files --error-unmatch -- $path 2>$null) -or -not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+    $trackedMatches = @(git -C $repoRoot ls-files -- $path)
+    if ($trackedMatches.Count -gt 0 -or -not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
         continue
     }
     try {

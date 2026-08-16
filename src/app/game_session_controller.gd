@@ -41,20 +41,20 @@ func restore(content: RealmzContent, envelope: SessionSnapshot) -> SessionStep:
 
 func close() -> SessionStep:
 	var step := _session.close()
-	_current_view = _session.view()
+	_current_view = _session.view(step.events)
 	step_committed.emit(step)
 	return step
 
 
 func submit_intent(intent: PlayerIntent) -> SessionStep:
 	var step: SessionStep = _session.submit_intent(intent)
-	_current_view = _session.view()
+	_current_view = _session.view(step.events)
 	step_committed.emit(step)
 	return step
 
 
 func respond(response: InteractionResponse) -> SessionStep:
 	var step: SessionStep = _session.respond(response)
-	_current_view = _session.view()
+	_current_view = _session.view(step.events)
 	step_committed.emit(step)
 	return step
