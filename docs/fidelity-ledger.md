@@ -9,8 +9,18 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Observable Castle behavior: a controlled synthetic fixture with three distinct characters showed that all three results changed with the instruction slot instead of the iterated character, while still consuming three draws. It also confirmed the inconsistent double inversion. The runtime fixture record is `tests/fixtures/oracle/scenario-character-check-indexing-correction.json`, SHA-256 `51c025afb0c18360d911fdffdccc1edcf459046a3f1899e0bf69eada94889340`. The same fixture established that opcode 31 attribute index 10 prompts, consumes one draw, and continues without either XAP; Realmz Rebuilt preserves that separate inert behavior.
 - Player-facing problem: an authored “set picked on check” operation can select or reject everyone according to an unrelated party member, and its negative meaning changes depending on whether the author selected an attribute or ability.
 - Chosen 2.0 behavior: test every candidate's own value in party order, preserve one RNG draw per candidate, and apply a negative check index once as select-on-failure. Opcode 31's observed undefined attribute index remains source-conformant and does not share this correction.
-- Tests: `test_scenario_vm.gd::_test_classic_character_ability_picker` covers distinct per-character attribute and ability results, one inversion, opcode 31 index-10 picker/RNG/no-branch behavior, serialization, and forged-response rejection. The differential case is `scenario.character-check-indexing`.
+- Tests: `test_scenario_vm.gd::_test_public_character_checks` covers distinct per-character attribute and ability results, one inversion, opcode 31 index-10 picker/RNG/no-branch behavior, serialization, and forged-response rejection. The differential case is `scenario.character-check-indexing`.
 - Legacy quirk: none. Action-slot aliasing and asymmetric double inversion are implementation defects, not meaningful authored behavior.
+
+## FD-SCENARIO-002 — Mandatory opcode 31 character selection
+
+- Affected rule: aborting the required character picker used by Classic opcode 31.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/getchoice.c`, `getchoice`, and `src/realmz_orig/newland.c`, `newland`, case 31. A-abort clears every tracked selection, but case 31 ignores that result, leaves `track[0]` equal to zero, and evaluates `c[0]` as though the first party member had been chosen.
+- Observable Castle behavior: a controlled synthetic fixture exercised both attribute and trained-ability checks after A-abort. Both left `track=000`, consumed one ordinary check draw, evaluated party slot zero, and loaded the fixture's failure XAP 6. Two runs produced byte-identical output. The fixture record is `tests/fixtures/oracle/scenario-character-check-abort-correction.json`, SHA-256 `374a65b15c4417f8f510cc769fdd52f6ff92260a3acfbeb4bb90fd3f0519c491`.
+- Player-facing problem: abort appears to cancel a required choice but silently branches on the first party member, so party order changes an invisible selection and its RNG-backed result.
+- Chosen 2.0 behavior: opcode 31 selection is mandatory. The Party-list picker has no cancel response, Back or Escape cannot dismiss its blocking request, and the check consumes no RNG until the exact required stable character identity is submitted.
+- Tests: `test_classic_ui_system.gd::_test_fixture_gallery_coverage` proves that the character picker exposes no cancel or premature-submit control and auto-submits only the exact count. `test_scenario_vm.gd::_test_public_character_checks` proves that an invalid or missing response cannot consume the check draw or resume the VM. The differential case is `scenario.character-check-abort`.
+- Legacy quirk: none. Silent party-slot-zero selection is an implementation defect, not a useful authored capability.
 
 ## FD-ECONOMY-001 — Zero-charge shop valuation
 

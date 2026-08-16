@@ -1,0 +1,43 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-SCENARIO-002",
+  "evidence": "castle-runtime-fixture",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/getchoice.c",
+      "symbol": "short getchoice(short number, short initems, short candead)",
+      "range": "1-130"
+    },
+    {
+      "path": "src/realmz_orig/newland.c",
+      "symbol": "case 31: /******* Branch on Check Vs. Ability *******/",
+      "range": "2502-2571"
+    }
+  ],
+  "oracleHarness": {
+    "kind": "isolated-local-castle-branch",
+    "branch": "test/opcode-character-check-oracle",
+    "sourceSha256": "a78106afc2442abe2cbd9b160747c00e0c40f0f9fc2b9a7b444560a655422549",
+    "outputSha256": "bcc52ebc5ff3e2226c2a68716ceb1c55a22636df8eefd81dc72d96b2f9308ed7",
+    "deterministicRuns": 2,
+    "inputs": {
+      "characters": [
+        {"slot": 0, "brawn": 2, "ability5": 5},
+        {"slot": 1, "brawn": 12, "ability5": 50},
+        {"slot": 2, "brawn": 22, "ability5": 95}
+      ],
+      "pickerAction": "A-abort after getchoice clears all tracked slots",
+      "scriptedRandResult": "10 for the attribute check; 25 for the trained-ability check",
+      "successXap": 5,
+      "failureXap": 6
+    },
+    "observations": [
+      "opcode31.attribute.abort track=000 draws=1 branch=6",
+      "opcode31.ability.abort track=000 draws=1 branch=6"
+    ]
+  },
+  "castleObservation": "getchoice returns with no tracked character after A-abort. Opcode 31 does not inspect that result: its empty-track scan leaves track[0] equal to zero, it consumes the normal check draw, evaluates party character slot zero, and loads that character's success or failure XAP.",
+  "playerFacingProblem": "A player who aborts the required character choice has silently selected the first party member. The resulting branch and RNG consumption are unrelated to the player's visible action and vary with party order.",
+  "realmz2ChosenResult": "Treat opcode 31 character selection as mandatory. Realmz Rebuilt exposes no cancel response, consumes Back or Escape while the typed interaction is pending, and does not resume or draw RNG until the exact required selection is submitted. This is the single 2.0 behavior; no compatibility profile reproduces Castle's silent slot-zero selection."
+}

@@ -5,7 +5,7 @@
 # Ownership
 
 - Each route owns a registered scene. Scenes own durable header/layout, scrolling, and focus containment; `ClassicScreenRouter` supplies detached view content and route transitions.
-- `ClassicPartyRoster` owns the persistent six-slot right rail and presentation-only character selection. A typed `CHARACTER_SELECTION` request switches that rail into Castle's countdown picker: the cursor shows picks remaining, portraits receive descending numbers, repeated clicks renumber locally, and the exact count emits one Party-ordered response without opening the Character workspace.
+- `ClassicPartyRoster` owns the persistent six-slot right rail and presentation-only character selection. A typed `CHARACTER_SELECTION` request switches that rail into Castle's countdown picker: the cursor shows picks remaining, portraits receive descending numbers, repeated clicks renumber locally, and the exact count emits one Party-ordered response without opening the Character workspace. The request is mandatory under `FD-SCENARIO-002`: the picker exposes no cancel control and Back or Escape leaves the blocking request pending.
 
 # Local Contracts
 

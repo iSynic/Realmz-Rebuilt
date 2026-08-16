@@ -5081,6 +5081,82 @@
         "fixturePath": "tests/fixtures/oracle/scenario-character-check-indexing-correction.json",
         "fixtureSha256": "51c025afb0c18360d911fdffdccc1edcf459046a3f1899e0bf69eada94889340"
       }
+    },
+    {
+      "id": "scenario.character-check-abort",
+      "workflowIds": [
+        "classic.scenario.select-subject"
+      ],
+      "domain": "scenario-interaction",
+      "claim": "Classic opcode 31 presents a required character check, but its A-abort path clears the selection and then silently evaluates party slot zero. Realmz Rebuilt intentionally keeps the typed selection mandatory and does not resume or consume RNG until the exact required character identity is submitted.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "The pinned functional Remake checkpoint does not provide a focused controlled characterization of opcode 31 abort followed by branch resolution.",
+        "sources": [],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "castle-runtime",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/getchoice.c",
+            "symbol": "short getchoice(short number, short initems, short candead)"
+          },
+          {
+            "path": "src/realmz_orig/newland.c",
+            "symbol": "case 31: /******* Branch on Check Vs. Ability *******/"
+          }
+        ],
+        "authoredInputs": [
+          "one required living-character choice",
+          "attribute or trained-ability index",
+          "modifier",
+          "success and failure XAP targets"
+        ],
+        "observation": "A controlled synthetic fixture ran both an attribute check and a trained-ability check after getchoice A-abort. In each case getchoice left track=000, opcode 31 consumed one ordinary check draw, evaluated party slot zero, and loaded XAP 6 from that character's failed result. Two runs produced byte-identical output."
+      },
+      "providence": {
+        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "sources": [
+          {
+            "path": "src-tauri/src/realmz2_exporter.rs",
+            "symbol": "fn scenario_document"
+          }
+        ],
+        "expectedRepresentation": "Preserve opcode 31 and its five Extra Code values exactly; cancellation policy belongs to the runtime interaction contract rather than compiled campaign data."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/app/realmz_application.gd",
+          "symbol": "func _input(event: InputEvent)"
+        },
+        "expectedTrace": [
+          "yield one typed mandatory character selection",
+          "expose no cancel control in the Party-list picker",
+          "consume Back or Escape while the blocking request remains pending",
+          "resume exactly once only after the required stable character identity is submitted",
+          "consume no check RNG before that valid response"
+        ],
+        "tests": [
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_fixture_gallery_coverage"
+          },
+          {
+            "path": "tests/scenario/test_scenario_vm.gd",
+            "symbol": "func _test_public_character_checks"
+          }
+        ]
+      },
+      "decision": "intentional-correction",
+      "availability": "implemented",
+      "status": "controlled-castle-abort-fixture-and-mandatory-picker-adjudicated",
+      "fidelityDecision": {
+        "id": "FD-SCENARIO-002",
+        "fixturePath": "tests/fixtures/oracle/scenario-character-check-abort-correction.json",
+        "fixtureSha256": "374a65b15c4417f8f510cc769fdd52f6ff92260a3acfbeb4bb90fd3f0519c491"
+      }
     }
   ]
 }

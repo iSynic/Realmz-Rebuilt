@@ -22,7 +22,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.startup.create-character` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.scenario.select-subject` | certification | aogm-certification | aogm-ordinary | GAP-SCEN-005 |
+| `classic.scenario.select-subject` | certification | aogm-certification | aogm-ordinary |  |
 | `classic.startup.end-adventure` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
@@ -142,7 +142,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **19**.
+Blockers: **1**. Major gaps: **18**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -161,7 +161,6 @@ Blockers: **1**. Major gaps: **19**.
 - **major** `classic.rewards.treasure-distribution` - Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced. Next: Use controlled Castle RNG fixtures for ordinary, XP-only, and bonus-treasure battle rewards before implementing or correcting the random drops.
 - **major** `classic.scenario.complex-interaction` - Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
 - **major** `classic.scenario.random-timed-encounter` - Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture. Next: Add a synthetic timed AP that changes map or coordinate, yields, applies any source-owned AP destination semantics, resumes the remaining scan, and performs the final random check at the resulting location.
-- **major** `classic.scenario.select-subject` - Castle A-abort clears getchoice selections, but opcode 31 then appears to test party slot zero because its caller does not handle the empty result; Rebuilt does not expose that ambiguous abort path. Next: Run a controlled opcode 31 A-abort fixture and record a named fidelity decision before adding typed cancellation.
 - **major** `classic.spellcasting.field-camp-cast` - Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise field and combat scroll workflows in ordinary AOGM play, then implement discard/case-transfer branches only from bounded differential evidence.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
@@ -216,7 +215,6 @@ Blockers: **1**. Major gaps: **19**.
 - `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle.
 - `classic.rewards.treasure-distribution` - Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced.
 - `classic.scenario.complex-interaction` - Thief encounter action availability and result routing are not fully traced or represented.
-- `classic.scenario.select-subject` - Castle A-abort clears getchoice selections, but opcode 31 then appears to test party slot zero because its caller does not handle the empty result; Rebuilt does not expose that ambiguous abort path.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.authored-journal` - Castle's Auto Note preference and unsafe journal cursor boundary remain outside the verified authored-journal subset.
 - `classic.maps.location-notes` - Castle's two dialog exit labels and exact cancellation semantics are not established by source alone.

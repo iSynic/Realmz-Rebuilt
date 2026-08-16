@@ -841,6 +841,10 @@ func _test_fixture_gallery_coverage() -> void:
 	var selection_view := GameView.new(1, true, null)
 	selection_view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 8, 10)), CharacterView.new(CharacterState.new("mage", "Mage", 6, 9)), CharacterView.new(CharacterState.new("dead", "Dead", 0, 10))]
 	var request := _fixture_request("fixture.party-pick", InteractionRequest.CHARACTER_SELECTION, {"count": 2, "eligible": [{"id": "hero", "name": "Hero", "currentHealth": 8, "maximumHealth": 10}, {"id": "mage", "name": "Mage", "currentHealth": 6, "maximumHealth": 9}]})
+	var selection_component := SelectionInteraction.new()
+	selection_component.build(request)
+	assert_true(_buttons_in(selection_component).is_empty(), "the mandatory Classic character check exposes no cancel or premature-submit control")
+	selection_component.free()
 	var selections: Array[Array] = []
 	roster.character_selection_completed.connect(func(ids: Array[String]) -> void: selections.append(ids))
 	roster.present(selection_view)
