@@ -827,6 +827,18 @@ func _test_fixture_gallery_coverage() -> void:
 	assert_true(spell_component.get_children().any(func(child: Node) -> bool: return child is ItemList and child.item_count == 4), "the level spell stage renders the complete detached candidate list")
 	assert_true(spell_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Confirm spell selection"), "the spell stage exposes one typed confirmation")
 	spell_component.free()
+	var selection_component := SelectionInteraction.new()
+	var selections: Array[Dictionary] = []
+	selection_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: selections.append(body.to_data()))
+	selection_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.CHARACTER_SELECTION))
+	var selection_checks := _base_buttons_in(selection_component).filter(func(button: BaseButton) -> bool: return button is CheckButton)
+	var choose_button: Button = _buttons_in(selection_component).filter(func(button: Button) -> bool: return button.text == "Choose")[0]
+	choose_button.pressed.emit()
+	assert_equal(selections, [], "mandatory character selection does not resume before the exact source-authored count is chosen")
+	(selection_checks[0] as CheckButton).button_pressed = true
+	choose_button.pressed.emit()
+	assert_equal(selections, [{"characterIds": ["hero"]}], "character selection emits one typed response with stable party identity")
+	selection_component.free()
 
 
 func _test_lifecycle_interaction() -> void:
@@ -885,7 +897,6 @@ func _test_lifecycle_interaction() -> void:
 	var idle_quit := ApplicationLifecycleScript.quit_application_request(false, false)
 	assert_equal(idle_quit.body.to_data()["options"].size(), 2, "Quit without an active session offers only quit and cancel")
 	quit_component.free()
-
 
 func _test_classic_choice_context() -> void:
 	var journal_request := InteractionRequest.from_payload("journal-text", InteractionRequest.ACKNOWLEDGE, {"prompt": "A source message", "journalEligible": true, "journalRecorded": false})
