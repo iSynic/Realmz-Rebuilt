@@ -457,13 +457,8 @@ static func _restore_combat_state(state: GameState, party_state: PartyState, dat
 	if state.combat == null or not _combat_references_are_valid(state, party_state):
 		return false
 	var owned_item_ids: Dictionary = {}
-	for character: CharacterState in party_state.characters():
-		for item: ItemInstance in character.inventory():
-			if owned_item_ids.has(item.id): return false
-			owned_item_ids[item.id] = true
-	for item: ItemInstance in party_state.storage():
-		if owned_item_ids.has(item.id): return false
-		owned_item_ids[item.id] = true
+	for item_id: String in party_state.item_instance_ids():
+		owned_item_ids[item_id] = true
 	for item: ItemInstance in state.combat.fumbled_items():
 		if owned_item_ids.has(item.id): return false
 		owned_item_ids[item.id] = true

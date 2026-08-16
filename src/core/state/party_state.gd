@@ -37,10 +37,33 @@ func character_by_id(character_id: String) -> CharacterState:
 
 
 func add_character(character: CharacterState) -> bool:
-	if character == null or character.id.is_empty() or character_by_id(character.id) != null:
+	if character == null or character.id.is_empty() or character_by_id(character.id) != null or not _items_are_unique_with(character.inventory()):
 		return false
 	_characters.append(character)
 	return true
+
+
+func owns_item_instance(item_instance_id: String) -> bool:
+	if item_instance_id.is_empty():
+		return false
+	return item_instance_ids().has(item_instance_id)
+
+
+func item_instance_ids() -> Array[String]:
+	var result: Array[String] = []
+	for character: CharacterState in _characters:
+		for item: ItemInstance in character.inventory():
+			result.append(item.id)
+	for item: ItemInstance in _storage:
+		result.append(item.id)
+	for character_id: Variant in _equipment_storage:
+		for item: ItemInstance in _equipment_storage[character_id]:
+			result.append(item.id)
+	return result
+
+
+func has_unique_item_ownership() -> bool:
+	return _items_are_unique_with([])
 
 
 func remove_character(character_id: String) -> bool:
@@ -188,7 +211,7 @@ static func from_data(data: Variant) -> PartyState:
 		loaded_characters.append(character)
 	var result := PartyState.new(data["mapId"], Vector2i(x, y), loaded_characters)
 	if not data.has("pooledWealth"):
-		return result
+		return result if result.has_unique_item_ownership() else null
 	for field: String in ["pooledWealth", "fatigue", "conditions", "allies", "storage"]:
 		if not data.has(field):
 			return null
@@ -236,7 +259,20 @@ static func from_data(data: Variant) -> PartyState:
 		result.equipment_storage_active = data["equipmentStorageActive"]
 		result._equipment_storage = equipment_storage
 		result._equipment_wealth = equipment_wealth
-	return result
+	return result if result.has_unique_item_ownership() else null
+
+
+func _items_are_unique_with(additional_items: Array[ItemInstance]) -> bool:
+	var seen: Dictionary = {}
+	for item_id: String in item_instance_ids():
+		if item_id.is_empty() or seen.has(item_id):
+			return false
+		seen[item_id] = true
+	for item: ItemInstance in additional_items:
+		if item == null or item.id.is_empty() or seen.has(item.id):
+			return false
+		seen[item.id] = true
+	return true
 
 
 static func _integer(value: Variant) -> int:

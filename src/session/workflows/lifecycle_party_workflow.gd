@@ -89,9 +89,13 @@ static func import_vault_character(context: SessionWorkflowContext, pending: boo
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's race cannot use that class.")
 	if not caste.eligible_race_ids.is_empty() and not caste.eligible_race_ids.has(race.id):
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's class is not available to that race.")
+	var imported_item_ids: Dictionary = {}
 	for item: ItemInstance in imported.inventory():
 		if context.content.item_by_id(item.definition_id) == null:
 			return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character carries an item unavailable in this campaign.")
+		if imported_item_ids.has(item.id) or context.state.party.owns_item_instance(item.id):
+			return SessionWorkflowResult.failed(&"duplicate_item_ownership", "That character revision does not uniquely own every exact item instance.")
+		imported_item_ids[item.id] = true
 	var imported_load := context.rules.inventory.calculated_load(imported, context.content.item_definitions())
 	if imported_load < 0 or imported_load > imported.maximum_load:
 		return SessionWorkflowResult.failed(&"vault_character_ineligible", "The vault character's carried wealth and items exceed this character's load limit.")

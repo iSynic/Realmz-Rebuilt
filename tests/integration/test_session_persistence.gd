@@ -276,6 +276,18 @@ func _test_party_and_creator_persistence(content: RealmzContent) -> void:
 	assert_equal(import_step.state, SessionStep.State.COMPLETED, "vault import adds another member without completing party setup")
 	assert_equal(resumed_setup.view().party_members.size(), 2, "created and vault characters may share one setup party")
 	assert_equal(resumed_setup._state.party.character_by_id(imported.id).carried_load, 7 + imported_definition.instance_weight(imported_definition.initial_charges), "vault import derives carried load from target-package definitions instead of trusting a stale local total")
+	var conflicting_import := CharacterState.from_data(imported.to_data())
+	conflicting_import.id = "vault.character.conflicting"
+	conflicting_import.name = "Conflicting Hero"
+	var party_before_conflict := resumed_setup.view().party_members.size()
+	assert_equal(resumed_setup.submit_intent(PlayerIntent.import_vault_character(conflicting_import.id, "d".repeat(64), conflicting_import, "fixture-source", "b".repeat(64))).error_code, &"duplicate_item_ownership", "vault import rejects a second character revision that claims an exact item instance already owned by the party")
+	assert_equal(resumed_setup.view().party_members.size(), party_before_conflict, "rejected duplicate item ownership leaves the assembled party unchanged")
+	var duplicate_save_data := resumed_setup.snapshot().game_state.to_data()
+	var duplicate_character_data: Dictionary = duplicate_save_data["party"]["characters"][1].duplicate(true)
+	duplicate_character_data["id"] = "vault.character.corrupt-save"
+	duplicate_character_data["name"] = "Corrupt Save Hero"
+	duplicate_save_data["party"]["characters"].append(duplicate_character_data)
+	assert_equal(GameState.from_data(duplicate_save_data), null, "state restoration rejects duplicate exact-item ownership even when no combat is active")
 	assert_true(resumed_setup.view().party_setup_available, "multiple committed setup edits remain available until Begin")
 	var created_id := resumed_setup.view().party_members[0].id
 	assert_equal(resumed_setup.submit_intent(PlayerIntent.remove_party_member(created_id)).state, SessionStep.State.COMPLETED, "typed removal updates the setup party")

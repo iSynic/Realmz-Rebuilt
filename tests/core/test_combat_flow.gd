@@ -278,6 +278,18 @@ func _test_public_command_automation_matrix() -> void:
 	assert_true(auto_result.ok, "Auto Turn resolves through the public command boundary")
 	assert_equal(auto_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_auto_started").size(), 1, "Auto Turn starts exactly one bounded activation")
 	assert_true(auto_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("source") == "classic-combat-auto-button"), "the public Auto command retains its button feedback")
+	var bounded_actor := _character("character.auto-bounded")
+	bounded_actor.current_health = 32_767
+	bounded_actor.maximum_health = 32_767
+	var bounded_monster := MonsterState.new("monster.auto-bounded.instance", definition.id, definition.name, 32_767, 32_767, 1)
+	var bounded_state := _state(bounded_actor, bounded_monster, "battle.auto-bounded")
+	assert_true(bounded_state.set_combat_auto(bounded_actor.id, true), "persistent Auto can be enabled through save-owned state")
+	var bounded_before := JSON.stringify(bounded_state.to_data())
+	var bounded_rng := RealmzRng.new(17)
+	var bounded_rng_before := bounded_rng.snapshot().to_data()
+	var bounded_result := rules.combat_flow.submit_action(bounded_state, _content([definition]), bounded_actor.id, &"auto", "", bounded_rng)
+	assert_equal(bounded_result.error_code, &"combat_auto_operation_limit", "the public Auto command reports its bounded activation limit without masking rollback failure")
+	assert_equal([JSON.stringify(bounded_state.to_data()), bounded_rng.snapshot().to_data()], [bounded_before, bounded_rng_before], "the bounded persistent-Auto chain restores complete state and RNG")
 
 	var undo_actor := _character("character.undo")
 	var undo_monster := MonsterState.new("monster.undo.instance", definition.id, definition.name, 100, 100, 1)
