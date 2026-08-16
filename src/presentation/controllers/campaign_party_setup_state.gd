@@ -1,3 +1,4 @@
+class_name CampaignPartySetupState
 extends RefCounted
 
 const CampaignLibraryControllerScript := preload("res://src/presentation/controllers/campaign_library_controller.gd")
@@ -5,15 +6,9 @@ const PartySetupCharacterRowScript := preload("res://src/presentation/party_setu
 const PartySetupPartyListScript := preload("res://src/presentation/party_setup_party_list.gd")
 const ClassicUiTheme := preload("res://src/presentation/classic_ui_theme.tres")
 
-signal start_requested(package_path: String, seed: int)
-signal cancel_package_requested
-signal refresh_requested
 signal intent_submitted(intent: PlayerIntent)
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
-signal campaign_selection_requested
-signal vault_requested
-signal quit_requested
 
 const GOLD := Color("d5b45d")
 const MUTED := Color("9aa0a8")
@@ -111,39 +106,6 @@ var setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
 
 var _host: Control
 var _appearance_textures: Dictionary = {}
-
-func _init() -> void:
-	var owner_ref: WeakRef = weakref(self)
-	_campaign_library.start_requested.connect(func(package_path_value: String, seed: int) -> void:
-		var owner: CampaignPartySetupController = owner_ref.get_ref() as CampaignPartySetupController
-		if owner != null:
-			owner.start_requested.emit(package_path_value, seed)
-	)
-	_campaign_library.cancel_package_requested.connect(func() -> void:
-		var owner: CampaignPartySetupController = owner_ref.get_ref() as CampaignPartySetupController
-		if owner != null:
-			owner.cancel_package_requested.emit()
-	)
-	_campaign_library.refresh_requested.connect(func() -> void:
-		var owner: CampaignPartySetupController = owner_ref.get_ref() as CampaignPartySetupController
-		if owner != null:
-			owner.refresh_requested.emit()
-	)
-	_campaign_library.campaign_selection_requested.connect(func() -> void:
-		var owner: CampaignPartySetupController = owner_ref.get_ref() as CampaignPartySetupController
-		if owner != null:
-			owner.campaign_selection_requested.emit()
-	)
-	_campaign_library.vault_requested.connect(func() -> void:
-		var owner: CampaignPartySetupController = owner_ref.get_ref() as CampaignPartySetupController
-		if owner != null:
-			owner.vault_requested.emit()
-	)
-	_campaign_library.quit_requested.connect(func() -> void:
-		var owner: CampaignPartySetupController = owner_ref.get_ref() as CampaignPartySetupController
-		if owner != null:
-			owner.quit_requested.emit()
-	)
 
 func attach(host: Control) -> void:
 	_host = host

@@ -317,6 +317,48 @@ if (Test-Path -LiteralPath $gameSessionPath) {
         }
     }
 }
+
+# Session continuation coordinators operate on one explicit operation context
+# and return an internal typed outcome. They may not regain a private owner
+# backchannel or construct the public SessionStep boundary themselves.
+$sessionCoordinatorRoot = Join-Path $repoRoot "src\session\coordinators"
+foreach ($file in Get-ChildItem $sessionCoordinatorRoot -Filter "session_*_coordinator.gd" -ErrorAction SilentlyContinue) {
+    $relativePath = Get-RepositoryRelativePath -RootPath $repoRoot -TargetPath $file.FullName
+    $lineNumber = 0
+    foreach ($line in Get-SanitizedGdscriptLines -Content ([IO.File]::ReadAllText($file.FullName))) {
+        $lineNumber++
+        if ($line -match '\b(?:WeakRef|GameSession|SessionStep)\b' -or $line -match '\bfunc\s+_session\s*\(') {
+            $violations += "$($relativePath):$lineNumber session coordinators must use the explicit operation context and SessionCoordinatorResult"
+        }
+    }
+}
+$coordinatorContextPath = Join-Path $sessionCoordinatorRoot "session_coordinator_context.gd"
+if (Test-Path -LiteralPath $coordinatorContextPath) {
+    $contextContent = [IO.File]::ReadAllText($coordinatorContextPath)
+    if ($contextContent -match '(?m)^var\s+view_revision\b') {
+        $violations += "src/session/coordinators/session_coordinator_context.gd request identity must use named revision capabilities instead of a writable revision field"
+    }
+}
+
+# Party setup is a composed presentation workspace. Inspection, assembly, and
+# creation may share explicit setup state, but they may not inherit behavior
+# from one another or turn the public facade back into the old behavior chain.
+$partySetupControllerPaths = @(
+    "src\presentation\controllers\party_setup_inspection_controller.gd",
+    "src\presentation\controllers\party_setup_assembly_controller.gd",
+    "src\presentation\controllers\party_setup_character_creation_controller.gd",
+    "src\presentation\controllers\campaign_party_setup_controller.gd"
+)
+foreach ($relativePath in $partySetupControllerPaths) {
+    $path = Join-Path $repoRoot $relativePath
+    if (-not (Test-Path -LiteralPath $path)) {
+        continue
+    }
+    $content = [IO.File]::ReadAllText($path)
+    if ($content -match 'extends\s+"res://src/presentation/controllers/(?:campaign_party_setup_state|party_setup_inspection_controller|party_setup_assembly_controller|party_setup_character_creation_controller)\.gd"') {
+        $violations += "$($relativePath -replace '\\','/') party setup controllers must compose responsibility collaborators instead of inheriting their behavior"
+    }
+}
 $classNameReferencePattern = ''
 if ($uniqueClassNameSymbols.Count -gt 0) {
     $escapedNames = @($uniqueClassNameSymbols.Keys | Sort-Object { $_.Length } -Descending | ForEach-Object { [regex]::Escape($_) })

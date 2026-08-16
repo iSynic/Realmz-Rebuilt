@@ -1,5 +1,41 @@
 class_name CampaignPartySetupController
-extends "res://src/presentation/controllers/party_setup_character_creation_controller.gd"
+extends "res://src/presentation/controllers/party_setup_controller_component.gd"
+
+const SetupStateScript := preload("res://src/presentation/controllers/campaign_party_setup_state.gd")
+const PartySetupInspectionControllerScript := preload("res://src/presentation/controllers/party_setup_inspection_controller.gd")
+const PartySetupAssemblyControllerScript := preload("res://src/presentation/controllers/party_setup_assembly_controller.gd")
+const PartySetupCharacterCreationControllerScript := preload("res://src/presentation/controllers/party_setup_character_creation_controller.gd")
+
+var start_requested: Signal:
+	get: return _campaign_library.start_requested
+var cancel_package_requested: Signal:
+	get: return _campaign_library.cancel_package_requested
+var refresh_requested: Signal:
+	get: return _campaign_library.refresh_requested
+var intent_submitted: Signal:
+	get: return _state.intent_submitted
+var standalone_character_creation_requested: Signal:
+	get: return _state.standalone_character_creation_requested
+var standalone_character_creation_cancelled: Signal:
+	get: return _state.standalone_character_creation_cancelled
+var campaign_selection_requested: Signal:
+	get: return _campaign_library.campaign_selection_requested
+var vault_requested: Signal:
+	get: return _campaign_library.vault_requested
+var quit_requested: Signal:
+	get: return _campaign_library.quit_requested
+
+var _inspection: RefCounted
+var _assembly: RefCounted
+var _creation: RefCounted
+
+
+func _init() -> void:
+	var state := SetupStateScript.new()
+	super(state)
+	_inspection = PartySetupInspectionControllerScript.new(state)
+	_assembly = PartySetupAssemblyControllerScript.new(state, _inspection)
+	_creation = PartySetupCharacterCreationControllerScript.new(state, _assembly)
 
 func build_splash_overlay() -> void:
 	_campaign_library.build_splash_overlay()
@@ -17,8 +53,8 @@ func build_setup_overlay() -> void:
 	_build_party_stage(columns[1])
 	_build_setup_options(columns[0], columns[1])
 	_build_setup_actions(columns[0], columns[1])
-	_build_setup_character_inspection()
-	render_creator_step()
+	_inspection._build_setup_character_inspection()
+	_creation.render_creator_step()
 
 
 func _build_setup_columns() -> Array[VBoxContainer]:
@@ -137,7 +173,7 @@ func _build_party_stage(party_column: VBoxContainer) -> void:
 	party_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	party_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	party_list.add_theme_constant_override("separation", 2)
-	party_list.import_requested.connect(_import_stored_character)
+	party_list.import_requested.connect(_assembly._import_stored_character)
 	party_scroll.add_child(party_list)
 	party_column.add_child(party_scroll)
 
@@ -163,7 +199,7 @@ func _build_setup_options(character_column: VBoxContainer, party_column: VBoxCon
 	monster_set_option = OptionButton.new()
 	monster_set_option.name = "MonsterSetOption"
 	monster_set_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	monster_set_option.item_selected.connect(_party_setup_option_changed)
+	monster_set_option.item_selected.connect(_assembly._party_setup_option_changed)
 	monster_column.add_child(monster_set_option)
 	selectors.add_child(monster_column)
 	var difficulty_column := VBoxContainer.new()
@@ -175,7 +211,7 @@ func _build_setup_options(character_column: VBoxContainer, party_column: VBoxCon
 	for value: int in range(-2, 3):
 		difficulty_option.add_item(PartySetupView.difficulty_name(value))
 		difficulty_option.set_item_metadata(difficulty_option.item_count - 1, value)
-	difficulty_option.item_selected.connect(_party_setup_option_changed)
+	difficulty_option.item_selected.connect(_assembly._party_setup_option_changed)
 	difficulty_column.add_child(difficulty_option)
 	selectors.add_child(difficulty_column)
 	party_setup_options.add_child(selectors)
@@ -187,20 +223,20 @@ func _build_setup_actions(character_column: VBoxContainer, party_column: VBoxCon
 	creator_action_bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	creator_cancel_button = Button.new()
 	creator_cancel_button.text = "Cancel character"
-	creator_cancel_button.pressed.connect(_cancel_creator)
+	creator_cancel_button.pressed.connect(_creation._cancel_creator)
 	creator_action_bar.add_child(creator_cancel_button)
 	creator_action_bar.add_spacer(true)
 	creator_back_button = Button.new()
 	creator_back_button.text = "Back"
-	creator_back_button.pressed.connect(creator_back)
+	creator_back_button.pressed.connect(_creation.creator_back)
 	creator_action_bar.add_child(creator_back_button)
 	add_character_button = Button.new()
 	add_character_button.text = "Reroll"
-	add_character_button.pressed.connect(_reroll_character)
+	add_character_button.pressed.connect(_creation._reroll_character)
 	creator_action_bar.add_child(add_character_button)
 	creator_next_button = Button.new()
 	creator_next_button.text = "Continue"
-	creator_next_button.pressed.connect(creator_next)
+	creator_next_button.pressed.connect(_creation.creator_next)
 	creator_action_bar.add_child(creator_next_button)
 	character_column.add_child(creator_action_bar)
 	var character_footer := HBoxContainer.new()
@@ -208,7 +244,7 @@ func _build_setup_actions(character_column: VBoxContainer, party_column: VBoxCon
 	create_character_button.name = "CreateCharacter"
 	create_character_button.text = "Create character"
 	create_character_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	create_character_button.pressed.connect(_start_creator)
+	create_character_button.pressed.connect(_creation._start_creator)
 	character_footer.add_child(create_character_button)
 	character_column.add_child(character_footer)
 	var party_footer := HBoxContainer.new()
@@ -218,14 +254,14 @@ func _build_setup_actions(character_column: VBoxContainer, party_column: VBoxCon
 	begin_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	begin_button.custom_minimum_size.y = 34.0
 	begin_button.disabled = true
-	begin_button.pressed.connect(submit_party)
+	begin_button.pressed.connect(_assembly.submit_party)
 	party_footer.add_child(begin_button)
 	party_column.add_child(party_footer)
 
 func set_view(next_view: GameView) -> void:
 	view = next_view
 	if setup_overlay != null and setup_overlay.visible:
-		refresh_setup_options()
+		_creation.refresh_setup_options()
 
 func set_campaigns(next_campaigns: Array[CampaignPackageView]) -> void:
 	_campaign_library.set_campaigns(next_campaigns)
@@ -239,7 +275,7 @@ func render_campaign_list() -> void:
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 	vault_revisions = revisions.duplicate()
 	if setup_overlay != null and setup_overlay.visible:
-		refresh_setup_options()
+		_creation.refresh_setup_options()
 
 func set_media_catalog(next_media: ClassicMediaCatalog) -> void:
 	media = next_media
@@ -263,7 +299,7 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 		return
 	layout_profile = profile.id
 	setup_layout_rect = setup_rect
-	_apply_creator_layout(profile.id)
+	_creation._apply_creator_layout(profile.id)
 	if creator_scroll != null:
 		creator_scroll.custom_minimum_size.y = 140.0 if profile.id == UiLayoutProfile.COMPACT else 220.0
 	_campaign_library.apply_layout(profile, campaign_rect, setup_rect)
@@ -285,7 +321,7 @@ func show_campaign_selection() -> void:
 		return
 	_campaign_library.show_campaign()
 	setup_overlay.visible = true
-	refresh_setup_options()
+	_creation.refresh_setup_options()
 	apply_modal_layouts()
 	_focus_first(setup_overlay)
 
@@ -294,7 +330,7 @@ func show_party_setup() -> void:
 		return
 	_campaign_library.hide_overlays()
 	setup_overlay.visible = true
-	refresh_setup_options()
+	_creation.refresh_setup_options()
 	apply_modal_layouts()
 	_focus_first(setup_overlay)
 
@@ -321,11 +357,11 @@ func finish_party_setup_navigation() -> void:
 	setup_inspection_character_id = ""
 	if setup_inspection_overlay != null:
 		setup_inspection_overlay.visible = false
-	reset_creator(true)
+	_creation.reset_creator(true)
 
 func handle_back() -> bool:
 	if setup_overlay != null and setup_inspection_overlay != null and setup_inspection_overlay.visible:
-		close_setup_character_inspection()
+		_inspection.close_setup_character_inspection()
 		return true
 	if campaign_overlay != null and campaign_overlay.visible:
 		if view != null and view.party_setup_available:
@@ -333,7 +369,7 @@ func handle_back() -> bool:
 		return false
 	if setup_overlay != null and setup_overlay.visible:
 		if creator_step > 0:
-			creator_back()
+			_creation.creator_back()
 			return true
 	return false
 
@@ -345,8 +381,76 @@ func present(next_view: GameView) -> void:
 		awaiting_draft_generation = false
 	if awaiting_draft_finalization and view.character_draft == null:
 		awaiting_draft_finalization = false
-		reset_creator(true)
+		_creation.reset_creator(true)
 	if setup_overlay != null:
-		refresh_setup_options()
+		_creation.refresh_setup_options()
 		if setup_overlay.visible and not setup_inspection_character_id.is_empty():
-			_render_setup_character_inspection()
+			_inspection._render_setup_character_inspection()
+
+
+func set_presentation_settings(next_settings: PresentationSettings) -> void:
+	_creation.set_presentation_settings(next_settings)
+
+
+func set_standalone_character_creation_available(enabled: bool, reason: String = "") -> void:
+	_creation.set_standalone_character_creation_available(enabled, reason)
+
+
+func begin_standalone_character_creation() -> void:
+	_creation.begin_standalone_character_creation()
+
+
+func finish_standalone_character_creation() -> void:
+	_creation.finish_standalone_character_creation()
+
+
+func refresh_setup_options() -> void:
+	_creation.refresh_setup_options()
+
+
+func reset_creator(return_to_assembly: bool = false) -> void:
+	_creation.reset_creator(return_to_assembly)
+
+
+func render_creator_step() -> void:
+	_creation.render_creator_step()
+
+
+func creator_next() -> void:
+	_creation.creator_next()
+
+
+func creator_back() -> void:
+	_creation.creator_back()
+
+
+func apply_creator_layout(profile_id: StringName) -> void:
+	_creation.apply_creator_layout(profile_id)
+
+
+func ensure_appearance_textures() -> void:
+	_creation.ensure_appearance_textures()
+
+
+func appearance_textures() -> Dictionary:
+	return _creation.appearance_textures()
+
+
+func set_appearance_texture(asset_id: String, texture: Texture2D) -> void:
+	_creation.set_appearance_texture(asset_id, texture)
+
+
+func render_party_assembly() -> void:
+	_assembly.render_party_assembly()
+
+
+func party_setup_option_changed(index: int) -> void:
+	_assembly.party_setup_option_changed(index)
+
+
+func submit_party() -> void:
+	_assembly.submit_party()
+
+
+func close_setup_character_inspection() -> void:
+	_inspection.close_setup_character_inspection()

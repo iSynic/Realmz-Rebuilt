@@ -4,6 +4,7 @@ const SaveSlotPreviewScript := preload("res://src/core/view/save_slot_preview.gd
 const PackageOperationStatusScript := preload("res://src/app/package_operation_view.gd")
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
 const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
+const HeldMovementControllerScript := preload("res://src/presentation/held_movement_controller.gd")
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 
 
@@ -668,7 +669,7 @@ func _test_movement_input() -> void:
 		assert_equal(UiInputActions.movement_direction(event), expected[action], "%s resolves to its complete movement vector" % action)
 		event.pressed = false
 		assert_equal(UiInputActions.released_movement_direction(event), expected[action], "%s release stops the matching held movement" % action)
-	var held := HeldMovementController.new()
+	var held := HeldMovementControllerScript.new()
 	var pulses: Array[Vector2i] = []
 	held.movement_requested.connect(func(direction: Vector2i) -> void:
 		pulses.append(direction)

@@ -1,4 +1,12 @@
-extends "res://src/presentation/controllers/party_setup_assembly_controller.gd"
+class_name PartySetupCharacterCreationController
+extends "res://src/presentation/controllers/party_setup_controller_component.gd"
+
+var _assembly: RefCounted
+
+
+func _init(state: RefCounted, assembly: RefCounted) -> void:
+	super(state)
+	_assembly = assembly
 
 func ensure_appearance_textures() -> void:
 	_ensure_appearance_textures()
@@ -34,8 +42,8 @@ func finish_standalone_character_creation() -> void:
 func refresh_setup_options() -> void:
 	if view == null or not view.party_setup_available:
 		campaign_overlay.tooltip_text = "Select an installed scenario to assemble a party."
-		_refresh_party_list()
-		_refresh_party_setup_options()
+		_assembly._refresh_party_list()
+		_assembly._refresh_party_setup_options()
 		render_creator_step()
 		return
 	var summary := view.campaign_summary
@@ -54,18 +62,18 @@ func refresh_setup_options() -> void:
 		campaign_overlay.tooltip_text = "%s\n%s\n%s" % [" • ".join(title_parts), restriction_text, limits]
 	else:
 		campaign_overlay.tooltip_text = "The selected scenario has no campaign summary metadata."
-	_refresh_party_list()
-	_refresh_party_setup_options()
+	_assembly._refresh_party_list()
+	_assembly._refresh_party_setup_options()
 	var setup_count := view.party_members.size()
 	_apply_availability(begin_button, &"begin_adventure")
-	begin_button.text = "Begin adventure (%d/%d)" % [setup_count, _maximum_party_size()]
+	begin_button.text = "Begin adventure (%d/%d)" % [setup_count, _assembly._maximum_party_size()]
 	render_creator_step()
 
 func render_creator_step() -> void:
 	if creator_page == null:
 		return
 	if setup_mode == &"assembly":
-		_render_party_assembly()
+		_assembly._render_party_assembly()
 		return
 	create_character_button.visible = false
 	begin_button.visible = false
@@ -345,8 +353,8 @@ func creator_next() -> void:
 				return
 			creator_step = 2
 		2:
-			if view != null and view.party_members.size() >= _maximum_party_size():
-				setup_message.text = "This campaign allows no more than %d characters." % _maximum_party_size()
+			if view != null and view.party_members.size() >= _assembly._maximum_party_size():
+				setup_message.text = "This campaign allows no more than %d characters." % _assembly._maximum_party_size()
 				return
 			var portrait_value := _selected_appearance(portrait_option, true)
 			var combat_icon_value := _selected_appearance(combat_icon_option, false)
@@ -357,7 +365,7 @@ func creator_next() -> void:
 			draft_combat_icon_id = combat_icon_value.id
 			creator_step = 3
 			awaiting_draft_generation = true
-			intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
+			_state.intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
 			return
 		3:
 			if view == null or view.character_draft == null:
@@ -371,7 +379,7 @@ func creator_next() -> void:
 				setup_message.text = "Starting spells are unavailable in this package, so this caster cannot be finalized safely."
 				return
 			awaiting_draft_finalization = true
-			intent_submitted.emit(PlayerIntent.finalize_character())
+			_state.intent_submitted.emit(PlayerIntent.finalize_character())
 			return
 	setup_message.text = _creator_step_message()
 	render_creator_step()
@@ -381,7 +389,7 @@ func creator_back() -> void:
 		return
 	if creator_step == 3 and view != null and view.character_draft != null:
 		creator_step = 2
-		intent_submitted.emit(PlayerIntent.cancel_character_draft())
+		_state.intent_submitted.emit(PlayerIntent.cancel_character_draft())
 		return
 	creator_step -= 1
 	setup_message.text = _creator_step_message()
@@ -391,9 +399,9 @@ func _cancel_creator() -> void:
 	var had_generated_draft := view != null and view.character_draft != null
 	reset_creator(true)
 	if had_generated_draft:
-		intent_submitted.emit(PlayerIntent.cancel_character_draft())
+		_state.intent_submitted.emit(PlayerIntent.cancel_character_draft())
 	if standalone_character_creation_active:
-		standalone_character_creation_cancelled.emit()
+		_state.standalone_character_creation_cancelled.emit()
 	elif not had_generated_draft:
 		render_creator_step()
 
@@ -418,7 +426,7 @@ func _reroll_character() -> void:
 	if creator_step != 3 or view == null or view.character_draft == null:
 		return
 	awaiting_draft_generation = true
-	intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
+	_state.intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
 
 func _draft_spell_selection_changed(_index: int, _selected: bool) -> void:
 	if spell_list == null:
@@ -427,7 +435,7 @@ func _draft_spell_selection_changed(_index: int, _selected: bool) -> void:
 	for item_index: int in spell_list.item_count:
 		if spell_list.is_selected(item_index):
 			selected_ids.append(String(spell_list.get_item_metadata(item_index)))
-	intent_submitted.emit(PlayerIntent.set_character_draft_spells(selected_ids))
+	_state.intent_submitted.emit(PlayerIntent.set_character_draft_spells(selected_ids))
 
 func _character_creation_spec() -> CharacterCreationSpec:
 	return CharacterCreationSpec.new(draft_name, selected_race_id, selected_caste_id, draft_gender, draft_portrait_id, draft_combat_icon_id, draft_starting_level)
@@ -511,7 +519,7 @@ func _first_enabled_item(list: ItemList) -> int:
 func _start_creator() -> void:
 	if view == null or not view.party_setup_available:
 		if standalone_character_creation_available:
-			standalone_character_creation_requested.emit()
+			_state.standalone_character_creation_requested.emit()
 			return
 		setup_message.text = standalone_character_creation_reason
 		return

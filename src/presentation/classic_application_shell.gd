@@ -129,7 +129,7 @@ func present(game_view: GameView) -> void:
 	_package_status.text = game_view.campaign_summary.title if game_view.campaign_summary != null else game_view.campaign_id
 	if _selected_character_id.is_empty() and not game_view.party_members.is_empty():
 		_selected_character_id = game_view.party_members[0].id
-	var ordinary_exploration_update := previous_view != null and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
+	var ordinary_exploration_update: bool = previous_view != null and game_view.domain_revisions.is_ordinary_exploration_update_from(previous_view.domain_revisions)
 	if not ordinary_exploration_update:
 		_party_roster.present(game_view, _selected_character_id)
 		_router.present(game_view)

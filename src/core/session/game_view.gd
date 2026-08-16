@@ -1,6 +1,8 @@
 class_name GameView
 extends RefCounted
 
+const ViewDomainRevisionsScript := preload("res://src/core/session/view_domain_revisions.gd")
+
 var revision: int
 var session_started: bool
 var pending_interaction: InteractionRequest
@@ -36,7 +38,7 @@ var current_location_note: LocationNoteView
 var services: Array[ServiceView] = []
 var money_workspace: MoneyWorkspaceView
 var action_availability: Dictionary = {}
-var domain_revisions: ViewDomainRevisions
+var domain_revisions: RefCounted
 
 
 func _init(current_revision: int, started: bool, interaction: InteractionRequest, map_id: String = "", coordinate: Vector2i = Vector2i.ZERO, day: int = 0, hour: int = 0, minute: int = 0, current_map_view: MapView = null, members: Array[CharacterView] = [], fatigue: int = 0, gold: int = 0, current_combat: CombatView = null) -> void:
@@ -53,7 +55,7 @@ func _init(current_revision: int, started: bool, interaction: InteractionRequest
 	party_fatigue = fatigue
 	pooled_gold = gold
 	combat_view = current_combat
-	domain_revisions = ViewDomainRevisions.all_at(current_revision)
+	domain_revisions = ViewDomainRevisionsScript.new(current_revision)
 
 
 func set_action_availability(action_id: StringName, enabled: bool, reason: String = "") -> void:

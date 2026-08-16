@@ -2,6 +2,7 @@ class_name SystemWorkspaceController
 extends RefCounted
 
 const SaveSlotPreviewScript := preload("res://src/core/view/save_slot_preview.gd")
+const HeldMovementControllerScript := preload("res://src/presentation/held_movement_controller.gd")
 
 signal action_requested(action_id: StringName, value: Variant)
 signal setting_changed(setting_id: StringName, value: Variant)
@@ -71,7 +72,7 @@ func present(parent: VBoxContainer, view: GameView, settings: PresentationSettin
 	movement_speed.step = 25.0
 	movement_speed.value = settings.exploration_speed_percent
 	movement_speed.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	movement_speed.tooltip_text = "%d%% • %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementController.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
+	movement_speed.tooltip_text = "%d%% • %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementControllerScript.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
 	movement_speed.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"exploration_speed_percent", int(value)))
 	movement_row.add_child(movement_speed)
 	parent.add_child(movement_row)

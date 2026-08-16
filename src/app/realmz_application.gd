@@ -40,7 +40,7 @@ var _character_library_content: RealmzContent
 var _character_library_media: MediaSource
 var _character_creation_host: CharacterCreationHostController
 var _session_close_waits_for_playback: bool = false
-var _held_movement: HeldMovementController
+var _held_movement: HeldMovementControllerScript
 
 
 func _ready() -> void:

@@ -240,7 +240,7 @@ func _refresh_campaign_layout() -> void:
 
 func _prepare_campaign_selection() -> void:
 	_refresh_campaign_layout()
-	setup_controller._focus_first(setup_controller.setup_overlay)
+	setup_controller.focus_first(setup_controller.setup_overlay)
 	if setup_controller.campaign_scroll != null:
 		setup_controller.campaign_scroll.scroll_vertical = 0
 

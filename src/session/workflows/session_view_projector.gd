@@ -2,6 +2,7 @@ class_name SessionViewProjector
 extends RefCounted
 
 const MAP_VIEW_RADIUS: int = 12
+const ViewDomainRevisionsScript := preload("res://src/core/session/view_domain_revisions.gd")
 
 var _cached_map_revision: int = -1
 var _cached_map_id: String = ""
@@ -95,7 +96,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	_populate_money_workspace(context, result)
 	_populate_services(context, result)
 	_populate_action_availability(context, result)
-	result.domain_revisions = ViewDomainRevisions.all_at(revision)
+	result.domain_revisions = ViewDomainRevisionsScript.new(revision)
 	return result
 
 
@@ -157,7 +158,15 @@ func _project_ordinary_movement(context: SessionWorkflowContext, revision: int) 
 	result.money_workspace = _cached_view.money_workspace
 	_populate_movement_map_views(context, result)
 	_populate_action_availability(context, result)
-	result.domain_revisions = _cached_view.domain_revisions.movement_update(revision)
+	var revisions := ViewDomainRevisionsScript.new()
+	revisions.party = _cached_view.domain_revisions.party
+	revisions.setup = _cached_view.domain_revisions.setup
+	revisions.exploration = revision
+	revisions.inventory_magic = _cached_view.domain_revisions.inventory_magic
+	revisions.services = _cached_view.domain_revisions.services
+	revisions.combat = _cached_view.domain_revisions.combat
+	revisions.system = revision
+	result.domain_revisions = revisions
 	return result
 
 

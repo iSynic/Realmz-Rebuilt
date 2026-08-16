@@ -19,6 +19,8 @@ The architecture-hardening tranche was a bounded maintenance exception rather th
 
 The `rebuilt-hotspot-test-performance` maintenance pause is complete. It closed with 40,434 substantive production lines and 6,782 substantive test lines (16.77 percent), down from the approved 11,807-line test baseline. Every handwritten product file is at or below 1,000 substantive lines, every function is at or below 150, every test suite is at or below 1,200, both grandfather lists are empty, and tests no longer call private product methods. The six-character AOGM probe measured 23.713 ms transaction-plus-projection p95, while the MCP walkthrough sustained the required default and accelerated movement cadence without queued input. These maintenance results do not upgrade workflow delivery states; the unchanged audit-guided parity batch resumes.
 
+The immediate boundary follow-up replaced session coordinators' owner `WeakRef` backchannel with an operation-scoped typed context/result protocol and replaced party setup's five-level behavior inheritance with a facade that composes shared state, inspection, assembly, and creation controllers. The architecture gate now prevents either shortcut from returning. This is responsibility hardening only; it does not change saves, packages, gameplay traces, UI workflows, or audit completion counts.
+
 Use the lowest tier that covers the changed boundary:
 
 - **Tier 1 — focused behavior:** run only the affected named test cases, or a genuinely narrow suite when its cases require shared arguments. Do not run the aggregate gate, source intelligence/codemap, MCP, or unrelated routes. Every meaningful change still receives a DOX review; update a contract only when its durable behavior or ownership changed.

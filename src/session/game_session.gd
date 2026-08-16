@@ -17,20 +17,65 @@ var _session_interaction: InteractionRequest
 var _started: bool = false
 var _view_revision: int = 0
 var _view_projector := SessionViewProjector.new()
-
-
+var _coordinator_context: SessionCoordinatorContext
 var _exploration_coordinator: RefCounted
 var _scenario_coordinator: RefCounted
 var _response_coordinator: RefCounted
 
 
 func _ensure_coordinators() -> void:
-	if _exploration_coordinator == null:
-		_exploration_coordinator = ExplorationCoordinatorType.new(self)
-	if _scenario_coordinator == null:
-		_scenario_coordinator = ScenarioCoordinatorType.new(self)
-	if _response_coordinator == null:
-		_response_coordinator = ResponseCoordinatorType.new(self)
+	_coordinator_context = SessionCoordinatorContext.new(
+		_content,
+		_state,
+		_rng,
+		_rules,
+		_scenario_vm,
+		_scenario_action_state,
+		_runtime_api,
+		_session_continuation,
+		_battle_return_continuation,
+		_session_interaction,
+		_view_revision
+	)
+	_exploration_coordinator = ExplorationCoordinatorType.new(_coordinator_context)
+	_scenario_coordinator = ScenarioCoordinatorType.new(_coordinator_context)
+	_response_coordinator = ResponseCoordinatorType.new(_coordinator_context)
+	_coordinator_context.bind_coordinators(_exploration_coordinator, _scenario_coordinator, _response_coordinator)
+
+
+func _apply_coordinator_context() -> void:
+	assert(_coordinator_context != null, "A coordinator result requires its explicit session context")
+	_content = _coordinator_context.content
+	_state = _coordinator_context.state
+	_rng = _coordinator_context.rng
+	_rules = _coordinator_context.rules
+	_scenario_vm = _coordinator_context.scenario_vm
+	_scenario_action_state = _coordinator_context.scenario_action_state
+	_runtime_api = _coordinator_context.runtime_api
+	_session_continuation = _coordinator_context.session_continuation
+	_battle_return_continuation = _coordinator_context.battle_return_continuation
+	_session_interaction = _coordinator_context.session_interaction
+	_coordinator_context.release_coordinators()
+	_coordinator_context = null
+	_exploration_coordinator = null
+	_scenario_coordinator = null
+	_response_coordinator = null
+
+
+func _commit_coordinator_result(result: SessionCoordinatorResult) -> SessionStep:
+	_apply_coordinator_context()
+	if result == null:
+		return _finish_failed(&"invalid_coordinator_result", "The session coordinator returned no typed result.", [])
+	match result.state:
+		SessionCoordinatorResult.State.COMPLETED:
+			return _finish_completed(result.events)
+		SessionCoordinatorResult.State.WAITING:
+			return _finish_waiting(result.interaction, result.events)
+		SessionCoordinatorResult.State.FAILED:
+			return _finish_failed(result.error_code, result.error_message, result.events)
+		SessionCoordinatorResult.State.CLOSE:
+			return _commit_close(result.events, result.close_reason)
+	return _finish_failed(&"invalid_coordinator_result", "The session coordinator returned an unknown state.", [])
 
 
 func start(content: RealmzContent, initial_seed: int) -> SessionStep:
@@ -540,146 +585,163 @@ func _finish_exploration_movement(result: ExplorationTimeWorkflow.MovementTransi
 func _set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> void:
 	_ensure_coordinators()
 	_exploration_coordinator._set_post_time_continuation(map, resume_kind, direction, check_random, timed_day, timed_coordinate)
+	_apply_coordinator_context()
 
 
 func _continue_post_time(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _exploration_coordinator._continue_post_time(events)
+	return _commit_coordinator_result(_exploration_coordinator._continue_post_time(events))
 
 
 func _complete_post_time(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _exploration_coordinator._complete_post_time(events)
+	return _commit_coordinator_result(_exploration_coordinator._complete_post_time(events))
 
 
 func _continue_timed_encounters(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _exploration_coordinator._continue_timed_encounters(events)
+	return _commit_coordinator_result(_exploration_coordinator._continue_timed_encounters(events))
 
 
 func _apply_pending_midnight_recovery(events: Array[DomainEvent]) -> void:
 	_ensure_coordinators()
 	_exploration_coordinator._apply_pending_midnight_recovery(events)
+	_apply_coordinator_context()
 
 
 func _rebase_post_time_location() -> bool:
 	_ensure_coordinators()
-	return _exploration_coordinator._rebase_post_time_location()
+	var result: bool = _exploration_coordinator._rebase_post_time_location()
+	_apply_coordinator_context()
+	return result
 
 
 func _timed_encounter_requirements_met(encounter: TimedEncounterDefinition, map: MapDefinition) -> bool:
 	_ensure_coordinators()
-	return _exploration_coordinator._timed_encounter_requirements_met(encounter, map)
+	var result: bool = _exploration_coordinator._timed_encounter_requirements_met(encounter, map)
+	_apply_coordinator_context()
+	return result
 
 
 func _set_post_move_continuation(map: MapDefinition, coordinate: Vector2i, destination_depth: int = 0) -> void:
 	_ensure_coordinators()
 	_exploration_coordinator._set_post_move_continuation(map, coordinate, destination_depth)
+	_apply_coordinator_context()
 
 
 func _continue_post_move(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _exploration_coordinator._continue_post_move(events)
+	return _commit_coordinator_result(_exploration_coordinator._continue_post_move(events))
 
 
 func _continue_exploration_continuation(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _exploration_coordinator._continue_exploration_continuation(events)
+	return _commit_coordinator_result(_exploration_coordinator._continue_exploration_continuation(events))
 
 
 func _start_application_hook(hook: StringName, resume_kind: StringName, service_id: String, preceding_events: Array[DomainEvent], suspended: SessionContinuation.ApplicationBody = null) -> SessionStep:
 	_ensure_coordinators()
-	return _scenario_coordinator._start_application_hook(hook, resume_kind, service_id, preceding_events, suspended)
+	return _commit_coordinator_result(_scenario_coordinator._start_application_hook(hook, resume_kind, service_id, preceding_events, suspended))
 
 
 func _continue_application_hook(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _scenario_coordinator._continue_application_hook(events)
+	return _commit_coordinator_result(_scenario_coordinator._continue_application_hook(events))
 
 
 func _begin_scenario_handoff(result: ScenarioVmResult, events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _scenario_coordinator._begin_scenario_handoff(result, events)
+	return _commit_coordinator_result(_scenario_coordinator._begin_scenario_handoff(result, events))
 
 
 func _resume_scenario_party_defeat(saved: ScenarioVmSnapshot, suspended_owner: SessionContinuation, vm_handoff: ScenarioVmHandoff, events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _scenario_coordinator._resume_scenario_party_defeat(saved, suspended_owner, vm_handoff, events)
+	return _commit_coordinator_result(_scenario_coordinator._resume_scenario_party_defeat(saved, suspended_owner, vm_handoff, events))
 
 
 func _apply_trigger_destination(trigger: TriggerDefinition, events: Array[DomainEvent], allow_destination: bool) -> bool:
 	_ensure_coordinators()
-	return _scenario_coordinator._apply_trigger_destination(trigger, events, allow_destination)
+	var result: bool = _scenario_coordinator._apply_trigger_destination(trigger, events, allow_destination)
+	_apply_coordinator_context()
+	return result
 
 
 func _finalize_completed_trigger(trigger: TriggerDefinition, events: Array[DomainEvent]) -> void:
 	_ensure_coordinators()
 	_scenario_coordinator._finalize_completed_trigger(trigger, events)
+	_apply_coordinator_context()
 
 
 func _events_have(events: Array[DomainEvent], kind: StringName) -> bool:
 	_ensure_coordinators()
-	return _scenario_coordinator._events_have(events, kind)
+	var result: bool = _scenario_coordinator._events_have(events, kind)
+	_apply_coordinator_context()
+	return result
 
 
 func _events_keep_trigger(events: Array[DomainEvent], trigger_id: String) -> bool:
 	_ensure_coordinators()
-	return _scenario_coordinator._events_keep_trigger(events, trigger_id)
+	var result: bool = _scenario_coordinator._events_keep_trigger(events, trigger_id)
+	_apply_coordinator_context()
+	return result
 
 
 func _event_payload(events: Array[DomainEvent], kind: StringName) -> Dictionary:
 	_ensure_coordinators()
-	return _scenario_coordinator._event_payload(events, kind)
+	var result: Dictionary = _scenario_coordinator._event_payload(events, kind)
+	_apply_coordinator_context()
+	return result
 
 
 func _start_session_death_macro(preceding_events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _scenario_coordinator._start_session_death_macro(preceding_events)
+	return _commit_coordinator_result(_scenario_coordinator._start_session_death_macro(preceding_events))
 
 
 func _continue_session_death_macro(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _scenario_coordinator._continue_session_death_macro(events)
+	return _commit_coordinator_result(_scenario_coordinator._continue_session_death_macro(events))
 
 
 func _append_session_battle_after_message(battle_id: String, events: Array[DomainEvent]) -> void:
 	_ensure_coordinators()
 	_scenario_coordinator._append_session_battle_after_message(battle_id, events)
+	_apply_coordinator_context()
 
 
 func _finish_direct_battle(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _scenario_coordinator._finish_direct_battle(events)
+	return _commit_coordinator_result(_scenario_coordinator._finish_direct_battle(events))
 
 
 func _finish_direct_battle_recovery(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _scenario_coordinator._finish_direct_battle_recovery(events)
+	return _commit_coordinator_result(_scenario_coordinator._finish_direct_battle_recovery(events))
 
 
 func _finish_direct_battle_without_rewards(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _scenario_coordinator._finish_direct_battle_without_rewards(events)
+	return _commit_coordinator_result(_scenario_coordinator._finish_direct_battle_without_rewards(events))
 
 
 func _begin_direct_battle_reward(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _scenario_coordinator._begin_direct_battle_reward(events)
+	return _commit_coordinator_result(_scenario_coordinator._begin_direct_battle_reward(events))
 
 
 func _finish_after_direct_battle(events: Array[DomainEvent], return_continuation: SessionContinuation, battle_outcome: StringName) -> SessionStep:
 	_ensure_coordinators()
-	return _scenario_coordinator._finish_after_direct_battle(events, return_continuation, battle_outcome)
+	return _commit_coordinator_result(_scenario_coordinator._finish_after_direct_battle(events, return_continuation, battle_outcome))
 
 
 func _continue_random_regions(map: MapDefinition, events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _exploration_coordinator._continue_random_regions(map, events)
+	return _commit_coordinator_result(_exploration_coordinator._continue_random_regions(map, events))
 
 
 func _complete_random_program(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _exploration_coordinator._complete_random_program(events)
+	return _commit_coordinator_result(_exploration_coordinator._complete_random_program(events))
 
 
 func _finish_completed(events: Array[DomainEvent]) -> SessionStep:
@@ -735,32 +797,34 @@ func _pending_interaction() -> InteractionRequest:
 
 func _respond_session_interaction(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_session_interaction(response)
+	return _commit_coordinator_result(_response_coordinator._respond_session_interaction(response))
 
 
 func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_pooled_wealth_departure(response)
+	return _commit_coordinator_result(_response_coordinator._respond_pooled_wealth_departure(response))
 
 
 func _pooled_wealth_departure_distribution_request(request_id: String, selected_character_id: String = "") -> InteractionRequest:
 	_ensure_coordinators()
-	return _response_coordinator._pooled_wealth_departure_distribution_request(request_id, selected_character_id)
+	var result: InteractionRequest = _response_coordinator._pooled_wealth_departure_distribution_request(request_id, selected_character_id)
+	_apply_coordinator_context()
+	return result
 
 
 func _respond_item_use_target(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_item_use_target(response)
+	return _commit_coordinator_result(_response_coordinator._respond_item_use_target(response))
 
 
 func _respond_field_spell_target(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_field_spell_target(response)
+	return _commit_coordinator_result(_response_coordinator._respond_field_spell_target(response))
 
 
 func _respond_scroll_target(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_scroll_target(response)
+	return _commit_coordinator_result(_response_coordinator._respond_scroll_target(response))
 
 
 func _service_action(intent: PlayerIntent) -> SessionStep:
@@ -866,102 +930,66 @@ static func _money_kind(value: String) -> int:
 
 func _begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperationResult) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._begin_runtime_service(service_id, operation)
+	return _commit_coordinator_result(_response_coordinator._begin_runtime_service(service_id, operation))
 
 
 func _respond_runtime_service(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_runtime_service(response)
+	return _commit_coordinator_result(_response_coordinator._respond_runtime_service(response))
 
 
 func _respond_drop_item(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_drop_item(response)
+	return _commit_coordinator_result(_response_coordinator._respond_drop_item(response))
 
 
 func _respond_character_spell_confirmation(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_character_spell_confirmation(response)
+	return _commit_coordinator_result(_response_coordinator._respond_character_spell_confirmation(response))
 
 
 func _respond_character_vault_publication(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_character_vault_publication(response)
+	return _commit_coordinator_result(_response_coordinator._respond_character_vault_publication(response))
 
 
 func _respond_session_retreat(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_session_retreat(response)
+	return _commit_coordinator_result(_response_coordinator._respond_session_retreat(response))
 
 
 func _finish_with_age_updates(events: Array[DomainEvent], resume_kind: StringName, resume_continuation: SessionContinuation = null) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._finish_with_age_updates(events, resume_kind, resume_continuation)
+	return _commit_coordinator_result(_response_coordinator._finish_with_age_updates(events, resume_kind, resume_continuation))
 
 
 func _respond_session_age_update(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_session_age_update(response)
+	return _commit_coordinator_result(_response_coordinator._respond_session_age_update(response))
 
 
 func _continue_after_session_combat_age_update(events: Array[DomainEvent]) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._continue_after_session_combat_age_update(events)
+	return _commit_coordinator_result(_response_coordinator._continue_after_session_combat_age_update(events))
 
 
 func _session_age_update_request_id(update: InteractionRequest.AgeUpdateBody, index: int) -> String:
 	_ensure_coordinators()
-	return _response_coordinator._session_age_update_request_id(update, index)
+	var result: String = _response_coordinator._session_age_update_request_id(update, index)
+	_apply_coordinator_context()
+	return result
 
 
 func _respond_session_ally_selection(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_session_ally_selection(response)
+	return _commit_coordinator_result(_response_coordinator._respond_session_ally_selection(response))
 
 
 func _respond_session_fumble_recovery(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_session_fumble_recovery(response)
+	return _commit_coordinator_result(_response_coordinator._respond_session_fumble_recovery(response))
 
 
 func _respond_session_battle_reward(response: InteractionResponse) -> SessionStep:
 	_ensure_coordinators()
-	return _response_coordinator._respond_session_battle_reward(response)
-
-
-func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: Array[DomainEvent]) -> SessionStep:
-	var effective := _state.world.random_region(region)
-	if effective.battle_maximum < effective.battle_minimum:
-		_session_interaction = null
-		_session_continuation.clear()
-		return _finish_failed(&"invalid_random_battle_range", "Random rectangle '%s' has an inverted battle range." % region.id, events)
-	var battle_id := _rng.draw_between(effective.battle_minimum, effective.battle_maximum, StringName("random-region.%s.battle" % region.id))
-	var battle := _content.battle_by_classic_id(absi(battle_id))
-	if battle == null:
-		_session_interaction = null
-		_session_continuation.clear()
-		return _finish_failed(&"unknown_random_battle", "Random rectangle '%s' selected unavailable battle %d." % [region.id, battle_id], events)
-	events.append(DomainEvent.new(&"random_encounter_triggered", {"regionId": region.id, "battleId": battle.id, "classicId": battle_id, "textId": region.text_id, "soundId": region.sound_id, "surprise": surprise}))
-	var battle_result := _rules.combat_flow.start_battle(_state, _content, battle, _rng, surprise)
-	if not battle_result.ok:
-		_session_interaction = null
-		_session_continuation.clear()
-		return _finish_failed(battle_result.error_code, battle_result.error_message, events)
-	events.append_array(battle_result.events)
-	if _state.combat != null and _session_continuation.kind == &"post-clock":
-		var exploration := _session_continuation.exploration()
-		exploration.random_region_index = -1 if region.only else exploration.random_region_index - 1
-		_battle_return_continuation = _session_continuation.copy()
-	if not CharacterAgingResult.update_payloads(battle_result.events).is_empty():
-		_session_interaction = null
-		_session_continuation.clear()
-		return _finish_with_age_updates(events, "combat-monster-turns")
-	if not _event_payload(battle_result.events, &"monster_death_macro_requested").is_empty():
-		_session_interaction = null
-		_session_continuation.clear()
-		return _start_session_death_macro(events)
-	_session_interaction = null
-	_session_continuation.clear()
-	if battle_result.completed:
-		return _finish_direct_battle(events)
-	return _finish_completed(events)
+	return _commit_coordinator_result(_response_coordinator._respond_session_battle_reward(response))

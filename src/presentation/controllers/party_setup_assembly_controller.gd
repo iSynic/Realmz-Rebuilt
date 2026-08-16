@@ -1,4 +1,16 @@
-extends "res://src/presentation/controllers/party_setup_inspection_controller.gd"
+class_name PartySetupAssemblyController
+extends "res://src/presentation/controllers/party_setup_controller_component.gd"
+
+var _inspection: RefCounted
+
+
+func _init(state: RefCounted, inspection: RefCounted) -> void:
+	super(state)
+	_inspection = inspection
+
+
+func _inspect_setup_character(character_id: String) -> void:
+	_inspection._inspect_setup_character(character_id)
 
 func _refresh_party_list() -> void:
 	if party_list == null:
@@ -178,7 +190,7 @@ func _party_setup_option_changed(_index: int) -> void:
 		return
 	var difficulty := int(difficulty_option.get_item_metadata(difficulty_option.selected))
 	var monster_set := int(monster_set_option.get_item_metadata(monster_set_option.selected))
-	intent_submitted.emit(PlayerIntent.set_party_setup_options(difficulty, monster_set))
+	_state.intent_submitted.emit(PlayerIntent.set_party_setup_options(difficulty, monster_set))
 
 func party_setup_option_changed(index: int) -> void:
 	_party_setup_option_changed(index)
@@ -192,15 +204,15 @@ func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
 	return current_revisions
 
 func _import_stored_character(character_id: String, revision_hash: String) -> void:
-	intent_submitted.emit(PlayerIntent.import_vault_character(character_id, revision_hash))
+	_state.intent_submitted.emit(PlayerIntent.import_vault_character(character_id, revision_hash))
 
 func _remove_setup_character(character_id: String) -> void:
-	intent_submitted.emit(PlayerIntent.remove_party_member(character_id))
+	_state.intent_submitted.emit(PlayerIntent.remove_party_member(character_id))
 
 func submit_party() -> void:
 	if view == null or view.party_members.is_empty():
 		return
-	intent_submitted.emit(PlayerIntent.begin_adventure())
+	_state.intent_submitted.emit(PlayerIntent.begin_adventure())
 
 func _maximum_party_size() -> int:
 	if view == null or view.campaign_summary == null:

@@ -10,35 +10,14 @@ var combat: int = 0
 var system: int = 0
 
 
-static func all_at(revision: int) -> ViewDomainRevisions:
-	var result := ViewDomainRevisions.new()
-	result.party = revision
-	result.setup = revision
-	result.exploration = revision
-	result.inventory_magic = revision
-	result.services = revision
-	result.combat = revision
-	result.system = revision
-	return result
-
-
-func movement_update(revision: int) -> ViewDomainRevisions:
-	var result := duplicate_revisions()
-	result.exploration = revision
-	result.system = revision
-	return result
-
-
-func duplicate_revisions() -> ViewDomainRevisions:
-	var result := ViewDomainRevisions.new()
-	result.party = party
-	result.setup = setup
-	result.exploration = exploration
-	result.inventory_magic = inventory_magic
-	result.services = services
-	result.combat = combat
-	result.system = system
-	return result
+func _init(revision: int = 0) -> void:
+	party = revision
+	setup = revision
+	exploration = revision
+	inventory_magic = revision
+	services = revision
+	combat = revision
+	system = revision
 
 
 func route_revision(route_id: StringName) -> int:
@@ -53,7 +32,7 @@ func route_revision(route_id: StringName) -> int:
 	return int([party, setup, exploration, inventory_magic, services, combat, system].max())
 
 
-func is_ordinary_exploration_update_from(previous: ViewDomainRevisions) -> bool:
+func is_ordinary_exploration_update_from(previous: RefCounted) -> bool:
 	return previous != null \
 		and exploration != previous.exploration \
 		and party == previous.party \
