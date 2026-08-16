@@ -104,6 +104,7 @@ func _ready() -> void:
 	_shell_presenter.vault_restore_requested.connect(_restore_vault_revision)
 	_shell_presenter.standalone_character_creation_requested.connect(_begin_standalone_character_creation)
 	_shell_presenter.standalone_character_creation_cancelled.connect(_cancel_standalone_character_creation)
+	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_shell_presenter.apply_settings(_presentation_settings)
 	presentation_coordinator.set_reduced_motion(_presentation_settings.reduced_motion)
 	_apply_application_theme(_presentation_settings.text_scale)

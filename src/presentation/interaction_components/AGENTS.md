@@ -7,6 +7,7 @@
 - Components translate an existing request payload into controls and emit the exact response payload selected by the player.
 - `TextChoiceInteraction` may add `Take note` to a journal-eligible Classic acknowledgement and emits only `{ "takeNote": true }`; ordinary Continue remains an empty acknowledgement, and an already-recorded message exposes no duplicate mutation.
 - `InteractionPresenter` owns request identity, modal visibility, and construction of `InteractionResponse`.
+- `SelectionInteraction` keeps the active character prompt in the Classic textbox while `ClassicPartyRoster` owns the numbered portrait interaction; it must not recreate a checklist or a separate Choose button. Ally body-count selection remains in its dedicated list.
 - `LifecycleInteraction` renders only the host-supplied End Adventure operations and emits one declared action identity. It does not save, close a session, infer combat state, or reuse scenario-choice semantics.
 - `AgeUpdateInteraction` presents the source-backed band/range and nonzero fifteen-column age changes and emits only the empty `age_update` acknowledgement payload.
 - `PlayerMapInteraction` owns the negative-opcode immediate display stage. It renders the detached player-map payload through the same presenter used by Maps/Notes and emits only the empty acknowledgement for the matching request ID; closing it cannot mutate acquisition state or bypass the issuing VM frame.

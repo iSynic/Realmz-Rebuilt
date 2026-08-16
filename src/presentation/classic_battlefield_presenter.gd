@@ -736,6 +736,8 @@ static func cell_rect(coordinate: Vector2i, camera: Vector2i, draw_origin: Vecto
 
 
 static func footprint_rect(footprint: Array[Vector2i], camera: Vector2i, draw_origin: Vector2) -> Rect2:
+	if footprint.is_empty():
+		return Rect2()
 	var minimum := footprint[0]
 	var maximum := footprint[0]
 	for coordinate: Vector2i in footprint:

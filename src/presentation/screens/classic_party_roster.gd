@@ -3,6 +3,7 @@ extends PanelContainer
 
 signal character_selected(character_id: String)
 signal combat_auto_changed(character_id: String, enabled: bool)
+signal character_selection_completed(character_ids: Array[String])
 
 const MUTED := Color("9da8aa")
 
@@ -11,6 +12,16 @@ const MUTED := Color("9da8aa")
 
 var _media: ClassicMediaCatalog
 var _selected_character_id: String = ""
+var _current_view: GameView
+var _selection_request_id: String = ""
+var _selection_count: int = 0
+var _selection_eligible_ids: Array[String] = []
+var _selection_order: Array[String] = []
+var _selection_cursors: Dictionary = {}
+
+
+func _exit_tree() -> void:
+	_restore_pointer()
 
 
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
@@ -18,13 +29,15 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 
 
 func present(view: GameView, selected_character_id: String = "") -> void:
+	_ensure_controls()
+	_current_view = view
 	_selected_character_id = selected_character_id
 	_clear()
 	if view == null or not view.session_started:
 		_heading.text = "Party"
 		_add_empty("No active party")
 		return
-	_heading.text = "Party • %d / 6" % view.party_members.size()
+	_heading.text = "Party • Pick %d" % (_selection_count - _selection_order.size()) if character_selection_active() else "Party • %d / 6" % view.party_members.size()
 	var combat_active := view.combat_view != null and view.combat_view.outcome == &"active"
 	var auto_character_ids: Array[String] = []
 	if combat_active:
@@ -42,11 +55,17 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	row_container.add_theme_constant_override("separation", 3)
 	var row := Button.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.set_meta("character_id", character.id)
 	row.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	row.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	row.add_theme_constant_override("icon_max_width", 42)
-	row.toggle_mode = true
-	row.button_pressed = character.id == _selected_character_id
+	row.toggle_mode = not character_selection_active()
+	row.button_pressed = not character_selection_active() and character.id == _selected_character_id
+	row.tooltip_text = "Level %d • Movement %d/%d" % [character.level, character.movement, character.maximum_movement]
+	var selection_eligible := _selection_eligible_ids.has(character.id)
+	if character_selection_active() and not selection_eligible:
+		row.disabled = true
+		row.tooltip_text = "This character is not eligible for the current selection."
 	var condition_text := _condition_summary(character.condition_values)
 	var action_fact := "SP %d/%d" % [character.spell_points, character.maximum_spell_points] if character.maximum_spell_points > 0 else "Attacks %d" % character.normal_attacks
 	row.text = "%s\n%s / %s  •  Stamina %d/%d\n%s  •  AR %d%s" % [
@@ -59,16 +78,29 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 		character.armor,
 		"  •  %s" % condition_text if not condition_text.is_empty() else "",
 	]
-	row.tooltip_text = "Level %d • Movement %d/%d" % [character.level, character.movement, character.maximum_movement]
 	var portrait := _portrait_texture(character.portrait_id)
 	if portrait != null:
 		row.icon = portrait
 	row.pressed.connect(func() -> void:
+		if character_selection_active():
+			_toggle_character_selection(character.id)
+			return
 		_selected_character_id = character.id
 		character_selected.emit(character.id)
 	)
 	row_container.add_child(row)
-	if combat_active:
+	if character_selection_active():
+		var marker := Label.new()
+		marker.name = "SelectionNumber"
+		marker.custom_minimum_size = Vector2(30.0, 30.0)
+		marker.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		marker.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		marker.add_theme_font_size_override("font_size", 20)
+		marker.add_theme_color_override("font_color", Color("e0bc53"))
+		var selected_index := _selection_order.find(character.id)
+		marker.text = str(_selection_count - selected_index) if selected_index >= 0 else ""
+		row_container.add_child(marker)
+	elif combat_active:
 		var auto_toggle := CheckButton.new()
 		auto_toggle.name = "CombatAuto"
 		auto_toggle.text = "Auto"
@@ -80,6 +112,105 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 		auto_toggle.toggled.connect(func(enabled: bool) -> void: combat_auto_changed.emit(character.id, enabled))
 		row_container.add_child(auto_toggle)
 	_party_list.add_child(row_container)
+
+
+func present_character_selection(request: InteractionRequest) -> void:
+	if request == null or request.kind != InteractionRequest.CHARACTER_SELECTION:
+		clear_character_selection()
+		return
+	var body := request.body as InteractionRequest.CharacterSelectionRequestBody
+	if body == null:
+		clear_character_selection()
+		return
+	if request.request_id != _selection_request_id:
+		_selection_request_id = request.request_id
+		_selection_count = body.count
+		_selection_eligible_ids.clear()
+		for candidate: InteractionRequestValue.SelectionCandidate in body.eligible:
+			_selection_eligible_ids.append(candidate.id)
+		_selection_order.clear()
+		call_deferred("_focus_first_eligible")
+	_update_selection_cursor()
+	_represent()
+
+
+func clear_character_selection() -> void:
+	if not character_selection_active():
+		return
+	_selection_request_id = ""
+	_selection_count = 0
+	_selection_eligible_ids.clear()
+	_selection_order.clear()
+	_restore_pointer()
+	_represent()
+
+
+func character_selection_active() -> bool:
+	return not _selection_request_id.is_empty()
+
+
+func _toggle_character_selection(character_id: String) -> void:
+	if not _selection_eligible_ids.has(character_id):
+		return
+	var existing := _selection_order.find(character_id)
+	if existing >= 0:
+		_selection_order.remove_at(existing)
+	else:
+		_selection_order.append(character_id)
+	_update_selection_cursor()
+	_represent()
+	if _selection_order.size() == _selection_count:
+		var selected: Array[String] = []
+		for character: CharacterView in _current_view.party_members:
+			if _selection_order.has(character.id):
+				selected.append(character.id)
+		_restore_pointer()
+		character_selection_completed.emit(selected)
+
+
+func _represent() -> void:
+	if _current_view != null:
+		present(_current_view, _selected_character_id)
+
+
+func _focus_first_eligible() -> void:
+	for row: Node in _party_list.find_children("*", "Button", true, false):
+		if row is Button and not (row as Button).disabled:
+			(row as Button).grab_focus()
+			return
+
+
+func _update_selection_cursor() -> void:
+	var remaining := _selection_count - _selection_order.size()
+	if remaining < 1:
+		_restore_pointer()
+		return
+	if not _selection_cursors.has(remaining):
+		_selection_cursors[remaining] = _number_cursor(remaining)
+	Input.set_custom_mouse_cursor(_selection_cursors[remaining], Input.CURSOR_ARROW, Vector2(8.0, 10.0))
+
+
+func _restore_pointer() -> void:
+	Input.set_custom_mouse_cursor(null, Input.CURSOR_ARROW)
+
+
+static func _number_cursor(number: int) -> ImageTexture:
+	var patterns := {
+		1: ["010", "110", "010", "010", "111"], 2: ["110", "001", "010", "100", "111"],
+		3: ["110", "001", "010", "001", "110"], 4: ["101", "101", "111", "001", "001"],
+		5: ["111", "100", "110", "001", "110"], 6: ["011", "100", "111", "101", "111"],
+	}
+	var image := Image.create(18, 22, false, Image.FORMAT_RGBA8)
+	image.fill(Color.TRANSPARENT)
+	var pattern: Array = patterns.get(number, patterns[1])
+	for y: int in pattern.size():
+		for x: int in 3:
+			if String(pattern[y]).substr(x, 1) != "1":
+				continue
+			for pixel_y: int in 3:
+				for pixel_x: int in 3:
+					image.set_pixel(4 + x * 3 + pixel_x, 3 + y * 3 + pixel_y, Color("e0bc53"))
+	return ImageTexture.create_from_image(image)
 
 
 func _add_empty(text: String) -> void:
@@ -115,3 +246,10 @@ func _clear() -> void:
 	for child: Node in _party_list.get_children():
 		_party_list.remove_child(child)
 		child.queue_free()
+
+
+func _ensure_controls() -> void:
+	if _party_list == null:
+		_party_list = get_node("RosterColumn/PartyScroll/PartyList") as VBoxContainer
+	if _heading == null:
+		_heading = get_node("RosterColumn/Heading") as Label

@@ -141,6 +141,16 @@ func submit_active_body(body: InteractionResponse.CombatBody) -> bool:
 	return true
 
 
+func submit_character_selection(character_ids: Array[String]) -> bool:
+	if _playback_masked or _request == null or _request.kind != InteractionRequest.CHARACTER_SELECTION:
+		return false
+	var body := _request.body as InteractionRequest.CharacterSelectionRequestBody
+	if body == null or character_ids.size() != body.count:
+		return false
+	_submit_body(InteractionResponse.SelectionBody.new(character_ids))
+	return true
+
+
 func accepts_combat_spatial_input() -> bool:
 	return not _playback_masked and _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).accepts_spatial_input()
 
@@ -248,7 +258,7 @@ func _apply_classic_region() -> void:
 
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
-	return passive_text or request != null and not _is_player_map_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"combat_action"]
+	return passive_text or request != null and not _is_player_map_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"combat_action"]
 
 
 static func uses_full_stage_region(request: InteractionRequest) -> bool:

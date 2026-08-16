@@ -266,6 +266,7 @@ func _test_public_character_checks(content: RealmzContent) -> void:
 	assert_equal(missing.error_code, &"missing_extra_code", "opcode 31 rejects incomplete Extra Code rows")
 	var waiting := api.execute_classic(ClassicActionDefinition.new(0, 31, 31, 0, false, [5, 0, 0, 12, 13]), "ability.pick")
 	assert_equal([waiting.state, waiting.interaction.kind, waiting.interaction.body.to_data().get("eligible").size()], [ScenarioRuntimeOperationResult.State.WAITING, &"character_selection", 2], "opcode 31 yields a typed character picker")
+	assert_equal(waiting.interaction.body.to_data()["eligible"][0], {"id": first.id, "name": first.name, "currentHealth": 10, "maximumHealth": 10}, "opcode 31 carries the living character facts rendered by the typed picker")
 	var chosen := api.resume_classic(waiting.continuation, InteractionResponse.from_data(waiting.interaction.request_id, &"character_selection", {"characterIds": [first.id]}), "ability.resume")
 	assert_equal([chosen.directive.target_id, state.selected_character_ids()], [12, [first.id]], "opcode 31 resumes through the selected character and authored branch")
 	var third := CharacterState.new("ability.third", "Third", 10, 10)

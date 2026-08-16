@@ -14,17 +14,7 @@ func build(request: InteractionRequest) -> void:
 func _build_character_selection(request: InteractionRequest) -> void:
 	var body := request.body as InteractionRequest.CharacterSelectionRequestBody
 	if body == null: return
-	var required := body.count
-	var prompt := body.prompt
-	if not prompt.is_empty():
-		add_hint(prompt)
-	add_hint("Choose %d character%s." % [required, "" if required == 1 else "s"])
-	for entry: InteractionRequestValue.SelectionCandidate in body.eligible:
-		_add_character_check(entry, false, false)
-	var submit := Button.new()
-	submit.text = "Choose"
-	submit.pressed.connect(_submit_characters.bind(required))
-	add_child(submit)
+	add_hint("Choose %d party member%s from the Party list." % [body.count, "" if body.count == 1 else "s"])
 
 
 func _build_ally_selection(request: InteractionRequest) -> void:
@@ -45,21 +35,17 @@ func _build_ally_selection(request: InteractionRequest) -> void:
 
 func _add_character_check(entry: InteractionRequestValue.SelectionCandidate, selected: bool, required: bool) -> void:
 	var check := CheckButton.new()
-	var maximum_health := entry.maximum_health if entry.has_maximum_health else entry.current_health
-	check.text = "%s • HP %d/%d%s" % [entry.name, entry.current_health, maximum_health, " • Required" if required else ""]
+	check.text = entry.name
+	if entry.has_current_health:
+		var maximum_health := entry.maximum_health if entry.has_maximum_health else entry.current_health
+		check.text += " • HP %d/%d" % [entry.current_health, maximum_health]
+	if required:
+		check.text += " • Required"
 	check.set_meta("character_id", entry.id)
 	check.button_pressed = selected
 	check.disabled = required
 	_checks.append(check)
 	add_child(check)
-
-
-func _submit_characters(required: int) -> void:
-	var ids := _selected_ids()
-	if ids.size() != required:
-		add_hint("Choose exactly %d character%s." % [required, "" if required == 1 else "s"])
-		return
-	response_body_submitted.emit(InteractionResponse.SelectionBody.new(ids))
 
 
 func _submit_allies(maximum: int) -> void:

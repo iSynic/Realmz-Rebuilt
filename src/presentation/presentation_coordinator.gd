@@ -158,6 +158,7 @@ func refresh() -> void:
 
 
 func present_host_interaction(request: InteractionRequest) -> void:
+	_shell_presenter.present_character_selection(request)
 	_interaction_presenter.present(request, _shell_presenter.latest_classic_text(), _session_controller.view(), _media)
 
 
@@ -218,4 +219,5 @@ static func should_show_battle_stage(active_route: StringName, game_view: GameVi
 
 
 func _present_interaction(game_view: GameView) -> void:
+	_shell_presenter.present_character_selection(game_view.pending_interaction)
 	_interaction_presenter.present(game_view.pending_interaction, _shell_presenter.latest_classic_text(), game_view, _media)

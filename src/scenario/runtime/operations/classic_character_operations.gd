@@ -108,7 +108,7 @@ func _request_character_selection(action: ClassicActionDefinition, request_id: S
 	var eligible: Array[Dictionary] = []
 	for character: CharacterState in _game_state.party.characters():
 		if action.operand_id < 0 or character.current_health > 0:
-			eligible.append({"id": character.id, "name": character.name, "currentHealth": character.current_health})
+			eligible.append({"id": character.id, "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
 	if eligible.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic character picker has no eligible party members.")
 	count = mini(count, eligible.size())
@@ -125,7 +125,7 @@ func _request_character_ability(action: ClassicActionDefinition, request_id: Str
 	var eligible: Array[Dictionary] = []
 	for character: CharacterState in _game_state.party.characters():
 		if character.current_health > 0:
-			eligible.append({"id": character.id, "name": character.name})
+			eligible.append({"id": character.id, "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health})
 	if eligible.is_empty():
 		return ScenarioRuntimeOperationResult.failed(&"no_eligible_characters", "Classic ability check has no living party member.")
 	return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, &"character_selection", {"count": 1, "eligible": eligible, "allowDead": false}), ScenarioRuntimeContinuation.character_ability(action.extra_code, action.gosub))

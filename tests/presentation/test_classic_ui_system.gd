@@ -836,18 +836,30 @@ func _test_fixture_gallery_coverage() -> void:
 	assert_true(spell_component.get_children().any(func(child: Node) -> bool: return child is ItemList and child.item_count == 4), "the level spell stage renders the complete detached candidate list")
 	assert_true(spell_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Confirm spell selection"), "the spell stage exposes one typed confirmation")
 	spell_component.free()
-	var selection_component := SelectionInteraction.new()
-	var selections: Array[Dictionary] = []
-	selection_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: selections.append(body.to_data()))
-	selection_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.CHARACTER_SELECTION))
-	var selection_checks := _base_buttons_in(selection_component).filter(func(button: BaseButton) -> bool: return button is CheckButton)
-	var choose_button: Button = _buttons_in(selection_component).filter(func(button: Button) -> bool: return button.text == "Choose")[0]
-	choose_button.pressed.emit()
-	assert_equal(selections, [], "mandatory character selection does not resume before the exact source-authored count is chosen")
-	(selection_checks[0] as CheckButton).button_pressed = true
-	choose_button.pressed.emit()
-	assert_equal(selections, [{"characterIds": ["hero"]}], "character selection emits one typed response with stable party identity")
-	selection_component.free()
+	var roster := load("res://src/presentation/screens/classic_party_roster.tscn").instantiate() as ClassicPartyRoster
+	(Engine.get_main_loop() as SceneTree).root.add_child(roster)
+	var selection_view := GameView.new(1, true, null)
+	selection_view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 8, 10)), CharacterView.new(CharacterState.new("mage", "Mage", 6, 9)), CharacterView.new(CharacterState.new("dead", "Dead", 0, 10))]
+	var request := _fixture_request("fixture.party-pick", InteractionRequest.CHARACTER_SELECTION, {"count": 2, "eligible": [{"id": "hero", "name": "Hero", "currentHealth": 8, "maximumHealth": 10}, {"id": "mage", "name": "Mage", "currentHealth": 6, "maximumHealth": 9}]})
+	var selections: Array[Array] = []
+	roster.character_selection_completed.connect(func(ids: Array[String]) -> void: selections.append(ids))
+	roster.present(selection_view)
+	roster.present_character_selection(request)
+	var rows := _buttons_in(roster)
+	assert_true(rows[2].disabled, "the Party-list picker visibly rejects a character absent from the typed eligibility set")
+	rows[1].pressed.emit()
+	assert_equal(_labels_in(roster).filter(func(text: String) -> bool: return text == "2"), ["2"], "the first of two Classic picks is stamped with the countdown number two")
+	rows = _buttons_in(roster)
+	rows[1].pressed.emit()
+	assert_false(_labels_in(roster).has("2"), "clicking a numbered portrait removes that pick and restores the remaining count")
+	rows = _buttons_in(roster)
+	rows[1].pressed.emit()
+	rows = _buttons_in(roster)
+	rows[0].pressed.emit()
+	assert_equal(selections, [["hero", "mage"]], "the exact source-authored count auto-submits stable identities in Classic party order")
+	roster.present_character_selection(null)
+	assert_false(_labels_in(roster).any(func(text: String) -> bool: return text in ["1", "2"]), "leaving the interaction clears temporary Party-list numbering")
+	roster.free()
 
 
 func _test_lifecycle_interaction() -> void:
@@ -980,6 +992,7 @@ func _test_battlefield_presenter() -> void:
 	var presenter := ClassicBattlefieldPresenter.new()
 	assert_equal(ClassicBattlefieldPresenter.viewport_cells_for(Vector2(704.0, 396.0)), Vector2i(16, 11), "battlefield keeps native cell bounds")
 	assert_equal(ClassicBattlefieldPresenter.click_direction(Vector2i(45, 45), Vector2i(52, 39)), Vector2i(1, -1), "distant clicks map to one tactical direction")
+	assert_equal(ClassicBattlefieldPresenter.footprint_rect([], Vector2i.ZERO, Vector2.ZERO), Rect2(), "terminal playback tolerates a combatant whose committed battlefield footprint has already been removed")
 	var view := _combat_playback_view(20, Vector2i(45, 45), Vector2i(47, 45), &"active")
 	presenter.present(view)
 	presenter.set_movement_costs_visible(true)
