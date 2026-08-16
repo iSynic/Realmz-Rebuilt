@@ -31,9 +31,17 @@ Use the lowest tier that covers the changed boundary:
 
 Move directly to Tier 3 for package or schema changes; save, migration, or continuation changes; RNG or VM changes; topology changes; terminal combat or reward sequencing; and composition-root ownership changes. CI remains comprehensive regardless of the local tier.
 
-At batch start, Sol identifies the critical path and any suitable sidecars. If suitable sidecars exist, use no more than two `gpt-5.6-luna` agents at `xhigh`, each with a detailed self-contained prompt and a disjoint write scope. Luna may perform bounded archaeology, settled regression tests, isolated UI or fixture implementation, mechanical evidence/DOX work, review, and parallel verification. Sol retains architecture, ambiguous Castle/fidelity adjudication, high-risk boundaries, the critical path, cross-cutting integration, final review/tests/commit, and final conclusions.
+At batch start, Sol identifies the critical path and any suitable sidecars. If suitable sidecars exist, use no more than two `gpt-5.6-luna` agents at `xhigh`, each with a detailed self-contained prompt and a disjoint write scope. Luna may perform bounded archaeology, settled regression tests, isolated UI or fixture implementation, mechanical evidence/DOX work, review, and parallel verification. Sol retains architecture, ambiguous Castle/fidelity adjudication, high-risk boundaries, the critical path, cross-cutting integration, final review/tests/commit, and final conclusions. Delegation is optional when it is unsafe or wasteful; the requirement to consider a sidecar never overrides the storage guard below.
 
 Every Luna prompt states the objective; repository and base; DOX requirements; read and write scope; settled interfaces and evidence; non-goals; tests; ambiguity handling; and final-report format. Luna must not commit or push, modify references, broaden scope, or make fidelity decisions unless explicitly authorized. Sol reviews every result, and Luna evidence never upgrades audit status without Sol validation.
+
+### Delegation storage guard
+
+Subagents start with `fork_context: false` and a self-contained prompt. Never copy or fork the parent conversation history into a child agent merely for convenience. A long-lived parent task may contain gigabytes of local rollout history, and a context-forked child can duplicate that history into a separate `C:\Users\<user>\.codex\sessions` file.
+
+Before delegating, inspect the active parent rollout when it can be identified cheaply. Do not spawn any child from a parent rollout larger than 256 MiB; perform the work locally or begin a fresh user-directed task with a compact handoff. After spawning an eligible non-forked child, inspect its rollout once initialization settles. If it exceeds 64 MiB before substantive work, close it immediately, retain no further children from that parent, and report the storage anomaly. Close completed or interrupted agents promptly.
+
+Treat 512 MiB of cumulative child-session storage as a hard batch ceiling. Crossing the ceiling stops further delegation but does not block local implementation. Delegation from this repository's August 2026 long-running reconstruction task is permanently disabled because inherited child rollouts consumed more than 100 GiB; future work from that task remains Sol-local unless the user starts a fresh compact task. Session-storage checks are operational safeguards and do not enter product tests or completion evidence.
 
 ### Parity convergence
 

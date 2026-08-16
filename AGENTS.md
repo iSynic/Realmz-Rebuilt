@@ -90,7 +90,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - Never use `codex` or `Codex` in branch names.
 - Group normal player-visible work into coherent batches of 3–5 related workflows, with one focused-verified commit per workflow. Use the risk-tiered delivery and delegation policy in `docs/development.md`; CI remains comprehensive.
 - Use the parity-convergence amendment in `docs/development.md`: every batch declares an ordinary-play certification target, prioritizes missing/partial and target-campaign gaps over deeper functional edge cases, and limits archaeology to approved discrepancy, blocker, high-risk, compiler-loss, or target-campaign ambiguity triggers.
-- Sol retains the critical path, architecture and fidelity adjudication, high-risk boundaries, cross-cutting integration, final review/tests/commit, and user conclusions. When a concrete suitable sidecar exists, delegate it under the bounded Luna rules in `docs/development.md`; Luna agents do not commit or push.
+- Sol retains the critical path, architecture and fidelity adjudication, high-risk boundaries, cross-cutting integration, final review/tests/commit, and user conclusions. When a concrete suitable sidecar exists, delegate it under the bounded Luna rules in `docs/development.md`; Luna agents do not commit or push. Never fork a long-lived task's accumulated context into a child agent. Use a self-contained non-forked prompt, and suspend delegation entirely when the parent task or child initialization exceeds the storage limits in `docs/development.md`.
 
 ## Child DOX Index
 
