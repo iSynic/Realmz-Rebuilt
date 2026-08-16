@@ -87,17 +87,7 @@ func render_creator_step() -> void:
 	setup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	setup_message.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	setup_message.text = _creator_step_message()
-	_clear(creator_page)
-	race_list = null
-	caste_list = null
-	race_class_columns = null
-	name_edit = null
-	gender_option = null
-	portrait_option = null
-	combat_icon_option = null
-	review_label = null
-	spell_label = null
-	spell_list = null
+	_clear_creator_page()
 	for index: int in creator_step_labels.size():
 		creator_step_labels[index].modulate = GOLD if index == creator_step else Color("e0e2e5") if index < creator_step else MUTED
 	match creator_step:
@@ -450,7 +440,12 @@ func _update_creator_actions() -> void:
 	creator_back_button.disabled = creator_step == 0
 	add_character_button.visible = creator_step == 3
 	_apply_availability(add_character_button, &"generate_character_draft")
-	creator_next_button.text = ("Create Character File" if standalone_character_creation_active else "Add to party") if creator_step == 4 else "Choose spells" if creator_step == 3 else "Continue"
+	if creator_step == 4:
+		creator_next_button.text = "Create Character File" if standalone_character_creation_active else "Add to party"
+	elif creator_step == 3 and view != null and view.character_draft != null and view.character_draft.spellcaster_type > 0 and view.character_draft_spell_points_total > 0:
+		creator_next_button.text = "Choose spells"
+	else:
+		creator_next_button.text = "Continue"
 	if creator_step == 4:
 		_apply_availability(creator_next_button, &"finalize_character")
 	else:

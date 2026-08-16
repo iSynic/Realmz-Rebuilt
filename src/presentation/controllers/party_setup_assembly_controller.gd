@@ -112,7 +112,7 @@ func _render_party_assembly() -> void:
 	if stored_character_list != null and is_instance_valid(stored_character_list) and stored_character_list.is_inside_tree() and next_signature == _stored_revision_signature:
 		_refresh_stored_character_rows(current_revisions, campaign_setup, party_full)
 		return
-	_clear(creator_page)
+	_clear_creator_page()
 	_ensure_appearance_textures()
 	var heading := CenterContainer.new()
 	heading.name = "CharacterFilesHeading"

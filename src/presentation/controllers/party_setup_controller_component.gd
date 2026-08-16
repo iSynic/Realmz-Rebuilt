@@ -237,3 +237,19 @@ func _add_label(parent: Container, text: String, color: Color = Color.WHITE, siz
 
 func _clear(parent: Node) -> void:
 	_state._clear(parent)
+
+
+func _clear_creator_page() -> void:
+	stored_character_list = null
+	race_list = null
+	caste_list = null
+	race_class_columns = null
+	name_edit = null
+	gender_option = null
+	starting_level_option = null
+	portrait_option = null
+	combat_icon_option = null
+	review_label = null
+	spell_label = null
+	spell_list = null
+	_clear(creator_page)

@@ -1031,11 +1031,13 @@ func _test_character_creator_workflow() -> void:
 	view.caste_options = [DefinitionOptionView.new("caste.sorcerer", "Sorcerer", "Arcane caster.", ["race.human"])]
 	router.present(view)
 	assert_equal(setup.party_list.get_child_count(), 6, "creator retains six party positions")
+	var prior_character_list: VBoxContainer = setup.stored_character_list
 	setup.create_character_button.pressed.emit()
 	assert_equal(setup.setup_mode, &"creator", "creator opens from party assembly")
+	prior_character_list.free()
 	assert_true(setup.creator_cancel_button != null and not setup.creator_cancel_button.disabled, "creator can be canceled before draft mutation")
 	setup.creator_cancel_button.pressed.emit()
-	assert_equal(setup.setup_mode, &"assembly", "creator cancellation returns to assembly")
+	assert_equal(setup.setup_mode, &"assembly", "creator cancellation rebuilds assembly after its prior dynamic controls are freed")
 	router.free()
 func _test_character_vault_workspace() -> void:
 	var router := ClassicScreenRouter.new()
