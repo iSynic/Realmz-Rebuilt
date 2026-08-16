@@ -10,6 +10,7 @@ Own route-local presentation state and control construction behind typed detache
 - Controllers emit typed intents, host actions, or presentation-setting changes. They never mutate gameplay state.
 - `ClassicScreenRouter` alone mounts primary workspaces and restores route focus.
 - A controller may preserve selection, filtering, sorting, tabs, and draft text for its own route only.
+- `CampaignLibraryController` owns splash and installed-campaign controls, package-operation presentation, and campaign-list selection. `CampaignPartySetupController` composes it with party assembly and character creation without reimplementing campaign-library state.
 
 ## Verification
 
