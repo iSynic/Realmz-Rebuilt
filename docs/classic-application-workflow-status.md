@@ -13,27 +13,25 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Classic inventory Split/Join implementation and AOGM item-workspace certification** (`classic-inventory-split-join-certification`)
+**AOGM charged-item, field-magic, and acquired-map ordinary-play certification** (`aogm-field-application-certification`)
 
-Split and Join are source-settled, implemented, and exercised alongside Inspect, confirmed Drop, and exact-instance Trade through one ordinary AOGM item-workspace route. Every target now has AOGM ordinary-play evidence; presentation remains functional rather than accepted, so the audit does not promote these workflows to certified without user acceptance. Equipment remains outside this batch because its Castle oracle is still explicitly required.
+These are the highest-priority source-settled AOGM application paths still lacking ordinary-play evidence. The batch exercises existing charged-item, field/camp spell and scroll, and acquired-map workflows through one exploration-facing route before investigating deferred special-item or malformed-data branches. Rare discard, case-transfer, random-power, and exact-pixel map variants remain explicit parity gaps unless ordinary AOGM play reaches them.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.inventory.split-item` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.inventory.join-item` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.inventory.inspect-item` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.inventory.drop-item` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.inventory.trade-item` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.inventory.use-item` | implementation | aogm-major-partial | - | GAP-INV-003 |
+| `classic.spellcasting.field-camp-cast` | implementation | aogm-major-partial | - | GAP-SPELL-002 |
+| `classic.maps.view-acquired` | certification | aogm-certification | aogm-ordinary | GAP-MAP-011 |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
-| classic | missing | 3 | 1 | -2 |
+| classic | missing | 1 | 1 | 0 |
 | classic | partial | 16 | 16 | 0 |
-| classic | functional | 48 | 50 | +2 |
+| classic | functional | 50 | 50 | 0 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
