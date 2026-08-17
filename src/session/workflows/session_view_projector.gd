@@ -42,6 +42,8 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 		else:
 			current_combat = CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow, state)
 	var result := GameView.new(revision, true, pending_interaction, state.party.map_id, state.party.coordinate, state.clock.day(), state.clock.hour(), state.clock.minute(), _map_view(context, revision, false, state.combat != null), members, state.party.fatigue, state.party.pooled_wealth.gold, current_combat)
+	for ally: MonsterState in state.party.allies():
+		result.party_allies.append(MonsterView.new(ally, content.monster_by_id(ally.definition_id), content))
 	result.campaign_id = content.campaign_id
 	result.rules_version = content.rules_version
 	result.party_setup_available = not state.party_setup_completed

@@ -3,6 +3,7 @@ extends RefCounted
 
 var id: String
 var definition_id: String
+var classic_id: int = 0
 var name: String
 var current_health: int
 var maximum_health: int
@@ -41,6 +42,7 @@ func _init(monster: MonsterState, definition: MonsterDefinition = null, content:
 		if monster.conditions.value(index) != 0:
 			conditions.append(CharacterView.CONDITION_NAMES[index] if index < CharacterView.CONDITION_NAMES.size() else "Classic condition %d" % (index + 1))
 	if definition != null:
+		classic_id = definition.classic_id
 		movement_maximum = definition.movement_max
 		attack_count = definition.attack_count
 		for index: int in 6:

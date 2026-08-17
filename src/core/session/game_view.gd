@@ -13,6 +13,7 @@ var realmz_hour: int
 var realmz_minute: int
 var map_view: MapView
 var party_members: Array[CharacterView] = []
+var party_allies: Array[MonsterView] = []
 var party_fatigue: int = 0
 var pooled_gold: int = 0
 var combat_view: CombatView

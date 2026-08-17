@@ -253,7 +253,8 @@ func handle_back() -> bool:
 
 func handle_route_shortcut(event: InputEvent) -> bool:
 	for definition: Dictionary in UiRouteCatalog.ROUTES:
-		if event.is_action_pressed(StringName(definition["shortcut"])):
+		var shortcut := StringName(definition["shortcut"])
+		if not shortcut.is_empty() and event.is_action_pressed(shortcut):
 			if not route_change_reason(_current_view).is_empty():
 				return true
 			_router.open_screen(StringName(definition["id"]))
@@ -407,6 +408,9 @@ func _build_menus() -> void:
 		{"label": "Spells", "route": &"spells"},
 		{"label": "Vault", "route": &"vault"},
 	])
+	_fill_menu($MenuStrip/MenuRow/AlliesMenu, [
+		{"label": "Current Allies", "route": &"allies", "disabled_reason": _allies_reason()},
+	])
 	_fill_menu($MenuStrip/MenuRow/MapsMenu, [
 		{"label": "Maps and Notes", "route": &"journal"},
 		{"label": "Acquired Maps", "route": &"journal"},
@@ -427,6 +431,7 @@ func _build_menus() -> void:
 		{"label": "Character — Inventory", "route": &"inventory"},
 		{"label": "Character — Spells", "route": &"spells"},
 		{"label": "Character — Vault", "route": &"vault"},
+		{"label": "Allies — Current Allies", "route": &"allies", "disabled_reason": _allies_reason()},
 		{"label": "Maps / Notes", "route": &"journal"},
 		{"label": "Game — Quick Save", "system": &"save", "disabled_reason": _save_reason()},
 		{"label": "Game — Quick Load", "system": &"load", "disabled_reason": _load_reason()},
@@ -736,6 +741,15 @@ func _campaign_library_reason() -> String:
 		return "Resolve the current interaction first."
 	if _current_view.combat_view != null and _current_view.combat_view.outcome == &"active":
 		return "Finish the current battle first."
+	return ""
+
+
+func _allies_reason() -> String:
+	var reason := route_change_reason(_current_view)
+	if not reason.is_empty():
+		return reason
+	if _current_view.party_allies.is_empty():
+		return "No allies are currently traveling with the party."
 	return ""
 
 

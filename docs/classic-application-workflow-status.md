@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 68 | 1 | 14 | 52 | 1 |
+| classic | 68 | 0 | 15 | 52 | 1 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -29,8 +29,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
-| classic | missing | 1 | 1 | 0 |
-| classic | partial | 14 | 14 | 0 |
+| classic | missing | 1 | 0 | -1 |
+| classic | partial | 14 | 15 | +1 |
 | classic | functional | 52 | 52 | 0 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
@@ -45,7 +45,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Startup and party | 8 | 0 | 0 | 8 | 0 |
 | Exploration | 6 | 0 | 0 | 6 | 0 |
 | Scenario interaction | 6 | 0 | 1 | 5 | 0 |
-| Character management | 5 | 1 | 1 | 3 | 0 |
+| Character management | 5 | 0 | 2 | 3 | 0 |
 | Inventory and equipment | 9 | 0 | 3 | 6 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
@@ -95,8 +95,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 | presentation | Count |
 | --- | ---: |
-| absent | 1 |
-| fixture-shell | 0 |
+| absent | 0 |
+| fixture-shell | 1 |
 | functional | 66 |
 | accepted | 1 |
 
@@ -134,7 +134,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 | Label | Classic | Host |
 | --- | ---: | ---: |
-| synthetic | 67 | 7 |
+| synthetic | 68 | 7 |
 | route-harness | 39 | 2 |
 | aogm-ordinary | 41 | 3 |
 | other-ordinary | 0 | 0 |
@@ -145,7 +145,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 Blockers: **1**. Major gaps: **13**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
-- **major** `classic.character.allies-bestiary` - The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
+- **major** `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster. Next: Correct Providence schema v3 and Rebuilt decoding to preserve every menu-visible monster, its description, and not-on-menu flag, then add the Bestiary route without inventing discovery state.
 - **major** `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
 - **major** `classic.combat.resolve-outcome` - Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
 - **major** `classic.combat.resolve-outcome` - Battle reward modes 5 and 10 remain unresolved end to end. Next: Characterize the suspicious mode-5 incidental/RNG branches and mode-10 restart field with controlled Castle fixtures, then implement each distinct runtime continuation without changing schema v2 unless the fixture disproves positional preservation.
@@ -190,7 +190,7 @@ Blockers: **1**. Major gaps: **13**.
 
 ### parity
 
-- `classic.character.allies-bestiary` - The allies and bestiary workspaces are absent and the known-entry display contract is incomplete.
+- `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster.
 - `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately.
 - `classic.combat.resolve-outcome` - Battle reward modes 5 and 10 remain unresolved end to end.
 - `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved.

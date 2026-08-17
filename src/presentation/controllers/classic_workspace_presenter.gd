@@ -1,6 +1,8 @@
 class_name ClassicWorkspacePresenter
 extends RefCounted
 
+const CREATURE_LIBRARY_CONTROLLER := preload("res://src/presentation/controllers/creature_library_workspace_controller.gd")
+
 signal intent_submitted(intent: PlayerIntent)
 signal system_action_requested(action_id: StringName, value: Variant)
 signal presentation_setting_changed(setting_id: StringName, value: Variant)
@@ -25,6 +27,7 @@ var _inventory_controller := InventoryWorkspaceController.new()
 var _services_controller := ServicesWorkspaceController.new()
 var _maps_journal_controller := MapsJournalWorkspaceController.new()
 var _spells_controller := SpellsWorkspaceController.new()
+var _creature_library_controller := CREATURE_LIBRARY_CONTROLLER.new()
 
 
 func _init() -> void:
@@ -119,6 +122,7 @@ func reset_campaign() -> void:
 	_character_controller.reset()
 	_inventory_controller.reset()
 	_spells_controller.reset()
+	_creature_library_controller.reset()
 
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
@@ -173,6 +177,8 @@ func present(screen_id: StringName, body: Container, appearance_textures: Dictio
 			_add_card(body, "Exploration", "The map presenter occupies the central Classic viewport. Use the command rail and textbox overlay for player-facing actions.", "Day %d • %02d:%02d" % [_view.realmz_day, _view.realmz_hour, _view.realmz_minute])
 		&"character":
 			_character_controller.present(body, _view, appearance_textures, _settings)
+		&"allies":
+			_creature_library_controller.present_allies(body, _view, _media, _settings.text_scale)
 		&"vault":
 			_character_controller.present_vault(body, _view, appearance_textures, _settings.text_scale, vault_back_label)
 		&"inventory":

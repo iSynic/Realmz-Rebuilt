@@ -589,7 +589,7 @@ func _test_money_workspace_audio() -> void:
 
 
 func _test_route_catalog() -> void:
-	assert_equal(UiRouteCatalog.ROUTES.size(), 9, "the canonical route registry contains all nine workspaces")
+	assert_equal(UiRouteCatalog.ROUTES.size(), 10, "the canonical route registry contains the ten implemented workspaces")
 	var ids: Dictionary = {}
 	var shortcuts: Dictionary = {}
 	var primary_count: int = 0
@@ -599,8 +599,8 @@ func _test_route_catalog() -> void:
 		primary_count += 1 if bool(route["primary"]) else 0
 		assert_false(String(route.get("description", "")).is_empty(), "every route has presentation guidance")
 		assert_true(ResourceLoader.exists(String(route.get("scene", "")), "PackedScene"), "every route owns a scene-backed workspace")
-	assert_equal(ids.size(), 9, "route identifiers are unique")
-	assert_equal(shortcuts.size(), 9, "route shortcuts are unique")
+	assert_equal(ids.size(), 10, "route identifiers are unique")
+	assert_equal(shortcuts.size(), 10, "route shortcuts are unique, including the one shortcut-free menu workspace")
 	assert_equal(primary_count, 6, "compact and standard layouts keep six primary workspaces")
 
 

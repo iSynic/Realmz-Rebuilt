@@ -32,7 +32,7 @@ The top menu is the sole global navigation surface:
 - `Game`: campaigns, save, load, return to selection, quit.
 - `Adventure`: Explore plus available adventure operations.
 - `Character`: Characters, Inventory, Spells, Vault.
-- `Bestiary` and `Allies`: disabled with a reason until their detached views contain sufficient facts.
+- `Allies`: enabled only when the active party has held-over allies, then opens a read-only list/detail workspace from detached session state. `Bestiary` remains disabled until Providence preserves Castle's complete menu-visible monster catalog, per-record descriptions, and `notonmenu` flag; it is not a discovery log.
 - `Maps / Notes`: Journal and acquired maps.
 - `Preferences`: display, audio, accessibility, and diagnostics.
 
@@ -41,7 +41,7 @@ Services and Battle open from typed session context, not as ordinary global dest
 ## Screen composition
 
 - Explore leaves the native map as the dominant stage. Scenario pictures temporarily occupy the stage on an opaque, natively tiled stone surface that reaches beneath the complete raised bevel; narration and history remain in the bottom narrative region.
-- Characters and Vault use compact stat/revision rows with portraits, equipment, saves, conditions, eligibility, and provenance when supplied.
+- Characters and Vault use compact stat/revision rows with portraits, equipment, saves, conditions, eligibility, and provenance when supplied. Allies uses the same route-owned composition for current held-over monster instances and never invents a persistent ally archive.
 - Inventory is character-first: select a party member, then one carried record, then use the detached item details and source-probed actions. It uses visible CICNs, dense item rows, exact recipient choices for Trade, and explicit disabled reasons. Unidentified items preserve their visible icon while exposing only player-knowable identity and details. Ordinary inventory does not expose a player stash: Castle opcode 36 is scenario-owned whole-party equipment escrow, while Remake's Honest Storage is an optional donor feature rather than a Classic workflow.
 - Spells use original cast/abort and supporting strip art around known spells, costs, range/duration, target facts, and session-authorized casting.
 - Services use typed shop, temple, bank, and treasure requests. The shop surface shows total payable gold, identified stock, player-knowable carried-item names, core-owned prices/reasons, equipped-sale blockers, and fixed-cost identification; every action returns stable stock, character, and item-instance IDs. No location or operation is invented. A storage service may appear only if separately sourced as authored campaign behavior; it is not inferred from opcode 36 or Remake's Honest Storage.

@@ -62,8 +62,6 @@ disabled = true
 [node name="AlliesMenu" type="MenuButton" parent="MenuStrip/MenuRow"]
 layout_mode = 2
 text = "Allies"
-tooltip_text = "Ally facts are not supplied by the current detached view."
-disabled = true
 
 [node name="MapsMenu" type="MenuButton" parent="MenuStrip/MenuRow"]
 layout_mode = 2

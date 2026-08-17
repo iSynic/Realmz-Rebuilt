@@ -4,6 +4,7 @@ extends RefCounted
 const ROUTES: Array[Dictionary] = [
 	{"id": &"exploration", "label": "Explore", "shortcut": "ui_screen_explore", "primary": true, "description": "Move, search, camp, and follow the scenario.", "scene": "res://src/presentation/screens/exploration_screen.tscn"},
 	{"id": &"character", "label": "Characters", "shortcut": "ui_screen_characters", "primary": true, "description": "Inspect statistics, conditions, allies, and equipment.", "scene": "res://src/presentation/screens/character_screen.tscn"},
+	{"id": &"allies", "label": "Allies", "shortcut": "", "primary": false, "description": "Inspect the monsters currently traveling with the party.", "scene": "res://src/presentation/screens/allies_screen.tscn"},
 	{"id": &"vault", "label": "Vault", "shortcut": "ui_screen_vault", "primary": false, "description": "Import and review reusable character revisions.", "scene": "res://src/presentation/screens/vault_screen.tscn"},
 	{"id": &"inventory", "label": "Inventory", "shortcut": "ui_screen_inventory", "primary": true, "description": "Equip, identify, use, trade, and store items.", "scene": "res://src/presentation/screens/inventory_screen.tscn"},
 	{"id": &"spells", "label": "Spells", "shortcut": "ui_screen_spells", "primary": true, "description": "Review known spells, powers, costs, and targets.", "scene": "res://src/presentation/screens/spells_screen.tscn"},
