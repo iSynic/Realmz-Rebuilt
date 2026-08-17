@@ -50,10 +50,19 @@ func _initialize() -> void:
 		call_deferred("_quit_cleanly", 1)
 		return
 	state.combat.set_turn_order(character_ids + monster_ids)
+	var combat_data := state.combat.to_data()
+	combat_data["attackedActorIds"] = []
+	state.combat = CombatState.from_data(combat_data)
 	var previous_view := _combat_view(state, content, rules, 1)
 	var view_started := Time.get_ticks_usec()
 	var view := CombatView.new(state.combat, state.party.characters(), content, rules.inventory, rules.battlefield, rules.combat_flow, state)
 	var view_us := Time.get_ticks_usec() - view_started
+	var spell_options_started := Time.get_ticks_usec()
+	var spell_options := rules.combat_flow.character_spell_options(state, content, character_ids[0])
+	var spell_options_us := Time.get_ticks_usec() - spell_options_started
+	var spell_reason_started := Time.get_ticks_usec()
+	rules.combat_flow.character_spell_unavailable_reason(state, content, character_ids[0])
+	var spell_reason_us := Time.get_ticks_usec() - spell_reason_started
 	var checkpoint_started := Time.get_ticks_usec()
 	state.to_data()
 	var checkpoint_us := Time.get_ticks_usec() - checkpoint_started
@@ -96,6 +105,9 @@ func _initialize() -> void:
 		"battleSetupPlaybackFrames": setup_playback["frames"],
 		"battleSetupPlaybackSeconds": setup_playback["seconds"],
 		"combatViewMs": _milliseconds(view_us),
+		"combatSpellOptionCount": spell_options.size(),
+		"combatSpellOptionsMs": _milliseconds(spell_options_us),
+		"combatSpellUnavailableReasonMs": _milliseconds(spell_reason_us),
 		"combatPackageAssetCount": combat_assets.size(),
 		"combatPackageAssetIndividualReadMs": _milliseconds(individual_media_us),
 		"combatPackageAssetBatchReadMs": _milliseconds(batch_media_us),
@@ -148,6 +160,12 @@ func _fresh_state(content: RealmzContent) -> GameState:
 	if caste == null:
 		return null
 	var characters: Array[CharacterState] = []
+	var combat_spell_ids: Array[String] = []
+	for spell: SpellDefinition in content.spell_definitions():
+		if spell.in_combat:
+			combat_spell_ids.append(spell.id)
+			if combat_spell_ids.size() == 12:
+				break
 	for index: int in 6:
 		var character := CharacterState.new("combat-probe-%d" % index, "Probe %d" % (index + 1), 40, 40)
 		character.race_id = race.id
@@ -156,6 +174,10 @@ func _fresh_state(content: RealmzContent) -> GameState:
 		character.maximum_movement = 12
 		character.movement = 12
 		character.normal_attacks = 2
+		if index == 0:
+			character.set_known_spells(combat_spell_ids)
+			character.maximum_spell_attacks = 3
+			character.spell_points = 500
 		characters.append(character)
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, characters), RealmzClock.new())
 	state.party_setup_completed = true

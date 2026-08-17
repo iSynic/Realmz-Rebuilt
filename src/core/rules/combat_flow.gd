@@ -284,6 +284,10 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 	return _magic.probe_character_spell_cast(state, content, caster_id, target_id, spell_id, power_level, target_coordinate, rotation, target_ids)
 
 
+func probe_character_spell_choice(state: GameState, content: RealmzContent, caster_id: String, spell_id: String, power_level: int) -> CombatSpellCastProbe:
+	return _magic.probe_character_spell_choice(state, content, caster_id, spell_id, power_level)
+
+
 func character_spell_options(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatSpellOptionView]:
 	return _magic.character_spell_options(state, content, caster_id)
 

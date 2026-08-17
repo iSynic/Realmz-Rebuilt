@@ -411,13 +411,13 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_true(_labels_in(component).any(func(text: String) -> bool: return text.contains("Goblin")), "the target panel is visible beside the command deck")
 	component.free()
 func _test_battle_typed_option_contracts() -> void:
-	var request := _fixture_request("battle.unavailable", InteractionRequest.COMBAT, {"actions": ["cast_spell", "use_item", "use_scroll"], "spellCasts": [], "itemCasts": [], "scrollCasts": [], "spellCastReason": "No legal spell.", "itemCastReason": "No legal item.", "scrollCastReason": "No legal scroll."})
+	var request := _fixture_request("battle.staged-spell", InteractionRequest.COMBAT, {"actions": ["cast_spell", "use_item", "use_scroll"], "spellCasts": [{"spellId": "classic.spell.1306", "spellName": "Brimstones", "power": 1, "cost": 2, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 1, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, 0]], "legalTargetCoordinates": []}, {"spellId": "classic.spell.1306", "spellName": "Brimstones", "power": 2, "cost": 4, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 2, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, 0], [0, 1]], "legalTargetCoordinates": []}], "spellCastReason": "", "itemCasts": [], "scrollCasts": [], "itemCastReason": "No legal item.", "scrollCastReason": "No legal scroll."})
 	var component := BattleInteraction.new()
 	component.build(request)
-	for label: String in ["Spells", "Items", "Scrolls"]:
+	assert_true(component.find_child("CombatSpellPicker", true, false) != null and component.find_child("CombatSpellPowerPicker", true, false) != null, "combat casting exposes separate spell and power stages before battlefield targeting")
+	for label: String in ["Items", "Scrolls"]:
 		var buttons := _buttons_in(component).filter(func(button: Button) -> bool: return button.text == label)
-		assert_equal(buttons.size(), 1, "%s has one typed control" % label)
-		if not buttons.is_empty(): assert_true(buttons[0].disabled, "%s is disabled by core availability" % label)
+		assert_true(buttons.size() == 1 and buttons[0].disabled, "%s has one typed control disabled by core availability" % label)
 	component.free()
 func _test_shop_component() -> void:
 	var request := _fixture_request("shop.fixture", InteractionRequest.SHOP, {
@@ -1005,13 +1005,13 @@ func _test_battlefield_presenter() -> void:
 func _test_combat_targeting_state() -> void:
 	var body := InteractionResponse.CombatBody.new(&"cast_spell", "hero")
 	body.spell_id = "spell.darts"
-	var request := CombatTargetingRequest.new(&"sequence", body)
-	request.candidate_ids.assign(["monster.one", "ally.one"])
-	request.maximum_targets = 1
+	var request := CombatTargetingRequest.new(&"sequence", body); request.candidate_ids.assign(["monster.one", "ally.one"]); request.maximum_targets = 1
 	var state := CombatTargetingState.new(request)
-	assert_true(state.select_combatant("ally.one"), "typed candidates accept a legal target")
-	assert_false(state.select_combatant("monster.one"), "the core-provided maximum is enforced")
-	assert_equal(state.committed_body().target_ids, ["ally.one"], "target confirmation preserves selected identity")
+	assert_equal([state.select_combatant("ally.one"), state.select_combatant("monster.one"), state.committed_body().target_ids], [true, false, ["ally.one"]], "typed sequence targeting enforces its maximum and preserves selected identity")
+	var area_request := CombatTargetingRequest.new(&"area", body); area_request.validation_deferred = true
+	var area_state := CombatTargetingState.new(area_request)
+	assert_true(area_state.select_coordinate(Vector2i(44, 45)) and area_state.can_confirm(), "staged area targeting accepts a battlefield center without precomputing every legal center")
+	assert_equal(area_state.committed_body().target_coordinate, Vector2i(44, 45), "deferred targeting preserves the selected center for authoritative submit-time validation")
 func _test_combat_playback_controller() -> void:
 	var previous := _combat_playback_view(20, Vector2i(45, 45), Vector2i(47, 45), &"active")
 	var final := _combat_playback_view(12, Vector2i(46, 45), Vector2i(47, 45), &"active")

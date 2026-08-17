@@ -8,6 +8,7 @@ var area_offsets: Array[Vector2i] = []
 var legal_coordinates: Array[Vector2i] = []
 var maximum_targets: int = 1
 var default_target_coordinate := Vector2i(-1, -1)
+var validation_deferred: bool = false
 
 
 func _init(target_mode: StringName, body: InteractionResponse.CombatBody) -> void:

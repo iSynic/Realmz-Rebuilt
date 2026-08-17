@@ -7,6 +7,7 @@ var candidate_ids: Array[String] = []
 var area_offsets: Array[Vector2i] = []
 var legal_coordinates: Array[Vector2i] = []
 var maximum_targets: int = 1
+var validation_deferred: bool = false
 var selected_ids: Array[String] = []
 var selected_coordinate := Vector2i(-1, -1)
 var hovered_coordinate := Vector2i(-1, -1)
@@ -20,6 +21,7 @@ func _init(request: CombatTargetingRequest) -> void:
 	area_offsets = request.area_offsets.duplicate()
 	legal_coordinates = request.legal_coordinates.duplicate()
 	maximum_targets = request.maximum_targets
+	validation_deferred = request.validation_deferred
 	if mode == &"area" and request.default_target_coordinate.x >= 0:
 		select_coordinate(request.default_target_coordinate)
 
@@ -48,6 +50,9 @@ func select_coordinate(coordinate: Vector2i) -> bool:
 	if mode != &"area":
 		return false
 	selected_coordinate = coordinate
+	if validation_deferred and coordinate.x >= 0 and coordinate.y >= 0:
+		status_text = "Target selected. Confirm to validate and cast."
+		return true
 	if not legal_coordinates.has(coordinate):
 		status_text = "That center is outside the rules-owned range, line of sight, or safe mask boundary."
 		return false
@@ -60,7 +65,7 @@ func can_confirm() -> bool:
 		&"combatant", &"sequence":
 			return not selected_ids.is_empty()
 		&"area":
-			return legal_coordinates.has(selected_coordinate)
+			return selected_coordinate.x >= 0 and selected_coordinate.y >= 0 if validation_deferred else legal_coordinates.has(selected_coordinate)
 	return false
 
 

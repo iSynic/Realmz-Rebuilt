@@ -80,6 +80,20 @@ func _test_public_magic_matrix() -> void:
 	var rejected := rules.combat_flow.cast_spell(repeated_state, repeated_content, repeated_caster.id, "", repeated.id, 2, repeated_rng, CombatFlow.INVALID_COORDINATE, 0, [repeated_target.id, repeated_target.id])
 	assert_equal([rejected.error_code, repeated_rng.snapshot().draw_count, JSON.stringify(repeated_state.to_data())], [&"invalid_repeated_spell_targets", 0, repeated_before], "an invalid repeated selection rolls back state and RNG before execution")
 
+	var area := _combat_spell("spell.area", 4, 2)
+	var area_caster := _character("character.area-caster")
+	area_caster.set_known_spells([area.id])
+	area_caster.maximum_spell_attacks = 2
+	area_caster.spell_points = 20
+	var area_target := MonsterState.new("monster.area-target", definition.id, definition.name, 20, 20, 1)
+	var area_state := _state(area_caster, area_target, "battle.area")
+	var area_content := _content([definition], [], [], [], [area])
+	var area_options := rules.combat_flow.character_spell_options(area_state, area_content, area_caster.id)
+	assert_equal(area_options.size(), 7, "the public picker stages one choice per affordable spell power without expanding battlefield centers")
+	assert_true(area_options.all(func(option: CombatSpellOptionView) -> bool: return option.target_mode == &"area" and not option.area_offsets.is_empty() and option.legal_target_coordinates.is_empty()), "area choices carry their exact mask but defer range and LOS until the selected center is submitted")
+	assert_false(rules.combat_flow.probe_character_spell_cast(area_state, area_content, area_caster.id, "", area.id, 1).allowed, "an area cast still requires an explicit battlefield center")
+	assert_true(rules.combat_flow.probe_character_spell_cast(area_state, area_content, area_caster.id, "", area.id, 1, Vector2i(45, 45)).allowed, "the submitted center is validated through the authoritative battlefield rules")
+
 	var group := _combat_spell("spell.group", 12, 4)
 	var group_caster := _character("character.group-caster")
 	group_caster.set_known_spells([group.id])

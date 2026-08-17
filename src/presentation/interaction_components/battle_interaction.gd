@@ -52,42 +52,7 @@ func build(request: InteractionRequest) -> void:
 	_build_attack_panel(body, actor_id, action_ids, targets, target_panel, weapon_mode)
 	_spell_casts = body.spell_casts
 	_fast_spells = body.fast_spells
-	if action_ids.has("cast_spell") and not body.spell_casts.is_empty():
-		var spell_picker := OptionButton.new()
-		spell_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		for option: InteractionRequestValue.CastOption in body.spell_casts:
-			var label := "%s • P%d • %d SP → %s" % [option.spell_name, option.power, option.cost, option.target_name]
-			if option.target_current_health >= 0: label += " (%d/%d HP)" % [option.target_current_health, option.target_maximum_health]
-			spell_picker.add_item(label)
-			spell_picker.set_item_metadata(spell_picker.item_count - 1, option)
-		spell_panel.add_child(spell_picker)
-		var cast_button := Button.new()
-		cast_button.name = "ChooseSpellTarget"
-		cast_button.disabled = spell_picker.item_count == 0
-		var refresh_cast_button := func(_index: int) -> void:
-			if _targeting_active:
-				combat_targeting_cancel_requested.emit()
-			var selected := spell_picker.get_selected_metadata() as InteractionRequestValue.CastOption
-			var mode := String(selected.target_mode) if selected != null else "combatant"
-			cast_button.text = "Cast selected spell" if mode == "automatic" else "Choose spell target on battlefield"
-		spell_picker.item_selected.connect(refresh_cast_button)
-		cast_button.pressed.connect(func() -> void:
-			var option := spell_picker.get_selected_metadata() as InteractionRequestValue.CastOption
-			if option == null: return
-			var response_body := InteractionResponse.CombatBody.new(&"cast_spell", actor_id)
-			response_body.spell_id = option.spell_id
-			response_body.power = option.power
-			var mode := String(option.target_mode)
-			if mode == "automatic":
-				response_body_submitted.emit(response_body)
-				return
-			var configuration := _spell_targeting_configuration(body.spell_casts, option, response_body)
-			_start_targeting(configuration, spell_panel)
-		)
-		spell_panel.add_child(cast_button)
-		refresh_cast_button.call(spell_picker.selected)
-	elif not body.spell_cast_reason.is_empty():
-		add_response_to(spell_panel, "Cast unavailable", InteractionResponse.CombatBody.new(&"cast_spell", actor_id), false, body.spell_cast_reason)
+	_build_spell_panel(body, actor_id, action_ids, spell_panel)
 	if action_ids.has("use_scroll") and not body.scroll_casts.is_empty():
 		var scroll_picker := OptionButton.new()
 		scroll_picker.name = "CombatScrollPicker"
@@ -174,6 +139,73 @@ func _build_attack_panel(body: InteractionRequest.CombatRequestBody, actor_id: S
 		add_response_to(target_panel, "Fire unavailable", InteractionResponse.CombatBody.new(&"attack", actor_id), false, body.ranged_attack.reason)
 
 
+func _build_spell_panel(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], spell_panel: VBoxContainer) -> void:
+	if not action_ids.has("cast_spell") or body.spell_casts.is_empty():
+		if not body.spell_cast_reason.is_empty():
+			add_response_to(spell_panel, "Cast unavailable", InteractionResponse.CombatBody.new(&"cast_spell", actor_id), false, body.spell_cast_reason)
+		return
+	var spell_picker := OptionButton.new()
+	spell_picker.name = "CombatSpellPicker"
+	spell_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var added_spell_ids: Array[String] = []
+	for option: InteractionRequestValue.CastOption in body.spell_casts:
+		if added_spell_ids.has(option.spell_id):
+			continue
+		added_spell_ids.append(option.spell_id)
+		spell_picker.add_item(option.spell_name)
+		spell_picker.set_item_metadata(spell_picker.item_count - 1, option.spell_id)
+	spell_panel.add_child(spell_picker)
+	var power_picker := OptionButton.new()
+	power_picker.name = "CombatSpellPowerPicker"
+	power_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spell_panel.add_child(power_picker)
+	var cast_button := Button.new()
+	cast_button.name = "ChooseSpellTarget"
+	cast_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spell_panel.add_child(cast_button)
+	spell_picker.item_selected.connect(func(_index: int) -> void: _refresh_spell_power_picker(spell_picker, power_picker, cast_button))
+	power_picker.item_selected.connect(func(_index: int) -> void: _refresh_spell_cast_button(power_picker, cast_button))
+	cast_button.pressed.connect(func() -> void: _begin_selected_spell_cast(actor_id, power_picker, spell_panel))
+	_refresh_spell_power_picker(spell_picker, power_picker, cast_button)
+
+
+func _refresh_spell_power_picker(spell_picker: OptionButton, power_picker: OptionButton, cast_button: Button) -> void:
+	_cancel_active_targeting()
+	power_picker.clear()
+	var spell_id := String(spell_picker.get_selected_metadata())
+	for option: InteractionRequestValue.CastOption in _spell_casts:
+		if option.spell_id != spell_id:
+			continue
+		power_picker.add_item("Power %d • %d SP • %s" % [option.power, option.cost, option.target_name])
+		power_picker.set_item_metadata(power_picker.item_count - 1, option)
+	_refresh_spell_cast_button(power_picker, cast_button)
+
+
+func _refresh_spell_cast_button(power_picker: OptionButton, cast_button: Button) -> void:
+	_cancel_active_targeting()
+	var selected := power_picker.get_selected_metadata() as InteractionRequestValue.CastOption
+	cast_button.disabled = selected == null
+	cast_button.text = "Cast selected spell" if selected != null and selected.target_mode == &"automatic" else "Choose spell target on battlefield"
+
+
+func _begin_selected_spell_cast(actor_id: String, power_picker: OptionButton, spell_panel: VBoxContainer) -> void:
+	var option := power_picker.get_selected_metadata() as InteractionRequestValue.CastOption
+	if option == null:
+		return
+	var response_body := InteractionResponse.CombatBody.new(&"cast_spell", actor_id)
+	response_body.spell_id = option.spell_id
+	response_body.power = option.power
+	if option.target_mode == &"automatic":
+		response_body_submitted.emit(response_body)
+		return
+	_start_targeting(_spell_targeting_configuration(_spell_casts, option, response_body), spell_panel)
+
+
+func _cancel_active_targeting() -> void:
+	if _targeting_active:
+		combat_targeting_cancel_requested.emit()
+
+
 func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
 	if slot_index < 0 or slot_index >= _fast_spells.size():
 		return false
@@ -231,12 +263,16 @@ func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.C
 	elif mode == &"combatant":
 		for candidate: InteractionRequestValue.CastOption in spell_casts:
 			if candidate.spell_id == selected.spell_id and candidate.power == selected.power and candidate.scroll_slot == selected.scroll_slot and candidate.target_mode == &"combatant" and not candidate.target_id.is_empty(): candidate_ids.append(candidate.target_id)
+	if candidate_ids.is_empty() and response_body.action == &"cast_spell" and mode in [&"combatant", &"sequence"]:
+		for combatant: InteractionRequestValue.Combatant in _combatants:
+			if not combatant.id.is_empty(): candidate_ids.append(combatant.id)
 	var result := CombatTargetingRequest.new(mode, response_body)
 	result.candidate_ids = candidate_ids
 	result.maximum_targets = selected.maximum_targets
 	result.area_offsets = selected.area_offsets.duplicate()
 	result.default_target_coordinate = selected.default_target_coordinate
 	result.legal_coordinates = selected.legal_target_coordinates.duplicate()
+	result.validation_deferred = response_body.action == &"cast_spell" and (mode in [&"combatant", &"sequence"] or mode == &"area" and result.legal_coordinates.is_empty())
 	return result
 
 

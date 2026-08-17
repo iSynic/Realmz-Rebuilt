@@ -594,7 +594,7 @@ static func _append_spell_presentation(payload: Dictionary, spell: SpellDefiniti
 	payload["classicResolutionEffectResourceIds"] = effect_ids
 
 
-func probe_character_spell_cast(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = []) -> CombatSpellCastProbe:
+func probe_character_spell_choice(state: GameState, content: RealmzContent, caster_id: String, spell_id: String, power_level: int) -> CombatSpellCastProbe:
 	if state == null or content == null:
 		return CombatSpellCastProbe.blocked(&"invalid_spell_turn", "Spell casting requires an active game session.")
 	var combat := state.combat
@@ -605,14 +605,9 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 	var caster := state.party.character_by_id(caster_id)
 	var spell := content.spell_by_id(spell_id)
 	if caster == null or caster.current_health <= 0 or caster.traitor or spell == null or power_level < 1 or power_level > 7:
-		return CombatSpellCastProbe.blocked(&"invalid_spell_target", "The spell, caster, power, or target is unavailable.")
+		return CombatSpellCastProbe.blocked(&"invalid_spell_target", "The spell, caster, or power is unavailable.")
 	var repeated_target := spell.target_type == 0
-	var group_target := spell.target_type in [9, 10, 12]
 	var area_target := spell.target_type in [3, 4]
-	var actor_target := not repeated_target and not group_target and not area_target
-	var actor_selection := _spell_target_selection(state, content, target_id) if actor_target else null
-	if actor_target and actor_selection == null:
-		return CombatSpellCastProbe.blocked(&"invalid_spell_target", "The spell, caster, power, or target is unavailable.")
 	if not caster.known_spells().has(spell.id):
 		return CombatSpellCastProbe.blocked(&"spell_not_known", "The caster does not know '%s'." % spell.id)
 	if state.character_spellcasting_blocked:
@@ -637,8 +632,6 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 		return CombatSpellCastProbe.blocked(&"queued_spell_field_unresolved", "This spell creates a persistent Classic battlefield field whose collision lifecycle is not implemented.")
 	if area_target and spell.can_rotate:
 		return CombatSpellCastProbe.blocked(&"rotatable_area_spell_unresolved", "Classic rotatable area masks require a separate orientation-selection contract.")
-	if area_target and rotation != 0:
-		return CombatSpellCastProbe.blocked(&"invalid_area_rotation", "This non-rotating Classic area spell requires rotation zero.")
 	if not healing_spell and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0:
 		return CombatSpellCastProbe.blocked(&"unsupported_combat_spell", "A zero-damage spell requires its source-backed special-effect path.")
 	if spell.cost < 0 and power_level != 1:
@@ -649,6 +642,25 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 	var cast_level := spell.classic_tier()
 	if cast_level < 0 or cast_level > 6:
 		return CombatSpellCastProbe.blocked(&"invalid_classic_spell_tier", "The spell ID does not encode a valid Classic tier.")
+	if area_target:
+		var shape := _rules.spell_areas.shape_for(spell, power_level)
+		if _rules.spell_areas.pattern(shape).is_empty():
+			return CombatSpellCastProbe.blocked(&"invalid_spell_area_shape", "The spell references an unavailable Classic Data AD area mask.")
+	return CombatSpellCastProbe.permitted()
+
+
+func probe_character_spell_cast(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = []) -> CombatSpellCastProbe:
+	var choice_probe := probe_character_spell_choice(state, content, caster_id, spell_id, power_level)
+	if not choice_probe.allowed:
+		return choice_probe
+	var combat := state.combat
+	var caster := state.party.character_by_id(caster_id)
+	var spell := content.spell_by_id(spell_id)
+	var repeated_target := spell.target_type == 0
+	var group_target := spell.target_type in [9, 10, 12]
+	var area_target := spell.target_type in [3, 4]
+	if area_target and rotation != 0:
+		return CombatSpellCastProbe.blocked(&"invalid_area_rotation", "This non-rotating Classic area spell requires rotation zero.")
 	if repeated_target:
 		if target_ids.size() > power_level:
 			return CombatSpellCastProbe.blocked(&"too_many_spell_targets", "A repeated-target spell may select at most one distinct actor per power level.")
@@ -666,17 +678,18 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 			return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "No actor is available within this repeated spell's Classic range and line of sight.")
 	elif area_target:
 		var shape := _rules.spell_areas.shape_for(spell, power_level, rotation)
-		if _rules.spell_areas.pattern(shape).is_empty():
-			return CombatSpellCastProbe.blocked(&"invalid_spell_area_shape", "The spell references an unavailable Classic Data AD area mask.")
-		if target_coordinate != INVALID_COORDINATE:
-			if not _rules.spell_areas.pattern_fits(target_coordinate, shape):
-				return CombatSpellCastProbe.blocked(&"spell_area_outside_battlefield", "The complete Classic area mask must remain inside the validated battlefield.")
-			var map := content.world.map_by_id(combat.battlefield.map_id)
-			var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
-			var maximum_range := absi(spell.range_min + spell.range_max * power_level)
-			if terrain_set == null or not _rules.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
-				return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "The area center is outside the Classic spell range or line of sight.")
+		if target_coordinate == INVALID_COORDINATE:
+			return CombatSpellCastProbe.blocked(&"invalid_spell_target", "Choose a battlefield center for this area spell.")
+		if not _rules.spell_areas.pattern_fits(target_coordinate, shape):
+			return CombatSpellCastProbe.blocked(&"spell_area_outside_battlefield", "The complete Classic area mask must remain inside the validated battlefield.")
+		var map := content.world.map_by_id(combat.battlefield.map_id)
+		var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+		var maximum_range := absi(spell.range_min + spell.range_max * power_level)
+		if terrain_set == null or not _rules.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
+			return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "The area center is outside the Classic spell range or line of sight.")
 	elif not group_target:
+		if _spell_target_selection(state, content, target_id) == null:
+			return CombatSpellCastProbe.blocked(&"invalid_spell_target", "The spell target is unavailable.")
 		if not _spell_actor_target_is_valid(state, content, caster.id, target_id, spell, power_level):
 			return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "The target is outside the Classic spell range or line of sight.")
 	return CombatSpellCastProbe.permitted()
@@ -694,25 +707,20 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 		if spell == null:
 			continue
 		for power_level: int in range(1, 8):
+			if not probe_character_spell_choice(state, content, caster_id, spell.id, power_level).allowed:
+				continue
 			if spell.target_type == 0:
-				if probe_character_spell_cast(state, content, caster_id, "", spell.id, power_level).allowed:
-					var candidates := _character_actor_spell_candidates(state, content, caster, spell, power_level)
-					result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], power_level, candidates))
+				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], power_level))
 				continue
 			if spell.target_type in [9, 10, 12]:
-				if probe_character_spell_cast(state, content, caster_id, "", spell.id, power_level).allowed:
-					result.append(CombatSpellOptionView.new(spell, power_level, null, _group_spell_target_label(spell.target_type), &"automatic"))
+				result.append(CombatSpellOptionView.new(spell, power_level, null, _group_spell_target_label(spell.target_type), &"automatic"))
 				continue
 			if spell.target_type in [3, 4]:
-				if probe_character_spell_cast(state, content, caster_id, "", spell.id, power_level).allowed:
-					var shape := _rules.spell_areas.shape_for(spell, power_level)
-					var offsets := _rules.spell_areas.pattern(shape)
-					var legal_coordinates := _legal_area_spell_target_coordinates(state, content, caster_id, spell, power_level, shape)
-					result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), offsets, 1, [], legal_coordinates))
+				var shape := _rules.spell_areas.shape_for(spell, power_level)
+				var offsets := _rules.spell_areas.pattern(shape)
+				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), offsets))
 				continue
-			for target: CombatSpellTargetView in _character_actor_spell_candidates(state, content, caster, spell, power_level):
-				if probe_character_spell_cast(state, content, caster_id, target.id, spell.id, power_level).allowed:
-					result.append(CombatSpellOptionView.new(spell, power_level, target))
+			result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose combatant"))
 	return result
 
 
@@ -870,12 +878,12 @@ func character_spell_unavailable_reason(state: GameState, content: RealmzContent
 	var caster := state.party.character_by_id(caster_id)
 	if caster == null or caster.maximum_spell_attacks <= 0 or caster.known_spells().is_empty():
 		return ""
-	if not character_spell_options(state, content, caster_id).is_empty():
-		return ""
-	var spells := caster.known_spells()
-	var first_spell := content.spell_by_id(spells[0])
-	var targets := _character_actor_spell_candidates(state, content, caster, first_spell, 1) if first_spell != null else []
-	if targets.is_empty():
-		return "No live combatant is available for this spell."
-	var probe := probe_character_spell_cast(state, content, caster_id, targets[0].id, spells[0], 1)
-	return probe.reason_text
+	var first_reason := ""
+	for spell_id: String in caster.known_spells():
+		for power_level: int in range(1, 8):
+			var probe := probe_character_spell_choice(state, content, caster_id, spell_id, power_level)
+			if probe.allowed:
+				return ""
+			if first_reason.is_empty() and not probe.reason_text.is_empty():
+				first_reason = probe.reason_text
+	return first_reason
