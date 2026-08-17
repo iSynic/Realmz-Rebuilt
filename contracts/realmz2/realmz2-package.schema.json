@@ -600,13 +600,13 @@
       "items": false
     },
     "compactCell": {
-      "$comment": "Row-major tuple: terrainId, movementCost, semantic bit flags, movementSoundId, triggerIds, randomRectIds, N/E/S/W edges, features, renderTile, tilesetId, overlayAssetId.",
+      "$comment": "Row-major tuple: terrainId, movementCost, semantic bit flags, movementSoundId, triggerIds, randomRectIds, N/E/S/W edges, features, renderTile, tilesetId, overlayAssetId, Classic boatRequirement, blockedAttemptTimeclicks.",
       "type": "array",
-      "minItems": 11,
-      "maxItems": 11,
+      "minItems": 13,
+      "maxItems": 13,
       "prefixItems": [
         { "$ref": "#/$defs/identifier" },
-        { "type": "integer", "minimum": 1 },
+        { "type": "integer", "minimum": 0 },
         { "type": "integer", "minimum": 0, "maximum": 255 },
         { "type": ["integer", "null"] },
         { "type": "array", "items": { "$ref": "#/$defs/identifier" }, "uniqueItems": true },
@@ -615,13 +615,31 @@
         { "type": "array", "items": { "$ref": "#/$defs/compactTopologyFeature" }, "uniqueItems": true },
         { "type": "integer" },
         { "$ref": "#/$defs/identifier" },
-        { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] }
+        { "anyOf": [{ "$ref": "#/$defs/identifier" }, { "type": "null" }] },
+        { "type": "integer", "minimum": 0, "maximum": 2 },
+        { "type": "integer", "minimum": 0 }
+      ],
+      "items": false
+    },
+    "compactLandTileProfile": {
+      "$comment": "Replacement land-tile facts: terrainId, movementCost, semantic bit flags, movementSoundId, renderTile, Classic boatRequirement, blockedAttemptTimeclicks.",
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "prefixItems": [
+        { "$ref": "#/$defs/identifier" },
+        { "type": "integer", "minimum": 0 },
+        { "type": "integer", "minimum": 0, "maximum": 255 },
+        { "type": ["integer", "null"] },
+        { "type": "integer", "minimum": 1 },
+        { "type": "integer", "minimum": 0, "maximum": 2 },
+        { "type": "integer", "minimum": 0 }
       ],
       "items": false
     },
     "map": {
       "type": "object",
-      "required": ["id", "name", "levelType", "levelIndex", "width", "height", "metadata", "topologyFormat", "cells", "randomRectangles"],
+      "required": ["id", "name", "levelType", "levelIndex", "width", "height", "metadata", "topologyFormat", "cells", "boatReplacementProfiles", "randomRectangles"],
       "properties": {
         "id": { "$ref": "#/$defs/identifier" },
         "name": { "type": "string" },
@@ -645,8 +663,22 @@
           },
           "additionalProperties": false
         },
-        "topologyFormat": { "const": "realmz2.compact-cell-rows.v1" },
+        "topologyFormat": { "const": "realmz2.compact-cell-rows.v2" },
         "cells": { "type": "array", "items": { "$ref": "#/$defs/compactCell" }, "minItems": 1 },
+        "boatReplacementProfiles": {
+          "anyOf": [
+            {
+              "type": "object",
+              "required": ["removed", "placed"],
+              "properties": {
+                "removed": { "$ref": "#/$defs/compactLandTileProfile" },
+                "placed": { "$ref": "#/$defs/compactLandTileProfile" }
+              },
+              "additionalProperties": false
+            },
+            { "type": "null" }
+          ]
+        },
         "randomRectangles": { "type": "array", "items": { "$ref": "#/$defs/randomRectangle" } }
       },
       "additionalProperties": false

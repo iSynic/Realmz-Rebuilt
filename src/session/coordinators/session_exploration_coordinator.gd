@@ -331,10 +331,36 @@ func _move_after_pooled_wealth(direction: Vector2i, preceding_events: Array[Doma
 func _finish_exploration_movement(result: ExplorationTimeWorkflow.MovementTransitionResult) -> SessionCoordinatorResult:
 	if not result.ok:
 		return _context.failed(result.error_code, result.error_message, result.events)
+	if not result.choice_kind.is_empty():
+		return _begin_boat_choice(result)
 	if not result.post_clock:
 		return _context.completed(result.events)
 	_set_post_time_continuation(result.map, result.resume_kind, result.direction, result.check_random, result.timed_day, result.timed_coordinate)
 	return _context.responses()._finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
+
+
+func _begin_boat_choice(result: ExplorationTimeWorkflow.MovementTransitionResult) -> SessionCoordinatorResult:
+	var movement := result.choice_movement
+	if movement == null or movement.source_map == null or movement.target_map == null or movement.topology_result == null or movement.topology_result.target_cell == null or result.choice_kind not in [&"board", &"disembark"]:
+		return _context.failed(&"invalid_boat_choice", "The Classic boat movement choice is unavailable.", result.events)
+	var body := SessionContinuation.BoatBody.new()
+	body.action = result.choice_kind
+	body.source_map_id = movement.source_map.id
+	body.source_coordinate = _context.state.party.coordinate
+	body.target_map_id = movement.target_map.id
+	body.target_coordinate = movement.target_coordinate
+	body.direction = result.direction
+	if body.direction == Vector2i.ZERO:
+		return _context.failed(&"invalid_boat_choice", "The Classic boat movement direction is unavailable.", result.events)
+	_context.set_continuation(SessionContinuation.boat_choice(body))
+	var prompt := "Board this boat?" if body.action == &"board" else "Leave the boat here and go ashore?"
+	var yes_label := "Board" if body.action == &"board" else "Leave boat"
+	var no_label := "Stay ashore" if body.action == &"board" else "Remain aboard"
+	_context.session_interaction = InteractionRequest.from_payload("boat-choice:%s:%d" % [String(body.action), _context.next_revision()], &"yes_no", {"prompt": prompt, "yesLabel": yes_label, "noLabel": no_label})
+	var events := result.events.duplicate()
+	if body.action == &"disembark":
+		events.append(ExplorationTimeWorkflow._sound_event(-148, "classic-boat-shore"))
+	return _context.waiting(_context.session_interaction, events)
 
 
 func _start_random_battle(region: RandomEncounterRegion, surprise: int, events: Array[DomainEvent]) -> SessionCoordinatorResult:

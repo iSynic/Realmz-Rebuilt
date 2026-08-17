@@ -56,6 +56,7 @@ Own package loading, schema/hash validation, strict save persistence, and extern
 - Vault records retain the complete detached character, including separate racial combat modifiers, trained abilities, two-hand, inventory, and known spells. Older records missing additive nested fields use the same typed character defaults as save restoration.
 - Vault eligibility is calculated against the target package's stable race, caste, level, item, spell, portrait, and combat-icon identities. Missing definitions, wrong media roles, and authored restrictions produce explicit reasons; import never strips or substitutes content.
 - Return typed validation errors suitable for readiness/error screens.
+- Schema-v3 land maps use `realmz2.compact-cell-rows.v2`. Decode exact Classic boat requirements, blocked-attempt timeclicks, and the active landlook's tile-60/tile-147 replacement profiles once at package construction; reject contradictory flags, land-only facts on dungeon maps, or missing land profiles rather than inventing runtime defaults.
 
 ## Verification
 

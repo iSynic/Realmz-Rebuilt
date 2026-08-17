@@ -4,7 +4,7 @@
     "castle": "491816ad60037394f92c428e99c004494d3c28b3",
     "remakeFunctional": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
     "remakeVm": "cdaa0d8dcc5ab81c195aa960c860bf74e7d4f40b",
-    "providence": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04"
+    "providence": "90d3e80af6f01250ca298687699c6a3fe8c81653"
   },
   "cases": [
     {
@@ -36,7 +36,7 @@
         "observation": "Land input sets both axes before one destination-tile movement check. Dungeon movement follows its separate cardinal edge path."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn normalized_cell_topology" }
@@ -79,14 +79,14 @@
           { "path": "src/realmz_orig/threed.c", "symbol": "makemove:" }
         ],
         "authoredInputs": ["destination land tile", "mapstats time", "land/dungeon mode", "boat state", "current random rectangles"],
-        "observation": "For an ordinary nonzero land direction, buttonchoice plays the attempted tile sound and calls timeclick with that tile's time even when the solid tile prevented moveparty. timeclick later checks random rectangles at the committed party coordinate. In threed, an ordinary solid wall takes the wall-sound branch without timeclick. Boat/shore cancellation, zero or negative land cells, and special dungeon wall bits follow distinct branches and remain explicit variants."
+        "observation": "For an ordinary nonzero land direction, buttonchoice plays the attempted tile sound and calls timeclick with that tile's time even when the solid tile prevented moveparty. A nonpositive raw cell instead uses sound 82 and three timeclicks. timeclick later checks random rectangles at the committed party coordinate. In threed, an ordinary solid wall takes the wall-sound branch without timeclick. Boat/water/shore behavior is owned by movement.boat-water-shore; special dungeon wall bits remain explicit fixture work."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn normalized_cell_topology" }
         ],
-        "expectedRepresentation": "Each normalized cell retains its exact Classic timeclick count and passability facts; the runtime applies the land or dungeon scale, so no additional package field is required for the bounded ordinary branches."
+        "expectedRepresentation": "Each topology-v2 cell carries its ordinary movement cost and exact blocked-attempt timeclick count separately, including Castle's fixed value three for nonpositive land cells."
       },
       "realmz2": {
         "owner": { "path": "src/session/workflows/exploration_time_workflow.gd", "symbol": "static func blocked_land_attempt_cost" },
@@ -99,6 +99,54 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "verified"
+    },
+    {
+      "id": "movement.boat-water-shore",
+      "workflowIds": ["classic.exploration.travel"],
+      "domain": "movement",
+      "claim": "Classic boat travel preserves exact needboad values: a needboad-1 cell asks before boarding, an embarked party traverses only needboad-2 water, and the third consecutive shore collision asks to leave the boat on the party's current cell before the party steps ashore.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake materializes needBoat-1 cells as saved global boat placements over tile 60 and can board or dock them, but its exact water and shore movement checks are commented out and it does not reproduce Castle's three-attempt typed continuation.",
+        "sources": [
+          { "path": "src/scripts/classic_runtime/classic_map_bridge.gd", "symbol": "func classic_boat_plan" },
+          { "path": "src/scenes/Map/Map.gd", "symbol": "func on_step_on_boat" },
+          { "path": "src/scenes/Map/Map.gd", "symbol": "func dock_boat_at" },
+          { "path": "src/scripts/game_state.gd", "symbol": "#func on_trying_to_move_to_tile_stack" }
+        ],
+        "tests": [
+          { "path": "src/scripts/classic_runtime/tests/run_classic_runtime_tests.gd", "symbol": "func _test_classic_boat_materialization" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/buttonchoice.c", "symbol": "short buttonchoice" },
+          { "path": "src/realmz_orig/save-direction-order.c", "symbol": "fwrite(&inboat" },
+          { "path": "src/realmz_orig/loadsavedgame.c", "symbol": "fread(&inboat" }
+        ],
+        "authoredInputs": ["raw land cell", "mapstats needboad", "mapstats shore", "mapstats sound/time", "active landlook tile 60", "active landlook tile 147", "inboat", "hitland"],
+        "observation": "buttonchoice asks question 15 before boarding needboad 1, moves once, and writes tile 60 at the former boat cell. While inboat, only needboad 2 moves. Solid or shore terrain plays sound -148; shore increments transient hitland and question 14 appears after the third collision. Acceptance clears inboat and writes tile 147 at the party's current cell. The attempted tile sound and time then run in every accepted or declined branch. Castle saves inboat but does not save hitland."
+      },
+      "providence": {
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn compact_land_tile_profile" }
+        ],
+        "expectedRepresentation": "Topology-v2 cells retain exact needboad, attempted sound/time, and semantic flags; every land map carries exact active-landlook tile-60 and tile-147 replacement profiles while dungeon maps carry null."
+      },
+      "realmz2": {
+        "owner": { "path": "src/session/workflows/exploration_time_workflow.gd", "symbol": "static func commit_move" },
+        "expectedTrace": ["destination probe", "typed board or disembark interaction", "response re-probe", "boat-presence overlay", "movement or collision", "attempted tile sound/time", "post-time continuation"],
+        "tests": [
+          { "path": "tests/integration/test_exploration_session.gd", "symbol": "func _test_boat_movement" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "verified-with-deterministic-retry-persistence"
     },
     {
       "id": "action-point.placed-first-match",
@@ -128,7 +176,7 @@
         "observation": "newland scans the fixed door table in order, selects the first coordinate match, and leaves the scan path after that selected record regardless of its chance result."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn map_document" }
@@ -181,7 +229,7 @@
         "observation": "Castle opens The Family Jewels as application media before the selected Scenario fork. It selects exact resource type/ID pairs, and newly opened files are inserted at the front of the normal GetResource search chain, so a scenario-local resource replaces application media with the same exact key while equal IDs in other types remain unrelated. UseResFile can move the mutable search start, but Realmz Rebuilt intentionally compiles the normal scenario-before-application result instead of exposing that global cursor. Combat requests base monster cicn ID plus 308 only for one facing; AOGM contains reachable base icons whose optional +308 counterpart is absent, so that counterpart cannot be a package-readiness requirement."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_assets" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn managed_replaces_catalog_resource" },
@@ -234,7 +282,7 @@
         "observation": "Castle performs presentation-producing actions in program order and blocks only at its explicit click or selection boundaries."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
         ],
@@ -320,7 +368,7 @@
         "observation": "Castle repeatedly adds and drops selected character records inside partyselect. Item 34 is the distinct Done boundary. The same workspace selects howhard -2 through 2 and monsterset -1, 0, or 1, totals party levels, enforces Data SC maximum levels for initial assembly, and derives the displayed experience percentage from hardpercent times recommended levels divided by current levels."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -402,7 +450,7 @@
         "observation": "NewCharacter initializes saves from the two authored bonus tables, copies race conditions first, overwrites only caste value one with -1, and later clamps saves below -99 or above 120."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
@@ -451,7 +499,7 @@
         "observation": "NewCharacter's seven-iteration attribute loop consumes but does not assign its final roll. It applies age groups 1 through minimumagegroup, re-bounds the six attributes, performs three threshold rolls with conditional 0-through-7 special indices, then rolls stamina and age. applyage adjusts age-table columns 0 through 5 and saves 0 through 6; its creation-time magic-resistance and movement changes are overwritten by the later base formulas."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" }
         ],
@@ -506,7 +554,7 @@
         "observation": "The Character menu calls CharacterGen directly. openrace and opencaste select application tables unless an eligible third-party scenario supplies custom data. CharacterGen calls NewCharacter once, permits reroll inside that generator, clears the new character's seven-by-twelve cspells table, and then enters Spellselect. Spellselect derives points through getnumspells, charges the fixed seven costs, permits unused points only after question 17, and returns before addinitialitems."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spells" },
@@ -557,7 +605,7 @@
         "observation": "Startlevel returns the selected fixed level minus one. NewCharacter initializes level one, prepares progression and spellcasting state for the target, and invokes levelup once per additional level before the later starting-spell and initial-item stages."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_campaign" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
@@ -603,7 +651,7 @@
         "observation": "Initialization slot fourteen aliases the first Caste level-up ability die and the first Race save bonus; level-up slot fourteen aliases the first Caste save bonus and may consume an unrelated RNG draw. No fifteenth authored ability field exists."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
@@ -658,7 +706,7 @@
         "observation": "age scans the five ranges but advances or erases only one neighboring row per call. applyage changes six attributes, strength-owned hit/damage, magic resistance, maximum movement with a floor of two, and saves zero through six without creation bounds. Midnight increments age before calling age. booty multiplies a maximum-age character's share by .6666666; the pinned source stores doesnotdie but does not consult it here. Spell specials 24, 91, and 92 alter age and call age once, with youth also consuming one Rand(3) stamina loss."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" }
@@ -708,7 +756,7 @@
         "observation": "showageupdate renders the character identity, race, resulting Youth/Young/Prime/Adult/Senior band, that band's year range, portrait, combat icon, and fifteen nonzero changes. Rejuvenation negates the erased higher band's row. It calls sound(3002) and remains in ModalDialog until any dialog item is activated. Midnight iterates party order and spells invoke the dialog before returning to their caller."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" }
         ],
@@ -757,7 +805,7 @@
         "observation": "attack computes ordinary damage, then every nonzero special consumes randrange(hitDice/2, hitDice). Party-target case 17 rolls savevs(7); failure reports result -48, truncates maxage * .01 * (attack damage maximum * hit dice) into age days, calls age once, and opens showageupdate only when that call changes the band. The special and dialog occur before ordinary physical damage is recorded and before attack returns. No monster-target case 17 exists."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races" },
@@ -804,7 +852,7 @@
         "observation": "After ordinary damage is rolled, every nonzero special consumes randrange(hitDice/2, hitDice), floored at one. Specials 1/2/4/7 use save 5; 3/5 use save 7; and 6/16 use save 4. Failed party saves affect conditions 0/1/5/29, 3/6, and 9/28 respectively only when the current value is nonnegative; the pinned correction adds potency once when the starting value is below 30, even if the result exceeds 30, and still reports the result when the starting value is already 30. Monster targets stack without that gate. Monster save 7 averages six saves; other saves honor their shifted save byte, spell immunity, and undead auto-save after consuming the roll. A monster target above 100 magic resistance jumps to whiff after potency and loses ordinary damage. Party statuses use sound 630; monster disease uses 684 and the other monster statuses use 630."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -851,7 +899,7 @@
         "observation": "After ordinary damage and the generic potency draw, special 8 calls savevs(6) before testing the target spell-point balance. Failure transfers min(target spell points, hit dice times three) to the attacker; the attacker is not capped to maxspellpoints and no sound is requested. Party-target special 9 calls savevs(5), subtracts staminamax times twenty from the character's int32 earned experience without a zero floor, requests sound 630, and reports result -18. There is no monster-target case 9 and therefore no save draw there. A monster target above 100 runtime magic resistance reaches whiff before either resource-special save. Ordinary physical damage follows the special when the whole attack did not whiff."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -898,7 +946,7 @@
         "observation": "After the shared potency draw, save zero includes fifty for party charm resistance. Failure copies the attacker's traiter value to the target. Monster targets always report failed Charm and clear the attacker's cached target. Charmed party actors become automatic, every target query compares allegiance, and booty clears party traiter state after battle."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -942,7 +990,7 @@
         "observation": "Each branch rolls Rand(attack maximum), then saves 1 through 5 halve with integer truncation and matching protection halves again. Party targets and monster-target fire accumulate after both halves. Monster-target cold, electrical, chemical, and mental accumulate after the save but before protection, so the pinned source reduces only the displayed temporary value. The synthetic source-observation fixture records committed eight versus displayed four for that anomalous branch."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -993,7 +1041,7 @@
         "observation": "Castle identifies armed melee solely through armor slot two, while every equipped item's damage, luck, and armor contributes to derived combat values. A legal hit rolls weapon elemental ranges and saves, target-tag ranges, the physical small-target die, then two critical checks. Monster-target weapon elements incorrectly pass the attacker index to savevs; character targets pass the defender. The synthetic source fixture isolates the resulting save-identity divergence. Weapon requirements occur after the hit/fumble stage and before auto-hit; the separate required-weapon correction case owns Castle's source/manual conflicts. Fumbles and tactical legality remain unavailable rather than inferred."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
@@ -1046,7 +1094,7 @@
         "observation": "Battle Data BD has a separate distance byte that combatsetup randomizes for initial placement. Monster Data MD dist is the weapon-to-hit byte. Castle correctly checks -1 blunt and -2 sharp for armed attackers, but its armed guard lets all unarmed attacks bypass those restrictions. For a specific item it compares the signed monster byte to item.itemid minus 1024. The shipped Data ID stores ordinary 1..999 item IDs, byte-identically in Castle and Providence, so the comparison cannot satisfy Divinity's documented Item Number contract. The correction fixture records both defects without claiming a Castle runtime observation."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
           { "path": "src/editor/panels/combat/monsterReferenceModel.ts", "symbol": "export function monsterRequiredWeaponStoredCode(" }
@@ -1097,7 +1145,7 @@
         "observation": "After potency, both branches call savevs(7). Blindness failure sets condition 27 to -1 and ordinary damage follows. Petrification failure sets party condition 26 to -1 or monster condition 26 to TRUE, sets stamina to zero, and jumps to forcekill before ordinary and special damage subtraction. No sound is requested."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
@@ -1144,7 +1192,7 @@
         "observation": "attack2 adds five percentage points per hit die, damage-plus point, and weapon damage point, doubles the weapon term for special 121, applies the condition table and day divided by 70, subtracts a party defender's Rand(luck plus magical luck), applies protection from evil only when the attacker is evil, and floors at ten. An unarmed hit uses the selected attack row unless its minimum is zero, in which case row zero supplies damage. An armed hit uses weapon damage plus Rand(vsSmall), followed by elemental and matching monster-type rolls. Party Dragon Hide reduces physical damage by five to a minimum of one and requests synchronous sound 694 through the negative sound-ID convention before condition and damage application. Castle also adds an unconditional ten attack points when the monster itself has protection from evil. With a negative signed damage plus, Castle can calculate negative physical damage and heal by subtracting it; the correction fixture records that source result. Optional fumbles, reflection, missile replacement, and behind-position derivation require additional mutable tactical state and remain outside this bounded case."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz/combat.rs", "symbol": "fn parse_monsters_from_source(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" },
@@ -1204,7 +1252,7 @@
         "observation": "combatsetup clears the character reserve; getup normalizes any positive carry to one, clears negatives, adds normattacks plus attackbonus, and adds four for Speedy. Melee subtracts two and the outer combat loop advances only below two. Monster getup resets attacknum; checkforenemy selects one target and loops from attacknum through noofattacks, incrementing the row before each attack and retargeting only after a kill. Castle's stats display disagrees with control flow for zero or one half-attack and its Speedy/Slow display arithmetic disagrees with getup. Those edge/display cases, charmed-character cadence, monster Speedy overflow, missile replacement, spells-per-activation, and tactical movement remain unresolved rather than being generalized from this case."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races(" },
@@ -1262,7 +1310,7 @@
         "unresolved": ["Realmz 2.0 has no source-backed gameplay-settings owner for allow-fumbles and its linked five-percent XP adjustment.", "Castle's live inspell execution guard is not equivalent to any current persisted spell-permission flag and remains unmodeled until spell activation owns that lifecycle."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz/scenario_items.rs", "symbol": "pub fn parse_scenario_items(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(" }
@@ -1326,7 +1374,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(" }
         ],
@@ -1377,7 +1425,7 @@
         "unresolved": ["combatmap evaluates the top tile using bottom.ispath; 2.0 preserves that draw branch until a named fidelity decision proves whether correction is needed.", "Castle saves the party-selected howhard value and applies it during authored monster construction. The construction rule accepts and tests the value, but the 2.0 session currently owns only Castle's default zero difficulty and has no user-facing or persisted difficulty setting."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_battles(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn battle_terrain_sets(" },
@@ -1439,7 +1487,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_battles(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn battle_terrain_sets(" },
@@ -1489,7 +1537,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_battles(" }
@@ -1577,7 +1625,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -1663,7 +1711,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -1724,7 +1772,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
         ],
@@ -1780,7 +1828,7 @@
         "unresolved": ["The automated possessed-character path omits the manual path's twelve-movement charge and needs its own typed continuation.", "The manual native UI decrements a finite charge before target cancellation; Realmz 2.0 consumes only after a valid atomic target is committed.", "Elemental and special projectiles require the remaining source-backed save and spelllist branches.", "Random item power eight is rolled before Castle opens its target picker and requires a serializable begin-fire continuation.", "Monster-on-monster projectile dodge reads stale c[charup].missile and remains disabled pending an intentional-correction decision."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/importer.rs", "symbol": "fn ensure_reference_tile_attributes(" },
           { "path": "src-tauri/src/realmz/landlooks.rs", "symbol": "pub fn parse_combat_mapstats_data(" },
@@ -1843,7 +1891,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document(" }
@@ -1901,7 +1949,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document(" }
@@ -1945,7 +1993,7 @@
         "unresolved": ["Area, automatic group, friendly, charmed-monster, class-nine, special-effect, nonpositive-cost, and zero-damage monster spell paths remain disabled."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
         ],
@@ -1989,7 +2037,7 @@
         "unresolved": ["This case preserves authored starting state only. Reflection targeting, area-footprint redraws, intelligent-area scoring draws, and positive-condition decay are owned by separate behavioral cases."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz/combat.rs", "symbol": "pub fn parse_monsters(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
@@ -2041,7 +2089,7 @@
         "unresolved": ["Castle prepays spell points before tactical targeting and an aborted target spends three movement while refunding only about two thirds. Realmz 2.0's atomic cast intent intentionally leaves invalid targets uncommitted until a serializable begin-cast interaction is implemented.", "Area, everybody, wall, field, rotating, random-power, class-nine, item-cast, fast-spell, and special-effect paths other than the separately bounded special-57 healing branch remain disabled.", "Castle's successful monster target-type-twelve branch does not clear Guard although its targeted, all-friendly, and all-enemy branches do; no correction is chosen yet."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spells(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
@@ -2095,7 +2143,7 @@
         "unresolved": ["Camp-time healing and its character picker are a separate application workflow.", "Specials 58 through 60 and other zero-damage effects remain disabled until their spelllist inputs and side effects are individually adjudicated.", "The package compiler currently gives standard spell records generic Realmz Spell identifiers when no project override supplies display metadata; that presentation-data defect is separate from this runtime behavior."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spells(" }
         ],
@@ -2141,7 +2189,7 @@
         "unresolved": ["Castle subtracts a negative spell cost, which can increase monster spell points.", "Monster size increases spellrange only after getrange has already rejected out-of-range candidates.", "Target-everybody omits the Guard clear present in ordinary, all-friendly, and all-enemy casting.", "Friendly and charmed-monster targets other than the strict special-57 healing branch, area/group shapes, class nine, and other specials need separate source-backed continuations."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spells(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
@@ -2193,7 +2241,7 @@
         "unresolved": ["Castle's fixed todoque capacity is not treated as permission to drop additional valid macros; Realmz 2.0 validates its complete save-owned queue instead.", "Group spell resolution remains unavailable until duration, base damage, cost, and source target ordering are shared across targets rather than repeated per target."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters(" }
         ],
@@ -2241,7 +2289,7 @@
         "unresolved": ["Monster automatic-group casting remains disabled because its observable source path depends on stale global power and missing resource accounting.", "The target-12 monster Guard omission remains undecided.", "Target type 11 also enters the player greater-than-eight branch and falls into its all-enemy else, but is outside this bounded ordinary-group case."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src/editor/rulesCatalog.ts", "symbol": "export const SPELL_TARGET_TYPES" },
           { "path": "src/editor/browser/project.ts", "symbol": "function validateRulesRecords(" },
@@ -2293,7 +2341,7 @@
         "unresolved": ["Target type 0 is not an area transaction: each selected target rerolls resolution and remains a separate pass.", "Spell reflection consumes targeting-stage draws and can redirect an area to the caster; it remains disabled rather than approximated.", "Rotatable masks add a zero-through-three index to the authored shape instead of applying a generic transform and need an explicit orientation UI.", "Queued area fields and collision ticks remain separate persistent combat state.", "Castle can index a seven-cell mask beyond a battlefield edge; Realmz 2.0 rejects such a center instead of reproducing unsafe memory access."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src/editor/rulesCatalog.ts", "symbol": "export const SPELL_TARGET_TYPES" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"targetType\": spell.target_type" },
@@ -2348,7 +2396,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src/editor/rulesCatalog.ts", "symbol": "Multiple Actors / Open Spaces" },
           { "path": "src/editor/rulesCatalog.test.ts", "symbol": "does not mislabel target type zero as open-space-only" },
@@ -2415,7 +2463,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"targetType\": spell.target_type" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"conditions\": monster.conditions" }
@@ -2461,7 +2509,7 @@
         "observation": "Race and Caste initialize character values to one, present up to thirty name slots, and pass those values to loadprofile. loadprofile subtracts one record before seeking each fixed table, while Race copies all thirty can-caste columns by zero-based record index."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz/rules.rs", "symbol": "pub fn parse_race_overrides" },
           { "path": "src-tauri/src/realmz/rules.rs", "symbol": "pub fn parse_caste_overrides" },
@@ -2513,7 +2561,7 @@
         "unresolved": ["No Castle runtime capture was required; the correction is based on complete pinned source flow plus direct resource-fork inventory."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn classify_character_appearance_assets" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_shared_character_appearance_assets" },
@@ -2583,7 +2631,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(project: &ProvidenceProject) -> Vec<Value>" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"itemCategoryMaskLow\": item.item_cat0" },
@@ -2638,7 +2686,7 @@
         "unresolved": ["Warning-resource wording and Castle's redraw-only single-stack Join have no material simulation effect and are not reproduced as successful mutations."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(project: &ProvidenceProject) -> Vec<Value>" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"weightPerCharge\": item.weight_per_charge" }
@@ -2698,7 +2746,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(project: &ProvidenceProject) -> Vec<Value>" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_shops(project: &ProvidenceProject, reachability: &RuntimeReachability) -> Vec<Value>" }
@@ -2759,7 +2807,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "impl ClassicTimelineAction" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(project: &ProvidenceProject) -> Vec<Value>" }
@@ -2806,7 +2854,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "Pool and Share consume only mutable session wealth, party order, load, race, class, and condition state already validated by schema v2. No new authored or compiler field is required."
       },
@@ -2858,7 +2906,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "Ordinary Swap requires no immutable campaign field beyond the already validated character race/class state used by movement recalculation."
       },
@@ -2908,7 +2956,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No immutable package field is required. Pool balances, bank availability, movement direction, and the typed continuation are mutable session/save state."
       },
@@ -2953,7 +3001,7 @@
         "unresolved": ["Castle's bank is the ordinary Swap modal rather than a separately labelled amount-transfer screen; Realmz 2.0 keeps a contextual Bank command so the workflow is discoverable while preserving the source mutations and ordering."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
         ],
@@ -3003,7 +3051,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_treasures" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn content_document" }
@@ -3052,7 +3100,7 @@
         "observation": "The workspace invokes the eligible spell list directly. Detect costs five points and marks magical knowledge; Identify costs twenty-five and identifies the pending pool. No treasure-specific percentage roll is present in this source path, so unavailable casting is the failure state rather than a hidden chance roll."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn content_document" }
         ],
@@ -3099,7 +3147,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn content_document" }
@@ -3150,7 +3198,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
@@ -3194,7 +3242,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
         ],
@@ -3246,7 +3294,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn content_document" }
@@ -3291,7 +3339,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spell" }
         ],
@@ -3339,7 +3387,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spell" }
         ],
@@ -3395,7 +3443,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" }
         ],
@@ -3442,7 +3490,7 @@
         "observation": "timeclick enters the reduction block only when minutes cross a real hour. Its `if (timeclick)` expression tests the function symbol and is always true, but the surrounding hour guard makes the result an unconditional one-point fatigue increase at each hour. reduce decrements all ten positive party conditions and then decrements Torch Lit again when it remains positive. Light special 50 initializes that counter to 30 times power minus one, making the second decrement part of its distinct duration scale. If a torch begins an hour at exactly two, state reaches zero but Castle's incremental redraw guards can leave stale torch art until another redraw; that presentation artifact is not gameplay state."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spells" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" }
@@ -3487,7 +3535,7 @@
         "observation": "At midnight Castle ages characters, then scans CTD3 from the saved index for records on the new day. It advances the encountered record by its increment before chance and eligibility checks, writes the mutated record, performs half-day recovery, then dispatches a matching door through newland and loops back to scan the rest of that day before the later random-rectangle check. The y comparison is guarded by recx, successful land movement retains its delta after committing, and dungeon time advances before the floor coordinate commits."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" }
         ],
@@ -3534,7 +3582,7 @@
         "observation": "Each dispatched timed record returns through goto continueday above the half-day recovery block, so two eligible records can heal and consume rations twice during one midnight."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn world_document" }
         ],
@@ -3587,7 +3635,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_spell" },
@@ -3651,7 +3699,7 @@
         "unresolved": ["Pointer-owned battlefield center selection for spatial spells remains an interim coordinate control rather than a tactical-board interaction."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_shared_battle_tileset_asset(" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_tileset_assets(" }
@@ -3698,7 +3746,7 @@
         "observation": "The Character menu calls order(), which asks getchoice to assign every current member a unique ordinal and then writes complete character structs into the selected slots before rebuilding derived spell arrays. The abort key clears every track entry, but order() ignores that result and still indexes c[track[t] - 1], producing an apparent c[-1] write."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No immutable package field is required; party order is mutable session and save state."
       },
@@ -3751,7 +3799,7 @@
         ]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_races(project: &ProvidenceProject)" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_castes(project: &ProvidenceProject)" }
@@ -3802,7 +3850,7 @@
         "unresolved": ["No Castle runtime fixture was required because the complete menu, picker, active-slot write, and standalone-file write path is explicit in the pinned source."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn collect_shared_character_appearance_assets" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn validate_character_appearance_catalogs" },
@@ -3849,7 +3897,7 @@
         "observation": "After party selection, Castle passes nonzero Global macro slot 0 to mainscreeninit; the main-screen initialization loads the start map and runs that macro before the main exploration screen is shown."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz/scenario.rs", "symbol": "pub fn parse_global_macro_hooks" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
@@ -3894,7 +3942,7 @@
         "unresolved": ["Opcode 2 mode 10 bypasses Party Death, revives, and restarts its encounter through an overloaded source field whose sound-versus-restart meaning remains suspicious.", "Opcode 56 with a minus-one loss target applies experience loss and backs up the party before returning from its Action Point; this distinct return remains unavailable."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz/scenario.rs", "symbol": "pub fn parse_global_macro_hooks" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
@@ -3939,7 +3987,7 @@
         "unresolved": ["The exact question text is held in native resources not established by the pinned source tree.", "Realmz 2.0 intentionally does not reproduce Castle's implicit standalone Character Files writes because vault publication is explicit and immutable."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz/scenario.rs", "symbol": "pub fn parse_global_macro_hooks" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" }
@@ -3982,7 +4030,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz/scenario.rs", "symbol": "pub fn parse_global_macro_hooks" }
         ],
@@ -4036,7 +4084,7 @@
         "unresolved": ["Exact dungeon crop pixels still require comparison with Castle's centerpict and updatewalls composition path.", "Classic scrolling TEXT encoding and style-resource presentation still require a representative controlled fixture.", "Malformed crop starts and authored picture rectangles have no controlled Castle boundary observation yet."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz/maps.rs", "symbol": "pub fn parse_map_records(buffer: &[u8]) -> Vec<MapRecord>" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn player_map_documents(" },
@@ -4085,7 +4133,7 @@
         "unresolved": ["Native dialog resource labels for exit items 1 and 3 are not established, so Realmz 2.0 labels its non-mutating local action Revert draft rather than claiming exact Classic Cancel behavior.", "Exact native struct padding and byte encoding require a controlled binary fixture; Realmz 2.0 persists typed state and does not claim native note-file compatibility.", "The visual recentering and darkness reproduction used while browsing a historical note remain presentation gaps."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No package field is required. Player location notes are mutable GameSession state keyed to validated immutable map definitions and are never Providence-authored content."
       },
@@ -4132,7 +4180,7 @@
         "unresolved": ["Auto Note preference behavior remains outside this workflow implementation.", "Empty and maximum-length Data SD2 rendering still require a controlled runtime fixture."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn content_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"messages\": runtime_value(&project.messages)?" }
@@ -4185,7 +4233,7 @@
         "unresolved": ["The exact question text is held in native resources not established by the pinned source tree.", "Castle's background-mode branch bypasses both questions; Realmz 2 does not reproduce that unsafe modal-state shortcut.", "Realmz 2 intentionally does not reproduce implicit standalone Character Files writes because vault publication is explicit and immutable."]
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No package field or lifecycle hook is required. Process Quit is host-owned and must not execute the scenario Global quit macro."
       },
@@ -4247,7 +4295,7 @@
         "observation": "Castle keeps combat control through result display, effect timing, body redraw, and terminal cleanup. Playback is presentation-owned and must not mutate or advance simulation."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No package change; the playback transaction receives detached prior/final views and committed events."
       },
@@ -4309,7 +4357,7 @@
         "observation": "showdamage draws the temporary number in the target body rectangle, with monster-size offsets, while showresults supplies fixed result timing and redraw delays. No upward-floating number behavior is source-proven."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No package change; coordinates and display amount are detached event facts."
       },
@@ -4374,7 +4422,7 @@
         "observation": "The source selects 160 for an armed physical hit and 161 for an unarmed physical hit. The decoded 161 art is red, but no source calls either resource blood or gore; 159 is condition, 162–166 are elemental/mental families, and 167 is labelled magic by the handler but has no traced assignment here."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "Schema v2 already preserves authored spell/item resource references; built-in effect identity is application media, not a compiler field."
       },
@@ -4440,7 +4488,7 @@
         "observation": "cast selects start and projectile families from lookStart. spelleffect selects the resolution start from lookEnd and iterates exactly eight frames; source order places cast sound before projectile and resolution sound before results."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -4508,7 +4556,7 @@
         "observation": "getup clears the prior light, advances the cursor, skips invalid actors, updates the combat pane, requests sound 138 for a non-animated party actor, and increments combatround at the source boundary. updatelight selects the three pictures; no separate highlight delay is established."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No package change; active actor and round cue metadata are detached presentation facts."
       },
@@ -4574,7 +4622,7 @@
         "observation": "Positive IDs call the asynchronous path and negative IDs the synchronous path. Cast sound is requested before projectile movement and resolution sound before result handling; source order remains even when playback overlaps."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -4650,7 +4698,7 @@
         "observation": "Castle gathers target identity and range/LOS from the combat board. The 2.0 control must return stable IDs, centers, masks, and ordered selections through the existing typed request."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No package change; target facts and authored masks already cross the package boundary."
       },
@@ -4704,7 +4752,7 @@
         "observation": "The source exposes separate branches. Auto starts the active actor immediately and saves per-character flags; Delay is tied to a fresh activation; Bandage and Turn Undead use distinct recipient and target eligibility. The typed implementation preserves those boundaries and records two explicit corrections for unsafe last-slot Delay and broad manual Bandage selection."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No package schema change is required; these workflows use session, combat, character, and monster facts already present in schema v2."
       },
@@ -4745,7 +4793,7 @@
         "observation": "Castle saves doauto directly, starts an active toggled actor through campbut, prioritizes automatic Bandage and Turn Undead, chooses opposed targets in source order/randomness, and yields when an application interaction such as a death macro takes control."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No schema-v2 change is required for combat-owned command state."
       },
@@ -4782,7 +4830,7 @@
         "observation": "Castle subtracts normal attacks plus attack bonus, removes the actor, appends it, rewinds the cursor, and re-enters getup; when already last, that sequence can immediately reselect the same actor."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No schema-v2 change is required for combat-owned command state."
       },
@@ -4821,7 +4869,7 @@
         "observation": "Castle Auto clears the first bleeding party member, then draws one of two sounds. Manual Bandage uses a broad candead selection and clears every tracked row without proving that each selected row is bleeding. killbody clears doauto immediately for a defeated party combatant while retaining recoverable bleeding above -10 stamina. At the next-round boundary getup draws one sound for every surviving bleeder, then—under the default enabled warning behavior—draws a second party-wide warning sound when any wound remains."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No schema-v2 change is required for combat-owned command state."
       },
@@ -4859,7 +4907,7 @@
         "observation": "Castle excludes cansum 255, clamps the base threshold to 25 before magic resistance, destroys on margins 1 through 29 for 25 times HD experience, turns on 30 or more for 50 times HD, and marks hasturned before resolving targets."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           {"path":"src-tauri/src/realmz2_exporter.rs","symbol":"\"canSummon\": monster.can_summon"}
         ],
@@ -4912,7 +4960,7 @@
         "observation": "getup records undox and undoy for the active party actor. Undo checks canundo and condition gates, requests sound 664, subtracts normattacks plus attackbonus, restores the recorded cell, decrements the initiative cursor, and calls getup(FALSE), which recalculates movement and attacks and normally requests sound 138. Attacks and showresults clear canundo. The destination write has no occupancy check. Repeated Undo and queue-edge re-entry remain runtime-unobserved."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "No package data is required; Undo is volatile, save-owned combat state."
       },
@@ -5006,7 +5054,7 @@
         "unresolved": []
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [],
         "expectedRepresentation": "Fast Spell bindings are mutable character state and require no schema-v2 package field."
       },
@@ -5090,7 +5138,7 @@
         "observation": "getchoice sets cursor resource 147 plus the remaining count, records the first of N picks as N and counts down to 1, removes and renumbers a repeated portrait click, and exits automatically at zero. Its A-abort clears every tracked pick; opcode 31 then appears to fall through to party slot zero because the caller does not handle that empty result, so cancellation remains an explicit fidelity question. With three distinct synthetic characters, opcode 30 consumed three draws but made all three outcomes depend on the action slot's c[t] value. Its negative attribute path inverted twice while the equivalent ability path inverted once. Opcode 31 index 10 retained the chosen character, consumed one Rand(25) draw, loaded neither XAP, and continued."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",
@@ -5170,7 +5218,7 @@
         "observation": "A controlled synthetic fixture ran both an attribute check and a trained-ability check after getchoice A-abort. In each case getchoice left track=000, opcode 31 consumed one ordinary check draw, evaluated party slot zero, and loaded XAP 6 from that character's failed result. Two runs produced byte-identical output."
       },
       "providence": {
-        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "commit": "90d3e80af6f01250ca298687699c6a3fe8c81653",
         "sources": [
           {
             "path": "src-tauri/src/realmz2_exporter.rs",

@@ -28,8 +28,8 @@ func _init(
 	topology_result = cell_result
 
 
-static func blocked(block_reason: StringName, from_map: MapDefinition = null, to_map: MapDefinition = null, coordinate: Vector2i = Vector2i(-1, -1), cell_result: TopologyMoveResult = null) -> WorldMovementResult:
-	return WorldMovementResult.new(false, block_reason, from_map, to_map, coordinate, null, cell_result)
+static func blocked(block_reason: StringName, from_map: MapDefinition = null, to_map: MapDefinition = null, coordinate: Vector2i = Vector2i(-1, -1), cell_result: TopologyMoveResult = null, map_transition: MapTransition = null) -> WorldMovementResult:
+	return WorldMovementResult.new(false, block_reason, from_map, to_map, coordinate, map_transition, cell_result)
 
 
 static func permitted(from_map: MapDefinition, to_map: MapDefinition, coordinate: Vector2i, map_transition: MapTransition, cell_result: TopologyMoveResult) -> WorldMovementResult:

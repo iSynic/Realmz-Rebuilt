@@ -18,7 +18,7 @@ Mirror the authoritative Providence `.realmz2` schemas byte-for-byte and expose 
 ## Work Guidance
 
 - Record the matching Providence commit and schema SHA-256 when updating the mirror.
-- Schema v3 is a clean cut mirroring Providence commit `0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04` at SHA-256 `a696ccf50fe1f03475205caa5351729427494a1ad4a35bed25069f05d1220e2c`. Manifests use format version 2 and all five canonical documents use schema version 3; v1/v2 packages are rejected and must be re-exported. The topology remains the fixed row-major `realmz2.compact-cell-rows.v1` ABI, and the complete normalized display, rules, encounter, topology, media, and application-hook data established by schema v2 remains mandatory runtime input. Canonical schema bytes use LF line endings on every platform.
+- Schema v3 is a clean cut mirroring Providence commit `90d3e80af6f01250ca298687699c6a3fe8c81653` at SHA-256 `8911a4de6f6182e7d18a5c1ee2c8ccf2989a5bb22cfcb24c6f9fc4ab19a23602`. Manifests use format version 2 and all five canonical documents use schema version 3; v1/v2 packages are rejected and must be re-exported. Land topology uses the fixed row-major `realmz2.compact-cell-rows.v2` ABI: every cell retains exact Classic `needboad`, movement sound, ordinary cost, and blocked-attempt timeclicks, while each land map carries the active landlook's exact tile-60 and tile-147 replacement profiles for moved boats. Dungeon maps carry no boat profiles. The complete normalized display, rules, encounter, topology, media, and application-hook data established by schema v2 remains mandatory runtime input. Canonical schema bytes use LF line endings on every platform.
 
 ## Verification
 

@@ -2,6 +2,7 @@ class_name WorldState
 extends RefCounted
 
 var _terrain_overrides: Dictionary = {}
+var _boat_presence_overrides: Dictionary = {}
 var _door_states: Dictionary = {}
 var _discovered_secrets: Dictionary = {}
 var _disabled_triggers: Dictionary = {}
@@ -19,6 +20,21 @@ func terrain_for(map_id: String, cell: MapCell) -> String:
 
 func replace_terrain(map_id: String, coordinate: Vector2i, terrain_id: String) -> void:
 	_terrain_overrides[_cell_key(map_id, coordinate)] = terrain_id
+
+
+func set_boat_present(map_id: String, coordinate: Vector2i, present: bool) -> void:
+	_boat_presence_overrides[_cell_key(map_id, coordinate)] = present
+
+
+func boat_presence_state(map_id: String, coordinate: Vector2i) -> int:
+	var key := _cell_key(map_id, coordinate)
+	if not _boat_presence_overrides.has(key):
+		return -1
+	return 1 if bool(_boat_presence_overrides[key]) else 0
+
+
+func boat_presence_overrides() -> Dictionary:
+	return _boat_presence_overrides.duplicate()
 
 
 func open_door(door_id: String) -> void:
@@ -179,6 +195,7 @@ func to_data() -> Dictionary:
 		location_notes_data.append(note.to_data())
 	return {
 		"terrainOverrides": _sorted_dictionary(_terrain_overrides),
+		"boatPresenceOverrides": _sorted_dictionary(_boat_presence_overrides),
 		"doorStates": _sorted_dictionary(_door_states),
 		"discoveredSecrets": _sorted_keys(_discovered_secrets),
 		"disabledTriggers": _sorted_keys(_disabled_triggers),
@@ -204,6 +221,13 @@ static func from_data(data: Variant) -> WorldState:
 		if not key is String or not data["terrainOverrides"][key] is String:
 			return null
 		state._terrain_overrides[key] = data["terrainOverrides"][key]
+	if data.has("boatPresenceOverrides"):
+		if not data["boatPresenceOverrides"] is Dictionary:
+			return null
+		for key: Variant in data["boatPresenceOverrides"]:
+			if not key is String or key.is_empty() or not data["boatPresenceOverrides"][key] is bool:
+				return null
+			state._boat_presence_overrides[key] = data["boatPresenceOverrides"][key]
 	for key: Variant in data["doorStates"]:
 		if not key is String or data["doorStates"][key] not in ["open", "closed"]:
 			return null

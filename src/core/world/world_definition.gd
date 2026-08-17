@@ -89,7 +89,7 @@ func transition_target_coordinate(transition: MapTransition, source_coordinate: 
 			return Vector2i(-1, -1)
 
 
-func probe_movement(map_id: String, origin: Vector2i, direction: Vector2i, world_state: WorldState) -> WorldMovementResult:
+func probe_movement(map_id: String, origin: Vector2i, direction: Vector2i, world_state: WorldState, party_in_boat: bool = false) -> WorldMovementResult:
 	var source_map := map_by_id(map_id)
 	if source_map == null:
 		return WorldMovementResult.blocked(&"outside_map")
@@ -113,9 +113,9 @@ func probe_movement(map_id: String, origin: Vector2i, direction: Vector2i, world
 		if target_map == null:
 			return WorldMovementResult.blocked(&"outside_map", source_map)
 		target_coordinate = transition_target_coordinate(transition, target_coordinate)
-	var topology_result := target_map.topology.probe_movement(target_coordinate, direction, world_state, source_map.level_type)
+	var topology_result := target_map.topology.probe_movement(target_coordinate, direction, world_state, source_map.level_type, party_in_boat)
 	if not topology_result.allowed:
-		return WorldMovementResult.blocked(topology_result.reason, source_map, target_map, target_coordinate, topology_result)
+		return WorldMovementResult.blocked(topology_result.reason, source_map, target_map, target_coordinate, topology_result, transition)
 	return WorldMovementResult.permitted(source_map, target_map, target_coordinate, transition, topology_result)
 
 

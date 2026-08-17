@@ -144,6 +144,19 @@ class RewardBody:
 		return {"kind": String(kind), "battleId": battle_id, "runtimeContinuation": {} if runtime_continuation == null else runtime_continuation.to_data()}
 
 
+class BoatBody:
+	extends Body
+	var action: StringName
+	var source_map_id: String
+	var source_coordinate: Vector2i
+	var target_map_id: String
+	var target_coordinate: Vector2i
+	var direction: Vector2i
+
+	func _payload_data(kind: StringName) -> Dictionary:
+		return {"kind": String(kind), "action": String(action), "sourceMapId": source_map_id, "sourceX": source_coordinate.x, "sourceY": source_coordinate.y, "targetMapId": target_map_id, "targetX": target_coordinate.x, "targetY": target_coordinate.y, "directionX": direction.x, "directionY": direction.y}
+
+
 var kind: StringName
 var body: Body
 
@@ -159,6 +172,10 @@ static func post_clock(exploration_body: ExplorationBody) -> SessionContinuation
 
 static func post_move(exploration_body: ExplorationBody) -> SessionContinuation:
 	return SessionContinuation.new(&"post-move", exploration_body)
+
+
+static func boat_choice(boat_body: BoatBody) -> SessionContinuation:
+	return SessionContinuation.new(&"boat-choice", boat_body)
 
 
 static func application_hook(application_body: ApplicationBody) -> SessionContinuation:
@@ -250,6 +267,10 @@ func reward() -> RewardBody:
 	return body as RewardBody
 
 
+func boat() -> BoatBody:
+	return body as BoatBody
+
+
 func copy() -> SessionContinuation:
 	if is_empty():
 		return SessionContinuation.new()
@@ -280,6 +301,8 @@ static func _from_wire_payload(continuation_kind: StringName, data: Dictionary) 
 			return _decode_post_clock(data)
 		&"post-move":
 			return _decode_post_move(data)
+		&"boat-choice":
+			return _decode_boat(data)
 		&"application-hook":
 			return _decode_application(data)
 		&"character-spell-confirmation":
@@ -315,6 +338,22 @@ static func _from_wire_payload(continuation_kind: StringName, data: Dictionary) 
 				return null
 			return combat_reward(data["battleId"], reward_runtime)
 	return null
+
+
+static func _decode_boat(data: Dictionary) -> SessionContinuation:
+	var fields: Array[String] = ["action", "sourceMapId", "sourceX", "sourceY", "targetMapId", "targetX", "targetY", "directionX", "directionY"]
+	if not _has_exact_fields(data, fields) or data.get("action") not in ["board", "disembark"] or not data.get("sourceMapId") is String or data["sourceMapId"].is_empty() or not data.get("targetMapId") is String or data["targetMapId"].is_empty():
+		return null
+	var body := BoatBody.new()
+	body.action = StringName(data["action"])
+	body.source_map_id = data["sourceMapId"]
+	body.source_coordinate = Vector2i(_integer(data["sourceX"]), _integer(data["sourceY"]))
+	body.target_map_id = data["targetMapId"]
+	body.target_coordinate = Vector2i(_integer(data["targetX"]), _integer(data["targetY"]))
+	body.direction = Vector2i(_signed_integer(data["directionX"]), _signed_integer(data["directionY"]))
+	if body.source_coordinate.x < 0 or body.source_coordinate.y < 0 or body.target_coordinate.x < 0 or body.target_coordinate.y < 0 or body.direction == Vector2i.ZERO or body.direction.x < -1 or body.direction.x > 1 or body.direction.y < -1 or body.direction.y > 1:
+		return null
+	return boat_choice(body)
 
 
 static func _decode_application(data: Dictionary) -> SessionContinuation:

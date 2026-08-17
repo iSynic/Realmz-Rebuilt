@@ -89,10 +89,10 @@ func validate_render_references(assets: Dictionary, world: Dictionary) -> bool:
 	if not world.get("maps") is Array:
 		return _reject("World maps must be available for tileset validation.")
 	for map: Variant in world["maps"]:
-		if not map is Dictionary or map.get("topologyFormat") != "realmz2.compact-cell-rows.v1" or not map.get("cells") is Array:
+		if not map is Dictionary or map.get("topologyFormat") != "realmz2.compact-cell-rows.v2" or not map.get("cells") is Array:
 			return _reject("World map is malformed during tileset validation.")
 		for cell: Variant in map["cells"]:
-			if not cell is Array or cell.size() != 11 or not cell[9] is String:
+			if not cell is Array or cell.size() != 13 or not cell[9] is String:
 				return _reject("Topology render facts are malformed during tileset validation.")
 			if not tileset_ids.has(cell[9]):
 				return _reject("Topology references missing tileset asset '%s'." % cell[9])

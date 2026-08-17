@@ -10,6 +10,7 @@ var combat: CombatState
 var random_encounters_enabled: bool = true
 var camping_allowed: bool = true
 var party_in_boat: bool = false
+var boat_shore_attempts: int = 0
 var party_camping: bool = false
 var priest_turning_allowed: bool = true
 var allies_suspended: bool = false
@@ -321,6 +322,7 @@ func restore_from_data(data: Dictionary) -> bool:
 	random_encounters_enabled = loaded.random_encounters_enabled
 	camping_allowed = loaded.camping_allowed
 	party_in_boat = loaded.party_in_boat
+	boat_shore_attempts = loaded.boat_shore_attempts
 	party_camping = loaded.party_camping
 	priest_turning_allowed = loaded.priest_turning_allowed
 	allies_suspended = loaded.allies_suspended
@@ -383,6 +385,7 @@ func to_data() -> Dictionary:
 		"randomEncountersEnabled": random_encounters_enabled,
 		"campingAllowed": camping_allowed,
 		"partyInBoat": party_in_boat,
+		"boatShoreAttempts": boat_shore_attempts,
 		"partyCamping": party_camping,
 		"priestTurningAllowed": priest_turning_allowed,
 		"alliesSuspended": allies_suspended,
@@ -521,6 +524,9 @@ static func _restore_session_settings(state: GameState, data: Dictionary) -> boo
 	state.camping_allowed = data["campingAllowed"]
 	if data.has("partyInBoat") and (not data["partyInBoat"] is bool or not data.get("partyCamping") is bool): return false
 	state.party_in_boat = bool(data.get("partyInBoat", false))
+	state.boat_shore_attempts = _integer(data.get("boatShoreAttempts", 0))
+	if state.boat_shore_attempts < 0 or state.boat_shore_attempts > 2:
+		return false
 	state.party_camping = bool(data.get("partyCamping", false))
 	if data.has("priestTurningAllowed") and not data["priestTurningAllowed"] is bool: return false
 	if data.has("alliesSuspended") and not data["alliesSuspended"] is bool: return false

@@ -43,6 +43,7 @@ func run() -> void:
 	for action_id: Variant in full_open_view.action_availability:
 		var action := StringName(action_id)
 		assert_equal([open_view.availability(action).enabled, open_view.availability(action).reason], [full_open_view.availability(action).enabled, full_open_view.availability(action).reason], "incremental and full projections agree on %s availability" % action)
+	_test_boat_movement(content)
 	_test_location_notes(content)
 	var diagonal_session := GameSession.new()
 	assert_equal(diagonal_session.start(content, 1).state, SessionStep.State.COMPLETED, "a dedicated land-diagonal session starts")
@@ -398,6 +399,83 @@ func _restore_fixture_position(session: GameSession, content: RealmzContent, map
 	envelope.game_state.party.map_id = map_id
 	envelope.game_state.party.coordinate = coordinate
 	assert_equal(session.restore(content, envelope).state, SessionStep.State.COMPLETED, "fixture position changes through the validated save boundary")
+
+
+func _test_boat_movement(source_content: RealmzContent) -> void:
+	var content := _boat_movement_content(source_content)
+	var session := GameSession.new()
+	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "boat workflow session starts")
+	_begin_fixture_adventure(session, content)
+	var initial_minutes := session.snapshot().game_state.clock.total_minutes()
+	var board_prompt := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_not_null(board_prompt.interaction, "boardable movement yields an interaction (state %s, error %s: %s)" % [board_prompt.state, board_prompt.error_code, board_prompt.error_message])
+	if board_prompt.interaction == null:
+		return
+	assert_equal([board_prompt.state, board_prompt.interaction.kind, session.view().party_coordinate], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO, Vector2i.ZERO], "a boardable Classic tile asks before moving the party")
+	assert_equal([board_prompt.interaction.body.prompt, board_prompt.interaction.body.yes_label, board_prompt.interaction.body.no_label], ["Board this boat?", "Board", "Stay ashore"], "the board prompt uses one typed yes/no interaction")
+	var restored_board := GameSession.new()
+	assert_equal(restored_board.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "the board prompt restores with its typed continuation")
+	var boarded := restored_board.respond(InteractionResponse.yes_no(restored_board.view().pending_interaction, true))
+	assert_equal([boarded.state, restored_board.view().party_coordinate, restored_board.snapshot().game_state.party_in_boat], [SessionStep.State.COMPLETED, Vector2i(1, 0), true], "accepting boards and moves exactly once")
+	assert_equal(restored_board.snapshot().game_state.clock.total_minutes(), initial_minutes + 20, "boarding pays the original boat tile's four outdoor timeclicks")
+	assert_equal(_sound_ids(boarded), [11], "boarding uses the original boat tile sound before its replacement profile")
+	assert_equal([restored_board.view().map_view.cell_at(Vector2i(1, 0)).render_tile, restored_board.view().map_view.cell_at(Vector2i(1, 0)).terrain_id], [60, "classic.terrain.60"], "boarding exposes Castle's tile-60 replacement through the authoritative view")
+	var crossed_water := restored_board.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_equal([crossed_water.state, restored_board.view().party_coordinate, _sound_ids(crossed_water)], [SessionStep.State.COMPLETED, Vector2i(2, 0), [22]], "an embarked party traverses exact needBoat-2 water")
+	for attempt: int in 2:
+		var shore_block := restored_board.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+		assert_equal([shore_block.state, restored_board.view().party_coordinate, _sound_ids(shore_block)], [SessionStep.State.COMPLETED, Vector2i(2, 0), [-148, 44]], "shore attempt %d collides, sounds, and remains aboard" % (attempt + 1))
+	var restored_attempts := GameSession.new()
+	assert_equal(restored_attempts.restore(content, save_round_trip(restored_board.snapshot())).state, SessionStep.State.COMPLETED, "the bounded shore retry count restores deterministically")
+	var leave_prompt := restored_attempts.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_equal([leave_prompt.state, _sound_ids(leave_prompt), leave_prompt.interaction.body.prompt], [SessionStep.State.WAITING_FOR_INTERACTION, [-148], "Leave the boat here and go ashore?"], "the third shore collision opens Castle's disembark question after its collision sound")
+	var restored_leave := GameSession.new()
+	assert_equal(restored_leave.restore(content, save_round_trip(restored_attempts.snapshot())).state, SessionStep.State.COMPLETED, "the disembark prompt restores without losing its source cell")
+	var disembarked := restored_leave.respond(InteractionResponse.yes_no(restored_leave.view().pending_interaction, true))
+	assert_equal([disembarked.state, restored_leave.view().party_coordinate, restored_leave.snapshot().game_state.party_in_boat, _sound_ids(disembarked)], [SessionStep.State.COMPLETED, Vector2i(2, 0), false, [44]], "accepting leaves the boat at the current water cell and applies the attempted shore facts")
+	assert_equal([restored_leave.view().map_view.cell_at(Vector2i(2, 0)).render_tile, restored_leave.view().map_view.cell_at(Vector2i(2, 0)).terrain_id], [147, "classic.terrain.147"], "disembarking exposes Castle's tile-147 replacement through the same topology view")
+	var stepped_ashore := restored_leave.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	assert_equal([stepped_ashore.state, restored_leave.view().party_coordinate], [SessionStep.State.COMPLETED, Vector2i(3, 0)], "after disembarking the party may enter the shore normally")
+	var declined_session := GameSession.new()
+	declined_session.start(content, 1)
+	_begin_fixture_adventure(declined_session, content)
+	var declined_prompt := declined_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+	var declined := declined_session.respond(InteractionResponse.yes_no(declined_prompt.interaction, false))
+	assert_equal([declined.state, declined_session.view().party_coordinate, declined_session.snapshot().game_state.party_in_boat, _sound_ids(declined)], [SessionStep.State.COMPLETED, Vector2i.ZERO, false, [11]], "declining a boat retains the party and still applies Castle's target sound/time")
+
+
+func _boat_movement_content(source_content: RealmzContent) -> RealmzContent:
+	var rows: Array = [
+		_compact_land_row(1, 1, 1, 0, false),
+		_compact_land_row(10, 4, 11, 1, false),
+		_compact_land_row(60, 2, 22, 2, false),
+		_compact_land_row(30, 5, 44, 0, true),
+	]
+	var removed := LandTileProfile.new("classic.terrain.60", 2, 77, 22, 60, 2, 2)
+	var placed := LandTileProfile.new("classic.terrain.147", 3, 69, 33, 147, 1, 3)
+	var map := MapDefinition.new("boat-land", "Boat Land", &"land", 0, MapTopology.from_compact_rows("boat-land", 4, 1, rows, removed, placed))
+	var maps: Array[MapDefinition] = [map]
+	return RealmzContent.new("boat-movement", "0".repeat(64), "boat-movement-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
+
+
+func _compact_land_row(tile: int, movement_cost: int, sound_id: int, boat_requirement: int, shore: bool) -> Array:
+	var flags := 1 | 4
+	if boat_requirement == 2:
+		flags |= 8
+	if shore:
+		flags |= 16
+	if boat_requirement != 0:
+		flags |= 64
+	var edge := ["open", 5, null, null]
+	return ["classic.terrain.%d" % tile, movement_cost, flags, sound_id, [], [], [edge, edge, edge, edge], [], tile, "fixture.tileset", null, boat_requirement, movement_cost]
+
+
+func _sound_ids(step: SessionStep) -> Array[int]:
+	var result: Array[int] = []
+	for event: DomainEvent in step.events:
+		if event.kind == &"sound_requested":
+			result.append(int(event.payload["soundId"]))
+	return result
 
 
 func _duplicate_placed_ap_content(first_chance: int, source_content: RealmzContent) -> RealmzContent:

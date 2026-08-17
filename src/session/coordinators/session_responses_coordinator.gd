@@ -17,6 +17,8 @@ static func _no_events() -> Array[DomainEvent]:
 
 func _respond_session_interaction(response: InteractionResponse) -> SessionCoordinatorResult:
 	match _context.session_continuation.kind:
+		&"boat-choice":
+			return _respond_boat_choice(response)
 		&"pooled-wealth-departure":
 			return _respond_pooled_wealth_departure(response)
 		&"service-interaction":
@@ -73,6 +75,36 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionCoord
 		return _context.exploration()._complete_post_time(events)
 	_context.session_continuation.clear()
 	return _context.completed(events)
+
+
+func _respond_boat_choice(response: InteractionResponse) -> SessionCoordinatorResult:
+	var choice := _context.session_continuation.boat()
+	var answer := response.body as InteractionResponse.YesNoBody
+	if response.kind != InteractionRequest.YES_NO or answer == null or choice == null:
+		return _context.failed(&"invalid_interaction_response", "The Classic boat movement choice requires a yes/no response.")
+	if _context.state.party.map_id != choice.source_map_id or _context.state.party.coordinate != choice.source_coordinate:
+		return _context.failed(&"invalid_session_continuation", "The party moved before the Classic boat choice resumed.")
+	var movement := _context.content.world.probe_movement(choice.source_map_id, choice.source_coordinate, choice.direction, _context.state.world, _context.state.party_in_boat)
+	if movement.target_map == null or movement.target_map.id != choice.target_map_id or movement.target_coordinate != choice.target_coordinate:
+		return _context.failed(&"invalid_session_continuation", "The Classic boat choice destination is no longer available.")
+	if choice.action == &"board" and (_context.state.party_in_boat or movement.reason != &"board_boat"):
+		return _context.failed(&"invalid_session_continuation", "The boardable boat is no longer available.")
+	if choice.action == &"disembark" and (not _context.state.party_in_boat or movement.reason != &"boat_shore"):
+		return _context.failed(&"invalid_session_continuation", "The shore is no longer available for disembarking.")
+	_context.session_interaction = null
+	_context.session_continuation.clear()
+	var events: Array[DomainEvent] = [DomainEvent.new(&"boat_choice_resolved", {"action": String(choice.action), "accepted": answer.accepted})]
+	if choice.action == &"board" and answer.accepted:
+		var boarded_movement := WorldMovementResult.permitted(movement.source_map, movement.target_map, movement.target_coordinate, movement.transition, TopologyMoveResult.permitted(movement.topology_result.target_cell))
+		_context.state.world.set_boat_present(choice.target_map_id, choice.target_coordinate, false)
+		_context.state.party_in_boat = true
+		events.append(DomainEvent.new(&"boat_boarded", {"mapId": choice.target_map_id, "x": choice.target_coordinate.x, "y": choice.target_coordinate.y}))
+		return _context.exploration()._finish_exploration_movement(ExplorationTimeWorkflow.commit_permitted_move(_context.workflow_context(), boarded_movement, choice.direction, events))
+	if choice.action == &"disembark" and answer.accepted:
+		_context.state.world.set_boat_present(choice.source_map_id, choice.source_coordinate, true)
+		_context.state.party_in_boat = false
+		events.append(DomainEvent.new(&"boat_disembarked", {"mapId": choice.source_map_id, "x": choice.source_coordinate.x, "y": choice.source_coordinate.y}))
+	return _context.exploration()._finish_exploration_movement(ExplorationTimeWorkflow.commit_blocked_attempt(_context.workflow_context(), movement, events, false))
 
 
 func _respond_pooled_wealth_departure(response: InteractionResponse) -> SessionCoordinatorResult:

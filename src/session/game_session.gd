@@ -554,7 +554,7 @@ func _search() -> SessionStep:
 
 
 func _move(direction: Vector2i) -> SessionStep:
-	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world)
+	var movement := _content.world.probe_movement(_state.party.map_id, _state.party.coordinate, direction, _state.world, _state.party_in_boat)
 	if not movement.allowed and movement.reason == &"invalid_direction":
 		return SessionStep.failed(_view_revision, &"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
 	if _state.bank_available and SessionInteractionFactory.has_pooled_wealth(_state.party):
@@ -573,17 +573,8 @@ func _move(direction: Vector2i) -> SessionStep:
 
 
 func _move_after_pooled_wealth(direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> SessionStep:
-	var result := ExplorationTimeWorkflow.depart_camp_for_movement(_workflow_context(), direction, preceding_events) if _state.party_camping else ExplorationTimeWorkflow.commit_move(_workflow_context(), direction, preceding_events)
-	return _finish_exploration_movement(result)
-
-
-func _finish_exploration_movement(result: ExplorationTimeWorkflow.MovementTransitionResult) -> SessionStep:
-	if not result.ok:
-		return _finish_failed(result.error_code, result.error_message, result.events)
-	if not result.post_clock:
-		return _finish_completed(result.events)
-	_set_post_time_continuation(result.map, result.resume_kind, result.direction, result.check_random, result.timed_day, result.timed_coordinate)
-	return _finish_with_age_updates(result.events, &"post-clock", _session_continuation.copy())
+	_ensure_coordinators()
+	return _commit_coordinator_result(_exploration_coordinator._move_after_pooled_wealth(direction, preceding_events))
 
 
 func _set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> void:

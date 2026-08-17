@@ -47,6 +47,8 @@ static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> Sessi
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved journal references unavailable or unrepresentable Classic messages.")
 	if not _acquired_player_maps_are_valid(content, replacement_state):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved acquired maps reference unavailable package content.")
+	if not _boat_overlays_are_valid(content, replacement_state):
+		return SessionRestoreResult.failed(&"invalid_game_state", "The saved boat overlays reference unavailable land cells.")
 	if not LifecyclePartyWorkflow.character_draft_is_valid(content, replacement_state, replacement_rules):
 		return SessionRestoreResult.failed(&"invalid_character_draft", "The saved character-creation draft is invalid for this campaign.")
 	var replacement_vm := ScenarioVm.new()
@@ -175,6 +177,21 @@ static func _location_notes_are_valid(content: RealmzContent, state: GameState) 
 	return true
 
 
+static func _boat_overlays_are_valid(content: RealmzContent, state: GameState) -> bool:
+	if content == null or state == null:
+		return false
+	for key_value: Variant in state.world.boat_presence_overrides().keys():
+		var key := String(key_value)
+		var separator := key.rfind(":")
+		if separator <= 0:
+			return false
+		var map := content.world.map_by_id(key.left(separator))
+		var components := key.substr(separator + 1).split(",", false, 1)
+		if map == null or map.level_type != &"land" or components.size() != 2 or not components[0].is_valid_int() or not components[1].is_valid_int() or map.topology.cell_at(Vector2i(int(components[0]), int(components[1]))) == null:
+			return false
+	return true
+
+
 static func _journal_messages_are_valid(content: RealmzContent, state: GameState) -> bool:
 	for message_id: int in state.journal_message_ids():
 		if not GameState.journal_message_id_is_valid(message_id) or content.message_by_id(message_id) == null:
@@ -195,6 +212,8 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 	if continuation == null or continuation.is_empty():
 		return false
 	match continuation.kind:
+		&"boat-choice":
+			return _valid_boat_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"application-hook":
 			var application := continuation.application()
 			if application == null or vm_interaction == null or session_interaction != null or application.program_id.is_empty():
@@ -222,7 +241,7 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			var service := continuation.service()
 			if service == null or vm_interaction != null or session_interaction == null or state.party == null or state.bank_available:
 				return false
-			var departure_probe := content.world.probe_movement(state.party.map_id, state.party.coordinate, service.direction, state.world)
+			var departure_probe := content.world.probe_movement(state.party.map_id, state.party.coordinate, service.direction, state.world, state.party_in_boat)
 			if not departure_probe.allowed and departure_probe.reason == &"invalid_direction":
 				return false
 			if service.stage == &"warning":
@@ -336,6 +355,23 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 			return _valid_post_time_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"post-move":
 			return _valid_post_move_continuation(content, state, continuation, vm_interaction, session_interaction)
+	return false
+
+
+static func _valid_boat_continuation(content: RealmzContent, state: GameState, continuation: SessionContinuation, vm_interaction: InteractionRequest, session_interaction: InteractionRequest) -> bool:
+	var boat := continuation.boat()
+	var prompt: InteractionRequest.YesNoRequestBody = null
+	if session_interaction != null:
+		prompt = session_interaction.body as InteractionRequest.YesNoRequestBody
+	if boat == null or vm_interaction != null or session_interaction == null or session_interaction.kind != InteractionRequest.YES_NO or prompt == null or state.party.map_id != boat.source_map_id or state.party.coordinate != boat.source_coordinate:
+		return false
+	var movement := content.world.probe_movement(boat.source_map_id, boat.source_coordinate, boat.direction, state.world, state.party_in_boat)
+	if movement.target_map == null or movement.target_map.id != boat.target_map_id or movement.target_coordinate != boat.target_coordinate:
+		return false
+	if boat.action == &"board":
+		return not state.party_in_boat and movement.reason == &"board_boat" and prompt.prompt == "Board this boat?" and prompt.yes_label == "Board" and prompt.no_label == "Stay ashore"
+	if boat.action == &"disembark":
+		return state.party_in_boat and movement.reason == &"boat_shore" and prompt.prompt == "Leave the boat here and go ashore?" and prompt.yes_label == "Leave boat" and prompt.no_label == "Remain aboard"
 	return false
 
 

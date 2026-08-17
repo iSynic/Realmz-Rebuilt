@@ -732,6 +732,7 @@ static func _player_map_shows_party(definition: PlayerMapDefinition, source_map:
 
 
 static func _build_cell_view(context: SessionWorkflowContext, map: MapDefinition, cell: MapCell, is_visible: bool) -> MapCellView:
+	cell = map.topology.effective_cell_at(cell.coordinate, context.state.world)
 	var feature_kinds: Array[StringName] = []
 	var feature_orientations: Dictionary = {}
 	var edge_kinds: Dictionary = {}
@@ -753,4 +754,4 @@ static func _build_cell_view(context: SessionWorkflowContext, map: MapDefinition
 
 
 static func _probe_movement(context: SessionWorkflowContext, direction: Vector2i) -> WorldMovementResult:
-	return context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world)
+	return context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world, context.state.party_in_boat)

@@ -8,6 +8,8 @@ var _cells_by_coordinate: Dictionary = {}
 var _compact_map_id: String = ""
 var _compact_rows: Array = []
 var _compact_cells_by_index: Dictionary = {}
+var _boat_removed_profile: LandTileProfile
+var _boat_placed_profile: LandTileProfile
 
 
 func _init(map_width: int, map_height: int, map_cells: Array[MapCell]) -> void:
@@ -18,10 +20,12 @@ func _init(map_width: int, map_height: int, map_cells: Array[MapCell]) -> void:
 		_cells_by_coordinate[cell.coordinate] = cell
 
 
-static func from_compact_rows(map_id: String, map_width: int, map_height: int, rows: Array) -> MapTopology:
+static func from_compact_rows(map_id: String, map_width: int, map_height: int, rows: Array, boat_removed_profile: LandTileProfile = null, boat_placed_profile: LandTileProfile = null) -> MapTopology:
 	var topology := MapTopology.new(map_width, map_height, [])
 	topology._compact_map_id = map_id
 	topology._compact_rows = rows
+	topology._boat_removed_profile = boat_removed_profile
+	topology._boat_placed_profile = boat_placed_profile
 	return topology
 
 
@@ -42,6 +46,19 @@ func cell_at(coordinate: Vector2i) -> MapCell:
 			_compact_cells_by_index[index] = decoded
 		return decoded
 	return _cells_by_coordinate.get(coordinate) as MapCell
+
+
+func effective_cell_at(coordinate: Vector2i, world_state: WorldState) -> MapCell:
+	var cell := cell_at(coordinate)
+	if cell == null or world_state == null or _compact_map_id.is_empty():
+		return cell
+	match world_state.boat_presence_state(_compact_map_id, coordinate):
+		0:
+			return cell if _boat_removed_profile == null else _boat_removed_profile.apply_to(cell)
+		1:
+			return cell if _boat_placed_profile == null else _boat_placed_profile.apply_to(cell)
+		_:
+			return cell
 
 
 func cells() -> Array[MapCell]:
@@ -68,10 +85,21 @@ func probe_entry(coordinate: Vector2i, move_direction: Vector2i, world_state: Wo
 	return TopologyMoveResult.permitted(cell, edge.door_id, edge.secret_id)
 
 
-func probe_land_entry(coordinate: Vector2i, world_state: WorldState) -> TopologyMoveResult:
-	var cell := cell_at(coordinate)
+func probe_land_entry(coordinate: Vector2i, world_state: WorldState, party_in_boat: bool = false) -> TopologyMoveResult:
+	var cell := effective_cell_at(coordinate, world_state)
 	if cell == null:
 		return TopologyMoveResult.blocked(&"outside_map")
+	var boat_requirement := cell.boat_requirement
+	if party_in_boat:
+		if cell.is_shore:
+			return TopologyMoveResult.blocked(&"boat_shore", cell)
+		if boat_requirement == 2:
+			return TopologyMoveResult.permitted(cell)
+		return TopologyMoveResult.blocked(&"boat_terrain_blocked", cell)
+	if boat_requirement == 1:
+		return TopologyMoveResult.blocked(&"board_boat", cell)
+	if boat_requirement == 2:
+		return TopologyMoveResult.blocked(&"water_requires_boat", cell)
 	if not cell.passable:
 		return TopologyMoveResult.blocked(&"terrain_blocked", cell)
 	var cell_secret := cell.feature_by_kind(&"secret")
@@ -80,11 +108,11 @@ func probe_land_entry(coordinate: Vector2i, world_state: WorldState) -> Topology
 	return TopologyMoveResult.permitted(cell)
 
 
-func probe_movement(coordinate: Vector2i, move_direction: Vector2i, world_state: WorldState, level_type: StringName) -> TopologyMoveResult:
+func probe_movement(coordinate: Vector2i, move_direction: Vector2i, world_state: WorldState, level_type: StringName, party_in_boat: bool = false) -> TopologyMoveResult:
 	if level_type == &"land":
 		if not is_cardinal_direction(move_direction) and not is_diagonal_direction(move_direction):
 			return TopologyMoveResult.blocked(&"invalid_direction")
-		return probe_land_entry(coordinate, world_state)
+		return probe_land_entry(coordinate, world_state, party_in_boat)
 	if not is_cardinal_direction(move_direction):
 		return TopologyMoveResult.blocked(&"invalid_direction")
 	return probe_entry(coordinate, move_direction, world_state)
@@ -108,7 +136,7 @@ func has_line_of_sight(from: Vector2i, to: Vector2i, world_state: WorldState) ->
 		if twice_error <= dx:
 			error += dx
 			y += step_y
-		var cell := cell_at(Vector2i(x, y))
+		var cell := effective_cell_at(Vector2i(x, y), world_state)
 		if cell == null:
 			return false
 		if Vector2i(x, y) != to and _cell_blocks_los(cell, world_state):
@@ -182,7 +210,9 @@ func _decode_compact_cell(index: int, coordinate: Vector2i) -> MapCell:
 		random_rect_ids,
 		edges,
 		features,
-		"" if row[10] == null else String(row[10])
+		"" if row[10] == null else String(row[10]),
+		int(row[11]),
+		int(row[12])
 	)
 
 

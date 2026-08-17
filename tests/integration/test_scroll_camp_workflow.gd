@@ -281,7 +281,8 @@ func run() -> void:
 	assert_false(pending_restored._state.party_camping, "automatic movement departure clears camp before moving")
 	assert_equal(pending_restored.view().party_coordinate, Vector2i(2, 1), "the requested move commits after camp departure")
 	assert_equal(_events(departed, &"time_advanced")[0].payload["minutes"], 75, "outdoor movement departure advances fifteen time clicks before terrain movement time")
-	assert_true(pending_restored._state.clock.total_minutes() > departure_start + 75, "ordinary terrain movement time follows the departure cost")
+	var destination_cost := content.world.map_by_id("land:0").topology.cell_at(Vector2i(2, 1)).movement_cost
+	assert_equal(pending_restored._state.clock.total_minutes(), departure_start + 75 + destination_cost * 5, "ordinary terrain movement time follows the exact authored departure cost, including zero")
 	assert_true(_has_event(departed, &"camp_departed_for_movement"), "automatic departure has an explicit domain trace")
 
 	var reentered := pending_restored.submit_intent(PlayerIntent.camp())

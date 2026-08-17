@@ -29,7 +29,7 @@ func build_terrain(map: MapDefinition, world_state: WorldState, terrain_set: Bat
 	var battlefield := BattlefieldState.new(map.id, tiles, source_origin, map_shift)
 	for source_y: int in SOURCE_SIZE:
 		for source_x: int in SOURCE_SIZE:
-			var cell := map.topology.cell_at(source_origin + Vector2i(source_x, source_y))
+			var cell := map.topology.effective_cell_at(source_origin + Vector2i(source_x, source_y), world_state)
 			if cell == null:
 				return BattlefieldBuildResult.failed(&"battlefield_missing_cell", "Map '%s' is missing a cell inside Castle's battle source window." % map.id)
 			var build: Array = _dungeon_build(cell) if map.level_type == &"dungeon" else _land_build(map.id, cell, world_state, terrain_set)

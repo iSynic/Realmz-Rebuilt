@@ -12,6 +12,8 @@ var is_water: bool
 var is_shore: bool
 var is_path: bool
 var boat_required: bool
+var boat_requirement: int
+var blocked_attempt_timeclicks: int
 var fly_float_required: bool
 var movement_sound_id: int
 var render_tile: int
@@ -23,7 +25,7 @@ var _edges: Dictionary = {}
 var _features: Array[MapFeature]
 
 
-func _init(cell_id: String, cell_coordinate: Vector2i, terrain: String, can_enter: bool, cost: int, los_blocked: bool, land: bool, water: bool, shore: bool, path: bool, needs_boat: bool, needs_fly_float: bool, sound_id: int, tile: int, cell_tileset_id: String, cell_trigger_ids: Array[String], cell_random_rect_ids: Array[String], cell_edges: Dictionary, cell_features: Array[MapFeature], cell_overlay_asset_id: String = "") -> void:
+func _init(cell_id: String, cell_coordinate: Vector2i, terrain: String, can_enter: bool, cost: int, los_blocked: bool, land: bool, water: bool, shore: bool, path: bool, needs_boat: bool, needs_fly_float: bool, sound_id: int, tile: int, cell_tileset_id: String, cell_trigger_ids: Array[String], cell_random_rect_ids: Array[String], cell_edges: Dictionary, cell_features: Array[MapFeature], cell_overlay_asset_id: String = "", classic_boat_requirement: int = -1, classic_blocked_attempt_timeclicks: int = -1) -> void:
 	id = cell_id
 	coordinate = cell_coordinate
 	terrain_id = terrain
@@ -31,10 +33,12 @@ func _init(cell_id: String, cell_coordinate: Vector2i, terrain: String, can_ente
 	movement_cost = cost
 	blocks_los = los_blocked
 	is_land = land
-	is_water = water
+	boat_requirement = classic_boat_requirement if classic_boat_requirement >= 0 else (2 if water else (1 if needs_boat else 0))
+	is_water = boat_requirement == 2
 	is_shore = shore
 	is_path = path
-	boat_required = needs_boat
+	boat_required = boat_requirement != 0
+	blocked_attempt_timeclicks = classic_blocked_attempt_timeclicks if classic_blocked_attempt_timeclicks >= 0 else (maxi(0, cost) if land else 0)
 	fly_float_required = needs_fly_float
 	movement_sound_id = sound_id
 	render_tile = tile

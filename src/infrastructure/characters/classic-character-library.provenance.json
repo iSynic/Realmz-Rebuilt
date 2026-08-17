@@ -3,7 +3,7 @@
   "formatVersion": 1,
   "compiler": {
     "name": "Providence",
-    "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+    "commit": "393813826af11072782838602d45477ebe812378",
     "entrypoint": "src-tauri/examples/export_classic_character_library.rs"
   },
   "castle": {
@@ -19,9 +19,9 @@
   "package": {
     "path": "src/infrastructure/characters/realmz-classic-character-library.realmz2",
     "campaignId": "realmz-classic-character-library",
-    "packageHash": "c5a2776901de4c7c3891c4a019f5d4909943817ca50fbfd2fca7d52850aea07f",
-    "archiveSha256": "6ed52c998246baf39a6d3d726dfba44b3df37c7f2750aa513fc4d0577ce173d6",
-    "bytes": 3733923
+    "packageHash": "fd904f0d9d859e442bee558b685df1874f6e7df016c200725cf222b58fb4fe20",
+    "archiveSha256": "81abf401647577c06d64c0af7d93a6eca9abd410cfc39f2d5ffb0dc683969bf7",
+    "bytes": 3742146
   },
   "scenarioOverrides": false
 }

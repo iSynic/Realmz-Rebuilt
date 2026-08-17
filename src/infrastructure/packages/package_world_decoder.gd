@@ -143,8 +143,13 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_set
 		map_ids[record["id"]] = true
 		var width := _integer(record.get("width"))
 		var height := _integer(record.get("height"))
-		if width < 1 or height < 1 or width > 256 or height > 256 or record.get("topologyFormat") != "realmz2.compact-cell-rows.v1" or not record.get("cells") is Array or record["cells"].size() != width * height:
+		if width < 1 or height < 1 or width > 256 or height > 256 or record.get("topologyFormat") != "realmz2.compact-cell-rows.v2" or not record.get("cells") is Array or record["cells"].size() != width * height:
 			_reject("Map '%s' dimensions do not match its topology cells." % record["id"])
+			return null
+		var level_index := _integer(record.get("levelIndex"))
+		var level_type: Variant = record.get("levelType")
+		if level_index < 0 or not level_type is String or level_type not in ["land", "dungeon"]:
+			_reject("Map '%s' has an invalid Classic level index." % record["id"])
 			return null
 		var regions_value: Variant = _construct_random_regions(record.get("randomRectangles"), width, height, record["id"])
 		if regions_value == null:
@@ -155,13 +160,8 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_set
 			region_ids[region.id] = true
 		if validate_compact_rows:
 			for cell_index: int in record["cells"].size():
-				if not _validate_compact_cell(record["cells"][cell_index], record["id"], cell_index, trigger_ids, region_ids):
+				if not _validate_compact_cell(record["cells"][cell_index], record["id"], cell_index, trigger_ids, region_ids, StringName(level_type)):
 					return null
-		var level_index := _integer(record.get("levelIndex"))
-		var level_type: Variant = record.get("levelType")
-		if level_index < 0 or not level_type is String or level_type not in ["land", "dungeon"]:
-			_reject("Map '%s' has an invalid Classic level index." % record["id"])
-			return null
 		var metadata: Variant = record.get("metadata")
 		if not metadata is Dictionary or not _exact_fields(metadata, ["dark", "usesLos", "landlook", "battleTerrainSetId"]) or not metadata.get("dark") is bool or not metadata.get("usesLos") is bool or metadata.get("landlook") != null and not _is_integer(metadata.get("landlook")):
 			_reject("Map '%s' metadata is malformed." % record["id"])
@@ -181,15 +181,54 @@ func _construct_maps(value: Variant, trigger_ids: Dictionary, battle_terrain_set
 		if terrain_set != null and ((level_type == "land" and terrain_set.landlook != landlook) or (level_type == "dungeon" and terrain_set.landlook != -1)):
 			_reject("Map '%s' references a battle terrain set for the wrong level type or landlook." % record["id"])
 			return null
-		var topology := MapTopology.from_compact_rows(record["id"], width, height, record["cells"])
+		var boat_profiles_value: Variant = _construct_boat_replacement_profiles(record.get("boatReplacementProfiles"), StringName(level_type), record["id"])
+		if boat_profiles_value == null:
+			return null
+		var boat_profiles: Array = boat_profiles_value
+		var topology := MapTopology.from_compact_rows(record["id"], width, height, record["cells"], boat_profiles[0] as LandTileProfile, boat_profiles[1] as LandTileProfile)
 		maps.append(MapDefinition.new(record["id"], record["name"], StringName(level_type), level_index, topology, metadata["dark"], metadata["usesLos"], landlook, regions, terrain_set_id))
 	return maps
 
-func _validate_compact_cell(value: Variant, map_id: String, cell_index: int, trigger_ids: Dictionary, region_ids: Dictionary) -> bool:
-	if not value is Array or value.size() != 11:
+
+func _construct_boat_replacement_profiles(value: Variant, level_type: StringName, map_id: String) -> Variant:
+	if level_type == &"dungeon":
+		if value != null:
+			_reject("Dungeon map '%s' contains land-only boat replacement profiles." % map_id)
+			return null
+		return [null, null]
+	if not value is Dictionary or not _exact_fields(value, ["removed", "placed"]):
+		_reject("Land map '%s' is missing exact Classic boat replacement profiles." % map_id)
+		return null
+	var removed := _construct_land_tile_profile(value["removed"], map_id, "removed")
+	var placed := _construct_land_tile_profile(value["placed"], map_id, "placed")
+	if removed == null or placed == null:
+		return null
+	return [removed, placed]
+
+
+func _construct_land_tile_profile(value: Variant, map_id: String, role: String) -> LandTileProfile:
+	if not value is Array or value.size() != 7:
+		_reject("Land map '%s' has a malformed %s boat replacement profile." % [map_id, role])
+		return null
+	var row: Array = value
+	var movement_cost := _integer(row[1])
+	var flags := _integer(row[2])
+	var render_tile := _integer(row[4])
+	var boat_requirement := _integer(row[5])
+	var blocked_attempts := _integer(row[6])
+	if not row[0] is String or row[0].is_empty() or movement_cost < 0 or flags < 0 or flags > 255 or row[3] != null and not _is_integer(row[3]) or render_tile < 1 or boat_requirement < 0 or boat_requirement > 2 or blocked_attempts < 0:
+		_reject("Land map '%s' has invalid %s boat replacement facts." % [map_id, role])
+		return null
+	if not bool(flags & 4) or bool(flags & 8) != (boat_requirement == 2) or bool(flags & 64) != (boat_requirement != 0):
+		_reject("Land map '%s' has contradictory %s boat replacement semantics." % [map_id, role])
+		return null
+	return LandTileProfile.new(row[0], movement_cost, flags, -1 if row[3] == null else _integer(row[3]), render_tile, boat_requirement, blocked_attempts)
+
+func _validate_compact_cell(value: Variant, map_id: String, cell_index: int, trigger_ids: Dictionary, region_ids: Dictionary, level_type: StringName) -> bool:
+	if not value is Array or value.size() != 13:
 		return _reject("Map '%s' compact topology row %d is malformed." % [map_id, cell_index])
 	var row: Array = value
-	if not row[0] is String or row[0].is_empty() or not _is_integer(row[1]) or _integer(row[1]) < 1 or not _is_integer(row[2]) or _integer(row[2]) < 0 or _integer(row[2]) > 255:
+	if not row[0] is String or row[0].is_empty() or not _is_integer(row[1]) or _integer(row[1]) < 0 or not _is_integer(row[2]) or _integer(row[2]) < 0 or _integer(row[2]) > 255:
 		return _reject("Map '%s' compact topology row %d has malformed terrain facts." % [map_id, cell_index])
 	if row[3] != null and not _is_integer(row[3]):
 		return _reject("Map '%s' compact topology row %d has malformed movement sound." % [map_id, cell_index])
@@ -236,6 +275,14 @@ func _validate_compact_cell(value: Variant, map_id: String, cell_index: int, tri
 			return _reject("Topology edge references unknown secret '%s'." % secret_id)
 	if not _is_integer(row[8]) or not row[9] is String or row[9].is_empty() or row[10] != null and (not row[10] is String or row[10].is_empty()):
 		return _reject("Map '%s' compact topology row %d has malformed render facts." % [map_id, cell_index])
+	if not _is_integer(row[11]) or _integer(row[11]) < 0 or _integer(row[11]) > 2 or not _is_integer(row[12]) or _integer(row[12]) < 0:
+		return _reject("Map '%s' compact topology row %d has malformed Classic movement facts." % [map_id, cell_index])
+	var boat_requirement := _integer(row[11])
+	var flags := _integer(row[2])
+	if bool(flags & 8) != (boat_requirement == 2) or bool(flags & 64) != (boat_requirement != 0):
+		return _reject("Map '%s' compact topology row %d has contradictory boat facts." % [map_id, cell_index])
+	if level_type == &"dungeon" and (boat_requirement != 0 or _integer(row[12]) != 0):
+		return _reject("Dungeon map '%s' compact topology row %d contains land-only movement facts." % [map_id, cell_index])
 	return true
 
 func _construct_player_maps(value: Variant, maps: Array[MapDefinition], media_assets: Array[MediaAsset]) -> Variant:

@@ -4,7 +4,7 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 const TAMPERED_FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-tampered.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID: String = "realmz-classic-character-library"
-const CLASSIC_CHARACTER_LIBRARY_HASH: String = "c5a2776901de4c7c3891c4a019f5d4909943817ca50fbfd2fca7d52850aea07f"
+const CLASSIC_CHARACTER_LIBRARY_HASH: String = "fd904f0d9d859e442bee558b685df1874f6e7df016c200725cf222b58fb4fe20"
 const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v3"
 const SCHEMA_REJECTION_PATH: String = "user://realmz2-tests/realmz2-schema-v2.realmz2"
 
@@ -29,7 +29,7 @@ func run() -> void:
 	assert_true(repeated_external_load.is_ok(), "an unchanged external package can be validated repeatedly")
 	assert_true(repeated_external_load != loaded, "external package validation never inherits trusted cache status")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "a676b2c70d3125103016dc55672d9b42cebe5740f9bc81646c25b58538688ede", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "b09fbfc59e3d602e00dc8eae6d16fab4c5b4f881d23ccae38cff0616636235b6", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -176,7 +176,7 @@ func run() -> void:
 		var receipt_data: Variant = JSON.parse_string(FileAccess.get_file_as_string(installed.installed_path + ".receipt.json"))
 		assert_true(receipt_data is Dictionary, "the installation receipt is parseable JSON")
 		if receipt_data is Dictionary:
-			assert_equal([int(receipt_data["formatVersion"]), int(receipt_data["decoderVersion"]), receipt_data["schemaHash"]], [2, 3, PackageRepository.EXPECTED_SCHEMA_HASH], "the receipt records the v3 package and decoder contract")
+			assert_equal([int(receipt_data["formatVersion"]), int(receipt_data["decoderVersion"]), receipt_data["schemaHash"]], [2, 4, PackageRepository.EXPECTED_SCHEMA_HASH], "the receipt records the v3 package and decoder contract")
 		assert_contains(installed.installed_path, loaded.content.package_hash, "the installation path carries the package identity")
 		repository.promote_installed_package(installed.installed_path)
 		assert_equal(repository.retained_package_count(), 1, "promoting an installed package replaces the candidate without retaining an unbounded graph")

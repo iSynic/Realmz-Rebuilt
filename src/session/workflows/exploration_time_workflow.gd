@@ -42,6 +42,8 @@ class MovementTransitionResult:
 	var check_random: bool
 	var timed_day: int
 	var timed_coordinate: Vector2i = Vector2i(-1, -1)
+	var choice_kind: StringName
+	var choice_movement: WorldMovementResult
 
 	static func failed(code: StringName, message: String, committed_events: Array[DomainEvent] = []) -> MovementTransitionResult:
 		var result := MovementTransitionResult.new()
@@ -65,6 +67,13 @@ class MovementTransitionResult:
 		result.check_random = should_check_random
 		result.timed_day = midnight_day
 		result.timed_coordinate = check_coordinate
+		return result
+
+	static func awaiting_choice(kind: StringName, movement: WorldMovementResult, next_direction: Vector2i, committed_events: Array[DomainEvent]) -> MovementTransitionResult:
+		var result := completed(committed_events)
+		result.choice_kind = kind
+		result.choice_movement = movement
+		result.direction = next_direction
 		return result
 
 static func toggle_camp(context: SessionWorkflowContext) -> ClockTransitionResult:
@@ -133,7 +142,7 @@ static func search(context: SessionWorkflowContext) -> SessionWorkflowResult:
 
 
 static func depart_camp_for_movement(context: SessionWorkflowContext, direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> MovementTransitionResult:
-	var movement := context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world)
+	var movement := context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world, context.state.party_in_boat)
 	if not movement.allowed and movement.reason == &"invalid_direction":
 		return MovementTransitionResult.failed(&"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
 	var map := context.content.world.map_by_id(context.state.party.map_id)
@@ -150,19 +159,43 @@ static func depart_camp_for_movement(context: SessionWorkflowContext, direction:
 
 
 static func commit_move(context: SessionWorkflowContext, direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> MovementTransitionResult:
-	var movement := context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world)
+	var movement := context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world, context.state.party_in_boat)
 	if not movement.allowed and movement.reason == &"invalid_direction":
 		return MovementTransitionResult.failed(&"invalid_direction", "Movement requires a cardinal direction, or a diagonal direction on a land map.")
 	if not movement.allowed:
-		var blocked_events: Array[DomainEvent] = []
-		blocked_events.assign(preceding_events)
-		blocked_events.append(DomainEvent.new(&"movement_blocked", {"reason": String(movement.reason)}))
-		var attempt_cost := blocked_land_attempt_cost(context.state, movement)
-		if attempt_cost <= 0:
-			return MovementTransitionResult.completed(blocked_events)
-		var previous_day := context.state.clock.day()
-		blocked_events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, attempt_cost, classic_time_scale(movement.source_map), true))
-		return MovementTransitionResult.after_clock(movement.source_map, blocked_events, &"completed", Vector2i.ZERO, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, movement.target_coordinate)
+		if movement.reason == &"board_boat":
+			context.state.boat_shore_attempts = 0
+			return MovementTransitionResult.awaiting_choice(&"board", movement, direction, preceding_events)
+		if movement.reason == &"boat_shore":
+			context.state.boat_shore_attempts += 1
+			if context.state.boat_shore_attempts > 2:
+				context.state.boat_shore_attempts = 0
+				return MovementTransitionResult.awaiting_choice(&"disembark", movement, direction, preceding_events)
+		elif not (context.state.party_in_boat and movement.reason == &"boat_terrain_blocked"):
+			context.state.boat_shore_attempts = 0
+		return commit_blocked_attempt(context, movement, preceding_events)
+	context.state.boat_shore_attempts = 0
+	return commit_permitted_move(context, movement, direction, preceding_events)
+
+
+static func commit_blocked_attempt(context: SessionWorkflowContext, movement: WorldMovementResult, preceding_events: Array[DomainEvent] = [], include_collision_sound: bool = true) -> MovementTransitionResult:
+	var blocked_events: Array[DomainEvent] = []
+	blocked_events.assign(preceding_events)
+	blocked_events.append(DomainEvent.new(&"movement_blocked", {"reason": String(movement.reason)}))
+	if include_collision_sound and context.state.party_in_boat and movement.reason in [&"boat_shore", &"boat_terrain_blocked"]:
+		blocked_events.append(_sound_event(-148, "classic-boat-collision"))
+	append_movement_sound(blocked_events, movement)
+	var attempt_cost := blocked_land_attempt_cost(movement)
+	if attempt_cost <= 0:
+		return MovementTransitionResult.completed(blocked_events)
+	var previous_day := context.state.clock.day()
+	blocked_events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, attempt_cost, classic_time_scale(movement.source_map), true))
+	return MovementTransitionResult.after_clock(movement.source_map, blocked_events, &"completed", Vector2i.ZERO, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0, movement.target_coordinate)
+
+
+static func commit_permitted_move(context: SessionWorkflowContext, movement: WorldMovementResult, direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> MovementTransitionResult:
+	if movement == null or not movement.allowed:
+		return MovementTransitionResult.failed(&"invalid_movement", "The permitted movement result is unavailable.", preceding_events)
 	var target_map := movement.target_map
 	var target_coordinate := movement.target_coordinate
 	var transition := movement.transition
@@ -188,6 +221,7 @@ static func commit_move(context: SessionWorkflowContext, direction: Vector2i, pr
 	context.state.last_move_direction = direction
 	context.state.world.mark_visited(target_map.id, target_coordinate)
 	events.append(DomainEvent.new(&"party_moved", {"fromMapId": source_map_id, "fromX": source_coordinate.x, "fromY": source_coordinate.y, "mapId": target_map.id, "x": target_coordinate.x, "y": target_coordinate.y}))
+	append_movement_sound(events, movement)
 	var previous_day := context.state.clock.day()
 	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, probe.target_cell.movement_cost, classic_time_scale(target_map), true))
 	if transition != null:
@@ -195,12 +229,24 @@ static func commit_move(context: SessionWorkflowContext, direction: Vector2i, pr
 	return MovementTransitionResult.after_clock(target_map, events, &"post-move", Vector2i.ZERO, false, context.state.clock.day() if context.state.clock.day() != previous_day else 0, target_coordinate)
 
 
-static func blocked_land_attempt_cost(state: GameState, movement: WorldMovementResult) -> int:
-	if movement == null or movement.source_map == null or movement.source_map.level_type != &"land" or state.party_in_boat:
+static func blocked_land_attempt_cost(movement: WorldMovementResult) -> int:
+	if movement == null or movement.source_map == null or movement.source_map.level_type != &"land":
 		return 0
-	if movement.reason not in [&"terrain_blocked", &"secret_hidden"] or movement.topology_result == null or movement.topology_result.target_cell == null:
+	if movement.reason not in [&"terrain_blocked", &"secret_hidden", &"board_boat", &"water_requires_boat", &"boat_shore", &"boat_terrain_blocked"] or movement.topology_result == null or movement.topology_result.target_cell == null:
 		return 0
-	return maxi(0, movement.topology_result.target_cell.movement_cost)
+	return maxi(0, movement.topology_result.target_cell.blocked_attempt_timeclicks)
+
+
+static func append_movement_sound(events: Array[DomainEvent], movement: WorldMovementResult) -> void:
+	if movement == null or movement.topology_result == null or movement.topology_result.target_cell == null:
+		return
+	var sound_id := movement.topology_result.target_cell.movement_sound_id
+	if sound_id != 0:
+		events.append(_sound_event(sound_id, "classic-map-movement"))
+
+
+static func _sound_event(sound_id: int, source: String) -> DomainEvent:
+	return DomainEvent.new(&"sound_requested", {"soundId": sound_id, "waitForCompletion": false, "source": source})
 
 
 static func post_time_continuation(context: SessionWorkflowContext, map: MapDefinition, resume_kind: StringName, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> SessionContinuation:
