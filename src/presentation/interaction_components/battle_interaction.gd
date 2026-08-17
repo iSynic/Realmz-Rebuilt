@@ -14,6 +14,7 @@ var _targeting_status_label: Label
 var _targeting_confirm_button: Button
 var _targeting_controls: VBoxContainer
 var _targeting_active: bool = false
+var _targeting_setup_controls: Array[Control] = []
 var _spell_casts: Array[InteractionRequestValue.CastOption] = []
 var _fast_spells: Array[InteractionRequestValue.FastSpell] = []
 var _spell_panel: VBoxContainer
@@ -252,15 +253,13 @@ func update_battlefield_targeting(selection: CombatTargetingState) -> void:
 	if not _targeting_active or _targeting_status_label == null or _targeting_confirm_button == null:
 		return
 	_targeting_status_label.text = selection.status_text
+	_targeting_status_label.tooltip_text = selection.status_text
 	_targeting_confirm_button.disabled = not selection.can_confirm()
 
 
 func battlefield_targeting_cancelled() -> void:
 	_targeting_active = false
-	if _targeting_status_label != null:
-		_targeting_status_label.text = "Targeting cancelled. Choose an action to try again."
-	if _targeting_confirm_button != null:
-		_targeting_confirm_button.disabled = true
+	_restore_targeting_setup()
 
 
 func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.CastOption], selected: InteractionRequestValue.CastOption, response_body: InteractionResponse.CombatBody) -> CombatTargetingRequest:
@@ -288,35 +287,64 @@ func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.C
 func _add_targeting_button(parent: Container, text: String, configuration: CombatTargetingRequest) -> void:
 	var button := Button.new()
 	button.text = text
-	button.custom_minimum_size.y = 36.0
+	button.theme_type_variation = &"BattleCommandButton"
+	button.custom_minimum_size.y = COMMAND_HEIGHT
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.pressed.connect(func() -> void: _start_targeting(configuration, parent))
 	parent.add_child(button)
 
 
 func _start_targeting(configuration: CombatTargetingRequest, parent: Container) -> void:
+	_restore_targeting_setup()
 	_targeting_active = true
-	if _targeting_controls != null and is_instance_valid(_targeting_controls):
-		_targeting_controls.queue_free()
+	for child: Node in parent.get_children():
+		if child is Control and child.name not in ["BattleModeBack", "BattleTargetingControls"]:
+			(child as Control).visible = false
+			_targeting_setup_controls.append(child as Control)
 	_targeting_controls = VBoxContainer.new()
+	_targeting_controls.name = "BattleTargetingControls"
 	_targeting_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_targeting_controls.add_theme_constant_override("separation", 3)
 	parent.add_child(_targeting_controls)
 	_targeting_status_label = _add_hint_to(_targeting_controls, "Choose a target on the battlefield.")
+	_targeting_status_label.add_theme_font_size_override("font_size", 12)
+	_targeting_status_label.max_lines_visible = 1
+	_targeting_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var target_actions := HBoxContainer.new()
 	target_actions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	target_actions.add_theme_constant_override("separation", 3)
 	_targeting_confirm_button = Button.new()
+	_targeting_confirm_button.name = "ConfirmBattleTarget"
 	_targeting_confirm_button.text = "Confirm target"
 	_targeting_confirm_button.disabled = true
+	_targeting_confirm_button.theme_type_variation = &"BattleCommandButton"
+	_targeting_confirm_button.custom_minimum_size.y = COMMAND_HEIGHT
 	_targeting_confirm_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_targeting_confirm_button.pressed.connect(func() -> void: combat_targeting_confirm_requested.emit())
 	target_actions.add_child(_targeting_confirm_button)
 	var cancel := Button.new()
+	cancel.name = "CancelBattleTarget"
 	cancel.text = "Cancel targeting"
+	cancel.theme_type_variation = &"BattleCommandButton"
+	cancel.custom_minimum_size.y = COMMAND_HEIGHT
 	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel.pressed.connect(func() -> void: combat_targeting_cancel_requested.emit())
 	target_actions.add_child(cancel)
 	_targeting_controls.add_child(target_actions)
 	combat_targeting_requested.emit(configuration)
+
+
+func _restore_targeting_setup() -> void:
+	for control: Control in _targeting_setup_controls:
+		if is_instance_valid(control):
+			control.visible = true
+	_targeting_setup_controls.clear()
+	if _targeting_controls != null and is_instance_valid(_targeting_controls):
+		_targeting_controls.visible = false
+		_targeting_controls.queue_free()
+	_targeting_controls = null
+	_targeting_status_label = null
+	_targeting_confirm_button = null
 
 
 func inspect_combatant(combatant_id: String) -> void:
@@ -626,8 +654,10 @@ func _add_panel_toggle(parent: Container, label: String, panel: Control, panels:
 
 func _add_mode_back_button(panel: Container, overview: Control, panels: Array[Control]) -> void:
 	var back := Button.new()
+	back.name = "BattleModeBack"
 	back.text = "Back to battle"
-	back.custom_minimum_size.y = 30.0
+	back.theme_type_variation = &"BattleCommandButton"
+	back.custom_minimum_size.y = COMMAND_HEIGHT
 	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	back.pressed.connect(func() -> void:
 		if _targeting_active:

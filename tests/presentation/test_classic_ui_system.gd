@@ -411,9 +411,9 @@ func _test_battle_weapon_mode_component() -> void:
 	component.free()
 func _test_battle_typed_option_contracts() -> void:
 	var request := _fixture_request("battle.staged-spell", InteractionRequest.COMBAT, {"actions": ["cast_spell", "use_item", "use_scroll"], "spellCasts": [{"spellId": "classic.spell.1306", "spellName": "Brimstones", "power": 1, "cost": 2, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 1, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, 0]], "legalTargetCoordinates": []}, {"spellId": "classic.spell.1306", "spellName": "Brimstones", "power": 2, "cost": 4, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 2, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, 0], [0, 1]], "legalTargetCoordinates": []}], "spellCastReason": "", "itemCasts": [], "scrollCasts": [], "itemCastReason": "No legal item.", "scrollCastReason": "No legal scroll."})
-	var component := BattleInteraction.new()
-	component.build(request)
-	assert_true(component.find_child("CombatSpellPicker", true, false) != null and component.find_child("CombatSpellPowerPicker", true, false) != null, "combat casting exposes separate spell and power stages before battlefield targeting")
+	var component := BattleInteraction.new(); component.theme = load("res://src/presentation/classic_ui_theme.tres"); component.build(request)
+	assert_true(component.find_child("CombatSpellPicker", true, false) != null and component.find_child("CombatSpellPowerPicker", true, false) != null, "combat casting exposes separate spell and power stages before battlefield targeting"); (component.find_child("ChooseSpellTarget", true, false) as Button).pressed.emit()
+	assert_true(not component.find_child("CombatSpellPicker", true, false).visible and component.find_child("ConfirmBattleTarget", true, false).visible and component.get_combined_minimum_size().y <= 176.0, "battlefield targeting replaces setup controls and keeps confirmation inside the default combat region")
 	for label: String in ["Items", "Scrolls"]:
 		var buttons := _buttons_in(component).filter(func(button: Button) -> bool: return button.text == label)
 		assert_true(buttons.size() == 1 and buttons[0].disabled, "%s has one typed control disabled by core availability" % label)
