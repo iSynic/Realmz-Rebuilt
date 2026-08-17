@@ -289,7 +289,7 @@ func _commit_reaction_move(state: GameState, content: RealmzContent, reaction: C
 		"to": [reaction.destination.x, reaction.destination.y],
 		"cost": reaction.movement_cost,
 		"movementRemaining": movement_remaining,
-		"automatic": reaction.kind != CombatReactionState.CHARACTER_MOVE,
+		"automatic": reaction.kind != CombatReactionState.CHARACTER_MOVE or _flow().is_processing_auto(),
 	}))
 	var terrain_set: BattleTerrainSetDefinition = _flow()._battle_terrain_set(content, combat.battlefield)
 	var terrain: BattleTerrainTileDefinition = terrain_set.tile_by_id(combat.battlefield.terrain_at(reaction.destination)) if terrain_set != null else null

@@ -1015,7 +1015,7 @@ func _test_combat_targeting_state() -> void:
 func _test_combat_playback_controller() -> void:
 	var previous := _combat_playback_view(20, Vector2i(45, 45), Vector2i(47, 45), &"active")
 	var final := _combat_playback_view(12, Vector2i(46, 45), Vector2i(47, 45), &"active")
-	var events: Array[DomainEvent] = [DomainEvent.new(&"combatant_moved", {"actorId": "hero", "from": [45, 45], "to": [46, 45]}), DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 8, "classicResultEffectResourceId": 160}), DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "monster", "resisted": true, "classicResolutionEffectResourceIds": [12032, 12033, 12034, 12035, 12036, 12037, 12038, 12039]})]
+	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_auto_started", {"actorId": "hero"}), DomainEvent.new(&"combatant_moved", {"actorId": "hero", "from": [45, 45], "to": [46, 45]}), DomainEvent.new(&"combat_attack_resolved", {"actorId": "hero", "targetId": "monster", "hit": true, "damage": 8, "classicResultEffectResourceId": 160}), DomainEvent.new(&"combat_spell_resolved", {"actorId": "hero", "targetId": "monster", "resisted": true, "classicResolutionEffectResourceIds": [12032, 12033, 12034, 12035, 12036, 12037, 12038, 12039]}), DomainEvent.new(&"combat_auto_completed", {"actorId": "hero"})]
 	var controller := CombatPlaybackController.new()
 	var frames: Array[CombatPlaybackFrame] = []
 	controller.frame_changed.connect(func(frame: CombatPlaybackFrame) -> void: if frame.progress == 0.0: frames.append(frame))
@@ -1024,7 +1024,7 @@ func _test_combat_playback_controller() -> void:
 	var kinds: Array[StringName] = []
 	for frame: CombatPlaybackFrame in frames:
 		kinds.append(frame.kind)
-	assert_true(kinds.has(&"move_start") and kinds.has(&"melee_attack"), "movement and physical results have distinct frames")
+	assert_true(kinds.has(&"move_start") and kinds.has(&"melee_attack") and frames[0].duration_seconds < 0.08, "automatic movement and physical results retain distinct accelerated frames")
 	assert_equal(kinds.count(&"spell_effect"), 8, "source-backed spell resolution retains its eight-frame family")
 	assert_true(frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"result" and frame.display_text == "8"), "damage is shown once over the target")
 	assert_equal(controller.base_view, previous, "playback retains the previous battlefield until visuals settle")
