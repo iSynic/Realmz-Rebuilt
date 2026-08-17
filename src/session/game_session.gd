@@ -234,6 +234,10 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _commit_workflow_result(InventoryMagicServicesWorkflow.equip_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
 		PlayerIntent.Kind.UNEQUIP_ITEM:
 			return _commit_workflow_result(InventoryMagicServicesWorkflow.unequip_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+		PlayerIntent.Kind.SPLIT_ITEM:
+			return _commit_workflow_result(InventoryMagicServicesWorkflow.split_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
+		PlayerIntent.Kind.JOIN_ITEM:
+			return _commit_workflow_result(InventoryMagicServicesWorkflow.join_item(_workflow_context(), intent.payload as PlayerIntent.ItemActionPayload))
 		PlayerIntent.Kind.DROP_ITEM:
 			return _request_drop_item(intent)
 		PlayerIntent.Kind.TRADE_ITEM:

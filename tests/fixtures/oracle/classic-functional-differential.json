@@ -2545,7 +2545,7 @@
     },
     {
       "id": "inventory.carried-item-workflow",
-      "workflowIds": ["classic.inventory.manage-equipment","classic.inventory.split-item","classic.inventory.join-item","classic.inventory.inspect-item","classic.inventory.use-item","classic.inventory.trade-item","classic.inventory.drop-item"],
+      "workflowIds": ["classic.inventory.manage-equipment","classic.inventory.inspect-item","classic.inventory.use-item","classic.inventory.trade-item","classic.inventory.drop-item"],
       "domain": "inventory",
       "claim": "Outside an active encounter or battle, ordinary carried-item management selects one party member and one item, applies Classic race/class/category and equipment-slot rules, transfers ordinary equipped records as unequipped, rejects capacity violations, and confirms irreversible dropping without inventing a general player stash.",
       "remake": {
@@ -2578,7 +2578,6 @@
         "authoredInputs": ["caste starting item order and starting money", "item identity and type", "authored initial charges", "item category masks", "race and caste category masks", "race descriptors and caste class", "specific and descriptor restrictions", "hands and occupied slots", "curse identity", "item and charge weights", "character load and thirty-item capacity"],
         "observation": "addinitialitems visits the caste's twenty authored slots in order, accepts a record only when its base-plus-charge weight fits, marks it identified, preserves the authored charge count, attempts wear for each accepted record, then adds starting gold to load. Its separate numitems field advances before the fit test, which can expose blank record bookkeeping; the direct model retains only accepted records. calcw derives load from gold, gems, jewelry times fifteen, and every carried item's base-plus-charge weight. canuse resolves the first set item-category bit through both race and caste masks, then applies specific identity and descriptor/class restrictions. wear enforces two ring slots, one ordinary slot per type, hand limits, and a quiver prerequisite for category-12 bows; equipping a curse identifies and locks it. showiteminfo always exposes instance weight, hands, and the base damage range, then exposes named bonuses, special damage, known special behavior, scenario-only status, and restrictions when their source conditions apply. Before a cursed item is worn, iscurse selects a linked decoy record for text and statistics while retaining the original icon; wearing applies and reveals the original record. Normal inventory trade enters the two-character shop-style workspace, refuses a full or overloaded recipient, accepts an equipped item, and writes the recipient record unequipped. moveicon bypasses removeitem while deleting that source record, so a curse can be dragged away and source-derived equipment fields are not explicitly reversed. Drop separately refuses equipped items and removes exact load. Castle's storage array is used by opcode 36 to strip and later restore the whole party, not as a general player-facing stash.",
         "unresolved": [
-          "items.c split and join change stack records without updating carried load even though moveicon later transfers base plus per-charge weight; this source inconsistency remains disabled pending a fidelity decision.",
           "Passive equipment effects beyond the already derived armor, luck, damage, and source-implemented weapon behavior remain disabled per item rather than silently applying only part of an item.",
           "Item use and identification remain disabled until their effect and service/spell continuations are implemented; attempting use does not spend a charge."
         ]
@@ -2610,6 +2609,58 @@
       },
       "availability": "implemented",
       "status": "safe-starting-load-describe-equip-unequip-trade-drop-and-restore-validation-verified"
+    },
+    {
+      "id": "inventory.split-join",
+      "workflowIds": ["classic.inventory.split-item","classic.inventory.join-item"],
+      "domain": "inventory",
+      "claim": "A finite charged item with authored per-charge weight can split into deterministic ceiling and floor records or join every matching record while preserving identification and equipment state, exact instance ownership, derived load, and bounded charge values.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake keeps the selected instance during Split and Join, creates the split sibling immediately after it, caps or reconstructs extra Join stacks from its maximum-charge extension, and delegates identity generation and load bookkeeping to mutable global creature/resource objects. It is a UI and instance-handling lead, not Classic authority.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/Inventory/InventoryRect.gd", "symbol": "func _on_ButtonSplit_pressed()" },
+          { "path": "src/scenes/UI/HUD/Inventory/InventoryRect.gd", "symbol": "func _on_ButtonJoin_pressed()" }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/items.c", "symbol": "short items(void)" },
+          { "path": "src/realmz_orig/dropitem.c", "symbol": "void dropitem(short who, short itemid, short itemnum, short dropsound, short force)" },
+          { "path": "src/realmz_orig/misc.c", "symbol": "void calcw(short who)" },
+          { "path": "src/realmz_orig/structs.h", "symbol": "struct item" }
+        ],
+        "authoredInputs": ["item identity", "finite instance charges", "per-charge weight", "base item weight", "identified and equipped flags", "thirty-record inventory capacity"],
+        "observation": "Split is available only when per-charge weight is nonzero, charges are at least two, and fewer than thirty records are occupied. It leaves ceil(charges/2) on the selected record, appends floor(charges/2) with copied identity and identification but no equipment, and plays sound 678. Join is available for the same per-charge-weight class, visits all thirty records with the selected item ID, sums charges into a signed short, ORs identification and equipment onto the first matching record, removes the others, and plays sound 663 while visiting matches. Split never adds the second base weight to load. Join pre-adds each removed record's complete weight before dropitem subtracts it, preserving the stale pre-Join load. The next Items or Character entry calls calcw and exposes a different derived total.",
+        "unresolved": ["Warning-resource wording and Castle's redraw-only single-stack Join have no material simulation effect and are not reproduced as successful mutations."]
+      },
+      "providence": {
+        "commit": "0a3aab2e8c1951c48d2d626ee24e96fb9c7aab04",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_items(project: &ProvidenceProject) -> Vec<Value>" },
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "\"weightPerCharge\": item.weight_per_charge" }
+        ],
+        "expectedRepresentation": "Package schema v3 already preserves immutable item identity, initial charges, base weight, and per-charge weight. Split and Join require no new authored field or package change."
+      },
+      "realmz2": {
+        "owner": { "path": "src/core/rules/inventory_rules.gd", "symbol": "func classic_split_probe" },
+        "expectedTrace": ["select an exact carried instance", "derive per-item Split and Join availability", "submit a typed item intent", "validate finite charges and capacity", "allocate a deterministic sibling identity only for committed Split", "mutate exact records and derived load atomically", "publish exact instance, charge, and integrated-sound events", "save and restore the resulting item records without a continuation"],
+        "tests": [
+          { "path": "tests/integration/test_inventory_session.gd", "symbol": "func _test_split_join" },
+          { "path": "tests/presentation/test_classic_ui_system.gd", "symbol": "func _test_inventory_workspace" }
+        ]
+      },
+      "decision": "intentional-correction",
+      "fidelityDecision": {
+        "id": "FD-INVENTORY-002",
+        "fixturePath": "tests/fixtures/oracle/inventory-stack-corrections.json",
+        "fixtureSha256": "a93435dd2eeca9530fe9496b1dcb2aea390a5c6964ed1b18cfdc044b2c13fa37"
+      },
+      "availability": "implemented",
+      "status": "finite-split-join-identity-load-overflow-save-and-presentation-verified"
     },
     {
       "id": "economy.classic-shop-lifecycle",

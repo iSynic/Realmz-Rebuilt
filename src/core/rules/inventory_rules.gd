@@ -165,6 +165,42 @@ func classic_trade_probe(source: CharacterState, destination: CharacterState, in
 	return InventoryActionProbe.permit()
 
 
+func classic_split_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition) -> InventoryActionProbe:
+	if character == null or instance == null or item == null or instance.definition_id != item.id:
+		return InventoryActionProbe.block("The carried item is unavailable.")
+	if not character.inventory().has(instance):
+		return InventoryActionProbe.block("The selected item is no longer carried.")
+	if item.weight_per_charge == 0:
+		return InventoryActionProbe.block("Classic allows Split only for an item with per-charge weight.")
+	if instance.charges < 2:
+		return InventoryActionProbe.block("At least two charges are required to split this item.")
+	if character.inventory().size() >= MAX_ITEMS:
+		return InventoryActionProbe.block("This character already carries 30 items.")
+	return InventoryActionProbe.permit()
+
+
+func classic_join_probe(character: CharacterState, instance: ItemInstance, item: ItemDefinition) -> InventoryActionProbe:
+	if character == null or instance == null or item == null or instance.definition_id != item.id:
+		return InventoryActionProbe.block("The carried item is unavailable.")
+	if item.weight_per_charge == 0:
+		return InventoryActionProbe.block("Classic allows Join only for an item with per-charge weight.")
+	var matches := _matching_instances(character, instance.definition_id)
+	if not matches.has(instance):
+		return InventoryActionProbe.block("The selected item is no longer carried.")
+	if matches.size() < 2:
+		return InventoryActionProbe.block("No other matching stack is available to join.")
+	var total_charges := 0
+	for candidate: ItemInstance in matches:
+		if candidate.charges < 0:
+			return InventoryActionProbe.block("Infinite-charge items cannot be joined safely.")
+		total_charges += candidate.charges
+		if total_charges > 32_767:
+			return InventoryActionProbe.block("Joining these stacks would exceed the supported charge limit.")
+		if candidate != instance and candidate.equipped and not item.cursed_item_id.is_empty():
+			return InventoryActionProbe.block("An equipped cursed stack cannot be absorbed into another item.")
+	return InventoryActionProbe.permit()
+
+
 func equip_classic(character: CharacterState, instance: ItemInstance, item: ItemDefinition, race: RaceDefinition, caste: CasteDefinition, party: Array[CharacterState], definitions: Array[ItemDefinition]) -> InventoryActionProbe:
 	var probe := classic_equip_probe(character, instance, item, race, caste, party, definitions)
 	if not probe.allowed:
@@ -191,6 +227,55 @@ func trade_classic(source: CharacterState, destination: CharacterState, instance
 		if removed != null:
 			restore_item(source, removed, item)
 		return InventoryActionProbe.block("The item transfer could not be committed.")
+	return probe
+
+
+func split_classic(character: CharacterState, instance: ItemInstance, item: ItemDefinition, new_instance_id: String) -> InventoryActionProbe:
+	var probe := classic_split_probe(character, instance, item)
+	if not probe.allowed:
+		return probe
+	if new_instance_id.is_empty():
+		return InventoryActionProbe.block("The split item requires a stable instance identity.")
+	var items := character.inventory()
+	for carried: ItemInstance in items:
+		if carried.id == new_instance_id:
+			return InventoryActionProbe.block("The split item identity is already in use.")
+	var source_index := items.find(instance)
+	if source_index < 0:
+		return InventoryActionProbe.block("The selected item is no longer carried.")
+	var previous_weight := item.instance_weight(instance.charges)
+	var split_charges := int(instance.charges / 2)
+	instance.charges -= split_charges
+	var split_instance := ItemInstance.new(new_instance_id, instance.definition_id, split_charges, false, instance.identified)
+	items.insert(source_index + 1, split_instance)
+	character.set_inventory(items)
+	var updated_weight := item.instance_weight(instance.charges) + item.instance_weight(split_instance.charges)
+	character.carried_load = maxi(0, character.carried_load + updated_weight - previous_weight)
+	return probe
+
+
+func join_classic(character: CharacterState, instance: ItemInstance, item: ItemDefinition) -> InventoryActionProbe:
+	var probe := classic_join_probe(character, instance, item)
+	if not probe.allowed:
+		return probe
+	var items := character.inventory()
+	var matches := _matching_instances(character, instance.definition_id)
+	var total_charges := 0
+	var previous_weight := 0
+	var merged_equipped := false
+	var merged_identified := false
+	for candidate: ItemInstance in matches:
+		total_charges += candidate.charges
+		previous_weight += item.instance_weight(candidate.charges)
+		merged_equipped = merged_equipped or candidate.equipped
+		merged_identified = merged_identified or candidate.identified
+		if candidate != instance:
+			items.erase(candidate)
+	instance.charges = total_charges
+	instance.equipped = merged_equipped
+	instance.identified = merged_identified
+	character.set_inventory(items)
+	character.carried_load = maxi(0, character.carried_load + item.instance_weight(total_charges) - previous_weight)
 	return probe
 
 
@@ -283,6 +368,16 @@ func restore_item(character: CharacterState, item: ItemInstance, definition: Ite
 	character.set_inventory(items)
 	character.carried_load += definition.instance_weight(item.charges)
 	return true
+
+
+func _matching_instances(character: CharacterState, definition_id: String) -> Array[ItemInstance]:
+	var result: Array[ItemInstance] = []
+	if character == null or definition_id.is_empty():
+		return result
+	for carried: ItemInstance in character.inventory():
+		if carried.definition_id == definition_id:
+			result.append(carried)
+	return result
 
 
 func combat_equipment(character: CharacterState, definitions: Array[ItemDefinition]) -> CharacterCombatEquipment:

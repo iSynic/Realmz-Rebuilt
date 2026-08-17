@@ -368,8 +368,8 @@ static func _populate_action_availability(context: SessionWorkflowContext, resul
 	result.set_action_availability(&"change_character_appearance", appearance_available, appearance_reason)
 	for action_id: StringName in [&"equip_item", &"unequip_item", &"drop_item", &"trade_item"]:
 		result.set_action_availability(action_id, ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Inventory changes are unavailable during battle." if battle_active else "")
-	result.set_action_availability(&"split_item", false, ordinary_reason if not ordinary_reason.is_empty() else "Classic split-stack load behavior requires a fidelity decision.")
-	result.set_action_availability(&"join_item", false, ordinary_reason if not ordinary_reason.is_empty() else "Classic join-stack load behavior requires a fidelity decision.")
+	result.set_action_availability(&"split_item", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Inventory changes are unavailable during battle." if battle_active else "")
+	result.set_action_availability(&"join_item", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Inventory changes are unavailable during battle." if battle_active else "")
 	result.set_action_availability(&"service_action", ordinary_reason.is_empty() and not battle_active and not result.services.is_empty(), ordinary_reason if not ordinary_reason.is_empty() else "Services are unavailable during battle." if battle_active else "No shop, temple, or bank is available at this location.")
 	result.set_action_availability(&"money_action", ordinary_reason.is_empty() and not battle_active and result.money_workspace != null, ordinary_reason if not ordinary_reason.is_empty() else "Money management is unavailable during battle." if battle_active else "No party money workspace is available.")
 	result.set_action_availability(&"set_location_note", ordinary_reason.is_empty() and not battle_active, ordinary_reason if not ordinary_reason.is_empty() else "Location notes are unavailable during battle." if battle_active else "")
@@ -494,10 +494,14 @@ static func _populate_inventory_item_actions(context: SessionWorkflowContext, re
 			var equip_probe := rules.inventory.classic_equip_probe(character, instance, definition, race, caste, party, definitions)
 			var unequip_probe := rules.inventory.classic_unequip_probe(character, instance, definition, definitions)
 			var drop_probe := rules.inventory.classic_drop_probe(character, instance)
+			var split_probe := rules.inventory.classic_split_probe(character, instance, definition)
+			var join_probe := rules.inventory.classic_join_probe(character, instance, definition)
 			var use_probe := _field_spell_item_probe(context, character, instance, definition, content.spell_by_classic_id(definition.special_2) if definition != null else null)
 			actions.equip = ActionAvailabilityView.new(&"equip_item", equip_probe.allowed, equip_probe.reason)
 			actions.unequip = ActionAvailabilityView.new(&"unequip_item", unequip_probe.allowed, unequip_probe.reason)
 			actions.drop = ActionAvailabilityView.new(&"drop_item", drop_probe.allowed, drop_probe.reason)
+			actions.split = ActionAvailabilityView.new(&"split_item", split_probe.allowed, split_probe.reason)
+			actions.join = ActionAvailabilityView.new(&"join_item", join_probe.allowed, join_probe.reason)
 			actions.use = ActionAvailabilityView.new(&"use_item", use_probe.allowed, use_probe.reason)
 			for destination: CharacterState in party:
 				if destination == character:

@@ -62,6 +62,16 @@ Classic-visible behavior is the default ruleset. This ledger records deliberate 
 - Tests: `test_inventory_session.gd` verifies equipped ordinary transfer, recipient unequipped state, exact load movement, and equipped-curse rejection. The differential case is `inventory.carried-item-workflow`.
 - Legacy quirk: none. Stale derived bonuses and removable equipped curses are contradictory state, not useful authored behavior.
 
+## FD-INVENTORY-002 — Stable charged-item Split and Join
+
+- Affected rules: splitting one finite charged-item record and joining every matching charged-item record in the ordinary Items workspace.
+- Castle evidence: commit `491816ad60037394f92c428e99c004494d3c28b3`, `src/realmz_orig/items.c`, `items`, lines 483–557; `dropitem.c`, `dropitem`, lines 5–29; `misc.c`, `calcw`, lines 824–840; and `structs.h`, `struct item`, lines 77–81. Split keeps the selected record with `ceil(charges / 2)`, appends an identified-copy record with `floor(charges / 2)` and clears its equipped flag. Join visits all thirty slots, sums every matching record into a signed 16-bit accumulator, ORs identification/equipment, and keeps the first matching record.
+- Observable source inconsistency: neither branch leaves `character.load` equal to `calcw`. Split does not add the second record's base weight. Join pre-adds each removed record's complete weight before `dropitem` subtracts it, deliberately leaving the prior total unchanged. Reopening Items or Character invokes `calcw` and changes the displayed load. A sufficiently large Join can also wrap the signed charge accumulator. The synthetic source-observation fixture is `tests/fixtures/oracle/inventory-stack-corrections.json`; this is `source-control-flow` evidence, not a Castle-runtime claim.
+- Player-facing problem: the same inventory has two different carried loads depending on whether the player has reopened a screen, and a large Join can destroy a valid finite charge total by wrapping it negative. Both outcomes conflict with save validation and exact-instance ownership.
+- Chosen Rebuilt behavior: preserve Castle's ceiling/floor split, copied identification, unequipped sibling, all-match Join, and OR-style identification/equipment. The selected stable instance survives Join. Recompute the exact record-derived load as part of each committed mutation. Reject negative/infinite-charge Join and totals above 32,767 transactionally. A lone stack exposes Join as unavailable rather than committing Castle's redraw-only no-op.
+- Tests: `test_inventory_session.gd::_test_split_join` proves the public typed intents, exact identities, charge distribution, equipment/identification state, immediate load invariant, integrated sounds, save restoration, detached availability, and overflow rejection. The differential case is `inventory.split-join`.
+- Legacy quirk: none. Stale derived load and signed overflow are contradictory bookkeeping defects, not useful authored behavior.
+
 ## FD-CHARACTER-002 — Human appearance-set zero alias
 
 - Affected rule: the initial and recommended portrait/tactical icon for a Human character whose Data Race `defaulticonset` is zero.

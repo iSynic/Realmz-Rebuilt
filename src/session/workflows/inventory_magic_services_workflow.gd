@@ -97,6 +97,51 @@ static func trade_item(context: SessionWorkflowContext, payload: PlayerIntent.It
 	return SessionWorkflowResult.completed([DomainEvent.new(&"item_traded", {"fromCharacterId": source.id, "toCharacterId": destination.id, "instanceId": instance.id, "itemId": definition.id})])
 
 
+static func split_item(context: SessionWorkflowContext, payload: PlayerIntent.ItemActionPayload) -> SessionWorkflowResult:
+	var character := context.state.party.character_by_id(payload.actor_id)
+	var instance := _item_instance(character, payload.item_id)
+	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
+	if character == null or instance == null or definition == null:
+		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
+	var probe := context.rules.inventory.classic_split_probe(character, instance, definition)
+	if not probe.allowed:
+		return SessionWorkflowResult.failed(&"item_cannot_split", probe.reason)
+	var previous_charges := instance.charges
+	var new_instance_id := context.state.next_instance_id("inventory.item")
+	probe = context.rules.inventory.split_classic(character, instance, definition, new_instance_id)
+	if not probe.allowed:
+		return SessionWorkflowResult.failed(&"item_split_failed", probe.reason)
+	var split_instance := _item_instance(character, new_instance_id)
+	if split_instance == null:
+		return SessionWorkflowResult.failed(&"item_split_failed", "The split item was not created.")
+	return SessionWorkflowResult.completed([
+		DomainEvent.new(&"item_split", {"characterId": character.id, "instanceId": instance.id, "newInstanceId": split_instance.id, "itemId": definition.id, "previousCharges": previous_charges, "remainingCharges": instance.charges, "splitCharges": split_instance.charges}),
+		DomainEvent.new(&"sound_requested", {"soundId": 678, "waitForCompletion": false, "source": "classic-item"}),
+	])
+
+
+static func join_item(context: SessionWorkflowContext, payload: PlayerIntent.ItemActionPayload) -> SessionWorkflowResult:
+	var character := context.state.party.character_by_id(payload.actor_id)
+	var instance := _item_instance(character, payload.item_id)
+	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
+	if character == null or instance == null or definition == null:
+		return SessionWorkflowResult.failed(&"unknown_item_instance", "The selected character does not carry that item instance.")
+	var probe := context.rules.inventory.classic_join_probe(character, instance, definition)
+	if not probe.allowed:
+		return SessionWorkflowResult.failed(&"item_cannot_join", probe.reason)
+	var removed_instance_ids: Array[String] = []
+	for carried: ItemInstance in character.inventory():
+		if carried != instance and carried.definition_id == instance.definition_id:
+			removed_instance_ids.append(carried.id)
+	probe = context.rules.inventory.join_classic(character, instance, definition)
+	if not probe.allowed:
+		return SessionWorkflowResult.failed(&"item_join_failed", probe.reason)
+	return SessionWorkflowResult.completed([
+		DomainEvent.new(&"item_joined", {"characterId": character.id, "instanceId": instance.id, "removedInstanceIds": removed_instance_ids, "itemId": definition.id, "charges": instance.charges}),
+		DomainEvent.new(&"sound_requested", {"soundId": 663, "waitForCompletion": false, "source": "classic-item"}),
+	])
+
+
 static func field_spell_item_probe(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition) -> InventoryActionProbe:
 	var probe := context.rules.inventory.classic_spell_item_probe(character, instance, item, spell, context.content.race_by_id(character.race_id) if character != null else null, context.content.caste_by_id(character.caste_id) if character != null else null, false)
 	if not probe.allowed:

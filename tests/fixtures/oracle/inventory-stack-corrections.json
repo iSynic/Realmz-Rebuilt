@@ -1,0 +1,47 @@
+{
+  "formatVersion": 1,
+  "decisionId": "FD-INVENTORY-002",
+  "evidence": "source-control-flow",
+  "castleCommit": "491816ad60037394f92c428e99c004494d3c28b3",
+  "sources": [
+    {
+      "path": "src/realmz_orig/items.c",
+      "symbol": "short items(void)",
+      "range": "483-557"
+    },
+    {
+      "path": "src/realmz_orig/dropitem.c",
+      "symbol": "void dropitem(short who, short itemid, short itemnum, short dropsound, short force)",
+      "range": "5-29"
+    },
+    {
+      "path": "src/realmz_orig/misc.c",
+      "symbol": "void calcw(short who)",
+      "range": "824-840"
+    },
+    {
+      "path": "src/realmz_orig/structs.h",
+      "symbol": "struct item",
+      "range": "77-81"
+    }
+  ],
+  "castleSourceObservation": {
+    "splitCharges": "selected=ceil(total/2), new=floor(total/2)",
+    "splitIdentity": "selected record retained, new record copies item and identification but is unequipped",
+    "joinScope": "all records with the same item id",
+    "joinState": "identified and equipped flags are ORed onto the first matching record",
+    "splitLoadUpdated": false,
+    "joinLoadUpdated": false,
+    "nextCalcwChangesLoad": true,
+    "joinAccumulatorType": "signed 16-bit short"
+  },
+  "realmz2ChosenResult": {
+    "splitCharges": "selected=ceil(total/2), new=floor(total/2)",
+    "splitIdentity": "selected stable instance retained, new deterministic instance copies identification and is unequipped",
+    "joinScope": "all records with the same definition id",
+    "joinState": "identified and equipped flags are ORed onto the selected stable instance",
+    "loadUpdatedImmediately": true,
+    "joinOverflow": "reject transactionally above 32767 charges",
+    "negativeChargeJoin": "reject as unsupported infinite-charge merge"
+  }
+}

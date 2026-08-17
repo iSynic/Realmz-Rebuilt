@@ -16,6 +16,7 @@ func run() -> void:
 		return
 	var content := _inventory_content(loaded.content)
 	_test_field_spell_item_use(content)
+	_test_split_join(content)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 41).state, SessionStep.State.COMPLETED, "inventory session starts")
 	var source := _character("inventory.source", "Alis", content)
@@ -91,6 +92,52 @@ func run() -> void:
 	var cursed_trade := restored.submit_intent(PlayerIntent.trade_item(cursed_instance.id, source.id, destination.id))
 	assert_equal(cursed_trade.error_code, &"item_cannot_trade", "FD-INVENTORY-001 prevents Castle's trade path from bypassing an equipped curse")
 	_test_equipment_probes(content)
+
+
+func _test_split_join(content: RealmzContent) -> void:
+	var stack := content.item_by_id("classic.item.inventory-stack")
+	var owner := _character("inventory.stack-owner", "Cora", content)
+	owner.maximum_load = 100_000
+	owner.set_inventory([ItemInstance.new("inventory.instance.stack", stack.id, 5, false, true)])
+	owner.carried_load = stack.instance_weight(5)
+	var session := GameSession.new()
+	assert_equal(session.start(content, 97).state, SessionStep.State.COMPLETED, "stack inventory session starts")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(owner.id, "5".repeat(64), owner, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "stack owner enters party setup")
+	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "stack inventory fixture begins")
+	assert_true(session.view().party_members[0].items[0].actions.split.enabled, "a finite per-charge stack exposes Split")
+	assert_false(session.view().party_members[0].items[0].actions.join.enabled, "a lone stack does not expose a meaningless Join")
+	assert_equal(session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, "inventory.instance.stack", owner.id)).state, SessionStep.State.COMPLETED, "the source stack can be equipped before splitting")
+	var split := session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.SPLIT_ITEM, "inventory.instance.stack", owner.id))
+	assert_equal(split.state, SessionStep.State.COMPLETED, "typed Split commits synchronously")
+	var split_owner := session.snapshot().game_state.party.character_by_id(owner.id)
+	assert_equal([split_owner.inventory().size(), split_owner.inventory()[0].charges, split_owner.inventory()[1].charges], [2, 3, 2], "Split keeps the ceiling on the source and creates a floor half")
+	assert_equal([split_owner.inventory()[0].id, split_owner.inventory()[0].equipped, split_owner.inventory()[1].equipped, split_owner.inventory()[1].identified], ["inventory.instance.stack", true, false, true], "Split retains source identity and equipment while copying identification to an unequipped sibling")
+	assert_equal(split_owner.carried_load, stack.instance_weight(3) + stack.instance_weight(2), "Split immediately derives the two-record load instead of retaining Castle's stale display value")
+	assert_true(split.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 678), "Split requests Castle's integrated sound")
+	var restored := GameSession.new()
+	assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "a split stack and its deterministic identity restore transactionally")
+	var sibling_id := restored.view().party_members[0].items[1].instance_id
+	assert_true(restored.view().party_members[0].items[1].actions.join.enabled, "matching stacks expose Join on either exact instance")
+	var joined := restored.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, sibling_id, owner.id))
+	assert_equal(joined.state, SessionStep.State.COMPLETED, "typed Join commits synchronously")
+	var joined_owner := restored.snapshot().game_state.party.character_by_id(owner.id)
+	assert_equal([joined_owner.inventory().size(), joined_owner.inventory()[0].id, joined_owner.inventory()[0].charges], [1, sibling_id, 5], "Join keeps the selected stable instance and absorbs every matching stack")
+	assert_true(joined_owner.inventory()[0].equipped and joined_owner.inventory()[0].identified, "Join preserves Castle's OR-style equipped and identified state")
+	assert_equal(joined_owner.carried_load, stack.instance_weight(5), "Join immediately removes duplicate-record base weight")
+	assert_true(joined.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 663), "Join requests Castle's integrated sound")
+
+	var overflow_owner := _character("inventory.overflow-owner", "Dara", content)
+	overflow_owner.maximum_load = 100_000
+	overflow_owner.set_inventory([ItemInstance.new("inventory.instance.large-a", stack.id, 20_000, false, true), ItemInstance.new("inventory.instance.large-b", stack.id, 20_000, false, true)])
+	overflow_owner.carried_load = stack.instance_weight(20_000) * 2
+	var overflow_session := GameSession.new()
+	assert_equal(overflow_session.start(content, 101).state, SessionStep.State.COMPLETED, "overflow inventory session starts")
+	assert_equal(overflow_session.submit_intent(PlayerIntent.import_vault_character(overflow_owner.id, "6".repeat(64), overflow_owner, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "large finite stacks enter the bounded fixture")
+	assert_equal(overflow_session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "overflow inventory fixture begins")
+	assert_false(overflow_session.view().party_members[0].items[0].actions.join.enabled, "a Join that would overflow Classic's signed charge field is unavailable")
+	var rejected := overflow_session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, "inventory.instance.large-a", overflow_owner.id))
+	assert_equal(rejected.error_code, &"item_cannot_join", "overflowing Join fails explicitly")
+	assert_equal(overflow_session.snapshot().game_state.party.character_by_id(overflow_owner.id).inventory().map(func(item: ItemInstance) -> int: return item.charges), [20_000, 20_000], "rejected overflow preserves both exact stacks")
 
 
 func _test_field_spell_item_use(content: RealmzContent) -> void:
@@ -266,9 +313,16 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	self_tonic.item_category_mask_low = 1 << 5
 	self_tonic.special_1 = 1
 	self_tonic.special_2 = self_spell.classic_id
+	var stack := ItemDefinition.new("classic.item.inventory-stack", 14, "Weighted Darts")
+	stack.item_type = 2
+	stack.hands = 1
+	stack.weight = 2
+	stack.initial_charges = 5
+	stack.weight_per_charge = 1
+	stack.item_category_mask_low = 1 << 5
 	var races: Array[RaceDefinition] = [race]
 	var castes: Array[CasteDefinition] = [caste]
-	var items: Array[ItemDefinition] = [sword, cursed, healing_wand, self_tonic]
+	var items: Array[ItemDefinition] = [sword, cursed, healing_wand, self_tonic, stack]
 	var spells: Array[SpellDefinition] = [healing_spell, self_spell]
 	return RealmzContent.new("inventory-workflow", source.package_hash, "inventory-workflow-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells)
 

@@ -1117,11 +1117,12 @@ func _test_field_spell_workspace() -> void:
 func _test_inventory_workspace() -> void:
 	var definition := ItemDefinition.new("classic.item.inventory-ui", 10, "Longsword", "Sword", "A balanced sword.")
 	var source := CharacterState.new("source", "Alis", 10, 10)
-	source.set_inventory([ItemInstance.new("inventory.item", definition.id, 0, false, true)])
 	var view := GameView.new(4, true, null)
 	var source_view := CharacterView.new(source)
-	var item_view := ItemView.new(source.inventory()[0], definition)
+	var item_view := ItemView.new(ItemInstance.new("inventory.item", definition.id, 0, false, true), definition)
 	item_view.actions.equip = ActionAvailabilityView.new(&"equip_item", true)
+	item_view.actions.split = ActionAvailabilityView.new(&"split_item", true)
+	item_view.actions.join = ActionAvailabilityView.new(&"join_item", true)
 	item_view.actions.use = ActionAvailabilityView.new(&"use_item", false, "This item's use effect is not implemented.")
 	source_view.items = [item_view]
 	view.party_members = [source_view]
@@ -1131,6 +1132,7 @@ func _test_inventory_workspace() -> void:
 	var buttons := _base_buttons_in(body)
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Longsword")), "inventory renders a selectable carried item")
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Equip"), "inventory exposes the typed Equip action")
+	assert_true(["Split", "Join"].all(func(label: String) -> bool: return buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text == label and not button.disabled)), "inventory exposes core-authorized stack actions")
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text.contains("not implemented")), "unsafe use remains visible with a core-owned reason")
 	body.free()
 func _test_money_workspace() -> void:
