@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 68 | 0 | 15 | 52 | 1 |
+| classic | 68 | 0 | 14 | 53 | 1 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -30,8 +30,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 1 | 0 | -1 |
-| classic | partial | 14 | 15 | +1 |
-| classic | functional | 52 | 52 | 0 |
+| classic | partial | 14 | 14 | 0 |
+| classic | functional | 52 | 53 | +1 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -46,7 +46,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Exploration | 6 | 0 | 0 | 6 | 0 |
 | Scenario interaction | 6 | 0 | 1 | 5 | 0 |
 | Character management | 5 | 0 | 2 | 3 | 0 |
-| Inventory and equipment | 9 | 0 | 3 | 6 | 0 |
+| Inventory and equipment | 9 | 0 | 2 | 7 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 2 | 11 | 1 |
@@ -61,8 +61,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 9 |
-| required | 8 |
-| completed | 51 |
+| required | 7 |
+| completed | 52 |
 
 | Remake | Count |
 | --- | ---: |
@@ -83,8 +83,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-applicable | 2 |
 | absent | 0 |
-| partial | 9 |
-| complete | 57 |
+| partial | 8 |
+| complete | 58 |
 
 | persistence | Count |
 | --- | ---: |
@@ -142,7 +142,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **13**.
+Blockers: **1**. Major gaps: **12**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster. Next: Correct Providence schema v3 and Rebuilt decoding to preserve every menu-visible monster, its description, and not-on-menu flag, then add the Bestiary route without inventing discovery state.
@@ -150,7 +150,6 @@ Blockers: **1**. Major gaps: **13**.
 - **major** `classic.combat.resolve-outcome` - Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
 - **major** `classic.combat.resolve-outcome` - Battle reward modes 5 and 10 remain unresolved end to end. Next: Characterize the suspicious mode-5 incidental/RNG branches and mode-10 restart field with controlled Castle fixtures, then implement each distinct runtime continuation without changing schema v2 unless the fixture disproves positional preservation.
 - **major** `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
-- **major** `classic.inventory.identify-item` - Shop identification works, but non-shop identification remains unclassified after removing the redundant generic intent. Next: Trace spell, item, and scenario identification paths and implement only the source-backed entry points that exist.
 - **major** `classic.inventory.use-item` - Ordinary AOGM play proves a fixed-power party-state Torch and a saveable field scroll target/consumption path; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit. Next: Characterize discard, case-transfer, door/XAP, random-power combat, battlefield-area/repeated targeting, and broader special behavior only when parity or a reachable campaign requires each branch.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
@@ -162,7 +161,6 @@ Blockers: **1**. Major gaps: **13**.
 ## Oracle-required unknowns
 
 - `classic.combat.undo` - Undo the active combat activation
-- `classic.inventory.identify-item` - Identify an item
 - `classic.inventory.manage-equipment` - Equip and unequip carried items
 - `classic.inventory.use-item` - Use an item
 - `classic.maps.authored-journal` - Read the authored journal
@@ -194,7 +192,6 @@ Blockers: **1**. Major gaps: **13**.
 - `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately.
 - `classic.combat.resolve-outcome` - Battle reward modes 5 and 10 remain unresolved end to end.
 - `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved.
-- `classic.inventory.identify-item` - Shop identification works, but non-shop identification remains unclassified after removing the redundant generic intent.
 - `classic.inventory.use-item` - Ordinary AOGM play proves a fixed-power party-state Torch and a saveable field scroll target/consumption path; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit.
 - `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
 - `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle.

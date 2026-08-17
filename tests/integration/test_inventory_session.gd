@@ -16,6 +16,7 @@ func run() -> void:
 		return
 	var content := _inventory_content(loaded.content)
 	_test_field_spell_item_use(content)
+	_test_inventory_identification(content)
 	_test_split_join(content)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 41).state, SessionStep.State.COMPLETED, "inventory session starts")
@@ -138,6 +139,38 @@ func _test_split_join(content: RealmzContent) -> void:
 	var rejected := overflow_session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, "inventory.instance.large-a", overflow_owner.id))
 	assert_equal(rejected.error_code, &"item_cannot_join", "overflowing Join fails explicitly")
 	assert_equal(overflow_session.snapshot().game_state.party.character_by_id(overflow_owner.id).inventory().map(func(item: ItemInstance) -> int: return item.charges), [20_000, 20_000], "rejected overflow preserves both exact stacks")
+
+
+func _test_inventory_identification(content: RealmzContent) -> void:
+	var target := _character("inventory.identify-target", "Galen", content)
+	var caster := _character("inventory.identify-caster", "Iria", content)
+	var spell := content.spell_by_id("classic.spell.inventory-identify")
+	caster.spellcaster_type = 1
+	caster.spell_points = 30
+	caster.maximum_spell_points = 30
+	caster.set_known_spells([spell.id])
+	target.set_inventory([
+		ItemInstance.new("inventory.identify.unknown", "classic.item.inventory-sword", 2, false, false),
+		ItemInstance.new("inventory.identify.known", "classic.item.inventory-stack", 5, false, true),
+	])
+	target.carried_load = content.item_by_id("classic.item.inventory-sword").instance_weight(2) + content.item_by_id("classic.item.inventory-stack").instance_weight(5)
+	var session := GameSession.new()
+	assert_equal(session.start(content, 109).state, SessionStep.State.COMPLETED, "inventory identification session starts")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(target.id, "7".repeat(64), target, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "identification target enters party setup")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(caster.id, "8".repeat(64), caster, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "Identify caster enters party setup")
+	assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "identification fixture begins")
+	var action := session.view().party_members[0].items[0].actions
+	assert_true(action.identify.enabled, "an inventory with items exposes Castle's Cast Identify action")
+	assert_equal([action.identify_caster_id, action.identify_spell_id], [caster.id, spell.id], "the detached action selects the first eligible party caster and exact Identify spell")
+	var identified := session.submit_intent(PlayerIntent.identify_carried_items(action.identify_spell_id, action.identify_caster_id, target.id))
+	assert_equal(identified.state, SessionStep.State.COMPLETED, "Cast Identify commits synchronously from the inventory workspace")
+	var snapshot := session.snapshot()
+	assert_equal(snapshot.game_state.party.character_by_id(caster.id).spell_points, 5, "Cast Identify spends Castle's fixed twenty-five spell points rather than the spell record cost")
+	assert_true(snapshot.game_state.party.character_by_id(target.id).inventory().all(func(item: ItemInstance) -> bool: return item.identified), "Cast Identify reveals every item carried by the selected character")
+	assert_equal(identified.events.map(func(event: DomainEvent) -> StringName: return event.kind), [&"inventory_identified", &"sound_requested"], "identification publishes one result before integrated sound 683")
+	var restored := GameSession.new()
+	assert_equal(restored.restore(content, save_round_trip(snapshot)).state, SessionStep.State.COMPLETED, "identified inventory and spent spell points restore transactionally")
+	assert_false(restored.view().party_members[0].items[0].actions.identify.enabled, "the action disables when no party caster retains twenty-five spell points")
 
 
 func _test_field_spell_item_use(content: RealmzContent) -> void:
@@ -312,6 +345,10 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	light_spell.target_type = 7
 	light_spell.in_camp = true
 	light_spell.sound_start = 1
+	var identify_spell := SpellDefinition.new("classic.spell.inventory-identify", 1103, "Identify Objects")
+	identify_spell.special = 48
+	identify_spell.cost = 99
+	identify_spell.in_camp = false
 	var healing_wand := ItemDefinition.new("classic.item.inventory-healing-wand", 12, "Wand of Mending")
 	healing_wand.item_type = 21
 	healing_wand.weight = 4
@@ -347,7 +384,7 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	var races: Array[RaceDefinition] = [race]
 	var castes: Array[CasteDefinition] = [caste]
 	var items: Array[ItemDefinition] = [sword, cursed, healing_wand, self_tonic, torch, stack]
-	var spells: Array[SpellDefinition] = [healing_spell, self_spell, light_spell]
+	var spells: Array[SpellDefinition] = [healing_spell, self_spell, light_spell, identify_spell]
 	return RealmzContent.new("inventory-workflow", source.package_hash, "inventory-workflow-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells)
 
 

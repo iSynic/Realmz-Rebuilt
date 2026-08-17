@@ -485,6 +485,7 @@ static func _populate_inventory_item_actions(context: SessionWorkflowContext, re
 			continue
 		var race := content.race_by_id(character.race_id)
 		var caste := content.caste_by_id(character.caste_id)
+		var identify_cast := _inventory_identify_cast(context, character)
 		for item_view: ItemView in member_view.items:
 			var instance := _item_instance(character, item_view.instance_id)
 			var definition: ItemDefinition = null if instance == null else content.item_by_id(instance.definition_id)
@@ -505,6 +506,12 @@ static func _populate_inventory_item_actions(context: SessionWorkflowContext, re
 			actions.split = ActionAvailabilityView.new(&"split_item", split_probe.allowed, split_probe.reason)
 			actions.join = ActionAvailabilityView.new(&"join_item", join_probe.allowed, join_probe.reason)
 			actions.use = ActionAvailabilityView.new(&"use_item", use_probe.allowed, use_probe.reason)
+			if identify_cast.is_empty():
+				actions.identify = ActionAvailabilityView.new(&"identify_item", false, "No living party member knows Identify Objects with 25 spell points.")
+			else:
+				actions.identify_caster_id = String(identify_cast[0])
+				actions.identify_spell_id = String(identify_cast[1])
+				actions.identify = ActionAvailabilityView.new(&"identify_item", true)
 			for destination: CharacterState in party:
 				if destination == character:
 					continue
@@ -514,6 +521,20 @@ static func _populate_inventory_item_actions(context: SessionWorkflowContext, re
 			var trade_reason := "Choose another party member." if actions.trade_targets.is_empty() else actions.trade_targets[0].reason if enabled_targets.is_empty() else ""
 			actions.trade = ActionAvailabilityView.new(&"trade_item", not enabled_targets.is_empty(), trade_reason)
 			item_view.actions = actions
+
+
+static func _inventory_identify_cast(context: SessionWorkflowContext, target: CharacterState) -> Array[String]:
+	for caster: CharacterState in context.state.party.characters():
+		var spells: Array[SpellDefinition] = []
+		for spell_id: String in caster.known_spells():
+			var spell := context.content.spell_by_id(spell_id)
+			if spell != null and absi(spell.special) == 48:
+				spells.append(spell)
+		spells.sort_custom(func(left: SpellDefinition, right: SpellDefinition) -> bool: return left.classic_id < right.classic_id)
+		for spell: SpellDefinition in spells:
+			if InventoryMagicServicesWorkflow.inventory_identify_probe(context, target.id, caster.id, spell.id).allowed:
+				return [caster.id, spell.id]
+	return []
 
 
 static func _populate_character_draft_spells(context: SessionWorkflowContext, result: GameView) -> void:

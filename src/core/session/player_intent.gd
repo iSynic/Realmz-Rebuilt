@@ -332,6 +332,10 @@ static func cast_spell(spell_id: String, caster_id: String = "", target_combatan
 	return PlayerIntent.new(Kind.CAST_SPELL, SpellPayload.new(&"cast", spell_id, caster_id, target_combatant_id, [], power))
 
 
+static func identify_carried_items(spell_id: String, caster_id: String, target_character_id: String) -> PlayerIntent:
+	return PlayerIntent.new(Kind.CAST_SPELL, SpellPayload.new(&"identify-inventory", spell_id, caster_id, target_character_id))
+
+
 static func make_scroll(spell_id: String, caster_id: String, power: int = 1) -> PlayerIntent:
 	return PlayerIntent.new(Kind.CAST_SPELL, SpellPayload.new(&"make-scroll", spell_id, caster_id, "", [], power))
 

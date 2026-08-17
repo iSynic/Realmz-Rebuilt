@@ -2592,6 +2592,59 @@
       "status": "complete-catalog-selection-save-and-vault-validation-verified"
     },
     {
+      "id": "inventory.cast-identify",
+      "workflowIds": ["classic.inventory.identify-item"],
+      "domain": "inventory",
+      "claim": "The ordinary inventory Cast Identify command selects the first party-order living caster who knows a special-48 Identify spell, has at least 25 spell points, and can currently cast; it spends exactly 25 spell points, identifies every item carried by the selected character, then requests integrated sound 683.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake is divergent internally: its ordinary Inventory Identify button identifies only the selected item through GameGlobal, while its source-shaped special-48 spell path identifies the selected character's complete inventory. Both establish a field identification affordance and 25-SP spell lead, but Castle decides scope and ordering.",
+        "sources": [
+          { "path": "src/scenes/UI/HUD/Inventory/InventoryRect.gd", "symbol": "func _on_ButtonIdentify_pressed" },
+          { "path": "src/scripts/GameGlobal.gd", "symbol": "func identify_item" },
+          { "path": "src/scripts/classic_runtime/classic_core_identify_spell.gd", "symbol": "func identify_targets" }
+        ],
+        "tests": [
+          { "path": "src/scripts/items/tests/creature_item_instance_smoke.gd", "symbol": "func _test_classic_legacy_inventory_boundary" }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          { "path": "src/realmz_orig/items.c", "symbol": "short items" },
+          { "path": "src/realmz_orig/updatecanlist.c", "symbol": "void updatecanlist" },
+          { "path": "src/realmz_orig/modify-cancast.c", "symbol": "short cancast" }
+        ],
+        "authoredInputs": ["party order","known spell identities and spell special 48","caster spell points and casting conditions","selected character carried-item records"],
+        "observation": "Items command C scans party members in order. The first character with canidentify, more than 24 spell points, and a successful cancast check spends exactly 25 spell points. Castle then marks all occupied item records carried by the selected character identified and plays sound 683. The command is not an item-record spell-cost calculation and is unavailable from battle inventory."
+      },
+      "providence": {
+        "commit": "9fb0021a47272aea00403644f0e4084c03e1e3b7",
+        "sources": [
+          { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn content_document" }
+        ],
+        "expectedRepresentation": "Schema v3 already emits stable spell identities, special values, character spell knowledge, spell points, conditions, and exact carried-item instances. No package-contract change is required."
+      },
+      "realmz2": {
+        "owner": { "path": "src/session/workflows/inventory_magic_services_workflow.gd", "symbol": "static func identify_inventory" },
+        "expectedTrace": [
+          "project the first party-order eligible special-48 caster and exact spell ID",
+          "submit a typed identify-inventory spell operation for the selected character",
+          "revalidate field context, caster knowledge, life, conditions, and the fixed 25-SP threshold",
+          "mark every carried item identified and spend exactly 25 spell points atomically",
+          "publish inventory identification before integrated sound 683",
+          "save and restore the committed inventory and spell-point state"
+        ],
+        "tests": [
+          { "path": "tests/integration/test_inventory_session.gd", "symbol": "func _test_inventory_identification" }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "party-order-fixed-cost-whole-inventory-and-restore-verified"
+    },
+    {
       "id": "inventory.carried-item-workflow",
       "workflowIds": ["classic.inventory.manage-equipment","classic.inventory.inspect-item","classic.inventory.use-item","classic.inventory.trade-item","classic.inventory.drop-item"],
       "domain": "inventory",

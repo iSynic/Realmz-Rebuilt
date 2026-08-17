@@ -407,6 +407,8 @@ func _item_instance(character: CharacterState, instance_id: String) -> ItemInsta
 
 func _cast_spell(intent: PlayerIntent) -> SessionStep:
 	var payload := intent.payload as PlayerIntent.SpellPayload
+	if payload.operation == &"identify-inventory":
+		return _commit_workflow_result(InventoryMagicServicesWorkflow.identify_inventory(_workflow_context(), payload))
 	if payload.operation == &"make-scroll":
 		return _commit_workflow_result(InventoryMagicServicesWorkflow.make_scroll(_workflow_context(), payload))
 	if payload.operation == &"use-scroll":

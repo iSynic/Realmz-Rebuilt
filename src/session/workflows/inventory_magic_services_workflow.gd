@@ -142,6 +142,43 @@ static func join_item(context: SessionWorkflowContext, payload: PlayerIntent.Ite
 	])
 
 
+static func inventory_identify_probe(context: SessionWorkflowContext, target_id: String, caster_id: String, spell_id: String) -> InventoryActionProbe:
+	var target := context.state.party.character_by_id(target_id)
+	var caster := context.state.party.character_by_id(caster_id)
+	var spell := context.content.spell_by_id(spell_id)
+	if context.state.combat != null and not context.state.combat.completed:
+		return InventoryActionProbe.block("Cast Identify is unavailable during battle.")
+	if target == null or target.inventory().is_empty():
+		return InventoryActionProbe.block("The selected character carries no items.")
+	if caster == null or spell == null or absi(spell.special) != 48 or not caster.known_spells().has(spell.id) or caster.spellcaster_type < 1:
+		return InventoryActionProbe.block("No party member knows Identify Objects.")
+	if context.state.character_spellcasting_blocked:
+		return InventoryActionProbe.block("Classic scenario state currently blocks character spellcasting.")
+	if caster.current_health < 1 or caster.spell_points < 25:
+		return InventoryActionProbe.block("No living Identify caster has 25 spell points.")
+	for condition: int in [ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS, ConditionRules.STUPID, ConditionRules.ANIMATED]:
+		if caster.conditions.is_active(condition):
+			return InventoryActionProbe.block("The Identify caster's current condition prevents spellcasting.")
+	return InventoryActionProbe.permit()
+
+
+static func identify_inventory(context: SessionWorkflowContext, payload: PlayerIntent.SpellPayload) -> SessionWorkflowResult:
+	var probe := inventory_identify_probe(context, payload.target_id, payload.caster_id, payload.spell_id)
+	if not probe.allowed:
+		return SessionWorkflowResult.failed(&"inventory_identification_unavailable", probe.reason)
+	var target := context.state.party.character_by_id(payload.target_id)
+	var caster := context.state.party.character_by_id(payload.caster_id)
+	var instance_ids: Array[String] = []
+	for instance: ItemInstance in target.inventory():
+		instance.identified = true
+		instance_ids.append(instance.id)
+	caster.spell_points -= 25
+	return SessionWorkflowResult.completed([
+		DomainEvent.new(&"inventory_identified", {"characterId": target.id, "casterId": caster.id, "spellId": payload.spell_id, "instanceIds": instance_ids, "cost": 25, "source": "classic-items"}),
+		DomainEvent.new(&"sound_requested", {"soundId": 683, "waitForCompletion": false, "source": "classic-items-identify"}),
+	])
+
+
 static func field_spell_item_probe(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition) -> InventoryActionProbe:
 	var probe := context.rules.inventory.classic_spell_item_probe(character, instance, item, spell, context.content.race_by_id(character.race_id) if character != null else null, context.content.caste_by_id(character.caste_id) if character != null else null, false)
 	if not probe.allowed:
