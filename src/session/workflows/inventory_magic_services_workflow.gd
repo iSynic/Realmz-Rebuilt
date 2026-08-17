@@ -146,18 +146,18 @@ static func field_spell_item_probe(context: SessionWorkflowContext, character: C
 	var probe := context.rules.inventory.classic_spell_item_probe(character, instance, item, spell, context.content.race_by_id(character.race_id) if character != null else null, context.content.caste_by_id(character.caste_id) if character != null else null, false)
 	if not probe.allowed:
 		return probe
-	var ordinary := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9
-	var healing := absi(spell.special) == 57
-	if not ordinary and not healing:
+	if not field_spell_effect_supported(spell):
 		return InventoryActionProbe.block("This item's Classic field spell effect is not implemented yet.")
-	if spell.target_type == 7:
-		return InventoryActionProbe.block("This item changes party-wide field state that is not implemented yet.")
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This item's Classic field target type is invalid.")
+	if spell.target_type in [3, 9] and not context.state.party.allies().is_empty():
+		return InventoryActionProbe.block("This item also targets allied creatures; that Classic field branch is not implemented yet.")
 	return InventoryActionProbe.permit()
 
 
 static func field_item_target_ids(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, requested_targets: Array[String], requested_target: String) -> Array[String]:
+	if spell.target_type == 7 or absi(spell.special) == 68:
+		return []
 	if spell.target_type == 5:
 		return [character.id]
 	if spell.target_type > 2:
@@ -169,6 +169,8 @@ static func field_item_target_ids(context: SessionWorkflowContext, character: Ch
 
 
 static func field_item_target_count(context: SessionWorkflowContext, spell: SpellDefinition, power: int) -> int:
+	if spell.target_type == 7 or absi(spell.special) == 68:
+		return 0
 	if spell.target_type == 5:
 		return 1
 	if spell.target_type > 2:
@@ -250,7 +252,8 @@ static func commit_field_spell_item(context: SessionWorkflowContext, character_i
 	for target: CharacterState in targets:
 		castes.append(context.content.caste_by_id(target.caste_id))
 		races.append(context.content.race_by_id(target.race_id))
-	var resolution := context.rules.magic.resolve_field_spell(character, targets, spell, power, context.rng, castes, races, false)
+	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
+	var resolution := context.rules.magic.resolve_field_spell(character, targets, spell, power, context.rng, castes, races, false, allow_empty)
 	if resolution == null or not resolution.cast:
 		return SessionWorkflowResult.failed(&"item_spell_failed", "The item spell could not be resolved.")
 	var charges_remaining := -1
@@ -264,9 +267,7 @@ static func commit_field_spell_item(context: SessionWorkflowContext, character_i
 	var native_sound_id := item.sound_id + 600
 	if item.sound_id != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(native_sound_id), "waitForCompletion": native_sound_id < 0, "source": "classic-item"}))
-	for index: int in resolution.resolutions.size():
-		var target_resolution := resolution.resolutions[index]
-		events.append(DomainEvent.new(&"item_spell_resolved", {"characterId": character.id, "targetId": resolution.target_ids[index], "itemId": item.id, "instanceId": instance_id, "spellId": spell.id, "power": power, "resisted": target_resolution.resisted, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}))
+	_append_field_spell_events(context, events, character, spell, power, resolution, &"classic-item", &"classic-item", &"item_spell_resolved", {"itemId": item.id, "instanceId": instance_id})
 	return SessionWorkflowResult.completed(events)
 
 
@@ -568,7 +569,7 @@ static func _character_selection_request(request_id: String, prompt: String, req
 	return InteractionRequest.new(request_id, InteractionRequest.CHARACTER_SELECTION, body)
 
 
-static func _append_field_spell_events(context: SessionWorkflowContext, events: Array[DomainEvent], character: CharacterState, spell: SpellDefinition, power: int, resolution: GroupSpellResolution, sound_source: StringName, state_source: StringName, event_kind: StringName) -> void:
+static func _append_field_spell_events(context: SessionWorkflowContext, events: Array[DomainEvent], character: CharacterState, spell: SpellDefinition, power: int, resolution: GroupSpellResolution, sound_source: StringName, state_source: StringName, event_kind: StringName, event_context: Dictionary = {}) -> void:
 	var start_sound := spell.sound_start + 600
 	if start_sound != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": absi(start_sound), "waitForCompletion": true, "source": String(sound_source)}))
@@ -584,7 +585,9 @@ static func _append_field_spell_events(context: SessionWorkflowContext, events: 
 		events.append(DomainEvent.new(&"party_condition_changed", {"condition": condition_index, "value": context.state.party.conditions.value(condition_index), "spellId": spell.id, "source": String(state_source)}))
 	for index: int in resolution.resolutions.size():
 		var target_resolution := resolution.resolutions[index]
-		events.append(DomainEvent.new(event_kind, {"characterId": character.id, "targetId": resolution.target_ids[index], "spellId": spell.id, "power": power, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}))
+		var payload := {"characterId": character.id, "targetId": resolution.target_ids[index], "spellId": spell.id, "power": power, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}
+		payload.merge(event_context, true)
+		events.append(DomainEvent.new(event_kind, payload))
 		if target_resolution.aging != null and target_resolution.aging.changed_group():
 			var target := context.state.party.character_by_id(resolution.target_ids[index])
 			events.append(DomainEvent.new(&"character_age_changed", target_resolution.aging.event_payload(target, context.content.race_by_id(target.race_id))))

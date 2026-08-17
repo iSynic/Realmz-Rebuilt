@@ -202,6 +202,16 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 	assert_equal(self_completed.state, SessionStep.State.COMPLETED, "target-type-five item applies immediately to its user")
 	assert_equal(restored._state.party.character_by_id(carried_user.id).current_health, 7, "self-target item heals only its user")
 	assert_equal(self_instance.charges, -1, "an authored infinite-charge item remains infinite after use")
+	var torch := content.item_by_id("classic.item.inventory-torch")
+	var torch_instance := RealmzRules.new().inventory.add_item(restored._state.party.character_by_id(carried_user.id), torch, "inventory.instance.torch", true)
+	var torch_load_before := restored._state.party.character_by_id(carried_user.id).carried_load
+	assert_true(restored.view().party_members[0].items.any(func(item: ItemView) -> bool: return item.instance_id == torch_instance.id and item.actions.use.enabled), "detached inventory actions expose Castle's targetless Torch item effect")
+	var torch_completed := restored.submit_intent(PlayerIntent.use_item(torch_instance.id, carried_user.id))
+	assert_equal(torch_completed.state, SessionStep.State.COMPLETED, "target-type-seven Torch resolves immediately without a character picker")
+	assert_equal(restored._state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 119, "Torch applies Shine power four as Castle's 30-times-power minus one party condition")
+	assert_equal([torch_instance.charges, restored._state.party.character_by_id(carried_user.id).carried_load], [5, torch_load_before - torch.weight_per_charge], "Torch spends exactly one charge and its authored per-charge load")
+	assert_equal(torch_completed.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested").map(func(event: DomainEvent) -> int: return int(event.payload.get("soundId", 0))), [606, 601], "Torch orders its integrated item sound before Shine's resolution sound")
+	assert_true(torch_completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"party_condition_changed" and event.payload.get("condition") == ConditionRules.PARTY_TORCH_LIT), "Torch publishes the committed party-state change")
 	self_instance.charges = 0
 	var empty := restored.submit_intent(PlayerIntent.use_item(self_instance.id, carried_user.id))
 	assert_equal(empty.error_code, &"item_has_no_charges", "a depleted item fails before effect or randomness")
@@ -297,6 +307,11 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	self_spell.cannot = 4
 	self_spell.target_type = 5
 	self_spell.in_camp = true
+	var light_spell := SpellDefinition.new("classic.spell.inventory-light", 1110, "Shine")
+	light_spell.special = 50
+	light_spell.target_type = 7
+	light_spell.in_camp = true
+	light_spell.sound_start = 1
 	var healing_wand := ItemDefinition.new("classic.item.inventory-healing-wand", 12, "Wand of Mending")
 	healing_wand.item_type = 21
 	healing_wand.weight = 4
@@ -313,6 +328,15 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	self_tonic.item_category_mask_low = 1 << 5
 	self_tonic.special_1 = 1
 	self_tonic.special_2 = self_spell.classic_id
+	var torch := ItemDefinition.new("classic.item.inventory-torch", 805, "Torch")
+	torch.item_type = 21
+	torch.weight = 4
+	torch.initial_charges = 6
+	torch.weight_per_charge = 12
+	torch.item_category_mask_low = 1 << 5
+	torch.special_1 = -4
+	torch.special_2 = light_spell.classic_id
+	torch.sound_id = 6
 	var stack := ItemDefinition.new("classic.item.inventory-stack", 14, "Weighted Darts")
 	stack.item_type = 2
 	stack.hands = 1
@@ -322,8 +346,8 @@ func _inventory_content(source: RealmzContent) -> RealmzContent:
 	stack.item_category_mask_low = 1 << 5
 	var races: Array[RaceDefinition] = [race]
 	var castes: Array[CasteDefinition] = [caste]
-	var items: Array[ItemDefinition] = [sword, cursed, healing_wand, self_tonic, stack]
-	var spells: Array[SpellDefinition] = [healing_spell, self_spell]
+	var items: Array[ItemDefinition] = [sword, cursed, healing_wand, self_tonic, torch, stack]
+	var spells: Array[SpellDefinition] = [healing_spell, self_spell, light_spell]
 	return RealmzContent.new("inventory-workflow", source.package_hash, "inventory-workflow-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells)
 
 

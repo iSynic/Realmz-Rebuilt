@@ -496,7 +496,7 @@ static func _populate_inventory_item_actions(context: SessionWorkflowContext, re
 			var drop_probe := rules.inventory.classic_drop_probe(character, instance)
 			var split_probe := rules.inventory.classic_split_probe(character, instance, definition)
 			var join_probe := rules.inventory.classic_join_probe(character, instance, definition)
-			var use_probe := _field_spell_item_probe(context, character, instance, definition, content.spell_by_classic_id(definition.special_2) if definition != null else null)
+			var use_probe := InventoryMagicServicesWorkflow.field_spell_item_probe(context, character, instance, definition, content.spell_by_classic_id(definition.special_2) if definition != null else null)
 			actions.equip = ActionAvailabilityView.new(&"equip_item", equip_probe.allowed, equip_probe.reason)
 			actions.unequip = ActionAvailabilityView.new(&"unequip_item", unequip_probe.allowed, unequip_probe.reason)
 			actions.drop = ActionAvailabilityView.new(&"drop_item", drop_probe.allowed, drop_probe.reason)
@@ -546,21 +546,6 @@ static func _current_location_note_darkness(context: SessionWorkflowContext, map
 	if map == null or map.level_type == &"dungeon" or not context.state.world.map_is_dark(map):
 		return 0
 	return clampi(int(context.state.party.conditions.value(0) / 30) + 1, 1, 255)
-
-
-static func _field_spell_item_probe(context: SessionWorkflowContext, character: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition) -> InventoryActionProbe:
-	var probe := context.rules.inventory.classic_spell_item_probe(character, instance, item, spell, context.content.race_by_id(character.race_id) if character != null else null, context.content.caste_by_id(character.caste_id) if character != null else null, false)
-	if not probe.allowed:
-		return probe
-	var ordinary := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9
-	var healing := absi(spell.special) == 57
-	if not ordinary and not healing:
-		return InventoryActionProbe.block("This item's Classic field spell effect is not implemented yet.")
-	if spell.target_type == 7:
-		return InventoryActionProbe.block("This item changes party-wide field state that is not implemented yet.")
-	if spell.target_type < 0 or spell.target_type > 12:
-		return InventoryActionProbe.block("This item's Classic field target type is invalid.")
-	return InventoryActionProbe.permit()
 
 
 static func _make_scroll_probe(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, power: int) -> InventoryActionProbe:

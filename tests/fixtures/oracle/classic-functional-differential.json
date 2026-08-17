@@ -3234,10 +3234,12 @@
           { "path": "src/realmz_orig/items.c", "symbol": "short items" },
           { "path": "src/realmz_orig/showitems-showspecial.c", "symbol": "short canuse" },
           { "path": "src/realmz_orig/getchoice.c", "symbol": "short getchoice" },
-          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice" }
+          { "path": "src/realmz_orig/combatinfo-combatchoice.c", "symbol": "void combatchoice" },
+          { "path": "src/realmz_orig/buttonchoice.c", "symbol": "short buttonchoice" },
+          { "path": "src/realmz_orig/resolvespell.c", "symbol": "void resolvespell" }
         ],
         "authoredInputs": ["item type, category, restrictions, charge, weight per charge, drop flag, sound, and five special fields", "spell identity, class, context flags, target type, power scaling, and effect fields", "active character and party/combat targets"],
-        "observation": "items() permits a spell item when sp2 exceeds 1100 and either its instance has a positive charge or its definition has negative charges. It derives power from abs(sp1), with value 8 rolling Rand(7); enforces combat/camp flags; decrements a positive charge and per-charge load before entering targeting; requests item sound plus 600; targets self for type 5, all party members for target types above 2, or getchoice selections for the remaining field forms; and hands combat use to the ordinary spell target path.",
+        "observation": "items() permits a spell item when sp2 exceeds 1100 and either its instance has a positive charge or its definition has negative charges. It derives power from abs(sp1), with value 8 rolling Rand(7); enforces combat/camp flags; decrements a positive charge and per-charge load before entering targeting; requests item sound plus 600; targets self for type 5, all party members for target types above 2, or getchoice selections for the remaining field forms; and hands combat use to the ordinary spell target path. Castle's Torch command loads item 805 and its sp2 spell, while target type 7 special 50 resolves Light without a character picker, requests spell sound 601, and raises Torch Lit to power times 30 minus one when stronger.",
         "unresolved": [
           "The field target picker return value is ignored after charge consumption, so abort behavior appears to lose a charge; this suspicious observable requires a controlled Castle fixture before 2.0 copies or corrects it.",
           "Door/XAP items, item type 13 scroll behavior, missile-class spell items, random-power combat staging, battlefield-area or repeated targets, and broader spell specials remain separate explicit branches."
@@ -3252,7 +3254,7 @@
         "expectedRepresentation": "Schema v2 already emits item type, category and restriction masks, initial charges, per-charge weight, drop-on-empty, sound, special1 through special5, and the referenced spell records required by the bounded charged-spell path."
       },
       "realmz2": {
-        "owner": { "path": "src/session/game_session.gd", "symbol": "func _use_item" },
+        "owner": { "path": "src/session/workflows/inventory_magic_services_workflow.gd", "symbol": "static func begin_field_spell_item" },
         "expectedTrace": ["probe exact owner, item instance, immutable definition, race and caste permission, context, charge, spell, power, and target", "stage and serialize field target selection when required", "consume one positive charge and per-charge load only after a valid response", "resolve with the central RNG and no spell-point cost", "publish exact item, spell, target, sound, and remaining-charge events", "return to the combat or exploration workflow"],
         "tests": [
           { "path": "tests/integration/test_inventory_session.gd", "symbol": "func _test_field_spell_item_use" },
@@ -3262,7 +3264,7 @@
       },
       "decision": "aligned",
       "availability": "implemented",
-      "status": "fixed-power-field-self-party-and-combat-actor-group-charge-load-sound-target-save-resume-verified-unresolved-families-disabled"
+      "status": "fixed-power-field-self-party-state-party-target-and-combat-actor-group-charge-load-sound-target-save-resume-verified-unresolved-families-disabled"
     },
     {
       "id": "spell.classic-signed-record-fields",
