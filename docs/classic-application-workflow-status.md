@@ -136,7 +136,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: | ---: |
 | synthetic | 67 | 7 |
 | route-harness | 39 | 2 |
-| aogm-ordinary | 40 | 3 |
+| aogm-ordinary | 41 | 3 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
