@@ -23,6 +23,7 @@ Own the pure transaction coordinator that joins core Realmz state and rules to t
 - Exploration state mutations such as Camp, Rest, Search, clock advancement, fatigue, and secret discovery belong to `ExplorationTimeWorkflow`. `GameSession` only chooses the continuation and commits the returned events/error as one transaction.
 - `GameSession` alone owns rollback, request matching, revision changes, and exact-once commit.
 - Boat boarding and third-attempt shore disembarkation are typed `YES_NO` interactions owned by a `boat-choice` continuation. Response coordination re-probes the same source/destination and boat state before mutation; accepted, declined, saved, and restored paths apply sound, time, overlay, movement, and post-time continuation exactly once.
+- Restore validation recomputes a pending Pick Lock preview from the saved session RNG and authored thief record. It rejects forged frames, thresholds, cadence, deadline, character/action identity, or mutable encounter flags before constructing the replacement VM.
 - Restore validation must never mutate the live session. Candidate state, rules, RNG, VM, continuations, and interaction are replacement objects until the final `GameSession` assignment block.
 - Scenario-mediated and direct player operations must converge on the same core rules and workflow implementations.
 - Dictionaries are permitted only while crossing an explicit package/save/event codec. Live workflow state and continuations are typed.

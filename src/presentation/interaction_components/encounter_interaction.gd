@@ -19,7 +19,7 @@ func build(request: InteractionRequest) -> void:
 			"spell":
 				_add_catalog_action("spell", body.spells, entry.label)
 			"thief":
-				_add_thief_action(body.characters, entry)
+				_add_thief_action(entry)
 
 
 func _add_word_action(entry: InteractionRequestValue.EncounterAction) -> void:
@@ -50,19 +50,9 @@ func _add_catalog_action(action: String, values: Array[InteractionRequestValue.E
 	add_child(button)
 
 
-func _add_thief_action(characters: Array[InteractionRequestValue.NamedCharacter], entry: InteractionRequestValue.EncounterAction) -> void:
-	var picker := OptionButton.new()
-	for character: InteractionRequestValue.NamedCharacter in characters:
-		picker.add_item(character.name)
-		picker.set_item_metadata(picker.item_count - 1, character.id)
-	add_child(picker)
+func _add_thief_action(entry: InteractionRequestValue.EncounterAction) -> void:
 	var button := _bitmap_button(&"encounter.skills", entry.label)
-	button.disabled = picker.item_count == 0
-	button.tooltip_text = "No eligible character was supplied." if button.disabled else ""
-	button.command_requested.connect(func(_command_id: StringName) -> void:
-		if picker.item_count > 0:
-			response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"thief", -1, "", 0, 0, entry.action_index, String(picker.get_selected_metadata())))
-	)
+	button.command_requested.connect(func(_command_id: StringName) -> void: response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"thief")))
 	add_child(button)
 
 

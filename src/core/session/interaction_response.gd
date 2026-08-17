@@ -130,6 +130,42 @@ class ComplexEncounterBody:
 		return data
 
 
+class ThiefEncounterBody:
+	extends Body
+	var action: StringName
+	var character_id: String
+	var action_index: int
+
+	func _init(action_value: StringName, character: String = "", selected_action_index: int = -1) -> void:
+		action = action_value
+		character_id = character
+		action_index = selected_action_index
+
+	func is_valid() -> bool:
+		return action == &"back" or action == &"attempt" and not character_id.is_empty() and action_index >= 0 and action_index < 8
+
+	func to_data() -> Dictionary:
+		var data := {"action": String(action)}
+		if action == &"attempt":
+			data["characterId"] = character_id
+			data["actionIndex"] = action_index
+		return data
+
+
+class PickLockBody:
+	extends Body
+	var frame_index: int
+
+	func _init(selected_frame_index: int) -> void:
+		frame_index = selected_frame_index
+
+	func is_valid() -> bool:
+		return frame_index >= 0
+
+	func to_data() -> Dictionary:
+		return {"frameIndex": frame_index}
+
+
 class ShopBody:
 	extends Body
 	var action: StringName
@@ -374,6 +410,10 @@ func is_supported_kind() -> bool:
 			return body is AllySelectionBody
 		InteractionRequest.WORD_AND_ACTION:
 			return body is ComplexEncounterBody
+		InteractionRequest.THIEF_ENCOUNTER:
+			return body is ThiefEncounterBody
+		InteractionRequest.PICK_LOCK:
+			return body is PickLockBody
 		InteractionRequest.SHOP:
 			return body is ShopBody
 		InteractionRequest.TEMPLE:
@@ -457,6 +497,15 @@ static func _body_from_data(response_kind: StringName, data: Dictionary) -> Body
 			if not _optional_strings_are_valid(data, ["word", "characterId"]) or not _optional_integers_are_valid(data, ["slot", "classicSpellId", "classicItemId", "actionIndex"]):
 				return null
 			return ComplexEncounterBody.new(StringName(data.get("action", "")), int(data.get("slot", -1)), String(data.get("word", "")), int(data.get("classicSpellId", 0)), int(data.get("classicItemId", 0)), int(data.get("actionIndex", -1)), String(data.get("characterId", "")))
+		InteractionRequest.THIEF_ENCOUNTER:
+			if not _fields_are_exact(data, ["action", "characterId", "actionIndex"], ["action"]) or not _is_string_value(data["action"]) or not _optional_strings_are_valid(data, ["characterId"]) or not _optional_integers_are_valid(data, ["actionIndex"]):
+				return null
+			var thief := ThiefEncounterBody.new(StringName(data["action"]), String(data.get("characterId", "")), int(data.get("actionIndex", -1)))
+			return thief if thief.is_valid() else null
+		InteractionRequest.PICK_LOCK:
+			if not _fields_are_exact(data, ["frameIndex"], ["frameIndex"]) or not data["frameIndex"] is int:
+				return null
+			return PickLockBody.new(data["frameIndex"]) if data["frameIndex"] >= 0 else null
 		InteractionRequest.SHOP:
 			if not _fields_are_exact(data, ["action", "characterId", "instanceId", "stockKey"], ["action"]) or not _is_string_value(data["action"]):
 				return null

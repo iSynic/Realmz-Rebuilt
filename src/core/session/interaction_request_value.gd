@@ -361,6 +361,29 @@ class NamedCharacter:
 	func to_data() -> Dictionary: return {"id": id, "name": name}
 
 
+class ThiefAction:
+	extends RefCounted
+	var index: int
+	var label: String
+	var value: int
+	var enabled: bool
+	var reason: String
+
+	func to_data() -> Dictionary:
+		return {"index": index, "label": label, "value": value, "enabled": enabled, "reason": reason}
+
+
+class ThiefCharacter:
+	extends RefCounted
+	var id: String
+	var name: String
+	var portrait_id: String
+	var actions: Array[ThiefAction] = []
+
+	func to_data() -> Dictionary:
+		return {"id": id, "name": name, "portraitId": portrait_id, "actions": actions.map(func(value: ThiefAction) -> Dictionary: return value.to_data())}
+
+
 class EncounterCatalogEntry:
 	extends RefCounted
 	var classic_id: int
@@ -612,13 +635,42 @@ static func encounter_action(data: Variant) -> EncounterAction:
 	if not data is Dictionary or not _exact(data, ["id", "kind", "label", "slot", "actionIndex"], ["id", "kind", "label"]) or not _strings(data, ["id", "kind", "label"]) or not _optional_int(data, "slot") or not _optional_int(data, "actionIndex"): return null
 	var result := EncounterAction.new(); result.id = data["id"]; result.kind = StringName(data["kind"]); result.label = data["label"]; result.slot = int(data.get("slot", -1)); result.action_index = int(data.get("actionIndex", -1))
 	if result.kind not in [&"choice", &"word", &"spell", &"item", &"thief", &"back"]: return null
-	if result.kind == &"choice" and result.slot < 0 or result.kind == &"thief" and result.action_index < 0: return null
+	if result.kind == &"choice" and result.slot < 0: return null
 	return result
 
 
 static func named_character(data: Variant) -> NamedCharacter:
 	if not data is Dictionary or not _exact(data, ["id", "name"], ["id", "name"]) or not _strings(data, ["id", "name"]): return null
 	var result := NamedCharacter.new(); result.id = data["id"]; result.name = data["name"]; return result
+
+
+static func thief_action(data: Variant) -> ThiefAction:
+	var fields := ["index", "label", "value", "enabled", "reason"]
+	if not data is Dictionary or not _exact(data, fields, fields) or not _ints(data, ["index", "value"]) or not _strings(data, ["label", "reason"]) or not data["enabled"] is bool:
+		return null
+	var result := ThiefAction.new()
+	result.index = int(data["index"])
+	result.label = data["label"]
+	result.value = int(data["value"])
+	result.enabled = data["enabled"]
+	result.reason = data["reason"]
+	return result if result.index >= 0 and result.index < 8 else null
+
+
+static func thief_character(data: Variant) -> ThiefCharacter:
+	var fields := ["id", "name", "portraitId", "actions"]
+	if not data is Dictionary or not _exact(data, fields, fields) or not _strings(data, ["id", "name", "portraitId"]) or not data["actions"] is Array:
+		return null
+	var result := ThiefCharacter.new()
+	result.id = data["id"]
+	result.name = data["name"]
+	result.portrait_id = data["portraitId"]
+	for entry: Variant in data["actions"]:
+		var action := thief_action(entry)
+		if action == null:
+			return null
+		result.actions.append(action)
+	return result if not result.id.is_empty() else null
 
 
 static func encounter_catalog_entry(data: Variant, kind: StringName) -> EncounterCatalogEntry:

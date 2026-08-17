@@ -1,6 +1,9 @@
 class_name InteractionPresenter
 extends PanelContainer
 
+const PickLockInteractionScript := preload("res://src/presentation/interaction_components/pick_lock_interaction.gd")
+const ThiefEncounterInteractionScript := preload("res://src/presentation/interaction_components/thief_encounter_interaction.gd")
+
 const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
 
 signal response_submitted(response: InteractionResponse)
@@ -197,6 +200,14 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 			return LevelUpInteraction.new()
 		&"complex_encounter":
 			return EncounterInteraction.new()
+		&"thief_encounter":
+			var thief := ThiefEncounterInteractionScript.new()
+			thief.configure(media)
+			return thief
+		&"pick_lock":
+			var pick_lock := PickLockInteractionScript.new()
+			pick_lock.configure(media)
+			return pick_lock
 		&"shop_action":
 			return ShopInteraction.new()
 		&"temple_action":
@@ -333,8 +344,10 @@ static func _heading_for_kind(kind: StringName) -> String:
 			return "Age Update"
 		&"yes_no":
 			return "Question"
-		&"encounter_choice", &"scenario_choice", &"complex_encounter":
+		&"encounter_choice", &"scenario_choice", &"complex_encounter", &"thief_encounter":
 			return "Encounter"
+		&"pick_lock":
+			return "Pick Lock"
 		&"character_selection", &"ally_selection":
 			return "Character Selection"
 		&"treasure_distribution":

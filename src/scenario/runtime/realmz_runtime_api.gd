@@ -1,6 +1,8 @@
 class_name RealmzRuntimeApi
 extends RefCounted
 
+const ClassicThiefEncounterOperationsScript := preload("res://src/scenario/runtime/operations/classic_thief_encounter_operations.gd")
+
 const SUPPORTED_SAFE_CAPABILITIES: Array[String] = [
 	"core.combat.start",
 	"core.economy.grant-treasure",
@@ -27,6 +29,7 @@ var _service_operations: ClassicServiceOperations
 var _presentation_operations: ClassicPresentationOpcodeHandler
 var _world_time_operations: ClassicWorldTimeOpcodeHandler
 var _encounter_operations: ClassicEncounterOpcodeHandler
+var _thief_operations: RefCounted
 var _classic_handlers: ClassicOpcodeHandlerRegistry
 var _handler_registration_error: String = ""
 
@@ -47,6 +50,7 @@ func _init(content: RealmzContent, game_state: GameState, rng: RealmzRng, action
 	_presentation_operations = ClassicPresentationOpcodeHandler.new(_content, _game_state, _rng)
 	_world_time_operations = ClassicWorldTimeOpcodeHandler.new(_content, _game_state, _rng)
 	_encounter_operations = ClassicEncounterOpcodeHandler.new(_content, _game_state)
+	_thief_operations = ClassicThiefEncounterOperationsScript.new(_content, _game_state, _rng, _rules, _encounter_operations)
 	_classic_handlers = ClassicOpcodeHandlerRegistry.new()
 	for handler: ClassicOpcodeHandler in [_control_flow_operations, _character_operations, _inventory_operations, _service_operations, _combat_operations, _battle_reward_operations, _presentation_operations, _world_time_operations, _encounter_operations]:
 		if not _classic_handlers.register(handler):
@@ -197,6 +201,12 @@ func resume_classic(continuation: ScenarioRuntimeContinuation, response: Interac
 			return _resume_simple_encounter(continuation, response)
 		ScenarioRuntimeContinuation.CLASSIC_COMPLEX_ENCOUNTER:
 			return _resume_complex_encounter(continuation, response, request_id)
+		ScenarioRuntimeContinuation.CLASSIC_THIEF_ENCOUNTER:
+			return _thief_operations.resume_thief(continuation, response, request_id)
+		ScenarioRuntimeContinuation.CLASSIC_PICK_LOCK:
+			return _thief_operations.resume_pick_lock(continuation, response, request_id)
+		ScenarioRuntimeContinuation.CLASSIC_THIEF_RESOLUTION:
+			return _thief_operations.resume_resolution(continuation, response, request_id)
 		ScenarioRuntimeContinuation.CLASSIC_ACKNOWLEDGE:
 			if response.kind != &"acknowledge":
 				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Acknowledgement response has the wrong kind.")
@@ -338,7 +348,7 @@ func _resume_complex_encounter(continuation: ScenarioRuntimeContinuation, respon
 				return ScenarioRuntimeOperationResult.failed(&"item_not_owned", "The party does not possess the selected Complex Encounter item.")
 			outcome = _complex_catalog_outcome(encounter.item_ids(), encounter.item_results(), item_id)
 		"thief":
-			return _resume_thief_encounter(encounter, continuation, response, request_id)
+			return _thief_operations.begin(encounter, choice_continuation.gosub, request_id)
 		_:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Complex Encounter action '%s' is unavailable." % action)
 	if outcome < 1 or outcome > 4:
@@ -370,67 +380,6 @@ func _complex_catalog_outcome(ids: Array[int], results: Array[int], selected_id:
 		if ids[index] != 0 and absi(ids[index]) == absi(selected_id):
 			return results[index]
 	return 4
-
-
-func _resume_thief_encounter(encounter: ComplexEncounterDefinition, continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	var thief_encounter := _content.thief_encounter_by_id(encounter.thief_success)
-	var selection := response.body as InteractionResponse.ComplexEncounterBody
-	if thief_encounter == null or selection == null or selection.action_index < 0 or selection.character_id.is_empty():
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter response requires an available action and character.")
-	var character := _game_state.party.character_by_id(selection.character_id)
-	var action_index := selection.action_index
-	var flags := _game_state.thief_encounter_type_flags(thief_encounter)
-	if character == null or character.current_health <= 0 or action_index < 0 or action_index >= 8 or not flags[action_index]:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Thief Encounter action or character is unavailable.")
-	flags[action_index] = false
-	var trap_armed := flags[9]
-	if trap_armed and action_index in [4, 6, 7]:
-		if action_index == 4:
-			flags[action_index] = true
-		return _spring_thief_trap(encounter, thief_encounter, continuation, character, flags, request_id)
-	var modifiers := thief_encounter.modifiers()
-	var chance := clampi(character.ability_value(action_index) + modifiers[action_index], 0, 100)
-	if action_index in [2, 4, 6, 7]:
-		chance = mini(chance, 90)
-	var succeeded := _rng.draw(100, &"classic.thief-encounter") <= chance
-	if succeeded:
-		if action_index == 1 and trap_armed:
-			flags[2] = true
-		elif action_index == 2:
-			flags[9] = false
-	elif trap_armed and action_index != 1:
-		return _spring_thief_trap(encounter, thief_encounter, continuation, character, flags, request_id)
-	_game_state.set_thief_encounter_type_flags(thief_encounter, flags)
-	var codes := thief_encounter.success_codes() if succeeded else thief_encounter.failure_codes()
-	var outcome := codes[action_index]
-	var text_ids := thief_encounter.success_text() if succeeded else thief_encounter.failure_text()
-	var sound_ids := thief_encounter.success_sounds() if succeeded else thief_encounter.failure_sounds()
-	var events: Array[DomainEvent] = [DomainEvent.new(&"thief_action_resolved", {"encounterId": encounter.id, "thiefEncounterId": thief_encounter.id, "characterId": character.id, "actionIndex": action_index, "chancePercent": chance, "succeeded": succeeded, "messageId": text_ids[action_index], "soundId": sound_ids[action_index]})]
-	if outcome == 0:
-		var request := _encounter_operations.complex_encounter_request(encounter, request_id)
-		if request == null:
-			return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter has no available responses after the Thief action.")
-		return ScenarioRuntimeOperationResult.waiting(request, continuation, events)
-	if outcome < 1 or outcome > 4:
-		return ScenarioRuntimeOperationResult.failed(&"invalid_encounter_outcome", "Thief Encounter produced invalid result %d." % outcome)
-	_game_state.record_encounter_attempt(&"complex", encounter.id)
-	var context := ScenarioExecutionContext.encounter(&"complex", encounter.id, "", -1, &"thief").set_thief_action(action_index, character.id)
-	return _complex_outcome(encounter, outcome, (continuation.body as ScenarioRuntimeContinuation.ChoiceBody).gosub, context, events)
-
-
-func _spring_thief_trap(encounter: ComplexEncounterDefinition, thief_encounter: ThiefEncounterDefinition, continuation: ScenarioRuntimeContinuation, character: CharacterState, flags: Array[bool], request_id: String) -> ScenarioRuntimeOperationResult:
-	flags[9] = false
-	flags[1] = false
-	flags[6] = true
-	_game_state.set_thief_encounter_type_flags(thief_encounter, flags)
-	var damage := _rng.draw_between(thief_encounter.low_damage, thief_encounter.high_damage, &"classic.thief-trap-damage") if thief_encounter.high_damage >= thief_encounter.low_damage and thief_encounter.high_damage > 0 else 0
-	if damage > 0:
-		character.current_health = maxi(-32_768, character.current_health - damage)
-	var events: Array[DomainEvent] = [DomainEvent.new(&"thief_trap_sprung", {"encounterId": encounter.id, "thiefEncounterId": thief_encounter.id, "characterId": character.id, "damage": damage, "spellId": thief_encounter.spell_id})]
-	var request := _encounter_operations.complex_encounter_request(encounter, request_id)
-	if request == null:
-		return ScenarioRuntimeOperationResult.failed(&"encounter_has_no_options", "Complex Encounter has no available responses after its trap.")
-	return ScenarioRuntimeOperationResult.waiting(request, continuation, events)
 
 
 func _state_identity(arguments: Dictionary) -> Array[String]:

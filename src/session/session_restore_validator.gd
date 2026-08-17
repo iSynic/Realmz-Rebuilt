@@ -1,6 +1,7 @@
 class_name SessionRestoreValidator
 extends RefCounted
 
+const ClassicPickLockRulesScript := preload("res://src/core/rules/classic_pick_lock_rules.gd")
 
 static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> SessionRestoreResult:
 	if content == null or content.scenario == null or snapshot == null:
@@ -59,6 +60,8 @@ static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> Sessi
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM reward continuation is invalid.")
 	if not _valid_player_map_vm_continuation(content, replacement_state, replacement_vm):
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM player-map continuation is invalid.")
+	if not _valid_thief_vm_continuation(content, replacement_state, replacement_rng.snapshot(), replacement_vm):
+		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM Thief Encounter continuation is invalid.")
 	var replacement_continuation := SessionContinuation.new() if snapshot.continuation == null else SessionContinuation.from_data(snapshot.continuation.to_data())
 	if replacement_continuation == null:
 		return SessionRestoreResult.failed(&"invalid_session_continuation", "The saved session continuation is invalid.")
@@ -514,6 +517,85 @@ static func _valid_player_map_vm_continuation(content: RealmzContent, state: Gam
 	if request != null:
 		body = request.body as InteractionRequest.AcknowledgeBody
 	return request != null and request.kind == InteractionRequest.ACKNOWLEDGE and body != null and body.presentation == &"player-map" and body.player_map_id == player_map_id and body.has_presentation and body.has_player_map_id and not body.has_message_id and not body.has_journal_state and not body.has_sound_id and content.world.player_map_by_id(player_map_id) != null and state.world.has_map(player_map_id)
+
+
+static func _valid_thief_vm_continuation(content: RealmzContent, state: GameState, rng_state: RealmzRngState, vm: ScenarioVm) -> bool:
+	var snapshot := vm.snapshot()
+	if snapshot.pending_continuation == null:
+		return true
+	var runtime := snapshot.pending_continuation.runtime
+	if runtime == null or runtime.kind not in [ScenarioRuntimeContinuation.CLASSIC_THIEF_ENCOUNTER, ScenarioRuntimeContinuation.CLASSIC_PICK_LOCK, ScenarioRuntimeContinuation.CLASSIC_THIEF_RESOLUTION]:
+		return true
+	var owner := runtime.body as ScenarioRuntimeContinuation.ThiefBody
+	var encounter := content.complex_encounter_by_id(owner.encounter_id) if owner != null else null
+	var thief := content.thief_encounter_by_id(encounter.thief_success) if encounter != null and encounter.thief else null
+	var request := vm.pending_request()
+	if owner == null or encounter == null or thief == null or request == null:
+		return false
+	if runtime.kind == ScenarioRuntimeContinuation.CLASSIC_THIEF_ENCOUNTER:
+		var body := request.body as InteractionRequest.ThiefEncounterRequestBody
+		return request.kind == InteractionRequest.THIEF_ENCOUNTER and body != null and body.encounter_id == encounter.id and _valid_thief_request(content, state, thief, body)
+	if runtime.kind == ScenarioRuntimeContinuation.CLASSIC_THIEF_RESOLUTION:
+		return _valid_thief_resolution_request(content, state, thief, owner, request)
+	var body := request.body as InteractionRequest.PickLockRequestBody
+	var character := state.party.character_by_id(owner.character_id)
+	if request.kind != InteractionRequest.PICK_LOCK or body == null or owner.action_index not in [2, 4, 6, 7] or body.encounter_id != encounter.id or body.action_index != owner.action_index or body.character_id != owner.character_id or character == null or character.current_health <= 0 or character.conditions.is_active(ConditionRules.ANIMATED):
+		return false
+	var flags := state.thief_encounter_type_flags(thief)
+	var chance := ClassicPickLockRulesScript.chance(character.ability_value(ClassicPickLockRulesScript.ability_index(owner.action_index)), thief.modifiers()[owner.action_index])
+	var expected_frames := ClassicPickLockRulesScript.preview(rng_state, thief.tumblers, chance)
+	return flags.size() == 10 and not flags[owner.action_index] and chance > 0 and body.action_label == ClassicPickLockRulesScript.action_label(owner.action_index) and body.character_name == character.name and body.portrait_id == character.portrait_id and body.chance_percent == chance and body.yellow_threshold == ClassicPickLockRulesScript.yellow_threshold(chance) and body.green_threshold == ClassicPickLockRulesScript.green_threshold(chance) and body.frame_rate == ClassicPickLockRulesScript.FRAME_RATE and body.time_limit_frames == ClassicPickLockRulesScript.time_limit_frames(thief.tumblers) and body.frames == expected_frames
+
+
+static func _valid_thief_request(content: RealmzContent, state: GameState, thief: ThiefEncounterDefinition, body: InteractionRequest.ThiefEncounterRequestBody) -> bool:
+	var prompt_id := absi(thief.prompts()[0]) if not thief.prompts().is_empty() else 0
+	var message := content.message_by_id(prompt_id)
+	if body.prompt != (message.text if message != null else "Choose a thief action."):
+		return false
+	var opening_sounds := thief.prompt_sounds()
+	if body.sound_id not in [0, opening_sounds[0] if not opening_sounds.is_empty() else 0]:
+		return false
+	var flags := state.thief_encounter_type_flags(thief)
+	var eligible: Array[CharacterState] = []
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and not character.conditions.is_active(ConditionRules.ANIMATED):
+			eligible.append(character)
+	if flags.size() != 10 or body.characters.size() != eligible.size():
+		return false
+	for index: int in eligible.size():
+		var character := eligible[index]
+		var detached := body.characters[index]
+		if detached.id != character.id or detached.name != character.name or detached.portrait_id != character.portrait_id or detached.actions.size() != 8:
+			return false
+		for action_index: int in 8:
+			var action := detached.actions[action_index]
+			var ability := character.ability_value(ClassicPickLockRulesScript.ability_index(action_index))
+			var effective := ability + thief.modifiers()[action_index]
+			var expected_enabled := flags[action_index] and ability != 0 and effective > 0
+			var expected_reason := "" if expected_enabled else "This action is no longer available." if not flags[action_index] else "This character lacks the required ability." if ability == 0 else "The authored modifier reduces this action below zero."
+			if action.index != action_index or action.label != ClassicPickLockRulesScript.action_label(action_index) or action.value != (effective if ability != 0 else 0) or action.enabled != expected_enabled or action.reason != expected_reason:
+				return false
+	return true
+
+
+static func _valid_thief_resolution_request(content: RealmzContent, state: GameState, thief: ThiefEncounterDefinition, owner: ScenarioRuntimeContinuation.ThiefBody, request: InteractionRequest) -> bool:
+	var body := request.body as InteractionRequest.AcknowledgeBody
+	var character := state.party.character_by_id(owner.character_id)
+	if request.kind != InteractionRequest.ACKNOWLEDGE or body == null or character == null or owner.action_index < 0 or owner.action_index > 7 or body.presentation != &"classic-textbox" or not body.has_presentation or body.has_journal_state or body.has_player_map_id:
+		return false
+	var flags := state.thief_encounter_type_flags(thief)
+	if flags.size() != 10:
+		return false
+	if owner.phase == &"trap-message":
+		return owner.trap_pending and flags[9] and body.prompt == "A trap is sprung." and not body.has_message_id and not body.has_sound_id
+	if owner.phase != &"action-message" or flags[owner.action_index]:
+		return false
+	var text_ids := thief.success_text() if owner.succeeded else thief.failure_text()
+	var sound_ids := thief.success_sounds() if owner.succeeded else thief.failure_sounds()
+	var signed_message_id := text_ids[owner.action_index]
+	var message_id := absi(signed_message_id)
+	var message := content.message_by_id(message_id)
+	return signed_message_id > 0 and message != null and body.has_message_id and body.message_id == message_id and body.prompt == message.text and body.has_sound_id and body.sound_id == sound_ids[owner.action_index] and (not owner.trap_pending or not owner.succeeded and flags[9])
 
 
 static func _valid_reward_continuation(content: RealmzContent, state: GameState, reward: ClassicRewardState, request: InteractionRequest) -> bool:

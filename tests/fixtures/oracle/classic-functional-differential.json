@@ -5313,6 +5313,94 @@
         "fixturePath": "tests/fixtures/oracle/scenario-character-check-abort-correction.json",
         "fixtureSha256": "374a65b15c4417f8f510cc769fdd52f6ff92260a3acfbeb4bb90fd3f0519c491"
       }
+    },
+    {
+      "id": "scenario.thief-pick-lock",
+      "workflowIds": [
+        "classic.scenario.complex-interaction"
+      ],
+      "domain": "scenario-interaction",
+      "claim": "Classic Complex Encounters open one dedicated thief workspace whose eight actions read trained abilities 5 through 12. Interactive Disarm Trap, Force Lock, Pick Lock, and Pick Pocket attempts use Castle's timed tumbler picker, mutable trap flags, source-ordered damage and result routing, and a deterministic RNG prefix selected by the player's click or timeout.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "The pinned functional Remake preserves thief records, mutable flags, action leads, and chance-based resolver tests, but replaces Castle's dedicated timed tumbler picker with a direct success roll and therefore does not establish the target interaction.",
+        "sources": [
+          {
+            "path": "src/scripts/classic_runtime/classic_rogue_encounter_resolver.gd",
+            "symbol": "func configure"
+          }
+        ],
+        "tests": []
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/encounters.c",
+            "symbol": "short thiefenc(void)"
+          },
+          {
+            "path": "src/realmz_orig/portrait-picklock.c",
+            "symbol": "short picklock(short who, short type)"
+          },
+          {
+            "path": "src/realmz_orig/structs.h",
+            "symbol": "struct thief"
+          },
+          {
+            "path": "src/realmz_orig/save-direction-order.c",
+            "symbol": "void save(short mode)"
+          },
+          {
+            "path": "src/realmz_orig/loadsavedgame.c",
+            "symbol": "short load(void)"
+          }
+        ],
+        "authoredInputs": [
+          "eight type flags, modifiers, success and failure results",
+          "eight success and failure text and sound identities",
+          "trap target mode, spell, power, and damage range",
+          "tumbler count and opening prompt"
+        ],
+        "observation": "thiefenc renders one selected portrait and eight actions backed by spec[5 + action]. Visible availability requires a nonzero base ability, a positive modified value, and an enabled mutable flag. Non-lock actions use inclusive Rand(100); the four interactive actions call picklock. Pick Lock caps tumblers at six and chance at ninety, advances each unresolved tumbler every two ticks through Rand(20) then inclusive Rand(100) <= 55, stops updating a tumbler at the green threshold, and succeeds when every marker is at least yellow when clicked or timed out. The source timer lasts 3 + 2*tumblers seconds, with no tumbler update during its final second. Positive Data SD2 result IDs wait for acknowledgement; negative IDs display without waiting. Trap STR# class 3 item 55 always waits before damage, and damage precedes an optional spell. Successful non-result-zero/non-result-four interactive actions award 300 times the raw authored tumbler count. Exact native resource labels for action slots four and seven and trap STR# wording, unsafe nonpositive tumbler behavior, and the uninitialized first countdown comparison remain runtime-unobserved.",
+      },
+      "providence": {
+        "commit": "9fb0021a47272aea00403644f0e4084c03e1e3b7",
+        "sources": [
+          {
+            "path": "src-tauri/src/realmz2_exporter.rs",
+            "symbol": "fn runtime_thief_encounters"
+          }
+        ],
+        "expectedRepresentation": "Preserve the complete thief record arrays and trap/tumbler scalars exactly in schema v3; no editor-authored replacement roll or UI state enters the package."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/scenario/runtime/operations/classic_thief_encounter_operations.gd",
+          "symbol": "func begin"
+        },
+        "expectedTrace": [
+          "open one dedicated typed thief request from the Complex Encounter",
+          "map action slots zero through seven to trained abilities five through twelve",
+          "preserve mutable type flags and source-ordered trap behavior",
+          "preview tumbler frames from a cloned saved RNG state without consuming gameplay draws",
+          "hold Castle's final static countdown second and return one selected frame index",
+          "replay exactly that frame prefix through the real session RNG",
+          "preserve signed click or non-click action text and the separate trap-warning acknowledgement",
+          "serialize and restore the issuing VM continuation and reject forged previews",
+          "route the authored result or return to the thief workspace exactly once"
+        ],
+        "tests": [
+          {
+            "path": "tests/scenario/test_scenario_vm.gd",
+            "symbol": "func _test_public_thief_encounter"
+          }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "source-backed-thief-menu-and-timed-picker-implemented-trap-spell-and-live-acceptance-pending"
     }
   ]
 }

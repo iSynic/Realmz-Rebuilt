@@ -76,8 +76,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-required | 19 |
 | missing | 0 |
-| partial | 3 |
-| complete | 46 |
+| partial | 2 |
+| complete | 47 |
 
 | simulation | Count |
 | --- | ---: |
@@ -154,7 +154,7 @@ Blockers: **1**. Major gaps: **12**.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
 - **major** `classic.rewards.treasure-distribution` - Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced. Next: Use controlled Castle RNG fixtures for ordinary, XP-only, and bonus-treasure battle rewards before implementing or correcting the random drops.
-- **major** `classic.scenario.complex-interaction` - Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
+- **major** `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete. Next: Route the trap spell through the source-backed application spell effect, then run a controlled Castle comparison and ordinary campaign UI acceptance.
 - **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Implement discard, case-transfer, allied-target, and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
@@ -196,7 +196,7 @@ Blockers: **1**. Major gaps: **12**.
 - `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
 - `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle.
 - `classic.rewards.treasure-distribution` - Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced.
-- `classic.scenario.complex-interaction` - Thief encounter action availability and result routing are not fully traced or represented.
+- `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete.
 - `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.authored-journal` - Castle's Auto Note preference and unsafe journal cursor boundary remain outside the verified authored-journal subset.

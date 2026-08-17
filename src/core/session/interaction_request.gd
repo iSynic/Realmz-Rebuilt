@@ -13,6 +13,8 @@ const ALLY_SELECTION: StringName = &"ally_selection"
 const TREASURE_DISTRIBUTION: StringName = &"treasure_distribution"
 const LEVEL_UP: StringName = &"level_up"
 const WORD_AND_ACTION: StringName = &"complex_encounter"
+const THIEF_ENCOUNTER: StringName = &"thief_encounter"
+const PICK_LOCK: StringName = &"pick_lock"
 const SHOP: StringName = &"shop_action"
 const TEMPLE: StringName = &"temple_action"
 const BANK: StringName = &"bank_action"
@@ -200,6 +202,44 @@ class ComplexEncounterRequestBody:
 		return {"encounterKind": String(encounter_kind), "encounterId": encounter_id, "prompt": prompt, "actions": actions.map(func(value: InteractionRequestValue.EncounterAction) -> Dictionary: return value.to_data()), "characters": characters.map(func(value: InteractionRequestValue.NamedCharacter) -> Dictionary: return value.to_data()), "items": items.map(func(value: InteractionRequestValue.EncounterCatalogEntry) -> Dictionary: return value.to_data()), "spells": spells.map(func(value: InteractionRequestValue.EncounterCatalogEntry) -> Dictionary: return value.to_data()), "canBackOut": can_back_out}
 
 	func prompt_text() -> String: return prompt
+
+
+class ThiefEncounterRequestBody:
+	extends Body
+	var encounter_id: int
+	var prompt: String
+	var sound_id: int
+	var characters: Array[InteractionRequestValue.ThiefCharacter] = []
+
+	func to_data() -> Dictionary:
+		return {"encounterId": encounter_id, "prompt": prompt, "soundId": sound_id, "characters": characters.map(func(value: InteractionRequestValue.ThiefCharacter) -> Dictionary: return value.to_data())}
+
+	func prompt_text() -> String: return prompt
+
+
+class PickLockRequestBody:
+	extends Body
+	var encounter_id: int
+	var action_index: int
+	var action_label: String
+	var character_id: String
+	var character_name: String
+	var portrait_id: String
+	var chance_percent: int
+	var yellow_threshold: int
+	var green_threshold: int
+	var frame_rate: int
+	var time_limit_frames: int
+	var frames: Array[Array] = []
+
+	func to_data() -> Dictionary:
+		var serialized: Array[Array] = []
+		for frame: Array in frames:
+			serialized.append(frame.duplicate())
+		return {"encounterId": encounter_id, "actionIndex": action_index, "actionLabel": action_label, "characterId": character_id, "characterName": character_name, "portraitId": portrait_id, "chancePercent": chance_percent, "yellowThreshold": yellow_threshold, "greenThreshold": green_threshold, "frameRate": frame_rate, "timeLimitFrames": time_limit_frames, "frames": serialized}
+
+	func prompt_text() -> String:
+		return "Stop the tumblers when every marker reaches the gold zone."
 
 
 class ServiceRequestBody:
@@ -423,6 +463,8 @@ func is_supported_kind() -> bool:
 		CHARACTER_SELECTION: return body is CharacterSelectionRequestBody
 		ALLY_SELECTION: return body is SelectionRequestBody
 		WORD_AND_ACTION: return body is ComplexEncounterRequestBody
+		THIEF_ENCOUNTER: return body is ThiefEncounterRequestBody
+		PICK_LOCK: return body is PickLockRequestBody
 		SHOP: return body is ShopRequestBody
 		TEMPLE: return body is TempleRequestBody
 		BANK, POOLED_WEALTH_DEPARTURE: return body is BankRequestBody
@@ -434,7 +476,7 @@ func is_supported_kind() -> bool:
 
 
 static func kind_is_supported(request_kind: StringName) -> bool:
-	return request_kind in [ACKNOWLEDGE, AGE_UPDATE, YES_NO, INDEXED_CHOICE, ENCOUNTER_CHOICE, CHARACTER_SELECTION, ALLY_SELECTION, TREASURE_DISTRIBUTION, LEVEL_UP, WORD_AND_ACTION, SHOP, TEMPLE, BANK, POOLED_WEALTH_DEPARTURE, COMBAT, SESSION_LIFECYCLE]
+	return request_kind in [ACKNOWLEDGE, AGE_UPDATE, YES_NO, INDEXED_CHOICE, ENCOUNTER_CHOICE, CHARACTER_SELECTION, ALLY_SELECTION, TREASURE_DISTRIBUTION, LEVEL_UP, WORD_AND_ACTION, THIEF_ENCOUNTER, PICK_LOCK, SHOP, TEMPLE, BANK, POOLED_WEALTH_DEPARTURE, COMBAT, SESSION_LIFECYCLE]
 
 
 static func acknowledge(id: String, prompt: String, message_id: int = 0) -> InteractionRequest:
@@ -498,6 +540,8 @@ static func _from_payload(id: String, request_kind: StringName, payload: Diction
 			parsed = _parse_dialog_body(request_kind, payload)
 		INDEXED_CHOICE, ENCOUNTER_CHOICE, CHARACTER_SELECTION, ALLY_SELECTION, WORD_AND_ACTION:
 			parsed = _parse_selection_body(request_kind, payload)
+		THIEF_ENCOUNTER, PICK_LOCK:
+			parsed = _parse_thief_body(request_kind, payload)
 		SHOP:
 			parsed = _parse_shop_body(payload)
 		TEMPLE:
@@ -634,6 +678,55 @@ static func _parse_selection_body(request_kind: StringName, payload: Dictionary)
 		complex.spells.append(spell)
 	complex.can_back_out = payload["canBackOut"]
 	return complex
+
+
+static func _parse_thief_body(request_kind: StringName, payload: Dictionary) -> Body:
+	if request_kind == THIEF_ENCOUNTER:
+		var fields: Array[String] = ["encounterId", "prompt", "soundId", "characters"]
+		if not _fields_are_exact(payload, fields, fields) or not _required_ints(payload, ["encounterId", "soundId"]) or not _required_strings(payload, ["prompt"]) or not payload["characters"] is Array:
+			return null
+		var result := ThiefEncounterRequestBody.new()
+		result.encounter_id = int(payload["encounterId"])
+		result.prompt = payload["prompt"]
+		result.sound_id = int(payload["soundId"])
+		for entry: Variant in payload["characters"]:
+			var character := InteractionRequestValue.thief_character(entry)
+			if character == null:
+				return null
+			result.characters.append(character)
+		return result if result.encounter_id >= 0 and not result.characters.is_empty() else null
+	var fields: Array[String] = ["encounterId", "actionIndex", "actionLabel", "characterId", "characterName", "portraitId", "chancePercent", "yellowThreshold", "greenThreshold", "frameRate", "timeLimitFrames", "frames"]
+	if request_kind != PICK_LOCK or not _fields_are_exact(payload, fields, fields) or not _required_ints(payload, ["encounterId", "actionIndex", "chancePercent", "yellowThreshold", "greenThreshold", "frameRate", "timeLimitFrames"]) or not _required_strings(payload, ["actionLabel", "characterId", "characterName", "portraitId"]) or not payload["frames"] is Array:
+		return null
+	var lock := PickLockRequestBody.new()
+	lock.encounter_id = int(payload["encounterId"])
+	lock.action_index = int(payload["actionIndex"])
+	lock.action_label = payload["actionLabel"]
+	lock.character_id = payload["characterId"]
+	lock.character_name = payload["characterName"]
+	lock.portrait_id = payload["portraitId"]
+	lock.chance_percent = int(payload["chancePercent"])
+	lock.yellow_threshold = int(payload["yellowThreshold"])
+	lock.green_threshold = int(payload["greenThreshold"])
+	lock.frame_rate = int(payload["frameRate"])
+	lock.time_limit_frames = int(payload["timeLimitFrames"])
+	if lock.encounter_id < 0 or lock.action_index not in [2, 4, 6, 7] or lock.chance_percent < 1 or lock.chance_percent > 90 or lock.yellow_threshold < 20 or lock.green_threshold < lock.yellow_threshold or lock.green_threshold > 199 or lock.frame_rate < 1 or lock.frame_rate > 60 or lock.time_limit_frames < lock.frame_rate or payload["frames"].is_empty() or payload["frames"].size() > 421:
+		return null
+	var tumbler_count := -1
+	for frame_value: Variant in payload["frames"]:
+		if not frame_value is Array or frame_value.size() > 6:
+			return null
+		if tumbler_count < 0:
+			tumbler_count = frame_value.size()
+		elif frame_value.size() != tumbler_count:
+			return null
+		var frame: Array[int] = []
+		for position: Variant in frame_value:
+			if not _whole_number(position) or int(position) < 10 or int(position) > 208:
+				return null
+			frame.append(int(position))
+		lock.frames.append(frame)
+	return lock if lock.time_limit_frames == lock.frames.size() - 1 + lock.frame_rate else null
 
 
 static func _parse_reward_body(request_kind: StringName, payload: Dictionary) -> Body:

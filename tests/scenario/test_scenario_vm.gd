@@ -18,6 +18,7 @@ func run() -> void:
 	var content: RealmzContent = loaded.content
 	_test_scenario_wire_contracts()
 	_test_public_interaction_matrix(content)
+	_test_public_thief_encounter(content)
 	_test_public_session_resume(content)
 	_test_public_continuation_matrix(content)
 	_test_public_limits_and_errors(content)
@@ -115,6 +116,77 @@ func _test_public_interaction_matrix(content: RealmzContent) -> void:
 	assert_equal(acknowledged.state, ScenarioRuntimeOperationResult.State.COMPLETED, "acknowledgement releases the message operation")
 	var negative := api.execute_classic(ClassicActionDefinition.new(0, 1, 1, -1, false, []), "text.negative")
 	assert_equal([negative.state, negative.events[0].payload.get("classicClick")], [ScenarioRuntimeOperationResult.State.COMPLETED, false], "negative message publishes without inventing a click boundary")
+
+
+func _test_public_thief_encounter(content: RealmzContent) -> void:
+	var character := CharacterState.new("thief.hero", "Locksmith", 12, 12)
+	character.set_ability_value(7, 90)
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
+	var rng := RealmzRng.for_oracle(7)
+	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new())
+	var vm := ScenarioVm.new()
+	vm.configure(content.scenario)
+	assert_equal(vm.start_program("trigger:ap.fixture.complex", ScenarioExecutionContext.calling(&"action")).state, ScenarioVmResult.State.COMPLETED, "Complex Encounter fixture starts through the public VM")
+	var complex := vm.run(api)
+	var complex_actions: Array = complex.interaction.body.to_data().get("actions", []) if complex.interaction != null else []
+	assert_equal([complex.state, complex.interaction.kind, complex_actions.filter(func(value: Dictionary) -> bool: return value.get("kind") == "thief").size()], [ScenarioVmResult.State.WAITING, InteractionRequest.WORD_AND_ACTION, 1], "Complex Encounter exposes one dedicated Thief action rather than eight host-authored shortcuts")
+	var thief := vm.resume(InteractionResponse.from_data(complex.interaction.request_id, InteractionRequest.WORD_AND_ACTION, {"action": "thief"}), api)
+	assert_equal([thief.state, thief.interaction.kind if thief.interaction != null else &""], [ScenarioVmResult.State.WAITING, InteractionRequest.THIEF_ENCOUNTER], "Thief opens its source-shaped character and action workspace")
+	if thief.interaction == null:
+		return
+	var pick_lock := vm.resume(InteractionResponse.from_data(thief.interaction.request_id, InteractionRequest.THIEF_ENCOUNTER, {"action": "attempt", "characterId": character.id, "actionIndex": 2}), api)
+	assert_equal([pick_lock.state, pick_lock.interaction.kind if pick_lock.interaction != null else &"", rng.snapshot().draw_count], [ScenarioVmResult.State.WAITING, InteractionRequest.PICK_LOCK, 0], "Pick Lock previews its timed tumbler sequence without advancing gameplay RNG")
+	if pick_lock.interaction == null:
+		return
+	var lock_body := pick_lock.interaction.body as InteractionRequest.PickLockRequestBody
+	assert_not_null(lock_body, "Pick Lock request uses its strict typed body")
+	if lock_body == null:
+		return
+	assert_equal([lock_body.chance_percent, lock_body.time_limit_frames], [90, 210], "Disarm Trap reads Castle spec[7] and retains the final static countdown second")
+	var saved := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(vm.snapshot().to_data())))
+	assert_not_null(saved, "Pick Lock request and issuing continuation serialize at the modal boundary")
+	if saved == null:
+		return
+	var envelope := SessionSnapshot.new(content.campaign_id, content.package_hash, content.rules_version, 1, state, rng.snapshot(), saved, ScenarioActionState.new())
+	assert_true(SessionRestoreValidator.validate(content, envelope).ok, "Pick Lock pending state passes the complete transactional restore validator")
+	var forged_wire := saved.to_data()
+	forged_wire["pendingRequest"]["data"]["payload"]["frames"][0][0] = 208
+	var forged_vm := ScenarioVmSnapshot.from_data(forged_wire)
+	assert_not_null(forged_vm, "forged Pick Lock preview remains structurally valid wire data")
+	if forged_vm != null:
+		var forged_envelope := SessionSnapshot.new(content.campaign_id, content.package_hash, content.rules_version, 1, state, rng.snapshot(), forged_vm, ScenarioActionState.new())
+		assert_false(SessionRestoreValidator.validate(content, forged_envelope).ok, "restore rejects a structurally valid Pick Lock preview that does not match authoritative RNG state")
+	var restored_state := GameState.from_data(state.to_data())
+	var restored_rng := RealmzRng.for_oracle(1)
+	assert_true(restored_rng.restore(rng.snapshot()), "Pick Lock restores the source RNG position separately from presentation frames")
+	var restored_api := RealmzRuntimeApi.new(content, restored_state, restored_rng, ScenarioActionState.new())
+	var restored_vm := ScenarioVm.new()
+	restored_vm.configure(content.scenario)
+	assert_true(restored_vm.restore(saved), "Pick Lock restores through the public VM snapshot")
+	var selected_frame := lock_body.frames.size() - 1
+	var resolved := restored_vm.resume(InteractionResponse.from_data(saved.pending_request.request_id, InteractionRequest.PICK_LOCK, {"frameIndex": selected_frame}), restored_api)
+	assert_equal([resolved.state, resolved.interaction.kind if resolved.interaction != null else &""], [ScenarioVmResult.State.WAITING, InteractionRequest.ACKNOWLEDGE], "the fixture's nonpositive thief text adds no click before entering the authored Complex result")
+	assert_true(restored_rng.snapshot().draw_count > 0, "Committed Pick Lock replays the selected frame prefix through session-owned RNG")
+	assert_equal(restored_state.party.character_by_id(character.id).experience, 600, "successful interactive thief action awards 300 experience per authored tumbler")
+	var resolution: DomainEvent = null
+	for event: DomainEvent in resolved.events:
+		if event.kind == &"thief_action_resolved":
+			resolution = event
+			break
+	assert_not_null(resolution, "Pick Lock publishes one source-ordered action result")
+	if resolution != null:
+		assert_equal([resolution.payload.get("succeeded"), resolution.payload.get("frameIndex"), resolution.payload.get("positions"), resolution.payload.get("classicClick")], [true, selected_frame, lock_body.frames[selected_frame], false], "committed result matches the selected frame and preserves the signed non-click text")
+	var scout := CharacterState.new("thief.scout", "Scout", 12, 12)
+	scout.set_ability_value(5, 100)
+	var scout_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [scout]), RealmzClock.new())
+	var scout_api := RealmzRuntimeApi.new(content, scout_state, RealmzRng.for_oracle(1), ScenarioActionState.new())
+	var scout_vm := ScenarioVm.new()
+	scout_vm.configure(content.scenario)
+	assert_equal(scout_vm.start_program("trigger:ap.fixture.complex", ScenarioExecutionContext.calling(&"action")).state, ScenarioVmResult.State.COMPLETED, "non-lock thief proof starts through the same public VM")
+	var scout_complex := scout_vm.run(scout_api)
+	var scout_thief := scout_vm.resume(InteractionResponse.from_data(scout_complex.interaction.request_id, InteractionRequest.WORD_AND_ACTION, {"action": "thief"}), scout_api)
+	scout_vm.resume(InteractionResponse.from_data(scout_thief.interaction.request_id, InteractionRequest.THIEF_ENCOUNTER, {"action": "attempt", "characterId": scout.id, "actionIndex": 0}), scout_api)
+	assert_equal(scout_state.party.character_by_id(scout.id).experience, 0, "successful non-lock thief actions do not inherit Pick Lock experience")
 
 
 func _test_public_session_resume(content: RealmzContent) -> void:

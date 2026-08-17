@@ -86,11 +86,7 @@ func complex_encounter_request(encounter: ComplexEncounterDefinition, request_id
 	if encounter.thief:
 		var thief_encounter := _content.thief_encounter_by_id(encounter.thief_success)
 		if thief_encounter != null:
-			var flags := _game_state.thief_encounter_type_flags(thief_encounter)
-			var labels: Array[String] = ["Acrobatics", "Detect Trap", "Disarm Trap", "Hear Noise", "Force Lock", "Move Silently", "Pick Lock", "Pick Pocket"]
-			for index: int in labels.size():
-				if flags[index]:
-					actions.append({"id": "thief:%d" % index, "kind": "thief", "actionIndex": index, "label": labels[index]})
+			actions.append({"id": "thief", "kind": "thief", "label": "Thief action"})
 	if encounter.can_back_out:
 		actions.append({"id": "back", "kind": "back", "label": "Back out"})
 	if actions.is_empty():
