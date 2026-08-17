@@ -399,15 +399,15 @@ func _test_player_map_workspace() -> void:
 
 func _test_battle_weapon_mode_component() -> void:
 	var request := _fixture_request("battle.commands", InteractionRequest.COMBAT, {"actions": ["finish", "defend", "switch_weapon", "cast_spell", "use_item", "retreat"], "weaponMode": "missile", "weaponSwitch": {"enabled": true, "reason": "", "targetMode": "melee"}, "retreat": {"enabled": false, "reason": "An enemy is too close."}})
-	var component := BattleInteraction.new()
-	component.build(request)
-	var buttons := _buttons_in(component)
-	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Finish"), "combat keeps a distinct Finish command")
-	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Weapon: Melee"), "combat keeps the source-backed weapon toggle")
-	var escape := buttons.filter(func(button: Button) -> bool: return button.text == "Escape")
-	assert_equal(escape.size(), 1, "combat exposes one Escape command")
-	if not escape.is_empty(): assert_true(escape[0].disabled and not escape[0].tooltip_text.is_empty(), "unavailable retreat carries a typed reason")
-	assert_false(buttons.any(func(button: Button) -> bool: return button.text.begins_with("N ") or button.text.begins_with("Leave ")), "movement is owned by the battlefield instead of permanent direction buttons")
+	var component := BattleInteraction.new(); component.build(request)
+	var primary := component.find_child("BattlePrimaryCommands", true, false)
+	var secondary := component.find_child("BattleTurnCommands", true, false)
+	assert_equal(_direct_buttons_in(primary).map(func(button: Button) -> String: return button.text), ["Weapon: Melee", "Guard", "Fire", "Spells", "Scrolls", "Items", "Finish"], "primary combat command slots remain fixed and source-backed")
+	assert_equal(_direct_buttons_in(secondary).map(func(button: Button) -> String: return button.text), ["Escape", "Auto Turn", "Delay", "Bandage", "Turn Undead", "Undo"], "turn command slots remain fixed even when actions are unavailable")
+	var initiative := component.find_child("BattleInitiativeOrder", true, false)
+	assert_equal(_direct_buttons_in(initiative).map(func(button: Button) -> String: return button.text), ["NOW\nHero", "NEXT\nGoblin"], "the compact initiative strip starts at the active actor and exposes who acts next")
+	var escape := component.find_child("CombatCommandEscape", true, false) as Button
+	assert_true(escape.disabled and not escape.tooltip_text.is_empty(), "unavailable retreat carries a typed reason")
 	assert_true(_labels_in(component).any(func(text: String) -> bool: return text.contains("Goblin")), "the target panel is visible beside the command deck")
 	component.free()
 func _test_battle_typed_option_contracts() -> void:

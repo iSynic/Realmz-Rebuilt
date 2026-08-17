@@ -1,6 +1,9 @@
 class_name BattleInteraction
 extends InteractionComponent
 
+const MAX_VISIBLE_TURNS := 6
+const COMMAND_HEIGHT := 32.0
+
 var _actor_id: String = ""
 var _combatants: Array[InteractionRequestValue.Combatant] = []
 var _inspected_index: int = -1
@@ -39,7 +42,7 @@ func build(request: InteractionRequest) -> void:
 	_mode_panels.assign(mode_panels)
 	var overview := VBoxContainer.new()
 	overview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	overview.add_theme_constant_override("separation", 8)
+	overview.add_theme_constant_override("separation", 5)
 	add_child(overview)
 	_build_combatant_information(body, targets, overview)
 	_add_primary_action_row(body, actor_id, action_ids, targets, target_panel, spell_panel, scroll_panel, item_panel, bandage_panel, mode_panels, overview)
@@ -326,17 +329,29 @@ func _read_combatants(value: Array[InteractionRequestValue.Combatant]) -> void:
 
 func _build_combatant_information(body: InteractionRequest.CombatRequestBody, targets: Array[InteractionRequestValue.CombatTarget], parent: Container) -> void:
 	var information := HBoxContainer.new()
+	information.name = "BattleTurnSummary"
 	information.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	information.add_theme_constant_override("separation", 16)
+	information.custom_minimum_size.y = 68.0
+	information.add_theme_constant_override("separation", 6)
+	var active_panel := _summary_panel("ActiveCombatant", 0.8)
+	active_panel.custom_minimum_size.x = 205.0
 	var active_label := Label.new()
 	active_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	active_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	active_label.text = "Active • %s\n%d attack%s • %d movement • %s\nEnemies left • %d" % [_combatant_name(_actor_id), body.attack_units_remaining, "" if body.attack_units_remaining == 1 else "s", body.movement_remaining, String(body.weapon_mode).capitalize(), body.enemies_remaining]
-	information.add_child(active_label)
+	active_label.add_theme_color_override("font_color", Color("f8dc52"))
+	active_panel.add_child(active_label)
+	information.add_child(active_panel)
+	information.add_child(_build_initiative_panel(body.round_number))
+	var inspected_panel := _summary_panel("InspectedCombatant", 0.95)
+	inspected_panel.custom_minimum_size.x = 260.0
 	_inspected_label = Label.new()
 	_inspected_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_inspected_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	information.add_child(_inspected_label)
+	_inspected_label.max_lines_visible = 3
+	_inspected_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	inspected_panel.add_child(_inspected_label)
+	information.add_child(inspected_panel)
 	parent.add_child(information)
 	var default_id := _actor_id
 	if not targets.is_empty(): default_id = targets[0].id
@@ -344,8 +359,10 @@ func _build_combatant_information(body: InteractionRequest.CombatRequestBody, ta
 	if _inspected_index < 0 and not _combatants.is_empty():
 		_inspected_index = 0
 	_refresh_inspected_label()
-	var navigation := HFlowContainer.new()
+	var navigation := HBoxContainer.new()
+	navigation.name = "BattleInspectionCommands"
 	navigation.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	navigation.add_theme_constant_override("separation", 5)
 	parent.add_child(navigation)
 	_add_presentation_button(navigation, "Previous", &"inspect_previous")
 	_add_presentation_button(navigation, "Center Active", &"center_active")
@@ -355,8 +372,9 @@ func _build_combatant_information(body: InteractionRequest.CombatRequestBody, ta
 
 func _add_presentation_button(parent: Container, text: String, action: StringName) -> void:
 	var button := Button.new()
+	button.name = "CombatPresentation%s" % String(action).to_pascal_case()
 	button.text = text
-	button.custom_minimum_size.y = 30.0
+	button.custom_minimum_size.y = 28.0
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.pressed.connect(func() -> void: _perform_presentation_action(action))
 	parent.add_child(button)
@@ -400,6 +418,7 @@ func _refresh_inspected_label() -> void:
 	if not combatant.vulnerabilities.is_empty(): defenses.append("Vulnerable: %s" % ", ".join(combatant.vulnerabilities))
 	var defense_line := "\n%s" % " • ".join(defenses) if not defenses.is_empty() else ""
 	_inspected_label.text = "Shown • %s\n%s\n%s%s" % [combatant.name, " • ".join(details), " • ".join(secondary), defense_line]
+	_inspected_label.tooltip_text = _inspected_label.text
 
 
 func _combatant_name(combatant_id: String) -> String:
@@ -424,46 +443,120 @@ func accepts_spatial_input() -> bool:
 
 
 func _add_primary_action_row(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: Control, spell_panel: Control, scroll_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
-	var action_row := HFlowContainer.new()
-	action_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	overview.add_child(action_row)
-	if action_ids.has("switch_weapon"):
-		var target_mode := String(body.weapon_switch.target_mode)
-		add_response_to(action_row, "Weapon: %s" % target_mode.capitalize(), InteractionResponse.CombatBody.new(&"switch_weapon", actor_id))
-	if action_ids.has("defend"):
-		add_response_to(action_row, "Guard", InteractionResponse.CombatBody.new(&"defend", actor_id))
+	var primary_row := HBoxContainer.new()
+	primary_row.name = "BattlePrimaryCommands"
+	primary_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	primary_row.add_theme_constant_override("separation", 5)
+	overview.add_child(primary_row)
+	var can_switch := action_ids.has("switch_weapon") and body.weapon_switch.enabled
+	var shown_weapon_mode := String(body.weapon_switch.target_mode) if can_switch else String(body.weapon_mode)
+	_add_fixed_response(primary_row, "Weapon", "Weapon: %s" % shown_weapon_mode.capitalize(), InteractionResponse.CombatBody.new(&"switch_weapon", actor_id), can_switch, body.weapon_switch.reason)
+	_add_fixed_response(primary_row, "Guard", "Guard", InteractionResponse.CombatBody.new(&"defend", actor_id), action_ids.has("defend"), "Guard is unavailable during this activation.")
 	var weapon_mode := String(body.weapon_mode)
 	var target_enabled: bool = action_ids.has("attack") and not targets.is_empty()
 	var target_reason := body.melee_attack_reason if weapon_mode == "melee" else body.ranged_attack.reason
-	_add_panel_toggle(action_row, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason)
-	_add_panel_toggle(action_row, "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and not body.spell_casts.is_empty(), body.spell_cast_reason)
-	_add_panel_toggle(action_row, "Scrolls", scroll_panel, mode_panels, overview, action_ids.has("use_scroll") and not body.scroll_casts.is_empty(), body.scroll_cast_reason, 647)
-	_add_panel_toggle(action_row, "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and not body.item_casts.is_empty(), body.item_cast_reason)
-	if action_ids.has("finish"):
-		add_response_to(action_row, "Finish", InteractionResponse.CombatBody.new(&"finish", actor_id))
+	_name_command(_add_panel_toggle(primary_row, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason), "Attack")
+	_name_command(_add_panel_toggle(primary_row, "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and not body.spell_casts.is_empty(), body.spell_cast_reason), "Spells")
+	_name_command(_add_panel_toggle(primary_row, "Scrolls", scroll_panel, mode_panels, overview, action_ids.has("use_scroll") and not body.scroll_casts.is_empty(), body.scroll_cast_reason, 647), "Scrolls")
+	_name_command(_add_panel_toggle(primary_row, "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and not body.item_casts.is_empty(), body.item_cast_reason), "Items")
+	_add_fixed_response(primary_row, "Finish", "Finish", InteractionResponse.CombatBody.new(&"finish", actor_id), action_ids.has("finish"), "Finish is unavailable during this activation.")
+	var turn_row := HBoxContainer.new()
+	turn_row.name = "BattleTurnCommands"
+	turn_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	turn_row.add_theme_constant_override("separation", 5)
+	overview.add_child(turn_row)
 	var retreat_enabled := action_ids.has("retreat") and body.retreat.enabled
 	var retreat_reason := body.retreat.reason
-	add_response_to(action_row, "Escape", InteractionResponse.CombatBody.new(&"retreat", actor_id), retreat_enabled, retreat_reason)
-	_add_classic_turn_commands(action_row, body, actor_id, bandage_panel, mode_panels, overview)
+	_add_fixed_response(turn_row, "Escape", "Escape", InteractionResponse.CombatBody.new(&"retreat", actor_id), retreat_enabled, retreat_reason)
+	_add_classic_turn_commands(turn_row, body, actor_id, bandage_panel, mode_panels, overview)
 
 
 func _add_classic_turn_commands(parent: Container, body: InteractionRequest.CombatRequestBody, actor_id: String, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
-	add_response_to(parent, "Auto", InteractionResponse.CombatBody.new(&"auto", actor_id), body.auto_turn.enabled, body.auto_turn.reason)
+	_add_fixed_response(parent, "AutoTurn", "Auto Turn", InteractionResponse.CombatBody.new(&"auto", actor_id), body.auto_turn.enabled, body.auto_turn.reason)
 
-	add_response_to(parent, "Delay", InteractionResponse.CombatBody.new(&"delay", actor_id), body.delay.enabled, body.delay.reason)
+	_add_fixed_response(parent, "Delay", "Delay", InteractionResponse.CombatBody.new(&"delay", actor_id), body.delay.enabled, body.delay.reason)
 
 	var bandage_enabled := body.bandage.enabled and not body.bandage_targets.is_empty()
 	var bandage_reason := body.bandage.reason
 	if body.bandage_targets.is_empty() and body.bandage.enabled:
 		bandage_reason = "No legal Bandage recipient is available."
 	_add_bandage_panel(bandage_panel, actor_id, body.bandage_targets)
-	_add_panel_toggle(parent, "Bandage", bandage_panel, mode_panels, overview, bandage_enabled, bandage_reason)
+	_name_command(_add_panel_toggle(parent, "Bandage", bandage_panel, mode_panels, overview, bandage_enabled, bandage_reason), "Bandage")
 
-	var turn_label := "Turn Undead"
-	if body.turn_undead.enabled: turn_label = "Turn Undead (%d)" % body.turn_undead_targets.size()
-	add_response_to(parent, turn_label, InteractionResponse.CombatBody.new(&"turn_undead", actor_id), body.turn_undead.enabled, body.turn_undead.reason)
+	_add_fixed_response(parent, "TurnUndead", "Turn Undead", InteractionResponse.CombatBody.new(&"turn_undead", actor_id), body.turn_undead.enabled, body.turn_undead.reason)
 
-	add_response_to(parent, "Undo", InteractionResponse.CombatBody.new(&"undo", actor_id), body.undo.enabled, body.undo.reason)
+	_add_fixed_response(parent, "Undo", "Undo", InteractionResponse.CombatBody.new(&"undo", actor_id), body.undo.enabled, body.undo.reason)
+
+
+func _summary_panel(panel_name: String, stretch_ratio: float) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.name = panel_name
+	panel.theme_type_variation = &"ClassicInset"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = stretch_ratio
+	panel.clip_contents = true
+	return panel
+
+
+func _build_initiative_panel(round_number: int) -> PanelContainer:
+	var panel := _summary_panel("BattleInitiative", 1.55)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 2)
+	var heading := Label.new()
+	heading.text = "Turn order • Round %d" % round_number
+	heading.add_theme_color_override("font_color", Color("63d8e7"))
+	heading.add_theme_font_size_override("font_size", 11)
+	column.add_child(heading)
+	var turns := HBoxContainer.new()
+	turns.name = "BattleInitiativeOrder"
+	turns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	turns.add_theme_constant_override("separation", 3)
+	column.add_child(turns)
+	panel.add_child(column)
+	var ordered := _ordered_combatants_from_active()
+	for index: int in mini(ordered.size(), MAX_VISIBLE_TURNS):
+		var combatant := ordered[index]
+		var button := Button.new()
+		button.name = "Initiative%s" % combatant.id.to_pascal_case()
+		button.text = "%s\n%s" % ["NOW" if index == 0 else "NEXT" if index == 1 else str(index + 1), combatant.name]
+		button.tooltip_text = "Current actor" if index == 0 else "Upcoming actor %d" % index
+		button.custom_minimum_size.y = 34.0
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.add_theme_font_size_override("font_size", 10)
+		if index == 0:
+			button.add_theme_color_override("font_color", Color("f8dc52"))
+		var combatant_id := combatant.id
+		button.pressed.connect(func() -> void:
+			inspect_combatant(combatant_id)
+			combatant_focus_requested.emit(combatant_id, true)
+		)
+		turns.add_child(button)
+	return panel
+
+
+func _ordered_combatants_from_active() -> Array[InteractionRequestValue.Combatant]:
+	var result: Array[InteractionRequestValue.Combatant] = []
+	if _combatants.is_empty():
+		return result
+	var active_index := 0
+	for index: int in _combatants.size():
+		if _combatants[index].id == _actor_id:
+			active_index = index
+			break
+	for offset: int in _combatants.size():
+		result.append(_combatants[(active_index + offset) % _combatants.size()])
+	return result
+
+
+func _add_fixed_response(parent: Container, command_name: String, label: String, body: InteractionResponse.Body, enabled: bool, reason: String) -> Button:
+	var button := add_response_to(parent, label, body, enabled, reason)
+	_name_command(button, command_name)
+	return button
+
+
+func _name_command(button: Button, command_name: String) -> void:
+	button.name = "CombatCommand%s" % command_name
+	button.custom_minimum_size.y = COMMAND_HEIGHT
 
 
 func _add_bandage_panel(parent: Control, actor_id: String, targets: Array[InteractionRequestValue.CombatTarget]) -> void:
@@ -496,7 +589,7 @@ func _add_bandage_panel(parent: Control, actor_id: String, targets: Array[Intera
 func _add_panel_toggle(parent: Container, label: String, panel: Control, panels: Array[Control], overview: Control, enabled: bool, reason: String, presentation_sound_id: int = 0) -> Button:
 	var button := Button.new()
 	button.text = label
-	button.custom_minimum_size.y = 36.0
+	button.custom_minimum_size.y = COMMAND_HEIGHT
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.disabled = not enabled
 	button.tooltip_text = reason if not enabled else ""
