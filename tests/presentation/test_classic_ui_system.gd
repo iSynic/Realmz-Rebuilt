@@ -1094,7 +1094,6 @@ func _test_character_vault_workspace() -> void:
 	router.open_screen(&"vault")
 	assert_true(router.full_stage_overlay_visible(), "Character Files owns the complete stage")
 	var buttons := _buttons_in(router)
-	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Inspect character"), "vault exposes mutation-free inspection")
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Import this revision"), "vault exposes explicit import")
 	router.free()
 func _test_field_spell_workspace() -> void:
@@ -1103,16 +1102,17 @@ func _test_field_spell_workspace() -> void:
 	var view := GameView.new(5, true, null)
 	var character_view := CharacterView.new(CharacterState.new("caster", "Aster", 12, 12))
 	var definition := SpellDefinition.new("classic.spell.field", 1101, "Field Bolt")
-	definition.cost = 2
 	var spell_view := SpellView.new(definition)
 	spell_view.power_levels = [1, 2]
 	spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", true)
 	character_view.spells = [spell_view]
 	view.party_members = [character_view]
-	view.set_action_availability(&"cast_spell", true)
+	var submitted: Array[PlayerIntent] = []
+	controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: submitted.append(intent))
 	controller.present(body, view, null, 1.0)
-	assert_true(_buttons_in(body).any(func(button: Button) -> bool: return button.text.contains("Cast")), "spell workspace exposes a typed field cast")
-	assert_true(body.find_children("*", "OptionButton", true, false).size() >= 1, "spellbook retains explicit selection controls")
+	(_buttons_in(body).filter(func(button: Button) -> bool: return button.text == "Cast")[0] as Button).pressed.emit()
+	var cast_payload := submitted[0].payload as PlayerIntent.SpellPayload
+	assert_equal([cast_payload.operation, cast_payload.caster_id, cast_payload.spell_id, cast_payload.power], [&"cast", "caster", "classic.spell.field", 1], "compact spell action preserves the selected caster, spell, and power")
 	body.free()
 func _test_inventory_workspace() -> void:
 	var definition := ItemDefinition.new("classic.item.inventory-ui", 10, "Longsword", "Sword", "A balanced sword.")

@@ -104,6 +104,11 @@ func _init() -> void:
 		if owner != null:
 			owner.sound_requested.emit(sound_id, wait_for_completion, stop_existing)
 	)
+	_spells_controller.refresh_requested.connect(func() -> void:
+		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		if owner != null:
+			owner.refresh_requested.emit()
+	)
 
 
 func set_view(view: GameView) -> void:
@@ -113,6 +118,7 @@ func set_view(view: GameView) -> void:
 func reset_campaign() -> void:
 	_character_controller.reset()
 	_inventory_controller.reset()
+	_spells_controller.reset()
 
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
