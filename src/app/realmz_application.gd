@@ -461,6 +461,8 @@ func _on_interaction_response_submitted(response: InteractionResponse) -> void:
 		return
 	var step := session_controller.respond(response)
 	_present_step_status(step)
+	if step.state == SessionStep.State.COMPLETED and step.events.is_empty() and session_controller.view().pending_interaction == null:
+		_shell_presenter.set_status("")
 
 
 func _respond_host_interaction(response: InteractionResponse) -> void:
