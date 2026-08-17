@@ -227,6 +227,7 @@ Blockers: **1**. Major gaps: **18**.
 
 - `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate.
 - `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished.
+- `classic.exploration.travel` - Ordinary AOGM dungeon presentation shows two solid green rectangular cells that do not visually match the surrounding Classic dungeon composition.
 - `classic.startup.end-adventure` - Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
 - `classic.system.preferences` - Classic's reduced-sound preference is not represented.
 - `classic.system.quit` - Typed Quit choices and host transaction ordering are characterized, but the real window-close notification and save-repository failure path lack composition-root proof.
