@@ -215,10 +215,27 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 		&"bank_action", &"pooled_wealth_departure":
 			return BankInteraction.new()
 		&"combat_action":
-			return BattleInteraction.new()
+			var battle := BattleInteraction.new()
+			battle.configure(_combatant_icon_textures(game_view, media))
+			return battle
 		&"session_lifecycle":
 			return LifecycleInteractionScript.new()
 	return null
+
+
+func _combatant_icon_textures(game_view: GameView, media: ClassicMediaCatalog) -> Dictionary:
+	var result: Dictionary = {}
+	if game_view == null or game_view.combat_view == null or media == null:
+		return result
+	for character: CharacterView in game_view.party_members:
+		var texture := media.image_texture(media.asset_by_id(character.combat_icon_id))
+		if texture != null:
+			result[character.id] = texture
+	for monster: MonsterView in game_view.combat_view.monsters:
+		var texture := media.image_texture(media.asset_by_resource(monster.icon_resource_type, monster.icon_id))
+		if texture != null:
+			result[monster.id] = texture
+	return result
 
 
 func _submit_body(body: InteractionResponse.Body) -> void:

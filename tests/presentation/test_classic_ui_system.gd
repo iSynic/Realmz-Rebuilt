@@ -399,16 +399,15 @@ func _test_player_map_workspace() -> void:
 
 func _test_battle_weapon_mode_component() -> void:
 	var request := _fixture_request("battle.commands", InteractionRequest.COMBAT, {"actions": ["finish", "defend", "switch_weapon", "cast_spell", "use_item", "retreat"], "weaponMode": "missile", "weaponSwitch": {"enabled": true, "reason": "", "targetMode": "melee"}, "retreat": {"enabled": false, "reason": "An enemy is too close."}})
-	var component := BattleInteraction.new(); component.build(request)
-	var primary := component.find_child("BattlePrimaryCommands", true, false)
-	var secondary := component.find_child("BattleTurnCommands", true, false)
+	var turn_icon := GradientTexture1D.new(); var component := BattleInteraction.new(); component.theme = load("res://src/presentation/classic_ui_theme.tres"); component.configure({"hero": turn_icon, "monster": turn_icon}); component.build(request)
+	var primary := component.find_child("BattlePrimaryCommands", true, false); var secondary := component.find_child("BattleTurnCommands", true, false)
 	assert_equal(_direct_buttons_in(primary).map(func(button: Button) -> String: return button.text), ["Weapon: Melee", "Guard", "Fire", "Spells", "Scrolls", "Items", "Finish"], "primary combat command slots remain fixed and source-backed")
 	assert_equal(_direct_buttons_in(secondary).map(func(button: Button) -> String: return button.text), ["Escape", "Auto Turn", "Delay", "Bandage", "Turn Undead", "Undo"], "turn command slots remain fixed even when actions are unavailable")
 	var initiative := component.find_child("BattleInitiativeOrder", true, false)
-	assert_equal(_direct_buttons_in(initiative).map(func(button: Button) -> String: return button.text), ["NOW\nHero", "NEXT\nGoblin"], "the compact initiative strip starts at the active actor and exposes who acts next")
+	assert_equal([_direct_buttons_in(initiative).map(func(button: Button) -> String: return button.text), _direct_buttons_in(initiative).all(func(button: Button) -> bool: return button.icon == turn_icon)], [["NOW", "NEXT"], true], "the compact initiative strip starts at the active actor and uses supplied combat icons")
 	var escape := component.find_child("CombatCommandEscape", true, false) as Button
 	assert_true(escape.disabled and not escape.tooltip_text.is_empty(), "unavailable retreat carries a typed reason")
-	assert_true(_labels_in(component).any(func(text: String) -> bool: return text.contains("Goblin")), "the target panel is visible beside the command deck")
+	assert_true(_labels_in(component).any(func(text: String) -> bool: return text.contains("Goblin")) and component.get_combined_minimum_size().y <= 176.0, "target facts and both command rows fit the default Classic combat region")
 	component.free()
 func _test_battle_typed_option_contracts() -> void:
 	var request := _fixture_request("battle.staged-spell", InteractionRequest.COMBAT, {"actions": ["cast_spell", "use_item", "use_scroll"], "spellCasts": [{"spellId": "classic.spell.1306", "spellName": "Brimstones", "power": 1, "cost": 2, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 1, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, 0]], "legalTargetCoordinates": []}, {"spellId": "classic.spell.1306", "spellName": "Brimstones", "power": 2, "cost": 4, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 2, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, 0], [0, 1]], "legalTargetCoordinates": []}], "spellCastReason": "", "itemCasts": [], "scrollCasts": [], "itemCastReason": "No legal item.", "scrollCastReason": "No legal scroll."})

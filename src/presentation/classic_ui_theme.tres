@@ -1,4 +1,4 @@
-[gd_resource type="Theme" load_steps=25 format=3]
+[gd_resource type="Theme" load_steps=30 format=3]
 
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-raised-frame.png" id="1_raised"]
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-inset-frame.png" id="2_inset"]
@@ -111,6 +111,74 @@ content_margin_right = 9.0
 content_margin_bottom = 5.0
 modulate_color = Color(0.35, 0.37, 0.37, 0.82)
 
+[sub_resource type="StyleBoxTexture" id="BattleSummaryInset"]
+texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 6.0
+content_margin_top = 3.0
+content_margin_right = 6.0
+content_margin_bottom = 3.0
+
+[sub_resource type="StyleBoxTexture" id="BattleButtonNormal"]
+texture = ExtResource("1_raised")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 5.0
+content_margin_top = 2.0
+content_margin_right = 5.0
+content_margin_bottom = 2.0
+modulate_color = Color(0.76, 0.79, 0.79, 1)
+
+[sub_resource type="StyleBoxTexture" id="BattleButtonHover"]
+texture = ExtResource("1_raised")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 5.0
+content_margin_top = 2.0
+content_margin_right = 5.0
+content_margin_bottom = 2.0
+modulate_color = Color(0.92, 0.98, 1, 1)
+
+[sub_resource type="StyleBoxTexture" id="BattleButtonPressed"]
+texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 6.0
+content_margin_top = 3.0
+content_margin_right = 4.0
+content_margin_bottom = 1.0
+
+[sub_resource type="StyleBoxTexture" id="BattleButtonDisabled"]
+texture = ExtResource("2_inset")
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+texture_margin_left = 8.0
+texture_margin_top = 8.0
+texture_margin_right = 8.0
+texture_margin_bottom = 8.0
+content_margin_left = 5.0
+content_margin_top = 2.0
+content_margin_right = 5.0
+content_margin_bottom = 2.0
+modulate_color = Color(0.35, 0.37, 0.37, 0.82)
+
 [sub_resource type="StyleBoxFlat" id="Focus"]
 bg_color = Color(0, 0, 0, 0)
 border_width_left = 2
@@ -212,6 +280,15 @@ Button/styles/hover = SubResource("ButtonHover")
 Button/styles/pressed = SubResource("ButtonPressed")
 Button/styles/disabled = SubResource("ButtonDisabled")
 Button/styles/focus = SubResource("Focus")
+BattleCommandButton/base_type = &"Button"
+BattleCommandButton/font_sizes/font_size = 13
+BattleCommandButton/styles/normal = SubResource("BattleButtonNormal")
+BattleCommandButton/styles/hover = SubResource("BattleButtonHover")
+BattleCommandButton/styles/pressed = SubResource("BattleButtonPressed")
+BattleCommandButton/styles/disabled = SubResource("BattleButtonDisabled")
+BattleCommandButton/styles/focus = SubResource("Focus")
+BattleSummaryInset/base_type = &"PanelContainer"
+BattleSummaryInset/styles/panel = SubResource("BattleSummaryInset")
 CheckButton/colors/font_color = Color(0.92, 0.92, 0.88, 1)
 CheckButton/fonts/font = ExtResource("3_ui")
 Label/colors/font_color = Color(0.91, 0.91, 0.87, 1)
