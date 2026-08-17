@@ -15,7 +15,7 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 **Classic inventory Split/Join implementation and AOGM item-workspace certification** (`classic-inventory-split-join-certification`)
 
-Close the two missing player-visible inventory transformations while certifying adjacent item inspection, dropping, and exact-instance trading through ordinary AOGM play. Split and Join remain source-gated until bounded Castle fixtures settle load, overflow, and exact-instance behavior; the three certification targets reuse the same item workspace and party inventory route. Equipment remains outside this batch because its Castle oracle is still explicitly required.
+Split and Join are source-settled, implemented, and exercised alongside Inspect, confirmed Drop, and exact-instance Trade through one ordinary AOGM item-workspace route. Every target now has AOGM ordinary-play evidence; presentation remains functional rather than accepted, so the audit does not promote these workflows to certified without user acceptance. Equipment remains outside this batch because its Castle oracle is still explicitly required.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
@@ -138,7 +138,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: | ---: |
 | synthetic | 67 | 7 |
 | route-harness | 39 | 2 |
-| aogm-ordinary | 33 | 3 |
+| aogm-ordinary | 37 | 3 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
