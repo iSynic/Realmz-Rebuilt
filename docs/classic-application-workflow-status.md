@@ -13,17 +13,17 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM charged-item, field-magic, and acquired-map ordinary-play certification** (`aogm-field-application-certification`)
+**AOGM exploration continuation and Fast Spell certification** (`aogm-exploration-continuation`)
 
-These are the highest-priority source-settled AOGM application paths still lacking ordinary-play evidence. The batch exercises existing charged-item, field/camp spell and scroll, and acquired-map workflows through one exploration-facing route before investigating deferred special-item or malformed-data branches. Rare discard, case-transfer, random-power, and exact-pixel map variants remain explicit parity gaps unless ordinary AOGM play reaches them.
+The completed field-application route leaves one source-settled AOGM certification surface and two adjacent exploration continuations as the highest-priority reachable work. The batch certifies ordinary Fast Spell input, settles the remaining blocked-attempt timing families, and proves timed-program relocation through the complete scheduler without reopening unrelated item, map, or combat parity branches.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.inventory.use-item` | implementation | aogm-major-partial | - | GAP-INV-003 |
-| `classic.spellcasting.field-camp-cast` | implementation | aogm-major-partial | - | GAP-SPELL-002 |
-| `classic.maps.view-acquired` | certification | aogm-certification | aogm-ordinary | GAP-MAP-011 |
+| `classic.exploration.fast-spell` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.exploration.travel` | implementation | aogm-major-partial | - | GAP-EXP-006 |
+| `classic.scenario.random-timed-encounter` | implementation | aogm-major-partial | - | GAP-SCEN-004 |
 
 ### Batch count delta
 
@@ -136,13 +136,13 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: | ---: |
 | synthetic | 67 | 7 |
 | route-harness | 39 | 2 |
-| aogm-ordinary | 37 | 3 |
+| aogm-ordinary | 40 | 3 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **16**.
+Blockers: **1**. Major gaps: **15**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -152,14 +152,13 @@ Blockers: **1**. Major gaps: **16**.
 - **major** `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
 - **major** `classic.exploration.travel` - Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved. Next: Use controlled fixtures for zero/negative land tiles, boat/shore cancellation, special dungeon wall bits, and attempted-coordinate timed gates before broadening the topology result.
 - **major** `classic.inventory.identify-item` - Shop identification works, but non-shop identification remains unclassified after removing the redundant generic intent. Next: Trace spell, item, and scenario identification paths and implement only the source-backed entry points that exist.
-- **major** `classic.inventory.use-item` - Fixed-power charged items and field/combat scroll use now preserve exact targets, charges/load, five-slot state, fixed power, action cost, sound, save/resume, and transactional cancellation; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit. Next: Exercise an ordinary AOGM charged item and combat scroll route, then characterize discard, case-transfer, door/XAP, random-power combat, and broader special behavior separately.
+- **major** `classic.inventory.use-item` - Ordinary AOGM play proves a fixed-power party-state Torch and a saveable field scroll target/consumption path; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit. Next: Characterize discard, case-transfer, door/XAP, random-power combat, battlefield-area/repeated targeting, and broader special behavior only when parity or a reachable campaign requires each branch.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
-- **major** `classic.maps.view-acquired` - Acquisition and browsing have synthetic proof but no ordinary AOGM acceptance. Next: Acquire an AOGM player map, save and reload at the immediate display boundary, then browse it from Maps/Notes through the ordinary shell.
 - **major** `classic.rewards.treasure-distribution` - Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced. Next: Use controlled Castle RNG fixtures for ordinary, XP-only, and bonus-treasure battle rewards before implementing or correcting the random drops.
 - **major** `classic.scenario.complex-interaction` - Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
 - **major** `classic.scenario.random-timed-encounter` - Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture. Next: Add a synthetic timed AP that changes map or coordinate, yields, applies any source-owned AP destination semantics, resumes the remaining scan, and performs the final random check at the resulting location.
-- **major** `classic.spellcasting.field-camp-cast` - Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Exercise field and combat scroll workflows in ordinary AOGM play, then implement discard/case-transfer branches only from bounded differential evidence.
+- **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Implement discard, case-transfer, allied-target, and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
 ## Oracle-required unknowns
@@ -181,10 +180,7 @@ Blockers: **1**. Major gaps: **16**.
 
 - `classic.combat.resolve-outcome` - Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
 - `classic.exploration.travel` - Ordinary positive-tile blocked land movement now advances the attempted tile time and runs current-cell random checks, while zero/negative tiles, boat/shore cancellation, special dungeon walls, and timed-location deltas remain unresolved.
-- `classic.inventory.use-item` - Fixed-power charged items and field/combat scroll use now preserve exact targets, charges/load, five-slot state, fixed power, action cost, sound, save/resume, and transactional cancellation; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit.
-- `classic.maps.view-acquired` - Acquisition and browsing have synthetic proof but no ordinary AOGM acceptance.
 - `classic.scenario.random-timed-encounter` - Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture.
-- `classic.spellcasting.field-camp-cast` - Field casting, camp mode, five-slot persistence, parchment-backed Make Scroll, and transactional no-SP field/combat scroll use are implemented; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 
 ### other-campaign
 
@@ -205,10 +201,12 @@ Blockers: **1**. Major gaps: **16**.
 - `classic.combat.resolve-outcome` - Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end.
 - `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved.
 - `classic.inventory.identify-item` - Shop identification works, but non-shop identification remains unclassified after removing the redundant generic intent.
+- `classic.inventory.use-item` - Ordinary AOGM play proves a fixed-power party-state Torch and a saveable field scroll target/consumption path; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit.
 - `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
 - `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle.
 - `classic.rewards.treasure-distribution` - Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced.
 - `classic.scenario.complex-interaction` - Thief encounter action availability and result routing are not fully traced or represented.
+- `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.authored-journal` - Castle's Auto Note preference and unsafe journal cursor boundary remain outside the verified authored-journal subset.
 - `classic.maps.location-notes` - Castle's two dialog exit labels and exact cancellation semantics are not established by source alone.
@@ -222,6 +220,7 @@ Blockers: **1**. Major gaps: **16**.
 - `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate.
 - `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished.
 - `classic.exploration.travel` - Ordinary AOGM dungeon presentation shows two solid green rectangular cells that do not visually match the surrounding Classic dungeon composition.
+- `classic.maps.view-acquired` - Ordinary AOGM acquisition, interaction-boundary restore, reward completion, persistence, and Maps/Notes browsing are proven, but the acquired-map presentation has not been user-accepted.
 - `classic.startup.end-adventure` - Save-before-close ordering is characterized through the host transaction and repositories separately, but has no full composition-root failure-injection test.
 - `classic.system.preferences` - Classic's reduced-sound preference is not represented.
 - `classic.system.quit` - Typed Quit choices and host transaction ordering are characterized, but the real window-close notification and save-repository failure path lack composition-root proof.
