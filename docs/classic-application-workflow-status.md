@@ -13,17 +13,19 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Ordinary AOGM application entry, picker, and exit certification** (`aogm-application-entry-exit-certification`)
+**Classic inventory Split/Join implementation and AOGM item-workspace certification** (`classic-inventory-split-join-certification`)
 
-Move beyond services and close three adjacent ordinary-application proof gaps: complete the campaign-aware five-step creator, exercise a source-backed picker through normal play, and end the adventure cleanly. Shop and Temple are intentionally excluded; native shop empty-slot provenance remains in the parity queue.
+Close the two missing player-visible inventory transformations while certifying adjacent item inspection, dropping, and exact-instance trading through ordinary AOGM play. Split and Join remain source-gated until bounded Castle fixtures settle load, overflow, and exact-instance behavior; the three certification targets reuse the same item workspace and party inventory route. Equipment remains outside this batch because its Castle oracle is still explicitly required.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.startup.create-character` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.scenario.select-subject` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.startup.end-adventure` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.inventory.split-item` | implementation | classic-missing | - | GAP-INV-001 |
+| `classic.inventory.join-item` | implementation | classic-missing | - | GAP-INV-002 |
+| `classic.inventory.inspect-item` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.inventory.drop-item` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.inventory.trade-item` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
