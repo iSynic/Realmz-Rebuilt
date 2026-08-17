@@ -152,9 +152,11 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 	assert_true(setup.ok, "terminal reward fixture starts a source-backed battle")
 	if not setup.ok:
 		return
+	var defeated_hostiles := 0
 	for monster: MonsterState in state.combat.monsters():
 		if monster.traitor:
 			monster.current_health = 0
+			defeated_hostiles += 1
 	state.combat.active_turn = null
 	state.combat.pending_monster_attack = null
 	state.combat.pending_reaction = null
@@ -176,6 +178,8 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 		guard -= 1
 	assert_true(guard > 0, "terminal reward completion stays within the bounded interaction count")
 	assert_equal([reward.state, state.combat, state.last_battle_outcome], [ScenarioRuntimeOperationResult.State.COMPLETED, null, &"victory"], "victory completes reward ownership and releases the terminal battle exactly once")
+	var money_draws := rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).begins_with("battle.reward.") and String(entry.get("tag", "")).contains(".money."))
+	assert_equal(money_draws.size(), defeated_hostiles * 3, "each defeated hostile consumes Castle's three denomination draws, including zero-maximum money fields")
 	assert_equal(reward.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"battle_returned").size(), 1, "victory publishes one terminal battle-return event")
 	var terminal_kinds := reward.events.map(func(event: DomainEvent) -> StringName: return event.kind)
 	assert_true(terminal_kinds.find(&"reward_completed") < terminal_kinds.find(&"battle_returned"), "the reward commits before the terminal battle return is published")

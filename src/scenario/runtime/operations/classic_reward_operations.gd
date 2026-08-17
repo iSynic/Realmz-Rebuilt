@@ -118,8 +118,10 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 			var money := definition.money_values()
 			for kind: WealthState.Kind in [WealthState.Kind.GOLD, WealthState.Kind.GEMS, WealthState.Kind.JEWELRY]:
 				var maximum := maxi(0, money[kind] if kind < money.size() else 0)
-				if maximum > 0:
-					wealth.add(kind, _rng.draw_between(0, maximum, StringName("battle.reward.%s.money.%d" % [monster.id, kind])))
+				# Castle calls randrange for all three denominations even when the
+				# authored maximum is zero. The zero-result draw still advances the
+				# gameplay stream and therefore affects later scenario randomness.
+				wealth.add(kind, _rng.draw_between(0, maximum, StringName("battle.reward.%s.money.%d" % [monster.id, kind])))
 			experience += _monster_reward_experience(monster, definition)
 			for item_id: String in row["loot"]:
 				if not item_id.is_empty():
