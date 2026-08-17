@@ -56,8 +56,8 @@ func grant_treasure_definition(treasure: TreasureDefinition, request_id: String)
 	return _rewards.grant_treasure_definition(treasure, request_id)
 
 
-func begin_completed_battle_reward(request_id: String) -> ScenarioRuntimeOperationResult:
-	return _rewards.begin_completed_battle_reward(request_id)
+func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCaller = null) -> ScenarioRuntimeOperationResult:
+	return _rewards.begin_completed_battle_reward(request_id, caller)
 
 
 func grant_item(character_id: String, item_id: String, identified: bool) -> ScenarioRuntimeOperationResult:

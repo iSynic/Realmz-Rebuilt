@@ -3171,7 +3171,7 @@
       "id": "combat.terminal-reward-chain",
       "workflowIds": ["classic.combat.resolve-outcome"],
       "domain": "combat",
-      "claim": "An ordinary completed battle drains the established post-combat stages, offers surviving allies and exact fumbled items, constructs and resolves rewards once, shows the after-message, releases combat once, and resumes its originating session continuation once. Defeat and full-party retreat return without victory rewards; characters who escaped before a later victory are excluded from its experience division.",
+      "claim": "An ordinary completed battle drains the established post-combat stages, offers surviving allies and exact fumbled items, constructs and resolves rewards once, shows the after-message, releases combat once, and resumes its originating session continuation once. After an opcode 48 victory, its authored fixed treasure appears as a separate second reward workspace before that single return. Defeat and full-party retreat return without victory rewards; characters who escaped before a later victory are excluded from its experience division.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "Remake can open its loot workspace after combat, but its global host sequencing is only a lead for finding existing assets and tests.",
@@ -3192,9 +3192,9 @@
           { "path": "src/realmz_orig/partyloss.c", "symbol": "void partyloss" }
         ],
         "authoredInputs": ["battle outcome and mode", "monster money, experience, and items", "surviving allies", "fumbled exact instances", "after-message", "originating action continuation"],
-        "observation": "The normal victory path moves through bodycount, booty, experience and level processing before returning to the caller; bodycount returns before creating its dialog when it finds no living friendly cansum candidate. Defeat follows party-loss handling and full-party cowardice skips ordinary booty. Fumbled equipment is handled before ordinary loot. Experience dividers require a living, non-animated character whose inbattle flag remains set, excluding a character who escaped before a later victory. The after-message and caller return occur after the reward workspaces close.",
+        "observation": "The normal victory path moves through bodycount, booty, experience and level processing before returning to the caller; bodycount returns before creating its dialog when it finds no living friendly cansum candidate. Defeat follows party-loss handling and full-party cowardice skips ordinary booty. Fumbled equipment is handled before ordinary loot. Experience dividers require a living, non-animated character whose inbattle flag remains set, excluding a character who escaped before a later victory. Opcode 48 calls booty(0), then—when Extra Code word five is nonzero—loads that fixed treasure and calls booty(1) with nummon zero as a second workspace. The after-message and caller return occur only after all reward workspaces close.",
         "unresolved": [
-          "Battle mode 5 still burns monster-money RNG and permits incidental item checks despite its source comment describing experience only; mode 10 has a distinct equipment/wealth restoration branch and a separate total-defeat restart; opcode 48 opens a second fixed-treasure workspace after ordinary booty. These suspicious or distinct branches remain explicit."
+          "Battle mode 5 still burns monster-money RNG and permits incidental item checks despite its source comment describing experience only; mode 10 has a distinct equipment/wealth restoration branch and a separate total-defeat restart. These suspicious or distinct branches remain explicit."
         ]
       },
       "providence": {
@@ -3203,19 +3203,20 @@
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn scenario_document" },
           { "path": "src-tauri/src/realmz2_exporter.rs", "symbol": "fn runtime_monsters" }
         ],
-        "expectedRepresentation": "Schema v2 preserves the ordinary battle, monster reward, after-message, and scenario continuation inputs plus the exact five positional EDCD words needed for modes 5/10 and opcode 48. Runtime semantics and some compiler validation remain incomplete; no schema change is currently required."
+        "expectedRepresentation": "Schema v2 preserves the ordinary battle, monster reward, after-message, and scenario continuation inputs plus the exact five positional EDCD words needed for modes 5/10 and opcode 48. Runtime semantics remain incomplete for modes 5/10; no schema change is currently required."
       },
       "realmz2": {
         "owner": { "path": "src/session/game_session.gd", "symbol": "func _finish_direct_battle" },
-        "expectedTrace": ["finish pending death macros", "stage ally selection only when at least one eligible survivor exists", "stage exact fumble recovery", "prevalidate complete monster rewards", "claim reward ownership and consume reward RNG once", "resolve ordinary treasure and level stages", "append the after-message", "mark rewards complete", "clear combat and resume the saved origin once"],
+        "expectedTrace": ["finish pending death macros", "stage ally selection only when at least one eligible survivor exists", "stage exact fumble recovery", "prevalidate complete monster rewards and any opcode 48 fixed treasure", "claim reward ownership and consume ordinary reward RNG once", "resolve ordinary treasure and level stages", "for opcode 48 roll and resolve the fixed treasure as a separate persisted stage", "append the after-message", "mark rewards complete", "clear combat and resume the saved origin once"],
         "tests": [
           { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_terminal_battle_rewards_once" },
+          { "path": "tests/scenario/test_reward_workflow.gd", "symbol": "func _test_opcode_48_bonus_reward_chain" },
           { "path": "tests/integration/test_session_persistence.gd", "symbol": "func run" }
         ]
       },
       "decision": "aligned",
       "availability": "implemented",
-      "status": "ordinary-victory-defeat-full-and-partial-retreat-reward-exact-once-cleanup-and-save-boundaries-verified-special-battle-modes-unresolved"
+      "status": "ordinary-victory-defeat-full-and-partial-retreat-and-opcode-48-two-stage-reward-exact-once-cleanup-and-save-boundaries-verified-modes-5-and-10-unresolved"
     },
     {
       "id": "combat.presentation-workflow-routing",

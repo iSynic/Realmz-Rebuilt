@@ -17,6 +17,7 @@ func run() -> void:
 	_test_ordinary_distribution_and_restore(loaded.content)
 	_test_experience_level_and_spell_restore(loaded.content)
 	_test_terminal_battle_rewards_once(loaded.content)
+	_test_opcode_48_bonus_reward_chain(loaded.content)
 	_test_corrupt_reward_boundaries(loaded.content)
 
 
@@ -56,6 +57,10 @@ func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:
 	var saved_reward_body := saved_continuation.body as ScenarioRuntimeContinuation.RewardBody
 	assert_not_null(saved_reward_body, "the exact treasure continuation survives canonical JSON")
 	assert_not_null(saved_reward_body.state, "the typed reward state survives canonical JSON")
+	var pre_sequence_reward: Dictionary = saved_continuation_data.duplicate(true)
+	pre_sequence_reward["data"]["state"].erase("battleStage")
+	pre_sequence_reward["data"]["state"].erase("bonusTreasureClassicId")
+	assert_not_null(ScenarioRuntimeContinuation.from_data(pre_sequence_reward), "an existing version-four reward continuation defaults safely before the battle-sequence fields existed")
 	var fractional_continuation := saved_continuation_data.duplicate(true)
 	fractional_continuation["data"]["state"]["experiencePool"] = 1.5
 	assert_equal(ScenarioRuntimeContinuation.from_data(fractional_continuation), null, "a non-integral serialized reward total is rejected rather than truncated")
@@ -242,6 +247,91 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 		assert_equal([partial_reward.state, partial_state.combat], [ScenarioRuntimeOperationResult.State.COMPLETED, null], "partial retreat completes one ordinary reward return for the characters who stayed")
 
 
+func _test_opcode_48_bonus_reward_chain(content: RealmzContent) -> void:
+	var source_battle := content.battle_by_id("classic.battle.0")
+	if source_battle == null:
+		return
+	var bonus_content := _content_with_bonus_treasure(content, source_battle)
+	var battle := bonus_content.battle_by_id(source_battle.id)
+	var bonus_treasure := bonus_content.treasure_by_classic_id(1)
+	var opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.opcode-48-opening", "Opening", 5_000, -100_000)]), RealmzClock.new())
+	var opening_api := RealmzRuntimeApi.new(bonus_content, opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new())
+	var action := ClassicActionDefinition.new(0, 48, 48, battle.classic_id, false, [battle.classic_id, 0, 0, 0, bonus_treasure.classic_id])
+	var opened := opening_api.execute_classic(action, "battle.opcode-48.open")
+	var combat_body := opened.continuation.body as ScenarioRuntimeContinuation.CombatBody if opened.continuation != null else null
+	assert_not_null(combat_body, "opcode 48 starts through the ordinary typed combat continuation")
+	assert_equal(combat_body.caller.mode if combat_body != null else -1, bonus_treasure.classic_id, "opcode 48 preserves Extra Code word five as its post-battle treasure identity")
+
+	var character := _character(bonus_content, "reward.opcode-48", "Bonus", 5_000, -10_000_000)
+	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
+	var rng := RealmzRng.new(53)
+	var rules := RealmzRules.new()
+	var setup := rules.combat_flow.start_battle(state, bonus_content, battle, rng)
+	assert_true(setup.ok, "opcode 48 reward fixture starts a source-backed battle")
+	if not setup.ok:
+		return
+	for monster: MonsterState in state.combat.monsters():
+		if monster.traitor:
+			monster.current_health = 0
+	state.combat.active_turn = null
+	state.combat.pending_monster_attack = null
+	state.combat.pending_reaction = null
+	state.combat.completed = true
+	state.combat.outcome = &"victory"
+	state.last_battle_outcome = &"victory"
+	var api := RealmzRuntimeApi.new(bonus_content, state, rng, ScenarioActionState.new(), rules)
+	var caller := ScenarioBattleCaller.classic(48, false, bonus_treasure.classic_id, 0)
+	var reward := api.begin_completed_battle_reward("battle.opcode-48.reward", caller)
+	var event_kinds: Array[StringName] = []
+	var guard := 2_000
+	while guard > 0:
+		for event: DomainEvent in reward.events:
+			event_kinds.append(event.kind)
+		if reward.state != ScenarioRuntimeOperationResult.State.WAITING:
+			break
+		var serialized := ScenarioRuntimeContinuation.from_data(JSON.parse_string(JSON.stringify(reward.continuation.to_data())))
+		assert_not_null(serialized, "each opcode 48 reward stage survives canonical continuation serialization")
+		reward = api.resume_classic(serialized, _reward_response(reward.interaction), reward.interaction.request_id + ".next")
+		guard -= 1
+	assert_true(guard > 0, "opcode 48 ordinary and fixed treasure stages complete within the bounded interaction count")
+	assert_equal([reward.state, state.combat], [ScenarioRuntimeOperationResult.State.COMPLETED, null], "opcode 48 releases combat only after both reward workspaces complete")
+	assert_equal(event_kinds.count(&"battle_bonus_reward_started"), 1, "opcode 48 opens its authored fixed treasure exactly once after ordinary booty")
+	assert_equal(event_kinds.count(&"reward_completed"), 2, "opcode 48 commits ordinary and fixed treasure as two ordered reward stages")
+	assert_equal(event_kinds.count(&"battle_returned"), 1, "opcode 48 returns to its issuing VM exactly once after the second reward")
+	assert_true(event_kinds.find(&"battle_bonus_reward_started") > event_kinds.find(&"reward_completed") and event_kinds.find(&"battle_returned") > event_kinds.find(&"battle_bonus_reward_started"), "the fixed treasure stage remains between ordinary booty and terminal battle return")
+
+	var defeat_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(bonus_content, "reward.opcode-48-defeat", "Defeat", 5_000, -10_000_000)]), RealmzClock.new())
+	var defeat_rng := RealmzRng.new(59)
+	var defeat_setup := rules.combat_flow.start_battle(defeat_state, bonus_content, battle, defeat_rng)
+	assert_true(defeat_setup.ok, "opcode 48 defeat characterization starts a source-backed battle")
+	if defeat_setup.ok:
+		defeat_state.combat.active_turn = null
+		defeat_state.combat.pending_monster_attack = null
+		defeat_state.combat.pending_reaction = null
+		defeat_state.combat.completed = true
+		defeat_state.combat.outcome = &"defeat"
+		var defeat := RealmzRuntimeApi.new(bonus_content, defeat_state, defeat_rng, ScenarioActionState.new(), rules).begin_completed_battle_reward("battle.opcode-48.defeat", caller)
+		var defeat_kinds: Array[StringName] = []
+		for event: DomainEvent in defeat.events:
+			defeat_kinds.append(event.kind)
+		assert_equal([defeat.state, defeat_state.combat], [ScenarioRuntimeOperationResult.State.COMPLETED, null], "opcode 48 defeat returns without opening either victory reward workspace")
+		assert_equal(defeat_kinds.count(&"battle_bonus_reward_started"), 0, "opcode 48 defeat cannot grant its fixed treasure")
+
+
+func _content_with_bonus_treasure(content: RealmzContent, battle: BattleDefinition) -> RealmzContent:
+	var monsters: Array[MonsterDefinition] = []
+	var monster_ids: Dictionary = {}
+	for slot: BattleMonsterSlotDefinition in battle.monster_slots():
+		if monster_ids.has(slot.monster_id):
+			continue
+		monster_ids[slot.monster_id] = true
+		monsters.append(content.monster_by_id(slot.monster_id))
+	var base_treasure := content.treasure_by_classic_id(0)
+	var treasures: Array[TreasureDefinition] = [base_treasure, TreasureDefinition.new("classic.treasure.1", 1, [base_treasure.item_ids()[0]], 321, 11)]
+	var battles: Array[BattleDefinition] = [BattleDefinition.new(battle.id, battle.classic_id, battle.monster_slots(), battle.distance, 0, 0, battle.macro_id)]
+	return RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), monsters, battles, treasures, [], [], [], [], [], content.campaign_definition())
+
+
 func _test_corrupt_reward_boundaries(content: RealmzContent) -> void:
 	var character := _character(content, "reward.corrupt", "Corrupt", 500, -100_000)
 	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
@@ -266,14 +356,19 @@ func _test_corrupt_reward_boundaries(content: RealmzContent) -> void:
 	for monster: MonsterState in battle_state.combat.monsters():
 		if monster.traitor:
 			monster.current_health = 0
-			monster.definition_id = "classic.monster.unavailable"
-			break
 	battle_state.combat.active_turn = null
 	battle_state.combat.pending_monster_attack = null
 	battle_state.combat.pending_reaction = null
 	battle_state.combat.completed = true
 	battle_state.combat.outcome = &"victory"
 	var draws_before := battle_rng.snapshot().draw_count
+	var invalid_bonus := RealmzRuntimeApi.new(content, battle_state, battle_rng, ScenarioActionState.new(), rules).begin_completed_battle_reward("battle.invalid-bonus", ScenarioBattleCaller.classic(48, false, 999, 0))
+	assert_equal(invalid_bonus.error_code, &"unknown_treasure", "an unavailable opcode 48 bonus treasure fails before claiming reward ownership")
+	assert_equal([battle_state.combat.rewards_started, battle_rng.snapshot().draw_count], [false, draws_before], "bonus treasure validation neither claims the one-shot stage nor consumes reward RNG")
+	for monster: MonsterState in battle_state.combat.monsters():
+		if monster.traitor:
+			monster.definition_id = "classic.monster.unavailable"
+			break
 	var invalid_reward := RealmzRuntimeApi.new(content, battle_state, battle_rng, ScenarioActionState.new(), rules).begin_completed_battle_reward("battle.invalid-reward")
 	assert_equal(invalid_reward.error_code, &"unknown_monster", "a malformed battle reward fails before committing its continuation")
 	assert_equal([battle_state.combat.rewards_started, battle_rng.snapshot().draw_count], [false, draws_before], "battle reward validation neither claims the one-shot stage nor consumes reward RNG")

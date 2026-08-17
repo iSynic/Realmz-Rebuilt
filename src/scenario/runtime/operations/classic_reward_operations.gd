@@ -70,7 +70,7 @@ func grant_treasure_definition(treasure: TreasureDefinition, request_id: String)
 	return _begin_reward(&"scenario", treasure.id, roll.experience, roll.wealth, roll.item_ids, request_id)
 
 
-func begin_completed_battle_reward(request_id: String) -> ScenarioRuntimeOperationResult:
+func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCaller = null) -> ScenarioRuntimeOperationResult:
 	var combat := _game_state.combat
 	if combat == null or not combat.completed:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Battle rewards require a completed battle.")
@@ -78,6 +78,9 @@ func begin_completed_battle_reward(request_id: String) -> ScenarioRuntimeOperati
 		return ScenarioRuntimeOperationResult.completed(String(combat.outcome))
 	if combat.rewards_started:
 		return ScenarioRuntimeOperationResult.failed(&"battle_reward_already_started", "The completed battle already has an active reward continuation.")
+	var bonus_treasure_id := caller.mode if combat.outcome == &"victory" and caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 48 else 0
+	if bonus_treasure_id != 0 and _content.treasure_by_classic_id(absi(bonus_treasure_id)) == null:
+		return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "Classic opcode 48 references unavailable bonus treasure %d." % bonus_treasure_id)
 	var defeated_monsters: Array[Dictionary] = []
 	var pending_item_count := 0
 	if combat.outcome == &"victory":
@@ -122,12 +125,12 @@ func begin_completed_battle_reward(request_id: String) -> ScenarioRuntimeOperati
 				if not item_id.is_empty():
 					item_ids.append(item_id)
 		events.append(DomainEvent.new(&"battle_reward_constructed", {"battleId": combat.battle_id, "experience": experience, "wealth": wealth.to_data(), "itemCount": item_ids.size()}))
-	var operation := _begin_reward(&"battle", combat.battle_id, experience, wealth, item_ids, request_id)
+	var operation := _begin_reward(&"battle", combat.battle_id, experience, wealth, item_ids, request_id, ClassicRewardState.ORDINARY_BATTLE_STAGE, absi(bonus_treasure_id))
 	operation.events = events + operation.events
 	return operation
 
 
-func _begin_reward(origin: StringName, source_id: String, total_experience: int, wealth: WealthState, item_ids: Array[String], request_id: String) -> ScenarioRuntimeOperationResult:
+func _begin_reward(origin: StringName, source_id: String, total_experience: int, wealth: WealthState, item_ids: Array[String], request_id: String, battle_stage: StringName = ClassicRewardState.NO_BATTLE_STAGE, bonus_treasure_classic_id: int = 0) -> ScenarioRuntimeOperationResult:
 	if wealth == null or item_ids.size() > ClassicRewardState.MAX_PENDING_ITEMS:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The reward exceeds the supported Classic reward bounds.")
 	var experience_multiplier := _game_state.experience_multiplier
@@ -158,6 +161,8 @@ func _begin_reward(origin: StringName, source_id: String, total_experience: int,
 		if definition.cost < 0:
 			unique_owned[definition.id] = true
 	var reward := ClassicRewardState.new(origin, source_id, scaled_experience, scaled_wealth)
+	reward.battle_stage = battle_stage
+	reward.bonus_treasure_classic_id = bonus_treasure_classic_id
 	var items: Array[ItemInstance] = []
 	for definition: ItemDefinition in reward_definitions:
 		var identified := absi(definition.item_type) == 24
@@ -181,7 +186,7 @@ func _begin_reward(origin: StringName, source_id: String, total_experience: int,
 		character.experience += int(awards[character.id])
 	var events: Array[DomainEvent] = [DomainEvent.new(&"reward_opened", {"origin": String(origin), "sourceId": source_id, "experiencePool": reward.experience_pool, "experienceShare": reward.experience_share, "experienceByCharacter": awards, "wealth": scaled_wealth.to_data(), "itemCount": items.size()})]
 	if items.is_empty() and scaled_wealth.gold == 0 and scaled_wealth.gems == 0 and scaled_wealth.jewelry == 0 and scaled_experience == 0:
-		return _complete_reward(reward, events)
+		return _complete_reward(reward, request_id, events)
 	return _wait_for_reward(reward, request_id, events)
 
 
@@ -486,7 +491,7 @@ func _resume_reward_level(reward: ClassicRewardState, response: InteractionRespo
 
 func _advance_reward_spells(reward: ClassicRewardState, request_id: String, events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
 	if reward.spell_index >= reward.spell_character_ids().size():
-		return _complete_reward(reward, events)
+		return _complete_reward(reward, request_id, events)
 	return _wait_for_reward(reward, request_id, events)
 
 
@@ -541,7 +546,7 @@ func _reward_spell_candidates(character: CharacterState, caste: CasteDefinition)
 	return result
 
 
-func _complete_reward(reward: ClassicRewardState, events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
+func _complete_reward(reward: ClassicRewardState, request_id: String, events: Array[DomainEvent] = []) -> ScenarioRuntimeOperationResult:
 	var completed_events: Array[DomainEvent] = []
 	completed_events.assign(events)
 	completed_events.append(DomainEvent.new(&"reward_completed", {"origin": String(reward.origin), "sourceId": reward.source_id, "experienceByCharacter": reward.experience_awards()}))
@@ -549,6 +554,15 @@ func _complete_reward(reward: ClassicRewardState, events: Array[DomainEvent] = [
 		if _game_state.combat == null or _game_state.combat.battle_id != reward.source_id or not _game_state.combat.rewards_started:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "The battle reward no longer matches its completed battle.")
 		var combat := _game_state.combat
+		if reward.battle_stage == ClassicRewardState.ORDINARY_BATTLE_STAGE and reward.bonus_treasure_classic_id != 0:
+			var bonus_treasure := _content.treasure_by_classic_id(reward.bonus_treasure_classic_id)
+			if bonus_treasure == null:
+				return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "The pending opcode 48 bonus treasure is unavailable.")
+			var bonus_roll := _rules.economy.roll_treasure(bonus_treasure, _rng)
+			completed_events.append(DomainEvent.new(&"battle_bonus_reward_started", {"battleId": combat.battle_id, "treasureId": bonus_treasure.id, "classicTreasureId": reward.bonus_treasure_classic_id}))
+			var bonus := _begin_reward(&"battle", combat.battle_id, bonus_roll.experience, bonus_roll.wealth, bonus_roll.item_ids, request_id, ClassicRewardState.BONUS_BATTLE_STAGE)
+			bonus.events = completed_events + bonus.events
+			return bonus
 		combat.rewards_completed = true
 		var outcome := combat.outcome
 		var battle := _content.battle_by_id(reward.source_id)
@@ -566,6 +580,10 @@ func _reward_state_is_valid(reward: ClassicRewardState) -> bool:
 	if reward.source_id.is_empty() or reward.origin not in [&"scenario", &"battle"]:
 		return false
 	if reward.origin == &"battle" and (_game_state.combat == null or not _game_state.combat.completed or not _game_state.combat.rewards_started or _game_state.combat.rewards_completed or _game_state.combat.battle_id != reward.source_id):
+		return false
+	if (reward.origin == &"battle" and reward.battle_stage not in [ClassicRewardState.ORDINARY_BATTLE_STAGE, ClassicRewardState.BONUS_BATTLE_STAGE]) or (reward.origin != &"battle" and (reward.battle_stage != ClassicRewardState.NO_BATTLE_STAGE or reward.bonus_treasure_classic_id != 0)) or (reward.battle_stage == ClassicRewardState.BONUS_BATTLE_STAGE and reward.bonus_treasure_classic_id != 0):
+		return false
+	if reward.bonus_treasure_classic_id != 0 and _content.treasure_by_classic_id(reward.bonus_treasure_classic_id) == null:
 		return false
 	for item: ItemInstance in reward.items():
 		if _content.item_by_id(item.definition_id) == null:

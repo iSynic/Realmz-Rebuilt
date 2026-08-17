@@ -521,6 +521,10 @@ static func _valid_reward_continuation(content: RealmzContent, state: GameState,
 		return false
 	if reward.origin == &"battle" and (state.combat == null or not state.combat.completed or not state.combat.rewards_started or state.combat.rewards_completed or state.combat.battle_id != reward.source_id):
 		return false
+	if (reward.origin == &"battle" and reward.battle_stage not in [ClassicRewardState.ORDINARY_BATTLE_STAGE, ClassicRewardState.BONUS_BATTLE_STAGE]) or (reward.origin != &"battle" and (reward.battle_stage != ClassicRewardState.NO_BATTLE_STAGE or reward.bonus_treasure_classic_id != 0)) or (reward.battle_stage == ClassicRewardState.BONUS_BATTLE_STAGE and reward.bonus_treasure_classic_id != 0):
+		return false
+	if reward.bonus_treasure_classic_id != 0 and content.treasure_by_classic_id(reward.bonus_treasure_classic_id) == null:
+		return false
 	for item: ItemInstance in reward.items():
 		if content.item_by_id(item.definition_id) == null:
 			return false

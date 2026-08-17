@@ -65,7 +65,8 @@ func _start_classic_battle(action: ClassicActionDefinition, request_id: String) 
 			if message == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_message", "Classic opcode %d references unavailable battle message %d." % [action.opcode, message_id])
 			prelude.append(DomainEvent.new(&"message_shown", {"messageId": message.id, "text": message.text, "source": "classic-battle"}))
-	var caller := ScenarioBattleCaller.classic(action.opcode, action.gosub, action.extra_code[4] if action.opcode == 2 and action.extra_code.size() > 4 else 0, action.extra_code[4] if action.opcode == 107 and action.extra_code.size() > 4 else action.extra_code[2] if action.opcode == 56 and action.extra_code.size() > 2 else 0)
+	var caller_mode := action.extra_code[4] if action.opcode in [2, 48] and action.extra_code.size() > 4 else 0
+	var caller := ScenarioBattleCaller.classic(action.opcode, action.gosub, caller_mode, action.extra_code[4] if action.opcode == 107 and action.extra_code.size() > 4 else action.extra_code[2] if action.opcode == 56 and action.extra_code.size() > 2 else 0)
 	var battle := _content.battle_by_classic_id(absi(battle_id))
 	if battle == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_battle", "Classic opcode %d references unavailable battle %d." % [action.opcode, battle_id])
@@ -300,7 +301,7 @@ func _finish_battle_with_fumbles(source_kind: StringName, caller: ScenarioBattle
 	if not payload.is_empty():
 		var fumble_kind := ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE if source_kind == ScenarioRuntimeContinuation.SAFE_COMBAT else ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE
 		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload), ScenarioRuntimeContinuation.combat_terminal(fumble_kind, source_kind, combat.battle_id, caller), events)
-	var reward: ScenarioRuntimeOperationResult = _rewards.begin_completed_battle_reward(request_id)
+	var reward: ScenarioRuntimeOperationResult = _rewards.begin_completed_battle_reward(request_id, caller)
 	reward.events = events + reward.events
 	return reward
 

@@ -183,8 +183,8 @@ func complete_party_defeat_handoff(handoff: ScenarioRuntimeHandoff) -> ScenarioR
 	return _battle_reward_operations.complete_party_defeat_handoff(handoff)
 
 
-func begin_completed_battle_reward(request_id: String) -> ScenarioRuntimeOperationResult:
-	return _battle_reward_operations.begin_completed_battle_reward(request_id)
+func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCaller = null) -> ScenarioRuntimeOperationResult:
+	return _battle_reward_operations.begin_completed_battle_reward(request_id, caller)
 
 
 func resume_classic(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
