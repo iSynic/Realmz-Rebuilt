@@ -13,25 +13,25 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM exploration continuation and Fast Spell certification** (`aogm-exploration-continuation`)
+**AOGM terminal battle and reward parity** (`aogm-terminal-battle-rewards`)
 
-The completed field-application route leaves one source-settled AOGM certification surface and two adjacent exploration continuations as the highest-priority reachable work. The batch certifies ordinary Fast Spell input, settles the remaining blocked-attempt timing families, and proves timed-program relocation through the complete scheduler without reopening unrelated item, map, or combat parity branches.
+The exploration-continuation batch closed two partial workflows and leaves the terminal battle chain as the highest-priority connected AOGM surface. This batch settles unresolved battle reward modes and incidental treasure RNG before changing behavior, completes exact-once battle-to-reward return, and obtains ordinary-play acceptance for the existing level-up path.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.exploration.fast-spell` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.exploration.travel` | archaeology | aogm-major-partial | - |  |
-| `classic.scenario.random-timed-encounter` | archaeology | aogm-major-partial | - |  |
+| `classic.combat.resolve-outcome` | archaeology | aogm-major-partial | - | GAP-COMBAT-006, GAP-COMBAT-007 |
+| `classic.rewards.treasure-distribution` | archaeology | aogm-major-partial | - | GAP-REWARD-001 |
+| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 1 | 1 | 0 |
-| classic | partial | 16 | 14 | -2 |
-| classic | functional | 50 | 52 | +2 |
+| classic | partial | 14 | 14 | 0 |
+| classic | functional | 52 | 52 | 0 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
