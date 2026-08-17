@@ -98,6 +98,15 @@ func _validate_scenario_references(scenario: ScenarioDefinition, message_ids: Di
 						return _reject("Scenario program '%s' references unavailable XAP %d." % [program.id, instruction.operand_id])
 	return true
 
+
+func _validate_timed_encounter_references(scenario: ScenarioDefinition, encounters: Array[TimedEncounterDefinition]) -> bool:
+	for encounter: TimedEncounterDefinition in encounters:
+		var expected_program_id := "xap:%d" % encounter.classic_macro_id
+		var program := scenario.program_by_id(encounter.program_id)
+		if encounter.program_id != expected_program_id or program == null or program.owner_kind != &"extra-action-point":
+			return _reject("Timed Encounter %d references unavailable Classic XAP program '%s'." % [encounter.id, encounter.program_id])
+	return true
+
 func _validate_random_region_references(maps: Array[MapDefinition], scenario: ScenarioDefinition, battles: Array[BattleDefinition]) -> bool:
 	var battle_ids: Dictionary = {}
 	for battle: BattleDefinition in battles:
@@ -148,4 +157,3 @@ func _contexts_are_compatible(caller: ScenarioActionDefinition, called: Scenario
 		if not called.allows_context(context):
 			return false
 	return true
-

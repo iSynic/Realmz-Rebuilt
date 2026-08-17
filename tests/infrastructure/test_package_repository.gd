@@ -4,7 +4,7 @@ const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fi
 const TAMPERED_FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-tampered.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_PATH: String = "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const CLASSIC_CHARACTER_LIBRARY_ID: String = "realmz-classic-character-library"
-const CLASSIC_CHARACTER_LIBRARY_HASH: String = "fd904f0d9d859e442bee558b685df1874f6e7df016c200725cf222b58fb4fe20"
+const CLASSIC_CHARACTER_LIBRARY_HASH: String = "d134c8f552d4e5893dcf82ea25bd21504c45a1e0cffb84bf4061a1b83ec00b49"
 const INSTALL_TEST_ROOT: String = "user://realmz2-tests/package-install-schema-v3"
 const SCHEMA_REJECTION_PATH: String = "user://realmz2-tests/realmz2-schema-v2.realmz2"
 
@@ -29,7 +29,7 @@ func run() -> void:
 	assert_true(repeated_external_load.is_ok(), "an unchanged external package can be validated repeatedly")
 	assert_true(repeated_external_load != loaded, "external package validation never inherits trusted cache status")
 	assert_equal(loaded.content.campaign_id, "realmz2-synthetic-fixture", "manifest campaign identity becomes typed content")
-	assert_equal(loaded.content.package_hash, "b09fbfc59e3d602e00dc8eae6d16fab4c5b4f881d23ccae38cff0616636235b6", "package identity is retained")
+	assert_equal(loaded.content.package_hash, "c174db82eebf673c8840f0c8f212c0efd1d1831973a2f23a23432f2074cc6e08", "package identity is retained")
 	assert_equal(loaded.content.campaign_definition().title, "Realmz2 Synthetic Fixture", "campaign title metadata becomes a typed display contract")
 	assert_equal(loaded.content.campaign_definition().version, "", "campaign version metadata preserves an authored empty value")
 	assert_equal(loaded.content.campaign_definition().restrictions.maximum_party_size, 6, "campaign party-size restrictions are typed")
@@ -85,7 +85,7 @@ func run() -> void:
 	assert_equal(loaded.content.simple_encounter_by_id(0).response_at(0).result_program_id, "simple:0:result:0", "Encounter choices reference ordinary result programs")
 	assert_equal(loaded.content.complex_encounter_by_id(0).expected_word(), "open", "Complex Encounter words become typed runtime data")
 	assert_equal(loaded.content.thief_encounter_by_id(0).type_flags().size(), 10, "Thief Encounter mutable flags have a fixed source-backed shape")
-	assert_equal(loaded.content.timed_encounter_by_id(0).trigger_record_index, 0, "Timed Encounter schedules retain their Classic AP identity")
+	assert_equal([loaded.content.timed_encounter_by_id(0).classic_macro_id, loaded.content.timed_encounter_by_id(0).program_id], [0, "xap:0"], "Timed Encounter schedules retain their Classic XAP identity")
 	assert_not_null(loaded.content.scenario.action_by_id("scenario.realmz2-synthetic-fixture.after-encounter"), "compiled Scenario Actions become typed callable definitions")
 	assert_equal(loaded.content.item_by_id("classic.item.901").name, "Fixture Wand", "Providence item records become immutable runtime definitions")
 	assert_equal([loaded.content.item_by_classic_id(800).name, loaded.content.item_by_classic_id(800).item_type], ["Fixture Scroll Case", 13], "the Classic type-13 scroll case crosses the compiler boundary")
@@ -176,7 +176,7 @@ func run() -> void:
 		var receipt_data: Variant = JSON.parse_string(FileAccess.get_file_as_string(installed.installed_path + ".receipt.json"))
 		assert_true(receipt_data is Dictionary, "the installation receipt is parseable JSON")
 		if receipt_data is Dictionary:
-			assert_equal([int(receipt_data["formatVersion"]), int(receipt_data["decoderVersion"]), receipt_data["schemaHash"]], [2, 4, PackageRepository.EXPECTED_SCHEMA_HASH], "the receipt records the v3 package and decoder contract")
+			assert_equal([int(receipt_data["formatVersion"]), int(receipt_data["decoderVersion"]), receipt_data["schemaHash"]], [2, 5, PackageRepository.EXPECTED_SCHEMA_HASH], "the receipt records the v3 package and decoder contract")
 		assert_contains(installed.installed_path, loaded.content.package_hash, "the installation path carries the package identity")
 		repository.promote_installed_package(installed.installed_path)
 		assert_equal(repository.retained_package_count(), 1, "promoting an installed package replaces the candidate without retaining an unbounded graph")

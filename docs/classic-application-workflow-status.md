@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 68 | 1 | 16 | 50 | 1 |
+| classic | 68 | 1 | 14 | 52 | 1 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -22,16 +22,16 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.exploration.fast-spell` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.exploration.travel` | implementation | aogm-major-partial | - | GAP-EXP-006 |
-| `classic.scenario.random-timed-encounter` | implementation | aogm-major-partial | - | GAP-SCEN-004 |
+| `classic.exploration.travel` | archaeology | aogm-major-partial | - |  |
+| `classic.scenario.random-timed-encounter` | archaeology | aogm-major-partial | - |  |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 1 | 1 | 0 |
-| classic | partial | 16 | 16 | 0 |
-| classic | functional | 50 | 50 | 0 |
+| classic | partial | 16 | 14 | -2 |
+| classic | functional | 50 | 52 | +2 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -43,8 +43,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Domain | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Startup and party | 8 | 0 | 0 | 8 | 0 |
-| Exploration | 6 | 0 | 1 | 5 | 0 |
-| Scenario interaction | 6 | 0 | 2 | 4 | 0 |
+| Exploration | 6 | 0 | 0 | 6 | 0 |
+| Scenario interaction | 6 | 0 | 1 | 5 | 0 |
 | Character management | 5 | 1 | 1 | 3 | 0 |
 | Inventory and equipment | 9 | 0 | 3 | 6 | 0 |
 | Spellcasting | 3 | 0 | 1 | 2 | 0 |
@@ -61,8 +61,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 9 |
-| required | 10 |
-| completed | 49 |
+| required | 8 |
+| completed | 51 |
 
 | Remake | Count |
 | --- | ---: |
@@ -83,8 +83,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-applicable | 2 |
 | absent | 0 |
-| partial | 11 |
-| complete | 55 |
+| partial | 9 |
+| complete | 57 |
 
 | persistence | Count |
 | --- | ---: |
@@ -142,7 +142,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **15**.
+Blockers: **1**. Major gaps: **13**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - The allies and bestiary workspaces are absent and the known-entry display contract is incomplete. Next: Trace discovery visibility, complete the immutable display model, and build read-only workspaces.
@@ -150,28 +150,24 @@ Blockers: **1**. Major gaps: **15**.
 - **major** `classic.combat.resolve-outcome` - Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted. Next: Obtain ordinary-play acceptance of the corrected command deck, then exercise ordinary defeat or retreat and a reward that produces a level-up.
 - **major** `classic.combat.resolve-outcome` - Battle reward modes 5 and 10 and opcode 48 bonus treasure remain unresolved end to end. Next: Characterize the suspicious mode-5 incidental/RNG branches and mode-10 restart field with controlled Castle fixtures, then implement each distinct runtime continuation without changing schema v2 unless the fixture disproves positional preservation.
 - **major** `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
-- **major** `classic.exploration.travel` - Ordinary and nonpositive blocked land timing plus boat, water, and shore movement now follow Castle through one typed topology/session path; special dungeon wall bits and attempted-coordinate timed gates remain unresolved. Next: Use controlled Castle fixtures for special dungeon wall bits and attempted-coordinate timed gates before broadening the topology result.
 - **major** `classic.inventory.identify-item` - Shop identification works, but non-shop identification remains unclassified after removing the redundant generic intent. Next: Trace spell, item, and scenario identification paths and implement only the source-backed entry points that exist.
 - **major** `classic.inventory.use-item` - Ordinary AOGM play proves a fixed-power party-state Torch and a saveable field scroll target/consumption path; discard, case transfer, door/XAP items, random-power combat, and broader specials remain explicit. Next: Characterize discard, case-transfer, door/XAP, random-power combat, battlefield-area/repeated targeting, and broader special behavior only when parity or a reachable campaign requires each branch.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
 - **major** `classic.rewards.treasure-distribution` - Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced. Next: Use controlled Castle RNG fixtures for ordinary, XP-only, and bonus-treasure battle rewards before implementing or correcting the random drops.
 - **major** `classic.scenario.complex-interaction` - Thief encounter action availability and result routing are not fully traced or represented. Next: Build a synthetic thief encounter oracle fixture and reconcile Providence fields and typed responses.
-- **major** `classic.scenario.random-timed-encounter` - Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture. Next: Add a synthetic timed AP that changes map or coordinate, yields, applies any source-owned AP destination semantics, resumes the remaining scan, and performs the final random check at the resulting location.
 - **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Implement discard, case-transfer, allied-target, and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
 ## Oracle-required unknowns
 
 - `classic.combat.undo` - Undo the active combat activation
-- `classic.exploration.travel` - Travel on land and in dungeons
 - `classic.inventory.identify-item` - Identify an item
 - `classic.inventory.manage-equipment` - Equip and unequip carried items
 - `classic.inventory.use-item` - Use an item
 - `classic.maps.authored-journal` - Read the authored journal
 - `classic.maps.location-notes` - Read and edit location notes
 - `classic.scenario.complex-interaction` - Resolve a complex or thief encounter
-- `classic.scenario.random-timed-encounter` - Enter a random or timed encounter
 - `classic.system.preferences` - Change Classic application preferences
 
 ## Prioritized remaining-work queues
@@ -179,8 +175,6 @@ Blockers: **1**. Major gaps: **15**.
 ### aogm
 
 - `classic.combat.resolve-outcome` - Ordinary victory and reward return work, but the terminal combat workflow is not yet accepted.
-- `classic.exploration.travel` - Ordinary and nonpositive blocked land timing plus boat, water, and shore movement now follow Castle through one typed topology/session path; special dungeon wall bits and attempted-coordinate timed gates remain unresolved.
-- `classic.scenario.random-timed-encounter` - Timed records dispatch through a save-owned scheduler, but location-changing and post-action-destination timed programs lack a dedicated end-to-end fixture.
 
 ### other-campaign
 

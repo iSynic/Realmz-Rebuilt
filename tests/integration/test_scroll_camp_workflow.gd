@@ -156,20 +156,42 @@ func run() -> void:
 	timed_session._state.clock.set_total_minutes(RealmzClock.MINUTES_PER_DAY - 10)
 	timed_session._rng = ScriptedRng.new([0])
 	var timed := timed_session.submit_intent(PlayerIntent.rest())
-	assert_equal([timed.state, timed.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE], "crossing midnight dispatches the eligible timed Action Point before returning to camp")
+	assert_equal([timed.state, timed.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE], "crossing midnight dispatches the eligible timed XAP before returning to camp")
 	assert_equal(timed_session._state.timed_encounter_override(0).get("day"), 5, "the timed record advances by its increment before its interaction yields")
 	assert_true(_has_event(timed, &"timed_encounter_triggered"), "the timed dispatch has an explicit domain trace")
+	assert_equal(_events(timed, &"timed_encounter_triggered")[0].payload.get("programId"), "xap:7", "the timed record invokes its Data ED3 XAP identity directly")
 	assert_true(_event_position(timed, &"timed_encounter_checked") < _event_position(timed, &"rest_ration_consumed"), "midnight eligibility is settled before Castle's half-day recovery")
 	assert_equal([timed_caster.current_health, midnight_ration.charges], [7, 1], "midnight recovery runs exactly once immediately before the first eligible dispatch")
 	assert_equal(timed_session.rng_trace()[-1]["tag"], "timed-encounter.0", "the timed chance draw is centralized and semantically tagged")
+	assert_equal(timed_session.view().party_coordinate, content.start_coordinate, "a yielding XAP retains the pre-teleport location until its issuing frame resumes")
 	var timed_restored := GameSession.new()
 	assert_equal(timed_restored.restore(content, save_round_trip(timed_session.snapshot())).state, SessionStep.State.COMPLETED, "the timed interaction and scan cursor restore transactionally")
 	var timed_request := timed_restored.view().pending_interaction
 	var timed_completed := timed_restored.respond(InteractionResponse.from_data(timed_request.request_id, InteractionRequest.ACKNOWLEDGE, {}))
-	assert_equal(timed_completed.state, SessionStep.State.COMPLETED, "acknowledging the timed Action Point resumes and completes the midnight scan")
+	assert_equal(timed_completed.state, SessionStep.State.COMPLETED, "acknowledging the timed XAP resumes and completes the midnight scan")
+	assert_equal(timed_restored.view().party_coordinate, Vector2i(2, 0), "the resumed XAP commits its explicit Classic teleport before the remaining timed scan")
+	assert_equal(_events(timed_completed, &"timed_encounter_triggered").map(func(event: DomainEvent) -> Variant: return event.payload.get("programId")), ["xap:8"], "the remaining scan advances to the next timed XAP exactly once")
+	assert_true(_events(timed_completed, &"message_shown").any(func(event: DomainEvent) -> bool: return event.payload.get("messageId") == 778), "the relocated coordinate satisfies the next timed record")
 	assert_equal(timed_restored._state.timed_encounter_override(0).get("day"), 5, "save/resume does not advance the same timed record twice")
+	assert_equal(timed_restored._state.timed_encounter_override(1).get("day"), 5, "the remaining timed record advances once after relocation")
 	assert_equal([timed_restored._state.party.character_by_id(caster.id).current_health, timed_restored._state.party.character_by_id(caster.id).inventory()[-1].charges], [7, 1], "save/resume does not repeat midnight recovery")
 	assert_equal(timed_restored.snapshot().continuation, null, "the completed timed scan leaves no stale continuation")
+
+	var rebased_random := GameSession.new()
+	assert_equal(rebased_random.restore(content, camp_save).state, SessionStep.State.COMPLETED, "the post-timed random characterization starts from the same committed camp boundary")
+	rebased_random._state.clock.set_total_minutes(RealmzClock.MINUTES_PER_DAY - 10)
+	rebased_random._rng = ScriptedRng.new([0, 0, 0, 32767, 32767, 32767, 0])
+	var rebased_wait := rebased_random.submit_intent(PlayerIntent.rest())
+	assert_equal([rebased_wait.state, rebased_wait.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.ACKNOWLEDGE], "the relocation fixture first yields at its Classic textbox")
+	var rebased_request := rebased_random.view().pending_interaction
+	var rebased_random_wait := rebased_random.respond(InteractionResponse.from_data(rebased_request.request_id, InteractionRequest.ACKNOWLEDGE, {}))
+	assert_equal([rebased_random_wait.state, rebased_random_wait.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO], "the final random check uses the XAP-relocated cell and reaches its source surprise choice")
+	assert_true(_event_position(rebased_random_wait, &"party_teleported") < _event_position(rebased_random_wait, &"timed_encounter_triggered"), "XAP relocation precedes the remaining timed record")
+	assert_true(_event_position(rebased_random_wait, &"timed_encounter_triggered") < _event_position(rebased_random_wait, &"random_encounter_checked"), "the remaining timed scan precedes the final random rectangle check")
+	assert_equal(rebased_random.view().party_coordinate, Vector2i(2, 0), "the pending random encounter retains the relocated coordinate")
+	var declined_rebased := rebased_random.respond(InteractionResponse.from_data(rebased_random_wait.interaction.request_id, InteractionRequest.YES_NO, {"accepted": false}))
+	assert_equal(declined_rebased.state, SessionStep.State.COMPLETED, "declining the rebased random encounter completes the original Rest continuation")
+	assert_equal(rebased_random.snapshot().continuation, null, "the rebased timed and random scans consume their continuation exactly once")
 
 	var ineligible_timed := GameSession.new()
 	assert_equal(ineligible_timed.restore(content, camp_save).state, SessionStep.State.COMPLETED, "the ineligible timed-event characterization starts from the same camp boundary")
@@ -182,7 +204,7 @@ func run() -> void:
 	ineligible_caster.current_health = 5
 	ineligible_timed._state.set_timed_encounter_override(0, {"day": 2, "percent": 0})
 	ineligible_timed._state.clock.set_total_minutes(RealmzClock.MINUTES_PER_DAY - 10)
-	ineligible_timed._rng = ScriptedRng.new([0])
+	ineligible_timed._rng = ScriptedRng.new([0, 0])
 	var ineligible_result := ineligible_timed.submit_intent(PlayerIntent.rest())
 	assert_equal(ineligible_result.state, SessionStep.State.COMPLETED, "an ineligible timed event does not invent an interaction")
 	assert_equal(ineligible_timed._state.timed_encounter_override(0).get("day"), 5, "a failed chance still advances the timed record before continuing the scan")
@@ -341,13 +363,14 @@ func _scroll_content(source: RealmzContent) -> RealmzContent:
 	var spells: Array[SpellDefinition] = [healing, fixed]
 	var monsters: Array[MonsterDefinition] = [source.monster_by_classic_id(1)]
 	var battles: Array[BattleDefinition] = [source.battle_by_classic_id(0), source.battle_by_classic_id(1)]
-	var timed_program := ScenarioProgramDefinition.new("trigger:timed-midnight", &"trigger", "timed-midnight", [ClassicActionDefinition.new(0, 1, 1, 777, false, [])])
-	var timed_trigger := TriggerDefinition.new("timed-midnight", timed_program.id, source.start_map_id, source.start_coordinate, true, 100, null, 7)
-	var timed_encounter := TimedEncounterDefinition.new(0, 2, 3, 100, 7, -1, -1, -1, -1, 0, -1, TimedEncounterDefinition.LocationKind.ANY)
-	var messages: Array[MessageDefinition] = [MessageDefinition.new(777, "Midnight finds the party.")]
-	var triggers: Array[TriggerDefinition] = [timed_trigger]
-	var timed_encounters: Array[TimedEncounterDefinition] = [timed_encounter]
-	return RealmzContent.new("scroll-camp-workflow", source.package_hash, "scroll-camp-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([timed_program], []), messages, triggers, [], races, castes, items, spells, monsters, battles, [], [], [], [], timed_encounters)
+	var timed_program := ScenarioProgramDefinition.new("xap:7", &"extra-action-point", "xap.fixture.timed-midnight", [ClassicActionDefinition.new(0, 1, 1, 777, false, []), ClassicActionDefinition.new(1, 45, 45, 0, false, [-1, 2, 0, 0, 0])])
+	var relocated_program := ScenarioProgramDefinition.new("xap:8", &"extra-action-point", "xap.fixture.timed-relocated", [ClassicActionDefinition.new(0, 1, 1, -778, false, [])])
+	var timed_encounter := TimedEncounterDefinition.new(0, 2, 3, 100, 7, timed_program.id, -1, -1, -1, -1, 0, -1, TimedEncounterDefinition.LocationKind.ANY)
+	var relocated_encounter := TimedEncounterDefinition.new(1, 2, 3, 100, 8, relocated_program.id, 0, -1, 2, 0, 0, -1, TimedEncounterDefinition.LocationKind.LAND)
+	var messages: Array[MessageDefinition] = [MessageDefinition.new(777, "Midnight finds the party."), MessageDefinition.new(778, "The relocated watch answers.")]
+	var triggers: Array[TriggerDefinition] = []
+	var timed_encounters: Array[TimedEncounterDefinition] = [timed_encounter, relocated_encounter]
+	return RealmzContent.new("scroll-camp-workflow", source.package_hash, "scroll-camp-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([timed_program, relocated_program], []), messages, triggers, [], races, castes, items, spells, monsters, battles, [], [], [], [], timed_encounters)
 
 
 func _character(character_id: String, display_name: String, content: RealmzContent) -> CharacterState:

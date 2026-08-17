@@ -44,6 +44,7 @@ func run() -> void:
 		var action := StringName(action_id)
 		assert_equal([open_view.availability(action).enabled, open_view.availability(action).reason], [full_open_view.availability(action).enabled, full_open_view.availability(action).reason], "incremental and full projections agree on %s availability" % action)
 	_test_boat_movement(content)
+	_test_special_dungeon_bits(content)
 	_test_location_notes(content)
 	var diagonal_session := GameSession.new()
 	assert_equal(diagonal_session.start(content, 1).state, SessionStep.State.COMPLETED, "a dedicated land-diagonal session starts")
@@ -376,6 +377,34 @@ func _test_map_view_projection_edges(content: RealmzContent) -> void:
 	assert_true(session.view().map_view.cell_at(Vector2i(64, 0)) == null, "the shifted east-edge projection remains bounded to twenty-five columns")
 
 
+func _test_special_dungeon_bits(source_content: RealmzContent) -> void:
+	var cases: Array[Dictionary] = [
+		{"id": "solid-wall", "cellPassable": false, "edgeKind": &"wall", "edgePassable": false, "allowed": false},
+		{"id": "door", "cellPassable": true, "edgeKind": &"door", "edgePassable": true, "doorId": "dungeon-special:door", "allowed": true, "event": &"door_opened"},
+		{"id": "note-marker", "cellPassable": true, "edgeKind": &"open", "edgePassable": true, "allowed": true},
+		{"id": "action-point-marker", "cellPassable": true, "edgeKind": &"open", "edgePassable": true, "allowed": true},
+		{"id": "matching-secret", "cellPassable": true, "edgeKind": &"secret", "edgePassable": true, "secretId": "dungeon-special:secret:east", "secretOrientation": &"east", "allowed": true, "event": &"secret_discovered"},
+		{"id": "nonmatching-secret", "cellPassable": true, "edgeKind": &"wall", "edgePassable": false, "secretId": "dungeon-special:secret:north", "secretOrientation": &"north", "allowed": false},
+		{"id": "visible-arch", "cellPassable": false, "edgeKind": &"archway", "edgePassable": false, "allowed": false},
+	]
+	var baseline_content := _dungeon_special_content(source_content, cases[0])
+	var baseline := GameSession.new()
+	assert_equal(baseline.start(baseline_content, 31).state, SessionStep.State.COMPLETED, "the special dungeon-bit table starts from one public session boundary")
+	_begin_fixture_adventure(baseline, baseline_content)
+	var baseline_save := baseline.snapshot()
+	for dungeon_case: Dictionary in cases:
+		var content := _dungeon_special_content(source_content, dungeon_case)
+		var session := GameSession.new()
+		assert_equal(session.restore(content, baseline_save).state, SessionStep.State.COMPLETED, "%s topology restores through the shared public fixture" % dungeon_case["id"])
+		var start_minutes := session.snapshot().game_state.clock.total_minutes()
+		var moved := session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
+		var allowed: bool = dungeon_case["allowed"]
+		assert_equal([session.view().party_coordinate, session.snapshot().game_state.clock.total_minutes() - start_minutes], [Vector2i(1, 0) if allowed else Vector2i.ZERO, 1 if allowed else 0], "%s preserves Castle movement and time semantics" % dungeon_case["id"])
+		var expected_event: StringName = dungeon_case.get("event", &"")
+		if not expected_event.is_empty():
+			assert_true(_has_event(moved, expected_event), "%s publishes its topology-owned discovery event" % dungeon_case["id"])
+
+
 func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
 	var races := content.race_definitions()
 	var castes := content.caste_definitions()
@@ -516,3 +545,37 @@ func _open_movement_content(source_content: RealmzContent) -> RealmzContent:
 	var map := MapDefinition.new("open", "Open movement", &"land", 0, MapTopology.new(3, 3, cells))
 	var maps: Array[MapDefinition] = [map]
 	return RealmzContent.new("open-movement", "0".repeat(64), "open-movement-content", "realmz-classic-1", map.id, Vector2i(1, 1), WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
+
+
+func _dungeon_special_content(source_content: RealmzContent, dungeon_case: Dictionary) -> RealmzContent:
+	var empty_ids: Array[String] = []
+	var empty_features: Array[MapFeature] = []
+	var open_edges := {
+		&"north": MapEdge.new(&"open", true, false),
+		&"east": MapEdge.new(&"open", true, false),
+		&"south": MapEdge.new(&"open", true, false),
+		&"west": MapEdge.new(&"open", true, false),
+	}
+	var origin := MapCell.new("dungeon-special:cell:0,0", Vector2i.ZERO, "classic.dungeon.0", true, 1, false, false, false, false, false, false, false, 0, 0, "fixture.dungeon", empty_ids, empty_ids, open_edges, empty_features)
+	var door_id: String = dungeon_case.get("doorId", "")
+	var secret_id: String = dungeon_case.get("secretId", "")
+	var edge_kind: StringName = dungeon_case["edgeKind"]
+	var edge_passable: bool = dungeon_case["edgePassable"]
+	var target_edges := {
+		&"north": MapEdge.new(edge_kind, edge_passable, not edge_passable, door_id),
+		&"east": MapEdge.new(edge_kind, edge_passable, not edge_passable, door_id),
+		&"south": MapEdge.new(edge_kind, edge_passable, not edge_passable, door_id),
+		&"west": MapEdge.new(edge_kind, edge_passable, not edge_passable, door_id),
+	}
+	var target_features: Array[MapFeature] = []
+	if not secret_id.is_empty():
+		var orientation: StringName = dungeon_case["secretOrientation"]
+		for direction: StringName in [&"north", &"east", &"south", &"west"]:
+			target_edges[direction] = MapEdge.new(&"wall", false, true)
+		target_edges[orientation] = MapEdge.new(&"secret", true, true, "", secret_id, false)
+		target_features.append(MapFeature.new(secret_id, &"secret", &"hidden", orientation))
+	var target := MapCell.new("dungeon-special:cell:1,0", Vector2i(1, 0), "classic.dungeon.1", dungeon_case["cellPassable"], 1, not dungeon_case["cellPassable"], false, false, false, false, false, false, 0, 1, "fixture.dungeon", empty_ids, empty_ids, target_edges, target_features)
+	var cells: Array[MapCell] = [origin, target]
+	var map := MapDefinition.new("dungeon-special", "Dungeon level 0", &"dungeon", 0, MapTopology.new(2, 1, cells))
+	var maps: Array[MapDefinition] = [map]
+	return RealmzContent.new("dungeon-special", "0".repeat(64), "dungeon-special-content", "realmz-classic-1", map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new([], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())

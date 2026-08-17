@@ -1,8 +1,8 @@
 class_name PackageRepository
 extends RefCounted
 
-const EXPECTED_SCHEMA_HASH: String = "8911a4de6f6182e7d18a5c1ee2c8ccf2989a5bb22cfcb24c6f9fc4ab19a23602"
-const DECODER_VERSION: int = 4
+const EXPECTED_SCHEMA_HASH: String = "6ef382e35335ba91fc72a94c4600633f68255ad30651a4da195e134887e05bdb"
+const DECODER_VERSION: int = 5
 const REQUIRED_DOCUMENTS: Array[String] = ["assets/index.json", "content.json", "scenario.json", "world.json"]
 const SUPPORTED_CAPABILITIES: Array[String] = [
 	"realmz.core.classic-rules-v1",

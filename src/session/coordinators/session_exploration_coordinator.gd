@@ -94,14 +94,13 @@ func _continue_timed_encounters(events: Array[DomainEvent]) -> SessionCoordinato
 		if not eligible:
 			continue
 		_apply_pending_midnight_recovery(events)
-		var trigger = _context.content.trigger_by_map_record(map.id, encounter.trigger_record_index)
-		if trigger == null:
+		if _context.content.scenario.program_by_id(encounter.program_id) == null:
 			_context.session_continuation.clear()
-			return _context.failed(&"unknown_timed_encounter_trigger", "Timed Encounter %d references unavailable Action Point record %d on map '%s'." % [encounter.id, encounter.trigger_record_index, map.id], events)
-		exploration.active_timed_program_id = trigger.program_id
-		events.append(DomainEvent.new(&"timed_encounter_triggered", {"encounterId": encounter.id, "triggerId": trigger.id, "programId": trigger.program_id}))
-		var context = ScenarioExecutionContext.trigger(&"action", trigger.id, map.id, exploration.timed_check_coordinate, true).set_timed_encounter(encounter.id)
-		var started = _context.scenario_vm.start_program(trigger.program_id, context)
+			return _context.failed(&"unknown_timed_encounter_program", "Timed Encounter %d references unavailable XAP program '%s'." % [encounter.id, encounter.program_id], events)
+		exploration.active_timed_program_id = encounter.program_id
+		events.append(DomainEvent.new(&"timed_encounter_triggered", {"encounterId": encounter.id, "classicMacroId": encounter.classic_macro_id, "programId": encounter.program_id}))
+		var context = ScenarioExecutionContext.trigger(&"action", "", map.id, exploration.timed_check_coordinate, true).set_timed_encounter(encounter.id)
+		var started = _context.scenario_vm.start_program(encounter.program_id, context)
 		if started.state == ScenarioVmResult.State.FAILED:
 			_context.session_continuation.clear()
 			return _context.failed(started.error_code, started.error_message, events)

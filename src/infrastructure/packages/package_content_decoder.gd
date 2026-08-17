@@ -611,8 +611,8 @@ func _construct_timed_encounters(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Timed Encounters must be an array.")
 		return null
-	var fields: Array[String] = ["id", "day", "increment", "chancePercent", "triggerRecordIndex", "requiredLevel", "requiredRandomRectangle", "requiredX", "requiredY", "requiredItemId", "requiredQuestId", "locationKind"]
-	var integer_fields: Array[String] = ["id", "day", "increment", "chancePercent", "triggerRecordIndex", "requiredLevel", "requiredRandomRectangle", "requiredX", "requiredY", "requiredItemId", "requiredQuestId"]
+	var fields: Array[String] = ["id", "day", "increment", "chancePercent", "classicMacroId", "programId", "requiredLevel", "requiredRandomRectangle", "requiredX", "requiredY", "requiredItemId", "requiredQuestId", "locationKind"]
+	var integer_fields: Array[String] = ["id", "day", "increment", "chancePercent", "classicMacroId", "requiredLevel", "requiredRandomRectangle", "requiredX", "requiredY", "requiredItemId", "requiredQuestId"]
 	var encounters: Array[TimedEncounterDefinition] = []
 	var ids: Dictionary = {}
 	var location_kinds: Dictionary = {"any": TimedEncounterDefinition.LocationKind.ANY, "land": TimedEncounterDefinition.LocationKind.LAND, "dungeon": TimedEncounterDefinition.LocationKind.DUNGEON}
@@ -622,14 +622,13 @@ func _construct_timed_encounters(value: Variant) -> Variant:
 			return null
 		var record: Dictionary = value_record
 		var integers_value: Variant = _validated_integer_fields(record, integer_fields, "Timed Encounter")
-		if not _exact_fields(record, fields) or integers_value == null or not record["locationKind"] is String or not location_kinds.has(record["locationKind"]):
+		if not _exact_fields(record, fields) or integers_value == null or not record["programId"] is String or record["programId"].is_empty() or not record["locationKind"] is String or not location_kinds.has(record["locationKind"]):
 			_reject("Timed Encounter definition is malformed.")
 			return null
 		var integers: Dictionary = integers_value
-		if integers["id"] < 0 or ids.has(integers["id"]) or not _integers_in_range(integers, integer_fields.slice(1), -32768, 32767):
+		if integers["id"] < 0 or ids.has(integers["id"]) or integers["classicMacroId"] < 0 or not _integers_in_range(integers, integer_fields.slice(1), -32768, 32767):
 			_reject("Timed Encounter identity or Classic fields are malformed.")
 			return null
 		ids[integers["id"]] = true
-		encounters.append(TimedEncounterDefinition.new(integers["id"], integers["day"], integers["increment"], integers["chancePercent"], integers["triggerRecordIndex"], integers["requiredLevel"], integers["requiredRandomRectangle"], integers["requiredX"], integers["requiredY"], integers["requiredItemId"], integers["requiredQuestId"], location_kinds[record["locationKind"]]))
+		encounters.append(TimedEncounterDefinition.new(integers["id"], integers["day"], integers["increment"], integers["chancePercent"], integers["classicMacroId"], record["programId"], integers["requiredLevel"], integers["requiredRandomRectangle"], integers["requiredX"], integers["requiredY"], integers["requiredItemId"], integers["requiredQuestId"], location_kinds[record["locationKind"]]))
 	return encounters
-

@@ -88,6 +88,8 @@ func assemble(manifest: Dictionary, content: Dictionary, world: Dictionary, scen
 	var triggers: Array[TriggerDefinition] = triggers_value
 	if not trusted_install and not _reference_validator._validate_scenario_references(scenario_definition, message_ids, simple_encounters, complex_encounters, thief_encounters):
 		return null
+	if not trusted_install and not _reference_validator._validate_timed_encounter_references(scenario_definition, timed_encounters):
+		return null
 	if not trusted_install and not _reference_validator._validate_rule_references(races, castes, items, spells, monsters, battles, treasures, shops, message_ids):
 		return null
 	for set_id: Variant in monster_sets if not trusted_install else {}:

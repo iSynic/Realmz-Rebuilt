@@ -398,13 +398,14 @@
     },
     "timedEncounter": {
       "type": "object",
-      "required": ["id", "day", "increment", "chancePercent", "triggerRecordIndex", "requiredLevel", "requiredRandomRectangle", "requiredX", "requiredY", "requiredItemId", "requiredQuestId", "locationKind"],
+      "required": ["id", "day", "increment", "chancePercent", "classicMacroId", "programId", "requiredLevel", "requiredRandomRectangle", "requiredX", "requiredY", "requiredItemId", "requiredQuestId", "locationKind"],
       "properties": {
         "id": { "type": "integer", "minimum": 0 },
         "day": { "type": "integer", "minimum": -32768, "maximum": 32767 },
         "increment": { "type": "integer", "minimum": -32768, "maximum": 32767 },
         "chancePercent": { "type": "integer", "minimum": -32768, "maximum": 32767 },
-        "triggerRecordIndex": { "type": "integer", "minimum": -32768, "maximum": 32767 },
+        "classicMacroId": { "type": "integer", "minimum": 0, "maximum": 32767 },
+        "programId": { "$ref": "#/$defs/identifier" },
         "requiredLevel": { "type": "integer", "minimum": -32768, "maximum": 32767 },
         "requiredRandomRectangle": { "type": "integer", "minimum": -32768, "maximum": 32767 },
         "requiredX": { "type": "integer", "minimum": -32768, "maximum": 32767 },
