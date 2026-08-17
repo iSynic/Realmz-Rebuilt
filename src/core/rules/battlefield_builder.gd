@@ -88,6 +88,10 @@ func find_monster_position(battlefield: BattlefieldState, terrain_set: BattleTer
 		var stop := radius
 		for vertical_offset: int in range(start, stop):
 			for horizontal_offset: int in range(start, stop):
+				# Earlier radii already proved the interior illegal. Skipping those
+				# repeated probes preserves this radius's row-major first candidate.
+				if not _is_new_radius_edge(horizontal_offset, vertical_offset, radius):
+					continue
 				var candidate := center + Vector2i(horizontal_offset, vertical_offset)
 				if _monster_position_is_legal(battlefield, terrain_set, candidate, size):
 					return candidate
@@ -104,6 +108,8 @@ func _find_character_cell(battlefield: BattlefieldState, terrain_set: BattleTerr
 	for radius: int in range(1, _maximum_useful_radius(center) + 1):
 		for vertical_offset: int in range(-radius, radius):
 			for horizontal_offset: int in range(-radius, radius):
+				if not _is_new_radius_edge(horizontal_offset, vertical_offset, radius):
+					continue
 				var candidate := center + Vector2i(horizontal_offset, vertical_offset)
 				if not _inside_good_rect(candidate) or battlefield.is_occupied(candidate):
 					continue
@@ -276,6 +282,10 @@ static func _maximum_useful_radius(center: Vector2i) -> int:
 		maxi(absi(GOOD_MINIMUM - center.y), absi((GOOD_MAXIMUM_EXCLUSIVE - 1) - center.y))
 	) + 2
 	return mini(required, MAX_SEARCH_RADIUS)
+
+
+static func _is_new_radius_edge(horizontal_offset: int, vertical_offset: int, radius: int) -> bool:
+	return horizontal_offset == -radius or horizontal_offset == radius - 1 or vertical_offset == -radius or vertical_offset == radius - 1
 
 
 static func _between(value: int, low: int, high: int) -> bool:

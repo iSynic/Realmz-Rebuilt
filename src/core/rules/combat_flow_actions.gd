@@ -126,21 +126,10 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 				events.append(DomainEvent.new(&"sound_requested", {"soundId": 138, "waitForCompletion": false, "source": "classic-combat-activation"}))
 			events.append(DomainEvent.new(&"combat_turn_undone", {"actorId": actor.id, "from": [from_position.x, from_position.y], "to": [start_position.x, start_position.y], "attacksRemaining": actor.attacks_remaining, "movementRemaining": actor.movement, "source": "classic"}))
 		&"auto":
-			var auto_state_checkpoint := state.to_data()
-			var auto_rng_checkpoint := rng.checkpoint()
-			var auto_result = _flow().run_auto_turn(state, content, actor.id, rng)
-			if not auto_result.ok or auto_result.completed or state.combat == null or state.combat.pending_monster_attack != null or _flow()._events_include(auto_result.events, &"monster_death_macro_requested"):
-				if auto_result.ok:
-					auto_result.events.push_front(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
+			var auto_result = _flow().run_auto_activation_chain(state, content, actor.id, rng)
+			if not auto_result.ok:
 				return auto_result
-			var persistent_result = _flow().run_persistent_auto_characters(state, content, rng)
-			if not persistent_result.ok:
-				if not state.restore_from_data(auto_state_checkpoint) or not rng.rollback(auto_rng_checkpoint):
-					return CombatFlowResult.failed(&"combat_auto_rollback_failed", "Auto Turn failed and could not restore its deterministic transaction boundary.")
-				return persistent_result
-			auto_result.events.append_array(persistent_result.events)
 			auto_result.events.push_front(DomainEvent.new(&"sound_requested", {"soundId": 141, "waitForCompletion": false, "source": "classic-combat-auto-button"}))
-			auto_result.completed = persistent_result.completed
 			return auto_result
 		&"finish", &"pass":
 			_prepare_character_turn(combat, actor)

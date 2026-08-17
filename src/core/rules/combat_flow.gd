@@ -104,6 +104,10 @@ func run_auto_turn(state: GameState, content: RealmzContent, actor_id: String, r
 	return _automation.run_auto_turn(state, content, actor_id, rng)
 
 
+func run_auto_activation_chain(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng) -> CombatFlowResult:
+	return _automation.run_auto_activation_chain(state, content, actor_id, rng)
+
+
 func run_persistent_auto_characters(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
 	return _automation.run_persistent_auto_characters(state, content, rng)
 

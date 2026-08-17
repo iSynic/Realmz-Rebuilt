@@ -40,13 +40,36 @@ func _flow() -> RefCounted:
 	return _flow_ref.get_ref() if _flow_ref != null else null
 
 func run_auto_turn(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng) -> CombatFlowResult:
-	if state == null or content == null or rng == null or state.combat == null or state.combat.completed:
-		return CombatFlowResult.failed(&"combat_auto_unavailable", "No active battle can resolve an automatic turn.")
-	var actor := state.party.character_by_id(actor_id)
-	if actor == null or actor.current_health <= 0 or actor.traitor or state.combat.active_actor_id() != actor_id:
-		return CombatFlowResult.failed(&"combat_auto_unavailable", "Only the active loyal character can use Auto Turn.")
+	var unavailable := _auto_unavailable(state, content, actor_id, rng)
+	if unavailable != null:
+		return unavailable
 	var state_checkpoint := state.to_data()
 	var rng_checkpoint := rng.checkpoint()
+	var result := _run_auto_turn_unchecked(state, content, actor_id, rng)
+	return _commit_or_rollback(state, rng, state_checkpoint, rng_checkpoint, result, "Automatic combat")
+
+
+func run_auto_activation_chain(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng) -> CombatFlowResult:
+	var unavailable := _auto_unavailable(state, content, actor_id, rng)
+	if unavailable != null:
+		return unavailable
+	var state_checkpoint := state.to_data()
+	var rng_checkpoint := rng.checkpoint()
+	var result := _run_auto_turn_unchecked(state, content, actor_id, rng)
+	if not result.ok:
+		return _commit_or_rollback(state, rng, state_checkpoint, rng_checkpoint, result, "Auto Turn")
+	if result.completed or state.combat == null or state.combat.pending_monster_attack != null or _events_include(result.events, &"monster_death_macro_requested"):
+		return result
+	var persistent_result := _run_persistent_auto_unchecked(state, content, rng)
+	if not persistent_result.ok:
+		return _commit_or_rollback(state, rng, state_checkpoint, rng_checkpoint, persistent_result, "Auto Turn")
+	result.events.append_array(persistent_result.events)
+	result.completed = persistent_result.completed
+	return result
+
+
+func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng) -> CombatFlowResult:
+	var actor := state.party.character_by_id(actor_id)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"combat_auto_started", {"actorId": actor.id, "persistent": state.combat_auto_enabled(actor.id), "source": "classic"})]
 	var starting_round := state.combat.round_number
 	var operation_count := 0
@@ -73,16 +96,12 @@ func run_auto_turn(state: GameState, content: RealmzContent, actor_id: String, r
 			result = _flow().submit_action(state, content, actor.id, &"defend", "", rng)
 		if result == null or not result.ok:
 			_flow().set_processing_auto(previous_processing)
-			if not state.restore_from_data(state_checkpoint) or not rng.rollback(rng_checkpoint):
-				return CombatFlowResult.failed(&"combat_auto_rollback_failed", "Automatic combat failed and could not restore its deterministic transaction boundary.")
 			return CombatFlowResult.failed(&"combat_auto_failed", "Automatic combat could not choose a legal source-backed action.")
 		events.append_array(result.events)
 		if result.completed or _events_include(result.events, &"monster_death_macro_requested") or state.combat.pending_monster_attack != null:
 			break
 	_flow().set_processing_auto(previous_processing)
 	if operation_count >= MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.active_actor_id() == actor_id and state.combat.round_number == starting_round:
-		if not state.restore_from_data(state_checkpoint) or not rng.rollback(rng_checkpoint):
-			return CombatFlowResult.failed(&"combat_auto_rollback_failed", "Automatic combat exhausted its operation limit and could not restore its deterministic transaction boundary.")
 		return CombatFlowResult.failed(&"combat_auto_operation_limit", "Automatic combat exceeded its 256-operation safety limit without committing a partial activation.")
 	events.append(DomainEvent.new(&"combat_auto_completed", {"actorId": actor.id, "operations": operation_count, "source": "classic"}))
 	return CombatFlowResult.succeeded(events, state.combat == null or state.combat.completed)
@@ -93,6 +112,11 @@ func run_persistent_auto_characters(state: GameState, content: RealmzContent, rn
 		return CombatFlowResult.succeeded([])
 	var state_checkpoint := state.to_data()
 	var rng_checkpoint := rng.checkpoint()
+	var result := _run_persistent_auto_unchecked(state, content, rng)
+	return _commit_or_rollback(state, rng, state_checkpoint, rng_checkpoint, result, "Persistent Auto")
+
+
+func _run_persistent_auto_unchecked(state: GameState, content: RealmzContent, rng: RealmzRng) -> CombatFlowResult:
 	var events: Array[DomainEvent] = []
 	var activation_count := 0
 	var previous_processing = _flow().is_processing_auto()
@@ -103,11 +127,9 @@ func run_persistent_auto_characters(state: GameState, content: RealmzContent, rn
 		if actor == null or actor.traitor or not state.combat_auto_enabled(actor_id):
 			break
 		activation_count += 1
-		var result := run_auto_turn(state, content, actor_id, rng)
+		var result := _run_auto_turn_unchecked(state, content, actor_id, rng)
 		if not result.ok:
 			_flow().set_processing_auto(previous_processing)
-			if not state.restore_from_data(state_checkpoint) or not rng.rollback(rng_checkpoint):
-				return CombatFlowResult.failed(&"combat_auto_rollback_failed", "Persistent Auto failed and could not restore its deterministic transaction boundary.")
 			return result
 		events.append_array(result.events)
 		if result.completed or state.combat.pending_monster_attack != null or _events_include(result.events, &"monster_death_macro_requested"):
@@ -115,10 +137,25 @@ func run_persistent_auto_characters(state: GameState, content: RealmzContent, rn
 			return CombatFlowResult.succeeded(events, result.completed)
 	_flow().set_processing_auto(previous_processing)
 	if activation_count >= MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat_auto_enabled(state.combat.active_actor_id()):
-		if not state.restore_from_data(state_checkpoint) or not rng.rollback(rng_checkpoint):
-			return CombatFlowResult.failed(&"combat_auto_rollback_failed", "Persistent Auto exhausted its operation limit and could not restore its deterministic transaction boundary.")
 		return CombatFlowResult.failed(&"combat_auto_operation_limit", "Persistent Auto exceeded its 256-activation safety limit without committing a partial chain.")
 	return CombatFlowResult.succeeded(events, state.combat == null or state.combat.completed)
+
+
+func _auto_unavailable(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng) -> CombatFlowResult:
+	if state == null or content == null or rng == null or state.combat == null or state.combat.completed:
+		return CombatFlowResult.failed(&"combat_auto_unavailable", "No active battle can resolve an automatic turn.")
+	var actor := state.party.character_by_id(actor_id)
+	if actor == null or actor.current_health <= 0 or actor.traitor or state.combat.active_actor_id() != actor_id:
+		return CombatFlowResult.failed(&"combat_auto_unavailable", "Only the active loyal character can use Auto Turn.")
+	return null
+
+
+func _commit_or_rollback(state: GameState, rng: RealmzRng, state_checkpoint: Dictionary, rng_checkpoint: Dictionary, result: CombatFlowResult, operation_name: String) -> CombatFlowResult:
+	if result.ok:
+		return result
+	if not state.restore_from_data(state_checkpoint) or not rng.rollback(rng_checkpoint):
+		return CombatFlowResult.failed(&"combat_auto_rollback_failed", "%s failed and could not restore its deterministic transaction boundary." % operation_name)
+	return result
 
 
 func _auto_projectile_or_move(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> CombatFlowResult:
