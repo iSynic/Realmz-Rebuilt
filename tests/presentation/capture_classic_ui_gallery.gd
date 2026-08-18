@@ -354,6 +354,9 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"system")
 	await _settle()
 	await _capture("canonical-system-1280x720")
+	var system_tabs := _router.find_child("SystemWorkspaceTabs", true, false) as TabContainer
+	for index: int in range(1, 6):
+		system_tabs.current_tab = index; await _settle(); await _capture("canonical-system-%s-1280x720" % ["display", "audio", "accessibility", "controls", "diagnostics"][index - 1])
 	var settings := PresentationSettings.new()
 	settings.text_scale = 1.5
 	settings.ui_scale_mode = PresentationSettings.UI_SCALE_150

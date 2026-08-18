@@ -33,7 +33,11 @@ func present(parent: VBoxContainer, view: GameView, settings: PresentationSettin
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	parent.add_child(tabs)
 	_build_save_tab(_tab(tabs, "Save & Load"), view)
-	_build_preferences_tab(_tab(tabs, "Preferences"), settings)
+	_build_display_tab(_tab(tabs, "Display"), settings)
+	_build_audio_tab(_tab(tabs, "Audio"), settings)
+	_build_accessibility_tab(_tab(tabs, "Accessibility"), settings)
+	_build_controls_tab(_tab(tabs, "Controls"), settings)
+	_build_diagnostics_tab(_tab(tabs, "Diagnostics"), settings)
 
 
 func _add_header(parent: VBoxContainer, view: GameView) -> void:
@@ -159,47 +163,93 @@ func _key(preview: SaveSlotPreview) -> String:
 	return "%s:%s" % [preview.slot_id, String(preview.source)] if preview != null else ""
 
 
-func _build_preferences_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
-	_add_section_heading(parent, "Display", "Interface scale and text size are independent")
+func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
+	var content := _settings_panel(parent, "Display", "Interface scale, text size, and window mode apply immediately.")
 	var ui_scale := OptionButton.new()
 	for entry: Dictionary in [{"label": "UI scale: Auto", "id": PresentationSettings.UI_SCALE_AUTO}, {"label": "UI scale: 100%", "id": PresentationSettings.UI_SCALE_100}, {"label": "UI scale: 125%", "id": PresentationSettings.UI_SCALE_125}, {"label": "UI scale: 150%", "id": PresentationSettings.UI_SCALE_150}]:
 		ui_scale.add_item(entry["label"])
 		ui_scale.set_item_metadata(ui_scale.item_count - 1, entry["id"])
 		if entry["id"] == settings.ui_scale_mode: ui_scale.select(ui_scale.item_count - 1)
 	ui_scale.item_selected.connect(func(index: int) -> void: setting_changed.emit(&"ui_scale_mode", String(ui_scale.get_item_metadata(index))))
-	parent.add_child(ui_scale)
+	_add_setting_row(content, "Interface scale", ui_scale)
 	var text_scale := HSlider.new()
 	text_scale.min_value = 0.8; text_scale.max_value = 1.5; text_scale.step = 0.1; text_scale.value = settings.text_scale
 	text_scale.tooltip_text = "Text scale %d%%" % int(round(settings.text_scale * 100.0))
 	text_scale.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"text_scale", value))
-	parent.add_child(text_scale)
+	_add_setting_row(content, "Text size  •  %d%%" % int(round(settings.text_scale * 100.0)), text_scale)
 	var window_mode := OptionButton.new()
 	window_mode.add_item("Windowed"); window_mode.set_item_metadata(0, PresentationSettings.WINDOWED)
 	window_mode.add_item("Borderless fullscreen"); window_mode.set_item_metadata(1, PresentationSettings.BORDERLESS_FULLSCREEN)
 	window_mode.select(1 if settings.window_mode == PresentationSettings.BORDERLESS_FULLSCREEN else 0)
 	window_mode.item_selected.connect(func(index: int) -> void: setting_changed.emit(&"window_mode", String(window_mode.get_item_metadata(index))))
-	parent.add_child(window_mode)
+	_add_setting_row(content, "Window mode", window_mode)
+	_add_setting_toggle(content, "Use topology-derived 3D dungeons", settings.dungeon_3d, &"dungeon_3d")
+
+
+func _build_audio_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
+	var content := _settings_panel(parent, "Audio", "Presentation audio never advances the simulation.")
+	var volume := HSlider.new()
+	volume.min_value = 0.0; volume.max_value = 1.0; volume.step = 0.05; volume.value = settings.master_volume
+	volume.tooltip_text = "Master volume %d%%" % int(round(settings.master_volume * 100.0))
+	volume.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"master_volume", value))
+	_add_setting_row(content, "Master volume  •  %d%%" % int(round(settings.master_volume * 100.0)), volume)
+
+
+func _build_accessibility_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
+	var content := _settings_panel(parent, "Accessibility", "Accessibility changes presentation only; Classic rules remain fixed.")
+	_add_setting_toggle(content, "Reduced motion", settings.reduced_motion, &"reduced_motion")
+	content.add_child(_label("Reduced motion settles combat feedback in one presentation frame without skipping committed events.", MUTED, 14))
+
+
+func _build_controls_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
+	var content := _settings_panel(parent, "Controls", "Exploration cadence and convenience controls.")
 	var movement_row := HBoxContainer.new()
-	var movement_label := _label("Exploration movement speed", MUTED, 14)
-	movement_label.custom_minimum_size.x = 190.0
-	movement_row.add_child(movement_label)
 	var movement_speed := HSlider.new()
 	movement_speed.min_value = 25.0; movement_speed.max_value = 400.0; movement_speed.step = 25.0; movement_speed.value = settings.exploration_speed_percent
 	movement_speed.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	movement_speed.tooltip_text = "%d%%  •  %.3f seconds per held step" % [settings.exploration_speed_percent, HeldMovementControllerScript.BASE_INTERVAL_SECONDS * 100.0 / float(settings.exploration_speed_percent)]
 	movement_speed.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"exploration_speed_percent", int(value)))
 	movement_row.add_child(movement_speed)
-	parent.add_child(movement_row)
-	_add_section_heading(parent, "Accessibility and presentation")
-	_add_setting_toggle(parent, "Reduced motion", settings.reduced_motion, &"reduced_motion")
-	_add_setting_toggle(parent, "Auto Switch To Melee Weapon", settings.auto_switch_to_melee, &"auto_switch_to_melee")
-	_add_setting_toggle(parent, "Use topology-derived 3D dungeons", settings.dungeon_3d, &"dungeon_3d")
-	_add_setting_toggle(parent, "Show topology diagnostics", settings.topology_debug, &"topology_debug")
-	var volume := HSlider.new()
-	volume.min_value = 0.0; volume.max_value = 1.0; volume.step = 0.05; volume.value = settings.master_volume
-	volume.tooltip_text = "Master volume"
-	volume.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"master_volume", value))
-	parent.add_child(volume)
+	_add_setting_row(content, "Exploration speed  •  %d%%" % settings.exploration_speed_percent, movement_row)
+	_add_setting_toggle(content, "Auto Switch To Melee Weapon", settings.auto_switch_to_melee, &"auto_switch_to_melee")
+	content.add_child(_label("Move: arrows, WASD, or numpad  •  Hold Shift in battle to reveal adjacent movement costs  •  Space skips presentation playback", MUTED, 14))
+
+
+func _build_diagnostics_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
+	var content := _settings_panel(parent, "Diagnostics", "Developer overlays expose detached topology facts without becoming gameplay authority.")
+	_add_setting_toggle(content, "Show topology diagnostics", settings.topology_debug, &"topology_debug")
+	content.add_child(_label("Topology diagnostics display movement, visibility, and trigger projections derived from the same authoritative map model.", MUTED, 14))
+
+
+func _settings_panel(parent: VBoxContainer, title: String, description: String) -> VBoxContainer:
+	var panel := PanelContainer.new()
+	panel.name = "%sSettingsPanel" % title.replace(" ", "")
+	panel.theme_type_variation = &"ClassicTextWell"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(panel)
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_theme_constant_override("separation", 10)
+	panel.add_child(content)
+	var heading := _label(title, GOLD, 20)
+	heading.theme_type_variation = &"ClassicHeading"
+	content.add_child(heading)
+	content.add_child(_label(description, MUTED, 14))
+	content.add_child(HSeparator.new())
+	return content
+
+
+func _add_setting_row(parent: Container, label: String, control: Control) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	parent.add_child(row)
+	var caption := _label(label, Color("e0e2e5"), 15)
+	caption.custom_minimum_size.x = 230.0
+	row.add_child(caption)
+	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(control)
 
 
 func _tab(tabs: TabContainer, tab_name: String) -> VBoxContainer:
@@ -248,18 +298,6 @@ func _add_action(parent: Container, label: String, action_id: StringName, value:
 		button.pressed.connect(func() -> void: action_requested.emit(action_id, value))
 	parent.add_child(button)
 	return button
-
-
-func _add_section_heading(parent: Container, title: String, detail: String = "") -> void:
-	var row := HBoxContainer.new()
-	var heading := _label(title, GOLD, 18)
-	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(heading)
-	if not detail.is_empty():
-		var note := _label(detail, MUTED, 13)
-		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		row.add_child(note)
-	parent.add_child(row)
 
 
 func _add_card(parent: Container, title: String, subtitle: String, detail: String) -> void:
