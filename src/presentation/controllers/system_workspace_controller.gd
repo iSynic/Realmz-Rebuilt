@@ -15,6 +15,11 @@ var _save_previews: Array[SaveSlotPreview] = []
 var _selected_save_key: String = ""
 var _save_detail: VBoxContainer
 var _load_selected: Button
+var _layout_profile: StringName = UiLayoutProfile.WIDE
+
+
+func set_layout_profile(profile_id: StringName) -> void:
+	_layout_profile = profile_id
 
 
 func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
@@ -29,6 +34,7 @@ func present(parent: VBoxContainer, view: GameView, settings: PresentationSettin
 	_add_header(parent, view)
 	var tabs := TabContainer.new()
 	tabs.name = "SystemWorkspaceTabs"
+	tabs.clip_tabs = true
 	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	parent.add_child(tabs)
@@ -44,13 +50,12 @@ func _add_header(parent: VBoxContainer, view: GameView) -> void:
 	var row := HBoxContainer.new()
 	row.name = "SystemHeader"
 	parent.add_child(row)
-	var title := _label("Preferences and Game", GOLD, 20)
-	title.theme_type_variation = &"ClassicHeading"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(title)
 	var campaign := view.campaign_summary.title if view.campaign_summary != null else view.campaign_id
 	var fact := _label("%s  •  %s" % [campaign, view.rules_version], CYAN, 13)
-	fact.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	fact.name = "SystemCampaignContext"
+	fact.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fact.max_lines_visible = 2
+	fact.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	row.add_child(fact)
 
 
@@ -242,11 +247,12 @@ func _settings_panel(parent: VBoxContainer, title: String, description: String) 
 
 
 func _add_setting_row(parent: Container, label: String, control: Control) -> void:
-	var row := HBoxContainer.new()
+	var row := BoxContainer.new()
+	row.vertical = _layout_profile == UiLayoutProfile.COMPACT
 	row.add_theme_constant_override("separation", 10)
 	parent.add_child(row)
 	var caption := _label(label, Color("e0e2e5"), 15)
-	caption.custom_minimum_size.x = 230.0
+	caption.custom_minimum_size.x = 0.0 if row.vertical else 230.0
 	row.add_child(caption)
 	control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(control)

@@ -45,12 +45,9 @@ func _add_header(parent: VBoxContainer, view: GameView) -> void:
 	var row := HBoxContainer.new()
 	row.name = "MapsNotesHeader"
 	parent.add_child(row)
-	var title := _label("Maps / Notes", GOLD, 20)
-	title.theme_type_variation = &"ClassicHeading"
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(title)
 	var maps := view.party_summary.acquired_map_ids.size() if view.party_summary != null else 0
 	var facts := _label("%d places  •  %d maps  •  %d journal entries" % [view.location_notes.size(), maps, view.journal_entries.size()], CYAN, 13)
+	facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	facts.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(facts)
 
@@ -156,7 +153,14 @@ func _build_journal_tab(parent: VBoxContainer, view: GameView) -> void:
 		open.button_pressed = entry.message_id == _selected_journal_message_id
 		open.pressed.connect(_select_journal_entry.bind(view, entry.message_id))
 		record.add_child(open)
-		record.add_child(_label(entry.text.left(180), MUTED, 13))
+		var preview_text := entry.text.strip_edges()
+		if preview_text.length() > 140:
+			preview_text = preview_text.left(137).strip_edges() + "…"
+		var preview := _label(preview_text, MUTED, 13)
+		preview.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		preview.max_lines_visible = 2
+		preview.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		record.add_child(preview)
 	_refresh_journal_detail(view)
 
 
@@ -174,6 +178,7 @@ func _refresh_journal_detail(view: GameView) -> void:
 			_journal_detail.add_child(_label("Journal entry %d" % entry.message_id, GOLD, 18))
 			_journal_detail.add_child(HSeparator.new())
 			var text := _label(entry.text, Color("e0e2e5"), 15)
+			text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			text.size_flags_vertical = Control.SIZE_EXPAND_FILL
 			_journal_detail.add_child(text)
 			return
@@ -273,7 +278,7 @@ func _scroll(node_name: String) -> ScrollContainer:
 
 
 func _add_empty_state(parent: Container, title: String, detail: String) -> void:
-	_add_card(parent, title, "Unavailable", detail)
+	_add_card(parent, title, "Empty", detail)
 
 
 func _add_card(parent: Container, title: String, subtitle: String, detail: String) -> void:

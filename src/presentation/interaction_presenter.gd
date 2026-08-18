@@ -60,6 +60,9 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		_prompt.visible = false
 		return
 	_set_heading(_heading_for_kind(request.kind))
+	if request.kind == InteractionRequest.SESSION_LIFECYCLE:
+		var lifecycle := request.body as InteractionRequest.LifecycleRequestBody
+		_set_heading("End Adventure" if lifecycle != null and lifecycle.operation == &"end-adventure" else "Quit Realmz Rebuilt")
 	if request.kind == InteractionRequest.CHARACTER_SELECTION and (request.body as InteractionRequest.CharacterSelectionRequestBody).spell_context != null:
 		_set_heading("Spell Target")
 	_prompt.text = _prompt_for(request, classic_text_context)
@@ -341,7 +344,7 @@ func _apply_classic_region() -> void:
 		size = region.size
 	elif uses_full_stage_region(_request):
 		theme_type_variation = &"ClassicInset"
-		var region := _application_rect if uses_application_workspace(_request) else _stage_rect
+		var region := _application_rect if uses_application_workspace(_request) or _request.kind == InteractionRequest.SESSION_LIFECYCLE else _stage_rect
 		position = region.position
 		size = region.size
 	else:
@@ -376,7 +379,7 @@ static func uses_textbox_region(request: InteractionRequest, passive_text: bool 
 
 
 static func uses_full_stage_region(request: InteractionRequest) -> bool:
-	return request != null and (request.kind == InteractionRequest.ALLY_SELECTION or uses_application_workspace(request))
+	return request != null and (request.kind in [InteractionRequest.ALLY_SELECTION, InteractionRequest.SESSION_LIFECYCLE] or uses_application_workspace(request))
 
 
 static func uses_application_workspace(request: InteractionRequest) -> bool:

@@ -4,6 +4,8 @@ const FIXTURE_PATH := "res://tests/fixtures/packages/realmz2-synthetic-fixture.r
 const OUTPUT_ROOT := "res://artifacts/ui-gallery"
 const CHARACTER_VIEW_SCRIPT := preload("res://src/core/view/character_view.gd")
 const PACKAGE_OPERATION_VIEW_SCRIPT := preload("res://src/app/package_operation_view.gd")
+const SAVE_SLOT_PREVIEW_SCRIPT := preload("res://src/core/view/save_slot_preview.gd")
+const APPLICATION_LIFECYCLE_SCRIPT := preload("res://src/app/application_lifecycle.gd")
 
 var _application: RealmzApplication
 var _shell: ClassicApplicationShell
@@ -190,12 +192,28 @@ func _capture_gallery() -> void:
 	await _resize(Vector2i(800, 600))
 	await _capture("classic-spells-800x600")
 	await _resize(Vector2i(1280, 720))
+	gallery_view.current_location_note = LocationNoteView.new("land:0", "Land level 0", &"land", 0, Vector2i(1, 1), "Watch the northern road.", 0, 0, true)
+	var gallery_location_notes: Array[LocationNoteView] = [gallery_view.current_location_note, LocationNoteView.new("land:0", "Land level 0", &"land", 0, Vector2i(4, 6), "A sheltered campsite near the old road.", 0, 1)]; gallery_view.location_notes = gallery_location_notes
+	var gallery_journal_entries: Array[JournalEntryView] = [JournalEntryView.new(4, "The road bends toward the mountain."), JournalEntryView.new(19, "A long authored entry remains readable. " + "The party follows the old ridge road while the storm closes in. ".repeat(8))]; gallery_view.journal_entries = gallery_journal_entries
+	var map_snapshot := _application.session_controller.session().snapshot(); var player_map_definition: PlayerMapDefinition = _application.get("_active_content").world.player_map_by_classic_id(1)
+	map_snapshot.game_state.world.acquire_map(player_map_definition.id)
+	var map_session := GameSession.new(); map_session.restore(_application.get("_active_content"), map_snapshot); var map_view := map_session.view()
+	gallery_view.player_map_menu_entries = map_view.player_map_menu_entries; gallery_view.acquired_player_maps = map_view.acquired_player_maps; gallery_view.party_summary.acquired_map_ids = map_view.party_summary.acquired_map_ids
+	_shell.present(gallery_view)
 	_router.open_screen(&"journal")
 	await _settle()
 	await _capture("wide-journal-1280x720")
 	await _resize(Vector2i(800, 600))
 	await _capture("classic-journal-800x600")
 	await _resize(Vector2i(1280, 720))
+	var maps_notes_tabs := _router.find_child("MapsNotesTabs", true, false) as TabContainer
+	maps_notes_tabs.current_tab = 1; await _settle(); await _capture("canonical-player-maps-1280x720"); await _resize(Vector2i(800, 600))
+	maps_notes_tabs = _router.find_child("MapsNotesTabs", true, false) as TabContainer
+	maps_notes_tabs.current_tab = 1; await _settle(); await _capture("classic-player-maps-800x600"); await _resize(Vector2i(1280, 720))
+	maps_notes_tabs = _router.find_child("MapsNotesTabs", true, false) as TabContainer
+	maps_notes_tabs.current_tab = 2; await _settle(); await _capture("canonical-authored-journal-1280x720"); await _resize(Vector2i(800, 600))
+	maps_notes_tabs = _router.find_child("MapsNotesTabs", true, false) as TabContainer
+	maps_notes_tabs.current_tab = 2; await _settle(); await _capture("classic-authored-journal-800x600"); await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"exploration"); await _settle()
 	_interaction.present(InteractionRequest.from_payload("gallery-classic-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"}), "Will you enter the ruined keep?")
 	await _settle()
@@ -470,20 +488,31 @@ func _capture_gallery() -> void:
 	_interaction.present(null)
 	gallery_view.combat_view = null
 	await _resize(Vector2i(1280, 720))
+	var current_save := SAVE_SLOT_PREVIEW_SCRIPT.new("quick", SAVE_SLOT_PREVIEW_SCRIPT.PRIMARY, SAVE_SLOT_PREVIEW_SCRIPT.VALID); current_save.rules_version = gallery_view.rules_version; current_save.package_hash = "1".repeat(64); current_save.realmz_day = 5; current_save.realmz_hour = 15; current_save.realmz_minute = 55; current_save.map_id = "land:0"; current_save.coordinate = Vector2i(49, 15); current_save.character_names = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]; current_save.can_load = true
+	var backup_save := SAVE_SLOT_PREVIEW_SCRIPT.new("quick", SAVE_SLOT_PREVIEW_SCRIPT.BACKUP, SAVE_SLOT_PREVIEW_SCRIPT.VALID); backup_save.rules_version = gallery_view.rules_version; backup_save.character_names = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]; backup_save.can_load = true
+	var corrupt_save := SAVE_SLOT_PREVIEW_SCRIPT.new("broken", SAVE_SLOT_PREVIEW_SCRIPT.PRIMARY, SAVE_SLOT_PREVIEW_SCRIPT.CORRUPT); corrupt_save.error_message = "This save is corrupt or uses an unsupported schema. The active session is unchanged."
+	_router.set_save_previews([current_save, backup_save, corrupt_save])
 	_router.open_screen(&"system")
 	await _settle()
 	await _capture("canonical-system-1280x720")
+	var corrupt_row := _router.find_child("SavePreview_broken_primary", true, false) as Button
+	corrupt_row.pressed.emit(); await _settle(); await _capture("canonical-system-corrupt-save-1280x720")
 	var system_tabs := _router.find_child("SystemWorkspaceTabs", true, false) as TabContainer
 	for index: int in range(1, 6):
 		system_tabs.current_tab = index; await _settle(); await _capture("canonical-system-%s-1280x720" % ["display", "audio", "accessibility", "controls", "diagnostics"][index - 1])
+	await _resize(Vector2i(800, 600)); _router.open_screen(&"system"); await _settle(); system_tabs = _router.find_child("SystemWorkspaceTabs", true, false) as TabContainer
+	for index: int in range(0, 6):
+		system_tabs.current_tab = index; await _settle(); await _capture("classic-system-%s-800x600" % ["save-load", "display", "audio", "accessibility", "controls", "diagnostics"][index])
 	var settings := PresentationSettings.new()
 	settings.text_scale = 1.5
 	settings.ui_scale_mode = PresentationSettings.UI_SCALE_150
 	_shell.apply_settings(settings)
-	await _resize(Vector2i(800, 600))
 	_router.open_screen(&"system")
 	await _settle()
 	await _capture("compact-system-ui150-text150-800x600")
+	_shell.apply_settings(PresentationSettings.new()); await _resize(Vector2i(1280, 720)); _router.open_screen(&"exploration")
+	_interaction.present(APPLICATION_LIFECYCLE_SCRIPT.end_adventure_request(false), "", gallery_view, gallery_media); await _settle(); await _capture("canonical-end-adventure-1280x720")
+	await _resize(Vector2i(800, 600)); await _capture("classic-end-adventure-800x600")
 	_application.queue_free()
 	await process_frame
 	quit(0)
