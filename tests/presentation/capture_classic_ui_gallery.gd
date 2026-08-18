@@ -171,9 +171,9 @@ func _capture_gallery() -> void:
 	_shell.present(gallery_view)
 	_router.open_screen(&"character")
 	await _settle()
-	await _capture("canonical-character-record-1280x720")
+	await _capture("canonical-character-overview-1280x720")
 	await _resize(Vector2i(800, 600))
-	await _capture("classic-character-record-800x600")
+	await _capture("classic-character-overview-800x600")
 	await _resize(Vector2i(1280, 720))
 	var conditions_button := _button_named(_router, "Conditions & Saves")
 	if conditions_button != null:
@@ -212,6 +212,14 @@ func _capture_gallery() -> void:
 		await _capture("canonical-character-appearance-1280x720")
 	await _resize(Vector2i(800, 600))
 	await _capture("classic-character-appearance-800x600")
+	await _resize(Vector2i(1280, 720))
+	var record_button := _button_named(_router, "Lifetime Record")
+	if record_button != null:
+		record_button.pressed.emit()
+		await _settle()
+		await _capture("canonical-character-record-unavailable-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-character-record-unavailable-800x600")
 	await _resize(Vector2i(1280, 720))
 	var background_button := _button_named(_router, "Race, Class & Aging")
 	if background_button != null:

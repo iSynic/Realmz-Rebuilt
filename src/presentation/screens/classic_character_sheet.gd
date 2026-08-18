@@ -496,10 +496,19 @@ func _build_background_region(parent: Container, kind: String, node_name: String
 
 
 func _build_record(character: CharacterView) -> void:
-	_add_heading(_content, "Lifetime combat record and prestige")
-	if not character.record_available:
-		_add_label(_content, character.record_unavailable_reason, BAD)
-		_add_label(_content, "Castle derives prestige from hits, misses, damage, kills, deaths, knockouts, spells, turns, destroyed foes, and penalties. Showing zero would be misleading.", MUTED)
+	var panel := PanelContainer.new()
+	panel.name = "LifetimeRecordUnavailable"
+	panel.theme_type_variation = &"ClassicInset"
+	panel.custom_minimum_size.y = 180.0
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 10)
+	panel.add_child(column)
+	_add_heading(column, "Lifetime record unavailable", "No inferred totals")
+	var reason := character.record_unavailable_reason if not character.record_available else "A typed lifetime combat-history projection is not available."
+	_add_label(column, reason, BAD, 15)
+	_add_label(column, "Prestige depends on lifetime combat and magic history. Rebuilt does not show zero or derive permanent totals from transient battle events.", MUTED, 13)
+	_content.add_child(panel)
 
 
 func _select_character(character_id: String) -> void:
