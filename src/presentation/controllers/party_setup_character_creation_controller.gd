@@ -376,7 +376,6 @@ func _build_appearance_thumbnail_strip(control: OptionButton, options: Array[Cha
 		if texture != null:
 			choice.icon = texture
 			choice.expand_icon = true
-			choice.icon_max_width = 52
 		else:
 			choice.text = str(option.classic_resource_id)
 		var role := "Portrait" if portrait else "Combat icon"
@@ -955,8 +954,6 @@ func _update_creator_review() -> void:
 func _apply_creator_layout(profile_id: StringName) -> void:
 	if creator != null:
 		creator.vertical = profile_id == UiLayoutProfile.COMPACT
-	if race_class_columns != null:
-		race_class_columns.vertical = false
 	var review_records: BoxContainer
 	if creator_page != null:
 		review_records = creator_page.find_child("ReviewRecordPanels", true, false) as BoxContainer
