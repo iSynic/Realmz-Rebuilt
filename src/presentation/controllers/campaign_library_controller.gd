@@ -15,6 +15,7 @@ const MUTED := Color("9aa0a8")
 const MAXIMUM_MODAL_Z_INDEX: int = 30
 
 var splash_overlay: PanelContainer
+var splash_composition: BoxContainer
 var campaign_overlay: PanelContainer
 var campaign_list: VBoxContainer
 var campaign_scroll: ScrollContainer
@@ -50,21 +51,60 @@ func build_splash_overlay() -> void:
 	splash_overlay.add_theme_stylebox_override("panel", surface)
 	splash_overlay.z_index = MAXIMUM_MODAL_Z_INDEX
 	_host.add_child(splash_overlay)
-	var center := CenterContainer.new()
-	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	splash_overlay.add_child(center)
-	var column := VBoxContainer.new()
-	column.custom_minimum_size.x = 360.0
-	column.add_theme_constant_override("separation", 12)
-	center.add_child(column)
-	var title := _label("Realmz Rebuilt", GOLD, 34)
+	splash_composition = BoxContainer.new()
+	splash_composition.name = "SplashComposition"
+	splash_composition.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	splash_composition.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	splash_composition.add_theme_constant_override("separation", 18)
+	splash_overlay.add_child(splash_composition)
+	var identity_panel := PanelContainer.new()
+	identity_panel.name = "SplashIdentityPanel"
+	identity_panel.theme_type_variation = &"ClassicInset"
+	identity_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	identity_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	identity_panel.size_flags_stretch_ratio = 1.65
+	splash_composition.add_child(identity_panel)
+	var identity_center := CenterContainer.new()
+	identity_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	identity_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	identity_panel.add_child(identity_center)
+	var identity := VBoxContainer.new()
+	identity.custom_minimum_size.x = 360.0
+	identity.add_theme_constant_override("separation", 10)
+	identity_center.add_child(identity)
+	var lineage := _label("A CLASSIC REALMZ RECONSTRUCTION", MUTED, 12)
+	lineage.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	identity.add_child(lineage)
+	identity.add_child(HSeparator.new())
+	var title := _label("Realmz Rebuilt", GOLD, 42)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(title)
-	var subtitle := _label("Classic adventures, reconstructed", MUTED, 16)
+	identity.add_child(title)
+	var subtitle := _label("Classic adventures, reconstructed", Color("e0e2e5"), 18)
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	column.add_child(subtitle)
-	column.add_child(HSeparator.new())
+	identity.add_child(subtitle)
+	identity.add_child(HSeparator.new())
+	var principles := _label("Classic rules  •  Providence scenarios  •  Reusable Character Files", MUTED, 13)
+	principles.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	principles.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	identity.add_child(principles)
+	var command_panel := PanelContainer.new()
+	command_panel.name = "SplashCommandPanel"
+	command_panel.theme_type_variation = &"ClassicInset"
+	command_panel.custom_minimum_size.x = 320.0
+	command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	command_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	command_panel.size_flags_stretch_ratio = 0.75
+	splash_composition.add_child(command_panel)
+	var command_center := CenterContainer.new()
+	command_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	command_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	command_panel.add_child(command_center)
+	var column := VBoxContainer.new()
+	column.custom_minimum_size.x = 280.0
+	column.add_theme_constant_override("separation", 12)
+	command_center.add_child(column)
+	column.add_child(_label("Begin", GOLD, 24))
+	column.add_child(_label("Choose an installed adventure or manage reusable adventurers.", MUTED, 13))
 	var scenarios := Button.new()
 	scenarios.name = "ChooseScenario"
 	scenarios.text = "Choose a scenario"
@@ -155,6 +195,14 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 		return
 	campaign_layout_rect = campaign_rect
 	setup_layout_rect = setup_rect
+	if splash_composition != null:
+		splash_composition.vertical = profile.id == UiLayoutProfile.COMPACT
+		var identity_panel := splash_composition.find_child("SplashIdentityPanel", false, false) as Control
+		var command_panel := splash_composition.find_child("SplashCommandPanel", false, false) as Control
+		if identity_panel != null:
+			identity_panel.custom_minimum_size = Vector2(0.0, 210.0) if splash_composition.vertical else Vector2.ZERO
+		if command_panel != null:
+			command_panel.custom_minimum_size = Vector2(0.0, 250.0) if splash_composition.vertical else Vector2(320.0, 0.0)
 	apply_modal_layouts()
 
 
