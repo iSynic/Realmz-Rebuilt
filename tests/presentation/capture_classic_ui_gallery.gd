@@ -76,20 +76,20 @@ func _capture_gallery() -> void:
 		member_state.armor = member_index
 		gallery_view.party_members.append(CHARACTER_VIEW_SCRIPT.new(member_state, _application.get("_active_content")))
 	if gallery_view.party_members.size() > 4:
-		var spell_definition := SpellDefinition.new("classic.spell.1101", 1101, "Magic Darts")
-		spell_definition.cost = 4
-		spell_definition.range_min = 1
-		spell_definition.range_max = 7
-		spell_definition.duration_min = 0
-		spell_definition.duration_max = 0
-		spell_definition.target_type = 1
-		spell_definition.description = "A compact bolt of magical force for one target."
-		var spell_view := SpellView.new(spell_definition)
-		spell_view.power_levels = [1, 2, 3, 4, 5, 6, 7]
-		spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", true)
+		var gallery_spells: Array[SpellView] = []
+		for spell_data: Dictionary in [
+			{"id": 1101, "name": "Discover Magic", "cost": 2, "target": 5, "description": "Reveals magical influences affecting the caster."},
+			{"id": 1107, "name": "Magic Darts", "cost": 4, "target": 1, "description": "A compact bolt of magical force for one target."},
+			{"id": 1304, "name": "Circle of Renewal", "cost": 5, "target": 9, "description": "Restores friendly combatants within the spell's reach."},
+			{"id": 1602, "name": "Energy Storm", "cost": 10, "target": 10, "description": "A violent magical storm strikes every enemy."},
+		]:
+			var spell_definition := SpellDefinition.new("classic.spell.%d" % int(spell_data.id), int(spell_data.id), String(spell_data.name), String(spell_data.description))
+			spell_definition.cost = int(spell_data.cost); spell_definition.range_min = 1; spell_definition.range_max = 2; spell_definition.duration_min = 1; spell_definition.duration_max = 3; spell_definition.damage_min = 2; spell_definition.damage_max = 6; spell_definition.power_damage_min = 1; spell_definition.power_damage_max = 2; spell_definition.target_type = int(spell_data.target); spell_definition.damage_type = 1
+			var spell_view := SpellView.new(spell_definition)
+			spell_view.power_levels = [1, 2, 3, 4, 5, 6, 7]; spell_view.scroll_power_levels = [1, 2, 3]; spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", true); spell_view.make_scroll = ActionAvailabilityView.new(&"make_scroll", true)
+			gallery_spells.append(spell_view)
 		gallery_view.party_members[4].spell_points = 40
 		gallery_view.party_members[4].maximum_spell_points = 50
-		var gallery_spells: Array[SpellView] = [spell_view]
 		gallery_view.party_members[4].spells = gallery_spells
 	_shell.present(gallery_view)
 	await _resize(Vector2i(1280, 720))
@@ -102,6 +102,18 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"spells")
 	await _settle()
 	await _capture("wide-spells-1280x720")
+	var fast_tab := _button_named(_router, "Fast Spells")
+	if fast_tab != null:
+		fast_tab.pressed.emit(); await _settle(); await _capture("wide-fast-spells-1280x720")
+	var scroll_tab := _button_named(_router, "Scroll Case")
+	if scroll_tab != null:
+		scroll_tab.pressed.emit(); await _settle(); await _capture("wide-scroll-case-1280x720")
+	var known_tab := _button_named(_router, "Known Spells")
+	if known_tab != null:
+		known_tab.pressed.emit(); await _settle()
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-spells-800x600")
+	await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"journal")
 	await _settle()
 	await _capture("wide-journal-1280x720")
@@ -255,6 +267,13 @@ func _capture(label: String) -> void:
 		printerr("Unable to save UI gallery frame %s: %s" % [label, error_string(error)])
 	else:
 		print("CAPTURED: %s" % path)
+
+
+func _button_named(parent: Node, text: String) -> Button:
+	for node: Node in parent.find_children("*", "Button", true, false):
+		if node is Button and (node as Button).text == text:
+			return node as Button
+	return null
 
 
 func _combat_view(game_view: Variant) -> CombatView:

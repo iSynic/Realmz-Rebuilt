@@ -9,7 +9,7 @@
 - Inventory presentation coverage keeps its compact character selector, exact-item selection, fixed action dock, and item-local Trade recipients separate; it verifies detached enabled/disabled item actions and rejects an ordinary Store command.
 - Allies coverage owns the populated and empty read-only workspace invariant, including separate list/detail panes and detached current-state facts. Bestiary coverage is deferred until the package catalog contract is corrected; tests must not fabricate discovery semantics.
 - Shop component coverage includes unaffordable stock, unidentified names, paid identification, equipped-sale rejection, and buyback stock so service regressions remain visible without commercial campaign data.
-- `capture_classic_ui_gallery.gd` writes representative local frames under ignored `artifacts/ui-gallery/`, including every route and interaction family plus canonical and compact party-setup/creator, character, dense Inventory, narrative, encounter, Treasure, Shop, and combat-spellbook states; it is visual evidence, not a golden-image test.
+- `capture_classic_ui_gallery.gd` writes representative local frames under ignored `artifacts/ui-gallery/`, including every route and interaction family plus canonical and compact party-setup/creator, character, dense Inventory, field spellbook, narrative, encounter, Treasure, Shop, and combat-spellbook states; it is visual evidence, not a golden-image test.
 
 # Local Contracts
 
@@ -29,6 +29,7 @@
 - Party-setup inspection fixtures cover assembled members plus eligible and ineligible vault revisions, exact eligibility reasons, visible core-owned import failures while the shell status region is suppressed, the shared complete sheet, and mutation-free Back navigation.
 - Party-setup route fixtures prove that Begin Adventure dismisses a setup-opened Vault, clears its setup-only return history, and enables Exploration without changing ordinary active-session route ownership.
 - Inventory workspace fixtures cover identified and unidentified fact visibility, Castle's concealed/revealed curse decoy, source-backed detail fields, and inline disabled-action reasons. The public inventory-session proof owns Cast Identify's party-order caster, fixed cost, all-carried-item mutation, event order, and restore behavior instead of duplicating those rules in UI tests.
+- Spell workspace fixtures own the level/list/record/fixed-action hierarchy and exact typed caster/spell/power submission. Synthetic gallery captures cover populated known spells, empty Fast Spell slots, the five-slot scroll case, and both supported viewport profiles; field effect and target legality remain owned by public session proofs.
 - System workspace fixtures cover detached current and backup save facts, distinct load operations, and disabled corrupt-record reasons without reading host files.
 - Lifecycle fixtures distinguish End Adventure from process Quit, cover each field/combat/no-session option set, and prove save-failure suppression, explicit no-save, Cancel, and response identity without closing the test process or treating the host prompt as gameplay state.
 - Package-library fixtures distinguish manifest availability from full readiness and cover determinate worker progress, competing-action suppression, Cancel signaling, and terminal cleanup without opening archives from presentation.

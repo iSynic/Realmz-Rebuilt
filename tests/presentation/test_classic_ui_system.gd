@@ -1092,7 +1092,7 @@ func _test_field_spell_workspace() -> void:
 	var submitted: Array[PlayerIntent] = []
 	controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: submitted.append(intent))
 	controller.present(body, view, null, 1.0)
-	(_buttons_in(body).filter(func(button: Button) -> bool: return button.text == "Cast")[0] as Button).pressed.emit()
+	var cast := body.find_child("SpellCastAction", true, false) as BaseButton; assert_true(cast != null and body.find_child("SpellLevelRail", true, false) != null and body.find_child("SelectedSpellRecord", true, false) != null, "spellbook keeps Classic level, record, and fixed Cast controls together"); cast.pressed.emit()
 	var cast_payload := submitted[0].payload as PlayerIntent.SpellPayload
 	assert_equal([cast_payload.operation, cast_payload.caster_id, cast_payload.spell_id, cast_payload.power], [&"cast", "caster", "classic.spell.field", 1], "compact spell action preserves the selected caster, spell, and power")
 	body.free()
