@@ -229,7 +229,9 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 		&"treasure_distribution":
 			return TreasureDistributionInteraction.new()
 		&"level_up":
-			return LevelUpInteraction.new()
+			var level_up := LevelUpInteraction.new()
+			level_up.configure(game_view, media)
+			return level_up
 		&"complex_encounter":
 			return EncounterInteraction.new()
 		&"thief_encounter":
@@ -351,7 +353,7 @@ static func uses_full_stage_region(request: InteractionRequest) -> bool:
 
 
 static func uses_application_workspace(request: InteractionRequest) -> bool:
-	return request != null and request.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]
+	return request != null and request.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.LEVEL_UP, InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]
 
 
 static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, _unused_stage_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:
