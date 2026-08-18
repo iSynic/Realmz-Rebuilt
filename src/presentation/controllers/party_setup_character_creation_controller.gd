@@ -296,7 +296,7 @@ func _build_creator_appearance() -> void:
 	preview_column.add_child(portrait_heading)
 	portrait_preview = TextureRect.new()
 	portrait_preview.name = "PortraitPreview"
-	portrait_preview.custom_minimum_size = Vector2(176.0, 150.0)
+	portrait_preview.custom_minimum_size = Vector2(190.0, 164.0)
 	portrait_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait_preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -306,7 +306,7 @@ func _build_creator_appearance() -> void:
 	icon_row.add_theme_constant_override("separation", 8)
 	combat_icon_preview = TextureRect.new()
 	combat_icon_preview.name = "CombatIconPreview"
-	combat_icon_preview.custom_minimum_size = Vector2(64.0, 64.0)
+	combat_icon_preview.custom_minimum_size = Vector2(80.0, 80.0)
 	combat_icon_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	combat_icon_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	combat_icon_preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -329,6 +329,7 @@ func _build_creator_appearance() -> void:
 	portrait_option.item_selected.connect(_portrait_selected)
 	portrait_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	choices.add_child(portrait_option)
+	choices.add_child(_build_appearance_thumbnail_strip(portrait_option, portrait_options, "PortraitThumbnailStrip", true))
 	choices.add_child(_label("Combat Icon", GOLD, 14))
 	combat_icon_option = OptionButton.new()
 	combat_icon_option.name = "CombatIconOption"
@@ -340,6 +341,7 @@ func _build_creator_appearance() -> void:
 	combat_icon_option.item_selected.connect(_combat_icon_selected)
 	combat_icon_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	choices.add_child(combat_icon_option)
+	choices.add_child(_build_appearance_thumbnail_strip(combat_icon_option, combat_options, "CombatIconThumbnailStrip", false))
 	var note := _label("Portraits identify the character in records and party panes. Combat icons are the tactical figures used on the battlefield.", MUTED, 13)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	note.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -349,6 +351,52 @@ func _build_creator_appearance() -> void:
 	_refresh_appearance_preview()
 	if portrait_options.is_empty() or combat_options.is_empty():
 		_add_label(creator_page, "This package does not expose the complete Classic appearance catalog. Character generation is unavailable until the package is re-exported.", ERROR)
+
+func _build_appearance_thumbnail_strip(control: OptionButton, options: Array[CharacterAppearanceOptionView], strip_name: String, portrait: bool) -> Control:
+	var panel := PanelContainer.new()
+	panel.name = strip_name
+	panel.theme_type_variation = &"ClassicInset"
+	panel.custom_minimum_size.y = 72.0
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	panel.add_child(scroll)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	var group := ButtonGroup.new()
+	var selected_id := String(control.get_item_metadata(control.selected)) if control.selected >= 0 else ""
+	for option: CharacterAppearanceOptionView in options:
+		var choice := Button.new()
+		choice.name = "%s_%d" % ["PortraitChoice" if portrait else "CombatIconChoice", option.classic_resource_id]
+		choice.custom_minimum_size = Vector2(64.0, 62.0)
+		choice.toggle_mode = true
+		choice.button_group = group
+		choice.button_pressed = option.id == selected_id
+		var texture := _appearance_textures.get(option.id) as Texture2D
+		if texture != null:
+			choice.icon = texture
+			choice.expand_icon = true
+			choice.icon_max_width = 52
+		else:
+			choice.text = str(option.classic_resource_id)
+		var role := "Portrait" if portrait else "Combat icon"
+		var recommendation := " • recommended for this race" if option.is_recommended_for(selected_race_id) else ""
+		choice.tooltip_text = "%s • %s %d%s" % [option.label, role, option.classic_resource_id, recommendation]
+		choice.pressed.connect(_select_appearance_thumbnail.bind(control, option.id, portrait))
+		row.add_child(choice)
+	scroll.add_child(row)
+	return panel
+
+func _select_appearance_thumbnail(control: OptionButton, option_id: String, portrait: bool) -> void:
+	for index: int in control.item_count:
+		if String(control.get_item_metadata(index)) != option_id:
+			continue
+		control.select(index)
+		if portrait:
+			_portrait_selected(index)
+		else:
+			_combat_icon_selected(index)
+		return
 
 func _sorted_appearance_options(source: Array[CharacterAppearanceOptionView]) -> Array[CharacterAppearanceOptionView]:
 	var result := source.duplicate()
