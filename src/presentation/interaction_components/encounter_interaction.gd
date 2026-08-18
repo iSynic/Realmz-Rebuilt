@@ -21,23 +21,35 @@ func build(request: InteractionRequest) -> void:
 	if _body == null:
 		return
 	_classify_actions()
+	var command_deck := PanelContainer.new()
+	command_deck.name = "EncounterCommandDeck"
+	command_deck.theme_type_variation = &"ClassicInset"
+	command_deck.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	add_child(command_deck)
 	var strip := GridContainer.new()
 	strip.name = "EncounterCommandStrip"
 	strip.columns = 6
 	strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	strip.add_theme_constant_override("h_separation", 6)
-	add_child(strip)
+	command_deck.add_child(strip)
 	_add_command(strip, &"action", &"encounter.action", "Action", not _choice_actions.is_empty(), "No authored actions are available.")
 	_add_command(strip, &"item", &"encounter.items", "Items", _item_action != null and not _body.items.is_empty(), "No eligible item is available.")
 	_add_command(strip, &"thief", &"encounter.skills", "Skills", _thief_action != null, "No thief action is available.")
 	_add_command(strip, &"word", &"encounter.speak", "Speak", _word_action != null, "This encounter accepts no spoken response.")
 	_add_command(strip, &"spell", &"command.spells", "Spells", _spell_action != null and not _body.spells.is_empty(), "No eligible spell is available.")
 	_add_command(strip, &"back", &"encounter.stop", "Stop", _back_action != null, "This encounter cannot be left yet.")
+	var context_deck := PanelContainer.new()
+	context_deck.name = "EncounterContextDeck"
+	context_deck.theme_type_variation = &"ClassicInset"
+	context_deck.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	context_deck.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(context_deck)
 	_context = VBoxContainer.new()
 	_context.name = "EncounterContextPane"
 	_context.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_context.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_context.add_theme_constant_override("separation", 5)
-	add_child(_context)
+	context_deck.add_child(_context)
 	_show_first_available()
 
 
@@ -114,20 +126,34 @@ func _show_choices() -> void:
 
 
 func _show_word() -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	_context.add_child(row)
+	var workspace := VBoxContainer.new()
+	workspace.name = "EncounterWordWorkspace"
+	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	workspace.add_theme_constant_override("separation", 3)
+	_context.add_child(workspace)
+	var entry_row := HBoxContainer.new()
+	entry_row.name = "EncounterWordActions"
+	entry_row.add_theme_constant_override("separation", 6)
+	workspace.add_child(entry_row)
+	var label := Label.new()
+	label.text = "Response"
+	label.custom_minimum_size.x = 72.0
+	entry_row.add_child(label)
 	var word := LineEdit.new()
 	word.name = "EncounterWord"
-	word.placeholder_text = "Speak a word"
-	word.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(word)
+	word.placeholder_text = "Word or phrase"
+	word.max_length = 39
+	word.custom_minimum_size = Vector2(300.0, 34.0)
+	word.size_flags_horizontal = Control.SIZE_FILL
+	entry_row.add_child(word)
 	var submit := Button.new()
+	submit.name = "EncounterWordSubmit"
 	submit.text = _word_action.label if not _word_action.label.is_empty() else "Speak"
-	submit.custom_minimum_size = Vector2(120.0, 36.0)
+	submit.custom_minimum_size = Vector2(68.0, 32.0)
 	submit.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"word", -1, word.text)))
-	row.add_child(submit)
+	entry_row.add_child(submit)
 	word.text_submitted.connect(func(_value: String) -> void: submit.pressed.emit())
+	word.call_deferred("grab_focus")
 
 
 func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.EncounterCatalogEntry]) -> void:

@@ -22,7 +22,7 @@ func configure(position_value: int, yellow: int, green: int) -> void:
 
 func _draw() -> void:
 	var track := Rect2(2.0, 7.0, size.x - 4.0, size.y - 14.0)
-	draw_rect(track, Color("11151a"), true)
+	draw_rect(track, Color("6b2d2d"), true)
 	var yellow_x := track.position.x + track.size.x * float(yellow_threshold) / float(ClassicPickLockRulesScript.TRACK_END)
 	var green_x := track.position.x + track.size.x * float(green_threshold) / float(ClassicPickLockRulesScript.TRACK_END)
 	draw_rect(Rect2(yellow_x, track.position.y, maxf(0.0, green_x - yellow_x), track.size.y), Color("80672d"), true)

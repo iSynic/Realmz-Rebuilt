@@ -203,12 +203,16 @@ func _capture_gallery() -> void:
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION))
 	await _settle()
 	await _capture("wide-encounter-1280x720")
+	var word_command := _interaction.find_child("EncounterCommandWord", true, false) as ClassicBitmapButton
+	word_command.command_requested.emit(&"word"); await _settle(); await _capture("wide-encounter-word-entry-1280x720")
 	var item_command := _interaction.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton
 	item_command.command_requested.emit(&"item"); await _settle(); await _capture("wide-encounter-item-picker-1280x720")
 	var spell_command := _interaction.find_child("EncounterCommandSpell", true, false) as ClassicBitmapButton
 	spell_command.command_requested.emit(&"spell"); await _settle(); await _capture("wide-encounter-spell-picker-1280x720")
 	await _resize(Vector2i(800, 600))
 	await _capture("classic-encounter-spell-picker-800x600")
+	word_command = _interaction.find_child("EncounterCommandWord", true, false) as ClassicBitmapButton
+	word_command.command_requested.emit(&"word"); await _settle(); await _capture("classic-encounter-word-entry-800x600")
 	item_command = _interaction.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton
 	item_command.command_requested.emit(&"item"); await _settle(); await _capture("classic-encounter-item-picker-800x600")
 	await _resize(Vector2i(1280, 720))
@@ -219,21 +223,39 @@ func _capture_gallery() -> void:
 		InteractionRequest.CHARACTER_SELECTION,
 		InteractionRequest.ALLY_SELECTION,
 		InteractionRequest.THIEF_ENCOUNTER,
+		InteractionRequest.PICK_LOCK,
 		InteractionRequest.TEMPLE,
 		InteractionRequest.BANK,
 		InteractionRequest.POOLED_WEALTH_DEPARTURE,
 		InteractionRequest.SESSION_LIFECYCLE,
 	]:
-		_interaction.present(ClassicUiFixtureGallery.request_for(interaction_kind))
+		var interaction_request := ClassicUiFixtureGallery.request_for(interaction_kind)
+		var gallery_media := _application.presentation_coordinator.get("_media") as ClassicMediaCatalog
+		if interaction_kind == InteractionRequest.AGE_UPDATE and not gallery_view.party_members.is_empty():
+			var age_body := interaction_request.body as InteractionRequest.AgeUpdateBody
+			age_body.character_id = gallery_view.party_members[0].id; age_body.character_name = gallery_view.party_members[0].name; age_body.portrait_id = gallery_view.party_members[0].portrait_id; age_body.combat_icon_id = gallery_view.party_members[0].combat_icon_id
+		if interaction_kind == InteractionRequest.PICK_LOCK and not gallery_view.party_members.is_empty():
+			var lock_body := interaction_request.body as InteractionRequest.PickLockRequestBody
+			lock_body.character_id = gallery_view.party_members[0].id; lock_body.character_name = gallery_view.party_members[0].name; lock_body.portrait_id = gallery_view.party_members[0].portrait_id
+		if interaction_kind == InteractionRequest.CHARACTER_SELECTION and not gallery_view.party_members.is_empty():
+			var selection_body := interaction_request.body as InteractionRequest.CharacterSelectionRequestBody
+			selection_body.eligible[0].id = gallery_view.party_members[0].id; selection_body.eligible[0].name = gallery_view.party_members[0].name
+			_shell.present_character_selection(interaction_request)
+		_interaction.present(interaction_request, "", gallery_view, gallery_media)
 		await _settle()
 		await _capture("wide-interaction-%s-1280x720" % String(interaction_kind).replace("_", "-"))
+		if interaction_kind == InteractionRequest.AGE_UPDATE:
+			await _resize(Vector2i(800, 600)); await _capture("classic-age-update-800x600"); await _resize(Vector2i(1280, 720))
 		if interaction_kind == InteractionRequest.THIEF_ENCOUNTER:
 			await _resize(Vector2i(800, 600)); await _capture("classic-interaction-thief-encounter-800x600"); await _resize(Vector2i(1280, 720))
 		if interaction_kind == InteractionRequest.CHARACTER_SELECTION:
 			await _capture("wide-field-spell-target-1280x720")
 			await _resize(Vector2i(800, 600)); await _capture("classic-field-spell-target-800x600"); await _resize(Vector2i(1280, 720))
+			_shell.present_character_selection(null)
 		if interaction_kind == InteractionRequest.ALLY_SELECTION:
 			await _resize(Vector2i(800, 600)); await _capture("classic-surviving-allies-800x600"); await _resize(Vector2i(1280, 720))
+		if interaction_kind == InteractionRequest.PICK_LOCK:
+			await _resize(Vector2i(800, 600)); await _capture("classic-pick-lock-800x600"); await _resize(Vector2i(1280, 720))
 		if interaction_kind in [InteractionRequest.TEMPLE, InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]:
 			await _resize(Vector2i(800, 600)); await _capture("classic-interaction-%s-800x600" % String(interaction_kind).replace("_", "-")); await _resize(Vector2i(1280, 720))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))

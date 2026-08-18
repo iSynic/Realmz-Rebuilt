@@ -777,7 +777,7 @@ func _test_fixture_gallery_coverage() -> void:
 			assert_true(request.is_supported_kind(), "gallery interaction %s is a supported typed request" % interaction)
 	var age_component := AgeUpdateInteraction.new()
 	age_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.AGE_UPDATE))
-	assert_true(age_component.get_child_count() >= 4, "the Classic age update renders identity, band, changed statistics, and a response")
+	assert_true(age_component.find_child("AgeIdentityPanel", true, false) != null and age_component.find_child("AgeChangeGrid", true, false) != null, "the Classic age update renders identity, age band, and changed statistics as one contained workspace")
 	assert_true(age_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Continue"), "the blocking age update exposes one keyboard-focusable continuation")
 	age_component.free()
 	var recovery_component := TreasureDistributionInteraction.new()
@@ -910,11 +910,11 @@ func _test_classic_choice_context() -> void:
 	assert_true(yes_no.find_child("ChoicePane", true, false) != null and yes_no_grid != null and yes_no_grid.columns == 2 and _buttons_in(yes_no).all(func(button: Button) -> bool: return button.theme_type_variation == &"ClassicChoiceButton"), "binary Classic choices share one backed compact semantic response row")
 	yes_no.free()
 	var encounter := EncounterInteraction.new(); encounter.build(ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION))
-	var command_strip := encounter.find_child("EncounterCommandStrip", true, false) as GridContainer
-	assert_true(command_strip != null and command_strip.get_child_count() == 6, "complex encounters preserve one stable Action, Items, Skills, Speak, Spells, and Stop command strip")
+	var command_strip := encounter.find_child("EncounterCommandStrip", true, false) as GridContainer; assert_true(encounter.find_child("EncounterCommandDeck", true, false) != null and encounter.find_child("EncounterContextDeck", true, false) != null and command_strip != null and command_strip.get_child_count() == 6, "complex encounters preserve one backed Action, Items, Skills, Speak, Spells, and Stop command strip above one contextual task pane")
 	assert_not_null(encounter.find_child("EncounterChoiceGrid", true, false), "the selected encounter command owns a compact contextual response pane")
-	var item_command := encounter.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton; item_command.command_requested.emit(&"item")
-	assert_true(encounter.find_child("EncounterCatalogList", true, false) != null and encounter.find_child("EncounterCatalogRecord", true, false) != null and encounter.find_child("EncounterCatalogActions", true, false) != null, "encounter item and spell selection use a stable list, selected record, and fixed action workflow instead of a generic dropdown"); encounter.free()
+	var item_command := encounter.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton; item_command.command_requested.emit(&"item"); assert_true(encounter.find_child("EncounterCatalogList", true, false) != null and encounter.find_child("EncounterCatalogRecord", true, false) != null and encounter.find_child("EncounterCatalogActions", true, false) != null, "encounter item and spell selection use a stable list, selected record, and fixed action workflow instead of a generic dropdown")
+	var word_command := encounter.find_child("EncounterCommandWord", true, false) as ClassicBitmapButton; word_command.command_requested.emit(&"word"); var word_entry := encounter.find_child("EncounterWord", true, false) as LineEdit
+	assert_true(word_entry != null and word_entry.max_length == 39 and encounter.find_child("EncounterWordActions", true, false) != null and _buttons_in(encounter).any(func(button: Button) -> bool: return button.text == "Speak"), "Speak keeps input within Castle's 40-byte destination and exposes one fixed submit control"); encounter.free()
 	var thief := ThiefEncounterInteraction.new(); thief.build(ClassicUiFixtureGallery.request_for(InteractionRequest.THIEF_ENCOUNTER)); assert_true(thief.find_child("ThiefCharacterPane", true, false) != null and thief.find_child("ThiefActionPane", true, false) != null and thief.find_child("ThiefActionGrid", true, false) != null, "thief selection keeps exact portraits and source-owned skill values in separate character and action panes"); thief.free()
 
 

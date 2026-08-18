@@ -13,6 +13,7 @@ const INTERACTIONS: Array[StringName] = [
 	InteractionRequest.TREASURE_DISTRIBUTION,
 	InteractionRequest.LEVEL_UP,
 	InteractionRequest.WORD_AND_ACTION,
+	InteractionRequest.PICK_LOCK,
 	InteractionRequest.SHOP,
 	InteractionRequest.TEMPLE,
 	InteractionRequest.BANK,
@@ -78,7 +79,7 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 				"presentation": "classic-age-update",
 				"soundId": 3002,
 				"source": "classic",
-			})
+			}, true)
 		InteractionRequest.YES_NO:
 			payload.merge({"yesLabel": "Yes", "noLabel": "No"})
 		InteractionRequest.INDEXED_CHOICE, InteractionRequest.ENCOUNTER_CHOICE:
@@ -95,6 +96,11 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 			payload.merge({"encounterKind": "complex", "encounterId": 1, "actions": [] if empty_values else [{"id": "choice:0", "kind": "choice", "label": "Proceed", "slot": 0}, {"id": "word", "kind": "word", "label": "Speak"}, {"id": "item", "kind": "item", "label": "Use item"}, {"id": "spell", "kind": "spell", "label": "Cast spell"}, {"id": "thief", "kind": "thief", "label": "Use skill"}], "characters": [] if empty_values else [{"id": "hero", "name": "Hero"}], "items": [] if empty_values else [{"classicItemId": 805, "name": "Torch"}, {"classicItemId": 6110, "name": "Runed wand"}], "spells": [] if empty_values else [{"classicSpellId": 1107, "name": "Magic Darts"}, {"classicSpellId": 1306, "name": "Brimstones"}], "canBackOut": false})
 		InteractionRequest.THIEF_ENCOUNTER:
 			payload.merge({"encounterId": 1, "prompt": "Choose who will examine the mechanism.", "soundId": 0, "characters": [] if empty_values else [{"id": "hero", "name": "Hero", "portraitId": "portrait.fixture", "actions": [{"index": 0, "label": "Pick Lock", "value": 42, "enabled": true, "reason": ""}, {"index": 1, "label": "Disarm Trap", "value": 31, "enabled": true, "reason": ""}, {"index": 2, "label": "Climb", "value": 18, "enabled": false, "reason": "This action is unavailable here."}]}]})
+		InteractionRequest.PICK_LOCK:
+			var frames: Array[Array] = []
+			for frame_index: int in 21:
+				frames.append([40 + frame_index * 4, 72 + frame_index * 3, 104 + frame_index * 2])
+			payload = {"encounterId": 1, "actionIndex": 2, "actionLabel": "Pick Lock", "characterId": "hero", "characterName": "Hero", "portraitId": "portrait.fixture", "chancePercent": 55, "yellowThreshold": 90, "greenThreshold": 145, "frameRate": 20, "timeLimitFrames": 40, "frames": frames}
 		InteractionRequest.SHOP:
 			payload = _shop_payload(empty_values)
 		InteractionRequest.TEMPLE:

@@ -67,6 +67,10 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		_set_heading("")
 		_prompt.text = ""
 		_prompt.visible = false
+	if request.kind in [InteractionRequest.AGE_UPDATE, InteractionRequest.ALLY_SELECTION, InteractionRequest.PICK_LOCK]:
+		_set_heading("")
+		_prompt.text = ""
+		_prompt.visible = false
 	if _is_player_map_request(request):
 		_prompt.text = ""
 		_prompt.visible = false
@@ -221,7 +225,9 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice":
 			return TextChoiceInteraction.new()
 		&"age_update":
-			return AgeUpdateInteraction.new()
+			var age_update := AgeUpdateInteraction.new()
+			age_update.configure(media)
+			return age_update
 		&"character_selection", &"ally_selection":
 			var selection := SelectionInteraction.new()
 			selection.configure(media, game_view)
@@ -338,7 +344,7 @@ func _apply_content_layout() -> void:
 		var available_width := _textbox_rect.size.x
 		var prompt_width := minf(620.0, maxf(320.0, available_width * 0.66))
 		if _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION:
-			prompt_width = minf(620.0, maxf(300.0, available_width - 410.0))
+			prompt_width = 300.0 if available_width < 900.0 else minf(620.0, maxf(300.0, available_width - 410.0))
 		_prompt_column.custom_minimum_size.x = prompt_width
 		_prompt_column.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		_options.custom_minimum_size.x = 220.0
