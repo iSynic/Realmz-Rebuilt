@@ -227,7 +227,9 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 			selection.configure(media, game_view)
 			return selection
 		&"treasure_distribution":
-			return TreasureDistributionInteraction.new()
+			var treasure := TreasureDistributionInteraction.new()
+			treasure.configure(_application_rect.size.x < 1000.0)
+			return treasure
 		&"level_up":
 			var level_up := LevelUpInteraction.new()
 			level_up.configure(game_view, media)

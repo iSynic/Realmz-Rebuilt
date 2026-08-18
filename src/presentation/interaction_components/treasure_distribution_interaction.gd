@@ -5,6 +5,12 @@ const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
 
+var _compact := false
+
+
+func configure(compact: bool) -> void:
+	_compact = compact
+
 
 func build(request: InteractionRequest) -> void:
 	var body := request.body as InteractionRequest.TreasureRequestBody
@@ -41,6 +47,7 @@ func _build_workspace(body: InteractionRequest.TreasureRequestBody, recovering_f
 	_build_item_column(item_column, body, recovering_fumble)
 	_build_recipient_column(recipient_column, body)
 	_build_command_column(command_column, body, recovering_fumble)
+	_build_footer(body, recovering_fumble)
 
 
 func _add_workspace_header(body: InteractionRequest.TreasureRequestBody, recovering_fumble: bool) -> void:
@@ -66,7 +73,7 @@ func _add_column(parent: HBoxContainer, column_name: String, title_text: String,
 	var panel := PanelContainer.new()
 	panel.name = column_name
 	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size.x = minimum_width
+	panel.custom_minimum_size.x = 0.0 if _compact else minimum_width
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = ratio
@@ -89,6 +96,7 @@ func _build_item_column(column: VBoxContainer, body: InteractionRequest.Treasure
 	if body.item == null:
 		_add_muted_label(column, "No items remain to distribute.", "TreasureEmptyItem")
 	else:
+		column.add_child(_loot_marker())
 		var card := PanelContainer.new()
 		card.name = "TreasureSelectedItem"
 		card.theme_type_variation = &"ClassicInset"
@@ -114,14 +122,7 @@ func _build_item_column(column: VBoxContainer, body: InteractionRequest.Treasure
 	if body.experience_share > 0 and not recovering_fumble:
 		_add_colored_label(column, "Each eligible adventurer receives %d experience." % body.experience_share, GOLD, "TreasureExperienceShare")
 	if body.item != null:
-		var media_note := Label.new()
-		media_note.name = "TreasureMediaUnavailable"
-		media_note.text = "No item illustration is available."
-		media_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		media_note.add_theme_color_override("font_color", MUTED)
-		media_note.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		media_note.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-		column.add_child(media_note)
+		_add_muted_label(column, "Exact item art is unavailable for this reward record.", "TreasureMediaUnavailable")
 
 
 func _build_recipient_column(column: VBoxContainer, body: InteractionRequest.TreasureRequestBody) -> void:
@@ -149,9 +150,9 @@ func _build_recipient_column(column: VBoxContainer, body: InteractionRequest.Tre
 
 func _build_command_column(column: VBoxContainer, body: InteractionRequest.TreasureRequestBody, recovering_fumble: bool) -> void:
 	if recovering_fumble:
-		_add_muted_label(column, "Return the exact dropped item or leave it behind.", "TreasureRecoveryHint")
+		_add_colored_label(column, "Dropped in battle", GOLD, "TreasureRecoveryContext")
+		_add_muted_label(column, "Choose an eligible adventurer to recover the exact item, or leave it on the battlefield.", "TreasureRecoveryHint")
 		_add_expanding_spacer(column, "TreasureRecoverySpacer")
-		add_response_to(column, "Leave item", InteractionResponse.TreasureBody.new(&"discard", body.item.instance_id if body.item != null else ""))
 		return
 	_add_colored_label(column, _wealth_text(body.wealth), GOLD, "TreasurePooledWealth")
 	var wealth_actions := HBoxContainer.new()
@@ -176,9 +177,56 @@ func _build_command_column(column: VBoxContainer, body: InteractionRequest.Treas
 	if body.identify != null and body.identify.visible:
 		_add_caster_control(column, "Identify", &"identify", body.identify)
 	_add_expanding_spacer(column, "TreasureCommandSpacer")
+
+
+func _build_footer(body: InteractionRequest.TreasureRequestBody, recovering_fumble: bool) -> void:
+	var footer := HBoxContainer.new()
+	footer.name = "TreasureFooter"
+	footer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.add_theme_constant_override("separation", 6)
+	add_child(footer)
+	var item_id := body.item.instance_id if body.item != null else ""
 	if body.item != null:
-		add_response_to(column, "Leave item", InteractionResponse.TreasureBody.new(&"discard", body.item.instance_id))
-	add_response_to(column, "Done", InteractionResponse.TreasureBody.new(&"done"))
+		var leave := add_response_to(footer, "Leave Item", InteractionResponse.TreasureBody.new(&"discard", item_id))
+		leave.name = "TreasureLeaveItem"
+		leave.custom_minimum_size.x = 160.0
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.add_child(spacer)
+	if not recovering_fumble:
+		var done := add_response_to(footer, "Done", InteractionResponse.TreasureBody.new(&"done"))
+		done.name = "TreasureDone"
+		done.custom_minimum_size.x = 160.0
+
+
+func _loot_marker() -> CenterContainer:
+	var center := CenterContainer.new()
+	center.name = "TreasureLootField"
+	center.custom_minimum_size.y = 132.0 if not _compact else 104.0
+	center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var stage := Control.new()
+	stage.custom_minimum_size = Vector2(130.0, 124.0) if not _compact else Vector2(100.0, 96.0)
+	center.add_child(stage)
+	var scale := 2.0 if not _compact else 1.5
+	var glow := TextureRect.new()
+	glow.name = "TreasureItemGlow"
+	glow.texture = ClassicUiAssetCatalog.texture(&"loot.item.glow")
+	glow.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	glow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	glow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	glow.size = Vector2(48.0, 48.0) * scale
+	glow.position = (stage.custom_minimum_size - glow.size) * 0.5
+	stage.add_child(glow)
+	var selection := TextureRect.new()
+	selection.name = "TreasureSelectionCircle"
+	selection.texture = ClassicUiAssetCatalog.texture(&"loot.selection")
+	selection.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	selection.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	selection.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	selection.size = Vector2(50.0, 60.0) * scale
+	selection.position = (stage.custom_minimum_size - selection.size) * 0.5
+	stage.add_child(selection)
+	return center
 
 
 func _add_swap_controls(parent: VBoxContainer, characters: Array[InteractionRequestValue.RewardCharacter]) -> void:

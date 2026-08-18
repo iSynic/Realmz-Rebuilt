@@ -783,7 +783,7 @@ func _test_fixture_gallery_coverage() -> void:
 	age_component.free()
 	var recovery_component := TreasureDistributionInteraction.new()
 	recovery_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"))
-	assert_true(recovery_component.find_child("TreasureItemColumn", true, false) != null and recovery_component.find_child("TreasureRecipientColumn", true, false) != null and recovery_component.find_child("TreasureCommandColumn", true, false) != null, "battle recovery uses the item, recipient, and fixed-command workspace")
+	assert_true(recovery_component.find_child("TreasureItemColumn", true, false) != null and recovery_component.find_child("TreasureRecipientColumn", true, false) != null and recovery_component.find_child("TreasureCommandColumn", true, false) != null and recovery_component.find_child("TreasureLootField", true, false) != null and recovery_component.find_child("TreasureFooter", true, false) != null, "battle recovery keeps selected item, recipient, context, proven loot marker, and exit action in stable regions")
 	assert_true(_labels_in(recovery_component).any(func(text: String) -> bool: return text.contains("7 charges")), "battle recovery exposes the exact preserved charge count")
 	assert_true(_buttons_in(recovery_component).any(func(button: Button) -> bool: return button.text.begins_with("Hero") and not button.disabled), "nominal battle recovery exposes its rules-authorized recipient as an active control")
 	recovery_component.free()
