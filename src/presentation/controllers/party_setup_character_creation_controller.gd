@@ -2,6 +2,8 @@ class_name PartySetupCharacterCreationController
 extends "res://src/presentation/controllers/party_setup_controller_component.gd"
 
 var _assembly: RefCounted
+var _starting_spell_level: int = 0
+var _starting_spell_id: String = ""
 
 
 func _init(state: RefCounted, assembly: RefCounted) -> void:
@@ -578,34 +580,109 @@ func _review_item_row(item: ItemView) -> Control:
 
 func _build_creator_spells() -> void:
 	creator_page.add_child(_label("Starting Spells", GOLD, 20))
-	spell_label = _add_label(creator_page, "", MUTED)
-	spell_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if view == null or view.character_draft == null:
-		spell_label.text = "Generate and review the character before choosing spells."
+		var unavailable := _add_creator_panel(creator_page, "StartingSpellUnavailable", "Spell Selection")
+		spell_label = _add_label(unavailable, "Generate and review the character before choosing spells.", MUTED)
 		return
 	if view.character_draft.spellcaster_type < 1 or view.character_draft_spell_points_total < 1:
-		spell_label.text = "Not applicable. This character has no Classic starting-spell selection points."
+		var not_applicable := _add_creator_panel(creator_page, "StartingSpellNotApplicable", "No Starting Spells")
+		spell_label = _add_label(not_applicable, "%s receives no Classic starting-spell choices." % view.character_draft.name, MUTED)
 		return
-	spell_label.text = "%d of %d selection points remain. Unspent points may be accepted, as in Classic." % [view.character_draft_spell_points_remaining, view.character_draft_spell_points_total]
+	if view.character_draft_spell_options.is_empty():
+		var missing := _add_creator_panel(creator_page, "StartingSpellUnavailable", "Starting Spells Unavailable")
+		spell_label = _add_label(missing, "This caster has selection points, but the package exposes no matching Classic spell records. Finalization is blocked.", ERROR)
+		return
+	_prepare_starting_spell_selection()
+	var workspace := HBoxContainer.new()
+	workspace.name = "StartingSpellWorkspace"
+	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	workspace.add_theme_constant_override("separation", 8)
+	creator_page.add_child(workspace)
+	var level_rail := _add_creator_panel(workspace, "StartingSpellLevelRail", "Level", 0.38)
+	level_rail.custom_minimum_size.x = 72.0
+	for level: int in range(1, 8):
+		var level_button := Button.new()
+		level_button.name = "StartingSpellLevel%d" % level
+		level_button.text = str(level)
+		level_button.toggle_mode = true
+		level_button.button_pressed = level == _starting_spell_level
+		level_button.disabled = not _starting_spell_level_available(level)
+		level_button.tooltip_text = "No starting spells are available at this level." if level_button.disabled else "Show level %d starting spells." % level
+		level_button.pressed.connect(_select_starting_spell_level.bind(level))
+		level_rail.add_child(level_button)
+	var list_panel := _add_creator_panel(workspace, "StartingSpellListPanel", "Available Spells", 1.05)
 	spell_list = ItemList.new()
 	spell_list.name = "StartingSpellList"
 	spell_list.select_mode = ItemList.SELECT_MULTI
-	spell_list.custom_minimum_size.y = 190.0
+	spell_list.custom_minimum_size = Vector2(180.0, 190.0)
+	spell_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spell_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	for option: CharacterSpellOptionView in view.character_draft_spell_options:
-		spell_list.add_item("L%d • %s (%d)" % [option.level, option.name, option.selection_cost])
+		if option.level != _starting_spell_level:
+			continue
+		spell_list.add_item("%s  •  %d point%s" % [option.name, option.selection_cost, "" if option.selection_cost == 1 else "s"])
 		var index := spell_list.item_count - 1
 		spell_list.set_item_metadata(index, option.id)
 		spell_list.set_item_tooltip(index, option.description)
 		if option.selected:
 			spell_list.select(index, false)
-		elif option.selection_cost > view.character_draft_spell_points_remaining:
+		if not option.selected and option.selection_cost > view.character_draft_spell_points_remaining:
 			spell_list.set_item_disabled(index, true)
 			spell_list.set_item_tooltip(index, "This spell costs %d points; %d remain." % [option.selection_cost, view.character_draft_spell_points_remaining])
 	spell_list.multi_selected.connect(_draft_spell_selection_changed)
-	creator_page.add_child(spell_list)
-	if view.character_draft_spell_options.is_empty():
-		spell_label.text = "This caster has selection points, but the package exposes no matching Classic spell records. Finalization is blocked."
+	list_panel.add_child(spell_list)
+	var detail := _add_creator_panel(workspace, "StartingSpellRecord", "Selected Spell", 1.15)
+	var selected := _starting_spell_option(_starting_spell_id)
+	if selected == null:
+		spell_label = _add_label(detail, "Choose a spell from level %d." % _starting_spell_level, MUTED)
+	else:
+		spell_label = _add_label(detail, selected.name, GOLD, 18)
+		_add_label(detail, "Level %d  •  %d selection point%s" % [selected.level, selected.selection_cost, "" if selected.selection_cost == 1 else "s"], Color("e0e2e5"), 13)
+		if not selected.description.strip_edges().is_empty():
+			_add_label(detail, selected.description.strip_edges(), Color("e0e2e5"), 13)
+		_add_label(detail, "Selected" if selected.selected else "Available", GOLD if selected.selected else MUTED, 13)
+	var allowance := PanelContainer.new()
+	allowance.name = "StartingSpellAllowance"
+	allowance.theme_type_variation = &"ClassicInset"
+	allowance.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var allowance_row := HBoxContainer.new()
+	allowance_row.add_child(_label("Spell allowance", MUTED, 12))
+	allowance_row.add_spacer(true)
+	allowance_row.add_child(_label("%d of %d points remain" % [view.character_draft_spell_points_remaining, view.character_draft_spell_points_total], GOLD, 14))
+	allowance.add_child(allowance_row)
+	creator_page.add_child(allowance)
+
+func _prepare_starting_spell_selection() -> void:
+	if not _starting_spell_level_available(_starting_spell_level):
+		_starting_spell_level = view.character_draft_spell_options[0].level
+	var selected := _starting_spell_option(_starting_spell_id)
+	if selected == null or selected.level != _starting_spell_level:
+		_starting_spell_id = ""
+		for option: CharacterSpellOptionView in view.character_draft_spell_options:
+			if option.level == _starting_spell_level:
+				_starting_spell_id = option.id
+				break
+
+func _starting_spell_level_available(level: int) -> bool:
+	if view == null:
+		return false
+	return view.character_draft_spell_options.any(func(option: CharacterSpellOptionView) -> bool: return option.level == level)
+
+func _starting_spell_option(option_id: String) -> CharacterSpellOptionView:
+	if view == null:
+		return null
+	for option: CharacterSpellOptionView in view.character_draft_spell_options:
+		if option.id == option_id:
+			return option
+	return null
+
+func _select_starting_spell_level(level: int) -> void:
+	if not _starting_spell_level_available(level):
+		return
+	_starting_spell_level = level
+	_starting_spell_id = ""
+	render_creator_step()
 
 func creator_next() -> void:
 	match creator_step:
@@ -698,12 +775,16 @@ func _reroll_character() -> void:
 	awaiting_draft_generation = true
 	_state.intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
 
-func _draft_spell_selection_changed(_index: int, _selected: bool) -> void:
+func _draft_spell_selection_changed(index: int, selected: bool) -> void:
 	if spell_list == null:
 		return
+	_starting_spell_id = String(spell_list.get_item_metadata(index))
 	var selected_ids: Array[String] = []
+	for option: CharacterSpellOptionView in view.character_draft_spell_options:
+		if option.level != _starting_spell_level and option.selected:
+			selected_ids.append(option.id)
 	for item_index: int in spell_list.item_count:
-		if spell_list.is_selected(item_index):
+		if spell_list.is_selected(item_index) or item_index == index and selected:
 			selected_ids.append(String(spell_list.get_item_metadata(item_index)))
 	_state.intent_submitted.emit(PlayerIntent.set_character_draft_spells(selected_ids))
 

@@ -62,6 +62,17 @@ func _capture_gallery() -> void:
 	await _capture("canonical-character-creator-review-1280x720")
 	await _resize(Vector2i(800, 600))
 	await _capture("compact-character-creator-review-800x600")
+	review_state.spellcaster_type = 1
+	setup_view.character_draft = CharacterView.new(review_state)
+	setup_view.character_draft_spell_points_total = 4
+	setup_view.character_draft_spell_points_remaining = 3
+	setup_view.character_draft_spell_options = [CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1101", 1101, "Discover Magic", "Reveals magical influences affecting the caster."), 1, true), CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1107", 1107, "Magic Darts", "A compact bolt of magical force."), 1, false), CharacterSpellOptionView.new(SpellDefinition.new("classic.spell.1201", 1201, "Flame Hands", "Calls a brief fan of flame."), 2, false)]
+	setup.creator_step = 4
+	setup.render_creator_step()
+	await _resize(Vector2i(1280, 720))
+	await _capture("canonical-character-creator-spells-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("compact-character-creator-spells-800x600")
 	setup.reset_creator(true)
 	await _settle()
 	var member := CharacterCreationSpec.new("Ari", setup_view.race_options[0].id, setup_view.caste_options[0].id, 1)
