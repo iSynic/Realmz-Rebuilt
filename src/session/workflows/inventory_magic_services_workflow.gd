@@ -278,7 +278,7 @@ static func begin_field_spell_item(context: SessionWorkflowContext, actor_id: St
 	targeting.target_count = required_count
 	targeting.starting_charges = instance.charges
 	var continuation := SessionContinuation.targeting_selection(&"item-use-target-selection", targeting)
-	var interaction := item_target_request("session.item-use:%s:%d" % [instance.id, request_revision], character, instance.id, item, spell, required_count, context.state.party.characters())
+	var interaction := item_target_request("session.item-use:%s:%d" % [instance.id, request_revision], character, instance.id, item, spell, power, required_count, context.state.party.characters())
 	return MagicTransitionResult.waiting(continuation, interaction, [DomainEvent.new(&"item_target_requested", {"characterId": character.id, "instanceId": instance.id, "itemId": item.id, "spellId": spell.id, "power": power, "targetCount": required_count, "source": "classic"})])
 
 
@@ -356,13 +356,13 @@ static func item_use_error_code(instance: ItemInstance, item: ItemDefinition, sp
 	return &"item_cannot_be_used"
 
 
-static func item_target_request(request_id: String, character: CharacterState, instance_id: String, item: ItemDefinition, spell: SpellDefinition, required_count: int, party: Array[CharacterState]) -> InteractionRequest:
+static func item_target_request(request_id: String, character: CharacterState, instance_id: String, item: ItemDefinition, spell: SpellDefinition, power: int, required_count: int, party: Array[CharacterState]) -> InteractionRequest:
 	var display_name := item.unidentified_name
 	for carried: ItemInstance in character.inventory():
 		if carried.id == instance_id:
 			display_name = item.name if carried.identified else item.unidentified_name
 			break
-	return _character_selection_request(request_id, "%s uses %s. Choose %d target%s." % [character.name, display_name, required_count, "" if required_count == 1 else "s"], required_count, party, &"item-use", instance_id, spell.id)
+	return _character_selection_request(request_id, character, "%s uses %s. Choose %d target%s." % [character.name, display_name, required_count, "" if required_count == 1 else "s"], required_count, party, &"item-use", instance_id, spell, power)
 
 
 static func make_scroll(context: SessionWorkflowContext, payload: PlayerIntent.SpellPayload) -> SessionWorkflowResult:
@@ -450,7 +450,7 @@ static func begin_field_scroll(context: SessionWorkflowContext, payload: PlayerI
 	targeting.power = scroll.power
 	targeting.target_count = required_count
 	var continuation := SessionContinuation.targeting_selection(&"scroll-target-selection", targeting)
-	var interaction := scroll_target_request("session.scroll:%s:%d:%d" % [character.id, payload.scroll_slot, request_revision], character, payload.scroll_slot, spell, required_count, context.state.party.characters())
+	var interaction := scroll_target_request("session.scroll:%s:%d:%d" % [character.id, payload.scroll_slot, request_revision], character, payload.scroll_slot, spell, scroll.power, required_count, context.state.party.characters())
 	return MagicTransitionResult.waiting(continuation, interaction, [DomainEvent.new(&"scroll_target_requested", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "targetCount": required_count, "source": "classic"})])
 
 
@@ -573,7 +573,7 @@ static func begin_field_spell(context: SessionWorkflowContext, payload: PlayerIn
 	targeting.target_count = required_count
 	targeting.starting_spell_points = character.spell_points
 	var continuation := SessionContinuation.targeting_selection(&"field-spell-target-selection", targeting)
-	var interaction := field_spell_target_request("session.field-spell:%s:%d" % [spell.id, request_revision], character, spell, required_count, context.state.party.characters())
+	var interaction := field_spell_target_request("session.field-spell:%s:%d" % [spell.id, request_revision], character, spell, payload.power, required_count, context.state.party.characters())
 	return MagicTransitionResult.waiting(continuation, interaction, [DomainEvent.new(&"field_spell_target_requested", {"characterId": character.id, "spellId": spell.id, "power": payload.power, "targetCount": required_count, "source": "classic"})])
 
 
@@ -615,24 +615,31 @@ static func commit_field_spell(context: SessionWorkflowContext, character_id: St
 	return SessionWorkflowResult.completed(events)
 
 
-static func scroll_target_request(request_id: String, character: CharacterState, slot_index: int, spell: SpellDefinition, required_count: int, party: Array[CharacterState]) -> InteractionRequest:
-	return _character_selection_request(request_id, "%s uses %s from scroll slot %d. Choose %d target%s." % [character.name, spell.name, slot_index + 1, required_count, "" if required_count == 1 else "s"], required_count, party, &"scroll-use", "", spell.id, slot_index)
+static func scroll_target_request(request_id: String, character: CharacterState, slot_index: int, spell: SpellDefinition, power: int, required_count: int, party: Array[CharacterState]) -> InteractionRequest:
+	return _character_selection_request(request_id, character, "%s uses %s from scroll slot %d. Choose %d target%s." % [character.name, spell.name, slot_index + 1, required_count, "" if required_count == 1 else "s"], required_count, party, &"scroll-use", "", spell, power, slot_index)
 
 
-static func field_spell_target_request(request_id: String, character: CharacterState, spell: SpellDefinition, required_count: int, party: Array[CharacterState]) -> InteractionRequest:
-	return _character_selection_request(request_id, "%s casts %s. Choose %d target%s." % [character.name, spell.name, required_count, "" if required_count == 1 else "s"], required_count, party, &"field-spell", "", spell.id)
+static func field_spell_target_request(request_id: String, character: CharacterState, spell: SpellDefinition, power: int, required_count: int, party: Array[CharacterState]) -> InteractionRequest:
+	return _character_selection_request(request_id, character, "%s casts %s. Choose %d target%s." % [character.name, spell.name, required_count, "" if required_count == 1 else "s"], required_count, party, &"field-spell", "", spell, power)
 
 
-static func _character_selection_request(request_id: String, prompt: String, required_count: int, party: Array[CharacterState], mode: StringName, instance_id: String, spell_id: String, scroll_slot: int = -1) -> InteractionRequest:
+static func _character_selection_request(request_id: String, character: CharacterState, prompt: String, required_count: int, party: Array[CharacterState], mode: StringName, instance_id: String, spell: SpellDefinition, power: int, scroll_slot: int = -1) -> InteractionRequest:
 	var body := InteractionRequest.CharacterSelectionRequestBody.new()
 	body.prompt = prompt
 	body.count = required_count
 	body.eligible = _eligible_party_candidates(party)
 	body.mode = mode
 	body.item_instance_id = instance_id
-	body.spell_id = spell_id
+	body.spell_id = spell.id
 	body.scroll_slot = scroll_slot
+	body.spell_context = _spell_target_context(character, spell, power, required_count, mode)
 	return InteractionRequest.new(request_id, InteractionRequest.CHARACTER_SELECTION, body)
+
+
+static func _spell_target_context(character: CharacterState, spell: SpellDefinition, power: int, target_count: int, source_kind: StringName) -> InteractionRequestValue.SpellTargetContext:
+	var result := InteractionRequestValue.SpellTargetContext.new()
+	result.actor_id = character.id; result.actor_name = character.name; result.spell_id = spell.id; result.spell_name = spell.name; result.description = spell.description; result.icon_resource_type = "cicn"; result.icon_id = spell.queue_icon; result.power = power; result.spell_point_cost = absi(spell.cost * power) if source_kind == &"field-spell" else 0; result.target_type = spell.target_type; result.target_size = spell.size; result.target_count = target_count; result.source_kind = source_kind
+	return result
 
 
 static func _append_field_spell_events(context: SessionWorkflowContext, events: Array[DomainEvent], character: CharacterState, spell: SpellDefinition, power: int, resolution: GroupSpellResolution, sound_source: StringName, state_source: StringName, event_kind: StringName, event_context: Dictionary = {}) -> void:

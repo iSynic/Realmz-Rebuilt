@@ -84,7 +84,7 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 		InteractionRequest.INDEXED_CHOICE, InteractionRequest.ENCOUNTER_CHOICE:
 			payload.merge({"options": [] if empty_values else [{"label": "Proceed"}], "canBackOut": true})
 		InteractionRequest.CHARACTER_SELECTION:
-			payload.merge({"count": 1, "eligible": [] if empty_values else [{"id": "hero", "name": "Hero", "currentHealth": 8, "maximumHealth": 10}]})
+			payload["prompt"] = "Hero casts Magic Darts. Choose one target."; payload.merge({"count": 1, "eligible": [] if empty_values else [{"id": "hero", "name": "Hero", "currentHealth": 8, "maximumHealth": 10}], "mode": "field-spell", "spellId": "classic.spell.1107", "spellContext": {"actorId": "hero", "actorName": "Hero", "spellId": "classic.spell.1107", "spellName": "Magic Darts", "description": "A compact bolt of magical force for one target.", "iconResourceType": "cicn", "iconId": 0, "power": 3, "spellPointCost": 12, "targetType": 1, "targetSize": 0, "targetCount": 1, "sourceKind": "field-spell"}})
 		InteractionRequest.ALLY_SELECTION:
 			payload.merge({"maximum": 1, "selectedIds": [], "requiredIds": [], "candidates": [] if empty_values else [{"id": "ally", "name": "Allied Knight", "currentHealth": 8, "maximumHealth": 10, "classicMonsterId": 4, "required": false, "canSummon": 0}]})
 		InteractionRequest.TREASURE_DISTRIBUTION:

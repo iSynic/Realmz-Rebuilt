@@ -70,12 +70,17 @@ func run() -> void:
 	session._rng = ScriptedRng.new([0, 0, 32_767])
 	var requested := session.submit_intent(PlayerIntent.cast_spell("classic.spell.field-bolt", active_caster.id, "", 1))
 	assert_equal([requested.state, requested.interaction.kind, requested.interaction.body.to_data().get("count")], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.CHARACTER_SELECTION, 1], "field casting yields the typed Castle target picker")
+	var target_context := (requested.interaction.body as InteractionRequest.CharacterSelectionRequestBody).spell_context
+	assert_equal([target_context.actor_id, target_context.spell_id, target_context.power, target_context.spell_point_cost, target_context.target_count], [active_caster.id, "classic.spell.field-bolt", 1, 2, 1], "the target request retains authoritative caster, spell, power, cost, and count display facts")
+	var malformed_request := requested.interaction.to_data().duplicate(true); malformed_request["data"]["payload"]["spellContext"]["unexpected"] = true
+	assert_equal(InteractionRequest.from_data(malformed_request), null, "the typed spell-target context rejects unknown saved fields")
 	assert_equal(active_caster.spell_points, 50, "opening target selection does not reproduce Castle's premature spell-point deduction")
 	assert_equal(session._rng.snapshot().draw_count, 0, "opening target selection consumes no effect randomness")
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "field target selection restores transactionally")
 	restored._rng = ScriptedRng.new([0, 0, 32_767])
 	var pending := restored.view().pending_interaction
+	assert_equal((pending.body as InteractionRequest.CharacterSelectionRequestBody).spell_context.to_data(), target_context.to_data(), "save restoration reconstructs the exact field-spell target display context")
 	var rejected := restored.respond(InteractionResponse.from_data(pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": ["missing.character"]}))
 	assert_equal(rejected.error_code, &"invalid_field_spell_target", "an invented field target is rejected explicitly")
 	assert_equal([restored._state.party.character_by_id(active_caster.id).spell_points, restored._rng.snapshot().draw_count], [50, 0], "a rejected target spends neither spell points nor RNG")

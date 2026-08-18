@@ -142,6 +142,9 @@ func _capture_gallery() -> void:
 		_interaction.present(ClassicUiFixtureGallery.request_for(interaction_kind))
 		await _settle()
 		await _capture("wide-interaction-%s-1280x720" % String(interaction_kind).replace("_", "-"))
+		if interaction_kind == InteractionRequest.CHARACTER_SELECTION:
+			await _capture("wide-field-spell-target-1280x720")
+			await _resize(Vector2i(800, 600)); await _capture("classic-field-spell-target-800x600"); await _resize(Vector2i(1280, 720))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
 	await _resize(Vector2i(800, 600))
 	await _settle()

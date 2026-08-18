@@ -59,6 +59,8 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		_prompt.visible = false
 		return
 	_set_heading(_heading_for_kind(request.kind))
+	if request.kind == InteractionRequest.CHARACTER_SELECTION and (request.body as InteractionRequest.CharacterSelectionRequestBody).spell_context != null:
+		_set_heading("Spell Target")
 	_prompt.text = _prompt_for(request, classic_text_context)
 	_prompt.visible = not _prompt.text.is_empty()
 	if uses_application_workspace(request):
@@ -221,7 +223,9 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 		&"age_update":
 			return AgeUpdateInteraction.new()
 		&"character_selection", &"ally_selection":
-			return SelectionInteraction.new()
+			var selection := SelectionInteraction.new()
+			selection.configure(media)
+			return selection
 		&"treasure_distribution":
 			return TreasureDistributionInteraction.new()
 		&"level_up":

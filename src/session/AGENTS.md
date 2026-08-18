@@ -28,6 +28,7 @@ Own the pure transaction coordinator that joins core Realmz state and rules to t
 - Scenario-mediated and direct player operations must converge on the same core rules and workflow implementations.
 - Dictionaries are permitted only while crossing an explicit package/save/event codec. Live workflow state and continuations are typed.
 - Every continuation body and nested scenario handoff must reject unknown fields and versions, detach mutable values, and round-trip through its strict wire codec before entering a snapshot.
+- Field spell, scroll, and charged-item targeting rebuild the pending character-selection request from the typed targeting continuation during restore. The reconstructed request must retain the exact selected power and source-authored spell display facts while response handling continues to validate only stable target identities through the owning workflow.
 - Detached views are cached by committed session revision. The projector may reuse immutable domain projections only for a strictly recognized ordinary movement/time event sequence; every unknown, interaction-changing, map-changing, or combat event invalidates the conservative fast path. Domain revisions let presenters update only affected visible regions without changing simulation state or save shape.
 - Direct-session combat remains intent-driven rather than fabricating a scenario continuation. `GameSession.view()` attaches the same runtime-projected typed combat command contract used by scenario battles whenever combat is active and no mandatory interaction owns the surface.
 

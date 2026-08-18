@@ -429,6 +429,26 @@ class SelectionCandidate:
 		return data
 
 
+class SpellTargetContext:
+	extends RefCounted
+	var actor_id: String
+	var actor_name: String
+	var spell_id: String
+	var spell_name: String
+	var description: String
+	var icon_resource_type: String
+	var icon_id: int
+	var power: int
+	var spell_point_cost: int
+	var target_type: int
+	var target_size: int
+	var target_count: int
+	var source_kind: StringName
+
+	func to_data() -> Dictionary:
+		return {"actorId": actor_id, "actorName": actor_name, "spellId": spell_id, "spellName": spell_name, "description": description, "iconResourceType": icon_resource_type, "iconId": icon_id, "power": power, "spellPointCost": spell_point_cost, "targetType": target_type, "targetSize": target_size, "targetCount": target_count, "sourceKind": String(source_kind)}
+
+
 class LifecycleOption:
 	extends RefCounted
 	var action: StringName
@@ -691,6 +711,15 @@ static func selection_candidate(data: Variant) -> SelectionCandidate:
 	var ally_fields: bool = data.has("classicMonsterId") or data.has("required") or data.has("canSummon")
 	if ally_fields and not (data.has("classicMonsterId") and data.has("required") and data.has("canSummon")): return null
 	result.has_ally_facts = ally_fields; result.classic_monster_id = int(data.get("classicMonsterId", 0)); result.required = bool(data.get("required", false)); result.can_summon = int(data.get("canSummon", 0)); return result
+
+
+static func spell_target_context(data: Variant) -> SpellTargetContext:
+	var fields := ["actorId", "actorName", "spellId", "spellName", "description", "iconResourceType", "iconId", "power", "spellPointCost", "targetType", "targetSize", "targetCount", "sourceKind"]
+	if not data is Dictionary or not _exact(data, fields, fields) or not _strings(data, ["actorId", "actorName", "spellId", "spellName", "description", "iconResourceType", "sourceKind"]) or not _ints(data, ["iconId", "power", "spellPointCost", "targetType", "targetSize", "targetCount"]): return null
+	var result := SpellTargetContext.new()
+	result.actor_id = data["actorId"]; result.actor_name = data["actorName"]; result.spell_id = data["spellId"]; result.spell_name = data["spellName"]; result.description = data["description"]; result.icon_resource_type = data["iconResourceType"]; result.icon_id = int(data["iconId"]); result.power = int(data["power"]); result.spell_point_cost = int(data["spellPointCost"]); result.target_type = int(data["targetType"]); result.target_size = int(data["targetSize"]); result.target_count = int(data["targetCount"]); result.source_kind = StringName(data["sourceKind"])
+	if result.actor_id.is_empty() or result.spell_id.is_empty() or result.spell_name.is_empty() or result.power < 1 or result.power > 7 or result.spell_point_cost < 0 or result.target_count < 1 or result.source_kind not in [&"field-spell", &"scroll-use", &"item-use"]: return null
+	return result
 
 
 static func lifecycle_option(data: Variant) -> LifecycleOption:

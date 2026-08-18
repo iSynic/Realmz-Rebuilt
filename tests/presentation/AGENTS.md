@@ -9,7 +9,7 @@
 - Inventory presentation coverage keeps its compact character selector, exact-item selection, fixed action dock, and item-local Trade recipients separate; it verifies detached enabled/disabled item actions and rejects an ordinary Store command.
 - Allies coverage owns the populated and empty read-only workspace invariant, including separate list/detail panes and detached current-state facts. Bestiary coverage is deferred until the package catalog contract is corrected; tests must not fabricate discovery semantics.
 - Shop component coverage includes unaffordable stock, unidentified names, paid identification, equipped-sale rejection, and buyback stock so service regressions remain visible without commercial campaign data.
-- `capture_classic_ui_gallery.gd` writes representative local frames under ignored `artifacts/ui-gallery/`, including every route and interaction family plus canonical and compact party-setup/creator, character, dense Inventory, field spellbook, narrative, encounter, Treasure, Shop, and combat-spellbook states; it is visual evidence, not a golden-image test.
+- `capture_classic_ui_gallery.gd` writes representative local frames under ignored `artifacts/ui-gallery/`, including every route and interaction family plus canonical and compact party-setup/creator, character, dense Inventory, field spellbook and its saveable Party-roster target stage, narrative, encounter, Treasure, Shop, and combat-spellbook states; it is visual evidence, not a golden-image test.
 
 # Local Contracts
 

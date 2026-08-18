@@ -159,6 +159,7 @@ class CharacterSelectionRequestBody:
 	var item_instance_id: String
 	var spell_id: String
 	var scroll_slot: int = -1
+	var spell_context: InteractionRequestValue.SpellTargetContext
 
 	func to_data() -> Dictionary:
 		var data := {"count": count, "eligible": eligible.map(func(value: InteractionRequestValue.SelectionCandidate) -> Dictionary: return value.to_data())}
@@ -168,6 +169,7 @@ class CharacterSelectionRequestBody:
 		if not item_instance_id.is_empty(): data["itemInstanceId"] = item_instance_id
 		if not spell_id.is_empty(): data["spellId"] = spell_id
 		if scroll_slot >= 0: data["scrollSlot"] = scroll_slot
+		if spell_context != null: data["spellContext"] = spell_context.to_data()
 		return data
 
 	func prompt_text() -> String: return prompt
@@ -633,7 +635,7 @@ static func _parse_selection_body(request_kind: StringName, payload: Dictionary)
 		choice.has_encounter = payload.has("encounterKind") or payload.has("encounterId")
 		return choice
 	if request_kind == CHARACTER_SELECTION:
-		if not _fields_are_exact(payload, ["prompt", "count", "eligible", "allowDead", "mode", "itemInstanceId", "spellId", "scrollSlot"], ["count", "eligible"]) or not _whole_number(payload["count"]) or not payload["eligible"] is Array or not _optional_strings(payload, ["prompt", "mode", "itemInstanceId", "spellId"]) or not _optional_ints(payload, ["scrollSlot"]) or not _optional_bools(payload, ["allowDead"]): return null
+		if not _fields_are_exact(payload, ["prompt", "count", "eligible", "allowDead", "mode", "itemInstanceId", "spellId", "scrollSlot", "spellContext"], ["count", "eligible"]) or not _whole_number(payload["count"]) or not payload["eligible"] is Array or not _optional_strings(payload, ["prompt", "mode", "itemInstanceId", "spellId"]) or not _optional_ints(payload, ["scrollSlot"]) or not _optional_bools(payload, ["allowDead"]): return null
 		var characters := CharacterSelectionRequestBody.new()
 		characters.prompt = String(payload.get("prompt", ""))
 		characters.count = int(payload["count"])
@@ -645,6 +647,9 @@ static func _parse_selection_body(request_kind: StringName, payload: Dictionary)
 		characters.item_instance_id = String(payload.get("itemInstanceId", ""))
 		characters.spell_id = String(payload.get("spellId", ""))
 		characters.scroll_slot = int(payload.get("scrollSlot", -1))
+		if payload.has("spellContext"):
+			characters.spell_context = InteractionRequestValue.spell_target_context(payload["spellContext"])
+			if characters.spell_context == null or not characters.spell_id.is_empty() and characters.spell_context.spell_id != characters.spell_id: return null
 		return characters
 	if request_kind == ALLY_SELECTION:
 		if not _fields_are_exact(payload, ["prompt", "maximum", "selectedIds", "requiredIds", "candidates"], ["prompt", "maximum", "selectedIds", "requiredIds", "candidates"]) or not payload["prompt"] is String or not _whole_number(payload["maximum"]) or not payload["selectedIds"] is Array or not payload["requiredIds"] is Array or not payload["candidates"] is Array: return null
