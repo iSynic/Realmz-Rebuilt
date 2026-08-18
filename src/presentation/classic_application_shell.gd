@@ -53,10 +53,12 @@ const HELD_COMMAND_INTERVAL := 0.22
 @onready var _facts: GridContainer = %Facts
 @onready var _coordinates_label: Label = %Coordinates
 @onready var _fatigue_label: Label = %Fatigue
+@onready var _light_label: Label = %Light
 @onready var _clock_label: Label = %Clock
 @onready var _gold_label: Label = %Gold
 @onready var _world_command_panel: PanelContainer = %WorldCommandPanel
 @onready var _world_command_grid: GridContainer = %WorldCommandGrid
+@onready var _world_command_heading: Label = %WorldCommandHeading
 @onready var _narrative_well: PanelContainer = %NarrativeWell
 @onready var _command_panel: PanelContainer = %CommandPanel
 @onready var _command_grid: GridContainer = %CommandGrid
@@ -124,6 +126,7 @@ func present(game_view: GameView) -> void:
 		_gold_label.text = "Gold —"
 		_coordinates_label.text = "Map —"
 		_fatigue_label.text = "Fatigue —"
+		_light_label.text = "Light —"
 		_party_roster.present(game_view)
 		_router.present(game_view)
 		_set_play_regions_visible(false)
@@ -136,6 +139,8 @@ func present(game_view: GameView) -> void:
 	_gold_label.text = "Gold %d" % game_view.pooled_gold
 	_coordinates_label.text = "%s • %d,%d" % [game_view.party_map_id, game_view.party_coordinate.x, game_view.party_coordinate.y]
 	_fatigue_label.text = "Fatigue %d" % game_view.party_fatigue
+	_light_label.text = "Light %d" % game_view.party_summary.light_remaining if game_view.party_summary != null else "Light —"
+	_apply_exploration_mode()
 	_package_status.text = game_view.campaign_summary.title if game_view.campaign_summary != null else game_view.campaign_id
 	if _selected_character_id.is_empty() and not game_view.party_members.is_empty():
 		_selected_character_id = game_view.party_members[0].id
@@ -373,9 +378,10 @@ func _apply_layout() -> void:
 	var roster_height := stage_height
 	_party_roster.size = Vector2(_profile.party_width, roster_height)
 	_bottom_row.vertical = false
-	_facts.columns = 5
+	_facts.columns = 3 if _profile.id == UiLayoutProfile.COMPACT else 6
 	var command_width := minf(_profile.command_width, viewport_size.x * 0.26)
 	_world_command_panel.visible = _profile.id != UiLayoutProfile.COMPACT
+	_apply_exploration_mode()
 	_command_heading.text = "Party" if _world_command_panel.visible else "Commands"
 	_world_command_panel.custom_minimum_size.x = minf(240.0, viewport_size.x * 0.2) if _world_command_panel.visible else 0.0
 	_world_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_BEGIN
@@ -403,10 +409,18 @@ func _apply_layout() -> void:
 	layout_changed.emit(stage_rect, _profile)
 
 
+func _apply_exploration_mode() -> void:
+	if not is_node_ready():
+		return
+	var camping := _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping
+	_world_command_heading.text = "Camp" if camping else "Adventure"
+	_world_command_panel.theme_type_variation = &"ClassicInset" if camping else &""
+
+
 func _build_menus() -> void:
 	if not is_node_ready():
 		return
-	var camp_label := "Break Camp" if _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping else "Camp"
+	var camp_label := "Leave Camp" if _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping else "Camp"
 	var contextual_definition := _presentation_command_definition(ClassicCommandCatalog.command(&"contextual"))
 	var contextual_label := String(contextual_definition.get("label", "Encounter"))
 	var contextual_availability := StringName(contextual_definition.get("availability", &"contextual_encounter"))
@@ -602,6 +616,11 @@ func _presentation_command_definition(definition: Dictionary) -> Dictionary:
 	if command_id == &"search_mode" and _current_view != null and _current_view.party_summary != null and _current_view.party_summary.searching:
 		result["label"] = "Stop Search"
 		result["tooltip"] = "Stop continuous secret searching"
+		return result
+	if command_id == &"camp" and _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping:
+		result["asset_id"] = &""
+		result["label"] = "Leave Camp"
+		result["tooltip"] = "Break camp and resume ordinary travel"
 		return result
 	if command_id != &"contextual":
 		return result

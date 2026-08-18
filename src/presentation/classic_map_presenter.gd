@@ -116,7 +116,7 @@ func _draw() -> void:
 	_party_rect = Rect2(draw_origin + Vector2(map_view.party_coordinate - camera) * cell_size, Vector2.ONE * cell_size)
 	_draw_party_marker(_party_rect)
 	draw_string(font, Vector2(8.0, 17.0), "%s • %s" % [map_view.map_name, String(map_view.level_type)], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.86, 0.75, 0.42))
-	var input_hint := "Click map • numpad / arrows / WASD" if map_view.level_type == &"land" else "Click map • arrows / WASD"
+	var input_hint := "Click map • numpad / arrows / WASD" if map_view.level_type == &"land" else "Facing %s • click / arrows / WASD" % facing_label(map_view.last_move_direction)
 	draw_string(font, Vector2(size.x - 258.0, 17.0), input_hint, HORIZONTAL_ALIGNMENT_RIGHT, 250.0, 12, Color(0.66, 0.69, 0.73))
 	_draw_minimap(map_view, font)
 
@@ -136,6 +136,12 @@ static func party_marker_asset_id_for_direction(direction: Vector2i, current_ass
 	if direction.x > 0:
 		return PARTY_MARKER_RIGHT_ASSET_ID
 	return current_asset_id
+
+
+static func facing_label(direction: Vector2i) -> String:
+	var horizontal := "W" if direction.x < 0 else "E" if direction.x > 0 else ""
+	var vertical := "N" if direction.y < 0 else "S" if direction.y > 0 else ""
+	return "%s%s" % [vertical, horizontal] if not vertical.is_empty() or not horizontal.is_empty() else "—"
 
 
 static func camera_top_left(party_coordinate: Vector2i, map_size: Vector2i, viewport_cells: Vector2i) -> Vector2i:
