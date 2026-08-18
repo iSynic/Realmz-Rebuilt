@@ -258,17 +258,14 @@ func _test_save_preview_workspace() -> void:
 	var actions: Array[Dictionary] = []
 	controller.action_requested.connect(func(action: StringName, value: Variant) -> void: actions.append({"action": action, "value": value}))
 	controller.present(body, view, PresentationSettings.new())
-	var buttons := _buttons_in(body)
 	var labels := _labels_in(body)
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Day 2") and text.contains("land:4 12,9")), "valid save previews expose detached time and location facts")
 	assert_true(labels.any(func(text: String) -> bool: return text.contains("Mira, Borin")), "valid save previews expose detached party identity")
-	var current_load := buttons.filter(func(button: Button) -> bool: return button.text == "Load save")[0] as Button
-	var backup_load := buttons.filter(func(button: Button) -> bool: return button.text == "Load backup")[0] as Button
-	var disabled_loads := buttons.filter(func(button: Button) -> bool: return button.text == "Load save" and button.disabled)
-	assert_equal(disabled_loads.size(), 1, "corrupt records remain visible with a disabled operation")
-	assert_true(disabled_loads[0].tooltip_text.contains("corrupt"), "the corrupt record exposes an exact reason")
-	current_load.pressed.emit()
-	backup_load.pressed.emit()
+	var load_selected := body.find_child("LoadSelectedSave", true, false) as Button; var current_row := body.find_child("SavePreview_quick_primary", true, false) as Button; var backup_row := body.find_child("SavePreview_quick_backup", true, false) as Button; var corrupt_row := body.find_child("SavePreview_broken_primary", true, false) as Button
+	assert_true(load_selected != null and current_row != null and backup_row != null and corrupt_row != null, "save records, selected preview, and fixed action dock are present")
+	current_row.pressed.emit(); load_selected.pressed.emit(); backup_row.pressed.emit(); load_selected.pressed.emit()
+	corrupt_row.pressed.emit()
+	assert_true(load_selected.disabled and load_selected.tooltip_text.contains("corrupt"), "a corrupt selected record remains visible with its exact disabled reason")
 	assert_equal(actions, [{"action": &"load", "value": "quick"}, {"action": &"load_backup", "value": "quick"}], "current and backup previews emit distinct host operations")
 	body.free()
 

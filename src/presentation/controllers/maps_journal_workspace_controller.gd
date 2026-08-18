@@ -123,7 +123,13 @@ func _select_player_map(parent: VBoxContainer, view: GameView, media: ClassicMed
 func _build_journal_tab(parent: VBoxContainer, view: GameView) -> void:
 	var columns := _columns(parent, "JournalWorkspace")
 	var browser := _pane(columns, "JournalEntryBrowser", "Journal Entries", 0.85)
-	_journal_detail = _pane(columns, "JournalEntryDetail", "Selected Entry", 1.35)
+	var detail := _pane(columns, "JournalEntryDetail", "Selected Entry", 1.35)
+	_journal_detail = VBoxContainer.new()
+	_journal_detail.name = "JournalEntryDetailBody"
+	_journal_detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_journal_detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_journal_detail.add_theme_constant_override("separation", 5)
+	detail.add_child(_journal_detail)
 	if view.journal_entries.is_empty():
 		_add_empty_state(browser, "The journal is empty", "No journal records were supplied by the current session.")
 		_add_empty_state(_journal_detail, "No selected entry", "Authored journal text will appear here.")
