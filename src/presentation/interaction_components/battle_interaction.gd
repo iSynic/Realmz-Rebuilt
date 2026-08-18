@@ -4,6 +4,7 @@ extends InteractionComponent
 const MAX_VISIBLE_TURNS := 6
 const COMMAND_HEIGHT := 26.0
 const SUMMARY_HEIGHT := 58.0
+const PRIMARY_COMMAND_COLOR := Color("f0ce59")
 
 var _actor_id: String = ""
 var _combatants: Array[InteractionRequestValue.Combatant] = []
@@ -20,6 +21,7 @@ var _fast_spells: Array[InteractionRequestValue.FastSpell] = []
 var _spell_panel: VBoxContainer
 var _combatant_icons: Dictionary = {}
 var _overview: Control
+var _inspected_icon: TextureRect
 
 
 func configure(combatant_icons: Dictionary) -> void:
@@ -349,6 +351,11 @@ func _build_combatant_information(body: InteractionRequest.CombatRequestBody, ta
 	information.add_theme_constant_override("separation", 4)
 	var active_panel := _summary_panel("ActiveCombatant", 0.8)
 	active_panel.custom_minimum_size.x = 200.0
+	var active_content := HBoxContainer.new()
+	active_content.add_theme_constant_override("separation", 5)
+	var active_icon := _combatant_icon(_actor_id, 40.0)
+	active_icon.name = "ActiveCombatantIcon"
+	active_content.add_child(active_icon)
 	var active_label := Label.new()
 	active_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	active_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -358,18 +365,25 @@ func _build_combatant_information(body: InteractionRequest.CombatRequestBody, ta
 	active_label.text = "Active • %s\n%d AT • %d MP • %s • %d enemies" % [_combatant_name(_actor_id), body.attack_units_remaining, body.movement_remaining, String(body.weapon_mode).capitalize(), body.enemies_remaining]
 	active_label.tooltip_text = "%s\n%d attack%s • %d movement • %s\nEnemies left • %d" % [_combatant_name(_actor_id), body.attack_units_remaining, "" if body.attack_units_remaining == 1 else "s", body.movement_remaining, String(body.weapon_mode).capitalize(), body.enemies_remaining]
 	active_label.add_theme_color_override("font_color", Color("f8dc52"))
-	active_panel.add_child(active_label)
+	active_content.add_child(active_label)
+	active_panel.add_child(active_content)
 	information.add_child(active_panel)
 	information.add_child(_build_initiative_panel(body.round_number))
 	var inspected_panel := _summary_panel("InspectedCombatant", 0.95)
 	inspected_panel.custom_minimum_size.x = 250.0
+	var inspected_content := HBoxContainer.new()
+	inspected_content.add_theme_constant_override("separation", 5)
+	_inspected_icon = _combatant_icon("", 40.0)
+	_inspected_icon.name = "InspectedCombatantIcon"
+	inspected_content.add_child(_inspected_icon)
 	_inspected_label = Label.new()
 	_inspected_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_inspected_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_inspected_label.add_theme_font_size_override("font_size", 12)
 	_inspected_label.max_lines_visible = 2
 	_inspected_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	inspected_panel.add_child(_inspected_label)
+	inspected_content.add_child(_inspected_label)
+	inspected_panel.add_child(inspected_content)
 	information.add_child(inspected_panel)
 	parent.add_child(information)
 	var default_id := _actor_id
@@ -420,8 +434,12 @@ func _refresh_inspected_label() -> void:
 		return
 	if _inspected_index < 0 or _inspected_index >= _combatants.size():
 		_inspected_label.text = "Shown • No combatant selected"
+		_inspected_icon.texture = null
+		_inspected_icon.visible = false
 		return
 	var combatant := _combatants[_inspected_index]
+	_inspected_icon.texture = _combatant_icons.get(combatant.id) as Texture2D
+	_inspected_icon.visible = _inspected_icon.texture != null
 	var details: Array[String] = ["HP %d/%d" % [combatant.current_health, combatant.maximum_health]]
 	if combatant.maximum_spell_points > 0: details.append("SP %d/%d" % [combatant.spell_points, combatant.maximum_spell_points])
 	details.append("AR %d" % combatant.armor)
@@ -439,6 +457,17 @@ func _refresh_inspected_label() -> void:
 	var defense_line := "\n%s" % " • ".join(defenses) if not defenses.is_empty() else ""
 	_inspected_label.text = "Shown • %s\n%s • %s" % [combatant.name, " • ".join(details), " • ".join(secondary)]
 	_inspected_label.tooltip_text = "Shown • %s\n%s\n%s%s" % [combatant.name, " • ".join(details), " • ".join(secondary), defense_line]
+
+
+func _combatant_icon(combatant_id: String, extent: float) -> TextureRect:
+	var icon := TextureRect.new()
+	icon.texture = _combatant_icons.get(combatant_id) as Texture2D
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.custom_minimum_size = Vector2(extent, extent)
+	icon.visible = icon.texture != null
+	return icon
 
 
 func _combatant_name(combatant_id: String) -> String:
@@ -475,9 +504,12 @@ func _add_primary_action_row(body: InteractionRequest.CombatRequestBody, actor_i
 	var weapon_mode := String(body.weapon_mode)
 	var target_enabled: bool = action_ids.has("attack") and not targets.is_empty()
 	var target_reason := body.melee_attack_reason if weapon_mode == "melee" else body.ranged_attack.reason
-	_name_command(_add_panel_toggle(primary_row, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason), "Attack")
+	var attack_button := _add_panel_toggle(primary_row, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason)
+	_name_command(attack_button, "Attack")
+	_accent_command(attack_button)
 	var spell_button := _add_panel_toggle(primary_row, "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and not body.spell_casts.is_empty(), body.spell_cast_reason)
 	_name_command(spell_button, "Spells")
+	_accent_command(spell_button)
 	spell_button.pressed.connect(func() -> void:
 		if spell_panel.visible:
 			combat_spellbook_requested.emit(actor_id, _spell_casts)
@@ -486,7 +518,8 @@ func _add_primary_action_row(body: InteractionRequest.CombatRequestBody, actor_i
 	)
 	_name_command(_add_panel_toggle(primary_row, "Scrolls", scroll_panel, mode_panels, overview, action_ids.has("use_scroll") and not body.scroll_casts.is_empty(), body.scroll_cast_reason, 647), "Scrolls")
 	_name_command(_add_panel_toggle(primary_row, "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and not body.item_casts.is_empty(), body.item_cast_reason), "Items")
-	_add_fixed_response(primary_row, "Finish", "Finish", InteractionResponse.CombatBody.new(&"finish", actor_id), action_ids.has("finish"), "Finish is unavailable during this activation.")
+	var finish_button := _add_fixed_response(primary_row, "Finish", "Finish", InteractionResponse.CombatBody.new(&"finish", actor_id), action_ids.has("finish"), "Finish is unavailable during this activation.")
+	_accent_command(finish_button)
 	var turn_row := HBoxContainer.new()
 	turn_row.name = "BattleTurnCommands"
 	turn_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -591,6 +624,11 @@ func _name_command(button: Button, command_name: String) -> void:
 	button.name = "CombatCommand%s" % command_name
 	button.theme_type_variation = &"BattleCommandButton"
 	button.custom_minimum_size.y = COMMAND_HEIGHT
+
+
+func _accent_command(button: Button) -> void:
+	button.add_theme_color_override("font_color", PRIMARY_COMMAND_COLOR)
+	button.add_theme_color_override("font_hover_color", Color("fff0a8"))
 
 
 func _add_bandage_panel(parent: Control, actor_id: String, targets: Array[InteractionRequestValue.CombatTarget]) -> void:

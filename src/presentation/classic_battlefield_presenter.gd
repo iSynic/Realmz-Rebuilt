@@ -130,6 +130,7 @@ func _draw() -> void:
 	_draw_characters(combat, camera, visible_cells, draw_origin)
 	_draw_monsters(combat, camera, visible_cells, draw_origin)
 	_draw_playback_overlay(combat, camera, visible_cells, draw_origin)
+	_draw_tactical_legend()
 	if not has_battle_artwork():
 		draw_string(ThemeDB.fallback_font, Vector2(draw_origin.x + 8.0, draw_origin.y + 20.0), "Battle artwork unavailable", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(1.0, 0.78, 0.42))
 
@@ -140,6 +141,18 @@ func _draw_header(combat: CombatView) -> void:
 	var facts := "%d attack%s • %d movement • %s" % [combat.attack_units_remaining, "" if combat.attack_units_remaining == 1 else "s", combat.movement_remaining, String(combat.weapon_mode).capitalize()]
 	draw_string(ThemeDB.fallback_font, Vector2(8.0, 17.0), title, HORIZONTAL_ALIGNMENT_LEFT, maxf(size.x - 250.0, 120.0), 16, Color(0.86, 0.75, 0.42))
 	draw_string(ThemeDB.fallback_font, Vector2(size.x - 242.0, 17.0), facts, HORIZONTAL_ALIGNMENT_RIGHT, 234.0, 12, Color(0.73, 0.76, 0.80))
+
+
+func _draw_tactical_legend() -> void:
+	if _reveal_friends:
+		var x := 8.0
+		for entry: Array in [["Hostile", Color(0.95, 0.22, 0.18)], ["Friendly", Color(0.18, 0.90, 0.38)], ["Helpless", Color(0.20, 0.42, 1.0)]]:
+			draw_line(Vector2(x, 29.0), Vector2(x + 18.0, 29.0), entry[1], 2.0)
+			draw_string(ThemeDB.fallback_font, Vector2(x + 23.0, 33.0), String(entry[0]), HORIZONTAL_ALIGNMENT_LEFT, 58.0, 10, Color(0.82, 0.84, 0.84))
+			x += 86.0
+		draw_string(ThemeDB.fallback_font, Vector2(x, 33.0), "Click board to dismiss", HORIZONTAL_ALIGNMENT_LEFT, 126.0, 10, Color(0.63, 0.67, 0.69))
+	elif _movement_costs_visible:
+		draw_string(ThemeDB.fallback_font, Vector2(8.0, 33.0), "Movement cost aid • release Shift to hide", HORIZONTAL_ALIGNMENT_LEFT, 250.0, 10, Color(0.94, 0.82, 0.38))
 
 
 func _draw_terrain_cell(tile_id: int, rect: Rect2) -> void:

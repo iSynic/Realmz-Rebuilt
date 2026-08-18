@@ -95,7 +95,7 @@ func _build_gain_record(parent: HBoxContainer, body: InteractionRequest.LevelUpR
 
 
 func _build_result_action(parent: HBoxContainer, body: InteractionRequest.LevelUpRequestBody) -> void:
-	var content := _pane(parent, "LevelContinuation", "Continue", 0.85)
+	var content := _pane(parent, "LevelContinuation", "Adventure", 0.85)
 	content.add_child(_label("These gains are already committed to the adventure.", MUTED, 14))
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL

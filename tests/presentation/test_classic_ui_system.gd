@@ -72,7 +72,7 @@ func run() -> void:
 	_test_battle_typed_option_contracts()
 	_test_shop_component()
 	_test_temple_component()
-	_test_bank_component()
+	_test_bank_component(); _test_money_workspace()
 	_test_route_catalog()
 	_test_save_preview_workspace()
 	_test_location_note_workspace()
@@ -392,7 +392,7 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_equal(_direct_buttons_in(primary).map(func(button: Button) -> String: return button.text), ["Weapon: Melee", "Guard", "Fire", "Spells", "Scrolls", "Items", "Finish"], "primary combat command slots remain fixed and source-backed")
 	assert_equal(_direct_buttons_in(secondary).map(func(button: Button) -> String: return button.text), ["Escape", "Auto Turn", "Delay", "Bandage", "Turn Undead", "Undo"], "turn command slots remain fixed even when actions are unavailable")
 	var initiative := component.find_child("BattleInitiativeOrder", true, false)
-	assert_equal([_direct_buttons_in(initiative).map(func(button: Button) -> String: return button.text), _direct_buttons_in(initiative).all(func(button: Button) -> bool: return button.icon == turn_icon)], [["NOW", "NEXT"], true], "the compact initiative strip starts at the active actor and uses supplied combat icons")
+	assert_equal([_direct_buttons_in(initiative).map(func(button: Button) -> String: return button.text), _direct_buttons_in(initiative).all(func(button: Button) -> bool: return button.icon == turn_icon), (component.find_child("ActiveCombatantIcon", true, false) as TextureRect).texture, (component.find_child("InspectedCombatantIcon", true, false) as TextureRect).texture], [["NOW", "NEXT"], true, turn_icon, turn_icon], "the turn summary and compact initiative strip use supplied exact combat icons from the active actor onward")
 	var escape := component.find_child("CombatCommandEscape", true, false) as Button
 	assert_true(escape.disabled and not escape.tooltip_text.is_empty(), "unavailable retreat carries a typed reason")
 	assert_true(_labels_in(component).any(func(text: String) -> bool: return text.contains("Goblin")) and component.get_combined_minimum_size().y <= 190.0, "target facts and both command rows fit the canonical combat region")

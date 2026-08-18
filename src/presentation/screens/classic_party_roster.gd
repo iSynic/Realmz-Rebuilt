@@ -133,11 +133,19 @@ func _build_spellbook() -> void:
 	_spellbook_cast.name = "CombatSpellAim"
 	_spellbook_cast.theme_type_variation = &"BattleCommandButton"
 	_spellbook_cast.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_spellbook_cast.icon = ClassicUiAssetCatalog.texture(&"spells.action.cast")
+	_spellbook_cast.expand_icon = false
+	_spellbook_cast.add_theme_constant_override("icon_max_width", 128)
+	_spellbook_cast.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_spellbook_cast.pressed.connect(_on_spellbook_cast_pressed)
 	actions.add_child(_spellbook_cast)
 	var back := Button.new()
 	back.name = "CombatSpellbookBack"
-	back.text = "Back"
+	back.icon = ClassicUiAssetCatalog.texture(&"spells.action.abort")
+	back.expand_icon = false
+	back.add_theme_constant_override("icon_max_width", 92)
+	back.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	back.tooltip_text = "Return to the battle commands."
 	back.theme_type_variation = &"BattleCommandButton"
 	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	back.pressed.connect(func() -> void: combat_spellbook_back_requested.emit())
@@ -232,7 +240,7 @@ func _select_spellbook_power(option: InteractionRequestValue.CastOption) -> void
 			(child as Button).button_pressed = (child as Button).get_meta("cast_option") == option
 	_spellbook_cast.set_meta("cast_option", option)
 	_spellbook_cast.disabled = false
-	_spellbook_cast.text = "Cast" if option.target_mode == &"automatic" else "Aim on battlefield"
+	_spellbook_cast.tooltip_text = "Cast the selected spell." if option.target_mode == &"automatic" else "Aim the selected spell on the battlefield."
 	var target_text := option.target_name if not option.target_name.is_empty() else String(option.target_mode).replace("_", " ").capitalize()
 	if option.target_mode == &"sequence":
 		target_text = "Choose up to %d targets" % option.maximum_targets

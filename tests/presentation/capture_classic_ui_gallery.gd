@@ -115,6 +115,7 @@ func _capture_gallery() -> void:
 	await _resize(Vector2i(1280, 720))
 	_interaction.present(null)
 	var gallery_view: Variant = _application.session_controller.view()
+	var gallery_media := _application.presentation_coordinator.get("_media") as ClassicMediaCatalog
 	if not gallery_view.party_members.is_empty():
 		var active_content: Variant = _application.get("_active_content")
 		var definition: Variant = active_content.item_by_id("classic.item.901")
@@ -230,7 +231,6 @@ func _capture_gallery() -> void:
 		InteractionRequest.SESSION_LIFECYCLE,
 	]:
 		var interaction_request := ClassicUiFixtureGallery.request_for(interaction_kind)
-		var gallery_media := _application.presentation_coordinator.get("_media") as ClassicMediaCatalog
 		if interaction_kind == InteractionRequest.AGE_UPDATE and not gallery_view.party_members.is_empty():
 			var age_body := interaction_request.body as InteractionRequest.AgeUpdateBody
 			age_body.character_id = gallery_view.party_members[0].id; age_body.character_name = gallery_view.party_members[0].name; age_body.portrait_id = gallery_view.party_members[0].portrait_id; age_body.combat_icon_id = gallery_view.party_members[0].combat_icon_id
@@ -257,17 +257,24 @@ func _capture_gallery() -> void:
 		if interaction_kind == InteractionRequest.PICK_LOCK:
 			await _resize(Vector2i(800, 600)); await _capture("classic-pick-lock-800x600"); await _resize(Vector2i(1280, 720))
 		if interaction_kind in [InteractionRequest.TEMPLE, InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]:
-			await _resize(Vector2i(800, 600)); await _capture("classic-interaction-%s-800x600" % String(interaction_kind).replace("_", "-")); await _resize(Vector2i(1280, 720))
-	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
+			await _resize(Vector2i(800, 600)); _interaction.present(interaction_request, "", gallery_view, gallery_media); await _settle(); await _capture("classic-interaction-%s-800x600" % String(interaction_kind).replace("_", "-")); await _resize(Vector2i(1280, 720))
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION), "", gallery_view, gallery_media)
 	await _resize(Vector2i(800, 600))
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION), "", gallery_view, gallery_media)
 	await _settle()
 	await _capture("classic-treasure-distribution-800x600")
 	await _resize(Vector2i(1280, 720))
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION), "", gallery_view, gallery_media)
 	await _settle()
 	await _capture("wide-treasure-distribution-1280x720")
-	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"))
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unidentified"), "", gallery_view, gallery_media)
+	await _settle()
+	await _capture("wide-treasure-unidentified-1280x720")
+	await _resize(Vector2i(800, 600)); _interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unidentified"), "", gallery_view, gallery_media); await _settle(); await _capture("classic-treasure-unidentified-800x600"); await _resize(Vector2i(1280, 720))
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"), "", gallery_view, gallery_media)
 	await _settle()
 	await _capture("wide-fumble-recovery-1280x720")
+	await _resize(Vector2i(800, 600)); _interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"), "", gallery_view, gallery_media); await _settle(); await _capture("classic-fumble-recovery-800x600"); await _resize(Vector2i(1280, 720))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.LEVEL_UP))
 	await _settle()
 	await _capture("wide-level-result-1280x720")
@@ -383,11 +390,16 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"exploration")
 	await _settle()
 	await _capture("classic-six-member-roster-800x600")
-	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP))
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP), "", gallery_view, gallery_media)
 	await _resize(Vector2i(800, 600))
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP), "", gallery_view, gallery_media)
 	await _settle()
 	await _capture("classic-shop-interaction-800x600")
+	var shop_tabs := _interaction.find_child("ShopBrowserTabs", true, false) as TabContainer
+	if shop_tabs != null and shop_tabs.get_tab_count() > 1:
+		shop_tabs.current_tab = 1; await _settle(); await _capture("classic-shop-pack-800x600")
 	await _resize(Vector2i(1280, 720))
+	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP), "", gallery_view, gallery_media)
 	await _settle()
 	await _capture("canonical-shop-interaction-1280x720")
 	_interaction.present(null)
@@ -415,9 +427,23 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"combat")
 	_application._battlefield_presenter.present(gallery_view)
 	_application._battlefield_presenter.visible = true
-	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT))
+	var combat_media := _application.presentation_coordinator.package_media()
+	var combat_request := ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT)
+	var combat_body := combat_request.body as InteractionRequest.CombatRequestBody
+	var gallery_hero_id: String = gallery_view.party_members[0].id
+	var gallery_monster_id: String = combat_fixture.monsters[0].id
+	combat_body.actor_id = gallery_hero_id; combat_body.combatants[0].id = gallery_hero_id; combat_body.combatants[1].id = gallery_monster_id; combat_body.targets[0].id = gallery_monster_id
+	_interaction.present(combat_request, "", gallery_view, combat_media)
 	await _settle()
 	await _capture("canonical-combat-tactical-workspace-1280x720")
+	_application._battlefield_presenter.toggle_reveal_friends()
+	await _settle()
+	await _capture("canonical-combat-reveal-friends-1280x720")
+	_application._battlefield_presenter.toggle_reveal_friends()
+	_application._battlefield_presenter.set_movement_costs_visible(true)
+	await _settle()
+	await _capture("canonical-combat-movement-aid-1280x720")
+	_application._battlefield_presenter.set_movement_costs_visible(false)
 	await _resize(Vector2i(800, 600))
 	await _settle()
 	await _capture("classic-combat-tactical-workspace-800x600")
