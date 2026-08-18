@@ -247,7 +247,9 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 			temple.configure(media, _application_rect.size.x < 1000.0)
 			return temple
 		&"bank_action", &"pooled_wealth_departure":
-			return BankInteraction.new()
+			var bank := BankInteraction.new()
+			bank.configure(_application_rect.size.x < 1000.0)
+			return bank
 		&"combat_action":
 			var battle := BattleInteraction.new()
 			battle.configure(_combatant_icon_textures(game_view, media))
