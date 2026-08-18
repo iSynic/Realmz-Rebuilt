@@ -69,6 +69,10 @@ func _capture_gallery() -> void:
 				gallery_view.party_members[0].items.append(ItemView.new(ItemInstance.new("gallery-item-%d" % index, definition.id, maxi(1, definition.initial_charges), index < 6, index % 3 != 0), definition))
 		var gallery_conditions: Array[CharacterMetricView] = [CharacterMetricView.new(&"condition-13", 13, "Cold Protection", 2, "Value 2"), CharacterMetricView.new(&"condition-27", 27, "Blind", -1, "Permanent")]
 		gallery_view.party_members[0].conditions = gallery_conditions
+		var gallery_modifiers: Array[CharacterMetricView] = [CharacterMetricView.new(&"special-undead", 1, "Undead", 2), CharacterMetricView.new(&"special-large", 6, "Large Creature", 1)]
+		var gallery_abilities: Array[CharacterMetricView] = [CharacterMetricView.new(&"ability-detect", 4, "Detect Secret", 3), CharacterMetricView.new(&"ability-lock", 11, "Pick Lock", 2)]
+		gallery_view.party_members[0].special_modifiers = gallery_modifiers
+		gallery_view.party_members[0].abilities = gallery_abilities
 	var gallery_names: Array[String] = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]
 	while gallery_view.party_members.size() < 6 and not gallery_view.party_members.is_empty():
 		var member_index: int = int(gallery_view.party_members.size())
@@ -178,6 +182,14 @@ func _capture_gallery() -> void:
 		await _capture("canonical-character-conditions-1280x720")
 	await _resize(Vector2i(800, 600))
 	await _capture("classic-character-conditions-800x600")
+	await _resize(Vector2i(1280, 720))
+	var abilities_button := _button_named(_router, "Abilities")
+	if abilities_button != null:
+		abilities_button.pressed.emit()
+		await _settle()
+		await _capture("canonical-character-abilities-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-character-abilities-800x600")
 	await _resize(Vector2i(1280, 720))
 	var equipment_button := _button_named(_router, "Equipment")
 	if equipment_button != null:

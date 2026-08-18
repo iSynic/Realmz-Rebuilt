@@ -271,16 +271,17 @@ func _equipment_item_card(item: ItemView) -> PanelContainer:
 
 
 func _build_abilities(character: CharacterView) -> void:
-	_add_heading(_content, "Special modifiers", "Bonuses against Castle monster types")
+	var regions: Container = VBoxContainer.new() if _layout_profile == UiLayoutProfile.COMPACT else HBoxContainer.new()
+	regions.name = "AbilityRegions"
+	regions.add_theme_constant_override("separation", 10)
+	regions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content.add_child(regions)
+	var modifiers := _add_metric_region(regions, "Special modifiers", "SpecialModifiersRegion", character.special_modifiers)
 	if character.special_modifiers.is_empty():
-		_add_label(_content, "No active special modifiers.", MUTED)
-	else:
-		_add_metric_views(_content, character.special_modifiers)
-	_add_heading(_content, "Special abilities")
+		_add_label(modifiers, "No active special modifiers.", MUTED, 13)
+	var abilities := _add_metric_region(regions, "Special abilities", "SpecialAbilitiesRegion", character.abilities)
 	if character.abilities.is_empty():
-		_add_label(_content, "No active special abilities.", MUTED)
-	else:
-		_add_metric_views(_content, character.abilities)
+		_add_label(abilities, "No active special abilities.", MUTED, 13)
 
 
 func _build_spells(character: CharacterView) -> void:

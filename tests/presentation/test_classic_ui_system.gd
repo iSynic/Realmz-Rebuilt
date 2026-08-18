@@ -1201,13 +1201,13 @@ func _test_character_sheet_workspace() -> void:
 	var character := CharacterState.new("character.sheet", "Long Character Name", -10, 18)
 	character.gender = 2; character.level = 7; character.race_id = "classic.race.1"; character.caste_id = "classic.caste.2"
 	var view := CharacterView.new(character)
-	view.items = [ItemView.new(ItemInstance.new("equipped-sword", "classic.item.1", 0, true, true), ItemDefinition.new("classic.item.1", 1, "Longsword", "Sword")), ItemView.new(ItemInstance.new("carried-torch", "classic.item.805", 6, false, true), ItemDefinition.new("classic.item.805", 805, "Torch", "Equipment"))]
-	assert_equal(view.gender_name, "Female", "the detached sheet preserves Classic identity")
+	view.items = [ItemView.new(ItemInstance.new("equipped-sword", "classic.item.1", 0, true, true), ItemDefinition.new("classic.item.1", 1, "Longsword", "Sword")), ItemView.new(ItemInstance.new("carried-torch", "classic.item.805", 6, false, true), ItemDefinition.new("classic.item.805", 805, "Torch", "Equipment"))]; assert_equal(view.gender_name, "Female", "the detached sheet preserves Classic identity")
 	var sheet := ClassicCharacterSheet.new(); sheet.present([view], view.id, {}, 1.0, &"equipment", [], [], ActionAvailabilityView.new(&"change_character_appearance", true), null, UiLayoutProfile.COMPACT)
 	for label: String in ["Overview", "Conditions & Saves", "Equipment", "Abilities", "Spells", "Appearance", "Race, Class & Aging", "Lifetime Record"]: assert_true(_buttons_in(sheet).any(func(button: Button) -> bool: return button.text == label), "sheet exposes %s" % label)
 	assert_true(sheet.find_child("EquippedItems", true, false) != null and sheet.find_child("CarriedItems", true, false) != null, "equipment separates exact equipped instances from the carried pack in compact composition")
 	sheet.present([view], view.id, {}, 1.0, &"overview", [], [], ActionAvailabilityView.new(&"change_character_appearance", true), null, UiLayoutProfile.WIDE); assert_true(["OverviewAttributes", "OverviewCombat", "OverviewStatus"].all(func(node_name: String) -> bool: return sheet.find_child(node_name, true, false) != null), "overview keeps identity, combat, and resource records in three stable wide regions")
 	sheet.present([view], view.id, {}, 1.0, &"conditions", [], [], ActionAvailabilityView.new(&"change_character_appearance", true), null, UiLayoutProfile.COMPACT); assert_true(sheet.find_child("ConditionsRegion", true, false) != null and sheet.find_child("SavingThrowsRegion", true, false) != null, "conditions and all saving throws retain separate compact records")
+	sheet.present([view], view.id, {}, 1.0, &"abilities", [], [], ActionAvailabilityView.new(&"change_character_appearance", true), null, UiLayoutProfile.WIDE); assert_true(sheet.find_child("SpecialModifiersRegion", true, false) != null and sheet.find_child("SpecialAbilitiesRegion", true, false) != null, "special modifiers and abilities retain separate wide records")
 	sheet.free()
 func _test_scene_composition() -> void:
 	var scene := load("res://src/presentation/classic_application_shell.tscn") as PackedScene
