@@ -69,6 +69,10 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("wide-encounter-1280x720")
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
+	await _resize(Vector2i(960, 600))
+	await _settle()
+	await _capture("standard-treasure-distribution-960x600")
+	await _resize(Vector2i(1280, 720))
 	await _settle()
 	await _capture("wide-treasure-distribution-1280x720")
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"))
@@ -99,6 +103,10 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("wide-explore-original-controls-2x-1600x900")
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.SHOP))
+	await _resize(Vector2i(960, 600))
+	await _settle()
+	await _capture("standard-shop-interaction-960x600")
+	await _resize(Vector2i(1600, 900))
 	await _settle()
 	await _capture("wide-shop-interaction-1600x900")
 	_interaction.present(null)
@@ -108,7 +116,8 @@ func _capture_gallery() -> void:
 	service.title = "Provisioner"
 	service.actions = [&"buy", &"sell", &"identify", &"leave"]
 	service.disabled_reasons[&"identify"] = "This shop does not identify items."
-	gallery_view.services = [service]
+	gallery_view.services.clear()
+	gallery_view.services.append(service)
 	_shell.present(gallery_view)
 	await _resize(Vector2i(1920, 1080))
 	_router.open_screen(&"services")

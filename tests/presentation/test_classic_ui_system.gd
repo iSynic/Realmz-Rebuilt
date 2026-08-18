@@ -431,27 +431,20 @@ func _test_shop_component() -> void:
 	})
 	var component := ShopInteraction.new()
 	component.build(request)
-	var buttons := _direct_buttons_in(component)
-	var buy_button: Button = null
-	var unknown_sell: Button = null
-	var identify_button: Button = null
-	var equipped_sell: Button = null
-	for button: Button in buttons:
-		if button.text.begins_with("Dagger"):
-			buy_button = button
-		elif button.text.begins_with("Sell Runed wand"):
-			unknown_sell = button
-		elif button.text.begins_with("Identify Runed wand"):
-			identify_button = button
-		elif button.text.begins_with("Sell Sword"):
-			equipped_sell = button
-	assert_not_null(buy_button, "shop buyback stock renders through the typed component")
+	assert_true(component.find_child("ShopperStrip", true, false) != null and component.find_child("ShopStockColumn", true, false) != null and component.find_child("SelectedInventoryColumn", true, false) != null and component.find_child("ItemInspectorRail", true, false) != null, "shop uses the fixed shopper, stock, pack, and transaction workspace")
+	var buy_button := component.find_child("ShopBuy", true, false) as Button
 	assert_true(buy_button.disabled and buy_button.tooltip_text.contains("afford"), "unaffordable stock exposes its core-owned reason")
-	assert_not_null(unknown_sell, "unidentified inventory uses the player-knowable item name")
-	assert_not_null(identify_button, "unknown items expose paid shop identification")
+	var unknown_item := component.find_child("Inventory_item_unknown", true, false) as Button
+	assert_not_null(unknown_item, "unidentified inventory uses the player-knowable item name")
+	unknown_item.pressed.emit()
+	var sell_button := component.find_child("ShopSellSelected", true, false) as Button
+	var identify_button := component.find_child("ShopIdentify", true, false) as Button
+	assert_true(not sell_button.disabled, "a sellable carried item can be selected from the persistent pack column")
 	assert_true(identify_button.disabled and identify_button.tooltip_text.contains("20 gold"), "paid identification exposes the exact affordability blocker")
-	assert_not_null(equipped_sell, "equipped items remain visible in the sale list")
-	assert_true(equipped_sell.disabled and equipped_sell.tooltip_text.contains("Unequip"), "ordinary sale cannot bypass the equipment workflow")
+	var equipped_item := component.find_child("Inventory_item_equipped", true, false) as Button
+	assert_not_null(equipped_item, "equipped items remain visible in the pack")
+	equipped_item.pressed.emit()
+	assert_true(sell_button.disabled and sell_button.tooltip_text.contains("Unequip"), "ordinary sale cannot bypass the equipment workflow")
 	component.free()
 
 
@@ -811,19 +804,19 @@ func _test_fixture_gallery_coverage() -> void:
 	age_component.free()
 	var recovery_component := TreasureDistributionInteraction.new()
 	recovery_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"))
-	assert_equal(recovery_component.get_child_count(), 3, "battle recovery renders item detail, an eligible recipient, and leave-behind action")
-	assert_true(recovery_component.get_children().any(func(child: Node) -> bool: return child is Label and child.text.contains("7 charges")), "battle recovery exposes the exact preserved charge count")
-	assert_true(recovery_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Give to Hero" and not child.disabled), "nominal battle recovery exposes its rules-authorized recipient as an active control")
+	assert_true(recovery_component.find_child("TreasureItemColumn", true, false) != null and recovery_component.find_child("TreasureRecipientColumn", true, false) != null and recovery_component.find_child("TreasureCommandColumn", true, false) != null, "battle recovery uses the item, recipient, and fixed-command workspace")
+	assert_true(_labels_in(recovery_component).any(func(text: String) -> bool: return text.contains("7 charges")), "battle recovery exposes the exact preserved charge count")
+	assert_true(_buttons_in(recovery_component).any(func(button: Button) -> bool: return button.text.begins_with("Hero") and not button.disabled), "nominal battle recovery exposes its rules-authorized recipient as an active control")
 	recovery_component.free()
 	var ordinary_component := TreasureDistributionInteraction.new()
 	ordinary_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
-	assert_true(ordinary_component.get_children().any(func(child: Node) -> bool: return child is Label and child.text.contains("125 gold")), "ordinary booty exposes the detached pooled denominations")
-	assert_true(ordinary_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Give to Hero" and not child.disabled), "ordinary booty exposes rules-owned exact-item assignment")
-	assert_true(ordinary_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Done"), "ordinary booty has one typed completion path")
+	assert_true(_labels_in(ordinary_component).any(func(text: String) -> bool: return text.contains("Gold 125")), "ordinary booty exposes the detached pooled denominations")
+	assert_true(_buttons_in(ordinary_component).any(func(button: Button) -> bool: return button.text.begins_with("Hero") and not button.disabled), "ordinary booty exposes rules-owned exact-item assignment")
+	assert_true(_buttons_in(ordinary_component).any(func(button: Button) -> bool: return button.text == "Done"), "ordinary booty has one typed completion path")
 	ordinary_component.free()
 	var capacity_component := TreasureDistributionInteraction.new()
 	capacity_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unavailable"))
-	assert_true(capacity_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Give to Hero" and child.disabled and child.tooltip_text.contains("full")), "capacity-blocked booty retains the core-provided disabled reason")
+	assert_true(_buttons_in(capacity_component).any(func(button: Button) -> bool: return button.text.begins_with("Hero") and button.disabled and button.tooltip_text.contains("full")), "capacity-blocked booty retains the core-provided disabled reason")
 	capacity_component.free()
 	var level_component := LevelUpInteraction.new()
 	level_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.LEVEL_UP))

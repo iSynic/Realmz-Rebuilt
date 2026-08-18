@@ -27,6 +27,7 @@ var _component: InteractionComponent
 var _stage_rect := Rect2(32.0, 32.0, 640.0, 480.0)
 var _textbox_rect := Rect2(8.0, 424.0, 696.0, 168.0)
 var _combat_rect := Rect2(0.0, 424.0, 960.0, 176.0)
+var _application_rect := Rect2(0.0, 32.0, 960.0, 568.0)
 var _passive_text: bool = false
 var _playback_masked: bool = false
 
@@ -56,6 +57,10 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_set_heading(_heading_for_kind(request.kind))
 	_prompt.text = _prompt_for(request, classic_text_context)
 	_prompt.visible = not _prompt.text.is_empty()
+	if uses_application_workspace(request):
+		_set_heading("")
+		_prompt.text = ""
+		_prompt.visible = false
 	if _is_player_map_request(request):
 		_prompt.text = ""
 		_prompt.visible = false
@@ -106,6 +111,12 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 	_stage_rect = stage_rect
 	_textbox_rect = textbox_rect
 	_combat_rect = combat_rect if combat_rect.has_area() else textbox_rect
+	_application_rect = Rect2(
+		stage_rect.position.x,
+		stage_rect.position.y,
+		maxf(stage_rect.size.x, _combat_rect.size.x),
+		maxf(stage_rect.size.y, _combat_rect.end.y - stage_rect.position.y)
+	)
 	_apply_classic_region()
 
 
@@ -274,8 +285,9 @@ func _apply_classic_region() -> void:
 		size = region.size
 	elif uses_full_stage_region(_request):
 		theme_type_variation = &"ClassicInset"
-		position = _stage_rect.position
-		size = _stage_rect.size
+		var region := _application_rect if uses_application_workspace(_request) else _stage_rect
+		position = region.position
+		size = region.size
 	else:
 		theme_type_variation = &"ClassicInset"
 		var desired := Vector2(minf(700.0, _stage_rect.size.x - 20.0), minf(520.0, _stage_rect.size.y - 20.0))
@@ -290,7 +302,11 @@ static func uses_textbox_region(request: InteractionRequest, passive_text: bool 
 
 
 static func uses_full_stage_region(request: InteractionRequest) -> bool:
-	return request != null and request.kind == InteractionRequest.ALLY_SELECTION
+	return request != null and (request.kind == InteractionRequest.ALLY_SELECTION or uses_application_workspace(request))
+
+
+static func uses_application_workspace(request: InteractionRequest) -> bool:
+	return request != null and request.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.SHOP]
 
 
 static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, _unused_stage_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:

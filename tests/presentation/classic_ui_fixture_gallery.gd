@@ -136,13 +136,30 @@ static func payload_for(kind: StringName, state: StringName = &"nominal") -> Dic
 
 
 static func _shop_payload(empty_values: bool) -> Dictionary:
+	var characters: Array[Dictionary] = []
+	var stock: Array[Dictionary] = []
+	if not empty_values:
+		var names: Array[String] = ["Brom", "Sylva", "Nyx", "Durin", "Pip", "Lyra"]
+		for index: int in names.size():
+			characters.append({
+				"id": "hero-%d" % index,
+				"name": names[index],
+				"inventory": [
+					{"instanceId": "pack-%d-0" % index, "itemId": "classic.item.1", "name": "Long Sword", "sellPrice": 25, "identified": true, "equipped": index == 0, "charges": -1, "canSell": index != 0, "sellReason": "Unequip this item before selling it." if index == 0 else "", "canIdentify": false, "identifyReason": "This item is already identified."},
+					{"instanceId": "pack-%d-1" % index, "itemId": "classic.item.40", "name": "Unknown wand", "sellPrice": 8, "identified": false, "equipped": false, "charges": 2, "canSell": true, "sellReason": "", "canIdentify": index != 5, "identifyReason": "Not enough gold." if index == 5 else ""},
+				],
+			})
+		var stock_names: Array[String] = ["Potion", "Long Sword", "Leather Armor", "Holy Water", "Lock Picks", "Runed Wand"]
+		for index: int in stock_names.size():
+			var affordable := index < 4
+			stock.append({"stockKey": "base:%d" % index, "index": index, "itemId": "classic.item.%d" % (index + 1), "name": stock_names[index], "buyPrice": 10 + index * 9, "quantity": 1 + index, "canBuy": affordable, "buyReason": "The party cannot afford this item." if not affordable else ""})
 	return {
 		"shopId": "classic.shop.0",
 		"inflationPercent": 100,
 		"partyGold": 25,
 		"identifyPrice": 20,
-		"characters": [] if empty_values else [{"id": "hero", "name": "Hero", "inventory": []}],
-		"stock": [] if empty_values else [{"stockKey": "base:0", "index": 0, "itemId": "classic.item.1", "name": "Potion", "buyPrice": 10, "quantity": 1, "canBuy": true, "buyReason": ""}],
+		"characters": characters,
+		"stock": stock,
 		"acceptRanges": [0, 0, 0, 0, 0, 0],
 		"actions": ["buy", "sell", "identify", "leave"],
 	}
