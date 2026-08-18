@@ -172,6 +172,16 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"allies")
 	await _settle()
 	await _capture("canonical-allies-empty-1280x720")
+	var ally_definition: Variant = _application.get("_active_content").monster_by_classic_id(1)
+	if ally_definition != null:
+		var ally := MonsterState.new("gallery-ally", ally_definition.id, "Rook, Northgate Scout", 12, 15, ally_definition.hit_dice, ally_definition.agility, ally_definition.armor, ally_definition.magic_resistance, ally_definition.spell_points, false)
+		ally.icon_id = ally_definition.icon_id
+		var gallery_allies: Array[MonsterView] = [MonsterView.new(ally, ally_definition, _application.get("_active_content"))]
+		gallery_view.party_allies = gallery_allies
+		_shell.present(gallery_view)
+		await _settle()
+		await _capture("canonical-allies-populated-1280x720")
+		await _resize(Vector2i(800, 600)); await _capture("classic-allies-populated-800x600"); await _resize(Vector2i(1280, 720))
 	if not gallery_view.party_members.is_empty():
 		var vault_revision := CharacterVaultRevisionView.new()
 		vault_revision.character_id = gallery_view.party_members[0].id

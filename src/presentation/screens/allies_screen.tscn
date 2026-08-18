@@ -5,4 +5,4 @@
 [node name="AlliesScreen" instance=ExtResource("1_base")]
 route_id = &"allies"
 title = "Allies"
-description = "Monsters currently traveling with the party."
+description = ""

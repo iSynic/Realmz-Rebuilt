@@ -211,6 +211,7 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2) -> voi
 	if profile == null:
 		return
 	_layout_profile = profile.id
+	_workspace_presenter.set_layout_profile(profile.id)
 	var top := profile.menu_height
 	var bottom := profile.bottom_height
 	_workspace_rect = Rect2(0.0, top, maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top - bottom))

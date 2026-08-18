@@ -30,6 +30,10 @@ var _spells_controller := SpellsWorkspaceController.new()
 var _creature_library_controller := CREATURE_LIBRARY_CONTROLLER.new()
 
 
+func set_layout_profile(profile_id: StringName) -> void:
+	_creature_library_controller.set_layout_profile(profile_id)
+
+
 func _init() -> void:
 	var owner_ref: WeakRef = weakref(self)
 	_system_controller.action_requested.connect(func(action_id: StringName, value: Variant) -> void:
