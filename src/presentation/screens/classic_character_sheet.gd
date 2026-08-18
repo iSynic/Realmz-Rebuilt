@@ -408,19 +408,41 @@ func _sync_appearance_draft() -> void:
 
 
 func _build_background(character: CharacterView) -> void:
-	_add_heading(_content, character.race_name)
-	_add_label(_content, character.race_description if not character.race_description.is_empty() else "No race description is present in this package.", MUTED)
-	_add_metric_views(_content, character.race_traits)
-	_add_heading(_content, character.caste_name)
-	_add_label(_content, character.caste_description if not character.caste_description.is_empty() else "No class description is present in this package.", MUTED)
-	_add_metric_views(_content, character.caste_traits)
-	_add_heading(_content, "Aging", "Viewing this table never mutates the character")
+	var identities: Container = VBoxContainer.new() if _layout_profile == UiLayoutProfile.COMPACT else HBoxContainer.new()
+	identities.name = "RaceClassRegions"
+	identities.add_theme_constant_override("separation", 10)
+	identities.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content.add_child(identities)
+	_build_background_region(identities, "Race", "RaceRegion", character.race_name, character.race_description, character.race_traits)
+	_build_background_region(identities, "Class", "ClassRegion", character.caste_name, character.caste_description, character.caste_traits)
+	var aging := VBoxContainer.new()
+	aging.name = "AgingRegion"
+	_add_heading(aging, "Aging", "Age %d • current band highlighted" % character.age_years)
+	var bands := GridContainer.new()
+	bands.columns = 1 if _layout_profile == UiLayoutProfile.COMPACT else 5
 	for band: CharacterAgeBandView in character.age_bands:
 		var changes: Array[String] = []
 		for change: CharacterMetricView in band.changes:
 			if change.value != 0:
 				changes.append("%s %+d" % [change.name, change.value])
-		_add_card(_content, "%s%s" % ["Current • " if band.active else "", band.name], "Ages %d–%d" % [band.minimum_age, band.maximum_age], "No changes" if changes.is_empty() else " • ".join(changes))
+		_add_card(bands, "%s%s" % ["Current • " if band.active else "", band.name], "Ages %d–%d" % [band.minimum_age, band.maximum_age], "No changes" if changes.is_empty() else " • ".join(changes))
+	aging.add_child(bands)
+	_content.add_child(aging)
+
+
+func _build_background_region(parent: Container, kind: String, node_name: String, title: String, description: String, metrics: Array[CharacterMetricView]) -> void:
+	var frame := PanelContainer.new()
+	frame.name = node_name
+	frame.theme_type_variation = &"ClassicInset"
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.size_flags_stretch_ratio = 1.0
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 5)
+	frame.add_child(column)
+	_add_heading(column, title, kind)
+	_add_label(column, description if not description.is_empty() else "No %s description is present in this package." % kind.to_lower(), MUTED, 13)
+	_add_metric_views(column, metrics)
+	parent.add_child(frame)
 
 
 func _build_record(character: CharacterView) -> void:
