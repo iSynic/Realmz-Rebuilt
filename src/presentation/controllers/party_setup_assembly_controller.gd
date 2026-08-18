@@ -268,7 +268,10 @@ func _refresh_party_setup_options() -> void:
 	var maximum := "None" if summary == null or summary.maximum_party_levels <= 0 else str(summary.maximum_party_levels)
 	var recommended := "—" if summary == null or not summary.guidance_authored or summary.recommended_party_levels <= 0 else str(summary.recommended_party_levels)
 	var gained := "—" if view.party_setup.experience_percent <= 0 else "%d%%" % view.party_setup.experience_percent
-	party_guidance_label.text = "Maximum %s  •  Recommended %s  •  Current %d\nExperience gained at %s" % [maximum, recommended, view.party_setup.current_party_levels, gained]
+	party_guidance_label.text = "Maximum %s  •  Recommended %s  •  Current %d" % [maximum, recommended, view.party_setup.current_party_levels]
+	var experience_ratio := party_setup_options.find_child("ExperienceRatio", true, false) as Label
+	if experience_ratio != null:
+		experience_ratio.text = "Experience gained at %s" % gained
 
 func _party_setup_option_changed(_index: int) -> void:
 	if view == null or view.party_setup == null:

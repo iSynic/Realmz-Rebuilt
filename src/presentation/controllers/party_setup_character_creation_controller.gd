@@ -296,7 +296,7 @@ func _build_creator_appearance() -> void:
 	preview_column.add_child(portrait_heading)
 	portrait_preview = TextureRect.new()
 	portrait_preview.name = "PortraitPreview"
-	portrait_preview.custom_minimum_size = Vector2(190.0, 164.0)
+	portrait_preview.custom_minimum_size = Vector2(176.0, 176.0)
 	portrait_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait_preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -306,7 +306,7 @@ func _build_creator_appearance() -> void:
 	icon_row.add_theme_constant_override("separation", 8)
 	combat_icon_preview = TextureRect.new()
 	combat_icon_preview.name = "CombatIconPreview"
-	combat_icon_preview.custom_minimum_size = Vector2(80.0, 80.0)
+	combat_icon_preview.custom_minimum_size = Vector2(96.0, 96.0)
 	combat_icon_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	combat_icon_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	combat_icon_preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST

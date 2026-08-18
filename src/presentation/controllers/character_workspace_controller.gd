@@ -89,10 +89,9 @@ func present_vault(parent: VBoxContainer, view: GameView, appearance_textures: D
 	if _vault_revisions.is_empty():
 		_add_card(parent, "Character vault is empty", "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party.")
 		return
-	var context := "Reusable characters"
+	parent.add_child(_label("Current Character Files", GOLD, 15))
 	if view != null and view.campaign_summary != null:
-		context = "Reusable characters • eligibility for %s" % view.campaign_summary.title
-	parent.add_child(_label(context, GOLD, 15))
+		parent.add_child(_label("Eligibility shown for %s" % view.campaign_summary.title, MUTED, 11))
 	var list := GridContainer.new()
 	list.name = "CharacterFileList"
 	list.columns = 1 if _layout_profile == UiLayoutProfile.COMPACT else 2

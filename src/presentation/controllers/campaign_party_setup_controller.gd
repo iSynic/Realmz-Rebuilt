@@ -189,6 +189,10 @@ func _build_setup_options(character_column: VBoxContainer, party_column: VBoxCon
 	party_guidance_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	party_guidance_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	party_setup_options.add_child(party_guidance_label)
+	var experience_ratio := _label("Experience gained at —", GOLD, 14)
+	experience_ratio.name = "ExperienceRatio"
+	experience_ratio.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	party_setup_options.add_child(experience_ratio)
 	var selectors := HBoxContainer.new()
 	selectors.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	selectors.add_theme_constant_override("separation", 6)

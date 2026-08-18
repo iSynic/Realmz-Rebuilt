@@ -43,6 +43,21 @@ func _capture_gallery() -> void:
 	await _resize(Vector2i(800, 600))
 	var setup_view := _application.session_controller.view()
 	var setup := _router.setup_controller
+	var inspection_state := CharacterState.new("gallery.setup.inspect", "Ari", 18, 18)
+	inspection_state.race_id = setup_view.race_options[0].id
+	inspection_state.caste_id = setup_view.caste_options[0].id
+	inspection_state.portrait_id = setup_view.portrait_options[0].id if not setup_view.portrait_options.is_empty() else ""
+	inspection_state.combat_icon_id = setup_view.combat_icon_options[0].id if not setup_view.combat_icon_options.is_empty() else ""
+	setup_view.party_members = [CharacterView.new(inspection_state)]
+	_shell.present(setup_view)
+	var setup_inspect := _button_named(setup.party_list, "View")
+	if setup_inspect != null:
+		setup_inspect.pressed.emit(); await _settle(); await _capture("compact-party-setup-inspection-800x600")
+		await _resize(Vector2i(1280, 720)); await _capture("canonical-party-setup-inspection-1280x720")
+		var setup_back := _button_named(setup.setup_inspection_overlay, "Back to party setup")
+		if setup_back != null:
+			setup_back.pressed.emit()
+	setup_view.party_members.clear(); _shell.present(setup_view); await _resize(Vector2i(800, 600))
 	setup.create_character_button.pressed.emit()
 	await _settle()
 	await _capture("compact-character-creator-identity-800x600")
@@ -60,6 +75,7 @@ func _capture_gallery() -> void:
 	setup.render_creator_step()
 	await _settle()
 	await _capture("canonical-character-creator-appearance-1280x720")
+	await _resize(Vector2i(800, 600)); await _capture("compact-character-creator-appearance-800x600"); await _resize(Vector2i(1280, 720))
 	var review_state := CharacterState.new("gallery.creator", "Ari", 18, 18)
 	review_state.race_id = setup_view.race_options[0].id
 	review_state.caste_id = setup_view.caste_options[0].id
@@ -337,6 +353,10 @@ func _capture_gallery() -> void:
 		_router.open_screen(&"vault")
 		await _settle()
 		await _capture("canonical-character-files-1280x720")
+		var vault_inspect := _button_named(_router, "Inspect")
+		if vault_inspect != null:
+			vault_inspect.pressed.emit(); await _settle(); await _capture("canonical-character-file-inspection-1280x720")
+			await _resize(Vector2i(800, 600)); await _capture("classic-character-file-inspection-800x600"); await _resize(Vector2i(1280, 720))
 	await _resize(Vector2i(800, 600)); await _capture("classic-character-files-800x600")
 	_router.open_screen(&"exploration")
 	await _settle()

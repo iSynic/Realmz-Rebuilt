@@ -121,6 +121,7 @@ func _build_character_picker() -> void:
 
 func _build_identity(character: CharacterView) -> void:
 	var frame := PanelContainer.new()
+	frame.name = "CharacterIdentity"
 	frame.theme_type_variation = &"ClassicInset"
 	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var row := HBoxContainer.new()
@@ -544,6 +545,7 @@ func _tab_exists(tab_id: StringName) -> bool:
 
 func _appearance(asset_id: String, fallback_text: String, role: String, minimum_size: Vector2 = Vector2(68.0, 68.0)) -> PanelContainer:
 	var frame := PanelContainer.new()
+	frame.name = "%sMedia" % role.to_pascal_case()
 	frame.custom_minimum_size = minimum_size
 	var texture := _textures.get(asset_id) as Texture2D
 	if texture != null:

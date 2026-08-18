@@ -23,6 +23,7 @@ var package_operation_host: PanelContainer
 var package_path: LineEdit
 var install_button: Button
 var refresh_button: Button
+var package_install_row: BoxContainer
 
 var campaigns: Array[CampaignPackageView] = []
 var package_operation_status: RefCounted = PackageOperationViewScript.new()
@@ -166,17 +167,18 @@ func build_campaign_overlay() -> void:
 	package_operation_host.theme_type_variation = &"ClassicInset"
 	package_operation_host.visible = false
 	column.add_child(package_operation_host)
-	var details := HBoxContainer.new()
+	package_install_row = BoxContainer.new()
+	package_install_row.name = "PackageInstallRow"
 	package_path = LineEdit.new()
 	package_path.placeholder_text = "Path to Providence .realmz2"
 	package_path.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	details.add_child(package_path)
+	package_install_row.add_child(package_path)
 	install_button = Button.new()
 	install_button.name = "InstallPackage"
 	install_button.text = "Install .realmz2…"
 	install_button.pressed.connect(_open_typed_path)
-	details.add_child(install_button)
-	column.add_child(details)
+	package_install_row.add_child(install_button)
+	column.add_child(package_install_row)
 	refresh_button = Button.new()
 	refresh_button.name = "RefreshScenarios"
 	refresh_button.text = "Refresh scenarios"
@@ -224,6 +226,9 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 			identity_panel.custom_minimum_size = Vector2(0.0, 210.0) if splash_composition.vertical else Vector2.ZERO
 		if command_panel != null:
 			command_panel.custom_minimum_size = Vector2(0.0, 250.0) if splash_composition.vertical else Vector2(320.0, 0.0)
+	if package_install_row != null:
+		package_install_row.vertical = profile.id == UiLayoutProfile.COMPACT
+		install_button.text = "Install package…" if package_install_row.vertical else "Install .realmz2…"
 	apply_modal_layouts()
 
 
