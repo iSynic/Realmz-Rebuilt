@@ -23,6 +23,8 @@ var package_path: LineEdit
 
 var campaigns: Array[CampaignPackageView] = []
 var package_operation_status: RefCounted = PackageOperationViewScript.new()
+var selected_campaign_summary: CampaignSummaryView
+var media: ClassicMediaCatalog
 var settings: PresentationSettings = PresentationSettings.new()
 var campaign_layout_rect := Rect2(12.0, 36.0, 228.0, 556.0)
 var setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
@@ -184,6 +186,15 @@ func set_package_operation(status: RefCounted) -> void:
 	package_operation_status = status if status != null else PackageOperationViewScript.new()
 	render_campaign_list()
 
+func set_selected_campaign_summary(summary: CampaignSummaryView) -> void:
+	selected_campaign_summary = summary
+	render_campaign_list()
+
+func set_media_catalog(next_media: ClassicMediaCatalog) -> void:
+	media = next_media
+	if selected_campaign_summary != null:
+		render_campaign_list()
+
 
 func set_presentation_settings(next_settings: PresentationSettings) -> void:
 	if next_settings != null:
@@ -288,6 +299,8 @@ func render_campaign_list() -> void:
 		operation_controls.add_child(cancel)
 		operation_row.add_child(operation_controls)
 		campaign_list.add_child(operation_row)
+	if selected_campaign_summary != null:
+		_add_selected_campaign_record()
 	if campaigns.is_empty():
 		if not package_operation_status.is_running():
 			_add_label(campaign_list, "No installed scenarios. Install a Providence .realmz2 package below.", MUTED)
@@ -309,7 +322,13 @@ func render_campaign_list() -> void:
 		var status := "Installed • ready"
 		action.text = "%s\n%s" % [_display_name(campaign), status]
 		action.tooltip_text = campaign.path
-		action.disabled = package_operation_status.is_running()
+		var selected := selected_campaign_summary != null and campaign.campaign_id == selected_campaign_summary.campaign_id
+		action.disabled = package_operation_status.is_running() or selected
+		action.toggle_mode = true
+		action.button_pressed = selected
+		if selected:
+			action.text = "%s\nSelected • party setup open" % _display_name(campaign)
+			action.tooltip_text = "This scenario is selected."
 		action.pressed.connect(_campaign_pressed.bind(campaign))
 		campaign_list.add_child(action)
 	if ready_count == 0 and not package_operation_status.is_running():
@@ -319,6 +338,63 @@ func render_campaign_list() -> void:
 	else:
 		campaign_overlay.tooltip_text = "Installed Providence scenarios."
 	_refresh_campaign_layout()
+
+func _add_selected_campaign_record() -> void:
+	var panel := PanelContainer.new()
+	panel.name = "SelectedScenarioSummary"
+	panel.theme_type_variation = &"ClassicInset"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 4)
+	panel.add_child(body)
+	body.add_child(_label("Selected Scenario", MUTED, 11))
+	var title := _add_label(body, selected_campaign_summary.title, GOLD, 16)
+	title.tooltip_text = selected_campaign_summary.title
+	if not selected_campaign_summary.splash_asset_id.is_empty():
+		var asset := media.asset_by_id(selected_campaign_summary.splash_asset_id) if media != null else null
+		var texture := media.image_texture(asset) if media != null and asset != null else null
+		if texture != null:
+			var picture := TextureRect.new()
+			picture.name = "SelectedScenarioSplash"
+			picture.custom_minimum_size = Vector2(0.0, 92.0)
+			picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			picture.texture = texture
+			body.add_child(picture)
+		else:
+			var missing := _add_label(body, "Campaign picture unavailable", MUTED, 11)
+			missing.name = "SelectedScenarioSplashUnavailable"
+	var byline_parts: Array[String] = []
+	if not selected_campaign_summary.version.is_empty():
+		byline_parts.append("v%s" % selected_campaign_summary.version)
+	if not selected_campaign_summary.author.is_empty():
+		byline_parts.append("by %s" % selected_campaign_summary.author)
+	if not byline_parts.is_empty():
+		_add_label(body, " • ".join(byline_parts), Color("e0e2e5"), 12)
+	_add_bounded_summary(body, selected_campaign_summary.restriction_description)
+	var limits: Array[String] = ["Up to %d characters" % selected_campaign_summary.maximum_party_size]
+	if selected_campaign_summary.maximum_level > 0:
+		limits.append("character level cap %d" % selected_campaign_summary.maximum_level)
+	_add_label(body, " • ".join(limits), MUTED, 11)
+	if selected_campaign_summary.guidance_authored:
+		var guidance: Array[String] = []
+		if selected_campaign_summary.recommended_party_levels > 0:
+			guidance.append("recommended party total %d" % selected_campaign_summary.recommended_party_levels)
+		if selected_campaign_summary.maximum_party_levels > 0:
+			guidance.append("maximum %d" % selected_campaign_summary.maximum_party_levels)
+		if not guidance.is_empty():
+			_add_label(body, " • ".join(guidance), GOLD, 11)
+	campaign_list.add_child(panel)
+
+func _add_bounded_summary(parent: Container, text: String) -> void:
+	var summary_text := text.strip_edges()
+	if summary_text.is_empty():
+		return
+	var label := _add_label(parent, summary_text, Color("e0e2e5"), 11)
+	label.max_lines_visible = 4
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.tooltip_text = summary_text
 
 
 func _campaign_pressed(campaign: CampaignPackageView) -> void:

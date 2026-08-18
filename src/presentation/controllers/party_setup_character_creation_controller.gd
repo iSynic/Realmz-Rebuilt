@@ -43,12 +43,14 @@ func finish_standalone_character_creation() -> void:
 
 func refresh_setup_options() -> void:
 	if view == null or not view.party_setup_available:
+		_campaign_library.set_selected_campaign_summary(null)
 		campaign_overlay.tooltip_text = "Select an installed scenario to assemble a party."
 		_assembly._refresh_party_list()
 		_assembly._refresh_party_setup_options()
 		render_creator_step()
 		return
 	var summary := view.campaign_summary
+	_campaign_library.set_selected_campaign_summary(summary)
 	if summary != null:
 		var title_parts: Array[String] = [summary.title]
 		if not summary.version.is_empty():

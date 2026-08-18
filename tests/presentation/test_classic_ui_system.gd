@@ -154,12 +154,12 @@ func _test_primary_workspace_lifecycle() -> void:
 		assert_equal(router.mounted_primary_workspace_count(), 1, "a route transition leaves exactly one primary workspace mounted")
 		assert_equal(router.primary_workspace_visible(), route_id not in [&"exploration", &"combat"], "only spatial play routes suppress their explanatory workspace body")
 	assert_equal(entered, [&"character", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"], "each primary transition publishes exactly one entered route after replacing the prior workspace")
-	var setup_view := GameView.new(2, true, null)
+	var setup_view := GameView.new(2, true, null); setup_view.campaign_summary = CampaignSummaryView.new(); setup_view.campaign_summary.campaign_id = "workspace-fixture"; setup_view.campaign_summary.title = "Workspace Scenario"; setup_view.campaign_summary.version = "6.0.0"; setup_view.campaign_summary.author = "Fantasoft"; setup_view.campaign_summary.restriction_description = "Up to six adventurers."; setup_view.campaign_summary.recommended_party_levels = 18; setup_view.campaign_summary.guidance_authored = true
 	setup_view.party_setup_available = true
 	setup_view.party_members = [CharacterView.new(CharacterState.new("closing.hero", "Closing Hero", 10, 10))]
 	router.present(setup_view)
 	router.show_campaign_selection()
-	assert_equal((router.find_child("PartyCount", true, false) as Label).text, "• 1 / 6", "party setup presents the active assembly count")
+	assert_equal((router.find_child("PartyCount", true, false) as Label).text, "• 1 / 6", "party setup presents the active assembly count"); assert_true(router.find_child("SelectedScenarioSummary", true, false) != null and _labels_in(router).has("Workspace Scenario") and _labels_in(router).any(func(text: String) -> bool: return text.contains("recommended party total 18")), "the selected scenario exposes its detached identity, restrictions, and level guidance inside the narrow scenario pane")
 	router.present(GameView.new(3, false, null))
 	router.show_campaign_selection()
 	assert_equal((router.find_child("PartyCount", true, false) as Label).text, "• 0 / 6", "ending an adventure clears the setup controller's stale party count")

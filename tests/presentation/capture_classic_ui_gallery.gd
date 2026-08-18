@@ -32,6 +32,9 @@ func _capture_gallery() -> void:
 	_application.start_package(FIXTURE_PATH, 1)
 	await _settle()
 	await _capture("compact-party-setup-800x600")
+	await _resize(Vector2i(1280, 720))
+	await _capture("canonical-party-setup-1280x720")
+	await _resize(Vector2i(800, 600))
 	var setup_view := _application.session_controller.view()
 	var setup := _router.setup_controller
 	setup.create_character_button.pressed.emit()

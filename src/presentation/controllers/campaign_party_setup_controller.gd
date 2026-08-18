@@ -278,6 +278,7 @@ func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
 
 func set_media_catalog(next_media: ClassicMediaCatalog) -> void:
 	media = next_media
+	_campaign_library.set_media_catalog(next_media)
 	_appearance_textures.clear()
 
 func present_party_setup_status(text: String, is_error: bool = false) -> void:
