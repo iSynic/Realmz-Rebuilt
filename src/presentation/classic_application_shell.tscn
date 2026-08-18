@@ -198,9 +198,34 @@ unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="NarrativeWell" type="PanelContainer" parent="BottomRegion/BottomRow"]
+[node name="WorldCommandPanel" type="PanelContainer" parent="BottomRegion/BottomRow"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(260, 0)
+
+[node name="WorldCommandColumn" type="VBoxContainer" parent="BottomRegion/BottomRow/WorldCommandPanel"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="WorldCommandHeading" type="Label" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn"]
+layout_mode = 2
+theme_type_variation = &"ClassicHeading"
+text = "World"
+
+[node name="WorldCommandGrid" type="GridContainer" parent="BottomRegion/BottomRow/WorldCommandPanel/WorldCommandColumn"]
+unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 3
+columns = 4
+theme_override_constants/h_separation = 3
+theme_override_constants/v_separation = 3
+
+[node name="NarrativeWell" type="PanelContainer" parent="BottomRegion/BottomRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+custom_minimum_size = Vector2(620, 0)
 theme_type_variation = &"ClassicTextWell"
 
 [node name="NarrativeColumn" type="VBoxContainer" parent="BottomRegion/BottomRow/NarrativeWell"]
@@ -267,7 +292,7 @@ theme_override_constants/separation = 3
 [node name="CommandHeading" type="Label" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn"]
 layout_mode = 2
 theme_type_variation = &"ClassicHeading"
-text = "Commands"
+text = "Party"
 
 [node name="CommandScroll" type="ScrollContainer" parent="BottomRegion/BottomRow/CommandPanel/CommandColumn"]
 layout_mode = 2

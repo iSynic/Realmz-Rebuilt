@@ -239,8 +239,9 @@ func _test_field_spell_item_use(content: RealmzContent) -> void:
 	var torch_instance := RealmzRules.new().inventory.add_item(restored._state.party.character_by_id(carried_user.id), torch, "inventory.instance.torch", true)
 	var torch_load_before := restored._state.party.character_by_id(carried_user.id).carried_load
 	assert_true(restored.view().party_members[0].items.any(func(item: ItemView) -> bool: return item.instance_id == torch_instance.id and item.actions.use.enabled), "detached inventory actions expose Castle's targetless Torch item effect")
-	var torch_completed := restored.submit_intent(PlayerIntent.use_item(torch_instance.id, carried_user.id))
-	assert_equal(torch_completed.state, SessionStep.State.COMPLETED, "target-type-seven Torch resolves immediately without a character picker")
+	assert_true(restored.view().availability(&"use_torch").enabled, "the exploration command surface exposes Torch when Classic item 805 is carried and usable")
+	var torch_completed := restored.submit_intent(PlayerIntent.use_torch())
+	assert_equal(torch_completed.state, SessionStep.State.COMPLETED, "the Torch shortcut resolves Classic item 805 through the ordinary targetless item workflow")
 	assert_equal(restored._state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 119, "Torch applies Shine power four as Castle's 30-times-power minus one party condition")
 	assert_equal([torch_instance.charges, restored._state.party.character_by_id(carried_user.id).carried_load], [5, torch_load_before - torch.weight_per_charge], "Torch spends exactly one charge and its authored per-charge load")
 	assert_equal(torch_completed.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested").map(func(event: DomainEvent) -> int: return int(event.payload.get("soundId", 0))), [606, 601], "Torch orders its integrated item sound before Shine's resolution sound")

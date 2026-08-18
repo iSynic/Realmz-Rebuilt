@@ -5401,6 +5401,112 @@
       "decision": "aligned",
       "availability": "implemented",
       "status": "source-backed-thief-menu-and-timed-picker-implemented-trap-spell-and-live-acceptance-pending"
+    },
+    {
+      "id": "exploration.classic-command-surface",
+      "workflowIds": [
+        "classic.exploration.search",
+        "classic.exploration.contextual-service",
+        "classic.inventory.use-item"
+      ],
+      "domain": "exploration",
+      "claim": "Castle's exploration command surface distinguishes persistent Search mode from held Area Search, routes Torch through Classic item 805, and gives one contextual slot to Shop, Temple, or the current negative random rectangle's seamless Encounter doors.",
+      "remake": {
+        "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+        "behavior": "Remake provides useful Search and Torch implementation leads, including a dedicated Torch control, but its GameGlobal host boundary and reconstructed command layout are not authoritative.",
+        "sources": [
+          {
+            "path": "src/scripts/GameGlobal.gd",
+            "symbol": "func set_classic_search_enabled"
+          },
+          {
+            "path": "src/scripts/classic_runtime/classic_item_behaviors.gd",
+            "symbol": "static func activate_party_torch"
+          }
+        ],
+        "tests": [
+          {
+            "path": "src/scripts/classic_runtime/tests/classic_campaign_ui_smoke.gd",
+            "symbol": "classicSearchButton"
+          },
+          {
+            "path": "src/scripts/classic_runtime/tests/classic_torch_item_smoke.gd",
+            "symbol": "func _ready"
+          }
+        ]
+      },
+      "castle": {
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3",
+        "evidence": "source-control-flow",
+        "controlFlow": [
+          {
+            "path": "src/realmz_orig/buttonchoice.c",
+            "symbol": "short buttonchoice"
+          },
+          {
+            "path": "src/realmz_orig/updatecontrols.c",
+            "symbol": "void updatecontrols"
+          },
+          {
+            "path": "src/realmz_orig/structs.h",
+            "symbol": "PARTY_COND_SEARCH = 5"
+          }
+        ],
+        "authoredInputs": [
+          "party condition 5",
+          "Classic item 805 and its spell identity",
+          "shop and temple availability",
+          "current-cell random rectangle order",
+          "three random door IDs and signed percentages"
+        ],
+        "observation": "Search toggles party condition 5 between zero and minus one and requests integrated sound 141 without advancing time. Area Search is a distinct held control that calls checkforsecret and advances one timeclick per pulse. Torch finds item 805 and resolves the spell encoded by that item. The contextual slot displays Shop, Temple, or Encounter; Encounter scans current-cell negative random rectangles in reverse order, rolls each nonzero door with inclusive Rand(100), consumes positive successful chances, and opens the last successful XAP once.",
+        "unresolved": []
+      },
+      "providence": {
+        "commit": "9fb0021a47272aea00403644f0e4084c03e1e3b7",
+        "sources": [
+          {
+            "path": "src-tauri/src/realmz2_exporter.rs",
+            "symbol": "fn world_document"
+          },
+          {
+            "path": "src-tauri/src/realmz2_exporter.rs",
+            "symbol": "fn runtime_items"
+          }
+        ],
+        "expectedRepresentation": "Schema v3 already preserves ordered random rectangles, signed door percentages, XAP identities, and Classic item 805 with its spell fields; no package change is required."
+      },
+      "realmz2": {
+        "owner": {
+          "path": "src/session/coordinators/session_exploration_coordinator.gd",
+          "symbol": "func begin_contextual_encounter"
+        },
+        "expectedTrace": [
+          "toggle Search without time or RNG and persist the party condition",
+          "repeat Area Search as explicit time-advancing pulses",
+          "resolve Torch through the ordinary exact-instance item workflow",
+          "prefer an active Shop or Temple in the contextual slot",
+          "otherwise reverse-scan current negative random rectangles and roll all three doors in source order",
+          "consume positive successful door chances and run the final selected XAP through the serializable Scenario VM"
+        ],
+        "tests": [
+          {
+            "path": "tests/integration/test_exploration_session.gd",
+            "symbol": "func _test_contextual_encounter_command"
+          },
+          {
+            "path": "tests/integration/test_inventory_session.gd",
+            "symbol": "func _test_field_spell_item_use"
+          },
+          {
+            "path": "tests/presentation/test_classic_ui_system.gd",
+            "symbol": "func _test_scene_composition"
+          }
+        ]
+      },
+      "decision": "aligned",
+      "availability": "implemented",
+      "status": "search-area-search-torch-and-contextual-slot-source-paths-implemented"
     }
   ]
 }

@@ -142,6 +142,14 @@ The following pass completed the separate active-character appearance workflow. 
 - Opcode 29 now acquires a stable player-map ID once. Positive operands publish Castle's acquisition message; negative operands yield a typed acknowledgement whose complete VM/session continuation survives save and restore. The Journal browser preserves acquired and unavailable slots, while its shared presenter renders exact PICT assets, scrolling text, topology-derived crops, ordered markers, notes, and Castle's party-marker bounds without simulation mutation.
 - `FD-MAPS-003` rejects record ID 20 and zero icon size before Castle's out-of-bounds write or integer division. Remaining unknowns are narrower and visible: exact dungeon `centerpict`/`updatewalls` pixels, representative legacy TEXT/style conversion, malformed crop or rectangle behavior, and ordinary AOGM acceptance.
 
+## Current rolling fidelity pass — Exploration command surface
+
+- Castle `buttonchoice.c::buttonchoice` exposes two distinct search operations. Ordinary Search toggles party condition slot 5 and sound 141 without advancing time; held Area Search repeatedly calls `checkforsecret(TRUE)` and one `timeclick`. Realmz Rebuilt preserves that distinction in typed intents and availability instead of treating one generic Search button as both behaviors.
+- The Torch command locates Classic item 805 and resolves its authored spell through the ordinary charged-item path. It does not own a second light-effect implementation, charge counter, or target path.
+- Castle's contextual field slot is Shop when a shop is present, Temple when a temple is present, and otherwise Encounter. Encounter reverse-scans the current random-rectangle memberships, considers only negative effective chances, rolls each nonzero door in source order with Castle's inclusive percentage convention, consumes successful positive one-shot chances, and enters the final successful XAP. The complete RNG and VM continuation remains session-owned.
+- Remake supplies useful Search and Torch implementation leads, but Castle establishes the split command lifecycle and contextual ordering. Providence schema v3 already preserves the item, spell, random-rectangle, door, chance, and XAP identities, so this pass requires no package-contract change.
+- The release UI does not expose Castle's hardcoded Speak debug vocabulary. Those developer shortcuts are application diagnostics rather than authored scenario encounters.
+
 ## Rolling gate
 
 For each functional slice:

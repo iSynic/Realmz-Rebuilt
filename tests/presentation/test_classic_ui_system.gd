@@ -1108,24 +1108,27 @@ func _test_field_spell_workspace() -> void:
 	body.free()
 func _test_inventory_workspace() -> void:
 	var definition := ItemDefinition.new("classic.item.inventory-ui", 10, "Longsword", "Sword", "A balanced sword.")
-	var source := CharacterState.new("source", "Alis", 10, 10)
+	var source := CharacterState.new("source", "Alis", 10, 10); var destination := CharacterState.new("destination", "Borin", 12, 12)
 	var view := GameView.new(4, true, null)
-	var source_view := CharacterView.new(source)
+	var source_view := CharacterView.new(source); var destination_view := CharacterView.new(destination)
 	var item_view := ItemView.new(ItemInstance.new("inventory.item", definition.id, 0, false, true), definition)
-	item_view.actions.equip = ActionAvailabilityView.new(&"equip_item", true)
-	item_view.actions.split = ActionAvailabilityView.new(&"split_item", true)
-	item_view.actions.join = ActionAvailabilityView.new(&"join_item", true)
+	item_view.actions.equip = ActionAvailabilityView.new(&"equip_item", true); item_view.actions.split = ActionAvailabilityView.new(&"split_item", true); item_view.actions.join = ActionAvailabilityView.new(&"join_item", true)
 	item_view.actions.use = ActionAvailabilityView.new(&"use_item", false, "This item's use effect is not implemented.")
+	item_view.actions.trade = ActionAvailabilityView.new(&"trade_item", true); item_view.actions.trade_targets = [ItemTransferTargetView.new(destination.id, destination.name, true)]
 	source_view.items = [item_view]
-	view.party_members = [source_view]
+	view.party_members = [source_view, destination_view]
 	var body := VBoxContainer.new()
-	var controller := InventoryWorkspaceController.new()
+	var controller := InventoryWorkspaceController.new(); var intents: Array[PlayerIntent] = []
+	controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
 	controller.present(body, view, null, 1.0)
 	var buttons := _base_buttons_in(body)
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Longsword")), "inventory renders a selectable carried item")
-	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Equip"), "inventory exposes the typed Equip action")
+	assert_true(body.find_child("InventoryItemBrowser", true, false) != null and body.find_child("InventoryItemInspector", true, false) != null, "inventory uses one item browser and one aligned inspector instead of duplicate owner tabs"); assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Equip"), "inventory exposes the typed Equip action")
 	assert_true(["Split", "Join"].all(func(label: String) -> bool: return buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text == label and not button.disabled)), "inventory exposes core-authorized stack actions")
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text.contains("not implemented")), "unsafe use remains visible with a core-owned reason")
+	var trade := buttons.filter(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Trade")[0] as Button; trade.pressed.emit()
+	assert_true(controller.select_roster_character(destination.id, view), "the persistent Party roster becomes the typed recipient selector during Trade")
+	assert_equal([intents.size(), intents[0].kind], [1, PlayerIntent.Kind.TRADE_ITEM], "roster recipient selection emits one typed item transfer")
 	body.free()
 func _test_money_workspace() -> void:
 	var source := CharacterState.new("money.ui.source", "Alis", 10, 10)
@@ -1222,6 +1225,10 @@ func _test_scene_composition() -> void:
 	var shell := scene.instantiate() as ClassicApplicationShell
 	assert_not_null(shell.get_node_or_null("ScreenRouter"), "the shell owns one workspace router")
 	assert_not_null(shell.get_node_or_null("BottomRegion/BottomRow/NarrativeWell"), "the shell owns a narrative well")
+	assert_true(shell.get_node_or_null("BottomRegion/BottomRow/WorldCommandPanel") != null and shell.get_node_or_null("BottomRegion/BottomRow/CommandPanel") != null, "exploration dedicates separate footer panes to world and party commands")
+	var exploration_commands := ClassicCommandCatalog.for_context(&"exploration")
+	assert_true([&"search_mode", &"contextual"].all(func(id: StringName) -> bool: return exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == id and definition["group"] == &"world")), "Search mode and contextual service entry belong to world controls")
+	assert_true(exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == &"inventory" and definition["group"] == &"party"), "party workspaces remain grouped beside the narrative well")
 	var backing := shell.get_node("PictureStage/PictureBacking") as TextureRect
 	assert_equal(backing.stretch_mode, TextureRect.STRETCH_TILE, "picture backing fills without stretching")
 	for viewport_size: Vector2 in [Vector2(800, 600), Vector2(1280, 720)]:

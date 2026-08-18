@@ -7,6 +7,67 @@ var _context: SessionCoordinatorContext
 func _init(context: SessionCoordinatorContext) -> void:
 	_context = context
 
+
+func begin_contextual_encounter() -> SessionCoordinatorResult:
+	if _context.state.combat != null and not _context.state.combat.completed:
+		return _context.failed(&"encounter_during_battle", "The seamless Encounter command is unavailable during battle.")
+	var map := _context.content.world.map_by_id(_context.state.party.map_id)
+	var cell: MapCell = null if map == null else map.topology.cell_at(_context.state.party.coordinate)
+	if cell == null:
+		return _context.failed(&"unknown_map", "The current map is unavailable for Encounter.")
+	var selected_program_id := ""
+	var selected_region_id := ""
+	var events: Array[DomainEvent] = []
+	var region_ids := cell.random_rect_ids()
+	for offset: int in region_ids.size():
+		var region_id: String = region_ids[region_ids.size() - 1 - offset]
+		var region := map.random_region_by_id(region_id)
+		if region == null:
+			return _context.failed(&"invalid_random_region", "Encounter references an unavailable random rectangle.", events)
+		var effective := _context.state.world.random_region(region)
+		if effective.chance_ten_thousand >= 0:
+			continue
+		var door_ids := region.random_doors()
+		var door_percents := effective.random_door_percents()
+		for door_index: int in mini(door_ids.size(), door_percents.size()):
+			var door_id := door_ids[door_index]
+			var percent := door_percents[door_index]
+			if door_id == 0 or percent == 0:
+				continue
+			var roll := _context.rng.draw(100, StringName("contextual-encounter.%s.door.%d" % [region.id, door_index]))
+			var fired := roll <= absi(percent)
+			events.append(DomainEvent.new(&"contextual_encounter_checked", {"regionId": region.id, "doorIndex": door_index, "programId": "xap:%d" % door_id, "roll": roll, "chancePercent": percent, "triggered": fired}))
+			if not fired:
+				continue
+			effective.consume_random_door(door_index)
+			_context.state.world.set_random_region(effective)
+			selected_program_id = "xap:%d" % door_id
+			selected_region_id = region.id
+	if selected_program_id.is_empty():
+		events.append(DomainEvent.new(&"contextual_encounter_unavailable", {"mapId": map.id, "coordinate": _context.state.party.coordinate}))
+		return _context.completed(events)
+	if _context.content.scenario.program_by_id(selected_program_id) == null:
+		return _context.failed(&"unknown_random_door_program", "Encounter selected unavailable program '%s'." % selected_program_id, events)
+	_context.set_continuation(ExplorationTimeWorkflow.post_move_continuation(_context.workflow_context(), map, _context.state.party.coordinate))
+	_context.session_continuation.exploration().active_random_program_id = selected_program_id
+	events.append(DomainEvent.new(&"contextual_encounter_triggered", {"regionId": selected_region_id, "programId": selected_program_id}))
+	var execution_context := ScenarioExecutionContext.trigger(&"action", "", map.id, _context.state.party.coordinate, true).set_random_region(selected_region_id)
+	var started := _context.scenario_vm.start_program(selected_program_id, execution_context)
+	if started.state == ScenarioVmResult.State.FAILED:
+		_context.session_continuation.clear()
+		return _context.failed(started.error_code, started.error_message, events)
+	var result := _context.scenario_vm.run(_context.runtime_api)
+	events.append_array(result.events)
+	if result.state == ScenarioVmResult.State.SUSPENDED:
+		return _context.scenario()._begin_scenario_handoff(result, events)
+	if result.state == ScenarioVmResult.State.WAITING:
+		return _context.waiting(result.interaction, events)
+	if result.state == ScenarioVmResult.State.FAILED:
+		_context.session_continuation.clear()
+		return _context.failed(result.error_code, result.error_message, events)
+	_context.session_continuation.clear()
+	return _context.completed(events)
+
 func _set_post_time_continuation(map: MapDefinition, resume_kind: String, direction: Vector2i = Vector2i.ZERO, check_random: bool = true, timed_day: int = 0, timed_coordinate: Vector2i = Vector2i(-1, -1)) -> void:
 	_context.set_continuation(ExplorationTimeWorkflow.post_time_continuation(_context.workflow_context(), map, StringName(resume_kind), direction, check_random, timed_day, timed_coordinate))
 

@@ -316,7 +316,7 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed(&"realmz_search"):
-		_submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+		_submit_intent(PlayerIntent.toggle_search())
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed(&"realmz_camp"):

@@ -8,4 +8,5 @@ var banked_gold: int = 0
 var fatigue: int = 0
 var light_remaining: int = 0
 var camping: bool = false
+var searching: bool = false
 var acquired_map_ids: Array[String] = []

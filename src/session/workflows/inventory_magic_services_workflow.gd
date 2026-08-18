@@ -60,6 +60,35 @@ static func set_fast_spell(context: SessionWorkflowContext, payload: PlayerInten
 	return SessionWorkflowResult.completed([DomainEvent.new(&"fast_spell_changed", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": payload.power, "source": "classic"})])
 
 
+static func classic_torch_item(context: SessionWorkflowContext) -> Array[String]:
+	var torch := context.content.item_by_classic_id(805)
+	if torch == null:
+		return []
+	for character: CharacterState in context.state.party.characters():
+		for instance: ItemInstance in character.inventory():
+			if instance.definition_id == torch.id:
+				return [character.id, instance.id]
+	return []
+
+
+static func classic_torch_probe(context: SessionWorkflowContext) -> InventoryActionProbe:
+	var identity := classic_torch_item(context)
+	if identity.is_empty():
+		return InventoryActionProbe.block("The party carries no usable torch.")
+	var character := context.state.party.character_by_id(identity[0])
+	var instance := _item_instance(character, identity[1])
+	var item: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
+	var spell: SpellDefinition = null if item == null else context.content.spell_by_classic_id(item.special_2)
+	return field_spell_item_probe(context, character, instance, item, spell)
+
+
+static func begin_classic_torch(context: SessionWorkflowContext, request_revision: int) -> MagicTransitionResult:
+	var identity := classic_torch_item(context)
+	if identity.is_empty():
+		return MagicTransitionResult.failed(&"torch_unavailable", "The party carries no usable torch.")
+	return begin_field_spell_item(context, identity[0], identity[1], "", [], request_revision)
+
+
 static func equip_item(context: SessionWorkflowContext, payload: PlayerIntent.ItemActionPayload) -> SessionWorkflowResult:
 	var character := context.state.party.character_by_id(payload.actor_id)
 	var instance := _item_instance(character, payload.item_id)

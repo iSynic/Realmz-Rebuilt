@@ -189,6 +189,12 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _move((intent.payload as PlayerIntent.MovePayload).direction)
 		PlayerIntent.Kind.SEARCH:
 			return _search()
+		PlayerIntent.Kind.TOGGLE_SEARCH:
+			return _toggle_search()
+		PlayerIntent.Kind.USE_TORCH:
+			return _use_torch()
+		PlayerIntent.Kind.CONTEXTUAL_ENCOUNTER:
+			return _contextual_encounter()
 		PlayerIntent.Kind.CAMP:
 			return _camp()
 		PlayerIntent.Kind.REST:
@@ -556,6 +562,19 @@ func _search() -> SessionStep:
 	if not result.ok:
 		return _finish_failed(result.error_code, result.error_message, result.events)
 	return _finish_with_age_updates(result.events, "completed")
+
+
+func _toggle_search() -> SessionStep:
+	return _commit_workflow_result(ExplorationTimeWorkflow.toggle_search(_workflow_context()))
+
+
+func _use_torch() -> SessionStep:
+	return _finish_magic_transition(InventoryMagicServicesWorkflow.begin_classic_torch(_workflow_context(), _view_revision + 1))
+
+
+func _contextual_encounter() -> SessionStep:
+	_ensure_coordinators()
+	return _commit_coordinator_result(_exploration_coordinator.begin_contextual_encounter())
 
 
 func _move(direction: Vector2i) -> SessionStep:

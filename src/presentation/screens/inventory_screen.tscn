@@ -3,4 +3,4 @@
 [node name="InventoryScreen" instance=ExtResource("1_base")]
 route_id = &"inventory"
 title = "Inventory"
-description = "Party items, visible CICNs, equipment state, and session-authorized verbs."
+description = ""

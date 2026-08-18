@@ -55,8 +55,12 @@ const HELD_COMMAND_INTERVAL := 0.22
 @onready var _fatigue_label: Label = %Fatigue
 @onready var _clock_label: Label = %Clock
 @onready var _gold_label: Label = %Gold
+@onready var _world_command_panel: PanelContainer = %WorldCommandPanel
+@onready var _world_command_grid: GridContainer = %WorldCommandGrid
+@onready var _narrative_well: PanelContainer = %NarrativeWell
 @onready var _command_panel: PanelContainer = %CommandPanel
 @onready var _command_grid: GridContainer = %CommandGrid
+@onready var _command_heading: Label = $BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandHeading
 @onready var _router: ClassicScreenRouter = %ScreenRouter
 @onready var _smoke_action: Button = %SmokeAction
 
@@ -366,19 +370,23 @@ func _apply_layout() -> void:
 	_stage_frame.position = stage_rect.position
 	_stage_frame.size = stage_rect.size
 	_party_roster.position = Vector2(stage_width, _profile.menu_height)
-	var roster_height := stage_height if _party_roster.combat_spellbook_active() else viewport_size.y - _profile.menu_height
+	var roster_height := stage_height
 	_party_roster.size = Vector2(_profile.party_width, roster_height)
-	var stacked_bottom := _profile.id == UiLayoutProfile.COMPACT and stage_width < 520.0
-	_bottom_row.vertical = stacked_bottom
-	_facts.columns = 2 if stacked_bottom else 5
-	var command_width := stage_width if stacked_bottom else minf(_profile.command_width, stage_width * (0.46 if _profile.id == UiLayoutProfile.COMPACT else 0.5))
-	_command_panel.custom_minimum_size.x = 0.0 if stacked_bottom else command_width
-	_command_panel.custom_minimum_size.y = minf(108.0 * _profile.ui_scale, _profile.bottom_height * 0.48) if stacked_bottom else 0.0
+	_bottom_row.vertical = false
+	_facts.columns = 5
+	var command_width := minf(_profile.command_width, viewport_size.x * 0.26)
+	_world_command_panel.visible = _profile.id != UiLayoutProfile.COMPACT
+	_command_heading.text = "Party" if _world_command_panel.visible else "Commands"
+	_world_command_panel.custom_minimum_size.x = minf(280.0, viewport_size.x * 0.22) if _world_command_panel.visible else 0.0
+	_command_panel.custom_minimum_size.x = command_width
+	_command_panel.custom_minimum_size.y = 0.0
+	_narrative_well.custom_minimum_size.x = 620.0 if _world_command_panel.visible else maxf(360.0, viewport_size.x - command_width - 12.0)
+	_world_command_grid.columns = 4
 	_command_grid.columns = maxi(2, floori(command_width / (108.0 if _profile.bitmap_scale == 2 else 58.0)))
 	# Orientation and child minima must settle before shrinking the outer panel;
 	# otherwise Control retains the previous wider profile's minimum-clamped size.
 	_bottom_region.position = Vector2(0.0, viewport_size.y - _profile.bottom_height)
-	_bottom_region.size = Vector2(stage_width, _profile.bottom_height)
+	_bottom_region.size = Vector2(viewport_size.x, _profile.bottom_height)
 	var picture_size := Vector2(minf(560.0 * _profile.ui_scale, stage_rect.size.x - 48.0), minf(360.0 * _profile.ui_scale, stage_rect.size.y - 48.0))
 	_picture_stage.position = stage_rect.position + (stage_rect.size - picture_size) * 0.5
 	_picture_stage.size = picture_size
@@ -394,8 +402,9 @@ func _build_menus() -> void:
 	if not is_node_ready():
 		return
 	var camp_label := "Break Camp" if _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping else "Camp"
-	var location_service := _contextual_service()
-	var service_label := location_service.title if location_service != null else "Location Service"
+	var contextual_definition := _presentation_command_definition(ClassicCommandCatalog.command(&"contextual"))
+	var contextual_label := String(contextual_definition.get("label", "Encounter"))
+	var contextual_availability := StringName(contextual_definition.get("availability", &"contextual_encounter"))
 	_fill_menu($MenuStrip/MenuRow/InfoMenu, [
 		{"label": "About Realmz Rebuilt", "route": &"system"},
 		{"label": "Package identity and readiness", "route": &"system"},
@@ -410,10 +419,12 @@ func _build_menus() -> void:
 	])
 	_fill_menu($MenuStrip/MenuRow/AdventureMenu, [
 		{"label": "Explore", "route": &"exploration"},
-		{"label": "Search", "command": &"search", "disabled_reason": _availability_reason(&"search")},
+		{"label": "Search", "command": &"search_mode", "disabled_reason": _availability_reason(&"toggle_search")},
+		{"label": "Area Search", "command": &"area_search", "disabled_reason": _availability_reason(&"area_search")},
+		{"label": "Torch", "command": &"torch", "disabled_reason": _availability_reason(&"use_torch")},
 		{"label": camp_label, "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
 		{"label": "Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
-		{"label": service_label, "command": &"service", "disabled_reason": _availability_reason(&"service_action")},
+		{"label": contextual_label, "command": &"contextual", "disabled_reason": _availability_reason(contextual_availability)},
 		{"label": "Money", "command": &"money", "disabled_reason": _availability_reason(&"money_action")},
 	])
 	_fill_menu($MenuStrip/MenuRow/CharacterMenu, [
@@ -436,10 +447,12 @@ func _build_menus() -> void:
 	])
 	var compact_entries: Array[Dictionary] = [
 		{"label": "Adventure — Explore", "route": &"exploration"},
-		{"label": "Adventure — Search", "command": &"search", "disabled_reason": _availability_reason(&"search")},
+		{"label": "Adventure — Search", "command": &"search_mode", "disabled_reason": _availability_reason(&"toggle_search")},
+		{"label": "Adventure — Area Search", "command": &"area_search", "disabled_reason": _availability_reason(&"area_search")},
+		{"label": "Adventure — Torch", "command": &"torch", "disabled_reason": _availability_reason(&"use_torch")},
 		{"label": "Adventure — %s" % camp_label, "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
 		{"label": "Adventure — Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
-		{"label": "Adventure — %s" % service_label, "command": &"service", "disabled_reason": _availability_reason(&"service_action")},
+		{"label": "Adventure — %s" % contextual_label, "command": &"contextual", "disabled_reason": _availability_reason(contextual_availability)},
 		{"label": "Adventure — Money", "command": &"money", "disabled_reason": _availability_reason(&"money_action")},
 		{"label": "Character — Party Order", "route": &"character"},
 		{"label": "Character — Character Sheets", "route": &"character"},
@@ -500,9 +513,10 @@ func _on_menu_item_pressed(item_id: int, menu: MenuButton) -> void:
 func _rebuild_command_deck() -> void:
 	if not is_node_ready() or _profile == null:
 		return
-	for child: Node in _command_grid.get_children():
-		_command_grid.remove_child(child)
-		child.queue_free()
+	for grid: GridContainer in [_world_command_grid, _command_grid]:
+		for child: Node in grid.get_children():
+			grid.remove_child(child)
+			child.queue_free()
 	_simulation_buttons.clear()
 	var context := &"encounter" if _current_view != null and _current_view.pending_interaction != null else _router.current_screen()
 	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
@@ -530,7 +544,9 @@ func _rebuild_command_deck() -> void:
 				text_button.pressed.connect(_activate_command.bind(StringName(definition["id"])))
 			button = text_button
 		button.set_meta("focus_key", "command:%s" % definition["id"])
-		_command_grid.add_child(button)
+		var group := StringName(definition.get("group", &"party"))
+		var target_grid := _world_command_grid if group == &"world" and _world_command_panel.visible else _command_grid
+		target_grid.add_child(button)
 		_simulation_buttons[StringName(definition["id"])] = button
 	_update_command_availability()
 
@@ -556,13 +572,17 @@ func _update_command_availability() -> void:
 
 func _activate_command(command_id: StringName) -> void:
 	match command_id:
-		&"search": intent_submitted.emit(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+		&"search_mode": intent_submitted.emit(PlayerIntent.toggle_search())
+		&"area_search": intent_submitted.emit(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
+		&"torch": intent_submitted.emit(PlayerIntent.use_torch())
 		&"camp": intent_submitted.emit(PlayerIntent.camp())
 		&"rest": intent_submitted.emit(PlayerIntent.rest())
-		&"service":
+		&"contextual":
 			var service := _contextual_service()
 			if service != null and not service.actions.is_empty():
 				intent_submitted.emit(PlayerIntent.service_action(service.service_id, service.actions[0]))
+			else:
+				intent_submitted.emit(PlayerIntent.contextual_encounter())
 		&"money": _router.open_screen(&"services")
 		&"inventory": _router.open_screen(&"inventory")
 		&"spells": _router.open_screen(&"spells")
@@ -572,16 +592,24 @@ func _activate_command(command_id: StringName) -> void:
 
 
 func _presentation_command_definition(definition: Dictionary) -> Dictionary:
-	if StringName(definition.get("id", &"")) != &"service":
-		return definition
 	var result := definition.duplicate()
+	var command_id := StringName(definition.get("id", &""))
+	if command_id == &"search_mode" and _current_view != null and _current_view.party_summary != null and _current_view.party_summary.searching:
+		result["label"] = "Stop Search"
+		result["tooltip"] = "Stop continuous secret searching"
+		return result
+	if command_id != &"contextual":
+		return result
 	var service := _contextual_service()
 	if service == null:
 		return result
 	result["label"] = service.title
 	result["tooltip"] = "Enter %s" % service.title
+	result["availability"] = &"service_action"
 	if service.service_kind == &"temple":
 		result["asset_id"] = &"command.temple"
+	else:
+		result["asset_id"] = &""
 	return result
 
 
@@ -589,7 +617,7 @@ func _contextual_service() -> ServiceView:
 	if _current_view == null:
 		return null
 	for service: ServiceView in _current_view.services:
-		if not service.actions.is_empty():
+		if service.service_kind in [&"shop", &"temple"] and not service.actions.is_empty():
 			return service
 	return null
 
@@ -620,6 +648,7 @@ func _on_held_command_timeout() -> void:
 func _on_screen_changed(screen_id: StringName) -> void:
 	var play_regions_visible := _current_view != null and _current_view.session_started and not _router.full_stage_overlay_visible()
 	_set_play_regions_visible(play_regions_visible)
+	_apply_layout()
 	set_status(String(screen_id).replace("_", " ").capitalize())
 	_build_menus()
 	_rebuild_command_deck()
@@ -628,7 +657,7 @@ func _on_screen_changed(screen_id: StringName) -> void:
 
 func _set_play_regions_visible(visible: bool) -> void:
 	_stage_frame.visible = visible
-	_bottom_region.visible = visible
+	_bottom_region.visible = visible and _router.current_screen() == &"exploration"
 	_party_roster.visible = visible
 	play_stage_visibility_changed.emit(visible)
 
@@ -659,6 +688,8 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 
 func _on_character_selected(character_id: String) -> void:
 	_selected_character_id = character_id
+	if _router.current_screen() == &"inventory" and _router.select_inventory_character(character_id):
+		return
 	_router.open_screen(&"character")
 
 

@@ -4,6 +4,9 @@ extends RefCounted
 enum Kind {
 	MOVE,
 	SEARCH,
+	TOGGLE_SEARCH,
+	USE_TORCH,
+	CONTEXTUAL_ENCOUNTER,
 	CAMP,
 	REST,
 	USE_ITEM,
@@ -269,7 +272,7 @@ func _init(intent_kind: Kind, intent_payload: Payload = null) -> void:
 
 func is_valid() -> bool:
 	match kind:
-		Kind.SEARCH, Kind.CAMP, Kind.REST, Kind.BEGIN_ADVENTURE, Kind.CANCEL_CHARACTER_DRAFT, Kind.FINALIZE_CHARACTER:
+		Kind.SEARCH, Kind.TOGGLE_SEARCH, Kind.USE_TORCH, Kind.CONTEXTUAL_ENCOUNTER, Kind.CAMP, Kind.REST, Kind.BEGIN_ADVENTURE, Kind.CANCEL_CHARACTER_DRAFT, Kind.FINALIZE_CHARACTER:
 			return payload is EmptyPayload
 		Kind.MOVE:
 			return payload is MovePayload
@@ -312,6 +315,18 @@ func is_valid() -> bool:
 
 static func move(move_direction: Vector2i) -> PlayerIntent:
 	return PlayerIntent.new(Kind.MOVE, MovePayload.new(move_direction))
+
+
+static func toggle_search() -> PlayerIntent:
+	return PlayerIntent.new(Kind.TOGGLE_SEARCH)
+
+
+static func use_torch() -> PlayerIntent:
+	return PlayerIntent.new(Kind.USE_TORCH)
+
+
+static func contextual_encounter() -> PlayerIntent:
+	return PlayerIntent.new(Kind.CONTEXTUAL_ENCOUNTER)
 
 
 static func use_item(item_id: String, user_id: String = "") -> PlayerIntent:

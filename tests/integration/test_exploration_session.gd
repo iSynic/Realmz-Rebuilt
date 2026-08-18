@@ -25,6 +25,17 @@ func run() -> void:
 	assert_false(session.view().map_view.can_move(Vector2i.LEFT), "the detached view exposes an authoritative blocked movement direction")
 	assert_equal(session.view().map_view.visited_coordinates(), [Vector2i(1, 1)], "the minimap receives only session-owned visited coordinates")
 	assert_equal(session.view().map_view.cell_at(Vector2i(2, 2)).overlay_asset_id, "fixture.special-land.neg-99", "the detached presentation view retains the validated special-land overlay identity")
+	var search_clock_before := session.snapshot().game_state.clock.total_minutes()
+	var search_rng_before := session.rng_trace().size()
+	var search_mode_on := session.submit_intent(PlayerIntent.toggle_search())
+	assert_true(_has_event(search_mode_on, &"search_mode_changed") and session.view().party_summary.searching, "Search toggles Castle party condition 5 on without performing an Area Search")
+	assert_equal([session.snapshot().game_state.clock.total_minutes(), session.rng_trace().size()], [search_clock_before, search_rng_before], "Search mode consumes neither gameplay time nor RNG")
+	var searching_restore := GameSession.new()
+	assert_equal(searching_restore.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "active Search mode restores through the ordinary party-condition snapshot")
+	assert_true(searching_restore.view().party_summary.searching, "the detached view preserves restored Search mode")
+	assert_equal(session.submit_intent(PlayerIntent.toggle_search()).state, SessionStep.State.COMPLETED, "Search toggles off at the same committed boundary")
+	assert_false(session.view().party_summary.searching, "the second Search command clears Castle party condition 5")
+	_test_contextual_encounter_command(content)
 	var open_content := _open_movement_content(content)
 	var open_session := GameSession.new()
 	open_session.start(open_content, 1)
@@ -365,6 +376,39 @@ func _test_location_notes(content: RealmzContent) -> void:
 	capacity_envelope.game_state.world._location_notes[duplicate_ordinal.id()] = duplicate_ordinal
 	var corrupt_capacity := GameSession.new()
 	assert_equal(corrupt_capacity.restore(content, capacity_envelope).error_code, &"invalid_game_state", "restore rejects duplicate source ordinals transactionally")
+
+
+func _test_contextual_encounter_command(source_content: RealmzContent) -> void:
+	var region_id := "contextual.fixture.region"
+	var empty_triggers: Array[String] = []
+	var random_regions: Array[String] = [region_id]
+	var empty_edges := {
+		&"north": MapEdge.new(&"open", true, false),
+		&"east": MapEdge.new(&"open", true, false),
+		&"south": MapEdge.new(&"open", true, false),
+		&"west": MapEdge.new(&"open", true, false),
+	}
+	var empty_features: Array[MapFeature] = []
+	var cell := MapCell.new("contextual:cell:0,0", Vector2i.ZERO, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_triggers, random_regions, empty_edges, empty_features)
+	var region := RandomEncounterRegion.new(region_id, Rect2i(Vector2i.ZERO, Vector2i.ONE), -1, 0, 0, [42, 0, 0], [100, 0, 0], false, 0, 0, 0)
+	var regions: Array[RandomEncounterRegion] = [region]
+	var map := MapDefinition.new("contextual", "Land level 0", &"land", 0, MapTopology.new(1, 1, [cell]), false, false, -1, regions, "fixture.tileset")
+	var maps: Array[MapDefinition] = [map]
+	var program := ScenarioProgramDefinition.new("xap:42", &"extra-action-point", region_id, [])
+	var content := RealmzContent.new("contextual-command", source_content.package_hash, "contextual-command-content", source_content.rules_version, map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new([program], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
+	var session := GameSession.new()
+	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "the seamless Encounter command fixture starts")
+	_begin_fixture_adventure(session, content)
+	assert_true(session.view().availability(&"contextual_encounter").enabled, "the core exposes Encounter only on a current negative random rectangle with an authored door")
+	session._rng = ScriptedRng.new([0])
+	var opened := session.submit_intent(PlayerIntent.contextual_encounter())
+	assert_equal(opened.state, SessionStep.State.COMPLETED, "Encounter resolves its selected seamless XAP through the ordinary VM boundary")
+	assert_true(_has_event(opened, &"contextual_encounter_triggered"), "Encounter publishes the exact selected random-door program")
+	assert_equal(session.rng_trace()[0]["tag"], "contextual-encounter.contextual.fixture.region.door.0", "Encounter records the source-ordered door roll")
+	assert_equal(session.snapshot().game_state.world.random_region(region).random_door_percents()[0], 0, "a positive seamless door chance is consumed after it opens")
+	var restored := GameSession.new()
+	assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "the consumed seamless Encounter door restores transactionally")
+	assert_false(restored.view().availability(&"contextual_encounter").enabled, "a consumed one-shot seamless door no longer advertises Encounter")
 
 
 func _test_map_view_projection_edges(content: RealmzContent) -> void:

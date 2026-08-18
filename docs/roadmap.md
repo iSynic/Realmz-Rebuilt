@@ -744,6 +744,14 @@ Batch closeout: Tier 2 passed 1,017 focused assertions; Tier 3 passed 3,685 asse
 
 Next batch: certify Fast Spell input through ordinary AOGM play, settle the remaining blocked-attempt timing families, and prove location-changing timed-program continuation through the complete scheduler.
 
+## Current workflow batch — Exploration and inventory command surface
+
+- Castle's ordinary Search toggle is now separate from held Area Search. Search owns party condition slot 5 and sound 141 without time or RNG; Area Search retains secret discovery and one timeclick per held pulse. Save/restore preserves the mode without inventing presentation state.
+- Torch now has a direct field shortcut that locates exact Classic item 805 and enters the already source-backed charged-item spell workflow. It does not duplicate charge, sound, targeting, or Light behavior.
+- The former generic Service command is replaced by Castle's single contextual slot: Shop, Temple, or Encounter. Encounter reverse-scans the current random rectangles, consumes each ordered door roll through the session RNG, and enters the final successful XAP through a saveable VM continuation.
+- The exploration footer now spans the application width as World commands, the bounded narrative/status well, and Party commands. The Inventory route uses one browser/inspector split and the persistent roster for owner selection and Trade recipients instead of embedding another party selector.
+- Synthetic workflow and presentation evidence may make these paths functional, but ordinary AOGM acceptance remains open until the MCP walkthrough and user review. No Providence schema change is required.
+
 ## Current workflow batch — AOGM exploration continuation closeout
 
 - Castle's dungeon movement path is now characterized through the complete packed-bit branch. Doors, notes, AP markers, and direction-matching secrets permit a step and one timeclick; solid walls, nonmatching secrets, and visible arches block without time. Providence's existing normalized topology already represented that behavior, so this pass adds compiler and public-session proofs rather than a second runtime rule.

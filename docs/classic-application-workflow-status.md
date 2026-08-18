@@ -13,17 +13,19 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM terminal battle and reward parity** (`aogm-terminal-battle-rewards`)
+**AOGM exploration command and inventory surface** (`aogm-exploration-inventory-surface`)
 
-The exploration-continuation batch closed two partial workflows and leaves the terminal battle chain as the highest-priority connected AOGM surface. This batch settles unresolved battle reward modes and incidental treasure RNG before changing behavior, completes exact-once battle-to-reward return, and obtains ordinary-play acceptance for the existing level-up path.
+Ordinary AOGM use exposed a cramped inventory workspace and a reconstructed exploration footer that conflated Search with Area Search, hid the seamless Encounter command, and depended on generic service presentation. This batch restores the source-backed command distinctions, routes Torch through Classic item 805, and makes the persistent Party roster the inventory owner and Trade recipient selector before returning to terminal battle certification.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.combat.resolve-outcome` | archaeology | aogm-major-partial | - | GAP-COMBAT-006, GAP-COMBAT-007 |
-| `classic.rewards.treasure-distribution` | archaeology | aogm-major-partial | - | GAP-REWARD-001 |
-| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.exploration.search` | archaeology | aogm-major-partial | - |  |
+| `classic.exploration.contextual-service` | archaeology | aogm-major-partial | - |  |
+| `classic.inventory.inspect-item` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.inventory.trade-item` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.inventory.use-item` | implementation | aogm-major-partial | - | GAP-INV-003 |
 
 ### Batch count delta
 

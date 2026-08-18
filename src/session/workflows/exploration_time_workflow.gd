@@ -141,6 +141,19 @@ static func search(context: SessionWorkflowContext) -> SessionWorkflowResult:
 	return SessionWorkflowResult.completed(events)
 
 
+static func toggle_search(context: SessionWorkflowContext) -> SessionWorkflowResult:
+	if context.state.party_camping:
+		return SessionWorkflowResult.failed(&"search_while_camped", "Search is replaced by scroll scribing while camped.")
+	if context.state.combat != null and not context.state.combat.completed:
+		return SessionWorkflowResult.failed(&"search_during_battle", "Search mode is unavailable during battle.")
+	var searching := not context.state.party.conditions.is_active(ConditionRules.PARTY_SEARCHING)
+	context.state.party.conditions.set_value(ConditionRules.PARTY_SEARCHING, -1 if searching else 0)
+	return SessionWorkflowResult.completed([
+		DomainEvent.new(&"search_mode_changed", {"searching": searching, "source": "classic"}),
+		_sound_event(141, "classic-search-mode"),
+	])
+
+
 static func depart_camp_for_movement(context: SessionWorkflowContext, direction: Vector2i, preceding_events: Array[DomainEvent] = []) -> MovementTransitionResult:
 	var movement := context.content.world.probe_movement(context.state.party.map_id, context.state.party.coordinate, direction, context.state.world, context.state.party_in_boat)
 	if not movement.allowed and movement.reason == &"invalid_direction":
