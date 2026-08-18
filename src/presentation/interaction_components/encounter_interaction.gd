@@ -9,6 +9,11 @@ var _item_action: InteractionRequestValue.EncounterAction
 var _spell_action: InteractionRequestValue.EncounterAction
 var _thief_action: InteractionRequestValue.EncounterAction
 var _back_action: InteractionRequestValue.EncounterAction
+var _catalog_kind: StringName = &""
+var _catalog_entries: Array[InteractionRequestValue.EncounterCatalogEntry] = []
+var _catalog_selection: int = 0
+var _catalog_record: VBoxContainer
+var _catalog_buttons: Array[Button] = []
 
 
 func build(request: InteractionRequest) -> void:
@@ -126,28 +131,120 @@ func _show_word() -> void:
 
 
 func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.EncounterCatalogEntry]) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	_context.add_child(row)
-	var catalog := OptionButton.new()
-	catalog.name = "EncounterCatalog"
-	catalog.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for entry: InteractionRequestValue.EncounterCatalogEntry in entries:
-		catalog.add_item(entry.name)
-		catalog.set_item_metadata(catalog.item_count - 1, entry.classic_id)
-	row.add_child(catalog)
+	_catalog_kind = kind
+	_catalog_entries.assign(entries)
+	_catalog_selection = 0
+	_catalog_buttons.clear()
+	var workspace := PanelContainer.new()
+	workspace.name = "EncounterCatalogWorkspace"
+	workspace.theme_type_variation = &"ClassicInset"
+	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 5)
+	workspace.add_child(column)
+	var heading := Label.new()
+	heading.text = "Choose an encounter item" if kind == &"item" else "Choose a memorized spell"
+	heading.theme_type_variation = &"ClassicHeading"
+	column.add_child(heading)
+	var list_panel := PanelContainer.new()
+	list_panel.name = "EncounterCatalogList"
+	list_panel.theme_type_variation = &"ClassicTextWell"
+	list_panel.custom_minimum_size.y = 84.0
+	list_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 2)
+	for index: int in entries.size():
+		var entry := entries[index]
+		var button := Button.new()
+		button.text = entry.name
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.toggle_mode = true
+		button.button_pressed = index == _catalog_selection
+		button.pressed.connect(_select_catalog_entry.bind(index))
+		list.add_child(button)
+		_catalog_buttons.append(button)
+	scroll.add_child(list)
+	list_panel.add_child(scroll)
+	column.add_child(list_panel)
+	var record_panel := PanelContainer.new()
+	record_panel.name = "EncounterCatalogRecord"
+	record_panel.theme_type_variation = &"ClassicInset"
+	_catalog_record = VBoxContainer.new()
+	_catalog_record.add_theme_constant_override("separation", 2)
+	record_panel.add_child(_catalog_record)
+	column.add_child(record_panel)
+	var actions := HBoxContainer.new()
+	actions.name = "EncounterCatalogActions"
+	actions.add_theme_constant_override("separation", 6)
 	var submit := Button.new()
+	submit.name = "EncounterCatalogConfirm"
 	submit.text = "Use item" if kind == &"item" else "Cast spell"
 	submit.custom_minimum_size = Vector2(120.0, 36.0)
-	submit.pressed.connect(func() -> void:
-		var classic_id := int(catalog.get_selected_metadata())
-		var response := InteractionResponse.ComplexEncounterBody.new(kind, -1, "", classic_id if kind == &"spell" else 0, classic_id if kind == &"item" else 0)
-		response_body_submitted.emit(response)
-	)
-	row.add_child(submit)
+	submit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	submit.pressed.connect(_submit_catalog_entry)
+	actions.add_child(submit)
+	var cancel := Button.new()
+	cancel.name = "EncounterCatalogCancel"
+	cancel.text = "Cancel"
+	cancel.custom_minimum_size = Vector2(90.0, 36.0)
+	cancel.pressed.connect(_cancel_catalog)
+	actions.add_child(cancel)
+	column.add_child(actions)
+	_context.add_child(workspace)
+	_render_catalog_record()
+
+
+func _select_catalog_entry(index: int) -> void:
+	_catalog_selection = clampi(index, 0, _catalog_entries.size() - 1)
+	for button_index: int in _catalog_buttons.size():
+		_catalog_buttons[button_index].button_pressed = button_index == _catalog_selection
+	_render_catalog_record()
+
+
+func _render_catalog_record() -> void:
+	if _catalog_record == null:
+		return
+	for child: Node in _catalog_record.get_children():
+		_catalog_record.remove_child(child)
+		child.queue_free()
+	if _catalog_entries.is_empty():
+		return
+	var entry := _catalog_entries[_catalog_selection]
+	var title := Label.new()
+	title.text = entry.name
+	title.theme_type_variation = &"ClassicHeading"
+	_catalog_record.add_child(title)
+	var role := Label.new()
+	role.text = "Carried encounter item" if _catalog_kind == &"item" else "Eligible memorized spell"
+	role.add_theme_color_override("font_color", Color("9ca3ad"))
+	_catalog_record.add_child(role)
+
+
+func _submit_catalog_entry() -> void:
+	if _catalog_entries.is_empty():
+		return
+	var classic_id := _catalog_entries[_catalog_selection].classic_id
+	response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(_catalog_kind, -1, "", classic_id if _catalog_kind == &"spell" else 0, classic_id if _catalog_kind == &"item" else 0))
+
+
+func _cancel_catalog() -> void:
+	_clear_context()
+	var hint := Label.new()
+	hint.text = "Choose an encounter command."
+	hint.add_theme_color_override("font_color", Color("d5b45d"))
+	_context.add_child(hint)
 
 
 func _clear_context() -> void:
+	_catalog_entries.clear()
+	_catalog_buttons.clear()
+	_catalog_record = null
 	for child: Node in _context.get_children():
 		_context.remove_child(child)
 		child.queue_free()

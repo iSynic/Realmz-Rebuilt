@@ -131,8 +131,14 @@ func _capture_gallery() -> void:
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION))
 	await _settle()
 	await _capture("wide-encounter-1280x720")
+	var item_command := _interaction.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton
+	item_command.command_requested.emit(&"item"); await _settle(); await _capture("wide-encounter-item-picker-1280x720")
+	var spell_command := _interaction.find_child("EncounterCommandSpell", true, false) as ClassicBitmapButton
+	spell_command.command_requested.emit(&"spell"); await _settle(); await _capture("wide-encounter-spell-picker-1280x720")
 	await _resize(Vector2i(800, 600))
-	await _capture("classic-encounter-800x600")
+	await _capture("classic-encounter-spell-picker-800x600")
+	item_command = _interaction.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton
+	item_command.command_requested.emit(&"item"); await _settle(); await _capture("classic-encounter-item-picker-800x600")
 	await _resize(Vector2i(1280, 720))
 	for interaction_kind: StringName in [
 		InteractionRequest.AGE_UPDATE,
@@ -140,6 +146,7 @@ func _capture_gallery() -> void:
 		InteractionRequest.ENCOUNTER_CHOICE,
 		InteractionRequest.CHARACTER_SELECTION,
 		InteractionRequest.ALLY_SELECTION,
+		InteractionRequest.THIEF_ENCOUNTER,
 		InteractionRequest.TEMPLE,
 		InteractionRequest.BANK,
 		InteractionRequest.POOLED_WEALTH_DEPARTURE,
@@ -148,6 +155,8 @@ func _capture_gallery() -> void:
 		_interaction.present(ClassicUiFixtureGallery.request_for(interaction_kind))
 		await _settle()
 		await _capture("wide-interaction-%s-1280x720" % String(interaction_kind).replace("_", "-"))
+		if interaction_kind == InteractionRequest.THIEF_ENCOUNTER:
+			await _resize(Vector2i(800, 600)); await _capture("classic-interaction-thief-encounter-800x600"); await _resize(Vector2i(1280, 720))
 		if interaction_kind == InteractionRequest.CHARACTER_SELECTION:
 			await _capture("wide-field-spell-target-1280x720")
 			await _resize(Vector2i(800, 600)); await _capture("classic-field-spell-target-800x600"); await _resize(Vector2i(1280, 720))

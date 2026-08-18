@@ -92,7 +92,9 @@ static func request_for(kind: StringName, state: StringName = &"nominal") -> Int
 		InteractionRequest.LEVEL_UP:
 			payload = _level_payload(state, long_text)
 		InteractionRequest.WORD_AND_ACTION:
-			payload.merge({"encounterKind": "complex", "encounterId": 1, "actions": [] if empty_values else [{"id": "choice:0", "kind": "choice", "label": "Proceed", "slot": 0}, {"id": "word", "kind": "word", "label": "Speak"}], "characters": [] if empty_values else [{"id": "hero", "name": "Hero"}], "items": [], "spells": [], "canBackOut": false})
+			payload.merge({"encounterKind": "complex", "encounterId": 1, "actions": [] if empty_values else [{"id": "choice:0", "kind": "choice", "label": "Proceed", "slot": 0}, {"id": "word", "kind": "word", "label": "Speak"}, {"id": "item", "kind": "item", "label": "Use item"}, {"id": "spell", "kind": "spell", "label": "Cast spell"}, {"id": "thief", "kind": "thief", "label": "Use skill"}], "characters": [] if empty_values else [{"id": "hero", "name": "Hero"}], "items": [] if empty_values else [{"classicItemId": 805, "name": "Torch"}, {"classicItemId": 6110, "name": "Runed wand"}], "spells": [] if empty_values else [{"classicSpellId": 1107, "name": "Magic Darts"}, {"classicSpellId": 1306, "name": "Brimstones"}], "canBackOut": false})
+		InteractionRequest.THIEF_ENCOUNTER:
+			payload.merge({"encounterId": 1, "prompt": "Choose who will examine the mechanism.", "soundId": 0, "characters": [] if empty_values else [{"id": "hero", "name": "Hero", "portraitId": "portrait.fixture", "actions": [{"index": 0, "label": "Pick Lock", "value": 42, "enabled": true, "reason": ""}, {"index": 1, "label": "Disarm Trap", "value": 31, "enabled": true, "reason": ""}, {"index": 2, "label": "Climb", "value": 18, "enabled": false, "reason": "This action is unavailable here."}]}]})
 		InteractionRequest.SHOP:
 			payload = _shop_payload(empty_values)
 		InteractionRequest.TEMPLE:
