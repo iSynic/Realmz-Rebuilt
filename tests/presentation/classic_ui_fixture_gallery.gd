@@ -185,14 +185,14 @@ static func _combat_payload(empty_values: bool) -> Dictionary:
 			movement_options.append({"direction": [direction.x, direction.y], "destination": [45 + direction.x, 45 + direction.y], "cost": 1, "enabled": true, "reasonCode": "", "reason": "", "retreat": false, "forcedRetreat": false, "attackTargetId": "monster" if direction == Vector2i(1, 0) else "", "attackTargetName": "Goblin" if direction == Vector2i(1, 0) else ""})
 	return {
 		"battleId": "classic.battle.0", "round": 1, "actorId": "hero", "attackUnitsRemaining": 4, "movementRemaining": 8, "enemiesRemaining": 1,
-		"actions": [] if empty_values else ["use_item", "defend", "finish"], "weaponMode": "melee",
+		"actions": [] if empty_values else ["cast_spell", "use_item", "defend", "finish"], "weaponMode": "melee",
 		"weaponSwitch": unavailable.duplicate(), "rangedAttack": unavailable.duplicate(), "retreat": {"enabled": false, "reason": "Unavailable.", "nearestEnemyRange": 1},
 		"meleeAttackReason": "", "targets": [] if empty_values else [{"id": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4}],
 		"combatants": [] if empty_values else [
 			{"id": "hero", "kind": "character", "name": "Hero", "currentHealth": 8, "maximumHealth": 10, "spellPoints": 4, "maximumSpellPoints": 8, "armor": 6, "magicResistance": 10, "attacks": "2", "movement": 8, "maximumMovement": 10, "traitor": false, "helpless": false, "weapon": "Long Sword", "weaponCharges": -1, "conditions": ["Blessed"]},
 			{"id": "monster", "kind": "monster", "name": "Goblin", "currentHealth": 4, "maximumHealth": 4, "spellPoints": 0, "maximumSpellPoints": 0, "armor": 2, "magicResistance": 0, "hitDice": 2, "attacks": "1", "movement": 6, "maximumMovement": 6, "traitor": false, "helpless": false, "weapon": "Short Sword", "weaponCharges": -1, "range": 2, "blocked": false, "conditions": [], "immunities": [], "vulnerabilities": ["Heat"]},
 		],
-		"movement": movement_options, "spellCasts": [], "spellCastReason": "No legal Classic combat spell is available.", "fastSpells": [],
+		"movement": movement_options, "spellCasts": [] if empty_values else [{"spellId": "classic.spell.1306", "spellName": "Brimstones", "power": 1, "cost": 2, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 1, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, 0]], "legalTargetCoordinates": []}], "spellCastReason": "No legal Classic combat spell is available." if empty_values else "", "fastSpells": [],
 		"itemCasts": [] if empty_values else [{"itemInstanceId": "wand.instance", "itemId": "classic.item.41", "itemName": "Runed Wand", "charges": 3, "spellId": "classic.spell.1101", "spellName": "Flame", "power": 2, "targetId": "monster", "targetName": "Goblin", "targetCurrentHealth": 4, "targetMaximumHealth": 4, "targetMode": "combatant"}],
 		"itemCastReason": "No carried item has a supported Classic combat use." if empty_values else "", "scrollCasts": [], "scrollCastReason": "No scroll is available.",
 		"autoTurn": unavailable.duplicate(), "autoCharacterIds": [], "delay": unavailable.duplicate(),

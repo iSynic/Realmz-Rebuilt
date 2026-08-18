@@ -6,11 +6,11 @@
 
 - Each route owns a registered scene. Scenes own durable header/layout, scrolling, and focus containment; `ClassicScreenRouter` supplies detached view content and route transitions.
 - `ClassicPartyRoster` owns the persistent six-slot right rail and presentation-only character selection. A typed `CHARACTER_SELECTION` request switches that rail into Castle's countdown picker: the cursor shows picks remaining, portraits receive descending numbers, repeated clicks renumber locally, and the exact count emits one Party-ordered response without opening the Character workspace. The request is mandatory under `FD-SCENARIO-002`: the picker exposes no cancel control and Back or Escape leaves the blocking request pending.
-- During memorized combat spell selection, `ClassicPartyRoster` temporarily becomes the spellbook rail. It owns only level/spell/power selection and returns the exact request-owned `CastOption`; closing or resolving the interaction restores the current detached party view.
+- During memorized combat spell selection, `ClassicPartyRoster` temporarily becomes the spellbook rail. It owns only level/spell/power selection and returns the exact request-owned `CastOption`; closing or resolving the interaction restores the current detached party view. Cast/Aim and Back live in a fixed footer outside the spell list's scroll region so both actions remain visible in the canonical 1280x720 composition and the optional 800x600 Classic mode.
 
 # Local Contracts
 
-- Workspaces reflow within `UiLayoutProfile` bounds and must remain reachable at 800x600 with 150 percent text. Compact headers stack rather than clip.
+- Workspaces are designed for the canonical 1280x720 composition and remain reachable in the optional 800x600 Classic composition through deliberate compact reflow or scrolling. The 4:3 mode keeps a square gameplay viewport. Intermediate sizes are fallback reflows, not additional design targets; headers stack rather than clip.
 - Screens present only detached `GameView` facts and explicit action availability.
 - Inventory selects one party member and one exact carried item before presenting actions. Trade recipient rows, Cast Identify's source-selected caster/spell identity, and every disabled explanation come from the detached item action view; the workspace cannot expose scenario-owned opcode-36 escrow as a player stash.
 - Inventory inspection renders `ItemView` facts, properties, restrictions, and inline unavailable-action reasons. It never reconstructs identified or curse-decoy facts from package content.

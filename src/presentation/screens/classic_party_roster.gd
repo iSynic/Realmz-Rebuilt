@@ -11,6 +11,7 @@ const MUTED := Color("9da8aa")
 
 @onready var _party_list: VBoxContainer = %PartyList
 @onready var _heading: Label = %Heading
+@onready var _spellbook_footer: VBoxContainer = %SpellbookFooter
 
 var _media: ClassicMediaCatalog
 var _selected_character_id: String = ""
@@ -102,7 +103,6 @@ func _build_spellbook() -> void:
 	var selector := HBoxContainer.new()
 	selector.name = "CombatSpellbookSelector"
 	selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	selector.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	selector.add_theme_constant_override("separation", 4)
 	_party_list.add_child(selector)
 	selector.add_child(_build_spell_level_rail(available_levels))
@@ -115,19 +115,19 @@ func _build_spellbook() -> void:
 	selector.add_child(_spellbook_list)
 	_spellbook_details = Label.new()
 	_spellbook_details.name = "CombatSpellDetails"
-	_spellbook_details.custom_minimum_size.y = 104.0
+	_spellbook_details.custom_minimum_size.y = 62.0
 	_spellbook_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_spellbook_details.max_lines_visible = 3
+	_spellbook_details.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_spellbook_details.add_theme_color_override("font_color", Color("d8d9d2"))
-	_party_list.add_child(_spellbook_details)
-	var power_heading := Label.new()
-	power_heading.text = "Power"
-	power_heading.add_theme_color_override("font_color", Color("63d8e7"))
-	_party_list.add_child(power_heading)
+	_spellbook_footer.add_child(_spellbook_details)
 	_spellbook_power_row = HBoxContainer.new()
 	_spellbook_power_row.name = "CombatSpellPowerChoices"
 	_spellbook_power_row.add_theme_constant_override("separation", 3)
-	_party_list.add_child(_spellbook_power_row)
+	_spellbook_footer.add_child(_spellbook_power_row)
 	var actions := HBoxContainer.new()
+	actions.name = "CombatSpellbookActions"
+	actions.custom_minimum_size.y = 30.0
 	actions.add_theme_constant_override("separation", 4)
 	_spellbook_cast = Button.new()
 	_spellbook_cast.name = "CombatSpellAim"
@@ -142,7 +142,8 @@ func _build_spellbook() -> void:
 	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	back.pressed.connect(func() -> void: combat_spellbook_back_requested.emit())
 	actions.add_child(back)
-	_party_list.add_child(actions)
+	_spellbook_footer.add_child(actions)
+	_spellbook_footer.visible = true
 	_refresh_spellbook_list()
 
 
@@ -150,12 +151,12 @@ func _build_spell_level_rail(levels: Array[int]) -> VBoxContainer:
 	var rail := VBoxContainer.new()
 	rail.name = "CombatSpellLevels"
 	rail.custom_minimum_size.x = 34.0
-	rail.add_theme_constant_override("separation", 2)
+	rail.add_theme_constant_override("separation", 1)
 	var group := ButtonGroup.new()
 	for level: int in range(1, 8):
 		var button := Button.new()
 		button.text = str(level)
-		button.custom_minimum_size = Vector2(32.0, 28.0)
+		button.custom_minimum_size = Vector2(32.0, 24.0)
 		button.disabled = not levels.has(level)
 		button.button_pressed = level == _spellbook_level
 		button.toggle_mode = true
@@ -198,6 +199,11 @@ func _refresh_spellbook_power_choices() -> void:
 	for child: Node in _spellbook_power_row.get_children():
 		_spellbook_power_row.remove_child(child)
 		child.queue_free()
+	var power_heading := Label.new()
+	power_heading.text = "Power"
+	power_heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	power_heading.add_theme_color_override("font_color", Color("63d8e7"))
+	_spellbook_power_row.add_child(power_heading)
 	var representatives: Array[InteractionRequestValue.CastOption] = []
 	var powers: Array[int] = []
 	for option: InteractionRequestValue.CastOption in _spellbook_options:
@@ -445,6 +451,10 @@ func _clear() -> void:
 	for child: Node in _party_list.get_children():
 		_party_list.remove_child(child)
 		child.queue_free()
+	for child: Node in _spellbook_footer.get_children():
+		_spellbook_footer.remove_child(child)
+		child.queue_free()
+	_spellbook_footer.visible = false
 
 
 func _ensure_controls() -> void:
@@ -452,3 +462,5 @@ func _ensure_controls() -> void:
 		_party_list = get_node("RosterColumn/PartyScroll/PartyList") as VBoxContainer
 	if _heading == null:
 		_heading = get_node("RosterColumn/Heading") as Label
+	if _spellbook_footer == null:
+		_spellbook_footer = get_node("RosterColumn/SpellbookFooter") as VBoxContainer

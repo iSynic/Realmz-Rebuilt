@@ -98,8 +98,8 @@ func _test_startup_party_setup_composition() -> void:
 	var router := ClassicScreenRouter.new()
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
-	var profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
-	router.set_layout_profile(profile, Vector2(960, 600))
+	var profile := UiLayoutProfile.for_viewport(Vector2(1280, 720), PresentationSettings.UI_SCALE_AUTO)
+	router.set_layout_profile(profile, Vector2(1280, 720))
 	router.set_standalone_character_creation_available(true)
 	router.show_campaign_selection()
 
@@ -177,8 +177,8 @@ func _test_startup_shell() -> void:
 	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	router.show_splash()
-	var profile := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
-	router.set_layout_profile(profile, Vector2(960, 600))
+	var profile := UiLayoutProfile.for_viewport(Vector2(1280, 720), PresentationSettings.UI_SCALE_AUTO)
+	router.set_layout_profile(profile, Vector2(1280, 720))
 	router.set_standalone_character_creation_available(true)
 	var splash := router.find_child("SplashScreen", true, false) as Control
 	assert_true(splash != null and splash.visible, "Realmz Rebuilt opens on its application splash instead of dropping directly into package selection")
@@ -407,7 +407,7 @@ func _test_battle_weapon_mode_component() -> void:
 	assert_equal([_direct_buttons_in(initiative).map(func(button: Button) -> String: return button.text), _direct_buttons_in(initiative).all(func(button: Button) -> bool: return button.icon == turn_icon)], [["NOW", "NEXT"], true], "the compact initiative strip starts at the active actor and uses supplied combat icons")
 	var escape := component.find_child("CombatCommandEscape", true, false) as Button
 	assert_true(escape.disabled and not escape.tooltip_text.is_empty(), "unavailable retreat carries a typed reason")
-	assert_true(_labels_in(component).any(func(text: String) -> bool: return text.contains("Goblin")) and component.get_combined_minimum_size().y <= 176.0, "target facts and both command rows fit the default Classic combat region")
+	assert_true(_labels_in(component).any(func(text: String) -> bool: return text.contains("Goblin")) and component.get_combined_minimum_size().y <= 190.0, "target facts and both command rows fit the canonical combat region")
 	component.free()
 func _test_battle_typed_option_contracts() -> void:
 	var request := _fixture_request("battle.staged-spell", InteractionRequest.COMBAT, {"actions": ["cast_spell", "use_item", "use_scroll"], "spellCasts": [{"spellId": "classic.spell.1306", "spellName": "Brimstones", "power": 1, "cost": 2, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 1, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, 0]], "legalTargetCoordinates": []}, {"spellId": "classic.spell.1306", "spellName": "Brimstones", "power": 2, "cost": 4, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 2, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, 0], [0, 1]], "legalTargetCoordinates": []}], "spellCastReason": "", "itemCasts": [], "scrollCasts": [], "itemCastReason": "No legal item.", "scrollCastReason": "No legal scroll."})
@@ -417,10 +417,10 @@ func _test_battle_typed_option_contracts() -> void:
 	var opened_options: Array[InteractionRequestValue.CastOption] = []; opened_options.assign(opened["options"])
 	assert_true(opened_options.size() == 2 and component.find_child("CombatSpellPicker", true, false) == null, "combat casting opens the dedicated spellbook contract instead of generic dropdown controls")
 	var roster := load("res://src/presentation/screens/classic_party_roster.tscn").instantiate() as ClassicPartyRoster; roster.present_combat_spellbook(String(opened["actor"]), opened_options)
-	assert_true(roster.find_child("CombatSpellLevels", true, false) != null and roster.find_child("CombatSpellList", true, false) != null and roster.find_child("CombatSpellPowerChoices", true, false) != null and roster.find_child("CombatSpellDetails", true, false) != null, "the spellbook presents level, spell, power, and source-backed cast facts in the right rail")
+	assert_true(roster.find_child("CombatSpellLevels", true, false) != null and roster.find_child("CombatSpellList", true, false) != null and roster.find_child("CombatSpellPowerChoices", true, false) != null and roster.find_child("CombatSpellDetails", true, false) != null and (roster.find_child("CombatSpellbookActions", true, false) as Control).get_parent().name == "SpellbookFooter", "the spellbook presents level, spell, power, source-backed cast facts, and a fixed action footer in the right rail")
 	var selected := {"option": null}; roster.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: selected["option"] = option); (roster.find_child("CombatSpellAim", true, false) as Button).pressed.emit()
 	component.cast_spell_option(selected["option"] as InteractionRequestValue.CastOption)
-	assert_true(component.find_child("ConfirmBattleTarget", true, false).visible and component.get_combined_minimum_size().y <= 176.0, "spellbook selection enters battlefield targeting while confirmation remains inside the default combat region")
+	assert_true(component.find_child("ConfirmBattleTarget", true, false).visible and component.get_combined_minimum_size().y <= 190.0, "spellbook selection enters battlefield targeting while confirmation remains inside the canonical combat region")
 	for label: String in ["Items", "Scrolls"]:
 		var buttons := _buttons_in(component).filter(func(button: Button) -> bool: return button.text == label)
 		assert_true(buttons.size() == 1 and buttons[0].disabled, "%s has one typed control disabled by core availability" % label)
@@ -600,24 +600,17 @@ func _test_route_catalog() -> void:
 		assert_true(ResourceLoader.exists(String(route.get("scene", "")), "PackedScene"), "every route owns a scene-backed workspace")
 	assert_equal(ids.size(), 10, "route identifiers are unique")
 	assert_equal(shortcuts.size(), 10, "route shortcuts are unique, including the one shortcut-free menu workspace")
-	assert_equal(primary_count, 6, "compact and standard layouts keep six primary workspaces")
+	assert_equal(primary_count, 6, "both supported layout compositions keep six primary workspaces")
 
 
 func _test_layout_profiles() -> void:
 	assert_equal(UiLayoutProfile.for_viewport(Vector2(800, 600), PresentationSettings.UI_SCALE_AUTO).id, UiLayoutProfile.COMPACT, "800x600 uses compact layout")
-	assert_equal(UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO).id, UiLayoutProfile.STANDARD, "960x600 uses standard layout")
 	assert_equal(UiLayoutProfile.for_viewport(Vector2(1280, 720), PresentationSettings.UI_SCALE_AUTO).id, UiLayoutProfile.WIDE, "1280x720 uses wide layout")
-	assert_equal(UiLayoutProfile.for_viewport(Vector2(1920, 1080), PresentationSettings.UI_SCALE_AUTO).id, UiLayoutProfile.WIDE, "1920x1080 remains wide after automatic density")
 	assert_equal(UiLayoutProfile.scale_for(Vector2(800, 600), PresentationSettings.UI_SCALE_125), 1.25, "explicit interface density is independent of viewport")
 	assert_equal(UiLayoutProfile.scale_for(Vector2(800, 600), PresentationSettings.UI_SCALE_150), 1.5, "150 percent interface density is supported")
 	var compact := UiLayoutProfile.for_viewport(Vector2(800, 600), PresentationSettings.UI_SCALE_AUTO)
 	assert_equal(compact.party_width, 208.0, "compact Classic roster uses the specified width")
 	assert_equal(compact.bottom_height, 156.0, "compact Classic textbox uses the specified height")
-	var standard := UiLayoutProfile.for_viewport(Vector2(960, 600), PresentationSettings.UI_SCALE_AUTO)
-	assert_equal(standard.party_width, 256.0, "standard Classic roster uses the specified width")
-	assert_equal(standard.bottom_height, 176.0, "standard Classic textbox uses the specified height")
-	assert_equal(UiLayoutProfile.for_viewport(Vector2(1600, 900), PresentationSettings.UI_SCALE_AUTO).bitmap_scale, 2, "large automatic layouts may use exact 2x bitmap controls")
-	assert_equal(UiLayoutProfile.for_viewport(Vector2(1599, 899), PresentationSettings.UI_SCALE_AUTO).bitmap_scale, 1, "bitmap controls remain 1x below the approved threshold")
 
 
 func _test_settings_schema_and_migration() -> void:
@@ -943,7 +936,7 @@ func _sha256(path: String) -> String:
 
 
 func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
-	var viewport_size := Vector2(960.0, 600.0)
+	var viewport_size := Vector2(1280.0, 720.0)
 	var profile := UiLayoutProfile.for_viewport(viewport_size, PresentationSettings.UI_SCALE_AUTO)
 	var stage_rect := Rect2(
 		Vector2(0.0, profile.menu_height),
@@ -1231,7 +1224,7 @@ func _test_scene_composition() -> void:
 	assert_not_null(shell.get_node_or_null("BottomRegion/BottomRow/NarrativeWell"), "the shell owns a narrative well")
 	var backing := shell.get_node("PictureStage/PictureBacking") as TextureRect
 	assert_equal(backing.stretch_mode, TextureRect.STRETCH_TILE, "picture backing fills without stretching")
-	for viewport_size: Vector2 in [Vector2(800, 600), Vector2(960, 600), Vector2(1280, 720), Vector2(1920, 1080)]:
+	for viewport_size: Vector2 in [Vector2(800, 600), Vector2(1280, 720)]:
 		var profile := UiLayoutProfile.for_viewport(viewport_size, PresentationSettings.UI_SCALE_AUTO)
 		var rect := ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
 		assert_true(rect.position.x >= 0.0 and rect.end.x <= viewport_size.x - profile.party_width, "campaign layout stays clear of the roster at %s" % viewport_size)

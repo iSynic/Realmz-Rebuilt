@@ -184,10 +184,12 @@ func present_character_selection(request: InteractionRequest) -> void:
 
 func present_combat_spellbook(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
 	_party_roster.present_combat_spellbook(actor_id, options)
+	_apply_layout()
 
 
 func close_combat_spellbook() -> void:
 	_party_roster.close_combat_spellbook()
+	_apply_layout()
 
 
 static func automatic_workflow_route(current_route: StringName, game_view: GameView, contextual_service_closed: bool = false) -> StringName:
@@ -364,7 +366,8 @@ func _apply_layout() -> void:
 	_stage_frame.position = stage_rect.position
 	_stage_frame.size = stage_rect.size
 	_party_roster.position = Vector2(stage_width, _profile.menu_height)
-	_party_roster.size = Vector2(_profile.party_width, viewport_size.y - _profile.menu_height)
+	var roster_height := stage_height if _party_roster.combat_spellbook_active() else viewport_size.y - _profile.menu_height
+	_party_roster.size = Vector2(_profile.party_width, roster_height)
 	var stacked_bottom := _profile.id == UiLayoutProfile.COMPACT and stage_width < 520.0
 	_bottom_row.vertical = stacked_bottom
 	_facts.columns = 2 if stacked_bottom else 5

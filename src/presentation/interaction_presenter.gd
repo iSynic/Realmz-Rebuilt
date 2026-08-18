@@ -26,10 +26,10 @@ signal combat_spellbook_closed
 
 var _request: InteractionRequest
 var _component: InteractionComponent
-var _stage_rect := Rect2(32.0, 32.0, 640.0, 480.0)
-var _textbox_rect := Rect2(8.0, 424.0, 696.0, 168.0)
-var _combat_rect := Rect2(0.0, 424.0, 960.0, 176.0)
-var _application_rect := Rect2(0.0, 32.0, 960.0, 568.0)
+var _stage_rect := Rect2(0.0, 28.0, 992.0, 502.0)
+var _textbox_rect := Rect2(8.0, 530.0, 984.0, 182.0)
+var _combat_rect := Rect2(0.0, 530.0, 1280.0, 190.0)
+var _application_rect := Rect2(0.0, 32.0, 1280.0, 688.0)
 var _passive_text: bool = false
 var _playback_masked: bool = false
 

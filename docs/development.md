@@ -108,7 +108,7 @@ The Tier 2 helper is not a substitute for the batch closeout gate. Do not add un
 
 ## UI verification
 
-The canonical UI contract is `docs/ui-strategy.md`. `tests/presentation/classic_ui_fixture_gallery.gd` supplies nominal, empty, loading, error, unavailable, and oversized cases for all routes and interaction kinds. Verify 800x600, 960x600, 1280x720, 1600x900, and 1920x1080, then repeat dense screens with 150 percent text and each explicit interface density. Check map dominance, roster visibility, textbox/action reachability, menu overflow, wrapping, scroll reachability, focus order/restoration, Back order, exact 1x/2x control art, and that a pending interaction blocks both map and route input.
+The canonical UI contract is `docs/ui-strategy.md`. `tests/presentation/classic_ui_fixture_gallery.gd` supplies nominal, empty, loading, error, unavailable, and oversized cases for all routes and interaction kinds. Verify the canonical 1280x720 composition and optional 800x600 Classic composition, then repeat dense screens with the supported text and interface-density settings. Other sizes are smoke checks rather than independent acceptance targets. Check map dominance, square 4:3 gameplay-stage composition, roster visibility, textbox/action reachability, menu overflow, wrapping, scroll reachability, focus order/restoration, Back order, exact integer-sampled control art, and that a pending interaction blocks both map and route input.
 
 Content images must be inspected with nearest-neighbor filtering. Missing media must show its neutral diagnostic fallback rather than a guessed file. Item checks must include unidentified content to prove that identified names, descriptions, values, and curse relationships remain hidden.
 
