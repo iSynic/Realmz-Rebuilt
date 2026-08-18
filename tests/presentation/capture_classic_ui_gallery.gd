@@ -33,6 +33,19 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("compact-party-setup-800x600")
 	var setup_view := _application.session_controller.view()
+	var setup := _router.setup_controller
+	setup.create_character_button.pressed.emit()
+	await _settle()
+	await _capture("compact-character-creator-identity-800x600")
+	await _resize(Vector2i(1280, 720))
+	setup.selected_race_id = setup_view.race_options[0].id
+	setup.selected_caste_id = setup_view.caste_options[0].id
+	setup.creator_step = 2
+	setup.render_creator_step()
+	await _settle()
+	await _capture("canonical-character-creator-appearance-1280x720")
+	setup.reset_creator(true)
+	await _settle()
 	var member := CharacterCreationSpec.new("Ari", setup_view.race_options[0].id, setup_view.caste_options[0].id, 1)
 	_application.session_controller.submit_intent(PlayerIntent.create_party([member]))
 	await _settle()
@@ -68,6 +81,20 @@ func _capture_gallery() -> void:
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION))
 	await _settle()
 	await _capture("wide-encounter-1280x720")
+	for interaction_kind: StringName in [
+		InteractionRequest.AGE_UPDATE,
+		InteractionRequest.INDEXED_CHOICE,
+		InteractionRequest.ENCOUNTER_CHOICE,
+		InteractionRequest.CHARACTER_SELECTION,
+		InteractionRequest.ALLY_SELECTION,
+		InteractionRequest.TEMPLE,
+		InteractionRequest.BANK,
+		InteractionRequest.POOLED_WEALTH_DEPARTURE,
+		InteractionRequest.SESSION_LIFECYCLE,
+	]:
+		_interaction.present(ClassicUiFixtureGallery.request_for(interaction_kind))
+		await _settle()
+		await _capture("wide-interaction-%s-1280x720" % String(interaction_kind).replace("_", "-"))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
 	await _resize(Vector2i(800, 600))
 	await _settle()
@@ -94,6 +121,28 @@ func _capture_gallery() -> void:
 		member_state.armor = member_index
 		gallery_view.party_members.append(CHARACTER_VIEW_SCRIPT.new(member_state, _application.get("_active_content")))
 	_shell.present(gallery_view)
+	_router.open_screen(&"character")
+	await _settle()
+	await _capture("canonical-character-record-1280x720")
+	_router.open_screen(&"allies")
+	await _settle()
+	await _capture("canonical-allies-empty-1280x720")
+	if not gallery_view.party_members.is_empty():
+		var vault_revision := CharacterVaultRevisionView.new()
+		vault_revision.character_id = gallery_view.party_members[0].id
+		vault_revision.revision_hash = "a".repeat(64)
+		vault_revision.name = gallery_view.party_members[0].name
+		vault_revision.level = gallery_view.party_members[0].level
+		vault_revision.race_id = gallery_view.party_members[0].race_id
+		vault_revision.caste_id = gallery_view.party_members[0].caste_id
+		vault_revision.portrait_id = gallery_view.party_members[0].portrait_id
+		vault_revision.is_current = true
+		vault_revision.eligible = true
+		vault_revision.character = gallery_view.party_members[0]
+		_router.set_vault_revisions([vault_revision])
+		_router.open_screen(&"vault")
+		await _settle()
+		await _capture("canonical-character-files-1280x720")
 	await _resize(Vector2i(800, 600))
 	_router.open_screen(&"exploration")
 	await _settle()
@@ -139,6 +188,10 @@ func _capture_gallery() -> void:
 		await _capture("canonical-combat-spellbook-1280x720")
 	_interaction.present(null)
 	gallery_view.combat_view = null
+	await _resize(Vector2i(1280, 720))
+	_router.open_screen(&"system")
+	await _settle()
+	await _capture("canonical-system-1280x720")
 	var settings := PresentationSettings.new()
 	settings.text_scale = 1.5
 	settings.ui_scale_mode = PresentationSettings.UI_SCALE_150

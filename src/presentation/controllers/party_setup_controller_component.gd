@@ -40,6 +40,15 @@ var package_operation_status: RefCounted:
 var campaign_layout_rect: Rect2:
 	get: return _state.campaign_layout_rect
 	set(value): _state.campaign_layout_rect = value
+var setup_body: HBoxContainer:
+	get: return _state.setup_body
+	set(value): _state.setup_body = value
+var character_pane: PanelContainer:
+	get: return _state.character_pane
+	set(value): _state.character_pane = value
+var party_pane: PanelContainer:
+	get: return _state.party_pane
+	set(value): _state.party_pane = value
 var creator_scroll: ScrollContainer:
 	get: return _state.creator_scroll
 	set(value): _state.creator_scroll = value
@@ -81,6 +90,12 @@ var portrait_option: OptionButton:
 var combat_icon_option: OptionButton:
 	get: return _state.combat_icon_option
 	set(value): _state.combat_icon_option = value
+var portrait_preview: TextureRect:
+	get: return _state.portrait_preview
+	set(value): _state.portrait_preview = value
+var combat_icon_preview: TextureRect:
+	get: return _state.combat_icon_preview
+	set(value): _state.combat_icon_preview = value
 var party_list: VBoxContainer:
 	get: return _state.party_list
 	set(value): _state.party_list = value
@@ -249,6 +264,8 @@ func _clear_creator_page() -> void:
 	starting_level_option = null
 	portrait_option = null
 	combat_icon_option = null
+	portrait_preview = null
+	combat_icon_preview = null
 	review_label = null
 	spell_label = null
 	spell_list = null

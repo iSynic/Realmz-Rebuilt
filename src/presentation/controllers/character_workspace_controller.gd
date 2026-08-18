@@ -21,6 +21,7 @@ var _vault_view: GameView
 var _vault_appearance_textures: Dictionary = {}
 var _vault_text_scale: float = 1.0
 var _vault_back_label: String = "Back"
+var _vault_show_history: bool = false
 
 
 func reset() -> void:
@@ -29,6 +30,7 @@ func reset() -> void:
 	_source_order_ids.clear()
 	_draft_order_ids.clear()
 	_vault_inspection_revision_hash = ""
+	_vault_show_history = false
 	_vault_parent = null
 	_vault_view = null
 
@@ -61,66 +63,144 @@ func present_vault(parent: VBoxContainer, view: GameView, appearance_textures: D
 	if not _vault_inspection_revision_hash.is_empty():
 		_render_vault_inspection()
 		return
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
 	var back := Button.new()
 	back.text = back_label
 	back.pressed.connect(func() -> void: vault_back_requested.emit())
-	parent.add_child(back)
+	header.add_child(back)
+	var header_spacer := Control.new()
+	header_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(header_spacer)
+	var current_revisions := _current_vault_revisions()
+	header.add_child(_label("%d available" % current_revisions.size(), MUTED, 13))
+	parent.add_child(header)
 	if _vault_revisions.is_empty():
 		_add_card(parent, "Character vault is empty", "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party.")
 		return
 	var campaign_label := view.campaign_summary.title if view != null and view.campaign_summary != null else "No campaign selected"
-	parent.add_child(_label("Eligibility for %s" % campaign_label, GOLD, 16))
-	var previous_character_id := ""
+	parent.add_child(_label("Eligibility for %s" % campaign_label, GOLD, 15))
+	var list := VBoxContainer.new()
+	list.name = "CharacterFileList"
+	list.add_theme_constant_override("separation", 6)
+	for revision: CharacterVaultRevisionView in current_revisions:
+		_render_vault_current_row(list, revision, view)
+	parent.add_child(list)
+	var history_count := _vault_revisions.size() - current_revisions.size()
+	var history_button := Button.new()
+	history_button.text = ("Hide revision history" if _vault_show_history else "Revision history and archives") + " (%d)" % history_count
+	history_button.disabled = history_count == 0
+	history_button.pressed.connect(func() -> void:
+		_vault_show_history = not _vault_show_history
+		_refresh_vault()
+	)
+	parent.add_child(history_button)
+	if _vault_show_history:
+		_render_vault_history(parent, current_revisions)
+
+
+func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
+	var result: Array[CharacterVaultRevisionView] = []
+	var selected_by_character: Dictionary = {}
 	for revision: CharacterVaultRevisionView in _vault_revisions:
-		if revision.character_id != previous_character_id:
-			if not previous_character_id.is_empty():
-				parent.add_child(HSeparator.new())
-			parent.add_child(_label(revision.name, GOLD, 20))
-			previous_character_id = revision.character_id
-		var state_label := "Current revision" if revision.is_current else "Archived revision" if revision.archived else "Earlier revision"
-		var eligibility_label := "Eligible" if revision.eligible else "Not eligible"
-		var detail := "Level %d • %s / %s\nSource campaign %s • package %s\n%s" % [revision.level, revision.race_id, revision.caste_id, revision.source_campaign_id, revision.source_package_hash.left(12), revision.publication_label]
-		if not revision.eligibility_reasons.is_empty():
-			detail += "\n%s" % "\n".join(revision.eligibility_reasons)
-		_add_card(parent, state_label, "%s • %s\n%s" % [eligibility_label, revision.revision_hash.left(12), detail])
-		var actions := HBoxContainer.new()
+		if revision.archived:
+			continue
+		if not selected_by_character.has(revision.character_id) or revision.is_current:
+			selected_by_character[revision.character_id] = revision
+	for revision: CharacterVaultRevisionView in selected_by_character.values():
+		result.append(revision)
+	result.sort_custom(func(left: CharacterVaultRevisionView, right: CharacterVaultRevisionView) -> bool: return left.name.naturalnocasecmp_to(right.name) < 0)
+	return result
+
+
+func _render_vault_current_row(parent: Container, revision: CharacterVaultRevisionView, view: GameView) -> void:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = &"ClassicInset"
+	var row := HBoxContainer.new()
+	row.custom_minimum_size.y = 78.0
+	row.add_theme_constant_override("separation", 10)
+	panel.add_child(row)
+	var portrait := TextureRect.new()
+	portrait.custom_minimum_size = Vector2(64.0, 64.0)
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	portrait.texture = _vault_appearance_textures.get(revision.portrait_id) as Texture2D
+	row.add_child(portrait)
+	var summary := VBoxContainer.new()
+	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary.add_child(_label(revision.name, GOLD, 18))
+	var character := revision.character
+	var identity := "Level %d • %s / %s" % [revision.level, character.race_name if character != null else revision.race_id, character.caste_name if character != null else revision.caste_id]
+	summary.add_child(_label(identity, Color("e0e2e5"), 14))
+	var facts := "Revision %s" % revision.revision_hash.left(12)
+	if character != null:
+		facts = "ST %d/%d • SP %d/%d • AR %d • Load %d/%d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.armor, character.carried_load, character.maximum_load]
+	summary.add_child(_label(facts, MUTED, 12))
+	row.add_child(summary)
+	row.add_child(_label("Eligible" if revision.eligible else "Unavailable", Color("75c889") if revision.eligible else Color("ef7770"), 13))
+	var inspect := Button.new()
+	inspect.text = "Inspect"
+	inspect.disabled = character == null
+	inspect.tooltip_text = "Open the complete detached character record." if not inspect.disabled else "This vault revision has no valid character record."
+	if not inspect.disabled:
+		inspect.pressed.connect(_inspect_vault.bind(revision.revision_hash))
+	row.add_child(inspect)
+	var import_button := _vault_import_button(revision, view)
+	row.add_child(import_button)
+	var archive := Button.new()
+	archive.text = "Archive"
+	archive.tooltip_text = "Remove this character from the active list without deleting immutable history."
+	archive.pressed.connect(_confirm_vault_archive.bind(revision))
+	row.add_child(archive)
+	parent.add_child(panel)
+
+
+func _vault_import_button(revision: CharacterVaultRevisionView, view: GameView) -> Button:
+	var button := Button.new()
+	button.text = "Import this revision"
+	button.tooltip_text = "\n".join(revision.eligibility_reasons)
+	if view == null or not view.session_started:
+		button.disabled = true
+		button.tooltip_text = "Choose a campaign before importing a character."
+	else:
+		var availability := view.availability(&"import_vault_character")
+		button.disabled = not availability.enabled or not revision.eligible or revision.archived
+		if not availability.enabled:
+			button.tooltip_text = availability.reason
+		elif revision.archived:
+			button.tooltip_text = "Restore an archived revision before importing it."
+	if not button.disabled:
+		button.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.import_vault_character(revision.character_id, revision.revision_hash)))
+	return button
+
+
+func _render_vault_history(parent: Container, current_revisions: Array[CharacterVaultRevisionView]) -> void:
+	var current_hashes: Dictionary = {}
+	for revision: CharacterVaultRevisionView in current_revisions:
+		current_hashes[revision.revision_hash] = true
+	parent.add_child(_label("Earlier revisions", GOLD, 17))
+	for revision: CharacterVaultRevisionView in _vault_revisions:
+		if current_hashes.has(revision.revision_hash):
+			continue
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var state := "Archived" if revision.archived else "Earlier"
+		var label := _label("%s • %s • L%d • %s" % [revision.name, state, revision.level, revision.revision_hash.left(12)], MUTED, 13)
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(label)
 		var inspect := Button.new()
-		inspect.text = "Inspect character"
+		inspect.text = "Inspect"
 		inspect.disabled = revision.character == null
-		inspect.tooltip_text = "Open the complete detached character record before deciding whether to import this revision." if not inspect.disabled else "This vault revision has no valid character record."
 		if not inspect.disabled:
 			inspect.pressed.connect(_inspect_vault.bind(revision.revision_hash))
-		actions.add_child(inspect)
-		var import_button := Button.new()
-		import_button.text = "Import this revision"
-		import_button.tooltip_text = "\n".join(revision.eligibility_reasons)
-		if view == null or not view.session_started:
-			import_button.disabled = true
-			import_button.tooltip_text = "Choose a campaign before importing a character."
-		else:
-			var availability := view.availability(&"import_vault_character")
-			import_button.disabled = not availability.enabled
-			if import_button.disabled:
-				import_button.tooltip_text = availability.reason
-			if not revision.eligible or revision.archived:
-				import_button.disabled = true
-				if revision.archived:
-					import_button.tooltip_text = "Restore an archived revision before importing it."
-		if not import_button.disabled:
-			import_button.pressed.connect(func() -> void: intent_submitted.emit(PlayerIntent.import_vault_character(revision.character_id, revision.revision_hash)))
-		actions.add_child(import_button)
-		if revision.is_current:
-			var archive := Button.new()
-			archive.text = "Archive character"
-			archive.tooltip_text = "Remove this character from the active vault without deleting immutable history."
-			archive.pressed.connect(_confirm_vault_archive.bind(revision))
-			actions.add_child(archive)
-		elif revision.archived:
+		row.add_child(inspect)
+		if revision.archived:
 			var restore := Button.new()
 			restore.text = "Restore as current"
 			restore.pressed.connect(func() -> void: vault_restore_requested.emit(revision.character_id, revision.revision_hash))
-			actions.add_child(restore)
-		parent.add_child(actions)
+			row.add_child(restore)
+		parent.add_child(row)
 
 
 func _inspect_vault(revision_hash: String) -> void:

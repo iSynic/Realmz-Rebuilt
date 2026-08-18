@@ -47,6 +47,9 @@ var campaign_layout_rect: Rect2:
 		return _campaign_library.campaign_layout_rect
 	set(value):
 		_campaign_library.campaign_layout_rect = value
+var setup_body: HBoxContainer
+var character_pane: PanelContainer
+var party_pane: PanelContainer
 var creator_scroll: ScrollContainer
 var creator: BoxContainer
 var creator_page: VBoxContainer
@@ -61,6 +64,8 @@ var gender_option: OptionButton
 var starting_level_option: OptionButton
 var portrait_option: OptionButton
 var combat_icon_option: OptionButton
+var portrait_preview: TextureRect
+var combat_icon_preview: TextureRect
 var party_list: VBoxContainer
 var stored_character_list: VBoxContainer
 var party_setup_options: VBoxContainer
@@ -106,6 +111,27 @@ var setup_layout_rect := Rect2(12.0, 36.0, 936.0, 556.0)
 
 var _host: Control
 var _appearance_textures: Dictionary = {}
+
+func apply_setup_mode_layout() -> void:
+	if setup_body == null or character_pane == null or party_pane == null:
+		return
+	var creator_active := setup_mode == &"creator"
+	var compact := layout_profile == UiLayoutProfile.COMPACT
+	if campaign_overlay != null:
+		var setup_visible := setup_overlay != null and setup_overlay.visible
+		var splash_visible := splash_overlay != null and splash_overlay.visible
+		campaign_overlay.visible = setup_visible and not splash_visible and not creator_active
+		campaign_overlay.custom_minimum_size.x = 190.0 if compact else 210.0
+	if creator_active and compact:
+		party_pane.visible = false
+		character_pane.custom_minimum_size.x = 0.0
+		character_pane.size_flags_stretch_ratio = 1.0
+		return
+	party_pane.visible = true
+	character_pane.custom_minimum_size.x = 500.0 if creator_active else 240.0 if compact else 286.0
+	party_pane.custom_minimum_size.x = 270.0 if creator_active else 236.0 if compact else 286.0
+	character_pane.size_flags_stretch_ratio = 1.85 if creator_active else 1.15
+	party_pane.size_flags_stretch_ratio = 1.0 if creator_active else 1.15
 
 func attach(host: Control) -> void:
 	_host = host

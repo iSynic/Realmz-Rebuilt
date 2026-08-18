@@ -3,6 +3,7 @@ extends "res://src/presentation/controllers/party_setup_controller_component.gd"
 
 var _inspection: RefCounted
 var _stored_revision_signature: String = ""
+var _stored_character_page: int = 0
 
 
 func _init(state: RefCounted, inspection: RefCounted) -> void:
@@ -47,7 +48,7 @@ func _refresh_party_list() -> void:
 			empty_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			empty_row.add_child(empty_label)
 			var action_space := Control.new()
-			action_space.custom_minimum_size.x = 130.0
+			action_space.custom_minimum_size.x = 84.0 if layout_profile == UiLayoutProfile.COMPACT else 130.0
 			action_space.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			empty_row.add_child(action_space)
 			party_list.add_child(empty)
@@ -78,12 +79,13 @@ func _refresh_party_list() -> void:
 		label.modulate = Color("e0e2e5")
 		row.add_child(label)
 		var inspect_button := Button.new()
-		inspect_button.text = "Inspect"
+		inspect_button.text = "View" if layout_profile == UiLayoutProfile.COMPACT else "Inspect"
 		inspect_button.tooltip_text = "Open %s's complete character record without changing party state." % character.name
 		inspect_button.pressed.connect(_inspect_setup_character.bind(character.id))
 		row.add_child(inspect_button)
 		var remove_button := Button.new()
-		remove_button.text = "Remove"
+		remove_button.text = "−" if layout_profile == UiLayoutProfile.COMPACT else "Remove"
+		remove_button.tooltip_text = "Remove %s from the current party." % character.name
 		_apply_availability(remove_button, &"remove_party_member")
 		remove_button.pressed.connect(_remove_setup_character.bind(character.id))
 		row.add_child(remove_button)
@@ -108,7 +110,8 @@ func _render_party_assembly() -> void:
 	party_setup_options.visible = view != null and view.party_setup_available
 	setup_message.visible = false
 	var current_revisions := _current_vault_revisions()
-	var next_signature := _vault_signature(current_revisions)
+	_clamp_stored_character_page(current_revisions.size())
+	var next_signature := "%s:%s:%d" % [_vault_signature(current_revisions), str(layout_profile), _stored_character_page]
 	if stored_character_list != null and is_instance_valid(stored_character_list) and stored_character_list.is_inside_tree() and next_signature == _stored_revision_signature:
 		_refresh_stored_character_rows(current_revisions, campaign_setup, party_full)
 		return
@@ -124,17 +127,11 @@ func _render_party_assembly() -> void:
 	heading_content.add_child(character_count)
 	heading.add_child(heading_content)
 	creator_page.add_child(heading)
-	var stored_scroll := ScrollContainer.new()
-	stored_scroll.name = "StoredCharacterScroll"
-	stored_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stored_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	stored_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	creator_page.add_child(stored_scroll)
 	stored_character_list = VBoxContainer.new()
 	stored_character_list.name = "StoredCharacterList"
 	stored_character_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stored_character_list.add_theme_constant_override("separation", 2)
-	stored_scroll.add_child(stored_character_list)
+	creator_page.add_child(stored_character_list)
 	_stored_revision_signature = next_signature
 	if current_revisions.is_empty():
 		var empty := _label("No Character Files yet. Create one here.", MUTED)
@@ -142,7 +139,7 @@ func _render_party_assembly() -> void:
 		stored_character_list.add_child(empty)
 		return
 	var global_available: ActionAvailabilityView = view.availability(&"import_vault_character") if campaign_setup else ActionAvailabilityView.new(&"import_vault_character", false, "Choose a scenario before adding a Character File to a party.")
-	for revision: CharacterVaultRevisionView in current_revisions:
+	for revision: CharacterVaultRevisionView in _stored_character_page_items(current_revisions):
 		var reason := ""
 		if not campaign_setup:
 			reason = global_available.reason
@@ -159,6 +156,7 @@ func _render_party_assembly() -> void:
 		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, portrait)
 		row.import_requested.connect(_import_stored_character)
 		stored_character_list.add_child(row)
+	_add_stored_character_pager(current_revisions.size())
 
 
 func _refresh_stored_character_rows(current_revisions: Array[CharacterVaultRevisionView], campaign_setup: bool, party_full: bool) -> void:
@@ -166,8 +164,9 @@ func _refresh_stored_character_rows(current_revisions: Array[CharacterVaultRevis
 	if count_label != null:
 		count_label.text = "• %d available" % current_revisions.size()
 	var global_available: ActionAvailabilityView = view.availability(&"import_vault_character") if campaign_setup else ActionAvailabilityView.new(&"import_vault_character", false, "Choose a scenario before adding a Character File to a party.")
-	for index: int in current_revisions.size():
-		var revision := current_revisions[index]
+	var visible_revisions := _stored_character_page_items(current_revisions)
+	for index: int in visible_revisions.size():
+		var revision := visible_revisions[index]
 		var row := stored_character_list.get_child(index) as PartySetupCharacterRow
 		if row == null:
 			continue
@@ -182,6 +181,56 @@ func _refresh_stored_character_rows(current_revisions: Array[CharacterVaultRevis
 			reason = "This party already has %d characters." % _maximum_party_size()
 		var portrait_id := revision.character.portrait_id if revision.character != null else revision.portrait_id
 		row.configure(revision, campaign_setup and revision.eligible and global_available.enabled and not party_full, reason, _appearance_textures.get(portrait_id) as Texture2D)
+
+
+func _stored_character_page_size() -> int:
+	return 6 if layout_profile == UiLayoutProfile.COMPACT else 9
+
+
+func _clamp_stored_character_page(item_count: int) -> void:
+	var page_count := maxi(1, ceili(float(item_count) / float(_stored_character_page_size())))
+	_stored_character_page = clampi(_stored_character_page, 0, page_count - 1)
+
+
+func _stored_character_page_items(revisions: Array[CharacterVaultRevisionView]) -> Array[CharacterVaultRevisionView]:
+	_clamp_stored_character_page(revisions.size())
+	var page_size := _stored_character_page_size()
+	var start := _stored_character_page * page_size
+	var result: Array[CharacterVaultRevisionView] = []
+	for index: int in range(start, mini(start + page_size, revisions.size())):
+		result.append(revisions[index])
+	return result
+
+
+func _add_stored_character_pager(item_count: int) -> void:
+	var page_size := _stored_character_page_size()
+	var page_count := maxi(1, ceili(float(item_count) / float(page_size)))
+	if page_count <= 1:
+		return
+	var pager := HBoxContainer.new()
+	pager.name = "CharacterFilePager"
+	pager.add_theme_constant_override("separation", 6)
+	var previous := Button.new()
+	previous.text = "Previous"
+	previous.disabled = _stored_character_page == 0
+	previous.pressed.connect(_change_stored_character_page.bind(-1))
+	pager.add_child(previous)
+	var page_label := _label("Page %d of %d" % [_stored_character_page + 1, page_count], MUTED, 12)
+	page_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	pager.add_child(page_label)
+	var next := Button.new()
+	next.text = "Next"
+	next.disabled = _stored_character_page >= page_count - 1
+	next.pressed.connect(_change_stored_character_page.bind(1))
+	pager.add_child(next)
+	creator_page.add_child(pager)
+
+
+func _change_stored_character_page(offset: int) -> void:
+	_stored_character_page += offset
+	_stored_revision_signature = ""
+	_render_party_assembly()
 
 
 static func _vault_signature(revisions: Array[CharacterVaultRevisionView]) -> String:

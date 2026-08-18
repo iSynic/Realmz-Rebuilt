@@ -76,7 +76,7 @@ func _build_setup_columns() -> Array[VBoxContainer]:
 	setup_overlay.offset_bottom = 238.0
 	setup_overlay.z_index = 25
 	_host.add_child(setup_overlay)
-	var setup_body := HBoxContainer.new()
+	setup_body = HBoxContainer.new()
 	setup_body.name = "ScenarioPartyWorkspace"
 	setup_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	setup_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -85,7 +85,7 @@ func _build_setup_columns() -> Array[VBoxContainer]:
 	setup_body.add_child(campaign_overlay)
 	setup_overlay.add_child(setup_body)
 
-	var character_pane := PanelContainer.new()
+	character_pane = PanelContainer.new()
 	character_pane.name = "CharacterFilesPane"
 	character_pane.theme_type_variation = &"ClassicInset"
 	character_pane.custom_minimum_size.x = 286.0
@@ -100,7 +100,7 @@ func _build_setup_columns() -> Array[VBoxContainer]:
 	character_column.add_theme_constant_override("separation", 6)
 	character_pane.add_child(character_column)
 
-	var party_pane := PanelContainer.new()
+	party_pane = PanelContainer.new()
 	party_pane.name = "CurrentPartyPane"
 	party_pane.theme_type_variation = &"ClassicInset"
 	party_pane.custom_minimum_size.x = 286.0
@@ -114,6 +114,7 @@ func _build_setup_columns() -> Array[VBoxContainer]:
 	party_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	party_column.add_theme_constant_override("separation", 6)
 	party_pane.add_child(party_column)
+	_state.apply_setup_mode_layout()
 	return [character_column, party_column]
 
 
@@ -140,13 +141,11 @@ func _build_creator_stage(character_column: VBoxContainer) -> void:
 	creator = BoxContainer.new()
 	creator.custom_minimum_size.y = 310.0
 	creator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	creator.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	creator.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	creator.add_theme_constant_override("separation", 12)
 	creator_scroll.add_child(creator)
 	creator_page = VBoxContainer.new()
 	creator_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	creator_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	creator_page.size_flags_stretch_ratio = 1.0
 	creator.add_child(creator_page)
 
 
@@ -300,6 +299,7 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 	layout_profile = profile.id
 	setup_layout_rect = setup_rect
 	_creation._apply_creator_layout(profile.id)
+	_state.apply_setup_mode_layout()
 	if creator_scroll != null:
 		creator_scroll.custom_minimum_size.y = 140.0 if profile.id == UiLayoutProfile.COMPACT else 220.0
 	_campaign_library.apply_layout(profile, campaign_rect, setup_rect)
@@ -311,6 +311,10 @@ func apply_modal_layouts() -> void:
 		setup_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 		setup_overlay.position = setup_layout_rect.position
 		setup_overlay.size = setup_layout_rect.size
+		# Dynamic Character File rows may lower the panel's minimum size after a
+		# previous render. Reapply the requested viewport rect after containers
+		# have propagated that lower minimum instead of retaining the old height.
+		setup_overlay.set_deferred(&"size", setup_layout_rect.size)
 		if setup_inspection_overlay != null:
 			setup_inspection_overlay.set_anchors_preset(Control.PRESET_TOP_LEFT)
 			setup_inspection_overlay.position = Vector2.ZERO

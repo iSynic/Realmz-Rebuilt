@@ -72,6 +72,7 @@ func refresh_setup_options() -> void:
 func render_creator_step() -> void:
 	if creator_page == null:
 		return
+	_state.apply_setup_mode_layout()
 	if setup_mode == &"assembly":
 		_assembly._render_party_assembly()
 		return
@@ -197,6 +198,47 @@ func _build_creator_appearance() -> void:
 	creator_page.add_child(_label("Appearance", GOLD, 20))
 	_add_label(creator_page, "Choose the portrait shown on character screens and the icon used in battle. Castle's six race recommendations appear first.", MUTED)
 	_ensure_appearance_textures()
+	var appearance_row := HBoxContainer.new()
+	appearance_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	appearance_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	appearance_row.add_theme_constant_override("separation", 14)
+	var preview_panel := PanelContainer.new()
+	preview_panel.name = "AppearancePreview"
+	preview_panel.theme_type_variation = &"ClassicInset"
+	preview_panel.custom_minimum_size = Vector2(210.0, 250.0)
+	preview_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var preview_column := VBoxContainer.new()
+	preview_column.alignment = BoxContainer.ALIGNMENT_CENTER
+	preview_column.add_theme_constant_override("separation", 8)
+	preview_panel.add_child(preview_column)
+	var portrait_heading := _label("Character Portrait", GOLD, 14)
+	portrait_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	preview_column.add_child(portrait_heading)
+	portrait_preview = TextureRect.new()
+	portrait_preview.name = "PortraitPreview"
+	portrait_preview.custom_minimum_size = Vector2(176.0, 150.0)
+	portrait_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait_preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	preview_column.add_child(portrait_preview)
+	var icon_row := HBoxContainer.new()
+	icon_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	icon_row.add_theme_constant_override("separation", 8)
+	combat_icon_preview = TextureRect.new()
+	combat_icon_preview.name = "CombatIconPreview"
+	combat_icon_preview.custom_minimum_size = Vector2(64.0, 64.0)
+	combat_icon_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	combat_icon_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	combat_icon_preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon_row.add_child(combat_icon_preview)
+	icon_row.add_child(_label("Battle icon", MUTED, 13))
+	preview_column.add_child(icon_row)
+	appearance_row.add_child(preview_panel)
+	var choices := VBoxContainer.new()
+	choices.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	choices.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	choices.add_theme_constant_override("separation", 8)
+	choices.add_child(_label("Portrait", GOLD, 14))
 	portrait_option = OptionButton.new()
 	portrait_option.name = "PortraitOption"
 	portrait_option.fit_to_longest_item = false
@@ -205,7 +247,9 @@ func _build_creator_appearance() -> void:
 		_add_appearance_option(portrait_option, option)
 	_select_appearance_default(portrait_option, draft_portrait_id, true)
 	portrait_option.item_selected.connect(_portrait_selected)
-	creator_page.add_child(portrait_option)
+	portrait_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	choices.add_child(portrait_option)
+	choices.add_child(_label("Combat Icon", GOLD, 14))
 	combat_icon_option = OptionButton.new()
 	combat_icon_option.name = "CombatIconOption"
 	combat_icon_option.fit_to_longest_item = false
@@ -213,8 +257,16 @@ func _build_creator_appearance() -> void:
 	for option: CharacterAppearanceOptionView in combat_options:
 		_add_appearance_option(combat_icon_option, option)
 	_select_appearance_default(combat_icon_option, draft_combat_icon_id, false)
-	combat_icon_option.item_selected.connect(func(_index: int) -> void: combat_icon_touched = true)
-	creator_page.add_child(combat_icon_option)
+	combat_icon_option.item_selected.connect(_combat_icon_selected)
+	combat_icon_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	choices.add_child(combat_icon_option)
+	var note := _label("Portraits identify the character in records and party panes. Combat icons are the tactical figures used on the battlefield.", MUTED, 13)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	choices.add_child(note)
+	appearance_row.add_child(choices)
+	creator_page.add_child(appearance_row)
+	_refresh_appearance_preview()
 	if portrait_options.is_empty() or combat_options.is_empty():
 		_add_label(creator_page, "This package does not expose the complete Classic appearance catalog. Character generation is unavailable until the package is re-exported.", ERROR)
 
@@ -266,17 +318,28 @@ func _select_appearance_default(control: OptionButton, selected_id: String, port
 	control.select(0)
 
 func _portrait_selected(_index: int) -> void:
-	if combat_icon_touched or combat_icon_option == null:
-		return
-	var portrait_value := _selected_appearance(portrait_option, true)
-	if portrait_value == null:
-		return
-	var wanted_resource_id := 9000 - 257 + portrait_value.classic_resource_id
-	for index: int in combat_icon_option.item_count:
-		var icon := _appearance_option_by_id(String(combat_icon_option.get_item_metadata(index)), false)
-		if icon != null and icon.classic_resource_id == wanted_resource_id:
-			combat_icon_option.select(index)
-			return
+	if not combat_icon_touched and combat_icon_option != null:
+		var portrait_value := _selected_appearance(portrait_option, true)
+		if portrait_value != null:
+			var wanted_resource_id := 9000 - 257 + portrait_value.classic_resource_id
+			for index: int in combat_icon_option.item_count:
+				var icon := _appearance_option_by_id(String(combat_icon_option.get_item_metadata(index)), false)
+				if icon != null and icon.classic_resource_id == wanted_resource_id:
+					combat_icon_option.select(index)
+					break
+	_refresh_appearance_preview()
+
+func _combat_icon_selected(_index: int) -> void:
+	combat_icon_touched = true
+	_refresh_appearance_preview()
+
+func _refresh_appearance_preview() -> void:
+	if portrait_preview != null:
+		var portrait_id := String(portrait_option.get_item_metadata(portrait_option.selected)) if portrait_option != null and portrait_option.selected >= 0 else ""
+		portrait_preview.texture = _appearance_textures.get(portrait_id) as Texture2D
+	if combat_icon_preview != null:
+		var icon_id := String(combat_icon_option.get_item_metadata(combat_icon_option.selected)) if combat_icon_option != null and combat_icon_option.selected >= 0 else ""
+		combat_icon_preview.texture = _appearance_textures.get(icon_id) as Texture2D
 
 func _selected_appearance(control: OptionButton, portrait: bool) -> CharacterAppearanceOptionView:
 	if control == null or control.selected < 0:
@@ -536,6 +599,7 @@ func _apply_creator_layout(profile_id: StringName) -> void:
 		creator.vertical = profile_id == UiLayoutProfile.COMPACT
 	if race_class_columns != null:
 		race_class_columns.vertical = profile_id == UiLayoutProfile.COMPACT
+	_state.apply_setup_mode_layout()
 
 func apply_creator_layout(profile_id: StringName) -> void:
 	_apply_creator_layout(profile_id)
