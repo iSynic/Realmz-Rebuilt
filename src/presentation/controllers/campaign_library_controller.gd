@@ -19,7 +19,10 @@ var splash_composition: BoxContainer
 var campaign_overlay: PanelContainer
 var campaign_list: VBoxContainer
 var campaign_scroll: ScrollContainer
+var package_operation_host: PanelContainer
 var package_path: LineEdit
+var install_button: Button
+var refresh_button: Button
 
 var campaigns: Array[CampaignPackageView] = []
 var package_operation_status: RefCounted = PackageOperationViewScript.new()
@@ -158,21 +161,28 @@ func build_campaign_overlay() -> void:
 	campaign_scroll.follow_focus = true
 	campaign_scroll.add_child(campaign_list)
 	column.add_child(campaign_scroll)
+	package_operation_host = PanelContainer.new()
+	package_operation_host.name = "PackageOperationHost"
+	package_operation_host.theme_type_variation = &"ClassicInset"
+	package_operation_host.visible = false
+	column.add_child(package_operation_host)
 	var details := HBoxContainer.new()
 	package_path = LineEdit.new()
 	package_path.placeholder_text = "Path to Providence .realmz2"
 	package_path.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	details.add_child(package_path)
-	var open := Button.new()
-	open.text = "Install .realmz2…"
-	open.pressed.connect(_open_typed_path)
-	details.add_child(open)
+	install_button = Button.new()
+	install_button.name = "InstallPackage"
+	install_button.text = "Install .realmz2…"
+	install_button.pressed.connect(_open_typed_path)
+	details.add_child(install_button)
 	column.add_child(details)
-	var refresh := Button.new()
-	refresh.text = "Refresh scenarios"
-	refresh.pressed.connect(func() -> void: refresh_requested.emit())
+	refresh_button = Button.new()
+	refresh_button.name = "RefreshScenarios"
+	refresh_button.text = "Refresh scenarios"
+	refresh_button.pressed.connect(func() -> void: refresh_requested.emit())
 	var library_actions := HBoxContainer.new()
-	library_actions.add_child(refresh)
+	library_actions.add_child(refresh_button)
 	column.add_child(library_actions)
 
 
@@ -267,38 +277,7 @@ func render_campaign_list() -> void:
 	if campaign_list == null:
 		return
 	_clear(campaign_list)
-	if package_operation_status.is_running():
-		var operation_row := VBoxContainer.new()
-		operation_row.name = "PackageOperationRow"
-		operation_row.custom_minimum_size = Vector2(0, 76)
-		operation_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		operation_row.add_theme_constant_override("separation", 4)
-		var operation_label := Label.new()
-		operation_label.name = "PackageOperationStatus"
-		operation_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		operation_label.text = package_operation_status.message
-		operation_label.tooltip_text = package_operation_status.message
-		operation_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		operation_row.add_child(operation_label)
-		var operation_controls := HBoxContainer.new()
-		operation_controls.name = "PackageOperationControls"
-		operation_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var progress := ProgressBar.new()
-		progress.name = "PackageOperationProgress"
-		progress.custom_minimum_size = Vector2(80, 24)
-		progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		progress.show_percentage = package_operation_status.total > 0
-		progress.indeterminate = package_operation_status.total <= 0
-		progress.max_value = maxf(1.0, float(package_operation_status.total))
-		progress.value = clampf(float(package_operation_status.completed), 0.0, progress.max_value)
-		operation_controls.add_child(progress)
-		var cancel := Button.new()
-		cancel.name = "CancelPackageOperation"
-		cancel.text = "Cancel"
-		cancel.pressed.connect(func() -> void: cancel_package_requested.emit())
-		operation_controls.add_child(cancel)
-		operation_row.add_child(operation_controls)
-		campaign_list.add_child(operation_row)
+	_render_package_operation()
 	if selected_campaign_summary != null:
 		_add_selected_campaign_record()
 	if campaigns.is_empty():
@@ -338,6 +317,55 @@ func render_campaign_list() -> void:
 	else:
 		campaign_overlay.tooltip_text = "Installed Providence scenarios."
 	_refresh_campaign_layout()
+
+func _render_package_operation() -> void:
+	if package_operation_host == null:
+		return
+	_clear(package_operation_host)
+	var running: bool = package_operation_status.is_running()
+	package_operation_host.visible = running
+	package_path.editable = not running
+	install_button.disabled = running
+	refresh_button.disabled = running
+	if not running:
+		return
+	var operation := VBoxContainer.new()
+	operation.name = "PackageOperationRow"
+	operation.add_theme_constant_override("separation", 4)
+	package_operation_host.add_child(operation)
+	var header := HBoxContainer.new()
+	var phase_text := String(package_operation_status.phase).replace("_", " ").capitalize()
+	var phase := _label(phase_text if not phase_text.is_empty() else "Installing", GOLD, 12)
+	phase.name = "PackageOperationPhase"
+	header.add_child(phase)
+	header.add_spacer(true)
+	var progress_text := "%d%%" % int(round(package_operation_status.progress_ratio() * 100.0)) if package_operation_status.total > 0 else "Working"
+	var percentage := _label(progress_text, MUTED, 11)
+	percentage.name = "PackageOperationPercentage"
+	header.add_child(percentage)
+	operation.add_child(header)
+	var controls := HBoxContainer.new()
+	controls.name = "PackageOperationControls"
+	var progress := ProgressBar.new()
+	progress.name = "PackageOperationProgress"
+	progress.custom_minimum_size = Vector2(72, 22)
+	progress.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	progress.show_percentage = false
+	progress.indeterminate = package_operation_status.total <= 0
+	progress.max_value = maxf(1.0, float(package_operation_status.total))
+	progress.value = clampf(float(package_operation_status.completed), 0.0, progress.max_value)
+	controls.add_child(progress)
+	var cancel := Button.new()
+	cancel.name = "CancelPackageOperation"
+	cancel.text = "Cancel"
+	cancel.pressed.connect(func() -> void: cancel_package_requested.emit())
+	controls.add_child(cancel)
+	operation.add_child(controls)
+	var message := _add_label(operation, package_operation_status.message, MUTED, 11)
+	message.name = "PackageOperationStatus"
+	message.max_lines_visible = 2
+	message.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	message.tooltip_text = package_operation_status.message
 
 func _add_selected_campaign_record() -> void:
 	var panel := PanelContainer.new()

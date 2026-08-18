@@ -3,6 +3,7 @@ extends SceneTree
 const FIXTURE_PATH := "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 const OUTPUT_ROOT := "res://artifacts/ui-gallery"
 const CHARACTER_VIEW_SCRIPT := preload("res://src/core/view/character_view.gd")
+const PACKAGE_OPERATION_VIEW_SCRIPT := preload("res://src/app/package_operation_view.gd")
 
 var _application: RealmzApplication
 var _shell: ClassicApplicationShell
@@ -28,6 +29,11 @@ func _capture_gallery() -> void:
 	Input.warp_mouse(Vector2(520, 18))
 	await _settle()
 	await _capture("canonical-campaign-menu-hover-1280x720")
+	_router.show_campaign_selection()
+	_router.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new(&"running", &"validating_media", 7, 12, "Validating packaged media 7 of 12"))
+	await _settle()
+	await _capture("canonical-package-install-progress-1280x720")
+	_router.set_package_operation(PACKAGE_OPERATION_VIEW_SCRIPT.new())
 	await _resize(Vector2i(800, 600))
 	_application.start_package(FIXTURE_PATH, 1)
 	await _settle()

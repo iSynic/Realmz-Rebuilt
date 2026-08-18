@@ -130,7 +130,7 @@ func _test_package_operation_presentation() -> void:
 	router.set_package_operation(PackageOperationStatusScript.new(&"running", &"loading", 2, 4, "Loading package 2 of 4"))
 	var progress := router.find_child("PackageOperationProgress", true, false) as ProgressBar
 	var cancel := router.find_child("CancelPackageOperation", true, false) as Button
-	assert_equal([progress.value, progress.max_value], [2.0, 4.0], "package work exposes bounded detached progress")
+	assert_equal([progress.value, progress.max_value], [2.0, 4.0], "package work exposes bounded detached progress"); assert_true(router.find_child("PackageOperationPhase", true, false) != null and (router.find_child("PackageOperationHost", true, false) as Control).visible and not router.setup_controller.campaign_scroll.is_ancestor_of(progress) and (router.find_child("InstallPackage", true, false) as Button).disabled and (router.find_child("RefreshScenarios", true, false) as Button).disabled, "package work owns one fixed status host and suppresses competing library actions")
 	assert_not_null(cancel, "package work exposes cancellation")
 	cancel.pressed.emit()
 	assert_equal(canceled[0], 1, "cancellation remains a host signal")
