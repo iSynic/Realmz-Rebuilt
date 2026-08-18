@@ -377,12 +377,17 @@ func _apply_layout() -> void:
 	var command_width := minf(_profile.command_width, viewport_size.x * 0.26)
 	_world_command_panel.visible = _profile.id != UiLayoutProfile.COMPACT
 	_command_heading.text = "Party" if _world_command_panel.visible else "Commands"
-	_world_command_panel.custom_minimum_size.x = minf(280.0, viewport_size.x * 0.22) if _world_command_panel.visible else 0.0
-	_command_panel.custom_minimum_size.x = command_width
+	_world_command_panel.custom_minimum_size.x = minf(240.0, viewport_size.x * 0.2) if _world_command_panel.visible else 0.0
+	_world_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_BEGIN
+	_world_command_panel.size_flags_stretch_ratio = 0.85
+	_command_panel.custom_minimum_size.x = maxf(300.0, command_width) if _world_command_panel.visible else command_width
+	_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_END
+	_command_panel.size_flags_stretch_ratio = 1.15
 	_command_panel.custom_minimum_size.y = 0.0
 	_narrative_well.custom_minimum_size.x = 620.0 if _world_command_panel.visible else maxf(360.0, viewport_size.x - command_width - 12.0)
+	_narrative_well.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if _world_command_panel.visible else Control.SIZE_EXPAND_FILL
 	_world_command_grid.columns = 4
-	_command_grid.columns = maxi(2, floori(command_width / (108.0 if _profile.bitmap_scale == 2 else 58.0)))
+	_command_grid.columns = 4 if _world_command_panel.visible else maxi(2, floori(command_width / (108.0 if _profile.bitmap_scale == 2 else 58.0)))
 	# Orientation and child minima must settle before shrinking the outer panel;
 	# otherwise Control retains the previous wider profile's minimum-clamped size.
 	_bottom_region.position = Vector2(0.0, viewport_size.y - _profile.bottom_height)

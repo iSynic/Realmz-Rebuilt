@@ -20,6 +20,8 @@ signal combat_spellbook_closed
 @onready var _prompt: Label = %InteractionPrompt
 @onready var _heading: Label = %InteractionHeading
 @onready var _options: VBoxContainer = %InteractionOptions
+@onready var _content: BoxContainer = $InteractionScroll/InteractionContent
+@onready var _prompt_column: VBoxContainer = %PromptColumn
 @onready var _scroll: ScrollContainer = $InteractionScroll
 @onready var _stage_opaque_backing: ColorRect = $StageOpaqueBacking
 @onready var _stage_backing: TextureRect = $StageBacking
@@ -89,6 +91,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_component.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: combat_spellbook_requested.emit(actor_id, options))
 	_component.combat_spellbook_closed.connect(func() -> void: combat_spellbook_closed.emit())
 	_options.add_child(_component)
+	_options.visible = true
 	_component.build(request)
 	_apply_classic_region()
 	call_deferred("_prepare_interaction_focus")
@@ -280,6 +283,7 @@ static func response_for(request: InteractionRequest, body: InteractionResponse.
 func _clear_options() -> void:
 	combat_spellbook_closed.emit()
 	_component = null
+	_options.visible = false
 	for child: Node in _options.get_children():
 		_options.remove_child(child)
 		child.queue_free()
@@ -310,10 +314,28 @@ func _apply_classic_region() -> void:
 		desired.y = maxf(260.0, desired.y)
 		position = _stage_rect.position + (_stage_rect.size - desired) * 0.5
 		size = desired
+	_apply_content_layout()
+
+
+func _apply_content_layout() -> void:
+	var split_textbox := uses_textbox_region(_request, _passive_text) and (_request == null or _request.kind != InteractionRequest.COMBAT)
+	_content.vertical = not split_textbox
+	if split_textbox:
+		var available_width := _textbox_rect.size.x
+		var prompt_width := minf(620.0, maxf(320.0, available_width * 0.66))
+		if _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION:
+			prompt_width = minf(620.0, maxf(300.0, available_width - 410.0))
+		_prompt_column.custom_minimum_size.x = prompt_width
+		_prompt_column.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		_options.custom_minimum_size.x = 220.0
+	else:
+		_prompt_column.custom_minimum_size.x = 0.0
+		_prompt_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_options.custom_minimum_size.x = 0.0
 
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
-	return passive_text or request != null and not _is_player_map_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"combat_action"]
+	return passive_text or request != null and not _is_player_map_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"complex_encounter", &"combat_action"]
 
 
 static func uses_full_stage_region(request: InteractionRequest) -> bool:
@@ -331,6 +353,7 @@ static func interaction_region(request: InteractionRequest, textbox_rect: Rect2,
 
 
 func _add_hint(text: String) -> void:
+	_options.visible = true
 	var label := Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

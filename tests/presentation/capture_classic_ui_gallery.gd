@@ -56,6 +56,9 @@ func _capture_gallery() -> void:
 	_interaction.present(InteractionRequest.acknowledge("gallery-edge-to-edge", "The party follows the old road toward Northgate."))
 	await _settle()
 	await _capture("canonical-acknowledge-edge-to-edge-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-acknowledge-800x600")
+	await _resize(Vector2i(1280, 720))
 	_interaction.present(null)
 	var gallery_view: Variant = _application.session_controller.view()
 	if not gallery_view.party_members.is_empty():
@@ -75,12 +78,17 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"journal")
 	await _settle()
 	await _capture("wide-journal-1280x720")
+	_router.open_screen(&"exploration")
+	await _settle()
 	_interaction.present(InteractionRequest.from_payload("gallery-classic-choice", InteractionRequest.YES_NO, {"yesLabel": "Yes", "noLabel": "No"}), "Will you enter the ruined keep?")
 	await _settle()
 	await _capture("wide-classic-choice-context-1280x720")
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION))
 	await _settle()
 	await _capture("wide-encounter-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-encounter-800x600")
+	await _resize(Vector2i(1280, 720))
 	for interaction_kind: StringName in [
 		InteractionRequest.AGE_UPDATE,
 		InteractionRequest.INDEXED_CHOICE,

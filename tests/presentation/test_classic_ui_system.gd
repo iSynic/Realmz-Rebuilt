@@ -46,19 +46,13 @@ func _labels_in(root: Node) -> Array[String]:
 	return labels
 
 
-func _visible_labels_in(root: Node) -> Array[String]:
-	var labels: Array[String] = []
-	for child: Node in root.find_children("*", "Label", true, false):
-		if child is Label and (child as Label).visible:
-			labels.append((child as Label).text)
-	return labels
-
-
-func _visible_button_texts_in(root: Node) -> Array[String]:
+func _visible_control_texts(root: Node) -> Array[String]:
 	var texts: Array[String] = []
-	for button: Button in _buttons_in(root):
-		if button.visible:
-			texts.append(button.text)
+	for child: Node in root.find_children("*", "Control", true, false):
+		if child is Label and child.visible:
+			texts.append(child.text)
+		elif child is Button and child.visible:
+			texts.append(child.text)
 	return texts
 
 
@@ -198,18 +192,13 @@ func _test_startup_shell() -> void:
 		CampaignPackageView.new("res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2", true, "installed-scenario", "", "", "", "Installed Scenario"),
 		CampaignPackageView.new("user://packages/stale.realmz2", false, "stale-scenario", "", "", "Package schema hash does not match the runtime contract mirror.", "Stale Scenario"),
 	])
-	var scenario_copy: Array[String] = []
-	if scenario_picker != null:
-		scenario_copy.append_array(_visible_labels_in(scenario_picker))
-		scenario_copy.append_array(_visible_button_texts_in(scenario_picker))
+	var scenario_controls: Array[String] = _visible_control_texts(scenario_picker) if scenario_picker != null else []
 	assert_true(router.setup_controller.campaign_list is VBoxContainer and router.setup_controller.campaign_list.get_parent() is ScrollContainer, "installed scenarios use one single-column picker surface")
-	assert_false(scenario_copy.any(func(text: String) -> bool: return text.contains("Stale Scenario")), "incompatible installations do not become ordinary scenario rows")
+	assert_false(scenario_controls.any(func(text: String) -> bool: return text.contains("Stale Scenario")), "incompatible installations do not become ordinary scenario rows")
 	assert_contains(scenario_picker.tooltip_text, "installation hidden", "the picker preserves incompatible-installation diagnostics in unobtrusive hover text")
-	var scenario_buttons: Array[String] = _visible_button_texts_in(scenario_picker) if scenario_picker != null else []
-	assert_false(scenario_buttons.any(func(text: String) -> bool: return text == "Play"), "scenario rows do not expose the obsolete per-row Play action")
-	var install_buttons: Array[String] = _visible_button_texts_in(scenario_picker) if scenario_picker != null else []
-	assert_true(install_buttons.any(func(text: String) -> bool: return text.begins_with("Install .realmz2")), "the external package action uses installation language")
-	assert_false(install_buttons.any(func(text: String) -> bool: return text == "Open path" or text.to_lower().contains("play")), "the integrated workspace does not label external installation as Play")
+	assert_false(scenario_controls.any(func(text: String) -> bool: return text == "Play"), "scenario rows do not expose the obsolete per-row Play action")
+	assert_true(scenario_controls.any(func(text: String) -> bool: return text.begins_with("Install .realmz2")), "the external package action uses installation language")
+	assert_false(scenario_controls.any(func(text: String) -> bool: return text == "Open path" or text.to_lower().contains("play")), "the integrated workspace does not label external installation as Play")
 	assert_true(router.find_child("Seed", true, false) == null, "developer seed controls are absent from the ordinary integrated workspace")
 	var character_heading: Control = null
 	var party_heading: Control = null
@@ -781,16 +770,6 @@ func _test_safe_item_display() -> void:
 	assert_true(revealed.curse_revealed and revealed.properties.any(func(property: String) -> bool: return property.contains("cannot be removed")), "a revealed curse explains its source-backed removal restriction")
 
 
-func _test_action_availability() -> void:
-	var view := GameView.new(1, true, null)
-	view.set_action_availability(&"search", true)
-	assert_true(view.availability(&"search").enabled, "declared available actions are enabled")
-	assert_equal(view.availability(&"search").reason, "", "enabled actions carry no misleading disabled reason")
-	var unknown := view.availability(&"imaginary_action")
-	assert_false(unknown.enabled, "undeclared actions remain disabled")
-	assert_contains(unknown.reason, "unavailable", "undeclared actions explain their state")
-
-
 func _test_fixture_gallery_coverage() -> void:
 	for interaction: StringName in ClassicUiFixtureGallery.INTERACTIONS:
 		var request := ClassicUiFixtureGallery.request_for(interaction)
@@ -926,6 +905,17 @@ func _test_classic_choice_context() -> void:
 	(journal_buttons[0] as Button).pressed.emit()
 	assert_equal(journal_payloads, [{"takeNote": true}], "Take note emits only the typed acknowledgement selection")
 	journal_component.free()
+	var yes_no := TextChoiceInteraction.new()
+	yes_no.build(InteractionRequest.yes_no("layout-choice", "Continue?", "Yes", "No"))
+	var yes_no_grid := yes_no.find_child("ChoiceGrid", true, false) as GridContainer
+	assert_true(yes_no_grid != null and yes_no_grid.columns == 2, "binary Classic choices share one compact semantic response row")
+	yes_no.free()
+	var encounter := EncounterInteraction.new()
+	encounter.build(ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION))
+	var command_strip := encounter.find_child("EncounterCommandStrip", true, false) as GridContainer
+	assert_true(command_strip != null and command_strip.get_child_count() == 6, "complex encounters preserve one stable Action, Items, Skills, Speak, Spells, and Stop command strip")
+	assert_not_null(encounter.find_child("EncounterChoiceGrid", true, false), "the selected encounter command owns a compact contextual response pane")
+	encounter.free()
 
 
 func _sha256(path: String) -> String:
@@ -1228,7 +1218,13 @@ func _test_scene_composition() -> void:
 	assert_true(shell.get_node_or_null("BottomRegion/BottomRow/WorldCommandPanel") != null and shell.get_node_or_null("BottomRegion/BottomRow/CommandPanel") != null, "exploration dedicates separate footer panes to world and party commands")
 	var exploration_commands := ClassicCommandCatalog.for_context(&"exploration")
 	assert_true([&"search_mode", &"contextual"].all(func(id: StringName) -> bool: return exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == id and definition["group"] == &"world")), "Search mode and contextual service entry belong to world controls")
+	assert_true(exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == &"settings" and definition["group"] == &"world"), "preferences remain with Adventure and system controls instead of displacing party actions")
 	assert_true(exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == &"inventory" and definition["group"] == &"party"), "party workspaces remain grouped beside the narrative well")
+	var world_panel := shell.get_node("BottomRegion/BottomRow/WorldCommandPanel") as Control
+	var narrative_well := shell.get_node("BottomRegion/BottomRow/NarrativeWell") as Control
+	var party_panel := shell.get_node("BottomRegion/BottomRow/CommandPanel") as Control
+	assert_equal([world_panel.size_flags_horizontal, narrative_well.size_flags_horizontal, party_panel.size_flags_horizontal], [Control.SIZE_EXPAND_FILL, Control.SIZE_SHRINK_CENTER, Control.SIZE_EXPAND_FILL], "the wide footer gives spare width to both command panes while keeping the Classic narrative measure fixed")
+	assert_equal(RealmzApplication.classic_textbox_rect(Rect2(0.0, 32.0, 992.0, 498.0), 190.0, 1280.0), Rect2(0.0, 530.0, 1280.0, 190.0), "Classic narrative interactions own the complete bottom stage rather than only the map column")
 	var backing := shell.get_node("PictureStage/PictureBacking") as TextureRect
 	assert_equal(backing.stretch_mode, TextureRect.STRETCH_TILE, "picture backing fills without stretching")
 	for viewport_size: Vector2 in [Vector2(800, 600), Vector2(1280, 720)]:

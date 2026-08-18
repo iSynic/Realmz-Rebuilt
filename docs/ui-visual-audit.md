@@ -142,6 +142,11 @@ Implementation proceeds in coherent batches:
 5. Battle entry, tactical workspace, turn strip, commands, spellbook/targeting, playback, and terminal return.
 6. Notes/maps, save/load, preferences, diagnostics, lifecycle, and failure surfaces.
 
+Current remediation status:
+
+- Batch 1 has recomposed the integrated scenario/Character Files/party assembly surface, Character Files route, setup inspection, and creator Appearance stage. The splash and remaining creator-stage refinements remain open in their rows.
+- Batch 2 has recomposed the full-width exploration footer, fixed-measure narrative interaction stage, compact typed choices, party-roster character selection, and stable encounter command/picker strip. Camp-specific state, source-limited word entry, thief/item/spell picker refinements, and player maps remain open in their rows.
+
 Repeated controls are components rather than independently styled mockups. Product implementation is complete only when its audit row reaches the acceptance contract below; a Pen board alone is not implementation or live evidence.
 
 ## Acceptance

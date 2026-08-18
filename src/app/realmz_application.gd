@@ -892,12 +892,13 @@ func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) 
 	if _dungeon_presenter != null:
 		_dungeon_presenter.position = content_rect.position
 		_dungeon_presenter.size = content_rect.size
-	var textbox_rect := classic_textbox_rect(workspace_rect, _profile.bottom_height)
+	var textbox_rect := classic_textbox_rect(workspace_rect, _profile.bottom_height, size.x)
 	_interaction_presenter.set_classic_regions(content_rect, textbox_rect, classic_combat_rect(size, _profile.bottom_height))
 
 
-static func classic_textbox_rect(workspace_rect: Rect2, bottom_height: float) -> Rect2:
-	return Rect2(workspace_rect.position.x, workspace_rect.end.y, workspace_rect.size.x, bottom_height)
+static func classic_textbox_rect(workspace_rect: Rect2, bottom_height: float, full_width: float = 0.0) -> Rect2:
+	var width := full_width if full_width > 0.0 else workspace_rect.size.x
+	return Rect2(0.0 if full_width > 0.0 else workspace_rect.position.x, workspace_rect.end.y, width, bottom_height)
 
 
 static func classic_combat_rect(viewport_size: Vector2, bottom_height: float) -> Rect2:
