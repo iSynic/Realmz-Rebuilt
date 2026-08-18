@@ -545,7 +545,7 @@ static func _populate_inventory_item_actions(context: SessionWorkflowContext, re
 				if destination == character:
 					continue
 				var trade_probe := rules.inventory.classic_trade_probe(character, destination, instance, definition)
-				actions.trade_targets.append(ItemTransferTargetView.new(destination.id, destination.name, trade_probe.allowed, trade_probe.reason))
+				actions.trade_targets.append(ItemTransferTargetView.new(destination.id, destination.name, trade_probe.allowed, trade_probe.reason, destination.carried_load, destination.carried_load + item_view.weight, destination.maximum_load))
 			var enabled_targets := actions.trade_targets.filter(func(target: ItemTransferTargetView) -> bool: return target.enabled)
 			var trade_reason := "Choose another party member." if actions.trade_targets.is_empty() else actions.trade_targets[0].reason if enabled_targets.is_empty() else ""
 			actions.trade = ActionAvailabilityView.new(&"trade_item", not enabled_targets.is_empty(), trade_reason)

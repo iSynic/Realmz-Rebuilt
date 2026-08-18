@@ -66,7 +66,9 @@ func _capture_gallery() -> void:
 		var definition: Variant = active_content.item_by_id("classic.item.901")
 		if definition != null:
 			for index: int in 18:
-				gallery_view.party_members[0].items.append(ItemView.new(ItemInstance.new("gallery-item-%d" % index, definition.id, maxi(1, definition.initial_charges), index < 6, index % 3 != 0), definition))
+				var gallery_item := ItemView.new(ItemInstance.new("gallery-item-%d" % index, definition.id, maxi(1, definition.initial_charges), index < 6, index % 3 != 0), definition)
+				gallery_item.actions.split = ActionAvailabilityView.new(&"split_item", true)
+				gallery_view.party_members[0].items.append(gallery_item)
 		var gallery_conditions: Array[CharacterMetricView] = [CharacterMetricView.new(&"condition-13", 13, "Cold Protection", 2, "Value 2"), CharacterMetricView.new(&"condition-27", 27, "Blind", -1, "Permanent")]
 		gallery_view.party_members[0].conditions = gallery_conditions
 		var gallery_modifiers: Array[CharacterMetricView] = [CharacterMetricView.new(&"special-undead", 1, "Undead", 2), CharacterMetricView.new(&"special-large", 6, "Large Creature", 1)]
@@ -102,7 +104,20 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"inventory")
 	await _settle()
 	await _capture("wide-dense-inventory-1280x720")
+	var split_button := _base_button_with_tooltip(_router, "Split")
+	if split_button is ClassicBitmapButton:
+		(split_button as ClassicBitmapButton).command_requested.emit(&"inventory.action.split"); await _settle(); await _capture("wide-inventory-operation-1280x720")
+		var cancel_operation := _button_named(_router, "Cancel")
+		if cancel_operation != null:
+			cancel_operation.pressed.emit(); await _settle()
+	var trade_button := _button_named(_router, "Trade")
+	if trade_button != null and not trade_button.disabled:
+		trade_button.pressed.emit(); await _settle(); await _capture("wide-inventory-trade-1280x720")
 	await _resize(Vector2i(800, 600))
+	await _capture("classic-inventory-trade-800x600")
+	var cancel_trade := _button_named(_router, "Cancel")
+	if cancel_trade != null:
+		cancel_trade.pressed.emit(); await _settle()
 	await _capture("classic-dense-inventory-800x600")
 	await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"spells")
@@ -363,6 +378,13 @@ func _button_named(parent: Node, text: String) -> Button:
 	for node: Node in parent.find_children("*", "Button", true, false):
 		if node is Button and (node as Button).text == text:
 			return node as Button
+	return null
+
+
+func _base_button_with_tooltip(parent: Node, tooltip: String) -> BaseButton:
+	for node: Node in parent.find_children("*", "BaseButton", true, false):
+		if node is BaseButton and (node as BaseButton).tooltip_text == tooltip:
+			return node as BaseButton
 	return null
 
 

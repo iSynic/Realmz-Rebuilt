@@ -32,7 +32,7 @@ func run() -> void:
 	var item_view := session.view().party_members[0].items[0]
 	assert_true(item_view.actions.equip.enabled, "detached item actions expose a legal Classic equip")
 	assert_true(item_view.actions.trade.enabled, "detached item actions expose a legal recipient")
-	assert_equal(item_view.actions.trade_targets[0].character_id, destination.id, "the detached trade target uses stable character identity")
+	assert_equal([item_view.actions.trade_targets[0].character_id, item_view.actions.trade_targets[0].current_load, item_view.actions.trade_targets[0].resulting_load, item_view.actions.trade_targets[0].maximum_load], [destination.id, destination.carried_load, destination.carried_load + item.instance_weight(instance.charges), destination.maximum_load], "the detached trade target carries stable identity and source-projected current, resulting, and maximum load")
 
 	var equipped := session.submit_intent(PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, instance.id, source.id))
 	assert_equal(equipped.state, SessionStep.State.COMPLETED, "typed Equip commits synchronously")

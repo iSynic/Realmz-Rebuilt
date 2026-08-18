@@ -1105,7 +1105,7 @@ func _test_inventory_workspace() -> void:
 	var item_view := ItemView.new(ItemInstance.new("inventory.item", definition.id, 0, false, true), definition)
 	item_view.actions.equip = ActionAvailabilityView.new(&"equip_item", true); item_view.actions.split = ActionAvailabilityView.new(&"split_item", true); item_view.actions.join = ActionAvailabilityView.new(&"join_item", true)
 	item_view.actions.use = ActionAvailabilityView.new(&"use_item", false, "This item's use effect is not implemented.")
-	item_view.actions.trade = ActionAvailabilityView.new(&"trade_item", true); item_view.actions.trade_targets = [ItemTransferTargetView.new(destination.id, destination.name, true)]
+	item_view.actions.trade = ActionAvailabilityView.new(&"trade_item", true); item_view.actions.trade_targets = [ItemTransferTargetView.new(destination.id, destination.name, true, "", 12, 17, 100)]
 	source_view.items = [item_view]
 	view.party_members = [source_view, destination_view]
 	var body := VBoxContainer.new()
@@ -1115,10 +1115,10 @@ func _test_inventory_workspace() -> void:
 	var buttons := _base_buttons_in(body)
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Longsword")), "inventory renders a selectable carried item")
 	assert_true(body.find_child("InventoryItemBrowser", true, false) != null and body.find_child("InventoryItemInspector", true, false) != null, "inventory uses one item browser and one aligned inspector instead of duplicate owner tabs"); assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Equip"), "inventory exposes the typed Equip action")
-	assert_true(["Split", "Join"].all(func(label: String) -> bool: return buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text == label and not button.disabled)), "inventory exposes core-authorized stack actions")
-	assert_true(buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text.contains("not implemented")), "unsafe use remains visible with a core-owned reason")
-	var trade := buttons.filter(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Trade")[0] as Button; trade.pressed.emit()
-	controller.present(body, view, null, 1.0); var recipients := body.find_child("InventoryTradeRecipients", true, false); var recipient := _buttons_in(recipients).filter(func(button: Button) -> bool: return button.text == destination.name)[0] as Button; recipient.pressed.emit()
+	var split_action := buttons.filter(func(button: BaseButton) -> bool: return button.tooltip_text == "Split" and not button.disabled)[0] as ClassicBitmapButton; assert_true(split_action != null and buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text == "Join" and not button.disabled) and buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text.contains("not implemented")), "inventory exposes core-authorized stack actions and source-owned unavailable reasons"); split_action.command_requested.emit(&"inventory.action.split"); controller.present(body, view, null, 1.0)
+	assert_true(body.find_child("InventoryOperationStage", true, false) != null and _labels_in(body).any(func(text: String) -> bool: return text.contains("Split this charged record")), "one stable operation stage keeps exact item facts and conservative consequence copy")
+	var trade: Button
+	var cancel_operation := _buttons_in(body.find_child("InventoryOperationActions", true, false)).filter(func(button: Button) -> bool: return button.text == "Cancel")[0] as Button; cancel_operation.pressed.emit(); controller.present(body, view, null, 1.0); buttons = _base_buttons_in(body); trade = buttons.filter(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Trade")[0] as Button; trade.pressed.emit(); controller.present(body, view, null, 1.0); var recipients := body.find_child("InventoryTradeRecipients", true, false); var recipient := _buttons_in(recipients).filter(func(button: Button) -> bool: return button.text == destination.name)[0] as Button; assert_true(_labels_in(recipients).has("12 → 17 / 100"), "Trade renders core-projected current, resulting, and maximum recipient load beside the exact selected item"); recipient.pressed.emit(); controller.present(body, view, null, 1.0); var transfer := _buttons_in(body.find_child("InventoryTradeActions", true, false)).filter(func(button: Button) -> bool: return button.text == "Transfer")[0] as Button; transfer.pressed.emit()
 	assert_equal([intents.size(), intents[0].kind], [1, PlayerIntent.Kind.TRADE_ITEM], "item-local recipient selection emits one typed transfer")
 	body.free()
 func _test_money_workspace() -> void:
