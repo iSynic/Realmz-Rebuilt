@@ -146,6 +146,7 @@ Current remediation status:
 
 - Batch 1 has recomposed the integrated scenario/Character Files/party assembly surface, Character Files route, setup inspection, and creator Appearance stage. The splash and remaining creator-stage refinements remain open in their rows.
 - Batch 2 has recomposed the full-width exploration footer, fixed-measure narrative interaction stage, compact typed choices, party-roster character selection, and stable encounter command/picker strip. Camp-specific state, source-limited word entry, thief/item/spell picker refinements, and player maps remain open in their rows.
+- Batch 3 has begun with the full-width Character and Inventory workspaces. Character now gives its sheet, six-member portrait selector, dense tabs, and source-backed equipment icons priority while keeping formation editing secondary. Inventory now owns a compact character selector, dominant browser/record panes, fixed action dock, and item-local Trade recipients at both supported compositions. Allies and both spell workflows remain open in this batch.
 
 Repeated controls are components rather than independently styled mockups. Product implementation is complete only when its audit row reaches the acceptance contract below; a Pen board alone is not implementation or live evidence.
 

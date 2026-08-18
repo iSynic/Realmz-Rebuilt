@@ -41,6 +41,7 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 		_selected_character_id = selected_character.id
 		_selected_item_instance_id = ""
 		_trade_mode = false
+	_add_character_selector(parent, view, selected_character, media)
 	_add_header(parent, selected_character)
 	var visible_items := _visible_items(selected_character)
 	var selected_item := _selected_item(visible_items)
@@ -54,6 +55,28 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 	columns.add_child(_build_item_browser(selected_character, visible_items, selected_item, media))
 	columns.add_child(_build_item_inspector(selected_character, selected_item, media))
 	parent.add_child(columns)
+
+
+func _add_character_selector(parent: VBoxContainer, view: GameView, selected: CharacterView, media: ClassicMediaCatalog) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "InventoryCharacterSelector"
+	panel.theme_type_variation = &"ClassicInset"
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	panel.add_child(row)
+	for character: CharacterView in view.party_members:
+		var button := Button.new()
+		button.text = character.name
+		button.icon = _appearance_texture(character.portrait_id, media)
+		button.expand_icon = true
+		button.toggle_mode = true
+		button.button_pressed = character.id == selected.id
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.custom_minimum_size.y = 44.0
+		button.tooltip_text = "%s • Load %d/%d" % [character.name, character.carried_load, character.maximum_load]
+		button.pressed.connect(_select_character.bind(character.id))
+		row.add_child(button)
+	parent.add_child(panel)
 
 
 func select_roster_character(character_id: String, view: GameView) -> bool:
@@ -126,8 +149,9 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 	var panel := PanelContainer.new()
 	panel.name = "InventoryItemBrowser"
 	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size = Vector2(390.0, 500.0)
+	panel.custom_minimum_size = Vector2(300.0, 340.0)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = 0.85
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
@@ -167,13 +191,14 @@ func _build_item_inspector(character: CharacterView, item: ItemView, media: Clas
 	var panel := PanelContainer.new()
 	panel.name = "InventoryItemInspector"
 	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size = Vector2(390.0, 500.0)
+	panel.custom_minimum_size = Vector2(320.0, 340.0)
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = 1.15
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 5)
 	panel.add_child(column)
-	_add_section_heading(column, "Item record", "Party roster selects owner or recipient")
+	_add_section_heading(column, "Item record")
 	if item == null:
 		_add_label(column, "Select an item to inspect it.", MUTED)
 		return panel
@@ -187,6 +212,8 @@ func _build_item_inspector(character: CharacterView, item: ItemView, media: Clas
 	scroll.add_child(detail)
 	column.add_child(scroll)
 	_render_item_detail(detail, item, character, media)
+	column.add_child(HSeparator.new())
+	_render_item_actions(column, item, character)
 	return panel
 
 
@@ -220,7 +247,11 @@ func _render_item_detail(parent: VBoxContainer, item: ItemView, character: Chara
 		_add_label(parent, "• %s" % property, TEXT, 13)
 	for restriction: String in item.restrictions:
 		_add_label(parent, restriction, WARNING, 13)
+
+
+func _render_item_actions(parent: VBoxContainer, item: ItemView, character: CharacterView) -> void:
 	var actions := HFlowContainer.new()
+	actions.name = "InventoryActionDock"
 	actions.add_theme_constant_override("h_separation", 5)
 	actions.add_theme_constant_override("v_separation", 5)
 	if item.equipped:
@@ -235,26 +266,42 @@ func _render_item_detail(parent: VBoxContainer, item: ItemView, character: Chara
 	_add_trade_action(actions, item.actions.trade)
 	parent.add_child(actions)
 	if _trade_mode:
-		_add_label(parent, "Trade mode · choose the recipient from the Party roster.", GOLD, 14)
-		var cancel := Button.new()
-		cancel.text = "Cancel trade"
-		cancel.pressed.connect(_cancel_trade)
-		parent.add_child(cancel)
+		_render_trade_targets(parent, item, character)
 	if not _trade_status.is_empty():
 		_add_label(parent, _trade_status, WARNING, 13)
-	var unavailable := _unavailable_action_reasons(item)
-	if not unavailable.is_empty():
-		_add_label(parent, "Unavailable · %s" % "  •  ".join(unavailable), MUTED, 12)
 
 
-func _unavailable_action_reasons(item: ItemView) -> Array[String]:
-	var result: Array[String] = []
-	var labels: Array[String] = ["Equip", "Unequip", "Use", "Identify", "Join", "Split", "Drop", "Trade"]
-	var actions: Array[ActionAvailabilityView] = [item.actions.equip, item.actions.unequip, item.actions.use, item.actions.identify, item.actions.join, item.actions.split, item.actions.drop, item.actions.trade]
-	for index: int in actions.size():
-		if actions[index] != null and not actions[index].enabled and not actions[index].reason.is_empty():
-			result.append("%s: %s" % [labels[index], actions[index].reason])
-	return result
+func _render_trade_targets(parent: VBoxContainer, item: ItemView, source: CharacterView) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "InventoryTradeRecipients"
+	panel.theme_type_variation = &"ClassicInset"
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	panel.add_child(row)
+	var heading := _label("Give %s to" % item.name, GOLD, 13)
+	heading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(heading)
+	for target: ItemTransferTargetView in item.actions.trade_targets:
+		if target.character_id == source.id:
+			continue
+		var button := Button.new()
+		button.text = target.character_name
+		button.disabled = not target.enabled
+		button.tooltip_text = target.reason if button.disabled else "Transfer this exact item instance."
+		if not button.disabled:
+			button.pressed.connect(_submit_trade.bind(item.instance_id, source.id, target.character_id))
+		row.add_child(button)
+	var cancel := Button.new()
+	cancel.text = "Cancel"
+	cancel.pressed.connect(_cancel_trade)
+	row.add_child(cancel)
+	parent.add_child(panel)
+
+
+func _submit_trade(instance_id: String, source_id: String, target_id: String) -> void:
+	_trade_mode = false
+	_trade_status = ""
+	intent_submitted.emit(PlayerIntent.trade_item(instance_id, source_id, target_id))
 
 
 func _selected_character(view: GameView) -> CharacterView:
@@ -356,6 +403,12 @@ func _content_icon(resource_type: String, resource_id: int, media: ClassicMediaC
 	fallback.add_theme_color_override("font_color", MUTED)
 	frame.add_child(fallback)
 	return frame
+
+
+func _appearance_texture(asset_id: String, media: ClassicMediaCatalog) -> Texture2D:
+	if media == null or asset_id.is_empty():
+		return null
+	return media.image_texture(media.asset_by_id(asset_id))
 
 
 func _add_item_intent_action(parent: Container, asset_id: StringName, label: String, availability: ActionAvailabilityView, intent: PlayerIntent) -> BaseButton:

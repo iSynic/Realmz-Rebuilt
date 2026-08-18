@@ -12,6 +12,7 @@ const MUTED := Color("9aa0a8")
 
 var _selected_character_id: String = ""
 var _selected_tab: StringName = &"overview"
+var _party_order_open: bool = false
 var _source_order_ids: Array[String] = []
 var _draft_order_ids: Array[String] = []
 var _vault_revisions: Array[CharacterVaultRevisionView] = []
@@ -27,6 +28,7 @@ var _vault_show_history: bool = false
 func reset() -> void:
 	_selected_character_id = ""
 	_selected_tab = &"overview"
+	_party_order_open = false
 	_source_order_ids.clear()
 	_draft_order_ids.clear()
 	_vault_inspection_revision_hash = ""
@@ -276,21 +278,50 @@ func draft_order_ids() -> Array[String]:
 	return _draft_order_ids.duplicate()
 
 
-func present(parent: VBoxContainer, view: GameView, appearance_textures: Dictionary, settings: PresentationSettings) -> void:
+func present(parent: VBoxContainer, view: GameView, appearance_textures: Dictionary, settings: PresentationSettings, media: ClassicMediaCatalog = null) -> void:
 	if parent == null or view == null:
 		return
 	if view.party_members.is_empty():
 		_add_card(parent, "No characters", "Begin a campaign or import an eligible vault character.")
 		return
-	_render_party_order(parent, view)
+	_render_party_order_summary(parent, view)
+	if _party_order_open:
+		_render_party_order(parent, view)
 	var sheet := ClassicCharacterSheet.new()
 	sheet.name = "ClassicCharacterSheet"
-	sheet.present(view.party_members, _selected_character_id, appearance_textures, settings.text_scale, _selected_tab, view.portrait_options, view.combat_icon_options, view.availability(&"change_character_appearance"))
+	sheet.present(view.party_members, _selected_character_id, appearance_textures, settings.text_scale, _selected_tab, view.portrait_options, view.combat_icon_options, view.availability(&"change_character_appearance"), media)
 	_selected_character_id = sheet.selected_character_id()
 	sheet.character_selected.connect(func(character_id: String) -> void: _selected_character_id = character_id)
 	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _selected_tab = tab_id)
 	sheet.appearance_change_requested.connect(_submit_character_appearance)
 	parent.add_child(sheet)
+
+
+func _render_party_order_summary(parent: VBoxContainer, view: GameView) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "PartyOrderSummary"
+	panel.theme_type_variation = &"ClassicInset"
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	panel.add_child(row)
+	var names: Array[String] = []
+	for index: int in view.party_members.size():
+		names.append("%d. %s" % [index + 1, view.party_members[index].name])
+	var summary := _label("Party order  •  %s" % "  →  ".join(names), MUTED, 13)
+	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	row.add_child(summary)
+	var toggle := Button.new()
+	toggle.text = "Done Reordering" if _party_order_open else "Reorder Party"
+	toggle.disabled = not view.availability(&"reorder_party").enabled
+	toggle.tooltip_text = view.availability(&"reorder_party").reason if toggle.disabled else "Stage a new complete party order."
+	if not toggle.disabled:
+		toggle.pressed.connect(func() -> void:
+			_party_order_open = not _party_order_open
+			refresh_requested.emit()
+		)
+	row.add_child(toggle)
+	parent.add_child(panel)
 
 
 func _submit_character_appearance(character_id: String, appearance_kind: StringName, appearance_id: String) -> void:
@@ -310,7 +341,7 @@ func _render_party_order(parent: VBoxContainer, view: GameView) -> void:
 		_draft_order_ids = current_ids.duplicate()
 	elif not _valid_draft(current_ids, characters_by_id):
 		_draft_order_ids = current_ids.duplicate()
-	_add_section_heading(parent, "Party Order", "Selection and battle formation use this order")
+	_add_section_heading(parent, "Reorder the party")
 	var availability := view.availability(&"reorder_party")
 	for index: int in _draft_order_ids.size():
 		var character: CharacterView = characters_by_id[_draft_order_ids[index]]
@@ -378,14 +409,15 @@ func _move_draft(index: int, offset: int) -> void:
 	refresh_requested.emit()
 
 
-func _add_section_heading(parent: Container, title: String, detail: String) -> void:
+func _add_section_heading(parent: Container, title: String, detail: String = "") -> void:
 	var row := HBoxContainer.new()
 	var heading := _label(title, GOLD, 18)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(heading)
-	var note := _label(detail, MUTED, 13)
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(note)
+	if not detail.is_empty():
+		var note := _label(detail, MUTED, 13)
+		note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		row.add_child(note)
 	parent.add_child(row)
 
 

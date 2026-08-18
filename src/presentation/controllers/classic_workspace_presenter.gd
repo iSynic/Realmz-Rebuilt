@@ -180,7 +180,7 @@ func present(screen_id: StringName, body: Container, appearance_textures: Dictio
 		&"exploration":
 			_add_card(body, "Exploration", "The map presenter occupies the central Classic viewport. Use the command rail and textbox overlay for player-facing actions.", "Day %d • %02d:%02d" % [_view.realmz_day, _view.realmz_hour, _view.realmz_minute])
 		&"character":
-			_character_controller.present(body, _view, appearance_textures, _settings)
+			_character_controller.present(body, _view, appearance_textures, _settings, _media)
 		&"allies":
 			_creature_library_controller.present_allies(body, _view, _media, _settings.text_scale)
 		&"vault":

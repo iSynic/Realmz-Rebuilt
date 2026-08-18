@@ -29,6 +29,7 @@ var _route_transition_revision: int = 0
 var _focus_keys: Dictionary = {}
 var _workspace_rect := Rect2(220.0, 100.0, 512.0, 430.0)
 var _full_height_workspace_rect := Rect2(0.0, 28.0, 992.0, 692.0)
+var _application_workspace_rect := Rect2(0.0, 28.0, 1280.0, 692.0)
 var _layout_profile: StringName = UiLayoutProfile.WIDE
 var _modal_layout_rect := Rect2(12.0, 36.0, 680.0, 556.0)
 var _campaign_layout_rect := Rect2(12.0, 36.0, 228.0, 556.0)
@@ -214,6 +215,7 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2) -> voi
 	var bottom := profile.bottom_height
 	_workspace_rect = Rect2(0.0, top, maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top - bottom))
 	_full_height_workspace_rect = Rect2(0.0, top, maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top))
+	_application_workspace_rect = Rect2(0.0, top, maxf(320.0, viewport_size.x), maxf(220.0, viewport_size.y - top))
 	_modal_layout_rect = Rect2(12.0, top + 8.0, maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - top - 16.0))
 	_campaign_layout_rect = ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
 	_setup_layout_rect = _modal_layout_rect
@@ -374,7 +376,11 @@ func _build_body() -> void:
 
 
 func _workspace_layout_rect() -> Rect2:
-	return _modal_layout_rect if _screen_id == &"vault" else _full_height_workspace_rect if _screen_id == &"inventory" else _workspace_rect
+	if _screen_id == &"vault":
+		return _modal_layout_rect
+	if _screen_id in [&"exploration", &"combat"]:
+		return _workspace_rect
+	return _application_workspace_rect
 
 
 func _mount_workspace(screen_id: StringName) -> void:

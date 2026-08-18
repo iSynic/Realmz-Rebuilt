@@ -661,10 +661,11 @@ func _on_screen_changed(screen_id: StringName) -> void:
 
 
 func _set_play_regions_visible(visible: bool) -> void:
-	_stage_frame.visible = visible
-	_bottom_region.visible = visible and _router.current_screen() == &"exploration"
-	_party_roster.visible = visible
-	play_stage_visibility_changed.emit(visible)
+	var play_route := visible and _router.current_screen() in [&"exploration", &"combat"]
+	_stage_frame.visible = play_route
+	_bottom_region.visible = play_route and _router.current_screen() == &"exploration"
+	_party_roster.visible = play_route
+	play_stage_visibility_changed.emit(play_route)
 
 
 func _on_system_action_requested(action_id: StringName, value: Variant) -> void:

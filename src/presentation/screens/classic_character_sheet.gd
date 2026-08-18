@@ -28,17 +28,19 @@ var _text_scale: float = 1.0
 var _content: VBoxContainer
 var _portrait_options: Array[CharacterAppearanceOptionView] = []
 var _combat_icon_options: Array[CharacterAppearanceOptionView] = []
+var _media: ClassicMediaCatalog
 var _appearance_availability: ActionAvailabilityView = ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are unavailable.")
 var _draft_portrait_id: String = ""
 var _draft_combat_icon_id: String = ""
 
 
-func present(characters: Array[CharacterView], initial_character_id: String = "", textures: Dictionary = {}, text_scale: float = 1.0, initial_tab: StringName = &"overview", portrait_options: Array[CharacterAppearanceOptionView] = [], combat_icon_options: Array[CharacterAppearanceOptionView] = [], appearance_availability: ActionAvailabilityView = null) -> void:
+func present(characters: Array[CharacterView], initial_character_id: String = "", textures: Dictionary = {}, text_scale: float = 1.0, initial_tab: StringName = &"overview", portrait_options: Array[CharacterAppearanceOptionView] = [], combat_icon_options: Array[CharacterAppearanceOptionView] = [], appearance_availability: ActionAvailabilityView = null, media: ClassicMediaCatalog = null) -> void:
 	_characters = characters.duplicate()
 	_textures = textures
 	_text_scale = clampf(text_scale, 1.0, 1.5)
 	_portrait_options = portrait_options.duplicate()
 	_combat_icon_options = combat_icon_options.duplicate()
+	_media = media
 	_appearance_availability = appearance_availability if appearance_availability != null else ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are unavailable.")
 	_active_tab = initial_tab if _tab_exists(initial_tab) else &"overview"
 	_selected_character_id = initial_character_id
@@ -66,10 +68,17 @@ func _rebuild() -> void:
 	var character := _selected_character()
 	_build_identity(character)
 	_build_tabs()
+	var content_frame := PanelContainer.new()
+	content_frame.name = "CharacterSheetWorkspace"
+	content_frame.theme_type_variation = &"ClassicInset"
+	content_frame.custom_minimum_size.y = 300.0
+	content_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_content = VBoxContainer.new()
 	_content.name = "CharacterSheetContent"
 	_content.add_theme_constant_override("separation", 8)
-	add_child(_content)
+	content_frame.add_child(_content)
+	add_child(content_frame)
 	match _active_tab:
 		&"conditions":
 			_build_conditions(character)
@@ -97,6 +106,9 @@ func _build_character_picker() -> void:
 	for character: CharacterView in _characters:
 		var button := Button.new()
 		button.text = character.name
+		button.icon = _textures.get(character.portrait_id) as Texture2D
+		button.expand_icon = true
+		button.custom_minimum_size = Vector2(120.0, 48.0)
 		button.toggle_mode = true
 		button.button_pressed = character.id == _selected_character_id
 		button.tooltip_text = "View %s without changing session state." % character.name
@@ -112,7 +124,9 @@ func _build_identity(character: CharacterView) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 	frame.add_child(row)
-	row.add_child(_appearance(character.portrait_id, character.name.left(1), "Portrait"))
+	var portrait := _appearance(character.portrait_id, character.name.left(1), "Portrait")
+	portrait.custom_minimum_size = Vector2(80.0, 80.0)
+	row.add_child(portrait)
 	var identity := VBoxContainer.new()
 	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	identity.add_theme_constant_override("separation", 2)
@@ -120,7 +134,9 @@ func _build_identity(character: CharacterView) -> void:
 	_add_label(identity, character.name, GOLD, 22)
 	_add_label(identity, "Level %d %s %s • %s • Age %d (%s)" % [character.level, character.race_name, character.caste_name, character.gender_name, character.age_years, character.age_group_name])
 	_add_label(identity, "HP %d/%d • SP %d/%d • Load %d/%d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.carried_load, character.maximum_load], BAD if character.current_health <= 0 else Color("e0e2e5"))
-	row.add_child(_appearance(character.combat_icon_id, "⚔", "Combat icon"))
+	var combat_icon := _appearance(character.combat_icon_id, "⚔", "Combat icon")
+	combat_icon.custom_minimum_size = Vector2(80.0, 80.0)
+	row.add_child(combat_icon)
 	add_child(frame)
 
 
@@ -172,11 +188,30 @@ func _build_equipment(character: CharacterView) -> void:
 	if character.items.is_empty():
 		_add_label(_content, "This character carries no items.", MUTED)
 		return
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 6)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content.add_child(grid)
 	for item: ItemView in character.items:
 		var state: Array[String] = ["Equipped" if item.equipped else "Carried", "Identified" if item.identified else "Unidentified"]
 		if item.charges != 0:
 			state.append("%d charges" % item.charges)
-		_add_card(_content, item.name, " • ".join(state), "%d weight • value %d\n%s" % [item.weight, item.value, item.description])
+		var panel := PanelContainer.new()
+		panel.theme_type_variation = &"ClassicInset"
+		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		panel.add_child(row)
+		row.add_child(_item_icon(item))
+		var text := VBoxContainer.new()
+		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_add_label(text, item.name, GOLD, 15)
+		_add_label(text, " • ".join(state), Color("e0e2e5"), 13)
+		_add_label(text, "%d weight • value %d" % [item.weight, item.value], MUTED, 12)
+		row.add_child(text)
+		grid.add_child(panel)
 
 
 func _build_abilities(character: CharacterView) -> void:
@@ -396,7 +431,7 @@ func _add_metrics(parent: Container, metrics: Array[CharacterMetricView]) -> voi
 
 func _add_metric_views(parent: Container, metrics: Array[CharacterMetricView]) -> void:
 	var grid := GridContainer.new()
-	grid.columns = 2
+	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 14)
 	grid.add_theme_constant_override("v_separation", 3)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -417,6 +452,26 @@ func _add_metric_views(parent: Container, metrics: Array[CharacterMetricView]) -
 			value_label.tooltip_text = metric.detail
 		grid.add_child(value_label)
 	parent.add_child(grid)
+
+
+func _item_icon(item: ItemView) -> Control:
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = Vector2(52.0, 52.0)
+	var asset: MediaAsset = _media.asset_by_resource(item.icon_resource_type, item.icon_id) if _media != null and item.icon_id != 0 else null
+	var texture := _media.image_texture(asset) if asset != null else null
+	if texture != null:
+		var image := TextureRect.new()
+		image.texture = texture
+		image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		image.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		frame.add_child(image)
+	else:
+		var fallback := _label("◈", MUTED, 18)
+		fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		frame.add_child(fallback)
+	return frame
 
 
 func _metric(metric_name: String, value: int, detail: String = "") -> CharacterMetricView:

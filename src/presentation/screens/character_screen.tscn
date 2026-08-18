@@ -3,4 +3,4 @@
 [node name="CharacterScreen" instance=ExtResource("1_base")]
 route_id = &"character"
 title = "Characters"
-description = "Classic stat sheets, saves, conditions, equipment, and party identity."
+description = ""

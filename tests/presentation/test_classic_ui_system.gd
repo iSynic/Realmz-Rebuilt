@@ -1117,8 +1117,8 @@ func _test_inventory_workspace() -> void:
 	assert_true(["Split", "Join"].all(func(label: String) -> bool: return buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text == label and not button.disabled)), "inventory exposes core-authorized stack actions")
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text.contains("not implemented")), "unsafe use remains visible with a core-owned reason")
 	var trade := buttons.filter(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Trade")[0] as Button; trade.pressed.emit()
-	assert_true(controller.select_roster_character(destination.id, view), "the persistent Party roster becomes the typed recipient selector during Trade")
-	assert_equal([intents.size(), intents[0].kind], [1, PlayerIntent.Kind.TRADE_ITEM], "roster recipient selection emits one typed item transfer")
+	controller.present(body, view, null, 1.0); var recipients := body.find_child("InventoryTradeRecipients", true, false); var recipient := _buttons_in(recipients).filter(func(button: Button) -> bool: return button.text == destination.name)[0] as Button; recipient.pressed.emit()
+	assert_equal([intents.size(), intents[0].kind], [1, PlayerIntent.Kind.TRADE_ITEM], "item-local recipient selection emits one typed transfer")
 	body.free()
 func _test_money_workspace() -> void:
 	var source := CharacterState.new("money.ui.source", "Alis", 10, 10)
@@ -1187,7 +1187,7 @@ func _test_party_order_workspace() -> void:
 	var intents: Array[PlayerIntent] = []
 	router.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
 	router.present(view)
-	router.open_screen(&"character")
+	router.open_screen(&"character"); (_buttons_in(router).filter(func(button: Button) -> bool: return button.text == "Reorder Party")[0] as Button).pressed.emit()
 	var move := _buttons_in(router).filter(func(button: Button) -> bool: return button.text == "Move Down" and not button.disabled)
 	assert_equal(move.size(), 1, "party order exposes one enabled move control")
 	move[0].pressed.emit()

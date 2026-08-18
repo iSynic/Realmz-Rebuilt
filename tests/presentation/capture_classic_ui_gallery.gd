@@ -67,11 +67,38 @@ func _capture_gallery() -> void:
 		if definition != null:
 			for index: int in 18:
 				gallery_view.party_members[0].items.append(ItemView.new(ItemInstance.new("gallery-item-%d" % index, definition.id, maxi(1, definition.initial_charges), false, index % 3 != 0), definition))
+	var gallery_names: Array[String] = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]
+	while gallery_view.party_members.size() < 6 and not gallery_view.party_members.is_empty():
+		var member_index: int = int(gallery_view.party_members.size())
+		var member_state := CharacterState.new("gallery-member-%d" % member_index, gallery_names[member_index], 8 + member_index, 10 + member_index)
+		member_state.race_id = gallery_view.party_members[0].race_id
+		member_state.caste_id = gallery_view.party_members[0].caste_id
+		member_state.armor = member_index
+		gallery_view.party_members.append(CHARACTER_VIEW_SCRIPT.new(member_state, _application.get("_active_content")))
+	if gallery_view.party_members.size() > 4:
+		var spell_definition := SpellDefinition.new("classic.spell.1101", 1101, "Magic Darts")
+		spell_definition.cost = 4
+		spell_definition.range_min = 1
+		spell_definition.range_max = 7
+		spell_definition.duration_min = 0
+		spell_definition.duration_max = 0
+		spell_definition.target_type = 1
+		spell_definition.description = "A compact bolt of magical force for one target."
+		var spell_view := SpellView.new(spell_definition)
+		spell_view.power_levels = [1, 2, 3, 4, 5, 6, 7]
+		spell_view.field_cast = ActionAvailabilityView.new(&"cast_spell", true)
+		gallery_view.party_members[4].spell_points = 40
+		gallery_view.party_members[4].maximum_spell_points = 50
+		var gallery_spells: Array[SpellView] = [spell_view]
+		gallery_view.party_members[4].spells = gallery_spells
 	_shell.present(gallery_view)
 	await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"inventory")
 	await _settle()
 	await _capture("wide-dense-inventory-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-dense-inventory-800x600")
+	await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"spells")
 	await _settle()
 	await _capture("wide-spells-1280x720")
@@ -120,18 +147,13 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("wide-level-spells-1280x720")
 	_interaction.present(null)
-	var gallery_names: Array[String] = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]
-	while gallery_view.party_members.size() < 6 and not gallery_view.party_members.is_empty():
-		var member_index: int = int(gallery_view.party_members.size())
-		var member_state := CharacterState.new("gallery-member-%d" % member_index, gallery_names[member_index], 8 + member_index, 10 + member_index)
-		member_state.race_id = gallery_view.party_members[0].race_id
-		member_state.caste_id = gallery_view.party_members[0].caste_id
-		member_state.armor = member_index
-		gallery_view.party_members.append(CHARACTER_VIEW_SCRIPT.new(member_state, _application.get("_active_content")))
 	_shell.present(gallery_view)
 	_router.open_screen(&"character")
 	await _settle()
 	await _capture("canonical-character-record-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-character-record-800x600")
+	await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"allies")
 	await _settle()
 	await _capture("canonical-allies-empty-1280x720")
