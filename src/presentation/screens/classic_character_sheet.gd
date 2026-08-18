@@ -110,7 +110,7 @@ func _build_character_picker() -> void:
 		button.text = character.name
 		button.icon = _textures.get(character.portrait_id) as Texture2D
 		button.expand_icon = true
-		button.custom_minimum_size = Vector2(120.0, 48.0)
+		button.custom_minimum_size = Vector2(88.0 if _layout_profile == UiLayoutProfile.COMPACT else 120.0, 44.0 if _layout_profile == UiLayoutProfile.COMPACT else 48.0)
 		button.toggle_mode = true
 		button.button_pressed = character.id == _selected_character_id
 		button.tooltip_text = "View %s without changing session state." % character.name
@@ -127,7 +127,7 @@ func _build_identity(character: CharacterView) -> void:
 	row.add_theme_constant_override("separation", 10)
 	frame.add_child(row)
 	var portrait := _appearance(character.portrait_id, character.name.left(1), "Portrait")
-	portrait.custom_minimum_size = Vector2(80.0, 80.0)
+	portrait.custom_minimum_size = Vector2(64.0, 64.0) if _layout_profile == UiLayoutProfile.COMPACT else Vector2(80.0, 80.0)
 	row.add_child(portrait)
 	var identity := VBoxContainer.new()
 	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -135,9 +135,9 @@ func _build_identity(character: CharacterView) -> void:
 	row.add_child(identity)
 	_add_label(identity, character.name, GOLD, 22)
 	_add_label(identity, "Level %d %s %s • %s • Age %d (%s)" % [character.level, character.race_name, character.caste_name, character.gender_name, character.age_years, character.age_group_name])
-	_add_label(identity, "HP %d/%d • SP %d/%d • Load %d/%d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.carried_load, character.maximum_load], BAD if character.current_health <= 0 else Color("e0e2e5"))
+	_add_label(identity, "ST %d/%d • SP %d/%d • AR %d • Attacks %s • Load %d/%d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.armor, character.attacks_per_round, character.carried_load, character.maximum_load], BAD if character.current_health <= 0 else Color("e0e2e5"))
 	var combat_icon := _appearance(character.combat_icon_id, "⚔", "Combat icon")
-	combat_icon.custom_minimum_size = Vector2(80.0, 80.0)
+	combat_icon.custom_minimum_size = Vector2(64.0, 64.0) if _layout_profile == UiLayoutProfile.COMPACT else Vector2(80.0, 80.0)
 	row.add_child(combat_icon)
 	add_child(frame)
 
@@ -158,21 +158,47 @@ func _build_tabs() -> void:
 
 
 func _build_overview(character: CharacterView) -> void:
-	_add_heading(_content, "Attributes")
-	_add_metrics(_content, [
+	var regions: Container = VBoxContainer.new() if _layout_profile == UiLayoutProfile.COMPACT else HBoxContainer.new()
+	regions.name = "OverviewRegions"
+	regions.add_theme_constant_override("separation", 10)
+	regions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content.add_child(regions)
+	_add_overview_region(regions, "Attributes", "OverviewAttributes", [
 		_metric("Brawn", character.brawn), _metric("Knowledge", character.knowledge), _metric("Judgment", character.judgment),
 		_metric("Agility", character.agility), _metric("Vitality", character.vitality), _metric("Luck", character.luck),
 	])
-	_add_heading(_content, "Combat and resources")
-	_add_metrics(_content, [
+	_add_overview_region(regions, "Combat profile", "OverviewCombat", [
 		_metric("Attack Bonus", character.attack_bonus), _metric("Defense Bonus", character.defense_bonus), _metric("Base To Hit", character.to_hit), _metric("Armor", character.armor),
 		_metric("Dodge", character.dodge), _metric("Missile", character.missile),
 		_metric("Two-Hand", character.two_hand), _metric("Hand-to-Hand", character.hand_to_hand), _metric("Damage Bonus", character.damage_bonus),
-		_metric("Magic Resistance", character.magic_resistance), _metric("Attacks / Round", 0, character.attacks_per_round),
-		_metric("Movement", character.movement, "%d / %d" % [character.movement, character.maximum_movement]), _metric("Experience", character.experience),
+		_metric("Magic Resistance", character.magic_resistance),
 	])
-	_add_heading(_content, "Personal wealth")
-	_add_metrics(_content, [_metric("Gold", character.gold), _metric("Gems", character.gems), _metric("Jewelry", character.jewelry)])
+	var status := _add_overview_region(regions, "Resources and wealth", "OverviewStatus", [
+		_metric("Stamina", character.current_health, "%d / %d" % [character.current_health, character.maximum_health]), _metric("Spell Points", character.spell_points, "%d / %d" % [character.spell_points, character.maximum_spell_points]),
+		_metric("Load", character.carried_load, "%d / %d" % [character.carried_load, character.maximum_load]), _metric("Movement", character.movement, "%d / %d" % [character.movement, character.maximum_movement]),
+		_metric("Attacks / Round", 0, character.attacks_per_round), _metric("Experience", character.experience),
+		_metric("Gold", character.gold), _metric("Gems", character.gems), _metric("Jewelry", character.jewelry),
+	])
+	_add_heading(status, "Current conditions")
+	if character.conditions.is_empty():
+		_add_label(status, "No active conditions.", MUTED, 13)
+	else:
+		_add_metric_views(status, character.conditions)
+
+
+func _add_overview_region(parent: Container, title: String, node_name: String, metrics: Array[CharacterMetricView]) -> VBoxContainer:
+	var frame := PanelContainer.new()
+	frame.name = node_name
+	frame.theme_type_variation = &"ClassicInset"
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.size_flags_stretch_ratio = 1.0
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 5)
+	frame.add_child(column)
+	_add_heading(column, title)
+	_add_metric_views(column, metrics)
+	parent.add_child(frame)
+	return column
 
 
 func _build_conditions(character: CharacterView) -> void:
@@ -459,23 +485,24 @@ func _add_metrics(parent: Container, metrics: Array[CharacterMetricView]) -> voi
 
 func _add_metric_views(parent: Container, metrics: Array[CharacterMetricView]) -> void:
 	var grid := GridContainer.new()
-	grid.columns = 4
+	grid.columns = 2 if _layout_profile == UiLayoutProfile.COMPACT else 4
 	grid.add_theme_constant_override("h_separation", 14)
 	grid.add_theme_constant_override("v_separation", 3)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for metric: CharacterMetricView in metrics:
 		var name_label := _label(metric.name, MUTED, 14)
-		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if _layout_profile != UiLayoutProfile.COMPACT:
+			name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		if not metric.detail.is_empty():
 			name_label.tooltip_text = metric.detail
 		grid.add_child(name_label)
 		var value_text := metric.detail if metric.value in [0, 1] and metric.detail in ["Yes", "No"] else "%+d" % metric.value if metric.value > 0 else str(metric.value)
-		if not metric.detail.is_empty() and metric.name in ["Attacks / Round", "Movement"]:
+		if not metric.detail.is_empty() and metric.name in ["Attacks / Round", "Movement", "Stamina", "Spell Points", "Load"]:
 			value_text = metric.detail
 		elif metric.detail == "Permanent":
 			value_text = "Permanent"
 		var value_label := _label(value_text, GOOD if metric.value > 0 else BAD if metric.value < 0 else Color("e0e2e5"), 14)
-		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if _layout_profile == UiLayoutProfile.COMPACT else HORIZONTAL_ALIGNMENT_RIGHT
 		if not metric.detail.is_empty():
 			value_label.tooltip_text = metric.detail
 		grid.add_child(value_label)

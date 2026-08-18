@@ -1203,11 +1203,11 @@ func _test_character_sheet_workspace() -> void:
 	var view := CharacterView.new(character)
 	view.items = [ItemView.new(ItemInstance.new("equipped-sword", "classic.item.1", 0, true, true), ItemDefinition.new("classic.item.1", 1, "Longsword", "Sword")), ItemView.new(ItemInstance.new("carried-torch", "classic.item.805", 6, false, true), ItemDefinition.new("classic.item.805", 805, "Torch", "Equipment"))]
 	assert_equal(view.gender_name, "Female", "the detached sheet preserves Classic identity")
-	var sheet := ClassicCharacterSheet.new()
-	sheet.present([view], view.id, {}, 1.0, &"equipment", [], [], ActionAvailabilityView.new(&"change_character_appearance", true), null, UiLayoutProfile.COMPACT)
-	for label: String in ["Overview", "Conditions & Saves", "Equipment", "Abilities", "Spells", "Appearance", "Race, Class & Aging", "Lifetime Record"]:
-		assert_true(_buttons_in(sheet).any(func(button: Button) -> bool: return button.text == label), "sheet exposes %s" % label)
+	var sheet := ClassicCharacterSheet.new(); sheet.present([view], view.id, {}, 1.0, &"equipment", [], [], ActionAvailabilityView.new(&"change_character_appearance", true), null, UiLayoutProfile.COMPACT)
+	for label: String in ["Overview", "Conditions & Saves", "Equipment", "Abilities", "Spells", "Appearance", "Race, Class & Aging", "Lifetime Record"]: assert_true(_buttons_in(sheet).any(func(button: Button) -> bool: return button.text == label), "sheet exposes %s" % label)
 	assert_true(sheet.find_child("EquippedItems", true, false) != null and sheet.find_child("CarriedItems", true, false) != null, "equipment separates exact equipped instances from the carried pack in compact composition")
+	sheet.present([view], view.id, {}, 1.0, &"overview", [], [], ActionAvailabilityView.new(&"change_character_appearance", true), null, UiLayoutProfile.WIDE)
+	assert_true(["OverviewAttributes", "OverviewCombat", "OverviewStatus"].all(func(node_name: String) -> bool: return sheet.find_child(node_name, true, false) != null), "overview keeps identity, combat, and resource records in three stable wide regions")
 	sheet.free()
 func _test_scene_composition() -> void:
 	var scene := load("res://src/presentation/classic_application_shell.tscn") as PackedScene

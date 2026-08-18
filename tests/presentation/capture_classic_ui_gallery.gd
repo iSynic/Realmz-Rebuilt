@@ -166,6 +166,9 @@ func _capture_gallery() -> void:
 	_router.open_screen(&"character")
 	await _settle()
 	await _capture("canonical-character-record-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-character-record-800x600")
+	await _resize(Vector2i(1280, 720))
 	var equipment_button := _button_named(_router, "Equipment")
 	if equipment_button != null:
 		equipment_button.pressed.emit()

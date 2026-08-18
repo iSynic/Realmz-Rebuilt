@@ -311,18 +311,19 @@ func _render_party_order_summary(parent: VBoxContainer, view: GameView) -> void:
 	var panel := PanelContainer.new()
 	panel.name = "PartyOrderSummary"
 	panel.theme_type_variation = &"ClassicInset"
-	var row := HBoxContainer.new()
+	var row: BoxContainer = VBoxContainer.new() if _layout_profile == UiLayoutProfile.COMPACT else HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	panel.add_child(row)
 	var names: Array[String] = []
 	for index: int in view.party_members.size():
 		names.append("%d. %s" % [index + 1, view.party_members[index].name])
-	var summary := _label("Party order  •  %s" % "  →  ".join(names), MUTED, 13)
+	var summary_text := "%d characters in party order" % names.size() if _layout_profile == UiLayoutProfile.COMPACT else "Party order  •  %s" % "  →  ".join(names)
+	var summary := _label(summary_text, MUTED, 13)
 	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	row.add_child(summary)
 	var toggle := Button.new()
-	toggle.text = "Done Reordering" if _party_order_open else "Reorder Party"
+	toggle.text = "Done" if _layout_profile == UiLayoutProfile.COMPACT and _party_order_open else "Reorder" if _layout_profile == UiLayoutProfile.COMPACT else "Done Reordering" if _party_order_open else "Reorder Party"
 	toggle.disabled = not view.availability(&"reorder_party").enabled
 	toggle.tooltip_text = view.availability(&"reorder_party").reason if toggle.disabled else "Stage a new complete party order."
 	if not toggle.disabled:
