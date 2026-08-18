@@ -243,7 +243,9 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 			pick_lock.configure(media)
 			return pick_lock
 		&"shop_action":
-			return ShopInteraction.new()
+			var shop := ShopInteraction.new()
+			shop.configure(_application_rect.size.x < 1000.0)
+			return shop
 		&"temple_action":
 			var temple := TempleInteraction.new()
 			temple.configure(media, _application_rect.size.x < 1000.0)

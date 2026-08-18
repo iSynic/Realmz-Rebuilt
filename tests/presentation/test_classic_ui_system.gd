@@ -427,7 +427,7 @@ func _test_shop_component() -> void:
 	})
 	var component := ShopInteraction.new()
 	component.build(request)
-	assert_true(component.find_child("ShopperStrip", true, false) != null and component.find_child("ShopStockColumn", true, false) != null and component.find_child("SelectedInventoryColumn", true, false) != null and component.find_child("ItemInspectorRail", true, false) != null, "shop uses the fixed shopper, stock, pack, and transaction workspace")
+	assert_true(component.find_child("ShopHeader", true, false) != null and component.find_child("ShopStockColumn", true, false) != null and component.find_child("SelectedInventoryColumn", true, false) != null and component.find_child("ItemInspectorRail", true, false) != null and component.find_child("ShopFooter", true, false) != null, "shop keeps stock, pack, selected record, and transaction actions in stable regions")
 	var buy_button := component.find_child("ShopBuy", true, false) as Button
 	assert_true(buy_button.disabled and buy_button.tooltip_text.contains("afford"), "unaffordable stock exposes its core-owned reason")
 	var unknown_item := component.find_child("Inventory_item_unknown", true, false) as Button
