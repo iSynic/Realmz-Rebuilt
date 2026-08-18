@@ -5,7 +5,7 @@
 # Ownership
 
 - Components translate an existing request payload into controls and emit the exact response payload selected by the player.
-- `TextChoiceInteraction` renders yes/no as one compact response row and authored indexed/scenario options as numbered semantic choices in the response pane. It may add `Take note` to a journal-eligible Classic acknowledgement and emits only `{ "takeNote": true }`; ordinary Continue remains an empty acknowledgement, and an already-recorded message exposes no duplicate mutation.
+- `TextChoiceInteraction` renders yes/no as one backed compact response row and authored indexed/scenario options as numbered semantic choices using the dedicated Classic choice style. The shared presenter invents no generic title for these narrative requests. It may add `Take note` to a journal-eligible Classic acknowledgement and emits only `{ "takeNote": true }`; ordinary Continue remains an empty acknowledgement, and an already-recorded message exposes no duplicate mutation.
 - `EncounterInteraction` preserves one stable original-art Action, Items, Skills, Speak, Spells, and Stop strip. Selecting a mode replaces only its contextual choice, word, item, or spell pane; unavailable commands remain disabled in place with an exact reason, and every submission retains the existing typed complex-encounter body.
 - `InteractionPresenter` owns request identity, modal visibility, and construction of `InteractionResponse`.
 - `SelectionInteraction` keeps the active character prompt in the Classic textbox while `ClassicPartyRoster` owns the numbered portrait interaction; it must not recreate a checklist or a separate Choose button. Ally body-count selection remains in its dedicated list.

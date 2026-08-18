@@ -907,7 +907,7 @@ func _test_classic_choice_context() -> void:
 	var yes_no := TextChoiceInteraction.new()
 	yes_no.build(InteractionRequest.yes_no("layout-choice", "Continue?", "Yes", "No"))
 	var yes_no_grid := yes_no.find_child("ChoiceGrid", true, false) as GridContainer
-	assert_true(yes_no_grid != null and yes_no_grid.columns == 2, "binary Classic choices share one compact semantic response row")
+	assert_true(yes_no.find_child("ChoicePane", true, false) != null and yes_no_grid != null and yes_no_grid.columns == 2 and _buttons_in(yes_no).all(func(button: Button) -> bool: return button.theme_type_variation == &"ClassicChoiceButton"), "binary Classic choices share one backed compact semantic response row")
 	yes_no.free()
 	var encounter := EncounterInteraction.new(); encounter.build(ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION))
 	var command_strip := encounter.find_child("EncounterCommandStrip", true, false) as GridContainer

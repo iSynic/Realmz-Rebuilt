@@ -423,13 +423,11 @@ static func _is_player_map_request(request: InteractionRequest) -> bool:
 
 static func _heading_for_kind(kind: StringName) -> String:
 	match kind:
-		&"acknowledge":
+		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice":
 			return ""
 		&"age_update":
 			return "Age Update"
-		&"yes_no":
-			return "Question"
-		&"encounter_choice", &"scenario_choice", &"complex_encounter", &"thief_encounter":
+		&"complex_encounter", &"thief_encounter":
 			return "Encounter"
 		&"pick_lock":
 			return "Pick Lock"
