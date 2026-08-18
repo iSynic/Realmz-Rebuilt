@@ -1006,7 +1006,7 @@ func _test_combat_playback_controller() -> void:
 	var kinds: Array[StringName] = []
 	for frame: CombatPlaybackFrame in frames:
 		kinds.append(frame.kind)
-	assert_true(kinds.has(&"move_start") and kinds.has(&"melee_attack") and frames[0].duration_seconds < 0.08, "automatic movement and physical results retain distinct accelerated frames")
+	assert_true(kinds.has(&"move_start") and kinds.has(&"melee_attack") and frames[0].duration_seconds < 0.08 and frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"move_start" and frame.automatic and InteractionPresenter.playback_status_text(frame).begins_with("Auto Turn")), "automatic movement and physical results retain distinct accelerated frames and an explicit presentation status")
 	assert_equal(kinds.count(&"spell_effect"), 8, "source-backed spell resolution retains its eight-frame family")
 	assert_true(frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"result" and frame.display_text == "8"), "damage is shown once over the target")
 	assert_equal(controller.base_view, previous, "playback retains the previous battlefield until visuals settle")

@@ -454,6 +454,19 @@ func _capture_gallery() -> void:
 		await _capture("classic-combat-spellbook-800x600")
 		await _resize(Vector2i(1280, 720))
 		await _capture("canonical-combat-spellbook-1280x720")
+		var aim_button := _shell.find_child("CombatSpellAim", true, false) as Button
+		if aim_button != null and not aim_button.disabled:
+			aim_button.pressed.emit(); await _settle(); await _capture("canonical-combat-targeting-1280x720")
+			await _resize(Vector2i(800, 600)); await _capture("classic-combat-targeting-800x600"); await _resize(Vector2i(1280, 720))
+			_application._battlefield_presenter.cancel_targeting()
+	_interaction.present(combat_request, "", gallery_view, combat_media)
+	var battle_entry := CombatPlaybackFrame.new(&"battle_cue", 0.28); battle_entry.display_text = "Battle begins"
+	_application._battlefield_presenter.present_playback_frame(battle_entry); _interaction.present_combat_playback_mask(battle_entry); await _settle(); await _capture("canonical-combat-entry-1280x720")
+	var automatic_move := CombatPlaybackFrame.new(&"move_start", 0.02); automatic_move.actor_id = gallery_hero_id; automatic_move.from_coordinate = Vector2i(45, 45); automatic_move.to_coordinate = Vector2i(46, 45); automatic_move.automatic = true
+	_application._battlefield_presenter.present_playback_frame(automatic_move); _interaction.update_combat_playback_frame(automatic_move); await _settle(); await _capture("canonical-combat-auto-playback-1280x720")
+	var victory_cue := CombatPlaybackFrame.new(&"battle_cue", 0.28); victory_cue.display_text = "Victory"
+	_application._battlefield_presenter.present_playback_frame(victory_cue); _interaction.update_combat_playback_frame(victory_cue); await _settle(); await _capture("canonical-combat-terminal-cue-1280x720")
+	_application._battlefield_presenter.clear_playback_frame()
 	_interaction.present(null)
 	gallery_view.combat_view = null
 	await _resize(Vector2i(1280, 720))

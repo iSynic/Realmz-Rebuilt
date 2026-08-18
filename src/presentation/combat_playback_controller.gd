@@ -164,16 +164,19 @@ func _choose_base_view(previous: GameView, final: GameView) -> GameView:
 func _build_frames(events: Array[DomainEvent]) -> void:
 	var positions := _positions_for(base_view)
 	var hidden: Array[String] = []
+	var accelerated_sequence := false
 	var automatic_sequence := false
 	for event: DomainEvent in events:
 		if event.kind == &"combat_auto_started":
+			accelerated_sequence = true
 			automatic_sequence = true
 			continue
 		if event.kind == &"combat_auto_completed":
+			accelerated_sequence = false
 			automatic_sequence = false
 			continue
 		if event.kind == &"battle_started":
-			automatic_sequence = true
+			accelerated_sequence = true
 		var first_frame_index := _frames.size()
 		match event.kind:
 			&"sound_requested":
@@ -228,13 +231,15 @@ func _build_frames(events: Array[DomainEvent]) -> void:
 				_frames.append(retreat)
 				if not actor_id.is_empty() and not hidden.has(actor_id):
 					hidden.append(actor_id)
-		if automatic_sequence or bool(event.payload.get("automatic", false)):
-			_accelerate_frames(first_frame_index)
+		var automatic_event := automatic_sequence or bool(event.payload.get("automatic", false))
+		if accelerated_sequence or automatic_event:
+			_accelerate_frames(first_frame_index, automatic_event)
 
 
-func _accelerate_frames(first_frame_index: int) -> void:
+func _accelerate_frames(first_frame_index: int, automatic: bool) -> void:
 	for index: int in range(first_frame_index, _frames.size()):
 		var frame := _frames[index]
+		frame.automatic = automatic
 		if frame.sound_event != null or frame.duration_seconds <= 0.0:
 			continue
 		frame.duration_seconds *= AUTOMATIC_PLAYBACK_SCALE

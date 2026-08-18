@@ -18,6 +18,7 @@ var effect_resource_type: String = "cicn"
 var effect_resource_id: int = 0
 var battle_tile_id: int = 0
 var sound_event: DomainEvent
+var automatic: bool = false
 
 
 func _init(frame_kind: StringName, frame_duration_seconds: float) -> void:

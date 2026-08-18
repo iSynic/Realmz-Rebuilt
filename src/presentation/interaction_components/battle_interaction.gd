@@ -234,7 +234,7 @@ func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
 func update_battlefield_targeting(selection: CombatTargetingState) -> void:
 	if not _targeting_active or _targeting_status_label == null or _targeting_confirm_button == null:
 		return
-	_targeting_status_label.text = selection.status_text
+	_targeting_status_label.text = "Targeting • %s" % selection.status_text
 	_targeting_status_label.tooltip_text = selection.status_text
 	_targeting_confirm_button.disabled = not selection.can_confirm()
 
@@ -288,7 +288,7 @@ func _start_targeting(configuration: CombatTargetingRequest, parent: Container) 
 	_targeting_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_targeting_controls.add_theme_constant_override("separation", 3)
 	parent.add_child(_targeting_controls)
-	_targeting_status_label = _add_hint_to(_targeting_controls, "Choose a target on the battlefield.")
+	_targeting_status_label = _add_hint_to(_targeting_controls, "Targeting • Choose a target on the battlefield.")
 	_targeting_status_label.add_theme_font_size_override("font_size", 12)
 	_targeting_status_label.max_lines_visible = 1
 	_targeting_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

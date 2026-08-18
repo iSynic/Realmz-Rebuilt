@@ -34,6 +34,7 @@ var _combat_rect := Rect2(0.0, 530.0, 1280.0, 190.0)
 var _application_rect := Rect2(0.0, 32.0, 1280.0, 688.0)
 var _passive_text: bool = false
 var _playback_masked: bool = false
+var _playback_status_label: Label
 
 
 func _notification(what: int) -> void:
@@ -103,7 +104,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	call_deferred("_prepare_interaction_focus")
 
 
-func present_combat_playback_mask() -> void:
+func present_combat_playback_mask(frame: CombatPlaybackFrame = null) -> void:
 	_request = null
 	_passive_text = false
 	_playback_masked = true
@@ -114,10 +115,25 @@ func present_combat_playback_mask() -> void:
 	_prompt.visible = false
 	_stage_opaque_backing.visible = false
 	_stage_backing.visible = false
-	_add_hint("Resolving combat…  Press Space to skip visual playback.")
+	_playback_status_label = _add_hint(playback_status_text(frame))
+	_playback_status_label.name = "CombatPlaybackStatus"
 	visible = true
 	_claim_modal_layer()
 	_apply_classic_region()
+
+
+func update_combat_playback_frame(frame: CombatPlaybackFrame) -> void:
+	if _playback_masked and _playback_status_label != null:
+		_playback_status_label.text = playback_status_text(frame)
+
+
+static func playback_status_text(frame: CombatPlaybackFrame) -> String:
+	if frame == null:
+		return "Resolving combat…  •  Space skips visual playback"
+	var action := frame.display_text
+	if action.is_empty():
+		action = String(frame.kind).replace("_", " ").capitalize()
+	return "%s%s  •  Space skips visual playback" % ["Auto Turn • " if frame.automatic else "", action]
 
 
 func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Rect2 = Rect2()) -> void:
@@ -303,6 +319,7 @@ static func response_for(request: InteractionRequest, body: InteractionResponse.
 func _clear_options() -> void:
 	combat_spellbook_closed.emit()
 	_component = null
+	_playback_status_label = null
 	_options.visible = false
 	for child: Node in _options.get_children():
 		_options.remove_child(child)
@@ -372,13 +389,14 @@ static func interaction_region(request: InteractionRequest, textbox_rect: Rect2,
 	return combat_rect if combat_rect.has_area() else textbox_rect
 
 
-func _add_hint(text: String) -> void:
+func _add_hint(text: String) -> Label:
 	_options.visible = true
 	var label := Label.new()
 	label.text = text
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_color_override("font_color", Color("d5b45d"))
 	_options.add_child(label)
+	return label
 
 
 func _focus_first_control() -> void:

@@ -67,7 +67,7 @@ func _on_step_committed(step: SessionStep) -> void:
 		_deferred_step = step
 		_deferred_view = game_view
 		_present_view(_combat_playback.base_view, false)
-		_interaction_presenter.present_combat_playback_mask()
+		_interaction_presenter.present_combat_playback_mask(_combat_playback.current_frame())
 		set_process(true)
 		return
 	_present_committed_step(step, game_view, true)
@@ -90,6 +90,7 @@ func _present_committed_step(step: SessionStep, game_view: GameView, include_aud
 
 func _on_combat_playback_frame_changed(frame: CombatPlaybackFrame) -> void:
 	_battlefield_presenter.present_playback_frame(frame)
+	_interaction_presenter.update_combat_playback_frame(frame)
 
 
 func _on_combat_playback_sound_requested(event: DomainEvent) -> void:
@@ -182,7 +183,7 @@ func _present_current_view(include_interaction: bool = true) -> void:
 		var frame := _combat_playback.current_frame()
 		if frame != null:
 			_battlefield_presenter.present_playback_frame(frame)
-		_interaction_presenter.present_combat_playback_mask()
+		_interaction_presenter.present_combat_playback_mask(frame)
 		return
 	var game_view := _session_controller.view()
 	_present_view(game_view, include_interaction)
