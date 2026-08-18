@@ -431,9 +431,150 @@ func _appearance_option_by_id(option_id: String, portrait: bool) -> CharacterApp
 
 func _build_creator_review() -> void:
 	creator_page.add_child(_label("Review Classic Roll", GOLD, 20))
-	review_label = _add_label(creator_page, "Generating the character through Classic rules…", MUTED)
+	review_label = _add_label(creator_page, "Generating the character through Classic rules…", MUTED, 13)
+	review_label.name = "ReviewStatus"
 	review_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_update_creator_review()
+	if view == null or view.character_draft == null:
+		return
+	var character := view.character_draft
+	creator_page.add_child(_build_review_identity(character))
+	var records := BoxContainer.new()
+	records.name = "ReviewRecordPanels"
+	records.vertical = layout_profile == UiLayoutProfile.COMPACT
+	records.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	records.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	records.add_theme_constant_override("separation", 8)
+	creator_page.add_child(records)
+	_add_review_record(records, "ReviewAttributes", "Attributes", _review_attribute_lines(character))
+	_add_review_record(records, "ReviewCombat", "Combat", _review_combat_lines(character))
+	_build_review_saves_equipment(records, character)
+	var restriction := _add_label(creator_page, _creation_context(), MUTED, 12)
+	restriction.name = "ReviewCampaignContext"
+
+func _build_review_identity(character: CharacterView) -> Control:
+	_ensure_appearance_textures()
+	var panel := PanelContainer.new()
+	panel.name = "ReviewIdentity"
+	panel.theme_type_variation = &"ClassicInset"
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	panel.add_child(row)
+	var portrait := TextureRect.new()
+	portrait.name = "ReviewPortrait"
+	portrait.custom_minimum_size = Vector2(80.0, 72.0)
+	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	portrait.texture = _appearance_textures.get(character.portrait_id) as Texture2D
+	if portrait.texture != null:
+		row.add_child(portrait)
+	else:
+		portrait.free()
+		var unavailable := _label("Portrait unavailable", MUTED, 12)
+		unavailable.name = "ReviewPortraitUnavailable"
+		unavailable.custom_minimum_size = Vector2(80.0, 72.0)
+		row.add_child(unavailable)
+	var identity := VBoxContainer.new()
+	identity.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	identity.add_child(_label(character.name, GOLD, 18))
+	identity.add_child(_label("Level %d • %s %s • %s" % [character.level, character.race_name, character.caste_name, character.gender_name], Color("e0e2e5"), 14))
+	identity.add_child(_label("Age %d • %s" % [character.age_years, character.age_group_name], MUTED, 12))
+	row.add_child(identity)
+	var icon := TextureRect.new()
+	icon.name = "ReviewCombatIcon"
+	icon.custom_minimum_size = Vector2(64.0, 64.0)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.texture = _appearance_textures.get(character.combat_icon_id) as Texture2D
+	if icon.texture != null:
+		row.add_child(icon)
+	else:
+		icon.free()
+		var unavailable := _label("Battle icon\nunavailable", MUTED, 11)
+		unavailable.name = "ReviewCombatIconUnavailable"
+		unavailable.custom_minimum_size = Vector2(64.0, 64.0)
+		row.add_child(unavailable)
+	return panel
+
+func _add_review_record(parent: Container, node_name: String, title: String, lines: Array[String]) -> void:
+	var body := _add_creator_panel(parent, node_name, title, 1.0)
+	for line: String in lines:
+		var label := _add_label(body, line, Color("e0e2e5"), 12)
+		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		label.tooltip_text = line
+
+func _review_attribute_lines(character: CharacterView) -> Array[String]:
+	return [
+		"Brawn  %d" % character.brawn,
+		"Knowledge  %d" % character.knowledge,
+		"Judgment  %d" % character.judgment,
+		"Agility  %d" % character.agility,
+		"Vitality  %d" % character.vitality,
+		"Luck  %d" % character.luck,
+	]
+
+func _review_combat_lines(character: CharacterView) -> Array[String]:
+	return [
+		"Stamina  %d/%d" % [character.current_health, character.maximum_health],
+		"Spell Points  %d/%d" % [character.spell_points, character.maximum_spell_points],
+		"Armor  %d • To Hit  %d" % [character.armor, character.to_hit],
+		"Dodge  %d • Missile  %d" % [character.dodge, character.missile],
+		"Two-Hand  %d • Hand-to-Hand  %d" % [character.two_hand, character.hand_to_hand],
+		"Damage  %+d • Movement  %d" % [character.damage_bonus, character.maximum_movement],
+		"Magic Resistance  %d%%" % character.magic_resistance,
+	]
+
+func _build_review_saves_equipment(parent: Container, character: CharacterView) -> void:
+	var body := _add_creator_panel(parent, "ReviewSavesEquipment", "Saves & Equipment", 1.0)
+	for index: int in range(0, character.saving_throws.size(), 2):
+		var left: CharacterMetricView = character.saving_throws[index]
+		var text := "%s %d" % [left.name, left.value]
+		if index + 1 < character.saving_throws.size():
+			var right: CharacterMetricView = character.saving_throws[index + 1]
+			text += " • %s %d" % [right.name, right.value]
+		body.add_child(_label(text, Color("e0e2e5"), 12))
+	body.add_child(_label("Starting Equipment", GOLD, 12))
+	if character.items.is_empty():
+		body.add_child(_label("None", MUTED, 12))
+		return
+	var item_scroll := ScrollContainer.new()
+	item_scroll.name = "ReviewItemScroll"
+	item_scroll.custom_minimum_size.y = 72.0
+	item_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	item_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	var items := VBoxContainer.new()
+	items.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for item: ItemView in character.items:
+		items.add_child(_review_item_row(item))
+	item_scroll.add_child(items)
+	body.add_child(item_scroll)
+
+func _review_item_row(item: ItemView) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	var asset := media.asset_by_resource(item.icon_resource_type, item.icon_id) if media != null and item.icon_id > 0 else null
+	var texture := media.image_texture(asset) if media != null and asset != null else null
+	if texture != null:
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(28.0, 28.0)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.texture = texture
+		row.add_child(icon)
+	else:
+		var unavailable := _label("?", MUTED, 14)
+		unavailable.custom_minimum_size = Vector2(28.0, 28.0)
+		unavailable.tooltip_text = "Item art unavailable for the exact Classic resource."
+		row.add_child(unavailable)
+	var item_text := _label("%s%s" % ["Equipped • " if item.equipped else "", item.name], Color("e0e2e5"), 12)
+	item_text.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	item_text.tooltip_text = item.name
+	item_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(item_text)
+	return row
 
 func _build_creator_spells() -> void:
 	creator_page.add_child(_label("Starting Spells", GOLD, 20))
@@ -675,15 +816,21 @@ func _update_creator_review() -> void:
 		return
 	if view == null or view.character_draft == null:
 		review_label.text = "The Classic character roll has not completed."
+		review_label.visible = true
 		return
-	var character := view.character_draft
-	review_label.text = "%s • Level %d %s %s\nHP %d/%d • SP %d/%d • Age %d (%s)\nBrawn %d • Knowledge %d • Judgment %d • Agility %d • Vitality %d • Luck %d\nArmor %d • To Hit %d • Dodge %d • Missile %d • Two-Hand %d • Hand-to-Hand %d • Damage %+d\nMovement %d • Magic Resistance %d%%" % [character.name, character.level, character.race_name, character.caste_name, character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.age_years, character.age_group_name, character.brawn, character.knowledge, character.judgment, character.agility, character.vitality, character.luck, character.armor, character.to_hit, character.dodge, character.missile, character.two_hand, character.hand_to_hand, character.damage_bonus, character.maximum_movement, character.magic_resistance]
+	review_label.text = ""
+	review_label.visible = false
 
 func _apply_creator_layout(profile_id: StringName) -> void:
 	if creator != null:
 		creator.vertical = profile_id == UiLayoutProfile.COMPACT
 	if race_class_columns != null:
 		race_class_columns.vertical = false
+	var review_records: BoxContainer
+	if creator_page != null:
+		review_records = creator_page.find_child("ReviewRecordPanels", true, false) as BoxContainer
+	if review_records != null:
+		review_records.vertical = profile_id == UiLayoutProfile.COMPACT
 	_state.apply_setup_mode_layout()
 
 func apply_creator_layout(profile_id: StringName) -> void:

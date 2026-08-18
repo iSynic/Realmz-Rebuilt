@@ -1075,7 +1075,7 @@ func _test_character_vault_workspace() -> void:
 	assert_true(router.full_stage_overlay_visible(), "Character Files owns the complete stage")
 	var buttons := _buttons_in(router)
 	assert_true(buttons.any(func(button: Button) -> bool: return button.text == "Import this revision"), "vault exposes explicit import")
-	router.free()
+	router.free(); var review_router := ClassicScreenRouter.new(); (Engine.get_main_loop() as SceneTree).root.add_child(review_router); review_router.initialize(); var review_setup := review_router.setup_controller; var review_view := GameView.new(2, true, null); review_view.party_setup_available = true; review_view.campaign_summary = CampaignSummaryView.new(); review_view.character_draft = CharacterView.new(CharacterState.new("creator.review", "Ari", 12, 12)); review_setup.setup_mode = &"creator"; review_setup.creator_step = 3; review_setup.layout_profile = UiLayoutProfile.COMPACT; review_router.present(review_view); assert_true(review_setup.creator_page.find_child("ReviewIdentity", true, false) != null and review_setup.creator_page.find_child("ReviewAttributes", true, false) != null and review_setup.creator_page.find_child("ReviewCombat", true, false) != null and review_setup.creator_page.find_child("ReviewSavesEquipment", true, false) != null and review_setup.creator_page.find_child("ReviewPortraitUnavailable", true, false) != null and (review_setup.creator_page.find_child("ReviewRecordPanels", true, false) as BoxContainer).vertical, "Review uses stacked compact typed records and makes unresolved exact media explicit"); review_router.free()
 func _test_field_spell_workspace() -> void:
 	var body := VBoxContainer.new()
 	var controller := SpellsWorkspaceController.new()

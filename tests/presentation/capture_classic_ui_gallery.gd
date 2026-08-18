@@ -51,6 +51,17 @@ func _capture_gallery() -> void:
 	setup.render_creator_step()
 	await _settle()
 	await _capture("canonical-character-creator-appearance-1280x720")
+	var review_state := CharacterState.new("gallery.creator", "Ari", 18, 18)
+	review_state.race_id = setup_view.race_options[0].id
+	review_state.caste_id = setup_view.caste_options[0].id
+	review_state.portrait_id = setup_view.portrait_options[0].id if not setup_view.portrait_options.is_empty() else ""
+	review_state.combat_icon_id = setup_view.combat_icon_options[0].id if not setup_view.combat_icon_options.is_empty() else ""
+	setup_view.character_draft = CharacterView.new(review_state)
+	setup.creator_step = 3
+	setup.render_creator_step()
+	await _capture("canonical-character-creator-review-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("compact-character-creator-review-800x600")
 	setup.reset_creator(true)
 	await _settle()
 	var member := CharacterCreationSpec.new("Ari", setup_view.race_options[0].id, setup_view.caste_options[0].id, 1)
