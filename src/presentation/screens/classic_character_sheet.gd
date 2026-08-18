@@ -32,15 +32,17 @@ var _media: ClassicMediaCatalog
 var _appearance_availability: ActionAvailabilityView = ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are unavailable.")
 var _draft_portrait_id: String = ""
 var _draft_combat_icon_id: String = ""
+var _layout_profile: StringName = UiLayoutProfile.WIDE
 
 
-func present(characters: Array[CharacterView], initial_character_id: String = "", textures: Dictionary = {}, text_scale: float = 1.0, initial_tab: StringName = &"overview", portrait_options: Array[CharacterAppearanceOptionView] = [], combat_icon_options: Array[CharacterAppearanceOptionView] = [], appearance_availability: ActionAvailabilityView = null, media: ClassicMediaCatalog = null) -> void:
+func present(characters: Array[CharacterView], initial_character_id: String = "", textures: Dictionary = {}, text_scale: float = 1.0, initial_tab: StringName = &"overview", portrait_options: Array[CharacterAppearanceOptionView] = [], combat_icon_options: Array[CharacterAppearanceOptionView] = [], appearance_availability: ActionAvailabilityView = null, media: ClassicMediaCatalog = null, layout_profile: StringName = UiLayoutProfile.WIDE) -> void:
 	_characters = characters.duplicate()
 	_textures = textures
 	_text_scale = clampf(text_scale, 1.0, 1.5)
 	_portrait_options = portrait_options.duplicate()
 	_combat_icon_options = combat_icon_options.duplicate()
 	_media = media
+	_layout_profile = layout_profile
 	_appearance_availability = appearance_availability if appearance_availability != null else ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are unavailable.")
 	_active_tab = initial_tab if _tab_exists(initial_tab) else &"overview"
 	_selected_character_id = initial_character_id
@@ -184,34 +186,60 @@ func _build_conditions(character: CharacterView) -> void:
 
 
 func _build_equipment(character: CharacterView) -> void:
-	_add_heading(_content, "Equipment and carried items", "%d of 30 slots" % character.items.size())
+	_add_heading(_content, "Equipment", "%d of 30 inventory slots • Load %d/%d" % [character.items.size(), character.carried_load, character.maximum_load])
 	if character.items.is_empty():
 		_add_label(_content, "This character carries no items.", MUTED)
 		return
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 8)
-	grid.add_theme_constant_override("v_separation", 6)
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_content.add_child(grid)
+	var equipped: Array[ItemView] = []
+	var carried: Array[ItemView] = []
 	for item: ItemView in character.items:
-		var state: Array[String] = ["Equipped" if item.equipped else "Carried", "Identified" if item.identified else "Unidentified"]
-		if item.charges != 0:
-			state.append("%d charges" % item.charges)
-		var panel := PanelContainer.new()
-		panel.theme_type_variation = &"ClassicInset"
-		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 8)
-		panel.add_child(row)
-		row.add_child(_item_icon(item))
-		var text := VBoxContainer.new()
-		text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_add_label(text, item.name, GOLD, 15)
-		_add_label(text, " • ".join(state), Color("e0e2e5"), 13)
-		_add_label(text, "%d weight • value %d" % [item.weight, item.value], MUTED, 12)
-		row.add_child(text)
-		grid.add_child(panel)
+		(equipped if item.equipped else carried).append(item)
+	var regions: Container = VBoxContainer.new() if _layout_profile == UiLayoutProfile.COMPACT else HBoxContainer.new()
+	regions.name = "EquipmentRegions"
+	regions.add_theme_constant_override("separation", 10)
+	regions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content.add_child(regions)
+	_build_item_region(regions, "Equipped", equipped, "No items are equipped.")
+	_build_item_region(regions, "Carried", carried, "No unequipped items are carried.")
+
+
+func _build_item_region(parent: Container, title: String, items: Array[ItemView], empty_text: String) -> void:
+	var frame := PanelContainer.new()
+	frame.name = "%sItems" % title
+	frame.theme_type_variation = &"ClassicInset"
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.size_flags_stretch_ratio = 1.0
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 5)
+	frame.add_child(column)
+	_add_heading(column, title, "%d item%s" % [items.size(), "" if items.size() == 1 else "s"])
+	if items.is_empty():
+		_add_label(column, empty_text, MUTED, 13)
+	else:
+		for item: ItemView in items:
+			column.add_child(_equipment_item_card(item))
+	parent.add_child(frame)
+
+
+func _equipment_item_card(item: ItemView) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = &"ClassicInset"
+	panel.tooltip_text = "Item instance %s" % item.instance_id
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	panel.add_child(row)
+	row.add_child(_item_icon(item))
+	var text := VBoxContainer.new()
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var facts: Array[String] = ["Identified" if item.identified else "Unidentified"]
+	if item.charges != 0:
+		facts.append("%d charges" % item.charges)
+	_add_label(text, item.name, GOLD, 15)
+	_add_label(text, " • ".join(facts), Color("e0e2e5"), 13)
+	_add_label(text, "%d weight • value %d" % [item.weight, item.value], MUTED, 12)
+	row.add_child(text)
+	return panel
 
 
 func _build_abilities(character: CharacterView) -> void:

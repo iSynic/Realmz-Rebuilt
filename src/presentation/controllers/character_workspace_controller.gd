@@ -22,7 +22,13 @@ var _vault_view: GameView
 var _vault_appearance_textures: Dictionary = {}
 var _vault_text_scale: float = 1.0
 var _vault_back_label: String = "Back"
+var _vault_media: ClassicMediaCatalog
 var _vault_show_history: bool = false
+var _layout_profile: StringName = UiLayoutProfile.WIDE
+
+
+func set_layout_profile(profile_id: StringName) -> void:
+	_layout_profile = profile_id
 
 
 func reset() -> void:
@@ -35,6 +41,7 @@ func reset() -> void:
 	_vault_show_history = false
 	_vault_parent = null
 	_vault_view = null
+	_vault_media = null
 
 
 func set_vault_revisions(revisions: Array[CharacterVaultRevisionView]) -> void:
@@ -53,7 +60,7 @@ func handle_vault_back() -> bool:
 	return true
 
 
-func present_vault(parent: VBoxContainer, view: GameView, appearance_textures: Dictionary, text_scale: float, back_label: String = "Back") -> void:
+func present_vault(parent: VBoxContainer, view: GameView, appearance_textures: Dictionary, text_scale: float, back_label: String = "Back", media: ClassicMediaCatalog = null) -> void:
 	if parent == null:
 		return
 	_vault_parent = parent
@@ -61,6 +68,7 @@ func present_vault(parent: VBoxContainer, view: GameView, appearance_textures: D
 	_vault_appearance_textures = appearance_textures
 	_vault_text_scale = text_scale
 	_vault_back_label = back_label
+	_vault_media = media
 	_clear(parent)
 	if not _vault_inspection_revision_hash.is_empty():
 		_render_vault_inspection()
@@ -213,7 +221,7 @@ func _inspect_vault(revision_hash: String) -> void:
 
 func _refresh_vault() -> void:
 	if _vault_parent != null:
-		present_vault(_vault_parent, _vault_view, _vault_appearance_textures, _vault_text_scale, _vault_back_label)
+		present_vault(_vault_parent, _vault_view, _vault_appearance_textures, _vault_text_scale, _vault_back_label, _vault_media)
 
 
 func _render_vault_inspection() -> void:
@@ -252,7 +260,9 @@ func _render_vault_inspection() -> void:
 		_selected_tab,
 		_vault_view.portrait_options if _vault_view != null else [],
 		_vault_view.combat_icon_options if _vault_view != null else [],
-		ActionAvailabilityView.new(&"change_character_appearance", false, "Vault inspection never changes a stored revision.")
+		ActionAvailabilityView.new(&"change_character_appearance", false, "Vault inspection never changes a stored revision."),
+		_vault_media,
+		_layout_profile
 	)
 	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _selected_tab = tab_id)
 	_vault_parent.add_child(sheet)
@@ -289,7 +299,7 @@ func present(parent: VBoxContainer, view: GameView, appearance_textures: Diction
 		_render_party_order(parent, view)
 	var sheet := ClassicCharacterSheet.new()
 	sheet.name = "ClassicCharacterSheet"
-	sheet.present(view.party_members, _selected_character_id, appearance_textures, settings.text_scale, _selected_tab, view.portrait_options, view.combat_icon_options, view.availability(&"change_character_appearance"), media)
+	sheet.present(view.party_members, _selected_character_id, appearance_textures, settings.text_scale, _selected_tab, view.portrait_options, view.combat_icon_options, view.availability(&"change_character_appearance"), media, _layout_profile)
 	_selected_character_id = sheet.selected_character_id()
 	sheet.character_selected.connect(func(character_id: String) -> void: _selected_character_id = character_id)
 	sheet.tab_changed.connect(func(tab_id: StringName) -> void: _selected_tab = tab_id)

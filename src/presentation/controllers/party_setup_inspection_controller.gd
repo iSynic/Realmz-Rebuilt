@@ -63,7 +63,7 @@ func _render_setup_character_inspection() -> void:
 	var sheet := ClassicCharacterSheet.new()
 	sheet.name = "PartySetupCharacterSheet"
 	sheet.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sheet.present(_state.view.party_members, _state.setup_inspection_character_id, _state._appearance_textures, _state.settings.text_scale, &"overview", _state.view.portrait_options, _state.view.combat_icon_options, ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are available after beginning the adventure."))
+	sheet.present(_state.view.party_members, _state.setup_inspection_character_id, _state._appearance_textures, _state.settings.text_scale, &"overview", _state.view.portrait_options, _state.view.combat_icon_options, ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are available after beginning the adventure."), _state.media, _state.layout_profile)
 	sheet.character_selected.connect(func(character_id: String) -> void: _state.setup_inspection_character_id = character_id)
 	scroll.add_child(sheet)
 	_state.setup_inspection_overlay.visible = true

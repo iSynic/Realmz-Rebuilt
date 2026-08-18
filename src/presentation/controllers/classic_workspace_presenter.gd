@@ -31,6 +31,7 @@ var _creature_library_controller := CREATURE_LIBRARY_CONTROLLER.new()
 
 
 func set_layout_profile(profile_id: StringName) -> void:
+	_character_controller.set_layout_profile(profile_id)
 	_creature_library_controller.set_layout_profile(profile_id)
 
 
@@ -188,7 +189,7 @@ func present(screen_id: StringName, body: Container, appearance_textures: Dictio
 		&"allies":
 			_creature_library_controller.present_allies(body, _view, _media, _settings.text_scale)
 		&"vault":
-			_character_controller.present_vault(body, _view, appearance_textures, _settings.text_scale, vault_back_label)
+			_character_controller.present_vault(body, _view, appearance_textures, _settings.text_scale, vault_back_label, _media)
 		&"inventory":
 			_inventory_controller.present(body, _view, _media, _settings.text_scale)
 		&"spells":
