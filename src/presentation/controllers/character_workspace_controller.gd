@@ -74,6 +74,7 @@ func present_vault(parent: VBoxContainer, view: GameView, appearance_textures: D
 		_render_vault_inspection()
 		return
 	var header := HBoxContainer.new()
+	header.name = "CharacterFilesHeader"
 	header.add_theme_constant_override("separation", 8)
 	var back := Button.new()
 	back.text = back_label
@@ -88,11 +89,15 @@ func present_vault(parent: VBoxContainer, view: GameView, appearance_textures: D
 	if _vault_revisions.is_empty():
 		_add_card(parent, "Character vault is empty", "No immutable .r2char revisions are installed. New characters can be published after they are added to a campaign party.")
 		return
-	var campaign_label := view.campaign_summary.title if view != null and view.campaign_summary != null else "No campaign selected"
-	parent.add_child(_label("Eligibility for %s" % campaign_label, GOLD, 15))
-	var list := VBoxContainer.new()
+	var context := "Reusable characters"
+	if view != null and view.campaign_summary != null:
+		context = "Reusable characters • eligibility for %s" % view.campaign_summary.title
+	parent.add_child(_label(context, GOLD, 15))
+	var list := GridContainer.new()
 	list.name = "CharacterFileList"
-	list.add_theme_constant_override("separation", 6)
+	list.columns = 1 if _layout_profile == UiLayoutProfile.COMPACT else 2
+	list.add_theme_constant_override("h_separation", 8)
+	list.add_theme_constant_override("v_separation", 8)
 	for revision: CharacterVaultRevisionView in current_revisions:
 		_render_vault_current_row(list, revision, view)
 	parent.add_child(list)
@@ -125,50 +130,78 @@ func _current_vault_revisions() -> Array[CharacterVaultRevisionView]:
 
 func _render_vault_current_row(parent: Container, revision: CharacterVaultRevisionView, view: GameView) -> void:
 	var panel := PanelContainer.new()
+	panel.name = "CharacterFile_%s" % revision.character_id.validate_node_name()
 	panel.theme_type_variation = &"ClassicInset"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var card := VBoxContainer.new()
+	card.custom_minimum_size.y = 138.0
+	card.add_theme_constant_override("separation", 6)
+	panel.add_child(card)
 	var row := HBoxContainer.new()
-	row.custom_minimum_size.y = 78.0
-	row.add_theme_constant_override("separation", 10)
-	panel.add_child(row)
+	row.add_theme_constant_override("separation", 8)
+	card.add_child(row)
+	var media_pair := HBoxContainer.new()
+	media_pair.name = "StoredAppearancePair"
+	media_pair.add_theme_constant_override("separation", 3)
 	var portrait := TextureRect.new()
-	portrait.custom_minimum_size = Vector2(64.0, 64.0)
+	portrait.name = "StoredPortrait"
+	portrait.custom_minimum_size = Vector2(58.0, 58.0)
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	portrait.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	portrait.texture = _vault_appearance_textures.get(revision.portrait_id) as Texture2D
-	row.add_child(portrait)
+	media_pair.add_child(portrait)
+	var tactical := TextureRect.new()
+	tactical.name = "StoredTacticalIcon"
+	tactical.custom_minimum_size = Vector2(58.0, 58.0)
+	tactical.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tactical.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tactical.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	if revision.character != null:
+		tactical.texture = _vault_appearance_textures.get(revision.character.combat_icon_id) as Texture2D
+	media_pair.add_child(tactical)
+	row.add_child(media_pair)
 	var summary := VBoxContainer.new()
 	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary.add_child(_label(revision.name, GOLD, 18))
 	var character := revision.character
 	var identity := "Level %d • %s / %s" % [revision.level, character.race_name if character != null else revision.race_id, character.caste_name if character != null else revision.caste_id]
 	summary.add_child(_label(identity, Color("e0e2e5"), 14))
-	var facts := "Revision %s" % revision.revision_hash.left(12)
+	var facts := "Stored character record"
 	if character != null:
 		facts = "ST %d/%d • SP %d/%d • AR %d • Load %d/%d" % [character.current_health, character.maximum_health, character.spell_points, character.maximum_spell_points, character.armor, character.carried_load, character.maximum_load]
 	summary.add_child(_label(facts, MUTED, 12))
+	var origin := "Realmz character file" if revision.source_campaign_id.is_empty() else "From %s" % revision.source_campaign_id
+	if not revision.publication_label.is_empty():
+		origin += " • %s" % revision.publication_label
+	summary.add_child(_label(origin, MUTED, 11))
 	row.add_child(summary)
-	row.add_child(_label("Eligible" if revision.eligible else "Unavailable", Color("75c889") if revision.eligible else Color("ef7770"), 13))
+	var actions := HBoxContainer.new()
+	actions.name = "CharacterFileActions"
+	actions.add_theme_constant_override("separation", 6)
+	actions.add_child(_label("Eligible" if revision.eligible else "Unavailable", Color("75c889") if revision.eligible else Color("ef7770"), 13))
+	actions.add_spacer(true)
 	var inspect := Button.new()
 	inspect.text = "Inspect"
 	inspect.disabled = character == null
 	inspect.tooltip_text = "Open the complete detached character record." if not inspect.disabled else "This vault revision has no valid character record."
 	if not inspect.disabled:
 		inspect.pressed.connect(_inspect_vault.bind(revision.revision_hash))
-	row.add_child(inspect)
+	actions.add_child(inspect)
 	var import_button := _vault_import_button(revision, view)
-	row.add_child(import_button)
+	actions.add_child(import_button)
 	var archive := Button.new()
 	archive.text = "Archive"
 	archive.tooltip_text = "Remove this character from the active list without deleting immutable history."
 	archive.pressed.connect(_confirm_vault_archive.bind(revision))
-	row.add_child(archive)
+	actions.add_child(archive)
+	card.add_child(actions)
 	parent.add_child(panel)
 
 
 func _vault_import_button(revision: CharacterVaultRevisionView, view: GameView) -> Button:
 	var button := Button.new()
-	button.text = "Import this revision"
+	button.text = "Add to party"
 	button.tooltip_text = "\n".join(revision.eligibility_reasons)
 	if view == null or not view.session_started:
 		button.disabled = true
