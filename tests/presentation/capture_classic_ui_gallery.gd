@@ -191,6 +191,20 @@ func _capture_gallery() -> void:
 	await _resize(Vector2i(800, 600))
 	await _capture("classic-character-abilities-800x600")
 	await _resize(Vector2i(1280, 720))
+	var spell_character_button := _button_named(_router, "Elian")
+	if spell_character_button != null:
+		spell_character_button.pressed.emit()
+	var character_spells_button := _button_named(_router, "Spells")
+	if character_spells_button != null:
+		character_spells_button.pressed.emit()
+		await _settle()
+		await _capture("canonical-character-spells-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-character-spells-800x600")
+	await _resize(Vector2i(1280, 720))
+	var first_character_button := _button_named(_router, "Ari")
+	if first_character_button != null:
+		first_character_button.pressed.emit()
 	var background_button := _button_named(_router, "Race, Class & Aging")
 	if background_button != null:
 		background_button.pressed.emit()

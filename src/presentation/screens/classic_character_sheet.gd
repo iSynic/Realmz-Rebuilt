@@ -285,16 +285,65 @@ func _build_abilities(character: CharacterView) -> void:
 
 
 func _build_spells(character: CharacterView) -> void:
-	_add_heading(_content, "Known spells", "%d spell points available" % character.spell_points)
+	var regions: Container = VBoxContainer.new() if _layout_profile == UiLayoutProfile.COMPACT else HBoxContainer.new()
+	regions.name = "CharacterSpellRegions"
+	regions.add_theme_constant_override("separation", 10)
+	regions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content.add_child(regions)
+	var known := _spell_region(regions, "Known spells", "KnownSpellRegion", "%d SP available • %d known" % [character.spell_points, character.spells.size()], 1.6)
 	if character.spells.is_empty():
-		_add_label(_content, "This character knows no spells.", MUTED)
+		_add_label(known, "This character knows no spells.", MUTED, 13)
 	else:
+		var spell_grid := GridContainer.new()
+		spell_grid.columns = 1 if _layout_profile == UiLayoutProfile.COMPACT else 2
+		spell_grid.add_theme_constant_override("h_separation", 6)
+		spell_grid.add_theme_constant_override("v_separation", 6)
 		for spell: SpellView in character.spells:
-			_add_card(_content, spell.name, "Class %d • Cost %d • Range %d–%d" % [spell.spell_class, spell.cost, spell.range_min, spell.range_max], spell.description)
-	_add_heading(_content, "Scroll case", "%d fixed Classic slots" % character.scrolls.size())
+			spell_grid.add_child(_character_spell_card(spell))
+		known.add_child(spell_grid)
+	var scrolls := _spell_region(regions, "Scroll case", "ScrollCaseRegion", "%d fixed Classic slots" % character.scrolls.size(), 0.8)
+	if character.scrolls.is_empty():
+		_add_label(scrolls, "No scroll case slots are available.", MUTED, 13)
 	for scroll: SpellScrollView in character.scrolls:
 		var empty := scroll.spell_id.is_empty()
-		_add_label(_content, "Slot %d • %s" % [scroll.slot_index + 1, "Empty" if empty else "%s • Power %d" % [scroll.spell_name, scroll.power]], MUTED if empty else Color("e0e2e5"))
+		_add_card(scrolls, "Slot %d" % (scroll.slot_index + 1), "Empty" if empty else scroll.spell_name, "" if empty else "Power %d" % scroll.power)
+
+
+func _spell_region(parent: Container, title: String, node_name: String, detail: String, stretch: float) -> VBoxContainer:
+	var frame := PanelContainer.new()
+	frame.name = node_name
+	frame.theme_type_variation = &"ClassicInset"
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.size_flags_stretch_ratio = stretch
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 5)
+	frame.add_child(column)
+	_add_heading(column, title, detail)
+	parent.add_child(frame)
+	return column
+
+
+func _character_spell_card(spell: SpellView) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.theme_type_variation = &"ClassicInset"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 7)
+	panel.add_child(row)
+	row.add_child(_media_icon(spell.icon_resource_type, spell.icon_id, Vector2(44.0, 44.0), "✦"))
+	var text := VBoxContainer.new()
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_add_label(text, spell.name, GOLD, 15)
+	_add_label(text, "Level %d • %d SP • Range %d–%d" % [_classic_spell_level(spell), absi(spell.cost), spell.range_min, spell.range_max], Color("e0e2e5"), 12)
+	var description := _add_label(text, spell.description, MUTED, 12)
+	description.max_lines_visible = 2
+	description.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	row.add_child(text)
+	return panel
+
+
+static func _classic_spell_level(spell: SpellView) -> int:
+	return 1 if spell.classic_id < 1101 else clampi(int(spell.classic_id % 1000 / 100), 1, 7)
 
 
 func _build_appearance(character: CharacterView) -> void:
@@ -535,9 +584,13 @@ func _add_metric_views(parent: Container, metrics: Array[CharacterMetricView]) -
 
 
 func _item_icon(item: ItemView) -> Control:
+	return _media_icon(item.icon_resource_type, item.icon_id, Vector2(52.0, 52.0), "◈")
+
+
+func _media_icon(resource_type: String, resource_id: int, size: Vector2, fallback_text: String) -> Control:
 	var frame := PanelContainer.new()
-	frame.custom_minimum_size = Vector2(52.0, 52.0)
-	var asset: MediaAsset = _media.asset_by_resource(item.icon_resource_type, item.icon_id) if _media != null and item.icon_id != 0 else null
+	frame.custom_minimum_size = size
+	var asset: MediaAsset = _media.asset_by_resource(resource_type, resource_id) if _media != null and resource_id != 0 else null
 	var texture := _media.image_texture(asset) if asset != null else null
 	if texture != null:
 		var image := TextureRect.new()
@@ -547,7 +600,7 @@ func _item_icon(item: ItemView) -> Control:
 		image.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		frame.add_child(image)
 	else:
-		var fallback := _label("◈", MUTED, 18)
+		var fallback := _label(fallback_text, MUTED, 18)
 		fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		frame.add_child(fallback)
