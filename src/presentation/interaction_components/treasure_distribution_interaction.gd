@@ -41,12 +41,13 @@ func _build_workspace(body: InteractionRequest.TreasureRequestBody, recovering_f
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 8)
 	add_child(columns)
-	var item_column := _add_column(columns, "TreasureItemColumn", "Recovered Item" if recovering_fumble else "Current Item", 280.0, 1.35)
-	var recipient_column := _add_column(columns, "TreasureRecipientColumn", "Assign To", 220.0, 1.0)
-	var command_column := _add_column(columns, "TreasureCommandColumn", "Party Wealth", 180.0, 0.82)
+	var item_column := _add_column(columns, "TreasureItemColumn", "Dropped Item" if recovering_fumble else "Current Item", 280.0, 1.2 if recovering_fumble else 1.35)
+	var recipient_column := _add_column(columns, "TreasureRecipientColumn", "Recover To" if recovering_fumble else "Assign To", 220.0, 1.0)
 	_build_item_column(item_column, body, recovering_fumble)
-	_build_recipient_column(recipient_column, body)
-	_build_command_column(command_column, body, recovering_fumble)
+	_build_recipient_column(recipient_column, body, recovering_fumble)
+	if not recovering_fumble:
+		var command_column := _add_column(columns, "TreasureCommandColumn", "Party Wealth", 180.0, 0.82)
+		_build_command_column(command_column, body)
 	_build_footer(body, recovering_fumble)
 
 
@@ -125,8 +126,8 @@ func _build_item_column(column: VBoxContainer, body: InteractionRequest.Treasure
 		_add_muted_label(column, "Exact item art is unavailable for this reward record.", "TreasureMediaUnavailable")
 
 
-func _build_recipient_column(column: VBoxContainer, body: InteractionRequest.TreasureRequestBody) -> void:
-	_add_muted_label(column, "Choose who receives the selected item.", "TreasureRecipientHint")
+func _build_recipient_column(column: VBoxContainer, body: InteractionRequest.TreasureRequestBody, recovering_fumble: bool) -> void:
+	_add_muted_label(column, "Choose an eligible adventurer to recover this exact item." if recovering_fumble else "Choose who receives the selected item.", "TreasureRecipientHint")
 	var scroll := ScrollContainer.new()
 	scroll.name = "TreasureRecipientScroll"
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -142,18 +143,14 @@ func _build_recipient_column(column: VBoxContainer, body: InteractionRequest.Tre
 		_add_muted_label(rows, "No recipient is available.", "TreasureNoRecipients")
 		return
 	for character: InteractionRequestValue.RewardCharacter in body.characters:
-		var button := add_response_to(rows, _recipient_text(character), InteractionResponse.TreasureBody.new(&"assign", body.item.instance_id if body.item != null else "", character.id), character.enabled and body.item != null, character.reason)
+		var label := "%s%s" % ["Recover to " if recovering_fumble else "", _recipient_text(character)]
+		var button := add_response_to(rows, label, InteractionResponse.TreasureBody.new(&"assign", body.item.instance_id if body.item != null else "", character.id), character.enabled and body.item != null, character.reason)
 		button.name = "TreasureRecipient_%s" % character.id
 		button.custom_minimum_size.y = 48.0
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 
 
-func _build_command_column(column: VBoxContainer, body: InteractionRequest.TreasureRequestBody, recovering_fumble: bool) -> void:
-	if recovering_fumble:
-		_add_colored_label(column, "Dropped in battle", GOLD, "TreasureRecoveryContext")
-		_add_muted_label(column, "Choose an eligible adventurer to recover the exact item, or leave it on the battlefield.", "TreasureRecoveryHint")
-		_add_expanding_spacer(column, "TreasureRecoverySpacer")
-		return
+func _build_command_column(column: VBoxContainer, body: InteractionRequest.TreasureRequestBody) -> void:
 	_add_colored_label(column, _wealth_text(body.wealth), GOLD, "TreasurePooledWealth")
 	var wealth_actions := HBoxContainer.new()
 	wealth_actions.name = "TreasureWealthActions"
