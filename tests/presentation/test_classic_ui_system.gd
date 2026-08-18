@@ -1206,8 +1206,8 @@ func _test_character_sheet_workspace() -> void:
 	var sheet := ClassicCharacterSheet.new(); sheet.present([view], view.id, {}, 1.0, &"equipment", [], [], ActionAvailabilityView.new(&"change_character_appearance", true), null, UiLayoutProfile.COMPACT)
 	for label: String in ["Overview", "Conditions & Saves", "Equipment", "Abilities", "Spells", "Appearance", "Race, Class & Aging", "Lifetime Record"]: assert_true(_buttons_in(sheet).any(func(button: Button) -> bool: return button.text == label), "sheet exposes %s" % label)
 	assert_true(sheet.find_child("EquippedItems", true, false) != null and sheet.find_child("CarriedItems", true, false) != null, "equipment separates exact equipped instances from the carried pack in compact composition")
-	sheet.present([view], view.id, {}, 1.0, &"overview", [], [], ActionAvailabilityView.new(&"change_character_appearance", true), null, UiLayoutProfile.WIDE)
-	assert_true(["OverviewAttributes", "OverviewCombat", "OverviewStatus"].all(func(node_name: String) -> bool: return sheet.find_child(node_name, true, false) != null), "overview keeps identity, combat, and resource records in three stable wide regions")
+	sheet.present([view], view.id, {}, 1.0, &"overview", [], [], ActionAvailabilityView.new(&"change_character_appearance", true), null, UiLayoutProfile.WIDE); assert_true(["OverviewAttributes", "OverviewCombat", "OverviewStatus"].all(func(node_name: String) -> bool: return sheet.find_child(node_name, true, false) != null), "overview keeps identity, combat, and resource records in three stable wide regions")
+	sheet.present([view], view.id, {}, 1.0, &"conditions", [], [], ActionAvailabilityView.new(&"change_character_appearance", true), null, UiLayoutProfile.COMPACT); assert_true(sheet.find_child("ConditionsRegion", true, false) != null and sheet.find_child("SavingThrowsRegion", true, false) != null, "conditions and all saving throws retain separate compact records")
 	sheet.free()
 func _test_scene_composition() -> void:
 	var scene := load("res://src/presentation/classic_application_shell.tscn") as PackedScene

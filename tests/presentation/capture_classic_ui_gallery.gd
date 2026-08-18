@@ -67,6 +67,8 @@ func _capture_gallery() -> void:
 		if definition != null:
 			for index: int in 18:
 				gallery_view.party_members[0].items.append(ItemView.new(ItemInstance.new("gallery-item-%d" % index, definition.id, maxi(1, definition.initial_charges), index < 6, index % 3 != 0), definition))
+		var gallery_conditions: Array[CharacterMetricView] = [CharacterMetricView.new(&"condition-13", 13, "Cold Protection", 2, "Value 2"), CharacterMetricView.new(&"condition-27", 27, "Blind", -1, "Permanent")]
+		gallery_view.party_members[0].conditions = gallery_conditions
 	var gallery_names: Array[String] = ["Ari", "Bryn", "Corin", "Dara", "Elian", "Fara"]
 	while gallery_view.party_members.size() < 6 and not gallery_view.party_members.is_empty():
 		var member_index: int = int(gallery_view.party_members.size())
@@ -168,6 +170,14 @@ func _capture_gallery() -> void:
 	await _capture("canonical-character-record-1280x720")
 	await _resize(Vector2i(800, 600))
 	await _capture("classic-character-record-800x600")
+	await _resize(Vector2i(1280, 720))
+	var conditions_button := _button_named(_router, "Conditions & Saves")
+	if conditions_button != null:
+		conditions_button.pressed.emit()
+		await _settle()
+		await _capture("canonical-character-conditions-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-character-conditions-800x600")
 	await _resize(Vector2i(1280, 720))
 	var equipment_button := _button_named(_router, "Equipment")
 	if equipment_button != null:

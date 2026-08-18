@@ -163,17 +163,17 @@ func _build_overview(character: CharacterView) -> void:
 	regions.add_theme_constant_override("separation", 10)
 	regions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content.add_child(regions)
-	_add_overview_region(regions, "Attributes", "OverviewAttributes", [
+	_add_metric_region(regions, "Attributes", "OverviewAttributes", [
 		_metric("Brawn", character.brawn), _metric("Knowledge", character.knowledge), _metric("Judgment", character.judgment),
 		_metric("Agility", character.agility), _metric("Vitality", character.vitality), _metric("Luck", character.luck),
 	])
-	_add_overview_region(regions, "Combat profile", "OverviewCombat", [
+	_add_metric_region(regions, "Combat profile", "OverviewCombat", [
 		_metric("Attack Bonus", character.attack_bonus), _metric("Defense Bonus", character.defense_bonus), _metric("Base To Hit", character.to_hit), _metric("Armor", character.armor),
 		_metric("Dodge", character.dodge), _metric("Missile", character.missile),
 		_metric("Two-Hand", character.two_hand), _metric("Hand-to-Hand", character.hand_to_hand), _metric("Damage Bonus", character.damage_bonus),
 		_metric("Magic Resistance", character.magic_resistance),
 	])
-	var status := _add_overview_region(regions, "Resources and wealth", "OverviewStatus", [
+	var status := _add_metric_region(regions, "Resources and wealth", "OverviewStatus", [
 		_metric("Stamina", character.current_health, "%d / %d" % [character.current_health, character.maximum_health]), _metric("Spell Points", character.spell_points, "%d / %d" % [character.spell_points, character.maximum_spell_points]),
 		_metric("Load", character.carried_load, "%d / %d" % [character.carried_load, character.maximum_load]), _metric("Movement", character.movement, "%d / %d" % [character.movement, character.maximum_movement]),
 		_metric("Attacks / Round", 0, character.attacks_per_round), _metric("Experience", character.experience),
@@ -186,7 +186,7 @@ func _build_overview(character: CharacterView) -> void:
 		_add_metric_views(status, character.conditions)
 
 
-func _add_overview_region(parent: Container, title: String, node_name: String, metrics: Array[CharacterMetricView]) -> VBoxContainer:
+func _add_metric_region(parent: Container, title: String, node_name: String, metrics: Array[CharacterMetricView]) -> VBoxContainer:
 	var frame := PanelContainer.new()
 	frame.name = node_name
 	frame.theme_type_variation = &"ClassicInset"
@@ -202,13 +202,15 @@ func _add_overview_region(parent: Container, title: String, node_name: String, m
 
 
 func _build_conditions(character: CharacterView) -> void:
-	_add_heading(_content, "Conditions")
+	var regions: Container = VBoxContainer.new() if _layout_profile == UiLayoutProfile.COMPACT else HBoxContainer.new()
+	regions.name = "ConditionSaveRegions"
+	regions.add_theme_constant_override("separation", 10)
+	regions.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_content.add_child(regions)
+	var conditions := _add_metric_region(regions, "Conditions", "ConditionsRegion", character.conditions)
 	if character.conditions.is_empty():
-		_add_label(_content, "No active conditions.", MUTED)
-	else:
-		_add_metric_views(_content, character.conditions)
-	_add_heading(_content, "Saving throws", "Castle displays all eight DRVs")
-	_add_metric_views(_content, character.saving_throws)
+		_add_label(conditions, "No active conditions.", MUTED, 13)
+	_add_metric_region(regions, "Saving throws", "SavingThrowsRegion", character.saving_throws)
 
 
 func _build_equipment(character: CharacterView) -> void:
