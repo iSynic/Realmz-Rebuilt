@@ -2,5 +2,5 @@
 [ext_resource type="PackedScene" path="res://src/presentation/screens/classic_route_screen.tscn" id="1_base"]
 [node name="ServicesScreen" instance=ExtResource("1_base")]
 route_id = &"services"
-title = "Services"
-description = "Shop, temple, bank, storage, and treasure facts supplied by the active request."
+title = "Party Wealth"
+description = "Pool, share, and exchange carried wealth."

@@ -1154,10 +1154,10 @@ func _test_money_workspace() -> void:
 	controller.present(body, view)
 	var buttons := _buttons_in(body)
 	var labels := _labels_in(body)
-	assert_true(labels.any(func(text: String) -> bool: return text.contains("15 gold") and text.contains("1 jewelry")), "money workspace renders every detached pooled denomination")
-	assert_true(labels.any(func(text: String) -> bool: return text.contains("Banked: 50 gold")), "banked wealth remains visible without being merged into ordinary Swap")
-	var pool_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Pool party wealth")[0]
-	var share_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Share pooled wealth")[0]
+	assert_true(body.find_child("MoneyPoolPane", true, false) != null and body.find_child("MoneyPartyPane", true, false) != null and body.find_child("MoneySwapPane", true, false) != null and ["Gold", "Gems", "Jewelry", "15"].all(func(text: String) -> bool: return labels.has(text)), "money workspace separates the detached pool, adventurers, and exact-denomination Swap records")
+	assert_true(labels.any(func(text: String) -> bool: return text.contains("Banked") and text.contains("50 gold")), "banked wealth remains visible without being merged into ordinary Swap")
+	var pool_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Pool")[0]
+	var share_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Share")[0]
 	assert_false(pool_button.disabled, "core-authorized Pool is actionable")
 	assert_true(share_button.disabled and share_button.tooltip_text.contains("No adventurer can carry"), "core-owned Share blocker remains visible")
 	var to_pool_buttons := buttons.filter(func(button: Button) -> bool: return button.text == "To pool")

@@ -33,6 +33,7 @@ var _creature_library_controller := CREATURE_LIBRARY_CONTROLLER.new()
 func set_layout_profile(profile_id: StringName) -> void:
 	_character_controller.set_layout_profile(profile_id)
 	_creature_library_controller.set_layout_profile(profile_id)
+	_services_controller.set_layout_profile(profile_id)
 
 
 func _init() -> void:
@@ -91,6 +92,11 @@ func _init() -> void:
 		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
 		if owner != null:
 			owner.route_requested.emit(screen_id)
+	)
+	_services_controller.refresh_requested.connect(func() -> void:
+		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter
+		if owner != null:
+			owner.refresh_requested.emit()
 	)
 	_maps_journal_controller.intent_submitted.connect(func(intent: PlayerIntent) -> void:
 		var owner := owner_ref.get_ref() as ClassicWorkspacePresenter

@@ -302,6 +302,12 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("canonical-shop-interaction-1280x720")
 	_interaction.present(null)
+	gallery_view.services.clear()
+	_shell.present(gallery_view)
+	_router.open_screen(&"services")
+	await _settle()
+	await _capture("wide-party-wealth-1280x720")
+	await _resize(Vector2i(800, 600)); await _capture("classic-party-wealth-800x600"); await _resize(Vector2i(1280, 720))
 	var service := ServiceView.new()
 	service.service_id = "gallery-shop"
 	service.service_kind = &"shop"
@@ -314,7 +320,7 @@ func _capture_gallery() -> void:
 	await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"services")
 	await _settle()
-	await _capture("canonical-services-1280x720")
+	await _capture("canonical-location-service-1280x720")
 	var combat_fixture := _combat_view(gallery_view)
 	gallery_view.combat_view = combat_fixture
 	_router.open_screen(&"combat")

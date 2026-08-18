@@ -3,30 +3,162 @@ extends RefCounted
 
 signal intent_submitted(intent: PlayerIntent)
 signal route_requested(screen_id: StringName)
+signal refresh_requested
 
 const GOLD := Color("d5b45d")
+const TEXT := Color("e0e2e5")
 const MUTED := Color("9aa0a8")
 
 var _money_character_id: String = ""
 var _text_scale: float = 1.0
+var _layout_profile: StringName = UiLayoutProfile.WIDE
 
 
 func set_text_scale(scale: float) -> void:
 	_text_scale = maxf(scale, 0.1)
 
 
+func set_layout_profile(profile_id: StringName) -> void:
+	_layout_profile = profile_id
+
+
 func present(parent: VBoxContainer, view: GameView) -> void:
 	if parent == null or view == null:
 		return
 	_render_money_workspace(parent, view)
-	_add_section_heading(parent, "Location services", "%d available" % view.services.size())
-	if view.services.is_empty():
-		_add_empty_state(parent, "No active service", "Shops, temples, banks, storage, and treasure open here only when the session supplies a typed service interaction.")
-		for title: String in ["Shop", "Temple", "Bank", "Storage", "Treasure"]:
-			_add_card(parent, title, "Unavailable at this location", "No service facts were supplied; Realmz Rebuilt does not infer availability from the map or scenario name.")
+	if not view.services.is_empty():
+		_render_location_services(parent, view)
+
+
+func _render_money_workspace(parent: VBoxContainer, view: GameView) -> void:
+	var workspace := view.money_workspace
+	if workspace == null:
+		_add_empty_state(parent, "Party wealth unavailable", "Begin the adventure before pooling or transferring wealth.")
 		return
+	if workspace.characters.is_empty():
+		_add_empty_state(parent, "No adventurers", "A party member is required for Pool, Share, or Swap.")
+		return
+	if workspace.character(_money_character_id) == null:
+		_money_character_id = workspace.characters[0].character_id
+	var columns := BoxContainer.new()
+	columns.name = "MoneyWorkspaceColumns"
+	columns.vertical = _layout_profile == UiLayoutProfile.COMPACT
+	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	columns.add_theme_constant_override("separation", 8)
+	columns.add_child(_build_pool_pane(view, workspace))
+	if _layout_profile != UiLayoutProfile.COMPACT:
+		columns.add_child(_build_party_pane(workspace))
+	columns.add_child(_build_swap_pane(view, workspace))
+	parent.add_child(columns)
+
+
+func _build_pool_pane(view: GameView, workspace: MoneyWorkspaceView) -> PanelContainer:
+	var panel := _pane("MoneyPoolPane", 0.78)
+	var column := _pane_column(panel)
+	_add_section_heading(column, "Party Pool")
+	_add_wealth_record(column, workspace.pooled_gold, workspace.pooled_gems, workspace.pooled_jewelry)
+	var banked := _label("Banked  %d gold  •  %d gems  •  %d jewelry" % [workspace.banked_gold, workspace.banked_gems, workspace.banked_jewelry], MUTED, 13)
+	banked.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(banked)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(spacer)
+	var actions := HBoxContainer.new()
+	actions.name = "MoneyPoolActions"
+	actions.add_theme_constant_override("separation", 5)
+	_add_money_intent_action(actions, view, "Pool", workspace.pool, PlayerIntent.money_action(&"pool"))
+	_add_money_intent_action(actions, view, "Share", workspace.share, PlayerIntent.money_action(&"share"))
+	column.add_child(actions)
+	return panel
+
+
+func _build_party_pane(workspace: MoneyWorkspaceView) -> PanelContainer:
+	var panel := _pane("MoneyPartyPane", 1.05)
+	var column := _pane_column(panel)
+	_add_section_heading(column, "Adventurers", "%d" % workspace.characters.size())
+	var group := ButtonGroup.new()
+	for character: MoneyCharacterView in workspace.characters:
+		var button := Button.new()
+		button.text = "%s\n%d gold  •  %d gems  •  %d jewelry  •  Load %d/%d" % [character.name, character.gold, character.gems, character.jewelry, character.carried_load, character.maximum_load]
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.toggle_mode = true
+		button.button_group = group
+		button.button_pressed = character.character_id == _money_character_id
+		button.custom_minimum_size.y = 52.0
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(_select_money_character.bind(character.character_id))
+		column.add_child(button)
+	return panel
+
+
+func _build_swap_pane(view: GameView, workspace: MoneyWorkspaceView) -> PanelContainer:
+	var selected := workspace.character(_money_character_id)
+	var panel := _pane("MoneySwapPane", 1.18)
+	var column := _pane_column(panel)
+	_add_section_heading(column, "Swap", selected.name)
+	if _layout_profile == UiLayoutProfile.COMPACT:
+		column.add_child(_character_picker(workspace))
+	_add_wealth_record(column, selected.gold, selected.gems, selected.jewelry)
+	column.add_child(_label("Carried load  %d / %d" % [selected.carried_load, selected.maximum_load], MUTED, 13))
+	var transfers := GridContainer.new()
+	transfers.name = "MoneyTransferGrid"
+	transfers.columns = 3
+	transfers.add_theme_constant_override("h_separation", 5)
+	transfers.add_theme_constant_override("v_separation", 5)
+	for transfer: MoneyTransferView in selected.transfers:
+		var denomination := String(transfer.denomination).capitalize()
+		var label := _label("%s  ×%d" % [denomination, transfer.amount], TEXT, 13)
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		transfers.add_child(label)
+		_add_money_intent_action(transfers, view, "To pool", transfer.to_pool, PlayerIntent.money_action(&"to-pool", selected.character_id, String(transfer.denomination), transfer.amount))
+		_add_money_intent_action(transfers, view, "To %s" % selected.name, transfer.to_character, PlayerIntent.money_action(&"to-character", selected.character_id, String(transfer.denomination), transfer.amount))
+	column.add_child(transfers)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	column.add_child(spacer)
+	var done := Button.new()
+	done.name = "MoneyDone"
+	done.text = "Done"
+	done.tooltip_text = "Return to exploration without another money mutation."
+	done.custom_minimum_size.y = 38.0
+	done.pressed.connect(func() -> void: route_requested.emit(&"exploration"))
+	column.add_child(done)
+	return panel
+
+
+func _character_picker(workspace: MoneyWorkspaceView) -> OptionButton:
+	var selector := OptionButton.new()
+	selector.tooltip_text = "Choose the adventurer whose carried wealth will be exchanged with the party pool."
+	for character: MoneyCharacterView in workspace.characters:
+		selector.add_item("%s  •  Load %d/%d" % [character.name, character.carried_load, character.maximum_load])
+		selector.set_item_metadata(selector.item_count - 1, character.character_id)
+		if character.character_id == _money_character_id:
+			selector.select(selector.item_count - 1)
+	selector.item_selected.connect(func(index: int) -> void: _select_money_character(String(selector.get_item_metadata(index))))
+	return selector
+
+
+func _add_wealth_record(parent: Container, gold: int, gems: int, jewelry: int) -> void:
+	var grid := GridContainer.new()
+	grid.columns = 2
+	for record: Array in [["Gold", gold], ["Gems", gems], ["Jewelry", jewelry]]:
+		grid.add_child(_label(String(record[0]), MUTED, 13))
+		var value := _label(str(record[1]), TEXT, 15)
+		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		grid.add_child(value)
+	parent.add_child(grid)
+
+
+func _render_location_services(parent: VBoxContainer, view: GameView) -> void:
+	var panel := _pane("LocationServicePane", 1.0)
+	var column := _pane_column(panel)
+	_add_section_heading(column, "At this location")
 	for service: ServiceView in view.services:
-		_add_card(parent, service.title, String(service.service_kind).replace("_", " ").capitalize(), "Available actions: %s" % [", ".join(service.actions)])
+		var row := HBoxContainer.new()
+		var title := _label(service.title, GOLD, 15)
+		title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(title)
 		for action: StringName in service.actions:
 			var button := Button.new()
 			button.text = String(action).capitalize()
@@ -36,68 +168,20 @@ func present(parent: VBoxContainer, view: GameView) -> void:
 			button.tooltip_text = reason if not reason.is_empty() else availability.reason if not availability.enabled else "Enter %s" % service.title
 			if not button.disabled:
 				button.pressed.connect(_submit_service_action.bind(service.service_id, action))
-			parent.add_child(button)
+			row.add_child(button)
+		column.add_child(row)
+	parent.add_child(panel)
 
 
-func _render_money_workspace(parent: VBoxContainer, view: GameView) -> void:
-	_add_section_heading(parent, "Money", "Classic Pool, Share, and Swap")
-	var workspace := view.money_workspace
-	if workspace == null:
-		_add_empty_state(parent, "Money management unavailable", "Begin the adventure before pooling or transferring wealth.")
-		return
-	_add_card(parent, "Party pool", "%d gold • %d gems • %d jewelry" % [workspace.pooled_gold, workspace.pooled_gems, workspace.pooled_jewelry], "Banked: %d gold • %d gems • %d jewelry" % [workspace.banked_gold, workspace.banked_gems, workspace.banked_jewelry])
-	var party_actions := HFlowContainer.new()
-	party_actions.add_theme_constant_override("h_separation", 5)
-	party_actions.add_theme_constant_override("v_separation", 5)
-	_add_money_intent_action(party_actions, view, "Pool party wealth", workspace.pool, PlayerIntent.money_action(&"pool"))
-	_add_money_intent_action(party_actions, view, "Share pooled wealth", workspace.share, PlayerIntent.money_action(&"share"))
-	parent.add_child(party_actions)
-	if workspace.characters.is_empty():
-		_add_empty_state(parent, "No adventurers", "A party member is required for Classic Swap.")
-		return
-	if workspace.character(_money_character_id) == null:
-		_money_character_id = workspace.characters[0].character_id
-	var selector := OptionButton.new()
-	selector.tooltip_text = "Choose the adventurer whose carried wealth will be exchanged with the party pool."
-	for character: MoneyCharacterView in workspace.characters:
-		selector.add_item("%s • Load %d/%d" % [character.name, character.carried_load, character.maximum_load])
-		selector.set_item_metadata(selector.item_count - 1, character.character_id)
-		if character.character_id == _money_character_id:
-			selector.select(selector.item_count - 1)
-	selector.item_selected.connect(func(index: int) -> void:
-		_money_character_id = String(selector.get_item_metadata(index))
-		_present_again(parent, view)
-	)
-	parent.add_child(selector)
-	var selected := workspace.character(_money_character_id)
-	_add_card(parent, selected.name, "%d gold • %d gems • %d jewelry" % [selected.gold, selected.gems, selected.jewelry], "Carried load %d/%d" % [selected.carried_load, selected.maximum_load])
-	for transfer: MoneyTransferView in selected.transfers:
-		var denomination_label := String(transfer.denomination).capitalize()
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 5)
-		var label := _label("%s • %d per step" % [denomination_label, transfer.amount], MUTED, 14)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(label)
-		_add_money_intent_action(row, view, "To pool", transfer.to_pool, PlayerIntent.money_action(&"to-pool", selected.character_id, String(transfer.denomination), transfer.amount))
-		_add_money_intent_action(row, view, "To %s" % selected.name, transfer.to_character, PlayerIntent.money_action(&"to-character", selected.character_id, String(transfer.denomination), transfer.amount))
-		parent.add_child(row)
-	var done := Button.new()
-	done.text = "Done"
-	done.tooltip_text = "Return to exploration without another money mutation."
-	done.pressed.connect(func() -> void: route_requested.emit(&"exploration"))
-	parent.add_child(done)
-
-
-func _present_again(parent: VBoxContainer, view: GameView) -> void:
-	for child: Node in parent.get_children():
-		parent.remove_child(child)
-		child.queue_free()
-	present(parent, view)
+func _select_money_character(character_id: String) -> void:
+	_money_character_id = character_id
+	refresh_requested.emit()
 
 
 func _add_money_intent_action(parent: Container, view: GameView, label: String, local_availability: ActionAvailabilityView, intent: PlayerIntent) -> Button:
 	var button := Button.new()
 	button.text = label
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var workspace_availability := view.availability(&"money_action")
 	button.disabled = not workspace_availability.enabled or local_availability == null or not local_availability.enabled
 	if not workspace_availability.enabled:
@@ -116,6 +200,23 @@ func _submit_service_action(service_id: String, action: StringName) -> void:
 	intent_submitted.emit(PlayerIntent.service_action(service_id, action))
 
 
+func _pane(panel_name: String, ratio: float) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.name = panel_name
+	panel.theme_type_variation = &"ClassicTextWell"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = ratio
+	return panel
+
+
+func _pane_column(panel: PanelContainer) -> VBoxContainer:
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	panel.add_child(column)
+	return column
+
+
 func _add_section_heading(parent: Container, title: String, detail: String = "") -> void:
 	var row := HBoxContainer.new()
 	var heading := _label(title, GOLD, 18)
@@ -129,24 +230,12 @@ func _add_section_heading(parent: Container, title: String, detail: String = "")
 
 
 func _add_empty_state(parent: Container, title: String, detail: String) -> void:
-	_add_card(parent, title, detail, "Realmz Rebuilt shows only facts supplied by the detached session view.")
-
-
-func _add_card(parent: Container, title: String, subtitle: String, detail: String) -> void:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size.x = 280.0
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 3)
-	panel.add_child(column)
+	var panel := _pane("MoneyEmptyState", 1.0)
+	var column := _pane_column(panel)
 	column.add_child(_label(title, GOLD, 16))
-	if not subtitle.is_empty():
-		column.add_child(_label(subtitle, MUTED, 13))
-	if not detail.is_empty():
-		var body := _label(detail, Color.WHITE, 14)
-		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		column.add_child(body)
+	var message := _label(detail, MUTED, 13)
+	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	column.add_child(message)
 	parent.add_child(panel)
 
 
