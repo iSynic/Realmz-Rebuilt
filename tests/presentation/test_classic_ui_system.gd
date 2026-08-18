@@ -1050,7 +1050,7 @@ func _test_character_creator_workflow() -> void:
 	assert_equal(setup.party_list.get_child_count(), 6, "creator retains six party positions")
 	var prior_character_list: VBoxContainer = setup.stored_character_list
 	setup.create_character_button.pressed.emit()
-	assert_equal(setup.setup_mode, &"creator", "creator opens from party assembly")
+	assert_equal(setup.setup_mode, &"creator", "creator opens from party assembly"); assert_true(setup.creator_page.find_child("IdentityPreview", true, false) != null and setup.creator_page.find_child("IdentityFields", true, false) != null and setup.creator_page.find_child("IdentityCampaignContext", true, false) != null, "Identity owns one backed preview, one concise form, and exact campaign context")
 	prior_character_list.free()
 	assert_true(setup.creator_cancel_button != null and not setup.creator_cancel_button.disabled, "creator can be canceled before draft mutation")
 	setup.creator_cancel_button.pressed.emit()

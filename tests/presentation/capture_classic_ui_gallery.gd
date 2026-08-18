@@ -38,6 +38,7 @@ func _capture_gallery() -> void:
 	await _settle()
 	await _capture("compact-character-creator-identity-800x600")
 	await _resize(Vector2i(1280, 720))
+	await _capture("canonical-character-creator-identity-1280x720")
 	setup.selected_race_id = setup_view.race_options[0].id
 	setup.selected_caste_id = setup_view.caste_options[0].id
 	setup.creator_step = 2

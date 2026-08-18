@@ -106,21 +106,44 @@ func render_creator_step() -> void:
 
 func _build_creator_identity() -> void:
 	creator_page.add_child(_label("Identity", GOLD, 20))
-	_add_label(creator_page, "Name this character and choose the Classic gender value used by creation rules.", MUTED)
+	var stage := HBoxContainer.new()
+	stage.name = "CreatorIdentityStage"
+	stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stage.add_theme_constant_override("separation", 12)
+	creator_page.add_child(stage)
+	var preview := _add_creator_panel(stage, "IdentityPreview", "Character File", 0.65)
+	var preview_name := _add_label(preview, draft_name if not draft_name.is_empty() else "Unnamed adventurer", GOLD, 18)
+	preview_name.name = "IdentityPreviewName"
+	var preview_gender := _add_label(preview, "Male" if draft_gender == 1 else "Female", Color("e0e2e5"), 14)
+	preview_gender.name = "IdentityPreviewGender"
+	var preview_level := _add_label(preview, "Starting level %d" % draft_starting_level, Color("e0e2e5"), 14)
+	preview_level.name = "IdentityPreviewLevel"
+	_add_label(preview, "Portrait and battle icon are chosen in Appearance.", MUTED, 12)
+	var form := _add_creator_panel(stage, "IdentityFields", "Identity Record", 1.35)
+	form.add_child(_label("Name", MUTED, 12))
 	name_edit = LineEdit.new()
 	name_edit.name = "CharacterName"
 	name_edit.placeholder_text = "Character name"
 	name_edit.max_length = 24
 	name_edit.text = draft_name
-	name_edit.text_changed.connect(func(value: String) -> void: draft_name = value)
-	creator_page.add_child(name_edit)
+	name_edit.text_changed.connect(func(value: String) -> void:
+		draft_name = value
+		preview_name.text = value.strip_edges() if not value.strip_edges().is_empty() else "Unnamed adventurer"
+	)
+	form.add_child(name_edit)
+	form.add_child(_label("Gender", MUTED, 12))
 	gender_option = OptionButton.new()
 	gender_option.name = "CharacterGender"
 	gender_option.add_item("Male", 1)
 	gender_option.add_item("Female", 2)
 	gender_option.select(0 if draft_gender == 1 else 1)
-	gender_option.item_selected.connect(func(_index: int) -> void: draft_gender = gender_option.get_selected_id())
-	creator_page.add_child(gender_option)
+	gender_option.item_selected.connect(func(_index: int) -> void:
+		draft_gender = gender_option.get_selected_id()
+		preview_gender.text = "Male" if draft_gender == 1 else "Female"
+	)
+	form.add_child(gender_option)
+	form.add_child(_label("Starting Level", MUTED, 12))
 	starting_level_option = OptionButton.new()
 	starting_level_option.name = "StartingLevel"
 	var maximum_level := view.campaign_summary.maximum_level if view != null and view.campaign_summary != null else 0
@@ -133,10 +156,43 @@ func _build_creator_identity() -> void:
 		selected_index = 0
 		draft_starting_level = starting_level_option.get_item_id(0)
 	starting_level_option.select(selected_index)
-	starting_level_option.item_selected.connect(func(_index: int) -> void: draft_starting_level = starting_level_option.get_selected_id())
+	starting_level_option.item_selected.connect(func(_index: int) -> void:
+		draft_starting_level = starting_level_option.get_selected_id()
+		preview_level.text = "Starting level %d" % draft_starting_level
+	)
 	starting_level_option.tooltip_text = "Castle offers fixed starting levels and runs every intervening ordinary level-up roll. Campaign level restrictions remove unavailable choices."
-	creator_page.add_child(starting_level_option)
+	form.add_child(starting_level_option)
+	var context := _add_label(form, _creation_context(), MUTED, 12)
+	context.name = "IdentityCampaignContext"
 	_focus_first(creator_page)
+
+func _add_creator_panel(parent: Container, node_name: String, title: String, stretch: float = 1.0) -> VBoxContainer:
+	var panel := PanelContainer.new()
+	panel.name = node_name
+	panel.theme_type_variation = &"ClassicInset"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = stretch
+	var body := VBoxContainer.new()
+	body.name = "%sBody" % node_name
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", 6)
+	panel.add_child(body)
+	body.add_child(_label(title, GOLD, 15))
+	parent.add_child(panel)
+	return body
+
+func _creation_context() -> String:
+	if view == null or view.campaign_summary == null:
+		return "Classic Character Files"
+	var summary := view.campaign_summary
+	var facts: Array[String] = [summary.title]
+	if summary.maximum_level > 0:
+		facts.append("Maximum level %d" % summary.maximum_level)
+	if not summary.restriction_description.strip_edges().is_empty():
+		facts.append(summary.restriction_description.strip_edges())
+	return " • ".join(facts)
 
 func _build_creator_race_class() -> void:
 	creator_page.add_child(_label("Race & Class", GOLD, 20))
