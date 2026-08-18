@@ -1051,7 +1051,7 @@ func _test_character_creator_workflow() -> void:
 	var prior_character_list: VBoxContainer = setup.stored_character_list
 	setup.create_character_button.pressed.emit()
 	assert_equal(setup.setup_mode, &"creator", "creator opens from party assembly"); assert_true(setup.creator_page.find_child("IdentityPreview", true, false) != null and setup.creator_page.find_child("IdentityFields", true, false) != null and setup.creator_page.find_child("IdentityCampaignContext", true, false) != null, "Identity owns one backed preview, one concise form, and exact campaign context")
-	prior_character_list.free()
+	prior_character_list.free(); setup.name_edit.text = "Ari"; setup.creator_next_button.pressed.emit(); assert_true(setup.creator_page.find_child("RaceSelectorPanel", true, false) != null and setup.creator_page.find_child("ClassSelectorPanel", true, false) != null and (setup.creator_page.find_child("RaceDescription", true, false) as Label).text == "Adaptable." and (setup.creator_page.find_child("ClassDescription", true, false) as Label).text == "Arcane caster.", "Race and Class retain equal backed selectors with visible selected descriptions")
 	assert_true(setup.creator_cancel_button != null and not setup.creator_cancel_button.disabled, "creator can be canceled before draft mutation")
 	setup.creator_cancel_button.pressed.emit()
 	assert_equal(setup.setup_mode, &"assembly", "creator cancellation rebuilds assembly after its prior dynamic controls are freed")

@@ -196,32 +196,31 @@ func _creation_context() -> String:
 
 func _build_creator_race_class() -> void:
 	creator_page.add_child(_label("Race & Class", GOLD, 20))
-	_add_label(creator_page, "Race is chosen first and filters the classes available on the right.", MUTED)
-	var columns := BoxContainer.new()
+	var columns := HBoxContainer.new()
 	race_class_columns = columns
-	columns.vertical = layout_profile == UiLayoutProfile.COMPACT
+	columns.name = "RaceClassSelectors"
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 12)
-	var race_column := VBoxContainer.new()
-	race_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	race_column.add_child(_label("Race", GOLD))
+	var race_column := _add_creator_panel(columns, "RaceSelectorPanel", "Race", 1.0)
 	race_list = ItemList.new()
 	race_list.name = "RaceList"
-	race_list.custom_minimum_size.y = 190.0
+	race_list.custom_minimum_size.y = 170.0
 	race_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	race_list.item_selected.connect(_race_selected)
 	race_column.add_child(race_list)
-	columns.add_child(race_column)
-	var caste_column := VBoxContainer.new()
-	caste_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	caste_column.add_child(_label("Class", GOLD))
+	var race_detail := _add_label(race_column, "", Color("e0e2e5"), 13)
+	race_detail.name = "RaceDescription"
+	race_detail.custom_minimum_size.y = 48.0
+	var caste_column := _add_creator_panel(columns, "ClassSelectorPanel", "Class", 1.0)
 	caste_list = ItemList.new()
 	caste_list.name = "ClassList"
-	caste_list.custom_minimum_size.y = 190.0
+	caste_list.custom_minimum_size.y = 170.0
 	caste_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	caste_list.item_selected.connect(_caste_selected)
 	caste_column.add_child(caste_list)
-	columns.add_child(caste_column)
+	var caste_detail := _add_label(caste_column, "", Color("e0e2e5"), 13)
+	caste_detail.name = "ClassDescription"
+	caste_detail.custom_minimum_size.y = 48.0
 	creator_page.add_child(columns)
 	_populate_race_class_options()
 
@@ -230,9 +229,11 @@ func _populate_race_class_options() -> void:
 		return
 	for option: DefinitionOptionView in view.race_options:
 		race_list.add_item(option.name)
-		race_list.set_item_metadata(race_list.item_count - 1, option.id)
-		race_list.set_item_tooltip(race_list.item_count - 1, option.description)
-		race_list.set_item_disabled(race_list.item_count - 1, view.campaign_summary != null and view.campaign_summary.banned_races.has(option.id))
+		var race_index := race_list.item_count - 1
+		race_list.set_item_metadata(race_index, option.id)
+		var race_restricted := view.campaign_summary != null and view.campaign_summary.banned_races.has(option.id)
+		race_list.set_item_tooltip(race_index, "Unavailable in this scenario." if race_restricted else option.description)
+		race_list.set_item_disabled(race_index, race_restricted)
 	for option: DefinitionOptionView in view.caste_options:
 		caste_list.add_item(option.name)
 		caste_list.set_item_metadata(caste_list.item_count - 1, option.id)
@@ -249,6 +250,25 @@ func _populate_race_class_options() -> void:
 		if first_caste >= 0:
 			selected_caste_id = String(caste_list.get_item_metadata(first_caste))
 	_select_item_by_id(caste_list, selected_caste_id)
+	_refresh_race_class_details()
+
+func _refresh_race_class_details() -> void:
+	var race_detail := creator_page.find_child("RaceDescription", true, false) as Label
+	var caste_detail := creator_page.find_child("ClassDescription", true, false) as Label
+	var race_option := _definition_option(view.race_options if view != null else [], selected_race_id)
+	var caste_option := _definition_option(view.caste_options if view != null else [], selected_caste_id)
+	if race_detail != null:
+		race_detail.text = race_option.description if race_option != null else ""
+		race_detail.visible = not race_detail.text.is_empty()
+	if caste_detail != null:
+		caste_detail.text = caste_option.description if caste_option != null else ""
+		caste_detail.visible = not caste_detail.text.is_empty()
+
+func _definition_option(options: Array[DefinitionOptionView], option_id: String) -> DefinitionOptionView:
+	for option: DefinitionOptionView in options:
+		if option.id == option_id:
+			return option
+	return null
 
 func _build_creator_appearance() -> void:
 	creator_page.add_child(_label("Appearance", GOLD, 20))
@@ -582,12 +602,14 @@ func _race_selected(index: int) -> void:
 		combat_icon_touched = false
 	selected_race_id = selected_id
 	_apply_caste_filter()
+	_refresh_race_class_details()
 	setup_message.text = "Race selected. Classes unavailable to this race are disabled on the right."
 
 func _caste_selected(index: int) -> void:
 	if index < 0 or caste_list.is_item_disabled(index):
 		return
 	selected_caste_id = String(caste_list.get_item_metadata(index))
+	_refresh_race_class_details()
 	setup_message.text = "Class selected. Continue to appearance when ready."
 
 func _apply_caste_filter() -> void:
@@ -603,6 +625,13 @@ func _apply_caste_filter() -> void:
 		var restricted := view.campaign_summary != null and view.campaign_summary.banned_castes.has(caste_id)
 		var compatible := allowed_castes.is_empty() or allowed_castes.has(caste_id)
 		caste_list.set_item_disabled(index, restricted or not compatible)
+		var definition := _definition_option(view.caste_options, caste_id)
+		var tooltip := definition.description if definition != null else ""
+		if restricted:
+			tooltip = "Unavailable in this scenario."
+		elif not compatible:
+			tooltip = "Unavailable to the selected race."
+		caste_list.set_item_tooltip(index, tooltip)
 	if not selected_caste_id.is_empty() and not _option_is_enabled(caste_list, selected_caste_id):
 		selected_caste_id = ""
 		var first_caste := _first_enabled_item(caste_list)
@@ -654,7 +683,7 @@ func _apply_creator_layout(profile_id: StringName) -> void:
 	if creator != null:
 		creator.vertical = profile_id == UiLayoutProfile.COMPACT
 	if race_class_columns != null:
-		race_class_columns.vertical = profile_id == UiLayoutProfile.COMPACT
+		race_class_columns.vertical = false
 	_state.apply_setup_mode_layout()
 
 func apply_creator_layout(profile_id: StringName) -> void:
