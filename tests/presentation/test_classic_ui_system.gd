@@ -462,20 +462,20 @@ func _test_temple_component() -> void:
 	var submitted: Array[Dictionary] = []
 	component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: submitted.append(body.to_data()))
 	component.build(request)
-	var buttons := _direct_buttons_in(component)
+	var buttons := _buttons_in(component)
 	var heal_button: Button = buttons.filter(func(button: Button) -> bool: return button.text.begins_with("Heal Small Wounds"))[0]
 	var revive_button: Button = buttons.filter(func(button: Button) -> bool: return button.text.begins_with("Revive Dead"))[0]
-	assert_true(heal_button.disabled, "the request's selected character identity is restored before affordability is rendered")
-	assert_true(revive_button.disabled and revive_button.tooltip_text.contains("1875 gold"), "unaffordable temple services remain visible with the exact blocker")
-	var picker := component.get_children().filter(func(child: Node) -> bool: return child is OptionButton)[0] as OptionButton
-	assert_equal(String(picker.get_selected_metadata()), "character.two", "the presenter preserves the save-owned selected temple character")
-	var summary := component.get_children().filter(func(child: Node) -> bool: return child is Label and child.text.contains("Poor Hero"))[0] as Label
-	assert_true(summary.text.contains("HP -12/10"), "the temple summary exposes the selected character's source health state")
-	picker.select(0)
-	picker.item_selected.emit(0)
-	assert_false(heal_button.disabled, "changing the selected character recalculates affordability from detached values")
-	heal_button.pressed.emit()
-	var pool_button: Button = buttons.filter(func(button: Button) -> bool: return button.text == "Pool party wealth")[0]
+	var purchase_button: Button = component.find_child("TemplePurchase", true, false) as Button
+	assert_false(heal_button.disabled or revive_button.disabled, "temple services remain available for inspection independent of affordability")
+	assert_true(purchase_button.disabled and purchase_button.tooltip_text.contains("312"), "the request's selected character identity drives the exact purchase blocker")
+	assert_true(_labels_in(component).any(func(text: String) -> bool: return text == "Poor Hero"), "the presenter restores the save-owned selected temple character")
+	assert_true(_labels_in(component).any(func(text: String) -> bool: return text.contains("HP -12/10")), "the temple inspector exposes the selected character's source health state")
+	revive_button.pressed.emit(); assert_true(purchase_button.disabled and purchase_button.tooltip_text.contains("1875 gold"), "unaffordable temple services retain their exact cost blocker")
+	var hero_button: Button = component.find_child("TempleCharacter_character_one", true, false) as Button
+	hero_button.pressed.emit(); heal_button.pressed.emit()
+	assert_false(purchase_button.disabled, "changing the selected character recalculates affordability from detached values")
+	purchase_button.pressed.emit()
+	var pool_button: Button = component.find_child("TemplePool", true, false) as Button
 	pool_button.pressed.emit()
 	assert_equal(submitted, [
 		{"action": "service", "serviceId": "heal-small", "characterId": "character.one"},
