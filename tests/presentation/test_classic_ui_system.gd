@@ -412,12 +412,19 @@ func _test_battle_weapon_mode_component() -> void:
 func _test_battle_typed_option_contracts() -> void:
 	var request := _fixture_request("battle.staged-spell", InteractionRequest.COMBAT, {"actions": ["cast_spell", "use_item", "use_scroll"], "spellCasts": [{"spellId": "classic.spell.1306", "spellName": "Brimstones", "power": 1, "cost": 2, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 1, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, 0]], "legalTargetCoordinates": []}, {"spellId": "classic.spell.1306", "spellName": "Brimstones", "power": 2, "cost": 4, "targetId": "", "targetName": "Choose battlefield point", "targetCurrentHealth": -1, "targetMaximumHealth": -1, "targetMode": "area", "areaShape": 2, "defaultTargetCoordinate": [45, 45], "areaOffsets": [[0, 0], [0, 1]], "legalTargetCoordinates": []}], "spellCastReason": "", "itemCasts": [], "scrollCasts": [], "itemCastReason": "No legal item.", "scrollCastReason": "No legal scroll."})
 	var component := BattleInteraction.new(); component.theme = load("res://src/presentation/classic_ui_theme.tres"); component.build(request)
-	assert_true(component.find_child("CombatSpellPicker", true, false) != null and component.find_child("CombatSpellPowerPicker", true, false) != null, "combat casting exposes separate spell and power stages before battlefield targeting"); (component.find_child("ChooseSpellTarget", true, false) as Button).pressed.emit()
-	assert_true(not component.find_child("CombatSpellPicker", true, false).visible and component.find_child("ConfirmBattleTarget", true, false).visible and component.get_combined_minimum_size().y <= 176.0, "battlefield targeting replaces setup controls and keeps confirmation inside the default combat region")
+	var opened := {"actor": "", "options": []}; component.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: opened["actor"] = actor_id; opened["options"] = options)
+	(component.find_child("CombatCommandSpells", true, false) as Button).pressed.emit()
+	var opened_options: Array[InteractionRequestValue.CastOption] = []; opened_options.assign(opened["options"])
+	assert_true(opened_options.size() == 2 and component.find_child("CombatSpellPicker", true, false) == null, "combat casting opens the dedicated spellbook contract instead of generic dropdown controls")
+	var roster := load("res://src/presentation/screens/classic_party_roster.tscn").instantiate() as ClassicPartyRoster; roster.present_combat_spellbook(String(opened["actor"]), opened_options)
+	assert_true(roster.find_child("CombatSpellLevels", true, false) != null and roster.find_child("CombatSpellList", true, false) != null and roster.find_child("CombatSpellPowerChoices", true, false) != null and roster.find_child("CombatSpellDetails", true, false) != null, "the spellbook presents level, spell, power, and source-backed cast facts in the right rail")
+	var selected := {"option": null}; roster.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: selected["option"] = option); (roster.find_child("CombatSpellAim", true, false) as Button).pressed.emit()
+	component.cast_spell_option(selected["option"] as InteractionRequestValue.CastOption)
+	assert_true(component.find_child("ConfirmBattleTarget", true, false).visible and component.get_combined_minimum_size().y <= 176.0, "spellbook selection enters battlefield targeting while confirmation remains inside the default combat region")
 	for label: String in ["Items", "Scrolls"]:
 		var buttons := _buttons_in(component).filter(func(button: Button) -> bool: return button.text == label)
 		assert_true(buttons.size() == 1 and buttons[0].disabled, "%s has one typed control disabled by core availability" % label)
-	component.free()
+	roster.free(); component.free()
 func _test_shop_component() -> void:
 	var request := _fixture_request("shop.fixture", InteractionRequest.SHOP, {
 		"partyGold": 19,
@@ -1238,10 +1245,11 @@ func _test_automatic_workflow_routes() -> void:
 	var setup_view := GameView.new(1, true, null)
 	setup_view.party_setup_available = true
 	assert_equal(ClassicApplicationShell.route_change_reason(setup_view), "Begin the adventure first.", "Explore and other browsing routes stay disabled until party setup commits Begin Adventure")
-	var view := GameView.new(1, true, null)
-	view.combat_view = CombatView.new(CombatState.new("classic.battle.route"))
-	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"exploration", view), &"combat", "battle setup opens the tactical workspace")
-	assert_equal(ClassicApplicationShell.automatic_workflow_route(&"inventory", view), &"combat", "battle setup replaces a browsing workspace so combat controls cannot overlap it")
+	var view := GameView.new(1, true, null); view.combat_view = CombatView.new(CombatState.new("classic.battle.route")); view.combat_action_request = ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT)
+	assert_equal(view.active_interaction_request(), view.combat_action_request, "direct combat exposes its detached command request without fabricating a pending VM interaction")
+	var move_body := InteractionResponse.CombatBody.new(&"move", "character.route"); move_body.destination = Vector2i(4, 7); move_body.has_destination = true; move_body.auto_switch_to_melee = true
+	var move_intent := RealmzApplication.direct_combat_intent(move_body); assert_equal([move_intent.kind, move_intent.payload.actor_id, move_intent.payload.destination, move_intent.payload.auto_switch_to_melee], [PlayerIntent.Kind.COMBAT_MOVE, "character.route", Vector2i(4, 7), true], "the direct command deck submits the same typed combat-move intent and host preference as battlefield input")
+	assert_equal([ClassicApplicationShell.automatic_workflow_route(&"exploration", view), ClassicApplicationShell.automatic_workflow_route(&"inventory", view)], [&"combat", &"combat"], "battle setup replaces exploration or browsing with the tactical workspace")
 	view.pending_interaction = ClassicUiFixtureGallery.request_for(InteractionRequest.ALLY_SELECTION)
 	assert_equal(ClassicApplicationShell.route_change_reason(view), "Resolve the current interaction first.", "a mandatory post-battle response disables misleading route changes such as Adventure Explore")
 	view.pending_interaction = null

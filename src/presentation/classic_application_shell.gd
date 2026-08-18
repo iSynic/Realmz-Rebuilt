@@ -29,6 +29,8 @@ signal presentation_sound_requested(sound_id: int, wait_for_completion: bool, st
 signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
 signal character_selection_completed(character_ids: Array[String])
+signal combat_spell_cast_requested(option: InteractionRequestValue.CastOption)
+signal combat_spellbook_back_requested
 
 const MUTED := Color("9aa4a5")
 const ERROR := Color("ef7770")
@@ -95,6 +97,8 @@ func _ready() -> void:
 	_party_roster.character_selected.connect(_on_character_selected)
 	_party_roster.combat_auto_changed.connect(_on_combat_auto_changed)
 	_party_roster.character_selection_completed.connect(func(character_ids: Array[String]) -> void: character_selection_completed.emit(character_ids))
+	_party_roster.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: combat_spell_cast_requested.emit(option))
+	_party_roster.combat_spellbook_back_requested.connect(func() -> void: combat_spellbook_back_requested.emit())
 	_smoke_action.pressed.connect(_on_smoke_pressed)
 	resized.connect(_apply_layout)
 	_build_menus()
@@ -176,6 +180,14 @@ func latest_classic_text() -> String:
 
 func present_character_selection(request: InteractionRequest) -> void:
 	_party_roster.present_character_selection(request)
+
+
+func present_combat_spellbook(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
+	_party_roster.present_combat_spellbook(actor_id, options)
+
+
+func close_combat_spellbook() -> void:
+	_party_roster.close_combat_spellbook()
 
 
 static func automatic_workflow_route(current_route: StringName, game_view: GameView, contextual_service_closed: bool = false) -> StringName:

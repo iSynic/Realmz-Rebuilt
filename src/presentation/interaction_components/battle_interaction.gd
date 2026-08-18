@@ -19,6 +19,7 @@ var _spell_casts: Array[InteractionRequestValue.CastOption] = []
 var _fast_spells: Array[InteractionRequestValue.FastSpell] = []
 var _spell_panel: VBoxContainer
 var _combatant_icons: Dictionary = {}
+var _overview: Control
 
 
 func configure(combatant_icons: Dictionary) -> void:
@@ -47,7 +48,11 @@ func build(request: InteractionRequest) -> void:
 	var bandage_panel := VBoxContainer.new()
 	var mode_panels: Array[Control] = [target_panel, spell_panel, scroll_panel, item_panel, bandage_panel]
 	_mode_panels.assign(mode_panels)
+	_spell_casts = body.spell_casts
+	_fast_spells = body.fast_spells
 	var overview := VBoxContainer.new()
+	overview.name = "BattleOverview"
+	_overview = overview
 	overview.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	overview.add_theme_constant_override("separation", 3)
 	add_child(overview)
@@ -60,8 +65,6 @@ func build(request: InteractionRequest) -> void:
 		add_child(panel)
 		_add_mode_back_button(panel, overview, mode_panels)
 	_build_attack_panel(body, actor_id, action_ids, targets, target_panel, weapon_mode)
-	_spell_casts = body.spell_casts
-	_fast_spells = body.fast_spells
 	_build_spell_panel(body, actor_id, action_ids, spell_panel)
 	if action_ids.has("use_scroll") and not body.scroll_casts.is_empty():
 		var scroll_picker := OptionButton.new()
@@ -154,61 +157,38 @@ func _build_spell_panel(body: InteractionRequest.CombatRequestBody, actor_id: St
 		if not body.spell_cast_reason.is_empty():
 			add_response_to(spell_panel, "Cast unavailable", InteractionResponse.CombatBody.new(&"cast_spell", actor_id), false, body.spell_cast_reason)
 		return
-	var spell_picker := OptionButton.new()
-	spell_picker.name = "CombatSpellPicker"
-	spell_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var added_spell_ids: Array[String] = []
-	for option: InteractionRequestValue.CastOption in body.spell_casts:
-		if added_spell_ids.has(option.spell_id):
-			continue
-		added_spell_ids.append(option.spell_id)
-		spell_picker.add_item(option.spell_name)
-		spell_picker.set_item_metadata(spell_picker.item_count - 1, option.spell_id)
-	spell_panel.add_child(spell_picker)
-	var power_picker := OptionButton.new()
-	power_picker.name = "CombatSpellPowerPicker"
-	power_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spell_panel.add_child(power_picker)
-	var cast_button := Button.new()
-	cast_button.name = "ChooseSpellTarget"
-	cast_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spell_panel.add_child(cast_button)
-	spell_picker.item_selected.connect(func(_index: int) -> void: _refresh_spell_power_picker(spell_picker, power_picker, cast_button))
-	power_picker.item_selected.connect(func(_index: int) -> void: _refresh_spell_cast_button(power_picker, cast_button))
-	cast_button.pressed.connect(func() -> void: _begin_selected_spell_cast(actor_id, power_picker, spell_panel))
-	_refresh_spell_power_picker(spell_picker, power_picker, cast_button)
+	var status := _add_hint_to(spell_panel, "Choose a spell, power, and target from the spellbook at right.")
+	status.name = "CombatSpellbookStatus"
+	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
-func _refresh_spell_power_picker(spell_picker: OptionButton, power_picker: OptionButton, cast_button: Button) -> void:
-	_cancel_active_targeting()
-	power_picker.clear()
-	var spell_id := String(spell_picker.get_selected_metadata())
-	for option: InteractionRequestValue.CastOption in _spell_casts:
-		if option.spell_id != spell_id:
-			continue
-		power_picker.add_item("Power %d • %d SP • %s" % [option.power, option.cost, option.target_name])
-		power_picker.set_item_metadata(power_picker.item_count - 1, option)
-	_refresh_spell_cast_button(power_picker, cast_button)
-
-
-func _refresh_spell_cast_button(power_picker: OptionButton, cast_button: Button) -> void:
-	_cancel_active_targeting()
-	var selected := power_picker.get_selected_metadata() as InteractionRequestValue.CastOption
-	cast_button.disabled = selected == null
-	cast_button.text = "Cast selected spell" if selected != null and selected.target_mode == &"automatic" else "Choose spell target on battlefield"
-
-
-func _begin_selected_spell_cast(actor_id: String, power_picker: OptionButton, spell_panel: VBoxContainer) -> void:
-	var option := power_picker.get_selected_metadata() as InteractionRequestValue.CastOption
-	if option == null:
+func cast_spell_option(option: InteractionRequestValue.CastOption) -> void:
+	if option == null or not _contains_spell_option(option):
 		return
-	var response_body := InteractionResponse.CombatBody.new(&"cast_spell", actor_id)
+	_cancel_active_targeting()
+	var response_body := InteractionResponse.CombatBody.new(&"cast_spell", _actor_id)
 	response_body.spell_id = option.spell_id
 	response_body.power = option.power
 	if option.target_mode == &"automatic":
 		response_body_submitted.emit(response_body)
 		return
-	_start_targeting(_spell_targeting_configuration(_spell_casts, option, response_body), spell_panel)
+	_start_targeting(_spell_targeting_configuration(_spell_casts, option, response_body), _spell_panel)
+
+
+func close_spellbook() -> void:
+	_cancel_active_targeting()
+	for panel: Control in _mode_panels:
+		panel.visible = false
+	if _overview != null:
+		_overview.visible = true
+	combat_spellbook_closed.emit()
+
+
+func _contains_spell_option(option: InteractionRequestValue.CastOption) -> bool:
+	for candidate: InteractionRequestValue.CastOption in _spell_casts:
+		if candidate.spell_id == option.spell_id and candidate.power == option.power and candidate.target_mode == option.target_mode:
+			return true
+	return false
 
 
 func _cancel_active_targeting() -> void:
@@ -496,7 +476,14 @@ func _add_primary_action_row(body: InteractionRequest.CombatRequestBody, actor_i
 	var target_enabled: bool = action_ids.has("attack") and not targets.is_empty()
 	var target_reason := body.melee_attack_reason if weapon_mode == "melee" else body.ranged_attack.reason
 	_name_command(_add_panel_toggle(primary_row, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason), "Attack")
-	_name_command(_add_panel_toggle(primary_row, "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and not body.spell_casts.is_empty(), body.spell_cast_reason), "Spells")
+	var spell_button := _add_panel_toggle(primary_row, "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and not body.spell_casts.is_empty(), body.spell_cast_reason)
+	_name_command(spell_button, "Spells")
+	spell_button.pressed.connect(func() -> void:
+		if spell_panel.visible:
+			combat_spellbook_requested.emit(actor_id, _spell_casts)
+		else:
+			combat_spellbook_closed.emit()
+	)
 	_name_command(_add_panel_toggle(primary_row, "Scrolls", scroll_panel, mode_panels, overview, action_ids.has("use_scroll") and not body.scroll_casts.is_empty(), body.scroll_cast_reason, 647), "Scrolls")
 	_name_command(_add_panel_toggle(primary_row, "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and not body.item_casts.is_empty(), body.item_cast_reason), "Items")
 	_add_fixed_response(primary_row, "Finish", "Finish", InteractionResponse.CombatBody.new(&"finish", actor_id), action_ids.has("finish"), "Finish is unavailable during this activation.")
@@ -665,6 +652,8 @@ func _add_mode_back_button(panel: Container, overview: Control, panels: Array[Co
 		for candidate: Control in panels:
 			candidate.visible = false
 		overview.visible = true
+		if panel == _spell_panel:
+			combat_spellbook_closed.emit()
 	)
 	panel.add_child(back)
 	panel.move_child(back, 0)

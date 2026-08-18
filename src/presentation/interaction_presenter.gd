@@ -14,6 +14,8 @@ signal combatant_focus_requested(combatant_id: String, play_sound: bool)
 signal reveal_friends_requested
 signal presentation_sound_requested(sound_id: int)
 signal presentation_status_requested(text: String, is_error: bool)
+signal combat_spellbook_requested(actor_id: String, options: Array[InteractionRequestValue.CastOption])
+signal combat_spellbook_closed
 
 @onready var _prompt: Label = %InteractionPrompt
 @onready var _heading: Label = %InteractionHeading
@@ -84,6 +86,8 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_component.reveal_friends_requested.connect(func() -> void: reveal_friends_requested.emit())
 	_component.presentation_sound_requested.connect(func(sound_id: int) -> void: presentation_sound_requested.emit(sound_id))
 	_component.presentation_status_requested.connect(func(text: String, is_error: bool) -> void: presentation_status_requested.emit(text, is_error))
+	_component.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: combat_spellbook_requested.emit(actor_id, options))
+	_component.combat_spellbook_closed.connect(func() -> void: combat_spellbook_closed.emit())
 	_options.add_child(_component)
 	_component.build(request)
 	_apply_classic_region()
@@ -188,6 +192,16 @@ func combat_targeting_cancelled() -> void:
 		(_component as BattleInteraction).battlefield_targeting_cancelled()
 
 
+func cast_combat_spell(option: InteractionRequestValue.CastOption) -> void:
+	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
+		(_component as BattleInteraction).cast_spell_option(option)
+
+
+func close_combat_spellbook() -> void:
+	if _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction:
+		(_component as BattleInteraction).close_spellbook()
+
+
 func set_text_scale(value: float) -> void:
 	_heading.add_theme_font_size_override("font_size", int(round(18.0 * value)))
 	_prompt.add_theme_font_size_override("font_size", int(round(20.0 * value)))
@@ -264,6 +278,7 @@ static func response_for(request: InteractionRequest, body: InteractionResponse.
 
 
 func _clear_options() -> void:
+	combat_spellbook_closed.emit()
 	_component = null
 	for child: Node in _options.get_children():
 		_options.remove_child(child)

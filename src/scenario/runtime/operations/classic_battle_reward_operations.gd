@@ -60,5 +60,9 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 	return _rewards.begin_completed_battle_reward(request_id, caller)
 
 
+func active_combat_request(request_id: String) -> InteractionRequest:
+	return _battle.active_combat_request(request_id)
+
+
 func grant_item(character_id: String, item_id: String, identified: bool) -> ScenarioRuntimeOperationResult:
 	return _rewards.grant_item(character_id, item_id, identified)

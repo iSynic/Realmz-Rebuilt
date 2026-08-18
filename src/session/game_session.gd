@@ -287,7 +287,10 @@ func respond(response: InteractionResponse) -> SessionStep:
 
 
 func view(events: Array[DomainEvent] = []) -> GameView:
-	return _view_projector.project(_workflow_context(), _pending_interaction(), _view_revision, _started, events)
+	var result := _view_projector.project(_workflow_context(), _pending_interaction(), _view_revision, _started, events)
+	if result != null and result.combat_action_request == null and result.pending_interaction == null and result.combat_view != null and result.combat_view.outcome == &"active":
+		result.combat_action_request = _runtime_api.active_combat_request("session.combat-command:%d" % _view_revision)
+	return result
 
 
 func _workflow_context(events: Array[DomainEvent] = []) -> SessionWorkflowContext:

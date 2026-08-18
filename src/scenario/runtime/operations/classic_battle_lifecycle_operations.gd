@@ -646,6 +646,10 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	return request
 
 
+func active_combat_request(request_id: String) -> InteractionRequest:
+	return _combat_request(request_id)
+
+
 static func _character_combatant_payload(character: CharacterView) -> Dictionary:
 	return {"id": character.id, "kind": "character", "name": character.name, "currentHealth": character.current_health, "maximumHealth": character.maximum_health, "spellPoints": character.spell_points, "maximumSpellPoints": character.maximum_spell_points, "armor": character.armor, "magicResistance": character.magic_resistance, "attacks": character.attacks_per_round, "movement": character.movement, "maximumMovement": character.maximum_movement, "traitor": character.traitor, "helpless": character.condition_values[ConditionRules.HELPLESS] != 0, "conditions": character.conditions.map(func(condition: CharacterMetricView) -> String: return condition.name)}
 

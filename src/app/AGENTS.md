@@ -31,6 +31,7 @@ Own the Godot composition root and translate host input/output into the pure ses
 - A terminal session step reached during combat playback does not navigate to setup or campaign selection until `PresentationCoordinator` settles the retained battlefield and publishes that exact committed step. Host teardown and navigation therefore happen once, after presentation releases the prior view.
 - The application applies window mode and presentation scales, but those settings never enter the session or save aggregate.
 - The application injects Auto Switch to Melee only into a manual typed combat-move response. The core owns eligibility, source ordering, mutation, and any pending one-move continuation; no application preference object crosses into `GameState`.
+- Direct-session battles expose a detached combat request while remaining intent-driven. The composition root translates that request's typed response body into the corresponding combat intent; scenario-owned combat continues through `GameSession.respond`. Both paths preserve the same presentation component and core legality contract.
 
 ## Work Guidance
 

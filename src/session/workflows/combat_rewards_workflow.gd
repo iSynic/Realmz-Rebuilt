@@ -56,4 +56,5 @@ static func move_character(context: SessionWorkflowContext, payload: PlayerInten
 		payload.actor_id,
 		payload.destination,
 		context.rng,
+		payload.auto_switch_to_melee,
 	)

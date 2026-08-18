@@ -210,6 +210,10 @@ func run() -> void:
 	var accepted := restored_surprise.respond(InteractionResponse.from_data(surprise_wait.interaction.request_id, &"yes_no", {"accepted": true}))
 	assert_true(_has_event(accepted, &"random_encounter_triggered"), "accepting the surprise choice starts the selected random battle")
 	assert_equal(_event(accepted, &"battle_started").payload["surprise"], 1, "accepted random surprise gives the party source-backed initiative")
+	var direct_combat_request := restored_surprise.view().combat_action_request
+	assert_not_null(direct_combat_request, "a direct random battle projects the complete typed combat command surface")
+	if direct_combat_request != null:
+		assert_equal([direct_combat_request.kind, direct_combat_request.body.battle_id], [InteractionRequest.COMBAT, restored_surprise.view().combat_view.battle_id], "the direct command surface belongs to the active random battle")
 	var battle_coordinate := restored_surprise.view().party_coordinate
 	var blocked_during_battle := restored_surprise.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal(blocked_during_battle.error_code, &"battle_in_progress", "active combat rejects exploration intents at the session boundary")

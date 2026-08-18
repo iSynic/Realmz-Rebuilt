@@ -134,6 +134,11 @@ func _capture_gallery() -> void:
 	await _resize(Vector2i(960, 600))
 	await _settle()
 	await _capture("standard-combat-tactical-workspace-960x600")
+	var spells_button := _interaction.find_child("CombatCommandSpells", true, false) as Button
+	if spells_button != null and not spells_button.disabled:
+		spells_button.pressed.emit()
+		await _settle()
+		await _capture("standard-combat-spellbook-960x600")
 	_interaction.present(null)
 	gallery_view.combat_view = null
 	var settings := PresentationSettings.new()

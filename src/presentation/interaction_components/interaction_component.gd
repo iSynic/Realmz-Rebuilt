@@ -16,6 +16,10 @@ signal reveal_friends_requested
 signal presentation_sound_requested(sound_id: int)
 @warning_ignore("unused_signal")
 signal presentation_status_requested(text: String, is_error: bool)
+@warning_ignore("unused_signal")
+signal combat_spellbook_requested(actor_id: String, options: Array[InteractionRequestValue.CastOption])
+@warning_ignore("unused_signal")
+signal combat_spellbook_closed
 
 
 func build(_request: InteractionRequest) -> void:

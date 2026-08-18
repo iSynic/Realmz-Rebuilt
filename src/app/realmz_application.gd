@@ -189,7 +189,7 @@ func _on_end_adventure_requested() -> void:
 	if not session_controller.view().session_started:
 		_shell_presenter.show_campaign_selection()
 		return
-	var pending := session_controller.view().pending_interaction
+	var pending := session_controller.view().active_interaction_request()
 	if pending != null and pending.kind != InteractionRequest.COMBAT:
 		_shell_presenter.set_status("Resolve the current interaction before ending the adventure.", true)
 		return
@@ -267,7 +267,7 @@ func _input(event: InputEvent) -> void:
 			presentation_coordinator.skip_combat_playback()
 		get_viewport().set_input_as_handled()
 		return
-	var pending := session_controller.view().pending_interaction
+	var pending := session_controller.view().active_interaction_request()
 	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
 	if combat_pending and event.is_action_pressed(&"realmz_inspect_movement"):
 		_battlefield_presenter.set_movement_costs_visible(true)
@@ -375,7 +375,7 @@ func _on_held_movement_requested(direction: Vector2i) -> void:
 
 
 func _on_battlefield_action_requested(body: InteractionResponse.CombatBody) -> void:
-	var pending := session_controller.view().pending_interaction
+	var pending := session_controller.view().active_interaction_request()
 	if pending != null and pending.kind == InteractionRequest.COMBAT:
 		_interaction_presenter.submit_active_body(combat_body_with_preferences(body, _presentation_settings))
 
@@ -459,10 +459,50 @@ func _on_interaction_response_submitted(response: InteractionResponse) -> void:
 	if _host_interaction != null:
 		_respond_host_interaction(response)
 		return
+	var current_view := session_controller.view()
+	if current_view.pending_interaction == null and current_view.combat_action_request != null and response.request_id == current_view.combat_action_request.request_id and response.kind == InteractionRequest.COMBAT:
+		var direct_intent := direct_combat_intent(response.body as InteractionResponse.CombatBody)
+		if direct_intent == null:
+			_shell_presenter.set_status("The combat command was invalid.", true)
+			presentation_coordinator.refresh()
+			return
+		var direct_step := _submit_intent(direct_intent)
+		if direct_step.state == SessionStep.State.COMPLETED and direct_step.events.is_empty() and session_controller.view().pending_interaction == null:
+			_shell_presenter.set_status("")
+		return
 	var step := session_controller.respond(response)
 	_present_step_status(step)
 	if step.state == SessionStep.State.COMPLETED and step.events.is_empty() and session_controller.view().pending_interaction == null:
 		_shell_presenter.set_status("")
+
+
+static func direct_combat_intent(body: InteractionResponse.CombatBody) -> PlayerIntent:
+	if body == null or not body.is_valid():
+		return null
+	match body.action:
+		&"set_auto":
+			return PlayerIntent.set_combat_auto(body.actor_id, body.enabled)
+		&"move", &"retreat_edge":
+			if not body.has_destination:
+				return null
+			return PlayerIntent.combat_move(body.actor_id, body.destination, body.auto_switch_to_melee)
+		&"cast_spell":
+			if body.spell_id.is_empty():
+				return null
+			if body.has_target_coordinate:
+				return PlayerIntent.cast_spell_at(body.spell_id, body.actor_id, body.target_coordinate, body.power, body.rotation)
+			if not body.target_ids.is_empty():
+				return PlayerIntent.cast_spell_at_targets(body.spell_id, body.actor_id, body.target_ids, body.power)
+			return PlayerIntent.cast_spell(body.spell_id, body.actor_id, body.target_id, body.power)
+		&"use_item":
+			if body.item_instance_id.is_empty():
+				return null
+			return PlayerIntent.use_item_on_target(body.item_instance_id, body.actor_id, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation)
+		&"use_scroll":
+			if body.scroll_slot < 0:
+				return null
+			return PlayerIntent.use_scroll_on_target(body.actor_id, body.scroll_slot, body.target_id, body.target_ids, body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE, body.rotation)
+	return PlayerIntent.combat_action(body.action, body.actor_id, body.target_id)
 
 
 func _respond_host_interaction(response: InteractionResponse) -> void:

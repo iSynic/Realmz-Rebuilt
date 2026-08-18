@@ -232,10 +232,12 @@ class CombatMovePayload:
 	extends Payload
 	var actor_id: String
 	var destination: Vector2i
+	var auto_switch_to_melee: bool
 
-	func _init(actor: String, value: Vector2i) -> void:
+	func _init(actor: String, value: Vector2i, switch_to_melee: bool = false) -> void:
 		actor_id = actor
 		destination = value
+		auto_switch_to_melee = switch_to_melee
 
 
 class CombatAutoPayload:
@@ -424,8 +426,8 @@ static func service_action(service: String, action_kind: StringName, actor: Stri
 	return PlayerIntent.new(Kind.SERVICE_ACTION, ServicePayload.new(service, action_kind, actor, amount_value))
 
 
-static func combat_move(actor: String, destination: Vector2i) -> PlayerIntent:
-	return PlayerIntent.new(Kind.COMBAT_MOVE, CombatMovePayload.new(actor, destination))
+static func combat_move(actor: String, destination: Vector2i, auto_switch_to_melee: bool = false) -> PlayerIntent:
+	return PlayerIntent.new(Kind.COMBAT_MOVE, CombatMovePayload.new(actor, destination, auto_switch_to_melee))
 
 
 static func set_combat_auto(character_id: String, auto_enabled: bool) -> PlayerIntent:

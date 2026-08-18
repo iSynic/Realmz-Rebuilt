@@ -17,6 +17,10 @@ var party_allies: Array[MonsterView] = []
 var party_fatigue: int = 0
 var pooled_gold: int = 0
 var combat_view: CombatView
+# Direct session-owned battles accept typed player intents rather than
+# suspending a Scenario VM frame. They still expose the same detached command
+# contract so presentation never reconstructs combat legality.
+var combat_action_request: InteractionRequest
 var campaign_id: String = ""
 var rules_version: String = ""
 var party_setup_available: bool = false
@@ -68,3 +72,7 @@ func availability(action_id: StringName) -> ActionAvailabilityView:
 	if value is ActionAvailabilityView:
 		return value
 	return ActionAvailabilityView.new(action_id, false, "This action is unavailable in the current gameplay slice.")
+
+
+func active_interaction_request() -> InteractionRequest:
+	return pending_interaction if pending_interaction != null else combat_action_request
