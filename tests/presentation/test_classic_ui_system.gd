@@ -296,7 +296,7 @@ func _test_location_note_workspace() -> void:
 	var editor := body.find_child("CurrentLocationNoteText", true, false) as TextEdit
 	var save := body.find_child("SaveLocationNote", true, false) as Button
 	var cancel := body.find_child("CancelLocationNoteEdit", true, false) as Button
-	assert_not_null(editor, "the Journal route exposes a multiline current-location note editor")
+	assert_true(editor != null and body.find_child("MapsNotesTabs", true, false) != null and body.find_child("SavedLocationNotes", true, false) != null and body.find_child("JournalEntryDetail", true, false) != null, "Maps/Notes separates saved places, maps, and authored journal detail while retaining the location editor")
 	assert_equal(editor.text, "Watch the ridge.", "the editor begins from detached committed note text")
 	assert_true(save.disabled, "an unchanged note cannot emit a redundant mutation")
 	editor.text = "Watch the ridge after sundown."
