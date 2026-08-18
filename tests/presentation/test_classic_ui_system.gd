@@ -812,10 +812,10 @@ func _test_fixture_gallery_coverage() -> void:
 	var selection_view := GameView.new(1, true, null)
 	selection_view.party_members = [CharacterView.new(CharacterState.new("hero", "Hero", 8, 10)), CharacterView.new(CharacterState.new("mage", "Mage", 6, 9)), CharacterView.new(CharacterState.new("dead", "Dead", 0, 10))]
 	var request := _fixture_request("fixture.party-pick", InteractionRequest.CHARACTER_SELECTION, {"count": 2, "eligible": [{"id": "hero", "name": "Hero", "currentHealth": 8, "maximumHealth": 10}, {"id": "mage", "name": "Mage", "currentHealth": 6, "maximumHealth": 9}], "mode": "field-spell", "spellId": "classic.spell.1107", "spellContext": {"actorId": "hero", "actorName": "Hero", "spellId": "classic.spell.1107", "spellName": "Magic Darts", "description": "A compact bolt of magical force.", "iconResourceType": "cicn", "iconId": 0, "power": 2, "spellPointCost": 8, "targetType": 0, "targetSize": 0, "targetCount": 2, "sourceKind": "field-spell"}})
-	var selection_component := SelectionInteraction.new()
-	selection_component.build(request)
+	var selection_component := SelectionInteraction.new(); selection_component.build(request)
 	assert_true(_buttons_in(selection_component).is_empty() and selection_component.find_child("SpellTargetContext", true, false) != null, "the mandatory picker keeps the selected spell record visible without exposing cancel or premature submit")
 	selection_component.free()
+	var ally_component := SelectionInteraction.new(); ally_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.ALLY_SELECTION)); assert_true(ally_component.find_child("AllyCandidates", true, false) != null and ally_component.find_child("AllySelectionContinue", true, false) != null, "surviving allies use one dominant candidate workspace with a fixed continuation"); ally_component.free()
 	var selections: Array[Array] = []
 	roster.character_selection_completed.connect(func(ids: Array[String]) -> void: selections.append(ids))
 	roster.present(selection_view)

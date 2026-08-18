@@ -3,14 +3,19 @@ extends InteractionComponent
 
 const GOLD := Color("e0bc53")
 const TEXT := Color("d7d9dc")
+const CYAN := Color("8fcfd1")
 const MUTED := Color("9ca3ad")
 
 var _checks: Array[CheckButton] = []
 var _media: ClassicMediaCatalog
+var _game_view: GameView
+var _ally_summary: Label
+var _ally_maximum := 0
 
 
-func configure(media: ClassicMediaCatalog) -> void:
+func configure(media: ClassicMediaCatalog, game_view: GameView = null) -> void:
 	_media = media
+	_game_view = game_view
 
 
 func build(request: InteractionRequest) -> void:
@@ -93,41 +98,133 @@ static func _label(text: String, color: Color, size: int) -> Label:
 
 func _build_ally_selection(request: InteractionRequest) -> void:
 	var body := request.body as InteractionRequest.SelectionRequestBody
-	if body == null: return
-	var maximum := body.maximum
-	var selected := body.selected_ids
-	add_hint("Choose up to %d surviving allies. Required allies stay selected." % maximum)
+	if body == null:
+		return
+	_ally_maximum = body.maximum
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
+	custom_minimum_size = Vector2(0.0, 430.0)
+	add_theme_constant_override("separation", 6)
+	var header := HBoxContainer.new()
+	header.name = "AllySelectionHeader"
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	add_child(header)
+	var title := _label("Surviving Allies", GOLD, 20)
+	title.theme_type_variation = &"ClassicHeading"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	var capacity := _label("Keep up to %d" % body.maximum, TEXT, 15)
+	capacity.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	header.add_child(capacity)
+	var columns := HBoxContainer.new()
+	columns.name = "AllySelectionColumns"
+	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	columns.add_theme_constant_override("separation", 8)
+	add_child(columns)
+	_build_ally_candidates(columns, body)
+	_build_ally_decision(columns)
+	_refresh_ally_selection()
+
+
+func _build_ally_candidates(parent: HBoxContainer, body: InteractionRequest.SelectionRequestBody) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "AllyCandidates"
+	panel.theme_type_variation = &"ClassicTextWell"
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = 1.8
+	parent.add_child(panel)
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(_label("Choose who continues with the party", GOLD, 16))
+	panel.add_child(content)
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(scroll)
+	var grid := GridContainer.new()
+	grid.name = "AllyCandidateGrid"
+	grid.columns = 2
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 5)
+	grid.add_theme_constant_override("v_separation", 5)
+	scroll.add_child(grid)
+	if body.candidates.is_empty():
+		grid.add_child(_label("No surviving allies were supplied. Continue returns to the adventure.", MUTED, 14))
+		return
 	for entry: InteractionRequestValue.SelectionCandidate in body.candidates:
-		var ally_id := entry.id
-		var required := body.required_ids.has(ally_id)
-		_add_character_check(entry, required or selected.has(ally_id), required)
+		var required := body.required_ids.has(entry.id)
+		_add_character_check(grid, entry, required or body.selected_ids.has(entry.id), required)
+
+
+func _build_ally_decision(parent: HBoxContainer) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "AllyDecision"
+	panel.theme_type_variation = &"ClassicTextWell"
+	panel.custom_minimum_size.x = 260.0
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = 0.8
+	parent.add_child(panel)
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(_label("Party Allies", GOLD, 16))
+	_ally_summary = _label("", CYAN, 15)
+	content.add_child(_ally_summary)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content.add_child(spacer)
 	var submit := Button.new()
+	submit.name = "AllySelectionContinue"
 	submit.text = "Continue"
-	submit.pressed.connect(_submit_allies.bind(maximum))
-	add_child(submit)
+	submit.custom_minimum_size.y = 44.0
+	submit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	submit.pressed.connect(_submit_allies)
+	content.add_child(submit)
+	panel.add_child(content)
 
 
-func _add_character_check(entry: InteractionRequestValue.SelectionCandidate, selected: bool, required: bool) -> void:
+func _add_character_check(parent: Container, entry: InteractionRequestValue.SelectionCandidate, selected: bool, required: bool) -> void:
 	var check := CheckButton.new()
+	check.name = "AllyCandidate_%s" % entry.id.replace(".", "_")
 	check.text = entry.name
 	if entry.has_current_health:
 		var maximum_health := entry.maximum_health if entry.has_maximum_health else entry.current_health
-		check.text += " • HP %d/%d" % [entry.current_health, maximum_health]
+		check.text += "\nHP %d/%d" % [entry.current_health, maximum_health]
 	if required:
-		check.text += " • Required"
+		check.text += "  •  Required"
 	check.set_meta("character_id", entry.id)
 	check.button_pressed = selected
 	check.disabled = required
+	check.custom_minimum_size.y = 66.0
+	check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	check.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	check.icon = _ally_icon(entry.id)
+	check.expand_icon = true
+	check.toggled.connect(func(_pressed: bool) -> void: _refresh_ally_selection())
 	_checks.append(check)
-	add_child(check)
+	parent.add_child(check)
 
 
-func _submit_allies(maximum: int) -> void:
+func _submit_allies() -> void:
 	var ids := _selected_ids()
-	if ids.size() > maximum:
-		add_hint("Choose no more than %d allies." % maximum)
+	if ids.size() > _ally_maximum:
+		_ally_summary.text = "Choose no more than %d allies." % _ally_maximum
 		return
 	response_body_submitted.emit(InteractionResponse.AllySelectionBody.new(ids))
+
+
+func _refresh_ally_selection() -> void:
+	if _ally_summary == null:
+		return
+	var selected := _selected_ids()
+	_ally_summary.text = "%d of %d selected" % [selected.size(), _ally_maximum]
+	for check: CheckButton in _checks:
+		var required := check.disabled and check.button_pressed
+		check.disabled = required or not check.button_pressed and selected.size() >= _ally_maximum
 
 
 func _selected_ids() -> Array[String]:
@@ -136,3 +233,12 @@ func _selected_ids() -> Array[String]:
 		if check.button_pressed:
 			ids.append(String(check.get_meta("character_id")))
 	return ids
+
+
+func _ally_icon(ally_id: String) -> Texture2D:
+	if _game_view == null or _media == null:
+		return null
+	for ally: MonsterView in _game_view.party_allies:
+		if ally.id == ally_id and ally.icon_id > 0:
+			return _media.image_texture(_media.asset_by_resource(ally.icon_resource_type, ally.icon_id))
+	return null

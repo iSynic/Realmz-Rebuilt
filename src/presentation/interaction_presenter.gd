@@ -224,7 +224,7 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 			return AgeUpdateInteraction.new()
 		&"character_selection", &"ally_selection":
 			var selection := SelectionInteraction.new()
-			selection.configure(media)
+			selection.configure(media, game_view)
 			return selection
 		&"treasure_distribution":
 			return TreasureDistributionInteraction.new()

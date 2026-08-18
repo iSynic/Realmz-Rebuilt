@@ -175,6 +175,8 @@ func _capture_gallery() -> void:
 		if interaction_kind == InteractionRequest.CHARACTER_SELECTION:
 			await _capture("wide-field-spell-target-1280x720")
 			await _resize(Vector2i(800, 600)); await _capture("classic-field-spell-target-800x600"); await _resize(Vector2i(1280, 720))
+		if interaction_kind == InteractionRequest.ALLY_SELECTION:
+			await _resize(Vector2i(800, 600)); await _capture("classic-surviving-allies-800x600"); await _resize(Vector2i(1280, 720))
 		if interaction_kind in [InteractionRequest.TEMPLE, InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]:
 			await _resize(Vector2i(800, 600)); await _capture("classic-interaction-%s-800x600" % String(interaction_kind).replace("_", "-")); await _resize(Vector2i(1280, 720))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
