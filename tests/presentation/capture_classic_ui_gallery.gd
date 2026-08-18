@@ -205,6 +205,14 @@ func _capture_gallery() -> void:
 	var first_character_button := _button_named(_router, "Ari")
 	if first_character_button != null:
 		first_character_button.pressed.emit()
+	var appearance_button := _button_named(_router, "Appearance")
+	if appearance_button != null:
+		appearance_button.pressed.emit()
+		await _settle()
+		await _capture("canonical-character-appearance-1280x720")
+	await _resize(Vector2i(800, 600))
+	await _capture("classic-character-appearance-800x600")
+	await _resize(Vector2i(1280, 720))
 	var background_button := _button_named(_router, "Race, Class & Aging")
 	if background_button != null:
 		background_button.pressed.emit()

@@ -347,9 +347,9 @@ static func _classic_spell_level(spell: SpellView) -> int:
 
 
 func _build_appearance(character: CharacterView) -> void:
-	_add_heading(_content, "Portrait and combat icon", "Each Classic identity changes independently")
-	_add_label(_content, "Choose a package-backed image, preview it here, then apply that one role. Discard leaves the campaign session unchanged; vault publication remains a separate explicit action.", MUTED, 13)
-	var columns := HBoxContainer.new()
+	_add_heading(_content, "Appearance", "Portrait and tactical icon change independently")
+	var columns: Container = VBoxContainer.new() if _layout_profile == UiLayoutProfile.COMPACT else HBoxContainer.new()
+	columns.name = "AppearanceRegions"
 	columns.add_theme_constant_override("separation", 14)
 	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.add_child(_appearance_picker(character, CharacterAppearanceDefinition.PORTRAIT, _portrait_options, _draft_portrait_id, "Portrait"))
@@ -357,39 +357,31 @@ func _build_appearance(character: CharacterView) -> void:
 	_content.add_child(columns)
 	if not _appearance_availability.enabled:
 		_add_label(_content, _appearance_availability.reason, BAD, 13)
-	var actions := HFlowContainer.new()
-	actions.add_theme_constant_override("h_separation", 6)
-	actions.add_theme_constant_override("v_separation", 6)
-	var apply_portrait := Button.new()
-	apply_portrait.text = "Apply Portrait"
-	apply_portrait.disabled = not _appearance_availability.enabled or _draft_portrait_id == character.portrait_id
-	apply_portrait.tooltip_text = _appearance_availability.reason if not _appearance_availability.enabled else "Choose a different portrait first." if _draft_portrait_id == character.portrait_id else "Commit this portrait to the campaign session."
-	if not apply_portrait.disabled:
-		apply_portrait.pressed.connect(_apply_appearance.bind(CharacterAppearanceDefinition.PORTRAIT, _draft_portrait_id))
-	actions.add_child(apply_portrait)
-	var apply_icon := Button.new()
-	apply_icon.text = "Apply Combat Icon"
-	apply_icon.disabled = not _appearance_availability.enabled or _draft_combat_icon_id == character.combat_icon_id
-	apply_icon.tooltip_text = _appearance_availability.reason if not _appearance_availability.enabled else "Choose a different combat icon first." if _draft_combat_icon_id == character.combat_icon_id else "Commit this tactical icon to the campaign session."
-	if not apply_icon.disabled:
-		apply_icon.pressed.connect(_apply_appearance.bind(CharacterAppearanceDefinition.COMBAT_ICON, _draft_combat_icon_id))
-	actions.add_child(apply_icon)
 	var discard := Button.new()
 	discard.text = "Discard Appearance Changes"
+	discard.name = "DiscardAppearanceChanges"
 	discard.disabled = _draft_portrait_id == character.portrait_id and _draft_combat_icon_id == character.combat_icon_id
 	discard.tooltip_text = "The preview already matches the session." if discard.disabled else "Restore both previews without changing the session."
 	if not discard.disabled:
 		discard.pressed.connect(_discard_appearance_draft)
-	actions.add_child(discard)
-	_content.add_child(actions)
+	_content.add_child(discard)
 
 
-func _appearance_picker(character: CharacterView, kind: StringName, options: Array[CharacterAppearanceOptionView], selected_id: String, title: String) -> VBoxContainer:
+func _appearance_picker(character: CharacterView, kind: StringName, options: Array[CharacterAppearanceOptionView], selected_id: String, title: String) -> PanelContainer:
+	var frame := PanelContainer.new()
+	var role_name := "Portrait" if kind == CharacterAppearanceDefinition.PORTRAIT else "CombatIcon"
+	frame.name = "%sAppearanceRegion" % role_name
+	frame.theme_type_variation = &"ClassicInset"
+	frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	frame.size_flags_stretch_ratio = 1.0
 	var column := VBoxContainer.new()
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation", 6)
-	_add_label(column, title, GOLD, 16)
-	column.add_child(_appearance(selected_id, character.name.left(1) if kind == CharacterAppearanceDefinition.PORTRAIT else "⚔", "%s preview" % title))
+	column.add_theme_constant_override("separation", 8)
+	frame.add_child(column)
+	_add_heading(column, title, "%d package choices" % options.size())
+	var preview_center := CenterContainer.new()
+	preview_center.add_child(_appearance(selected_id, character.name.left(1) if kind == CharacterAppearanceDefinition.PORTRAIT else "⚔", "%s preview" % title, Vector2(132.0, 132.0)))
+	column.add_child(preview_center)
 	var picker := OptionButton.new()
 	picker.name = "%sPicker" % title.replace(" ", "")
 	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -400,7 +392,7 @@ func _appearance_picker(character: CharacterView, kind: StringName, options: Arr
 	var selected_index := -1
 	for option: CharacterAppearanceOptionView in ordered:
 		var recommended := option.is_recommended_for(character.race_id)
-		var item_label := "%s%s • %d" % ["Recommended • " if recommended else "", option.label, option.classic_resource_id]
+		var item_label := "%s%s" % ["Recommended • " if recommended else "", option.label]
 		var texture := _textures.get(option.id) as Texture2D
 		if texture != null:
 			picker.add_icon_item(texture, item_label)
@@ -416,7 +408,16 @@ func _appearance_picker(character: CharacterView, kind: StringName, options: Arr
 	if not picker.disabled:
 		picker.item_selected.connect(_select_appearance_option.bind(picker, kind))
 	column.add_child(picker)
-	return column
+	var apply := Button.new()
+	apply.name = "Apply%s" % role_name
+	apply.text = "Apply %s" % title
+	var original_id := character.portrait_id if kind == CharacterAppearanceDefinition.PORTRAIT else character.combat_icon_id
+	apply.disabled = not _appearance_availability.enabled or selected_id == original_id
+	apply.tooltip_text = _appearance_availability.reason if not _appearance_availability.enabled else "Choose a different %s first." % title.to_lower() if selected_id == original_id else "Commit this %s to the campaign session." % title.to_lower()
+	if not apply.disabled:
+		apply.pressed.connect(_apply_appearance.bind(kind, selected_id))
+	column.add_child(apply)
+	return frame
 
 
 func _recommended_first(options: Array[CharacterAppearanceOptionView], race_id: String) -> Array[CharacterAppearanceOptionView]:
@@ -532,9 +533,9 @@ func _tab_exists(tab_id: StringName) -> bool:
 	return false
 
 
-func _appearance(asset_id: String, fallback_text: String, role: String) -> PanelContainer:
+func _appearance(asset_id: String, fallback_text: String, role: String, minimum_size: Vector2 = Vector2(68.0, 68.0)) -> PanelContainer:
 	var frame := PanelContainer.new()
-	frame.custom_minimum_size = Vector2(68, 68)
+	frame.custom_minimum_size = minimum_size
 	var texture := _textures.get(asset_id) as Texture2D
 	if texture != null:
 		var image := TextureRect.new()
