@@ -84,6 +84,7 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 	result.party_summary.banked_gold = state.party.banked_wealth.gold
 	result.party_summary.fatigue = state.party.fatigue
 	result.party_summary.light_remaining = state.party.conditions.value(0)
+	result.party_summary.has_classic_torch = not InventoryMagicServicesWorkflow.classic_torch_item(context).is_empty()
 	result.party_summary.camping = state.party_camping
 	result.party_summary.searching = state.party.conditions.is_active(ConditionRules.PARTY_SEARCHING)
 	result.party_summary.acquired_map_ids = state.world.acquired_map_ids()
@@ -332,7 +333,8 @@ static func _populate_action_availability(context: SessionWorkflowContext, resul
 	var search_reason := ordinary_reason if not ordinary_reason.is_empty() else "Search is unavailable during battle." if battle_active else "Search is replaced by scroll scribing while camped." if state.party_camping else ""
 	result.set_action_availability(&"search", search_reason.is_empty(), search_reason)
 	result.set_action_availability(&"toggle_search", search_reason.is_empty(), search_reason)
-	result.set_action_availability(&"area_search", search_reason.is_empty(), search_reason)
+	var area_search_reason := search_reason if not search_reason.is_empty() else "The party is too fatigued to continue Area Search." if state.party.fatigue > 134 else ""
+	result.set_action_availability(&"area_search", area_search_reason.is_empty(), area_search_reason)
 	var torch_probe := InventoryMagicServicesWorkflow.classic_torch_probe(context)
 	result.set_action_availability(&"use_torch", ordinary_reason.is_empty() and not battle_active and torch_probe.allowed, ordinary_reason if not ordinary_reason.is_empty() else "Torches are unavailable during battle." if battle_active else torch_probe.reason)
 	var contextual_encounter_available := _contextual_encounter_available(context)

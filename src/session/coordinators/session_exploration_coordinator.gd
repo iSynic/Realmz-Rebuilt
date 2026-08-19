@@ -119,6 +119,12 @@ func _complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult
 		var map = _context.content.world.map_by_id(_context.state.party.map_id)
 		_set_post_move_continuation(map, _context.state.party.coordinate)
 		return _continue_post_move(events)
+	if resume_kind == &"area-search-second":
+		var result := ExplorationTimeWorkflow.complete_area_search(_context.workflow_context(), events)
+		if not result.ok:
+			return _context.failed(result.error_code, result.error_message, result.events)
+		_set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
+		return _context.responses()._finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
 	if resume_kind == &"completed":
 		return _context.completed(events)
 	return _context.failed(&"invalid_session_continuation", "Post-clock exploration continuation has no valid completion path.", events)

@@ -561,7 +561,8 @@ func _search() -> SessionStep:
 	var result := ExplorationTimeWorkflow.search(_workflow_context())
 	if not result.ok:
 		return _finish_failed(result.error_code, result.error_message, result.events)
-	return _finish_with_age_updates(result.events, "completed")
+	_set_post_time_continuation(result.map, "area-search-second", Vector2i.ZERO, result.check_random, result.timed_day, _state.party.coordinate)
+	return _finish_with_age_updates(result.events, &"post-clock", _session_continuation.copy())
 
 
 func _toggle_search() -> SessionStep:

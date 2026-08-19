@@ -5460,7 +5460,7 @@
           "current-cell random rectangle order",
           "three random door IDs and signed percentages"
         ],
-        "observation": "Search toggles party condition 5 between zero and minus one and requests integrated sound 141 without advancing time. Area Search is a distinct held control that calls checkforsecret and advances one timeclick per pulse. Torch finds item 805 and resolves the spell encoded by that item. The contextual slot displays Shop, Temple, or Encounter; Encounter scans current-cell negative random rectangles in reverse order, rolls each nonzero door with inclusive Rand(100), consumes positive successful chances, and opens the last successful XAP once.",
+        "observation": "Search toggles party condition 5 between zero and minus one and requests integrated sound 141 without advancing time. Area Search is a distinct held control that calls checkforsecret(TRUE), which advances four field timeclicks and performs its random check, then advances one additional field timeclick and performs a second random check per pulse. Torch finds item 805 and resolves the spell encoded by that item. The contextual slot displays Shop, Temple, or Encounter; Encounter scans current-cell negative random rectangles in reverse order, rolls each nonzero door with inclusive Rand(100), consumes positive successful chances, and opens the last successful XAP once.",
         "unresolved": []
       },
       "providence": {

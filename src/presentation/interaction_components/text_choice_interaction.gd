@@ -31,7 +31,7 @@ func build(request: InteractionRequest) -> void:
 		&"acknowledge":
 			var body := request.body as InteractionRequest.AcknowledgeBody
 			if body == null: return
-			var grid := _choice_grid(1)
+			var grid := _choice_grid(1, true)
 			var take_note_on_continue := body.journal_eligible and not body.journal_recorded and _autojournal_enabled
 			if body.journal_recorded:
 				add_hint("Already recorded in the journal.")
@@ -54,11 +54,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	get_viewport().set_input_as_handled()
 
 
-func _choice_grid(columns: int) -> GridContainer:
+func _choice_grid(columns: int, content_width: bool = false) -> GridContainer:
 	var pane := PanelContainer.new()
 	pane.name = "ChoicePane"
 	pane.theme_type_variation = &"ClassicInset"
-	pane.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pane.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if content_width else Control.SIZE_EXPAND_FILL
 	add_child(pane)
 	var grid := GridContainer.new()
 	grid.name = "ChoiceGrid"

@@ -221,6 +221,121 @@
       }
     },
     {
+      "id": "command.search",
+      "path": "res://src/presentation/assets/classic-controls/commands/search.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 32,
+      "native_height": 32,
+      "sha256": "38e5a46f74bbe40f145bb0aecd6d6170cc58dffdb2d919b28b85706cc7cc20af",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/buttonchoice.c:239-411",
+        "note": "Castle redraws exact built-in CICN 128 when persistent Search is switched off. Rebuilt uses that source-proven control image for the Search toggle without claiming an unobserved active-frame identity.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 128
+    },
+    {
+      "id": "command.area_search_pressed",
+      "path": "res://src/presentation/assets/classic-controls/commands/area-search-pressed.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "3457429210094c074fe8ed6c59fe51525a77949d567f67b9d66c3a245db42261",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/buttonchoice.c:239-411",
+        "note": "Castle draws exact generic CICN 129 as the depressed control plate while Area Search remains physically held; the visible eye/label is a separate app-owned composition.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 129
+    },
+    {
+      "id": "command.area_search",
+      "path": "res://src/presentation/assets/classic-controls/commands/area-search.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "964a392553b3b55118f57545ad91f94eaed4981c5674bb99f9cf6dcfcfe9e4cb",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/buttonchoice.c:239-411",
+        "note": "Castle draws exact generic CICN 130 as the released control plate after Area Search or on fatigue rejection; the visible eye/label is a separate app-owned composition.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "cicn",
+      "source_resource_id": 130
+    },
+    {
+      "id": "command.area_search_visual",
+      "path": "res://src/presentation/assets/classic-controls/commands/area-search-visual.png",
+      "source_repository": "Realmz Remake Dungeon UI",
+      "source_commit": "272341adba06bc22ae4f39958bf97f824b0afab5",
+      "source_path": "src/scenes/UI/HUD/Button_AreaSearch.png",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "4b9784b842757c11d7b8610d83ab21e22e47cebe672a6320afa84316b7514ff2",
+      "classification": "licensed-realmz-bitmap",
+      "classic_evidence": {
+        "status": "tracked-remake-scene-use",
+        "path": "src/scenes/UI/HUD/OWHUDControl.tscn",
+        "note": "The licensed non-commercial Realmz UI bitmap supplies the visible eye and Area Search label. Castle CICNs 129 and 130 remain separately cataloged as the source-proven pressed and released control plates.",
+        "repository": "Realmz Remake Dungeon UI",
+        "commit": "272341adba06bc22ae4f39958bf97f824b0afab5"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "license": "Realmz non-commercial license",
+      "license_note": "Licensed to this project for non-commercial use; redistribution must preserve the non-commercial project boundary."
+    },
+    {
       "id": "command.save",
       "path": "res://src/presentation/assets/classic-controls/commands/save.png",
       "source_repository": "Realmz Remake",

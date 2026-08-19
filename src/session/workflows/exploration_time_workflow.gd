@@ -111,13 +111,15 @@ static func rest(context: SessionWorkflowContext) -> ClockTransitionResult:
 	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
 
 
-static func search(context: SessionWorkflowContext) -> SessionWorkflowResult:
+static func search(context: SessionWorkflowContext) -> ClockTransitionResult:
 	if context.state.party_camping:
-		return SessionWorkflowResult.failed(&"search_while_camped", "Search is replaced by scroll scribing while camped.")
+		return ClockTransitionResult.failed(&"search_while_camped", "Search is replaced by scroll scribing while camped.")
+	if context.state.party.fatigue > 134:
+		return ClockTransitionResult.failed(&"area_search_exhausted", "The party is too fatigued to continue Area Search.")
 	context.state.mark_searched(context.state.party.map_id, context.state.party.coordinate)
 	var current_map := context.content.world.map_by_id(context.state.party.map_id)
 	if current_map == null:
-		return SessionWorkflowResult.failed(&"unknown_map", "The current map is unavailable for Search.")
+		return ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for Area Search.")
 	var discovered: Array[String] = []
 	var first_roll: int = 0
 	for y: int in range(context.state.party.coordinate.y - 1, context.state.party.coordinate.y + 2):
@@ -135,10 +137,25 @@ static func search(context: SessionWorkflowContext) -> SessionWorkflowResult:
 					context.state.world.discover_secret(feature.id)
 					discovered.append(feature.id)
 	var events: Array[DomainEvent] = [DomainEvent.new(&"search_completed", {"mapId": context.state.party.map_id, "x": context.state.party.coordinate.x, "y": context.state.party.coordinate.y, "roll": first_roll, "discoveredSecrets": discovered})]
-	events.append_array(context.rules.clock.advance_minutes(context.state, context.content, 1))
 	for secret_id: String in discovered:
 		events.append(DomainEvent.new(&"secret_discovered", {"secretId": secret_id}))
-	return SessionWorkflowResult.completed(events)
+	var previous_day := context.state.clock.day()
+	# Castle's held Area Search first calls checkforsecret(TRUE), which advances
+	# four field timeclicks. Its separate outer timeclick and random check resume
+	# only after this phase's timed/random continuation has settled.
+	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 4, classic_time_scale(current_map), true))
+	return ClockTransitionResult.completed(current_map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
+
+
+static func complete_area_search(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> ClockTransitionResult:
+	var current_map := context.content.world.map_by_id(context.state.party.map_id)
+	if current_map == null:
+		return ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for Area Search.", preceding_events)
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	var previous_day := context.state.clock.day()
+	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 1, classic_time_scale(current_map), true))
+	return ClockTransitionResult.completed(current_map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
 
 
 static func toggle_search(context: SessionWorkflowContext) -> SessionWorkflowResult:

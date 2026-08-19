@@ -263,7 +263,7 @@ static func _classic_spell_level(spell_id: String) -> int:
 
 func _add_character(character: CharacterView, combat_active: bool, auto_character_ids: Array[String]) -> void:
 	var row_container := HBoxContainer.new()
-	row_container.custom_minimum_size.y = 58.0
+	row_container.custom_minimum_size.y = 54.0
 	row_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row_container.add_theme_constant_override("separation", 3)
 	var row := Button.new()

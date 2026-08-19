@@ -474,13 +474,13 @@ static func _valid_post_time_continuation(content: RealmzContent, state: GameSta
 	if continuation == null or continuation.kind != &"post-clock":
 		return false
 	var exploration := continuation.exploration()
-	if exploration == null or exploration.timed_day < 0 or exploration.timed_encounter_index < 0 or exploration.timed_encounter_index > content.timed_encounters().size() or exploration.resume_kind not in [&"completed", &"move", &"post-move"]:
+	if exploration == null or exploration.timed_day < 0 or exploration.timed_encounter_index < 0 or exploration.timed_encounter_index > content.timed_encounters().size() or exploration.resume_kind not in [&"completed", &"move", &"post-move", &"area-search-second"]:
 		return false
 	var map := content.world.map_by_id(exploration.map_id)
 	var cell: MapCell = null if map == null else map.topology.cell_at(exploration.coordinate)
 	if cell == null or state.party.map_id != map.id or state.party.coordinate != exploration.coordinate or exploration.random_region_ids != cell.random_rect_ids() or exploration.random_region_index < -1 or exploration.random_region_index >= exploration.random_region_ids.size() or exploration.direction.x < -1 or exploration.direction.x > 1 or exploration.direction.y < -1 or exploration.direction.y > 1:
 		return false
-	if exploration.resume_kind in [&"completed", &"post-move"] and exploration.direction != Vector2i.ZERO or exploration.resume_kind == &"move" and exploration.direction == Vector2i.ZERO:
+	if exploration.resume_kind in [&"completed", &"post-move", &"area-search-second"] and exploration.direction != Vector2i.ZERO or exploration.resume_kind == &"move" and exploration.direction == Vector2i.ZERO:
 		return false
 	if session_interaction != null:
 		return vm_interaction == null and exploration.active_random_program_id.is_empty() and exploration.random_battle_stage == &"surprise-choice" and session_interaction.kind == InteractionRequest.YES_NO and exploration.random_region_index >= 0 and exploration.random_region_ids[exploration.random_region_index] == exploration.active_random_region_id and map.random_region_by_id(exploration.active_random_region_id) != null

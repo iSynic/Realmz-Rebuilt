@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$SourceRepository,
-    [string]$CastleRepository = ""
+    [string]$CastleRepository = "",
+    [string]$UiDonorRepository = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,7 +12,9 @@ $catalogPath = Join-Path $toolRoot "catalog.json"
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 $sourceRoot = (Resolve-Path -LiteralPath $SourceRepository).Path
 $classicEntries = @($catalog.assets | Where-Object { $_.source_kind -eq "classic-cicn" })
+$uiDonorEntries = @($catalog.assets | Where-Object { $_.source_kind -eq "licensed-ui-donor" })
 $castleRoot = ""
+$uiDonorRoot = ""
 $destinationRoot = Join-Path $repoRoot "src/presentation/assets/classic-controls"
 $manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-ui-assets.json"
 $cicnExporterPath = Join-Path $toolRoot "export-classic-cicn.ps1"
@@ -34,18 +37,32 @@ if ($classicEntries.Count -gt 0) {
         throw "The requested Castle source commit is unavailable: $($castleCommits[0])"
     }
 }
+if ($uiDonorEntries.Count -gt 0) {
+    if (-not $UiDonorRepository) {
+        throw "UiDonorRepository is required for cataloged licensed UI donor assets"
+    }
+    $uiDonorRoot = (Resolve-Path -LiteralPath $UiDonorRepository).Path
+    $uiDonorCommits = @($uiDonorEntries | ForEach-Object { $_.source_commit } | Sort-Object -Unique)
+    foreach ($uiDonorCommit in $uiDonorCommits) {
+        $resolvedUiDonorCommit = (& git -C $uiDonorRoot rev-parse "$uiDonorCommit`^{commit}").Trim()
+        if ($LASTEXITCODE -ne 0 -or $resolvedUiDonorCommit -ne $uiDonorCommit) {
+            throw "The requested licensed UI donor commit is unavailable: $uiDonorCommit"
+        }
+    }
+}
 
 $stagingRoot = Join-Path ([IO.Path]::GetTempPath()) ("realmz2-ui-assets-" + [Guid]::NewGuid().ToString("N"))
 $archivePath = Join-Path $stagingRoot "source.zip"
 $extractRoot = Join-Path $stagingRoot "source"
 $castleArchivePath = Join-Path $stagingRoot "castle-source.zip"
 $castleExtractRoot = Join-Path $stagingRoot "castle-source"
+$uiDonorExtractRoot = Join-Path $stagingRoot "ui-donor-source"
 $outputRoot = Join-Path $stagingRoot "output"
 $sidecarRoot = Join-Path $stagingRoot "sidecars"
-New-Item -ItemType Directory -Path $extractRoot, $castleExtractRoot, $outputRoot, $sidecarRoot | Out-Null
+New-Item -ItemType Directory -Path $extractRoot, $castleExtractRoot, $uiDonorExtractRoot, $outputRoot, $sidecarRoot | Out-Null
 
 try {
-    $sourcePaths = @($catalog.assets | Where-Object { $_.source_kind -ne "classic-cicn" } | ForEach-Object { $_.source_path } | Sort-Object -Unique)
+    $sourcePaths = @($catalog.assets | Where-Object { $_.source_kind -ne "classic-cicn" -and $_.source_kind -ne "licensed-ui-donor" } | ForEach-Object { $_.source_path } | Sort-Object -Unique)
     & git -C $sourceRoot archive --format=zip --output=$archivePath $catalog.source_commit -- @sourcePaths
     if ($LASTEXITCODE -ne 0) {
         throw "git archive failed"
@@ -60,11 +77,31 @@ try {
         }
         Expand-Archive -LiteralPath $castleArchivePath -DestinationPath $castleExtractRoot
     }
+    foreach ($uiDonorCommit in @($uiDonorEntries | ForEach-Object { $_.source_commit } | Sort-Object -Unique)) {
+        $commitRoot = Join-Path $uiDonorExtractRoot $uiDonorCommit
+        $commitArchivePath = Join-Path $stagingRoot ("ui-donor-" + $uiDonorCommit + ".zip")
+        $uiDonorPaths = @($uiDonorEntries | Where-Object { $_.source_commit -eq $uiDonorCommit } | ForEach-Object { $_.source_path } | Sort-Object -Unique)
+        & git -C $uiDonorRoot archive --format=zip --output=$commitArchivePath $uiDonorCommit -- @uiDonorPaths
+        if ($LASTEXITCODE -ne 0) {
+            throw "Licensed UI donor git archive failed"
+        }
+        New-Item -ItemType Directory -Path $commitRoot | Out-Null
+        Expand-Archive -LiteralPath $commitArchivePath -DestinationPath $commitRoot
+    }
 
     $records = @()
     foreach ($entry in $catalog.assets) {
         $isClassicCicn = $entry.source_kind -eq "classic-cicn"
-        $entryExtractRoot = if ($isClassicCicn) { $castleExtractRoot } else { $extractRoot }
+        $isLicensedUiDonor = $entry.source_kind -eq "licensed-ui-donor"
+        $entryExtractRoot = if ($isClassicCicn) {
+            $castleExtractRoot
+        }
+        elseif ($isLicensedUiDonor) {
+            Join-Path $uiDonorExtractRoot $entry.source_commit
+        }
+        else {
+            $extractRoot
+        }
         $sourcePath = Join-Path $entryExtractRoot ($entry.source_path -replace "/", [IO.Path]::DirectorySeparatorChar)
         if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
             throw "Catalog source is missing from the recorded commit: $($entry.source_path)"
@@ -131,6 +168,12 @@ try {
             $record["source_file_sha256"] = $entry.source_file_sha256
             $record["source_resource_type"] = $entry.resource_type
             $record["source_resource_id"] = $entry.resource_id
+        }
+        if ($entry.PSObject.Properties.Name -contains "license") {
+            $record["license"] = $entry.license
+        }
+        if ($entry.PSObject.Properties.Name -contains "license_note") {
+            $record["license_note"] = $entry.license_note
         }
         $records += $record
     }

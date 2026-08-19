@@ -8,6 +8,7 @@ const DETACHED_VIEW_DIAMETER: int = 25
 const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
 const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
 const PARTY_MARKER_ASSET_ID: StringName = PARTY_MARKER_RIGHT_ASSET_ID
+const GUTTER_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-charcoal-slate-tile.png")
 
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2.ZERO
@@ -134,11 +135,35 @@ func _draw() -> void:
 func _draw_exploration_stage(map_rect: Rect2) -> void:
 	var gutter := Color(0.035, 0.04, 0.045, 0.72)
 	if map_rect.position.x > 8.0:
-		draw_rect(Rect2(0.0, map_rect.position.y, map_rect.position.x - 4.0, map_rect.size.y), gutter, true)
+		_draw_stage_gutter(Rect2(0.0, map_rect.position.y, map_rect.position.x - 4.0, map_rect.size.y), gutter)
 	if map_rect.end.x < size.x - 8.0:
-		draw_rect(Rect2(map_rect.end.x + 4.0, map_rect.position.y, size.x - map_rect.end.x - 4.0, map_rect.size.y), gutter, true)
+		_draw_stage_gutter(Rect2(map_rect.end.x + 4.0, map_rect.position.y, size.x - map_rect.end.x - 4.0, map_rect.size.y), gutter)
 	draw_rect(map_rect.grow(4.0), Color(0.08, 0.09, 0.095, 1.0), false, 4.0)
 	draw_rect(map_rect.grow(1.0), Color(0.48, 0.49, 0.46, 0.9), false, 1.0)
+
+
+func _draw_stage_gutter(rect: Rect2, fallback_color: Color) -> void:
+	draw_rect(rect, fallback_color, true)
+	if GUTTER_TEXTURE != null:
+		draw_texture_rect(GUTTER_TEXTURE, rect, true, Color(0.55, 0.57, 0.56, 0.9))
+	draw_rect(rect, Color(0.34, 0.35, 0.34, 0.72), false, 1.0)
+	var center_x := rect.get_center().x
+	var top := rect.position.y + 22.0
+	var bottom := rect.end.y - 22.0
+	draw_line(Vector2(center_x - 5.0, top), Vector2(center_x - 5.0, bottom), Color(0.08, 0.09, 0.09, 0.82), 2.0)
+	draw_line(Vector2(center_x + 5.0, top), Vector2(center_x + 5.0, bottom), Color(0.38, 0.39, 0.37, 0.72), 1.0)
+	for ratio: float in [0.18, 0.5, 0.82]:
+		var center_y := lerpf(top, bottom, ratio)
+		var diamond := PackedVector2Array([
+			Vector2(center_x, center_y - 9.0),
+			Vector2(center_x + 8.0, center_y),
+			Vector2(center_x, center_y + 9.0),
+			Vector2(center_x - 8.0, center_y),
+			Vector2(center_x, center_y - 9.0),
+		])
+		draw_colored_polygon(diamond, Color(0.10, 0.11, 0.11, 0.72))
+		draw_polyline(diamond, Color(0.62, 0.50, 0.25, 0.62), 1.0, false)
+		draw_circle(Vector2(center_x, center_y), 2.0, Color(0.36, 0.66, 0.70, 0.68))
 
 
 func _draw_party_marker(party_rect: Rect2) -> void:

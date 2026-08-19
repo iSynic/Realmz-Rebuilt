@@ -38,6 +38,7 @@ const MUTED := Color("9aa4a5")
 const ERROR := Color("ef7770")
 const TEXT := Color("d8d9d2")
 const HELD_COMMAND_INTERVAL := 0.22
+const TORCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_torch_command_button.gd")
 
 @onready var _menu_strip: PanelContainer = %MenuStrip
 @onready var _menu_row: HBoxContainer = %MenuRow
@@ -544,14 +545,21 @@ func _rebuild_command_deck() -> void:
 	var context := &"encounter" if _current_view != null and _current_view.pending_interaction != null else _router.current_screen()
 	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
 		definition = _presentation_command_definition(definition)
-		var bitmap := ClassicBitmapButton.new()
-		bitmap.configure(definition, _profile.bitmap_scale)
-		if bool(definition.get("hold_repeat", false)):
-			bitmap.button_down.connect(_begin_held_command.bind(StringName(definition["id"])))
-			bitmap.button_up.connect(_stop_held_command)
+		var button: BaseButton
+		if bool(definition.get("torch_meter", false)):
+			var torch_button := TORCH_BUTTON_SCRIPT.new() as BaseButton
+			torch_button.command_requested.connect(_activate_command)
+			torch_button.set_meta("torch_meter", true)
+			button = torch_button
 		else:
-			bitmap.command_requested.connect(_activate_command)
-		var button: BaseButton = bitmap
+			var bitmap := ClassicBitmapButton.new()
+			bitmap.configure(definition, _profile.bitmap_scale)
+			if bool(definition.get("hold_repeat", false)):
+				bitmap.button_down.connect(_begin_held_command.bind(StringName(definition["id"])))
+				bitmap.button_up.connect(_stop_held_command)
+			else:
+				bitmap.command_requested.connect(_activate_command)
+			button = bitmap
 		button.set_meta("focus_key", "command:%s" % definition["id"])
 		var group := StringName(definition.get("group", &"party"))
 		var target_grid := _world_command_grid if group == &"world" and _world_command_panel.visible else _command_grid
@@ -574,8 +582,19 @@ func _update_command_availability() -> void:
 			reason = "Choose from the active encounter response controls."
 		elif not availability_id.is_empty():
 			reason = _availability_reason(availability_id)
-		button.disabled = not reason.is_empty()
-		button.tooltip_text = reason if not reason.is_empty() else "Break camp" if command_id == &"camp" and _current_view.party_summary != null and _current_view.party_summary.camping else String(definition.get("tooltip", ""))
+		if bool(button.get_meta("torch_meter", false)):
+			var summary := _current_view.party_summary if _current_view != null else null
+			button.call("sync_status",
+				0 if summary == null else summary.light_remaining,
+				false if summary == null else summary.has_classic_torch,
+				reason.is_empty(),
+				reason
+			)
+		else:
+			button.disabled = not reason.is_empty()
+			button.tooltip_text = reason if not reason.is_empty() else "Break camp" if command_id == &"camp" and _current_view.party_summary != null and _current_view.party_summary.camping else String(definition.get("tooltip", ""))
+			if command_id == &"search_mode" and button is ClassicBitmapButton:
+				button.set_pressed_no_signal(_current_view != null and _current_view.party_summary != null and _current_view.party_summary.searching)
 		button.queue_redraw()
 
 
@@ -657,6 +676,11 @@ func _on_held_command_timeout() -> void:
 		_stop_held_command()
 		return
 	_activate_command(_held_command)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_stop_held_command()
 
 
 func _on_screen_changed(screen_id: StringName) -> void:

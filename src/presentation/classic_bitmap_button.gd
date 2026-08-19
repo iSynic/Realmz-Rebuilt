@@ -15,6 +15,7 @@ var command_id: StringName
 var _native_size := Vector2i(50, 50)
 var _art_scale: int = 1
 var _art_texture: Texture2D
+var _pressed_art_texture: Texture2D
 var _label: String = ""
 
 
@@ -34,13 +35,18 @@ func _ready() -> void:
 func configure(definition: Dictionary, art_scale: int = 1) -> void:
 	command_id = StringName(definition.get("id", &""))
 	var asset_id := StringName(definition.get("asset_id", &""))
+	var pressed_asset_id := StringName(definition.get("pressed_asset_id", &""))
 	_art_texture = ClassicUiAssetCatalog.texture(asset_id)
+	_pressed_art_texture = ClassicUiAssetCatalog.texture(pressed_asset_id)
 	texture_normal = null
 	_native_size = ClassicUiAssetCatalog.native_size(asset_id)
+	var pressed_native_size := ClassicUiAssetCatalog.native_size(pressed_asset_id)
+	_native_size = Vector2i(maxi(_native_size.x, pressed_native_size.x), maxi(_native_size.y, pressed_native_size.y))
 	if _native_size.x <= 0 or _native_size.y <= 0:
 		_native_size = Vector2i(50, 50)
 	tooltip_text = String(definition.get("tooltip", ""))
 	_label = String(definition.get("label", "Command"))
+	toggle_mode = bool(definition.get("toggle_mode", false))
 	var accelerator := String(definition.get("accelerator", ""))
 	if not accelerator.is_empty():
 		tooltip_text += " [%s]" % accelerator
@@ -63,10 +69,11 @@ func _draw() -> void:
 	var pressed_offset := Vector2.ONE if button_pressed else Vector2.ZERO
 	var font := get_theme_font("font", "Button")
 	var font_size := maxi(11, get_theme_font_size("font_size", "Button") - 2)
-	if _art_texture != null:
+	var displayed_texture := _pressed_art_texture if button_pressed and _pressed_art_texture != null else _art_texture
+	if displayed_texture != null:
 		var art_size := Vector2(_native_size * _art_scale)
 		var art_rect := Rect2(Vector2(floorf((size.x - art_size.x) * 0.5), floorf((size.y - art_size.y) * 0.5)) + pressed_offset, art_size)
-		draw_texture_rect(_art_texture, art_rect, false)
+		draw_texture_rect(displayed_texture, art_rect, false)
 	else:
 		draw_string(font, Vector2(4.0, size.y * 0.5 + font_size * 0.35) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, font_size, CAPTION_COLOR)
 	if disabled:
