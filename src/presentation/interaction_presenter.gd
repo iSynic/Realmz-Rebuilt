@@ -35,6 +35,7 @@ var _application_rect := Rect2(0.0, 32.0, 1280.0, 688.0)
 var _passive_text: bool = false
 var _playback_masked: bool = false
 var _playback_status_label: Label
+var _autojournal_enabled: bool = true
 
 
 func _notification(what: int) -> void:
@@ -235,6 +236,10 @@ func set_text_scale(value: float) -> void:
 	_prompt.add_theme_font_size_override("font_size", int(round(20.0 * value)))
 
 
+func set_autojournal_enabled(enabled: bool) -> void:
+	_autojournal_enabled = enabled
+
+
 func _component_for(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> InteractionComponent:
 	if _is_player_map_request(request):
 		var player_map := PlayerMapInteraction.new()
@@ -242,7 +247,9 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 		return player_map
 	match request.kind:
 		&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice":
-			return TextChoiceInteraction.new()
+			var text_choice := TextChoiceInteraction.new()
+			text_choice.configure(_autojournal_enabled)
+			return text_choice
 		&"age_update":
 			var age_update := AgeUpdateInteraction.new()
 			age_update.configure(media)
@@ -358,7 +365,7 @@ func _apply_classic_region() -> void:
 
 
 func _apply_content_layout() -> void:
-	var split_textbox := uses_textbox_region(_request, _passive_text) and (_request == null or _request.kind != InteractionRequest.COMBAT)
+	var split_textbox := uses_textbox_region(_request, _passive_text) and (_request == null or _request.kind not in [InteractionRequest.ACKNOWLEDGE, InteractionRequest.COMBAT])
 	_content.vertical = not split_textbox
 	if split_textbox:
 		var available_width := _textbox_rect.size.x

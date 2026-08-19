@@ -217,6 +217,8 @@ func _build_controls_tab(parent: VBoxContainer, settings: PresentationSettings) 
 	movement_row.add_child(movement_speed)
 	_add_setting_row(content, "Exploration speed  •  %d%%" % settings.exploration_speed_percent, movement_row)
 	_add_setting_toggle(content, "Auto Switch To Melee Weapon", settings.auto_switch_to_melee, &"auto_switch_to_melee")
+	_add_setting_toggle(content, "Show travel preview on the exploration map", settings.show_exploration_minimap, &"show_exploration_minimap")
+	_add_setting_toggle(content, "Add eligible scenario text to Notes automatically", settings.autojournal_enabled, &"autojournal_enabled")
 	content.add_child(_label("Move: arrows, WASD, or numpad  •  Hold Shift in battle to reveal adjacent movement costs  •  Space skips presentation playback", MUTED, 14))
 
 

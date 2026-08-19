@@ -1,8 +1,16 @@
 class_name TextChoiceInteraction
 extends InteractionComponent
 
+var _autojournal_enabled: bool = true
+var _manual_journal_available: bool = false
+
+
+func configure(autojournal_enabled: bool) -> void:
+	_autojournal_enabled = autojournal_enabled
+
 
 func build(request: InteractionRequest) -> void:
+	_manual_journal_available = false
 	match request.kind:
 		&"encounter_choice", &"scenario_choice":
 			var body := request.body as InteractionRequest.ChoiceRequestBody
@@ -24,11 +32,26 @@ func build(request: InteractionRequest) -> void:
 			var body := request.body as InteractionRequest.AcknowledgeBody
 			if body == null: return
 			var grid := _choice_grid(1)
-			if body.journal_eligible and not body.journal_recorded:
-				_add_choice(grid, "Take note", InteractionResponse.AcknowledgeBody.new(true), "ChoiceTakeNote")
-			elif body.journal_recorded:
+			var take_note_on_continue := body.journal_eligible and not body.journal_recorded and _autojournal_enabled
+			if body.journal_recorded:
 				add_hint("Already recorded in the journal.")
-			_add_choice(grid, "Continue", InteractionResponse.AcknowledgeBody.new(), "ChoiceContinue")
+			elif take_note_on_continue:
+				add_hint("This passage will be added to Notes automatically.")
+			elif body.journal_eligible:
+				_manual_journal_available = true
+				add_hint("Press N to add this passage to Notes.")
+			_add_choice(grid, "Continue", InteractionResponse.AcknowledgeBody.new(take_note_on_continue), "ChoiceContinue")
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not _manual_journal_available or not event is InputEventKey:
+		return
+	var key_event := event as InputEventKey
+	if not key_event.pressed or key_event.echo or key_event.keycode != KEY_N:
+		return
+	_manual_journal_available = false
+	response_body_submitted.emit(InteractionResponse.AcknowledgeBody.new(true))
+	get_viewport().set_input_as_handled()
 
 
 func _choice_grid(columns: int) -> GridContainer:
@@ -50,5 +73,6 @@ func _choice_grid(columns: int) -> GridContainer:
 func _add_choice(parent: Container, label: String, body: InteractionResponse.Body, node_name: String) -> void:
 	var button := add_response_to(parent, label, body)
 	button.name = node_name
-	button.custom_minimum_size.y = 42.0
+	button.custom_minimum_size = Vector2(180.0, 38.0)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.theme_type_variation = &"ClassicChoiceButton"

@@ -20,6 +20,8 @@ signal window_mode_changed(value: String)
 signal reduced_motion_changed(enabled: bool)
 signal auto_switch_to_melee_changed(enabled: bool)
 signal exploration_speed_changed(percent: int)
+signal exploration_minimap_changed(enabled: bool)
+signal autojournal_changed(enabled: bool)
 signal layout_changed(workspace_rect: Rect2, profile: UiLayoutProfile)
 signal route_changed(route_id: StringName)
 signal play_stage_visibility_changed(visible: bool)
@@ -235,14 +237,16 @@ func present_media_events(events: Array[DomainEvent], media: ClassicMediaCatalog
 		if asset == null:
 			last_picture_media_diagnostic = media.resolution_diagnostic("PICT", picture_id, "classic-picture")
 			_picture.texture = null
-			_picture_caption.text = "PICT %d unavailable" % picture_id
+			_picture.tooltip_text = "Scenario picture unavailable"
+			_picture_caption.text = ""
 			_picture_stage.visible = true
 			continue
 		var image := _decode_image(asset, media.read_bytes(asset))
 		last_picture_media_diagnostic = media.resolution_diagnostic("PICT", picture_id, "classic-picture", "decoded" if image != null else "decode-failed")
 		_picture.texture = ImageTexture.create_from_image(image) if image != null else null
 		_picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		_picture_caption.text = asset.label
+		_picture.tooltip_text = "Scenario picture" if image != null else "Scenario picture unavailable"
+		_picture_caption.text = ""
 		_picture_stage.visible = true
 
 
@@ -540,28 +544,14 @@ func _rebuild_command_deck() -> void:
 	var context := &"encounter" if _current_view != null and _current_view.pending_interaction != null else _router.current_screen()
 	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
 		definition = _presentation_command_definition(definition)
-		var asset_id := StringName(definition.get("asset_id", &""))
-		var button: BaseButton
-		if not asset_id.is_empty() and ClassicUiAssetCatalog.texture(asset_id) != null:
-			var bitmap := ClassicBitmapButton.new()
-			bitmap.configure(definition, _profile.bitmap_scale)
-			if bool(definition.get("hold_repeat", false)):
-				bitmap.button_down.connect(_begin_held_command.bind(StringName(definition["id"])))
-				bitmap.button_up.connect(_stop_held_command)
-			else:
-				bitmap.command_requested.connect(_activate_command)
-			button = bitmap
+		var bitmap := ClassicBitmapButton.new()
+		bitmap.configure(definition, _profile.bitmap_scale)
+		if bool(definition.get("hold_repeat", false)):
+			bitmap.button_down.connect(_begin_held_command.bind(StringName(definition["id"])))
+			bitmap.button_up.connect(_stop_held_command)
 		else:
-			var text_button := Button.new()
-			text_button.text = String(definition.get("label", "Command"))
-			text_button.custom_minimum_size = Vector2(54.0, 54.0)
-			text_button.tooltip_text = String(definition.get("tooltip", ""))
-			if bool(definition.get("hold_repeat", false)):
-				text_button.button_down.connect(_begin_held_command.bind(StringName(definition["id"])))
-				text_button.button_up.connect(_stop_held_command)
-			else:
-				text_button.pressed.connect(_activate_command.bind(StringName(definition["id"])))
-			button = text_button
+			bitmap.command_requested.connect(_activate_command)
+		var button: BaseButton = bitmap
 		button.set_meta("focus_key", "command:%s" % definition["id"])
 		var group := StringName(definition.get("group", &"party"))
 		var target_grid := _world_command_grid if group == &"world" and _world_command_panel.visible else _command_grid
@@ -709,6 +699,8 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"reduced_motion": reduced_motion_changed.emit(bool(value))
 		&"auto_switch_to_melee": auto_switch_to_melee_changed.emit(bool(value))
 		&"exploration_speed_percent": exploration_speed_changed.emit(int(value))
+		&"show_exploration_minimap": exploration_minimap_changed.emit(bool(value))
+		&"autojournal_enabled": autojournal_changed.emit(bool(value))
 
 
 func _on_character_selected(character_id: String) -> void:

@@ -201,7 +201,7 @@ Blockers: **1**. Major gaps: **12**.
 - `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete.
 - `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
-- `classic.maps.authored-journal` - Castle's Auto Note preference and unsafe journal cursor boundary remain outside the verified authored-journal subset.
+- `classic.maps.authored-journal` - Castle's PRFN default and the authored-journal rendering boundary remain outside the verified subset.
 - `classic.maps.location-notes` - Castle's two dialog exit labels and exact cancellation semantics are not established by source alone.
 - `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.
 - `classic.maps.view-acquired` - Malformed crop starts and authored picture rectangles lack boundary observations.

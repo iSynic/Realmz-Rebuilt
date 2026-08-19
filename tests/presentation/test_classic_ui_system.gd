@@ -605,16 +605,16 @@ func _test_settings_schema_and_migration() -> void:
 	var settings := PresentationSettings.new()
 	settings.ui_scale_mode = PresentationSettings.UI_SCALE_125
 	settings.window_mode = PresentationSettings.BORDERLESS_FULLSCREEN
-	settings.text_scale = 1.5
-	settings.auto_switch_to_melee = false
-	settings.exploration_speed_percent = 250
+	settings.text_scale = 1.5; settings.auto_switch_to_melee = false; settings.exploration_speed_percent = 250
+	settings.show_exploration_minimap = true; settings.autojournal_enabled = false
 	var restored := PresentationSettings.from_data(settings.to_data())
-	assert_not_null(restored, "schema-five presentation settings round-trip")
+	assert_not_null(restored, "schema-six presentation settings round-trip")
 	assert_equal(restored.ui_scale_mode, PresentationSettings.UI_SCALE_125, "interface density persists separately")
 	assert_equal(restored.window_mode, PresentationSettings.BORDERLESS_FULLSCREEN, "window mode persists")
 	assert_equal(restored.text_scale, 1.5, "text scale remains independent")
 	assert_false(restored.auto_switch_to_melee, "Auto Weapon Switch persists as an application preference rather than battle state")
 	assert_equal(restored.exploration_speed_percent, 250, "exploration speed persists independently of simulation state")
+	assert_equal([restored.show_exploration_minimap, restored.autojournal_enabled], [true, false], "optional travel preview and Castle-shaped Auto Note persist as presentation preferences")
 	var version_two := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 2, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": true})
 	assert_not_null(version_two, "schema-two settings migrate")
 	assert_equal(version_two.ui_scale_mode, PresentationSettings.UI_SCALE_AUTO, "migrated settings default to automatic interface density")
@@ -626,9 +626,10 @@ func _test_settings_schema_and_migration() -> void:
 	var version_four := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 4, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": true, "uiScaleMode": PresentationSettings.UI_SCALE_100, "windowMode": PresentationSettings.WINDOWED, "autoSwitchToMelee": false})
 	assert_not_null(version_four, "schema-four settings migrate")
 	assert_equal(version_four.exploration_speed_percent, 100, "older settings inherit the stable exploration cadence")
+	var version_five := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 5, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": false, "uiScaleMode": PresentationSettings.UI_SCALE_100, "windowMode": PresentationSettings.WINDOWED, "autoSwitchToMelee": true, "explorationSpeedPercent": 200}); assert_equal([version_five.show_exploration_minimap, version_five.autojournal_enabled], [false, true], "schema-five settings migrate to a hidden modern travel aid and the requested Auto Note default")
 	var malformed_current := settings.to_data()
-	malformed_current.erase("autoSwitchToMelee")
-	assert_equal(PresentationSettings.from_data(malformed_current), null, "schema-four settings reject a missing Auto Weapon Switch field")
+	malformed_current.erase("autojournalEnabled")
+	assert_equal(PresentationSettings.from_data(malformed_current), null, "current settings reject an incomplete preference record")
 	var move_body := InteractionResponse.CombatBody.new(&"move", "character.test")
 	move_body.destination = Vector2i(46, 45)
 	move_body.has_destination = true
@@ -895,14 +896,13 @@ func _test_lifecycle_interaction() -> void:
 
 func _test_classic_choice_context() -> void:
 	var journal_request := InteractionRequest.from_payload("journal-text", InteractionRequest.ACKNOWLEDGE, {"prompt": "A source message", "journalEligible": true, "journalRecorded": false})
-	var journal_component := TextChoiceInteraction.new()
-	var journal_payloads: Array[Dictionary] = []
+	var journal_component := TextChoiceInteraction.new(); var journal_payloads: Array[Dictionary] = []
 	journal_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: journal_payloads.append(body.to_data()))
-	journal_component.build(journal_request)
+	journal_component.configure(true); journal_component.build(journal_request)
 	var journal_buttons: Array[Node] = journal_component.find_children("*", "Button", true, false)
-	assert_equal(journal_buttons.map(func(button: Button) -> String: return button.text), ["Take note", "Continue"], "eligible Classic text offers source-shaped journal discovery before ordinary continuation")
+	assert_equal(journal_buttons.map(func(button: Button) -> String: return button.text), ["Continue"], "Auto Note keeps one compact acknowledgement instead of a separate invented Take note command")
 	(journal_buttons[0] as Button).pressed.emit()
-	assert_equal(journal_payloads, [{"takeNote": true}], "Take note emits only the typed acknowledgement selection")
+	assert_equal(journal_payloads, [{"takeNote": true}], "Auto Note preserves the typed journal flag on ordinary acknowledgement")
 	journal_component.free()
 	var yes_no := TextChoiceInteraction.new()
 	yes_no.build(InteractionRequest.yes_no("layout-choice", "Continue?", "Yes", "No"))
@@ -1225,8 +1225,8 @@ func _test_scene_composition() -> void:
 	var party_panel := shell.get_node("BottomRegion/BottomRow/CommandPanel") as Control
 	assert_equal([world_panel.size_flags_horizontal, narrative_well.size_flags_horizontal, party_panel.size_flags_horizontal], [Control.SIZE_EXPAND_FILL, Control.SIZE_SHRINK_CENTER, Control.SIZE_EXPAND_FILL], "the wide footer gives spare width to both command panes while keeping the Classic narrative measure fixed")
 	assert_equal(RealmzApplication.classic_textbox_rect(Rect2(0.0, 32.0, 992.0, 498.0), 190.0, 1280.0), Rect2(0.0, 530.0, 1280.0, 190.0), "Classic narrative interactions own the complete bottom stage rather than only the map column")
-	var backing := shell.get_node("PictureStage/PictureBacking") as TextureRect
-	assert_equal(backing.stretch_mode, TextureRect.STRETCH_TILE, "picture backing fills without stretching")
+	var backing := shell.get_node("PictureStage/PictureBacking") as TextureRect; var roster := shell.get_node("PartyRoster") as PanelContainer; var picture_caption := shell.get_node("PictureStage/PictureMargin/PictureColumn/PictureCaption") as Label
+	assert_true(backing.stretch_mode == TextureRect.STRETCH_TILE and not picture_caption.visible and roster.theme_type_variation == &"ClassicInset", "picture and roster stages use owned Classic framing without exposing package media IDs")
 	for viewport_size: Vector2 in [Vector2(800, 600), Vector2(1280, 720)]:
 		var profile := UiLayoutProfile.for_viewport(viewport_size, PresentationSettings.UI_SCALE_AUTO)
 		var rect := ClassicScreenRouter.campaign_rect_for(profile, viewport_size)

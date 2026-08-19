@@ -4213,7 +4213,7 @@
       "id": "maps.authored-journal",
       "workflowIds": ["classic.maps.authored-journal"],
       "domain": "maps",
-      "claim": "Classic's authored journal is a playthrough-owned discovery table over Data SD2 message identities. Interactive source text may be recorded explicitly, entries browse in numeric source order, and Realmz 2.0 bounds discovery to the 3,000 persisted flags rather than reproducing Castle's unsafe 5,999 cursor range.",
+      "claim": "Classic's authored journal is a playthrough-owned discovery table over Data SD2 message identities. Interactive source text records through the persisted Auto Note preference or the N key on positive text, entries browse in numeric source order, and Realmz 2.0 bounds discovery to the 3,000 persisted flags rather than reproducing Castle's unsafe 5,999 cursor range.",
       "remake": {
         "commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
         "behavior": "The functional Remake checkpoint has no source-backed authored-journal discovery store, viewer, or tests to donate.",
@@ -4224,6 +4224,7 @@
         "commit": "491816ad60037394f92c428e99c004494d3c28b3",
         "evidence": "source-control-flow",
         "controlFlow": [
+          { "path": "src/realmz_orig/textbox-time.c", "symbol": "if ((class == -1) && (((gTheEvent.message & charCodeMask) == 'n') || (autonote)))" },
           { "path": "src/realmz_orig/textbox-time.c", "symbol": "notes[abs(index)] = TRUE;" },
           { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "if (notes[GetDialogNum(6) - 1])" },
           { "path": "src/realmz_orig/handlemenuchoice.c", "symbol": "if (journalindex2 > 5999)" },
@@ -4231,8 +4232,8 @@
           { "path": "src/realmz_orig/loadsavedgame.c", "symbol": "fread(&notes, sizeof notes, 1, fp);" }
         ],
         "authoredInputs": ["Data SD2 message ID and text", "positive textbox click pacing", "N-key manual note request", "Auto Note preference", "3,000 saved discovery flags"],
-        "observation": "Positive Data SD2 text can mark notes[abs(index)] and set the journal cursor. The journal reads Data SD2 directly and scans discovered IDs numerically. The fixed notes array has 3,000 entries, but the browser later clamps its cursor to 5,999 and can test the array before proving the cursor is in range.",
-        "unresolved": ["Auto Note preference behavior remains outside this workflow implementation.", "Empty and maximum-length Data SD2 rendering still require a controlled runtime fixture."]
+        "observation": "Positive Data SD2 text records notes[abs(index)] when the pressed key is lowercase N or the persisted Auto Note preference is enabled, then exits the same textbox acknowledgement. The journal reads Data SD2 directly and scans discovered IDs numerically. The fixed notes array has 3,000 entries, but the browser later clamps its cursor to 5,999 and can test the array before proving the cursor is in range.",
+        "unresolved": ["The original PRFN default for Auto Note is not proven by the pinned source snapshot; Rebuilt deliberately defaults the host preference on.", "Empty and maximum-length Data SD2 rendering still require a controlled runtime fixture."]
       },
       "providence": {
         "commit": "9fb0021a47272aea00403644f0e4084c03e1e3b7",
@@ -4244,7 +4245,7 @@
       },
       "realmz2": {
         "owner": { "path": "src/core/state/game_state.gd", "symbol": "func record_journal_message" },
-        "expectedTrace": ["publish positive Classic source text", "yield a typed acknowledgement with journal eligibility", "validate the optional Take note payload", "record the stable message ID once without RNG or time", "resume the exact VM frame", "serialize sorted discovery IDs", "validate package message identities transactionally on restore", "detach immutable message text in numeric source order"],
+        "expectedTrace": ["publish positive Classic source text", "yield a typed acknowledgement with journal eligibility", "select takeNote automatically from the host preference or manually from N", "validate the typed acknowledgement payload", "record the stable message ID once without RNG or time", "resume the exact VM frame", "serialize sorted discovery IDs", "validate package message identities transactionally on restore", "detach immutable message text in numeric source order"],
         "tests": [
           { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_interaction_matrix" },
           { "path": "tests/scenario/test_scenario_vm.gd", "symbol": "func _test_public_session_resume" },
@@ -4259,7 +4260,7 @@
         "fixtureSha256": "7b8a1bc89ab71225ac5700d888fb7ac0bb0c0216ff948496e7d70f68d2be99fc"
       },
       "availability": "implemented",
-      "status": "manual-discovery-source-order-view-save-restore-and-unsafe-boundary-correction-implemented-auto-note-runtime-oracle-and-ordinary-campaign-proof-pending"
+      "status": "manual-n-and-host-auto-note-discovery-source-order-view-save-restore-and-unsafe-boundary-correction-implemented-prfn-default-and-ordinary-campaign-proof-pending"
     },
     {
       "id": "application.quit-lifecycle",

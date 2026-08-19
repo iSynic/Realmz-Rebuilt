@@ -10,9 +10,10 @@ const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
 const PARTY_MARKER_ASSET_ID: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 
 @export var cell_size: float = 32.0
-@export var map_origin: Vector2 = Vector2(0.0, 24.0)
+@export var map_origin: Vector2 = Vector2.ZERO
 @export var minimap_size: float = 94.0
 @export var show_debug_facts: bool = false
+@export var show_travel_preview: bool = false
 
 var _view: GameView
 var _media: ClassicMediaCatalog
@@ -66,6 +67,13 @@ func present(game_view: GameView) -> void:
 	queue_redraw()
 
 
+func set_travel_preview_visible(enabled: bool) -> void:
+	show_travel_preview = enabled
+	if not enabled:
+		_minimap_rect = Rect2()
+	queue_redraw()
+
+
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
 	_atlas_assets.clear()
@@ -95,6 +103,8 @@ func _draw() -> void:
 	var font := ThemeDB.fallback_font
 	var viewport_cells := viewport_cells_for(size, map_origin.y, cell_size)
 	var draw_origin := map_draw_origin_for(size, map_origin, cell_size, viewport_cells)
+	var map_rect := Rect2(draw_origin, Vector2(viewport_cells) * cell_size)
+	_draw_exploration_stage(map_rect)
 	var camera := camera_top_left(map_view.party_coordinate, Vector2i(map_view.width, map_view.height), viewport_cells)
 	var camera_end := camera + viewport_cells
 	for cell: MapCellView in map_view.cells():
@@ -115,10 +125,20 @@ func _draw() -> void:
 			draw_string(font, rect.position + Vector2(7, 17), facts, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(0.78, 0.82, 0.88))
 	_party_rect = Rect2(draw_origin + Vector2(map_view.party_coordinate - camera) * cell_size, Vector2.ONE * cell_size)
 	_draw_party_marker(_party_rect)
-	draw_string(font, Vector2(8.0, 17.0), "%s • %s" % [map_view.map_name, String(map_view.level_type)], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color(0.86, 0.75, 0.42))
-	var input_hint := "Click map • numpad / arrows / WASD" if map_view.level_type == &"land" else "Facing %s • click / arrows / WASD" % facing_label(map_view.last_move_direction)
-	draw_string(font, Vector2(size.x - 258.0, 17.0), input_hint, HORIZONTAL_ALIGNMENT_RIGHT, 250.0, 12, Color(0.66, 0.69, 0.73))
-	_draw_minimap(map_view, font)
+	if show_travel_preview:
+		_draw_minimap(map_view, font)
+	else:
+		_minimap_rect = Rect2()
+
+
+func _draw_exploration_stage(map_rect: Rect2) -> void:
+	var gutter := Color(0.035, 0.04, 0.045, 0.72)
+	if map_rect.position.x > 8.0:
+		draw_rect(Rect2(0.0, map_rect.position.y, map_rect.position.x - 4.0, map_rect.size.y), gutter, true)
+	if map_rect.end.x < size.x - 8.0:
+		draw_rect(Rect2(map_rect.end.x + 4.0, map_rect.position.y, size.x - map_rect.end.x - 4.0, map_rect.size.y), gutter, true)
+	draw_rect(map_rect.grow(4.0), Color(0.08, 0.09, 0.095, 1.0), false, 4.0)
+	draw_rect(map_rect.grow(1.0), Color(0.48, 0.49, 0.46, 0.9), false, 1.0)
 
 
 func _draw_party_marker(party_rect: Rect2) -> void:

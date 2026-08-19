@@ -98,6 +98,8 @@ func _ready() -> void:
 	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed)
 	_shell_presenter.auto_switch_to_melee_changed.connect(_on_auto_switch_to_melee_changed)
 	_shell_presenter.exploration_speed_changed.connect(_on_exploration_speed_changed)
+	_shell_presenter.exploration_minimap_changed.connect(_on_exploration_minimap_changed)
+	_shell_presenter.autojournal_changed.connect(_on_autojournal_changed)
 	_shell_presenter.layout_changed.connect(_on_shell_layout_changed)
 	_shell_presenter.route_changed.connect(_on_route_changed)
 	_shell_presenter.vault_archive_requested.connect(_archive_vault_character)
@@ -109,6 +111,8 @@ func _ready() -> void:
 	presentation_coordinator.set_reduced_motion(_presentation_settings.reduced_motion)
 	_apply_application_theme(_presentation_settings.text_scale)
 	_interaction_presenter.set_text_scale(_presentation_settings.text_scale)
+	_interaction_presenter.set_autojournal_enabled(_presentation_settings.autojournal_enabled)
+	_map_presenter.set_travel_preview_visible(_presentation_settings.show_exploration_minimap)
 	_apply_window_mode(_presentation_settings.window_mode)
 	_audio_presenter.set_master_volume(_presentation_settings.master_volume)
 	_on_topology_debug_changed(_presentation_settings.topology_debug)
@@ -919,6 +923,18 @@ func _on_auto_switch_to_melee_changed(enabled: bool) -> void:
 func _on_exploration_speed_changed(percent: int) -> void:
 	_presentation_settings.exploration_speed_percent = clampi(snappedi(percent, 25), 25, 400)
 	_held_movement.set_speed_percent(_presentation_settings.exploration_speed_percent)
+	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_exploration_minimap_changed(enabled: bool) -> void:
+	_presentation_settings.show_exploration_minimap = enabled
+	_map_presenter.set_travel_preview_visible(enabled)
+	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_autojournal_changed(enabled: bool) -> void:
+	_presentation_settings.autojournal_enabled = enabled
+	_interaction_presenter.set_autojournal_enabled(enabled)
 	settings_repository.save_settings(_presentation_settings)
 
 

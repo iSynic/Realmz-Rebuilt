@@ -6,6 +6,7 @@
 
 - Each route owns a registered scene. Scenes own durable header/layout, scrolling, and focus containment; `ClassicScreenRouter` supplies detached view content and route transitions.
 - `ClassicPartyRoster` owns the persistent six-slot right rail and presentation-only character selection. A typed `CHARACTER_SELECTION` request switches that rail into Castle's countdown picker: the cursor shows picks remaining, portraits receive descending numbers, repeated clicks renumber locally, and the exact count emits one Party-ordered response without opening the Character workspace. The request is mandatory under `FD-SCENARIO-002`: the picker exposes no cancel control and Back or Escape leaves the blocking request pending.
+- The persistent roster owns one complete inset panel boundary around its title, slots, and scrollbar; it never appears as unframed text floating beside the spatial stage.
 - During memorized combat spell selection, `ClassicPartyRoster` temporarily becomes the spellbook rail. It owns only level/spell/power selection and returns the exact request-owned `CastOption`; closing or resolving the interaction restores the current detached party view. The proven original Cast Spell and Abort controls live in a fixed footer outside the spell list's scroll region so both actions remain visible in the canonical 1280x720 composition and the optional 800x600 Classic mode; their tooltips distinguish immediate casting from battlefield aiming without altering the submitted option.
 
 # Local Contracts
