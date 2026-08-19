@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+Add-Type -AssemblyName System.Drawing
 
 $toolRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
@@ -49,5 +50,42 @@ $combatIconCount = @($manifest.assets | Where-Object { $_.resource_type -eq "cic
 if ($soundCount -ne 142 -or $combatIconCount -ne 145) {
     throw "Expected 142 built-in sounds and 145 source-backed combat icons; found $soundCount sounds and $combatIconCount icons"
 }
-Write-Host "Classic application media verified: $($manifest.assets.Count) assets."
+
+$chromeManifestPath = Join-Path $repoRoot "src/presentation/assets/ui/spritecook-assets.json"
+if (-not (Test-Path -LiteralPath $chromeManifestPath -PathType Leaf)) {
+    throw "SpriteCook chrome manifest is missing"
+}
+$chromeManifest = Get-Content -Raw -LiteralPath $chromeManifestPath | ConvertFrom-Json
+if ($chromeManifest.schema_version -ne 5 -or [string]::IsNullOrWhiteSpace($chromeManifest.selected_asset.asset_id)) {
+    throw "SpriteCook chrome manifest contract is unsupported"
+}
+$chromeFiles = @($chromeManifest.files)
+foreach ($decorativeAsset in @($chromeManifest.decorative_assets)) {
+    if ([string]::IsNullOrWhiteSpace($decorativeAsset.asset_id) -or [string]::IsNullOrWhiteSpace($decorativeAsset.source_sha256) -or [string]::IsNullOrWhiteSpace($decorativeAsset.derivation)) {
+        throw "SpriteCook decorative asset provenance is incomplete"
+    }
+    $chromeFiles += $decorativeAsset.file
+}
+foreach ($file in $chromeFiles) {
+    if (-not $file.path.StartsWith("res://")) {
+        throw "Generated chrome path is not project-relative: $($file.path)"
+    }
+    $relativePath = $file.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar
+    $path = Join-Path $repoRoot $relativePath
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "Generated chrome file is missing: $($file.path)"
+    }
+    $sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
+    if ($sha256 -ne $file.sha256) {
+        throw "Generated chrome hash does not match: $($file.path)"
+    }
+    $bitmap = [Drawing.Bitmap]::new([string]$path)
+    try {
+        if ($bitmap.Width -ne $file.width -or $bitmap.Height -ne $file.height) {
+            throw "Generated chrome dimensions do not match: $($file.path)"
+        }
+    }
+    finally { $bitmap.Dispose() }
+}
+Write-Host "Classic application media verified: $($manifest.assets.Count) assets; generated chrome verified: $($chromeFiles.Count) files."
 exit 0

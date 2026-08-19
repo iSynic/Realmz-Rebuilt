@@ -9,6 +9,7 @@ const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
 const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
 const PARTY_MARKER_ASSET_ID: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 const GUTTER_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-charcoal-slate-tile.png")
+const GUTTER_RAIL_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-exploration-rail.png")
 
 @export var cell_size: float = 32.0
 @export var map_origin: Vector2 = Vector2.ZERO
@@ -147,23 +148,13 @@ func _draw_stage_gutter(rect: Rect2, fallback_color: Color) -> void:
 	if GUTTER_TEXTURE != null:
 		draw_texture_rect(GUTTER_TEXTURE, rect, true, Color(0.55, 0.57, 0.56, 0.9))
 	draw_rect(rect, Color(0.34, 0.35, 0.34, 0.72), false, 1.0)
-	var center_x := rect.get_center().x
-	var top := rect.position.y + 22.0
-	var bottom := rect.end.y - 22.0
-	draw_line(Vector2(center_x - 5.0, top), Vector2(center_x - 5.0, bottom), Color(0.08, 0.09, 0.09, 0.82), 2.0)
-	draw_line(Vector2(center_x + 5.0, top), Vector2(center_x + 5.0, bottom), Color(0.38, 0.39, 0.37, 0.72), 1.0)
-	for ratio: float in [0.18, 0.5, 0.82]:
-		var center_y := lerpf(top, bottom, ratio)
-		var diamond := PackedVector2Array([
-			Vector2(center_x, center_y - 9.0),
-			Vector2(center_x + 8.0, center_y),
-			Vector2(center_x, center_y + 9.0),
-			Vector2(center_x - 8.0, center_y),
-			Vector2(center_x, center_y - 9.0),
-		])
-		draw_colored_polygon(diamond, Color(0.10, 0.11, 0.11, 0.72))
-		draw_polyline(diamond, Color(0.62, 0.50, 0.25, 0.62), 1.0, false)
-		draw_circle(Vector2(center_x, center_y), 2.0, Color(0.36, 0.66, 0.70, 0.68))
+	if GUTTER_RAIL_TEXTURE == null:
+		return
+	var source_size := GUTTER_RAIL_TEXTURE.get_size()
+	var scale_factor: float = minf(1.0, minf(rect.size.x / source_size.x, rect.size.y / source_size.y))
+	var rail_size := source_size * scale_factor
+	var rail_rect := Rect2(rect.get_center() - rail_size * 0.5, rail_size)
+	draw_texture_rect(GUTTER_RAIL_TEXTURE, rail_rect, false, Color(0.72, 0.74, 0.73, 0.88))
 
 
 func _draw_party_marker(party_rect: Rect2) -> void:

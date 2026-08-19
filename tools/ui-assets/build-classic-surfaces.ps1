@@ -14,6 +14,13 @@ $committedSurfacePath = Join-Path $outputRoot "classic-charcoal-slate.png"
 $committedManifestPath = Join-Path $outputRoot "spritecook-assets.json"
 $stagingRoot = Join-Path ([IO.Path]::GetTempPath()) ("realmz2-ui-surfaces-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $stagingRoot | Out-Null
+$decorativeAssets = @()
+if (Test-Path -LiteralPath $committedManifestPath) {
+    $committedManifest = Get-Content -Raw -LiteralPath $committedManifestPath | ConvertFrom-Json
+    if ($null -ne $committedManifest.decorative_assets) {
+        $decorativeAssets = @($committedManifest.decorative_assets)
+    }
+}
 
 function Save-Png([Drawing.Bitmap]$bitmap, [string]$path) {
     $bitmap.Save($path, [Drawing.Imaging.ImageFormat]::Png)
@@ -187,8 +194,9 @@ try {
         finally { $bitmap.Dispose() }
     }
     $manifest = [ordered]@{
-        schema_version = 4
+        schema_version = 5
         selected_asset = $selectedAsset
+        decorative_assets = $decorativeAssets
         derivation = [ordered]@{
             generator = "tools/ui-assets/build-classic-surfaces.ps1"
             algorithm = "system-drawing-bicubic-512-plus-cosine-feathered-512-tile-and-opaque-528px-bevel-v3"
