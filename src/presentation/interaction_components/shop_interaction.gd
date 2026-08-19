@@ -4,8 +4,10 @@ extends InteractionComponent
 const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
+const CONTENT_ICON_SCRIPT := preload("res://src/presentation/classic_content_icon.gd")
 
 var _compact := false
+var _media: ClassicMediaCatalog
 var _body: InteractionRequest.ShopRequestBody
 var _characters: Array[InteractionRequestValue.ServiceCharacter] = []
 var _stock: Array[InteractionRequestValue.ShopStock] = []
@@ -22,7 +24,8 @@ var _stock_group := ButtonGroup.new()
 var _inventory_group := ButtonGroup.new()
 
 
-func configure(compact: bool) -> void:
+func configure(media: ClassicMediaCatalog, compact: bool) -> void:
+	_media = media
 	_compact = compact
 
 
@@ -119,7 +122,14 @@ func _build_stock_content(content: VBoxContainer) -> void:
 	if _stock.is_empty():
 		rows.add_child(_label("No stock is available.", MUTED))
 		return
+	var first_button: Button
 	for entry: InteractionRequestValue.ShopStock in _stock:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 5)
+		var icon := CONTENT_ICON_SCRIPT.new() as Control
+		icon.name = "StockIcon_%s" % entry.stock_key.replace(":", "_").replace(".", "_")
+		icon.configure(entry.icon_resource_type, entry.icon_id, _media, 46.0, entry.name)
+		row.add_child(icon)
 		var button := Button.new()
 		button.name = "Stock_%s" % entry.stock_key.replace(":", "_").replace(".", "_")
 		button.text = "%s\n%d gold  •  %d left" % [entry.name, entry.buy_price, entry.quantity]
@@ -130,8 +140,11 @@ func _build_stock_content(content: VBoxContainer) -> void:
 		button.toggle_mode = true
 		button.button_group = _stock_group
 		button.pressed.connect(_select_stock.bind(entry.stock_key))
-		rows.add_child(button)
-	(rows.get_child(0) as Button).set_pressed_no_signal(true)
+		row.add_child(button)
+		rows.add_child(row)
+		if first_button == null:
+			first_button = button
+	first_button.set_pressed_no_signal(true)
 
 
 func _build_pack_pane(parent: HBoxContainer) -> void:
@@ -231,6 +244,12 @@ func _refresh_inventory() -> void:
 		_inventory_rows.add_child(_label("No adventurer is selected.", MUTED))
 		return
 	for item: InteractionRequestValue.InventoryItem in character.inventory:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 5)
+		var icon := CONTENT_ICON_SCRIPT.new() as Control
+		icon.name = "InventoryIcon_%s" % item.instance_id.replace(".", "_")
+		icon.configure(item.icon_resource_type, item.icon_id, _media, 46.0, item.name)
+		row.add_child(icon)
 		var button := Button.new()
 		button.name = "Inventory_%s" % item.instance_id.replace(".", "_")
 		button.text = "%s\n%s  •  sell %d gold" % [item.name, "Equipped" if item.equipped else "Carried", item.sell_price]
@@ -241,7 +260,8 @@ func _refresh_inventory() -> void:
 		button.toggle_mode = true
 		button.button_group = _inventory_group
 		button.pressed.connect(_select_item.bind(character.id, item.instance_id))
-		_inventory_rows.add_child(button)
+		row.add_child(button)
+		_inventory_rows.add_child(row)
 	if character.inventory.is_empty():
 		_inventory_rows.add_child(_label("%s carries no items." % character.name, MUTED))
 
@@ -259,19 +279,29 @@ func _refresh_inspector() -> void:
 	_sell_button.tooltip_text = "Select a carried item." if _selected_item == null else _selected_item.sell_reason if not _selected_item.can_sell else ""
 	_identify_button.tooltip_text = "Select a carried item." if _selected_item == null else _selected_item.identify_reason if not _selected_item.can_identify else ""
 	if _selected_stock != null:
-		_add_inspector_record(_selected_stock.name, ["Buy for %d gold" % _selected_stock.buy_price, "%d remaining" % _selected_stock.quantity], _selected_stock.can_buy, _selected_stock.buy_reason)
+		_add_inspector_record(_selected_stock.name, ["Buy for %d gold" % _selected_stock.buy_price, "%d remaining" % _selected_stock.quantity], _selected_stock.can_buy, _selected_stock.buy_reason, _selected_stock.icon_resource_type, _selected_stock.icon_id)
 	elif _selected_item != null:
 		var state := "Equipped" if _selected_item.equipped else "Carried"
 		var knowledge := "Identified" if _selected_item.identified else "Unidentified"
-		_add_inspector_record(_selected_item.name, ["%s  •  %s" % [state, knowledge], "Sell for %d gold" % _selected_item.sell_price, "Identify for %d gold" % _body.identify_price], _selected_item.can_sell or _selected_item.can_identify, _selected_item.sell_reason if not _selected_item.can_sell else _selected_item.identify_reason)
+		_add_inspector_record(_selected_item.name, ["%s  •  %s" % [state, knowledge], "Sell for %d gold" % _selected_item.sell_price, "Identify for %d gold" % _body.identify_price], _selected_item.can_sell or _selected_item.can_identify, _selected_item.sell_reason if not _selected_item.can_sell else _selected_item.identify_reason, _selected_item.icon_resource_type, _selected_item.icon_id)
 	else:
 		_inspector_facts.add_child(_label("Choose stock to buy or an item from the selected adventurer's pack.", MUTED))
 
 
-func _add_inspector_record(title: String, facts: Array[String], available: bool, reason: String) -> void:
-	_inspector_facts.add_child(_label(title, GOLD))
+func _add_inspector_record(title: String, facts: Array[String], available: bool, reason: String, resource_type: String, resource_id: int) -> void:
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", 8)
+	var icon := CONTENT_ICON_SCRIPT.new() as Control
+	icon.name = "ShopSelectedItemIcon"
+	icon.configure(resource_type, resource_id, _media, 58.0, title)
+	header.add_child(icon)
+	var record := VBoxContainer.new()
+	record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	record.add_child(_label(title, GOLD))
 	for fact: String in facts:
-		_inspector_facts.add_child(_label(fact, CYAN))
+		record.add_child(_label(fact, CYAN))
+	header.add_child(record)
+	_inspector_facts.add_child(header)
 	if not available and not reason.is_empty():
 		_inspector_facts.add_child(_label(reason, Color("d48a78")))
 

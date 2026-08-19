@@ -704,6 +704,9 @@ func _test_conditions_time_and_persistence() -> void:
 
 
 func _test_inventory_economy_and_treasure() -> void:
+	var icon_definition := ItemDefinition.new("item.icon-lookup", 0, "Icon Test"); var unidentified_icon_cases: Array[Vector2i] = [Vector2i(7, 2), Vector2i(18, 12), Vector2i(31, 20), Vector2i(38, 35), Vector2i(55, 50), Vector2i(84, 82), Vector2i(94, 89), Vector2i(520, 527), Vector2i(548, 546), Vector2i(6105, 6100), Vector2i(6118, 6110), Vector2i(6125, 6122), Vector2i(6138, 6137), Vector2i(6186, 6183), Vector2i(6194, 6190), Vector2i(6199, 6197), Vector2i(6205, 6202), Vector2i(6209, 12009), Vector2i(6163, 6162), Vector2i(6176, 6177)]
+	for icon_case: Vector2i in unidentified_icon_cases:
+		icon_definition.icon_id = icon_case.x; assert_equal(icon_definition.visible_icon_id(false), icon_case.y, "Castle's unidentified CICN %d uses its generic image" % icon_case.x); assert_equal(icon_definition.visible_icon_id(true), icon_case.x, "identified CICN %d retains authored art" % icon_case.x)
 	var rules := RealmzRules.new()
 	var character := CharacterState.new("character.inventory", "Inventory", 8, 8)
 	character.maximum_load = 50

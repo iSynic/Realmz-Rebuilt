@@ -6,9 +6,11 @@ const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
 
 var _compact := false
+var _media: ClassicMediaCatalog
 
 
-func configure(compact: bool) -> void:
+func configure(media: ClassicMediaCatalog, compact: bool) -> void:
+	_media = media
 	_compact = compact
 
 
@@ -97,7 +99,7 @@ func _build_item_column(column: VBoxContainer, body: InteractionRequest.Treasure
 	if body.item == null:
 		_add_muted_label(column, "No items remain to distribute.", "TreasureEmptyItem")
 	else:
-		column.add_child(_loot_marker())
+		column.add_child(_loot_marker(body.item))
 		var card := PanelContainer.new()
 		card.name = "TreasureSelectedItem"
 		card.theme_type_variation = &"ClassicInset"
@@ -122,8 +124,6 @@ func _build_item_column(column: VBoxContainer, body: InteractionRequest.Treasure
 		_add_muted_label(column, body.prompt, "TreasurePrompt")
 	if body.experience_share > 0 and not recovering_fumble:
 		_add_colored_label(column, "Each eligible adventurer receives %d experience." % body.experience_share, GOLD, "TreasureExperienceShare")
-	if body.item != null:
-		_add_muted_label(column, "Exact item art is unavailable for this reward record.", "TreasureMediaUnavailable")
 
 
 func _build_recipient_column(column: VBoxContainer, body: InteractionRequest.TreasureRequestBody, recovering_fumble: bool) -> void:
@@ -196,7 +196,7 @@ func _build_footer(body: InteractionRequest.TreasureRequestBody, recovering_fumb
 		done.custom_minimum_size.x = 160.0
 
 
-func _loot_marker() -> CenterContainer:
+func _loot_marker(item: InteractionRequestValue.RewardItem) -> CenterContainer:
 	var center := CenterContainer.new()
 	center.name = "TreasureLootField"
 	center.custom_minimum_size.y = 132.0 if not _compact else 104.0
@@ -214,6 +214,30 @@ func _loot_marker() -> CenterContainer:
 	glow.size = Vector2(48.0, 48.0) * scale
 	glow.position = (stage.custom_minimum_size - glow.size) * 0.5
 	stage.add_child(glow)
+	var asset: MediaAsset = _media.asset_by_resource(item.icon_resource_type, item.icon_id) if _media != null and item != null and item.icon_id != 0 else null
+	var item_texture: Texture2D = _media.image_texture(asset) if _media != null and asset != null else null
+	if item_texture != null:
+		var item_icon := TextureRect.new()
+		item_icon.name = "TreasureItemIcon"
+		item_icon.texture = item_texture
+		item_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		item_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		item_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		item_icon.size = Vector2(54.0, 54.0) * scale
+		item_icon.position = (stage.custom_minimum_size - item_icon.size) * 0.5
+		item_icon.tooltip_text = item.name
+		stage.add_child(item_icon)
+	else:
+		var unavailable := Label.new()
+		unavailable.name = "TreasureItemIconUnavailable"
+		unavailable.text = "◇"
+		unavailable.tooltip_text = "Item image unavailable"
+		unavailable.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		unavailable.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		unavailable.size = Vector2(54.0, 54.0) * scale
+		unavailable.position = (stage.custom_minimum_size - unavailable.size) * 0.5
+		unavailable.add_theme_color_override("font_color", MUTED)
+		stage.add_child(unavailable)
 	var selection := TextureRect.new()
 	selection.name = "TreasureSelectionCircle"
 	selection.texture = ClassicUiAssetCatalog.texture(&"loot.selection")

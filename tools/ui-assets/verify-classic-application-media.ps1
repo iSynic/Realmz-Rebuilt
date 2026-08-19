@@ -46,9 +46,10 @@ foreach ($asset in $manifest.assets) {
 	}
 }
 $soundCount = @($manifest.assets | Where-Object { $_.resource_type -eq "snd " }).Count
-$combatIconCount = @($manifest.assets | Where-Object { $_.resource_type -eq "cicn" }).Count
-if ($soundCount -ne 142 -or $combatIconCount -ne 145) {
-    throw "Expected 142 built-in sounds and 145 source-backed combat icons; found $soundCount sounds and $combatIconCount icons"
+$combatIconCount = @($manifest.assets | Where-Object { $_.path -like "*/combat-icons/*" }).Count
+$itemIconCount = @($manifest.assets | Where-Object { $_.path -like "*/item-icons/*" }).Count
+if ($soundCount -ne 142 -or $combatIconCount -ne 145 -or $itemIconCount -ne 260) {
+    throw "Expected 142 built-in sounds, 145 source-backed combat icons, and 260 shared item icons; found $soundCount sounds, $combatIconCount combat icons, and $itemIconCount item icons"
 }
 
 $chromeManifestPath = Join-Path $repoRoot "src/presentation/assets/ui/spritecook-assets.json"

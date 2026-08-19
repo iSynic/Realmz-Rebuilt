@@ -233,7 +233,7 @@ static func _treasure_payload(state: StringName, prompt: String) -> Dictionary:
 		return {
 			"prompt": prompt,
 			"mode": "fumbled-item-recovery",
-			"item": {"instanceId": "item-fumbled", "definitionId": "classic.item.6", "name": "Sting +3", "charges": 7, "identified": true},
+			"item": {"instanceId": "item-fumbled", "definitionId": "classic.item.6", "name": "Sting +3", "charges": 7, "identified": true, "iconResourceType": "cicn", "iconId": 6},
 			"characters": recovery_characters,
 			"remaining": 1,
 		}
@@ -247,7 +247,7 @@ static func _treasure_payload(state: StringName, prompt: String) -> Dictionary:
 		"experiencePool": 360,
 		"experienceShare": 60,
 		"wealth": {"gold": 125 if has_item else 0, "gems": 2 if has_item else 0, "jewelry": 1 if has_item else 0},
-		"item": {"instanceId": "reward.item.1", "definitionId": "classic.item.901", "name": "Unknown wand" if unidentified else "Fixture Wand", "charges": 2, "identified": not unidentified, "magical": unidentified} if has_item else null,
+		"item": {"instanceId": "reward.item.1", "definitionId": "classic.item.901", "name": "Unknown wand" if unidentified else "Fixture Wand", "charges": 2, "identified": not unidentified, "magical": unidentified, "iconResourceType": "cicn", "iconId": 35 if unidentified else 40} if has_item else null,
 		"remaining": 24 if state == &"oversized" else 1 if has_item else 0,
 		"characters": characters,
 		"hasShareCapacity": state != &"unavailable" and not characters.is_empty(),

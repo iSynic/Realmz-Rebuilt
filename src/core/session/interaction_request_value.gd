@@ -49,9 +49,15 @@ class InventoryItem:
 	var sell_reason: String
 	var can_identify: bool
 	var identify_reason: String
+	var icon_resource_type: String = "cicn"
+	var icon_id: int
 
 	func to_data() -> Dictionary:
-		return {"instanceId": instance_id, "itemId": item_id, "name": name, "identified": identified, "equipped": equipped, "charges": charges, "sellPrice": sell_price, "canSell": can_sell, "sellReason": sell_reason, "canIdentify": can_identify, "identifyReason": identify_reason}
+		var data := {"instanceId": instance_id, "itemId": item_id, "name": name, "identified": identified, "equipped": equipped, "charges": charges, "sellPrice": sell_price, "canSell": can_sell, "sellReason": sell_reason, "canIdentify": can_identify, "identifyReason": identify_reason}
+		if icon_id > 0:
+			data["iconResourceType"] = icon_resource_type
+			data["iconId"] = icon_id
+		return data
 
 
 class Transfer:
@@ -101,9 +107,15 @@ class ShopStock:
 	var buy_price: int
 	var can_buy: bool
 	var buy_reason: String
+	var icon_resource_type: String = "cicn"
+	var icon_id: int
 
 	func to_data() -> Dictionary:
-		return {"stockKey": stock_key, "index": index, "itemId": item_id, "name": name, "quantity": quantity, "buyPrice": buy_price, "canBuy": can_buy, "buyReason": buy_reason}
+		var data := {"stockKey": stock_key, "index": index, "itemId": item_id, "name": name, "quantity": quantity, "buyPrice": buy_price, "canBuy": can_buy, "buyReason": buy_reason}
+		if icon_id > 0:
+			data["iconResourceType"] = icon_resource_type
+			data["iconId"] = icon_id
+		return data
 
 
 class TempleService:
@@ -260,10 +272,15 @@ class RewardItem:
 	var identified: bool
 	var magical: bool
 	var has_magical: bool
+	var icon_resource_type: String = "cicn"
+	var icon_id: int
 
 	func to_data() -> Dictionary:
 		var data := {"instanceId": instance_id, "definitionId": definition_id, "name": name, "charges": charges, "identified": identified}
 		if has_magical: data["magical"] = magical
+		if icon_id > 0:
+			data["iconResourceType"] = icon_resource_type
+			data["iconId"] = icon_id
 		return data
 
 
@@ -487,21 +504,27 @@ static func condition(data: Variant) -> Condition:
 
 
 static func inventory_item(data: Variant) -> InventoryItem:
-	var fields := ["instanceId", "itemId", "name", "identified", "equipped", "charges", "sellPrice", "canSell", "sellReason", "canIdentify", "identifyReason"]
-	if not data is Dictionary or not _exact(data, fields, fields) or not _strings(data, ["instanceId", "itemId", "name", "sellReason", "identifyReason"]) or not _ints(data, ["charges", "sellPrice"]) or not _bools(data, ["identified", "equipped", "canSell", "canIdentify"]): return null
+	var required := ["instanceId", "itemId", "name", "identified", "equipped", "charges", "sellPrice", "canSell", "sellReason", "canIdentify", "identifyReason"]
+	var fields := required + ["iconResourceType", "iconId"]
+	if not data is Dictionary or not _exact(data, fields, required) or not _strings(data, ["instanceId", "itemId", "name", "sellReason", "identifyReason"]) or not _ints(data, ["charges", "sellPrice"]) or not _bools(data, ["identified", "equipped", "canSell", "canIdentify"]): return null
+	if not _optional_resource_key(data): return null
 	var result := InventoryItem.new()
 	result.instance_id = data["instanceId"]; result.item_id = data["itemId"]; result.name = data["name"]
 	result.identified = data["identified"]; result.equipped = data["equipped"]; result.charges = int(data["charges"]); result.sell_price = int(data["sellPrice"])
 	result.can_sell = data["canSell"]; result.sell_reason = data["sellReason"]; result.can_identify = data["canIdentify"]; result.identify_reason = data["identifyReason"]
+	result.icon_resource_type = String(data.get("iconResourceType", "cicn")); result.icon_id = int(data.get("iconId", 0))
 	return result
 
 
 static func shop_stock(data: Variant) -> ShopStock:
-	var fields := ["stockKey", "index", "itemId", "name", "quantity", "buyPrice", "canBuy", "buyReason"]
-	if not data is Dictionary or not _exact(data, fields, fields) or not _strings(data, ["stockKey", "itemId", "name", "buyReason"]) or not _ints(data, ["index", "quantity", "buyPrice"]) or not data["canBuy"] is bool: return null
+	var required := ["stockKey", "index", "itemId", "name", "quantity", "buyPrice", "canBuy", "buyReason"]
+	var fields := required + ["iconResourceType", "iconId"]
+	if not data is Dictionary or not _exact(data, fields, required) or not _strings(data, ["stockKey", "itemId", "name", "buyReason"]) or not _ints(data, ["index", "quantity", "buyPrice"]) or not data["canBuy"] is bool: return null
+	if not _optional_resource_key(data): return null
 	var result := ShopStock.new()
 	result.stock_key = data["stockKey"]; result.index = int(data["index"]); result.item_id = data["itemId"]; result.name = data["name"]
 	result.quantity = int(data["quantity"]); result.buy_price = int(data["buyPrice"]); result.can_buy = data["canBuy"]; result.buy_reason = data["buyReason"]
+	result.icon_resource_type = String(data.get("iconResourceType", "cicn")); result.icon_id = int(data.get("iconId", 0))
 	return result
 
 
@@ -608,9 +631,10 @@ static func cast_option(data: Variant, source_kind: StringName) -> CastOption:
 
 
 static func reward_item(data: Variant) -> RewardItem:
-	var fields := ["instanceId", "definitionId", "name", "charges", "identified", "magical"]
+	var fields := ["instanceId", "definitionId", "name", "charges", "identified", "magical", "iconResourceType", "iconId"]
 	if not data is Dictionary or not _exact(data, fields, ["instanceId", "definitionId", "name", "charges", "identified"]) or not _strings(data, ["instanceId", "definitionId", "name"]) or not _ints(data, ["charges"]) or not data["identified"] is bool or data.has("magical") and not data["magical"] is bool: return null
-	var result := RewardItem.new(); result.instance_id = data["instanceId"]; result.definition_id = data["definitionId"]; result.name = data["name"]; result.charges = int(data["charges"]); result.identified = data["identified"]; result.magical = bool(data.get("magical", false)); result.has_magical = data.has("magical"); return result
+	if not _optional_resource_key(data): return null
+	var result := RewardItem.new(); result.instance_id = data["instanceId"]; result.definition_id = data["definitionId"]; result.name = data["name"]; result.charges = int(data["charges"]); result.identified = data["identified"]; result.magical = bool(data.get("magical", false)); result.has_magical = data.has("magical"); result.icon_resource_type = String(data.get("iconResourceType", "cicn")); result.icon_id = int(data.get("iconId", 0)); return result
 
 
 static func reward_character(data: Variant, mode: StringName) -> RewardCharacter:
@@ -759,6 +783,14 @@ static func _optional_string(data: Dictionary, field: String) -> bool:
 
 static func _optional_int(data: Dictionary, field: String) -> bool:
 	return not data.has(field) or _whole(data[field])
+
+
+static func _optional_resource_key(data: Dictionary) -> bool:
+	if data.has("iconResourceType") != data.has("iconId"):
+		return false
+	if not data.has("iconId"):
+		return true
+	return data["iconResourceType"] is String and not String(data["iconResourceType"]).is_empty() and _whole(data["iconId"]) and int(data["iconId"]) > 0
 
 
 static func _whole(value: Variant) -> bool:

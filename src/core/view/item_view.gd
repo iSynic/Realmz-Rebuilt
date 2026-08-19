@@ -35,7 +35,7 @@ func _init(instance: ItemInstance, definition: ItemDefinition, presentation_defi
 		description = "Definition unavailable"
 		return
 	var visible_definition := presentation_definition if presentation_definition != null else definition
-	icon_id = definition.icon_id
+	icon_id = definition.visible_icon_id(identified)
 	item_type = visible_definition.item_type
 	name = visible_definition.name if identified else visible_definition.unidentified_name
 	usable = visible_definition.initial_charges > 0

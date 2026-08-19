@@ -419,14 +419,14 @@ func _test_shop_component() -> void:
 		"inflationPercent": 125,
 		"identifyPrice": 20,
 		"characters": [{"id": "character.one", "name": "Hero", "inventory": [
-			{"instanceId": "item.unknown", "itemId": "classic.item.40", "name": "Runed wand", "sellPrice": 0, "identified": false, "equipped": false, "charges": 2, "canSell": true, "sellReason": "", "canIdentify": false, "identifyReason": "Identification costs 20 gold."},
-			{"instanceId": "item.equipped", "itemId": "classic.item.1", "name": "Sword", "sellPrice": 25, "identified": true, "equipped": true, "charges": -1, "canSell": false, "sellReason": "Unequip this item before selling it.", "canIdentify": false, "identifyReason": "This item is already identified."},
+			{"instanceId": "item.unknown", "itemId": "classic.item.40", "name": "Runed wand", "sellPrice": 0, "identified": false, "equipped": false, "charges": 2, "canSell": true, "sellReason": "", "canIdentify": false, "identifyReason": "Identification costs 20 gold.", "iconResourceType": "cicn", "iconId": 35},
+			{"instanceId": "item.equipped", "itemId": "classic.item.1", "name": "Sword", "sellPrice": 25, "identified": true, "equipped": true, "charges": -1, "canSell": false, "sellReason": "Unequip this item before selling it.", "canIdentify": false, "identifyReason": "This item is already identified.", "iconResourceType": "cicn", "iconId": 20},
 		]}],
-		"stock": [{"stockKey": "buyback:classic.item.5", "index": -1, "itemId": "classic.item.5", "name": "Dagger", "buyPrice": 40, "quantity": 1, "canBuy": false, "buyReason": "The party cannot afford this item."}],
+		"stock": [{"stockKey": "buyback:classic.item.5", "index": -1, "itemId": "classic.item.5", "name": "Dagger", "buyPrice": 40, "quantity": 1, "canBuy": false, "buyReason": "The party cannot afford this item.", "iconResourceType": "cicn", "iconId": 5}],
 	})
-	var component := ShopInteraction.new()
+	var component := ShopInteraction.new(); component.configure(ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new()), false)
 	component.build(request)
-	assert_true(component.find_child("ShopHeader", true, false) != null and component.find_child("ShopStockColumn", true, false) != null and component.find_child("SelectedInventoryColumn", true, false) != null and component.find_child("ItemInspectorRail", true, false) != null and component.find_child("ShopFooter", true, false) != null, "shop keeps stock, pack, selected record, and transaction actions in stable regions")
+	assert_true(component.find_child("ShopHeader", true, false) != null and component.find_child("ShopStockColumn", true, false) != null and component.find_child("SelectedInventoryColumn", true, false) != null and component.find_child("ItemInspectorRail", true, false) != null and component.find_child("ShopFooter", true, false) != null, "shop keeps stock, pack, selected record, and transaction actions in stable regions"); assert_true(component.find_child("StockIcon_buyback_classic_item_5", true, false).find_child("ContentImage", true, false) != null and component.find_child("InventoryIcon_item_unknown", true, false).find_child("ContentImage", true, false) != null, "shop stock and carried items resolve their exact typed CICNs through the shared application catalog")
 	var buy_button := component.find_child("ShopBuy", true, false) as Button
 	assert_true(buy_button.disabled and buy_button.tooltip_text.contains("afford"), "unaffordable stock exposes its core-owned reason")
 	var unknown_item := component.find_child("Inventory_item_unknown", true, false) as Button
@@ -781,19 +781,19 @@ func _test_fixture_gallery_coverage() -> void:
 	assert_true(age_component.find_child("AgeIdentityPanel", true, false) != null and age_component.find_child("AgeChangeGrid", true, false) != null, "the Classic age update renders identity, age band, and changed statistics as one contained workspace")
 	assert_true(age_component.get_children().any(func(child: Node) -> bool: return child is Button and child.text == "Continue"), "the blocking age update exposes one keyboard-focusable continuation")
 	age_component.free()
-	var recovery_component := TreasureDistributionInteraction.new()
+	var item_media := ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new()); var recovery_component := TreasureDistributionInteraction.new(); recovery_component.configure(item_media, false)
 	recovery_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"missing_media"))
-	assert_true(recovery_component.find_child("TreasureItemColumn", true, false) != null and recovery_component.find_child("TreasureRecipientColumn", true, false) != null and recovery_component.find_child("TreasureCommandColumn", true, false) == null and recovery_component.find_child("TreasureLootField", true, false) != null and recovery_component.find_child("TreasureFooter", true, false) != null, "battle recovery is a focused item/recipient decision with proven loot marker and fixed exit, not an ordinary wealth workspace")
+	assert_true(recovery_component.find_child("TreasureItemColumn", true, false) != null and recovery_component.find_child("TreasureRecipientColumn", true, false) != null and recovery_component.find_child("TreasureCommandColumn", true, false) == null and recovery_component.find_child("TreasureLootField", true, false) != null and recovery_component.find_child("TreasureFooter", true, false) != null, "battle recovery is a focused item/recipient decision with proven loot marker and fixed exit, not an ordinary wealth workspace"); assert_true(recovery_component.find_child("TreasureItemIcon", true, false) != null, "battle recovery renders the exact item CICN above the typed recipient controls")
 	assert_true(_labels_in(recovery_component).any(func(text: String) -> bool: return text.contains("7 charges")), "battle recovery exposes the exact preserved charge count")
 	assert_true(_buttons_in(recovery_component).any(func(button: Button) -> bool: return button.text.begins_with("Recover to Hero") and not button.disabled), "nominal battle recovery exposes its rules-authorized recipient as an explicit recovery control")
 	recovery_component.free()
-	var ordinary_component := TreasureDistributionInteraction.new()
+	var ordinary_component := TreasureDistributionInteraction.new(); ordinary_component.configure(item_media, false)
 	ordinary_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION))
 	assert_true(_labels_in(ordinary_component).any(func(text: String) -> bool: return text.contains("Gold 125")), "ordinary booty exposes the detached pooled denominations")
 	assert_true(_buttons_in(ordinary_component).any(func(button: Button) -> bool: return button.text.begins_with("Hero") and not button.disabled), "ordinary booty exposes rules-owned exact-item assignment")
 	assert_true(_buttons_in(ordinary_component).any(func(button: Button) -> bool: return button.text == "Done"), "ordinary booty has one typed completion path")
 	ordinary_component.free()
-	var capacity_component := TreasureDistributionInteraction.new()
+	var capacity_component := TreasureDistributionInteraction.new(); capacity_component.configure(item_media, false)
 	capacity_component.build(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unavailable"))
 	assert_true(_buttons_in(capacity_component).any(func(button: Button) -> bool: return button.text.begins_with("Hero") and button.disabled and button.tooltip_text.contains("full")), "capacity-blocked booty retains the core-provided disabled reason")
 	capacity_component.free()
@@ -1098,7 +1098,7 @@ func _test_field_spell_workspace() -> void:
 	assert_equal([cast_payload.operation, cast_payload.caster_id, cast_payload.spell_id, cast_payload.power], [&"cast", "caster", "classic.spell.field", 1], "compact spell action preserves the selected caster, spell, and power")
 	body.free()
 func _test_inventory_workspace() -> void:
-	var definition := ItemDefinition.new("classic.item.inventory-ui", 10, "Longsword", "Sword", "A balanced sword.")
+	var definition := ItemDefinition.new("classic.item.inventory-ui", 10, "Longsword", "Sword", "A balanced sword."); definition.icon_id = 20
 	var source := CharacterState.new("source", "Alis", 10, 10); var destination := CharacterState.new("destination", "Borin", 12, 12)
 	var view := GameView.new(4, true, null)
 	var source_view := CharacterView.new(source); var destination_view := CharacterView.new(destination)
@@ -1111,14 +1111,13 @@ func _test_inventory_workspace() -> void:
 	var body := VBoxContainer.new()
 	var controller := InventoryWorkspaceController.new(); var intents: Array[PlayerIntent] = []
 	controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: intents.append(intent))
-	controller.present(body, view, null, 1.0)
+	var media := ClassicMediaCatalog.new(null, ApplicationMediaCatalog.new()); controller.present(body, view, media, 1.0)
 	var buttons := _base_buttons_in(body)
 	assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text.contains("Longsword")), "inventory renders a selectable carried item")
-	assert_true(body.find_child("InventoryItemBrowser", true, false) != null and body.find_child("InventoryItemInspector", true, false) != null, "inventory uses one item browser and one aligned inspector instead of duplicate owner tabs"); assert_true(buttons.any(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Equip"), "inventory exposes the typed Equip action")
-	var split_action := buttons.filter(func(button: BaseButton) -> bool: return button.tooltip_text == "Split" and not button.disabled)[0] as ClassicBitmapButton; assert_true(split_action != null and buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text == "Join" and not button.disabled) and buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text.contains("not implemented")), "inventory exposes core-authorized stack actions and source-owned unavailable reasons"); split_action.command_requested.emit(&"inventory.action.split"); controller.present(body, view, null, 1.0)
+	assert_true(body.find_child("InventoryItemBrowser", true, false) != null and body.find_child("InventoryItemInspector", true, false) != null, "inventory uses one item browser and one aligned inspector instead of duplicate owner tabs"); assert_true(buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text == "Equip"), "inventory exposes the typed Equip action"); assert_true(body.find_children("ContentImage", "TextureRect", true, false).size() == 2 and body.find_children("ContentImageUnavailable", "Label", true, false).is_empty(), "inventory uses the exact item image in both list and record without exposing a variable-width resource ID")
+	var split_action := buttons.filter(func(button: BaseButton) -> bool: return button.tooltip_text == "Split" and not button.disabled)[0] as ClassicBitmapButton; assert_true(split_action != null and buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text == "Join" and not button.disabled) and buttons.any(func(button: BaseButton) -> bool: return button.tooltip_text.contains("not implemented")), "inventory exposes core-authorized stack actions and source-owned unavailable reasons"); split_action.command_requested.emit(&"inventory.action.split"); controller.present(body, view, media, 1.0)
 	assert_true(body.find_child("InventoryOperationStage", true, false) != null and _labels_in(body).any(func(text: String) -> bool: return text.contains("Split this charged record")), "one stable operation stage keeps exact item facts and conservative consequence copy")
-	var trade: Button
-	var cancel_operation := _buttons_in(body.find_child("InventoryOperationActions", true, false)).filter(func(button: Button) -> bool: return button.text == "Cancel")[0] as Button; cancel_operation.pressed.emit(); controller.present(body, view, null, 1.0); buttons = _base_buttons_in(body); trade = buttons.filter(func(button: BaseButton) -> bool: return button is Button and (button as Button).text == "Trade")[0] as Button; trade.pressed.emit(); controller.present(body, view, null, 1.0); var recipients := body.find_child("InventoryTradeRecipients", true, false); var recipient := _buttons_in(recipients).filter(func(button: Button) -> bool: return button.text == destination.name)[0] as Button; assert_true(_labels_in(recipients).has("12 → 17 / 100"), "Trade renders core-projected current, resulting, and maximum recipient load beside the exact selected item"); recipient.pressed.emit(); controller.present(body, view, null, 1.0); var transfer := _buttons_in(body.find_child("InventoryTradeActions", true, false)).filter(func(button: Button) -> bool: return button.text == "Transfer")[0] as Button; transfer.pressed.emit()
+	var cancel_operation := _buttons_in(body.find_child("InventoryOperationActions", true, false)).filter(func(button: Button) -> bool: return button.text == "Cancel")[0] as Button; cancel_operation.pressed.emit(); controller.present(body, view, media, 1.0); buttons = _base_buttons_in(body); var trade := buttons.filter(func(button: BaseButton) -> bool: return button.tooltip_text == "Choose a recipient from the Party roster")[0] as ClassicBitmapButton; trade.command_requested.emit(&"inventory.action.trade"); controller.present(body, view, media, 1.0); var recipients := body.find_child("InventoryTradeRecipients", true, false); var recipient := _buttons_in(recipients).filter(func(button: Button) -> bool: return button.text == destination.name)[0] as Button; assert_true(_labels_in(recipients).has("12 → 17 / 100"), "Trade renders core-projected current, resulting, and maximum recipient load beside the exact selected item"); recipient.pressed.emit(); controller.present(body, view, media, 1.0); var transfer := _buttons_in(body.find_child("InventoryTradeActions", true, false)).filter(func(button: Button) -> bool: return button.text == "Transfer")[0] as Button; transfer.pressed.emit()
 	assert_equal([intents.size(), intents[0].kind], [1, PlayerIntent.Kind.TRADE_ITEM], "item-local recipient selection emits one typed transfer")
 	body.free()
 func _test_money_workspace() -> void:

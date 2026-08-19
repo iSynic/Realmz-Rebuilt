@@ -6,7 +6,7 @@ Own Realmz 2 application chrome assets and their provenance.
 
 ## Ownership
 
-- App-owned textures, verified original bitmap controls and map markers, the complete integrated Classic sound bank, proven built-in combat CIcon families, and bundled fonts used by the Classic-wide shell.
+- App-owned textures, verified original bitmap controls and map markers, the complete integrated Classic sound bank, shared item CIcon library, proven built-in combat CIcon families, and bundled fonts used by the Classic-wide shell.
 - SpriteCook, donor-commit, Castle resource-fork, Google Fonts, dimension, license, modification, and local hash provenance.
 
 ## Local Contracts
@@ -20,6 +20,7 @@ Own Realmz 2 application chrome assets and their provenance.
 - The licensed Searching atlas remains byte-exact and records its eight-frame row in the manifest. Exact Torch frame files also remain byte-exact; presentation may key only each asset's documented legacy neutral-gray matte colors while composing them onto Rebuilt chrome.
 - Integrated sounds retain exact `snd ` IDs and load from Godot-imported WAV resources. The generated manifest and `THIRD_PARTY_NOTICES.txt` preserve the Castle commit, source fork, copyright, license, and decoding/resampling modification.
 - Integrated combat CIcons retain exact `cicn` IDs and native dimensions. The selected catalog is limited to source-backed active cues, result effects 159–167, bounded death-effect candidates 2015–2019, and existing spell cast/resolution frames 12000–12127. Standard spells with `lookStart` zero make Castle request the absent 11992–11999 family; presentation reports that exact unavailable identity rather than substituting art. Scenario media overrides the same exact key. Red pixels or numeric adjacency alone do not establish blood, gore, or a semantic identity.
+- Integrated item CIcons retain the exact shared Data ID record identity plus Castle's application-owned unidentified-range substitutes from `lookupicon`. Core view/request projection selects the player-knowable exact key; Inventory, Equipment, Trade, Shop, and Treasure render that key without exposing its numeric resource ID. Presentation never derives an icon from an item stable ID.
 - Keep only selected production assets. Rejected candidates remain external evidence.
 
 ## Work Guidance

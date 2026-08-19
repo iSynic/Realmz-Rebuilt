@@ -341,7 +341,8 @@ class TreasureRequestBody:
 		if item.instance_id != other.item.instance_id or item.definition_id != other.item.definition_id \
 				or item.name != other.item.name or item.charges != other.item.charges \
 				or item.identified != other.item.identified or item.has_magical != other.item.has_magical \
-				or item.has_magical and item.magical != other.item.magical:
+				or item.has_magical and item.magical != other.item.magical \
+				or item.icon_resource_type != other.item.icon_resource_type or item.icon_id != other.item.icon_id:
 			return false
 		for index: int in characters.size():
 			var left := characters[index]

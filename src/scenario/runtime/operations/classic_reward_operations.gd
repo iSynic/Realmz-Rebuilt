@@ -231,6 +231,8 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 			"charges": pending.charges,
 			"identified": pending.identified,
 			"magical": reward.magic_detected and definition.magical,
+			"iconResourceType": "cicn",
+			"iconId": definition.visible_icon_id(pending.identified),
 		}
 	var characters: Array[Dictionary] = []
 	var has_share_capacity := false

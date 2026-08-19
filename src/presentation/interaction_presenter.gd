@@ -260,7 +260,7 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 			return selection
 		&"treasure_distribution":
 			var treasure := TreasureDistributionInteraction.new()
-			treasure.configure(_application_rect.size.x < 1000.0)
+			treasure.configure(media, _application_rect.size.x < 1000.0)
 			return treasure
 		&"level_up":
 			var level_up := LevelUpInteraction.new()
@@ -278,7 +278,7 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 			return pick_lock
 		&"shop_action":
 			var shop := ShopInteraction.new()
-			shop.configure(_application_rect.size.x < 1000.0)
+			shop.configure(media, _application_rect.size.x < 1000.0)
 			return shop
 		&"temple_action":
 			var temple := TempleInteraction.new()

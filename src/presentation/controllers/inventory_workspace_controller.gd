@@ -8,6 +8,7 @@ const GOLD := Color("d5b45d")
 const TEXT := Color("e0e2e5")
 const MUTED := Color("9aa0a8")
 const WARNING := Color("dca9a9")
+const CONTENT_ICON_SCRIPT := preload("res://src/presentation/classic_content_icon.gd")
 
 var _query: String = ""
 var _selected_character_id: String = ""
@@ -181,7 +182,7 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 	for item: ItemView in items:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
-		row.add_child(_content_icon(item.icon_resource_type, item.icon_id, media, 38.0))
+		row.add_child(_content_icon(item.icon_resource_type, item.icon_id, media, 38.0, item.name))
 		var button := Button.new()
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size.y = 40.0
@@ -229,7 +230,7 @@ func _build_item_inspector(view: GameView, character: CharacterView, item: ItemV
 func _render_item_detail(parent: VBoxContainer, item: ItemView, character: CharacterView, media: ClassicMediaCatalog) -> void:
 	var title_row := HBoxContainer.new()
 	title_row.add_theme_constant_override("separation", 10)
-	title_row.add_child(_content_icon(item.icon_resource_type, item.icon_id, media, 58.0))
+	title_row.add_child(_content_icon(item.icon_resource_type, item.icon_id, media, 58.0, item.name))
 	var title_box := VBoxContainer.new()
 	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_add_label(title_box, item.name, GOLD, 20)
@@ -502,44 +503,18 @@ func _cancel_trade() -> void:
 
 
 func _add_trade_action(parent: Container, availability: ActionAvailabilityView) -> void:
-	var button := Button.new()
-	button.text = "Trade"
-	button.custom_minimum_size = Vector2(64.0, 56.0)
+	var button := _bitmap_button(&"inventory.action.trade", "Trade")
 	button.disabled = availability == null or not availability.enabled
 	button.tooltip_text = "Unavailable" if availability == null else availability.reason if not availability.enabled else "Choose a recipient from the Party roster"
 	if not button.disabled:
-		button.pressed.connect(_begin_trade)
+		button.command_requested.connect(func(_command_id: StringName) -> void: _begin_trade())
 	parent.add_child(button)
 
 
-func _content_icon(resource_type: String, resource_id: int, media: ClassicMediaCatalog, side: float = 52.0) -> Control:
-	var frame := PanelContainer.new()
-	frame.custom_minimum_size = Vector2(side, side)
-	var asset: MediaAsset = media.asset_by_resource(resource_type, resource_id) if media != null and resource_id != 0 else null
-	if asset != null:
-		var bytes := media.read_bytes(asset)
-		var image := Image.new()
-		var error := ERR_UNAVAILABLE
-		match asset.path.get_extension().to_lower():
-			"png": error = image.load_png_from_buffer(bytes)
-			"jpg", "jpeg": error = image.load_jpg_from_buffer(bytes)
-			"webp": error = image.load_webp_from_buffer(bytes)
-		if error == OK:
-			var texture := TextureRect.new()
-			texture.texture = ImageTexture.create_from_image(image)
-			texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			texture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			texture.tooltip_text = asset.label
-			frame.add_child(texture)
-			return frame
-	var fallback := Label.new()
-	fallback.text = "◈\n%d" % resource_id if resource_id != 0 else "◈"
-	fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	fallback.add_theme_color_override("font_color", MUTED)
-	frame.add_child(fallback)
-	return frame
+func _content_icon(resource_type: String, resource_id: int, media: ClassicMediaCatalog, side: float = 52.0, semantic_label: String = "") -> Control:
+	var icon := CONTENT_ICON_SCRIPT.new() as Control
+	icon.configure(resource_type, resource_id, media, side, semantic_label)
+	return icon
 
 
 func _appearance_texture(asset_id: String, media: ClassicMediaCatalog) -> Texture2D:
@@ -568,21 +543,11 @@ static func _character_by_id(view: GameView, character_id: String) -> CharacterV
 
 
 func _add_item_intent_action(parent: Container, asset_id: StringName, label: String, availability: ActionAvailabilityView, intent: PlayerIntent, item: ItemView, character: CharacterView) -> BaseButton:
-	var button: BaseButton
-	if ClassicUiAssetCatalog.definition(asset_id).is_empty():
-		var text_button := Button.new()
-		text_button.text = label
-		text_button.custom_minimum_size = Vector2(64.0, 56.0)
-		button = text_button
-	else:
-		button = _bitmap_button(asset_id, label)
+	var button := _bitmap_button(asset_id, label)
 	button.disabled = availability == null or not availability.enabled
 	button.tooltip_text = "Unavailable" if availability == null else availability.reason if not availability.enabled else label
 	if not button.disabled:
-		if button is ClassicBitmapButton:
-			(button as ClassicBitmapButton).command_requested.connect(func(_command_id: StringName) -> void: _begin_item_action(StringName(label.to_snake_case()), label, intent, item, character))
-		else:
-			button.pressed.connect(func() -> void: _begin_item_action(StringName(label.to_snake_case()), label, intent, item, character))
+		button.command_requested.connect(func(_command_id: StringName) -> void: _begin_item_action(StringName(label.to_snake_case()), label, intent, item, character))
 	parent.add_child(button)
 	return button
 

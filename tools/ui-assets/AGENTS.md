@@ -7,7 +7,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 ## Ownership
 
 - The exact-commit Remake bitmap-control and Castle resource-fork map-marker catalog and importer.
-- The complete app-owned Classic `snd ` catalog plus selected source-backed battle `cicn` families decoded from the pinned Castle `The Family Jewels` resource fork.
+- The complete app-owned Classic `snd ` catalog, shared Data ID item `cicn` set and unidentified substitutes, plus selected source-backed battle `cicn` families decoded from the pinned Castle `The Family Jewels` resource fork.
 - Deterministic selected-surface preservation, seamless runtime tile derivation, tiled nine-patch derivation, and alpha-cropped exploration-rail reduction.
 
 ## Local Contracts
@@ -31,7 +31,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - `sync-classic-ui-assets.ps1` verifies source commits, source hashes, decoded CICN identity, PNG bytes, dimensions, and manifest output.
 - `build-classic-surfaces.ps1` verifies every generated PNG, records deterministic SHA-256 values, produces a tile with exact matching opposite edges, and records the opaque-bevel algorithm version.
 - `build-exploration-rail.ps1` reports the source crop plus source/output SHA-256 values; the committed manifest records those values and production dimensions.
-- `verify-classic-application-media.ps1` verifies unique IDs/resource keys, the expected integrated sound and combat-CIcon counts, generated-chrome paths/dimensions, and every committed byte count and SHA-256 without requiring an external Castle checkout.
+- `verify-classic-application-media.ps1` verifies unique IDs/resource keys, the expected integrated sound, item-CIcon, and combat-CIcon counts, generated-chrome paths/dimensions, and every committed byte count and SHA-256 without requiring an external Castle checkout.
 
 ## Child DOX Index
 
