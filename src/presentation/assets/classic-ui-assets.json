@@ -262,7 +262,7 @@
       "classic_evidence": {
         "status": "tracked-remake-scene-use",
         "path": "src/scenes/UI/HUD/GlobalEffectsRect/global_effects_rect.tscn",
-        "note": "The licensed non-commercial Realmz effect atlas supplies the transparent eight-frame Searching animation at row y=128. Castle CICN 128 remains separately cataloged as the source-proven inactive Search control image.",
+        "note": "The licensed non-commercial Realmz effect atlas supplies the eight-frame Searching animation at row y=128. Presentation removes only its six legacy neutral-gray matte keys at runtime; the cataloged bytes remain unchanged. Castle CICN 128 remains separately cataloged as the source-proven inactive Search control image.",
         "repository": "Realmz Remake Dungeon UI",
         "commit": "0701846b01806f805c913afbe8702e5c2f9246ed"
       },
