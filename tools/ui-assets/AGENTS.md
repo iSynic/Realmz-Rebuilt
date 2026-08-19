@@ -10,6 +10,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - The complete app-owned Classic `snd ` catalog, shared Data ID item `cicn` set and unidentified substitutes, plus selected source-backed battle `cicn` families decoded from the pinned Castle `The Family Jewels` resource fork.
 - Deterministic selected-surface preservation, seamless runtime tile derivation, tiled nine-patch derivation, and alpha-cropped exploration-rail reduction.
 - Deterministic typography import, including exact Mac resource-fork `FONT` 1601 decoding into a Godot BMFont descriptor/atlas, pinned Castle/Open Font License font-byte synchronization, and Samuel-outline/Castle-advance hybrid TTF generation.
+- Deterministic import of the licensed Realmz intro GIF into a bounded half-size, timing-preserving application loop with an offline-verifiable frame manifest.
 
 ## Local Contracts
 
@@ -22,6 +23,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - `export-classic-theldrow.ps1` must preserve the pinned FONT strike's source locations, offsets, advances, ascent, descent, and leading. It may map MacRoman codes to Unicode for Godot lookup, but it must not trace, interpolate, kern, or restyle the glyphs. `remetric-classic-theldrow.ps1` may change only the pinned Samuel TTF's horizontal advances and required checksums, using that exported strike as the metric authority. `sync-fonts.ps1` reads the clean pinned Remake source through Git object data, validates every remote/source hash before replacing committed outputs, and emits the complete multi-source manifest.
 - `build-classic-surfaces.ps1 -RebuildFromCommittedSurface` is the offline path for regenerating the seamless tile and frame kit without replacing selected SpriteCook provenance. Raised and inset frames tile the selected slate through their complete bounds; bevel corners remain opaque so controls cannot reveal unrelated parent colors.
 - `build-exploration-rail.ps1` alpha-crops one explicitly selected SpriteCook source and reduces it to the manifest-recorded 48x468 production rail without inventing additional ornament.
+- `import-realmz-intro.ps1` accepts only the approved source GIF hash, validates its 640x608/124-frame shape, halves each spatial dimension with nearest-neighbor sampling, groups four source delays per output frame, and records every output hash. The external source path never enters committed metadata.
 - Validate hashes and PNG dimensions before replacing committed outputs.
 
 ## Work Guidance

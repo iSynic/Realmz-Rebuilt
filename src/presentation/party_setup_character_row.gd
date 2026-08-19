@@ -63,7 +63,7 @@ func configure(revision: CharacterVaultRevisionView, enabled: bool, reason: Stri
 	_summary = Label.new()
 	_summary.name = "Summary"
 	_summary.text = _summary_text(revision.name, revision.level, race_name, caste_name, revision.character)
-	_summary.add_theme_font_size_override("font_size", 10)
+	_summary.add_theme_font_size_override("font_size", 12)
 	_summary.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_summary.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL

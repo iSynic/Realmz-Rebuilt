@@ -80,6 +80,20 @@ foreach ($requiredFont in @("font.classic.black_chancery.regular", "font.classic
     if (-not $fontIds.ContainsKey($requiredFont)) { throw "Required Classic font asset is missing: $requiredFont" }
 }
 
+$introManifestPath = Join-Path $repoRoot "src/presentation/assets/ui/intro/intro-animation.json"
+if (-not (Test-Path -LiteralPath $introManifestPath -PathType Leaf)) { throw "Realmz intro animation manifest is missing" }
+$introManifest = Get-Content -Raw -LiteralPath $introManifestPath | ConvertFrom-Json
+if ($introManifest.schema_version -ne 1 -or $introManifest.source_sha256 -ne "43dd46139afab9f63f08b782781d476c91cf3a7bc21b7b8ae69b7ea47ac7f3fb" -or $introManifest.license -ne "Realmz-Art-NonCommercial" -or $introManifest.source_frames -ne 124 -or $introManifest.sample_stride -ne 4) {
+    throw "Realmz intro animation provenance or conversion contract is invalid"
+}
+if (@($introManifest.frames).Count -ne 31) { throw "Realmz intro animation must contain 31 sampled frames" }
+foreach ($frame in $introManifest.frames) {
+    if (-not $frame.path.StartsWith("res://") -or $frame.duration_ms -lt 10 -or $frame.width -ne 320 -or $frame.height -ne 304) { throw "Realmz intro frame metadata is invalid" }
+    $framePath = Join-Path $repoRoot ($frame.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
+    if (-not (Test-Path -LiteralPath $framePath -PathType Leaf)) { throw "Realmz intro frame is missing: $($frame.path)" }
+    if ((Get-FileHash -Algorithm SHA256 -LiteralPath $framePath).Hash.ToLowerInvariant() -ne $frame.sha256) { throw "Realmz intro frame hash does not match: $($frame.path)" }
+}
+
 $chromeManifestPath = Join-Path $repoRoot "src/presentation/assets/ui/spritecook-assets.json"
 if (-not (Test-Path -LiteralPath $chromeManifestPath -PathType Leaf)) {
     throw "SpriteCook chrome manifest is missing"
@@ -116,5 +130,5 @@ foreach ($file in $chromeFiles) {
     }
     finally { $bitmap.Dispose() }
 }
-Write-Host "Classic application media verified: $($manifest.assets.Count) assets; fonts verified: $($fontManifest.assets.Count) assets; generated chrome verified: $($chromeFiles.Count) files."
+Write-Host "Classic application media verified: $($manifest.assets.Count) assets; fonts verified: $($fontManifest.assets.Count) assets; intro frames verified: $($introManifest.frames.Count); generated chrome verified: $($chromeFiles.Count) files."
 exit 0

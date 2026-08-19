@@ -13,8 +13,9 @@ const READABLE_NARRATIVE_PATH := "res://src/presentation/assets/fonts/Alegreya-V
 
 static func themed_copy(base_theme: Theme, settings: PresentationSettings) -> Theme:
 	var result := base_theme.duplicate(true) as Theme
-	result.default_font_size = int(round(15.0 * settings.text_scale))
-	if settings.typography_mode != PresentationSettings.TYPOGRAPHY_CLASSIC:
+	var classic_mode := settings.typography_mode == PresentationSettings.TYPOGRAPHY_CLASSIC
+	result.default_font_size = int(round((17.0 if classic_mode else 15.0) * settings.text_scale))
+	if not classic_mode:
 		return result
 	var readable_ui := load(READABLE_UI_PATH) as Font
 	var readable_bold := load(READABLE_BOLD_PATH) as Font

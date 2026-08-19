@@ -41,3 +41,13 @@ the bundled fonts.
 
 Exact font hashes and accompanying notices are recorded in
 src/presentation/assets/fonts/font-assets.json and its licenses directory.
+
+Realmz intro animation
+
+The looping front-door animation is a deterministic half-size, temporally
+sampled conversion of the Realmz intro GIF supplied by the project owner.
+The source GIF SHA-256 is
+43dd46139afab9f63f08b782781d476c91cf3a7bc21b7b8ae69b7ea47ac7f3fb.
+It is used under this project's non-commercial Realmz artwork license.
+Per-frame hashes and preserved timing are recorded in
+src/presentation/assets/ui/intro/intro-animation.json.

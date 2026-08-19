@@ -73,7 +73,7 @@ func _refresh_party_list() -> void:
 		row.add_child(portrait_view)
 		var label := Label.new()
 		label.text = PartySetupCharacterRowScript._summary_text(character.name, character.level, character.race_name, character.caste_name, character, slot_index + 1)
-		label.add_theme_font_size_override("font_size", 10)
+		label.add_theme_font_size_override("font_size", 12)
 		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		label.modulate = Color("e0e2e5")
