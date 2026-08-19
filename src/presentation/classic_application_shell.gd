@@ -39,6 +39,7 @@ const ERROR := Color("ef7770")
 const TEXT := Color("d8d9d2")
 const HELD_COMMAND_INTERVAL := 0.22
 const TORCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_torch_command_button.gd")
+const SEARCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_search_command_button.gd")
 
 @onready var _menu_strip: PanelContainer = %MenuStrip
 @onready var _menu_row: HBoxContainer = %MenuRow
@@ -546,7 +547,12 @@ func _rebuild_command_deck() -> void:
 	for definition: Dictionary in ClassicCommandCatalog.for_context(context):
 		definition = _presentation_command_definition(definition)
 		var button: BaseButton
-		if bool(definition.get("torch_meter", false)):
+		if bool(definition.get("search_animation", false)):
+			var search_button := SEARCH_BUTTON_SCRIPT.new() as BaseButton
+			search_button.command_requested.connect(_activate_command)
+			search_button.set_meta("search_animation", true)
+			button = search_button
+		elif bool(definition.get("torch_meter", false)):
 			var torch_button := TORCH_BUTTON_SCRIPT.new() as BaseButton
 			torch_button.command_requested.connect(_activate_command)
 			torch_button.set_meta("torch_meter", true)
@@ -582,7 +588,14 @@ func _update_command_availability() -> void:
 			reason = "Choose from the active encounter response controls."
 		elif not availability_id.is_empty():
 			reason = _availability_reason(availability_id)
-		if bool(button.get_meta("torch_meter", false)):
+		if bool(button.get_meta("search_animation", false)):
+			var summary := _current_view.party_summary if _current_view != null else null
+			button.call("sync_status",
+				false if summary == null else summary.searching,
+				reason.is_empty(),
+				reason
+			)
+		elif bool(button.get_meta("torch_meter", false)):
 			var summary := _current_view.party_summary if _current_view != null else null
 			button.call("sync_status",
 				0 if summary == null else summary.light_remaining,

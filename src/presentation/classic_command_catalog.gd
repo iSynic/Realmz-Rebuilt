@@ -2,7 +2,7 @@ class_name ClassicCommandCatalog
 extends RefCounted
 
 const COMMANDS: Array[Dictionary] = [
-	{"id": &"search_mode", "group": &"world", "asset_id": &"command.search", "input_action": &"realmz_search", "contexts": [&"exploration"], "availability": &"toggle_search", "label": "Search", "tooltip": "Toggle continuous secret searching", "accelerator": "S", "focus_order": 10, "toggle_mode": true},
+	{"id": &"search_mode", "group": &"world", "asset_id": &"command.search", "input_action": &"realmz_search", "contexts": [&"exploration"], "availability": &"toggle_search", "label": "Search", "tooltip": "Toggle continuous secret searching", "accelerator": "S", "focus_order": 10, "toggle_mode": true, "search_animation": true},
 	{"id": &"area_search", "group": &"world", "asset_id": &"command.area_search_visual", "input_action": &"", "contexts": [&"exploration"], "availability": &"area_search", "label": "Area Search", "tooltip": "Hold to search the nearby area", "accelerator": "", "focus_order": 15, "hold_repeat": true},
 	{"id": &"torch", "group": &"world", "asset_id": &"", "input_action": &"", "contexts": [&"exploration"], "availability": &"use_torch", "label": "Torch", "tooltip": "Use the first Classic torch carried by the party", "accelerator": "T", "focus_order": 20, "torch_meter": true},
 	{"id": &"camp", "group": &"world", "asset_id": &"command.camp", "input_action": &"realmz_camp", "contexts": [&"exploration"], "availability": &"camp", "label": "Camp", "tooltip": "Make camp when the rules permit it", "accelerator": "C", "focus_order": 30},

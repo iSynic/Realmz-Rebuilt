@@ -1,0 +1,86 @@
+class_name ClassicSearchCommandButton
+extends BaseButton
+
+signal command_requested(command_id: StringName)
+
+const ATLAS_ASSET_ID: StringName = &"effects.search_animation"
+const FRAME_SIZE := Vector2(32.0, 32.0)
+const FRAME_COUNT := 8
+const FRAME_ROW_Y := 128.0
+const FRAME_INTERVAL := 1.0 / 5.0
+const FOCUS_COLOR := Color("f8e36f")
+const HOVER_COLOR := Color("80d6e7")
+const CAPTION_COLOR := Color("e7c756")
+const SURFACE_COLOR := Color("171a1d")
+const SURFACE_DARK := Color("080a0c")
+const EDGE_LIGHT := Color("686b68")
+const DISABLED_OVERLAY := Color(0.04, 0.05, 0.055, 0.64)
+
+var command_id: StringName = &"search_mode"
+var _atlas: Texture2D
+var _searching: bool
+var _frame_index: int
+var _frame_elapsed: float
+
+
+func _ready() -> void:
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	focus_mode = Control.FOCUS_ALL
+	toggle_mode = true
+	custom_minimum_size = Vector2(62.0, 70.0)
+	_atlas = ClassicUiAssetCatalog.texture(ATLAS_ASSET_ID)
+	mouse_entered.connect(queue_redraw)
+	mouse_exited.connect(queue_redraw)
+	focus_entered.connect(queue_redraw)
+	focus_exited.connect(queue_redraw)
+	button_down.connect(queue_redraw)
+	button_up.connect(queue_redraw)
+	pressed.connect(func() -> void: command_requested.emit(command_id))
+	set_process(false)
+
+
+func sync_status(searching: bool, can_activate: bool, reason: String = "") -> void:
+	_searching = searching
+	disabled = not can_activate
+	set_pressed_no_signal(searching)
+	tooltip_text = reason if not reason.is_empty() else "Stop searching" if searching else "Search continuously"
+	if not searching:
+		_frame_index = 0
+		_frame_elapsed = 0.0
+	set_process(searching)
+	queue_redraw()
+
+
+func _process(delta: float) -> void:
+	_frame_elapsed += delta
+	if _frame_elapsed < FRAME_INTERVAL:
+		return
+	var advanced := floori(_frame_elapsed / FRAME_INTERVAL)
+	_frame_elapsed -= float(advanced) * FRAME_INTERVAL
+	_frame_index = (_frame_index + advanced) % FRAME_COUNT
+	queue_redraw()
+
+
+func _draw() -> void:
+	var rect := Rect2(Vector2.ONE, size - Vector2(2.0, 2.0))
+	draw_rect(rect, SURFACE_COLOR, true)
+	draw_line(rect.position, Vector2(rect.end.x, rect.position.y), EDGE_LIGHT, 2.0)
+	draw_line(rect.position, Vector2(rect.position.x, rect.end.y), EDGE_LIGHT, 2.0)
+	draw_line(Vector2(rect.position.x, rect.end.y), rect.end, SURFACE_DARK, 2.0)
+	draw_line(Vector2(rect.end.x, rect.position.y), rect.end, SURFACE_DARK, 2.0)
+	var pressed_offset := Vector2.ONE if button_pressed else Vector2.ZERO
+	if _atlas != null:
+		var frame_rect := Rect2(Vector2(float(_frame_index) * FRAME_SIZE.x, FRAME_ROW_Y), FRAME_SIZE)
+		var destination := Rect2(Vector2(floorf((size.x - FRAME_SIZE.x) * 0.5), 4.0) + pressed_offset, FRAME_SIZE)
+		draw_texture_rect_region(_atlas, destination, frame_rect)
+	var font := get_theme_font("font", "Button")
+	var font_size := maxi(11, get_theme_font_size("font_size", "Button") - 2)
+	draw_string(font, Vector2(4.0, size.y - 8.0) + pressed_offset, "Search", HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, font_size, CAPTION_COLOR)
+	if disabled:
+		draw_rect(rect, DISABLED_OVERLAY, true)
+	elif button_pressed:
+		draw_rect(rect.grow(-1.0), Color(0.95, 0.76, 0.24, 0.14), true)
+	if has_focus():
+		draw_rect(rect, FOCUS_COLOR, false, 2.0)
+	elif is_hovered() and not disabled:
+		draw_rect(rect, HOVER_COLOR, false, 1.0)

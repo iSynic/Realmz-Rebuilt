@@ -233,7 +233,7 @@
       "classic_evidence": {
         "status": "source-control-flow",
         "path": "src/realmz_orig/buttonchoice.c:239-411",
-        "note": "Castle redraws exact built-in CICN 128 when persistent Search is switched off. Rebuilt uses that source-proven control image for the Search toggle without claiming an unobserved active-frame identity.",
+        "note": "Castle redraws exact built-in CICN 128 when persistent Search is switched off. Rebuilt retains it as source-proven control-state evidence; the visible command uses the licensed transparent Searching animation instead of importing the old gray control plate.",
         "repository": "Realmz Castle Realmz",
         "commit": "491816ad60037394f92c428e99c004494d3c28b3"
       },
@@ -248,6 +248,34 @@
       "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
       "source_resource_type": "cicn",
       "source_resource_id": 128
+    },
+    {
+      "id": "effects.search_animation",
+      "path": "res://src/presentation/assets/classic-controls/effects/search-animation-atlas.png",
+      "source_repository": "Realmz Remake Dungeon UI",
+      "source_commit": "0701846b01806f805c913afbe8702e5c2f9246ed",
+      "source_path": "src/scenes/UI/HUD/EffectsAnimations.png",
+      "native_width": 256,
+      "native_height": 256,
+      "sha256": "c5e7a4e488435585aac2c645b868d323a4f9b2e5b9a8855e294608a51ee45e02",
+      "classification": "licensed-realmz-bitmap",
+      "classic_evidence": {
+        "status": "tracked-remake-scene-use",
+        "path": "src/scenes/UI/HUD/GlobalEffectsRect/global_effects_rect.tscn",
+        "note": "The licensed non-commercial Realmz effect atlas supplies the transparent eight-frame Searching animation at row y=128. Castle CICN 128 remains separately cataloged as the source-proven inactive Search control image.",
+        "repository": "Realmz Remake Dungeon UI",
+        "commit": "0701846b01806f805c913afbe8702e5c2f9246ed"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "license": "Realmz non-commercial license",
+      "license_note": "Licensed to this project for non-commercial use; redistribution must preserve the non-commercial project boundary."
     },
     {
       "id": "command.area_search_pressed",

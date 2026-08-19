@@ -30,8 +30,8 @@ func _ready() -> void:
 	focus_mode = Control.FOCUS_ALL
 	custom_minimum_size = Vector2(62.0, 70.0)
 	for asset_id: StringName in FLAME_FRAME_IDS:
-		_flame_frames.append(ClassicUiAssetCatalog.texture(asset_id))
-	_body_texture = ClassicUiAssetCatalog.texture(BODY_ASSET_ID)
+		_flame_frames.append(_remove_classic_matte(ClassicUiAssetCatalog.texture(asset_id)))
+	_body_texture = _remove_classic_matte(ClassicUiAssetCatalog.texture(BODY_ASSET_ID))
 	mouse_entered.connect(queue_redraw)
 	mouse_exited.connect(queue_redraw)
 	focus_entered.connect(queue_redraw)
@@ -105,3 +105,21 @@ func _draw_torch_art(offset: Vector2) -> void:
 
 func _fuel_segment_count() -> int:
 	return maxi(1, floori(float(_light_remaining) / 31.0) + 1) if _light_remaining > 0 else 2
+
+
+func _remove_classic_matte(texture: Texture2D) -> Texture2D:
+	if texture == null:
+		return null
+	var image := texture.get_image()
+	if image == null or image.is_empty():
+		return texture
+	image.convert(Image.FORMAT_RGBA8)
+	for y: int in image.get_height():
+		for x: int in image.get_width():
+			var color := image.get_pixel(x, y)
+			var red := roundi(color.r * 255.0)
+			var green := roundi(color.g * 255.0)
+			var blue := roundi(color.b * 255.0)
+			if red == green and green == blue and red in [0x33, 0x44, 0x55, 0x66]:
+				image.set_pixel(x, y, Color(color.r, color.g, color.b, 0.0))
+	return ImageTexture.create_from_image(image)
