@@ -10,7 +10,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - The complete app-owned Classic `snd ` catalog, shared Data ID item `cicn` set and unidentified substitutes, plus selected source-backed battle `cicn` families decoded from the pinned Castle `The Family Jewels` resource fork.
 - Deterministic selected-surface preservation, seamless runtime tile derivation, tiled nine-patch derivation, and alpha-cropped exploration-rail reduction.
 - Deterministic typography import, including exact Mac resource-fork `FONT` 1601 decoding into a Godot BMFont descriptor/atlas, pinned Castle/Open Font License font-byte synchronization, and Samuel-outline/Castle-advance hybrid TTF generation.
-- Deterministic import of the licensed Realmz intro GIF into a bounded half-size, timing-preserving application loop with an offline-verifiable frame manifest.
+- Deterministic import of the licensed Realmz intro GIF into a bounded half-size, timing-preserving application loop with an offline-verifiable frame manifest, plus deterministic derivation of its generated ornamental frame.
 
 ## Local Contracts
 
@@ -24,6 +24,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - `build-classic-surfaces.ps1 -RebuildFromCommittedSurface` is the offline path for regenerating the seamless tile and frame kit without replacing selected SpriteCook provenance. Raised and inset frames tile the selected slate through their complete bounds; bevel corners remain opaque so controls cannot reveal unrelated parent colors.
 - `build-exploration-rail.ps1` alpha-crops one explicitly selected SpriteCook source and reduces it to the manifest-recorded 48x468 production rail without inventing additional ornament.
 - `import-realmz-intro.ps1` accepts only the approved source GIF hash, validates its 640x608/124-frame shape, halves each spatial dimension with nearest-neighbor sampling, groups four source delays per output frame, and records every output hash. The external source path never enters committed metadata.
+- `build-intro-frame.ps1` accepts only the manifest-pinned 1024x1024 SpriteCook source hash, clears the measured neutral center without touching the gold fillet, crops the exact alpha bounds, and derives the 512x512 transparent-center production frame. Keep the raw generated candidate outside version control.
 - Validate hashes and PNG dimensions before replacing committed outputs.
 
 ## Work Guidance

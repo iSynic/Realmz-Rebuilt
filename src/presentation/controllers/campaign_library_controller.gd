@@ -3,6 +3,7 @@ extends RefCounted
 
 const PackageOperationViewScript := preload("res://src/app/package_operation_view.gd")
 const ClassicIntroAnimationScript := preload("res://src/presentation/classic_intro_animation.gd")
+const INTRO_FRAME_TEXTURE := preload("res://src/presentation/assets/ui/classic-intro-frame.png")
 
 signal start_requested(package_path: String, seed: int)
 signal cancel_package_requested
@@ -17,6 +18,7 @@ const MAXIMUM_MODAL_Z_INDEX: int = 30
 
 var splash_overlay: PanelContainer
 var splash_composition: BoxContainer
+var splash_animation_host: TextureRect
 var splash_animation: TextureRect
 var campaign_overlay: PanelContainer
 var campaign_list: VBoxContainer
@@ -84,12 +86,19 @@ func build_splash_overlay() -> void:
 	title.name = "SplashTitle"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	identity.add_child(title)
+	splash_animation_host = TextureRect.new()
+	splash_animation_host.name = "RealmzIntroOrnament"
+	splash_animation_host.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	splash_animation_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	splash_animation_host.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	splash_animation_host.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	splash_animation_host.stretch_mode = TextureRect.STRETCH_SCALE
+	splash_animation_host.texture = INTRO_FRAME_TEXTURE
+	identity.add_child(splash_animation_host)
 	splash_animation = ClassicIntroAnimationScript.new()
 	splash_animation.name = "RealmzIntroAnimation"
-	splash_animation.custom_minimum_size = Vector2(420.0, 399.0)
-	splash_animation.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	splash_animation.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	identity.add_child(splash_animation)
+	splash_animation_host.add_child(splash_animation)
+	_apply_intro_frame_layout(false)
 	var subtitle := _splash_label("Classic Adventures Reconstructed", Color("e0e2e5"), 20)
 	subtitle.name = "SplashSubtitle"
 	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -227,8 +236,7 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 			identity_panel.custom_minimum_size = Vector2(0.0, 270.0) if splash_composition.vertical else Vector2.ZERO
 		if command_panel != null:
 			command_panel.custom_minimum_size = Vector2(0.0, 250.0) if splash_composition.vertical else Vector2(320.0, 0.0)
-		if splash_animation != null:
-			splash_animation.custom_minimum_size = Vector2(160.0, 152.0) if splash_composition.vertical else Vector2(420.0, 399.0)
+		_apply_intro_frame_layout(splash_composition.vertical)
 	if package_install_row != null:
 		package_install_row.vertical = profile.id == UiLayoutProfile.COMPACT
 		install_button.text = "Install package…" if package_install_row.vertical else "Install .realmz2…"
@@ -488,6 +496,19 @@ func _splash_label(text: String, color: Color = Color.WHITE, size: int = 15) -> 
 	var label := _label(text, color, size)
 	label.theme_type_variation = &"ClassicHeading"
 	return label
+
+
+func _apply_intro_frame_layout(compact: bool) -> void:
+	if splash_animation_host == null or splash_animation == null:
+		return
+	var host_size := Vector2(205.0, 195.0) if compact else Vector2(500.0, 476.0)
+	var inset := Vector2(23.0, 22.0) if compact else Vector2(57.0, 55.0)
+	splash_animation_host.custom_minimum_size = host_size
+	splash_animation.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	splash_animation.offset_left = inset.x
+	splash_animation.offset_top = inset.y
+	splash_animation.offset_right = -inset.x
+	splash_animation.offset_bottom = -inset.y
 
 
 func _add_label(parent: Container, text: String, color: Color = Color.WHITE, size: int = 15) -> Label:

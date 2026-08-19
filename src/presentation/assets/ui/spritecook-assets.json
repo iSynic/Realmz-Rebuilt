@@ -26,6 +26,25 @@
         "height": 468,
         "sha256": "62f91650d005c0eca117b66e7ff5ae26521b5993a5809a97dd6c19b7e33d3ec9"
       }
+    },
+    {
+      "asset_id": "a37eadf1-ee93-4abf-9d48-90b9f8316261",
+      "label": "Realmz Rebuilt front-door intro frame",
+      "source_sha256": "2bd8594faccb531aa1c0a9d013e2136ccbfe6017d8f6d3ce00fb327327ae4878",
+      "source_sha256_prefix": "2bd8594faccb",
+      "source_width": 1024,
+      "source_height": 1024,
+      "generation_job_id": "cf5169b3-fb4e-4b08-b481-526698a25d30",
+      "model": "gemini-3.1-flash-image",
+      "style_asset_id": "3f355030-0f8c-4d4e-b079-26ba8d3dbc32",
+      "mode": "ui",
+      "derivation": "alpha-center-clear-181-181-661-661-plus-alpha-bounds-88-88-848-848-system-drawing-bicubic-512x512",
+      "file": {
+        "path": "res://src/presentation/assets/ui/classic-intro-frame.png",
+        "width": 512,
+        "height": 512,
+        "sha256": "fb5802230437d813a1cd7ca7a6cba147de60aaf408a1925af69e57680f68d802"
+      }
     }
   ],
   "derivation": {
