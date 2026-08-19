@@ -93,6 +93,21 @@
       "role": "exact default Realmz bitmap glyph strike"
     },
     {
+      "id": "font.classic.theldrow.vector",
+      "path": "res://src/presentation/assets/fonts/Theldrow-Classic-Vector.ttf",
+      "source_repository": "iSynic/Realmz-Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/Fonts/theldrowremake.ttf",
+      "source_sha256": "597df5baae37e494f90f6e5b48714e723900ed99e6b29a1734d1e405b79ed2cf",
+      "metric_source_repository": "Realmz-Castle/realmz",
+      "metric_source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "metric_source_path": "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601",
+      "metric_source_sha256": "cda33a0e5f352d7d38d8fdfcc64b71db10a23fcfd9d8c7a699fa1646ffcab553",
+      "sha256": "999aafa27022234d06e26b2385f3dda46cb0e1ea7e440b9e7e51a170e8586eea",
+      "license": "CC0-1.0",
+      "role": "scalable Samuel Theldrow outlines with original FONT 1601 advance widths"
+    },
+    {
       "id": "license.black_chancery",
       "path": "res://src/presentation/assets/fonts/licenses/BlackChancery-PUBLIC-DOMAIN.txt",
       "source_repository": "Realmz-Castle/realmz",
@@ -125,6 +140,24 @@
       "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601",
       "sha256": "a709ac83e2e5df8eee7c373a1c6ef959c47a22ef4312b67ee1ac593776875bcb",
       "license": "Realmz-Art-NonCommercial"
+    },
+    {
+      "id": "license.theldrow_cc0",
+      "path": "res://src/presentation/assets/fonts/licenses/Theldrow-CC0-LICENSE.txt",
+      "source_repository": "iSynic/Realmz-Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/Fonts/theldrow.zip:license.txt",
+      "sha256": "06e78657db8da0c0563f15f51e48a022272b9f884cb51846b1f1e8e8c0d1b7f4",
+      "license": "CC0-1.0"
+    },
+    {
+      "id": "readme.theldrow_cc0",
+      "path": "res://src/presentation/assets/fonts/licenses/Theldrow-CC0-README.txt",
+      "source_repository": "iSynic/Realmz-Remake",
+      "source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "source_path": "src/Fonts/theldrow.zip:readme.txt",
+      "sha256": "b92407393b07874bf347592e17d6ab0224e97beed8f3cb758b0dc54f3eac6371",
+      "license": "CC0-1.0"
     }
   ]
 }

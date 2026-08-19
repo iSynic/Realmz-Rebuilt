@@ -67,13 +67,16 @@ foreach ($fontAsset in $fontManifest.assets) {
     if (-not $fontAsset.path.StartsWith("res://") -or [string]::IsNullOrWhiteSpace($fontAsset.source_repository) -or [string]::IsNullOrWhiteSpace($fontAsset.source_commit) -or [string]::IsNullOrWhiteSpace($fontAsset.license)) {
         throw "Font asset provenance is incomplete: $($fontAsset.id)"
     }
+    if ($null -ne $fontAsset.metric_source_repository -and ([string]::IsNullOrWhiteSpace($fontAsset.metric_source_repository) -or [string]::IsNullOrWhiteSpace($fontAsset.metric_source_commit) -or [string]::IsNullOrWhiteSpace($fontAsset.metric_source_path) -or [string]::IsNullOrWhiteSpace($fontAsset.metric_source_sha256))) {
+        throw "Font metric-source provenance is incomplete: $($fontAsset.id)"
+    }
     $relativePath = $fontAsset.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar
     $path = Join-Path $repoRoot $relativePath
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Font asset file is missing: $($fontAsset.path)" }
     $sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
     if ($sha256 -ne $fontAsset.sha256) { throw "Font asset hash does not match: $($fontAsset.id)" }
 }
-foreach ($requiredFont in @("font.classic.black_chancery.regular", "font.classic.chicago_flf.regular", "font.classic.geneva_substitute.inter", "font.classic.theldrow.bitmap", "font.classic.theldrow.atlas")) {
+foreach ($requiredFont in @("font.classic.black_chancery.regular", "font.classic.chicago_flf.regular", "font.classic.geneva_substitute.inter", "font.classic.theldrow.bitmap", "font.classic.theldrow.atlas", "font.classic.theldrow.vector")) {
     if (-not $fontIds.ContainsKey($requiredFont)) { throw "Required Classic font asset is missing: $requiredFont" }
 }
 

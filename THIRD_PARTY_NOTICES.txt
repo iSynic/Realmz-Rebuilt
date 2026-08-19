@@ -24,8 +24,16 @@ imported from Realmz Castle at commit
 
 Theldrow-Classic.fnt and Theldrow-Classic.png are deterministic conversions of
 the original Realmz FONT 1601 bitmap strike and metrics in the pinned Castle
-resource fork. They are used under this project's non-commercial Realmz
-artwork license and are not separately licensed for reuse.
+resource fork. They remain native-size reference assets under this project's
+non-commercial Realmz artwork license and are not separately licensed for reuse.
+
+Theldrow-Classic-Vector.ttf is derived from Samuel/iSynic's scalable
+theldrowremake.ttf glyph outlines at Realmz Remake commit
+86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61. Those outlines are a CC0
+FontStruction by wasikinghit. Realmz Rebuilt deterministically replaces their
+horizontal advances with the original Realmz FONT 1601 advances so scalable
+text retains Classic spacing. The CC0 license and readme are included beside
+the bundled fonts.
 
 Inter is distributed under the SIL Open Font License 1.1 and is the open
 Geneva substitute selected by Realmz Castle. Its license is included beside

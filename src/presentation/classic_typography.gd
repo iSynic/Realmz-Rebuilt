@@ -2,7 +2,8 @@ class_name ClassicTypography
 extends RefCounted
 
 const BLACK_CHANCERY_PATH := "res://src/presentation/assets/fonts/BlackChancery-Realmz.ttf"
-const THELDROW_PATH := "res://src/presentation/assets/fonts/Theldrow-Classic.fnt"
+const THELDROW_BITMAP_PATH := "res://src/presentation/assets/fonts/Theldrow-Classic.fnt"
+const THELDROW_PATH := "res://src/presentation/assets/fonts/Theldrow-Classic-Vector.ttf"
 const CHICAGO_PATH := "res://src/presentation/assets/fonts/ChicagoFLF.ttf"
 const CLASSIC_UTILITY_PATH := "res://src/presentation/assets/fonts/InterVariable-Castle.ttf"
 const READABLE_UI_PATH := "res://src/presentation/assets/fonts/AlegreyaSans-Regular.ttf"
