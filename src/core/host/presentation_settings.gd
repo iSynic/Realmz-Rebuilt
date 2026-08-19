@@ -1,7 +1,7 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 6
+const SCHEMA_VERSION: int = 7
 
 const UI_SCALE_AUTO: String = "auto"
 const UI_SCALE_100: String = "100"
@@ -9,6 +9,8 @@ const UI_SCALE_125: String = "125"
 const UI_SCALE_150: String = "150"
 const WINDOWED: String = "windowed"
 const BORDERLESS_FULLSCREEN: String = "borderless-fullscreen"
+const TYPOGRAPHY_CLASSIC: String = "classic"
+const TYPOGRAPHY_READABLE: String = "readable"
 
 var master_volume: float = 1.0
 var topology_debug: bool = false
@@ -21,6 +23,7 @@ var window_mode: String = WINDOWED
 var exploration_speed_percent: int = 100
 var show_exploration_minimap: bool = false
 var autojournal_enabled: bool = true
+var typography_mode: String = TYPOGRAPHY_CLASSIC
 
 
 func to_data() -> Dictionary:
@@ -38,6 +41,7 @@ func to_data() -> Dictionary:
 		"explorationSpeedPercent": exploration_speed_percent,
 		"showExplorationMinimap": show_exploration_minimap,
 		"autojournalEnabled": autojournal_enabled,
+		"typographyMode": typography_mode,
 	}
 
 
@@ -50,7 +54,7 @@ static func from_data(data: Variant) -> PresentationSettings:
 	var schema_version := int(schema_value)
 	if float(schema_version) != float(schema_value):
 		return null
-	if data.get("kind") != "realmz2.presentation-settings" or schema_version not in [1, 2, 3, 4, 5, SCHEMA_VERSION]:
+	if data.get("kind") != "realmz2.presentation-settings" or schema_version not in [1, 2, 3, 4, 5, 6, SCHEMA_VERSION]:
 		return null
 	if not data.get("masterVolume") is float or not data.get("topologyDebug") is bool or not data.get("textScale") is float or not data.get("reducedMotion") is bool:
 		return null
@@ -72,8 +76,11 @@ static func from_data(data: Variant) -> PresentationSettings:
 		var speed := int(speed_value)
 		if float(speed) != float(speed_value) or speed < 25 or speed > 400 or speed % 25 != 0:
 			return null
-	if schema_version == SCHEMA_VERSION and (not data.get("showExplorationMinimap") is bool or not data.get("autojournalEnabled") is bool):
+	if schema_version >= 6 and (not data.get("showExplorationMinimap") is bool or not data.get("autojournalEnabled") is bool):
 		return null
+	if schema_version == SCHEMA_VERSION:
+		if not data.get("typographyMode") is String or data["typographyMode"] not in [TYPOGRAPHY_CLASSIC, TYPOGRAPHY_READABLE]:
+			return null
 	var volume: float = data["masterVolume"]
 	var scale: float = data["textScale"]
 	if volume < 0.0 or volume > 1.0 or scale < 0.8 or scale > 1.5:
@@ -90,4 +97,5 @@ static func from_data(data: Variant) -> PresentationSettings:
 	settings.exploration_speed_percent = int(data.get("explorationSpeedPercent", 100))
 	settings.show_exploration_minimap = bool(data.get("showExplorationMinimap", false))
 	settings.autojournal_enabled = bool(data.get("autojournalEnabled", true))
+	settings.typography_mode = String(data.get("typographyMode", TYPOGRAPHY_CLASSIC))
 	return settings

@@ -14,3 +14,22 @@ playback. Source sample rates below 8000 Hz were deterministically resampled to
 
 Per-resource source and output hashes are recorded in
 src/presentation/assets/classic-application-media.json.
+
+Classic typography
+
+Black Chancery is the public-domain digitization shipped in the Realmz game
+resources. ChicagoFLF is public domain by its designer, Robin Casady. Both are
+imported from Realmz Castle at commit
+491816ad60037394f92c428e99c004494d3c28b3.
+
+Theldrow-Classic.fnt and Theldrow-Classic.png are deterministic conversions of
+the original Realmz FONT 1601 bitmap strike and metrics in the pinned Castle
+resource fork. They are used under this project's non-commercial Realmz
+artwork license and are not separately licensed for reuse.
+
+Inter is distributed under the SIL Open Font License 1.1 and is the open
+Geneva substitute selected by Realmz Castle. Its license is included beside
+the bundled fonts.
+
+Exact font hashes and accompanying notices are recorded in
+src/presentation/assets/fonts/font-assets.json and its licenses directory.

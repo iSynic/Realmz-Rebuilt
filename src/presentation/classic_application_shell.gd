@@ -15,6 +15,7 @@ signal topology_debug_changed(enabled: bool)
 signal dungeon_3d_changed(enabled: bool)
 signal master_volume_changed(value: float)
 signal text_scale_changed(value: float)
+signal typography_mode_changed(value: String)
 signal ui_scale_mode_changed(value: String)
 signal window_mode_changed(value: String)
 signal reduced_motion_changed(enabled: bool)
@@ -256,10 +257,8 @@ func apply_settings(settings: PresentationSettings) -> void:
 	if settings == null:
 		return
 	_presentation_settings = settings
-	var base_theme: Theme = load("res://src/presentation/classic_ui_theme.tres")
-	var shell_theme := base_theme.duplicate(true) as Theme
-	shell_theme.default_font_size = int(round(15.0 * settings.text_scale))
-	theme = shell_theme
+	var base_theme := load("res://src/presentation/classic_ui_theme.tres") as Theme
+	theme = ClassicTypography.themed_copy(base_theme, settings)
 	_narrative.add_theme_font_size_override("normal_font_size", int(round(18.0 * settings.text_scale)))
 	_router.set_presentation_settings(settings)
 	_apply_layout()
@@ -731,6 +730,7 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"dungeon_3d": dungeon_3d_changed.emit(bool(value))
 		&"master_volume": master_volume_changed.emit(float(value))
 		&"text_scale": text_scale_changed.emit(float(value))
+		&"typography_mode": typography_mode_changed.emit(String(value))
 		&"ui_scale_mode": ui_scale_mode_changed.emit(String(value))
 		&"window_mode": window_mode_changed.emit(String(value))
 		&"reduced_motion": reduced_motion_changed.emit(bool(value))

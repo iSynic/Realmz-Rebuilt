@@ -131,7 +131,7 @@ Delivered so far in this in-progress tranche:
 - Typed interaction placement in the stage or Classic textbox region for text, choices, encounters, services, and combat.
 - Compact/Standard/Wide profiles, one route registry and Back stack, named input actions, independent UI/text scale, and 800×600 through widescreen reflow.
 - Sixty exact-commit Remake bitmap controls with semantic scene-use evidence, byte hashes, dimensions, and 1×/2× nearest-neighbor rules. The selected SpriteCook charcoal surface and two matching frame textures are derived deterministically.
-- Bundled Alegreya/Alegreya Sans fonts, pinned Google Fonts provenance, file hashes, and OFL licenses with no runtime network dependency.
+- Source-backed Classic typography with exact Theldrow FONT 1601 bitmap metrics, Castle Black Chancery/Chicago/Inter bytes, and a presentation-only readable Alegreya alternative; pinned provenance, file hashes, and licenses require no runtime network dependency.
 - Presentation-complete honest states for all nine workspaces, CICN/ICON/PICT collision-free media lookup, safe unidentified-item views, and explicit action availability from `GameSession`.
 - Typed interaction components for text/choice, selection, encounters, shops, temples, banks, and battles. The old procedural presenter is removed.
 - A test-only gallery covers nine states for every route and interaction kind. Local rendered frames have been inspected at 800×600, 960×600, 1280×720, and 1920×1080, including dense inventory/services and 150% compact settings.

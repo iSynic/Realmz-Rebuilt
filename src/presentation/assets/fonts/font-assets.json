@@ -1,7 +1,5 @@
 {
-  "schema_version": 1,
-  "source_repository": "google/fonts",
-  "source_commit": "2d85e20401920891efb7cd6272d6339685df2820",
+  "schema_version": 2,
   "runtime_network_dependency": false,
   "assets": [
     {
@@ -43,6 +41,90 @@
       "source_commit": "2d85e20401920891efb7cd6272d6339685df2820",
       "sha256": "0677891e6a143f297350d260ad766ad33bfc18ed5fa4f213acf648d6b597ec1a",
       "license": "OFL-1.1"
+    },
+    {
+      "id": "font.classic.black_chancery.regular",
+      "path": "res://src/presentation/assets/fonts/BlackChancery-Realmz.ttf",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "resources/Black Chancery.ttf",
+      "sha256": "1a3a41b4a7ab327002897275520c200028f0303f599e77c20b0e0e6a93b24357",
+      "license": "Public-Domain",
+      "role": "character names, item statistics, movement, load, and compact status text"
+    },
+    {
+      "id": "font.classic.chicago_flf.regular",
+      "path": "res://src/presentation/assets/fonts/ChicagoFLF.ttf",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "resources/ChicagoFLF.ttf",
+      "sha256": "b442111f37639e27572d9df0c5190e7480e6a7b01ec768aea47a154efab8d50d",
+      "license": "Public-Domain",
+      "role": "Classic 3D-view help text"
+    },
+    {
+      "id": "font.classic.geneva_substitute.inter",
+      "path": "res://src/presentation/assets/fonts/InterVariable-Castle.ttf",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "vendored/Inter/InterVariable.ttf",
+      "sha256": "4989b125924991b90d05b2d16e0e388c48f7d5bb8b30539bbf9c755278d0ccaf",
+      "license": "OFL-1.1",
+      "role": "Castle's open substitute for Geneva utility and detail text"
+    },
+    {
+      "id": "font.classic.theldrow.bitmap",
+      "path": "res://src/presentation/assets/fonts/Theldrow-Classic.fnt",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601",
+      "sha256": "58d26ee47c046a97ca3332dc65819f9eb3c0c9ea54128ba785b66a83309c8dcb",
+      "license": "Realmz-Art-NonCommercial",
+      "role": "exact default Realmz interface, dialog, and narrative text metrics"
+    },
+    {
+      "id": "font.classic.theldrow.atlas",
+      "path": "res://src/presentation/assets/fonts/Theldrow-Classic.png",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601",
+      "sha256": "7dbba1d6638e5a27049098acf41f648ea390b3a482610f8065f809b5c753f394",
+      "license": "Realmz-Art-NonCommercial",
+      "role": "exact default Realmz bitmap glyph strike"
+    },
+    {
+      "id": "license.black_chancery",
+      "path": "res://src/presentation/assets/fonts/licenses/BlackChancery-PUBLIC-DOMAIN.txt",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "sha256": "406ca1bc9447b9dc0008d41bc16faf34662b16147bb9e419e8996266e8e50439",
+      "license": "Public-Domain"
+    },
+    {
+      "id": "license.chicago_flf",
+      "path": "res://src/presentation/assets/fonts/licenses/ChicagoFLF-PUBLIC-DOMAIN.txt",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "sha256": "d3aa7c92ada2b4764847bd4d78618aac1f16e6aecafdf19b116528f773ce7280",
+      "license": "Public-Domain"
+    },
+    {
+      "id": "license.inter",
+      "path": "res://src/presentation/assets/fonts/licenses/Inter-OFL.txt",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "vendored/Inter/LICENSE.txt",
+      "sha256": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "license.theldrow_realmz",
+      "path": "res://src/presentation/assets/fonts/licenses/Theldrow-REALMZ-NONCOMMERCIAL.txt",
+      "source_repository": "Realmz-Castle/realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601",
+      "sha256": "a709ac83e2e5df8eee7c373a1c6ef959c47a22ef4312b67ee1ac593776875bcb",
+      "license": "Realmz-Art-NonCommercial"
     }
   ]
 }

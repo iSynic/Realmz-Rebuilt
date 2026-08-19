@@ -132,15 +132,15 @@ func _draw() -> void:
 	_draw_playback_overlay(combat, camera, visible_cells, draw_origin)
 	_draw_tactical_legend()
 	if not has_battle_artwork():
-		draw_string(ThemeDB.fallback_font, Vector2(draw_origin.x + 8.0, draw_origin.y + 20.0), "Battle artwork unavailable", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(1.0, 0.78, 0.42))
+		draw_string(_ui_font(), Vector2(draw_origin.x + 8.0, draw_origin.y + 20.0), "Battle artwork unavailable", HORIZONTAL_ALIGNMENT_LEFT, -1.0, 13, Color(1.0, 0.78, 0.42))
 
 
 func _draw_header(combat: CombatView) -> void:
 	var current_actor_name := actor_name(combat, _view.party_members, combat.active_actor_id)
 	var title := "Battle %s • Round %d • %s" % [combat.battle_id, combat.round_number, current_actor_name]
 	var facts := "%d attack%s • %d movement • %s" % [combat.attack_units_remaining, "" if combat.attack_units_remaining == 1 else "s", combat.movement_remaining, String(combat.weapon_mode).capitalize()]
-	draw_string(ThemeDB.fallback_font, Vector2(8.0, 17.0), title, HORIZONTAL_ALIGNMENT_LEFT, maxf(size.x - 250.0, 120.0), 16, Color(0.86, 0.75, 0.42))
-	draw_string(ThemeDB.fallback_font, Vector2(size.x - 242.0, 17.0), facts, HORIZONTAL_ALIGNMENT_RIGHT, 234.0, 12, Color(0.73, 0.76, 0.80))
+	draw_string(_ui_font(), Vector2(8.0, 17.0), title, HORIZONTAL_ALIGNMENT_LEFT, maxf(size.x - 250.0, 120.0), 16, Color(0.86, 0.75, 0.42))
+	draw_string(_ui_font(), Vector2(size.x - 242.0, 17.0), facts, HORIZONTAL_ALIGNMENT_RIGHT, 234.0, 12, Color(0.73, 0.76, 0.80))
 
 
 func _draw_tactical_legend() -> void:
@@ -148,11 +148,11 @@ func _draw_tactical_legend() -> void:
 		var x := 8.0
 		for entry: Array in [["Hostile", Color(0.95, 0.22, 0.18)], ["Friendly", Color(0.18, 0.90, 0.38)], ["Helpless", Color(0.20, 0.42, 1.0)]]:
 			draw_line(Vector2(x, 29.0), Vector2(x + 18.0, 29.0), entry[1], 2.0)
-			draw_string(ThemeDB.fallback_font, Vector2(x + 23.0, 33.0), String(entry[0]), HORIZONTAL_ALIGNMENT_LEFT, 58.0, 10, Color(0.82, 0.84, 0.84))
+			draw_string(_ui_font(), Vector2(x + 23.0, 33.0), String(entry[0]), HORIZONTAL_ALIGNMENT_LEFT, 58.0, 10, Color(0.82, 0.84, 0.84))
 			x += 86.0
-		draw_string(ThemeDB.fallback_font, Vector2(x, 33.0), "Click board to dismiss", HORIZONTAL_ALIGNMENT_LEFT, 126.0, 10, Color(0.63, 0.67, 0.69))
+		draw_string(_ui_font(), Vector2(x, 33.0), "Click board to dismiss", HORIZONTAL_ALIGNMENT_LEFT, 126.0, 10, Color(0.63, 0.67, 0.69))
 	elif _movement_costs_visible:
-		draw_string(ThemeDB.fallback_font, Vector2(8.0, 33.0), "Movement cost aid • release Shift to hide", HORIZONTAL_ALIGNMENT_LEFT, 250.0, 10, Color(0.94, 0.82, 0.38))
+		draw_string(_ui_font(), Vector2(8.0, 33.0), "Movement cost aid • release Shift to hide", HORIZONTAL_ALIGNMENT_LEFT, 250.0, 10, Color(0.94, 0.82, 0.38))
 
 
 func _draw_terrain_cell(tile_id: int, rect: Rect2) -> void:
@@ -181,11 +181,11 @@ func _draw_movement_options(combat: CombatView, camera: Vector2i, visible_cells:
 			draw_rect(rect, Color(0.08, 0.10, 0.08, 0.62), true)
 			draw_rect(rect, Color(0.88, 0.76, 0.28, 0.95), false, 2.0)
 			var label := "Leave" if option.retreats_from_battle else "Attack" if not option.attack_target_id.is_empty() else "%d MP" % option.movement_cost
-			draw_string(ThemeDB.fallback_font, rect.position + Vector2(2.0, 20.0), label, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 4.0, 11, Color(1.0, 0.94, 0.68))
+			draw_string(_ui_font(), rect.position + Vector2(2.0, 20.0), label, HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 4.0, 11, Color(1.0, 0.94, 0.68))
 		else:
 			draw_rect(rect, Color(0.10, 0.08, 0.08, 0.52), true)
 			draw_rect(rect, Color(0.70, 0.30, 0.26, 0.78), false, 1.0)
-			draw_string(ThemeDB.fallback_font, rect.position + Vector2(2.0, 20.0), "—", HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 4.0, 12, Color(0.90, 0.62, 0.56))
+			draw_string(_ui_font(), rect.position + Vector2(2.0, 20.0), "—", HORIZONTAL_ALIGNMENT_CENTER, rect.size.x - 4.0, 12, Color(0.90, 0.62, 0.56))
 
 
 func set_movement_costs_visible(visible_costs: bool) -> void:
@@ -471,7 +471,7 @@ func _draw_targeting_preview(combat: CombatView, camera: Vector2i, visible_cells
 			continue
 		draw_rect(rect.grow(4.0), Color(1.0, 0.86, 0.28, 0.98), false, 4.0)
 		if _targeting.mode == &"sequence":
-			draw_string(ThemeDB.fallback_font, rect.position + Vector2(4.0, 18.0), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, 24.0, 15, Color(1.0, 0.94, 0.72))
+			draw_string(_ui_font(), rect.position + Vector2(4.0, 18.0), str(index + 1), HORIZONTAL_ALIGNMENT_LEFT, 24.0, 15, Color(1.0, 0.94, 0.72))
 
 
 func _draw_playback_overlay(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
@@ -512,7 +512,7 @@ func _draw_centered_cue(text: String) -> void:
 	var cue_rect := Rect2(Vector2(size.x * 0.5 - 110.0, HEADER_HEIGHT + 8.0), Vector2(220.0, 34.0))
 	draw_rect(cue_rect, Color(0.02, 0.025, 0.03, 0.86), true)
 	draw_rect(cue_rect, Color(0.86, 0.72, 0.30, 0.95), false, 2.0)
-	draw_string(ThemeDB.fallback_font, cue_rect.position + Vector2(4.0, 23.0), text, HORIZONTAL_ALIGNMENT_CENTER, cue_rect.size.x - 8.0, 16, Color(1.0, 0.90, 0.56))
+	draw_string(_ui_font(), cue_rect.position + Vector2(4.0, 23.0), text, HORIZONTAL_ALIGNMENT_CENTER, cue_rect.size.x - 8.0, 16, Color(1.0, 0.90, 0.56))
 
 
 func _draw_projectile(actor_rect: Rect2, target_rect: Rect2) -> void:
@@ -569,7 +569,7 @@ func _draw_result(target_rect: Rect2) -> void:
 	var result_rect := Rect2(target_rect.get_center() - Vector2(18.0, 14.0), Vector2(36.0, 28.0))
 	if _playback_frame.effect_resource_id <= 0:
 		draw_rect(result_rect, Color(0.02, 0.02, 0.02, 0.76), true)
-	draw_string(ThemeDB.fallback_font, result_rect.position + Vector2(1.0, 20.0), _playback_frame.display_text, HORIZONTAL_ALIGNMENT_CENTER, result_rect.size.x - 2.0, 14, text_color)
+	draw_string(_ui_font(), result_rect.position + Vector2(1.0, 20.0), _playback_frame.display_text, HORIZONTAL_ALIGNMENT_CENTER, result_rect.size.x - 2.0, 14, text_color)
 
 
 func _effective_actor_position(combat: CombatView, actor_id: String) -> Vector2i:
@@ -624,7 +624,7 @@ func _draw_actor(rect: Rect2, texture: Texture2D, label: String, active: bool, t
 		draw_texture_rect(texture, rect, false)
 	else:
 		draw_rect(rect.grow(-3.0), Color(0.62, 0.20, 0.18) if hostile else Color(0.18, 0.42, 0.64), true)
-		draw_string(ThemeDB.fallback_font, rect.position + Vector2(5.0, 20.0), label.left(2).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color.WHITE)
+		draw_string(_ui_font(), rect.position + Vector2(5.0, 20.0), label.left(2).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, -1.0, 12, Color.WHITE)
 	if target:
 		draw_rect(rect.grow(-1.0), Color(0.95, 0.35, 0.26), false, 3.0)
 	if active:
@@ -680,6 +680,10 @@ static func combatant_at(combat: CombatView, party_members: Array[CharacterView]
 static func click_direction(origin: Vector2i, destination: Vector2i) -> Vector2i:
 	var offset := destination - origin
 	return Vector2i(signi(offset.x), signi(offset.y))
+
+
+func _ui_font() -> Font:
+	return get_theme_font(&"font", &"Label")
 
 
 static func click_direction_for_point(active_cell: Rect2, point: Vector2) -> Vector2i:

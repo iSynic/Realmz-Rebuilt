@@ -102,7 +102,7 @@ func _draw() -> void:
 	if _view == null or _view.map_view == null:
 		return
 	var map_view := _view.map_view
-	var font := ThemeDB.fallback_font
+	var font := get_theme_font(&"font", &"Label")
 	var viewport_cells := viewport_cells_for(size, map_origin.y, cell_size)
 	var draw_origin := map_draw_origin_for(size, map_origin, cell_size, viewport_cells)
 	var map_rect := Rect2(draw_origin, Vector2(viewport_cells) * cell_size)
@@ -290,7 +290,7 @@ func _draw_features(cell: MapCellView, rect: Rect2) -> void:
 	if cell.has_feature(&"door"):
 		draw_line(center + Vector2(-13, 0), center + Vector2(13, 0), Color(0.84, 0.63, 0.30), 5.0)
 	if cell.has_feature(&"secret"):
-		draw_string(ThemeDB.fallback_font, center + Vector2(-5, 6), "S", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.71, 0.46, 0.82))
+		draw_string(get_theme_font(&"font", &"Label"), center + Vector2(-5, 6), "S", HORIZONTAL_ALIGNMENT_LEFT, -1, 18, Color(0.71, 0.46, 0.82))
 	if cell.has_feature(&"stairs"):
 		for offset: int in [-8, 0, 8]:
 			draw_line(center + Vector2(-12, offset), center + Vector2(12, offset), Color(0.72, 0.72, 0.68), 2.0)

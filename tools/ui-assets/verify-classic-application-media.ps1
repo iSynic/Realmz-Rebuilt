@@ -52,6 +52,31 @@ if ($soundCount -ne 142 -or $combatIconCount -ne 145 -or $itemIconCount -ne 260)
     throw "Expected 142 built-in sounds, 145 source-backed combat icons, and 260 shared item icons; found $soundCount sounds, $combatIconCount combat icons, and $itemIconCount item icons"
 }
 
+$fontManifestPath = Join-Path $repoRoot "src/presentation/assets/fonts/font-assets.json"
+if (-not (Test-Path -LiteralPath $fontManifestPath -PathType Leaf)) {
+    throw "Font asset manifest is missing"
+}
+$fontManifest = Get-Content -Raw -LiteralPath $fontManifestPath | ConvertFrom-Json
+if ($fontManifest.schema_version -ne 2 -or $fontManifest.runtime_network_dependency -ne $false) {
+    throw "Font asset manifest contract is unsupported"
+}
+$fontIds = @{}
+foreach ($fontAsset in $fontManifest.assets) {
+    if ($fontIds.ContainsKey($fontAsset.id)) { throw "Duplicate font asset ID: $($fontAsset.id)" }
+    $fontIds[$fontAsset.id] = $true
+    if (-not $fontAsset.path.StartsWith("res://") -or [string]::IsNullOrWhiteSpace($fontAsset.source_repository) -or [string]::IsNullOrWhiteSpace($fontAsset.source_commit) -or [string]::IsNullOrWhiteSpace($fontAsset.license)) {
+        throw "Font asset provenance is incomplete: $($fontAsset.id)"
+    }
+    $relativePath = $fontAsset.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar
+    $path = Join-Path $repoRoot $relativePath
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Font asset file is missing: $($fontAsset.path)" }
+    $sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
+    if ($sha256 -ne $fontAsset.sha256) { throw "Font asset hash does not match: $($fontAsset.id)" }
+}
+foreach ($requiredFont in @("font.classic.black_chancery.regular", "font.classic.chicago_flf.regular", "font.classic.geneva_substitute.inter", "font.classic.theldrow.bitmap", "font.classic.theldrow.atlas")) {
+    if (-not $fontIds.ContainsKey($requiredFont)) { throw "Required Classic font asset is missing: $requiredFont" }
+}
+
 $chromeManifestPath = Join-Path $repoRoot "src/presentation/assets/ui/spritecook-assets.json"
 if (-not (Test-Path -LiteralPath $chromeManifestPath -PathType Leaf)) {
     throw "SpriteCook chrome manifest is missing"
@@ -88,5 +113,5 @@ foreach ($file in $chromeFiles) {
     }
     finally { $bitmap.Dispose() }
 }
-Write-Host "Classic application media verified: $($manifest.assets.Count) assets; generated chrome verified: $($chromeFiles.Count) files."
+Write-Host "Classic application media verified: $($manifest.assets.Count) assets; fonts verified: $($fontManifest.assets.Count) assets; generated chrome verified: $($chromeFiles.Count) files."
 exit 0

@@ -93,6 +93,7 @@ func _ready() -> void:
 	_shell_presenter.dungeon_3d_changed.connect(_on_dungeon_3d_changed)
 	_shell_presenter.master_volume_changed.connect(_on_master_volume_changed)
 	_shell_presenter.text_scale_changed.connect(_on_text_scale_changed)
+	_shell_presenter.typography_mode_changed.connect(_on_typography_mode_changed)
 	_shell_presenter.ui_scale_mode_changed.connect(_on_ui_scale_mode_changed)
 	_shell_presenter.window_mode_changed.connect(_on_window_mode_changed)
 	_shell_presenter.reduced_motion_changed.connect(_on_reduced_motion_changed)
@@ -109,7 +110,7 @@ func _ready() -> void:
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
 	_shell_presenter.apply_settings(_presentation_settings)
 	presentation_coordinator.set_reduced_motion(_presentation_settings.reduced_motion)
-	_apply_application_theme(_presentation_settings.text_scale)
+	_apply_application_theme()
 	_interaction_presenter.set_text_scale(_presentation_settings.text_scale)
 	_interaction_presenter.set_autojournal_enabled(_presentation_settings.autojournal_enabled)
 	_map_presenter.set_travel_preview_visible(_presentation_settings.show_exploration_minimap)
@@ -854,7 +855,7 @@ func _on_master_volume_changed(value: float) -> void:
 
 func _on_text_scale_changed(value: float) -> void:
 	_presentation_settings.text_scale = value
-	_apply_application_theme(value)
+	_apply_application_theme()
 	_interaction_presenter.set_text_scale(value)
 	_shell_presenter.apply_settings(_presentation_settings)
 	settings_repository.save_settings(_presentation_settings)
@@ -877,11 +878,18 @@ func _apply_window_mode(value: String) -> void:
 	DisplayServer.window_set_mode(mode)
 
 
-func _apply_application_theme(text_scale: float) -> void:
+func _apply_application_theme() -> void:
 	var base_theme := load("res://src/presentation/classic_ui_theme.tres") as Theme
-	var application_theme := base_theme.duplicate(true) as Theme
-	application_theme.default_font_size = int(round(15.0 * text_scale))
-	theme = application_theme
+	theme = ClassicTypography.themed_copy(base_theme, _presentation_settings)
+
+
+func _on_typography_mode_changed(value: String) -> void:
+	if value not in [PresentationSettings.TYPOGRAPHY_CLASSIC, PresentationSettings.TYPOGRAPHY_READABLE]:
+		return
+	_presentation_settings.typography_mode = value
+	_apply_application_theme()
+	_shell_presenter.apply_settings(_presentation_settings)
+	settings_repository.save_settings(_presentation_settings)
 
 
 func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) -> void:

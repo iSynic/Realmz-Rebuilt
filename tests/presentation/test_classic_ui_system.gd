@@ -606,15 +606,15 @@ func _test_settings_schema_and_migration() -> void:
 	settings.ui_scale_mode = PresentationSettings.UI_SCALE_125
 	settings.window_mode = PresentationSettings.BORDERLESS_FULLSCREEN
 	settings.text_scale = 1.5; settings.auto_switch_to_melee = false; settings.exploration_speed_percent = 250
-	settings.show_exploration_minimap = true; settings.autojournal_enabled = false
+	settings.show_exploration_minimap = true; settings.autojournal_enabled = false; settings.typography_mode = PresentationSettings.TYPOGRAPHY_READABLE
 	var restored := PresentationSettings.from_data(settings.to_data())
-	assert_not_null(restored, "schema-six presentation settings round-trip")
+	assert_not_null(restored, "schema-seven presentation settings round-trip")
 	assert_equal(restored.ui_scale_mode, PresentationSettings.UI_SCALE_125, "interface density persists separately")
 	assert_equal(restored.window_mode, PresentationSettings.BORDERLESS_FULLSCREEN, "window mode persists")
 	assert_equal(restored.text_scale, 1.5, "text scale remains independent")
 	assert_false(restored.auto_switch_to_melee, "Auto Weapon Switch persists as an application preference rather than battle state")
 	assert_equal(restored.exploration_speed_percent, 250, "exploration speed persists independently of simulation state")
-	assert_equal([restored.show_exploration_minimap, restored.autojournal_enabled], [true, false], "optional travel preview and Castle-shaped Auto Note persist as presentation preferences")
+	assert_equal([restored.show_exploration_minimap, restored.autojournal_enabled, restored.typography_mode], [true, false, PresentationSettings.TYPOGRAPHY_READABLE], "travel preview, Auto Note, and typography persist as presentation preferences")
 	var version_two := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 2, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": true})
 	assert_not_null(version_two, "schema-two settings migrate")
 	assert_equal(version_two.ui_scale_mode, PresentationSettings.UI_SCALE_AUTO, "migrated settings default to automatic interface density")
@@ -627,6 +627,7 @@ func _test_settings_schema_and_migration() -> void:
 	assert_not_null(version_four, "schema-four settings migrate")
 	assert_equal(version_four.exploration_speed_percent, 100, "older settings inherit the stable exploration cadence")
 	var version_five := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 5, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": false, "uiScaleMode": PresentationSettings.UI_SCALE_100, "windowMode": PresentationSettings.WINDOWED, "autoSwitchToMelee": true, "explorationSpeedPercent": 200}); assert_equal([version_five.show_exploration_minimap, version_five.autojournal_enabled], [false, true], "schema-five settings migrate to a hidden modern travel aid and the requested Auto Note default")
+	var version_six := PresentationSettings.from_data({"kind": "realmz2.presentation-settings", "schemaVersion": 6, "masterVolume": 0.5, "topologyDebug": false, "textScale": 1.0, "reducedMotion": false, "dungeon3d": false, "uiScaleMode": PresentationSettings.UI_SCALE_100, "windowMode": PresentationSettings.WINDOWED, "autoSwitchToMelee": true, "explorationSpeedPercent": 200, "showExplorationMinimap": false, "autojournalEnabled": true}); assert_equal(version_six.typography_mode, PresentationSettings.TYPOGRAPHY_CLASSIC, "existing settings migrate to the Classic typography default")
 	var malformed_current := settings.to_data()
 	malformed_current.erase("autojournalEnabled")
 	assert_equal(PresentationSettings.from_data(malformed_current), null, "current settings reject an incomplete preference record")

@@ -1,0 +1,11 @@
+Black Chancery
+
+Source: Realmz Castle resources/Black Chancery.ttf at commit
+491816ad60037394f92c428e99c004494d3c28b3.
+
+Embedded font notice:
+From Doug Miles' Black Chancery bitmap font. Autotracing by Fontographer 3.2.
+Public domain.
+
+Castle commit d6054a508fd5e101fef35e060ff984f540eb6de1 identifies this as
+the public-domain digitization shipped in the original game resources.

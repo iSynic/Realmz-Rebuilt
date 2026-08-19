@@ -182,6 +182,17 @@ func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -
 	text_scale.tooltip_text = "Text scale %d%%" % int(round(settings.text_scale * 100.0))
 	text_scale.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"text_scale", value))
 	_add_setting_row(content, "Text size  •  %d%%" % int(round(settings.text_scale * 100.0)), text_scale)
+	var typography := OptionButton.new()
+	for entry: Dictionary in [
+		{"label": "Classic Realmz fonts", "id": PresentationSettings.TYPOGRAPHY_CLASSIC},
+		{"label": "Readable modern fonts", "id": PresentationSettings.TYPOGRAPHY_READABLE},
+	]:
+		typography.add_item(entry["label"])
+		typography.set_item_metadata(typography.item_count - 1, entry["id"])
+		if entry["id"] == settings.typography_mode:
+			typography.select(typography.item_count - 1)
+	typography.item_selected.connect(func(index: int) -> void: setting_changed.emit(&"typography_mode", String(typography.get_item_metadata(index))))
+	_add_setting_row(content, "Typography", typography)
 	var window_mode := OptionButton.new()
 	window_mode.add_item("Windowed"); window_mode.set_item_metadata(0, PresentationSettings.WINDOWED)
 	window_mode.add_item("Borderless fullscreen"); window_mode.set_item_metadata(1, PresentationSettings.BORDERLESS_FULLSCREEN)

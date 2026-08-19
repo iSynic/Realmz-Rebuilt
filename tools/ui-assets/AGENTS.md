@@ -9,6 +9,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - The exact-commit Remake bitmap-control and Castle resource-fork map-marker catalog and importer.
 - The complete app-owned Classic `snd ` catalog, shared Data ID item `cicn` set and unidentified substitutes, plus selected source-backed battle `cicn` families decoded from the pinned Castle `The Family Jewels` resource fork.
 - Deterministic selected-surface preservation, seamless runtime tile derivation, tiled nine-patch derivation, and alpha-cropped exploration-rail reduction.
+- Deterministic typography import, including exact Mac resource-fork `FONT` 1601 decoding into a Godot BMFont descriptor/atlas and pinned Castle/Open Font License font-byte synchronization.
 
 ## Local Contracts
 
@@ -18,6 +19,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - Search keeps exact built-in CICN 128 as inactive control-state evidence and imports the licensed eight-frame Searching row from its exact donor commit for runtime matte-keyed composition. Area Search keeps generic built-in CICN 129/130 as pressed/released control-state evidence and uses the licensed non-commercial Realmz eye/label bitmap from its exact tracked donor commit. Catalog records must preserve those distinctions and the license boundary.
 - Integrated media keeps exact Classic `(resource type, ID)` identity and provenance. The runtime resolves scenario package media before these application fallbacks, matching Castle's resource-chain precedence.
 - Preserve existing Godot `.import` sidecars for retained catalog assets so exact-byte regeneration does not churn stable resource UIDs; newly added assets receive their sidecars from the ordinary Godot import pass.
+- `export-classic-theldrow.ps1` must preserve the pinned FONT strike's source locations, offsets, advances, ascent, descent, and leading. It may map MacRoman codes to Unicode for Godot lookup, but it must not trace, interpolate, kern, or restyle the glyphs. `sync-fonts.ps1` validates every remote/source hash before replacing committed outputs and emits the complete multi-source manifest.
 - `build-classic-surfaces.ps1 -RebuildFromCommittedSurface` is the offline path for regenerating the seamless tile and frame kit without replacing selected SpriteCook provenance. Raised and inset frames tile the selected slate through their complete bounds; bevel corners remain opaque so controls cannot reveal unrelated parent colors.
 - `build-exploration-rail.ps1` alpha-crops one explicitly selected SpriteCook source and reduces it to the manifest-recorded 48x468 production rail without inventing additional ornament.
 - Validate hashes and PNG dimensions before replacing committed outputs.
@@ -32,6 +34,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - `build-classic-surfaces.ps1` verifies every generated PNG, records deterministic SHA-256 values, produces a tile with exact matching opposite edges, and records the opaque-bevel algorithm version.
 - `build-exploration-rail.ps1` reports the source crop plus source/output SHA-256 values; the committed manifest records those values and production dimensions.
 - `verify-classic-application-media.ps1` verifies unique IDs/resource keys, the expected integrated sound, item-CIcon, and combat-CIcon counts, generated-chrome paths/dimensions, and every committed byte count and SHA-256 without requiring an external Castle checkout.
+- `verify-classic-application-media.ps1` also verifies the complete font manifest, source/commit/license fields, required Classic roles, committed paths, and byte hashes.
 
 ## Child DOX Index
 
