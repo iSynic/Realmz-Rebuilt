@@ -35,7 +35,7 @@ static func for_viewport(size: Vector2, scale_mode: String) -> UiLayoutProfile:
 	var art_scale := 2 if size.x >= 1600.0 and size.y >= 900.0 and scale_mode in [PresentationSettings.UI_SCALE_AUTO, PresentationSettings.UI_SCALE_150] else 1
 	if effective_width < 1280.0:
 		return UiLayoutProfile.new(COMPACT, scale, 208.0 * scale, 156.0 * scale, 208.0 * scale, 1)
-	return UiLayoutProfile.new(WIDE, scale, 288.0 * scale, 190.0 * scale, 288.0 * scale, art_scale)
+	return UiLayoutProfile.new(WIDE, scale, 352.0 * scale, 190.0 * scale, 288.0 * scale, art_scale)
 
 
 static func scale_for(size: Vector2, scale_mode: String) -> float:

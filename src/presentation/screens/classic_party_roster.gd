@@ -49,7 +49,7 @@ func present(view: GameView, selected_character_id: String = "") -> void:
 		_heading.text = "Party"
 		_add_empty("No active party")
 		return
-	_heading.text = "Party • Pick %d" % (_selection_count - _selection_order.size()) if character_selection_active() else "Party • %d / 6" % view.party_members.size()
+	_heading.text = "Party • Pick %d" % (_selection_count - _selection_order.size()) if character_selection_active() else "Party"
 	var combat_active := view.combat_view != null and view.combat_view.outcome == &"active"
 	var auto_character_ids: Array[String] = []
 	if combat_active:
@@ -316,11 +316,13 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	elif combat_active:
 		var auto_toggle := CheckButton.new()
 		auto_toggle.name = "CombatAuto"
-		auto_toggle.text = "Auto"
-		auto_toggle.custom_minimum_size.x = 52.0
+		auto_toggle.text = "A"
+		auto_toggle.custom_minimum_size.x = 36.0
+		auto_toggle.size_flags_horizontal = Control.SIZE_SHRINK_END
 		var auto_available := character.current_health > 0 and not character.traitor
 		auto_toggle.disabled = not auto_available
 		auto_toggle.tooltip_text = "Persistent Auto for this character's next combat activation." if auto_available else "Persistent Auto requires a living loyal party character."
+		auto_toggle.accessibility_name = "Persistent Auto for %s" % character.name
 		auto_toggle.button_pressed = auto_character_ids.has(character.id)
 		auto_toggle.toggled.connect(func(enabled: bool) -> void: combat_auto_changed.emit(character.id, enabled))
 		row_container.add_child(auto_toggle)

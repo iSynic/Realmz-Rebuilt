@@ -8,7 +8,7 @@ signal targeting_cancelled
 
 const NATIVE_CELL_SIZE: float = 32.0
 const HEADER_HEIGHT: float = 38.0
-const MAX_VISIBLE_COLUMNS: int = 16
+const MAX_VISIBLE_COLUMNS: int = 25
 const MAX_VISIBLE_ROWS: int = 14
 
 var _view: GameView

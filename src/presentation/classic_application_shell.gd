@@ -371,6 +371,11 @@ func _apply_layout() -> void:
 	# Lay out siblings in their shared Control coordinate space.
 	var viewport_size := size
 	_profile = UiLayoutProfile.for_viewport(viewport_size, _presentation_settings.ui_scale_mode)
+	_menu_row.visible = _profile.id != UiLayoutProfile.COMPACT
+	_compact_menu.visible = _profile.id == UiLayoutProfile.COMPACT
+	# Classic typography can require more height than the historical 28-pixel
+	# menu. Keep every play region below the menu's actual themed minimum.
+	_profile.menu_height = maxf(_profile.menu_height, ceilf(_menu_strip.get_combined_minimum_size().y))
 	var stage_width := maxf(320.0, viewport_size.x - _profile.party_width)
 	var stage_height := maxf(220.0, viewport_size.y - _profile.menu_height - _profile.bottom_height)
 	var stage_rect := Rect2(0.0, _profile.menu_height, stage_width, stage_height)
@@ -406,8 +411,6 @@ func _apply_layout() -> void:
 	var picture_size := Vector2(minf(560.0 * _profile.ui_scale, stage_rect.size.x - 48.0), minf(360.0 * _profile.ui_scale, stage_rect.size.y - 48.0))
 	_picture_stage.position = stage_rect.position + (stage_rect.size - picture_size) * 0.5
 	_picture_stage.size = picture_size
-	_menu_row.visible = _profile.id != UiLayoutProfile.COMPACT
-	_compact_menu.visible = _profile.id == UiLayoutProfile.COMPACT
 	_router.set_layout_profile(_profile, viewport_size)
 	_build_menus()
 	_rebuild_command_deck()

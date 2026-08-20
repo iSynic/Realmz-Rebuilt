@@ -598,7 +598,7 @@ func _test_layout_profiles() -> void:
 	assert_equal(UiLayoutProfile.scale_for(Vector2(800, 600), PresentationSettings.UI_SCALE_150), 1.5, "150 percent interface density is supported")
 	var compact := UiLayoutProfile.for_viewport(Vector2(800, 600), PresentationSettings.UI_SCALE_AUTO)
 	assert_equal(compact.party_width, 208.0, "compact Classic roster uses the specified width")
-	assert_equal(compact.bottom_height, 156.0, "compact Classic textbox uses the specified height")
+	assert_equal(compact.bottom_height, 156.0, "compact Classic textbox uses the specified height"); assert_equal(UiLayoutProfile.for_viewport(Vector2(1280, 720), PresentationSettings.UI_SCALE_AUTO).party_width, 352.0, "canonical widescreen reserves enough width for complete party records")
 
 
 func _test_settings_schema_and_migration() -> void:
@@ -977,7 +977,7 @@ func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
 
 func _test_battlefield_presenter() -> void:
 	var presenter := ClassicBattlefieldPresenter.new()
-	assert_equal(ClassicBattlefieldPresenter.viewport_cells_for(Vector2(704.0, 396.0)), Vector2i(16, 11), "battlefield keeps native cell bounds")
+	assert_equal(ClassicBattlefieldPresenter.viewport_cells_for(Vector2(912.0, 486.0)), Vector2i(25, 14), "canonical battlefield uses a native-pixel widescreen camera window")
 	assert_equal(ClassicBattlefieldPresenter.click_direction(Vector2i(45, 45), Vector2i(52, 39)), Vector2i(1, -1), "distant clicks map to one tactical direction")
 	assert_equal(ClassicBattlefieldPresenter.footprint_rect([], Vector2i.ZERO, Vector2.ZERO), Rect2(), "terminal playback tolerates a combatant whose committed battlefield footprint has already been removed")
 	var view := _combat_playback_view(20, Vector2i(45, 45), Vector2i(47, 45), &"active")
