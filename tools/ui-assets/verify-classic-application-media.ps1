@@ -57,7 +57,7 @@ if (-not (Test-Path -LiteralPath $fontManifestPath -PathType Leaf)) {
     throw "Font asset manifest is missing"
 }
 $fontManifest = Get-Content -Raw -LiteralPath $fontManifestPath | ConvertFrom-Json
-if ($fontManifest.schema_version -ne 2 -or $fontManifest.runtime_network_dependency -ne $false) {
+if ($fontManifest.schema_version -ne 3 -or $fontManifest.runtime_network_dependency -ne $false) {
     throw "Font asset manifest contract is unsupported"
 }
 $fontIds = @{}
@@ -70,13 +70,37 @@ foreach ($fontAsset in $fontManifest.assets) {
     if ($null -ne $fontAsset.metric_source_repository -and ([string]::IsNullOrWhiteSpace($fontAsset.metric_source_repository) -or [string]::IsNullOrWhiteSpace($fontAsset.metric_source_commit) -or [string]::IsNullOrWhiteSpace($fontAsset.metric_source_path) -or [string]::IsNullOrWhiteSpace($fontAsset.metric_source_sha256))) {
         throw "Font metric-source provenance is incomplete: $($fontAsset.id)"
     }
+    if ($null -ne $fontAsset.baseline_source_repository -and ([string]::IsNullOrWhiteSpace($fontAsset.baseline_source_repository) -or [string]::IsNullOrWhiteSpace($fontAsset.baseline_source_commit) -or [string]::IsNullOrWhiteSpace($fontAsset.baseline_source_path) -or [string]::IsNullOrWhiteSpace($fontAsset.baseline_source_sha256))) {
+        throw "Font baseline-source provenance is incomplete: $($fontAsset.id)"
+    }
+    if ($null -ne $fontAsset.utility_source_repository -and ([string]::IsNullOrWhiteSpace($fontAsset.utility_source_repository) -or [string]::IsNullOrWhiteSpace($fontAsset.utility_source_commit) -or [string]::IsNullOrWhiteSpace($fontAsset.utility_source_path) -or [string]::IsNullOrWhiteSpace($fontAsset.utility_source_sha256))) {
+        throw "Font utility-source provenance is incomplete: $($fontAsset.id)"
+    }
+    if ($null -ne $fontAsset.build_tool_path) {
+        $buildToolPath = Join-Path $repoRoot ($fontAsset.build_tool_path -replace "/", [IO.Path]::DirectorySeparatorChar)
+        if (-not (Test-Path -LiteralPath $buildToolPath -PathType Leaf) -or [string]::IsNullOrWhiteSpace($fontAsset.build_tool_sha256)) {
+            throw "Font build-tool provenance is incomplete: $($fontAsset.id)"
+        }
+        if ((Get-FileHash -Algorithm SHA256 -LiteralPath $buildToolPath).Hash.ToLowerInvariant() -ne $fontAsset.build_tool_sha256) {
+            throw "Font build-tool hash does not match: $($fontAsset.id)"
+        }
+    }
     $relativePath = $fontAsset.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar
     $path = Join-Path $repoRoot $relativePath
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Font asset file is missing: $($fontAsset.path)" }
     $sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $path).Hash.ToLowerInvariant()
     if ($sha256 -ne $fontAsset.sha256) { throw "Font asset hash does not match: $($fontAsset.id)" }
+    if ($fontAsset.id -eq "font.classic.theldrow.rebuilt") {
+        $glyphSourcePath = Join-Path $repoRoot ($fontAsset.source_path -replace "/", [IO.Path]::DirectorySeparatorChar)
+        if (-not (Test-Path -LiteralPath $glyphSourcePath -PathType Leaf) -or [string]::IsNullOrWhiteSpace($fontAsset.source_sha256)) {
+            throw "Modernized Theldrow Pencil geometry provenance is incomplete"
+        }
+        if ((Get-FileHash -Algorithm SHA256 -LiteralPath $glyphSourcePath).Hash.ToLowerInvariant() -ne $fontAsset.source_sha256) {
+            throw "Modernized Theldrow Pencil geometry hash does not match"
+        }
+    }
 }
-foreach ($requiredFont in @("font.classic.black_chancery.regular", "font.classic.chicago_flf.regular", "font.classic.geneva_substitute.inter", "font.classic.theldrow.bitmap", "font.classic.theldrow.atlas", "font.classic.theldrow.vector")) {
+foreach ($requiredFont in @("font.classic.black_chancery.regular", "font.classic.chicago_flf.regular", "font.classic.geneva_substitute.inter", "font.classic.theldrow.bitmap", "font.classic.theldrow.atlas", "font.classic.theldrow.vector", "font.classic.theldrow.rebuilt", "license.grenze_gotisch")) {
     if (-not $fontIds.ContainsKey($requiredFont)) { throw "Required Classic font asset is missing: $requiredFont" }
 }
 

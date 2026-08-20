@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "runtime_network_dependency": false,
   "assets": [
     {
@@ -108,6 +108,31 @@
       "role": "scalable Samuel Theldrow outlines with original FONT 1601 advance widths"
     },
     {
+      "id": "font.classic.theldrow.rebuilt",
+      "path": "res://src/presentation/assets/fonts/Theldrow-Rebuilt.ttf",
+      "source_repository": "Realmz-Rebuilt/Pencil-export",
+      "source_commit": "1f0420531587dc657e5fc06ea8014440a42f3dc79f8ec6c0eb5b43b6f32827e9",
+      "source_path": "tools/ui-assets/theldrow-modernized-glyphs.json",
+      "source_sha256": "1f0420531587dc657e5fc06ea8014440a42f3dc79f8ec6c0eb5b43b6f32827e9",
+      "metric_source_repository": "Realmz-Castle/realmz",
+      "metric_source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "metric_source_path": "base/Realmz/Data Files/The Family Jewels.rsrc:FONT 1601",
+      "metric_source_sha256": "cda33a0e5f352d7d38d8fdfcc64b71db10a23fcfd9d8c7a699fa1646ffcab553",
+      "baseline_source_repository": "iSynic/Realmz-Remake",
+      "baseline_source_commit": "86cf2bf391ef0c43ba31c1633ddd63b7e67e3d61",
+      "baseline_source_path": "src/Fonts/theldrowremake.ttf",
+      "baseline_source_sha256": "597df5baae37e494f90f6e5b48714e723900ed99e6b29a1734d1e405b79ed2cf",
+      "utility_source_repository": "google/fonts",
+      "utility_source_commit": "2d85e20401920891efb7cd6272d6339685df2820",
+      "utility_source_path": "ofl/grenzegotisch/GrenzeGotisch[wght].ttf",
+      "utility_source_sha256": "701b299d8dc002a2b4bea2ff0f1272c0e4081a2835914354804565c410d0c637",
+      "build_tool_path": "tools/ui-assets/build-theldrow-modernized.py",
+      "build_tool_sha256": "57b968e7fb65ba55918d07fa5a3dfa5502edcaedb73c81bb25456fb8199c8230",
+      "sha256": "46a93225dcf43671555e80864f820fca197422636d3075d53a4618bfb541c363",
+      "license": "Realmz-Art-NonCommercial + CC0-1.0 + OFL-1.1",
+      "role": "runtime Classic body and narrative font: project-owner-approved Pen letter contours, Castle advances, and Grenze Gotisch utility glyphs"
+    },
+    {
       "id": "license.black_chancery",
       "path": "res://src/presentation/assets/fonts/licenses/BlackChancery-PUBLIC-DOMAIN.txt",
       "source_repository": "Realmz-Castle/realmz",
@@ -130,6 +155,15 @@
       "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
       "source_path": "vendored/Inter/LICENSE.txt",
       "sha256": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
+      "license": "OFL-1.1"
+    },
+    {
+      "id": "license.grenze_gotisch",
+      "path": "res://src/presentation/assets/fonts/licenses/GrenzeGotisch-OFL.txt",
+      "source_repository": "google/fonts",
+      "source_commit": "2d85e20401920891efb7cd6272d6339685df2820",
+      "source_path": "ofl/grenzegotisch/OFL.txt",
+      "sha256": "bca29af2c3c9e142d11f523f414902ab8fb9ab8ffa3c34c63b6b72aa4e7d6acc",
       "license": "OFL-1.1"
     },
     {
