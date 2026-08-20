@@ -127,10 +127,14 @@
       "utility_source_path": "ofl/grenzegotisch/GrenzeGotisch[wght].ttf",
       "utility_source_sha256": "701b299d8dc002a2b4bea2ff0f1272c0e4081a2835914354804565c410d0c637",
       "build_tool_path": "tools/ui-assets/build-theldrow-modernized.py",
-      "build_tool_sha256": "58d31ad832ff4f64f5b1ca58f99ba2e17fd88e50a03c29bc612a5b1b569117db",
-      "sha256": "7e25318d4291dc977e8175214cc45d32552c3ca878bf94db2c0a0428c6dbb88e",
+      "build_tool_sha256": "0b9528df8bace85432e15f0a5507e194bcddd2254153c810762e5649c171da8b",
+      "style_rule_path": "tools/ui-assets/theldrow-modernized-rules.json",
+      "style_rule_sha256": "4e6546446e34e120ae0fe34b5c6e4a354259ae18d39f3ec950c0e9eb95211a8f",
+      "verify_tool_path": "tools/ui-assets/verify-theldrow-modernized.py",
+      "verify_tool_sha256": "8b2f172bca10e9a96ff125e1bc4fae9473baba02ed6007031257c36b7c3e91f3",
+      "sha256": "2e290c451fde7bdf628dd6b51b70844cf0973cf29490ecb70000e81d506e9dce",
       "license": "Realmz-Art-NonCommercial + CC0-1.0 + OFL-1.1",
-      "role": "runtime Classic body and narrative font: project-owner-approved Pen letter contours, Castle advances, and Grenze Gotisch utility glyphs"
+      "role": "runtime Classic body and narrative font: project-owner-approved Pen contours, strict production-sheet proportions and mixed-case optical weight, exact Castle advances, and Grenze Gotisch utility glyphs"
     },
     {
       "id": "license.black_chancery",
