@@ -485,18 +485,22 @@ func accepts_spatial_input() -> bool:
 
 
 func _build_command_shelf(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: Control, spell_panel: Control, scroll_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
+	var shelf_center := CenterContainer.new()
+	shelf_center.name = "BattleCommandShelfCenter"
+	shelf_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	overview.add_child(shelf_center)
 	var shelf := HBoxContainer.new()
 	shelf.name = "BattleCommandShelf"
-	shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shelf.add_theme_constant_override("separation", 4)
-	overview.add_child(shelf)
-	var inspection := _command_group(shelf, "BattleInspectionCommands", "View", VIEW_COMMAND_COLOR, 0.78)
+	shelf.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	shelf.add_theme_constant_override("separation", 8)
+	shelf_center.add_child(shelf)
+	var inspection := _command_group(shelf, "BattleInspectionCommands", "View", VIEW_COMMAND_COLOR)
 	var inspection_rows := _command_rows(inspection, "BattleInspection")
 	_add_presentation_button(inspection_rows[0], "Previous", &"inspect_previous")
 	_add_presentation_button(inspection_rows[0], "Center", &"center_active")
 	_add_presentation_button(inspection_rows[0], "Next", &"inspect_next")
 	_add_presentation_button(inspection_rows[1], "Reveal Friends", &"reveal_friends")
-	var primary := _command_group(shelf, "BattlePrimaryCommands", "Action", PRIMARY_COMMAND_COLOR, 1.35)
+	var primary := _command_group(shelf, "BattlePrimaryCommands", "Action", PRIMARY_COMMAND_COLOR)
 	var primary_rows := _command_rows(primary, "BattlePrimary")
 	var can_switch := action_ids.has("switch_weapon") and body.weapon_switch.enabled
 	var shown_weapon_mode := String(body.weapon_switch.target_mode) if can_switch else String(body.weapon_mode)
@@ -525,7 +529,7 @@ func _build_command_shelf(body: InteractionRequest.CombatRequestBody, actor_id: 
 	var item_button := _add_panel_toggle(primary_rows[1], "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and not body.item_casts.is_empty(), body.item_cast_reason)
 	_name_command(item_button, "Items")
 	_color_command(item_button, VIEW_COMMAND_COLOR)
-	var turn := _command_group(shelf, "BattleTurnCommands", "Turn", TURN_COMMAND_COLOR, 1.15)
+	var turn := _command_group(shelf, "BattleTurnCommands", "Tactics", TURN_COMMAND_COLOR)
 	var turn_rows := _command_rows(turn, "BattleTurn")
 	_add_classic_turn_commands(turn_rows[0], turn_rows[1], body, actor_id, bandage_panel, mode_panels, overview)
 	var retreat_enabled := action_ids.has("retreat") and body.retreat.enabled
@@ -547,18 +551,26 @@ func _add_classic_turn_commands(first_row: Container, second_row: Container, bod
 	_color_command(_add_fixed_response(second_row, "Undo", "Undo", InteractionResponse.CombatBody.new(&"undo", actor_id), body.undo.enabled, body.undo.reason), VIEW_COMMAND_COLOR)
 
 
-func _command_group(parent: Container, group_name: String, heading_text: String, heading_color: Color, stretch_ratio: float) -> VBoxContainer:
-	var panel := _summary_panel("%sInset" % group_name, stretch_ratio)
-	panel.custom_minimum_size.y = 75.0
+func _command_group(parent: Container, group_name: String, heading_text: String, heading_color: Color) -> VBoxContainer:
+	var panel := _summary_panel("%sInset" % group_name, 1.0)
+	panel.custom_minimum_size.y = 92.0
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	parent.add_child(panel)
 	var column := VBoxContainer.new()
 	column.name = group_name
-	column.add_theme_constant_override("separation", 2)
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_theme_constant_override("separation", 3)
 	var heading := Label.new()
 	heading.text = heading_text.to_upper()
-	heading.add_theme_font_size_override("font_size", 10)
+	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_theme_font_size_override("font_size", 14)
 	heading.add_theme_color_override("font_color", heading_color)
 	column.add_child(heading)
+	var divider := HSeparator.new()
+	divider.name = "%sDivider" % group_name
+	divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	column.add_child(divider)
 	panel.add_child(column)
 	return column
 
@@ -566,11 +578,15 @@ func _command_group(parent: Container, group_name: String, heading_text: String,
 func _command_rows(parent: Container, name_prefix: String) -> Array[HBoxContainer]:
 	var rows: Array[HBoxContainer] = []
 	for suffix: String in ["Primary", "Secondary"]:
+		var center := CenterContainer.new()
+		center.name = "%s%sCenter" % [name_prefix, suffix]
+		center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		parent.add_child(center)
 		var row := HBoxContainer.new()
 		row.name = "%s%s" % [name_prefix, suffix]
-		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		row.add_theme_constant_override("separation", 3)
-		parent.add_child(row)
+		center.add_child(row)
 		rows.append(row)
 	return rows
 
