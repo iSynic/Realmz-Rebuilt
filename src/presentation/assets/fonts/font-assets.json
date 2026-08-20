@@ -127,8 +127,8 @@
       "utility_source_path": "ofl/grenzegotisch/GrenzeGotisch[wght].ttf",
       "utility_source_sha256": "701b299d8dc002a2b4bea2ff0f1272c0e4081a2835914354804565c410d0c637",
       "build_tool_path": "tools/ui-assets/build-theldrow-modernized.py",
-      "build_tool_sha256": "57b968e7fb65ba55918d07fa5a3dfa5502edcaedb73c81bb25456fb8199c8230",
-      "sha256": "46a93225dcf43671555e80864f820fca197422636d3075d53a4618bfb541c363",
+      "build_tool_sha256": "13a9c226bbf1cb3883d47354589a519cc2c8b315aab0862d34e0089e9fd6d176",
+      "sha256": "1c1aefb528ac3bc9c8f9fcd672c287deed1b58f7dfcc23a872d7a08037b2f583",
       "license": "Realmz-Art-NonCommercial + CC0-1.0 + OFL-1.1",
       "role": "runtime Classic body and narrative font: project-owner-approved Pen letter contours, Castle advances, and Grenze Gotisch utility glyphs"
     },

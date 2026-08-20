@@ -25,6 +25,16 @@ LETTER_CODEPOINTS = list(range(ord("A"), ord("Z") + 1)) + list(
 )
 PENCIL_WIDTH_LIMIT = 1.12
 CU2QU_MAX_ERROR = 2.048
+# Castle's bitmap strike gives b/e/h/o the same six-pixel ink width inside an
+# eight-pixel advance. The approved Pencil contours for those letters are
+# visibly narrower after height-based scaling, so normalize only their inner
+# footprint while retaining the exact Castle advance and zero-kerning model.
+OPTICAL_WIDTH_RATIOS = {
+    ord("b"): 0.75,
+    ord("e"): 0.75,
+    ord("h"): 0.75,
+    ord("o"): 0.75,
+}
 
 
 def sha256(path: Path) -> str:
@@ -66,6 +76,7 @@ def glyph_bounds(font: TTFont, glyph_name: str) -> tuple[int, int, int, int]:
 
 
 def build_pencil_glyph(
+    codepoint: int,
     record: dict[str, object],
     advance: int,
     bounds: tuple[int, int, int, int],
@@ -78,6 +89,11 @@ def build_pencil_glyph(
     scale_y = target_height / view_height
     scale_x = scale_y
     projected_width = view_width * scale_x
+    optical_width_ratio = OPTICAL_WIDTH_RATIOS.get(codepoint)
+    if optical_width_ratio is not None:
+        target_width = advance * optical_width_ratio
+        scale_x *= target_width / projected_width
+        projected_width = target_width
     maximum_width = advance * PENCIL_WIDTH_LIMIT
     if projected_width > maximum_width:
         scale_x *= maximum_width / projected_width
@@ -170,7 +186,10 @@ def main() -> int:
             raise RuntimeError(f"Baseline font has no U+{codepoint:04X}")
         advance = font["hmtx"].metrics[glyph_name][0]
         font["glyf"][glyph_name] = build_pencil_glyph(
-            pencil[codepoint], advance, glyph_bounds(font, glyph_name)
+            codepoint,
+            pencil[codepoint],
+            advance,
+            glyph_bounds(font, glyph_name),
         )
 
     glyph_order = list(font.getGlyphOrder())
