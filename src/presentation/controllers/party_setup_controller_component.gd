@@ -66,9 +66,9 @@ var creator_action_bar: HBoxContainer:
 	set(value): _state.creator_action_bar = value
 var creator_step_labels: Array[Label]:
 	get: return _state.creator_step_labels
-var race_class_columns: BoxContainer:
-	get: return _state.race_class_columns
-	set(value): _state.race_class_columns = value
+var race_caste_columns: BoxContainer:
+	get: return _state.race_caste_columns
+	set(value): _state.race_caste_columns = value
 var race_list: ItemList:
 	get: return _state.race_list
 	set(value): _state.race_list = value
@@ -126,7 +126,7 @@ var review_label: Label:
 var spell_label: Label:
 	get: return _state.spell_label
 	set(value): _state.spell_label = value
-var spell_list: ItemList:
+var spell_list: VBoxContainer:
 	get: return _state.spell_list
 	set(value): _state.spell_list = value
 var begin_button: Button:
@@ -258,7 +258,7 @@ func _clear_creator_page() -> void:
 	stored_character_list = null
 	race_list = null
 	caste_list = null
-	race_class_columns = null
+	race_caste_columns = null
 	name_edit = null
 	gender_option = null
 	starting_level_option = null

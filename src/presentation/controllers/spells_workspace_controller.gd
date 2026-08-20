@@ -1,6 +1,8 @@
 class_name SpellsWorkspaceController
 extends RefCounted
 
+const SpellSelectionChrome := preload("res://src/presentation/controllers/classic_spell_selection_chrome.gd")
+
 signal intent_submitted(intent: PlayerIntent)
 signal route_requested(route_id: StringName)
 signal refresh_requested
@@ -141,16 +143,13 @@ func _build_level_rail(available_levels: Array[int]) -> PanelContainer:
 	panel.add_child(column)
 	column.add_child(_ui_art("spells.label.level", Vector2(68.0, 18.0)))
 	for level: int in range(1, 8):
-		var button := Button.new()
-		button.name = "SpellLevel%d" % level
-		button.text = str(level)
-		button.toggle_mode = true
-		button.button_pressed = level == _selected_level
-		button.disabled = not available_levels.has(level)
-		button.custom_minimum_size.y = 31.0
-		button.tooltip_text = "No known level %d spells" % level if button.disabled else "Show level %d spells" % level
-		button.pressed.connect(_select_level.bind(level))
-		column.add_child(button)
+		column.add_child(SpellSelectionChrome.level_button(
+			level,
+			level == _selected_level,
+			available_levels.has(level),
+			_select_level.bind(level),
+			"No known level %d spells" % level
+		))
 	return panel
 
 
@@ -175,17 +174,15 @@ func _build_spell_list(character: CharacterView, selected: SpellView) -> PanelCo
 	scroll.add_child(list)
 	column.add_child(scroll)
 	for candidate: SpellView in _spells_at_level(character, _selected_level):
-		var button := Button.new()
-		button.name = "KnownSpell_%s" % candidate.id
-		button.text = "%s   %d SP" % [candidate.name, absi(candidate.cost)]
-		button.icon = ClassicUiAssetCatalog.texture(&"spells.button.available" if candidate.id == selected.id else &"spells.button.unavailable")
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.toggle_mode = true
-		button.button_pressed = candidate.id == selected.id
-		button.custom_minimum_size.y = 38.0
-		button.tooltip_text = candidate.description
-		button.pressed.connect(_select_spell.bind(candidate.id))
-		list.add_child(button)
+		list.add_child(SpellSelectionChrome.spell_button(
+			"KnownSpell_%s" % candidate.id,
+			"%s   %d SP" % [candidate.name, absi(candidate.cost)],
+			candidate.id == selected.id,
+			true,
+			candidate.description,
+			_select_spell.bind(candidate.id),
+			ClassicUiAssetCatalog.texture(&"spells.button.available" if candidate.id == selected.id else &"spells.button.unavailable")
+		))
 	return panel
 
 

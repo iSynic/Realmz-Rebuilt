@@ -1,9 +1,15 @@
 class_name PartySetupCharacterCreationController
 extends "res://src/presentation/controllers/party_setup_controller_component.gd"
 
+const SpellSelectionChrome := preload("res://src/presentation/controllers/classic_spell_selection_chrome.gd")
+
 var _assembly: RefCounted
 var _starting_spell_level: int = 0
 var _starting_spell_id: String = ""
+var _portrait_page: int = 0
+var _combat_icon_page: int = 0
+
+const APPEARANCE_PAGE_SIZE: int = 12
 
 
 func _init(state: RefCounted, assembly: RefCounted) -> void:
@@ -85,13 +91,13 @@ func render_creator_step() -> void:
 	party_setup_options.visible = false
 	creator_steps.visible = true
 	creator_action_bar.visible = true
-	setup_message.visible = true
+	setup_message.visible = false
 	setup_message.tooltip_text = ""
 	setup_message.modulate = MUTED
 	setup_message.custom_minimum_size.y = 32.0
 	setup_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	setup_message.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	setup_message.text = _creator_step_message()
+	setup_message.text = ""
 	_clear_creator_page()
 	for index: int in creator_step_labels.size():
 		creator_step_labels[index].modulate = GOLD if index == creator_step else Color("e0e2e5") if index < creator_step else MUTED
@@ -199,31 +205,32 @@ func _creation_context() -> String:
 	return " • ".join(facts)
 
 func _build_creator_race_class() -> void:
-	creator_page.add_child(_label("Race & Class", GOLD, 20))
+	creator_page.add_child(_label("Race & Caste", GOLD, 20))
 	var columns := HBoxContainer.new()
-	race_class_columns = columns
-	columns.name = "RaceClassSelectors"
+	race_caste_columns = columns
+	columns.name = "RaceCasteSelectors"
+	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 12)
 	var race_column := _add_creator_panel(columns, "RaceSelectorPanel", "Race", 1.0)
 	race_list = ItemList.new()
 	race_list.name = "RaceList"
-	race_list.custom_minimum_size.y = 170.0
+	race_list.custom_minimum_size.y = 300.0
 	race_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	race_list.item_selected.connect(_race_selected)
 	race_column.add_child(race_list)
 	var race_detail := _add_label(race_column, "", Color("e0e2e5"), 13)
 	race_detail.name = "RaceDescription"
 	race_detail.custom_minimum_size.y = 48.0
-	var caste_column := _add_creator_panel(columns, "ClassSelectorPanel", "Class", 1.0)
+	var caste_column := _add_creator_panel(columns, "CasteSelectorPanel", "Caste", 1.0)
 	caste_list = ItemList.new()
-	caste_list.name = "ClassList"
-	caste_list.custom_minimum_size.y = 170.0
+	caste_list.name = "CasteList"
+	caste_list.custom_minimum_size.y = 300.0
 	caste_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	caste_list.item_selected.connect(_caste_selected)
 	caste_column.add_child(caste_list)
 	var caste_detail := _add_label(caste_column, "", Color("e0e2e5"), 13)
-	caste_detail.name = "ClassDescription"
+	caste_detail.name = "CasteDescription"
 	caste_detail.custom_minimum_size.y = 48.0
 	creator_page.add_child(columns)
 	_populate_race_class_options()
@@ -232,23 +239,20 @@ func _populate_race_class_options() -> void:
 	if view == null or race_list == null or caste_list == null:
 		return
 	for option: DefinitionOptionView in view.race_options:
+		if _placeholder_definition_name(option.name, "Race"):
+			continue
 		race_list.add_item(option.name)
 		var race_index := race_list.item_count - 1
 		race_list.set_item_metadata(race_index, option.id)
 		var race_restricted := view.campaign_summary != null and view.campaign_summary.banned_races.has(option.id)
 		race_list.set_item_tooltip(race_index, "Unavailable in this scenario." if race_restricted else option.description)
 		race_list.set_item_disabled(race_index, race_restricted)
-	for option: DefinitionOptionView in view.caste_options:
-		caste_list.add_item(option.name)
-		caste_list.set_item_metadata(caste_list.item_count - 1, option.id)
-		caste_list.set_item_tooltip(caste_list.item_count - 1, option.description)
-		caste_list.set_item_disabled(caste_list.item_count - 1, view.campaign_summary != null and view.campaign_summary.banned_castes.has(option.id))
 	if selected_race_id.is_empty() or not _option_is_enabled(race_list, selected_race_id):
 		var first_race := _first_enabled_item(race_list)
 		if first_race >= 0:
 			selected_race_id = String(race_list.get_item_metadata(first_race))
 	_select_item_by_id(race_list, selected_race_id)
-	_apply_caste_filter()
+	_rebuild_caste_options()
 	if selected_caste_id.is_empty() or not _option_is_enabled(caste_list, selected_caste_id):
 		var first_caste := _first_enabled_item(caste_list)
 		if first_caste >= 0:
@@ -258,7 +262,7 @@ func _populate_race_class_options() -> void:
 
 func _refresh_race_class_details() -> void:
 	var race_detail := creator_page.find_child("RaceDescription", true, false) as Label
-	var caste_detail := creator_page.find_child("ClassDescription", true, false) as Label
+	var caste_detail := creator_page.find_child("CasteDescription", true, false) as Label
 	var race_option := _definition_option(view.race_options if view != null else [], selected_race_id)
 	var caste_option := _definition_option(view.caste_options if view != null else [], selected_caste_id)
 	if race_detail != null:
@@ -268,6 +272,11 @@ func _refresh_race_class_details() -> void:
 		caste_detail.text = caste_option.description if caste_option != null else ""
 		caste_detail.visible = not caste_detail.text.is_empty()
 
+func _placeholder_definition_name(display_name: String, prefix: String) -> bool:
+	if not display_name.begins_with(prefix + " "):
+		return false
+	return display_name.trim_prefix(prefix + " ").is_valid_int()
+
 func _definition_option(options: Array[DefinitionOptionView], option_id: String) -> DefinitionOptionView:
 	for option: DefinitionOptionView in options:
 		if option.id == option_id:
@@ -276,7 +285,6 @@ func _definition_option(options: Array[DefinitionOptionView], option_id: String)
 
 func _build_creator_appearance() -> void:
 	creator_page.add_child(_label("Appearance", GOLD, 20))
-	_add_label(creator_page, "Choose the portrait shown on character screens and the icon used in battle. Castle's six race recommendations appear first.", MUTED)
 	_ensure_appearance_textures()
 	var appearance_row := HBoxContainer.new()
 	appearance_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -285,7 +293,7 @@ func _build_creator_appearance() -> void:
 	var preview_panel := PanelContainer.new()
 	preview_panel.name = "AppearancePreview"
 	preview_panel.theme_type_variation = &"ClassicInset"
-	preview_panel.custom_minimum_size = Vector2(210.0, 250.0)
+	preview_panel.custom_minimum_size = Vector2(220.0, 300.0)
 	preview_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var preview_column := VBoxContainer.new()
 	preview_column.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -318,7 +326,6 @@ func _build_creator_appearance() -> void:
 	choices.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	choices.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	choices.add_theme_constant_override("separation", 8)
-	choices.add_child(_label("Portrait", GOLD, 14))
 	portrait_option = OptionButton.new()
 	portrait_option.name = "PortraitOption"
 	portrait_option.fit_to_longest_item = false
@@ -326,11 +333,11 @@ func _build_creator_appearance() -> void:
 	for option: CharacterAppearanceOptionView in portrait_options:
 		_add_appearance_option(portrait_option, option)
 	_select_appearance_default(portrait_option, draft_portrait_id, true)
-	portrait_option.item_selected.connect(_portrait_selected)
-	portrait_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if portrait_option.selected >= 0:
+		draft_portrait_id = String(portrait_option.get_item_metadata(portrait_option.selected))
+	portrait_option.visible = false
 	choices.add_child(portrait_option)
 	choices.add_child(_build_appearance_thumbnail_strip(portrait_option, portrait_options, "PortraitThumbnailStrip", true))
-	choices.add_child(_label("Combat Icon", GOLD, 14))
 	combat_icon_option = OptionButton.new()
 	combat_icon_option.name = "CombatIconOption"
 	combat_icon_option.fit_to_longest_item = false
@@ -338,14 +345,11 @@ func _build_creator_appearance() -> void:
 	for option: CharacterAppearanceOptionView in combat_options:
 		_add_appearance_option(combat_icon_option, option)
 	_select_appearance_default(combat_icon_option, draft_combat_icon_id, false)
-	combat_icon_option.item_selected.connect(_combat_icon_selected)
-	combat_icon_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	if combat_icon_option.selected >= 0:
+		draft_combat_icon_id = String(combat_icon_option.get_item_metadata(combat_icon_option.selected))
+	combat_icon_option.visible = false
 	choices.add_child(combat_icon_option)
 	choices.add_child(_build_appearance_thumbnail_strip(combat_icon_option, combat_options, "CombatIconThumbnailStrip", false))
-	var note := _label("Portraits identify the character in records and party panes. Combat icons are the tactical figures used on the battlefield.", MUTED, 13)
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	choices.add_child(note)
 	appearance_row.add_child(choices)
 	creator_page.add_child(appearance_row)
 	_refresh_appearance_preview()
@@ -356,35 +360,75 @@ func _build_appearance_thumbnail_strip(control: OptionButton, options: Array[Cha
 	var panel := PanelContainer.new()
 	panel.name = strip_name
 	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size.y = 72.0
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	panel.add_child(scroll)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 5)
+	panel.add_child(body)
+	var header := HBoxContainer.new()
+	var race := _definition_option(view.race_options if view != null else [], selected_race_id)
+	header.add_child(_label("%s — %s" % ["Portraits" if portrait else "Combat Icons", race.name if race != null else "Classic catalog"], GOLD, 15))
+	header.add_spacer(true)
+	var page := _portrait_page if portrait else _combat_icon_page
+	var page_count := maxi(1, int(ceil(float(options.size()) / float(APPEARANCE_PAGE_SIZE))))
+	page = clampi(page, 0, page_count - 1)
+	if portrait:
+		_portrait_page = page
+	else:
+		_combat_icon_page = page
+	var previous := Button.new()
+	previous.text = "Previous"
+	previous.disabled = page == 0
+	previous.pressed.connect(_change_appearance_page.bind(-1, portrait))
+	header.add_child(previous)
+	header.add_child(_label("Page %d of %d" % [page + 1, page_count], MUTED, 12))
+	var next_button := Button.new()
+	next_button.text = "Next"
+	next_button.disabled = page >= page_count - 1
+	next_button.pressed.connect(_change_appearance_page.bind(1, portrait))
+	header.add_child(next_button)
+	body.add_child(header)
 	var group := ButtonGroup.new()
 	var selected_id := String(control.get_item_metadata(control.selected)) if control.selected >= 0 else ""
-	for option: CharacterAppearanceOptionView in options:
-		var choice := Button.new()
-		choice.name = "%s_%d" % ["PortraitChoice" if portrait else "CombatIconChoice", option.classic_resource_id]
-		choice.custom_minimum_size = Vector2(64.0, 62.0)
-		choice.toggle_mode = true
-		choice.button_group = group
-		choice.button_pressed = option.id == selected_id
-		var texture := _appearance_textures.get(option.id) as Texture2D
-		if texture != null:
-			choice.icon = texture
-			choice.expand_icon = true
-		else:
-			choice.text = str(option.classic_resource_id)
-		var role := "Portrait" if portrait else "Combat icon"
-		var recommendation := " • recommended for this race" if option.is_recommended_for(selected_race_id) else ""
-		choice.tooltip_text = "%s • %s %d%s" % [option.label, role, option.classic_resource_id, recommendation]
-		choice.pressed.connect(_select_appearance_thumbnail.bind(control, option.id, portrait))
-		row.add_child(choice)
-	scroll.add_child(row)
+	var start := page * APPEARANCE_PAGE_SIZE
+	var finish := mini(start + APPEARANCE_PAGE_SIZE, options.size())
+	for row_index: int in 2:
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 5)
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		body.add_child(row)
+		for column_index: int in 6:
+			var option_index := start + row_index * 6 + column_index
+			if option_index >= finish:
+				var spacer := Control.new()
+				spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				row.add_child(spacer)
+				continue
+			var option: CharacterAppearanceOptionView = options[option_index]
+			var choice := Button.new()
+			choice.name = "%s_%d" % ["PortraitChoice" if portrait else "CombatIconChoice", option.classic_resource_id]
+			choice.custom_minimum_size = Vector2(72.0, 72.0)
+			choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			choice.toggle_mode = true
+			choice.button_group = group
+			choice.button_pressed = option.id == selected_id
+			choice.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			var texture := _appearance_textures.get(option.id) as Texture2D
+			if texture != null:
+				choice.icon = texture
+				choice.expand_icon = true
+			else:
+				choice.text = "Unavailable"
+			choice.tooltip_text = option.label
+			choice.pressed.connect(_select_appearance_thumbnail.bind(control, option.id, portrait))
+			row.add_child(choice)
 	return panel
+
+func _change_appearance_page(delta: int, portrait: bool) -> void:
+	if portrait:
+		_portrait_page += delta
+	else:
+		_combat_icon_page += delta
+	render_creator_step()
 
 func _select_appearance_thumbnail(control: OptionButton, option_id: String, portrait: bool) -> void:
 	for index: int in control.item_count:
@@ -392,9 +436,12 @@ func _select_appearance_thumbnail(control: OptionButton, option_id: String, port
 			continue
 		control.select(index)
 		if portrait:
+			draft_portrait_id = option_id
 			_portrait_selected(index)
 		else:
+			draft_combat_icon_id = option_id
 			_combat_icon_selected(index)
+		render_creator_step()
 		return
 
 func _sorted_appearance_options(source: Array[CharacterAppearanceOptionView]) -> Array[CharacterAppearanceOptionView]:
@@ -409,8 +456,7 @@ func _sorted_appearance_options(source: Array[CharacterAppearanceOptionView]) ->
 	return result
 
 func _add_appearance_option(control: OptionButton, option: CharacterAppearanceOptionView) -> void:
-	var prefix := "Recommended • " if option.is_recommended_for(selected_race_id) else ""
-	var label := "%s%s • CICN %d" % [prefix, option.label, option.classic_resource_id]
+	var label := option.label
 	var texture := _appearance_textures.get(option.id) as Texture2D
 	if texture != null:
 		control.add_icon_item(texture, label)
@@ -418,7 +464,7 @@ func _add_appearance_option(control: OptionButton, option: CharacterAppearanceOp
 		control.add_item(label)
 	var index := control.item_count - 1
 	control.set_item_metadata(index, option.id)
-	control.set_item_tooltip(index, "%s character resource %d" % ["Portrait" if option.kind == CharacterAppearanceDefinition.PORTRAIT else "Combat icon", option.classic_resource_id])
+	control.set_item_tooltip(index, option.label)
 
 func _select_appearance_default(control: OptionButton, selected_id: String, portrait: bool) -> void:
 	if control.item_count == 0:
@@ -453,6 +499,7 @@ func _portrait_selected(_index: int) -> void:
 				var icon := _appearance_option_by_id(String(combat_icon_option.get_item_metadata(index)), false)
 				if icon != null and icon.classic_resource_id == wanted_resource_id:
 					combat_icon_option.select(index)
+					draft_combat_icon_id = icon.id
 					break
 	_refresh_appearance_preview()
 
@@ -499,9 +546,8 @@ func _build_creator_review() -> void:
 	creator_page.add_child(records)
 	_add_review_record(records, "ReviewAttributes", "Attributes", _review_attribute_lines(character))
 	_add_review_record(records, "ReviewCombat", "Combat", _review_combat_lines(character))
+	_add_review_record(records, "ReviewProgress", "Character", _review_progress_lines(character))
 	_build_review_saves_equipment(records, character)
-	var restriction := _add_label(creator_page, _creation_context(), MUTED, 12)
-	restriction.name = "ReviewCampaignContext"
 
 func _build_review_identity(character: CharacterView) -> Control:
 	_ensure_appearance_textures()
@@ -571,10 +617,28 @@ func _review_combat_lines(character: CharacterView) -> Array[String]:
 		"Stamina  %d/%d" % [character.current_health, character.maximum_health],
 		"Spell Points  %d/%d" % [character.spell_points, character.maximum_spell_points],
 		"Armor  %d • To Hit  %d" % [character.armor, character.to_hit],
+		"Attack Bonus  %d • Defense  %d" % [character.attack_bonus, character.defense_bonus],
 		"Dodge  %d • Missile  %d" % [character.dodge, character.missile],
 		"Two-Hand  %d • Hand-to-Hand  %d" % [character.two_hand, character.hand_to_hand],
 		"Damage  %+d • Movement  %d" % [character.damage_bonus, character.maximum_movement],
 		"Magic Resistance  %d%%" % character.magic_resistance,
+	]
+
+func _review_progress_lines(character: CharacterView) -> Array[String]:
+	var condition_names: Array[String] = []
+	for condition: CharacterMetricView in character.conditions:
+		condition_names.append(condition.name)
+	var ability_names: Array[String] = []
+	for ability: CharacterMetricView in character.abilities:
+		ability_names.append(ability.name)
+	return [
+		"Level  %d • Experience  %d" % [character.level, character.experience],
+		"Attacks / Round  %s" % character.attacks_per_round,
+		"Movement  %d • Load  %d/%d" % [character.maximum_movement, character.carried_load, character.maximum_load],
+		"Age  %d • %s" % [character.age_years, character.age_group_name],
+		"Gold  %d • Gems  %d • Jewelry  %d" % [character.gold, character.gems, character.jewelry],
+		"Conditions  %s" % ["None" if condition_names.is_empty() else ", ".join(condition_names)],
+		"Abilities  %s" % ["None" if ability_names.is_empty() else ", ".join(ability_names)],
 	]
 
 func _build_review_saves_equipment(parent: Container, character: CharacterView) -> void:
@@ -651,36 +715,43 @@ func _build_creator_spells() -> void:
 	var level_rail := _add_creator_panel(workspace, "StartingSpellLevelRail", "Level", 0.38)
 	level_rail.custom_minimum_size.x = 72.0
 	for level: int in range(1, 8):
-		var level_button := Button.new()
+		var level_button := SpellSelectionChrome.level_button(
+			level,
+			level == _starting_spell_level,
+			_starting_spell_level_available(level),
+			_select_starting_spell_level.bind(level),
+			"No starting spells are available at this level."
+		)
 		level_button.name = "StartingSpellLevel%d" % level
-		level_button.text = str(level)
-		level_button.toggle_mode = true
-		level_button.button_pressed = level == _starting_spell_level
-		level_button.disabled = not _starting_spell_level_available(level)
-		level_button.tooltip_text = "No starting spells are available at this level." if level_button.disabled else "Show level %d starting spells." % level
-		level_button.pressed.connect(_select_starting_spell_level.bind(level))
 		level_rail.add_child(level_button)
 	var list_panel := _add_creator_panel(workspace, "StartingSpellListPanel", "Available Spells", 1.05)
-	spell_list = ItemList.new()
+	var spell_scroll := ScrollContainer.new()
+	spell_scroll.name = "StartingSpellScroll"
+	spell_scroll.custom_minimum_size = Vector2(260.0, 300.0)
+	spell_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spell_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	spell_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	spell_list = VBoxContainer.new()
 	spell_list.name = "StartingSpellList"
-	spell_list.select_mode = ItemList.SELECT_MULTI
-	spell_list.custom_minimum_size = Vector2(180.0, 190.0)
 	spell_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spell_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	spell_list.add_theme_constant_override("separation", 3)
 	for option: CharacterSpellOptionView in view.character_draft_spell_options:
 		if option.level != _starting_spell_level:
 			continue
-		spell_list.add_item("%s  •  %d point%s" % [option.name, option.selection_cost, "" if option.selection_cost == 1 else "s"])
-		var index := spell_list.item_count - 1
-		spell_list.set_item_metadata(index, option.id)
-		spell_list.set_item_tooltip(index, option.description)
-		if option.selected:
-			spell_list.select(index, false)
-		if not option.selected and option.selection_cost > view.character_draft_spell_points_remaining:
-			spell_list.set_item_disabled(index, true)
-			spell_list.set_item_tooltip(index, "This spell costs %d points; %d remain." % [option.selection_cost, view.character_draft_spell_points_remaining])
-	spell_list.multi_selected.connect(_draft_spell_selection_changed)
-	list_panel.add_child(spell_list)
+		var enabled := option.selected or option.selection_cost <= view.character_draft_spell_points_remaining
+		var tooltip := option.description if enabled else "This spell costs %d points; %d remain." % [option.selection_cost, view.character_draft_spell_points_remaining]
+		var button := SpellSelectionChrome.spell_button(
+			"StartingSpell_%s" % option.id,
+			"%s   %d point%s" % [option.name, option.selection_cost, "" if option.selection_cost == 1 else "s"],
+			option.selected,
+			enabled,
+			tooltip,
+			_draft_spell_toggled.bind(option.id, not option.selected),
+			ClassicUiAssetCatalog.texture(&"spells.button.available" if option.selected else &"spells.button.unavailable")
+		)
+		spell_list.add_child(button)
+	spell_scroll.add_child(spell_list)
+	list_panel.add_child(spell_scroll)
 	var detail := _add_creator_panel(workspace, "StartingSpellRecord", "Selected Spell", 1.15)
 	var selected := _starting_spell_option(_starting_spell_id)
 	if selected == null:
@@ -740,22 +811,22 @@ func creator_next() -> void:
 			draft_gender = gender_option.get_selected_id()
 			draft_starting_level = starting_level_option.get_selected_id()
 			if draft_name.is_empty():
-				setup_message.text = "Enter a character name before continuing."
+				_show_creator_error("Enter a character name before continuing.")
 				return
 			creator_step = 1
 		1:
 			if selected_race_id.is_empty() or selected_caste_id.is_empty():
-				setup_message.text = "Choose both a race and a compatible class."
+				_show_creator_error("Choose both a race and a compatible caste.")
 				return
 			creator_step = 2
 		2:
 			if view != null and view.party_members.size() >= _assembly._maximum_party_size():
-				setup_message.text = "This campaign allows no more than %d characters." % _assembly._maximum_party_size()
+				_show_creator_error("This campaign allows no more than %d characters." % _assembly._maximum_party_size())
 				return
 			var portrait_value := _selected_appearance(portrait_option, true)
 			var combat_icon_value := _selected_appearance(combat_icon_option, false)
 			if portrait_value == null or combat_icon_value == null:
-				setup_message.text = "Choose a package-backed portrait and combat icon before continuing."
+				_show_creator_error("Choose a portrait and combat icon before continuing.")
 				return
 			draft_portrait_id = portrait_value.id
 			draft_combat_icon_id = combat_icon_value.id
@@ -765,14 +836,14 @@ func creator_next() -> void:
 			return
 		3:
 			if view == null or view.character_draft == null:
-				setup_message.text = "The Classic character roll did not complete. Review the action error before continuing."
+				_show_creator_error("The Classic character roll did not complete. Review the action error before continuing.")
 				return
 			creator_step = 4
 		4:
 			if view == null or view.character_draft == null:
 				return
 			if view.character_draft.spellcaster_type > 0 and view.character_draft_spell_points_total > 0 and view.character_draft_spell_options.is_empty():
-				setup_message.text = "Starting spells are unavailable in this package, so this caster cannot be finalized safely."
+				_show_creator_error("Starting spells are unavailable in this package, so this caster cannot be finalized safely.")
 				return
 			awaiting_draft_finalization = true
 			_state.intent_submitted.emit(PlayerIntent.finalize_character())
@@ -824,17 +895,15 @@ func _reroll_character() -> void:
 	awaiting_draft_generation = true
 	_state.intent_submitted.emit(PlayerIntent.generate_character_draft(_character_creation_spec()))
 
-func _draft_spell_selection_changed(index: int, selected: bool) -> void:
-	if spell_list == null:
-		return
-	_starting_spell_id = String(spell_list.get_item_metadata(index))
+func _draft_spell_toggled(option_id: String, selected: bool) -> void:
+	_starting_spell_id = option_id
 	var selected_ids: Array[String] = []
 	for option: CharacterSpellOptionView in view.character_draft_spell_options:
-		if option.level != _starting_spell_level and option.selected:
+		if option.id == option_id:
+			if selected:
+				selected_ids.append(option.id)
+		elif option.selected:
 			selected_ids.append(option.id)
-	for item_index: int in spell_list.item_count:
-		if spell_list.is_selected(item_index) or item_index == index and selected:
-			selected_ids.append(String(spell_list.get_item_metadata(item_index)))
 	_state.intent_submitted.emit(PlayerIntent.set_character_draft_spells(selected_ids))
 
 func _character_creation_spec() -> CharacterCreationSpec:
@@ -842,7 +911,12 @@ func _character_creation_spec() -> CharacterCreationSpec:
 
 func _creator_step_message() -> String:
 	var final_step := "Choose starting spells, then create the Character File." if standalone_character_creation_active else "Choose starting spells, then add the character to the party."
-	return ["Enter the character's identity.", "Choose a race, then a compatible class.", "Choose the character's appearance.", "Review or reroll the generated Classic character.", final_step][creator_step]
+	return ["Enter the character's identity.", "Choose a race and caste.", "Choose the character's appearance.", "Review the generated Classic character.", final_step][creator_step]
+
+func _show_creator_error(message: String) -> void:
+	setup_message.text = message
+	setup_message.modulate = ERROR
+	setup_message.visible = true
 
 func _update_creator_actions() -> void:
 	if creator_back_button == null:
@@ -871,19 +945,19 @@ func _race_selected(index: int) -> void:
 		draft_portrait_id = ""
 		draft_combat_icon_id = ""
 		combat_icon_touched = false
+		_portrait_page = 0
+		_combat_icon_page = 0
 	selected_race_id = selected_id
-	_apply_caste_filter()
+	_rebuild_caste_options()
 	_refresh_race_class_details()
-	setup_message.text = "Race selected. Classes unavailable to this race are disabled on the right."
 
 func _caste_selected(index: int) -> void:
 	if index < 0 or caste_list.is_item_disabled(index):
 		return
 	selected_caste_id = String(caste_list.get_item_metadata(index))
 	_refresh_race_class_details()
-	setup_message.text = "Class selected. Continue to appearance when ready."
 
-func _apply_caste_filter() -> void:
+func _rebuild_caste_options() -> void:
 	if view == null or caste_list == null:
 		return
 	var allowed_castes: Array[String] = []
@@ -891,13 +965,26 @@ func _apply_caste_filter() -> void:
 		if option.id == selected_race_id:
 			allowed_castes = option.related_ids.duplicate()
 			break
-	for index: int in caste_list.item_count:
-		var caste_id := String(caste_list.get_item_metadata(index))
-		var restricted := view.campaign_summary != null and view.campaign_summary.banned_castes.has(caste_id)
-		var compatible := allowed_castes.is_empty() or allowed_castes.has(caste_id)
+	var ordered: Array[DefinitionOptionView] = []
+	for option: DefinitionOptionView in view.caste_options:
+		if not _placeholder_definition_name(option.name, "Caste"):
+			ordered.append(option)
+	ordered.sort_custom(func(left: DefinitionOptionView, right: DefinitionOptionView) -> bool:
+		var left_compatible := allowed_castes.is_empty() or allowed_castes.has(left.id)
+		var right_compatible := allowed_castes.is_empty() or allowed_castes.has(right.id)
+		if left_compatible != right_compatible:
+			return left_compatible
+		return left.name.naturalnocasecmp_to(right.name) < 0
+	)
+	caste_list.clear()
+	for definition: DefinitionOptionView in ordered:
+		var restricted := view.campaign_summary != null and view.campaign_summary.banned_castes.has(definition.id)
+		var compatible := allowed_castes.is_empty() or allowed_castes.has(definition.id)
+		caste_list.add_item(definition.name)
+		var index := caste_list.item_count - 1
+		caste_list.set_item_metadata(index, definition.id)
 		caste_list.set_item_disabled(index, restricted or not compatible)
-		var definition := _definition_option(view.caste_options, caste_id)
-		var tooltip := definition.description if definition != null else ""
+		var tooltip := definition.description
 		if restricted:
 			tooltip = "Unavailable in this scenario."
 		elif not compatible:

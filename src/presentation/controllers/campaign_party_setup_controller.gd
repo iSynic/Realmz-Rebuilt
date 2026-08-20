@@ -122,7 +122,7 @@ func _build_creator_stage(character_column: VBoxContainer) -> void:
 	creator_steps = HBoxContainer.new()
 	creator_steps.add_theme_constant_override("separation", 6)
 	creator_steps.custom_minimum_size.y = 24.0
-	for step: String in ["1 Identity", "2 Race & Class", "3 Appearance", "4 Review", "5 Spells"]:
+	for step: String in ["1 Identity", "2 Race & Caste", "3 Appearance", "4 Review", "5 Spells"]:
 		var step_label := _label(step, GOLD if step.begins_with("1") else MUTED, 13)
 		step_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		step_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

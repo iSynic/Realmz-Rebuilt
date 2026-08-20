@@ -56,7 +56,7 @@ var creator_page: VBoxContainer
 var creator_steps: HBoxContainer
 var creator_action_bar: HBoxContainer
 var creator_step_labels: Array[Label] = []
-var race_class_columns: BoxContainer
+var race_caste_columns: BoxContainer
 var race_list: ItemList
 var caste_list: ItemList
 var name_edit: LineEdit
@@ -76,7 +76,7 @@ var create_character_button: Button
 var setup_message: Label
 var review_label: Label
 var spell_label: Label
-var spell_list: ItemList
+var spell_list: VBoxContainer
 var begin_button: Button
 var add_character_button: Button
 var creator_back_button: Button
@@ -122,7 +122,7 @@ func apply_setup_mode_layout() -> void:
 		var splash_visible := splash_overlay != null and splash_overlay.visible
 		campaign_overlay.visible = setup_visible and not splash_visible and not creator_active
 		campaign_overlay.custom_minimum_size.x = 190.0 if compact else 210.0
-	if creator_active and compact:
+	if creator_active:
 		party_pane.visible = false
 		character_pane.custom_minimum_size.x = 0.0
 		character_pane.size_flags_stretch_ratio = 1.0
