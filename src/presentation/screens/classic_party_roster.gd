@@ -314,19 +314,30 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 		marker.text = str(_selection_count - selected_index) if selected_index >= 0 else ""
 		row_container.add_child(marker)
 	elif combat_active:
-		var auto_toggle := CheckButton.new()
+		var auto_toggle := Button.new()
 		auto_toggle.name = "CombatAuto"
 		auto_toggle.text = "A"
-		auto_toggle.custom_minimum_size.x = 36.0
+		auto_toggle.custom_minimum_size.x = 28.0
 		auto_toggle.size_flags_horizontal = Control.SIZE_SHRINK_END
+		auto_toggle.toggle_mode = true
+		auto_toggle.add_theme_font_size_override("font_size", 16)
 		var auto_available := character.current_health > 0 and not character.traitor
 		auto_toggle.disabled = not auto_available
-		auto_toggle.tooltip_text = "Persistent Auto for this character's next combat activation." if auto_available else "Persistent Auto requires a living loyal party character."
 		auto_toggle.accessibility_name = "Persistent Auto for %s" % character.name
 		auto_toggle.button_pressed = auto_character_ids.has(character.id)
-		auto_toggle.toggled.connect(func(enabled: bool) -> void: combat_auto_changed.emit(character.id, enabled))
+		auto_toggle.tooltip_text = _combat_auto_tooltip(auto_toggle.button_pressed, auto_available)
+		auto_toggle.toggled.connect(func(enabled: bool) -> void:
+			auto_toggle.tooltip_text = _combat_auto_tooltip(enabled, auto_available)
+			combat_auto_changed.emit(character.id, enabled)
+		)
 		row_container.add_child(auto_toggle)
 	_party_list.add_child(row_container)
+
+
+static func _combat_auto_tooltip(enabled: bool, available: bool) -> String:
+	if not available:
+		return "Persistent Auto requires a living loyal party character."
+	return "Persistent Auto is on. Click to control this character manually." if enabled else "Persistent Auto is off. Click to automate this character's next combat activation."
 
 
 func present_character_selection(request: InteractionRequest) -> void:
