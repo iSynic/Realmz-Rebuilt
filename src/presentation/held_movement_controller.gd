@@ -4,6 +4,7 @@ extends Node
 signal movement_requested(direction: Vector2i)
 
 const BASE_INTERVAL_SECONDS: float = 0.2
+const INITIAL_REPEAT_DELAY_SECONDS: float = 0.3
 
 var _speed_percent: int = 100
 var _source: StringName = &""
@@ -46,13 +47,17 @@ func interval_seconds() -> float:
 	return BASE_INTERVAL_SECONDS * 100.0 / float(_speed_percent)
 
 
+func initial_repeat_delay_seconds() -> float:
+	return maxf(INITIAL_REPEAT_DELAY_SECONDS, interval_seconds())
+
+
 func start(source: StringName, direction: Vector2i) -> void:
 	if source.is_empty() or direction == Vector2i.ZERO or _request_in_progress:
 		return
 	_source = source
 	_direction = direction
 	set_process(true)
-	_emit_request()
+	_emit_request(initial_repeat_delay_seconds())
 
 
 func update(source: StringName, direction: Vector2i) -> void:
@@ -86,7 +91,7 @@ func request_in_progress() -> bool:
 	return _request_in_progress
 
 
-func _emit_request() -> void:
+func _emit_request(repeat_delay_seconds: float = -1.0) -> void:
 	if not is_active() or _request_in_progress:
 		return
 	var started_at := Time.get_ticks_usec()
@@ -98,4 +103,5 @@ func _emit_request() -> void:
 		# presentation work consumes the current interval. A slow transaction still
 		# emits at most once on the next frame; it never queues catch-up steps.
 		var elapsed_seconds := float(Time.get_ticks_usec() - started_at) / 1_000_000.0
-		_remaining = maxf(interval_seconds() - elapsed_seconds, 0.0)
+		var delay_seconds := interval_seconds() if repeat_delay_seconds < 0.0 else repeat_delay_seconds
+		_remaining = maxf(delay_seconds - elapsed_seconds, 0.0)
