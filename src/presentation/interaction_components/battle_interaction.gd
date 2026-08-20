@@ -5,6 +5,8 @@ const MAX_VISIBLE_TURNS := 6
 const COMMAND_HEIGHT := 26.0
 const SUMMARY_HEIGHT := 58.0
 const PRIMARY_COMMAND_COLOR := Color("f0ce59")
+const VIEW_COMMAND_COLOR := Color("63d8e7")
+const TURN_COMMAND_COLOR := Color("8fe080")
 
 var _actor_id: String = ""
 var _combatants: Array[InteractionRequestValue.Combatant] = []
@@ -59,7 +61,7 @@ func build(request: InteractionRequest) -> void:
 	overview.add_theme_constant_override("separation", 3)
 	add_child(overview)
 	_build_combatant_information(body, targets, overview)
-	_add_primary_action_row(body, actor_id, action_ids, targets, target_panel, spell_panel, scroll_panel, item_panel, bandage_panel, mode_panels, overview)
+	_build_command_shelf(body, actor_id, action_ids, targets, target_panel, spell_panel, scroll_panel, item_panel, bandage_panel, mode_panels, overview)
 	for panel: Control in mode_panels:
 		panel.visible = false
 		panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -392,24 +394,15 @@ func _build_combatant_information(body: InteractionRequest.CombatRequestBody, ta
 	if _inspected_index < 0 and not _combatants.is_empty():
 		_inspected_index = 0
 	_refresh_inspected_label()
-	var navigation := HBoxContainer.new()
-	navigation.name = "BattleInspectionCommands"
-	navigation.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	navigation.add_theme_constant_override("separation", 3)
-	parent.add_child(navigation)
-	_add_presentation_button(navigation, "Previous", &"inspect_previous")
-	_add_presentation_button(navigation, "Center Active", &"center_active")
-	_add_presentation_button(navigation, "Next", &"inspect_next")
-	_add_presentation_button(navigation, "Reveal Friends", &"reveal_friends")
-
-
 func _add_presentation_button(parent: Container, text: String, action: StringName) -> void:
 	var button := Button.new()
 	button.name = "CombatPresentation%s" % String(action).to_pascal_case()
 	button.text = text
 	button.theme_type_variation = &"BattleCommandButton"
 	button.custom_minimum_size.y = 24.0
-	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	if action == &"reveal_friends":
+		_color_command(button, VIEW_COMMAND_COLOR)
 	button.pressed.connect(func() -> void: _perform_presentation_action(action))
 	parent.add_child(button)
 
@@ -491,61 +484,95 @@ func accepts_spatial_input() -> bool:
 	return true
 
 
-func _add_primary_action_row(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: Control, spell_panel: Control, scroll_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
-	var primary_row := HBoxContainer.new()
-	primary_row.name = "BattlePrimaryCommands"
-	primary_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	primary_row.add_theme_constant_override("separation", 3)
-	overview.add_child(primary_row)
+func _build_command_shelf(body: InteractionRequest.CombatRequestBody, actor_id: String, action_ids: Array[String], targets: Array[InteractionRequestValue.CombatTarget], target_panel: Control, spell_panel: Control, scroll_panel: Control, item_panel: Control, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
+	var shelf := HBoxContainer.new()
+	shelf.name = "BattleCommandShelf"
+	shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shelf.add_theme_constant_override("separation", 4)
+	overview.add_child(shelf)
+	var inspection := _command_group(shelf, "BattleInspectionCommands", "View", VIEW_COMMAND_COLOR, 0.78)
+	var inspection_rows := _command_rows(inspection, "BattleInspection")
+	_add_presentation_button(inspection_rows[0], "Previous", &"inspect_previous")
+	_add_presentation_button(inspection_rows[0], "Center", &"center_active")
+	_add_presentation_button(inspection_rows[0], "Next", &"inspect_next")
+	_add_presentation_button(inspection_rows[1], "Reveal Friends", &"reveal_friends")
+	var primary := _command_group(shelf, "BattlePrimaryCommands", "Action", PRIMARY_COMMAND_COLOR, 1.35)
+	var primary_rows := _command_rows(primary, "BattlePrimary")
 	var can_switch := action_ids.has("switch_weapon") and body.weapon_switch.enabled
 	var shown_weapon_mode := String(body.weapon_switch.target_mode) if can_switch else String(body.weapon_mode)
-	_add_fixed_response(primary_row, "Weapon", "Weapon: %s" % shown_weapon_mode.capitalize(), InteractionResponse.CombatBody.new(&"switch_weapon", actor_id), can_switch, body.weapon_switch.reason)
-	_add_fixed_response(primary_row, "Guard", "Guard", InteractionResponse.CombatBody.new(&"defend", actor_id), action_ids.has("defend"), "Guard is unavailable during this activation.")
+	_add_fixed_response(primary_rows[0], "Weapon", "Weapon: %s" % shown_weapon_mode.capitalize(), InteractionResponse.CombatBody.new(&"switch_weapon", actor_id), can_switch, body.weapon_switch.reason)
+	_color_command(_add_fixed_response(primary_rows[0], "Guard", "Guard", InteractionResponse.CombatBody.new(&"defend", actor_id), action_ids.has("defend"), "Guard is unavailable during this activation."), TURN_COMMAND_COLOR)
 	var weapon_mode := String(body.weapon_mode)
 	var target_enabled: bool = action_ids.has("attack") and not targets.is_empty()
 	var target_reason := body.melee_attack_reason if weapon_mode == "melee" else body.ranged_attack.reason
-	var attack_button := _add_panel_toggle(primary_row, "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason)
+	var attack_button := _add_panel_toggle(primary_rows[0], "Fire" if weapon_mode == "missile" else "Attack", target_panel, mode_panels, overview, target_enabled, target_reason)
 	_name_command(attack_button, "Attack")
 	_accent_command(attack_button)
-	var spell_button := _add_panel_toggle(primary_row, "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and not body.spell_casts.is_empty(), body.spell_cast_reason)
+	var finish_button := _add_fixed_response(primary_rows[0], "Finish", "Finish", InteractionResponse.CombatBody.new(&"finish", actor_id), action_ids.has("finish"), "Finish is unavailable during this activation.")
+	_accent_command(finish_button)
+	var spell_button := _add_panel_toggle(primary_rows[1], "Spells", spell_panel, mode_panels, overview, action_ids.has("cast_spell") and not body.spell_casts.is_empty(), body.spell_cast_reason)
 	_name_command(spell_button, "Spells")
-	_accent_command(spell_button)
+	_color_command(spell_button, VIEW_COMMAND_COLOR)
 	spell_button.pressed.connect(func() -> void:
 		if spell_panel.visible:
 			combat_spellbook_requested.emit(actor_id, _spell_casts)
 		else:
 			combat_spellbook_closed.emit()
 	)
-	_name_command(_add_panel_toggle(primary_row, "Scrolls", scroll_panel, mode_panels, overview, action_ids.has("use_scroll") and not body.scroll_casts.is_empty(), body.scroll_cast_reason, 647), "Scrolls")
-	_name_command(_add_panel_toggle(primary_row, "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and not body.item_casts.is_empty(), body.item_cast_reason), "Items")
-	var finish_button := _add_fixed_response(primary_row, "Finish", "Finish", InteractionResponse.CombatBody.new(&"finish", actor_id), action_ids.has("finish"), "Finish is unavailable during this activation.")
-	_accent_command(finish_button)
-	var turn_row := HBoxContainer.new()
-	turn_row.name = "BattleTurnCommands"
-	turn_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	turn_row.add_theme_constant_override("separation", 3)
-	overview.add_child(turn_row)
+	var scroll_button := _add_panel_toggle(primary_rows[1], "Scrolls", scroll_panel, mode_panels, overview, action_ids.has("use_scroll") and not body.scroll_casts.is_empty(), body.scroll_cast_reason, 647)
+	_name_command(scroll_button, "Scrolls")
+	_color_command(scroll_button, VIEW_COMMAND_COLOR)
+	var item_button := _add_panel_toggle(primary_rows[1], "Items", item_panel, mode_panels, overview, action_ids.has("use_item") and not body.item_casts.is_empty(), body.item_cast_reason)
+	_name_command(item_button, "Items")
+	_color_command(item_button, VIEW_COMMAND_COLOR)
+	var turn := _command_group(shelf, "BattleTurnCommands", "Turn", TURN_COMMAND_COLOR, 1.15)
+	var turn_rows := _command_rows(turn, "BattleTurn")
+	_add_classic_turn_commands(turn_rows[0], turn_rows[1], body, actor_id, bandage_panel, mode_panels, overview)
 	var retreat_enabled := action_ids.has("retreat") and body.retreat.enabled
-	var retreat_reason := body.retreat.reason
-	_add_fixed_response(turn_row, "Escape", "Escape", InteractionResponse.CombatBody.new(&"retreat", actor_id), retreat_enabled, retreat_reason)
-	_add_classic_turn_commands(turn_row, body, actor_id, bandage_panel, mode_panels, overview)
+	_accent_command(_add_fixed_response(turn_rows[1], "Escape", "Escape", InteractionResponse.CombatBody.new(&"retreat", actor_id), retreat_enabled, body.retreat.reason))
 
 
-func _add_classic_turn_commands(parent: Container, body: InteractionRequest.CombatRequestBody, actor_id: String, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
-	_add_fixed_response(parent, "AutoTurn", "Auto Turn", InteractionResponse.CombatBody.new(&"auto", actor_id), body.auto_turn.enabled, body.auto_turn.reason)
-
-	_add_fixed_response(parent, "Delay", "Delay", InteractionResponse.CombatBody.new(&"delay", actor_id), body.delay.enabled, body.delay.reason)
-
+func _add_classic_turn_commands(first_row: Container, second_row: Container, body: InteractionRequest.CombatRequestBody, actor_id: String, bandage_panel: Control, mode_panels: Array[Control], overview: Control) -> void:
+	_color_command(_add_fixed_response(first_row, "AutoTurn", "Auto Turn", InteractionResponse.CombatBody.new(&"auto", actor_id), body.auto_turn.enabled, body.auto_turn.reason), TURN_COMMAND_COLOR)
+	_color_command(_add_fixed_response(first_row, "Delay", "Delay", InteractionResponse.CombatBody.new(&"delay", actor_id), body.delay.enabled, body.delay.reason), TURN_COMMAND_COLOR)
 	var bandage_enabled := body.bandage.enabled and not body.bandage_targets.is_empty()
 	var bandage_reason := body.bandage.reason
 	if body.bandage_targets.is_empty() and body.bandage.enabled:
 		bandage_reason = "No legal Bandage recipient is available."
 	_add_bandage_panel(bandage_panel, actor_id, body.bandage_targets)
-	_name_command(_add_panel_toggle(parent, "Bandage", bandage_panel, mode_panels, overview, bandage_enabled, bandage_reason), "Bandage")
+	var bandage_button := _add_panel_toggle(first_row, "Bandage", bandage_panel, mode_panels, overview, bandage_enabled, bandage_reason)
+	_name_command(bandage_button, "Bandage")
+	_color_command(bandage_button, VIEW_COMMAND_COLOR)
+	_accent_command(_add_fixed_response(second_row, "TurnUndead", "Turn Undead", InteractionResponse.CombatBody.new(&"turn_undead", actor_id), body.turn_undead.enabled, body.turn_undead.reason))
+	_color_command(_add_fixed_response(second_row, "Undo", "Undo", InteractionResponse.CombatBody.new(&"undo", actor_id), body.undo.enabled, body.undo.reason), VIEW_COMMAND_COLOR)
 
-	_add_fixed_response(parent, "TurnUndead", "Turn Undead", InteractionResponse.CombatBody.new(&"turn_undead", actor_id), body.turn_undead.enabled, body.turn_undead.reason)
 
-	_add_fixed_response(parent, "Undo", "Undo", InteractionResponse.CombatBody.new(&"undo", actor_id), body.undo.enabled, body.undo.reason)
+func _command_group(parent: Container, group_name: String, heading_text: String, heading_color: Color, stretch_ratio: float) -> VBoxContainer:
+	var panel := _summary_panel("%sInset" % group_name, stretch_ratio)
+	panel.custom_minimum_size.y = 75.0
+	parent.add_child(panel)
+	var column := VBoxContainer.new()
+	column.name = group_name
+	column.add_theme_constant_override("separation", 2)
+	var heading := Label.new()
+	heading.text = heading_text.to_upper()
+	heading.add_theme_font_size_override("font_size", 10)
+	heading.add_theme_color_override("font_color", heading_color)
+	column.add_child(heading)
+	panel.add_child(column)
+	return column
+
+
+func _command_rows(parent: Container, name_prefix: String) -> Array[HBoxContainer]:
+	var rows: Array[HBoxContainer] = []
+	for suffix: String in ["Primary", "Secondary"]:
+		var row := HBoxContainer.new()
+		row.name = "%s%s" % [name_prefix, suffix]
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_constant_override("separation", 3)
+		parent.add_child(row)
+		rows.append(row)
+	return rows
 
 
 func _summary_panel(panel_name: String, stretch_ratio: float) -> PanelContainer:
@@ -624,11 +651,16 @@ func _name_command(button: Button, command_name: String) -> void:
 	button.name = "CombatCommand%s" % command_name
 	button.theme_type_variation = &"BattleCommandButton"
 	button.custom_minimum_size.y = COMMAND_HEIGHT
+	button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 
 
 func _accent_command(button: Button) -> void:
-	button.add_theme_color_override("font_color", PRIMARY_COMMAND_COLOR)
-	button.add_theme_color_override("font_hover_color", Color("fff0a8"))
+	_color_command(button, PRIMARY_COMMAND_COLOR)
+
+
+func _color_command(button: Button, color: Color) -> void:
+	button.add_theme_color_override("font_color", color)
+	button.add_theme_color_override("font_hover_color", color.lightened(0.22))
 
 
 func _add_bandage_panel(parent: Control, actor_id: String, targets: Array[InteractionRequestValue.CombatTarget]) -> void:
