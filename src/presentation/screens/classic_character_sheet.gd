@@ -16,7 +16,7 @@ const TABS: Array[Dictionary] = [
 	{"id": &"abilities", "label": "Abilities"},
 	{"id": &"spells", "label": "Spells"},
 	{"id": &"appearance", "label": "Appearance"},
-	{"id": &"background", "label": "Race, Class & Aging"},
+	{"id": &"background", "label": "Race, Caste & Aging"},
 	{"id": &"record", "label": "Lifetime Record"},
 ]
 
@@ -33,9 +33,10 @@ var _appearance_availability: ActionAvailabilityView = ActionAvailabilityView.ne
 var _draft_portrait_id: String = ""
 var _draft_combat_icon_id: String = ""
 var _layout_profile: StringName = UiLayoutProfile.WIDE
+var _show_character_picker: bool = true
 
 
-func present(characters: Array[CharacterView], initial_character_id: String = "", textures: Dictionary = {}, text_scale: float = 1.0, initial_tab: StringName = &"overview", portrait_options: Array[CharacterAppearanceOptionView] = [], combat_icon_options: Array[CharacterAppearanceOptionView] = [], appearance_availability: ActionAvailabilityView = null, media: ClassicMediaCatalog = null, layout_profile: StringName = UiLayoutProfile.WIDE) -> void:
+func present(characters: Array[CharacterView], initial_character_id: String = "", textures: Dictionary = {}, text_scale: float = 1.0, initial_tab: StringName = &"overview", portrait_options: Array[CharacterAppearanceOptionView] = [], combat_icon_options: Array[CharacterAppearanceOptionView] = [], appearance_availability: ActionAvailabilityView = null, media: ClassicMediaCatalog = null, layout_profile: StringName = UiLayoutProfile.WIDE, show_character_picker: bool = true) -> void:
 	_characters = characters.duplicate()
 	_textures = textures
 	_text_scale = clampf(text_scale, 1.0, 1.5)
@@ -43,6 +44,7 @@ func present(characters: Array[CharacterView], initial_character_id: String = ""
 	_combat_icon_options = combat_icon_options.duplicate()
 	_media = media
 	_layout_profile = layout_profile
+	_show_character_picker = show_character_picker
 	_appearance_availability = appearance_availability if appearance_availability != null else ActionAvailabilityView.new(&"change_character_appearance", false, "Appearance changes are unavailable.")
 	_active_tab = initial_tab if _tab_exists(initial_tab) else &"overview"
 	_selected_character_id = initial_character_id
@@ -66,7 +68,8 @@ func _rebuild() -> void:
 	if _characters.is_empty():
 		_add_label(self, "No characters are available for inspection.", MUTED)
 		return
-	_build_character_picker()
+	if _show_character_picker:
+		_build_character_picker()
 	var character := _selected_character()
 	_build_identity(character)
 	_build_tabs()
@@ -465,7 +468,7 @@ func _build_background(character: CharacterView) -> void:
 	identities.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_content.add_child(identities)
 	_build_background_region(identities, "Race", "RaceRegion", character.race_name, character.race_description, character.race_traits)
-	_build_background_region(identities, "Class", "ClassRegion", character.caste_name, character.caste_description, character.caste_traits)
+	_build_background_region(identities, "Caste", "CasteRegion", character.caste_name, character.caste_description, character.caste_traits)
 	var aging := VBoxContainer.new()
 	aging.name = "AgingRegion"
 	_add_heading(aging, "Aging", "Age %d • current band highlighted" % character.age_years)

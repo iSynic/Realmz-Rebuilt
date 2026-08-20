@@ -139,13 +139,13 @@ func _build_creator_stage(character_column: VBoxContainer) -> void:
 	creator_scroll.follow_focus = true
 	character_column.add_child(creator_scroll)
 	creator = BoxContainer.new()
-	creator.custom_minimum_size.y = 310.0
 	creator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	creator.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	creator.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	creator.add_theme_constant_override("separation", 12)
 	creator_scroll.add_child(creator)
 	creator_page = VBoxContainer.new()
 	creator_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	creator_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	creator.add_child(creator_page)
 
 
