@@ -9,7 +9,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - The exact-commit Remake bitmap-control and Castle resource-fork map-marker catalog and importer.
 - The complete app-owned Classic `snd ` catalog, shared Data ID item `cicn` set and unidentified substitutes, plus selected source-backed battle `cicn` families decoded from the pinned Castle `The Family Jewels` resource fork.
 - Deterministic selected-surface preservation, seamless runtime tile derivation, tiled nine-patch derivation, and alpha-cropped exploration-rail reduction.
-- Deterministic typography import, including exact Mac resource-fork `FONT` 1601 decoding into a Godot BMFont descriptor/atlas, pinned Castle/Open Font License font-byte synchronization, and Samuel-outline/Castle-advance hybrid TTF generation.
+- Deterministic typography import and reference rendering, including exact Mac resource-fork `FONT` 1601 decoding into a Godot BMFont descriptor/atlas, pinned Castle/Open Font License font-byte synchronization, Samuel-outline/Castle-advance hybrid TTF generation, and reproducible transparent Theldrow design sheets.
 - Deterministic import of the licensed Realmz intro GIF into a bounded half-size, timing-preserving application loop with an offline-verifiable frame manifest, plus deterministic derivation of its generated ornamental frame.
 
 ## Local Contracts
@@ -25,6 +25,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - `build-exploration-rail.ps1` alpha-crops one explicitly selected SpriteCook source and reduces it to the manifest-recorded 48x468 production rail without inventing additional ornament.
 - `import-realmz-intro.ps1` accepts only the approved source GIF hash, validates its 640x608/124-frame shape, halves each spatial dimension with nearest-neighbor sampling, groups four source delays per output frame, and records every output hash. The external source path never enters committed metadata.
 - `build-intro-frame.ps1` accepts only the manifest-pinned 1024x1024 SpriteCook source hash, clears the measured neutral center without touching the gold fillet, crops the exact alpha bounds, and derives the 512x512 transparent-center production frame. Keep the raw generated candidate outside version control.
+- `build-theldrow-font-sheet.py` validates the committed FONT 1601 descriptor/atlas and remetricked vector hashes before producing an unlabelled transparent native sheet, an unlabelled transparent vector sheet, a Unicode cell map, and a readable specimen under ignored `artifacts/font-sheets/`. The sheets are design references and never replace runtime font assets.
 - Validate hashes and PNG dimensions before replacing committed outputs.
 
 ## Work Guidance
