@@ -16,6 +16,7 @@ from fontTools.ttLib import TTFont
 
 CHAR_RE = re.compile(r"^char\s+id=(?P<id>\d+).*?xadvance=(?P<xadvance>-?\d+)\b")
 LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+FIGURES = "0123456789"
 BOUNDS_TOLERANCE = 16
 RATIO_TOLERANCE = 0.008
 CURVE_STEPS = 16
@@ -148,6 +149,18 @@ def resolve_zones(rules: dict[str, object]) -> dict[str, tuple[int, int]]:
     return zones
 
 
+def resolve_utility_zones(rules: dict[str, object]) -> dict[str, tuple[int, int]]:
+    zones: dict[str, tuple[int, int]] = {}
+    for record in rules["utilityVerticalZones"].values():
+        for character in record["characters"]:
+            if character in zones:
+                raise RuntimeError(f"Duplicate utility vertical zone for {character}")
+            zones[character] = (int(record["yMin"]), int(record["yMax"]))
+    if sorted(zones) != sorted(FIGURES):
+        raise RuntimeError("Utility rules do not classify exactly 0-9")
+    return zones
+
+
 def bounds(font: TTFont, glyph_name: str) -> tuple[int, int, int, int]:
     glyph = font["glyf"][glyph_name]
     glyph.recalcBounds(font["glyf"])
@@ -170,6 +183,7 @@ def main() -> int:
     if rules.get("schemaVersion") != 1:
         raise RuntimeError("Unsupported Theldrow styling-rule schema")
     zones = resolve_zones(rules)
+    utility_zones = resolve_utility_zones(rules)
     font = TTFont(args.font, recalcTimestamp=False, checkChecksums=2)
     units_per_em = font["head"].unitsPerEm
     if units_per_em != int(rules["unitsPerEm"]):
@@ -189,6 +203,13 @@ def main() -> int:
                 f"U+{codepoint:04X} advance: expected {expected_advance}, "
                 f"found {actual_advance}"
             )
+
+    for character in FIGURES:
+        glyph_name = cmap[ord(character)]
+        _, y_min, _, y_max = bounds(font, glyph_name)
+        expected_y_min, expected_y_max = utility_zones[character]
+        assert_close(y_min, expected_y_min, f"{character} yMin")
+        assert_close(y_max, expected_y_max, f"{character} yMax")
 
     densities: dict[str, float] = {}
     measured: dict[str, tuple[int, int, int, int, int]] = {}
@@ -288,7 +309,7 @@ def main() -> int:
 
     print(
         "Verified strict Theldrow rules: exact Castle advances, "
-        "52 vertical zones, cap/x-height hierarchy, A/H sidebearings, "
+        "52 letter zones, cap-height figures, cap/x-height hierarchy, A/H sidebearings, "
         "pair gaps, mixed-case optical weight, ink-density envelopes, and zero kerning."
     )
     return 0

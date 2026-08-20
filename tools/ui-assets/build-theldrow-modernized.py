@@ -10,6 +10,7 @@ import math
 import re
 from pathlib import Path
 
+from fontTools.pens.boundsPen import BoundsPen
 from fontTools.pens.cu2quPen import Cu2QuPen
 from fontTools.pens.recordingPen import DecomposingRecordingPen, replayRecording
 from fontTools.pens.transformPen import TransformPen
@@ -23,6 +24,7 @@ CHAR_RE = re.compile(r"^char\s+id=(?P<id>\d+).*?xadvance=(?P<xadvance>-?\d+)\b")
 LETTER_CODEPOINTS = list(range(ord("A"), ord("Z") + 1)) + list(
     range(ord("a"), ord("z") + 1)
 )
+FIGURE_CODEPOINTS = list(range(ord("0"), ord("9") + 1))
 PENCIL_WIDTH_LIMIT = 1.12
 CU2QU_MAX_ERROR = 2.048
 
@@ -76,7 +78,21 @@ def read_rules(path: Path) -> dict[str, object]:
             zones[codepoint] = (y_min, y_max)
     if sorted(zones) != LETTER_CODEPOINTS:
         raise RuntimeError("Theldrow rules must classify exactly A-Z and a-z")
+    utility_zones: dict[int, tuple[int, int]] = {}
+    for record in payload.get("utilityVerticalZones", {}).values():
+        y_min = int(record["yMin"])
+        y_max = int(record["yMax"])
+        if y_max <= y_min:
+            raise RuntimeError("Theldrow utility vertical zone has no height")
+        for character in str(record["characters"]):
+            codepoint = ord(character)
+            if codepoint in utility_zones:
+                raise RuntimeError(f"Duplicate utility vertical zone for {character}")
+            utility_zones[codepoint] = (y_min, y_max)
+    if sorted(utility_zones) != FIGURE_CODEPOINTS:
+        raise RuntimeError("Theldrow utility rules must classify exactly 0-9")
     payload["resolvedVerticalZones"] = zones
+    payload["resolvedUtilityVerticalZones"] = utility_zones
     return payload
 
 
@@ -174,6 +190,7 @@ def build_utility_glyph(
     codepoint: int,
     advance: int,
     target_upm: int,
+    target_vertical_bounds: tuple[int, int] | None,
 ) -> object:
     utility_cmap = utility.getBestCmap()
     glyph_name = utility_cmap.get(codepoint)
@@ -182,15 +199,33 @@ def build_utility_glyph(
             return TTGlyphPen(None).glyph()
         raise RuntimeError(f"Utility font has no U+{codepoint:04X}")
     source_upm = utility["head"].unitsPerEm
-    scale = target_upm / source_upm
+    scale_x = target_upm / source_upm
     source_advance = utility["hmtx"].metrics[glyph_name][0]
-    if source_advance * scale > advance * PENCIL_WIDTH_LIMIT:
-        scale *= (advance * PENCIL_WIDTH_LIMIT) / (source_advance * scale)
-    offset_x = (advance - source_advance * scale) / 2.0
-    recording = DecomposingRecordingPen(utility.getGlyphSet())
-    utility.getGlyphSet()[glyph_name].draw(recording)
+    if source_advance * scale_x > advance * PENCIL_WIDTH_LIMIT:
+        scale_x *= (advance * PENCIL_WIDTH_LIMIT) / (source_advance * scale_x)
+    offset_x = (advance - source_advance * scale_x) / 2.0
+    glyph_set = utility.getGlyphSet()
+    recording = DecomposingRecordingPen(glyph_set)
+    glyph_set[glyph_name].draw(recording)
+    scale_y = scale_x
+    offset_y = 0.0
+    if target_vertical_bounds is not None:
+        bounds_pen = BoundsPen(glyph_set)
+        glyph_set[glyph_name].draw(bounds_pen)
+        if bounds_pen.bounds is None:
+            raise RuntimeError(f"Utility U+{codepoint:04X} has no measurable bounds")
+        _, source_y_min, _, source_y_max = bounds_pen.bounds
+        source_height = source_y_max - source_y_min
+        target_y_min, target_y_max = target_vertical_bounds
+        target_height = target_y_max - target_y_min
+        if source_height <= 0 or target_height <= 0:
+            raise RuntimeError(f"Utility U+{codepoint:04X} has invalid vertical bounds")
+        scale_y = target_height / source_height
+        offset_y = target_y_min - source_y_min * scale_y
     glyph_pen = TTGlyphPen(None)
-    transformed = TransformPen(glyph_pen, (scale, 0.0, 0.0, scale, offset_x, 0.0))
+    transformed = TransformPen(
+        glyph_pen, (scale_x, 0.0, 0.0, scale_y, offset_x, offset_y)
+    )
     replayRecording(recording.value, transformed)
     return glyph_pen.glyph()
 
@@ -272,7 +307,11 @@ def main() -> int:
                 if subtable.isUnicode():
                     subtable.cmap[codepoint] = glyph_name
         font["glyf"][glyph_name] = build_utility_glyph(
-            utility, codepoint, advance, target_upm
+            utility,
+            codepoint,
+            advance,
+            target_upm,
+            rules["resolvedUtilityVerticalZones"].get(codepoint),
         )
         font["hmtx"].metrics[glyph_name] = (advance, 0)
     font.setGlyphOrder(glyph_order)

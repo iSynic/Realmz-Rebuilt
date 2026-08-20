@@ -63,6 +63,13 @@
       "yMax": 1116
     }
   },
+  "utilityVerticalZones": {
+    "figures": {
+      "characters": "0123456789",
+      "yMin": 0,
+      "yMax": 1600
+    }
+  },
   "horizontal": {
     "capitalMaxWidthRatio": 0.86,
     "widthRatios": {
