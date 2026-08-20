@@ -25,15 +25,24 @@ LETTER_CODEPOINTS = list(range(ord("A"), ord("Z") + 1)) + list(
 )
 PENCIL_WIDTH_LIMIT = 1.12
 CU2QU_MAX_ERROR = 2.048
+CAPITAL_MAX_WIDTH_RATIO = 0.95
 # Castle's bitmap strike gives b/e/h/o the same six-pixel ink width inside an
-# eight-pixel advance. The approved Pencil contours for those letters are
-# visibly narrower after height-based scaling, so normalize only their inner
-# footprint while retaining the exact Castle advance and zero-kerning model.
+# eight-pixel advance. Use that ratio as the optical baseline, then retain the
+# reviewed extra h width and e/h placement corrections. Capital contours that
+# exceed their advance receive a shared maximum footprint. Every adjustment
+# stays inside the exact Castle advance and zero-kerning model.
 OPTICAL_WIDTH_RATIOS = {
+    ord("A"): 0.93,
+    ord("I"): 0.46,
     ord("b"): 0.75,
     ord("e"): 0.75,
-    ord("h"): 0.75,
+    ord("h"): 0.79,
     ord("o"): 0.75,
+}
+OPTICAL_X_OFFSET_RATIOS = {
+    ord("A"): -0.01,
+    ord("e"): 0.02,
+    ord("h"): 0.015,
 }
 
 
@@ -90,6 +99,10 @@ def build_pencil_glyph(
     scale_x = scale_y
     projected_width = view_width * scale_x
     optical_width_ratio = OPTICAL_WIDTH_RATIOS.get(codepoint)
+    if ord("A") <= codepoint <= ord("Z") and optical_width_ratio is None:
+        natural_width_ratio = projected_width / advance
+        if natural_width_ratio > CAPITAL_MAX_WIDTH_RATIO:
+            optical_width_ratio = CAPITAL_MAX_WIDTH_RATIO
     if optical_width_ratio is not None:
         target_width = advance * optical_width_ratio
         scale_x *= target_width / projected_width
@@ -98,7 +111,12 @@ def build_pencil_glyph(
     if projected_width > maximum_width:
         scale_x *= maximum_width / projected_width
         projected_width = maximum_width
-    offset_x = (advance - projected_width) / 2.0 - view_x * scale_x
+    optical_offset_x = advance * OPTICAL_X_OFFSET_RATIOS.get(codepoint, 0.0)
+    offset_x = (
+        (advance - projected_width) / 2.0
+        + optical_offset_x
+        - view_x * scale_x
+    )
     offset_y = target_y_max + view_y * scale_y
 
     glyph_pen = TTGlyphPen(None)
