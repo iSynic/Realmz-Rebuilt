@@ -69,10 +69,10 @@ var creator_step_labels: Array[Label]:
 var race_caste_columns: BoxContainer:
 	get: return _state.race_caste_columns
 	set(value): _state.race_caste_columns = value
-var race_list: ItemList:
+var race_list: ClassicDefinitionToggleList:
 	get: return _state.race_list
 	set(value): _state.race_list = value
-var caste_list: ItemList:
+var caste_list: ClassicDefinitionToggleList:
 	get: return _state.caste_list
 	set(value): _state.caste_list = value
 var name_edit: LineEdit:

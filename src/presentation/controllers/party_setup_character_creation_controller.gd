@@ -227,21 +227,21 @@ func _build_creator_race_class() -> void:
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 12)
 	var race_column := _add_creator_panel(columns, "RaceSelectorPanel", "Race", 1.0)
-	race_list = ItemList.new()
+	race_list = ClassicDefinitionToggleList.new()
 	race_list.name = "RaceList"
 	race_list.custom_minimum_size.y = 300.0
 	race_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	race_list.item_selected.connect(_race_selected)
+	race_list.option_selected.connect(_race_selected)
 	race_column.add_child(race_list)
 	var race_detail := _add_label(race_column, "", Color("e0e2e5"), 13)
 	race_detail.name = "RaceDescription"
 	race_detail.custom_minimum_size.y = 48.0
 	var caste_column := _add_creator_panel(columns, "CasteSelectorPanel", "Caste", 1.0)
-	caste_list = ItemList.new()
+	caste_list = ClassicDefinitionToggleList.new()
 	caste_list.name = "CasteList"
 	caste_list.custom_minimum_size.y = 300.0
 	caste_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	caste_list.item_selected.connect(_caste_selected)
+	caste_list.option_selected.connect(_caste_selected)
 	caste_column.add_child(caste_list)
 	var caste_detail := _add_label(caste_column, "", Color("e0e2e5"), 13)
 	caste_detail.name = "CasteDescription"
@@ -255,23 +255,15 @@ func _populate_race_class_options() -> void:
 	for option: DefinitionOptionView in view.race_options:
 		if _placeholder_definition_name(option.name, "Race"):
 			continue
-		race_list.add_item(option.name)
-		var race_index := race_list.item_count - 1
-		race_list.set_item_metadata(race_index, option.id)
 		var race_restricted := view.campaign_summary != null and view.campaign_summary.banned_races.has(option.id)
-		race_list.set_item_tooltip(race_index, "Unavailable in this scenario." if race_restricted else option.description)
-		race_list.set_item_disabled(race_index, race_restricted)
-	if selected_race_id.is_empty() or not _option_is_enabled(race_list, selected_race_id):
-		var first_race := _first_enabled_item(race_list)
-		if first_race >= 0:
-			selected_race_id = String(race_list.get_item_metadata(first_race))
-	_select_item_by_id(race_list, selected_race_id)
+		race_list.add_option(option.id, option.name, "Unavailable in this scenario." if race_restricted else option.description, not race_restricted, option.id == selected_race_id)
+	if selected_race_id.is_empty() or not race_list.is_enabled(selected_race_id):
+		selected_race_id = race_list.first_enabled_id()
+	race_list.select_id(selected_race_id)
 	_rebuild_caste_options()
-	if selected_caste_id.is_empty() or not _option_is_enabled(caste_list, selected_caste_id):
-		var first_caste := _first_enabled_item(caste_list)
-		if first_caste >= 0:
-			selected_caste_id = String(caste_list.get_item_metadata(first_caste))
-	_select_item_by_id(caste_list, selected_caste_id)
+	if selected_caste_id.is_empty() or not caste_list.is_enabled(selected_caste_id):
+		selected_caste_id = caste_list.first_enabled_id()
+	caste_list.select_id(selected_caste_id)
 	_refresh_race_class_details()
 
 func _refresh_race_class_details() -> void:
@@ -683,12 +675,14 @@ func _build_creator_spells() -> void:
 		spell_label = _add_label(detail, selected.name, GOLD, 18)
 		_add_label(detail, "Level %d  •  %d selection point%s" % [selected.level, selected.selection_cost, "" if selected.selection_cost == 1 else "s"], Color("e0e2e5"), 13)
 		var preview := SpellEffectPreview.new()
-		preview.present(media, selected.animation_resource_type, selected.animation_resource_ids)
-		detail.add_child(preview)
+		if preview.present(media, selected.animation_resource_type, selected.animation_resource_ids):
+			detail.add_child(preview)
+		else:
+			preview.free()
 		var description_heading := _label("Description", GOLD, 13)
 		detail.add_child(description_heading)
 		var description := selected.description.strip_edges()
-		var description_label := _add_label(detail, description if not description.is_empty() else "No description is available in this package.", Color("e0e2e5") if not description.is_empty() else MUTED, 13)
+		var description_label := _add_label(detail, description if not description.is_empty() else "Description unavailable.", Color("e0e2e5") if not description.is_empty() else MUTED, 16)
 		description_label.name = "StartingSpellDescription"
 		description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		description_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -868,10 +862,9 @@ func _update_creator_actions() -> void:
 		creator_next_button.tooltip_text = ""
 	creator_cancel_button.disabled = false
 
-func _race_selected(index: int) -> void:
-	if index < 0 or race_list.is_item_disabled(index):
+func _race_selected(selected_id: String) -> void:
+	if not race_list.is_enabled(selected_id):
 		return
-	var selected_id := String(race_list.get_item_metadata(index))
 	if selected_id != selected_race_id:
 		draft_portrait_id = ""
 		draft_combat_icon_id = ""
@@ -879,13 +872,15 @@ func _race_selected(index: int) -> void:
 		_portrait_page = 0
 		_combat_icon_page = 0
 	selected_race_id = selected_id
+	race_list.select_id(selected_race_id)
 	_rebuild_caste_options()
 	_refresh_race_class_details()
 
-func _caste_selected(index: int) -> void:
-	if index < 0 or caste_list.is_item_disabled(index):
+func _caste_selected(selected_id: String) -> void:
+	if not caste_list.is_enabled(selected_id):
 		return
-	selected_caste_id = String(caste_list.get_item_metadata(index))
+	selected_caste_id = selected_id
+	caste_list.select_id(selected_caste_id)
 	_refresh_race_class_details()
 
 func _rebuild_caste_options() -> void:
@@ -907,46 +902,20 @@ func _rebuild_caste_options() -> void:
 			return left_compatible
 		return left.name.naturalnocasecmp_to(right.name) < 0
 	)
-	caste_list.clear()
+	caste_list.clear_options()
 	for definition: DefinitionOptionView in ordered:
 		var restricted := view.campaign_summary != null and view.campaign_summary.banned_castes.has(definition.id)
 		var compatible := allowed_castes.is_empty() or allowed_castes.has(definition.id)
-		caste_list.add_item(definition.name)
-		var index := caste_list.item_count - 1
-		caste_list.set_item_metadata(index, definition.id)
-		caste_list.set_item_disabled(index, restricted or not compatible)
 		var tooltip := definition.description
 		if restricted:
 			tooltip = "Unavailable in this scenario."
 		elif not compatible:
 			tooltip = "Unavailable to the selected race."
-		caste_list.set_item_tooltip(index, tooltip)
-	if not selected_caste_id.is_empty() and not _option_is_enabled(caste_list, selected_caste_id):
+		caste_list.add_option(definition.id, definition.name, tooltip, not restricted and compatible, definition.id == selected_caste_id)
+	if not selected_caste_id.is_empty() and not caste_list.is_enabled(selected_caste_id):
 		selected_caste_id = ""
-		var first_caste := _first_enabled_item(caste_list)
-		if first_caste >= 0:
-			selected_caste_id = String(caste_list.get_item_metadata(first_caste))
-	_select_item_by_id(caste_list, selected_caste_id)
-
-func _select_item_by_id(list: ItemList, option_id: String) -> void:
-	if list == null or option_id.is_empty():
-		return
-	for index: int in list.item_count:
-		if String(list.get_item_metadata(index)) == option_id:
-			list.select(index)
-			return
-
-func _option_is_enabled(list: ItemList, option_id: String) -> bool:
-	for index: int in list.item_count:
-		if String(list.get_item_metadata(index)) == option_id:
-			return not list.is_item_disabled(index)
-	return false
-
-func _first_enabled_item(list: ItemList) -> int:
-	for index: int in list.item_count:
-		if not list.is_item_disabled(index):
-			return index
-	return -1
+		selected_caste_id = caste_list.first_enabled_id()
+	caste_list.select_id(selected_caste_id)
 
 func _start_creator() -> void:
 	if view == null or not view.party_setup_available:

@@ -29,3 +29,7 @@ static func spell_button(node_name: String, text: String, selected: bool, enable
 		button.icon = icon
 	button.pressed.connect(action)
 	return button
+
+
+static func definition_button(node_name: String, text: String, selected: bool, enabled: bool, tooltip: String, action: Callable) -> Button:
+	return spell_button(node_name, text, selected, enabled, tooltip, action)

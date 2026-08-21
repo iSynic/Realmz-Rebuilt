@@ -57,8 +57,8 @@ var creator_steps: HBoxContainer
 var creator_action_bar: HBoxContainer
 var creator_step_labels: Array[Label] = []
 var race_caste_columns: BoxContainer
-var race_list: ItemList
-var caste_list: ItemList
+var race_list: ClassicDefinitionToggleList
+var caste_list: ClassicDefinitionToggleList
 var name_edit: LineEdit
 var gender_option: OptionButton
 var starting_level_option: OptionButton
