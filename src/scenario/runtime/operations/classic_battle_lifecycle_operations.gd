@@ -297,10 +297,6 @@ func _finish_battle_with_fumbles(source_kind: StringName, caller: ScenarioBattle
 	var combat := _game_state.combat
 	if combat == null or not combat.completed:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_battle_continuation", "Post-battle fumbled-weapon recovery requires a completed battle.")
-	var payload := _rules.combat_flow.fumble_recovery_payload(_game_state, _content)
-	if not payload.is_empty():
-		var fumble_kind := ScenarioRuntimeContinuation.SAFE_COMBAT_FUMBLE if source_kind == ScenarioRuntimeContinuation.SAFE_COMBAT else ScenarioRuntimeContinuation.CLASSIC_COMBAT_FUMBLE
-		return ScenarioRuntimeOperationResult.waiting(InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload), ScenarioRuntimeContinuation.combat_terminal(fumble_kind, source_kind, combat.battle_id, caller), events)
 	var reward: ScenarioRuntimeOperationResult = _rewards.begin_completed_battle_reward(request_id, caller)
 	reward.events = events + reward.events
 	return reward

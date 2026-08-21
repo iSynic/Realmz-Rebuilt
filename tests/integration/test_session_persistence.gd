@@ -383,21 +383,28 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 		combat_body.battle_id = fumble_session._state.combat.battle_id
 		fumble_session._session_continuation = SessionContinuation.combat_state(&"combat-ally-selection", combat_body)
 		var recovery_step := fumble_session.respond(InteractionResponse.from_data(stale_ally_request.request_id, stale_ally_request.kind, {"selectedIds": []}))
-		assert_equal(recovery_step.state, SessionStep.State.WAITING_FOR_INTERACTION, "retreat still enters the typed fumbled-weapon recovery boundary")
+		assert_equal(recovery_step.state, SessionStep.State.WAITING_FOR_INTERACTION, "retreat opens one typed treasure boundary containing the fumbled weapon")
 		assert_false(recovery_step.events.any(func(event: DomainEvent) -> bool: return event.kind == &"allies_selected"), "a stale empty body-count stage is bypassed rather than manufactured")
-		assert_equal(recovery_step.interaction.kind, InteractionRequest.TREASURE_DISTRIBUTION, "post-battle recovery uses the dedicated treasure-distribution request")
+		assert_equal(recovery_step.interaction.kind, InteractionRequest.TREASURE_DISTRIBUTION, "post-battle recovery uses the ordinary treasure-distribution request")
+		var merged_reward := recovery_step.interaction.body as InteractionRequest.TreasureRequestBody
+		assert_not_null(merged_reward, "the merged post-battle request retains its typed treasure body")
+		if merged_reward != null:
+			assert_equal(merged_reward.mode, &"ordinary", "Castle fumbles enter the ordinary booty workspace rather than a second recovery screen")
+			assert_equal(merged_reward.items.map(func(item: InteractionRequestValue.RewardItem) -> String: return item.instance_id), [dropped.id], "the exact fumbled instance leads the ordinary reward queue")
 		var fumble_boundary := save_round_trip(fumble_session.snapshot())
-		assert_not_null(fumble_boundary, "the pending fumble assignment is centrally saveable")
+		assert_not_null(fumble_boundary, "the ordinary reward containing a fumbled item is centrally saveable")
 		var recovered_session := GameSession.new()
-		assert_equal(recovered_session.restore(content, fumble_boundary).state, SessionStep.State.COMPLETED, "the post-battle recovery request restores transactionally")
+		assert_equal(recovered_session.restore(content, fumble_boundary).state, SessionStep.State.COMPLETED, "the merged post-battle reward restores transactionally")
 		var restored_fumble_request := recovered_session.view().pending_interaction
 		var recovered_step := recovered_session.respond(InteractionResponse.from_data(restored_fumble_request.request_id, InteractionRequest.TREASURE_DISTRIBUTION, {"action": "assign", "instanceId": dropped.id, "characterId": recovery_character.id}))
-		assert_equal(recovered_step.state, SessionStep.State.COMPLETED, "assigning the final fumbled weapon completes post-battle processing")
+		assert_equal(recovered_step.state, SessionStep.State.WAITING_FOR_INTERACTION, "assigning the final fumbled weapon returns to Castle's shared booty workspace")
+		var done_step := recovered_session.respond(InteractionResponse.from_data(recovered_step.interaction.request_id, InteractionRequest.TREASURE_DISTRIBUTION, {"action": "done"}))
+		assert_equal(done_step.state, SessionStep.State.COMPLETED, "Done completes the combined post-battle treasure workspace")
 		var recovered_inventory := recovered_session._state.party.character_by_id(recovery_character.id).inventory()
 		assert_equal(recovered_inventory.size(), 1, "the selected recipient owns one recovered item")
 		if not recovered_inventory.is_empty():
 			assert_equal(recovered_inventory[0].to_data(), dropped.to_data(), "save/resume retains the exact recovered instance and charge count")
-		assert_equal(recovered_session._state.combat, null, "save/resume releases the completed battle after the final recovery and empty reward stages")
+		assert_equal(recovered_session._state.combat, null, "save/resume releases the completed battle after the combined reward closes")
 
 	var original_scenario := content.scenario
 	var party_death_program := ScenarioProgramDefinition.new("fixture.party-death-revival", &"extra-action-point", "fixture.party-death-revival", [

@@ -261,14 +261,6 @@ func _finish_direct_battle(events: Array[DomainEvent]) -> SessionCoordinatorResu
 
 
 func _finish_direct_battle_recovery(events: Array[DomainEvent]) -> SessionCoordinatorResult:
-	var payload = _context.rules.combat_flow.fumble_recovery_payload(_context.state, _context.content)
-	if not payload.is_empty():
-		var request_id = "session.fumble-recovery.%d" % _context.next_revision()
-		var combat = SessionContinuation.CombatBody.new()
-		combat.battle_id = _context.state.combat.battle_id
-		_context.set_continuation(SessionContinuation.combat_state(&"combat-fumble-recovery", combat))
-		_context.session_interaction = InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, payload)
-		return _context.waiting(_context.session_interaction, events)
 	return _begin_direct_battle_reward(events)
 
 

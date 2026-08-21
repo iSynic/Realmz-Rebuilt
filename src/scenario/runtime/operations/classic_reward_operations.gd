@@ -82,7 +82,20 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 	if bonus_treasure_id != 0 and _content.treasure_by_classic_id(absi(bonus_treasure_id)) == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "Classic opcode 48 references unavailable bonus treasure %d." % bonus_treasure_id)
 	var defeated_monsters: Array[Dictionary] = []
-	var pending_item_count := 0
+	var recovered_fumbles: Array[ItemInstance] = []
+	for fumbled: ItemInstance in combat.fumbled_items():
+		var definition := _content.item_by_id(fumbled.definition_id)
+		if definition == null:
+			return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Battle recovery references unavailable item '%s'." % fumbled.definition_id)
+		var recovered := ItemInstance.from_data(fumbled.to_data())
+		if recovered == null:
+			return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "A fumbled battle item cannot enter the reward queue.")
+		recovered.equipped = false
+		recovered.identified = true
+		recovered_fumbles.append(recovered)
+	var pending_item_count := recovered_fumbles.size()
+	if pending_item_count > ClassicRewardState.MAX_PENDING_ITEMS:
+		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The battle reward exceeds the supported Classic reward bounds.")
 	if combat.outcome == &"victory":
 		for monster: MonsterState in combat.monsters():
 			var definition := _content.monster_by_id(monster.definition_id)
@@ -126,14 +139,16 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 			for item_id: String in row["loot"]:
 				if not item_id.is_empty():
 					item_ids.append(item_id)
-		events.append(DomainEvent.new(&"battle_reward_constructed", {"battleId": combat.battle_id, "experience": experience, "wealth": wealth.to_data(), "itemCount": item_ids.size()}))
-	var operation := _begin_reward(&"battle", combat.battle_id, experience, wealth, item_ids, request_id, ClassicRewardState.ORDINARY_BATTLE_STAGE, absi(bonus_treasure_id))
+		events.append(DomainEvent.new(&"battle_reward_constructed", {"battleId": combat.battle_id, "experience": experience, "wealth": wealth.to_data(), "itemCount": recovered_fumbles.size() + item_ids.size()}))
+	var operation := _begin_reward(&"battle", combat.battle_id, experience, wealth, item_ids, request_id, ClassicRewardState.ORDINARY_BATTLE_STAGE, absi(bonus_treasure_id), recovered_fumbles)
+	if operation.state != ScenarioRuntimeOperationResult.State.FAILED:
+		combat.clear_fumbled_items()
 	operation.events = events + operation.events
 	return operation
 
 
-func _begin_reward(origin: StringName, source_id: String, total_experience: int, wealth: WealthState, item_ids: Array[String], request_id: String, battle_stage: StringName = ClassicRewardState.NO_BATTLE_STAGE, bonus_treasure_classic_id: int = 0) -> ScenarioRuntimeOperationResult:
-	if wealth == null or item_ids.size() > ClassicRewardState.MAX_PENDING_ITEMS:
+func _begin_reward(origin: StringName, source_id: String, total_experience: int, wealth: WealthState, item_ids: Array[String], request_id: String, battle_stage: StringName = ClassicRewardState.NO_BATTLE_STAGE, bonus_treasure_classic_id: int = 0, leading_items: Array[ItemInstance] = []) -> ScenarioRuntimeOperationResult:
+	if wealth == null or item_ids.size() + leading_items.size() > ClassicRewardState.MAX_PENDING_ITEMS:
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The reward exceeds the supported Classic reward bounds.")
 	var experience_multiplier := _game_state.experience_multiplier
 	if experience_multiplier < 0.0:
@@ -165,7 +180,7 @@ func _begin_reward(origin: StringName, source_id: String, total_experience: int,
 	var reward := ClassicRewardState.new(origin, source_id, scaled_experience, scaled_wealth)
 	reward.battle_stage = battle_stage
 	reward.bonus_treasure_classic_id = bonus_treasure_classic_id
-	var items: Array[ItemInstance] = []
+	var items: Array[ItemInstance] = leading_items.duplicate()
 	for definition: ItemDefinition in reward_definitions:
 		var identified := absi(definition.item_type) == 24
 		items.append(ItemInstance.new(_game_state.next_instance_id("reward.item"), definition.id, definition.initial_charges, false, identified))
