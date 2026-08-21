@@ -84,6 +84,7 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 	if not response.is_supported_kind():
 		return ScenarioVmResult.failed(&"invalid_interaction_response", "The response payload does not match its interaction kind.")
 	var events: Array[DomainEvent] = []
+	var reward_retry_checkpoint := snapshot() if _is_reward_continuation(_pending_continuation) else null
 	var continuation := _pending_continuation.copy() if _pending_continuation != null else null
 	var request_id := _pending_request.request_id
 	_pending_request = null
@@ -95,6 +96,8 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 		ScenarioVmPendingContinuation.SAFE_OPERATION:
 			var operation := runtime_api.resume_safe(continuation.runtime, response, _next_request_id())
 			if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
+				if reward_retry_checkpoint != null and restore(reward_retry_checkpoint):
+					return ScenarioVmResult.failed(operation.error_code, operation.error_message)
 				return _fail(operation.error_code, operation.error_message, events)
 			events.append_array(operation.events)
 			if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
@@ -113,6 +116,8 @@ func resume(response: InteractionResponse, runtime_api: RealmzRuntimeApi) -> Sce
 		ScenarioVmPendingContinuation.CLASSIC_OPERATION:
 			var operation := runtime_api.resume_classic(continuation.runtime, response, _next_request_id())
 			if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
+				if reward_retry_checkpoint != null and restore(reward_retry_checkpoint):
+					return ScenarioVmResult.failed(operation.error_code, operation.error_message)
 				return _fail(operation.error_code, operation.error_message, events)
 			events.append_array(operation.events)
 			if operation.state == ScenarioRuntimeOperationResult.State.WAITING:
@@ -229,6 +234,10 @@ func is_active() -> bool:
 
 func pending_request() -> InteractionRequest:
 	return _pending_request
+
+
+static func _is_reward_continuation(continuation: ScenarioVmPendingContinuation) -> bool:
+	return continuation != null and continuation.runtime != null and continuation.runtime.kind == ScenarioRuntimeContinuation.CLASSIC_REWARD
 
 
 static func handoff_is_valid(handoff: ScenarioVmHandoff, saved: ScenarioVmSnapshot) -> bool:

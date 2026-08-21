@@ -131,8 +131,8 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 	restored_vm.configure(definition)
 	assert_true(restored_vm.restore(saved_vm), "the pending level result restores against the same scenario definition")
 	var restored_api := RealmzRuntimeApi.new(content, saved_game, restored_rng, ScenarioActionState.new(), RealmzRules.new())
-	var wrong_level := restored_api.resume_classic(saved_vm.pending_continuation.runtime, InteractionResponse.from_data(saved_vm.pending_request.request_id, InteractionRequest.LEVEL_UP, {"action": "continue", "characterId": "reward.someone-else"}), saved_vm.pending_request.request_id)
-	assert_equal(wrong_level.error_code, &"invalid_interaction_response", "a level-result response cannot acknowledge a different character")
+	var wrong_level := restored_vm.resume(InteractionResponse.from_data(saved_vm.pending_request.request_id, InteractionRequest.LEVEL_UP, {"action": "continue", "characterId": "reward.someone-else"}), restored_api)
+	assert_equal([wrong_level.error_code, restored_vm.pending_request().request_id], [&"invalid_interaction_response", saved_vm.pending_request.request_id], "a rejected level-result response preserves the issuing VM request for a corrected response")
 	var spell_stage := restored_vm.resume(InteractionResponse.from_data(saved_vm.pending_request.request_id, InteractionRequest.LEVEL_UP, {"action": "continue", "characterId": character.id}), restored_api)
 	assert_equal([spell_stage.state, spell_stage.interaction.kind, spell_stage.interaction.body.to_data()["mode"]], [ScenarioVmResult.State.WAITING, InteractionRequest.LEVEL_UP, "spell-selection"], "a qualifying caster advances to a dedicated spell-selection stage")
 	var spell_boundary := ScenarioVmSnapshot.from_data(JSON.parse_string(JSON.stringify(restored_vm.snapshot().to_data())))
@@ -350,7 +350,7 @@ func _test_corrupt_reward_boundaries(content: RealmzContent) -> void:
 	assert_equal(unknown_denomination.error_code, &"invalid_interaction_response", "an unknown reward denomination fails explicitly")
 
 	var battle: BattleDefinition = content.battle_by_id("classic.battle.0")
-	var battle_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.invalid-battle", "Invalid Battle", 500, -100_000)]), RealmzClock.new())
+	var battle_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.invalid-battle", "Invalid Battle", 500, 0)]), RealmzClock.new())
 	var battle_rng := RealmzRng.new(43)
 	var rules := RealmzRules.new()
 	var setup := rules.combat_flow.start_battle(battle_state, content, battle, battle_rng)
@@ -361,6 +361,7 @@ func _test_corrupt_reward_boundaries(content: RealmzContent) -> void:
 		if monster.traitor:
 			monster.current_health = 0
 	battle_state.combat.active_turn = null
+	battle_state.combat.undo_state = null
 	battle_state.combat.pending_monster_attack = null
 	battle_state.combat.pending_reaction = null
 	battle_state.combat.completed = true
@@ -369,13 +370,29 @@ func _test_corrupt_reward_boundaries(content: RealmzContent) -> void:
 	var invalid_bonus := RealmzRuntimeApi.new(content, battle_state, battle_rng, ScenarioActionState.new(), rules).begin_completed_battle_reward("battle.invalid-bonus", ScenarioBattleCaller.classic(48, false, 999, 0))
 	assert_equal(invalid_bonus.error_code, &"unknown_treasure", "an unavailable opcode 48 bonus treasure fails before claiming reward ownership")
 	assert_equal([battle_state.combat.rewards_started, battle_rng.snapshot().draw_count], [false, draws_before], "bonus treasure validation neither claims the one-shot stage nor consumes reward RNG")
+	var corrupted_monster: MonsterState = null
+	var original_definition_id := ""
 	for monster: MonsterState in battle_state.combat.monsters():
 		if monster.traitor:
+			corrupted_monster = monster
+			original_definition_id = monster.definition_id
 			monster.definition_id = "classic.monster.unavailable"
 			break
 	var invalid_reward := RealmzRuntimeApi.new(content, battle_state, battle_rng, ScenarioActionState.new(), rules).begin_completed_battle_reward("battle.invalid-reward")
 	assert_equal(invalid_reward.error_code, &"unknown_monster", "a malformed battle reward fails before committing its continuation")
 	assert_equal([battle_state.combat.rewards_started, battle_rng.snapshot().draw_count], [false, draws_before], "battle reward validation neither claims the one-shot stage nor consumes reward RNG")
+
+	corrupted_monster.definition_id = original_definition_id
+	var reward_item: ItemDefinition = content.item_definitions()[0]
+	assert_true(corrupted_monster.set_loot_item_ids([reward_item.id]), "post-validation rollback characterization fixes one source-valid loot item")
+	var colliding_instance_id := "reward.item.%d" % (battle_state.instance_id_checkpoint() + 1)
+	assert_true(battle_state.combat.queue_fumbled_item(ItemInstance.new(colliding_instance_id, reward_item.id, reward_item.initial_charges)), "post-validation rollback characterization queues a source-valid fumbled item")
+	var state_before_construction_failure := battle_state.to_data()
+	var rng_before_construction_failure := battle_rng.checkpoint()
+	var failed_construction := RealmzRuntimeApi.new(content, battle_state, battle_rng, ScenarioActionState.new(), rules).begin_completed_battle_reward("battle.invalid-construction")
+	assert_equal(failed_construction.error_code, &"invalid_reward", "an exact-instance collision characterizes a failure after reward ownership and RNG would otherwise advance")
+	assert_equal(battle_state.to_data(), state_before_construction_failure, "failed battle reward construction restores ownership, instance IDs, wealth, experience, combat, and fumbled items atomically")
+	assert_equal(battle_rng.checkpoint(), rng_before_construction_failure, "failed battle reward construction restores RNG state, draw count, trace, and scripted source position")
 
 
 func _character(content: RealmzContent, id: String, name: String, maximum_load: int, experience: int, caste_id: int = 1) -> CharacterState:

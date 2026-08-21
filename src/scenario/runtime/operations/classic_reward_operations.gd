@@ -28,7 +28,10 @@ func grant_treasure(classic_treasure_id: int, request_id: String) -> ScenarioRun
 
 
 func resume_reward(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
-	return _resume_reward(continuation, response, request_id)
+	var state_checkpoint := _game_state.to_data()
+	var rng_checkpoint := _rng.checkpoint()
+	var operation := _resume_reward(continuation, response, request_id)
+	return _rollback_failed_reward(operation, state_checkpoint, rng_checkpoint)
 
 func _grant_random_items(action: ClassicActionDefinition, request_id: String) -> ScenarioRuntimeOperationResult:
 	if action.extra_code.size() < 3:
@@ -119,6 +122,8 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 			defeated_monsters.append({"monster": monster, "definition": definition, "loot": loot})
 	# Validate the whole source-owned reward before consuming RNG or claiming its
 	# one-shot battle continuation. A malformed package therefore remains retryable.
+	var state_checkpoint := _game_state.to_data()
+	var rng_checkpoint := _rng.checkpoint()
 	combat.rewards_started = true
 	var item_ids: Array[String] = []
 	var wealth := WealthState.new()
@@ -141,9 +146,25 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 					item_ids.append(item_id)
 		events.append(DomainEvent.new(&"battle_reward_constructed", {"battleId": combat.battle_id, "experience": experience, "wealth": wealth.to_data(), "itemCount": recovered_fumbles.size() + item_ids.size()}))
 	var operation := _begin_reward(&"battle", combat.battle_id, experience, wealth, item_ids, request_id, ClassicRewardState.ORDINARY_BATTLE_STAGE, absi(bonus_treasure_id), recovered_fumbles)
-	if operation.state != ScenarioRuntimeOperationResult.State.FAILED:
-		combat.clear_fumbled_items()
+	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
+		return _rollback_failed_reward(operation, state_checkpoint, rng_checkpoint)
+	combat.clear_fumbled_items()
 	operation.events = events + operation.events
+	return operation
+
+
+func _rollback_failed_reward(operation: ScenarioRuntimeOperationResult, state_checkpoint: Dictionary, rng_checkpoint: Dictionary) -> ScenarioRuntimeOperationResult:
+	if operation.state != ScenarioRuntimeOperationResult.State.FAILED:
+		return operation
+	operation.events.clear()
+	if _game_state.to_data() == state_checkpoint and _rng.checkpoint() == rng_checkpoint:
+		return operation
+	var state_restored := _game_state.restore_from_data(state_checkpoint)
+	var rng_restored := _rng.rollback(rng_checkpoint)
+	if not state_restored or not rng_restored:
+		return ScenarioRuntimeOperationResult.failed(&"reward_rollback_failed", "Reward processing failed and could not restore its deterministic transaction boundary.")
+	# Restoring GameState replaces its owned object graph. Callers must return
+	# immediately and resolve any subsequent state through _game_state again.
 	return operation
 
 

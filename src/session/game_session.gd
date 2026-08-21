@@ -283,7 +283,8 @@ func respond(response: InteractionResponse) -> SessionStep:
 			return _finish_failed(&"invalid_timed_encounter_location", "The timed encounter moved the party to an unavailable location.", events)
 		return _finish_waiting(result.interaction, events)
 	if result.state == ScenarioVmResult.State.FAILED:
-		_session_continuation.clear()
+		if _scenario_vm.pending_request() == null:
+			_session_continuation.clear()
 		return _finish_failed(result.error_code, result.error_message, events)
 	if not _session_continuation.is_empty():
 		if _session_continuation.kind == &"combat-death-macro":
