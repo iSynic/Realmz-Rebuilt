@@ -201,6 +201,7 @@ func _build_setup_options(character_column: VBoxContainer, party_column: VBoxCon
 	monster_column.add_child(_label("Monster Set", MUTED, 12))
 	monster_set_option = OptionButton.new()
 	monster_set_option.name = "MonsterSetOption"
+	monster_set_option.theme_type_variation = &"ClassicTheldrowOptionButton"
 	monster_set_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	monster_set_option.item_selected.connect(_assembly._party_setup_option_changed)
 	monster_column.add_child(monster_set_option)
@@ -210,6 +211,7 @@ func _build_setup_options(character_column: VBoxContainer, party_column: VBoxCon
 	difficulty_column.add_child(_label("Difficulty", MUTED, 12))
 	difficulty_option = OptionButton.new()
 	difficulty_option.name = "DifficultyOption"
+	difficulty_option.theme_type_variation = &"ClassicTheldrowOptionButton"
 	difficulty_option.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for value: int in range(-2, 3):
 		difficulty_option.add_item(PartySetupView.difficulty_name(value))
@@ -226,19 +228,23 @@ func _build_setup_actions(character_column: VBoxContainer, party_column: VBoxCon
 	creator_action_bar.alignment = BoxContainer.ALIGNMENT_CENTER
 	creator_cancel_button = Button.new()
 	creator_cancel_button.text = "Cancel character"
+	creator_cancel_button.theme_type_variation = &"ClassicTheldrowButton"
 	creator_cancel_button.pressed.connect(_creation._cancel_creator)
 	creator_action_bar.add_child(creator_cancel_button)
 	creator_action_bar.add_spacer(true)
 	creator_back_button = Button.new()
 	creator_back_button.text = "Back"
+	creator_back_button.theme_type_variation = &"ClassicTheldrowButton"
 	creator_back_button.pressed.connect(_creation.creator_back)
 	creator_action_bar.add_child(creator_back_button)
 	add_character_button = Button.new()
 	add_character_button.text = "Reroll"
+	add_character_button.theme_type_variation = &"ClassicTheldrowButton"
 	add_character_button.pressed.connect(_creation._reroll_character)
 	creator_action_bar.add_child(add_character_button)
 	creator_next_button = Button.new()
 	creator_next_button.text = "Continue"
+	creator_next_button.theme_type_variation = &"ClassicTheldrowButton"
 	creator_next_button.pressed.connect(_creation.creator_next)
 	creator_action_bar.add_child(creator_next_button)
 	character_column.add_child(creator_action_bar)

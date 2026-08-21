@@ -29,9 +29,6 @@ var campaign_list: VBoxContainer:
 var campaign_scroll: ScrollContainer:
 	get:
 		return _campaign_library.campaign_scroll
-var package_path: LineEdit:
-	get:
-		return _campaign_library.package_path
 var campaigns: Array[CampaignPackageView]:
 	get:
 		return _campaign_library.campaigns

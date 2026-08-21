@@ -13,6 +13,12 @@ const READABLE_NARRATIVE_PATH := "res://src/presentation/assets/fonts/Alegreya-V
 
 static func themed_copy(base_theme: Theme, settings: PresentationSettings) -> Theme:
 	var result := base_theme.duplicate(true) as Theme
+	result.add_type(&"ClassicTheldrowLineEdit")
+	result.set_type_variation(&"ClassicTheldrowLineEdit", &"LineEdit")
+	result.add_type(&"ClassicTheldrowOptionButton")
+	result.set_type_variation(&"ClassicTheldrowOptionButton", &"OptionButton")
+	result.add_type(&"ClassicTheldrowButton")
+	result.set_type_variation(&"ClassicTheldrowButton", &"Button")
 	var classic_mode := settings.typography_mode == PresentationSettings.TYPOGRAPHY_CLASSIC
 	result.default_font_size = int(round((17.0 if classic_mode else 15.0) * settings.text_scale))
 	if not classic_mode:
@@ -37,6 +43,9 @@ static func themed_copy(base_theme: Theme, settings: PresentationSettings) -> Th
 	result.set_font(&"font", &"MenuButton", body)
 	result.set_font(&"font", &"PopupMenu", body)
 	result.set_font(&"font", &"ClassicUtility", utility)
+	result.set_font(&"font", &"ClassicTheldrowLineEdit", body)
+	result.set_font(&"font", &"ClassicTheldrowOptionButton", body)
+	result.set_font(&"font", &"ClassicTheldrowButton", body)
 	result.set_font(&"font", &"Classic3DHelp", _with_fallback(CHICAGO_PATH, readable_ui))
 	return result
 

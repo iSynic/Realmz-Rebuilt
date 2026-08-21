@@ -15,7 +15,7 @@ func run() -> void:
 	assert_equal(creator.start(loaded.content, 7920, "realmz.character.1").state, SessionStep.State.COMPLETED, "the application-owned creator starts without a selected scenario")
 	var view: GameView = creator.view()
 	assert_true(view.party_setup_available and view.party_members.is_empty(), "the stock workshop reuses the typed five-step creator view without assembling a campaign party")
-	assert_equal([view.race_options.size(), view.caste_options.size(), view.portrait_options.size(), view.combat_icon_options.size()], [30, 30, 120, 120], "the workshop exposes the complete stock creation catalog")
+	assert_true([view.race_options.size(), view.caste_options.size(), view.portrait_options.size(), view.combat_icon_options.size()] == [30, 30, 120, 120] and not view.race_options[0].facts.is_empty() and not view.caste_options[0].facts.is_empty(), "the workshop exposes the complete stock creation catalog with detached source-backed Race and Caste facts")
 	var human := loaded.content.race_by_id("classic.race.1")
 	var fighter := loaded.content.caste_by_id("classic.caste.1")
 	var portrait := loaded.content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT)[0]

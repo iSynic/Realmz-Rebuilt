@@ -24,7 +24,7 @@ var campaign_overlay: PanelContainer
 var campaign_list: VBoxContainer
 var campaign_scroll: ScrollContainer
 var package_operation_host: PanelContainer
-var package_path: LineEdit
+var install_dialog: FileDialog
 var install_button: Button
 var refresh_button: Button
 var package_install_row: BoxContainer
@@ -179,16 +179,22 @@ func build_campaign_overlay() -> void:
 	column.add_child(package_operation_host)
 	package_install_row = BoxContainer.new()
 	package_install_row.name = "PackageInstallRow"
-	package_path = LineEdit.new()
-	package_path.placeholder_text = "Path to Providence .realmz2"
-	package_path.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	package_install_row.add_child(package_path)
+	package_install_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	install_button = Button.new()
 	install_button.name = "InstallPackage"
-	install_button.text = "Install .realmz2…"
-	install_button.pressed.connect(_open_typed_path)
+	install_button.text = "Install Scenario"
+	install_button.custom_minimum_size = Vector2(150.0, 34.0)
+	install_button.pressed.connect(_open_package_dialog)
 	package_install_row.add_child(install_button)
 	column.add_child(package_install_row)
+	install_dialog = FileDialog.new()
+	install_dialog.name = "InstallScenarioDialog"
+	install_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	install_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	install_dialog.filters = PackedStringArray(["*.realmz2 ; Realmz Rebuilt Scenario"])
+	install_dialog.use_native_dialog = true
+	install_dialog.file_selected.connect(_install_selected)
+	_host.add_child(install_dialog)
 	refresh_button = Button.new()
 	refresh_button.name = "RefreshScenarios"
 	refresh_button.text = "Refresh scenarios"
@@ -239,7 +245,6 @@ func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Re
 		_apply_intro_frame_layout(splash_composition.vertical)
 	if package_install_row != null:
 		package_install_row.vertical = profile.id == UiLayoutProfile.COMPACT
-		install_button.text = "Install package…" if package_install_row.vertical else "Install .realmz2…"
 	apply_modal_layouts()
 
 
@@ -340,7 +345,6 @@ func _render_package_operation() -> void:
 	_clear(package_operation_host)
 	var running: bool = package_operation_status.is_running()
 	package_operation_host.visible = running
-	package_path.editable = not running
 	install_button.disabled = running
 	refresh_button.disabled = running
 	if not running:
@@ -446,9 +450,13 @@ func _campaign_pressed(campaign: CampaignPackageView) -> void:
 		start_requested.emit(campaign.path, 1)
 
 
-func _open_typed_path() -> void:
-	var path := package_path.text.strip_edges()
-	if not path.is_empty():
+func _open_package_dialog() -> void:
+	if install_dialog != null:
+		install_dialog.popup_centered_ratio(0.7)
+
+
+func _install_selected(path: String) -> void:
+	if path.get_extension().to_lower() == "realmz2":
 		start_requested.emit(path, 1)
 
 

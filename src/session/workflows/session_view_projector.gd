@@ -98,9 +98,9 @@ func _project_complete(context: SessionWorkflowContext, pending_interaction: Int
 			result.journal_entries.append(JournalEntryView.new(message_id, journal_message.text))
 	if result.party_setup_available:
 		for race: RaceDefinition in content.race_definitions():
-			result.race_options.append(DefinitionOptionView.new(race.id, race.name, race.description, race.eligible_caste_ids))
+			result.race_options.append(DefinitionOptionView.from_race(race))
 		for caste: CasteDefinition in content.caste_definitions():
-			result.caste_options.append(DefinitionOptionView.new(caste.id, caste.name, caste.description, caste.eligible_race_ids))
+			result.caste_options.append(DefinitionOptionView.from_caste(caste))
 	for portrait: CharacterAppearanceDefinition in content.appearance_definitions(CharacterAppearanceDefinition.PORTRAIT):
 		result.portrait_options.append(CharacterAppearanceOptionView.new(portrait))
 	for icon: CharacterAppearanceDefinition in content.appearance_definitions(CharacterAppearanceDefinition.COMBAT_ICON):

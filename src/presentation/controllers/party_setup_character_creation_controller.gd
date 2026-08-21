@@ -136,6 +136,7 @@ func _build_creator_identity() -> void:
 	form.add_child(_label("Name", MUTED, 12))
 	name_edit = LineEdit.new()
 	name_edit.name = "CharacterName"
+	name_edit.theme_type_variation = &"ClassicTheldrowLineEdit"
 	name_edit.placeholder_text = "Character name"
 	name_edit.max_length = 24
 	name_edit.text = draft_name
@@ -147,6 +148,7 @@ func _build_creator_identity() -> void:
 	form.add_child(_label("Gender", MUTED, 12))
 	gender_option = OptionButton.new()
 	gender_option.name = "CharacterGender"
+	gender_option.theme_type_variation = &"ClassicTheldrowOptionButton"
 	gender_option.add_item("Male", 1)
 	gender_option.add_item("Female", 2)
 	gender_option.select(0 if draft_gender == 1 else 1)
@@ -158,6 +160,7 @@ func _build_creator_identity() -> void:
 	form.add_child(_label("Starting Level", MUTED, 12))
 	starting_level_option = OptionButton.new()
 	starting_level_option.name = "StartingLevel"
+	starting_level_option.theme_type_variation = &"ClassicTheldrowOptionButton"
 	var maximum_level := view.campaign_summary.maximum_level if view != null and view.campaign_summary != null else 0
 	for level: int in CharacterRules.STARTING_LEVELS:
 		if maximum_level > 0 and level > maximum_level:
@@ -247,6 +250,9 @@ func _build_creator_race_class() -> void:
 	var race_detail := _add_label(race_detail_panel, "", Color("e0e2e5"), 15)
 	race_detail.name = "RaceDescription"
 	race_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var race_facts := _add_label(race_detail_panel, "", Color("e0e2e5"), 13)
+	race_facts.name = "RaceFacts"
+	race_facts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var race_relations := _add_label(race_detail_panel, "", MUTED, 13)
 	race_relations.name = "RaceRelations"
 	race_relations.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -271,6 +277,9 @@ func _build_creator_race_class() -> void:
 	var caste_detail := _add_label(caste_detail_panel, "", Color("e0e2e5"), 15)
 	caste_detail.name = "CasteDescription"
 	caste_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var caste_facts := _add_label(caste_detail_panel, "", Color("e0e2e5"), 13)
+	caste_facts.name = "CasteFacts"
+	caste_facts.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var caste_relations := _add_label(caste_detail_panel, "", MUTED, 13)
 	caste_relations.name = "CasteRelations"
 	caste_relations.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -297,22 +306,32 @@ func _populate_race_class_options() -> void:
 func _refresh_race_class_details() -> void:
 	var race_detail_name := creator_page.find_child("RaceDetailName", true, false) as Label
 	var race_detail := creator_page.find_child("RaceDescription", true, false) as Label
+	var race_facts := creator_page.find_child("RaceFacts", true, false) as Label
 	var race_relations := creator_page.find_child("RaceRelations", true, false) as Label
 	var caste_detail_name := creator_page.find_child("CasteDetailName", true, false) as Label
 	var caste_detail := creator_page.find_child("CasteDescription", true, false) as Label
+	var caste_facts := creator_page.find_child("CasteFacts", true, false) as Label
 	var caste_relations := creator_page.find_child("CasteRelations", true, false) as Label
 	var race_option := _definition_option(view.race_options if view != null else [], selected_race_id)
 	var caste_option := _definition_option(view.caste_options if view != null else [], selected_caste_id)
 	if race_detail_name != null:
 		race_detail_name.text = race_option.name if race_option != null else "No race selected"
 	if race_detail != null:
-		race_detail.text = race_option.description if race_option != null and not race_option.description.is_empty() else "No description available."
+		race_detail.text = race_option.description if race_option != null else ""
+		race_detail.visible = not race_detail.text.is_empty()
+	if race_facts != null:
+		race_facts.text = "\n".join(race_option.facts) if race_option != null else ""
+		race_facts.visible = not race_facts.text.is_empty()
 	if race_relations != null:
 		race_relations.text = _related_definition_text("Compatible Castes", view.caste_options if view != null else [], race_option.related_ids if race_option != null else [])
 	if caste_detail_name != null:
 		caste_detail_name.text = caste_option.name if caste_option != null else "No caste selected"
 	if caste_detail != null:
-		caste_detail.text = caste_option.description if caste_option != null and not caste_option.description.is_empty() else "No description available."
+		caste_detail.text = caste_option.description if caste_option != null else ""
+		caste_detail.visible = not caste_detail.text.is_empty()
+	if caste_facts != null:
+		caste_facts.text = "\n".join(caste_option.facts) if caste_option != null else ""
+		caste_facts.visible = not caste_facts.text.is_empty()
 	if caste_relations != null:
 		caste_relations.text = _related_definition_text("Compatible Races", view.race_options if view != null else [], caste_option.related_ids if caste_option != null else [])
 
