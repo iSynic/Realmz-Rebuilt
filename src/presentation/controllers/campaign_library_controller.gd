@@ -18,7 +18,7 @@ const MAXIMUM_MODAL_Z_INDEX: int = 30
 
 var splash_overlay: PanelContainer
 var splash_composition: BoxContainer
-var splash_animation_host: TextureRect
+var splash_animation_host: NinePatchRect
 var splash_animation: TextureRect
 var campaign_overlay: PanelContainer
 var campaign_list: VBoxContainer
@@ -86,14 +86,16 @@ func build_splash_overlay() -> void:
 	title.name = "SplashTitle"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	identity.add_child(title)
-	splash_animation_host = TextureRect.new()
+	splash_animation_host = NinePatchRect.new()
 	splash_animation_host.name = "RealmzIntroOrnament"
 	splash_animation_host.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	splash_animation_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	splash_animation_host.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	splash_animation_host.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	splash_animation_host.stretch_mode = TextureRect.STRETCH_SCALE
 	splash_animation_host.texture = INTRO_FRAME_TEXTURE
+	splash_animation_host.patch_margin_left = 90
+	splash_animation_host.patch_margin_top = 90
+	splash_animation_host.patch_margin_right = 90
+	splash_animation_host.patch_margin_bottom = 90
 	identity.add_child(splash_animation_host)
 	splash_animation = ClassicIntroAnimationScript.new()
 	splash_animation.name = "RealmzIntroAnimation"
@@ -509,8 +511,8 @@ func _splash_label(text: String, color: Color = Color.WHITE, size: int = 15) -> 
 func _apply_intro_frame_layout(compact: bool) -> void:
 	if splash_animation_host == null or splash_animation == null:
 		return
-	var host_size := Vector2(205.0, 195.0) if compact else Vector2(500.0, 476.0)
-	var inset := Vector2(23.0, 22.0) if compact else Vector2(57.0, 55.0)
+	var host_size := Vector2(308.0, 198.0) if compact else Vector2(630.0, 410.0)
+	var inset := Vector2(24.0, 24.0) if compact else Vector2(55.0, 55.0)
 	splash_animation_host.custom_minimum_size = host_size
 	splash_animation.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	splash_animation.offset_left = inset.x

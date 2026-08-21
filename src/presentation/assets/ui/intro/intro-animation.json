@@ -1,229 +1,446 @@
 {
   "schema_version": 1,
   "source_role": "licensed Realmz intro animation supplied by the project owner",
-  "source_sha256": "43dd46139afab9f63f08b782781d476c91cf3a7bc21b7b8ae69b7ea47ac7f3fb",
+  "source_sha256": "2f3b7f6788c00bab329b924f0c6059aa20df31375a2e775e5dc48d59000695cb",
   "license": "Realmz-Art-NonCommercial",
-  "source_width": 640,
-  "source_height": 608,
+  "source_width": 480,
+  "source_height": 276,
   "source_frames": 124,
-  "sample_stride": 4,
+  "sample_stride": 2,
   "frames": [
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-00.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "daf5619006504a5215020ab015a5cace4159fc85a4f3946c0a7ce4f9984dbec5"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "14899955eb2325dc960255b719e547ad23f3038f978f34545fd0ede7040f2d28"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-01.png",
-      "duration_ms": 160,
-      "width": 320,
-      "height": 304,
-      "sha256": "db612ace9cd8a8d7a770a783a013fb7f98a2528d84e0f8d0616284005ee15d8d"
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "eceb83042a96326d270feed63ae23f5c239eec8b9522fbd5b74ef8b808ee2c44"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-02.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "99c061aa3cf0e2dff8f660936aae1c2ab6fc2a5a853de6e0ce66dcc1ea3e1e6b"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "13bbd9afd19d7f4ca23daa605d12180e0744e9ff51492ab84323dce31c1bd04e"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-03.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "074cfa4c432e58940f33af876151a00b9eda15704123e39a635444fde06d25ea"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "1627c3d8f2868d59504feb479c86f64bf427e9f59e2059baef1d4fe762d6e5b7"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-04.png",
-      "duration_ms": 160,
-      "width": 320,
-      "height": 304,
-      "sha256": "43d57f04f88a8dcd68a1cfb30a4b74784e9f17d35103ed86ee3dd2adb346db82"
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "3cfc64379fb9d0bf8f25930b8e2b3001eda82b24fa89666b80a9ac0cc5650d40"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-05.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "c38c75d80ce36b48ed285a7ab283025ac714737eea1bfd1444a6014698bb3862"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "0fca8740aef24d7734180521293bc92c1b20f5d060f844a56f79368f8280ef34"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-06.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "528c2b35fcb9d01d0c9a23f5ca420d43b1b37625ba40d9fe443453bf6f9ee6a1"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "4e461a1c54ec077e6ea23dc3fee001bcc91a903cb832a8b8c92b496a68c4a41f"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-07.png",
-      "duration_ms": 160,
-      "width": 320,
-      "height": 304,
-      "sha256": "763029f68cee2db124e526d07d33828afc3fe79dae4617bab7315f38e51b6d21"
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "e8096579d7e19328fbb3c35e4a8d6118c1866ffca3256e2227374b179c6dcb4f"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-08.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "4208cb20f0aa7076ee99850c7ec009763c82758597caa7cbca8d241dbab8df19"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "5843210c268e161df300b0c60704a3b5cfa8571838ac91ac539afb43670d41c4"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-09.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "c9493c113f0a11299ed7088fe384e8986f5091ffdcdb4324fb3559dddba895f1"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "5e5bf78dbc74d863af479706e91c67238264c5215fe55e0132a940d5c6c7082b"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-10.png",
-      "duration_ms": 160,
-      "width": 320,
-      "height": 304,
-      "sha256": "85bb65896d62f869beb9855482381a6fe7e0cbeaaba288a63837123ed563d83d"
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "6bf879c2c47f09dd004c0c5edef3cf6529fa8020145e3c5c5cf6e8f75f3a4d8a"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-11.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "b4c891e12852b0f36ee2960ee4028169159ae1f61e0229572ef8b1485aac3b04"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "622b3a6fa8e3250a8fc273ec207ae153e36220e6ab4fcfa5d77265aa14c5fc3d"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-12.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "9982cca5cf260082b334166a4050b264502f45aaeac72152b3bd14a07c914725"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "182f3c53ce8f76effec84d260482670c45a1482127f898d107858fc582673425"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-13.png",
-      "duration_ms": 160,
-      "width": 320,
-      "height": 304,
-      "sha256": "bd17fd0e2f796fbedbb1d75c430cf73a96df7ea773f2bb5791e0e2d9c652d3fa"
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "f932f71bec1688a8c32448d50de51a362795d4d5a642d2eb8e2b3e10f2c13f18"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-14.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "408f5b0299f6d56cd4c9356b7ba77ed61164f5c4c79f822e8b12e9e398e26b83"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "1b6763184c6508357f4539e4db15239551c28915a83a97339b49ebc606541ec5"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-15.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "57420df3ed02c3c4762e1b799b7f9539e4fb11b600adeea0434ab06bb2057f1c"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "420ba421dc618512779a42e67b501e5fc5c1f4b869e2f33375729da11faa5b31"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-16.png",
-      "duration_ms": 160,
-      "width": 320,
-      "height": 304,
-      "sha256": "c6c603c25ed12f8ab9a5b041cc523dc270bb2777700fa5e28642b6f735222f8a"
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "5a65abca84b9c19c9f841d6185080b3e0f01c5588e1b41026efd5b75d0509b5b"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-17.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "10e43b45f94df81079e29ff13268e38ac28b5398b618dac586b7e27ef3cff533"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "2c86b1262691e24385b02c1ca4a85dd34191322db110ab119d569e355c25f5ad"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-18.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "cfa4e6303ff795c9caa75df5b0fefedeba9cace58e23a098f2b3a92e39ca1d60"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "6c7bf13d2909e80ebeabf9314c9050e61bae25bfa8ffb077999967822a61ca83"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-19.png",
-      "duration_ms": 160,
-      "width": 320,
-      "height": 304,
-      "sha256": "575fa26a51742e468c403f4f4f43d348feea33e41ae1009fae58b25e289212e0"
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "7e4915aa2ce5fbae7866fca0ee70921e68efdb458fad3c4ea021973e1e00f255"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-20.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "5882c78e46b36be5389406fa935ea299cfd17392c4c3a809ca206b9b0eb9bf0b"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "5b8b05c5c2c9488688375b025fc4dd7e529edf0b695005f46c0734ef7a818018"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-21.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "f3136ea2c8fd27e72318bf119a1ffe9fc0ce994a5df4b0731d7a832698e67ec9"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "5d013314aa43cb280bf68e13f7a793bd9e6fb26352155cb7ddf11c3abff6dd61"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-22.png",
-      "duration_ms": 160,
-      "width": 320,
-      "height": 304,
-      "sha256": "dab548d1378c8d025f0d4332577630af3afd041565ee5bd3a071028c8253bd20"
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "40c501f10ee27a6c564fd73dd213855c1a28ee4488c0b3aeb4fc899f47bc960f"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-23.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "45433502589e2d72085692740e7329b59999b66175e2c3810bd97c5d7d4f784a"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "617aa266ac166bb99ba89e35974f40ddde80e328c3a12587f1cea996a6c4643f"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-24.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "ecabb9735de6c74ea80ebcd25f8f194bfe3f688e37837f42f62c3d912113558f"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "f942387710bb01372c5ffa0e0ad17d001e08d562f1f9d1a66bf952a18b262c19"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-25.png",
-      "duration_ms": 160,
-      "width": 320,
-      "height": 304,
-      "sha256": "5baa0a3699f93c30e09bbdf37ef18d8c0e6092495ba201cd3fc065d1edbd3582"
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "6cc7b05f2295c5fc8d943c23701c008ec4f593bbc21425107e610ad591fea1af"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-26.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "df9993482b75cf08f23ca08200f2f80d9d8a9c879df74c715f94c293dfff1c49"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "9a916e97f891cbabba2598f4ddac50501c786f5940b019716773dfcd2e13e94b"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-27.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "422adbec437456e714ec18980444fa6dd6f398d93098fb18da5ca2d19df7d8eb"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "884c99d2de5075ca70eb5a030d9fd2c30b49376e1d30976f54ac0b7780d2fa66"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-28.png",
-      "duration_ms": 160,
-      "width": 320,
-      "height": 304,
-      "sha256": "a41c71b45208059d2a3624a95683649d854e14dcec276249ee7a35dabddc3062"
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "97ab56e6a4e9cb09e00f28544c93619dfac0d8cdcd9eb3e6ce40b1e2e9a1b46f"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-29.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "e786c20bafbb859c651b67ee51562b58b7c39238df5798086780571b9b916921"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "69ee339d840d293aba182db2e3c3fa8cd02dda8b03cf487d03ad94232833dec7"
     },
     {
       "path": "res://src/presentation/assets/ui/intro/realmz-intro-30.png",
-      "duration_ms": 170,
-      "width": 320,
-      "height": 304,
-      "sha256": "8191823e15bbcd5f587b5e25e662989e80497c4f46239d2a4a46cda7b1cd2fa9"
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "11c5edfbc0bb1c773081ad8eb4ab3752b5fd4c6ca30ccd8a1178e6df6d45b229"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-31.png",
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "ae7efa277fe2b5b85607b956f1bfaa074871b3fc07a8216d61790622a2e89867"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-32.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "71b5401d63b821cf0465abbae97c00cb4e58b7b9db97b7f5365521d34f9e9201"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-33.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "2352acd74313b0b83a623c1783ad983e7eaafd7a96fcebb18f4429e7ec755e02"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-34.png",
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "ebf75f8c98b0e92d61bf53d4507b942654b988aad62aa76445dc27657877ce5c"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-35.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "f60f351b8e4a189a3cc08a89c79b40a47af729758fb8c84afdcc044390411b73"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-36.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "80858b2c58abfcfe5879c9358a928926183e71127962f389841c22765314e515"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-37.png",
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "005bde49b9a569062192b21d499ca64cf948984b9021375b9552804f546c7740"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-38.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "4d46ee50417bdb6a060a663526d58fceb2ded9f41426f10237825069deeb14d0"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-39.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "dcb5e0c513cdb423bfa620d4fbcbb3925aa0cb1db874fb221829f72d517da862"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-40.png",
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "5e8e1de66146a64bb5618a360e0d4ec451a16dc26eb105f2d3d5e751325e553e"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-41.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "0de686b12d3a5eca715bf919bc2025637349c0756c8ced086d5cf79ee66f764c"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-42.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "cc9fc5ed6adf485a3dbf4c227995de96032446bf19f95cdf4172accfff617a0b"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-43.png",
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "21744595cfbb09c4ed252629ab6626b0af7d40a80013f3eabc921391d221d163"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-44.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "151a95946d1ad322a26f857dd8d068496e79a2f3679974a584a495c118f27066"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-45.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "8cbc985e71ba71727916d47e4b2d4e486daefe7561edfa719b35cdac459fbe75"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-46.png",
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "32117881e2ac87c7b06b90e981bc1033a7d6ccfc44c859fa52ddc76dbd01c071"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-47.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "a3dfc88dbf3a1a859aa765dc4eb71732b344ffa36534985be364a5a56924ef84"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-48.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "55d2be635b84e31ad2484f03163be64e768a314ff65518b4db6fe5734521a7aa"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-49.png",
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "9340fb91ba415d00ae1ffdfd929f3a6c079a03cb104120d020deea016852b2fb"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-50.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "aadc1f7ff882799185664d85eb44a8faf0e753bc2248a17c52a1999742ef2b01"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-51.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "49336c07f79feaf3dde344d8aef8370d1d4f692e62697cf4c9e63b6372501b01"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-52.png",
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "09513180beded0a7af4f492a3af1a64a69ba36b3edba14d0e3b4cdc25cbda789"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-53.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "d3dd5ef6fc55b30f750ebc4af0c01cd44efb35169fcbcd50d90e758d175baf1a"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-54.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "96a64a63d43dbbdbba61cdcc2403723ffb3a803e73053b234655851405877c9e"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-55.png",
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "8bded879ae10d768583ac0611e128183c36636e465b259190373fefb25ca9647"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-56.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "a513c9e574a77f7d4d9eac7c94b5227c0031b90fecdf49462a74cb3c111f8440"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-57.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "9daea467c69c9eec8858d5f40a09e1137ee9f17ad693b555e0dc941ab8fd0cbf"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-58.png",
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "6e719fd4ad07bfa8edf1aa7e191c592607cd7a9c0f28d2178d3bbb54f6ef0106"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-59.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "3666bd22adbd69c9ea7e98103ab4b4b9bd151aa194261a0a5ddc5b614e97dbd7"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-60.png",
+      "duration_ms": 80,
+      "width": 480,
+      "height": 276,
+      "sha256": "b28062ef41d0d25489013542180ec7fd94e7f3c90ef0eeb62b34be5584b16187"
+    },
+    {
+      "path": "res://src/presentation/assets/ui/intro/realmz-intro-61.png",
+      "duration_ms": 90,
+      "width": 480,
+      "height": 276,
+      "sha256": "b1b7c20ae346b64caf91a3354711e4af40fb1198017896266a8f20b30c1dc775"
     }
   ]
 }

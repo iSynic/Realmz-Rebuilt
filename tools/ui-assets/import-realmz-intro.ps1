@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$SourceGifPath,
 
-    [string]$ExpectedSha256 = "43dd46139afab9f63f08b782781d476c91cf3a7bc21b7b8ae69b7ea47ac7f3fb"
+    [string]$ExpectedSha256 = "2f3b7f6788c00bab329b924f0c6059aa20df31375a2e775e5dc48d59000695cb"
 )
 
 $ErrorActionPreference = "Stop"
@@ -28,8 +28,8 @@ $image = [Drawing.Image]::FromFile($sourcePath)
 try {
     $dimension = [Drawing.Imaging.FrameDimension]::new($image.FrameDimensionsList[0])
     $sourceFrameCount = $image.GetFrameCount($dimension)
-    if ($image.Width -ne 640 -or $image.Height -ne 608 -or $sourceFrameCount -ne 124) {
-        throw "Realmz intro GIF shape changed; expected 640x608 and 124 frames"
+    if ($image.Width -ne 480 -or $image.Height -ne 276 -or $sourceFrameCount -ne 124) {
+        throw "Realmz intro GIF shape changed; expected 480x276 and 124 frames"
     }
     $delayProperty = $image.GetPropertyItem(0x5100)
     $delayValues = @()
@@ -38,13 +38,11 @@ try {
     }
 
     New-Item -ItemType Directory -Path $stagingRoot | Out-Null
-    $outputWidth = 320
-    $outputHeight = 304
-    $sampleStride = 4
+    $sampleStride = 2
     $records = @()
     for ($sourceIndex = 0; $sourceIndex -lt $sourceFrameCount; $sourceIndex += $sampleStride) {
         [void]$image.SelectActiveFrame($dimension, $sourceIndex)
-        $bitmap = [Drawing.Bitmap]::new($outputWidth, $outputHeight, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
+        $bitmap = [Drawing.Bitmap]::new($image.Width, $image.Height, [Drawing.Imaging.PixelFormat]::Format32bppArgb)
         try {
             $graphics = [Drawing.Graphics]::FromImage($bitmap)
             try {
@@ -52,7 +50,7 @@ try {
                 $graphics.InterpolationMode = [Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
                 $graphics.PixelOffsetMode = [Drawing.Drawing2D.PixelOffsetMode]::Half
                 $graphics.SmoothingMode = [Drawing.Drawing2D.SmoothingMode]::None
-                $graphics.DrawImage($image, [Drawing.Rectangle]::new(0, 0, $outputWidth, $outputHeight), 0, 0, $image.Width, $image.Height, [Drawing.GraphicsUnit]::Pixel)
+                $graphics.DrawImageUnscaled($image, 0, 0)
             }
             finally { $graphics.Dispose() }
             $outputIndex = [int]($sourceIndex / $sampleStride)
@@ -66,8 +64,8 @@ try {
             $records += [ordered]@{
                 path = "res://src/presentation/assets/ui/intro/$filename"
                 duration_ms = $duration
-                width = $outputWidth
-                height = $outputHeight
+                width = $image.Width
+                height = $image.Height
                 sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $outputPath).Hash.ToLowerInvariant()
             }
         }
@@ -91,7 +89,7 @@ try {
         Remove-Item -LiteralPath $resolvedDestination -Recurse -Force
     }
     Move-Item -LiteralPath $stagingRoot -Destination $resolvedDestination
-    Write-Host "Imported $($records.Count) Realmz intro frames at ${outputWidth}x${outputHeight}; preserved $([Math]::Round(($delayValues | Measure-Object -Sum).Sum / 1000.0, 2)) seconds of loop timing."
+    Write-Host "Imported $($records.Count) Realmz intro frames at $($image.Width)x$($image.Height); preserved $([Math]::Round(($delayValues | Measure-Object -Sum).Sum / 1000.0, 2)) seconds of loop timing."
 }
 finally {
     $image.Dispose()

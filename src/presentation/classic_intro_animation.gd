@@ -6,7 +6,7 @@ const MANIFEST_PATH := "res://src/presentation/assets/ui/intro/intro-animation.j
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_load_animation()
@@ -31,7 +31,7 @@ func _load_animation() -> void:
 		if frame_texture == null:
 			return
 		animation.set_frame_texture(index, frame_texture)
-		animation.set_frame_duration(index, maxf(float(record.get("duration_ms", 160)) / 1000.0, 0.01))
+		animation.set_frame_duration(index, maxf(float(record.get("duration_ms", 80)) / 1000.0, 0.01))
 	animation.pause = false
 	animation.speed_scale = 1.0
 	texture = animation
