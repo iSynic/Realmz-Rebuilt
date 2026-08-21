@@ -529,8 +529,8 @@ func _test_combat_and_reward_persistence(content: RealmzContent) -> void:
 					payload = {"action": "confirm-spells", "characterId": request.body.to_data()["characterId"], "spellIds": []}
 				elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.body.to_data().get("mode") == "completion-confirmation":
 					payload = {"action": "confirm-completion"}
-				elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.body.to_data().get("item") is Dictionary:
-					payload = {"action": "discard", "instanceId": request.body.to_data()["item"]["instanceId"]}
+				elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and not request.body.to_data().get("items", []).is_empty():
+					payload = {"action": "discard", "instanceId": request.body.to_data()["items"][0]["instanceId"]}
 				else:
 					payload = {"action": "done"}
 				terminal = reward_session.respond(InteractionResponse.from_data(request.request_id, request.kind, payload))

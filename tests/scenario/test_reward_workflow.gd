@@ -42,13 +42,13 @@ func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:
 	assert_false(bool(opened.interaction.body.to_data()["characters"][0]["enabled"]), "a recipient without item capacity is disabled by core inventory rules")
 	assert_true(bool(opened.interaction.body.to_data()["characters"][1]["enabled"]), "a source-legal recipient remains available")
 	assert_true(bool(opened.interaction.body.to_data()["characters"][2]["enabled"]), "FD-ECONOMY-002 permits an exact-instance assignment that lands precisely at maximum load")
-	var pending_item: Dictionary = opened.interaction.body.to_data()["item"]
+	var pending_item: Dictionary = opened.interaction.body.to_data()["items"][0]
 	var rejected := api.resume_safe(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, opened.interaction.kind, {"action": "assign", "instanceId": pending_item["instanceId"], "characterId": blocked.id}), "reward.retry")
 	assert_equal(rejected.error_code, &"reward_assignment_unavailable", "capacity rejection cannot mutate or consume the pending exact instance")
 	assert_equal([blocked.inventory().size(), caster.inventory().size(), party.pooled_wealth.gold], [0, 0, 25], "a rejected assignment leaves all reward state unchanged")
 
 	var detected := api.resume_safe(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, opened.interaction.kind, {"action": "detect", "characterId": caster.id}), "reward.detected")
-	assert_equal([detected.state, caster.spell_points, detected.interaction.body.to_data()["item"]["magical"], detected.interaction.body.to_data()["item"]["identified"]], [ScenarioRuntimeOperationResult.State.WAITING, 25, true, false], "Detect Magic costs five points and reveals magic without identifying the item")
+	assert_equal([detected.state, caster.spell_points, detected.interaction.body.to_data()["items"][0]["magical"], detected.interaction.body.to_data()["items"][0]["identified"]], [ScenarioRuntimeOperationResult.State.WAITING, 25, true, false], "Detect Magic costs five points and reveals magic without identifying the item")
 	var saved_state := GameState.from_data(state.to_data())
 	var saved_rng_state := rng.snapshot()
 	var saved_continuation_data: Dictionary = JSON.parse_string(JSON.stringify(detected.continuation.to_data()))
@@ -71,8 +71,8 @@ func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:
 	saved_state.party.pooled_wealth.gems = 1
 	saved_state.party.pooled_wealth.jewelry = 1
 	var identified := restored_api.resume_safe(saved_continuation, InteractionResponse.from_data(detected.interaction.request_id, detected.interaction.kind, {"action": "identify", "characterId": caster.id}), "reward.identified")
-	assert_equal([restored_caster.spell_points, identified.interaction.body.to_data()["item"]["identified"]], [0, true], "Identify Objects costs twenty-five points and identifies the whole pending pool")
-	var assigned := restored_api.resume_safe(identified.continuation, InteractionResponse.from_data(identified.interaction.request_id, identified.interaction.kind, {"action": "assign", "instanceId": identified.interaction.body.to_data()["item"]["instanceId"], "characterId": caster.id}), "reward.assigned")
+	assert_equal([restored_caster.spell_points, identified.interaction.body.to_data()["items"][0]["identified"]], [0, true], "Identify Objects costs twenty-five points and identifies the whole pending pool")
+	var assigned := restored_api.resume_safe(identified.continuation, InteractionResponse.from_data(identified.interaction.request_id, identified.interaction.kind, {"action": "assign", "instanceId": identified.interaction.body.to_data()["items"][0]["instanceId"], "characterId": caster.id}), "reward.assigned")
 	assert_equal([restored_caster.inventory().size(), restored_caster.inventory()[0].identified, assigned.interaction.body.to_data()["remaining"]], [1, true, 0], "assignment transfers the exact identified instance once")
 	var pooled := restored_api.resume_safe(assigned.continuation, InteractionResponse.from_data(assigned.interaction.request_id, assigned.interaction.kind, {"action": "pool"}), "reward.pooled")
 	assert_equal(saved_state.party.pooled_wealth.gold, 30, "Pool moves personal wealth into the reward workspace before manual Swap")
@@ -411,7 +411,7 @@ func _reward_response(request: InteractionRequest) -> InteractionResponse:
 		return InteractionResponse.from_data(request.request_id, request.kind, {"action": "confirm-spells", "characterId": request.body.to_data()["characterId"], "spellIds": []})
 	if request.body.to_data().get("mode") == "completion-confirmation":
 		return InteractionResponse.from_data(request.request_id, request.kind, {"action": "confirm-completion"})
-	var item: Variant = request.body.to_data().get("item")
-	if item is Dictionary:
-		return InteractionResponse.from_data(request.request_id, request.kind, {"action": "discard", "instanceId": item["instanceId"]})
+	var items: Variant = request.body.to_data().get("items", [])
+	if items is Array and not items.is_empty():
+		return InteractionResponse.from_data(request.request_id, request.kind, {"action": "discard", "instanceId": items[0]["instanceId"]})
 	return InteractionResponse.from_data(request.request_id, request.kind, {"action": "done"})

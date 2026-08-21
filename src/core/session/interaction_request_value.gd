@@ -263,6 +263,25 @@ class FastSpell:
 		return {"slot": slot, "spellId": spell_id, "spellName": spell_name, "power": power, "enabled": enabled, "reason": reason}
 
 
+class RewardAssignment:
+	extends RefCounted
+	var character_id: String
+	var enabled: bool
+	var reason: String
+
+	func to_data() -> Dictionary:
+		return {"characterId": character_id, "enabled": enabled, "reason": reason}
+
+
+class RewardFact:
+	extends RefCounted
+	var label: String
+	var value: String
+
+	func to_data() -> Dictionary:
+		return {"label": label, "value": value}
+
+
 class RewardItem:
 	extends RefCounted
 	var instance_id: String
@@ -274,6 +293,10 @@ class RewardItem:
 	var has_magical: bool
 	var icon_resource_type: String = "cicn"
 	var icon_id: int
+	var description: String
+	var facts: Array[RewardFact] = []
+	var assignments: Array[RewardAssignment] = []
+	var has_assignments: bool
 
 	func to_data() -> Dictionary:
 		var data := {"instanceId": instance_id, "definitionId": definition_id, "name": name, "charges": charges, "identified": identified}
@@ -281,6 +304,10 @@ class RewardItem:
 		if icon_id > 0:
 			data["iconResourceType"] = icon_resource_type
 			data["iconId"] = icon_id
+		data["description"] = description
+		data["facts"] = facts.map(func(value: RewardFact) -> Dictionary: return value.to_data())
+		if has_assignments:
+			data["assignments"] = assignments.map(func(value: RewardAssignment) -> Dictionary: return value.to_data())
 		return data
 
 
@@ -300,6 +327,10 @@ class RewardCharacter:
 	var gold_reason: String
 	var gems_reason: String
 	var jewelry_reason: String
+	var item_count: int
+	var maximum_movement: int
+	var carried_load: int
+	var maximum_load: int
 
 	func to_data() -> Dictionary:
 		var data := {"id": id, "name": name, "enabled": enabled, "reason": reason}
@@ -307,7 +338,7 @@ class RewardCharacter:
 			data["currentHealth"] = current_health
 			data["maximumHealth"] = maximum_health
 		else:
-			data.merge({"wealth": wealth.to_data(), "canTakeGold": can_take_gold, "canTakeGems": can_take_gems, "canTakeJewelry": can_take_jewelry, "goldReason": gold_reason, "gemsReason": gems_reason, "jewelryReason": jewelry_reason})
+			data.merge({"wealth": wealth.to_data(), "canTakeGold": can_take_gold, "canTakeGems": can_take_gems, "canTakeJewelry": can_take_jewelry, "goldReason": gold_reason, "gemsReason": gems_reason, "jewelryReason": jewelry_reason, "itemCount": item_count, "maximumMovement": maximum_movement, "load": carried_load, "maximumLoad": maximum_load})
 		return data
 
 
@@ -631,10 +662,19 @@ static func cast_option(data: Variant, source_kind: StringName) -> CastOption:
 
 
 static func reward_item(data: Variant) -> RewardItem:
-	var fields := ["instanceId", "definitionId", "name", "charges", "identified", "magical", "iconResourceType", "iconId"]
-	if not data is Dictionary or not _exact(data, fields, ["instanceId", "definitionId", "name", "charges", "identified"]) or not _strings(data, ["instanceId", "definitionId", "name"]) or not _ints(data, ["charges"]) or not data["identified"] is bool or data.has("magical") and not data["magical"] is bool: return null
+	var fields := ["instanceId", "definitionId", "name", "charges", "identified", "magical", "iconResourceType", "iconId", "description", "facts", "assignments"]
+	if not data is Dictionary or not _exact(data, fields, ["instanceId", "definitionId", "name", "charges", "identified", "description", "facts"]) or not _strings(data, ["instanceId", "definitionId", "name", "description"]) or not _ints(data, ["charges"]) or not data["identified"] is bool or data.has("magical") and not data["magical"] is bool or not data["facts"] is Array: return null
 	if not _optional_resource_key(data): return null
-	var result := RewardItem.new(); result.instance_id = data["instanceId"]; result.definition_id = data["definitionId"]; result.name = data["name"]; result.charges = int(data["charges"]); result.identified = data["identified"]; result.magical = bool(data.get("magical", false)); result.has_magical = data.has("magical"); result.icon_resource_type = String(data.get("iconResourceType", "cicn")); result.icon_id = int(data.get("iconId", 0)); return result
+	var result := RewardItem.new(); result.instance_id = data["instanceId"]; result.definition_id = data["definitionId"]; result.name = data["name"]; result.charges = int(data["charges"]); result.identified = data["identified"]; result.magical = bool(data.get("magical", false)); result.has_magical = data.has("magical"); result.icon_resource_type = String(data.get("iconResourceType", "cicn")); result.icon_id = int(data.get("iconId", 0)); result.description = data["description"]; result.has_assignments = data.has("assignments")
+	for entry: Variant in data["facts"]:
+		if not entry is Dictionary or not _exact(entry, ["label", "value"], ["label", "value"]) or not _strings(entry, ["label", "value"]): return null
+		var fact := RewardFact.new(); fact.label = entry["label"]; fact.value = entry["value"]; result.facts.append(fact)
+	if result.has_assignments:
+		if not data["assignments"] is Array: return null
+		for entry: Variant in data["assignments"]:
+			if not entry is Dictionary or not _exact(entry, ["characterId", "enabled", "reason"], ["characterId", "enabled", "reason"]) or not _strings(entry, ["characterId", "reason"]) or not entry["enabled"] is bool: return null
+			var assignment := RewardAssignment.new(); assignment.character_id = entry["characterId"]; assignment.enabled = entry["enabled"]; assignment.reason = entry["reason"]; result.assignments.append(assignment)
+	return result
 
 
 static func reward_character(data: Variant, mode: StringName) -> RewardCharacter:
@@ -645,10 +685,11 @@ static func reward_character(data: Variant, mode: StringName) -> RewardCharacter
 		if not _exact(data, fields, fields) or not _strings(data, ["id", "name", "reason"]) or not _ints(data, ["currentHealth", "maximumHealth"]) or not data["enabled"] is bool: return null
 		result.current_health = int(data["currentHealth"]); result.maximum_health = int(data["maximumHealth"]); result.has_health = true
 	elif mode == &"ordinary":
-		var fields := ["id", "name", "enabled", "reason", "wealth", "canTakeGold", "canTakeGems", "canTakeJewelry", "goldReason", "gemsReason", "jewelryReason"]
-		if not _exact(data, fields, fields) or not _strings(data, ["id", "name", "reason", "goldReason", "gemsReason", "jewelryReason"]) or not _bools(data, ["enabled", "canTakeGold", "canTakeGems", "canTakeJewelry"]): return null
+		var fields := ["id", "name", "enabled", "reason", "wealth", "canTakeGold", "canTakeGems", "canTakeJewelry", "goldReason", "gemsReason", "jewelryReason", "itemCount", "maximumMovement", "load", "maximumLoad"]
+		if not _exact(data, fields, fields) or not _strings(data, ["id", "name", "reason", "goldReason", "gemsReason", "jewelryReason"]) or not _bools(data, ["enabled", "canTakeGold", "canTakeGems", "canTakeJewelry"]) or not _ints(data, ["itemCount", "maximumMovement", "load", "maximumLoad"]): return null
 		result.wealth = wealth(data["wealth"]); if result.wealth == null: return null
 		result.can_take_gold = data["canTakeGold"]; result.can_take_gems = data["canTakeGems"]; result.can_take_jewelry = data["canTakeJewelry"]; result.gold_reason = data["goldReason"]; result.gems_reason = data["gemsReason"]; result.jewelry_reason = data["jewelryReason"]
+		result.item_count = int(data["itemCount"]); result.maximum_movement = int(data["maximumMovement"]); result.carried_load = int(data["load"]); result.maximum_load = int(data["maximumLoad"])
 	else: return null
 	result.id = data["id"]; result.name = data["name"]; result.enabled = data["enabled"]; result.reason = data["reason"]
 	return result

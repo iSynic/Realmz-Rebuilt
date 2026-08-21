@@ -225,6 +225,10 @@ static func _treasure_payload(state: StringName, prompt: String) -> Dictionary:
 			"goldReason": "The pool has fewer than 5 gold or the character cannot carry it.",
 			"gemsReason": "The pool has no gems or the character cannot carry one.",
 			"jewelryReason": "The pool has no jewelry or the character cannot carry one.",
+			"itemCount": 4 + index,
+			"maximumMovement": 12 - mini(index, 4),
+			"load": 120 + index * 40,
+			"maximumLoad": 2000,
 		})
 	if state == &"missing_media":
 		var recovery_characters: Array[Dictionary] = []
@@ -233,12 +237,19 @@ static func _treasure_payload(state: StringName, prompt: String) -> Dictionary:
 		return {
 			"prompt": prompt,
 			"mode": "fumbled-item-recovery",
-			"item": {"instanceId": "item-fumbled", "definitionId": "classic.item.6", "name": "Sting +3", "charges": 7, "identified": true, "iconResourceType": "cicn", "iconId": 6},
+			"item": {"instanceId": "item-fumbled", "definitionId": "classic.item.6", "name": "Sting +3", "charges": 7, "identified": true, "iconResourceType": "cicn", "iconId": 6, "description": "A recovered fumbled weapon.", "facts": [{"label": "Weight", "value": "10"}, {"label": "Charges", "value": "7"}]},
 			"characters": recovery_characters,
 			"remaining": 1,
 		}
 	var has_item := state not in [&"empty", &"loading", &"error"]
 	var unidentified := state == &"unidentified"
+	var item_count := 24 if state == &"oversized" else 1 if has_item else 0
+	var items: Array[Dictionary] = []
+	for item_index: int in item_count:
+		var assignments: Array[Dictionary] = []
+		for character: Dictionary in characters:
+			assignments.append({"characterId": character["id"], "enabled": character["enabled"], "reason": character["reason"]})
+		items.append({"instanceId": "reward.item.%d" % (item_index + 1), "definitionId": "classic.item.901", "name": "Unknown wand" if unidentified else "Fixture Wand %d" % (item_index + 1) if item_count > 1 else "Fixture Wand", "charges": 2, "identified": not unidentified, "magical": unidentified, "iconResourceType": "cicn", "iconId": 35 if unidentified else 40, "description": "Specials are unknown." if unidentified else "A compact fixture wand used to verify the Classic treasure inspector.", "facts": [{"label": "Weight", "value": "5"}, {"label": "Damage", "value": "?" if unidentified else "3–8"}, {"label": "Movement", "value": "?" if unidentified else "+2"}, {"label": "Magic resistance", "value": "?" if unidentified else "+5"}, {"label": "Spell points", "value": "?" if unidentified else "+12"}, {"label": "Charges", "value": "?" if unidentified else "2"}], "assignments": assignments})
 	return {
 		"prompt": prompt,
 		"mode": "ordinary",
@@ -247,8 +258,8 @@ static func _treasure_payload(state: StringName, prompt: String) -> Dictionary:
 		"experiencePool": 360,
 		"experienceShare": 60,
 		"wealth": {"gold": 125 if has_item else 0, "gems": 2 if has_item else 0, "jewelry": 1 if has_item else 0},
-		"item": {"instanceId": "reward.item.1", "definitionId": "classic.item.901", "name": "Unknown wand" if unidentified else "Fixture Wand", "charges": 2, "identified": not unidentified, "magical": unidentified, "iconResourceType": "cicn", "iconId": 35 if unidentified else 40} if has_item else null,
-		"remaining": 24 if state == &"oversized" else 1 if has_item else 0,
+		"items": items,
+		"remaining": item_count,
 		"characters": characters,
 		"hasShareCapacity": state != &"unavailable" and not characters.is_empty(),
 		"detect": {"visible": unidentified, "casters": [{"id": "hero-0", "name": "Hero 1", "spellPoints": 30, "cost": 5}] if unidentified else [], "reason": "No living caster can detect magic."},

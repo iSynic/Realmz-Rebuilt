@@ -16,6 +16,7 @@ signal presentation_sound_requested(sound_id: int)
 signal presentation_status_requested(text: String, is_error: bool)
 signal combat_spellbook_requested(actor_id: String, options: Array[InteractionRequestValue.CastOption])
 signal combat_spellbook_closed
+signal treasure_transfer_finished
 
 @onready var _prompt: Label = %InteractionPrompt
 @onready var _heading: Label = %InteractionHeading
@@ -36,6 +37,7 @@ var _passive_text: bool = false
 var _playback_masked: bool = false
 var _playback_status_label: Label
 var _autojournal_enabled: bool = true
+var _treasure_recipient_id: String = ""
 
 
 func _notification(what: int) -> void:
@@ -44,6 +46,8 @@ func _notification(what: int) -> void:
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
+	if request == null or request.kind != InteractionRequest.TREASURE_DISTRIBUTION:
+		_treasure_recipient_id = ""
 	_request = request
 	_passive_text = false
 	_playback_masked = false
@@ -101,6 +105,10 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_component.presentation_status_requested.connect(func(text: String, is_error: bool) -> void: presentation_status_requested.emit(text, is_error))
 	_component.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: combat_spellbook_requested.emit(actor_id, options))
 	_component.combat_spellbook_closed.connect(func() -> void: combat_spellbook_closed.emit())
+	if _component is TreasureDistributionInteraction:
+		var treasure := _component as TreasureDistributionInteraction
+		treasure.recipient_selected.connect(func(character_id: String) -> void: _treasure_recipient_id = character_id)
+		treasure.transfer_animation_finished.connect(func() -> void: treasure_transfer_finished.emit())
 	_options.add_child(_component)
 	_options.visible = true
 	_component.build(request)
@@ -260,7 +268,7 @@ func _component_for(request: InteractionRequest, game_view: GameView, media: Cla
 			return selection
 		&"treasure_distribution":
 			var treasure := TreasureDistributionInteraction.new()
-			treasure.configure(media, _application_rect.size.x < 1000.0)
+			treasure.configure(media, game_view, _application_rect.size.x < 1000.0, _treasure_recipient_id)
 			return treasure
 		&"level_up":
 			var level_up := LevelUpInteraction.new()
@@ -316,9 +324,15 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null:
 		return
 	var response := InteractionPresenter.response_for(_request, body)
+	var preserve_for_transfer := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action == &"assign"
 	_request = null
-	visible = false
+	if not preserve_for_transfer:
+		visible = false
 	response_submitted.emit(response)
+
+
+func begin_treasure_transfer(reduced_motion: bool) -> bool:
+	return _component is TreasureDistributionInteraction and (_component as TreasureDistributionInteraction).play_committed_transfer(reduced_motion)
 
 
 static func response_for(request: InteractionRequest, body: InteractionResponse.Body) -> InteractionResponse:

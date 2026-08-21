@@ -629,8 +629,15 @@ static func _valid_reward_continuation(content: RealmzContent, state: GameState,
 		var expected_mode := &"completion-confirmation" if reward.completion_pending else &"ordinary"
 		if treasure_body.mode != expected_mode:
 			return false
-		var pending := reward.first_item()
-		return treasure_body.item == null if pending == null else treasure_body.item != null and treasure_body.item.instance_id == pending.id
+		if reward.completion_pending:
+			return not treasure_body.has_item and not treasure_body.has_items
+		var pending_items := reward.items()
+		if not treasure_body.has_items or treasure_body.has_item or treasure_body.items.size() != pending_items.size():
+			return false
+		for index: int in pending_items.size():
+			if treasure_body.items[index].instance_id != pending_items[index].id or treasure_body.items[index].definition_id != pending_items[index].definition_id:
+				return false
+		return true
 	if reward.phase == ClassicRewardState.LEVEL_PHASE:
 		var level_body := request.body as InteractionRequest.LevelUpRequestBody
 		return not reward.pending_level_result.is_empty() and request.kind == InteractionRequest.LEVEL_UP and level_body != null and level_body.mode == &"result" and level_body.character_id == reward.pending_level_result.get("characterId")

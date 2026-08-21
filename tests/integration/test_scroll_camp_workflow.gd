@@ -418,8 +418,8 @@ func _drain_battle_return(session: GameSession, step: SessionStep) -> SessionSte
 			payload = {"action": "confirm-spells", "characterId": request.body.to_data()["characterId"], "spellIds": []}
 		elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.body.to_data().get("mode") == "completion-confirmation":
 			payload = {"action": "confirm-completion"}
-		elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and request.body.to_data().get("item") is Dictionary:
-			payload = {"action": "discard", "instanceId": request.body.to_data()["item"]["instanceId"]}
+		elif request.kind == InteractionRequest.TREASURE_DISTRIBUTION and not request.body.to_data().get("items", []).is_empty():
+			payload = {"action": "discard", "instanceId": request.body.to_data()["items"][0]["instanceId"]}
 		else:
 			payload = {"action": "done"}
 		current = session.respond(InteractionResponse.from_data(request.request_id, request.kind, payload))

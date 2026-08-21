@@ -429,10 +429,44 @@ func fumble_recovery_payload(state: GameState, content: RealmzContent) -> Dictio
 			"name": definition.name,
 			"charges": item.charges,
 			"identified": true,
+			"description": definition.description,
+			"facts": _fumbled_item_facts(item, definition),
 		},
 		"characters": candidates,
 		"remaining": queued.size(),
 	}
+
+
+static func _fumbled_item_facts(item: ItemInstance, definition: ItemDefinition) -> Array[Dictionary]:
+	var facts: Array[Dictionary] = [{"label": "Weight", "value": str(definition.instance_weight(item.charges))}]
+	if definition.hands != 0:
+		facts.append({"label": "Hands", "value": str(definition.hands)})
+	if definition.vs_small != 0:
+		facts.append({"label": "Damage", "value": "%d–%d" % [1 + definition.damage_bonus, definition.damage_bonus + definition.vs_small]})
+	if definition.vs_large != 0:
+		facts.append({"label": "Large damage", "value": "%d–%d" % [1 + definition.damage_bonus, definition.damage_bonus + definition.vs_large]})
+	if definition.armor_bonus != 0:
+		facts.append({"label": "Armor", "value": "%+d" % definition.armor_bonus})
+	_append_nonzero_fumble_fact(facts, "Damage bonus", definition.damage_bonus)
+	_append_nonzero_fumble_fact(facts, "Strength", definition.strength_bonus)
+	_append_nonzero_fumble_fact(facts, "Luck", definition.luck_bonus)
+	_append_nonzero_fumble_fact(facts, "Movement", definition.movement_bonus)
+	_append_nonzero_fumble_fact(facts, "Magic resistance", definition.magic_resistance_bonus)
+	_append_nonzero_fumble_fact(facts, "Spell points", definition.spell_point_bonus)
+	_append_nonzero_fumble_fact(facts, "Heat damage", definition.heat)
+	_append_nonzero_fumble_fact(facts, "Cold damage", definition.cold)
+	_append_nonzero_fumble_fact(facts, "Electrical damage", definition.electric)
+	_append_nonzero_fumble_fact(facts, "Versus undead", definition.vs_undead)
+	_append_nonzero_fumble_fact(facts, "Versus demons/devils", definition.vs_demon_devil)
+	_append_nonzero_fumble_fact(facts, "Versus evil", definition.vs_evil)
+	if item.charges > 0:
+		facts.append({"label": "Charges", "value": str(item.charges)})
+	return facts
+
+
+static func _append_nonzero_fumble_fact(facts: Array[Dictionary], label: String, value: int) -> void:
+	if value != 0:
+		facts.append({"label": label, "value": "%+d" % value})
 
 
 func apply_fumble_recovery(state: GameState, content: RealmzContent, action: StringName, instance_id: String, character_id: String = "") -> CombatFlowResult:

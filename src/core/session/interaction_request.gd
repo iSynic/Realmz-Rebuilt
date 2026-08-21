@@ -296,6 +296,7 @@ class TreasureRequestBody:
 	var mode: StringName
 	var prompt: String
 	var item: InteractionRequestValue.RewardItem
+	var items: Array[InteractionRequestValue.RewardItem] = []
 	var remaining: int
 	var characters: Array[InteractionRequestValue.RewardCharacter] = []
 	var wealth: InteractionRequestValue.Wealth
@@ -309,12 +310,14 @@ class TreasureRequestBody:
 	var source_id: String
 	var experience_pool: int
 	var has_item: bool
+	var has_items: bool
 	var has_remaining: bool
 
 	func to_data() -> Dictionary:
 		var data := {"mode": String(mode)}
 		if not prompt.is_empty(): data["prompt"] = prompt
 		if has_item: data["item"] = null if item == null else item.to_data()
+		if has_items: data["items"] = items.map(func(value: InteractionRequestValue.RewardItem) -> Dictionary: return value.to_data())
 		if has_remaining: data["remaining"] = remaining
 		if not characters.is_empty(): data["characters"] = characters.map(func(value: InteractionRequestValue.RewardCharacter) -> Dictionary: return value.to_data())
 		if wealth != null: data["wealth"] = wealth.to_data()
@@ -338,11 +341,7 @@ class TreasureRequestBody:
 				or remaining != other.remaining or item == null or other.item == null \
 				or characters.size() != other.characters.size():
 			return false
-		if item.instance_id != other.item.instance_id or item.definition_id != other.item.definition_id \
-				or item.name != other.item.name or item.charges != other.item.charges \
-				or item.identified != other.item.identified or item.has_magical != other.item.has_magical \
-				or item.has_magical and item.magical != other.item.magical \
-				or item.icon_resource_type != other.item.icon_resource_type or item.icon_id != other.item.icon_id:
+		if item.to_data() != other.item.to_data():
 			return false
 		for index: int in characters.size():
 			var left := characters[index]
@@ -756,7 +755,7 @@ static func _parse_reward_body(request_kind: StringName, payload: Dictionary) ->
 				var spell := InteractionRequestValue.spell_choice(entry); if spell == null: return null
 				level_up.spells.append(spell)
 		return level_up
-	if request_kind != TREASURE_DISTRIBUTION or not _fields_are_exact(payload, ["mode", "prompt", "item", "remaining", "characters", "wealth", "experienceShare", "detect", "identify", "hasShareCapacity", "summary", "battleId", "origin", "sourceId", "experiencePool"], ["mode"]) or not payload["mode"] is String: return null
+	if request_kind != TREASURE_DISTRIBUTION or not _fields_are_exact(payload, ["mode", "prompt", "item", "items", "remaining", "characters", "wealth", "experienceShare", "detect", "identify", "hasShareCapacity", "summary", "battleId", "origin", "sourceId", "experiencePool"], ["mode"]) or not payload["mode"] is String: return null
 	var treasure := TreasureRequestBody.new()
 	treasure.mode = StringName(payload["mode"])
 	if treasure.mode not in [&"fumbled-item-recovery", &"ordinary", &"completion-confirmation"]: return null
@@ -766,6 +765,15 @@ static func _parse_reward_body(request_kind: StringName, payload: Dictionary) ->
 	if treasure.has_item and payload["item"] != null:
 		treasure.item = InteractionRequestValue.reward_item(payload["item"])
 		if treasure.item == null: return null
+	treasure.has_items = payload.has("items")
+	if treasure.has_items:
+		if not payload["items"] is Array: return null
+		for entry: Variant in payload["items"]:
+			var reward_item := InteractionRequestValue.reward_item(entry); if reward_item == null: return null
+			treasure.items.append(reward_item)
+	if treasure.mode == &"ordinary" and (not treasure.has_items or treasure.has_item): return null
+	if treasure.mode == &"fumbled-item-recovery" and (not treasure.has_item or treasure.has_items): return null
+	if treasure.mode == &"completion-confirmation" and (treasure.has_item or treasure.has_items): return null
 	treasure.remaining = int(payload.get("remaining", 0))
 	treasure.has_remaining = payload.has("remaining")
 	if payload.has("characters"):
@@ -773,6 +781,19 @@ static func _parse_reward_body(request_kind: StringName, payload: Dictionary) ->
 		for entry: Variant in payload["characters"]:
 			var character := InteractionRequestValue.reward_character(entry, treasure.mode); if character == null: return null
 			treasure.characters.append(character)
+	if treasure.mode == &"ordinary":
+		var character_ids: Dictionary = {}
+		for character: InteractionRequestValue.RewardCharacter in treasure.characters:
+			if character_ids.has(character.id): return null
+			character_ids[character.id] = true
+		for item: InteractionRequestValue.RewardItem in treasure.items:
+			if not item.has_assignments or item.assignments.size() != character_ids.size(): return null
+			var assignment_ids: Dictionary = {}
+			for assignment: InteractionRequestValue.RewardAssignment in item.assignments:
+				if not character_ids.has(assignment.character_id) or assignment_ids.has(assignment.character_id): return null
+				assignment_ids[assignment.character_id] = true
+	elif treasure.mode == &"fumbled-item-recovery" and treasure.item != null and treasure.item.has_assignments:
+		return null
 	if payload.has("wealth"):
 		treasure.wealth = InteractionRequestValue.wealth(payload["wealth"])
 		if treasure.wealth == null: return null

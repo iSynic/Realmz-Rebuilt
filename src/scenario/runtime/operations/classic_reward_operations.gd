@@ -218,36 +218,21 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 	if reward.completion_pending:
 		var summary := "%d unclaimed item%s and %d gold, %d gems, %d jewelry will be left behind." % [reward.items().size(), "" if reward.items().size() == 1 else "s", _game_state.party.pooled_wealth.gold, _game_state.party.pooled_wealth.gems, _game_state.party.pooled_wealth.jewelry]
 		return InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, {"mode": "completion-confirmation", "prompt": "Leave the remaining treasure behind?", "summary": summary})
-	var pending := reward.first_item()
-	var item_payload: Variant = null
-	if pending != null:
-		var definition := _content.item_by_id(pending.definition_id)
-		if definition == null:
+	var pending_items := reward.items()
+	var item_payloads: Array[Dictionary] = []
+	for pending: ItemInstance in pending_items:
+		var item_payload := _reward_item_payload(reward, pending)
+		if item_payload.is_empty():
 			return null
-		item_payload = {
-			"instanceId": pending.id,
-			"definitionId": pending.definition_id,
-			"name": definition.name if pending.identified else definition.unidentified_name,
-			"charges": pending.charges,
-			"identified": pending.identified,
-			"magical": reward.magic_detected and definition.magical,
-			"iconResourceType": "cicn",
-			"iconId": definition.visible_icon_id(pending.identified),
-		}
+		item_payloads.append(item_payload)
 	var characters: Array[Dictionary] = []
 	var has_share_capacity := false
 	for character: CharacterState in _game_state.party.characters():
-		var enabled := false
-		var reason := ""
-		if pending != null:
-			var definition := _content.item_by_id(pending.definition_id)
-			enabled = _rules.inventory.can_restore_item(character, pending, definition)
-			if character.inventory().size() >= InventoryRules.MAX_ITEMS:
-				reason = "Inventory is full."
-			elif character.carried_load + definition.instance_weight(pending.charges) > character.maximum_load:
-				reason = "The item would exceed maximum load."
-			elif not enabled:
-				reason = "This character cannot receive the item."
+		var enabled := pending_items.any(func(item: ItemInstance) -> bool:
+			var definition := _content.item_by_id(item.definition_id)
+			return definition != null and _rules.inventory.can_restore_item(character, item, definition)
+		)
+		var reason := "" if enabled or pending_items.is_empty() else "This character cannot receive any remaining item."
 		characters.append({
 			"id": character.id,
 			"name": character.name,
@@ -260,6 +245,10 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 			"goldReason": "The pool has fewer than 5 gold or the character cannot carry it.",
 			"gemsReason": "The pool has no gems or the character cannot carry one.",
 			"jewelryReason": "The pool has no jewelry or the character cannot carry one.",
+			"itemCount": character.inventory().size(),
+			"maximumMovement": character.maximum_movement,
+			"load": character.carried_load,
+			"maximumLoad": character.maximum_load,
 		})
 		has_share_capacity = has_share_capacity or character.carried_load < character.maximum_load
 	var detect_rows := _reward_caster_rows(63, 5)
@@ -272,13 +261,77 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 		"experiencePool": reward.experience_pool,
 		"experienceShare": reward.experience_share,
 		"wealth": _game_state.party.pooled_wealth.to_data(),
-		"item": item_payload,
-		"remaining": reward.items().size(),
+		"items": item_payloads,
+		"remaining": pending_items.size(),
 		"characters": characters,
 		"hasShareCapacity": has_share_capacity,
-		"detect": {"visible": pending != null and not reward.magic_detected, "casters": detect_rows, "reason": "No living caster knows Detect Magic with 5 spell points."},
-		"identify": {"visible": pending != null and not reward.identified, "casters": identify_rows, "reason": "No living caster knows Identify with 25 spell points."},
+		"detect": {"visible": not pending_items.is_empty() and not reward.magic_detected, "casters": detect_rows, "reason": "No living caster knows Detect Magic with 5 spell points."},
+		"identify": {"visible": not pending_items.is_empty() and not reward.identified, "casters": identify_rows, "reason": "No living caster knows Identify with 25 spell points."},
 	})
+
+
+func _reward_item_payload(reward: ClassicRewardState, item: ItemInstance) -> Dictionary:
+	var definition := _content.item_by_id(item.definition_id)
+	if definition == null:
+		return {}
+	var assignments: Array[Dictionary] = []
+	for character: CharacterState in _game_state.party.characters():
+		var enabled := _rules.inventory.can_restore_item(character, item, definition)
+		var reason := ""
+		if character.inventory().size() >= InventoryRules.MAX_ITEMS:
+			reason = "Inventory is full."
+		elif character.carried_load + definition.instance_weight(item.charges) > character.maximum_load:
+			reason = "The item would exceed maximum load."
+		elif not enabled:
+			reason = "This character cannot receive the item."
+		assignments.append({"characterId": character.id, "enabled": enabled, "reason": reason})
+	return {
+		"instanceId": item.id,
+		"definitionId": item.definition_id,
+		"name": definition.name if item.identified else definition.unidentified_name,
+		"charges": item.charges,
+		"identified": item.identified,
+		"magical": reward.magic_detected and definition.magical,
+		"iconResourceType": "cicn",
+		"iconId": definition.visible_icon_id(item.identified),
+		"description": definition.description if item.identified else "Specials are unknown.",
+		"facts": _reward_item_facts(item, definition),
+		"assignments": assignments,
+	}
+
+
+func _reward_item_facts(item: ItemInstance, definition: ItemDefinition) -> Array[Dictionary]:
+	var hidden := not item.identified
+	var facts: Array[Dictionary] = [{"label": "Weight", "value": str(definition.instance_weight(item.charges))}]
+	if definition.hands != 0:
+		facts.append({"label": "Hands", "value": str(definition.hands)})
+	if definition.vs_small != 0:
+		facts.append({"label": "Damage", "value": "?" if hidden else "%d–%d" % [1 + definition.damage_bonus, definition.damage_bonus + definition.vs_small]})
+	if definition.vs_large != 0:
+		facts.append({"label": "Large damage", "value": "?" if hidden else "%d–%d" % [1 + definition.damage_bonus, definition.damage_bonus + definition.vs_large]})
+	if definition.armor_bonus != 0:
+		facts.append({"label": "Armor", "value": "?" if hidden else "%+d" % definition.armor_bonus})
+	if not hidden:
+		_append_nonzero_item_fact(facts, "Damage bonus", definition.damage_bonus)
+		_append_nonzero_item_fact(facts, "Strength", definition.strength_bonus)
+		_append_nonzero_item_fact(facts, "Luck", definition.luck_bonus)
+		_append_nonzero_item_fact(facts, "Movement", definition.movement_bonus)
+		_append_nonzero_item_fact(facts, "Magic resistance", definition.magic_resistance_bonus)
+		_append_nonzero_item_fact(facts, "Spell points", definition.spell_point_bonus)
+		_append_nonzero_item_fact(facts, "Heat damage", definition.heat)
+		_append_nonzero_item_fact(facts, "Cold damage", definition.cold)
+		_append_nonzero_item_fact(facts, "Electrical damage", definition.electric)
+		_append_nonzero_item_fact(facts, "Versus undead", definition.vs_undead)
+		_append_nonzero_item_fact(facts, "Versus demons/devils", definition.vs_demon_devil)
+		_append_nonzero_item_fact(facts, "Versus evil", definition.vs_evil)
+	if item.charges > 0:
+		facts.append({"label": "Charges", "value": "?" if hidden else str(item.charges)})
+	return facts
+
+
+static func _append_nonzero_item_fact(facts: Array[Dictionary], label: String, value: int) -> void:
+	if value != 0:
+		facts.append({"label": label, "value": "%+d" % value})
 
 
 func _resume_reward(continuation: ScenarioRuntimeContinuation, response: InteractionResponse, request_id: String) -> ScenarioRuntimeOperationResult:
@@ -318,10 +371,10 @@ func _resume_reward(continuation: ScenarioRuntimeContinuation, response: Interac
 				return ScenarioRuntimeOperationResult.failed(StringName(mutation["code"]), mutation["message"])
 			events.append(DomainEvent.new(&"reward_item_assigned", {"instanceId": body.instance_id, "characterId": body.character_id}))
 		"discard":
-			var pending := reward.first_item()
-			if pending == null or body.instance_id != pending.id or reward.remove_item(pending.id) == null:
-				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The item being left behind is not the current reward item.")
-			events.append(DomainEvent.new(&"reward_item_left", {"instanceId": pending.id, "itemId": pending.definition_id}))
+			var discarded := reward.remove_item(body.instance_id)
+			if discarded == null:
+				return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "The item being left behind is not pending treasure.")
+			events.append(DomainEvent.new(&"reward_item_left", {"instanceId": discarded.id, "itemId": discarded.definition_id}))
 		"pool":
 			var movement_error := _money_movement_context_error()
 			if not movement_error.is_empty():
@@ -368,11 +421,15 @@ func _resume_reward(continuation: ScenarioRuntimeContinuation, response: Interac
 func _assign_reward_item(reward: ClassicRewardState, body: InteractionResponse.TreasureBody) -> Dictionary:
 	if body.instance_id.is_empty() or body.character_id.is_empty():
 		return {"code": "invalid_interaction_response", "message": "Treasure assignment requires item and character IDs."}
-	var pending := reward.first_item()
+	var pending: ItemInstance = null
+	for item: ItemInstance in reward.items():
+		if item.id == body.instance_id:
+			pending = item
+			break
 	var character := _game_state.party.character_by_id(body.character_id)
 	var definition: ItemDefinition = null if pending == null else _content.item_by_id(pending.definition_id)
-	if pending == null or pending.id != body.instance_id or character == null or definition == null or not _rules.inventory.can_restore_item(character, pending, definition):
-		return {"code": "reward_assignment_unavailable", "message": "The selected character cannot receive the pending item."}
+	if pending == null or character == null or definition == null or not _rules.inventory.can_restore_item(character, pending, definition):
+		return {"code": "reward_assignment_unavailable", "message": "The selected character cannot receive the selected item."}
 	if not _rules.inventory.restore_item(character, pending, definition):
 		return {"code": "reward_assignment_failed", "message": "The item assignment could not be committed."}
 	if reward.identified:
