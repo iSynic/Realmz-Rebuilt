@@ -178,7 +178,7 @@ func _build_creator_identity() -> void:
 	context.name = "IdentityCampaignContext"
 	_focus_first(creator_page)
 
-func _add_creator_panel(parent: Container, node_name: String, title: String, stretch: float = 1.0) -> VBoxContainer:
+func _add_creator_panel(parent: Container, node_name: String, title: String, stretch: float = 1.0, title_asset_id: StringName = &"") -> VBoxContainer:
 	var panel := PanelContainer.new()
 	panel.name = node_name
 	panel.theme_type_variation = &"ClassicInset"
@@ -191,9 +191,21 @@ func _add_creator_panel(parent: Container, node_name: String, title: String, str
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_theme_constant_override("separation", 6)
 	panel.add_child(body)
-	body.add_child(_label(title, GOLD, 15))
+	if not title_asset_id.is_empty():
+		body.add_child(_classic_ui_art(title_asset_id, Vector2(68.0, 18.0)))
+	elif not title.is_empty():
+		body.add_child(_label(title, GOLD, 15))
 	parent.add_child(panel)
 	return body
+
+func _classic_ui_art(asset_id: StringName, minimum_size: Vector2) -> TextureRect:
+	var art := TextureRect.new()
+	art.texture = ClassicUiAssetCatalog.texture(asset_id)
+	art.custom_minimum_size = minimum_size
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	return art
 
 func _creation_context() -> String:
 	if view == null or view.campaign_summary == null:
@@ -623,7 +635,7 @@ func _build_creator_spells() -> void:
 	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	workspace.add_theme_constant_override("separation", 8)
 	creator_page.add_child(workspace)
-	var level_rail := _add_creator_panel(workspace, "StartingSpellLevelRail", "Level", 0.38)
+	var level_rail := _add_creator_panel(workspace, "StartingSpellLevelRail", "", 0.38, &"spells.label.level")
 	level_rail.custom_minimum_size.x = 72.0
 	for level: int in range(1, 8):
 		var level_button := SpellSelectionChrome.level_button(

@@ -11,6 +11,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - Deterministic selected-surface preservation, seamless runtime tile derivation, tiled nine-patch derivation, and alpha-cropped exploration-rail reduction.
 - Deterministic typography import and reference rendering, including exact Mac resource-fork `FONT` 1601 decoding into a Godot BMFont descriptor/atlas, pinned Castle/Open Font License font-byte synchronization, Samuel-outline/Castle-advance reference TTF generation, approved Pencil-contour/Castle-advance/Grenze-utility runtime TTF generation, and reproducible transparent Theldrow design sheets.
 - Deterministic import of the licensed Realmz intro GIF into a bounded half-size, timing-preserving application loop with an offline-verifiable frame manifest, plus deterministic derivation of its generated ornamental frame.
+- Deterministic extraction of stock Realmz application text from pinned resource-fork `STR#` records. Application text never enters scenario packages.
 
 ## Local Contracts
 
@@ -32,6 +33,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 ## Work Guidance
 
 - PowerShell scripts resolve the repository root from their own location and fail on the first error.
+- Application-text generators must produce byte-identical UTF-8 output under both Windows PowerShell 5.1 and PowerShell 7; do not rely on host-specific `ConvertTo-Json` formatting or escaping.
 
 ## Verification
 
@@ -40,6 +42,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - `build-exploration-rail.ps1` reports the source crop plus source/output SHA-256 values; the committed manifest records those values and production dimensions.
 - `verify-classic-application-media.ps1` verifies unique IDs/resource keys, the expected integrated sound, item-CIcon, and combat-CIcon counts, generated-chrome paths/dimensions, and every committed byte count and SHA-256 without requiring an external Castle checkout.
 - `verify-classic-application-media.ps1` also verifies the complete font manifest, source/commit/license fields, required Classic roles, committed paths, and byte hashes.
+- `sync-classic-application-text.ps1` verifies the pinned Castle commit and exact Family Jewels resource-fork hash, decodes MacRoman deterministically, emits all 252 class-one-through-three player-spell descriptions keyed by packed Classic ID, and reproduces identical bytes across supported PowerShell hosts.
 
 ## Child DOX Index
 

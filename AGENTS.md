@@ -82,6 +82,7 @@ When the user requests a durable behavior change, record it here or in the relev
 - Model Castle Realmz concepts and behavior directly. Keep Classic behavior as the fixed ruleset and document deliberate fidelity corrections.
 - Use the pinned current Remake as a functional-difference and test donor, then use Castle source or a controlled Castle runtime fixture to adjudicate every Classic-visible difference before implementation.
 - Providence is the canonical authoring/compiler system. Runtime packages are immutable compiled inputs.
+- Rebuilt owns the complete stock Realmz application library. Every rule record, display string, font, control image, sound, PICT/CICN, and other resource shipped by Realmz belongs in Rebuilt once, not in each scenario package. A scenario package contains only content the original scenario owned plus normalized references to stock identities. It may replace a stock exact resource key only where Castle's scenario-before-application resource chain proves that override. Providence validates scenario references against the pinned application library and never copies application-owned content into campaign output.
 - Keep simulation deterministic and presentation-independent. Gameplay code must not use Nodes, autoloads, wall-clock time, filesystem APIs, or Godot randomness.
 - Keep one authoritative map topology and derive every renderer or navigation cache from it.
 - Use Scenario Actions as reusable callable definitions from normal AP and Encounter action timelines; never author executable behavior in a call-site gap.

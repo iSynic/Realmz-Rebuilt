@@ -139,6 +139,7 @@ func run() -> void:
 	assert_not_null(loaded.content.spell_by_id("classic.spell.1101"), "Providence compiles standard Data S spells into normalized runtime definitions")
 	assert_equal(loaded.content.spell_by_id("classic.spell.1108").name, "Magic Darts", "standard spell names follow Castle's positive Custom Names STR# lookup")
 	assert_equal(loaded.content.spell_by_id("classic.spell.2302").name, "Destroy Magic", "standard spell labels preserve their packed Classic identity")
+	assert_equal(loaded.content.spell_by_id("classic.spell.3106").description, "Limited Phase:  Will allow the caster to teleport during combat.  The caster's turn will be over after phasing.", "stock spell descriptions resolve from Rebuilt's pinned Family Jewels application catalog rather than campaign-owned text")
 	assert_not_null(loaded.media, "validated package media receives a typed catalog")
 	assert_equal(loaded.media.assets().size(), 254, "the synthetic fixture carries authored map/scenario media, player-map media and markers, the battle atlas, both monster facings, both 120-entry character-appearance catalogs, and only its explicit scenario sound")
 	assert_equal([loaded.media.assets_of_kind("portrait").size(), loaded.media.assets_of_kind("combat-icon").size()], [120, 120], "the media catalog groups appearance roles without resource-ID-only lookup")

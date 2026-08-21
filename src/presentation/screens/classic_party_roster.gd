@@ -23,6 +23,7 @@ var _selection_order: Array[String] = []
 var _selection_cursors: Dictionary = {}
 var _combat_spellbook_active: bool = false
 var _spellbook_options: Array[InteractionRequestValue.CastOption] = []
+var _spellbook_actor_id: String = ""
 var _spellbook_level: int = 1
 var _spellbook_spell_id: String = ""
 var _spellbook_list: ItemList
@@ -64,6 +65,7 @@ func present_combat_spellbook(actor_id: String, options: Array[InteractionReques
 	_ensure_controls()
 	_combat_spellbook_active = true
 	_spellbook_options.assign(options)
+	_spellbook_actor_id = actor_id
 	_spellbook_spell_id = ""
 	_clear()
 	var actor_name := actor_id
@@ -115,9 +117,9 @@ func _build_spellbook() -> void:
 	selector.add_child(_spellbook_list)
 	_spellbook_details = Label.new()
 	_spellbook_details.name = "CombatSpellDetails"
-	_spellbook_details.custom_minimum_size.y = 62.0
+	_spellbook_details.custom_minimum_size.y = 86.0
 	_spellbook_details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_spellbook_details.max_lines_visible = 3
+	_spellbook_details.max_lines_visible = 5
 	_spellbook_details.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_spellbook_details.add_theme_color_override("font_color", Color("d8d9d2"))
 	_spellbook_footer.add_child(_spellbook_details)
@@ -158,13 +160,20 @@ func _build_spellbook() -> void:
 func _build_spell_level_rail(levels: Array[int]) -> VBoxContainer:
 	var rail := VBoxContainer.new()
 	rail.name = "CombatSpellLevels"
-	rail.custom_minimum_size.x = 34.0
+	rail.custom_minimum_size.x = 72.0
 	rail.add_theme_constant_override("separation", 1)
+	var title_art := TextureRect.new()
+	title_art.texture = ClassicUiAssetCatalog.texture(&"spells.label.level")
+	title_art.custom_minimum_size = Vector2(68.0, 18.0)
+	title_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	title_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	title_art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	rail.add_child(title_art)
 	var group := ButtonGroup.new()
 	for level: int in range(1, 8):
 		var button := Button.new()
 		button.text = str(level)
-		button.custom_minimum_size = Vector2(32.0, 24.0)
+		button.custom_minimum_size = Vector2(68.0, 24.0)
 		button.disabled = not levels.has(level)
 		button.button_pressed = level == _spellbook_level
 		button.toggle_mode = true
@@ -244,7 +253,24 @@ func _select_spellbook_power(option: InteractionRequestValue.CastOption) -> void
 	var target_text := option.target_name if not option.target_name.is_empty() else String(option.target_mode).replace("_", " ").capitalize()
 	if option.target_mode == &"sequence":
 		target_text = "Choose up to %d targets" % option.maximum_targets
-	_spellbook_details.text = "%s\nPower %d • Cost %d SP\nTarget • %s" % [option.spell_name, option.power, option.cost, target_text]
+	var details := "%s\nPower %d • Cost %d SP\nTarget • %s" % [option.spell_name, option.power, option.cost, target_text]
+	var description := _spellbook_description(option.spell_id)
+	if not description.is_empty():
+		details += "\n%s" % description
+	_spellbook_details.text = details
+
+
+func _spellbook_description(spell_id: String) -> String:
+	if _current_view == null:
+		return ""
+	for character: CharacterView in _current_view.party_members:
+		if character.id != _spellbook_actor_id:
+			continue
+		for spell: SpellView in character.spells:
+			if spell.id == spell_id:
+				return spell.description.strip_edges()
+		break
+	return ""
 
 
 func _on_spellbook_cast_pressed() -> void:

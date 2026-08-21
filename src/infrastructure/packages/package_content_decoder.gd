@@ -1,6 +1,8 @@
 class_name PackageContentDecoder
 extends PackageDecoderBase
 
+const ApplicationSpellText := preload("res://src/infrastructure/packages/classic_application_spell_text.gd")
+
 func _construct_campaign_definition(value: Variant) -> CampaignDefinition:
 	if not value is Dictionary:
 		_reject("Content campaign metadata must be an object.")
@@ -279,6 +281,10 @@ func _construct_spells(value: Variant) -> Variant:
 	if not value is Array:
 		_reject("Content spells must be an array.")
 		return null
+	var application_text_error: String = ApplicationSpellText.error_message()
+	if not application_text_error.is_empty():
+		_reject(application_text_error)
+		return null
 	var fields: Array[String] = ["id", "classicId", "name", "description", "rangeMin", "rangeMax", "queueIcon", "toHitBonus", "saveBonus", "fixedTargetCount", "canRotate", "saveAdjust", "cannot", "resistanceAdjust", "cost", "damageMin", "damageMax", "powerDamageMin", "powerDamageMax", "durationMin", "durationMax", "powerDurationMin", "powerDurationMax", "lookStart", "lookEnd", "soundStart", "soundEnd", "targetType", "size", "special", "damageType", "spellClass", "inCombat", "inCamp"]
 	var integer_fields := fields.slice(1)
 	integer_fields.erase("name")
@@ -298,7 +304,16 @@ func _construct_spells(value: Variant) -> Variant:
 			_reject("Spell definition is malformed or duplicated.")
 			return null
 		var integers: Dictionary = integers_value
-		var spell := SpellDefinition.new(record["id"], integers["classicId"], record["name"], record["description"])
+		var description: String = record["description"]
+		if ApplicationSpellText.owns(integers["classicId"]):
+			if not description.is_empty():
+				_reject("Stock Realmz spell descriptions are application-owned and may not be embedded in a scenario package.")
+				return null
+			description = ApplicationSpellText.description(integers["classicId"])
+			if description.is_empty():
+				_reject("The bundled Classic spell-description catalog is unavailable: %s" % ApplicationSpellText.error_message())
+				return null
+		var spell := SpellDefinition.new(record["id"], integers["classicId"], record["name"], description)
 		spell.range_min = integers["rangeMin"]
 		spell.range_max = integers["rangeMax"]
 		spell.queue_icon = integers["queueIcon"]

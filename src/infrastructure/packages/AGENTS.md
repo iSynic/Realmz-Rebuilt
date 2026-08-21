@@ -15,6 +15,7 @@ Install, discover, decode, validate, cache, and release immutable Providence pac
 ## Local Contracts
 
 - Providence schema v3 is the only accepted package contract: manifest format version 2, document schema version 3, and mirrored schema SHA-256 `6ef382e35335ba91fc72a94c4600633f68255ad30651a4da195e134887e05bdb`.
+- Package decoding composes scenario-owned records with the pinned Realmz application library. It never trusts or exposes a campaign copy as the authority for stock Realmz text or media. `classic-application-spell-descriptions.json` is the current exact application-text catalog; its source commit, resource-fork hash, identity count, and runtime shape are deterministic build contracts.
 - External packages receive complete integrity, semantic, topology, media, and cross-reference validation before installation. A valid app-owned receipt permits later startup to verify cheap file metadata, the complete compressed-archive SHA-256, and manifest identity without repeating compiler-level semantic validation.
 - `PackageRepository` coordinates explicit collaborators. It does not construct domain records, retain unbounded package graphs, or grant external files trusted cache status.
 - The graph cache retains at most the active package and one candidate. Promotion and close release obsolete graphs explicitly.
