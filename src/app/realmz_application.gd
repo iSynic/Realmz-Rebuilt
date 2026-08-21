@@ -458,12 +458,13 @@ func _submit_intent(intent: PlayerIntent) -> SessionStep:
 
 
 func _on_interaction_response_submitted(response: InteractionResponse) -> void:
-	if _character_creation_host.is_active():
-		_present_standalone_character_step(_character_creation_host.respond(response))
-		return
-	if _host_interaction != null:
-		_respond_host_interaction(response)
-		return
+	match interaction_response_owner(_host_interaction != null, _character_creation_host.is_active()):
+		&"host":
+			_respond_host_interaction(response)
+			return
+		&"standalone-creator":
+			_present_standalone_character_step(_character_creation_host.respond(response))
+			return
 	var current_view := session_controller.view()
 	if current_view.pending_interaction == null and current_view.combat_action_request != null and response.request_id == current_view.combat_action_request.request_id and response.kind == InteractionRequest.COMBAT:
 		var direct_intent := direct_combat_intent(response.body as InteractionResponse.CombatBody)
@@ -479,6 +480,14 @@ func _on_interaction_response_submitted(response: InteractionResponse) -> void:
 	_present_step_status(step)
 	if step.state == SessionStep.State.COMPLETED and step.events.is_empty() and session_controller.view().pending_interaction == null:
 		_shell_presenter.set_status("")
+
+
+static func interaction_response_owner(has_host_interaction: bool, standalone_creator_active: bool) -> StringName:
+	if has_host_interaction:
+		return &"host"
+	if standalone_creator_active:
+		return &"standalone-creator"
+	return &"session"
 
 
 static func direct_combat_intent(body: InteractionResponse.CombatBody) -> PlayerIntent:

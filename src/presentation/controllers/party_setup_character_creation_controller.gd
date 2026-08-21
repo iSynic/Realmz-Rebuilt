@@ -227,25 +227,53 @@ func _build_creator_race_class() -> void:
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 12)
 	var race_column := _add_creator_panel(columns, "RaceSelectorPanel", "Race", 1.0)
+	var race_record := HBoxContainer.new()
+	race_record.name = "RaceSelectorRecord"
+	race_record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	race_record.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	race_record.add_theme_constant_override("separation", 8)
+	race_column.add_child(race_record)
 	race_list = ClassicDefinitionToggleList.new()
 	race_list.name = "RaceList"
-	race_list.custom_minimum_size.y = 300.0
+	race_list.custom_minimum_size = Vector2(150.0, 300.0)
+	race_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	race_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	race_list.size_flags_stretch_ratio = 1.0
 	race_list.option_selected.connect(_race_selected)
-	race_column.add_child(race_list)
-	var race_detail := _add_label(race_column, "", Color("e0e2e5"), 13)
+	race_record.add_child(race_list)
+	var race_detail_panel := _add_creator_panel(race_record, "RaceDetailPanel", "Selected Race", 2.0)
+	var race_detail_name := _add_label(race_detail_panel, "", GOLD, 18)
+	race_detail_name.name = "RaceDetailName"
+	var race_detail := _add_label(race_detail_panel, "", Color("e0e2e5"), 15)
 	race_detail.name = "RaceDescription"
-	race_detail.custom_minimum_size.y = 48.0
+	race_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var race_relations := _add_label(race_detail_panel, "", MUTED, 13)
+	race_relations.name = "RaceRelations"
+	race_relations.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var caste_column := _add_creator_panel(columns, "CasteSelectorPanel", "Caste", 1.0)
+	var caste_record := HBoxContainer.new()
+	caste_record.name = "CasteSelectorRecord"
+	caste_record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	caste_record.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	caste_record.add_theme_constant_override("separation", 8)
+	caste_column.add_child(caste_record)
 	caste_list = ClassicDefinitionToggleList.new()
 	caste_list.name = "CasteList"
-	caste_list.custom_minimum_size.y = 300.0
+	caste_list.custom_minimum_size = Vector2(150.0, 300.0)
+	caste_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	caste_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	caste_list.size_flags_stretch_ratio = 1.0
 	caste_list.option_selected.connect(_caste_selected)
-	caste_column.add_child(caste_list)
-	var caste_detail := _add_label(caste_column, "", Color("e0e2e5"), 13)
+	caste_record.add_child(caste_list)
+	var caste_detail_panel := _add_creator_panel(caste_record, "CasteDetailPanel", "Selected Caste", 2.0)
+	var caste_detail_name := _add_label(caste_detail_panel, "", GOLD, 18)
+	caste_detail_name.name = "CasteDetailName"
+	var caste_detail := _add_label(caste_detail_panel, "", Color("e0e2e5"), 15)
 	caste_detail.name = "CasteDescription"
-	caste_detail.custom_minimum_size.y = 48.0
+	caste_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var caste_relations := _add_label(caste_detail_panel, "", MUTED, 13)
+	caste_relations.name = "CasteRelations"
+	caste_relations.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	creator_page.add_child(columns)
 	_populate_race_class_options()
 
@@ -267,16 +295,35 @@ func _populate_race_class_options() -> void:
 	_refresh_race_class_details()
 
 func _refresh_race_class_details() -> void:
+	var race_detail_name := creator_page.find_child("RaceDetailName", true, false) as Label
 	var race_detail := creator_page.find_child("RaceDescription", true, false) as Label
+	var race_relations := creator_page.find_child("RaceRelations", true, false) as Label
+	var caste_detail_name := creator_page.find_child("CasteDetailName", true, false) as Label
 	var caste_detail := creator_page.find_child("CasteDescription", true, false) as Label
+	var caste_relations := creator_page.find_child("CasteRelations", true, false) as Label
 	var race_option := _definition_option(view.race_options if view != null else [], selected_race_id)
 	var caste_option := _definition_option(view.caste_options if view != null else [], selected_caste_id)
+	if race_detail_name != null:
+		race_detail_name.text = race_option.name if race_option != null else "No race selected"
 	if race_detail != null:
-		race_detail.text = race_option.description if race_option != null else ""
-		race_detail.visible = not race_detail.text.is_empty()
+		race_detail.text = race_option.description if race_option != null and not race_option.description.is_empty() else "No description available."
+	if race_relations != null:
+		race_relations.text = _related_definition_text("Compatible Castes", view.caste_options if view != null else [], race_option.related_ids if race_option != null else [])
+	if caste_detail_name != null:
+		caste_detail_name.text = caste_option.name if caste_option != null else "No caste selected"
 	if caste_detail != null:
-		caste_detail.text = caste_option.description if caste_option != null else ""
-		caste_detail.visible = not caste_detail.text.is_empty()
+		caste_detail.text = caste_option.description if caste_option != null and not caste_option.description.is_empty() else "No description available."
+	if caste_relations != null:
+		caste_relations.text = _related_definition_text("Compatible Races", view.race_options if view != null else [], caste_option.related_ids if caste_option != null else [])
+
+
+func _related_definition_text(heading: String, options: Array[DefinitionOptionView], related_ids: Array[String]) -> String:
+	var names: Array[String] = []
+	for option: DefinitionOptionView in options:
+		if related_ids.has(option.id) and not _placeholder_definition_name(option.name, "Race") and not _placeholder_definition_name(option.name, "Caste"):
+			names.append(option.name)
+	names.sort_custom(func(left: String, right: String) -> bool: return left.naturalnocasecmp_to(right) < 0)
+	return "%s\n%s" % [heading, ", ".join(names)] if not names.is_empty() else ""
 
 func _placeholder_definition_name(display_name: String, prefix: String) -> bool:
 	if not display_name.begins_with(prefix + " "):
