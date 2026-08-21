@@ -2,7 +2,6 @@ class_name TreasureDistributionInteraction
 extends InteractionComponent
 
 signal recipient_selected(character_id: String)
-signal transfer_animation_finished
 
 const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
@@ -40,7 +39,7 @@ func build(request: InteractionRequest) -> void:
 		add_hint("The treasure request is malformed.")
 		return
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	custom_minimum_size = Vector2(0.0, 500.0)
+	custom_minimum_size = Vector2(0.0, 500.0 if _compact else 0.0)
 	match body.mode:
 		&"fumbled-item-recovery":
 			_build_workspace(body, true)
@@ -59,7 +58,7 @@ func _build_classic_treasure_workspace(body: InteractionRequest.TreasureRequestB
 	workspace.name = "ClassicTreasureWorkspace"
 	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	workspace.add_theme_constant_override("separation", 8)
+	workspace.add_theme_constant_override("separation", 6)
 	add_child(workspace)
 	_build_loot_side(workspace, body)
 	_build_party_side(workspace, body)
@@ -82,10 +81,10 @@ func _build_loot_side(parent: HBoxContainer, body: InteractionRequest.TreasureRe
 	field.add_theme_stylebox_override("panel", _loot_field_style())
 	column.add_child(field)
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 14)
-	margin.add_theme_constant_override("margin_top", 14)
-	margin.add_theme_constant_override("margin_right", 14)
-	margin.add_theme_constant_override("margin_bottom", 14)
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
 	field.add_child(margin)
 	var scroll := ScrollContainer.new()
 	scroll.name = "TreasureItemScroll"
@@ -96,12 +95,15 @@ func _build_loot_side(parent: HBoxContainer, body: InteractionRequest.TreasureRe
 	margin.add_child(scroll)
 	var grid := GridContainer.new()
 	grid.name = "TreasureItemGrid"
-	grid.columns = 6 if _compact else 9
+	grid.columns = 6 if _compact else 16
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	grid.add_theme_constant_override("h_separation", 0)
 	grid.add_theme_constant_override("v_separation", 0)
 	scroll.add_child(grid)
+	if not _compact:
+		scroll.resized.connect(_update_loot_columns.bind(scroll, grid))
+		call_deferred("_update_loot_columns", scroll, grid)
 	if body.items.is_empty():
 		var empty := Label.new()
 		empty.name = "TreasureEmptyField"
@@ -121,9 +123,9 @@ func _build_item_inspector(body: InteractionRequest.TreasureRequestBody) -> void
 	else:
 		inspector = HBoxContainer.new()
 	inspector.name = "TreasureItemRecord"
-	inspector.custom_minimum_size.y = 390.0 if _compact else 168.0
+	inspector.custom_minimum_size.y = 390.0 if _compact else 142.0
 	inspector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	inspector.add_theme_constant_override("separation", 8)
+	inspector.add_theme_constant_override("separation", 6)
 	add_child(inspector)
 	var identity_panel := PanelContainer.new()
 	identity_panel.name = "TreasureItemIdentity"
@@ -137,7 +139,7 @@ func _build_item_inspector(body: InteractionRequest.TreasureRequestBody) -> void
 	identity_panel.add_child(row)
 	var record_icon := TextureRect.new()
 	record_icon.name = "TreasureRecordIcon"
-	record_icon.custom_minimum_size = Vector2(92.0, 92.0)
+	record_icon.custom_minimum_size = Vector2(76.0, 76.0)
 	record_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	record_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	record_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -179,7 +181,7 @@ func _build_item_inspector(body: InteractionRequest.TreasureRequestBody) -> void
 	inspector.add_child(command_panel)
 	var commands := VBoxContainer.new()
 	commands.name = "TreasureCommands"
-	commands.add_theme_constant_override("separation", 4)
+	commands.add_theme_constant_override("separation", 2)
 	command_panel.add_child(commands)
 	_build_compact_commands(commands, body)
 	var spacer := Control.new()
@@ -188,6 +190,13 @@ func _build_item_inspector(body: InteractionRequest.TreasureRequestBody) -> void
 	var done := add_response_to(commands, "Done", InteractionResponse.TreasureBody.new(&"done"))
 	done.name = "TreasureDone"
 	_refresh_item_record(record_icon)
+
+
+func _update_loot_columns(scroll: ScrollContainer, grid: GridContainer) -> void:
+	if scroll == null or grid == null or _compact:
+		return
+	var available_width := maxf(50.0, scroll.size.x - 12.0)
+	grid.columns = maxi(1, floori(available_width / 50.0))
 
 
 func _add_loot_item(parent: GridContainer, item: InteractionRequestValue.RewardItem) -> void:
@@ -237,13 +246,13 @@ func _build_party_side(parent: HBoxContainer, body: InteractionRequest.TreasureR
 	column.name = "TreasurePartyContent"
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation", 4)
+	column.add_theme_constant_override("separation", 2)
 	panel.add_child(column)
 	var heading := _add_colored_label(column, "Choose Recipient", GOLD, "TreasureRecipientHeading")
 	heading.theme_type_variation = &"ClassicHeading"
 	var rows := VBoxContainer.new()
 	rows.name = "TreasureRecipientRows"
-	rows.add_theme_constant_override("separation", 3)
+	rows.add_theme_constant_override("separation", 2)
 	column.add_child(rows)
 	for character: InteractionRequestValue.RewardCharacter in body.characters:
 		_add_recipient_row(rows, character)
@@ -251,8 +260,7 @@ func _build_party_side(parent: HBoxContainer, body: InteractionRequest.TreasureR
 		var message_panel := PanelContainer.new()
 		message_panel.name = "TreasureMessagePanel"
 		message_panel.theme_type_variation = &"ClassicInset"
-		message_panel.custom_minimum_size.y = 56.0
-		message_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		message_panel.custom_minimum_size.y = 42.0
 		column.add_child(message_panel)
 		var message_scroll := ScrollContainer.new()
 		message_scroll.name = "TreasureMessageScroll"
@@ -271,12 +279,12 @@ func _add_recipient_row(parent: VBoxContainer, character: InteractionRequestValu
 	button.name = "TreasureRecipient_%s" % character.id
 	button.toggle_mode = true
 	button.button_pressed = character.id == _selected_recipient_id
-	button.custom_minimum_size.y = 54.0
+	button.custom_minimum_size.y = 46.0
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	button.text = _recipient_text(character)
 	button.icon = _portrait(character.id)
-	button.add_theme_constant_override("icon_max_width", 42)
+	button.add_theme_constant_override("icon_max_width", 38)
 	button.expand_icon = true
 	button.disabled = not character.enabled
 	button.tooltip_text = character.reason
@@ -346,11 +354,18 @@ func _refresh_item_record(icon: TextureRect) -> void:
 	for child: Node in _selected_item_facts.get_children():
 		child.queue_free()
 	if _selected_item == null:
+		_selected_item_name.theme_type_variation = &"ClassicHeading"
+		_selected_item_name.add_theme_color_override("font_color", GOLD)
 		_selected_item_name.text = "No items remain"
 		_selected_item_state.text = ""
 		_selected_item_description.text = ""
 		if icon != null: icon.texture = null
 		return
+	_selected_item_name.theme_type_variation = &"ClassicHeading" if _selected_item.identified else &"ClassicUnidentifiedItem"
+	if _selected_item.identified:
+		_selected_item_name.add_theme_color_override("font_color", GOLD)
+	else:
+		_selected_item_name.remove_theme_color_override("font_color")
 	_selected_item_name.text = _selected_item.name
 	_selected_item_state.text = _item_state(_selected_item)
 	_selected_item_description.text = _selected_item.description
@@ -387,49 +402,18 @@ func _begin_item_transfer(item: InteractionRequestValue.RewardItem, source: Butt
 	response_body_submitted.emit(InteractionResponse.TreasureBody.new(&"assign", item.instance_id, _selected_recipient_id))
 
 
-func play_committed_transfer(reduced_motion: bool) -> bool:
+func take_committed_transfer_path() -> Dictionary:
 	if not _transferring or _transfer_item == null or _transfer_source == null or _transfer_target == null or not is_inside_tree():
-		return false
-	if reduced_motion:
-		call_deferred("_finish_committed_transfer")
-		return true
-	var pulse := TextureRect.new()
-	pulse.name = "TreasureTransferPulse"
-	pulse.texture = ClassicUiAssetCatalog.texture(&"loot.selection")
-	pulse.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	pulse.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	pulse.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	pulse.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pulse.z_index = 100
-	pulse.size = Vector2(50.0, 60.0)
-	add_child(pulse)
-	pulse.global_position = _transfer_source.get_global_rect().get_center() - pulse.size * 0.5
-	var tween := create_tween()
-	for frame: int in 24:
-		var pulse_scale := lerpf(1.0, 0.12, float(frame + 1) / 24.0)
-		var pulse_size := Vector2(50.0, 60.0) * pulse_scale
-		var center := _transfer_source.get_global_rect().get_center()
-		tween.tween_property(pulse, "size", pulse_size, 0.012)
-		tween.parallel().tween_property(pulse, "global_position", center - pulse_size * 0.5, 0.012)
-		tween.parallel().tween_property(pulse, "modulate", _transfer_color(frame), 0.012)
-	tween.finished.connect(func() -> void:
-		pulse.queue_free()
-		_finish_committed_transfer()
-	)
-	return true
-
-
-func _finish_committed_transfer() -> void:
-	presentation_sound_requested.emit(6002)
-	transfer_animation_finished.emit()
-
-
-static func _transfer_color(frame: int) -> Color:
-	match frame % 4:
-		0: return Color("62d8ff")
-		1: return Color("f0d05b")
-		2: return Color("f28b54")
-		_: return Color.WHITE
+		return {}
+	var path := {
+		"from": _transfer_source.get_global_rect().get_center(),
+		"to": _transfer_target.get_global_rect().get_center(),
+	}
+	_transferring = false
+	_transfer_item = null
+	_transfer_source = null
+	_transfer_target = null
+	return path
 
 
 func _assignment_for(item: InteractionRequestValue.RewardItem, character_id: String) -> InteractionRequestValue.RewardAssignment:
@@ -758,6 +742,7 @@ func _add_caster_control(parent: VBoxContainer, label: String, action: StringNam
 	parent.add_child(row)
 	var selector := OptionButton.new()
 	selector.name = "Treasure%sCaster" % label.replace(" ", "")
+	selector.theme_type_variation = &"ClassicTheldrowOptionButton"
 	selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for caster: InteractionRequestValue.RewardCaster in method.casters:
 		selector.add_item("%s • %d SP" % [caster.name, caster.cost])

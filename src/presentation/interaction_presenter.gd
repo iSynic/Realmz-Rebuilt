@@ -16,7 +16,6 @@ signal presentation_sound_requested(sound_id: int)
 signal presentation_status_requested(text: String, is_error: bool)
 signal combat_spellbook_requested(actor_id: String, options: Array[InteractionRequestValue.CastOption])
 signal combat_spellbook_closed
-signal treasure_transfer_finished
 
 @onready var _prompt: Label = %InteractionPrompt
 @onready var _heading: Label = %InteractionHeading
@@ -108,7 +107,6 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	if _component is TreasureDistributionInteraction:
 		var treasure := _component as TreasureDistributionInteraction
 		treasure.recipient_selected.connect(func(character_id: String) -> void: _treasure_recipient_id = character_id)
-		treasure.transfer_animation_finished.connect(func() -> void: treasure_transfer_finished.emit())
 	_options.add_child(_component)
 	_options.visible = true
 	_component.build(request)
@@ -152,11 +150,13 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 	_stage_rect = stage_rect
 	_textbox_rect = textbox_rect
 	_combat_rect = combat_rect if combat_rect.has_area() else textbox_rect
+	var stage_inset := maxf(0.0, stage_rect.position.x - _combat_rect.position.x)
+	var application_top := maxf(0.0, stage_rect.position.y - stage_inset)
 	_application_rect = Rect2(
-		stage_rect.position.x,
-		stage_rect.position.y,
-		maxf(stage_rect.size.x, _combat_rect.size.x),
-		maxf(stage_rect.size.y, _combat_rect.end.y - stage_rect.position.y)
+		_combat_rect.position.x,
+		application_top,
+		_combat_rect.size.x,
+		maxf(stage_rect.end.y, _combat_rect.end.y) - application_top
 	)
 	_apply_classic_region()
 
@@ -332,7 +332,37 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 
 
 func begin_treasure_transfer(reduced_motion: bool) -> bool:
-	return _component is TreasureDistributionInteraction and (_component as TreasureDistributionInteraction).play_committed_transfer(reduced_motion)
+	if not _component is TreasureDistributionInteraction:
+		return false
+	var path := (_component as TreasureDistributionInteraction).take_committed_transfer_path()
+	if path.is_empty():
+		return false
+	if reduced_motion:
+		presentation_sound_requested.emit(6002)
+		return true
+	var pulse := TextureRect.new()
+	pulse.name = "TreasureTransferPulse"
+	pulse.texture = ClassicUiAssetCatalog.texture(&"loot.selection")
+	pulse.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	pulse.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pulse.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pulse.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pulse.z_index = 200
+	pulse.size = Vector2(50.0, 60.0)
+	add_child(pulse)
+	var source := path["from"] as Vector2
+	var target := path["to"] as Vector2
+	pulse.global_position = source - pulse.size * 0.5
+	var tween := create_tween().set_parallel(true)
+	tween.tween_property(pulse, "global_position", target - Vector2(11.0, 13.0), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_property(pulse, "size", Vector2(22.0, 26.0), 0.18)
+	tween.tween_property(pulse, "modulate", Color("f0d05b"), 0.09)
+	tween.chain().tween_property(pulse, "modulate", Color("62d8ff"), 0.09)
+	tween.finished.connect(func() -> void:
+		pulse.queue_free()
+		presentation_sound_requested.emit(6002)
+	)
+	return true
 
 
 static func response_for(request: InteractionRequest, body: InteractionResponse.Body) -> InteractionResponse:

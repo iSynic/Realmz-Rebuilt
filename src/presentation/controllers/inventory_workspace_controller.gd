@@ -554,7 +554,7 @@ func _add_item_intent_action(parent: Container, asset_id: StringName, label: Str
 
 func _bitmap_button(asset_id: StringName, label: String) -> ClassicBitmapButton:
 	var button := ClassicBitmapButton.new()
-	button.configure({"id": asset_id, "asset_id": asset_id, "tooltip": label, "accelerator": ""}, 1)
+	button.configure({"id": asset_id, "asset_id": asset_id, "label": label, "tooltip": label, "accelerator": ""}, 1)
 	return button
 
 

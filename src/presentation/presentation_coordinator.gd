@@ -21,7 +21,6 @@ var _presented_view: GameView
 var _deferred_step: SessionStep
 var _deferred_view: GameView
 var _reduced_motion: bool = false
-var _treasure_playback_active := false
 
 
 func bind(session_controller: GameSessionController, map_presenter: ClassicMapPresenter, battlefield_presenter: ClassicBattlefieldPresenter, dungeon_presenter: DungeonMap3DPresenter, interaction_presenter: InteractionPresenter, shell_presenter: ClassicApplicationShell, audio_presenter: ClassicAudioPresenter) -> void:
@@ -48,7 +47,6 @@ func bind(session_controller: GameSessionController, map_presenter: ClassicMapPr
 	_shell_presenter.presentation_sound_requested.connect(_on_presentation_sound_requested)
 	_interaction_presenter.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: _shell_presenter.present_combat_spellbook(actor_id, options))
 	_interaction_presenter.combat_spellbook_closed.connect(func() -> void: _shell_presenter.close_combat_spellbook())
-	_interaction_presenter.treasure_transfer_finished.connect(_on_treasure_transfer_finished)
 	_shell_presenter.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: _interaction_presenter.cast_combat_spell(option))
 	_shell_presenter.combat_spellbook_back_requested.connect(func() -> void: _interaction_presenter.close_combat_spellbook())
 	set_package_media(null)
@@ -65,11 +63,8 @@ func _process(delta: float) -> void:
 
 func _on_step_committed(step: SessionStep) -> void:
 	var game_view := _session_controller.view()
-	if _has_event(step.events, &"reward_item_assigned") and _interaction_presenter.begin_treasure_transfer(_reduced_motion):
-		_deferred_step = step
-		_deferred_view = game_view
-		_treasure_playback_active = true
-		return
+	if _has_event(step.events, &"reward_item_assigned"):
+		_interaction_presenter.begin_treasure_transfer(_reduced_motion)
 	if _combat_playback != null and _combat_playback.begin(_presented_view, step.events, game_view, _reduced_motion):
 		_deferred_step = step
 		_deferred_view = game_view
@@ -78,18 +73,6 @@ func _on_step_committed(step: SessionStep) -> void:
 		set_process(true)
 		return
 	_present_committed_step(step, game_view, true)
-
-
-func _on_treasure_transfer_finished() -> void:
-	if not _treasure_playback_active:
-		return
-	_treasure_playback_active = false
-	var step := _deferred_step
-	var game_view := _deferred_view
-	_deferred_step = null
-	_deferred_view = null
-	if step != null and game_view != null:
-		_present_committed_step(step, game_view, true)
 
 
 static func _has_event(events: Array[DomainEvent], kind: StringName) -> bool:

@@ -7,8 +7,12 @@ const MUTED := Color("aeb6ba")
 
 var _game_view: GameView
 var _media: ClassicMediaCatalog
-var _spell_list: ItemList
+var _spell_buttons: Dictionary = {}
+var _selected_spell_ids: Array[String] = []
 var _selection_summary: Label
+var _spell_record_title: Label
+var _spell_record_cost: Label
+var _spell_record_state: Label
 
 
 func configure(game_view: GameView, media: ClassicMediaCatalog) -> void:
@@ -117,54 +121,111 @@ func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void
 	columns.add_theme_constant_override("separation", 8)
 	add_child(columns)
 	var list_content := _pane(columns, "LevelSpellCandidates", "Available Spells", 1.6)
-	_spell_list = ItemList.new()
-	_spell_list.name = "LevelSpellList"
-	_spell_list.select_mode = ItemList.SELECT_MULTI
-	_spell_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_spell_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_spell_list.fixed_icon_size = Vector2i(32, 32)
+	var scroll := ScrollContainer.new()
+	scroll.name = "LevelSpellScroll"
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	list_content.add_child(scroll)
+	var spell_list := VBoxContainer.new()
+	spell_list.name = "LevelSpellList"
+	spell_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spell_list.add_theme_constant_override("separation", 3)
+	scroll.add_child(spell_list)
+	_spell_buttons.clear()
+	_selected_spell_ids.clear()
 	for spell: InteractionRequestValue.SpellChoice in body.spells:
-		_spell_list.add_item("%s  •  %d point%s" % [spell.name, spell.cost, "" if spell.cost == 1 else "s"], _spell_icon(body.character_id, spell.id))
-		_spell_list.set_item_metadata(_spell_list.item_count - 1, spell.id)
-		_spell_list.set_item_tooltip_enabled(_spell_list.item_count - 1, false)
+		var button := ClassicSpellSelectionChrome.spell_button(
+			"LevelSpell_%s" % spell.id,
+			"%s  •  %d point%s" % [spell.name, spell.cost, "" if spell.cost == 1 else "s"],
+			spell.selected,
+			true,
+			spell.name,
+			_toggle_spell.bind(body, spell.id),
+			_spell_icon(body.character_id, spell.id),
+		)
+		button.theme_type_variation = &"ClassicTheldrowButton"
+		button.set_meta(&"spell_id", spell.id)
+		_spell_buttons[spell.id] = button
+		spell_list.add_child(button)
 		if spell.selected:
-			_spell_list.select(_spell_list.item_count - 1, false)
-	_spell_list.multi_selected.connect(func(_index: int, _selected: bool) -> void: _refresh_spell_selection(body))
-	list_content.add_child(_spell_list)
-	var action_content := _pane(columns, "LevelSpellAllowance", "Spell Allowance", 0.9)
+			_selected_spell_ids.append(spell.id)
+	var action_content := _pane(columns, "LevelSpellAllowance", "Spell Record", 0.9)
 	_selection_summary = _label("", CYAN, 16)
 	action_content.add_child(_selection_summary)
-	action_content.add_child(_label("Choose from the complete source-authorized list. The session validates the final set.", MUTED, 14))
+	var record := PanelContainer.new()
+	record.name = "LevelSelectedSpellRecord"
+	record.theme_type_variation = &"ClassicInset"
+	record.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	action_content.add_child(record)
+	var record_content := VBoxContainer.new()
+	record_content.add_theme_constant_override("separation", 4)
+	record.add_child(record_content)
+	_spell_record_title = _label("", GOLD, 18)
+	_spell_record_title.theme_type_variation = &"ClassicHeading"
+	record_content.add_child(_spell_record_title)
+	_spell_record_cost = _label("", CYAN, 15)
+	record_content.add_child(_spell_record_cost)
+	_spell_record_state = _label("", MUTED, 14)
+	record_content.add_child(_spell_record_state)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	action_content.add_child(spacer)
 	var confirm := Button.new()
 	confirm.name = "LevelSpellConfirm"
 	confirm.text = "Confirm spell selection"
+	confirm.theme_type_variation = &"ClassicTheldrowButton"
 	confirm.custom_minimum_size.y = 44.0
 	confirm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	confirm.pressed.connect(_submit_spells.bind(body))
 	action_content.add_child(confirm)
+	if not body.spells.is_empty():
+		var initial_spell := body.spells[0]
+		for spell: InteractionRequestValue.SpellChoice in body.spells:
+			if spell.selected:
+				initial_spell = spell
+				break
+		_refresh_spell_record(initial_spell)
+	_refresh_spell_selection(body)
+
+
+func _toggle_spell(body: InteractionRequest.LevelUpRequestBody, spell_id: String) -> void:
+	var button := _spell_buttons.get(spell_id) as Button
+	if button == null:
+		return
+	if button.button_pressed and not _selected_spell_ids.has(spell_id):
+		_selected_spell_ids.append(spell_id)
+	elif not button.button_pressed:
+		_selected_spell_ids.erase(spell_id)
+	for spell: InteractionRequestValue.SpellChoice in body.spells:
+		if spell.id == spell_id:
+			_refresh_spell_record(spell)
+			break
 	_refresh_spell_selection(body)
 
 
 func _refresh_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void:
-	if _selection_summary == null or _spell_list == null:
+	if _selection_summary == null:
 		return
 	var points := 0
-	for index: int in _spell_list.get_selected_items():
-		var id := String(_spell_list.get_item_metadata(index))
-		for spell: InteractionRequestValue.SpellChoice in body.spells:
-			if spell.id == id:
-				points += spell.cost
-				break
+	for spell: InteractionRequestValue.SpellChoice in body.spells:
+		if _selected_spell_ids.has(spell.id):
+			points += spell.cost
 	_selection_summary.text = "Selected %d / %d points" % [points, body.point_total]
+
+
+func _refresh_spell_record(spell: InteractionRequestValue.SpellChoice) -> void:
+	if _spell_record_title == null:
+		return
+	_spell_record_title.text = spell.name
+	_spell_record_cost.text = "%d selection point%s" % [spell.cost, "" if spell.cost == 1 else "s"]
+	_spell_record_state.text = "Selected" if _selected_spell_ids.has(spell.id) else "Available"
 
 
 func _submit_spells(body: InteractionRequest.LevelUpRequestBody) -> void:
 	var selected_ids: Array[String] = []
-	for index: int in _spell_list.get_selected_items():
-		selected_ids.append(String(_spell_list.get_item_metadata(index)))
+	for spell: InteractionRequestValue.SpellChoice in body.spells:
+		if _selected_spell_ids.has(spell.id):
+			selected_ids.append(spell.id)
 	response_body_submitted.emit(InteractionResponse.LevelUpBody.new(&"confirm-spells", body.character_id, selected_ids))
 
 

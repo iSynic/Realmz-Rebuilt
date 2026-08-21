@@ -19,6 +19,8 @@ static func themed_copy(base_theme: Theme, settings: PresentationSettings) -> Th
 	result.set_type_variation(&"ClassicTheldrowOptionButton", &"OptionButton")
 	result.add_type(&"ClassicTheldrowButton")
 	result.set_type_variation(&"ClassicTheldrowButton", &"Button")
+	result.add_type(&"ClassicUnidentifiedItem")
+	result.set_type_variation(&"ClassicUnidentifiedItem", &"Label")
 	var classic_mode := settings.typography_mode == PresentationSettings.TYPOGRAPHY_CLASSIC
 	result.default_font_size = int(round((17.0 if classic_mode else 15.0) * settings.text_scale))
 	if not classic_mode:
@@ -46,6 +48,10 @@ static func themed_copy(base_theme: Theme, settings: PresentationSettings) -> Th
 	result.set_font(&"font", &"ClassicTheldrowLineEdit", body)
 	result.set_font(&"font", &"ClassicTheldrowOptionButton", body)
 	result.set_font(&"font", &"ClassicTheldrowButton", body)
+	result.set_font(&"font", &"ClassicUnidentifiedItem", body)
+	result.set_color(&"font_color", &"ClassicUnidentifiedItem", Color.TRANSPARENT)
+	result.set_color(&"font_outline_color", &"ClassicUnidentifiedItem", Color("8fcfd1"))
+	result.set_constant(&"outline_size", &"ClassicUnidentifiedItem", 2)
 	result.set_font(&"font", &"Classic3DHelp", _with_fallback(CHICAGO_PATH, readable_ui))
 	return result
 

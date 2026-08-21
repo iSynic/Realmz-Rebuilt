@@ -1,12 +1,11 @@
 class_name ClassicContentIcon
-extends PanelContainer
+extends CenterContainer
 
 const MUTED := Color("748087")
 
 
 func configure(resource_type: String, resource_id: int, media: ClassicMediaCatalog, side: float = 52.0, semantic_label: String = "", unavailable_label: String = "Item image unavailable") -> void:
 	custom_minimum_size = Vector2(side, side)
-	theme_type_variation = &"ClassicInset"
 	var asset: MediaAsset = media.asset_by_resource(resource_type, resource_id) if media != null and resource_id != 0 else null
 	var texture: Texture2D = media.image_texture(asset) if media != null and asset != null else null
 	if texture != null:
