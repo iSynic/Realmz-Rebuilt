@@ -12,6 +12,7 @@ const MUTED := Color("9da8aa")
 @onready var _party_list: VBoxContainer = %PartyList
 @onready var _heading: Label = %Heading
 @onready var _spellbook_footer: VBoxContainer = %SpellbookFooter
+@onready var _party_scroll: ScrollContainer = %PartyScroll
 
 var _media: ClassicMediaCatalog
 var _selected_character_id: String = ""
@@ -44,6 +45,7 @@ func set_media_catalog(media: ClassicMediaCatalog) -> void:
 
 func present(view: GameView, selected_character_id: String = "") -> void:
 	_ensure_controls()
+	_party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_combat_spellbook_active = false
 	_current_view = view
 	_selected_character_id = selected_character_id
@@ -65,6 +67,7 @@ func present(view: GameView, selected_character_id: String = "") -> void:
 
 func present_combat_spellbook(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
 	_ensure_controls()
+	_party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	_combat_spellbook_active = true
 	_spellbook_options.assign(options)
 	_spellbook_actor_id = actor_id
@@ -469,23 +472,24 @@ func _add_character(character: CharacterView, combat_active: bool, auto_characte
 	row.add_theme_constant_override("icon_max_width", 42)
 	row.toggle_mode = not character_selection_active()
 	row.button_pressed = not character_selection_active() and character.id == _selected_character_id
-	row.tooltip_text = "Level %d • Movement %d/%d" % [character.level, character.movement, character.maximum_movement]
+	row.tooltip_text = "Level %d • %s / %s • Movement %d/%d" % [character.level, character.race_name, character.caste_name, character.movement, character.maximum_movement]
 	var selection_eligible := _selection_eligible_ids.has(character.id)
 	if character_selection_active() and not selection_eligible:
 		row.disabled = true
 		row.tooltip_text = "This character is not eligible for the current selection."
 	var condition_text := _condition_summary(character.condition_values)
 	var action_fact := "SP %d/%d" % [character.spell_points, character.maximum_spell_points] if character.maximum_spell_points > 0 else "Attacks %d" % character.normal_attacks
-	row.text = "%s\n%s / %s  •  Stamina %d/%d\n%s  •  AR %d%s" % [
+	row.text = "%s\nHP %d/%d  •  %s  •  AR %d\n%s / %s" % [
 		character.name,
-		character.race_name,
-		character.caste_name,
 		character.current_health,
 		character.maximum_health,
 		action_fact,
 		character.armor,
-		"  •  %s" % condition_text if not condition_text.is_empty() else "",
+		character.race_name,
+		character.caste_name,
 	]
+	if not condition_text.is_empty():
+		row.tooltip_text += " • %s" % condition_text
 	var portrait := _portrait_texture(character.portrait_id)
 	if portrait != null:
 		row.icon = portrait
@@ -680,3 +684,5 @@ func _ensure_controls() -> void:
 		_heading = get_node("RosterColumn/Heading") as Label
 	if _spellbook_footer == null:
 		_spellbook_footer = get_node("RosterColumn/SpellbookFooter") as VBoxContainer
+	if _party_scroll == null:
+		_party_scroll = get_node("RosterColumn/PartyScroll") as ScrollContainer

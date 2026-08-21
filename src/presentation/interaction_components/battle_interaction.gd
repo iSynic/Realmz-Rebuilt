@@ -2,7 +2,7 @@ class_name BattleInteraction
 extends InteractionComponent
 
 const MAX_VISIBLE_TURNS := 6
-const COMMAND_HEIGHT := 26.0
+const COMMAND_HEIGHT := 30.0
 const SUMMARY_HEIGHT := 58.0
 const PRIMARY_COMMAND_COLOR := Color("f0ce59")
 const VIEW_COMMAND_COLOR := Color("63d8e7")
@@ -492,7 +492,7 @@ func _build_command_shelf(body: InteractionRequest.CombatRequestBody, actor_id: 
 	var shelf := HBoxContainer.new()
 	shelf.name = "BattleCommandShelf"
 	shelf.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	shelf.add_theme_constant_override("separation", 8)
+	shelf.add_theme_constant_override("separation", 10)
 	shelf_center.add_child(shelf)
 	var inspection := _command_group(shelf, "BattleInspectionCommands", "View", VIEW_COMMAND_COLOR)
 	var inspection_rows := _command_rows(inspection, "BattleInspection")
@@ -553,13 +553,13 @@ func _add_classic_turn_commands(first_row: Container, second_row: Container, bod
 
 func _command_group(parent: Container, group_name: String, heading_text: String, heading_color: Color) -> VBoxContainer:
 	var panel := _summary_panel("%sInset" % group_name, 1.0)
-	panel.custom_minimum_size.y = 92.0
+	panel.custom_minimum_size.y = 100.0
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	parent.add_child(panel)
 	var column := VBoxContainer.new()
 	column.name = group_name
 	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	column.add_theme_constant_override("separation", 3)
+	column.add_theme_constant_override("separation", 4)
 	var heading := Label.new()
 	heading.text = heading_text.to_upper()
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -585,7 +585,7 @@ func _command_rows(parent: Container, name_prefix: String) -> Array[HBoxContaine
 		var row := HBoxContainer.new()
 		row.name = "%s%s" % [name_prefix, suffix]
 		row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		row.add_theme_constant_override("separation", 3)
+		row.add_theme_constant_override("separation", 5)
 		center.add_child(row)
 		rows.append(row)
 	return rows

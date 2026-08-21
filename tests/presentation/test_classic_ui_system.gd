@@ -974,23 +974,23 @@ func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
 
 
 func _test_battlefield_presenter() -> void:
-	var presenter := ClassicBattlefieldPresenter.new()
-	assert_equal(ClassicBattlefieldPresenter.viewport_cells_for(Vector2(912.0, 486.0)), Vector2i(25, 14), "canonical battlefield uses a native-pixel widescreen camera window")
-	assert_equal(ClassicBattlefieldPresenter.click_direction(Vector2i(45, 45), Vector2i(52, 39)), Vector2i(1, -1), "distant clicks map to one tactical direction")
+	var presenter := ClassicBattlefieldPresenter.new(); var control_size := Vector2(912.0, 486.0); var visible_cells := ClassicBattlefieldPresenter.viewport_cells_for(control_size)
+	assert_equal(visible_cells, Vector2i(25, 14), "canonical battlefield uses a native-pixel widescreen camera window")
+	var tracked_camera := Vector2i(30, 34); var draw_origin := ClassicBattlefieldPresenter.battlefield_draw_origin(control_size, visible_cells); var rendered_coordinate := Vector2i(40, 39); var rendered_point := ClassicBattlefieldPresenter.cell_rect(rendered_coordinate, tracked_camera, draw_origin).get_center()
+	assert_true(ClassicBattlefieldPresenter.coordinate_for_point(rendered_point, tracked_camera, visible_cells, control_size) == rendered_coordinate and ClassicBattlefieldPresenter.click_direction_for_point(ClassicBattlefieldPresenter.cell_rect(rendered_coordinate, tracked_camera, draw_origin), rendered_point + Vector2(90.0, -65.0)) == Vector2i(1, -1) and ClassicBattlefieldPresenter.tracked_camera_top_left(tracked_camera, Vector2i(tracked_camera.x + visible_cells.x - 1, 39), visible_cells) == ClassicBattlefieldPresenter.camera_top_left(Vector2i(tracked_camera.x + visible_cells.x - 1, 39), visible_cells), "battlefield input uses the rendered camera and eight centered sectors while edge focus recenters the view")
 	assert_equal(ClassicBattlefieldPresenter.footprint_rect([], Vector2i.ZERO, Vector2.ZERO), Rect2(), "terminal playback tolerates a combatant whose committed battlefield footprint has already been removed")
 	var view := _combat_playback_view(20, Vector2i(45, 45), Vector2i(47, 45), &"active")
 	presenter.present(view)
 	presenter.set_movement_costs_visible(true)
-	assert_true(presenter.movement_costs_visible(), "movement costs are an explicit presentation aid")
-	presenter.free()
+	assert_true(presenter.movement_costs_visible(), "movement costs are an explicit presentation aid"); presenter.free()
 func _test_combat_targeting_state() -> void:
 	var body := InteractionResponse.CombatBody.new(&"cast_spell", "hero")
 	body.spell_id = "spell.darts"
 	var request := CombatTargetingRequest.new(&"sequence", body); request.candidate_ids.assign(["monster.one", "ally.one"]); request.maximum_targets = 1
 	var state := CombatTargetingState.new(request)
 	assert_equal([state.select_combatant("ally.one"), state.select_combatant("monster.one"), state.committed_body().target_ids], [true, false, ["ally.one"]], "typed sequence targeting enforces its maximum and preserves selected identity")
-	var area_request := CombatTargetingRequest.new(&"area", body); area_request.validation_deferred = true
-	var area_state := CombatTargetingState.new(area_request)
+	var area_request := CombatTargetingRequest.new(&"area", body); area_request.validation_deferred = true; area_request.default_target_coordinate = Vector2i(45, 45)
+	var area_state := CombatTargetingState.new(area_request); assert_equal([area_state.hovered_coordinate, area_state.selected_coordinate, area_state.can_confirm()], [Vector2i(45, 45), Vector2i(-1, -1), false], "an area spell previews its default center without committing it before the player clicks")
 	assert_true(area_state.select_coordinate(Vector2i(44, 45)) and area_state.can_confirm(), "staged area targeting accepts a battlefield center without precomputing every legal center")
 	assert_equal(area_state.committed_body().target_coordinate, Vector2i(44, 45), "deferred targeting preserves the selected center for authoritative submit-time validation")
 func _test_combat_playback_controller() -> void:

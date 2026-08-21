@@ -23,7 +23,7 @@ func _init(request: CombatTargetingRequest) -> void:
 	maximum_targets = request.maximum_targets
 	validation_deferred = request.validation_deferred
 	if mode == &"area" and request.default_target_coordinate.x >= 0:
-		select_coordinate(request.default_target_coordinate)
+		hovered_coordinate = request.default_target_coordinate
 
 
 func select_combatant(combatant_id: String) -> bool:

@@ -225,6 +225,9 @@ func run() -> void:
 	assert_not_null(direct_combat_request, "a direct random battle projects the complete typed combat command surface")
 	if direct_combat_request != null:
 		assert_equal([direct_combat_request.kind, direct_combat_request.body.battle_id], [InteractionRequest.COMBAT, restored_surprise.view().combat_view.battle_id], "the direct command surface belongs to the active random battle")
+	var direct_auto_character := restored_surprise.view().party_members[-1]
+	var direct_auto := restored_surprise.submit_intent(PlayerIntent.set_combat_auto(direct_auto_character.id, false))
+	assert_true(direct_auto.error_code == &"" and _has_event(direct_auto, &"combat_auto_changed"), "every visible party row can change persistent Auto during a direct non-VM battle")
 	var battle_coordinate := restored_surprise.view().party_coordinate
 	var blocked_during_battle := restored_surprise.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal(blocked_during_battle.error_code, &"battle_in_progress", "active combat rejects exploration intents at the session boundary")

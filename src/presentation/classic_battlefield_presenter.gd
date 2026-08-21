@@ -25,6 +25,7 @@ var _camera_focus_id: String = ""
 var _render_camera_top_left := Vector2i(-1, -1)
 var _render_camera_focus_id: String = ""
 var _render_camera_visible_cells := Vector2i.ZERO
+var _last_active_actor_id: String = ""
 var _reveal_friends: bool = false
 var _playback_frame: CombatPlaybackFrame
 var last_playback_media_diagnostic: Dictionary = {}
@@ -37,6 +38,13 @@ func _ready() -> void:
 
 
 func present(game_view: GameView) -> void:
+	var next_active_actor_id := ""
+	if game_view != null and game_view.combat_view != null:
+		next_active_actor_id = game_view.combat_view.active_actor_id
+	if next_active_actor_id != _last_active_actor_id:
+		_camera_focus_id = ""
+		_render_camera_focus_id = ""
+	_last_active_actor_id = next_active_actor_id
 	_view = game_view
 	_playback_frame = null
 	if _view == null or _view.combat_view == null:
@@ -46,6 +54,7 @@ func present(game_view: GameView) -> void:
 		_render_camera_top_left = Vector2i(-1, -1)
 		_render_camera_focus_id = ""
 		_render_camera_visible_cells = Vector2i.ZERO
+		_last_active_actor_id = ""
 		_reveal_friends = false
 	elif not _camera_focus_id.is_empty() and actor_position(_view.combat_view, _view.party_members, _camera_focus_id).x < 0:
 		_camera_focus_id = ""
@@ -258,8 +267,16 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_MOUSE_EXIT and _hovered_coordinate != Vector2i(-1, -1):
+	if what != NOTIFICATION_MOUSE_EXIT:
+		return
+	var changed := false
+	if _hovered_coordinate != Vector2i(-1, -1):
 		_hovered_coordinate = Vector2i(-1, -1)
+		changed = true
+	if _targeting != null and _targeting.selected_coordinate.x < 0 and _targeting.hovered_coordinate != Vector2i(-1, -1):
+		_targeting.hovered_coordinate = Vector2i(-1, -1)
+		changed = true
+	if changed:
 		queue_redraw()
 
 
@@ -334,15 +351,8 @@ func _coordinate_at_local_position(local_position: Vector2) -> Vector2i:
 	if active_position.x < 0:
 		active_position = battlefield.party_anchor
 	var visible_cells := viewport_cells_for(size)
-	var camera := camera_top_left(active_position, visible_cells)
-	var draw_origin := battlefield_draw_origin(size, visible_cells)
-	var relative := local_position - draw_origin
-	if relative.x < 0.0 or relative.y < 0.0:
-		return Vector2i(-1, -1)
-	var cell := Vector2i(floori(relative.x / NATIVE_CELL_SIZE), floori(relative.y / NATIVE_CELL_SIZE))
-	if cell.x < 0 or cell.y < 0 or cell.x >= visible_cells.x or cell.y >= visible_cells.y:
-		return Vector2i(-1, -1)
-	return camera + cell
+	var camera := _camera_for_input(active_position, visible_cells)
+	return coordinate_for_point(local_position, camera, visible_cells, size)
 
 
 func _movement_option_for_direction(direction: Vector2i) -> CombatMoveOptionView:
@@ -368,9 +378,15 @@ func _movement_option_toward_local_position(local_position: Vector2) -> CombatMo
 		return null
 	var origin := actor_position(_view.combat_view, _view.party_members, _view.combat_view.active_actor_id)
 	var visible_cells := viewport_cells_for(size)
-	var camera := camera_top_left(origin, visible_cells)
+	var camera := _camera_for_input(origin, visible_cells)
 	var draw_origin := battlefield_draw_origin(size, visible_cells)
 	return _movement_option_for_direction(click_direction_for_point(cell_rect(origin, camera, draw_origin), local_position))
+
+
+func _camera_for_input(fallback_focus: Vector2i, visible_cells: Vector2i) -> Vector2i:
+	if _render_camera_top_left.x >= 0 and _render_camera_visible_cells == visible_cells:
+		return _render_camera_top_left
+	return camera_top_left(fallback_focus, visible_cells)
 
 
 func _submit_movement_option(option: CombatMoveOptionView) -> bool:
@@ -453,7 +469,7 @@ func _draw_targeting_preview(combat: CombatView, camera: Vector2i, visible_cells
 		var center := _targeting.selected_coordinate if _targeting.selected_coordinate.x >= 0 else _targeting.hovered_coordinate
 		if center.x < 0:
 			return
-		var legal := _targeting.legal_coordinates.has(center)
+		var legal := _targeting.validation_deferred or _targeting.legal_coordinates.has(center)
 		var outline := Color(0.96, 0.82, 0.30, 0.96) if legal else Color(0.62, 0.64, 0.68, 0.86)
 		for offset: Vector2i in _targeting.area_offsets:
 			var coordinate := center + offset
@@ -687,16 +703,16 @@ func _ui_font() -> Font:
 
 
 static func click_direction_for_point(active_cell: Rect2, point: Vector2) -> Vector2i:
-	var direction := Vector2i.ZERO
-	if point.x < active_cell.position.x:
-		direction.x = -1
-	elif point.x > active_cell.end.x:
-		direction.x = 1
-	if point.y < active_cell.position.y:
-		direction.y = -1
-	elif point.y > active_cell.end.y:
-		direction.y = 1
-	return direction
+	var offset := point - active_cell.get_center()
+	if offset.length_squared() <= 36.0:
+		return Vector2i.ZERO
+	var horizontal := absf(offset.x)
+	var vertical := absf(offset.y)
+	if horizontal > vertical * 2.41421356:
+		return Vector2i(signi(roundi(offset.x)), 0)
+	if vertical > horizontal * 2.41421356:
+		return Vector2i(0, signi(roundi(offset.y)))
+	return Vector2i(signi(roundi(offset.x)), signi(roundi(offset.y)))
 
 
 static func _array_coordinate(value: Variant) -> Vector2i:
@@ -731,9 +747,13 @@ static func camera_focus_id_for(frame: CombatPlaybackFrame, inspected_focus_id: 
 
 
 static func tracked_camera_top_left(current_camera: Vector2i, focus_position: Vector2i, visible_cells: Vector2i, force_recenter: bool = false) -> Vector2i:
-	if force_recenter or current_camera.x < 0 or not coordinate_is_visible(focus_position, current_camera, visible_cells):
+	if force_recenter or current_camera.x < 0 or not coordinate_is_visible(focus_position, current_camera, visible_cells) or coordinate_is_at_viewport_edge(focus_position, current_camera, visible_cells):
 		return camera_top_left(focus_position, visible_cells)
 	return current_camera
+
+
+static func coordinate_is_at_viewport_edge(coordinate: Vector2i, camera: Vector2i, visible_cells: Vector2i) -> bool:
+	return coordinate.x <= camera.x or coordinate.y <= camera.y or coordinate.x >= camera.x + visible_cells.x - 1 or coordinate.y >= camera.y + visible_cells.y - 1
 
 
 static func battlefield_draw_origin(control_size: Vector2, visible_cells: Vector2i) -> Vector2:
@@ -742,6 +762,16 @@ static func battlefield_draw_origin(control_size: Vector2, visible_cells: Vector
 		floorf((control_size.x - pixel_size.x) * 0.5),
 		HEADER_HEIGHT + floorf(maxf(control_size.y - HEADER_HEIGHT - pixel_size.y, 0.0) * 0.5)
 	)
+
+
+static func coordinate_for_point(local_position: Vector2, camera: Vector2i, visible_cells: Vector2i, control_size: Vector2) -> Vector2i:
+	var relative := local_position - battlefield_draw_origin(control_size, visible_cells)
+	if relative.x < 0.0 or relative.y < 0.0:
+		return Vector2i(-1, -1)
+	var cell := Vector2i(floori(relative.x / NATIVE_CELL_SIZE), floori(relative.y / NATIVE_CELL_SIZE))
+	if cell.x < 0 or cell.y < 0 or cell.x >= visible_cells.x or cell.y >= visible_cells.y:
+		return Vector2i(-1, -1)
+	return camera + cell
 
 
 static func coordinate_is_visible(coordinate: Vector2i, camera: Vector2i, visible_cells: Vector2i) -> bool:

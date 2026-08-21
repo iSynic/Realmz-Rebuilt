@@ -482,11 +482,12 @@ func _set_combat_auto(intent: PlayerIntent) -> SessionStep:
 		return SessionStep.failed(_view_revision, &"invalid_combat_auto_character", "Persistent Auto requires a living party character.")
 	var pending := _pending_interaction()
 	if pending != null:
-		if pending.kind != InteractionRequest.COMBAT or _scenario_vm == null or not _scenario_vm.is_active():
+		if pending.kind != InteractionRequest.COMBAT or _session_interaction != null:
 			return SessionStep.failed(_view_revision, &"interaction_pending", "Persistent Auto cannot replace this pending interaction.")
-		var response_body := InteractionResponse.CombatBody.new(&"set_auto", payload.character_id)
-		response_body.enabled = payload.enabled
-		return respond(InteractionResponse.new(pending.request_id, pending.kind, response_body))
+		if _scenario_vm != null and _scenario_vm.pending_request() == pending:
+			var response_body := InteractionResponse.CombatBody.new(&"set_auto", payload.character_id)
+			response_body.enabled = payload.enabled
+			return respond(InteractionResponse.new(pending.request_id, pending.kind, response_body))
 	return _finish_combat_result(CombatRewardsWorkflow.set_persistent_auto(_workflow_context(), payload))
 
 
