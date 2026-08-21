@@ -145,6 +145,7 @@ func _capture_gallery() -> void:
 		for spell_data: Dictionary in [
 			{"id": 1101, "name": "Discover Magic", "cost": 2, "target": 5, "description": "Reveals magical influences affecting the caster."},
 			{"id": 1107, "name": "Magic Darts", "cost": 4, "target": 1, "description": "A compact bolt of magical force for one target."},
+			{"id": 1306, "name": "Brimstones", "cost": 2, "target": 10, "description": "Burning stones strike a fixed battlefield area."},
 			{"id": 1304, "name": "Circle of Renewal", "cost": 5, "target": 9, "description": "Restores friendly combatants within the spell's reach."},
 			{"id": 1602, "name": "Energy Storm", "cost": 10, "target": 10, "description": "A violent magical storm strikes every enemy."},
 		]:
@@ -156,6 +157,9 @@ func _capture_gallery() -> void:
 		gallery_view.party_members[4].spell_points = 40
 		gallery_view.party_members[4].maximum_spell_points = 50
 		gallery_view.party_members[4].spells = gallery_spells
+		gallery_view.party_members[0].spell_points = 8
+		gallery_view.party_members[0].maximum_spell_points = 12
+		gallery_view.party_members[0].spells = gallery_spells
 	_shell.present(gallery_view)
 	await _resize(Vector2i(1280, 720))
 	_router.open_screen(&"inventory")
