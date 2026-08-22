@@ -104,19 +104,16 @@ foreach ($requiredFont in @("font.classic.black_chancery.regular", "font.classic
     if (-not $fontIds.ContainsKey($requiredFont)) { throw "Required Classic font asset is missing: $requiredFont" }
 }
 
-$introManifestPath = Join-Path $repoRoot "src/presentation/assets/ui/intro/intro-animation.json"
-if (-not (Test-Path -LiteralPath $introManifestPath -PathType Leaf)) { throw "Realmz intro animation manifest is missing" }
+$introManifestPath = Join-Path $repoRoot "src/presentation/assets/ui/intro/intro-video.json"
+if (-not (Test-Path -LiteralPath $introManifestPath -PathType Leaf)) { throw "Realmz Rebuilt intro video manifest is missing" }
 $introManifest = Get-Content -Raw -LiteralPath $introManifestPath | ConvertFrom-Json
-if ($introManifest.schema_version -ne 1 -or $introManifest.source_sha256 -ne "2f3b7f6788c00bab329b924f0c6059aa20df31375a2e775e5dc48d59000695cb" -or $introManifest.license -ne "Realmz-Art-NonCommercial" -or $introManifest.source_width -ne 480 -or $introManifest.source_height -ne 276 -or $introManifest.source_frames -ne 124 -or $introManifest.sample_stride -ne 2) {
-    throw "Realmz intro animation provenance or conversion contract is invalid"
+if ($introManifest.schema_version -ne 2 -or $introManifest.source_sha256 -ne "f78a04d978b0de0b306598a201e5cccaa7e930b947b1bfab59d81437b4c8cf75" -or $introManifest.license -ne "Project-Owner-Supplied" -or $introManifest.path -ne "res://src/presentation/assets/ui/intro/rebuilt-intro.ogv" -or $introManifest.bytes -ne 1110117 -or $introManifest.width -ne 832 -or $introManifest.height -ne 480 -or $introManifest.frames_per_second -ne 24 -or $introManifest.duration_ms -ne 5167 -or $introManifest.video_codec -ne "theora" -or $introManifest.audio_codec -ne "vorbis" -or $introManifest.audio_sample_rate -ne 32000 -or $introManifest.audio_channels -ne 2 -or -not $introManifest.loop) {
+    throw "Realmz Rebuilt intro video provenance or media contract is invalid"
 }
-if (@($introManifest.frames).Count -ne 62) { throw "Realmz intro animation must contain 62 sampled frames" }
-foreach ($frame in $introManifest.frames) {
-    if (-not $frame.path.StartsWith("res://") -or $frame.duration_ms -lt 10 -or $frame.width -ne 480 -or $frame.height -ne 276) { throw "Realmz intro frame metadata is invalid" }
-    $framePath = Join-Path $repoRoot ($frame.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
-    if (-not (Test-Path -LiteralPath $framePath -PathType Leaf)) { throw "Realmz intro frame is missing: $($frame.path)" }
-    if ((Get-FileHash -Algorithm SHA256 -LiteralPath $framePath).Hash.ToLowerInvariant() -ne $frame.sha256) { throw "Realmz intro frame hash does not match: $($frame.path)" }
-}
+$introVideoPath = Join-Path $repoRoot ($introManifest.path.Substring("res://".Length) -replace "/", [IO.Path]::DirectorySeparatorChar)
+if (-not (Test-Path -LiteralPath $introVideoPath -PathType Leaf)) { throw "Realmz Rebuilt intro video is missing" }
+if ((Get-Item -LiteralPath $introVideoPath).Length -ne $introManifest.bytes) { throw "Realmz Rebuilt intro video byte length does not match" }
+if ((Get-FileHash -Algorithm SHA256 -LiteralPath $introVideoPath).Hash.ToLowerInvariant() -ne $introManifest.source_sha256) { throw "Realmz Rebuilt intro video hash does not match" }
 
 $chromeManifestPath = Join-Path $repoRoot "src/presentation/assets/ui/spritecook-assets.json"
 if (-not (Test-Path -LiteralPath $chromeManifestPath -PathType Leaf)) {
@@ -154,5 +151,5 @@ foreach ($file in $chromeFiles) {
     }
     finally { $bitmap.Dispose() }
 }
-Write-Host "Classic application media verified: $($manifest.assets.Count) assets; fonts verified: $($fontManifest.assets.Count) assets; intro frames verified: $($introManifest.frames.Count); generated chrome verified: $($chromeFiles.Count) files."
+Write-Host "Classic application media verified: $($manifest.assets.Count) assets; fonts verified: $($fontManifest.assets.Count) assets; intro video verified: $($introManifest.width)x$($introManifest.height); generated chrome verified: $($chromeFiles.Count) files."
 exit 0

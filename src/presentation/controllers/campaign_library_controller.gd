@@ -19,7 +19,7 @@ const MAXIMUM_MODAL_Z_INDEX: int = 30
 var splash_overlay: PanelContainer
 var splash_composition: BoxContainer
 var splash_animation_host: NinePatchRect
-var splash_animation: TextureRect
+var splash_animation: VideoStreamPlayer
 var campaign_overlay: PanelContainer
 var campaign_list: VBoxContainer
 var campaign_scroll: ScrollContainer
@@ -100,6 +100,7 @@ func build_splash_overlay() -> void:
 	splash_animation = ClassicIntroAnimationScript.new()
 	splash_animation.name = "RealmzIntroAnimation"
 	splash_animation_host.add_child(splash_animation)
+	_apply_intro_volume()
 	_apply_intro_frame_layout(false)
 	var subtitle := _splash_label("Classic Adventures Reconstructed", Color("e0e2e5"), 20)
 	subtitle.name = "SplashSubtitle"
@@ -229,6 +230,7 @@ func set_media_catalog(next_media: ClassicMediaCatalog) -> void:
 func set_presentation_settings(next_settings: PresentationSettings) -> void:
 	if next_settings != null:
 		settings = next_settings
+		_apply_intro_volume()
 
 
 func apply_layout(profile: UiLayoutProfile, campaign_rect: Rect2, setup_rect: Rect2) -> void:
@@ -519,6 +521,13 @@ func _apply_intro_frame_layout(compact: bool) -> void:
 	splash_animation.offset_top = inset.y
 	splash_animation.offset_right = -inset.x
 	splash_animation.offset_bottom = -inset.y
+
+
+func _apply_intro_volume() -> void:
+	if splash_animation == null:
+		return
+	var value := clampf(settings.master_volume, 0.0, 1.0)
+	splash_animation.volume_db = -80.0 if value <= 0.0 else linear_to_db(value)
 
 
 func _add_label(parent: Container, text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
