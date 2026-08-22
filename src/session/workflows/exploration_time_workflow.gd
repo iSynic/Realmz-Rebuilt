@@ -82,7 +82,10 @@ static func toggle_camp(context: SessionWorkflowContext) -> ClockTransitionResul
 	if not context.state.camping_allowed and not context.state.party_camping:
 		return ClockTransitionResult.failed(&"camping_disabled", "Camping is not allowed at this location.")
 	context.state.party_camping = not context.state.party_camping
-	var events: Array[DomainEvent] = [DomainEvent.new(&"camp_mode_changed", {"camping": context.state.party_camping, "source": "classic"})]
+	var events: Array[DomainEvent] = [
+		_sound_event(10001 if context.state.party_camping else 141, "classic-camp-enter" if context.state.party_camping else "classic-camp-exit"),
+		DomainEvent.new(&"camp_mode_changed", {"camping": context.state.party_camping, "source": "classic"}),
+	]
 	if context.state.party_camping:
 		context.state.clear_location_services()
 	var map := context.content.world.map_by_id(context.state.party.map_id)
@@ -104,7 +107,10 @@ static func rest(context: SessionWorkflowContext) -> ClockTransitionResult:
 		return ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for Rest.")
 	var previous_fatigue := context.state.party.fatigue
 	context.rules.clock.change_fatigue(context.state.party, -2)
-	var events: Array[DomainEvent] = [DomainEvent.new(&"fatigue_changed", {"previous": previous_fatigue, "current": context.state.party.fatigue, "reason": "rest", "source": "classic"})]
+	var events: Array[DomainEvent] = [
+		_sound_event(6001, "classic-rest"),
+		DomainEvent.new(&"fatigue_changed", {"previous": previous_fatigue, "current": context.state.party.fatigue, "reason": "rest", "source": "classic"}),
+	]
 	var previous_day := context.state.clock.day()
 	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 5, classic_time_scale(map), true))
 	events.append(DomainEvent.new(&"party_rested", {"timeclicks": 5, "mapId": map.id, "source": "classic"}))
@@ -181,7 +187,10 @@ static func search(context: SessionWorkflowContext) -> ClockTransitionResult:
 				if roll <= 100:
 					context.state.world.discover_secret(feature.id)
 					discovered.append(feature.id)
-	var events: Array[DomainEvent] = [DomainEvent.new(&"search_completed", {"mapId": context.state.party.map_id, "x": context.state.party.coordinate.x, "y": context.state.party.coordinate.y, "roll": first_roll, "discoveredSecrets": discovered})]
+	var events: Array[DomainEvent] = [
+		_sound_event(6001, "classic-area-search"),
+		DomainEvent.new(&"search_completed", {"mapId": context.state.party.map_id, "x": context.state.party.coordinate.x, "y": context.state.party.coordinate.y, "roll": first_roll, "discoveredSecrets": discovered}),
+	]
 	for secret_id: String in discovered:
 		events.append(DomainEvent.new(&"secret_discovered", {"secretId": secret_id}))
 	var previous_day := context.state.clock.day()

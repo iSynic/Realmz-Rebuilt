@@ -50,7 +50,7 @@ func run() -> void:
 	assert_equal(session.submit_intent(PlayerIntent.make_scroll("classic.spell.scroll-heal", active_caster.id, 2)).error_code, &"scroll_scribing_unavailable", "a forged out-of-camp scribing intent is rejected without mutation")
 
 	var entered := session.submit_intent(PlayerIntent.camp())
-	assert_equal(entered.state, SessionStep.State.COMPLETED, "Camp enters source-owned camp mode instead of performing an invented eight-hour rest")
+	assert_equal(entered.state, SessionStep.State.COMPLETED, "Camp enters source-owned camp mode instead of performing an invented eight-hour rest"); assert_true(entered.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 10001), "Camp entry requests Castle sound 10001")
 	assert_true(session._state.party_camping, "camp mode is session-owned")
 	assert_equal(session._state.clock.total_minutes(), 25, "entering land camp advances Castle's five scaled time clicks")
 	assert_equal([session.view().realmz_hour, session.view().realmz_minute], [0, 25], "the detached view exposes the sub-hour camp cost to presentation")
@@ -59,7 +59,7 @@ func run() -> void:
 	assert_true(session.view().availability(&"rest").enabled, "Rest becomes available only after entering camp")
 	assert_equal(session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH)).error_code, &"search_while_camped", "the ordinary Search command is replaced by scroll scribing in camp")
 
-	var camp_save := save_round_trip(session.snapshot())
+	var camp_save := save_round_trip(session.snapshot()); var exited := session.submit_intent(PlayerIntent.camp()); assert_true(exited.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 141), "explicit Camp exit requests Castle button sound 141")
 	assert_not_null(camp_save, "camp mode is a committed save boundary")
 	var restored := GameSession.new()
 	assert_equal(restored.restore(content, camp_save).state, SessionStep.State.COMPLETED, "camp mode restores transactionally")
@@ -95,7 +95,7 @@ func run() -> void:
 	rest_session._state.party.conditions.set_value(ConditionRules.PARTY_TORCH_LIT, 3)
 	rest_session._state.clock.set_total_minutes(50)
 	var rested := rest_session.submit_intent(PlayerIntent.rest())
-	assert_equal(rested.state, SessionStep.State.COMPLETED, "one typed Rest intent commits one held-control pulse")
+	assert_equal(rested.state, SessionStep.State.COMPLETED, "one typed Rest intent commits one held-control pulse"); assert_true(rested.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 6001), "each Rest pulse requests Castle sound 6001")
 	assert_equal(rest_session._state.clock.total_minutes(), 75, "one outdoor Rest pulse advances five five-minute time clicks")
 	assert_equal(rest_session._state.party.fatigue, 79, "Rest removes two fatigue before the crossed hour adds one")
 	assert_equal(rest_session._state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 1, "the crossed hour applies Castle's generic and torch-specific light decrements")

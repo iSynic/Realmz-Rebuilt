@@ -13,25 +13,26 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Classic context music and playlists** (`classic-context-music`)
+**Classic application soundscape** (`classic-application-soundscape`)
 
-At the baseline, the application had no Realmz music playback or source-visible Music menu despite the pinned Castle data model preserving twenty context slots and three per-slot modes. This batch adds a deterministic OpenMPT-backed stock music bank, context-aware playback, a complete Classic playlist workspace, and separately persisted host audio controls without changing simulation or campaign saves.
+Ordinary AOGM play exposed that Rebuilt had the complete application-owned sound bank but omitted several high-frequency Castle cue requests. This discrepancy-triggered batch restores the exact pinned-source cues for Camp, Rest, Area Search, battle entry, Items, and field Spells while keeping simulation events separate from explicit presentation-only workspace entry.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.system.music-playlists` | implementation | classic-missing | - | GAP-SYS-004 |
-| `classic.system.preferences` | implementation | aogm-major-partial | - |  |
-| `host.settings.accessibility` | implementation | aogm-major-partial | - | GAP-HOST-004 |
-| `classic.exploration.travel` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.exploration.camp-rest` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.exploration.search` | archaeology | broader-parity | - |  |
+| `classic.combat.enter-battle` | archaeology | broader-parity | - |  |
+| `classic.inventory.manage-equipment` | archaeology | broader-parity | - |  |
+| `classic.spellcasting.choose-power-target` | archaeology | broader-parity | - |  |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
-| classic | missing | 1 | 0 | -1 |
-| classic | partial | 14 | 15 | +1 |
+| classic | missing | 0 | 0 | 0 |
+| classic | partial | 15 | 15 | 0 |
 | classic | functional | 53 | 53 | 0 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
