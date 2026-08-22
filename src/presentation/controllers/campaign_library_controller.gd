@@ -527,7 +527,10 @@ func _apply_intro_volume() -> void:
 	if splash_animation == null:
 		return
 	var value := clampf(settings.master_volume, 0.0, 1.0)
-	splash_animation.volume_db = -80.0 if value <= 0.0 else linear_to_db(value)
+	if splash_animation is ClassicIntroAnimation:
+		(splash_animation as ClassicIntroAnimation).set_master_volume(value)
+	else:
+		splash_animation.volume_db = -80.0
 
 
 func _add_label(parent: Container, text: String, color: Color = Color.WHITE, size: int = 15) -> Label:
