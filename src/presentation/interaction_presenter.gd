@@ -42,6 +42,7 @@ var _side_workspace_panel: PanelContainer
 var _modal_shield: ColorRect
 var _nested_modal: Control
 var _combat_spellbook_open: bool = false
+var _floating_choice_layer: Control
 
 
 func _notification(what: int) -> void:
@@ -70,6 +71,7 @@ func _submit_classic_acknowledgement() -> bool:
 func _exit_tree() -> void:
 	_close_side_workspace()
 	_close_modal_shield()
+	_close_floating_choice_modal()
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
@@ -149,6 +151,8 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_options.add_child(_component)
 	_options.visible = true
 	_component.build(request)
+	if uses_floating_choice_modal(request):
+		_mount_floating_choice_modal()
 	_apply_classic_region()
 	call_deferred("_prepare_interaction_focus")
 
@@ -294,7 +298,7 @@ func set_combat_spellbook_open(open: bool) -> void:
 
 func set_text_scale(value: float) -> void:
 	_heading.add_theme_font_size_override("font_size", int(round(18.0 * value)))
-	_prompt.add_theme_font_size_override("font_size", int(round(20.0 * value)))
+	_prompt.add_theme_font_size_override("font_size", int(round(18.0 * value)))
 
 
 func set_autojournal_enabled(enabled: bool) -> void:
@@ -377,6 +381,7 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null:
 		return
 	_close_side_workspace()
+	_close_floating_choice_modal()
 	var response := InteractionPresenter.response_for(_request, body)
 	var preserve_treasure_workspace := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action in [&"assign", &"done"]
 	_request = null
@@ -429,6 +434,7 @@ func _clear_options() -> void:
 	combat_spellbook_closed.emit()
 	_close_side_workspace()
 	_close_nested_modal()
+	_close_floating_choice_modal()
 	_component = null
 	_playback_status_label = null
 	_options.visible = false
@@ -465,6 +471,7 @@ func _apply_classic_region() -> void:
 		size = desired
 	_update_modal_shield(not _playback_masked and _request != null and not uses_textbox_region(_request) and not uses_full_stage_region(_request))
 	_apply_content_layout()
+	_apply_floating_choice_layout()
 	_apply_side_workspace_layout()
 	_apply_nested_modal_layout()
 
@@ -565,6 +572,50 @@ func _close_nested_modal() -> void:
 	_nested_modal = null
 
 
+func _mount_floating_choice_modal() -> void:
+	_close_floating_choice_modal()
+	if _component == null or _component.get_parent() != _options:
+		return
+	_floating_choice_layer = Control.new()
+	_floating_choice_layer.name = "FloatingChoiceModal"
+	_floating_choice_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_floating_choice_layer.z_index = z_index + 2
+	get_parent().add_child(_floating_choice_layer)
+	_component.reparent(_floating_choice_layer)
+	_options.visible = false
+
+
+func _close_floating_choice_modal() -> void:
+	if _floating_choice_layer == null:
+		return
+	var modal_parent := _floating_choice_layer.get_parent()
+	if modal_parent != null:
+		modal_parent.remove_child(_floating_choice_layer)
+	_floating_choice_layer.queue_free()
+	_floating_choice_layer = null
+
+
+func _apply_floating_choice_layout() -> void:
+	if _floating_choice_layer == null or _component == null:
+		return
+	var rect := floating_choice_rect(_stage_rect, _textbox_rect, _component.get_combined_minimum_size())
+	_floating_choice_layer.position = rect.position
+	_floating_choice_layer.size = rect.size
+	_component.position = Vector2.ZERO
+	_component.size = rect.size
+
+
+static func floating_choice_rect(stage_rect: Rect2, textbox_rect: Rect2, minimum: Vector2) -> Rect2:
+	var modal_size := Vector2(
+		minf(maxf(300.0, minimum.x), maxf(300.0, stage_rect.size.x - 24.0)),
+		maxf(46.0, minimum.y)
+	)
+	return Rect2(
+		Vector2(stage_rect.end.x - modal_size.x - 10.0, maxf(stage_rect.position.y + 10.0, textbox_rect.position.y - modal_size.y - 8.0)),
+		modal_size
+	)
+
+
 func _apply_nested_modal_layout() -> void:
 	if _nested_modal == null:
 		return
@@ -627,6 +678,10 @@ static func uses_textbox_region(request: InteractionRequest, passive_text: bool 
 	return passive_text or request != null and not _is_player_map_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"combat_action"]
 
 
+static func uses_floating_choice_modal(request: InteractionRequest) -> bool:
+	return request != null and request.kind in [InteractionRequest.YES_NO, InteractionRequest.ENCOUNTER_CHOICE, InteractionRequest.INDEXED_CHOICE]
+
+
 static func uses_full_stage_region(request: InteractionRequest) -> bool:
 	return uses_application_workspace(request)
 
@@ -661,6 +716,8 @@ func _add_hint(text: String) -> Label:
 func _focus_first_control() -> void:
 	var preferred := _component.preferred_initial_focus() if _component != null else null
 	var first := preferred if preferred != null else _first_focusable(_options)
+	if first == null and _floating_choice_layer != null:
+		first = _first_focusable(_floating_choice_layer)
 	if first != null:
 		first.grab_focus()
 

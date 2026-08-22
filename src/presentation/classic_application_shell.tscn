@@ -35,6 +35,27 @@ z_index = 10
 script = ExtResource("1_shell")
 theme = ExtResource("3_theme")
 
+[node name="ActivityIndicator" type="PanelContainer" parent="."]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 0
+z_index = 90
+mouse_filter = 2
+theme_type_variation = &"ClassicInset"
+
+[node name="ActivityIconCenter" type="CenterContainer" parent="ActivityIndicator"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="ActivityIcon" type="TextureRect" parent="ActivityIndicator/ActivityIconCenter"]
+unique_name_in_owner = true
+layout_mode = 2
+mouse_filter = 2
+texture_filter = 1
+expand_mode = 0
+stretch_mode = 5
+
 [node name="MenuStrip" type="PanelContainer" parent="."]
 unique_name_in_owner = true
 layout_mode = 1

@@ -505,6 +505,7 @@ func _on_interaction_response_submitted(response: InteractionResponse) -> void:
 			_present_standalone_character_step(_character_creation_host.respond(response))
 			return
 	var current_view := session_controller.view()
+	var journal_count_before := current_view.journal_entries.size()
 	if current_view.pending_interaction == null and current_view.combat_action_request != null and response.request_id == current_view.combat_action_request.request_id and response.kind == InteractionRequest.COMBAT:
 		var direct_intent := direct_combat_intent(response.body as InteractionResponse.CombatBody)
 		if direct_intent == null:
@@ -517,6 +518,8 @@ func _on_interaction_response_submitted(response: InteractionResponse) -> void:
 		return
 	var step := session_controller.respond(response)
 	_present_step_status(step)
+	if step.state != SessionStep.State.FAILED and session_controller.view().journal_entries.size() > journal_count_before:
+		_shell_presenter.show_activity_indicator(&"journal")
 	if step.state == SessionStep.State.COMPLETED and step.events.is_empty() and session_controller.view().pending_interaction == null:
 		_shell_presenter.set_status("")
 
@@ -937,6 +940,7 @@ func save_active_session(slot_id: String) -> bool:
 	_shell_presenter.set_status(_status_label.text, not saved)
 	if saved:
 		_refresh_save_previews()
+		_shell_presenter.show_activity_indicator(&"save")
 	return saved
 
 

@@ -35,14 +35,8 @@ func build(request: InteractionRequest) -> void:
 			if body == null: return
 			var take_note_on_continue := body.journal_eligible and not body.journal_recorded and _autojournal_enabled
 			_acknowledgement_body = InteractionResponse.AcknowledgeBody.new(take_note_on_continue)
-			if body.journal_recorded:
-				add_hint("Already recorded in the journal.")
-			elif take_note_on_continue:
-				add_hint("This passage will be added to Notes automatically.")
-			elif body.journal_eligible:
+			if body.journal_eligible and not body.journal_recorded and not take_note_on_continue:
 				_manual_journal_available = true
-				add_hint("Press N to add this passage to Notes.")
-			add_hint("Click the narrative text or press Enter to continue.")
 
 
 func submit_acknowledgement() -> bool:

@@ -51,6 +51,8 @@ const HELD_COMMAND_START_SOUND_IDS: Dictionary = {
 const TORCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_torch_command_button.gd")
 const SEARCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_search_command_button.gd")
 const MUSIC_PLAYLIST_DIALOG_SCRIPT := preload("res://src/presentation/music_playlist_dialog.gd")
+const SAVE_STATUS_TEXTURE := preload("res://src/presentation/assets/ui/status/save-status.png")
+const JOURNAL_STATUS_TEXTURE := preload("res://src/presentation/assets/ui/status/journal-status.png")
 
 @onready var _menu_strip: PanelContainer = %MenuStrip
 @onready var _menu_row: HBoxContainer = %MenuRow
@@ -81,6 +83,8 @@ const MUSIC_PLAYLIST_DIALOG_SCRIPT := preload("res://src/presentation/music_play
 @onready var _command_heading: Label = $BottomRegion/BottomRow/CommandPanel/CommandColumn/CommandHeading
 @onready var _router: ClassicScreenRouter = %ScreenRouter
 @onready var _smoke_action: Button = %SmokeAction
+@onready var _activity_indicator: PanelContainer = %ActivityIndicator
+@onready var _activity_icon: TextureRect = %ActivityIcon
 
 var _current_view: GameView
 var last_picture_media_diagnostic: Dictionary = {}
@@ -98,6 +102,7 @@ var _music_dialog: MusicPlaylistDialog
 var _music_playlist_id: int = 0
 var _music_title: String = ""
 var _music_playing: bool = false
+var _activity_tween: Tween
 
 
 func _ready() -> void:
@@ -207,6 +212,27 @@ func show_save_and_quit_workspace() -> void:
 
 func set_save_and_quit_mode(enabled: bool) -> void:
 	_router.set_save_and_quit_mode(enabled)
+
+
+func show_activity_indicator(kind: StringName) -> void:
+	match kind:
+		&"save":
+			_activity_icon.texture = SAVE_STATUS_TEXTURE
+			_activity_indicator.tooltip_text = "Adventure saved"
+		&"journal":
+			_activity_icon.texture = JOURNAL_STATUS_TEXTURE
+			_activity_indicator.tooltip_text = "Added to Journal"
+		_:
+			return
+	_activity_icon.custom_minimum_size = _activity_icon.texture.get_size()
+	if _activity_tween != null and _activity_tween.is_valid():
+		_activity_tween.kill()
+	_activity_indicator.modulate = Color.WHITE
+	_activity_indicator.visible = true
+	_activity_tween = create_tween()
+	_activity_tween.tween_interval(1.15)
+	_activity_tween.tween_property(_activity_indicator, "modulate:a", 0.0, 0.35)
+	_activity_tween.tween_callback(func() -> void: _activity_indicator.visible = false)
 
 
 func present_step(step: SessionStep) -> void:
@@ -446,6 +472,8 @@ func _apply_layout() -> void:
 	stage_rect.position += origin
 	_stage_frame.position = stage_rect.position
 	_stage_frame.size = stage_rect.size
+	_activity_indicator.position = stage_rect.position + Vector2(10.0, 10.0)
+	_activity_indicator.size = Vector2(40.0, 40.0)
 	_party_roster.position = origin + Vector2(stage_width, _profile.menu_height)
 	var roster_height := party_roster_height(viewport_size.y, _profile.menu_height, stage_height, _party_roster.combat_spellbook_active())
 	_party_roster.size = Vector2(_profile.party_width, roster_height)
