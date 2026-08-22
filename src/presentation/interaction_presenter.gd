@@ -39,6 +39,8 @@ var _playback_status_label: Label
 var _autojournal_enabled: bool = true
 var _treasure_recipient_id: String = ""
 var _side_workspace_panel: PanelContainer
+var _modal_shield: ColorRect
+var _nested_modal: Control
 
 
 func _notification(what: int) -> void:
@@ -48,9 +50,20 @@ func _notification(what: int) -> void:
 
 func _exit_tree() -> void:
 	_close_side_workspace()
+	_close_modal_shield()
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
+	if _can_present_nested_treasure_confirmation(request):
+		_request = request
+		_passive_text = false
+		_playback_masked = false
+		visible = true
+		_claim_modal_layer()
+		_present_nested_treasure_confirmation(request, game_view, media)
+		_apply_classic_region()
+		call_deferred("_prepare_interaction_focus")
+		return
 	if request == null or request.kind != InteractionRequest.TREASURE_DISTRIBUTION:
 		_treasure_recipient_id = ""
 	_request = request
@@ -80,7 +93,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		_set_heading("")
 		_prompt.text = ""
 		_prompt.visible = false
-	if request.kind in [InteractionRequest.AGE_UPDATE, InteractionRequest.ALLY_SELECTION, InteractionRequest.PICK_LOCK]:
+	if request.kind in [InteractionRequest.AGE_UPDATE, InteractionRequest.ALLY_SELECTION, InteractionRequest.LEVEL_UP, InteractionRequest.PICK_LOCK]:
 		_set_heading("")
 		_prompt.text = ""
 		_prompt.visible = false
@@ -388,6 +401,7 @@ static func response_for(request: InteractionRequest, body: InteractionResponse.
 func _clear_options() -> void:
 	combat_spellbook_closed.emit()
 	_close_side_workspace()
+	_close_nested_modal()
 	_component = null
 	_playback_status_label = null
 	_options.visible = false
@@ -416,16 +430,108 @@ func _apply_classic_region() -> void:
 		size = region.size
 	else:
 		theme_type_variation = &"ClassicInset"
-		var lifecycle := _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE
-		var preferred_height := 122.0 if lifecycle else 380.0 if _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION else 520.0
-		var preferred_width := 460.0 if lifecycle else 700.0
-		var desired := Vector2(minf(preferred_width, _stage_rect.size.x - 20.0), minf(preferred_height, _stage_rect.size.y - 20.0))
-		desired.x = maxf(340.0 if lifecycle else 300.0, desired.x)
-		desired.y = maxf(110.0 if lifecycle else 260.0, desired.y)
+		var desired := preferred_modal_size(_request, _stage_rect.size)
 		position = _stage_rect.position + (_stage_rect.size - desired) * 0.5
 		size = desired
+	_update_modal_shield(not _playback_masked and _request != null and not uses_textbox_region(_request) and not uses_full_stage_region(_request))
 	_apply_content_layout()
 	_apply_side_workspace_layout()
+	_apply_nested_modal_layout()
+
+
+static func preferred_modal_size(request: InteractionRequest, available_size: Vector2) -> Vector2:
+	var preferred := Vector2(700.0, 520.0)
+	var minimum := Vector2(300.0, 260.0)
+	if request != null:
+		match request.kind:
+			InteractionRequest.SESSION_LIFECYCLE:
+				preferred = Vector2(460.0, 122.0)
+				minimum = Vector2(340.0, 110.0)
+			InteractionRequest.WORD_AND_ACTION:
+				preferred.y = 380.0
+			InteractionRequest.LEVEL_UP:
+				var body := request.body as InteractionRequest.LevelUpRequestBody
+				preferred = Vector2(900.0, 500.0) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
+			InteractionRequest.ALLY_SELECTION:
+				preferred = Vector2(820.0, 500.0)
+	var desired := Vector2(minf(preferred.x, available_size.x - 20.0), minf(preferred.y, available_size.y - 20.0))
+	return Vector2(maxf(minimum.x, desired.x), maxf(minimum.y, desired.y))
+
+
+func _update_modal_shield(needed: bool) -> void:
+	if not needed:
+		_close_modal_shield()
+		return
+	if _modal_shield == null:
+		_modal_shield = ColorRect.new()
+		_modal_shield.name = "LockedModalShield"
+		_modal_shield.color = Color(0.01, 0.015, 0.02, 0.62)
+		_modal_shield.mouse_filter = Control.MOUSE_FILTER_STOP
+		_modal_shield.z_index = z_index - 1
+		get_parent().add_child(_modal_shield)
+	_modal_shield.position = _application_rect.position
+	_modal_shield.size = _application_rect.size
+	get_parent().move_child(_modal_shield, maxi(0, get_index()))
+
+
+func _close_modal_shield() -> void:
+	if _modal_shield == null:
+		return
+	var shield_parent := _modal_shield.get_parent()
+	if shield_parent != null:
+		shield_parent.remove_child(_modal_shield)
+	_modal_shield.queue_free()
+	_modal_shield = null
+
+
+func _can_present_nested_treasure_confirmation(request: InteractionRequest) -> bool:
+	if request == null or request.kind != InteractionRequest.TREASURE_DISTRIBUTION or _request == null or _request.kind != InteractionRequest.TREASURE_DISTRIBUTION:
+		return false
+	var body := request.body as InteractionRequest.TreasureRequestBody
+	return body != null and body.mode == &"completion-confirmation" and _component is TreasureDistributionInteraction
+
+
+func _present_nested_treasure_confirmation(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> void:
+	_close_nested_modal()
+	_nested_modal = Control.new()
+	_nested_modal.name = "TreasureCompletionModalLayer"
+	_nested_modal.mouse_filter = Control.MOUSE_FILTER_STOP
+	_nested_modal.z_index = z_index + 1
+	add_child(_nested_modal)
+	var shade := ColorRect.new()
+	shade.name = "TreasureCompletionShield"
+	shade.color = Color(0.01, 0.015, 0.02, 0.68)
+	shade.mouse_filter = Control.MOUSE_FILTER_STOP
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_nested_modal.add_child(shade)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_nested_modal.add_child(center)
+	var frame := PanelContainer.new()
+	frame.name = "TreasureCompletionModal"
+	frame.theme_type_variation = &"ClassicInset"
+	frame.custom_minimum_size = Vector2(560.0, 210.0)
+	center.add_child(frame)
+	var component := _component_for(request, game_view, media)
+	_component = component
+	component.response_body_submitted.connect(_submit_body)
+	frame.add_child(component)
+	component.build(request)
+
+
+func _close_nested_modal() -> void:
+	if _nested_modal == null:
+		return
+	remove_child(_nested_modal)
+	_nested_modal.queue_free()
+	_nested_modal = null
+
+
+func _apply_nested_modal_layout() -> void:
+	if _nested_modal == null:
+		return
+	_nested_modal.position = Vector2.ZERO
+	_nested_modal.size = size
 
 
 func _show_side_workspace(workspace: Control) -> void:
@@ -483,11 +589,11 @@ static func uses_textbox_region(request: InteractionRequest, passive_text: bool 
 
 
 static func uses_full_stage_region(request: InteractionRequest) -> bool:
-	return request != null and (request.kind == InteractionRequest.ALLY_SELECTION or uses_application_workspace(request))
+	return uses_application_workspace(request)
 
 
 static func uses_application_workspace(request: InteractionRequest) -> bool:
-	return request != null and request.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.LEVEL_UP, InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]
+	return request != null and request.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]
 
 
 static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, _unused_stage_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:

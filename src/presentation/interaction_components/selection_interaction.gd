@@ -102,7 +102,7 @@ func _build_ally_selection(request: InteractionRequest) -> void:
 		return
 	_ally_maximum = body.maximum
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	custom_minimum_size = Vector2(0.0, 350.0)
+	custom_minimum_size = Vector2(0.0, 320.0)
 	add_theme_constant_override("separation", 6)
 	var header := HBoxContainer.new()
 	header.name = "AllySelectionHeader"

@@ -26,7 +26,7 @@ func build(request: InteractionRequest) -> void:
 		add_hint("The level-up request is malformed.")
 		return
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
-	custom_minimum_size = Vector2(0.0, 500.0)
+	custom_minimum_size = Vector2(0.0, 320.0)
 	add_theme_constant_override("separation", 6)
 	if body.mode == &"result":
 		_build_result(body)
