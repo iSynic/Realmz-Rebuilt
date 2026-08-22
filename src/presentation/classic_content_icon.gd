@@ -11,6 +11,7 @@ func configure(resource_type: String, resource_id: int, media: ClassicMediaCatal
 	if texture != null:
 		var image := TextureRect.new()
 		image.name = "ContentImage"
+		image.custom_minimum_size = Vector2(side, side)
 		image.texture = texture
 		image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

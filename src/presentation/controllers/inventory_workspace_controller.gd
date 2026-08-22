@@ -66,7 +66,7 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 	var main_split := HBoxContainer.new()
 	main_split.name = "CastleInventoryMainSplit"
 	main_split.add_theme_constant_override("separation", 8)
-	main_split.custom_minimum_size.y = 342.0 if _layout_profile == UiLayoutProfile.COMPACT else 410.0
+	main_split.custom_minimum_size.y = 300.0 if _layout_profile == UiLayoutProfile.COMPACT else 410.0
 	main_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	main_split.size_flags_vertical = Control.SIZE_FILL if _layout_profile == UiLayoutProfile.COMPACT else Control.SIZE_EXPAND_FILL
 	main_split.add_child(_build_item_browser(selected_character, visible_items, selected_item, media))
@@ -143,7 +143,7 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 	var panel := PanelContainer.new()
 	panel.name = "InventoryItemBrowser"
 	panel.theme_type_variation = &"ClassicItemLedger"
-	panel.custom_minimum_size = Vector2(390.0 if _layout_profile == UiLayoutProfile.COMPACT else 620.0, 330.0)
+	panel.custom_minimum_size = Vector2(390.0 if _layout_profile == UiLayoutProfile.COMPACT else 620.0, 280.0 if _layout_profile == UiLayoutProfile.COMPACT else 330.0)
 	panel.size_flags_horizontal = Control.SIZE_FILL if _layout_profile == UiLayoutProfile.COMPACT else Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = 1.45
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -179,18 +179,28 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 5)
 		row.add_child(_content_icon(item.icon_resource_type, item.icon_id, media, 38.0, item.name))
+		var item_text := VBoxContainer.new()
+		item_text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		item_text.add_theme_constant_override("separation", -2)
 		var button := Button.new()
 		button.name = "InventoryItem_%s" % item.instance_id
 		button.theme_type_variation = &"ClassicItemLedgerButton"
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.custom_minimum_size.y = 38.0
+		button.custom_minimum_size.y = 24.0
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.toggle_mode = true
 		button.button_pressed = selected != null and selected.instance_id == item.instance_id
 		button.text = item.name
 		button.tooltip_text = "%s%s" % ["Equipped" if item.equipped else "Carried", " • %d charges" % item.charges if item.charges > 0 else ""]
 		button.pressed.connect(_select_item.bind(item.instance_id))
-		row.add_child(button)
+		item_text.add_child(button)
+		var line_fact := _item_line_fact(item)
+		if line_fact != null:
+			var fact_label := _label("%s %s" % [line_fact.label, line_fact.value], LEDGER_RED if line_fact.id == &"damage-range" else LEDGER_BLUE, 11)
+			fact_label.name = "InventoryItemLineFact"
+			fact_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			item_text.add_child(fact_label)
+		row.add_child(item_text)
 		var state_parts: Array[String] = []
 		if item.equipped:
 			state_parts.append("Equipped")
@@ -207,11 +217,19 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 	return panel
 
 
+func _item_line_fact(item: ItemView) -> ItemFactView:
+	for fact_id: StringName in [&"damage-range", &"armor"]:
+		for fact: ItemFactView in item.facts:
+			if fact.id == fact_id:
+				return fact
+	return null
+
+
 func _build_character_command_rail(view: GameView, character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "InventoryCharacterCommandRail"
 	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size = Vector2(350.0 if _layout_profile == UiLayoutProfile.COMPACT else 285.0, 330.0)
+	panel.custom_minimum_size = Vector2(350.0 if _layout_profile == UiLayoutProfile.COMPACT else 285.0, 280.0 if _layout_profile == UiLayoutProfile.COMPACT else 330.0)
 	panel.size_flags_horizontal = Control.SIZE_FILL if _layout_profile == UiLayoutProfile.COMPACT else Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = 0.75
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
