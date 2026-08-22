@@ -1,0 +1,33 @@
+{
+  "schema_version": 1,
+  "source_repository": "Realmz Castle Realmz",
+  "copyright": "Realmz copyright 1994 by Tim Phillips",
+  "license": "CC-BY-NC-SA-4.0",
+  "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+  "decoder": {
+    "name": "libopenmpt openmpt123",
+    "version": "0.8.9",
+    "license": "BSD-3-Clause",
+    "sample_rate": 48000,
+    "channels": 2,
+    "sample_format": "float32"
+  },
+  "encoder": {
+    "name": "FFmpeg libvorbis",
+    "version": "9.0.1",
+    "quality": 4
+  },
+  "tracks": [
+    {"playlist_id": 1, "context": "Outdoor", "title": "After the Rain", "filename": "Outdoor Music", "source_commit": "7f6d7fa26b0b5223a668bb32985470f366157601", "source_sha256": "f34da5b612972af0d6da8c000a1edc494a87b0c7aee627494a8d87f12132143f", "source_bytes": 62054, "duration_ms": 187199, "legacy_source_commit": "491816ad60037394f92c428e99c004494d3c28b3", "legacy_source_sha256": "0ba9022f65d5cee0b57103c64264fc64f8fb0f84d63cf70445f2747ead9f2471"},
+    {"playlist_id": 2, "context": "Dungeon", "title": "Dungeon Music", "filename": "Dungeon Music", "source_commit": "491816ad60037394f92c428e99c004494d3c28b3", "source_sha256": "b6653fffe931990ad1599ebef7440c57bbe7d8286af6f7023062e1b06f1371c2", "source_bytes": 116230, "duration_ms": 162159},
+    {"playlist_id": 3, "context": "Indoor", "title": "Indoor Music", "filename": "Indoor Music", "source_commit": "491816ad60037394f92c428e99c004494d3c28b3", "source_sha256": "70b127f290216111ef61df009f1353570ad96e076f4e1b5948916462ee62a0a2", "source_bytes": 178230, "duration_ms": 305520},
+    {"playlist_id": 4, "context": "Cave", "title": "Cave Music", "filename": "Cave Music", "source_commit": "491816ad60037394f92c428e99c004494d3c28b3", "source_sha256": "4821d86e4e2e5de2e420c460fbfa97b53a6c0e9c844412ce0587bc6596489fe4", "source_bytes": 128020, "duration_ms": 315120},
+    {"playlist_id": 5, "context": "Create", "title": "Create Music", "filename": "Create Music", "source_commit": "491816ad60037394f92c428e99c004494d3c28b3", "source_sha256": "2d945b3b10ebc352abacb96ff3d865232369234bb0f8a11276fb023f2dd20aa5", "source_bytes": 117410, "duration_ms": 226880},
+    {"playlist_id": 6, "context": "Items", "title": "Items Music", "filename": "Items Music", "source_commit": "491816ad60037394f92c428e99c004494d3c28b3", "source_sha256": "e5b0c67041ff45ab5a660ba9b689a40d2f775070dfea4202d2e7cdbd96fa9578", "source_bytes": 95117, "duration_ms": 111360},
+    {"playlist_id": 7, "context": "Treasure", "title": "Treasure Music", "filename": "Treasure Music", "source_commit": "491816ad60037394f92c428e99c004494d3c28b3", "source_sha256": "a2643fab05db8e73d6d802cbd659f2b8761f2fe5086259af03b995f486fbd40d", "source_bytes": 172478, "duration_ms": 126720},
+    {"playlist_id": 8, "context": "Shop", "title": "Shop Music", "filename": "Shop Music", "source_commit": "491816ad60037394f92c428e99c004494d3c28b3", "source_sha256": "970e7da20e1b94f82d51919940249f27670d22b7ea61bde8dbfff78569b933fb", "source_bytes": 317962, "duration_ms": 159453},
+    {"playlist_id": 9, "context": "Camp", "title": "Camp Music", "filename": "Camp Music", "source_commit": "491816ad60037394f92c428e99c004494d3c28b3", "source_sha256": "3a93ac7c74d3500d7c06f0cc6a62601a99fff4043b7beac6c2c93374cdfac47f", "source_bytes": 139026, "duration_ms": 266240},
+    {"playlist_id": 10, "context": "Temple", "title": "Temple Music", "filename": "Temple Music", "source_commit": "491816ad60037394f92c428e99c004494d3c28b3", "source_sha256": "79f5d66cb47f29110934908e6d556946fe12cced92ea9722ab673ea1f8e83d19", "source_bytes": 222304, "duration_ms": 324140},
+    {"playlist_id": 11, "context": "Battle", "title": "Battle Music", "filename": "Battle Music", "source_commit": "491816ad60037394f92c428e99c004494d3c28b3", "source_sha256": "267c46eadc4f8116d7653fd03c17189f349dfcfe2a6d8e645c8cbd0921b36066", "source_bytes": 79320, "duration_ms": 222999}
+  ]
+}

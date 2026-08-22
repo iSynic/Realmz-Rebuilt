@@ -50,6 +50,9 @@ Invoke-GodotGate -Label "Headless test suite" -GodotArguments @("--headless", "-
 & "$PSScriptRoot\ui-assets\verify-classic-application-media.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Classic application media verification failed." }
 
+& "$PSScriptRoot\ui-assets\verify-classic-application-music.ps1"
+if ($LASTEXITCODE -ne 0) { throw "Classic application music verification failed." }
+
 & "$PSScriptRoot\verify_architecture.ps1"
 if ($LASTEXITCODE -ne 0) { throw "Architecture boundary verification failed." }
 

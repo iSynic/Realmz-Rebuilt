@@ -15,6 +15,27 @@ playback. Source sample rates below 8000 Hz were deterministically resampled to
 Per-resource source and output hashes are recorded in
 src/presentation/assets/classic-application-media.json.
 
+Integrated Classic Realmz music
+
+Realmz copyright 1994 by Tim Phillips.
+Source: Realmz Music modules in Realmz Castle Realmz. Ten stock modules use
+commit 491816ad60037394f92c428e99c004494d3c28b3. Outdoor uses the exact standard
+MOD replacement from commit 7f6d7fa26b0b5223a668bb32985470f366157601
+because the pinned legacy MADG file is not supported by OpenMPT.
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International
+SPDX identifier: CC-BY-NC-SA-4.0
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+Modifications: the source tracker modules were rendered deterministically to
+48 kHz stereo float PCM by libopenmpt/openmpt123 0.8.9, then encoded as Ogg
+Vorbis by FFmpeg 9.0.1 for portable Godot playback. These build tools and their
+native libraries are not distributed with Realmz Rebuilt. libopenmpt is
+BSD-3-Clause licensed: https://lib.openmpt.org/
+
+Per-track source and output hashes, durations, tool versions, and the Outdoor
+replacement record are stored in
+src/presentation/assets/classic-application-music.json.
+
 Classic typography
 
 Black Chancery is the public-domain digitization shipped in the Realmz game

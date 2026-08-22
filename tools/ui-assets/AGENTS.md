@@ -12,6 +12,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - Deterministic typography import and reference rendering, including exact Mac resource-fork `FONT` 1601 decoding into a Godot BMFont descriptor/atlas, pinned Castle/Open Font License font-byte synchronization, Samuel-outline/Castle-advance reference TTF generation, approved Pencil-contour/Castle-advance/Grenze-utility runtime TTF generation, and reproducible transparent Theldrow design sheets.
 - Byte-exact import of the project-owner-supplied Realmz Rebuilt Ogg Theora/Vorbis intro with offline-verifiable media metadata, plus deterministic derivation of its generated ornamental frame.
 - Deterministic extraction of stock Realmz application text from pinned resource-fork `STR#` records. Application text never enters scenario packages.
+- Deterministic build-time OpenMPT rendering of the exact stock Realmz tracker modules into portable Ogg Vorbis, with a pinned source catalog and runtime manifest.
 
 ## Local Contracts
 
@@ -30,6 +31,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - `build-theldrow-font-sheet.py` validates the committed FONT 1601 descriptor/atlas and remetricked vector hashes before producing an unlabelled transparent native sheet, an unlabelled transparent vector sheet, a Unicode cell map, and a readable specimen under ignored `artifacts/font-sheets/`. The sheets are design references and never replace runtime font assets.
 - `extract-pencil-theldrow.py` converts only explicitly labelled Pencil glyph exports into sorted Unicode geometry; `theldrow-modernized-glyphs.json` is the reviewed, portable source because `.pen` documents are editor-owned. `theldrow-modernized-rules.json` records the reviewed production sheet's shared cap, x-height, ascender, descender, cap-height figure, width, sidebearing, collision, mixed-case optical-weight, and ink-density rules. `build-theldrow-modernized.py` combines those A-Z/a-z contours and rules with exact FONT 1601 advances and pinned Grenze Gotisch utility glyphs. It may transform or optically embolden glyphs only as declared by that rule file, must retain zero kerning, and must not change line measure. Numerals retain their exact Castle advances while the declared figure zone normalizes their vertical extent. `verify-theldrow-modernized.py` validates the complete rule set—including raster-equivalent mixed-case weight and figure height—against the built TTF before installation. `sync-fonts.ps1` installs only the hash-pinned FontTools wheel, enforces all input and output hashes, and must not copy its temporary dependency tree into runtime assets.
 - Validate hashes and PNG dimensions before replacing committed outputs.
+- `sync-classic-application-music.ps1` reads only exact Castle Git objects listed by `application-music-catalog.json`, requires the catalogued OpenMPT and FFmpeg versions, validates source bytes and hashes before decoding, and emits only the eleven application-owned stock tracks plus their manifest. The legacy pinned Outdoor MADG stays recorded as evidence; only the exact later standard-MOD replacement may be rendered. The generator may remove stale `playlist-*.ogg` files only inside the resolved stock-music destination.
 
 ## Work Guidance
 
@@ -43,6 +45,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - `build-exploration-rail.ps1` reports the source crop plus source/output SHA-256 values; the committed manifest records those values and production dimensions.
 - `verify-classic-application-media.ps1` verifies unique IDs/resource keys, the expected integrated sound, item-CIcon, and combat-CIcon counts, generated-chrome paths/dimensions, and every committed byte count and SHA-256 without requiring an external Castle checkout.
 - `verify-classic-application-media.ps1` also verifies the complete font manifest, source/commit/license fields, required Classic roles, committed paths, and byte hashes.
+- `verify-classic-application-music.ps1` verifies all eleven stock playlist IDs, twenty-slot manifest contract, source provenance, durations, committed Ogg signatures, byte counts, and output hashes without requiring Castle, OpenMPT, or FFmpeg.
 - `sync-classic-application-text.ps1` verifies the pinned Castle commit and exact Family Jewels resource-fork hash, decodes MacRoman deterministically, emits all 252 class-one-through-three player-spell descriptions keyed by packed Classic ID, and reproduces identical bytes across supported PowerShell hosts.
 
 ## Child DOX Index
