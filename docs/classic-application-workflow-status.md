@@ -13,19 +13,18 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Classic lifecycle and command feedback** (`classic-lifecycle-command-feedback`)
+**Classic locked modals and bounded display scaling** (`classic-modal-and-scaling-convergence`)
 
-Ordinary AOGM play exposed missing active-command indentation, unreliable Quit cancellation re-entry, premature setup music, an overgrown Quit confirmation, and audible startup video. This discrepancy-triggered batch corrects only presentation and host-lifecycle ownership while retaining Camp and Rest as the ordinary-play certification target.
+A complete source-backed UI audit found that level progression and surviving-ally decisions should use Castle-shaped locked modals, Treasure completion should confirm over its retained workspace, and ultrawide windows need one bounded application canvas rather than unbounded empty layout. This four-workflow presentation batch retains the already observed AOGM level-up route as its ordinary-play certification target and changes no simulation behavior.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.exploration.camp-rest` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.system.quit` | archaeology | broader-parity | - |  |
-| `classic.system.music-playlists` | archaeology | broader-parity | - |  |
-| `classic.startup.select-scenario` | archaeology | broader-parity | - |  |
-| `classic.inventory.manage-equipment` | archaeology | broader-parity | - |  |
+| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.rewards.post-battle-allies` | archaeology | broader-parity | - |  |
+| `classic.rewards.treasure-distribution` | archaeology | broader-parity | - |  |
+| `host.settings.accessibility` | implementation | classic-missing | - | GAP-HOST-004 |
 
 ### Batch count delta
 

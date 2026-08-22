@@ -415,8 +415,11 @@ func _apply_layout() -> void:
 	# The root Control can differ from the viewport's logical size when a gallery,
 	# embedded window, or stretch transform supplies the final presentation area.
 	# Lay out siblings in their shared Control coordinate space.
-	var viewport_size := size
-	_profile = UiLayoutProfile.for_viewport(viewport_size, _presentation_settings.ui_scale_mode)
+	var window_size := size
+	_profile = UiLayoutProfile.for_viewport(window_size, _presentation_settings.ui_scale_mode)
+	var canvas_rect := _profile.application_rect
+	var viewport_size := canvas_rect.size
+	var origin := canvas_rect.position
 	_menu_row.visible = _profile.id != UiLayoutProfile.COMPACT
 	_compact_menu.visible = _profile.id == UiLayoutProfile.COMPACT
 	# Classic typography can require more height than the historical 28-pixel
@@ -426,11 +429,12 @@ func _apply_layout() -> void:
 	var stage_height := maxf(220.0, viewport_size.y - _profile.menu_height - _profile.bottom_height)
 	var stage_rect := Rect2(0.0, _profile.menu_height, stage_width, stage_height)
 	_menu_strip.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	_menu_strip.position = Vector2.ZERO
+	_menu_strip.position = origin
 	_menu_strip.size = Vector2(viewport_size.x, _profile.menu_height)
+	stage_rect.position += origin
 	_stage_frame.position = stage_rect.position
 	_stage_frame.size = stage_rect.size
-	_party_roster.position = Vector2(stage_width, _profile.menu_height)
+	_party_roster.position = origin + Vector2(stage_width, _profile.menu_height)
 	var roster_height := stage_height
 	_party_roster.size = Vector2(_profile.party_width, roster_height)
 	_bottom_row.vertical = false
@@ -452,12 +456,12 @@ func _apply_layout() -> void:
 	_command_grid.columns = 4 if _world_command_panel.visible else maxi(2, floori(command_width / (108.0 if _profile.bitmap_scale == 2 else 58.0)))
 	# Orientation and child minima must settle before shrinking the outer panel;
 	# otherwise Control retains the previous wider profile's minimum-clamped size.
-	_bottom_region.position = Vector2(0.0, viewport_size.y - _profile.bottom_height)
+	_bottom_region.position = origin + Vector2(0.0, viewport_size.y - _profile.bottom_height)
 	_bottom_region.size = Vector2(viewport_size.x, _profile.bottom_height)
 	var picture_size := Vector2(minf(560.0 * _profile.ui_scale, stage_rect.size.x - 48.0), minf(360.0 * _profile.ui_scale, stage_rect.size.y - 48.0))
 	_picture_stage.position = stage_rect.position + (stage_rect.size - picture_size) * 0.5
 	_picture_stage.size = picture_size
-	_router.set_layout_profile(_profile, viewport_size)
+	_router.set_layout_profile(_profile, viewport_size, origin)
 	_build_menus()
 	_rebuild_command_deck()
 	layout_changed.emit(stage_rect, _profile)

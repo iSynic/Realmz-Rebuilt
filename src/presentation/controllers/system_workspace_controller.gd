@@ -190,9 +190,9 @@ func _key(preview: SaveSlotPreview) -> String:
 
 
 func _build_display_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:
-	var content := _settings_panel(parent, "Display", "Interface scale, text size, and window mode apply immediately.")
+	var content := _settings_panel(parent, "Display", "Fit keeps the Classic application centered at wide resolutions. Interface density and text size remain independent; exact bitmap art stays at native 1× or 2× pixels.")
 	var ui_scale := OptionButton.new()
-	for entry: Dictionary in [{"label": "UI scale: Auto", "id": PresentationSettings.UI_SCALE_AUTO}, {"label": "UI scale: 100%", "id": PresentationSettings.UI_SCALE_100}, {"label": "UI scale: 125%", "id": PresentationSettings.UI_SCALE_125}, {"label": "UI scale: 150%", "id": PresentationSettings.UI_SCALE_150}]:
+	for entry: Dictionary in [{"label": "Fit to window", "id": PresentationSettings.UI_SCALE_AUTO}, {"label": "Interface density: 100%", "id": PresentationSettings.UI_SCALE_100}, {"label": "Interface density: 125%", "id": PresentationSettings.UI_SCALE_125}, {"label": "Interface density: 150%", "id": PresentationSettings.UI_SCALE_150}]:
 		ui_scale.add_item(entry["label"])
 		ui_scale.set_item_metadata(ui_scale.item_count - 1, entry["id"])
 		if entry["id"] == settings.ui_scale_mode: ui_scale.select(ui_scale.item_count - 1)

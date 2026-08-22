@@ -218,19 +218,19 @@ func set_presentation_settings(settings: PresentationSettings) -> void:
 		_render_screen()
 
 
-func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2) -> void:
+func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2 = Vector2.ZERO) -> void:
 	if profile == null:
 		return
 	_layout_profile = profile.id
 	_workspace_presenter.set_layout_profile(profile.id)
 	var top := profile.menu_height
 	var bottom := profile.bottom_height
-	_workspace_rect = Rect2(0.0, top, maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top - bottom))
-	_spell_workspace_rect = spell_workspace_rect_for(profile, viewport_size)
-	_full_height_workspace_rect = Rect2(0.0, top, maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top))
-	_application_workspace_rect = Rect2(0.0, top, maxf(320.0, viewport_size.x), maxf(220.0, viewport_size.y - top))
-	_modal_layout_rect = Rect2(12.0, top + 8.0, maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - top - 16.0))
-	_campaign_layout_rect = ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
+	_workspace_rect = Rect2(origin + Vector2(0.0, top), Vector2(maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top - bottom)))
+	_spell_workspace_rect = spell_workspace_rect_for(profile, viewport_size, origin)
+	_full_height_workspace_rect = Rect2(origin + Vector2(0.0, top), Vector2(maxf(320.0, viewport_size.x - profile.party_width), maxf(220.0, viewport_size.y - top)))
+	_application_workspace_rect = Rect2(origin + Vector2(0.0, top), Vector2(maxf(320.0, viewport_size.x), maxf(220.0, viewport_size.y - top)))
+	_modal_layout_rect = Rect2(origin + Vector2(12.0, top + 8.0), Vector2(maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - top - 16.0)))
+	_campaign_layout_rect = ClassicScreenRouter.campaign_rect_for(profile, viewport_size, origin)
 	_setup_layout_rect = _modal_layout_rect
 	if setup_controller.setup_overlay != null:
 		setup_controller.apply_layout(profile, _campaign_layout_rect, _setup_layout_rect)
@@ -238,14 +238,14 @@ func set_layout_profile(profile: UiLayoutProfile, viewport_size: Vector2) -> voi
 	_render_screen()
 
 
-static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2) -> Rect2:
-	var modal_rect := Rect2(12.0, profile.menu_height + 8.0, maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - profile.menu_height - 16.0))
+static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2 = Vector2.ZERO) -> Rect2:
+	var modal_rect := Rect2(origin + Vector2(12.0, profile.menu_height + 8.0), Vector2(maxf(320.0, viewport_size.x - 24.0), maxf(300.0, viewport_size.y - profile.menu_height - 16.0)))
 	var campaign_width := clampf(228.0 * profile.ui_scale, 200.0, minf(268.0, modal_rect.size.x * 0.32))
 	return Rect2(modal_rect.position, Vector2(campaign_width, modal_rect.size.y))
 
 
-static func spell_workspace_rect_for(profile: UiLayoutProfile, viewport_size: Vector2) -> Rect2:
-	return Rect2(viewport_size.x - profile.party_width, profile.menu_height, profile.party_width, maxf(220.0, viewport_size.y - profile.menu_height - profile.bottom_height))
+static func spell_workspace_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2 = Vector2.ZERO) -> Rect2:
+	return Rect2(origin + Vector2(viewport_size.x - profile.party_width, profile.menu_height), Vector2(profile.party_width, maxf(220.0, viewport_size.y - profile.menu_height - profile.bottom_height)))
 
 
 func _apply_modal_layouts() -> void:
