@@ -405,6 +405,7 @@ func _mount_workspace(screen_id: StringName) -> void:
 		return
 	_workspace_view = scene.instantiate() as ClassicRouteScreen
 	_workspace_view.name = "WorkspaceFrame"
+	_workspace_view.back_requested.connect(func() -> void: handle_back())
 	_workspace_host.add_child(_workspace_view)
 	_workspace_host.move_child(_workspace_view, 0)
 	_workspace_view.set_workspace_rect(_workspace_layout_rect())

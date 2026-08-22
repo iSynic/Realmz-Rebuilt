@@ -141,6 +141,7 @@ func _test_package_operation_presentation() -> void:
 	router.free()
 func _test_primary_workspace_lifecycle() -> void:
 	var router := ClassicScreenRouter.new()
+	(Engine.get_main_loop() as SceneTree).root.add_child(router)
 	router.initialize()
 	var view := GameView.new(1, true, null)
 	view.campaign_id = "workspace-fixture"
@@ -155,7 +156,12 @@ func _test_primary_workspace_lifecycle() -> void:
 		assert_equal(router.primary_workspace_id(), route_id, "the mounted scene and route registry cannot diverge")
 		assert_equal(router.mounted_primary_workspace_count(), 1, "a route transition leaves exactly one primary workspace mounted")
 		assert_equal(router.primary_workspace_visible(), route_id not in [&"exploration", &"combat"], "only spatial play routes suppress their explanatory workspace body")
+		var route_back := router.find_child("RouteBackAction", true, false) as Button
+		assert_true(route_back != null and route_back.visible == (route_id not in [&"exploration", &"combat", &"vault"]), "ordinary application route %s owns one persistent visible Back action" % route_id)
 	assert_equal(entered, [&"character", &"inventory", &"spells", &"services", &"journal", &"system", &"vault", &"exploration", &"combat"], "each primary transition publishes exactly one entered route after replacing the prior workspace")
+	router.open_screen(&"system")
+	(router.find_child("RouteBackAction", true, false) as Button).pressed.emit()
+	assert_equal(router.current_screen(), &"combat", "the persistent route Back action follows the same history path as Escape")
 	var setup_view := GameView.new(2, true, null); setup_view.campaign_summary = CampaignSummaryView.new(); setup_view.campaign_summary.campaign_id = "workspace-fixture"; setup_view.campaign_summary.title = "Workspace Scenario"; setup_view.campaign_summary.version = "6.0.0"; setup_view.campaign_summary.author = "Fantasoft"; setup_view.campaign_summary.restriction_description = "Up to six adventurers."; setup_view.campaign_summary.recommended_party_levels = 18; setup_view.campaign_summary.guidance_authored = true
 	setup_view.party_setup_available = true
 	setup_view.party_members = [CharacterView.new(CharacterState.new("closing.hero", "Closing Hero", 10, 10))]

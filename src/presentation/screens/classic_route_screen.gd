@@ -1,6 +1,8 @@
 class_name ClassicRouteScreen
 extends PanelContainer
 
+signal back_requested
+
 @export var route_id: StringName
 @export var title: String = "Realmz"
 @export_multiline var description: String = ""
@@ -10,6 +12,7 @@ extends PanelContainer
 @onready var _title_label: Label = %ScreenTitle
 @onready var _description_label: Label = %ScreenDescription
 @onready var _header: BoxContainer = %WorkspaceHeader
+@onready var _back_action: Button = %RouteBackAction
 
 
 func _ready() -> void:
@@ -18,6 +21,7 @@ func _ready() -> void:
 	_description_label.max_lines_visible = 2
 	_description_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_description_label.visible = not description.is_empty()
+	_update_back_visibility()
 
 
 func set_workspace_rect(workspace_rect: Rect2) -> void:
@@ -26,6 +30,21 @@ func set_workspace_rect(workspace_rect: Rect2) -> void:
 	size = workspace_rect.size - inset * 2.0
 	if _header != null:
 		_header.vertical = workspace_rect.size.x < 900.0
+	_update_back_visibility()
+
+
+func _update_back_visibility() -> void:
+	var action := _back_action
+	if action == null:
+		action = get_node_or_null("WorkspaceColumn/WorkspaceHeader/RouteBackAction") as Button
+	if action != null:
+		action.visible = route_id not in [&"exploration", &"combat", &"vault"]
+		if not action.pressed.is_connected(_emit_back_requested):
+			action.pressed.connect(_emit_back_requested)
+
+
+func _emit_back_requested() -> void:
+	back_requested.emit()
 
 
 func scroll_control() -> ScrollContainer:

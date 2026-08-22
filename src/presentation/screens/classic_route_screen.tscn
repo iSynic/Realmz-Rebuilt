@@ -29,6 +29,13 @@ text = "Workspace"
 vertical_alignment = 1
 autowrap_mode = 2
 
+[node name="RouteBackAction" type="Button" parent="WorkspaceColumn/WorkspaceHeader"]
+unique_name_in_owner = true
+layout_mode = 2
+custom_minimum_size = Vector2(82, 34)
+tooltip_text = "Return to the previous screen."
+text = "Back"
+
 [node name="HeaderRule" type="HSeparator" parent="WorkspaceColumn"]
 layout_mode = 2
 
