@@ -1232,6 +1232,8 @@ func _test_scene_composition() -> void:
 		var profile := UiLayoutProfile.for_viewport(viewport_size, PresentationSettings.UI_SCALE_AUTO)
 		var rect := ClassicScreenRouter.campaign_rect_for(profile, viewport_size)
 		assert_true(rect.position.x >= 0.0 and rect.end.x <= viewport_size.x - profile.party_width and ClassicScreenRouter.spell_workspace_rect_for(profile, viewport_size) == Rect2(viewport_size.x - profile.party_width, profile.menu_height, profile.party_width, viewport_size.y - profile.menu_height - profile.bottom_height), "campaign layout stays clear while field spellcasting exactly replaces the roster at %s" % viewport_size)
+	var spatial_view := GameView.new(1, true, null)
+	assert_true(PresentationCoordinator.should_show_exploration_stage(&"spells", spatial_view, true), "field Spells preserves the live exploration renderer beneath its Party-side spellbook")
 	shell.free()
 func _test_automatic_workflow_routes() -> void:
 	var terminal_step := SessionStep.completed(1, [DomainEvent.new(&"session_ended", {"reason": "party-defeat"})])

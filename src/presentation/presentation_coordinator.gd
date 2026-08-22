@@ -219,7 +219,7 @@ func _update_spatial_visibility(game_view: GameView) -> void:
 
 
 static func should_show_exploration_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
-	return active_route == &"exploration" and game_view != null and game_view.session_started and play_stage_visible
+	return active_route in [&"exploration", &"spells"] and game_view != null and game_view.session_started and play_stage_visible
 
 
 static func should_show_spatial_stage(active_route: StringName, game_view: GameView, play_stage_visible: bool) -> bool:
