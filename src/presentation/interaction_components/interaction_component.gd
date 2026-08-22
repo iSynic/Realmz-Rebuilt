@@ -20,6 +20,10 @@ signal presentation_status_requested(text: String, is_error: bool)
 signal combat_spellbook_requested(actor_id: String, options: Array[InteractionRequestValue.CastOption])
 @warning_ignore("unused_signal")
 signal combat_spellbook_closed
+@warning_ignore("unused_signal")
+signal side_workspace_requested(workspace: Control)
+@warning_ignore("unused_signal")
+signal side_workspace_closed
 
 
 func build(_request: InteractionRequest) -> void:

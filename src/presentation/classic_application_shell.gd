@@ -723,9 +723,9 @@ func _on_screen_changed(screen_id: StringName) -> void:
 
 
 func _set_play_regions_visible(visible: bool) -> void:
-	var play_route := visible and _router.current_screen() in [&"exploration", &"combat"]
+	var play_route := visible and _router.current_screen() in [&"exploration", &"combat", &"spells"]
 	_stage_frame.visible = play_route
-	_bottom_region.visible = play_route and _router.current_screen() == &"exploration"
+	_bottom_region.visible = play_route and _router.current_screen() in [&"exploration", &"spells"]
 	_party_roster.visible = play_route
 	play_stage_visibility_changed.emit(play_route)
 

@@ -35,6 +35,7 @@ func set_layout_profile(profile_id: StringName) -> void:
 	_creature_library_controller.set_layout_profile(profile_id)
 	_services_controller.set_layout_profile(profile_id)
 	_system_controller.set_layout_profile(profile_id)
+	_spells_controller.set_layout_profile(profile_id)
 
 
 func _init() -> void:

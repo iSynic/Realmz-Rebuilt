@@ -21,8 +21,9 @@ func _ready() -> void:
 
 
 func set_workspace_rect(workspace_rect: Rect2) -> void:
-	position = workspace_rect.position + Vector2(8.0, 8.0)
-	size = workspace_rect.size - Vector2(16.0, 16.0)
+	var inset := Vector2.ZERO if route_id == &"spells" else Vector2(8.0, 8.0)
+	position = workspace_rect.position + inset
+	size = workspace_rect.size - inset * 2.0
 	if _header != null:
 		_header.vertical = workspace_rect.size.x < 900.0
 

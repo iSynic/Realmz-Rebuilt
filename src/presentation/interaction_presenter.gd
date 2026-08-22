@@ -32,16 +32,22 @@ var _stage_rect := Rect2(0.0, 28.0, 992.0, 502.0)
 var _textbox_rect := Rect2(8.0, 530.0, 984.0, 182.0)
 var _combat_rect := Rect2(0.0, 530.0, 1280.0, 190.0)
 var _application_rect := Rect2(0.0, 32.0, 1280.0, 688.0)
+var _side_workspace_rect := Rect2(928.0, 28.0, 352.0, 502.0)
 var _passive_text: bool = false
 var _playback_masked: bool = false
 var _playback_status_label: Label
 var _autojournal_enabled: bool = true
 var _treasure_recipient_id: String = ""
+var _side_workspace_panel: PanelContainer
 
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_VISIBILITY_CHANGED and visible:
 		_claim_modal_layer()
+
+
+func _exit_tree() -> void:
+	_close_side_workspace()
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
@@ -104,6 +110,8 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_component.presentation_status_requested.connect(func(text: String, is_error: bool) -> void: presentation_status_requested.emit(text, is_error))
 	_component.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: combat_spellbook_requested.emit(actor_id, options))
 	_component.combat_spellbook_closed.connect(func() -> void: combat_spellbook_closed.emit())
+	_component.side_workspace_requested.connect(_show_side_workspace)
+	_component.side_workspace_closed.connect(_close_side_workspace)
 	if _component is TreasureDistributionInteraction:
 		var treasure := _component as TreasureDistributionInteraction
 		treasure.recipient_selected.connect(func(character_id: String) -> void: _treasure_recipient_id = character_id)
@@ -151,6 +159,8 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 	_stage_rect = stage_rect
 	_textbox_rect = textbox_rect
 	_combat_rect = combat_rect if combat_rect.has_area() else textbox_rect
+	var outer_stage := stage_rect.grow(8.0)
+	_side_workspace_rect = Rect2(outer_stage.end.x, outer_stage.position.y, maxf(0.0, _combat_rect.end.x - outer_stage.end.x), outer_stage.size.y)
 	var stage_inset := maxf(0.0, stage_rect.position.x - _combat_rect.position.x)
 	var application_top := maxf(0.0, stage_rect.position.y - stage_inset)
 	_application_rect = Rect2(
@@ -328,6 +338,7 @@ func _combatant_icon_textures(game_view: GameView, media: ClassicMediaCatalog) -
 func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null:
 		return
+	_close_side_workspace()
 	var response := InteractionPresenter.response_for(_request, body)
 	var preserve_for_transfer := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action == &"assign"
 	_request = null
@@ -377,6 +388,7 @@ static func response_for(request: InteractionRequest, body: InteractionResponse.
 
 func _clear_options() -> void:
 	combat_spellbook_closed.emit()
+	_close_side_workspace()
 	_component = null
 	_playback_status_label = null
 	_options.visible = false
@@ -412,6 +424,40 @@ func _apply_classic_region() -> void:
 		position = _stage_rect.position + (_stage_rect.size - desired) * 0.5
 		size = desired
 	_apply_content_layout()
+	_apply_side_workspace_layout()
+
+
+func _show_side_workspace(workspace: Control) -> void:
+	_close_side_workspace()
+	if workspace == null:
+		return
+	_side_workspace_panel = PanelContainer.new()
+	_side_workspace_panel.name = "InteractionSideWorkspace"
+	_side_workspace_panel.theme_type_variation = &"ClassicInset"
+	_side_workspace_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	_side_workspace_panel.z_index = z_index + 1
+	get_parent().add_child(_side_workspace_panel)
+	workspace.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	workspace.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_side_workspace_panel.add_child(workspace)
+	_apply_side_workspace_layout()
+
+
+func _close_side_workspace() -> void:
+	if _side_workspace_panel == null:
+		return
+	var workspace_parent := _side_workspace_panel.get_parent()
+	if workspace_parent != null:
+		workspace_parent.remove_child(_side_workspace_panel)
+	_side_workspace_panel.queue_free()
+	_side_workspace_panel = null
+
+
+func _apply_side_workspace_layout() -> void:
+	if _side_workspace_panel == null:
+		return
+	_side_workspace_panel.position = _side_workspace_rect.position
+	_side_workspace_panel.size = _side_workspace_rect.size
 
 
 func _apply_content_layout() -> void:

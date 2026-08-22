@@ -187,10 +187,10 @@ func _capture_gallery() -> void:
 	var fast_tab := _button_named(_router, "Fast Spells")
 	if fast_tab != null:
 		fast_tab.pressed.emit(); await _settle(); await _capture("wide-fast-spells-1280x720")
-	var scroll_tab := _button_named(_router, "Scroll Case")
+	var scroll_tab := _button_named(_router, "Scrolls")
 	if scroll_tab != null:
 		scroll_tab.pressed.emit(); await _settle(); await _capture("wide-scroll-case-1280x720")
-	var known_tab := _button_named(_router, "Known Spells")
+	var known_tab := _button_named(_router, "Known")
 	if known_tab != null:
 		known_tab.pressed.emit(); await _settle()
 	await _resize(Vector2i(800, 600))

@@ -223,18 +223,25 @@ func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.Enco
 	var submit := Button.new()
 	submit.name = "EncounterCatalogConfirm"
 	submit.text = "Use item" if kind == &"item" else "Cast spell"
-	submit.custom_minimum_size = Vector2(120.0, 36.0)
+	submit.custom_minimum_size = Vector2(70.0, 36.0)
 	submit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	submit.pressed.connect(_submit_catalog_entry)
 	actions.add_child(submit)
 	var cancel := Button.new()
 	cancel.name = "EncounterCatalogCancel"
 	cancel.text = "Cancel"
-	cancel.custom_minimum_size = Vector2(90.0, 36.0)
+	cancel.custom_minimum_size = Vector2(74.0, 36.0)
 	cancel.pressed.connect(_cancel_catalog)
 	actions.add_child(cancel)
 	column.add_child(actions)
-	_context.add_child(workspace)
+	if kind == &"spell" and not side_workspace_requested.get_connections().is_empty():
+		var hint := Label.new()
+		hint.text = "Choose a spell from the Party-side spellbook."
+		hint.add_theme_color_override("font_color", Color("d5b45d"))
+		_context.add_child(hint)
+		side_workspace_requested.emit(workspace)
+	else:
+		_context.add_child(workspace)
 	_render_catalog_record()
 
 
@@ -280,6 +287,8 @@ func _cancel_catalog() -> void:
 
 
 func _clear_context() -> void:
+	if _catalog_kind == &"spell":
+		side_workspace_closed.emit()
 	_catalog_kind = &""
 	_catalog_entries.clear()
 	_catalog_buttons.clear()
