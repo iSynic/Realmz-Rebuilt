@@ -449,7 +449,10 @@ func _render_screen(notify_route_change: bool = false) -> void:
 	if _screen_id in [&"character", &"vault"]:
 		setup_controller.ensure_appearance_textures()
 	var vault_back_label := "Back to party setup" if _vault_return_to_setup else "Back to campaigns" if _vault_return_to_campaign else "Back"
-	_workspace_presenter.present(_screen_id, _body, setup_controller.appearance_textures(), vault_back_label)
+	var context_actions := _workspace_view.context_action_control() if _workspace_view != null and _screen_id == &"spells" else null
+	_workspace_presenter.present(_screen_id, _body, setup_controller.appearance_textures(), vault_back_label, context_actions)
+	if _workspace_view != null:
+		_workspace_view.apply_route_chrome()
 	if _screen_id in [&"exploration", &"combat"]:
 		call_deferred("_complete_route_render", transition_revision, false, previous_scroll_horizontal, previous_scroll_vertical)
 		return

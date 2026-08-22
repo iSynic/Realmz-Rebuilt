@@ -189,8 +189,10 @@ func sync_route_audio(screen_id: StringName) -> void:
 		sound_requested.emit(SWAP_DONE_SOUND_ID, false, false)
 
 
-func present(screen_id: StringName, body: Container, appearance_textures: Dictionary, vault_back_label: String) -> void:
+func present(screen_id: StringName, body: Container, appearance_textures: Dictionary, vault_back_label: String, context_actions: Container = null) -> void:
 	_clear(body)
+	if context_actions != null:
+		_clear(context_actions)
 	if (_view == null or not _view.session_started) and screen_id != &"vault":
 		_add_label(body, "No active session. Choose a validated campaign to begin.", MUTED)
 		return
@@ -206,7 +208,7 @@ func present(screen_id: StringName, body: Container, appearance_textures: Dictio
 		&"inventory":
 			_inventory_controller.present(body, _view, _media, _settings.text_scale)
 		&"spells":
-			_spells_controller.present(body, _view, _media, _settings.text_scale)
+			_spells_controller.present(body, _view, _media, _settings.text_scale, context_actions)
 		&"services":
 			_services_controller.set_text_scale(_settings.text_scale)
 			_services_controller.present(body, _view)

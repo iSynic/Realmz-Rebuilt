@@ -13,6 +13,7 @@ signal back_requested
 @onready var _description_label: Label = %ScreenDescription
 @onready var _header: BoxContainer = %WorkspaceHeader
 @onready var _back_action: Button = %RouteBackAction
+@onready var _header_rule: HSeparator = $WorkspaceColumn/HeaderRule
 
 
 func _ready() -> void:
@@ -23,6 +24,7 @@ func _ready() -> void:
 	_description_label.visible = not description.is_empty()
 	_configure_navigation()
 	_update_back_visibility()
+	apply_route_chrome()
 
 
 func set_workspace_rect(workspace_rect: Rect2) -> void:
@@ -33,6 +35,7 @@ func set_workspace_rect(workspace_rect: Rect2) -> void:
 		_header.vertical = workspace_rect.size.x < 900.0
 	_configure_navigation()
 	_update_back_visibility()
+	apply_route_chrome()
 
 
 func _update_back_visibility() -> void:
@@ -73,10 +76,36 @@ func _configure_navigation() -> void:
 	action.offset_top = -navigation_size.y - 8.0
 	action.offset_right = -8.0
 	action.offset_bottom = -8.0
+	if route_id == &"spells":
+		var context_actions := HBoxContainer.new()
+		context_actions.name = "WorkspaceContextActions"
+		context_actions.add_theme_constant_override("separation", 5)
+		context_actions.anchor_left = 0.0
+		context_actions.anchor_top = 1.0
+		context_actions.anchor_right = 1.0
+		context_actions.anchor_bottom = 1.0
+		context_actions.offset_left = 8.0
+		context_actions.offset_top = -navigation_size.y - 8.0
+		context_actions.offset_right = -navigation_size.x - 14.0
+		context_actions.offset_bottom = -8.0
+		footer.add_child(context_actions)
 	var body_scroll := scroll
 	if body_scroll == null:
 		body_scroll = get_node("WorkspaceColumn/BodyClip/ScreenBodyScroll") as ScrollContainer
 	body_scroll.offset_bottom = -navigation_size.y - 16.0
+
+
+func apply_route_chrome() -> void:
+	var show_route_heading := route_id != &"spells"
+	var route_title := get_node_or_null("WorkspaceColumn/WorkspaceHeader/ScreenTitle") as Label
+	var route_description := get_node_or_null("WorkspaceColumn/WorkspaceHeader/ScreenDescription") as Label
+	var route_rule := get_node_or_null("WorkspaceColumn/HeaderRule") as HSeparator
+	if route_title != null:
+		route_title.visible = show_route_heading
+	if route_description != null:
+		route_description.visible = show_route_heading and not description.is_empty()
+	if route_rule != null:
+		route_rule.visible = show_route_heading
 
 
 func _emit_back_requested() -> void:
@@ -89,3 +118,7 @@ func scroll_control() -> ScrollContainer:
 
 func body_control() -> VBoxContainer:
 	return body if body != null else get_node("WorkspaceColumn/BodyClip/ScreenBodyScroll/ScreenBody") as VBoxContainer
+
+
+func context_action_control() -> Container:
+	return find_child("WorkspaceContextActions", true, false) as Container
