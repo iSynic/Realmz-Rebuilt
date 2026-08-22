@@ -77,13 +77,18 @@ func is_visually_pressed() -> bool:
 func _draw() -> void:
 	var rect := Rect2(Vector2(1.0, 1.0), size - Vector2(2.0, 2.0))
 	var pressed := is_visually_pressed()
-	draw_rect(rect, SURFACE_COLOR, true)
-	var leading_edge := SURFACE_DARK if pressed else EDGE_LIGHT
-	var trailing_edge := EDGE_LIGHT if pressed else SURFACE_DARK
-	draw_line(rect.position, Vector2(rect.end.x, rect.position.y), leading_edge, 2.0)
-	draw_line(rect.position, Vector2(rect.position.x, rect.end.y), leading_edge, 2.0)
-	draw_line(Vector2(rect.position.x, rect.end.y), rect.end, trailing_edge, 2.0)
-	draw_line(Vector2(rect.end.x, rect.position.y), rect.end, trailing_edge, 2.0)
+	var surface_name := &"disabled" if disabled else &"pressed" if pressed else &"hover" if is_hovered() else &"normal"
+	var surface := get_theme_stylebox(surface_name, &"Button")
+	if surface != null:
+		draw_style_box(surface, rect)
+	else:
+		draw_rect(rect, SURFACE_COLOR, true)
+		var leading_edge := SURFACE_DARK if pressed else EDGE_LIGHT
+		var trailing_edge := EDGE_LIGHT if pressed else SURFACE_DARK
+		draw_line(rect.position, Vector2(rect.end.x, rect.position.y), leading_edge, 2.0)
+		draw_line(rect.position, Vector2(rect.position.x, rect.end.y), leading_edge, 2.0)
+		draw_line(Vector2(rect.position.x, rect.end.y), rect.end, trailing_edge, 2.0)
+		draw_line(Vector2(rect.end.x, rect.position.y), rect.end, trailing_edge, 2.0)
 	var pressed_offset := Vector2.ONE if pressed else Vector2.ZERO
 	var font := get_theme_font("font", "Button")
 	var font_size := maxi(11, get_theme_font_size("font_size", "Button") - 2)

@@ -1,10 +1,11 @@
-[gd_resource type="Theme" load_steps=30 format=3]
+[gd_resource type="Theme" load_steps=36 format=3]
 
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-raised-frame.png" id="1_raised"]
 [ext_resource type="Texture2D" path="res://src/presentation/assets/ui/classic-inset-frame.png" id="2_inset"]
 [ext_resource type="FontFile" path="res://src/presentation/assets/fonts/AlegreyaSans-Regular.ttf" id="3_ui"]
 [ext_resource type="FontFile" path="res://src/presentation/assets/fonts/AlegreyaSans-Bold.ttf" id="4_ui_bold"]
 [ext_resource type="FontFile" path="res://src/presentation/assets/fonts/Alegreya-Variable.ttf" id="5_narrative"]
+[ext_resource type="FontFile" path="res://src/presentation/assets/fonts/BlackChancery-Realmz.ttf" id="6_button"]
 
 [sub_resource type="StyleBoxTexture" id="RaisedPanel"]
 texture = ExtResource("1_raised")
@@ -267,6 +268,53 @@ content_margin_top = 8.0
 content_margin_right = 10.0
 content_margin_bottom = 8.0
 
+[sub_resource type="StyleBoxFlat" id="ItemLedgerPanel"]
+bg_color = Color(0.965, 0.957, 0.918, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.38, 0.4, 0.39, 1)
+content_margin_left = 7.0
+content_margin_top = 6.0
+content_margin_right = 7.0
+content_margin_bottom = 6.0
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerRow"]
+bg_color = Color(0.995, 0.992, 0.976, 1)
+border_width_bottom = 1
+border_color = Color(0.82, 0.81, 0.76, 1)
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerSelectedRow"]
+bg_color = Color(1, 0.944, 0.72, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.76, 0.6, 0.13, 1)
+content_margin_left = 3.0
+content_margin_top = 1.0
+content_margin_right = 3.0
+content_margin_bottom = 1.0
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerButtonNormal"]
+bg_color = Color(0, 0, 0, 0)
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+
+[sub_resource type="StyleBoxFlat" id="ItemLedgerButtonHover"]
+bg_color = Color(0.77, 0.9, 0.94, 0.6)
+content_margin_left = 4.0
+content_margin_top = 2.0
+content_margin_right = 4.0
+content_margin_bottom = 2.0
+
 [resource]
 default_font = ExtResource("3_ui")
 default_font_size = 15
@@ -346,3 +394,20 @@ ClassicOpenRight/base_type = &"PanelContainer"
 ClassicOpenRight/styles/panel = SubResource("OpenRightPanel")
 ClassicSharedStone/base_type = &"PanelContainer"
 ClassicSharedStone/styles/panel = SubResource("SharedStoneSurface")
+ClassicItemLedger/base_type = &"PanelContainer"
+ClassicItemLedger/styles/panel = SubResource("ItemLedgerPanel")
+ClassicItemLedgerRow/base_type = &"PanelContainer"
+ClassicItemLedgerRow/styles/panel = SubResource("ItemLedgerRow")
+ClassicItemLedgerSelectedRow/base_type = &"PanelContainer"
+ClassicItemLedgerSelectedRow/styles/panel = SubResource("ItemLedgerSelectedRow")
+ClassicItemLedgerButton/base_type = &"Button"
+ClassicItemLedgerButton/colors/font_color = Color(0.055, 0.055, 0.05, 1)
+ClassicItemLedgerButton/colors/font_hover_color = Color(0.02, 0.26, 0.52, 1)
+ClassicItemLedgerButton/colors/font_pressed_color = Color(0.34, 0.25, 0.02, 1)
+ClassicItemLedgerButton/fonts/font = ExtResource("6_button")
+ClassicItemLedgerButton/font_sizes/font_size = 17
+ClassicItemLedgerButton/styles/normal = SubResource("ItemLedgerButtonNormal")
+ClassicItemLedgerButton/styles/hover = SubResource("ItemLedgerButtonHover")
+ClassicItemLedgerButton/styles/pressed = SubResource("ItemLedgerButtonNormal")
+ClassicItemLedgerButton/styles/disabled = SubResource("ItemLedgerButtonNormal")
+ClassicItemLedgerButton/styles/focus = SubResource("Focus")

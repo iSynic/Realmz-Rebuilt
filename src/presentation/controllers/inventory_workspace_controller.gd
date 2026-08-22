@@ -8,6 +8,10 @@ const GOLD := Color("d5b45d")
 const TEXT := Color("e0e2e5")
 const MUTED := Color("9aa0a8")
 const WARNING := Color("dca9a9")
+const LEDGER_INK := Color("151512")
+const LEDGER_MUTED := Color("50575b")
+const LEDGER_BLUE := Color("2457bd")
+const LEDGER_RED := Color("ad2721")
 const CONTENT_ICON_SCRIPT := preload("res://src/presentation/classic_content_icon.gd")
 
 var _selected_character_id: String = ""
@@ -64,7 +68,7 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 	main_split.add_theme_constant_override("separation", 8)
 	main_split.custom_minimum_size.y = 342.0 if _layout_profile == UiLayoutProfile.COMPACT else 410.0
 	main_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	main_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_split.size_flags_vertical = Control.SIZE_FILL if _layout_profile == UiLayoutProfile.COMPACT else Control.SIZE_EXPAND_FILL
 	main_split.add_child(_build_item_browser(selected_character, visible_items, selected_item, media))
 	main_split.add_child(_build_character_command_rail(view, selected_character, selected_item, media))
 	parent.add_child(main_split)
@@ -138,32 +142,46 @@ func select_roster_character(character_id: String, view: GameView) -> bool:
 func _build_item_browser(character: CharacterView, items: Array[ItemView], selected: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "InventoryItemBrowser"
-	panel.theme_type_variation = &"ClassicInset"
+	panel.theme_type_variation = &"ClassicItemLedger"
 	panel.custom_minimum_size = Vector2(390.0 if _layout_profile == UiLayoutProfile.COMPACT else 620.0, 330.0)
 	panel.size_flags_horizontal = Control.SIZE_FILL if _layout_profile == UiLayoutProfile.COMPACT else Control.SIZE_EXPAND_FILL
 	panel.size_flags_stretch_ratio = 1.45
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 4)
+	column.add_theme_constant_override("separation", 3)
 	panel.add_child(column)
-	_add_section_heading(column, "%s's items" % character.name, "%d carried" % items.size())
+	var heading := HBoxContainer.new()
+	var title := _label("%s's items" % character.name, LEDGER_INK, 17)
+	title.theme_type_variation = &"ClassicHeading"
+	title.add_theme_color_override("font_color", LEDGER_INK)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(title)
+	var count := _label("%d carried" % items.size(), LEDGER_MUTED, 12)
+	count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	heading.add_child(count)
+	column.add_child(heading)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 3)
+	list.add_theme_constant_override("separation", 0)
 	scroll.add_child(list)
 	column.add_child(scroll)
 	if items.is_empty():
-		_add_label(list, "No carried items.", MUTED)
+		_add_label(list, "No carried items.", LEDGER_MUTED)
 		return panel
 	for item: ItemView in items:
+		var row_panel := PanelContainer.new()
+		row_panel.name = "InventoryItemRow_%s" % item.instance_id
+		row_panel.theme_type_variation = &"ClassicItemLedgerSelectedRow" if selected != null and selected.instance_id == item.instance_id else &"ClassicItemLedgerRow"
 		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 6)
+		row.add_theme_constant_override("separation", 5)
 		row.add_child(_content_icon(item.icon_resource_type, item.icon_id, media, 38.0, item.name))
 		var button := Button.new()
+		button.name = "InventoryItem_%s" % item.instance_id
+		button.theme_type_variation = &"ClassicItemLedgerButton"
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.custom_minimum_size.y = 38.0
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -173,14 +191,19 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 		button.tooltip_text = "%s%s" % ["Equipped" if item.equipped else "Carried", " • %d charges" % item.charges if item.charges > 0 else ""]
 		button.pressed.connect(_select_item.bind(item.instance_id))
 		row.add_child(button)
-		var state := _label("", GOLD if item.equipped else MUTED, 12)
-		state.text = "%s%s" % ["E" if item.equipped else "", " • %d" % item.charges if item.charges > 0 else ""]
-		state.custom_minimum_size.x = 52.0
+		var state_parts: Array[String] = []
+		if item.equipped:
+			state_parts.append("Equipped")
+		if item.charges > 0:
+			state_parts.append("%d charge%s" % [item.charges, "" if item.charges == 1 else "s"])
+		var state := _label(" · ".join(state_parts), LEDGER_BLUE if item.equipped else LEDGER_RED if item.charges > 0 else LEDGER_MUTED, 12)
+		state.custom_minimum_size.x = 112.0
 		state.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		state.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		state.tooltip_text = button.tooltip_text
 		row.add_child(state)
-		list.add_child(row)
+		row_panel.add_child(row)
+		list.add_child(row_panel)
 	return panel
 
 
@@ -582,7 +605,9 @@ func _add_item_intent_action(parent: Container, asset_id: StringName, label: Str
 
 func _bitmap_button(asset_id: StringName, label: String) -> ClassicBitmapButton:
 	var button := ClassicBitmapButton.new()
-	button.configure({"id": asset_id, "asset_id": asset_id, "label": label, "tooltip": label, "accelerator": ""}, 1)
+	# Castle inventory artwork baked each word into a different legacy slab.
+	# Rebuilt retains the command identity but renders one consistent slate control.
+	button.configure({"id": asset_id, "asset_id": &"", "label": label, "tooltip": label, "accelerator": ""}, 1)
 	return button
 
 

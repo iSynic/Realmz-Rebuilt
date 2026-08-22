@@ -13,18 +13,19 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Classic locked modals and bounded display scaling** (`classic-modal-and-scaling-convergence`)
+**Castle inventory ledger and Rebuilt slate controls** (`classic-inventory-ledger-convergence`)
 
-A complete source-backed UI audit found that level progression and surviving-ally decisions should use Castle-shaped locked modals, Treasure completion should confirm over its retained workspace, and ultrawide windows need one bounded application canvas rather than unbounded empty layout. This four-workflow presentation batch retains the already observed AOGM level-up route as its ordinary-play certification target and changes no simulation behavior.
+Ordinary AOGM play shows that the functional Inventory route still lacks Castle's dominant paper-white item ledger and mixes imported word-bearing Castle button slabs with Rebuilt controls. This five-workflow presentation batch makes browsing and all adjacent item actions visually coherent without changing detached facts, legality, intents, saves, or simulation.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.rewards.post-battle-allies` | archaeology | broader-parity | - |  |
-| `classic.rewards.treasure-distribution` | archaeology | broader-parity | - |  |
-| `host.settings.accessibility` | implementation | classic-missing | - | GAP-HOST-004 |
+| `classic.inventory.inspect-item` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.inventory.manage-equipment` | archaeology | broader-parity | - |  |
+| `classic.inventory.use-item` | archaeology | broader-parity | - |  |
+| `classic.inventory.trade-item` | archaeology | broader-parity | - |  |
+| `classic.inventory.identify-item` | archaeology | broader-parity | - |  |
 
 ### Batch count delta
 
