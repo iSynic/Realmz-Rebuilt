@@ -147,6 +147,10 @@ func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
 	_system_controller.set_save_previews(previews)
 
 
+func set_save_and_quit_mode(enabled: bool) -> void:
+	_system_controller.set_save_and_quit_mode(enabled)
+
+
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_media = media
 

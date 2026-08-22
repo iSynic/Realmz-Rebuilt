@@ -42,6 +42,7 @@ var _character_creation_host: CharacterCreationHostController
 var _session_close_waits_for_playback: bool = false
 var _held_movement: HeldMovementControllerScript
 var _queued_combat_auto_changes: Dictionary = {}
+var _save_and_quit_pending: bool = false
 
 
 func _ready() -> void:
@@ -85,11 +86,13 @@ func _ready() -> void:
 	_shell_presenter.refresh_campaigns_requested.connect(_refresh_campaigns)
 	_shell_presenter.intent_submitted.connect(_submit_intent)
 	_shell_presenter.save_requested.connect(save_active_session)
+	_shell_presenter.save_and_quit_requested.connect(_on_save_and_quit_requested)
 	_shell_presenter.load_requested.connect(load_active_session)
 	_shell_presenter.load_backup_requested.connect(load_backup_session)
 	_shell_presenter.refresh_saves_requested.connect(_refresh_save_previews)
 	_shell_presenter.end_adventure_requested.connect(_on_end_adventure_requested)
 	_shell_presenter.quit_requested.connect(_on_quit_requested)
+	_shell_presenter.route_changed.connect(_on_shell_route_changed)
 	_shell_presenter.topology_debug_changed.connect(_on_topology_debug_changed)
 	_shell_presenter.dungeon_3d_changed.connect(_on_dungeon_3d_changed)
 	_shell_presenter.master_volume_changed.connect(_on_master_volume_changed)
@@ -189,6 +192,9 @@ func _on_quit_requested() -> void:
 	_held_movement.stop()
 	if _host_interaction != null:
 		return
+	if _save_and_quit_pending:
+		_save_and_quit_pending = false
+		_shell_presenter.set_save_and_quit_mode(false)
 	var current_view := session_controller.view()
 	var combat_view := current_view.combat_view
 	var in_combat := combat_view != null and combat_view.outcome == &"active"
@@ -625,6 +631,10 @@ func _respond_host_interaction(response: InteractionResponse) -> void:
 	if result_state == &"save-failed":
 		presentation_coordinator.present_host_interaction(_host_interaction)
 		return
+	if result_state != &"quit-requested":
+		_shell_presenter.set_status("Quit failed • the application remains open.", true)
+		presentation_coordinator.present_host_interaction(_host_interaction)
+		return
 	if result_state == &"close-failed":
 		var failed_step: SessionStep = result.get("step")
 		var error_message := failed_step.error_message if failed_step != null else "The session close operation is unavailable."
@@ -644,6 +654,14 @@ func _respond_host_interaction(response: InteractionResponse) -> void:
 
 
 func _respond_quit_interaction(action: StringName) -> void:
+	if action == ApplicationLifecycleScript.SAVE_AND_QUIT:
+		_host_interaction = null
+		presentation_coordinator.dismiss_host_interaction()
+		_save_and_quit_pending = true
+		_refresh_save_previews()
+		_shell_presenter.show_save_and_quit_workspace()
+		_shell_presenter.set_status("Choose a save slot, then Save and Quit.")
+		return
 	var has_active_session := session_controller.view().session_started
 	var result_state := ApplicationLifecycleScript.execute_quit(
 		action,
@@ -652,15 +670,29 @@ func _respond_quit_interaction(action: StringName) -> void:
 	)
 	if result_state == &"cancelled":
 		_host_interaction = null
-		presentation_coordinator.refresh()
+		presentation_coordinator.dismiss_host_interaction()
 		_shell_presenter.set_status("Quit cancelled.")
 		return
 	if result_state == &"save-failed":
 		presentation_coordinator.present_host_interaction(_host_interaction)
+
+
+func _on_save_and_quit_requested(slot_id: String) -> void:
+	if not _save_and_quit_pending:
 		return
-	if result_state != &"quit-requested":
-		_shell_presenter.set_status("Quit failed • the application remains open.", true)
-		presentation_coordinator.present_host_interaction(_host_interaction)
+	if not save_active_session(slot_id):
+		return
+	_save_and_quit_pending = false
+	_shell_presenter.set_save_and_quit_mode(false)
+	_quit_application()
+
+
+func _on_shell_route_changed(route_id: StringName) -> void:
+	if not _save_and_quit_pending or route_id == &"system":
+		return
+	_save_and_quit_pending = false
+	_shell_presenter.set_save_and_quit_mode(false)
+	_shell_presenter.set_status("Save and quit cancelled.")
 
 
 func _quit_application() -> void:

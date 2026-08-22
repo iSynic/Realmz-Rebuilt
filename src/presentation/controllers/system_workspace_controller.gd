@@ -16,6 +16,7 @@ var _selected_save_key: String = ""
 var _save_detail: VBoxContainer
 var _load_selected: Button
 var _layout_profile: StringName = UiLayoutProfile.WIDE
+var _save_and_quit_mode: bool = false
 
 
 func set_layout_profile(profile_id: StringName) -> void:
@@ -26,6 +27,15 @@ func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
 	_save_previews = previews.duplicate()
 	if not _save_previews.any(func(preview: SaveSlotPreview) -> bool: return _key(preview) == _selected_save_key):
 		_selected_save_key = _key(_save_previews[0]) if not _save_previews.is_empty() else ""
+
+
+func set_save_and_quit_mode(enabled: bool) -> void:
+	if enabled and not _save_and_quit_mode:
+		for preview: SaveSlotPreview in _save_previews:
+			if preview.source == SaveSlotPreviewScript.PRIMARY and preview.can_load:
+				_selected_save_key = _key(preview)
+				break
+	_save_and_quit_mode = enabled
 
 
 func present(parent: VBoxContainer, view: GameView, settings: PresentationSettings) -> void:
@@ -105,7 +115,13 @@ func _build_save_footer(parent: VBoxContainer, view: GameView) -> void:
 	footer.name = "SaveWorkspaceFooter"
 	footer.add_theme_constant_override("separation", 5)
 	parent.add_child(footer)
-	_add_action(footer, "Quick Save", &"save", "quick")
+	if _save_and_quit_mode:
+		var save_and_quit := _add_action(footer, "Save and Quit", &"", null)
+		save_and_quit.name = "SaveAndQuitSelected"
+		save_and_quit.tooltip_text = "Save to the selected slot, then quit Realmz Rebuilt."
+		save_and_quit.pressed.connect(_save_selected_and_quit)
+	else:
+		_add_action(footer, "Quick Save", &"save", "quick")
 	_load_selected = _add_action(footer, "Load Selected", &"", null)
 	_load_selected.name = "LoadSelectedSave"
 	_load_selected.pressed.connect(_load_selected_preview)
@@ -155,6 +171,11 @@ func _load_selected_preview() -> void:
 		return
 	var action: StringName = &"load_backup" if preview.source == SaveSlotPreviewScript.BACKUP else &"load"
 	action_requested.emit(action, preview.slot_id)
+
+
+func _save_selected_and_quit() -> void:
+	var preview := _selected_preview()
+	action_requested.emit(&"save_and_quit", preview.slot_id if preview != null else "quick")
 
 
 func _selected_preview() -> SaveSlotPreview:

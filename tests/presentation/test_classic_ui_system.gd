@@ -269,7 +269,8 @@ func _test_save_preview_workspace() -> void:
 	corrupt_row.pressed.emit()
 	assert_true(load_selected.disabled and load_selected.tooltip_text.contains("corrupt"), "a corrupt selected record remains visible with its exact disabled reason")
 	assert_equal(actions, [{"action": &"load", "value": "quick"}, {"action": &"load_backup", "value": "quick"}], "current and backup previews emit distinct host operations")
-	body.free()
+	body.free(); body = VBoxContainer.new(); controller.set_save_and_quit_mode(true); controller.present(body, view, PresentationSettings.new())
+	var save_and_quit := body.find_child("SaveAndQuitSelected", true, false) as Button; (body.find_child("SavePreview_quick_primary", true, false) as Button).pressed.emit(); save_and_quit.pressed.emit(); assert_equal(actions[-1], {"action": &"save_and_quit", "value": "quick"}, "Save and Quit uses the selected slot instead of writing before confirmation closes"); body.free()
 
 
 func _test_location_note_workspace() -> void:
@@ -864,7 +865,7 @@ func _test_lifecycle_interaction() -> void:
 	var quit_component := LifecycleInteractionScript.new()
 	quit_component.build(quit_request)
 	buttons = _buttons_in(quit_component)
-	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and quit Realmz Rebuilt", "Quit Realmz Rebuilt", "Cancel"], "Quit uses explicit modern host wording instead of pretending to know Castle's resource text")
+	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and Quit", "Quit", "Cancel"], "Quit keeps one compact host question with three content-sized actions"); assert_true(quit_component.find_child("LifecycleActions", true, false) is HBoxContainer and quit_component.find_child("LifecycleConsequence", true, false) == null, "Quit omits duplicate consequence prose and keeps its actions in one centered row")
 	var quit_order: Array[String] = []
 	assert_equal(ApplicationLifecycleScript.execute_quit(&"save-and-quit", func() -> bool: quit_order.append("save"); return false, func() -> void: quit_order.append("quit")), &"save-failed", "failed Quit save keeps the application open")
 	assert_equal(quit_order, ["save"], "failed Quit save never invokes process termination")

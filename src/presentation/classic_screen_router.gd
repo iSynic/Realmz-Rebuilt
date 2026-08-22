@@ -196,6 +196,12 @@ func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
 		_render_screen()
 
 
+func set_save_and_quit_mode(enabled: bool) -> void:
+	_workspace_presenter.set_save_and_quit_mode(enabled)
+	if _screen_id == &"system" and _view != null and _view.session_started:
+		_render_screen()
+
+
 func set_media_catalog(media: ClassicMediaCatalog) -> void:
 	_workspace_presenter.set_media_catalog(media)
 	setup_controller.set_media_catalog(media)

@@ -519,6 +519,8 @@ func _capture_gallery() -> void:
 	_shell.apply_settings(PresentationSettings.new()); await _resize(Vector2i(1280, 720)); _router.open_screen(&"exploration")
 	_interaction.present(APPLICATION_LIFECYCLE_SCRIPT.end_adventure_request(false), "", gallery_view, gallery_media); await _settle(); await _capture("canonical-end-adventure-1280x720")
 	await _resize(Vector2i(800, 600)); await _capture("classic-end-adventure-800x600")
+	await _resize(Vector2i(1280, 720)); _interaction.present(APPLICATION_LIFECYCLE_SCRIPT.quit_application_request(true, false), "", gallery_view, gallery_media); await _settle(); await _capture("canonical-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-quit-800x600")
+	_interaction.present(null); _router.set_save_and_quit_mode(true); await _resize(Vector2i(1280, 720)); _router.open_screen(&"system"); await _settle(); await _capture("canonical-save-and-quit-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-save-and-quit-800x600")
 	_application.queue_free()
 	await process_frame
 	quit(0)

@@ -6,6 +6,7 @@ signal cancel_package_requested
 signal refresh_campaigns_requested
 signal intent_submitted(intent: PlayerIntent)
 signal save_requested(slot_id: String)
+signal save_and_quit_requested(slot_id: String)
 signal load_requested(slot_id: String)
 signal load_backup_requested(slot_id: String)
 signal refresh_saves_requested
@@ -192,6 +193,15 @@ func present(game_view: GameView) -> void:
 
 func set_save_previews(previews: Array[SaveSlotPreview]) -> void:
 	_router.set_save_previews(previews)
+
+
+func show_save_and_quit_workspace() -> void:
+	_router.set_save_and_quit_mode(true)
+	_router.open_screen(&"system")
+
+
+func set_save_and_quit_mode(enabled: bool) -> void:
+	_router.set_save_and_quit_mode(enabled)
 
 
 func present_step(step: SessionStep) -> void:
@@ -804,6 +814,7 @@ func _set_play_regions_visible(visible: bool) -> void:
 func _on_system_action_requested(action_id: StringName, value: Variant) -> void:
 	match action_id:
 		&"save": save_requested.emit("quick" if value == null else String(value))
+		&"save_and_quit": save_and_quit_requested.emit("quick" if value == null else String(value))
 		&"load": load_requested.emit("quick" if value == null else String(value))
 		&"load_backup": load_backup_requested.emit("quick" if value == null else String(value))
 		&"refresh_saves": refresh_saves_requested.emit()

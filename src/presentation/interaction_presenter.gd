@@ -71,8 +71,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 		return
 	_set_heading(_heading_for_kind(request.kind))
 	if request.kind == InteractionRequest.SESSION_LIFECYCLE:
-		var lifecycle := request.body as InteractionRequest.LifecycleRequestBody
-		_set_heading("End Adventure" if lifecycle != null and lifecycle.operation == &"end-adventure" else "Quit Realmz Rebuilt")
+		_set_heading("")
 	if request.kind == InteractionRequest.CHARACTER_SELECTION and (request.body as InteractionRequest.CharacterSelectionRequestBody).spell_context != null:
 		_set_heading("Spell Target")
 	_prompt.text = _prompt_for(request, classic_text_context)
@@ -417,10 +416,12 @@ func _apply_classic_region() -> void:
 		size = region.size
 	else:
 		theme_type_variation = &"ClassicInset"
-		var preferred_height := 380.0 if _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION else 300.0 if _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE else 520.0
-		var desired := Vector2(minf(700.0, _stage_rect.size.x - 20.0), minf(preferred_height, _stage_rect.size.y - 20.0))
-		desired.x = maxf(300.0, desired.x)
-		desired.y = maxf(260.0, desired.y)
+		var lifecycle := _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE
+		var preferred_height := 122.0 if lifecycle else 380.0 if _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION else 520.0
+		var preferred_width := 460.0 if lifecycle else 700.0
+		var desired := Vector2(minf(preferred_width, _stage_rect.size.x - 20.0), minf(preferred_height, _stage_rect.size.y - 20.0))
+		desired.x = maxf(340.0 if lifecycle else 300.0, desired.x)
+		desired.y = maxf(110.0 if lifecycle else 260.0, desired.y)
 		position = _stage_rect.position + (_stage_rect.size - desired) * 0.5
 		size = desired
 	_apply_content_layout()

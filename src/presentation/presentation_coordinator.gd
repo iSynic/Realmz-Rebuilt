@@ -184,6 +184,11 @@ func present_host_interaction(request: InteractionRequest) -> void:
 	_interaction_presenter.present(request, _shell_presenter.latest_classic_text(), _session_controller.view(), _media)
 
 
+func dismiss_host_interaction() -> void:
+	present_host_interaction(null)
+	_present_current_view()
+
+
 func present_host_workflow(game_view: GameView, step: SessionStep = null) -> void:
 	# Character Files creation is application-owned rather than a campaign
 	# session, but it still consumes the same detached view and interaction
