@@ -51,6 +51,11 @@ func build(request: InteractionRequest) -> void:
 			add_hint("The treasure request is malformed.")
 
 
+func preferred_initial_focus() -> Control:
+	var recipient := _recipient_buttons.get(_selected_recipient_id) as Control
+	return recipient if recipient != null and recipient.visible and not (recipient is BaseButton and (recipient as BaseButton).disabled) else null
+
+
 func _build_classic_treasure_workspace(body: InteractionRequest.TreasureRequestBody) -> void:
 	_select_initial_recipient(body)
 	_add_workspace_header(body, false)

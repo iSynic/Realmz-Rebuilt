@@ -659,7 +659,8 @@ func _add_hint(text: String) -> Label:
 
 
 func _focus_first_control() -> void:
-	var first := _first_focusable(_options)
+	var preferred := _component.preferred_initial_focus() if _component != null else null
+	var first := preferred if preferred != null else _first_focusable(_options)
 	if first != null:
 		first.grab_focus()
 
