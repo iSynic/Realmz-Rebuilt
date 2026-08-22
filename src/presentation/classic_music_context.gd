@@ -8,7 +8,7 @@ const CONTEXT_NAMES: Array[String] = [
 
 
 static func playlist_for(route_id: StringName, view: GameView) -> int:
-	if view == null:
+	if view == null or not view.session_started or view.party_setup_available:
 		return 0
 	var interaction := view.active_interaction_request()
 	if interaction != null:
@@ -21,8 +21,6 @@ static func playlist_for(route_id: StringName, view: GameView) -> int:
 		return 11
 	if view.character_draft != null:
 		return 5
-	if not view.session_started:
-		return 0
 	if route_id == &"inventory":
 		return 6
 	if view.party_summary != null and view.party_summary.camping:
