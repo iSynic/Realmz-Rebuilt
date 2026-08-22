@@ -107,7 +107,7 @@ func run() -> void:
 	assert_equal(session.snapshot().continuation, null, "a blocked attempt drains its post-time checks before returning a committed boundary")
 	var search := session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	assert_equal(_event(search, &"search_completed").payload["roll"], 15, "search follows the centralized RNG after the blocked-attempt random-region draw")
-	assert_true(_has_event(search, &"secret_discovered"), "search commits secret discovery"); assert_true(_sound_ids(search).has(6001), "Area Search requests Castle sound 6001 before its held pulse")
+	assert_true(_has_event(search, &"secret_discovered"), "search commits secret discovery")
 	assert_true(session.view().map_view.can_move(Vector2i.LEFT), "movement cues update from the same discovered-secret overlay as simulation")
 	var secret_entry := session.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal(session.view().party_coordinate, Vector2i(0, 1), "discovered secret permits movement")

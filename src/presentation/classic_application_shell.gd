@@ -43,6 +43,10 @@ const MUTED := Color("9aa4a5")
 const ERROR := Color("ef7770")
 const TEXT := Color("d8d9d2")
 const HELD_COMMAND_INTERVAL := 0.22
+const HELD_COMMAND_START_SOUND_IDS: Dictionary = {
+	&"area_search": 6001,
+	&"rest": 6001,
+}
 const TORCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_torch_command_button.gd")
 const SEARCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_search_command_button.gd")
 const MUSIC_PLAYLIST_DIALOG_SCRIPT := preload("res://src/presentation/music_playlist_dialog.gd")
@@ -654,7 +658,10 @@ func _update_command_availability() -> void:
 		button.queue_redraw()
 
 
-func _activate_command(command_id: StringName) -> void:
+func _activate_command(command_id: StringName, held_repeat: bool = false) -> void:
+	var start_sound_id := held_command_start_sound_id(command_id, held_repeat)
+	if start_sound_id > 0:
+		presentation_sound_requested.emit(start_sound_id, false, false)
 	match command_id:
 		&"search_mode": intent_submitted.emit(PlayerIntent.toggle_search())
 		&"area_search": intent_submitted.emit(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
@@ -715,6 +722,12 @@ func _begin_held_command(command_id: StringName) -> void:
 		_held_command_timer.start()
 
 
+static func held_command_start_sound_id(command_id: StringName, held_repeat: bool) -> int:
+	if held_repeat:
+		return 0
+	return int(HELD_COMMAND_START_SOUND_IDS.get(command_id, 0))
+
+
 func _stop_held_command() -> void:
 	_held_command = &""
 	if _held_command_timer != null:
@@ -743,7 +756,7 @@ func _on_held_command_timeout() -> void:
 	if _current_view == null or _current_view.pending_interaction != null or not _current_view.availability(_held_command).enabled:
 		_stop_held_command()
 		return
-	_activate_command(_held_command)
+	_activate_command(_held_command, true)
 
 
 func _notification(what: int) -> void:

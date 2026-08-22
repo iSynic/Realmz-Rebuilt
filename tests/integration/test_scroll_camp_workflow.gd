@@ -95,7 +95,7 @@ func run() -> void:
 	rest_session._state.party.conditions.set_value(ConditionRules.PARTY_TORCH_LIT, 3)
 	rest_session._state.clock.set_total_minutes(50)
 	var rested := rest_session.submit_intent(PlayerIntent.rest())
-	assert_equal(rested.state, SessionStep.State.COMPLETED, "one typed Rest intent commits one held-control pulse"); assert_true(rested.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("soundId") == 6001), "each Rest pulse requests Castle sound 6001")
+	assert_equal(rested.state, SessionStep.State.COMPLETED, "one typed Rest intent commits one held-control pulse")
 	assert_equal(rest_session._state.clock.total_minutes(), 75, "one outdoor Rest pulse advances five five-minute time clicks")
 	assert_equal(rest_session._state.party.fatigue, 79, "Rest removes two fatigue before the crossed hour adds one")
 	assert_equal(rest_session._state.party.conditions.value(ConditionRules.PARTY_TORCH_LIT), 1, "the crossed hour applies Castle's generic and torch-specific light decrements")

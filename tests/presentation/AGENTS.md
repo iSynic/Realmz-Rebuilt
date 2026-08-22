@@ -20,7 +20,7 @@
 - The capture gallery records Temple, Bank, and pooled-departure workspaces at both canonical 1280×720 and optional 800×600. These frames are visual evidence only; typed workflow tests remain the owning behavioral proof.
 - Test navigation must not mutate a session. Automatic-route coverage proves that combat, services, and scenario/AP interactions replace unrelated browsing workspaces while interaction-free browsing remains presentation-owned. Pending mandatory responses disable manual route changes, and full-stage interaction fixtures assert an opaque, pointer-owning layer above nested router overlays.
 - Music coverage owns schema migration, twenty-slot mode validation, stock-bank integrity, detached context precedence, separate effects/music channel volumes, modal input ownership, and responsive reachability. Gallery frames own appearance; ordinary campaign transitions remain manual acceptance rather than MCP replay.
-- Workspace-audio coverage owns explicit Items/Spells entry, same-route suppression, automatic-route suppression, and the ordinary Swap lifecycle. Simulation-owned battle, Camp, Rest, Search, Heal, and action cues remain public core/session workflow evidence.
+- Workspace-audio coverage owns explicit Items/Spells entry, same-route suppression, automatic-route suppression, and the ordinary Swap lifecycle. Held-command coverage owns one Rest/Area Search sound per physical start and silence on repeat pulses. Simulation-owned battle, Camp, Heal, and action cues remain public core/session workflow evidence.
 
 # Work Guidance
 
