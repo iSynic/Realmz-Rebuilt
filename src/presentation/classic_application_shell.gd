@@ -68,6 +68,7 @@ const MUSIC_PLAYLIST_DIALOG_SCRIPT := preload("res://src/presentation/music_play
 @onready var _facts: GridContainer = %Facts
 @onready var _coordinates_label: Label = %Coordinates
 @onready var _fatigue_label: Label = %Fatigue
+@onready var _fatigue_bar: ProgressBar = %FatigueBar
 @onready var _light_label: Label = %Light
 @onready var _clock_label: Label = %Clock
 @onready var _gold_label: Label = %Gold
@@ -150,6 +151,8 @@ func present(game_view: GameView) -> void:
 		_gold_label.text = "Gold —"
 		_coordinates_label.text = "Map —"
 		_fatigue_label.text = "Fatigue —"
+		_fatigue_bar.value = 4.0
+		_fatigue_bar.tooltip_text = "No active party fatigue."
 		_light_label.text = "Light —"
 		_party_roster.present(game_view)
 		_router.present(game_view)
@@ -163,6 +166,8 @@ func present(game_view: GameView) -> void:
 	_gold_label.text = "Gold %d" % game_view.pooled_gold
 	_coordinates_label.text = "%s • %d,%d" % [game_view.party_map_id, game_view.party_coordinate.x, game_view.party_coordinate.y]
 	_fatigue_label.text = "Fatigue %d" % game_view.party_fatigue
+	_fatigue_bar.value = game_view.party_fatigue
+	_fatigue_bar.tooltip_text = "Fatigue %d / 135" % game_view.party_fatigue
 	_light_label.text = "Light %d" % game_view.party_summary.light_remaining if game_view.party_summary != null else "Light —"
 	_apply_exploration_mode()
 	_package_status.text = game_view.campaign_summary.title if game_view.campaign_summary != null else game_view.campaign_id
