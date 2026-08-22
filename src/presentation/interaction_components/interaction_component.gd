@@ -26,6 +26,10 @@ func build(_request: InteractionRequest) -> void:
 	pass
 
 
+func handle_back() -> bool:
+	return false
+
+
 func add_response(label: String, body: InteractionResponse.Body, enabled: bool = true, reason: String = "") -> Button:
 	return add_response_to(self, label, body, enabled, reason)
 

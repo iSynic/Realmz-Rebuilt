@@ -1,7 +1,10 @@
 extends InteractionComponent
 
+var _can_cancel: bool = false
+
 
 func build(request: InteractionRequest) -> void:
+	_can_cancel = false
 	if request.kind != InteractionRequest.SESSION_LIFECYCLE:
 		return
 	var body := request.body as InteractionRequest.LifecycleRequestBody
@@ -28,9 +31,17 @@ func build(request: InteractionRequest) -> void:
 		var label := option.label.strip_edges()
 		if action.is_empty() or label.is_empty():
 			continue
+		_can_cancel = _can_cancel or action == &"cancel"
 		var button := add_response(label, InteractionResponse.LifecycleBody.new(action))
 		if action in [&"save-and-end", &"save-and-quit"]:
 			button.theme_type_variation = &"ClassicChoiceButton"
 		elif action in [&"end-without-saving", &"quit-without-saving"]:
 			button.add_theme_color_override("font_color", Color("d48a78"))
 			button.add_theme_color_override("font_hover_color", Color("efaa98"))
+
+
+func handle_back() -> bool:
+	if not _can_cancel:
+		return false
+	response_body_submitted.emit(InteractionResponse.LifecycleBody.new(&"cancel"))
+	return true

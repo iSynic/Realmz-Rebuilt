@@ -839,7 +839,7 @@ func _test_fixture_gallery_coverage() -> void:
 
 func _test_lifecycle_interaction() -> void:
 	var request := ApplicationLifecycleScript.end_adventure_request(false)
-	assert_equal([request.kind, request.body.to_data()["inCombat"], request.body.to_data()["options"].size()], [InteractionRequest.SESSION_LIFECYCLE, false, 3], "field End Adventure exposes explicit save, discard, and cancel operations")
+	assert_equal([request.kind, request.body.to_data()["inCombat"], request.body.to_data()["options"].size(), InteractionPresenter.uses_full_stage_region(request)], [InteractionRequest.SESSION_LIFECYCLE, false, 3, false], "field End Adventure exposes explicit save, discard, and cancel operations in a compact modal")
 	assert_not_null(InteractionRequest.from_data(request.to_data()), "the typed lifecycle request retains the established interaction wire shape")
 	var component := LifecycleInteractionScript.new()
 	var submitted: Array[Dictionary] = []
@@ -847,7 +847,7 @@ func _test_lifecycle_interaction() -> void:
 	component.build(request)
 	var buttons := _buttons_in(component)
 	assert_equal(buttons.map(func(button: Button) -> String: return button.text), ["Save and end adventure", "End adventure without saving", "Cancel"], "the dedicated presenter does not reinterpret lifecycle choices as scenario options")
-	buttons[2].pressed.emit()
+	assert_true(component.handle_back(), "Escape invokes the declared lifecycle Cancel action")
 	assert_equal(submitted, [{"action": "cancel"}], "Cancel emits one typed host response")
 	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionPresenter.response_for(request, InteractionResponse.LifecycleBody.new(&"cancel"))), &"cancel", "the host accepts only an action declared by its request")
 	assert_equal(ApplicationLifecycleScript.response_action(request, InteractionResponse.from_data(request.request_id, request.kind, {"action": "invented"})), &"", "undeclared lifecycle actions fail explicitly")
@@ -908,12 +908,12 @@ func _test_classic_choice_context() -> void:
 	var yes_no_grid := yes_no.find_child("ChoiceGrid", true, false) as GridContainer
 	assert_true(yes_no.find_child("ChoicePane", true, false) != null and yes_no_grid != null and yes_no_grid.columns == 2 and _buttons_in(yes_no).all(func(button: Button) -> bool: return button.theme_type_variation == &"ClassicChoiceButton"), "binary Classic choices share one backed compact semantic response row")
 	yes_no.free()
-	var encounter := EncounterInteraction.new(); encounter.build(ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION))
+	var encounter := EncounterInteraction.new(); var encounter_responses: Array[StringName] = []; encounter.response_body_submitted.connect(func(body: InteractionResponse.ComplexEncounterBody) -> void: encounter_responses.append(body.action)); var encounter_request := ClassicUiFixtureGallery.request_for(InteractionRequest.WORD_AND_ACTION); encounter.build(encounter_request)
 	var command_strip := encounter.find_child("EncounterCommandStrip", true, false) as GridContainer; assert_true(encounter.find_child("EncounterCommandDeck", true, false) != null and encounter.find_child("EncounterContextDeck", true, false) != null and command_strip != null and command_strip.get_child_count() == 6, "complex encounters preserve one backed Action, Items, Skills, Speak, Spells, and Stop command strip above one contextual task pane")
 	assert_not_null(encounter.find_child("EncounterChoiceGrid", true, false), "the selected encounter command owns a compact contextual response pane")
-	var item_command := encounter.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton; item_command.command_requested.emit(&"item"); assert_true(encounter.find_child("EncounterCatalogList", true, false) != null and encounter.find_child("EncounterCatalogRecord", true, false) != null and encounter.find_child("EncounterCatalogActions", true, false) != null, "encounter item and spell selection use a stable list, selected record, and fixed action workflow instead of a generic dropdown")
+	var item_command := encounter.find_child("EncounterCommandItem", true, false) as ClassicBitmapButton; item_command.command_requested.emit(&"item"); assert_true(encounter.find_child("EncounterCatalogList", true, false) != null and encounter.find_child("EncounterCatalogRecord", true, false) != null and encounter.find_child("EncounterCatalogActions", true, false) != null and encounter.handle_back() and encounter.find_child("EncounterCatalogList", true, false) == null, "encounter item and spell selection use a stable list workflow whose local task unwinds before leaving")
 	var word_command := encounter.find_child("EncounterCommandWord", true, false) as ClassicBitmapButton; word_command.command_requested.emit(&"word"); var word_entry := encounter.find_child("EncounterWord", true, false) as LineEdit
-	assert_true(word_entry != null and word_entry.max_length == 39 and encounter.find_child("EncounterWordActions", true, false) != null and _buttons_in(encounter).any(func(button: Button) -> bool: return button.text == "Speak"), "Speak keeps input within Castle's 40-byte destination and exposes one fixed submit control"); encounter.free()
+	assert_true(not InteractionPresenter.uses_textbox_region(encounter_request) and word_entry != null and word_entry.max_length == 39 and word_entry.theme_type_variation == &"ClassicTheldrowLineEdit" and encounter.find_child("EncounterWordActions", true, false) != null and _buttons_in(encounter).any(func(button: Button) -> bool: return button.text == "Speak") and encounter.handle_back() and encounter_responses == [&"back"], "Encounter is a floating modal; Speak uses Theldrow and Escape invokes authored Stop after local task unwind"); encounter.free()
 	var thief := ThiefEncounterInteraction.new(); thief.build(ClassicUiFixtureGallery.request_for(InteractionRequest.THIEF_ENCOUNTER)); assert_true(thief.find_child("ThiefCharacterPane", true, false) != null and thief.find_child("ThiefActionPane", true, false) != null and thief.find_child("ThiefActionGrid", true, false) != null, "thief selection keeps exact portraits and source-owned skill values in separate character and action panes"); thief.free()
 
 

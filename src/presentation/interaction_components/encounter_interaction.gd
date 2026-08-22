@@ -53,6 +53,16 @@ func build(request: InteractionRequest) -> void:
 	_show_first_available()
 
 
+func handle_back() -> bool:
+	if not _catalog_kind.is_empty():
+		_cancel_catalog()
+		return true
+	if _back_action != null:
+		response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"back"))
+		return true
+	return false
+
+
 func _classify_actions() -> void:
 	for entry: InteractionRequestValue.EncounterAction in _body.actions:
 		match entry.kind:
@@ -143,12 +153,14 @@ func _show_word() -> void:
 	word.name = "EncounterWord"
 	word.placeholder_text = "Word or phrase"
 	word.max_length = 39
+	word.theme_type_variation = &"ClassicTheldrowLineEdit"
 	word.custom_minimum_size = Vector2(300.0, 34.0)
 	word.size_flags_horizontal = Control.SIZE_FILL
 	entry_row.add_child(word)
 	var submit := Button.new()
 	submit.name = "EncounterWordSubmit"
 	submit.text = _word_action.label if not _word_action.label.is_empty() else "Speak"
+	submit.theme_type_variation = &"ClassicTheldrowButton"
 	submit.custom_minimum_size = Vector2(68.0, 32.0)
 	submit.pressed.connect(func() -> void: response_body_submitted.emit(InteractionResponse.ComplexEncounterBody.new(&"word", -1, word.text)))
 	entry_row.add_child(submit)
@@ -268,6 +280,7 @@ func _cancel_catalog() -> void:
 
 
 func _clear_context() -> void:
+	_catalog_kind = &""
 	_catalog_entries.clear()
 	_catalog_buttons.clear()
 	_catalog_record = null

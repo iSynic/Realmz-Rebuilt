@@ -190,6 +190,10 @@ func has_blocking_request() -> bool:
 	return _request != null or _playback_masked
 
 
+func handle_back_request() -> bool:
+	return not _playback_masked and _request != null and _component != null and _component.handle_back()
+
+
 func submit_active_body(body: InteractionResponse.CombatBody) -> bool:
 	if _playback_masked or _request == null or _request.kind != InteractionRequest.COMBAT:
 		return false
@@ -401,7 +405,8 @@ func _apply_classic_region() -> void:
 		size = region.size
 	else:
 		theme_type_variation = &"ClassicInset"
-		var desired := Vector2(minf(700.0, _stage_rect.size.x - 20.0), minf(520.0, _stage_rect.size.y - 20.0))
+		var preferred_height := 380.0 if _request != null and _request.kind == InteractionRequest.WORD_AND_ACTION else 300.0 if _request != null and _request.kind == InteractionRequest.SESSION_LIFECYCLE else 520.0
+		var desired := Vector2(minf(700.0, _stage_rect.size.x - 20.0), minf(preferred_height, _stage_rect.size.y - 20.0))
 		desired.x = maxf(300.0, desired.x)
 		desired.y = maxf(260.0, desired.y)
 		position = _stage_rect.position + (_stage_rect.size - desired) * 0.5
@@ -427,11 +432,11 @@ func _apply_content_layout() -> void:
 
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
-	return passive_text or request != null and not _is_player_map_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"complex_encounter", &"combat_action"]
+	return passive_text or request != null and not _is_player_map_request(request) and request.kind in [&"acknowledge", &"yes_no", &"encounter_choice", &"scenario_choice", &"character_selection", &"combat_action"]
 
 
 static func uses_full_stage_region(request: InteractionRequest) -> bool:
-	return request != null and (request.kind in [InteractionRequest.ALLY_SELECTION, InteractionRequest.SESSION_LIFECYCLE] or uses_application_workspace(request))
+	return request != null and (request.kind == InteractionRequest.ALLY_SELECTION or uses_application_workspace(request))
 
 
 static func uses_application_workspace(request: InteractionRequest) -> bool:

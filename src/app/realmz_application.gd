@@ -303,6 +303,9 @@ func _input(event: InputEvent) -> void:
 		if combat_pending and _battlefield_presenter.cancel_targeting():
 			get_viewport().set_input_as_handled()
 			return
+		if _interaction_presenter.handle_back_request():
+			get_viewport().set_input_as_handled()
+			return
 		if _interaction_presenter.has_blocking_request():
 			_shell_presenter.set_status("Choose a response before leaving this interaction.")
 			get_viewport().set_input_as_handled()
