@@ -48,6 +48,24 @@ func _notification(what: int) -> void:
 		_claim_modal_layer()
 
 
+func _gui_input(event: InputEvent) -> void:
+	var mouse_event := event as InputEventMouseButton
+	if mouse_event != null and mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT and _submit_classic_acknowledgement():
+		accept_event()
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	var key_event := event as InputEventKey
+	if key_event == null or not key_event.pressed or key_event.echo or key_event.keycode not in [KEY_ENTER, KEY_KP_ENTER, KEY_SPACE]:
+		return
+	if _submit_classic_acknowledgement():
+		get_viewport().set_input_as_handled()
+
+
+func _submit_classic_acknowledgement() -> bool:
+	return not _playback_masked and _request != null and _request.kind == InteractionRequest.ACKNOWLEDGE and _component is TextChoiceInteraction and (_component as TextChoiceInteraction).submit_acknowledgement()
+
+
 func _exit_tree() -> void:
 	_close_side_workspace()
 	_close_modal_shield()

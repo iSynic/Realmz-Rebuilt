@@ -887,8 +887,8 @@ func _test_classic_choice_context() -> void:
 	journal_component.response_body_submitted.connect(func(body: InteractionResponse.Body) -> void: journal_payloads.append(body.to_data()))
 	journal_component.configure(true); journal_component.build(journal_request)
 	var journal_buttons: Array[Node] = journal_component.find_children("*", "Button", true, false)
-	assert_equal(journal_buttons.map(func(button: Button) -> String: return button.text), ["Continue"], "Auto Note keeps one compact acknowledgement instead of a separate invented Take note command")
-	(journal_buttons[0] as Button).pressed.emit()
+	assert_true(journal_buttons.is_empty() and _labels_in(journal_component).any(func(text: String) -> bool: return text.contains("Click the narrative text")), "positive Classic text advances from its narrative surface instead of inventing a formal Continue button")
+	assert_true(journal_component.submit_acknowledgement(), "the narrative surface owns one typed acknowledgement action")
 	assert_equal(journal_payloads, [{"takeNote": true}], "Auto Note preserves the typed journal flag on ordinary acknowledgement")
 	journal_component.free()
 	var yes_no := TextChoiceInteraction.new()
@@ -1207,7 +1207,7 @@ func _test_scene_composition() -> void:
 	var narrative_well := shell.get_node("BottomRegion/BottomRow/NarrativeWell") as Control
 	var party_panel := shell.get_node("BottomRegion/BottomRow/CommandPanel") as Control
 	assert_equal([world_panel.size_flags_horizontal, narrative_well.size_flags_horizontal, party_panel.size_flags_horizontal], [Control.SIZE_EXPAND_FILL, Control.SIZE_SHRINK_CENTER, Control.SIZE_EXPAND_FILL], "the wide footer gives spare width to both command panes while keeping the Classic narrative measure fixed")
-	assert_equal(RealmzApplication.classic_textbox_rect(Rect2(0.0, 32.0, 992.0, 498.0), 190.0, 1280.0), Rect2(0.0, 530.0, 1280.0, 190.0), "Classic narrative interactions own the complete bottom stage rather than only the map column")
+	assert_equal(RealmzApplication.classic_textbox_rect(Rect2(0.0, 32.0, 992.0, 498.0), 190.0, 1280.0), Rect2(0.0, 530.0, 1280.0, 190.0), "the application retains one full-width fallback until the shell's exact narrative well settles")
 	var backing := shell.get_node("PictureStage/PictureBacking") as TextureRect; var roster := shell.get_node("PartyRoster") as PanelContainer; var picture_caption := shell.get_node("PictureStage/PictureMargin/PictureColumn/PictureCaption") as Label
 	assert_true(backing.stretch_mode == TextureRect.STRETCH_TILE and not picture_caption.visible and roster.theme_type_variation == &"ClassicInset", "picture and roster stages use owned Classic framing without exposing package media IDs")
 	for viewport_size: Vector2 in [Vector2(800, 600), Vector2(1280, 720)]:

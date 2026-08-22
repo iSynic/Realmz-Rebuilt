@@ -220,6 +220,13 @@ func latest_classic_text() -> String:
 	return _latest_classic_text
 
 
+func narrative_region() -> Rect2:
+	if _narrative_well == null or not _narrative_well.is_inside_tree():
+		return Rect2()
+	var local_origin := get_global_transform().affine_inverse() * _narrative_well.global_position
+	return Rect2(local_origin, _narrative_well.size)
+
+
 func present_character_selection(request: InteractionRequest) -> void:
 	_party_roster.present_character_selection(request)
 

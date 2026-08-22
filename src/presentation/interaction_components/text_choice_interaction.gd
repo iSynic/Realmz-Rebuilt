@@ -3,6 +3,7 @@ extends InteractionComponent
 
 var _autojournal_enabled: bool = true
 var _manual_journal_available: bool = false
+var _acknowledgement_body: InteractionResponse.AcknowledgeBody
 
 
 func configure(autojournal_enabled: bool) -> void:
@@ -11,6 +12,7 @@ func configure(autojournal_enabled: bool) -> void:
 
 func build(request: InteractionRequest) -> void:
 	_manual_journal_available = false
+	_acknowledgement_body = null
 	match request.kind:
 		&"encounter_choice", &"scenario_choice":
 			var body := request.body as InteractionRequest.ChoiceRequestBody
@@ -31,8 +33,8 @@ func build(request: InteractionRequest) -> void:
 		&"acknowledge":
 			var body := request.body as InteractionRequest.AcknowledgeBody
 			if body == null: return
-			var grid := _choice_grid(1, true)
 			var take_note_on_continue := body.journal_eligible and not body.journal_recorded and _autojournal_enabled
+			_acknowledgement_body = InteractionResponse.AcknowledgeBody.new(take_note_on_continue)
 			if body.journal_recorded:
 				add_hint("Already recorded in the journal.")
 			elif take_note_on_continue:
@@ -40,7 +42,16 @@ func build(request: InteractionRequest) -> void:
 			elif body.journal_eligible:
 				_manual_journal_available = true
 				add_hint("Press N to add this passage to Notes.")
-			_add_choice(grid, "Continue", InteractionResponse.AcknowledgeBody.new(take_note_on_continue), "ChoiceContinue")
+			add_hint("Click the narrative text or press Enter to continue.")
+
+
+func submit_acknowledgement() -> bool:
+	if _acknowledgement_body == null:
+		return false
+	var body := _acknowledgement_body
+	_acknowledgement_body = null
+	response_body_submitted.emit(body)
+	return true
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -50,6 +61,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if not key_event.pressed or key_event.echo or key_event.keycode != KEY_N:
 		return
 	_manual_journal_available = false
+	_acknowledgement_body = null
 	response_body_submitted.emit(InteractionResponse.AcknowledgeBody.new(true))
 	get_viewport().set_input_as_handled()
 

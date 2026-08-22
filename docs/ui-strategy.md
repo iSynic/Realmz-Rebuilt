@@ -61,7 +61,7 @@ Every route has its own scene-backed workspace registered in `UiRouteCatalog`. E
 - Focus is visible and restored per route. Opening an interaction focuses the first valid response.
 - Escape closes a stage picture or top interaction first, then returns through route history to Explore.
 - A pending request suppresses exploration and route mutation. `InteractionPresenter` preserves request ID and exact response payload.
-- Positive Classic messages use an explicit Continue response in the narrative region without a redundant "Classic Textbox" title. The interaction surface owns the complete bottom width: its prompt preserves the ordinary fixed narrative measure and compact choices/actions occupy the right response pane. Passive negative messages use the same narrative surface without fabricating a wait.
+- Positive Classic messages reuse the existing narrative well without a redundant "Classic Textbox" title or formal Continue button. Clicking the narrative surface or pressing Enter/Space emits the typed acknowledgement; Auto Note and `N` retain their journal semantics. Authored yes/no or indexed choices stay compact within that well instead of replacing the complete footer. Passive negative messages use the same narrative surface without fabricating a wait.
 - A Classic age-band transition uses a dedicated inset `Age Update` workspace rather than the Chronicle or narrative textbox. It presents the character/race, resulting band and year range, all nonzero values from the source fifteen-column change row, and one focusable Continue response; sound 3002 is requested when each queued character becomes current.
 
 ## Package media and secrecy

@@ -1080,6 +1080,13 @@ func _on_shell_layout_changed(workspace_rect: Rect2, _profile: UiLayoutProfile) 
 	var textbox_rect := Rect2(Vector2(canvas_rect.position.x, workspace_rect.end.y), Vector2(canvas_rect.size.x, _profile.bottom_height))
 	var combat_rect := Rect2(Vector2(canvas_rect.position.x, canvas_rect.end.y - _profile.bottom_height), Vector2(canvas_rect.size.x, _profile.bottom_height))
 	_interaction_presenter.set_classic_regions(content_rect, textbox_rect, combat_rect)
+	call_deferred("_sync_interaction_narrative_region", content_rect, combat_rect)
+
+
+func _sync_interaction_narrative_region(content_rect: Rect2, combat_rect: Rect2) -> void:
+	var narrative_rect := _shell_presenter.narrative_region()
+	if narrative_rect.has_area():
+		_interaction_presenter.set_classic_regions(content_rect, narrative_rect, combat_rect)
 
 
 static func classic_textbox_rect(workspace_rect: Rect2, bottom_height: float, full_width: float = 0.0) -> Rect2:
