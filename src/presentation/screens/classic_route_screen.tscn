@@ -39,16 +39,25 @@ text = "Back"
 [node name="HeaderRule" type="HSeparator" parent="WorkspaceColumn"]
 layout_mode = 2
 
-[node name="ScreenBodyScroll" type="ScrollContainer" parent="WorkspaceColumn"]
-unique_name_in_owner = true
+[node name="BodyClip" type="Control" parent="WorkspaceColumn"]
 layout_mode = 2
 size_flags_vertical = 3
+clip_contents = true
+
+[node name="ScreenBodyScroll" type="ScrollContainer" parent="WorkspaceColumn/BodyClip"]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 horizontal_scroll_mode = 0
 vertical_scroll_mode = 1
 follow_focus = true
 mouse_filter = 1
 
-[node name="ScreenBody" type="VBoxContainer" parent="WorkspaceColumn/ScreenBodyScroll"]
+[node name="ScreenBody" type="VBoxContainer" parent="WorkspaceColumn/BodyClip/ScreenBodyScroll"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3

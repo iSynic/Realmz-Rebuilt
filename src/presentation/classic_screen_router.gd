@@ -245,7 +245,7 @@ static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, 
 
 
 static func spell_workspace_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2 = Vector2.ZERO) -> Rect2:
-	return Rect2(origin + Vector2(viewport_size.x - profile.party_width, profile.menu_height), Vector2(profile.party_width, maxf(220.0, viewport_size.y - profile.menu_height - profile.bottom_height)))
+	return Rect2(origin + Vector2(viewport_size.x - profile.party_width, profile.menu_height), Vector2(profile.party_width, maxf(220.0, viewport_size.y - profile.menu_height)))
 
 
 func _apply_modal_layouts() -> void:
@@ -521,7 +521,7 @@ func _restore_focus(reset_scroll_to_top: bool = false, previous_scroll_horizonta
 	if _body_scroll != null:
 		# Focus restoration runs before the rebuilt layout has settled and can
 		# otherwise force the ScrollContainer to its final focusable control.
-		_body_scroll.scroll_horizontal = 0 if reset_scroll_to_top else previous_scroll_horizontal
+		_body_scroll.scroll_horizontal = 0
 		_body_scroll.scroll_vertical = 0 if reset_scroll_to_top else previous_scroll_vertical
 
 
