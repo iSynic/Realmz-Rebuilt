@@ -3,6 +3,7 @@ extends RefCounted
 
 const SpellSelectionChrome := preload("res://src/presentation/controllers/classic_spell_selection_chrome.gd")
 const ClassicSpellLevelScript := preload("res://src/presentation/classic_spell_level.gd")
+const SpellTargetBadge := preload("res://src/presentation/classic_spell_target_badge.gd")
 
 signal intent_submitted(intent: PlayerIntent)
 signal route_requested(route_id: StringName)
@@ -151,7 +152,7 @@ func _add_known_spells(parent: VBoxContainer, character: CharacterView, fixed_ac
 	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	browser.add_theme_constant_override("separation", 4)
 	column.add_child(browser)
-	browser.add_child(_build_level_rail(available_levels))
+	browser.add_child(_build_level_rail(available_levels, spell))
 	var records := VBoxContainer.new()
 	records.name = "LevelSpellRecords"
 	records.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -168,7 +169,7 @@ func _add_known_spells(parent: VBoxContainer, character: CharacterView, fixed_ac
 	parent.add_child(workspace)
 
 
-func _build_level_rail(available_levels: Array[int]) -> PanelContainer:
+func _build_level_rail(available_levels: Array[int], spell: SpellView) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "SpellLevelRail"
 	panel.theme_type_variation = &"ClassicInset"
@@ -188,9 +189,12 @@ func _build_level_rail(available_levels: Array[int]) -> PanelContainer:
 			"No known level %d spells" % level
 		)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		if _compact:
-			button.custom_minimum_size = Vector2(74.0, 24.0)
+		button.custom_minimum_size = Vector2(74.0 if _compact else 88.0, 24.0)
 		rail.add_child(button)
+	var divider := HSeparator.new()
+	divider.custom_minimum_size.y = 4.0
+	rail.add_child(divider)
+	rail.add_child(_build_power_rail(spell))
 	return panel
 
 
@@ -264,13 +268,17 @@ func _spell_detail(character: CharacterView, spell: SpellView) -> Control:
 	identity.add_child(title_box)
 	column.add_child(identity)
 	var description := _add_label(column, spell.description, TEXT, 12)
-	description.max_lines_visible = 1 if _compact else 2
+	description.max_lines_visible = 1
 	description.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	description.tooltip_text = spell.description
 	var target_row := HBoxContainer.new()
 	target_row.add_theme_constant_override("separation", 10)
-	var target_art := _target_art_id(spell)
 	if not _compact:
-		target_row.add_child(_ui_art(target_art, Vector2(48.0, 48.0)) if not target_art.is_empty() else _target_fallback(spell))
+		var target_badge := SpellTargetBadge.new()
+		if target_badge.present(spell.target_type, spell.target_size, _target_label(spell), Vector2(48.0, 48.0)):
+			target_row.add_child(target_badge)
+		else:
+			target_badge.free()
 	var facts := GridContainer.new()
 	facts.columns = 4
 	facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -282,29 +290,17 @@ func _spell_detail(character: CharacterView, spell: SpellView) -> Control:
 	_add_fact(facts, "Saving throw", _saving_throw_label(spell))
 	target_row.add_child(facts)
 	column.add_child(target_row)
-	column.add_child(_build_power_rail(spell))
 	return panel
 
 
-func _build_power_rail(spell: SpellView) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.name = "SpellPowerRail"
-	panel.theme_type_variation = &"ClassicInset"
+func _build_power_rail(spell: SpellView) -> VBoxContainer:
 	var column := VBoxContainer.new()
+	column.name = "SpellPowerRail"
 	column.add_theme_constant_override("separation", 2)
-	panel.add_child(column)
-	var heading := HBoxContainer.new()
-	heading.add_child(_ui_art("spells.label.power", Vector2(68.0, 20.0)))
-	var cost := _label("Cost %d SP" % absi(spell.cost * _selected_power), GOLD, 14)
-	cost.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	heading.add_child(cost)
-	column.add_child(heading)
-	var powers := GridContainer.new()
-	powers.columns = 7
-	powers.add_theme_constant_override("h_separation", 3)
-	powers.add_theme_constant_override("v_separation", 3)
-	column.add_child(powers)
+	column.add_child(_ui_art("spells.label.power", Vector2(68.0, 18.0)))
+	var cost := _label("Cost %d SP" % absi(spell.cost * _selected_power), GOLD, 12)
+	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(cost)
 	var available_powers := _available_powers(spell)
 	for power: int in range(1, 8):
 		var button := Button.new()
@@ -313,12 +309,12 @@ func _build_power_rail(spell: SpellView) -> PanelContainer:
 		button.toggle_mode = true
 		button.button_pressed = power == _selected_power
 		button.disabled = not available_powers.has(power)
-		button.custom_minimum_size = Vector2(24.0, 24.0)
+		button.custom_minimum_size = Vector2(0.0, 22.0)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.tooltip_text = "%d SP" % absi(spell.cost * power) if not button.disabled else "This power is unavailable."
 		button.pressed.connect(_select_power.bind(power))
-		powers.add_child(button)
-	return panel
+		column.add_child(button)
+	return column
 
 
 func _build_spell_action_dock(character: CharacterView, spell: SpellView) -> BoxContainer:
@@ -433,34 +429,15 @@ static func _target_label(spell: SpellView) -> String:
 	}.get(spell.target_type, "Classic target type %d" % spell.target_type)
 
 
-static func _target_art_id(spell: SpellView) -> StringName:
-	if spell.target_type == 5 and spell.target_size == 0:
-		return &"spells.target.self"
-	return {
-		9: &"spells.target.all_friendly",
-		10: &"spells.target.all_enemy",
-		12: &"spells.target.everyone",
-	}.get(spell.target_type, &"")
-
-
-func _target_fallback(spell: SpellView) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size = Vector2(48.0, 48.0)
-	var label := _label("TARGET\n%d" % spell.target_type, MUTED, 12)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	panel.add_child(label)
-	return panel
-
-
 func _add_fact(parent: GridContainer, name: String, value: String) -> void:
 	var name_label := _label(name, MUTED, 12)
 	name_label.custom_minimum_size.x = 46.0 if _compact else 56.0
 	parent.add_child(name_label)
 	var value_label := _label(value, TEXT, 12)
 	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	value_label.max_lines_visible = 1
+	value_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	value_label.tooltip_text = value
 	parent.add_child(value_label)
 
 

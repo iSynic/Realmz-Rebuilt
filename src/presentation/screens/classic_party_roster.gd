@@ -2,6 +2,7 @@ class_name ClassicPartyRoster
 extends PanelContainer
 
 const ClassicSpellLevelScript := preload("res://src/presentation/classic_spell_level.gd")
+const SpellTargetBadge := preload("res://src/presentation/classic_spell_target_badge.gd")
 
 signal character_selected(character_id: String)
 signal combat_auto_changed(character_id: String, enabled: bool)
@@ -125,7 +126,13 @@ func _build_spellbook() -> void:
 	spell_list_panel.theme_type_variation = &"ClassicInset"
 	spell_list_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spell_list_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	selector.add_child(spell_list_panel)
+	var records := VBoxContainer.new()
+	records.name = "CombatSpellRecords"
+	records.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	records.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	records.add_theme_constant_override("separation", 3)
+	selector.add_child(records)
+	records.add_child(spell_list_panel)
 	var spell_scroll := ScrollContainer.new()
 	spell_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	spell_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -140,15 +147,15 @@ func _build_spellbook() -> void:
 	_spellbook_details = PanelContainer.new()
 	_spellbook_details.name = "CombatSpellDetails"
 	_spellbook_details.theme_type_variation = &"ClassicInset"
-	_spellbook_details.custom_minimum_size.y = 120.0
+	_spellbook_details.custom_minimum_size.y = 112.0
 	_spellbook_detail_column = VBoxContainer.new()
 	_spellbook_detail_column.add_theme_constant_override("separation", 3)
 	_spellbook_details.add_child(_spellbook_detail_column)
-	_spellbook_footer.add_child(_spellbook_details)
+	records.add_child(_spellbook_details)
 	_spellbook_power_row = HBoxContainer.new()
 	_spellbook_power_row.name = "CombatSpellPowerChoices"
 	_spellbook_power_row.add_theme_constant_override("separation", 3)
-	_spellbook_footer.add_child(_spellbook_power_row)
+	records.add_child(_spellbook_power_row)
 	var actions := HBoxContainer.new()
 	actions.name = "CombatSpellbookActions"
 	actions.custom_minimum_size.y = 30.0
@@ -234,6 +241,8 @@ func _refresh_spellbook_list() -> void:
 			tooltip,
 			_select_spellbook_spell.bind(spell_id)
 		)
+		button.custom_minimum_size.y = 21.0
+		button.add_theme_font_size_override("font_size", 14)
 		_spellbook_spell_buttons[spell_id] = button
 		_spellbook_list.add_child(button)
 	_refresh_spellbook_power_choices()
@@ -297,10 +306,14 @@ func _select_spellbook_power(option: InteractionRequestValue.CastOption) -> void
 func _present_spellbook_details(option: InteractionRequestValue.CastOption, target_text: String) -> void:
 	_clear_container(_spellbook_detail_column)
 	var spell := _spellbook_spell_view(option.spell_id)
+	var identity := HBoxContainer.new()
+	identity.add_theme_constant_override("separation", 5)
+	var title_box := VBoxContainer.new()
+	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var title := Label.new()
 	title.theme_type_variation = &"ClassicHeading"
 	title.text = option.spell_name
-	_spellbook_detail_column.add_child(title)
+	title_box.add_child(title)
 	var actor := _spellbook_actor_view()
 	var resource_line := "Level %d  •  Power %d" % [_classic_spell_level(option.spell_id), option.power]
 	if spell != null and absi(spell.cost) != option.cost:
@@ -308,30 +321,28 @@ func _present_spellbook_details(option: InteractionRequestValue.CastOption, targ
 	resource_line += "  •  Cost %d SP" % option.cost
 	if actor != null:
 		resource_line += "  •  SP %d/%d" % [actor.spell_points, actor.maximum_spell_points]
-	var resource_label := _spellbook_label(resource_line, MUTED, 13)
-	resource_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	resource_label.max_lines_visible = 2
-	_spellbook_detail_column.add_child(resource_label)
+	var resource_label := _spellbook_label(resource_line, MUTED, 12)
+	resource_label.max_lines_visible = 1
+	resource_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	resource_label.tooltip_text = resource_line
+	title_box.add_child(resource_label)
+	identity.add_child(title_box)
+	if spell != null and size.x >= 280.0:
+		var target_badge := SpellTargetBadge.new()
+		if target_badge.present(spell.target_type, spell.target_size, target_text, Vector2(48.0, 48.0)):
+			identity.add_child(target_badge)
+		else:
+			target_badge.free()
+	_spellbook_detail_column.add_child(identity)
 	var target_line := _spellbook_label("Target  •  %s" % target_text, Color("63d8e7"), 13)
 	target_line.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	target_line.tooltip_text = target_text
 	_spellbook_detail_column.add_child(target_line)
 	if spell != null:
-		var target_and_facts := HBoxContainer.new()
-		target_and_facts.add_theme_constant_override("separation", 6)
-		var target_art_id := _spellbook_target_art_id(spell)
-		if not target_art_id.is_empty() and size.x >= 280.0:
-			var target_art := TextureRect.new()
-			target_art.texture = ClassicUiAssetCatalog.texture(target_art_id)
-			target_art.custom_minimum_size = Vector2(52.0, 52.0)
-			target_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			target_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			target_art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			target_and_facts.add_child(target_art)
 		var facts := GridContainer.new()
-		facts.columns = 2
+		facts.columns = 4
 		facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		facts.add_theme_constant_override("h_separation", 8)
+		facts.add_theme_constant_override("h_separation", 4)
 		facts.add_theme_constant_override("v_separation", 1)
 		_add_spellbook_fact(facts, "Targets", str(option.power if spell.target_type < 1 else 1))
 		_add_spellbook_fact(facts, "Range", str(absi(spell.range_min + spell.range_max * option.power)))
@@ -339,16 +350,16 @@ func _present_spellbook_details(option: InteractionRequestValue.CastOption, targ
 		_add_spellbook_fact(facts, "Duration", _spellbook_scaled_pair(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, option.power, true))
 		_add_spellbook_fact(facts, "Magic resist", _spellbook_magic_resistance(spell, option.power))
 		_add_spellbook_fact(facts, "Saving throw", _spellbook_saving_throw(spell, option.power))
-		target_and_facts.add_child(facts)
-		_spellbook_detail_column.add_child(target_and_facts)
+		_spellbook_detail_column.add_child(facts)
 	var description := spell.description.strip_edges() if spell != null else ""
 	if not description.is_empty():
 		var description_well := PanelContainer.new()
 		description_well.theme_type_variation = &"ClassicTextWell"
-		var description_label := _spellbook_label(description, Color("eee9db"), 15)
+		var description_label := _spellbook_label(description, Color("eee9db"), 13)
 		description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		description_label.max_lines_visible = 2
+		description_label.max_lines_visible = 1
 		description_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		description_label.tooltip_text = description
 		description_well.add_child(description_label)
 		_spellbook_detail_column.add_child(description_well)
 
@@ -434,25 +445,15 @@ static func _spellbook_saving_throw(spell: SpellView, power: int) -> String:
 	return "%+d" % (spell.save_bonus + power * spell.save_adjust)
 
 
-static func _spellbook_target_art_id(spell: SpellView) -> StringName:
-	if spell.target_type == 5 and spell.target_size == 0:
-		return &"spells.target.self"
-	return {
-		7: &"spells.target.party",
-		9: &"spells.target.all_friendly",
-		10: &"spells.target.all_enemy",
-		12: &"spells.target.everyone",
-	}.get(spell.target_type, &"")
-
-
 static func _add_spellbook_fact(parent: GridContainer, name: String, value: String) -> void:
-	var name_label := _spellbook_label(name, Color("e7d078"), 13)
-	name_label.custom_minimum_size.x = 82.0
+	var name_label := _spellbook_label(name, Color("e7d078"), 12)
+	name_label.custom_minimum_size.x = 48.0
 	parent.add_child(name_label)
-	var value_label := _spellbook_label(value, Color("d8d9d2"), 13)
-	value_label.custom_minimum_size.x = 44.0
+	var value_label := _spellbook_label(value, Color("d8d9d2"), 12)
+	value_label.custom_minimum_size.x = 28.0
 	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	value_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	value_label.tooltip_text = value
 	parent.add_child(value_label)
 
 

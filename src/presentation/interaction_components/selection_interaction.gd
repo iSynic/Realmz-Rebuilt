@@ -1,6 +1,8 @@
 class_name SelectionInteraction
 extends InteractionComponent
 
+const SpellTargetBadge := preload("res://src/presentation/classic_spell_target_badge.gd")
+
 const GOLD := Color("e0bc53")
 const TEXT := Color("d7d9dc")
 const CYAN := Color("8fcfd1")
@@ -58,15 +60,11 @@ func _add_spell_target_context(context: InteractionRequestValue.SpellTargetConte
 	facts.add_child(_label("%s • Power %d%s" % [source_label, context.power, cost_label], TEXT, 12))
 	facts.add_child(_label("%s • %d target%s" % [_target_label(context.target_type), context.target_count, "" if context.target_count == 1 else "s"], MUTED, 12))
 	row.add_child(facts)
-	var target_art_id := _target_art_id(context.target_type, context.target_size)
-	if not target_art_id.is_empty():
-		var target_art := TextureRect.new()
-		target_art.custom_minimum_size = Vector2(48.0, 48.0)
-		target_art.texture = ClassicUiAssetCatalog.texture(target_art_id)
-		target_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		target_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		target_art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		row.add_child(target_art)
+	var target_badge := SpellTargetBadge.new()
+	if target_badge.present(context.target_type, context.target_size, _target_label(context.target_type), Vector2(48.0, 48.0)):
+		row.add_child(target_badge)
+	else:
+		target_badge.free()
 	panel.add_child(row)
 	add_child(panel)
 
@@ -75,12 +73,6 @@ func _spell_icon(context: InteractionRequestValue.SpellTargetContext) -> Texture
 	if _media == null or context.icon_id <= 0:
 		return null
 	return _media.image_texture(_media.asset_by_resource(context.icon_resource_type, context.icon_id))
-
-
-static func _target_art_id(target_type: int, target_size: int) -> StringName:
-	if target_type == 5 and target_size == 0:
-		return &"spells.target.self"
-	return {9: &"spells.target.all_friendly", 10: &"spells.target.all_enemy", 12: &"spells.target.everyone"}.get(target_type, &"")
 
 
 static func _target_label(target_type: int) -> String:
