@@ -61,6 +61,10 @@ func has_line_of_sight(battlefield: BattlefieldState, terrain_set: BattleTerrain
 func has_line_of_sight_to_coordinate(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, from_actor_id: String, destination: Vector2i) -> bool:
 	if battlefield == null or terrain_set == null or not battlefield.has_actor(from_actor_id) or not BattlefieldState.contains(destination):
 		return false
+	var occupied_cells: Dictionary = {}
+	for actor_id: String in battlefield.actor_ids():
+		for coordinate: Vector2i in battlefield.actor_footprint(actor_id):
+			occupied_cells[coordinate] = true
 	var origin := battlefield.actor_position(from_actor_id)
 	var part := Vector2(origin * 32)
 	var step := Vector2(destination - origin) * 32.0 / 128.0
@@ -72,7 +76,7 @@ func has_line_of_sight_to_coordinate(battlefield: BattlefieldState, terrain_set:
 			return false
 		# Castle's field contains actor IDs, so occupied cells do not expose their
 		# underlying terrain to cansee(). Preserve that observable distinction.
-		if battlefield.actor_at(coordinate).is_empty():
+		if not occupied_cells.has(coordinate):
 			var terrain := terrain_set.tile_by_id(battlefield.terrain_at(coordinate))
 			if terrain == null or terrain.blocks_los:
 				return false
@@ -118,31 +122,166 @@ func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: B
 	if valid_targets.is_empty():
 		return BattlefieldStepResult.blocked(&"invalid_actor")
 	var origin := battlefield.actor_position(actor_id)
+	var actor_size := battlefield.actor_size(actor_id)
+	var target_cells: Dictionary = {}
 	for target_id: String in valid_targets:
-		if _footprints_are_adjacent(battlefield.actor_footprint(actor_id), battlefield.actor_footprint(target_id)):
-			return BattlefieldStepResult.blocked(&"already_adjacent", origin)
-	var frontier: Array[Vector2i] = [origin]
-	var visited: Dictionary = {origin: true}
-	var first_steps: Dictionary = {}
-	var cursor := 0
-	while cursor < frontier.size():
-		var anchor := frontier[cursor]
-		cursor += 1
+		for coordinate: Vector2i in battlefield.actor_footprint(target_id):
+			target_cells[coordinate] = true
+	var goals := _route_goal_anchors(target_cells, actor_size)
+	var origin_index := _route_index(origin)
+	if goals[origin_index] != 0:
+		return BattlefieldStepResult.blocked(&"already_adjacent", origin)
+	var occupied_cells: Dictionary = {}
+	for candidate_id: String in battlefield.actor_ids():
+		if candidate_id == actor_id:
+			continue
+		for coordinate: Vector2i in battlefield.actor_footprint(candidate_id):
+			occupied_cells[coordinate] = true
+	var heuristics := _route_heuristics(goals)
+	var distances := PackedInt32Array()
+	distances.resize(BattlefieldState.CELL_COUNT)
+	distances.fill(0x3fff_ffff)
+	distances[origin_index] = 0
+	var first_steps := PackedInt32Array()
+	first_steps.resize(BattlefieldState.CELL_COUNT)
+	first_steps.fill(-1)
+	var closed := PackedByteArray()
+	closed.resize(BattlefieldState.CELL_COUNT)
+	var heap: Array[Vector4i] = []
+	var sequence := 0
+	_route_heap_push(heap, Vector4i(heuristics[origin_index], heuristics[origin_index], sequence, origin_index))
+	while not heap.is_empty():
+		var current := _route_heap_pop(heap)
+		var current_index := current.w
+		if closed[current_index] != 0:
+			continue
+		closed[current_index] = 1
+		if goals[current_index] != 0:
+			var first_step := _route_coordinate(first_steps[current_index])
+			return _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, first_step - origin, movement_available, 0)
+		var anchor := _route_coordinate(current_index)
 		for direction: Vector2i in DIRECTIONS:
 			# Only the immediate step must respect current actors. Later route cells
 			# are a wall-following forecast: mobile combatants may vacate them before
 			# this actor reaches them, while terrain remains authoritative.
-			var probe := _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, direction, 0x7fff_ffff, 0, anchor, anchor != origin)
-			if not probe.allowed or visited.has(probe.destination):
+			var destination := anchor + direction
+			if not BattlefieldState.contains(destination):
 				continue
-			visited[probe.destination] = true
-			var first_step: Vector2i = probe.destination if anchor == origin else first_steps[anchor]
-			first_steps[probe.destination] = first_step
-			for target_id: String in valid_targets:
-				if _footprints_are_adjacent(battlefield.actor_footprint_at(actor_id, probe.destination), battlefield.actor_footprint(target_id)):
-					return _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, first_step - origin, movement_available, 0)
-			frontier.append(probe.destination)
+			var destination_index := _route_index(destination)
+			if closed[destination_index] != 0:
+				continue
+			var footprint := BattlefieldState.footprint_cells(destination, actor_size)
+			if not _route_footprint_is_passable(battlefield, terrain_set, actor_size, footprint, occupied_cells, anchor == origin):
+				continue
+			var next_distance := distances[current_index] + 1
+			if next_distance >= distances[destination_index]:
+				continue
+			distances[destination_index] = next_distance
+			first_steps[destination_index] = destination_index if current_index == origin_index else first_steps[current_index]
+			sequence += 1
+			_route_heap_push(heap, Vector4i(next_distance + heuristics[destination_index], heuristics[destination_index], sequence, destination_index))
 	return BattlefieldStepResult.blocked(&"path_not_found", origin)
+
+
+static func _route_footprint_is_passable(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_size: int, footprint: Array[Vector2i], occupied_cells: Dictionary, respect_occupants: bool) -> bool:
+	for coordinate: Vector2i in footprint:
+		if not BattlefieldState.contains(coordinate) or respect_occupants and occupied_cells.has(coordinate):
+			return false
+		var terrain := terrain_set.tile_by_id(battlefield.terrain_at(coordinate))
+		if terrain == null or actor_size == 0 and terrain.solid != 0 or actor_size > 0 and terrain.solid > 1:
+			return false
+	return true
+
+
+static func _route_goal_anchors(target_cells: Dictionary, actor_size: int) -> PackedByteArray:
+	var result := PackedByteArray()
+	result.resize(BattlefieldState.CELL_COUNT)
+	var offsets := BattlefieldState.footprint_cells(Vector2i.ZERO, actor_size)
+	for value: Variant in target_cells:
+		var target_cell: Vector2i = value
+		for direction: Vector2i in DIRECTIONS:
+			for offset: Vector2i in offsets:
+				var anchor := target_cell - direction - offset
+				if BattlefieldState.contains(anchor):
+					result[_route_index(anchor)] = 1
+	return result
+
+
+static func _route_heuristics(goals: PackedByteArray) -> PackedInt32Array:
+	var result := PackedInt32Array()
+	result.resize(BattlefieldState.CELL_COUNT)
+	result.fill(0x3fff_ffff)
+	var queue := PackedInt32Array()
+	queue.resize(BattlefieldState.CELL_COUNT)
+	var cursor := 0
+	var count := 0
+	for index: int in BattlefieldState.CELL_COUNT:
+		if goals[index] != 0:
+			result[index] = 0
+			queue[count] = index
+			count += 1
+	while cursor < count:
+		var index := queue[cursor]
+		cursor += 1
+		var coordinate := _route_coordinate(index)
+		for direction: Vector2i in DIRECTIONS:
+			var neighbor := coordinate + direction
+			if not BattlefieldState.contains(neighbor):
+				continue
+			var neighbor_index := _route_index(neighbor)
+			if result[neighbor_index] <= result[index] + 1:
+				continue
+			result[neighbor_index] = result[index] + 1
+			queue[count] = neighbor_index
+			count += 1
+	return result
+
+
+static func _route_heap_push(heap: Array[Vector4i], value: Vector4i) -> void:
+	heap.append(value)
+	var index := heap.size() - 1
+	while index > 0:
+		var parent := (index - 1) / 2
+		if not _route_heap_less(heap[index], heap[parent]):
+			break
+		var swap := heap[parent]
+		heap[parent] = heap[index]
+		heap[index] = swap
+		index = parent
+
+
+static func _route_heap_pop(heap: Array[Vector4i]) -> Vector4i:
+	var result := heap[0]
+	var tail: Vector4i = heap.pop_back()
+	if heap.is_empty():
+		return result
+	heap[0] = tail
+	var index := 0
+	while true:
+		var left := index * 2 + 1
+		if left >= heap.size():
+			break
+		var right := left + 1
+		var child := right if right < heap.size() and _route_heap_less(heap[right], heap[left]) else left
+		if not _route_heap_less(heap[child], heap[index]):
+			break
+		var swap := heap[index]
+		heap[index] = heap[child]
+		heap[child] = swap
+		index = child
+	return result
+
+
+static func _route_heap_less(left: Vector4i, right: Vector4i) -> bool:
+	return left.x < right.x or (left.x == right.x and (left.y < right.y or (left.y == right.y and left.z < right.z)))
+
+
+static func _route_index(coordinate: Vector2i) -> int:
+	return coordinate.y * BattlefieldState.SIZE + coordinate.x
+
+
+static func _route_coordinate(index: int) -> Vector2i:
+	return Vector2i(index % BattlefieldState.SIZE, index / BattlefieldState.SIZE)
 
 
 func _probe_step_with_cost_floor(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, direction: Vector2i, movement_available: int, cost_floor: int, anchor_override: Vector2i = Vector2i(-1, -1), ignore_occupants: bool = false) -> BattlefieldStepResult:

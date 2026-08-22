@@ -286,12 +286,12 @@ func _test_public_command_automation_matrix() -> void:
 	assert_true(turned.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_turn_undead_resolved"), "Turn Undead publishes its source-owned result event")
 	assert_true(undead_state.combat.has_used_turn_undead(turner.id), "Turn Undead records its once-per-battle use")
 
-	var healing_spell := _combat_spell("spell.auto-heal", 1, 4); healing_spell.special = 57; healing_spell.spell_class = 8; healing_spell.damage_type = 8; healing_spell.cannot = 4; healing_spell.duration_min = 0; healing_spell.duration_max = 0
-	var auto_healer := _character("character.auto-healer"); auto_healer.set_known_spells([healing_spell.id]); auto_healer.maximum_spell_attacks = 2; auto_healer.spell_points = 20
+	var healing_spell := _combat_spell("spell.auto-heal", 1, 4); healing_spell.special = 57; healing_spell.spell_class = 8; healing_spell.damage_type = 8; healing_spell.cannot = 4; healing_spell.duration_min = 0; healing_spell.duration_max = 0; var auto_area := _combat_spell("spell.auto-area", 4, 10)
+	var auto_healer := _character("character.auto-healer"); auto_healer.set_known_spells([healing_spell.id, auto_area.id]); auto_healer.maximum_spell_attacks = 2; auto_healer.spell_points = 20
 	var wounded := _character("character.auto-wounded"); wounded.current_health = 5
 	var healing_state := _state(auto_healer, MonsterState.new("monster.auto-healing.instance", definition.id, definition.name, 100, 100, 1), "battle.auto-healing")
 	healing_state.party.add_character(wounded); healing_state.combat.battlefield.place_character(wounded.id, Vector2i(44, 45)); healing_state.combat.set_turn_order([auto_healer.id, wounded.id, healing_state.combat.monsters()[0].id])
-	var healed := rules.combat_flow.submit_action(healing_state, _content([definition], [], [], [], [healing_spell]), auto_healer.id, &"auto", "", _zeros(96))
+	var healed := rules.combat_flow.submit_action(healing_state, _content([definition], [], [], [], [healing_spell, auto_area]), auto_healer.id, &"auto", "", _zeros(96))
 	assert_true(healed.ok and healed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == wounded.id and int(event.payload.get("healing", 0)) > 0), "scored Auto heals a critically wounded ally before taking an adjacent attack")
 
 	var auto_actor := _character("character.auto")

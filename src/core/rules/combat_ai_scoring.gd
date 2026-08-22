@@ -86,7 +86,10 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	if candidates.is_empty():
 		return {}
 	var healing: bool = _flow()._is_source_backed_combat_healing_spell(spell)
-	candidates.sort_custom(func(left: String, right: String) -> bool: return _monster_target_score(state, left, spell, power, healing) > _monster_target_score(state, right, spell, power, healing) or (_monster_target_score(state, left, spell, power, healing) == _monster_target_score(state, right, spell, power, healing) and left < right))
+	var target_scores: Dictionary = {}
+	for target_id: String in candidates:
+		target_scores[target_id] = _monster_target_score(state, target_id, spell, power, healing)
+	candidates.sort_custom(func(left: String, right: String) -> bool: return int(target_scores[left]) > int(target_scores[right]) or (target_scores[left] == target_scores[right] and left < right))
 	var selected: Array[String] = []
 	for target_id: String in candidates:
 		if selected.size() >= (power if spell.target_type == 0 else 1):
@@ -116,6 +119,8 @@ static func _prefer(current: Dictionary, candidate: Dictionary) -> Dictionary:
 
 func _best_party_spell(state: GameState, content: RealmzContent, actor: CharacterState) -> Dictionary:
 	var best: Dictionary = {}
+	var actors_by_cell := _actors_by_cell(state.combat.battlefield)
+	var area_placement_cache: Dictionary = {}
 	for option: CombatSpellOptionView in _flow().character_spell_options(state, content, actor.id):
 		var spell := content.spell_by_id(option.spell_id)
 		if spell == null:
@@ -123,7 +128,7 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 		if _flow()._is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
 		elif spell.target_type in [0, 1, 3, 4, 10]:
-			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option))
+			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache))
 	return best
 
 
@@ -143,12 +148,12 @@ func _best_heal(state: GameState, content: RealmzContent, actor: CharacterState,
 	return best
 
 
-func _best_damage_spell(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView) -> Dictionary:
+func _best_damage_spell(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, actors_by_cell: Dictionary, area_placement_cache: Dictionary) -> Dictionary:
 	var expected := expected_spell_effect(spell, option.power)
 	if expected <= 0:
 		return {}
 	if spell.target_type in [3, 4]:
-		return _best_area(state, content, actor, spell, option, expected)
+		return _best_area(state, content, actor, spell, option, expected, actors_by_cell, area_placement_cache)
 	var targets := _hostile_spell_targets(state, content, actor, spell, option.power)
 	if targets.is_empty():
 		return {}
@@ -169,24 +174,61 @@ func _best_damage_spell(state: GameState, content: RealmzContent, actor: Charact
 	return best
 
 
-func _best_area(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, expected: int) -> Dictionary:
+func _best_area(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, expected: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary) -> Dictionary:
+	var maximum_range := absi(spell.range_min + spell.range_max * option.power)
+	var cache_key := "%d:%d:%d:%d" % [option.area_shape, maximum_range, 1 if spell.range_min + spell.range_max > 0 else 0, spell.spell_class]
+	if not area_placement_cache.has(cache_key):
+		var placements: Array[Dictionary] = []
+		for center: Vector2i in _area_candidate_centers(state, content, actor, spell, option):
+			var hostile_ids: Dictionary = {}
+			var harms_friend := false
+			for offset: Vector2i in option.area_offsets:
+				var target_id := String(actors_by_cell.get(center + offset, ""))
+				if target_id.is_empty():
+					continue
+				if _actor_is_friendly(state, actor, target_id):
+					harms_friend = true
+				elif not _target_hard_immune(state, content, target_id, spell) and not _target_reflects(state, target_id):
+					hostile_ids[target_id] = true
+			if not harms_friend and not hostile_ids.is_empty():
+				placements.append({"center": center, "hostileCount": hostile_ids.size()})
+		area_placement_cache[cache_key] = placements
 	var best: Dictionary = {}
-	for center: Vector2i in _flow()._legal_area_spell_target_coordinates(state, content, actor.id, spell, option.power, option.area_shape):
-		var hostile_ids: Dictionary = {}
-		var harms_friend := false
-		for offset: Vector2i in option.area_offsets:
-			var target_id := state.combat.battlefield.actor_at(center + offset)
-			if target_id.is_empty():
-				continue
-			if _actor_is_friendly(state, actor, target_id):
-				harms_friend = true
-			elif not _target_hard_immune(state, content, target_id, spell):
-				hostile_ids[target_id] = true
-		if harms_friend or hostile_ids.is_empty():
-			continue
-		var score := 370 + hostile_ids.size() * expected * 7 - option.cost * 3
-		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "coordinate": center, "score": score})
+	for placement: Dictionary in area_placement_cache[cache_key]:
+		var score := 370 + int(placement["hostileCount"]) * expected * 7 - option.cost * 3
+		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "coordinate": placement["center"], "score": score})
 	return best
+
+
+func _area_candidate_centers(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView) -> Array[Vector2i]:
+	var unique: Dictionary = {}
+	for target_id: String in _opposed_actor_ids(state, actor):
+		if _target_hard_immune(state, content, target_id, spell) or _target_reflects(state, target_id):
+			continue
+		for target_cell: Vector2i in state.combat.battlefield.actor_footprint(target_id):
+			for offset: Vector2i in option.area_offsets:
+				unique[target_cell - offset] = true
+	var map := content.world.map_by_id(state.combat.battlefield.map_id)
+	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	if terrain_set == null:
+		return []
+	var maximum_range := absi(spell.range_min + spell.range_max * option.power)
+	var require_line_of_sight := spell.range_min + spell.range_max > 0
+	var result: Array[Vector2i] = []
+	for value: Variant in unique:
+		var center: Vector2i = value
+		if _rules.spell_areas.pattern_fits(center, option.area_shape) and _rules.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, actor.id, center, maximum_range, require_line_of_sight):
+			result.append(center)
+	result.sort_custom(func(left: Vector2i, right: Vector2i) -> bool: return left.y < right.y or (left.y == right.y and left.x < right.x))
+	return result
+
+
+static func _actors_by_cell(battlefield: BattlefieldState) -> Dictionary:
+	var result: Dictionary = {}
+	for actor_id: String in battlefield.actor_ids():
+		for coordinate: Vector2i in battlefield.actor_footprint(actor_id):
+			result[coordinate] = actor_id
+	return result
 
 
 func _hostile_spell_targets(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Array[String]:
