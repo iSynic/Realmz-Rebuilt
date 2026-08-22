@@ -111,6 +111,51 @@ static func rest(context: SessionWorkflowContext) -> ClockTransitionResult:
 	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
 
 
+static func heal(context: SessionWorkflowContext) -> ClockTransitionResult:
+	if context.state.combat != null and not context.state.combat.completed:
+		return ClockTransitionResult.failed(&"heal_during_battle", "The party cannot use field Heal during battle.")
+	if context.state.party.fatigue > 134:
+		return ClockTransitionResult.failed(&"heal_exhausted", "The party is too fatigued to continue Heal.")
+	var map := context.content.world.map_by_id(context.state.party.map_id)
+	if map == null:
+		return ClockTransitionResult.failed(&"unknown_map", "The current map is unavailable for Heal.")
+	var previous_day := context.state.clock.day()
+	var events: Array[DomainEvent] = [_sound_event(10105, "classic-heal")]
+	events.append_array(context.rules.clock.advance_classic_field_time(context.state, context.content, 5 if map.level_type == &"dungeon" else 1, classic_time_scale(map), true))
+	return ClockTransitionResult.completed(map, events, true, context.state.clock.day() if context.state.clock.day() != previous_day else 0)
+
+
+static func complete_heal(context: SessionWorkflowContext, preceding_events: Array[DomainEvent]) -> SessionWorkflowResult:
+	var events: Array[DomainEvent] = []
+	events.assign(preceding_events)
+	for healer: CharacterState in context.state.party.characters():
+		if not _eligible_field_healer(context, healer):
+			continue
+		for target: CharacterState in context.state.party.characters():
+			if target.current_health >= target.maximum_health or target.current_health <= -10 or target.conditions.is_active(ConditionRules.TURNED_TO_STONE) or healer.spell_points < 10:
+				continue
+			healer.spell_points -= 10
+			var amount := mini(context.rng.draw(8, StringName("exploration.heal.%s.%s" % [healer.id, target.id])), target.maximum_health - target.current_health)
+			target.current_health += amount
+			events.append(DomainEvent.new(&"spell_points_spent", {"characterId": healer.id, "amount": 10, "source": "classic-heal"}))
+			events.append(DomainEvent.new(&"health_recovered", {"characterId": target.id, "amount": amount, "source": "classic-heal"}))
+	events.append(DomainEvent.new(&"party_heal_completed", {"mapId": context.state.party.map_id, "source": "classic"}))
+	return SessionWorkflowResult.completed(events)
+
+
+static func _eligible_field_healer(context: SessionWorkflowContext, character: CharacterState) -> bool:
+	if character == null or character.spellcaster_type not in [1, 2] or character.current_health < 1 or character.spell_points < 10 or context.state.character_spellcasting_blocked:
+		return false
+	for condition_index: int in [ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS, ConditionRules.STUPID, ConditionRules.ANIMATED]:
+		if character.conditions.is_active(condition_index):
+			return false
+	for spell_id: String in character.known_spells():
+		var spell := context.content.spell_by_id(spell_id)
+		if spell != null and absi(spell.special) == 57:
+			return true
+	return false
+
+
 static func search(context: SessionWorkflowContext) -> ClockTransitionResult:
 	if context.state.party_camping:
 		return ClockTransitionResult.failed(&"search_while_camped", "Search is replaced by scroll scribing while camped.")

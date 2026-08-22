@@ -199,6 +199,8 @@ func submit_intent(intent: PlayerIntent) -> SessionStep:
 			return _camp()
 		PlayerIntent.Kind.REST:
 			return _rest()
+		PlayerIntent.Kind.HEAL:
+			return _heal()
 		PlayerIntent.Kind.USE_ITEM:
 			return _use_item(intent)
 		PlayerIntent.Kind.USE_ITEM_ON_TARGET:
@@ -348,6 +350,14 @@ func _rest() -> SessionStep:
 	if not result.ok:
 		return _finish_failed(result.error_code, result.error_message, result.events)
 	_set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _state.party.coordinate)
+	return _finish_with_age_updates(result.events, &"post-clock", _session_continuation.copy())
+
+
+func _heal() -> SessionStep:
+	var result := ExplorationTimeWorkflow.heal(_workflow_context())
+	if not result.ok:
+		return _finish_failed(result.error_code, result.error_message, result.events)
+	_set_post_time_continuation(result.map, "heal", Vector2i.ZERO, result.check_random, result.timed_day, _state.party.coordinate)
 	return _finish_with_age_updates(result.events, &"post-clock", _session_continuation.copy())
 
 

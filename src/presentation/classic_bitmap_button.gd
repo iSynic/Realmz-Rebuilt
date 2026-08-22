@@ -17,6 +17,7 @@ var _art_scale: int = 1
 var _art_texture: Texture2D
 var _pressed_art_texture: Texture2D
 var _label: String = ""
+var _symbol: StringName = &""
 
 
 func _ready() -> void:
@@ -46,6 +47,7 @@ func configure(definition: Dictionary, art_scale: int = 1) -> void:
 		_native_size = Vector2i(50, 50)
 	tooltip_text = String(definition.get("tooltip", ""))
 	_label = String(definition.get("label", "Command"))
+	_symbol = StringName(definition.get("symbol", &""))
 	toggle_mode = bool(definition.get("toggle_mode", false))
 	var accelerator := String(definition.get("accelerator", ""))
 	if not accelerator.is_empty():
@@ -74,6 +76,9 @@ func _draw() -> void:
 		var art_size := Vector2(_native_size * _art_scale)
 		var art_rect := Rect2(Vector2(floorf((size.x - art_size.x) * 0.5), floorf((size.y - art_size.y) * 0.5)) + pressed_offset, art_size)
 		draw_texture_rect(displayed_texture, art_rect, false)
+	elif _symbol == &"yin_yang":
+		_draw_yin_yang(Vector2(size.x * 0.5, 19.0) + pressed_offset, 12.0)
+		draw_string(font, Vector2(4.0, size.y - 7.0) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, font_size, CAPTION_COLOR)
 	else:
 		draw_string(font, Vector2(4.0, size.y * 0.5 + font_size * 0.35) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, font_size, CAPTION_COLOR)
 	if disabled:
@@ -84,3 +89,18 @@ func _draw() -> void:
 		draw_rect(rect, FOCUS_COLOR, false, 2.0)
 	elif is_hovered() and not disabled:
 		draw_rect(rect, HOVER_COLOR, false, 1.0)
+
+
+func _draw_yin_yang(center: Vector2, radius: float) -> void:
+	draw_circle(center, radius, Color("e9e4d2"))
+	var dark := Color("141619")
+	var half: PackedVector2Array = [center]
+	for index: int in 17:
+		var angle := PI * 0.5 + PI * float(index) / 16.0
+		half.append(center + Vector2(cos(angle), sin(angle)) * radius)
+	draw_colored_polygon(half, dark)
+	draw_circle(center + Vector2(0.0, -radius * 0.5), radius * 0.5, dark)
+	draw_circle(center + Vector2(0.0, radius * 0.5), radius * 0.5, Color("e9e4d2"))
+	draw_circle(center + Vector2(0.0, -radius * 0.5), radius * 0.12, Color("e9e4d2"))
+	draw_circle(center + Vector2(0.0, radius * 0.5), radius * 0.12, dark)
+	draw_arc(center, radius, 0.0, TAU, 32, CAPTION_COLOR, 1.0, true)

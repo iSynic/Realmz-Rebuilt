@@ -450,6 +450,7 @@ func _build_menus() -> void:
 		{"label": "Torch", "command": &"torch", "disabled_reason": _availability_reason(&"use_torch")},
 		{"label": "Camp", "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
 		{"label": "Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
+		{"label": "Heal", "command": &"heal", "disabled_reason": _availability_reason(&"heal")},
 		{"label": contextual_label, "command": &"contextual", "disabled_reason": _availability_reason(contextual_availability)},
 		{"label": "Money", "command": &"money", "disabled_reason": _availability_reason(&"money_action")},
 	])
@@ -478,6 +479,7 @@ func _build_menus() -> void:
 		{"label": "Adventure — Torch", "command": &"torch", "disabled_reason": _availability_reason(&"use_torch")},
 		{"label": "Adventure — Camp", "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
 		{"label": "Adventure — Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
+		{"label": "Adventure — Heal", "command": &"heal", "disabled_reason": _availability_reason(&"heal")},
 		{"label": "Adventure — %s" % contextual_label, "command": &"contextual", "disabled_reason": _availability_reason(contextual_availability)},
 		{"label": "Adventure — Money", "command": &"money", "disabled_reason": _availability_reason(&"money_action")},
 		{"label": "Character — Party Order", "route": &"character"},
@@ -620,6 +622,7 @@ func _activate_command(command_id: StringName) -> void:
 		&"torch": intent_submitted.emit(PlayerIntent.use_torch())
 		&"camp": intent_submitted.emit(PlayerIntent.camp())
 		&"rest": intent_submitted.emit(PlayerIntent.rest())
+		&"heal": intent_submitted.emit(PlayerIntent.heal())
 		&"contextual":
 			var service := _contextual_service()
 			if service != null and not service.actions.is_empty():
@@ -649,6 +652,7 @@ func _presentation_command_definition(definition: Dictionary) -> Dictionary:
 	result["label"] = service.title
 	result["tooltip"] = "Enter %s" % service.title
 	result["availability"] = &"service_action"
+	result["symbol"] = &""
 	if service.service_kind == &"temple":
 		result["asset_id"] = &"command.temple"
 	else:

@@ -344,6 +344,10 @@ func _input(event: InputEvent) -> void:
 		_submit_intent(PlayerIntent.rest())
 		get_viewport().set_input_as_handled()
 		return
+	if event.is_action_pressed(&"realmz_heal"):
+		_submit_intent(PlayerIntent.heal())
+		get_viewport().set_input_as_handled()
+		return
 	var direction := UiInputActions.movement_direction(event)
 	if direction != Vector2i.ZERO:
 		if not event is InputEventKey or not (event as InputEventKey).echo:

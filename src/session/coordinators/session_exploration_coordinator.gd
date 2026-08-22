@@ -125,6 +125,9 @@ func _complete_post_time(events: Array[DomainEvent]) -> SessionCoordinatorResult
 			return _context.failed(result.error_code, result.error_message, result.events)
 		_set_post_time_continuation(result.map, "completed", Vector2i.ZERO, result.check_random, result.timed_day, _context.state.party.coordinate)
 		return _context.responses()._finish_with_age_updates(result.events, &"post-clock", _context.session_continuation.copy())
+	if resume_kind == &"heal":
+		var heal_result := ExplorationTimeWorkflow.complete_heal(_context.workflow_context(), events)
+		return _context.completed(heal_result.events) if heal_result.ok else _context.failed(heal_result.error_code, heal_result.error_message, heal_result.events)
 	if resume_kind == &"completed":
 		return _context.completed(events)
 	return _context.failed(&"invalid_session_continuation", "Post-clock exploration continuation has no valid completion path.", events)

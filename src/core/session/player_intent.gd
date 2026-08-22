@@ -9,6 +9,7 @@ enum Kind {
 	CONTEXTUAL_ENCOUNTER,
 	CAMP,
 	REST,
+	HEAL,
 	USE_ITEM,
 	CAST_SPELL,
 	CHOOSE_COMBAT_ACTION,
@@ -272,7 +273,7 @@ func _init(intent_kind: Kind, intent_payload: Payload = null) -> void:
 
 func is_valid() -> bool:
 	match kind:
-		Kind.SEARCH, Kind.TOGGLE_SEARCH, Kind.USE_TORCH, Kind.CONTEXTUAL_ENCOUNTER, Kind.CAMP, Kind.REST, Kind.BEGIN_ADVENTURE, Kind.CANCEL_CHARACTER_DRAFT, Kind.FINALIZE_CHARACTER:
+		Kind.SEARCH, Kind.TOGGLE_SEARCH, Kind.USE_TORCH, Kind.CONTEXTUAL_ENCOUNTER, Kind.CAMP, Kind.REST, Kind.HEAL, Kind.BEGIN_ADVENTURE, Kind.CANCEL_CHARACTER_DRAFT, Kind.FINALIZE_CHARACTER:
 			return payload is EmptyPayload
 		Kind.MOVE:
 			return payload is MovePayload
@@ -343,6 +344,10 @@ static func camp() -> PlayerIntent:
 
 static func rest() -> PlayerIntent:
 	return PlayerIntent.new(Kind.REST)
+
+
+static func heal() -> PlayerIntent:
+	return PlayerIntent.new(Kind.HEAL)
 
 
 static func cast_spell(spell_id: String, caster_id: String = "", target_combatant_id: String = "", power: int = 1) -> PlayerIntent:
