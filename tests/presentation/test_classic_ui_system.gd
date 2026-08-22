@@ -551,18 +551,13 @@ func _test_money_workspace_audio() -> void:
 	router.present(view)
 	var sounds: Array[Dictionary] = []
 	router.presentation_sound_requested.connect(func(sound_id: int, wait_for_completion: bool, stop_existing: bool) -> void: sounds.append({"soundId": sound_id, "waitForCompletion": wait_for_completion, "stopExisting": stop_existing}))
-	router.open_screen(&"services")
-	router.open_screen(&"services")
-	router.open_screen(&"exploration")
-	assert_equal(sounds, [
-		{"soundId": 141, "waitForCompletion": false, "stopExisting": false},
-		{"soundId": 3003, "waitForCompletion": false, "stopExisting": true},
-		{"soundId": 141, "waitForCompletion": false, "stopExisting": false},
-	], "ordinary Swap route requests the source button, quiet-and-open, and Done sequence without duplicates")
+	router.open_screen(&"inventory"); router.open_screen(&"inventory"); router.open_screen(&"exploration"); router.open_screen(&"spells"); router.open_screen(&"exploration"); router.open_screen(&"inventory", false); router.open_screen(&"exploration", false)
+	router.open_screen(&"services"); router.open_screen(&"services"); router.open_screen(&"exploration")
+	assert_equal(sounds, [{"soundId": 20001, "waitForCompletion": false, "stopExisting": false}, {"soundId": 20002, "waitForCompletion": false, "stopExisting": false}, {"soundId": 141, "waitForCompletion": false, "stopExisting": false}, {"soundId": 3003, "waitForCompletion": false, "stopExisting": true}, {"soundId": 141, "waitForCompletion": false, "stopExisting": false}], "explicit Items and Spells openings request their Castle cues once, automatic routing is quiet, and ordinary Swap retains its source sequence")
 	view.pending_interaction = _fixture_request("shop.audio", InteractionRequest.SHOP)
 	router.present(view)
 	router.open_screen(&"services")
-	assert_equal(sounds.size(), 3, "a Services route opened for a typed location service does not masquerade as ordinary Swap")
+	assert_equal(sounds.size(), 5, "a Services route opened for a typed location service does not masquerade as ordinary Swap")
 	var audio := ClassicAudioPresenter.new()
 	var observed: Array[int] = []
 	audio.sound_observed.connect(func(sound_id: int) -> void: observed.append(sound_id))

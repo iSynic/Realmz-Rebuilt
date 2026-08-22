@@ -175,7 +175,7 @@ func present(game_view: GameView) -> void:
 	_set_play_regions_visible(play_regions_visible)
 	var automatic_route := automatic_workflow_route(_router.current_screen(), game_view, contextual_service_closed)
 	if automatic_route != _router.current_screen():
-		_router.open_screen(automatic_route)
+		_router.open_screen(automatic_route, false)
 	if not ordinary_exploration_update:
 		_build_menus()
 		_rebuild_command_deck()

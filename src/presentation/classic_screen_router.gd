@@ -17,6 +17,10 @@ signal standalone_character_creation_requested
 signal standalone_character_creation_cancelled
 
 const CLASSIC_WORKSPACE_PRESENTER := preload("res://src/presentation/controllers/classic_workspace_presenter.gd")
+const WORKSPACE_OPEN_SOUND_IDS: Dictionary = {
+	&"inventory": 20001,
+	&"spells": 20002,
+}
 
 var _view: GameView
 var _screen_id: StringName = &"exploration"
@@ -284,19 +288,22 @@ func accepts_exploration_input() -> bool:
 	return not setup_controller.full_stage_overlay_visible() and _screen_id == &"exploration"
 
 
-func open_screen(screen_id: StringName) -> void:
+func open_screen(screen_id: StringName, play_opening_sound: bool = true) -> void:
 	if not UiRouteCatalog.has_route(screen_id):
 		return
 	if screen_id == &"vault":
 		_vault_return_to_campaign = false
 		_vault_return_to_setup = false
 	_store_focus()
-	if screen_id != _screen_id:
+	var changed := screen_id != _screen_id
+	if changed:
 		route_exiting.emit(_screen_id)
 		_route_history.append(_screen_id)
 	_screen_id = screen_id
 	setup_controller.hide_overlays()
 	_workspace_presenter.sync_route_audio(screen_id)
+	if changed and play_opening_sound and WORKSPACE_OPEN_SOUND_IDS.has(screen_id):
+		presentation_sound_requested.emit(int(WORKSPACE_OPEN_SOUND_IDS[screen_id]), false, false)
 	_render_screen(true)
 
 

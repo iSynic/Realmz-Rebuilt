@@ -93,6 +93,7 @@ Own scenes, controls, screen presenters, topology-derived rendering caches, anim
 - Classic opcode 3 carries button labels, not a question prompt. Its yes/no presenter keeps the latest source-authored Classic textbox message visible as context, while an explicit typed request prompt remains authoritative.
 - Classic sound playback rotates across four presentation-owned channels. Positive sound requests may overlap; a negative request waits for that channel's completion before the presenter drains later sound events, without introducing a simulation wait.
 - Ordinary Swap route entry and exit are presentation-owned lifecycle audio: one deliberate Services-route entry requests button sound 141, stops existing channels before modal sound 3003, and leaving requests sound 141. Same-route rerenders do not replay them, and a Services route opened for a typed Shop, Temple, or Bank interaction is not treated as ordinary Swap. Pool, Share, and transfer sounds remain simulation events.
+- Deliberately opening Items or field Spells requests stock workspace sound 20001 or 20002 once after the route changes. Same-route rerenders and automatic workflow routing remain quiet; combat entry and action cues stay in the ordered domain-event stream.
 - Cosmetic RNG cannot enter saves, replays, oracle traces, or simulation decisions.
 
 ## Work Guidance
