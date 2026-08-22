@@ -70,7 +70,7 @@ func _test_snapshot_rng_and_age_persistence(content: RealmzContent) -> void:
 	assert_equal(session.view().availability(&"cast_spell").reason, "No known spell has a supported Classic field use.", "the disabled cast control states the exact package-backed field-spell boundary")
 	var first_search := session.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	assert_equal(first_search.state, SessionStep.State.COMPLETED, "search commits at one session boundary")
-	assert_equal(first_search.events[0].payload["roll"], 52, "the committed event records the first deterministic draw")
+	assert_equal(first_search.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"search_completed")[0].payload["roll"], 52, "the committed event records the first deterministic draw")
 	assert_equal(session.snapshot().rng_state.draw_count, 9, "the save aggregate owns the secret roll and both source-ordered random-region scans")
 	assert_equal(session.snapshot().game_state.clock.total_minutes(), 25, "one held Area Search pulse owns Castle's five outdoor timeclicks")
 	var held_snapshot := session.snapshot()
@@ -102,7 +102,7 @@ func _test_snapshot_rng_and_age_persistence(content: RealmzContent) -> void:
 	_begin_fixture_adventure(control, content)
 	control.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
 	var control_search := control.submit_intent(PlayerIntent.new(PlayerIntent.Kind.SEARCH))
-	assert_equal(restored_search.events[0].payload["roll"], control_search.events[0].payload["roll"], "save/reload resumes the exact RNG branch")
+	assert_equal(restored_search.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"search_completed")[0].payload["roll"], control_search.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"search_completed")[0].payload["roll"], "save/reload resumes the exact RNG branch")
 	assert_equal(restored.snapshot().rng_state.draw_count, 17, "an already discovered Area Search skips secret rolls but retains both source-ordered random-region scans")
 	assert_equal(restored.snapshot().game_state.clock.total_minutes(), 50, "restored Area Search advances the persisted clock by another five outdoor timeclicks")
 
