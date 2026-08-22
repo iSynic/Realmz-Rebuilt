@@ -435,8 +435,9 @@ func _apply_layout() -> void:
 	_stage_frame.position = stage_rect.position
 	_stage_frame.size = stage_rect.size
 	_party_roster.position = origin + Vector2(stage_width, _profile.menu_height)
-	var roster_height := stage_height
+	var roster_height := party_roster_height(viewport_size.y, _profile.menu_height, stage_height, _party_roster.combat_spellbook_active())
 	_party_roster.size = Vector2(_profile.party_width, roster_height)
+	_party_roster.z_index = party_roster_z_index(_party_roster.combat_spellbook_active())
 	_bottom_row.vertical = false
 	_facts.columns = 3 if _profile.id == UiLayoutProfile.COMPACT else 6
 	var command_width := minf(_profile.command_width, viewport_size.x * 0.26)
@@ -465,6 +466,14 @@ func _apply_layout() -> void:
 	_build_menus()
 	_rebuild_command_deck()
 	layout_changed.emit(stage_rect, _profile)
+
+
+static func party_roster_height(viewport_height: float, menu_height: float, stage_height: float, combat_spellbook_active: bool) -> float:
+	return viewport_height - menu_height if combat_spellbook_active else stage_height
+
+
+static func party_roster_z_index(combat_spellbook_active: bool) -> int:
+	return 81 if combat_spellbook_active else 14
 
 
 func _apply_exploration_mode() -> void:

@@ -99,13 +99,17 @@ func combat_spellbook_active() -> bool:
 
 func _build_spellbook() -> void:
 	var available_levels: Array[int] = []
+	for spell: SpellView in _spellbook_known_combat_spells():
+		var level := ClassicSpellLevelScript.from_classic_id(spell.classic_id)
+		if not available_levels.has(level):
+			available_levels.append(level)
 	for option: InteractionRequestValue.CastOption in _spellbook_options:
 		var level := _classic_spell_level(option.spell_id)
 		if not available_levels.has(level):
 			available_levels.append(level)
 	available_levels.sort()
 	if available_levels.is_empty():
-		_add_empty("No legal combat spell is available.")
+		_add_empty("No combat spell is known.")
 		return
 	if not available_levels.has(_spellbook_level):
 		_spellbook_level = available_levels[0]
@@ -200,6 +204,9 @@ func _refresh_spellbook_list() -> void:
 		child.queue_free()
 	_spellbook_spell_buttons.clear()
 	var spell_ids: Array[String] = []
+	for spell: SpellView in _spellbook_known_combat_spells():
+		if ClassicSpellLevelScript.from_classic_id(spell.classic_id) == _spellbook_level:
+			spell_ids.append(spell.id)
 	for option: InteractionRequestValue.CastOption in _spellbook_options:
 		if _classic_spell_level(option.spell_id) != _spellbook_level or spell_ids.has(option.spell_id):
 			continue
@@ -213,10 +220,14 @@ func _refresh_spellbook_list() -> void:
 	for spell_id: String in spell_ids:
 		var representative := _first_spellbook_option(spell_id)
 		var spell := _spellbook_spell_view(spell_id)
-		var tooltip := spell.description if spell != null and not spell.description.is_empty() else representative.spell_name
+		var legal := representative != null
+		var spell_name := spell.name if spell != null else representative.spell_name
+		var tooltip := spell.description if spell != null and not spell.description.is_empty() else spell_name
+		if not legal:
+			tooltip = "%s\nKnown combat spell, but no rules-legal power or tactical target is available this activation." % tooltip
 		var button := ClassicSpellSelectionChrome.spell_button(
 			"CombatSpell%s" % spell_id.replace(".", "_"),
-			representative.spell_name,
+			"%s%s" % [spell_name, "  •  Unavailable" if not legal else ""],
 			spell_id == _spellbook_spell_id,
 			true,
 			tooltip,
@@ -261,8 +272,10 @@ func _refresh_spellbook_power_choices() -> void:
 		button.pressed.connect(func() -> void: _select_spellbook_power(option))
 		_spellbook_power_row.add_child(button)
 	if representatives.is_empty():
-		_present_spellbook_unavailable("No legal power is available.")
+		_present_spellbook_unavailable(_spellbook_spell_view(_spellbook_spell_id), "No rules-legal power or tactical target is available this activation.")
 		_spellbook_cast.disabled = true
+		_spellbook_cast.set_meta("cast_option", null)
+		_spellbook_cast.tooltip_text = "This known spell cannot be cast in the current activation."
 		return
 	_select_spellbook_power(representatives[0])
 
@@ -339,8 +352,16 @@ func _present_spellbook_details(option: InteractionRequestValue.CastOption, targ
 		_spellbook_detail_column.add_child(description_well)
 
 
-func _present_spellbook_unavailable(message: String) -> void:
+func _present_spellbook_unavailable(spell: SpellView, message: String) -> void:
 	_clear_container(_spellbook_detail_column)
+	if spell != null:
+		var title := _spellbook_label(spell.name, Color("e7d078"), 18)
+		title.theme_type_variation = &"ClassicHeading"
+		_spellbook_detail_column.add_child(title)
+		if not spell.description.strip_edges().is_empty():
+			var description := _spellbook_label(spell.description.strip_edges(), Color("eee9db"), 14)
+			description.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			_spellbook_detail_column.add_child(description)
 	_spellbook_detail_column.add_child(_spellbook_label(message, MUTED, 15))
 
 
@@ -361,6 +382,17 @@ func _spellbook_spell_view(spell_id: String) -> SpellView:
 		if spell.id == spell_id:
 			return spell
 	return null
+
+
+func _spellbook_known_combat_spells() -> Array[SpellView]:
+	var result: Array[SpellView] = []
+	var actor := _spellbook_actor_view()
+	if actor == null:
+		return result
+	for spell: SpellView in actor.spells:
+		if spell.castable_in_combat:
+			result.append(spell)
+	return result
 
 
 func _first_spellbook_option(spell_id: String) -> InteractionRequestValue.CastOption:
