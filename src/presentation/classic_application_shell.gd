@@ -565,7 +565,7 @@ func _rebuild_command_deck() -> void:
 			bitmap.configure(definition, _profile.bitmap_scale)
 			if bool(definition.get("hold_repeat", false)):
 				bitmap.button_down.connect(_begin_held_command.bind(StringName(definition["id"])))
-				bitmap.button_up.connect(_stop_held_command)
+				bitmap.button_up.connect(_on_held_command_button_up)
 			else:
 				bitmap.command_requested.connect(_activate_command)
 			button = bitmap
@@ -680,6 +680,17 @@ func _stop_held_command() -> void:
 	_held_command = &""
 	if _held_command_timer != null:
 		_held_command_timer.stop()
+
+
+func _on_held_command_button_up() -> void:
+	# A synchronous pulse may replace the footer while the pointer is still held.
+	# Godot releases the removed BaseButton, but that is not a mouse release.
+	if should_stop_held_command_on_button_up(Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)):
+		_stop_held_command()
+
+
+static func should_stop_held_command_on_button_up(left_mouse_pressed: bool) -> bool:
+	return not left_mouse_pressed
 
 
 func release_held_commands() -> void:
