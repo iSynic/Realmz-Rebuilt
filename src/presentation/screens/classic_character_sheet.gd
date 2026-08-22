@@ -1,6 +1,8 @@
 class_name ClassicCharacterSheet
 extends VBoxContainer
 
+const ClassicSpellLevelScript := preload("res://src/presentation/classic_spell_level.gd")
+
 signal character_selected(character_id: String)
 signal tab_changed(tab_id: StringName)
 signal appearance_change_requested(character_id: String, appearance_kind: StringName, appearance_id: String)
@@ -347,7 +349,7 @@ func _character_spell_card(spell: SpellView) -> PanelContainer:
 
 
 static func _classic_spell_level(spell: SpellView) -> int:
-	return 1 if spell.classic_id < 1101 else clampi(int(spell.classic_id % 1000 / 100), 1, 7)
+	return ClassicSpellLevelScript.from_classic_id(spell.classic_id)
 
 
 func _build_appearance(character: CharacterView) -> void:

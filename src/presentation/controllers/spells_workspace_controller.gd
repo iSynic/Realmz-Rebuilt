@@ -2,6 +2,7 @@ class_name SpellsWorkspaceController
 extends RefCounted
 
 const SpellSelectionChrome := preload("res://src/presentation/controllers/classic_spell_selection_chrome.gd")
+const ClassicSpellLevelScript := preload("res://src/presentation/classic_spell_level.gd")
 
 signal intent_submitted(intent: PlayerIntent)
 signal route_requested(route_id: StringName)
@@ -364,9 +365,7 @@ func _first_spell_at_level(character: CharacterView, level: int) -> SpellView:
 
 
 static func _spell_level(spell: SpellView) -> int:
-	if spell.classic_id < 1101:
-		return 1
-	return clampi(int(spell.classic_id % 1000 / 100), 1, 7)
+	return ClassicSpellLevelScript.from_classic_id(spell.classic_id)
 
 
 static func _available_powers(spell: SpellView) -> Array[int]:

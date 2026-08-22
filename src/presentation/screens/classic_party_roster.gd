@@ -1,6 +1,8 @@
 class_name ClassicPartyRoster
 extends PanelContainer
 
+const ClassicSpellLevelScript := preload("res://src/presentation/classic_spell_level.gd")
+
 signal character_selected(character_id: String)
 signal combat_auto_changed(character_id: String, enabled: bool)
 signal character_selection_completed(character_ids: Array[String])
@@ -454,9 +456,7 @@ func _on_spellbook_cast_pressed() -> void:
 static func _classic_spell_level(spell_id: String) -> int:
 	var parts := spell_id.split(".")
 	var classic_id := String(parts[parts.size() - 1]).to_int() if not parts.is_empty() else 0
-	if classic_id < 1101:
-		return 1
-	return clampi(int(classic_id % 1000 / 100), 1, 7)
+	return ClassicSpellLevelScript.from_classic_id(classic_id)
 
 
 func _add_character(character: CharacterView, combat_active: bool, auto_character_ids: Array[String]) -> void:

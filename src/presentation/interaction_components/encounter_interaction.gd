@@ -1,6 +1,8 @@
 class_name EncounterInteraction
 extends InteractionComponent
 
+const ClassicSpellLevelScript := preload("res://src/presentation/classic_spell_level.gd")
+
 var _body: InteractionRequest.ComplexEncounterRequestBody
 var _context: VBoxContainer
 var _choice_actions: Array[InteractionRequestValue.EncounterAction] = []
@@ -13,7 +15,10 @@ var _catalog_kind: StringName = &""
 var _catalog_entries: Array[InteractionRequestValue.EncounterCatalogEntry] = []
 var _catalog_selection: int = 0
 var _catalog_record: VBoxContainer
+var _catalog_list: VBoxContainer
 var _catalog_buttons: Array[Button] = []
+var _catalog_level: int = 1
+var _catalog_level_buttons: Array[Button] = []
 
 
 func build(request: InteractionRequest) -> void:
@@ -173,6 +178,9 @@ func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.Enco
 	_catalog_entries.assign(entries)
 	_catalog_selection = 0
 	_catalog_buttons.clear()
+	_catalog_level_buttons.clear()
+	if kind == &"spell" and not entries.is_empty():
+		_catalog_level = ClassicSpellLevelScript.from_classic_id(entries[0].classic_id)
 	var workspace := PanelContainer.new()
 	workspace.name = "EncounterCatalogWorkspace"
 	workspace.theme_type_variation = &"ClassicInset"
@@ -184,7 +192,11 @@ func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.Enco
 	var heading := Label.new()
 	heading.text = "Choose an encounter item" if kind == &"item" else "Choose a memorized spell"
 	heading.theme_type_variation = &"ClassicHeading"
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	column.add_child(heading)
+	if kind == &"spell":
+		column.add_child(_build_spell_level_rail())
 	var list_panel := PanelContainer.new()
 	list_panel.name = "EncounterCatalogList"
 	list_panel.theme_type_variation = &"ClassicTextWell"
@@ -194,20 +206,11 @@ func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.Enco
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var list := VBoxContainer.new()
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 2)
-	for index: int in entries.size():
-		var entry := entries[index]
-		var button := Button.new()
-		button.text = entry.name
-		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.toggle_mode = true
-		button.button_pressed = index == _catalog_selection
-		button.pressed.connect(_select_catalog_entry.bind(index))
-		list.add_child(button)
-		_catalog_buttons.append(button)
-	scroll.add_child(list)
+	_catalog_list = VBoxContainer.new()
+	_catalog_list.name = "EncounterCatalogEntries"
+	_catalog_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_catalog_list.add_theme_constant_override("separation", 2)
+	scroll.add_child(_catalog_list)
 	list_panel.add_child(scroll)
 	column.add_child(list_panel)
 	var record_panel := PanelContainer.new()
@@ -223,14 +226,15 @@ func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.Enco
 	var submit := Button.new()
 	submit.name = "EncounterCatalogConfirm"
 	submit.text = "Use item" if kind == &"item" else "Cast spell"
-	submit.custom_minimum_size = Vector2(70.0, 36.0)
+	submit.custom_minimum_size.y = 36.0
 	submit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	submit.pressed.connect(_submit_catalog_entry)
 	actions.add_child(submit)
 	var cancel := Button.new()
 	cancel.name = "EncounterCatalogCancel"
 	cancel.text = "Cancel"
-	cancel.custom_minimum_size = Vector2(74.0, 36.0)
+	cancel.custom_minimum_size.y = 36.0
+	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cancel.pressed.connect(_cancel_catalog)
 	actions.add_child(cancel)
 	column.add_child(actions)
@@ -242,13 +246,83 @@ func _show_catalog(kind: StringName, entries: Array[InteractionRequestValue.Enco
 		side_workspace_requested.emit(workspace)
 	else:
 		_context.add_child(workspace)
+	_rebuild_catalog_list()
+	_render_catalog_record()
+
+
+func _build_spell_level_rail() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.name = "EncounterSpellLevelRail"
+	panel.theme_type_variation = &"ClassicInset"
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 3)
+	grid.add_theme_constant_override("v_separation", 3)
+	panel.add_child(grid)
+	var available := _catalog_spell_levels()
+	for level: int in range(1, 8):
+		var button := Button.new()
+		button.name = "EncounterSpellLevel%d" % level
+		button.text = str(level)
+		button.toggle_mode = true
+		button.button_pressed = level == _catalog_level
+		button.disabled = not available.has(level)
+		button.tooltip_text = "Level %d" % level if not button.disabled else "No eligible level %d spells" % level
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.pressed.connect(_select_catalog_level.bind(level))
+		grid.add_child(button)
+		_catalog_level_buttons.append(button)
+	return panel
+
+
+func _catalog_spell_levels() -> Array[int]:
+	var result: Array[int] = []
+	for entry: InteractionRequestValue.EncounterCatalogEntry in _catalog_entries:
+		var level := ClassicSpellLevelScript.from_classic_id(entry.classic_id)
+		if not result.has(level):
+			result.append(level)
+	result.sort()
+	return result
+
+
+func _rebuild_catalog_list() -> void:
+	if _catalog_list == null:
+		return
+	for child: Node in _catalog_list.get_children():
+		_catalog_list.remove_child(child)
+		child.queue_free()
+	_catalog_buttons.clear()
+	for index: int in _catalog_entries.size():
+		var entry := _catalog_entries[index]
+		if _catalog_kind == &"spell" and ClassicSpellLevelScript.from_classic_id(entry.classic_id) != _catalog_level:
+			continue
+		var button := Button.new()
+		button.text = entry.name
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.toggle_mode = true
+		button.button_pressed = index == _catalog_selection
+		button.set_meta("catalog_index", index)
+		button.pressed.connect(_select_catalog_entry.bind(index))
+		_catalog_list.add_child(button)
+		_catalog_buttons.append(button)
+
+
+func _select_catalog_level(level: int) -> void:
+	_catalog_level = level
+	for index: int in _catalog_entries.size():
+		if ClassicSpellLevelScript.from_classic_id(_catalog_entries[index].classic_id) == level:
+			_catalog_selection = index
+			break
+	for button_index: int in _catalog_level_buttons.size():
+		_catalog_level_buttons[button_index].button_pressed = button_index + 1 == level
+	_rebuild_catalog_list()
 	_render_catalog_record()
 
 
 func _select_catalog_entry(index: int) -> void:
 	_catalog_selection = clampi(index, 0, _catalog_entries.size() - 1)
-	for button_index: int in _catalog_buttons.size():
-		_catalog_buttons[button_index].button_pressed = button_index == _catalog_selection
+	for button: Button in _catalog_buttons:
+		button.button_pressed = int(button.get_meta("catalog_index", -1)) == _catalog_selection
 	_render_catalog_record()
 
 
@@ -264,10 +338,14 @@ func _render_catalog_record() -> void:
 	var title := Label.new()
 	title.text = entry.name
 	title.theme_type_variation = &"ClassicHeading"
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_catalog_record.add_child(title)
 	var role := Label.new()
-	role.text = "Carried encounter item" if _catalog_kind == &"item" else "Eligible memorized spell"
+	role.text = "Carried encounter item" if _catalog_kind == &"item" else "Level %d  •  Eligible memorized spell" % ClassicSpellLevelScript.from_classic_id(entry.classic_id)
 	role.add_theme_color_override("font_color", Color("9ca3ad"))
+	role.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	role.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_catalog_record.add_child(role)
 
 
@@ -292,6 +370,8 @@ func _clear_context() -> void:
 	_catalog_kind = &""
 	_catalog_entries.clear()
 	_catalog_buttons.clear()
+	_catalog_level_buttons.clear()
+	_catalog_list = null
 	_catalog_record = null
 	for child: Node in _context.get_children():
 		_context.remove_child(child)
