@@ -44,7 +44,7 @@ static func spell_button(node_name: String, text: String, selected: bool, enable
 	button.toggle_mode = true
 	button.button_pressed = selected
 	button.disabled = not enabled
-	button.custom_minimum_size.y = 38.0
+	button.custom_minimum_size.y = 30.0
 	button.tooltip_text = tooltip
 	if icon != null:
 		button.icon = icon
