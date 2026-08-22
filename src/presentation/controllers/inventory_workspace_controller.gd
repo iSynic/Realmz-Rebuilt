@@ -10,7 +10,6 @@ const MUTED := Color("9aa0a8")
 const WARNING := Color("dca9a9")
 const CONTENT_ICON_SCRIPT := preload("res://src/presentation/classic_content_icon.gd")
 
-var _query: String = ""
 var _selected_character_id: String = ""
 var _selected_item_instance_id: String = ""
 var _trade_mode: bool = false
@@ -20,10 +19,14 @@ var _pending_item_action: StringName = &""
 var _pending_item_action_label: String = ""
 var _pending_item_intent: PlayerIntent
 var _text_scale: float = 1.0
+var _layout_profile: StringName = UiLayoutProfile.WIDE
+
+
+func set_layout_profile(profile_id: StringName) -> void:
+	_layout_profile = profile_id
 
 
 func reset() -> void:
-	_query = ""
 	_selected_character_id = ""
 	_selected_item_instance_id = ""
 	_trade_mode = false
@@ -51,42 +54,45 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 		_selected_trade_target_id = ""
 		_trade_status = ""
 		_clear_pending_action()
-	_add_character_selector(parent, view, selected_character, media)
-	_add_header(parent, selected_character)
-	var visible_items := _visible_items(selected_character)
+	var visible_items := selected_character.items
 	var selected_item := _selected_item(visible_items)
 	if selected_item == null and not visible_items.is_empty():
 		selected_item = visible_items[0]
 		_selected_item_instance_id = selected_item.instance_id
-	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 10)
-	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	columns.add_child(_build_item_browser(selected_character, visible_items, selected_item, media))
-	columns.add_child(_build_item_inspector(view, selected_character, selected_item, media))
-	parent.add_child(columns)
+	var main_split := HBoxContainer.new()
+	main_split.name = "CastleInventoryMainSplit"
+	main_split.add_theme_constant_override("separation", 8)
+	main_split.custom_minimum_size.y = 342.0 if _layout_profile == UiLayoutProfile.COMPACT else 410.0
+	main_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	main_split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	main_split.add_child(_build_item_browser(selected_character, visible_items, selected_item, media))
+	main_split.add_child(_build_character_command_rail(view, selected_character, selected_item, media))
+	parent.add_child(main_split)
+	parent.add_child(_build_item_record(selected_character, selected_item, media))
 
 
-func _add_character_selector(parent: VBoxContainer, view: GameView, selected: CharacterView, media: ClassicMediaCatalog) -> void:
+func _build_character_selector(view: GameView, selected: CharacterView, media: ClassicMediaCatalog) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "InventoryCharacterSelector"
 	panel.theme_type_variation = &"ClassicInset"
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 5)
+	var row := GridContainer.new()
+	row.columns = mini(3, view.party_members.size()) if _layout_profile == UiLayoutProfile.COMPACT else view.party_members.size()
+	row.add_theme_constant_override("h_separation", 3)
 	panel.add_child(row)
 	for character: CharacterView in view.party_members:
 		var button := Button.new()
-		button.text = character.name
+		button.name = "InventoryCharacter_%s" % character.id
 		button.icon = _appearance_texture(character.portrait_id, media)
 		button.expand_icon = true
 		button.toggle_mode = true
 		button.button_pressed = character.id == selected.id
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.custom_minimum_size.y = 44.0
-		button.tooltip_text = "%s • Load %d/%d" % [character.name, character.carried_load, character.maximum_load]
+		button.custom_minimum_size.y = 46.0
+		button.tooltip_text = "%s • %s / %s • Load %d/%d" % [character.name, character.race_name, character.caste_name, character.carried_load, character.maximum_load]
+		button.accessibility_name = "Select %s" % character.name
 		button.pressed.connect(_select_character.bind(character.id))
 		row.add_child(button)
-	parent.add_child(panel)
+	return panel
 
 
 func select_roster_character(character_id: String, view: GameView) -> bool:
@@ -129,39 +135,13 @@ func select_roster_character(character_id: String, view: GameView) -> bool:
 	return true
 
 
-func _add_header(parent: VBoxContainer, character: CharacterView) -> void:
-	var heading := HBoxContainer.new()
-	heading.add_theme_constant_override("separation", 10)
-	var title := _label("Inventory · %s" % character.name, GOLD, 20)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	heading.add_child(title)
-	var load := _label("Load %d / %d" % [character.carried_load, character.maximum_load], MUTED, 13)
-	load.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	heading.add_child(load)
-	parent.add_child(heading)
-	var filter_row := HBoxContainer.new()
-	filter_row.add_theme_constant_override("separation", 6)
-	var search := LineEdit.new()
-	search.placeholder_text = "Filter items"
-	search.text = _query
-	search.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	search.text_submitted.connect(_set_query)
-	filter_row.add_child(search)
-	var clear_filter := Button.new()
-	clear_filter.text = "Clear"
-	clear_filter.disabled = _query.is_empty()
-	clear_filter.pressed.connect(_clear_query)
-	filter_row.add_child(clear_filter)
-	parent.add_child(filter_row)
-
-
 func _build_item_browser(character: CharacterView, items: Array[ItemView], selected: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "InventoryItemBrowser"
 	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size = Vector2(300.0, 340.0)
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = 0.85
+	panel.custom_minimum_size = Vector2(390.0 if _layout_profile == UiLayoutProfile.COMPACT else 620.0, 330.0)
+	panel.size_flags_horizontal = Control.SIZE_FILL if _layout_profile == UiLayoutProfile.COMPACT else Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = 1.45
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
@@ -177,7 +157,7 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 	scroll.add_child(list)
 	column.add_child(scroll)
 	if items.is_empty():
-		_add_label(list, "No items match the filter." if not _query.is_empty() else "No carried items.", MUTED)
+		_add_label(list, "No carried items.", MUTED)
 		return panel
 	for item: ItemView in items:
 		var row := HBoxContainer.new()
@@ -185,45 +165,111 @@ func _build_item_browser(character: CharacterView, items: Array[ItemView], selec
 		row.add_child(_content_icon(item.icon_resource_type, item.icon_id, media, 38.0, item.name))
 		var button := Button.new()
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.custom_minimum_size.y = 40.0
+		button.custom_minimum_size.y = 38.0
 		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		button.toggle_mode = true
 		button.button_pressed = selected != null and selected.instance_id == item.instance_id
-		button.text = "%s%s%s" % ["◆ " if item.equipped else "", item.name, " · %d charges" % item.charges if item.charges > 0 else ""]
-		button.tooltip_text = "Equipped" if item.equipped else "Carried"
+		button.text = item.name
+		button.tooltip_text = "%s%s" % ["Equipped" if item.equipped else "Carried", " • %d charges" % item.charges if item.charges > 0 else ""]
 		button.pressed.connect(_select_item.bind(item.instance_id))
 		row.add_child(button)
+		var state := _label("", GOLD if item.equipped else MUTED, 12)
+		state.text = "%s%s" % ["E" if item.equipped else "", " • %d" % item.charges if item.charges > 0 else ""]
+		state.custom_minimum_size.x = 52.0
+		state.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		state.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		state.tooltip_text = button.tooltip_text
+		row.add_child(state)
 		list.add_child(row)
 	return panel
 
 
-func _build_item_inspector(view: GameView, character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
+func _build_character_command_rail(view: GameView, character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.name = "InventoryCharacterCommandRail"
+	panel.theme_type_variation = &"ClassicInset"
+	panel.custom_minimum_size = Vector2(350.0 if _layout_profile == UiLayoutProfile.COMPACT else 285.0, 330.0)
+	panel.size_flags_horizontal = Control.SIZE_FILL if _layout_profile == UiLayoutProfile.COMPACT else Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = 0.75
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	panel.add_child(column)
+	_render_character_record(column, character, media)
+	if item == null:
+		_add_label(column, "Select an item to see its commands.", MUTED)
+		column.add_child(_build_character_selector(view, character, media))
+		return panel
+	_render_item_actions(column, view, item, character, media)
+	column.add_child(_build_character_selector(view, character, media))
+	return panel
+
+
+func _render_character_record(parent: VBoxContainer, character: CharacterView, media: ClassicMediaCatalog) -> void:
+	var identity := HBoxContainer.new()
+	identity.name = "InventoryCharacterIdentity"
+	identity.add_theme_constant_override("separation", 8)
+	identity.add_child(_portrait_icon(character.portrait_id, media, 46.0))
+	var title := VBoxContainer.new()
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_add_label(title, character.name, GOLD, 19)
+	_add_label(title, "%s / %s • Level %d" % [character.race_name, character.caste_name, character.level], TEXT, 12)
+	identity.add_child(title)
+	parent.add_child(identity)
+	var facts := GridContainer.new()
+	facts.name = "InventoryCharacterFacts"
+	facts.columns = 2
+	facts.add_theme_constant_override("h_separation", 8)
+	facts.add_theme_constant_override("v_separation", 2)
+	for fact: String in [
+		"ST %d/%d" % [character.current_health, character.maximum_health],
+		"SP %d/%d" % [character.spell_points, character.maximum_spell_points],
+		"AR %d" % character.armor,
+		"Attacks %s" % character.attacks_per_round,
+		"Movement %d/%d" % [character.movement, character.maximum_movement],
+		"Load %d/%d" % [character.carried_load, character.maximum_load],
+	]:
+		var fact_label := _add_label(facts, fact, TEXT, 12)
+		fact_label.custom_minimum_size.x = 104.0
+		fact_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	parent.add_child(facts)
+	var condition_text := "Conditions: None"
+	if not character.conditions.is_empty():
+		var names: Array[String] = []
+		for condition: CharacterMetricView in character.conditions:
+			names.append(condition.name)
+		condition_text = "Conditions: %s" % ", ".join(names)
+	var condition_label := _add_label(parent, condition_text, WARNING if not character.conditions.is_empty() else MUTED, 11)
+	condition_label.max_lines_visible = 2
+	condition_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+
+
+func _build_item_record(character: CharacterView, item: ItemView, media: ClassicMediaCatalog) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "InventoryItemInspector"
 	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size = Vector2(320.0, 340.0)
+	panel.custom_minimum_size.y = 150.0
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = 1.15
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 5)
-	panel.add_child(column)
-	_add_section_heading(column, "Item record")
+	var record: BoxContainer = VBoxContainer.new() if _layout_profile == UiLayoutProfile.COMPACT else HBoxContainer.new()
+	record.name = "InventorySelectedItemRecord"
+	record.add_theme_constant_override("separation", 12)
+	panel.add_child(record)
 	if item == null:
-		_add_label(column, "Select an item to inspect it.", MUTED)
+		_add_label(record, "Select an item to inspect it.", MUTED)
 		return panel
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var detail := VBoxContainer.new()
-	detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail.add_theme_constant_override("separation", 6)
-	scroll.add_child(detail)
-	column.add_child(scroll)
-	_render_item_detail(detail, item, character, media)
-	column.add_child(HSeparator.new())
-	_render_item_actions(column, view, item, character, media)
+	var narrative := VBoxContainer.new()
+	narrative.name = "InventoryItemNarrative"
+	narrative.custom_minimum_size.x = 0.0 if _layout_profile == UiLayoutProfile.COMPACT else 470.0
+	narrative.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	narrative.size_flags_stretch_ratio = 1.1
+	_render_item_detail(narrative, item, character, media)
+	record.add_child(narrative)
+	var facts := VBoxContainer.new()
+	facts.name = "InventoryItemFacts"
+	facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	facts.size_flags_stretch_ratio = 0.9
+	_render_item_facts(facts, item)
+	record.add_child(facts)
 	return panel
 
 
@@ -238,7 +284,11 @@ func _render_item_detail(parent: VBoxContainer, item: ItemView, character: Chara
 	title_row.add_child(title_box)
 	parent.add_child(title_row)
 	_add_label(parent, item.description, TEXT)
-	_add_label(parent, "Value %s" % [str(item.value) if item.identified else "Unknown until identified"], MUTED, 13)
+	_add_label(parent, "%s • Load %d/%d" % [character.name, character.carried_load, character.maximum_load], MUTED, 12)
+
+
+func _render_item_facts(parent: VBoxContainer, item: ItemView) -> void:
+	_add_section_heading(parent, "Item facts", "Value %s" % [str(item.value) if item.identified else "unknown"])
 	if not item.facts.is_empty():
 		var facts := GridContainer.new()
 		facts.columns = 2
@@ -246,7 +296,7 @@ func _render_item_detail(parent: VBoxContainer, item: ItemView, character: Chara
 		facts.add_theme_constant_override("v_separation", 3)
 		for fact: ItemFactView in item.facts:
 			var fact_name := _label(fact.label, MUTED, 13)
-			fact_name.custom_minimum_size.x = 150.0
+			fact_name.custom_minimum_size.x = 112.0
 			facts.add_child(fact_name)
 			var fact_value := _label(fact.value, TEXT, 13)
 			fact_value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -265,7 +315,7 @@ func _render_item_actions(parent: VBoxContainer, view: GameView, item: ItemView,
 		return
 	var actions := GridContainer.new()
 	actions.name = "InventoryActionDock"
-	actions.columns = 4
+	actions.columns = 3 if _layout_profile == UiLayoutProfile.COMPACT else 4
 	actions.add_theme_constant_override("h_separation", 5)
 	actions.add_theme_constant_override("v_separation", 5)
 	if item.equipped:
@@ -274,10 +324,10 @@ func _render_item_actions(parent: VBoxContainer, view: GameView, item: ItemView,
 		_add_item_intent_action(actions, &"inventory.action.equipped", "Equip", item.actions.equip, PlayerIntent.item_action(PlayerIntent.Kind.EQUIP_ITEM, item.instance_id, character.id), item, character)
 	_add_item_intent_action(actions, &"inventory.action.use", "Use", item.actions.use, PlayerIntent.use_item(item.instance_id, character.id), item, character)
 	_add_item_intent_action(actions, &"inventory.action.identify", "Identify", item.actions.identify, PlayerIntent.identify_carried_items(item.actions.identify_spell_id, item.actions.identify_caster_id, character.id), item, character)
+	_add_trade_action(actions, item.actions.trade)
 	_add_item_intent_action(actions, &"inventory.action.join", "Join", item.actions.join, PlayerIntent.item_action(PlayerIntent.Kind.JOIN_ITEM, item.instance_id, character.id), item, character)
 	_add_item_intent_action(actions, &"inventory.action.split", "Split", item.actions.split, PlayerIntent.item_action(PlayerIntent.Kind.SPLIT_ITEM, item.instance_id, character.id), item, character)
 	_add_item_intent_action(actions, &"inventory.action.drop", "Drop", item.actions.drop, PlayerIntent.item_action(PlayerIntent.Kind.DROP_ITEM, item.instance_id, character.id), item, character)
-	_add_trade_action(actions, item.actions.trade)
 	parent.add_child(actions)
 	if _trade_mode:
 		_render_trade_targets(parent, view, item, character, media)
@@ -439,14 +489,6 @@ func _selected_character(view: GameView) -> CharacterView:
 	return null
 
 
-func _visible_items(character: CharacterView) -> Array[ItemView]:
-	var result: Array[ItemView] = []
-	for item: ItemView in character.items:
-		if _query.is_empty() or item.name.findn(_query) >= 0:
-			result.append(item)
-	return result
-
-
 func _selected_item(items: Array[ItemView]) -> ItemView:
 	for item: ItemView in items:
 		if item.instance_id == _selected_item_instance_id:
@@ -462,20 +504,6 @@ func _select_character(character_id: String) -> void:
 	_trade_status = ""
 	_clear_pending_action()
 	refresh_requested.emit()
-
-
-func _set_query(value: String) -> void:
-	_query = value.strip_edges()
-	_selected_item_instance_id = ""
-	_trade_mode = false
-	_selected_trade_target_id = ""
-	_trade_status = ""
-	_clear_pending_action()
-	refresh_requested.emit()
-
-
-func _clear_query() -> void:
-	_set_query("")
 
 
 func _select_item(instance_id: String) -> void:
@@ -523,9 +551,9 @@ func _appearance_texture(asset_id: String, media: ClassicMediaCatalog) -> Textur
 	return media.image_texture(media.asset_by_id(asset_id))
 
 
-func _portrait_icon(asset_id: String, media: ClassicMediaCatalog) -> TextureRect:
+func _portrait_icon(asset_id: String, media: ClassicMediaCatalog, side: float = 36.0) -> TextureRect:
 	var icon := TextureRect.new()
-	icon.custom_minimum_size = Vector2(36.0, 36.0)
+	icon.custom_minimum_size = Vector2(side, side)
 	icon.texture = _appearance_texture(asset_id, media)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

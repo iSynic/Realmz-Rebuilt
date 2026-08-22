@@ -33,6 +33,7 @@ var _creature_library_controller := CREATURE_LIBRARY_CONTROLLER.new()
 func set_layout_profile(profile_id: StringName) -> void:
 	_character_controller.set_layout_profile(profile_id)
 	_creature_library_controller.set_layout_profile(profile_id)
+	_inventory_controller.set_layout_profile(profile_id)
 	_services_controller.set_layout_profile(profile_id)
 	_system_controller.set_layout_profile(profile_id)
 	_spells_controller.set_layout_profile(profile_id)
