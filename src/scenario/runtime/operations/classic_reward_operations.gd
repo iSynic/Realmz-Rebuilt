@@ -289,6 +289,7 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 		has_share_capacity = has_share_capacity or character.carried_load < character.maximum_load
 	var detect_rows := _reward_caster_rows(63, 5)
 	var identify_rows := _reward_caster_rows(48, 25)
+	var has_pending_items := not pending_items.is_empty()
 	return InteractionRequest.from_payload(request_id, InteractionRequest.TREASURE_DISTRIBUTION, {
 		"mode": "ordinary",
 		"prompt": "Distribute the treasure, then choose Done.",
@@ -301,8 +302,8 @@ func _reward_request(reward: ClassicRewardState, request_id: String) -> Interact
 		"remaining": pending_items.size(),
 		"characters": characters,
 		"hasShareCapacity": has_share_capacity,
-		"detect": {"visible": not pending_items.is_empty() and not reward.magic_detected, "casters": detect_rows, "reason": "No living caster knows Detect Magic with 5 spell points."},
-		"identify": {"visible": not pending_items.is_empty() and not reward.identified, "casters": identify_rows, "reason": "No living caster knows Identify with 25 spell points."},
+		"detect": {"visible": has_pending_items, "casters": [] if reward.magic_detected else detect_rows, "reason": "Magic has already been detected for this treasure." if reward.magic_detected else "No living caster knows Detect Magic with 5 spell points."},
+		"identify": {"visible": has_pending_items, "casters": [] if reward.identified else identify_rows, "reason": "This treasure has already been identified." if reward.identified else "No living caster knows Identify with 25 spell points."},
 	})
 
 

@@ -750,7 +750,7 @@ func _add_caster_control(parent: VBoxContainer, label: String, action: StringNam
 	selector.theme_type_variation = &"ClassicTheldrowOptionButton"
 	selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for caster: InteractionRequestValue.RewardCaster in method.casters:
-		selector.add_item("%s • %d SP" % [caster.name, caster.cost])
+		selector.add_item("%s • SP %d • Cost %d" % [caster.name, caster.spell_points, caster.cost])
 	row.add_child(selector)
 	var button := Button.new()
 	button.name = "Treasure%sAction" % label.replace(" ", "")
@@ -846,8 +846,8 @@ func _wealth_text(wealth: InteractionRequestValue.Wealth) -> String:
 
 
 func _item_state(item: InteractionRequestValue.RewardItem) -> String:
-	if item.magical and not item.identified:
-		return "Magic detected • unidentified"
+	if item.magical:
+		return "Identified • magic detected" if item.identified else "Magic detected • unidentified"
 	return "Identified" if item.identified else "Unidentified"
 
 
