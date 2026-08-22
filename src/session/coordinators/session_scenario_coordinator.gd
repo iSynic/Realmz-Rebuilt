@@ -128,7 +128,8 @@ func _resume_scenario_party_defeat(saved: ScenarioVmSnapshot, suspended_owner: S
 
 func _apply_trigger_destination(trigger: TriggerDefinition, events: Array[DomainEvent], allow_destination: bool) -> bool:
 	var destination = trigger.post_action_location
-	if not allow_destination or destination == null or destination.map_id == _context.state.party.map_id and destination.coordinate == _context.state.party.coordinate:
+	var destination_is_source: bool = destination != null and destination.map_id == trigger.map_id and destination.coordinate == trigger.coordinate
+	if not allow_destination or destination == null or destination_is_source or destination.map_id == _context.state.party.map_id and destination.coordinate == _context.state.party.coordinate:
 		return false
 	var source_map_id = _context.state.party.map_id
 	var source_coordinate = _context.state.party.coordinate
