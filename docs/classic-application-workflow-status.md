@@ -13,19 +13,18 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM exploration command and inventory surface** (`aogm-exploration-inventory-surface`)
+**AOGM camp and encounter chrome** (`aogm-camp-encounter-chrome`)
 
-Ordinary AOGM use exposed a cramped inventory workspace and a reconstructed exploration footer that conflated Search with Area Search, hid the seamless Encounter command, and depended on generic service presentation. This batch restores the source-backed command distinctions, routes Torch through Classic item 805, and makes the persistent Party roster the inventory owner and Trade recipient selector before returning to terminal battle certification.
+Ordinary AOGM play exposed source-visible exploration control regressions: Camp changed identity instead of toggling, held Rest and Area Search lost input across rerenders, Heal was absent, the camp marker remained mounted, and Encounter expanded the footer instead of using a bounded modal. This batch restores those source-backed controls and locked encounter chrome while preserving the already-correct authored castle passability.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.exploration.search` | archaeology | aogm-major-partial | - |  |
+| `classic.exploration.camp-rest` | certification | aogm-major-partial | aogm-ordinary |  |
 | `classic.exploration.contextual-service` | archaeology | aogm-major-partial | - |  |
-| `classic.inventory.inspect-item` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.inventory.trade-item` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.inventory.use-item` | implementation | aogm-major-partial | - | GAP-INV-003 |
+| `classic.exploration.search` | archaeology | aogm-major-partial | - |  |
+| `classic.scenario.complex-interaction` | implementation | aogm-major-partial | - | GAP-SCEN-002 |
 
 ### Batch count delta
 

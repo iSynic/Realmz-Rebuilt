@@ -7,6 +7,7 @@ signal movement_hold_stopped
 const DETACHED_VIEW_DIAMETER: int = 25
 const PARTY_MARKER_LEFT_ASSET_ID: StringName = &"map.party.left"
 const PARTY_MARKER_RIGHT_ASSET_ID: StringName = &"map.party.right"
+const PARTY_MARKER_CAMP_ASSET_ID: StringName = &"map.party.camp"
 const PARTY_MARKER_ASSET_ID: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 const GUTTER_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-charcoal-slate-tile.png")
 const GUTTER_RAIL_TEXTURE: Texture2D = preload("res://src/presentation/assets/ui/classic-exploration-rail.png")
@@ -27,12 +28,14 @@ var _minimap_rect: Rect2
 var _held_direction: Vector2i = Vector2i.ZERO
 var _party_marker_textures: Dictionary = {}
 var _party_marker_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
+var _party_facing_asset_id: StringName = PARTY_MARKER_RIGHT_ASSET_ID
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_party_marker_textures[PARTY_MARKER_LEFT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_LEFT_ASSET_ID)
 	_party_marker_textures[PARTY_MARKER_RIGHT_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_RIGHT_ASSET_ID)
+	_party_marker_textures[PARTY_MARKER_CAMP_ASSET_ID] = ClassicUiAssetCatalog.texture(PARTY_MARKER_CAMP_ASSET_ID)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -62,7 +65,8 @@ func present(game_view: GameView) -> void:
 	_view = game_view
 	visible = game_view != null and game_view.session_started and game_view.map_view != null
 	if visible:
-		_party_marker_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_marker_asset_id)
+		_party_facing_asset_id = party_marker_asset_id_for_direction(game_view.map_view.last_move_direction, _party_facing_asset_id)
+		_party_marker_asset_id = PARTY_MARKER_CAMP_ASSET_ID if game_view.party_summary != null and game_view.party_summary.camping else _party_facing_asset_id
 	if not visible:
 		_held_direction = Vector2i.ZERO
 		movement_hold_stopped.emit()

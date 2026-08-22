@@ -428,7 +428,6 @@ func _apply_exploration_mode() -> void:
 func _build_menus() -> void:
 	if not is_node_ready():
 		return
-	var camp_label := "Leave Camp" if _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping else "Camp"
 	var contextual_definition := _presentation_command_definition(ClassicCommandCatalog.command(&"contextual"))
 	var contextual_label := String(contextual_definition.get("label", "Encounter"))
 	var contextual_availability := StringName(contextual_definition.get("availability", &"contextual_encounter"))
@@ -449,7 +448,7 @@ func _build_menus() -> void:
 		{"label": "Search", "command": &"search_mode", "disabled_reason": _availability_reason(&"toggle_search")},
 		{"label": "Area Search", "command": &"area_search", "disabled_reason": _availability_reason(&"area_search")},
 		{"label": "Torch", "command": &"torch", "disabled_reason": _availability_reason(&"use_torch")},
-		{"label": camp_label, "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
+		{"label": "Camp", "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
 		{"label": "Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
 		{"label": contextual_label, "command": &"contextual", "disabled_reason": _availability_reason(contextual_availability)},
 		{"label": "Money", "command": &"money", "disabled_reason": _availability_reason(&"money_action")},
@@ -477,7 +476,7 @@ func _build_menus() -> void:
 		{"label": "Adventure — Search", "command": &"search_mode", "disabled_reason": _availability_reason(&"toggle_search")},
 		{"label": "Adventure — Area Search", "command": &"area_search", "disabled_reason": _availability_reason(&"area_search")},
 		{"label": "Adventure — Torch", "command": &"torch", "disabled_reason": _availability_reason(&"use_torch")},
-		{"label": "Adventure — %s" % camp_label, "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
+		{"label": "Adventure — Camp", "command": &"camp", "disabled_reason": _availability_reason(&"camp")},
 		{"label": "Adventure — Rest", "command": &"rest", "disabled_reason": _availability_reason(&"rest")},
 		{"label": "Adventure — %s" % contextual_label, "command": &"contextual", "disabled_reason": _availability_reason(contextual_availability)},
 		{"label": "Adventure — Money", "command": &"money", "disabled_reason": _availability_reason(&"money_action")},
@@ -608,8 +607,9 @@ func _update_command_availability() -> void:
 		else:
 			button.disabled = not reason.is_empty()
 			button.tooltip_text = reason if not reason.is_empty() else "Break camp" if command_id == &"camp" and _current_view.party_summary != null and _current_view.party_summary.camping else String(definition.get("tooltip", ""))
-			if command_id == &"search_mode" and button is ClassicBitmapButton:
-				button.set_pressed_no_signal(_current_view != null and _current_view.party_summary != null and _current_view.party_summary.searching)
+			if command_id in [&"search_mode", &"camp"] and button is ClassicBitmapButton:
+				var party_summary := _current_view.party_summary if _current_view != null else null
+				button.set_pressed_no_signal(party_summary != null and (party_summary.searching if command_id == &"search_mode" else party_summary.camping))
 		button.queue_redraw()
 
 
@@ -640,11 +640,6 @@ func _presentation_command_definition(definition: Dictionary) -> Dictionary:
 	if command_id == &"search_mode" and _current_view != null and _current_view.party_summary != null and _current_view.party_summary.searching:
 		result["label"] = "Stop Search"
 		result["tooltip"] = "Stop continuous secret searching"
-		return result
-	if command_id == &"camp" and _current_view != null and _current_view.party_summary != null and _current_view.party_summary.camping:
-		result["asset_id"] = &""
-		result["label"] = "Leave Camp"
-		result["tooltip"] = "Break camp and resume ordinary travel"
 		return result
 	if command_id != &"contextual":
 		return result
@@ -683,8 +678,12 @@ func _stop_held_command() -> void:
 		_held_command_timer.stop()
 
 
+func release_held_commands() -> void:
+	_stop_held_command()
+
+
 func _on_held_command_timeout() -> void:
-	if _held_command.is_empty() or not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+	if _held_command.is_empty():
 		_stop_held_command()
 		return
 	if _current_view == null or _current_view.pending_interaction != null or not _current_view.availability(_held_command).enabled:

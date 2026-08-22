@@ -291,6 +291,9 @@ func _input(event: InputEvent) -> void:
 		_battlefield_presenter.set_movement_costs_visible(false)
 		get_viewport().set_input_as_handled()
 		return
+	var mouse_button := event as InputEventMouseButton
+	if mouse_button != null and mouse_button.button_index == MOUSE_BUTTON_LEFT and not mouse_button.pressed:
+		_shell_presenter.release_held_commands()
 	if not event.is_pressed():
 		return
 	if combat_pending and _battlefield_presenter.dismiss_reveal_friends():

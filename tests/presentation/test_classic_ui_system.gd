@@ -968,7 +968,7 @@ func _test_exploration_map_camera_preserves_viewport_geometry() -> void:
 
 	assert_true(cameras[0].x != cameras[1].x and cameras[1].x != cameras[2].x, "west, center, and east positions change only the internal horizontal camera offset")
 	assert_true(cameras[3].y != cameras[4].y, "north and south positions change only the internal vertical camera offset")
-	assert_true(party_rects[0].position.x != party_rects[2].position.x and party_rects[0].size == party_rects[2].size and [ClassicMapPresenter.facing_label(Vector2i.UP), ClassicMapPresenter.facing_label(Vector2i.DOWN + Vector2i.LEFT)].all(func(label: String) -> bool: return label in ["N", "SW"]), "map presentation preserves viewport geometry and exposes typed cardinal/intercardinal facing labels")
+	assert_true(party_rects[0].position.x != party_rects[2].position.x and party_rects[0].size == party_rects[2].size and [ClassicMapPresenter.facing_label(Vector2i.UP), ClassicMapPresenter.facing_label(Vector2i.DOWN + Vector2i.LEFT)].all(func(label: String) -> bool: return label in ["N", "SW"]) and ClassicUiAssetCatalog.texture(&"map.party.camp") != null, "map presentation preserves viewport geometry, exact camp-marker availability, and typed cardinal/intercardinal facing labels")
 	assert_true(party_rects[3].position.y != party_rects[4].position.y and party_rects[3].size == party_rects[4].size, "north/south movement translates the party cell inside the viewport without changing cell geometry")
 	application.free()
 
@@ -1212,7 +1212,7 @@ func _test_scene_composition() -> void:
 	assert_not_null(shell.get_node_or_null("BottomRegion/BottomRow/NarrativeWell"), "the shell owns a narrative well")
 	assert_true(shell.get_node_or_null("BottomRegion/BottomRow/WorldCommandPanel") != null and shell.get_node_or_null("BottomRegion/BottomRow/CommandPanel") != null and shell.find_child("Light", true, false) != null, "exploration dedicates separate footer panes to world and party commands while surfacing typed light state")
 	var exploration_commands := ClassicCommandCatalog.for_context(&"exploration")
-	assert_true([&"search_mode", &"contextual"].all(func(id: StringName) -> bool: return exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == id and definition["group"] == &"world")), "Search mode and contextual service entry belong to world controls")
+	assert_true([&"search_mode", &"contextual", &"camp"].all(func(id: StringName) -> bool: return exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == id and definition["group"] == &"world")) and ClassicCommandCatalog.command(&"camp")["asset_id"] == &"command.camp", "Search, contextual service, and the persistent Camp bitmap belong to world controls")
 	assert_true(exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == &"settings" and definition["group"] == &"world"), "preferences remain with Adventure and system controls instead of displacing party actions")
 	assert_true(exploration_commands.any(func(definition: Dictionary) -> bool: return definition["id"] == &"inventory" and definition["group"] == &"party"), "party workspaces remain grouped beside the narrative well")
 	var world_panel := shell.get_node("BottomRegion/BottomRow/WorldCommandPanel") as Control
