@@ -472,7 +472,15 @@ func _update_modal_shield(needed: bool) -> void:
 		get_parent().add_child(_modal_shield)
 	_modal_shield.position = _application_rect.position
 	_modal_shield.size = _application_rect.size
-	get_parent().move_child(_modal_shield, maxi(0, get_index()))
+	var parent := get_parent()
+	parent.move_child(_modal_shield, modal_shield_target_index(_modal_shield.get_index(), get_index()))
+
+
+static func modal_shield_target_index(shield_index: int, presenter_index: int) -> int:
+	# Moving an existing shield to the presenter's index swaps their order when
+	# the shield is already before it. Keep the shield immediately behind the
+	# presenter across every rerender so it can never own modal button clicks.
+	return maxi(0, presenter_index - 1 if shield_index < presenter_index else presenter_index)
 
 
 func _close_modal_shield() -> void:
