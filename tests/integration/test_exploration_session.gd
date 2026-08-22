@@ -212,7 +212,7 @@ func run() -> void:
 	assert_equal(restored_surprise.restore(content, SaveEnvelope.from_data(save_data(surprise_snapshot))).state, SessionStep.State.COMPLETED, "random surprise save restores transactionally")
 	var accepted := restored_surprise.respond(InteractionResponse.from_data(surprise_wait.interaction.request_id, &"yes_no", {"accepted": true}))
 	assert_true(_has_event(accepted, &"random_encounter_triggered"), "accepting the surprise choice starts the selected random battle")
-	assert_equal(_event(accepted, &"battle_started").payload["surprise"], 1, "accepted random surprise gives the party source-backed initiative")
+	assert_equal(_event(accepted, &"battle_started").payload["surprise"], 1, "accepted random surprise gives the party source-backed initiative"); assert_true(_sound_ids(accepted).has(10049), "battle entry requests Castle sound 10049 before tactical actions")
 	var direct_combat_request := restored_surprise.view().combat_action_request
 	assert_not_null(direct_combat_request, "a direct random battle projects the complete typed combat command surface")
 	if direct_combat_request != null:
