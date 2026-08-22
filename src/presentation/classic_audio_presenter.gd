@@ -3,11 +3,16 @@ extends Node
 
 signal sound_observed(sound_id: int)
 signal blocking_state_changed(blocking: bool)
+signal music_state_changed(playlist_id: int, title: String, playing: bool)
 
 const CHANNEL_COUNT: int = 4
 
 var last_sound_id: int = 0
 var master_volume: float = 1.0
+var sound_volume: float = 1.0
+var music_volume: float = 0.8
+var current_music_playlist_id: int = 0
+var current_music_title: String = ""
 var last_media_diagnostic: Dictionary = {}
 var _players: Array[AudioStreamPlayer] = []
 var _channel_index: int = -1
@@ -15,6 +20,7 @@ var _pending_sounds: Array[Dictionary] = []
 var _processing_sounds: bool = false
 var _waiting_player: AudioStreamPlayer
 var _waiting_finished_callback: Callable
+var _music_player: AudioStreamPlayer
 
 
 func _ready() -> void:
@@ -23,6 +29,9 @@ func _ready() -> void:
 		player.name = "ClassicSoundChannel%d" % (index + 1)
 		_players.append(player)
 		add_child(player)
+	_music_player = AudioStreamPlayer.new()
+	_music_player.name = "ClassicMusicChannel"
+	add_child(_music_player)
 	_apply_volume()
 
 
@@ -57,13 +66,70 @@ func set_master_volume(value: float) -> void:
 	_apply_volume()
 
 
+func set_sound_volume(value: float) -> void:
+	sound_volume = clampf(value, 0.0, 1.0)
+	_apply_volume()
+
+
+func set_music_volume(value: float) -> void:
+	music_volume = clampf(value, 0.0, 1.0)
+	_apply_volume()
+
+
+func present_music_context(playlist_id: int, settings: PresentationSettings, media: ClassicMediaCatalog, stock_music: ClassicMusicCatalog) -> void:
+	if settings == null or not settings.music_enabled or playlist_id <= 0:
+		stop_music()
+		return
+	var mode := settings.music_mode(playlist_id)
+	if mode == PresentationSettings.MUSIC_CONTINUE:
+		return
+	if mode == PresentationSettings.MUSIC_OFF:
+		stop_music()
+		return
+	if current_music_playlist_id == playlist_id and _music_player != null and _music_player.playing:
+		return
+	var stream: AudioStream
+	var title := ""
+	if media != null:
+		var package_asset := media.asset_by_resource("music", playlist_id)
+		if package_asset != null:
+			stream = media.audio_stream_by_resource("music", playlist_id)
+			title = package_asset.label
+	if stream == null and stock_music != null:
+		stream = stock_music.stream(playlist_id)
+		title = stock_music.title(playlist_id)
+	if stream == null:
+		return
+	_music_player.stop()
+	_music_player.stream = stream
+	if _music_player.is_inside_tree():
+		_music_player.play()
+	current_music_playlist_id = playlist_id
+	current_music_title = title if not title.is_empty() else ClassicMusicContext.context_name(playlist_id)
+	music_state_changed.emit(current_music_playlist_id, current_music_title, true)
+
+
+func stop_music() -> void:
+	if _music_player != null:
+		_music_player.stop()
+	var changed := current_music_playlist_id != 0 or not current_music_title.is_empty()
+	current_music_playlist_id = 0
+	current_music_title = ""
+	if changed:
+		music_state_changed.emit(0, "", false)
+
+
 func is_blocking() -> bool:
 	return _processing_sounds
 
 
 func _apply_volume() -> void:
 	for player: AudioStreamPlayer in _players:
-		player.volume_db = -80.0 if master_volume <= 0.0 else linear_to_db(master_volume)
+		var effective_sound := master_volume * sound_volume
+		player.volume_db = -80.0 if effective_sound <= 0.0 else linear_to_db(effective_sound)
+	if _music_player != null:
+		var effective_music := master_volume * music_volume
+		_music_player.volume_db = -80.0 if effective_music <= 0.0 else linear_to_db(effective_music)
 
 
 func _drain_sound_queue() -> void:

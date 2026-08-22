@@ -741,7 +741,7 @@ static func _build_map_view(context: SessionWorkflowContext, reusable_cells: Dic
 		var direction_name := MapTopology.direction_name(direction)
 		var probe := _probe_movement(context, direction)
 		movement_options[direction_name] = {"allowed": probe.allowed, "reason": String(probe.reason)}
-	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, state.world.map_is_dark(map), state.world.visited_coordinates(map.id), movement_options, state.last_move_direction)
+	return MapView.new(map.id, map.name, map.level_type, map.topology.width, map.topology.height, state.party.coordinate, cells, state.world.map_is_dark(map), state.world.visited_coordinates(map.id), movement_options, state.last_move_direction, map.landlook)
 
 
 static func _build_player_map_view(context: SessionWorkflowContext, definition: PlayerMapDefinition) -> PlayerMapView:

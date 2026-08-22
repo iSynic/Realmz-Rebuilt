@@ -1,7 +1,11 @@
 class_name PresentationSettings
 extends RefCounted
 
-const SCHEMA_VERSION: int = 7
+const SCHEMA_VERSION: int = 8
+const MUSIC_SLOT_COUNT: int = 20
+const MUSIC_OFF: int = 0
+const MUSIC_PLAY: int = 1
+const MUSIC_CONTINUE: int = 2
 
 const UI_SCALE_AUTO: String = "auto"
 const UI_SCALE_100: String = "100"
@@ -13,6 +17,10 @@ const TYPOGRAPHY_CLASSIC: String = "classic"
 const TYPOGRAPHY_READABLE: String = "readable"
 
 var master_volume: float = 1.0
+var sound_volume: float = 1.0
+var music_volume: float = 0.8
+var music_enabled: bool = true
+var music_playlist_modes: Array[int] = _default_music_modes()
 var topology_debug: bool = false
 var text_scale: float = 1.0
 var reduced_motion: bool = false
@@ -31,6 +39,10 @@ func to_data() -> Dictionary:
 		"kind": "realmz2.presentation-settings",
 		"schemaVersion": SCHEMA_VERSION,
 		"masterVolume": master_volume,
+		"soundVolume": sound_volume,
+		"musicVolume": music_volume,
+		"musicEnabled": music_enabled,
+		"musicPlaylistModes": music_playlist_modes.duplicate(),
 		"topologyDebug": topology_debug,
 		"textScale": text_scale,
 		"reducedMotion": reduced_motion,
@@ -54,7 +66,7 @@ static func from_data(data: Variant) -> PresentationSettings:
 	var schema_version := int(schema_value)
 	if float(schema_version) != float(schema_value):
 		return null
-	if data.get("kind") != "realmz2.presentation-settings" or schema_version not in [1, 2, 3, 4, 5, 6, SCHEMA_VERSION]:
+	if data.get("kind") != "realmz2.presentation-settings" or schema_version not in [1, 2, 3, 4, 5, 6, 7, SCHEMA_VERSION]:
 		return null
 	if not data.get("masterVolume") is float or not data.get("topologyDebug") is bool or not data.get("textScale") is float or not data.get("reducedMotion") is bool:
 		return null
@@ -78,15 +90,30 @@ static func from_data(data: Variant) -> PresentationSettings:
 			return null
 	if schema_version >= 6 and (not data.get("showExplorationMinimap") is bool or not data.get("autojournalEnabled") is bool):
 		return null
-	if schema_version == SCHEMA_VERSION:
+	if schema_version >= 7:
 		if not data.get("typographyMode") is String or data["typographyMode"] not in [TYPOGRAPHY_CLASSIC, TYPOGRAPHY_READABLE]:
 			return null
+	if schema_version == SCHEMA_VERSION:
+		if not data.get("soundVolume") is float or not data.get("musicVolume") is float or not data.get("musicEnabled") is bool or not data.get("musicPlaylistModes") is Array:
+			return null
+		if float(data["soundVolume"]) < 0.0 or float(data["soundVolume"]) > 1.0 or float(data["musicVolume"]) < 0.0 or float(data["musicVolume"]) > 1.0:
+			return null
+		var modes := data["musicPlaylistModes"] as Array
+		if modes.size() != MUSIC_SLOT_COUNT:
+			return null
+		for mode: Variant in modes:
+			if (not mode is int and not mode is float) or float(int(mode)) != float(mode) or int(mode) not in [MUSIC_OFF, MUSIC_PLAY, MUSIC_CONTINUE]:
+				return null
 	var volume: float = data["masterVolume"]
 	var scale: float = data["textScale"]
 	if volume < 0.0 or volume > 1.0 or scale < 0.8 or scale > 1.5:
 		return null
 	var settings := PresentationSettings.new()
 	settings.master_volume = volume
+	settings.sound_volume = float(data.get("soundVolume", 1.0))
+	settings.music_volume = float(data.get("musicVolume", 0.8))
+	settings.music_enabled = bool(data.get("musicEnabled", true))
+	settings.music_playlist_modes = _music_modes_from_data(data.get("musicPlaylistModes", []))
 	settings.topology_debug = data["topologyDebug"]
 	settings.text_scale = scale
 	settings.reduced_motion = data["reducedMotion"]
@@ -99,3 +126,30 @@ static func from_data(data: Variant) -> PresentationSettings:
 	settings.autojournal_enabled = bool(data.get("autojournalEnabled", true))
 	settings.typography_mode = String(data.get("typographyMode", TYPOGRAPHY_CLASSIC))
 	return settings
+
+
+func music_mode(playlist_id: int) -> int:
+	return music_playlist_modes[playlist_id - 1] if playlist_id >= 1 and playlist_id <= MUSIC_SLOT_COUNT else MUSIC_OFF
+
+
+func set_music_mode(playlist_id: int, mode: int) -> bool:
+	if playlist_id < 1 or playlist_id > MUSIC_SLOT_COUNT or mode not in [MUSIC_OFF, MUSIC_PLAY, MUSIC_CONTINUE]:
+		return false
+	music_playlist_modes[playlist_id - 1] = mode
+	return true
+
+
+static func _default_music_modes() -> Array[int]:
+	var result: Array[int] = []
+	for _slot: int in MUSIC_SLOT_COUNT:
+		result.append(MUSIC_PLAY)
+	return result
+
+
+static func _music_modes_from_data(value: Variant) -> Array[int]:
+	if not value is Array or (value as Array).size() != MUSIC_SLOT_COUNT:
+		return _default_music_modes()
+	var result: Array[int] = []
+	for mode: Variant in value as Array:
+		result.append(int(mode))
+	return result
