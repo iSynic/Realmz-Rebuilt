@@ -430,8 +430,9 @@ func _apply_classic_region() -> void:
 		size = region.size
 	else:
 		theme_type_variation = &"ClassicInset"
-		var desired := preferred_modal_size(_request, _stage_rect.size)
-		position = _stage_rect.position + (_stage_rect.size - desired) * 0.5
+		var modal_region := _application_rect if uses_application_modal_region(_request) else _stage_rect
+		var desired := preferred_modal_size(_request, modal_region.size)
+		position = modal_region.position + (modal_region.size - desired) * 0.5
 		size = desired
 	_update_modal_shield(not _playback_masked and _request != null and not uses_textbox_region(_request) and not uses_full_stage_region(_request))
 	_apply_content_layout()
@@ -451,7 +452,7 @@ static func preferred_modal_size(request: InteractionRequest, available_size: Ve
 				preferred.y = 380.0
 			InteractionRequest.LEVEL_UP:
 				var body := request.body as InteractionRequest.LevelUpRequestBody
-				preferred = Vector2(900.0, 500.0) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
+				preferred = Vector2(1080.0, available_size.y - 20.0) if body != null and body.mode == &"spell-selection" else Vector2(760.0, 430.0)
 			InteractionRequest.ALLY_SELECTION:
 				preferred = Vector2(820.0, 500.0)
 	var desired := Vector2(minf(preferred.x, available_size.x - 20.0), minf(preferred.y, available_size.y - 20.0))
@@ -582,6 +583,7 @@ func _apply_content_layout() -> void:
 		_prompt_column.custom_minimum_size.x = 0.0
 		_prompt_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		_options.custom_minimum_size.x = 0.0
+	_options.custom_minimum_size.y = maxf(0.0, size.y - 16.0) if uses_application_modal_region(_request) else 0.0
 
 
 static func uses_textbox_region(request: InteractionRequest, passive_text: bool = false) -> bool:
@@ -594,6 +596,13 @@ static func uses_full_stage_region(request: InteractionRequest) -> bool:
 
 static func uses_application_workspace(request: InteractionRequest) -> bool:
 	return request != null and request.kind in [InteractionRequest.TREASURE_DISTRIBUTION, InteractionRequest.SHOP, InteractionRequest.TEMPLE, InteractionRequest.BANK, InteractionRequest.POOLED_WEALTH_DEPARTURE]
+
+
+static func uses_application_modal_region(request: InteractionRequest) -> bool:
+	if request == null or request.kind != InteractionRequest.LEVEL_UP:
+		return false
+	var body := request.body as InteractionRequest.LevelUpRequestBody
+	return body != null and body.mode == &"spell-selection"
 
 
 static func interaction_region(request: InteractionRequest, textbox_rect: Rect2, _unused_stage_rect: Rect2, combat_rect: Rect2 = Rect2()) -> Rect2:

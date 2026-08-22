@@ -272,7 +272,7 @@ static func _level_payload(state: StringName, prompt: String) -> Dictionary:
 		var spell_count := 36 if state == &"oversized" else 4
 		var spells: Array[Dictionary] = []
 		for index: int in spell_count:
-			spells.append({"id": "classic.spell.%d" % (1001 + index), "name": ("A spell with a deliberately extensive display name %d" % (index + 1)) if state == &"oversized" else "Spell %d" % (index + 1), "classicId": 1001 + index, "cost": 1 + index % 6, "selected": index == 0})
+			var classic_id := 1001 + index if state == &"oversized" else 1001 if index == 0 else 1101 + index * 100; spells.append({"id": "classic.spell.%d" % classic_id, "name": ("A spell with a deliberately extensive display name %d" % (index + 1)) if state == &"oversized" else "Spell %d" % (index + 1), "classicId": classic_id, "cost": 1 + index % 6, "selected": index == 0})
 		return {"prompt": prompt, "mode": "spell-selection", "characterId": "hero", "characterName": "A deliberately long spellcaster name" if state == &"oversized" else "Hero", "pointTotal": 18, "spells": spells}
 	if state in [&"empty", &"loading", &"error", &"unavailable"]:
 		return {"prompt": prompt, "mode": "result", "characterId": "", "characterName": "", "level": 0, "gains": {"stamina": 0, "spellPoints": 0, "toHit": 0, "magicResistance": 0}}

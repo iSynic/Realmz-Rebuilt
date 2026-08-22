@@ -1,6 +1,8 @@
 class_name LevelUpInteraction
 extends InteractionComponent
 
+const SpellSelectionChrome := preload("res://src/presentation/controllers/classic_spell_selection_chrome.gd")
+const ClassicSpellLevelScript := preload("res://src/presentation/classic_spell_level.gd")
 const GOLD := Color("e5c45c")
 const CYAN := Color("8fcfd1")
 const MUTED := Color("aeb6ba")
@@ -13,6 +15,9 @@ var _selection_summary: Label
 var _spell_record_title: Label
 var _spell_record_cost: Label
 var _spell_record_state: Label
+var _spell_list: VBoxContainer
+var _spell_list_heading: Label
+var _selected_level: int = 1
 
 
 func configure(game_view: GameView, media: ClassicMediaCatalog) -> void:
@@ -114,41 +119,34 @@ func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void
 		add_hint("The spell-selection request is unavailable.")
 		return
 	_build_header("Learn Spells", body.character_name)
+	_selected_spell_ids.clear()
+	for spell: InteractionRequestValue.SpellChoice in body.spells:
+		if spell.selected:
+			_selected_spell_ids.append(spell.id)
+	var available_levels := _available_spell_levels(body)
+	_selected_level = available_levels[0] if not available_levels.is_empty() else 1
 	var columns := HBoxContainer.new()
 	columns.name = "LevelSpellColumns"
 	columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	columns.add_theme_constant_override("separation", 8)
 	add_child(columns)
-	var list_content := _pane(columns, "LevelSpellCandidates", "Available Spells", 1.6)
+	_build_spell_level_rail(columns, body, available_levels)
+	var list_content := _pane(columns, "LevelSpellCandidates", "", 1.45)
+	_spell_list_heading = _label("", GOLD, 17)
+	_spell_list_heading.theme_type_variation = &"ClassicHeading"
+	list_content.add_child(_spell_list_heading)
 	var scroll := ScrollContainer.new()
 	scroll.name = "LevelSpellScroll"
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	list_content.add_child(scroll)
-	var spell_list := VBoxContainer.new()
-	spell_list.name = "LevelSpellList"
-	spell_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spell_list.add_theme_constant_override("separation", 3)
-	scroll.add_child(spell_list)
-	_spell_buttons.clear()
-	_selected_spell_ids.clear()
-	for spell: InteractionRequestValue.SpellChoice in body.spells:
-		var button := ClassicSpellSelectionChrome.spell_button(
-			"LevelSpell_%s" % spell.id,
-			"%s  •  %d point%s" % [spell.name, spell.cost, "" if spell.cost == 1 else "s"],
-			spell.selected,
-			true,
-			spell.name,
-			_toggle_spell.bind(body, spell.id),
-			_spell_icon(body.character_id, spell.id),
-		)
-		button.theme_type_variation = &"ClassicTheldrowButton"
-		button.set_meta(&"spell_id", spell.id)
-		_spell_buttons[spell.id] = button
-		spell_list.add_child(button)
-		if spell.selected:
-			_selected_spell_ids.append(spell.id)
+	_spell_list = VBoxContainer.new()
+	_spell_list.name = "LevelSpellList"
+	_spell_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_spell_list.add_theme_constant_override("separation", 3)
+	scroll.add_child(_spell_list)
+	_rebuild_spell_list(body)
 	var action_content := _pane(columns, "LevelSpellAllowance", "Spell Record", 0.9)
 	_selection_summary = _label("", CYAN, 16)
 	action_content.add_child(_selection_summary)
@@ -179,13 +177,79 @@ func _build_spell_selection(body: InteractionRequest.LevelUpRequestBody) -> void
 	confirm.pressed.connect(_submit_spells.bind(body))
 	action_content.add_child(confirm)
 	if not body.spells.is_empty():
-		var initial_spell := body.spells[0]
-		for spell: InteractionRequestValue.SpellChoice in body.spells:
-			if spell.selected:
-				initial_spell = spell
-				break
+		var initial_spell := _first_spell_at_level(body, _selected_level)
 		_refresh_spell_record(initial_spell)
 	_refresh_spell_selection(body)
+
+
+func _build_spell_level_rail(parent: HBoxContainer, body: InteractionRequest.LevelUpRequestBody, available_levels: Array[int]) -> void:
+	var panel := PanelContainer.new()
+	panel.name = "LevelSpellLevelRail"
+	panel.theme_type_variation = &"ClassicTextWell"
+	panel.custom_minimum_size.x = 112.0
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = 0.45
+	parent.add_child(panel)
+	var rail := VBoxContainer.new()
+	rail.add_theme_constant_override("separation", 4)
+	panel.add_child(rail)
+	rail.add_child(SpellSelectionChrome.level_heading())
+	var group := ButtonGroup.new()
+	for level: int in range(1, 8):
+		var button := SpellSelectionChrome.level_button(level, level == _selected_level, available_levels.has(level), _select_spell_level.bind(body, level), "No learnable level %d spells" % level)
+		button.name = "LevelSpellLevel%d" % level
+		button.button_group = group
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rail.add_child(button)
+
+
+func _rebuild_spell_list(body: InteractionRequest.LevelUpRequestBody) -> void:
+	if _spell_list == null:
+		return
+	for child: Node in _spell_list.get_children():
+		_spell_list.remove_child(child)
+		child.queue_free()
+	_spell_buttons.clear()
+	var spells := _spells_at_level(body, _selected_level)
+	_spell_list_heading.text = "Level %d — Available Spells" % _selected_level
+	for spell: InteractionRequestValue.SpellChoice in spells:
+		var button := SpellSelectionChrome.spell_button("LevelSpell_%s" % spell.id, "%s  •  %d point%s" % [spell.name, spell.cost, "" if spell.cost == 1 else "s"], _selected_spell_ids.has(spell.id), true, spell.name, _toggle_spell.bind(body, spell.id), _spell_icon(body.character_id, spell.id))
+		button.theme_type_variation = &"ClassicTheldrowButton"
+		button.set_meta(&"spell_id", spell.id)
+		_spell_buttons[spell.id] = button
+		_spell_list.add_child(button)
+
+
+func _select_spell_level(body: InteractionRequest.LevelUpRequestBody, level: int) -> void:
+	_selected_level = level
+	_rebuild_spell_list(body)
+	var spell := _first_spell_at_level(body, level)
+	if spell != null:
+		_refresh_spell_record(spell)
+
+
+func _available_spell_levels(body: InteractionRequest.LevelUpRequestBody) -> Array[int]:
+	var levels: Array[int] = []
+	for spell: InteractionRequestValue.SpellChoice in body.spells:
+		var level := ClassicSpellLevelScript.from_classic_id(spell.classic_id)
+		if not levels.has(level):
+			levels.append(level)
+	levels.sort()
+	return levels
+
+
+func _spells_at_level(body: InteractionRequest.LevelUpRequestBody, level: int) -> Array[InteractionRequestValue.SpellChoice]:
+	var spells: Array[InteractionRequestValue.SpellChoice] = []
+	for spell: InteractionRequestValue.SpellChoice in body.spells:
+		if ClassicSpellLevelScript.from_classic_id(spell.classic_id) == level:
+			spells.append(spell)
+	return spells
+
+
+func _first_spell_at_level(body: InteractionRequest.LevelUpRequestBody, level: int) -> InteractionRequestValue.SpellChoice:
+	var spells := _spells_at_level(body, level)
+	return spells[0] if not spells.is_empty() else null
 
 
 func _toggle_spell(body: InteractionRequest.LevelUpRequestBody, spell_id: String) -> void:

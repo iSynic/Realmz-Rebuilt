@@ -13,19 +13,19 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Castle inventory ledger and Rebuilt slate controls** (`classic-inventory-ledger-convergence`)
+**Castle spell-level navigation and retained reward decisions** (`classic-spell-and-reward-presentation-convergence`)
 
-Ordinary AOGM play shows that the functional Inventory route still lacks Castle's dominant paper-white item ledger and mixes imported word-bearing Castle button slabs with Rebuilt controls. This five-workflow presentation batch makes browsing and all adjacent item actions visually coherent without changing detached facts, legality, intents, saves, or simulation.
+Ordinary play and supplied screenshots expose three connected presentation discrepancies: Treasure completion loses its owning workspace, spellbooks flatten or abbreviate Castle's level hierarchy, and Learn Spells is constrained to roster height. This five-workflow batch retains reward context and applies one level-aware Castle control language without changing spell legality, reward sequencing, saves, or simulation.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.inventory.inspect-item` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.inventory.manage-equipment` | archaeology | broader-parity | - |  |
-| `classic.inventory.use-item` | archaeology | broader-parity | - |  |
-| `classic.inventory.trade-item` | archaeology | broader-parity | - |  |
-| `classic.inventory.identify-item` | archaeology | broader-parity | - |  |
+| `classic.rewards.treasure-distribution` | archaeology | broader-parity | - |  |
+| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.spellcasting.field-camp-cast` | archaeology | broader-parity | - |  |
+| `classic.spellcasting.combat-cast` | archaeology | broader-parity | - |  |
+| `classic.scenario.complex-interaction` | archaeology | broader-parity | - |  |
 
 ### Batch count delta
 
