@@ -17,21 +17,22 @@ func is_valid() -> bool:
 
 
 func has_track(playlist_id: int) -> bool:
-	return _tracks.has(playlist_id)
+	return _tracks.has(_stock_track_id(playlist_id))
 
 
 func track(playlist_id: int) -> Dictionary:
-	return (_tracks.get(playlist_id, {}) as Dictionary).duplicate(true)
+	return (_tracks.get(_stock_track_id(playlist_id), {}) as Dictionary).duplicate(true)
 
 
 func title(playlist_id: int) -> String:
-	return String((_tracks.get(playlist_id, {}) as Dictionary).get("title", ""))
+	return String((_tracks.get(_stock_track_id(playlist_id), {}) as Dictionary).get("title", ""))
 
 
 func stream(playlist_id: int) -> AudioStream:
-	if _streams.has(playlist_id):
-		return _streams[playlist_id] as AudioStream
-	var record := _tracks.get(playlist_id, {}) as Dictionary
+	var stock_track_id := _stock_track_id(playlist_id)
+	if _streams.has(stock_track_id):
+		return _streams[stock_track_id] as AudioStream
+	var record := _tracks.get(stock_track_id, {}) as Dictionary
 	if record.is_empty():
 		return null
 	var path := String(record.get("path", ""))
@@ -42,8 +43,14 @@ func stream(playlist_id: int) -> AudioStream:
 	var result := load(path) as AudioStream
 	if result is AudioStreamOggVorbis:
 		(result as AudioStreamOggVorbis).loop = true
-	_streams[playlist_id] = result
+	_streams[stock_track_id] = result
 	return result
+
+
+func _stock_track_id(playlist_id: int) -> int:
+	if playlist_id >= 12 and playlist_id <= 14:
+		return 1
+	return playlist_id
 
 
 func _load_manifest(path: String) -> void:

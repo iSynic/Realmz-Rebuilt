@@ -93,6 +93,10 @@ func _ready() -> void:
 	_shell_presenter.topology_debug_changed.connect(_on_topology_debug_changed)
 	_shell_presenter.dungeon_3d_changed.connect(_on_dungeon_3d_changed)
 	_shell_presenter.master_volume_changed.connect(_on_master_volume_changed)
+	_shell_presenter.sound_volume_changed.connect(_on_sound_volume_changed)
+	_shell_presenter.music_volume_changed.connect(_on_music_volume_changed)
+	_shell_presenter.music_enabled_changed.connect(_on_music_enabled_changed)
+	_shell_presenter.music_playlist_mode_changed.connect(_on_music_playlist_mode_changed)
 	_shell_presenter.text_scale_changed.connect(_on_text_scale_changed)
 	_shell_presenter.typography_mode_changed.connect(_on_typography_mode_changed)
 	_shell_presenter.ui_scale_mode_changed.connect(_on_ui_scale_mode_changed)
@@ -109,6 +113,7 @@ func _ready() -> void:
 	_shell_presenter.standalone_character_creation_requested.connect(_begin_standalone_character_creation)
 	_shell_presenter.standalone_character_creation_cancelled.connect(_cancel_standalone_character_creation)
 	_shell_presenter.character_selection_completed.connect(_interaction_presenter.submit_character_selection)
+	_audio_presenter.music_state_changed.connect(_shell_presenter.set_music_playback_state)
 	_shell_presenter.apply_settings(_presentation_settings)
 	presentation_coordinator.set_reduced_motion(_presentation_settings.reduced_motion)
 	_apply_application_theme()
@@ -117,6 +122,8 @@ func _ready() -> void:
 	_map_presenter.set_travel_preview_visible(_presentation_settings.show_exploration_minimap)
 	_apply_window_mode(_presentation_settings.window_mode)
 	_audio_presenter.set_master_volume(_presentation_settings.master_volume)
+	_audio_presenter.set_sound_volume(_presentation_settings.sound_volume)
+	_audio_presenter.set_music_volume(_presentation_settings.music_volume)
 	_on_topology_debug_changed(_presentation_settings.topology_debug)
 	_on_dungeon_3d_changed(_presentation_settings.dungeon_3d)
 	_load_classic_character_library()
@@ -956,6 +963,34 @@ func _on_master_volume_changed(value: float) -> void:
 	_audio_presenter.set_master_volume(value)
 	_presentation_settings.master_volume = value
 	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_sound_volume_changed(value: float) -> void:
+	_audio_presenter.set_sound_volume(value)
+	_presentation_settings.sound_volume = clampf(value, 0.0, 1.0)
+	_shell_presenter.apply_settings(_presentation_settings)
+	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_music_volume_changed(value: float) -> void:
+	_audio_presenter.set_music_volume(value)
+	_presentation_settings.music_volume = clampf(value, 0.0, 1.0)
+	_shell_presenter.apply_settings(_presentation_settings)
+	settings_repository.save_settings(_presentation_settings)
+
+
+func _on_music_enabled_changed(enabled: bool) -> void:
+	_presentation_settings.music_enabled = enabled
+	_shell_presenter.apply_settings(_presentation_settings)
+	settings_repository.save_settings(_presentation_settings)
+	presentation_coordinator.refresh_music()
+
+
+func _on_music_playlist_mode_changed(playlist_id: int, mode: int) -> void:
+	if not _presentation_settings.set_music_mode(playlist_id, mode):
+		return
+	settings_repository.save_settings(_presentation_settings)
+	presentation_coordinator.refresh_music()
 
 
 func _on_text_scale_changed(value: float) -> void:

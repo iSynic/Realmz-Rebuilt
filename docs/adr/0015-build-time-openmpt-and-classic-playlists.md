@@ -16,7 +16,7 @@ Realmz Rebuilt uses OpenMPT at build time, not at runtime. A provenance-locked g
 
 Presentation owns playlist context, playback, and preference persistence. The audio presenter has separate effects and music channels beneath the existing master volume. A context mode of Play switches to and loops the selected title, Continue retains the current title, and Off stops music. The complete twenty-slot modal remains reachable from the Music menu and Preferences at both supported UI profiles. These settings never enter simulation, campaign packages, RNG, time, or adventure saves.
 
-The stock application bank owns playlists 1–11. Custom 1–3 remain scenario-owned exact music resources and resolve before stock media when Providence supplies them. Slots 18–20 remain visible and reserved. Indoor automatic selection stays unavailable until Providence exports Castle's separate land-level base-scale fact; Rebuilt does not infer it from landlook or authored map appearance.
+The stock application bank contains eleven unique modules. Playlist contexts 12–14 retain separate Desert, Swamp, and Snow preferences while resolving the Outdoor module, matching the later Castle context names and the absence of separate terrain modules in the application bank. Custom 1–3 remain scenario-owned exact music resources and resolve before stock media when Providence supplies them. Slots 18–20 remain visible and reserved. Indoor automatic selection stays unavailable until Providence exports Castle's separate land-level base-scale fact; Rebuilt does not infer it from landlook or authored map appearance.
 
 ## Consequences
 

@@ -209,6 +209,23 @@ func _build_audio_tab(parent: VBoxContainer, settings: PresentationSettings) -> 
 	volume.tooltip_text = "Master volume %d%%" % int(round(settings.master_volume * 100.0))
 	volume.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"master_volume", value))
 	_add_setting_row(content, "Master volume  •  %d%%" % int(round(settings.master_volume * 100.0)), volume)
+	var sound := HSlider.new()
+	sound.min_value = 0.0; sound.max_value = 1.0; sound.step = 0.05; sound.value = settings.sound_volume
+	sound.tooltip_text = "Sound effects volume %d%%" % int(round(settings.sound_volume * 100.0))
+	sound.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"sound_volume", value))
+	_add_setting_row(content, "Sound effects  •  %d%%" % int(round(settings.sound_volume * 100.0)), sound)
+	var music := HSlider.new()
+	music.min_value = 0.0; music.max_value = 1.0; music.step = 0.05; music.value = settings.music_volume
+	music.tooltip_text = "Music volume %d%%" % int(round(settings.music_volume * 100.0))
+	music.value_changed.connect(func(value: float) -> void: setting_changed.emit(&"music_volume", value))
+	_add_setting_row(content, "Music  •  %d%%" % int(round(settings.music_volume * 100.0)), music)
+	_add_setting_toggle(content, "Music enabled", settings.music_enabled, &"music_enabled")
+	var playlist := Button.new()
+	playlist.name = "OpenMusicPlaylist"
+	playlist.text = "Open Music Playlist…"
+	playlist.tooltip_text = "Configure Castle's 20 context slots as Play, Continue, or Off."
+	playlist.pressed.connect(func() -> void: action_requested.emit(&"music_playlist", null))
+	content.add_child(playlist)
 
 
 func _build_accessibility_tab(parent: VBoxContainer, settings: PresentationSettings) -> void:

@@ -6,33 +6,33 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 68 | 0 | 14 | 53 | 1 |
+| classic | 69 | 0 | 15 | 53 | 1 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**AOGM camp and encounter chrome** (`aogm-camp-encounter-chrome`)
+**Classic context music and playlists** (`classic-context-music`)
 
-Ordinary AOGM play exposed source-visible exploration control regressions: Camp changed identity instead of toggling, held Rest and Area Search lost input across rerenders, Heal was absent, the camp marker remained mounted, and Encounter expanded the footer instead of using a bounded modal. This batch restores those source-backed controls and locked encounter chrome while preserving the already-correct authored castle passability.
+At the baseline, the application had no Realmz music playback or source-visible Music menu despite the pinned Castle data model preserving twenty context slots and three per-slot modes. This batch adds a deterministic OpenMPT-backed stock music bank, context-aware playback, a complete Classic playlist workspace, and separately persisted host audio controls without changing simulation or campaign saves.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.exploration.camp-rest` | certification | aogm-major-partial | aogm-ordinary |  |
-| `classic.exploration.contextual-service` | archaeology | aogm-major-partial | - |  |
-| `classic.exploration.search` | archaeology | aogm-major-partial | - |  |
-| `classic.scenario.complex-interaction` | implementation | aogm-major-partial | - | GAP-SCEN-002 |
+| `classic.system.music-playlists` | implementation | classic-missing | - | GAP-SYS-004 |
+| `classic.system.preferences` | implementation | aogm-major-partial | - |  |
+| `host.settings.accessibility` | implementation | aogm-major-partial | - | GAP-HOST-004 |
+| `classic.exploration.travel` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 1 | 0 | -1 |
-| classic | partial | 14 | 14 | 0 |
-| classic | functional | 52 | 53 | +1 |
+| classic | partial | 14 | 15 | +1 |
+| classic | functional | 53 | 53 | 0 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -53,7 +53,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Combat | 14 | 0 | 2 | 11 | 1 |
 | Rewards and progression | 5 | 0 | 1 | 4 | 0 |
 | Maps and journal | 3 | 0 | 2 | 1 | 0 |
-| Save and system | 4 | 0 | 2 | 2 | 0 |
+| Save and system | 5 | 0 | 3 | 2 | 0 |
 
 ## Completion axes
 
@@ -62,12 +62,12 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Castle oracle | Count |
 | --- | ---: |
 | not-required | 9 |
-| required | 7 |
+| required | 8 |
 | completed | 52 |
 
 | Remake | Count |
 | --- | ---: |
-| absent | 6 |
+| absent | 7 |
 | partial | 35 |
 | implemented | 14 |
 | divergent | 13 |
@@ -77,12 +77,12 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-required | 19 |
 | missing | 0 |
-| partial | 2 |
+| partial | 3 |
 | complete | 47 |
 
 | simulation | Count |
 | --- | ---: |
-| not-applicable | 2 |
+| not-applicable | 3 |
 | absent | 0 |
 | partial | 8 |
 | complete | 58 |
@@ -92,13 +92,13 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | not-applicable | 6 |
 | absent | 0 |
 | partial | 1 |
-| verified | 61 |
+| verified | 62 |
 
 | presentation | Count |
 | --- | ---: |
 | absent | 0 |
 | fixture-shell | 1 |
-| functional | 66 |
+| functional | 67 |
 | accepted | 1 |
 
 ### Host
@@ -135,15 +135,15 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 | Label | Classic | Host |
 | --- | ---: | ---: |
-| synthetic | 68 | 7 |
-| route-harness | 39 | 2 |
+| synthetic | 69 | 7 |
+| route-harness | 40 | 2 |
 | aogm-ordinary | 41 | 3 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **12**.
+Blockers: **1**. Major gaps: **13**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster. Next: Correct Providence schema v3 and Rebuilt decoding to preserve every menu-visible monster, its description, and not-on-menu flag, then add the Bestiary route without inventing discovery state.
@@ -157,6 +157,7 @@ Blockers: **1**. Major gaps: **12**.
 - **major** `classic.rewards.treasure-distribution` - Castle's two incidental random-item draws and battle-mode interaction are not yet reproduced. Next: Use controlled Castle RNG fixtures for ordinary, XP-only, and bonus-treasure battle rewards before implementing or correcting the random drops.
 - **major** `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete. Next: Route the trap spell through the source-backed application spell effect, then run a controlled Castle comparison and ordinary campaign UI acceptance.
 - **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Implement discard, case-transfer, allied-target, and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
+- **major** `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1–3 music remain unresolved. Next: Add an explicit Providence base-scale field and normalized scenario music resources, then certify Indoor and Custom 1–3 through ordinary packages without inferring either from landlook.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
 ## Oracle-required unknowns
@@ -167,6 +168,7 @@ Blockers: **1**. Major gaps: **12**.
 - `classic.maps.authored-journal` - Read the authored journal
 - `classic.maps.location-notes` - Read and edit location notes
 - `classic.scenario.complex-interaction` - Resolve a complex or thief encounter
+- `classic.system.music-playlists` - Configure and hear context music
 - `classic.system.preferences` - Change Classic application preferences
 
 ## Prioritized remaining-work queues
@@ -177,6 +179,7 @@ Blockers: **1**. Major gaps: **12**.
 
 ### other-campaign
 
+- `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1–3 music remain unresolved.
 - `classic.character.age-update` - Age updates have no ordinary-campaign observation because the trigger is rare.
 - `classic.exploration.travel` - Dungeon and boat variants lack ordinary campaign certification.
 - `classic.maps.authored-journal` - Authored journal discovery and browsing have synthetic proof only.

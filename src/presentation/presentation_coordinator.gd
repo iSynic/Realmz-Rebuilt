@@ -14,6 +14,7 @@ var _shell_presenter: ClassicApplicationShell
 var _audio_presenter: ClassicAudioPresenter
 var _media: ClassicMediaCatalog
 var _application_media := ApplicationMediaCatalog.new()
+var _stock_music := ClassicMusicCatalog.new()
 var _active_route: StringName = &"exploration"
 var _play_stage_visible := false
 var _combat_playback: CombatPlaybackController
@@ -125,6 +126,7 @@ func set_package_media(media: MediaSource) -> void:
 	_map_presenter.set_media_catalog(_media)
 	_battlefield_presenter.set_media_catalog(_media)
 	_shell_presenter.set_package_media(_media)
+	refresh_music()
 
 
 func package_media() -> ClassicMediaCatalog:
@@ -138,6 +140,14 @@ func set_active_route(route_id: StringName) -> void:
 	# nested second projection/presentation pass, most visibly on combat entry.
 	if _session_controller != null:
 		_update_spatial_visibility(_session_controller.view())
+		refresh_music()
+
+
+func refresh_music() -> void:
+	if _audio_presenter == null or _shell_presenter == null:
+		return
+	var view := _session_controller.view() if _session_controller != null else _presented_view
+	_audio_presenter.present_music_context(ClassicMusicContext.playlist_for(_active_route, view), _shell_presenter.presentation_settings(), _media, _stock_music)
 
 
 func set_play_stage_visible(visible: bool) -> void:
@@ -206,6 +216,7 @@ func _present_view(game_view: GameView, include_interaction: bool = true) -> voi
 	_shell_presenter.present(game_view)
 	_update_spatial_visibility(game_view)
 	_presented_view = game_view
+	refresh_music()
 	if include_interaction:
 		_present_interaction(game_view)
 

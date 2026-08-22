@@ -14,6 +14,10 @@ signal quit_requested
 signal topology_debug_changed(enabled: bool)
 signal dungeon_3d_changed(enabled: bool)
 signal master_volume_changed(value: float)
+signal sound_volume_changed(value: float)
+signal music_volume_changed(value: float)
+signal music_enabled_changed(enabled: bool)
+signal music_playlist_mode_changed(playlist_id: int, mode: int)
 signal text_scale_changed(value: float)
 signal typography_mode_changed(value: String)
 signal ui_scale_mode_changed(value: String)
@@ -41,6 +45,7 @@ const TEXT := Color("d8d9d2")
 const HELD_COMMAND_INTERVAL := 0.22
 const TORCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_torch_command_button.gd")
 const SEARCH_BUTTON_SCRIPT := preload("res://src/presentation/classic_search_command_button.gd")
+const MUSIC_PLAYLIST_DIALOG_SCRIPT := preload("res://src/presentation/music_playlist_dialog.gd")
 
 @onready var _menu_strip: PanelContainer = %MenuStrip
 @onready var _menu_row: HBoxContainer = %MenuRow
@@ -83,6 +88,10 @@ var _menu_actions: Dictionary = {}
 var _menus_connected: Dictionary = {}
 var _held_command: StringName = &""
 var _held_command_timer: Timer
+var _music_dialog: MusicPlaylistDialog
+var _music_playlist_id: int = 0
+var _music_title: String = ""
+var _music_playing: bool = false
 
 
 func _ready() -> void:
@@ -93,6 +102,11 @@ func _ready() -> void:
 	_held_command_timer.wait_time = HELD_COMMAND_INTERVAL
 	_held_command_timer.timeout.connect(_on_held_command_timeout)
 	add_child(_held_command_timer)
+	_music_dialog = MUSIC_PLAYLIST_DIALOG_SCRIPT.new()
+	add_child(_music_dialog)
+	_music_dialog.music_enabled_changed.connect(func(enabled: bool) -> void: music_enabled_changed.emit(enabled))
+	_music_dialog.music_volume_changed.connect(func(value: float) -> void: music_volume_changed.emit(value))
+	_music_dialog.playlist_mode_changed.connect(func(playlist_id: int, mode: int) -> void: music_playlist_mode_changed.emit(playlist_id, mode))
 	_router.start_requested.connect(func(path: String, seed: int) -> void: start_package_requested.emit(path, seed))
 	_router.cancel_package_requested.connect(func() -> void: cancel_package_requested.emit())
 	_router.refresh_requested.connect(func() -> void: refresh_campaigns_requested.emit())
@@ -261,14 +275,32 @@ func apply_settings(settings: PresentationSettings) -> void:
 	theme = ClassicTypography.themed_copy(base_theme, settings)
 	_narrative.add_theme_font_size_override("normal_font_size", int(round(18.0 * settings.text_scale)))
 	_router.set_presentation_settings(settings)
+	if _music_dialog != null and _music_dialog.visible:
+		_music_dialog.open(settings, _music_playlist_id, _music_title, _music_playing)
 	_apply_layout()
 
 
+func presentation_settings() -> PresentationSettings:
+	return _presentation_settings
+
+
+func set_music_playback_state(playlist_id: int, title: String, playing: bool) -> void:
+	_music_playlist_id = playlist_id
+	_music_title = title
+	_music_playing = playing
+	if _music_dialog != null:
+		_music_dialog.set_playback_state(playlist_id, title, playing)
+	_build_menus()
+
+
 func accepts_exploration_input() -> bool:
-	return not _picture_stage.visible and _router.accepts_exploration_input()
+	return not _picture_stage.visible and (_music_dialog == null or not _music_dialog.visible) and _router.accepts_exploration_input()
 
 
 func handle_back() -> bool:
+	if _music_dialog != null and _music_dialog.visible:
+		_music_dialog.close()
+		return true
 	if _picture_stage.visible:
 		_picture_stage.visible = false
 		return true
@@ -472,6 +504,11 @@ func _build_menus() -> void:
 		{"label": "Display, Audio, and Access", "route": &"system"},
 		{"label": "Save and Package Diagnostics", "route": &"system"},
 	])
+	_fill_menu($MenuStrip/MenuRow/MusicMenu, [
+		{"label": "Now Playing: %s" % (_music_title if _music_playing else "Nothing"), "disabled_reason": "Current music title"},
+		{"label": "Stop Music" if _presentation_settings.music_enabled else "Play Music", "system": &"music_toggle"},
+		{"label": "Playlist…", "system": &"music_playlist"},
+	])
 	var compact_entries: Array[Dictionary] = [
 		{"label": "Adventure — Explore", "route": &"exploration"},
 		{"label": "Adventure — Search", "command": &"search_mode", "disabled_reason": _availability_reason(&"toggle_search")},
@@ -494,6 +531,8 @@ func _build_menus() -> void:
 		{"label": "Game — End Adventure", "system": &"end_adventure", "disabled_reason": _end_adventure_reason()},
 		{"label": "Game — Campaigns", "system": &"campaigns", "disabled_reason": _campaign_library_reason()},
 		{"label": "Preferences", "route": &"system"},
+		{"label": "Music — %s" % ("Stop" if _presentation_settings.music_enabled else "Play"), "system": &"music_toggle"},
+		{"label": "Music — Playlist…", "system": &"music_playlist"},
 		{"label": "Info / Diagnostics", "route": &"system"},
 		{"label": "Quit", "system": &"quit"},
 	]
@@ -738,6 +777,8 @@ func _on_system_action_requested(action_id: StringName, value: Variant) -> void:
 		&"refresh_saves": refresh_saves_requested.emit()
 		&"end_adventure": end_adventure_requested.emit()
 		&"campaigns": show_campaign_selection()
+		&"music_toggle": music_enabled_changed.emit(not _presentation_settings.music_enabled)
+		&"music_playlist": _music_dialog.open(_presentation_settings, _music_playlist_id, _music_title, _music_playing)
 		&"quit": quit_requested.emit()
 
 
@@ -746,6 +787,9 @@ func _on_presentation_setting_changed(setting_id: StringName, value: Variant) ->
 		&"topology_debug": topology_debug_changed.emit(bool(value))
 		&"dungeon_3d": dungeon_3d_changed.emit(bool(value))
 		&"master_volume": master_volume_changed.emit(float(value))
+		&"sound_volume": sound_volume_changed.emit(float(value))
+		&"music_volume": music_volume_changed.emit(float(value))
+		&"music_enabled": music_enabled_changed.emit(bool(value))
 		&"text_scale": text_scale_changed.emit(float(value))
 		&"typography_mode": typography_mode_changed.emit(String(value))
 		&"ui_scale_mode": ui_scale_mode_changed.emit(String(value))
