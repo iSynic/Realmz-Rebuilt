@@ -13,19 +13,19 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**Classic application soundscape** (`classic-application-soundscape`)
+**Classic lifecycle and command feedback** (`classic-lifecycle-command-feedback`)
 
-Ordinary AOGM play exposed that Rebuilt had the complete application-owned sound bank but omitted several high-frequency Castle cue requests. This discrepancy-triggered batch restores the exact pinned-source cues for Camp, Rest, Area Search, battle entry, Items, and field Spells while keeping simulation events separate from explicit presentation-only workspace entry.
+Ordinary AOGM play exposed missing active-command indentation, unreliable Quit cancellation re-entry, premature setup music, an overgrown Quit confirmation, and audible startup video. This discrepancy-triggered batch corrects only presentation and host-lifecycle ownership while retaining Camp and Rest as the ordinary-play certification target.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
 | `classic.exploration.camp-rest` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.exploration.search` | archaeology | broader-parity | - |  |
-| `classic.combat.enter-battle` | archaeology | broader-parity | - |  |
+| `classic.system.quit` | archaeology | broader-parity | - |  |
+| `classic.system.music-playlists` | archaeology | broader-parity | - |  |
+| `classic.startup.select-scenario` | archaeology | broader-parity | - |  |
 | `classic.inventory.manage-equipment` | archaeology | broader-parity | - |  |
-| `classic.spellcasting.choose-power-target` | archaeology | broader-parity | - |  |
 
 ### Batch count delta
 

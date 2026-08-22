@@ -652,10 +652,28 @@ func _update_command_availability() -> void:
 		else:
 			button.disabled = not reason.is_empty()
 			button.tooltip_text = reason if not reason.is_empty() else "Break camp" if command_id == &"camp" and _current_view.party_summary != null and _current_view.party_summary.camping else String(definition.get("tooltip", ""))
-			if command_id in [&"search_mode", &"camp"] and button is ClassicBitmapButton:
-				var party_summary := _current_view.party_summary if _current_view != null else null
-				button.set_pressed_no_signal(party_summary != null and (party_summary.searching if command_id == &"search_mode" else party_summary.camping))
+			if button is ClassicBitmapButton:
+				(button as ClassicBitmapButton).set_visual_pressed(_command_is_visually_pressed(command_id))
 		button.queue_redraw()
+
+
+func _command_is_visually_pressed(command_id: StringName) -> bool:
+	var party_summary := _current_view.party_summary if _current_view != null else null
+	if command_id == &"camp":
+		return party_summary != null and party_summary.camping
+	if command_id == _held_command:
+		return true
+	return command_route(command_id) == _router.current_screen()
+
+
+static func command_route(command_id: StringName) -> StringName:
+	return {
+		&"money": &"services",
+		&"inventory": &"inventory",
+		&"spells": &"spells",
+		&"maps": &"journal",
+		&"settings": &"system",
+	}.get(command_id, &"")
 
 
 func _activate_command(command_id: StringName, held_repeat: bool = false) -> void:
@@ -732,6 +750,7 @@ func _stop_held_command() -> void:
 	_held_command = &""
 	if _held_command_timer != null:
 		_held_command_timer.stop()
+	_update_command_availability()
 
 
 func _on_held_command_button_up() -> void:

@@ -18,6 +18,8 @@ var _art_texture: Texture2D
 var _pressed_art_texture: Texture2D
 var _label: String = ""
 var _symbol: StringName = &""
+var _physical_pressed: bool = false
+var _visual_pressed: bool = false
 
 
 func _ready() -> void:
@@ -28,8 +30,8 @@ func _ready() -> void:
 	mouse_exited.connect(queue_redraw)
 	focus_entered.connect(queue_redraw)
 	focus_exited.connect(queue_redraw)
-	button_down.connect(queue_redraw)
-	button_up.connect(queue_redraw)
+	button_down.connect(func() -> void: _physical_pressed = true; queue_redraw())
+	button_up.connect(func() -> void: _physical_pressed = false; queue_redraw())
 	pressed.connect(func() -> void: command_requested.emit(command_id))
 
 
@@ -61,17 +63,31 @@ func set_art_scale(value: int) -> void:
 	queue_redraw()
 
 
+func set_visual_pressed(value: bool) -> void:
+	if _visual_pressed == value:
+		return
+	_visual_pressed = value
+	queue_redraw()
+
+
+func is_visually_pressed() -> bool:
+	return _physical_pressed or _visual_pressed or button_pressed
+
+
 func _draw() -> void:
 	var rect := Rect2(Vector2(1.0, 1.0), size - Vector2(2.0, 2.0))
+	var pressed := is_visually_pressed()
 	draw_rect(rect, SURFACE_COLOR, true)
-	draw_line(rect.position, Vector2(rect.end.x, rect.position.y), EDGE_LIGHT, 2.0)
-	draw_line(rect.position, Vector2(rect.position.x, rect.end.y), EDGE_LIGHT, 2.0)
-	draw_line(Vector2(rect.position.x, rect.end.y), rect.end, SURFACE_DARK, 2.0)
-	draw_line(Vector2(rect.end.x, rect.position.y), rect.end, SURFACE_DARK, 2.0)
-	var pressed_offset := Vector2.ONE if button_pressed else Vector2.ZERO
+	var leading_edge := SURFACE_DARK if pressed else EDGE_LIGHT
+	var trailing_edge := EDGE_LIGHT if pressed else SURFACE_DARK
+	draw_line(rect.position, Vector2(rect.end.x, rect.position.y), leading_edge, 2.0)
+	draw_line(rect.position, Vector2(rect.position.x, rect.end.y), leading_edge, 2.0)
+	draw_line(Vector2(rect.position.x, rect.end.y), rect.end, trailing_edge, 2.0)
+	draw_line(Vector2(rect.end.x, rect.position.y), rect.end, trailing_edge, 2.0)
+	var pressed_offset := Vector2.ONE if pressed else Vector2.ZERO
 	var font := get_theme_font("font", "Button")
 	var font_size := maxi(11, get_theme_font_size("font_size", "Button") - 2)
-	var displayed_texture := _pressed_art_texture if button_pressed and _pressed_art_texture != null else _art_texture
+	var displayed_texture := _pressed_art_texture if pressed and _pressed_art_texture != null else _art_texture
 	if displayed_texture != null:
 		var art_size := Vector2(_native_size * _art_scale)
 		var art_rect := Rect2(Vector2(floorf((size.x - art_size.x) * 0.5), floorf((size.y - art_size.y) * 0.5)) + pressed_offset, art_size)
@@ -85,7 +101,7 @@ func _draw() -> void:
 		draw_string(font, Vector2(4.0, size.y * 0.5 + font_size * 0.35) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, font_size, CAPTION_COLOR)
 	if disabled:
 		draw_rect(rect, DISABLED_OVERLAY, true)
-	elif button_pressed:
+	elif pressed:
 		draw_rect(rect.grow(-1.0), Color(0.95, 0.76, 0.24, 0.14), true)
 	if has_focus():
 		draw_rect(rect, FOCUS_COLOR, false, 2.0)
