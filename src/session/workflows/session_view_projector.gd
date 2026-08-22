@@ -337,8 +337,8 @@ static func _populate_action_availability(context: SessionWorkflowContext, resul
 	result.set_action_availability(&"area_search", area_search_reason.is_empty(), area_search_reason)
 	var torch_probe := InventoryMagicServicesWorkflow.classic_torch_probe(context)
 	result.set_action_availability(&"use_torch", ordinary_reason.is_empty() and not battle_active and torch_probe.allowed, ordinary_reason if not ordinary_reason.is_empty() else "Torches are unavailable during battle." if battle_active else torch_probe.reason)
-	var contextual_encounter_available := _contextual_encounter_available(context)
-	result.set_action_availability(&"contextual_encounter", ordinary_reason.is_empty() and not battle_active and contextual_encounter_available, ordinary_reason if not ordinary_reason.is_empty() else "Encounters are unavailable during battle." if battle_active else "No seamless encounter is available at this location.")
+	var encounter_reason := ordinary_reason if not ordinary_reason.is_empty() else "Encounters are unavailable during battle." if battle_active else "Break camp before using Encounter." if state.party_camping else ""
+	result.set_action_availability(&"contextual_encounter", encounter_reason.is_empty(), encounter_reason)
 	result.set_action_availability(&"camp", ordinary_reason.is_empty() and not battle_active and (state.camping_allowed or state.party_camping), ordinary_reason if not ordinary_reason.is_empty() else "Camping is unavailable during battle." if battle_active else "Camping is unavailable here." if not state.camping_allowed and not state.party_camping else "")
 	result.set_action_availability(&"rest", ordinary_reason.is_empty() and not battle_active and state.party_camping, ordinary_reason if not ordinary_reason.is_empty() else "Rest is unavailable during battle." if battle_active else "Make camp before resting.")
 	var heal_reason := ordinary_reason if not ordinary_reason.is_empty() else "Heal is unavailable during battle." if battle_active else "The party is too fatigued to continue Heal." if state.party.fatigue > 134 else ""
@@ -404,27 +404,6 @@ static func _populate_action_availability(context: SessionWorkflowContext, resul
 			if not combat_move_enabled:
 				combat_move_reason = "The active character has no legal tactical step."
 	result.set_action_availability(&"combat_move", combat_move_enabled, combat_move_reason)
-
-
-static func _contextual_encounter_available(context: SessionWorkflowContext) -> bool:
-	var map := context.content.world.map_by_id(context.state.party.map_id)
-	var cell: MapCell = null if map == null else map.topology.cell_at(context.state.party.coordinate)
-	if cell == null:
-		return false
-	var region_ids := cell.random_rect_ids()
-	for offset: int in region_ids.size():
-		var region := map.random_region_by_id(region_ids[region_ids.size() - 1 - offset])
-		if region == null:
-			continue
-		var effective := context.state.world.random_region(region)
-		if effective.chance_ten_thousand >= 0:
-			continue
-		var doors := region.random_doors()
-		var percents := effective.random_door_percents()
-		for index: int in mini(doors.size(), percents.size()):
-			if doors[index] != 0 and percents[index] != 0 and context.content.scenario.program_by_id("xap:%d" % doors[index]) != null:
-				return true
-	return false
 
 
 static func _populate_spell_actions(context: SessionWorkflowContext, result: GameView) -> void:

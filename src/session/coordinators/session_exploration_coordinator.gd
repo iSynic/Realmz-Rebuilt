@@ -12,13 +12,16 @@ func begin_contextual_encounter() -> SessionCoordinatorResult:
 	if _context.state.combat != null and not _context.state.combat.completed:
 		return _context.failed(&"encounter_during_battle", "The seamless Encounter command is unavailable during battle.")
 	var map := _context.content.world.map_by_id(_context.state.party.map_id)
-	var cell: MapCell = null if map == null else map.topology.cell_at(_context.state.party.coordinate)
-	if cell == null:
+	if map == null:
 		return _context.failed(&"unknown_map", "The current map is unavailable for Encounter.")
+	var encounter_coordinate := _context.state.party.coordinate
+	if map.level_type == &"land" and _context.state.last_move_direction != Vector2i.ZERO:
+		encounter_coordinate += _context.state.last_move_direction
+	var cell: MapCell = map.topology.cell_at(encounter_coordinate)
 	var selected_program_id := ""
 	var selected_region_id := ""
 	var events: Array[DomainEvent] = []
-	var region_ids := cell.random_rect_ids()
+	var region_ids: Array[String] = [] if cell == null else cell.random_rect_ids()
 	for offset: int in region_ids.size():
 		var region_id: String = region_ids[region_ids.size() - 1 - offset]
 		var region := map.random_region_by_id(region_id)
@@ -43,15 +46,18 @@ func begin_contextual_encounter() -> SessionCoordinatorResult:
 			_context.state.world.set_random_region(effective)
 			selected_program_id = "xap:%d" % door_id
 			selected_region_id = region.id
-	if selected_program_id.is_empty():
-		events.append(DomainEvent.new(&"contextual_encounter_unavailable", {"mapId": map.id, "coordinate": _context.state.party.coordinate}))
-		return _context.completed(events)
+	var used_default_program := selected_program_id.is_empty()
+	if used_default_program:
+		selected_program_id = "xap:0"
 	if _context.content.scenario.program_by_id(selected_program_id) == null:
+		if used_default_program:
+			events.append(DomainEvent.new(&"contextual_encounter_unavailable", {"mapId": map.id, "coordinate": encounter_coordinate, "programId": selected_program_id}))
+			return _context.completed(events)
 		return _context.failed(&"unknown_random_door_program", "Encounter selected unavailable program '%s'." % selected_program_id, events)
 	_context.set_continuation(ExplorationTimeWorkflow.post_move_continuation(_context.workflow_context(), map, _context.state.party.coordinate))
 	_context.session_continuation.exploration().active_random_program_id = selected_program_id
-	events.append(DomainEvent.new(&"contextual_encounter_triggered", {"regionId": selected_region_id, "programId": selected_program_id}))
-	var execution_context := ScenarioExecutionContext.trigger(&"action", "", map.id, _context.state.party.coordinate, true).set_random_region(selected_region_id)
+	events.append(DomainEvent.new(&"contextual_encounter_triggered", {"regionId": selected_region_id, "programId": selected_program_id, "coordinate": encounter_coordinate, "defaultProgram": used_default_program}))
+	var execution_context := ScenarioExecutionContext.trigger(&"action", "", map.id, encounter_coordinate, true).set_random_region(selected_region_id)
 	var started := _context.scenario_vm.start_program(selected_program_id, execution_context)
 	if started.state == ScenarioVmResult.State.FAILED:
 		_context.session_continuation.clear()

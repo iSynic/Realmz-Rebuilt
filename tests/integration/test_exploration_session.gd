@@ -380,8 +380,7 @@ func _test_location_notes(content: RealmzContent) -> void:
 
 func _test_contextual_encounter_command(source_content: RealmzContent) -> void:
 	var region_id := "contextual.fixture.region"
-	var empty_triggers: Array[String] = []
-	var random_regions: Array[String] = [region_id]
+	var empty_ids: Array[String] = []; var random_regions: Array[String] = [region_id]
 	var empty_edges := {
 		&"north": MapEdge.new(&"open", true, false),
 		&"east": MapEdge.new(&"open", true, false),
@@ -389,26 +388,27 @@ func _test_contextual_encounter_command(source_content: RealmzContent) -> void:
 		&"west": MapEdge.new(&"open", true, false),
 	}
 	var empty_features: Array[MapFeature] = []
-	var cell := MapCell.new("contextual:cell:0,0", Vector2i.ZERO, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_triggers, random_regions, empty_edges, empty_features)
-	var region := RandomEncounterRegion.new(region_id, Rect2i(Vector2i.ZERO, Vector2i.ONE), -1, 0, 0, [42, 0, 0], [100, 0, 0], false, 0, 0, 0)
+	var origin := MapCell.new("contextual:cell:0,0", Vector2i.ZERO, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, empty_ids, empty_edges, empty_features)
+	var faced := MapCell.new("contextual:cell:1,0", Vector2i.RIGHT, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "fixture.tileset", empty_ids, random_regions, empty_edges, empty_features)
+	var region := RandomEncounterRegion.new(region_id, Rect2i(Vector2i.RIGHT, Vector2i.ONE), -1, 0, 0, [42, 0, 0], [100, 0, 0], false, 0, 0, 0)
 	var regions: Array[RandomEncounterRegion] = [region]
-	var map := MapDefinition.new("contextual", "Land level 0", &"land", 0, MapTopology.new(1, 1, [cell]), false, false, -1, regions, "fixture.tileset")
+	var map := MapDefinition.new("contextual", "Land level 0", &"land", 0, MapTopology.new(2, 1, [origin, faced]), false, false, -1, regions, "fixture.tileset")
 	var maps: Array[MapDefinition] = [map]
-	var program := ScenarioProgramDefinition.new("xap:42", &"extra-action-point", region_id, [])
-	var content := RealmzContent.new("contextual-command", source_content.package_hash, "contextual-command-content", source_content.rules_version, map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new([program], []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
+	var programs: Array[ScenarioProgramDefinition] = [ScenarioProgramDefinition.new("xap:42", &"extra-action-point", region_id, []), ScenarioProgramDefinition.new("xap:0", &"extra-action-point", "0", [])]
+	var content := RealmzContent.new("contextual-command", source_content.package_hash, "contextual-command-content", source_content.rules_version, map.id, Vector2i.ZERO, WorldDefinition.new(maps), ScenarioDefinition.new(programs, []), [], [], [], source_content.race_definitions(), source_content.caste_definitions())
 	var session := GameSession.new()
 	assert_equal(session.start(content, 1).state, SessionStep.State.COMPLETED, "the seamless Encounter command fixture starts")
-	_begin_fixture_adventure(session, content)
-	assert_true(session.view().availability(&"contextual_encounter").enabled, "the core exposes Encounter only on a current negative random rectangle with an authored door")
+	_begin_fixture_adventure(session, content); var facing := session.snapshot(); facing.game_state.last_move_direction = Vector2i.RIGHT; assert_equal(session.restore(content, facing).state, SessionStep.State.COMPLETED, "the fixture faces the neighboring land cell through the save boundary")
+	assert_true(session.view().availability(&"contextual_encounter").enabled, "the core exposes Encounter throughout ordinary exploration")
 	session._rng = ScriptedRng.new([0])
 	var opened := session.submit_intent(PlayerIntent.contextual_encounter())
 	assert_equal(opened.state, SessionStep.State.COMPLETED, "Encounter resolves its selected seamless XAP through the ordinary VM boundary")
-	assert_true(_has_event(opened, &"contextual_encounter_triggered"), "Encounter publishes the exact selected random-door program")
+	assert_equal([_event(opened, &"contextual_encounter_triggered").payload["programId"], _event(opened, &"contextual_encounter_triggered").payload["coordinate"]], ["xap:42", Vector2i.RIGHT], "land Encounter scans the faced cell and publishes the selected random-door program")
 	assert_equal(session.rng_trace()[0]["tag"], "contextual-encounter.contextual.fixture.region.door.0", "Encounter records the source-ordered door roll")
 	assert_equal(session.snapshot().game_state.world.random_region(region).random_door_percents()[0], 0, "a positive seamless door chance is consumed after it opens")
-	var restored := GameSession.new()
-	assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "the consumed seamless Encounter door restores transactionally")
-	assert_false(restored.view().availability(&"contextual_encounter").enabled, "a consumed one-shot seamless door no longer advertises Encounter")
+	var restored := GameSession.new(); assert_equal(restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "the consumed seamless Encounter door restores transactionally")
+	assert_true(restored.view().availability(&"contextual_encounter").enabled, "a consumed seamless door does not disable Castle's persistent Encounter control"); var fallback := restored.submit_intent(PlayerIntent.contextual_encounter()); var fallback_event := _event(fallback, &"contextual_encounter_triggered")
+	assert_equal([fallback.state, fallback_event.payload["programId"], fallback_event.payload["coordinate"], fallback_event.payload["defaultProgram"]], [SessionStep.State.COMPLETED, "xap:0", Vector2i.RIGHT, true], "Encounter runs XAP 0 at the faced land coordinate when no seamless door fires")
 
 
 func _test_map_view_projection_edges(content: RealmzContent) -> void:

@@ -78,7 +78,9 @@ func _draw() -> void:
 		draw_texture_rect(displayed_texture, art_rect, false)
 	elif _symbol == &"yin_yang":
 		_draw_yin_yang(Vector2(size.x * 0.5, 19.0) + pressed_offset, 12.0)
-		draw_string(font, Vector2(4.0, size.y - 7.0) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, font_size, CAPTION_COLOR)
+		var caption_width := size.x - 8.0
+		var caption_size := fitted_caption_font_size(font, _label, caption_width, font_size)
+		draw_string(font, Vector2(4.0, size.y - 7.0) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, caption_width, caption_size, CAPTION_COLOR)
 	else:
 		draw_string(font, Vector2(4.0, size.y * 0.5 + font_size * 0.35) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, font_size, CAPTION_COLOR)
 	if disabled:
@@ -89,6 +91,13 @@ func _draw() -> void:
 		draw_rect(rect, FOCUS_COLOR, false, 2.0)
 	elif is_hovered() and not disabled:
 		draw_rect(rect, HOVER_COLOR, false, 1.0)
+
+
+static func fitted_caption_font_size(font: Font, caption: String, available_width: float, requested_size: int) -> int:
+	var candidate := maxi(8, requested_size)
+	while candidate > 8 and font.get_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, -1.0, candidate).x > available_width:
+		candidate -= 1
+	return candidate
 
 
 func _draw_yin_yang(center: Vector2, radius: float) -> void:
