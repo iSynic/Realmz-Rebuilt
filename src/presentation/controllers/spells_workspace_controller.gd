@@ -145,9 +145,21 @@ func _add_known_spells(parent: VBoxContainer, character: CharacterView) -> void:
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 6)
 	workspace.add_child(column)
-	column.add_child(_build_level_rail(available_levels))
-	column.add_child(_build_spell_list(character, spell))
-	column.add_child(_spell_detail(character, spell))
+	var browser := HBoxContainer.new()
+	browser.name = "LevelStructuredSpellbook"
+	browser.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	browser.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	browser.add_theme_constant_override("separation", 6)
+	column.add_child(browser)
+	browser.add_child(_build_level_rail(available_levels))
+	var records := VBoxContainer.new()
+	records.name = "LevelSpellRecords"
+	records.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	records.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	records.add_theme_constant_override("separation", 6)
+	records.add_child(_build_spell_list(character, spell))
+	records.add_child(_spell_detail(character, spell))
+	browser.add_child(records)
 	parent.add_child(workspace)
 
 
@@ -155,25 +167,12 @@ func _build_level_rail(available_levels: Array[int]) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.name = "SpellLevelRail"
 	panel.theme_type_variation = &"ClassicInset"
-	if _compact:
-		var picker := OptionButton.new()
-		picker.name = "SpellLevelSelector"
-		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		for level: int in range(1, 8):
-			picker.add_item("Spell Level %d" % level)
-			picker.set_item_metadata(picker.item_count - 1, level)
-			picker.set_item_disabled(picker.item_count - 1, not available_levels.has(level))
-			if level == _selected_level:
-				picker.select(picker.item_count - 1)
-		picker.item_selected.connect(func(index: int) -> void: _select_level(int(picker.get_item_metadata(index))))
-		panel.add_child(picker)
-		return panel
-	var grid := GridContainer.new()
-	grid.columns = 4
-	grid.add_theme_constant_override("h_separation", 3)
-	grid.add_theme_constant_override("v_separation", 3)
-	panel.add_child(grid)
-	grid.add_child(_ui_art("spells.label.level", Vector2(54.0, 18.0)))
+	panel.custom_minimum_size.x = 78.0 if _compact else 92.0
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var rail := VBoxContainer.new()
+	rail.add_theme_constant_override("separation", 3)
+	panel.add_child(rail)
+	rail.add_child(SpellSelectionChrome.level_heading())
 	for level: int in range(1, 8):
 		var button := SpellSelectionChrome.level_button(
 			level,
@@ -183,7 +182,7 @@ func _build_level_rail(available_levels: Array[int]) -> PanelContainer:
 			"No known level %d spells" % level
 		)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		grid.add_child(button)
+		rail.add_child(button)
 	return panel
 
 

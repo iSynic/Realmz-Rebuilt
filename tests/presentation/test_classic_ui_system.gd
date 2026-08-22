@@ -1075,7 +1075,7 @@ func _test_field_spell_workspace() -> void:
 	var submitted: Array[PlayerIntent] = []
 	controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: submitted.append(intent))
 	controller.present(body, view, null, 1.0)
-	var cast := body.find_child("SpellCastAction", true, false) as BaseButton; assert_true(cast != null and body.find_child("SpellCharacterSelector", true, false) != null and body.find_child("SpellLevelRail", true, false) != null and body.find_child("SelectedSpellRecord", true, false) != null, "roster-side spellbook keeps caster, Classic level, record, and fixed Cast controls together"); cast.pressed.emit()
+	var cast := body.find_child("SpellCastAction", true, false) as BaseButton; var level_one := body.find_child("SpellLevel1", true, false) as Button; assert_true(cast != null and body.find_child("SpellCharacterSelector", true, false) != null and body.find_child("SpellLevelRail", true, false) != null and body.find_child("SelectedSpellRecord", true, false) != null and level_one.text == "Level 1", "roster-side spellbook keeps caster, Castle-labelled level rail, record, and fixed Cast controls together"); cast.pressed.emit()
 	var cast_payload := submitted[0].payload as PlayerIntent.SpellPayload
 	assert_equal([cast_payload.operation, cast_payload.caster_id, cast_payload.spell_id, cast_payload.power], [&"cast", "caster", "classic.spell.field", 1], "compact spell action preserves the selected caster, spell, and power")
 	body.free()

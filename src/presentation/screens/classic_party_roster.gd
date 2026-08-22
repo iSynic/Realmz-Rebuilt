@@ -177,31 +177,21 @@ func _build_spellbook() -> void:
 func _build_spell_level_rail(levels: Array[int]) -> VBoxContainer:
 	var rail := VBoxContainer.new()
 	rail.name = "CombatSpellLevels"
-	rail.custom_minimum_size.x = 72.0
+	rail.custom_minimum_size.x = 82.0
 	rail.add_theme_constant_override("separation", 1)
-	var title_art := TextureRect.new()
-	title_art.texture = ClassicUiAssetCatalog.texture(&"spells.label.level")
-	title_art.custom_minimum_size = Vector2(68.0, 18.0)
-	title_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	title_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	title_art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	rail.add_child(title_art)
+	rail.add_child(ClassicSpellSelectionChrome.level_heading())
 	var group := ButtonGroup.new()
 	for level: int in range(1, 8):
-		var button := Button.new()
-		button.text = str(level)
-		button.custom_minimum_size = Vector2(68.0, 24.0)
-		button.disabled = not levels.has(level)
-		button.button_pressed = level == _spellbook_level
-		button.toggle_mode = true
+		var button := ClassicSpellSelectionChrome.level_button(level, level == _spellbook_level, levels.has(level), _select_spellbook_level.bind(level), "No available level %d spells" % level)
+		button.custom_minimum_size = Vector2(80.0, 24.0)
 		button.button_group = group
-		button.tooltip_text = "Spell level %d" % level
-		button.pressed.connect(func() -> void:
-			_spellbook_level = level
-			_refresh_spellbook_list()
-		)
 		rail.add_child(button)
 	return rail
+
+
+func _select_spellbook_level(level: int) -> void:
+	_spellbook_level = level
+	_refresh_spellbook_list()
 
 
 func _refresh_spellbook_list() -> void:

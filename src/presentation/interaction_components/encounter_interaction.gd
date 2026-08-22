@@ -2,6 +2,7 @@ class_name EncounterInteraction
 extends InteractionComponent
 
 const ClassicSpellLevelScript := preload("res://src/presentation/classic_spell_level.gd")
+const SpellSelectionChrome := preload("res://src/presentation/controllers/classic_spell_selection_chrome.gd")
 
 var _body: InteractionRequest.ComplexEncounterRequestBody
 var _context: VBoxContainer
@@ -259,17 +260,12 @@ func _build_spell_level_rail() -> PanelContainer:
 	grid.add_theme_constant_override("h_separation", 3)
 	grid.add_theme_constant_override("v_separation", 3)
 	panel.add_child(grid)
+	grid.add_child(SpellSelectionChrome.level_heading())
 	var available := _catalog_spell_levels()
 	for level: int in range(1, 8):
-		var button := Button.new()
+		var button := SpellSelectionChrome.level_button(level, level == _catalog_level, available.has(level), _select_catalog_level.bind(level), "No eligible level %d spells" % level)
 		button.name = "EncounterSpellLevel%d" % level
-		button.text = str(level)
-		button.toggle_mode = true
-		button.button_pressed = level == _catalog_level
-		button.disabled = not available.has(level)
-		button.tooltip_text = "Level %d" % level if not button.disabled else "No eligible level %d spells" % level
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.pressed.connect(_select_catalog_level.bind(level))
 		grid.add_child(button)
 		_catalog_level_buttons.append(button)
 	return panel
