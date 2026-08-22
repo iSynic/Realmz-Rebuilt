@@ -206,7 +206,7 @@ func run() -> void:
 
 	var surprise_session := GameSession.new()
 	surprise_session.start(content, 1)
-	_begin_fixture_adventure(surprise_session, content)
+	_begin_fixture_adventure(surprise_session, content, 6)
 	surprise_session.submit_intent(PlayerIntent.move(Vector2i.RIGHT))
 	var surprise_wait := surprise_session.submit_intent(PlayerIntent.move(Vector2i.UP))
 	assert_equal(surprise_wait.state, SessionStep.State.WAITING_FOR_INTERACTION, "a source-backed random rectangle can yield a typed surprise choice")
@@ -225,9 +225,14 @@ func run() -> void:
 	assert_not_null(direct_combat_request, "a direct random battle projects the complete typed combat command surface")
 	if direct_combat_request != null:
 		assert_equal([direct_combat_request.kind, direct_combat_request.body.battle_id], [InteractionRequest.COMBAT, restored_surprise.view().combat_view.battle_id], "the direct command surface belongs to the active random battle")
-	var direct_auto_character := restored_surprise.view().party_members[-1]
-	var direct_auto := restored_surprise.submit_intent(PlayerIntent.set_combat_auto(direct_auto_character.id, false))
-	assert_true(direct_auto.error_code == &"" and _has_event(direct_auto, &"combat_auto_changed"), "every visible party row can change persistent Auto during a direct non-VM battle")
+	assert_equal(restored_surprise.view().party_members.size(), 6, "the direct combat fixture exposes all six visible party rows")
+	var direct_auto_character := restored_surprise.view().party_members[5]
+	var direct_auto_enabled := restored_surprise.submit_intent(PlayerIntent.set_combat_auto(direct_auto_character.id, true))
+	assert_true(direct_auto_enabled.error_code == &"" and _has_event(direct_auto_enabled, &"combat_auto_changed"), "the sixth visible party row can enable persistent Auto during a direct non-VM battle")
+	assert_true(restored_surprise.view().combat_view.auto_character_ids.has(direct_auto_character.id), "the direct combat view projects the sixth character's enabled Auto state")
+	var direct_auto_disabled := restored_surprise.submit_intent(PlayerIntent.set_combat_auto(direct_auto_character.id, false))
+	assert_true(direct_auto_disabled.error_code == &"" and _has_event(direct_auto_disabled, &"combat_auto_changed"), "the sixth visible party row can disable persistent Auto during a direct non-VM battle")
+	assert_false(restored_surprise.view().combat_view.auto_character_ids.has(direct_auto_character.id), "the direct combat view removes the sixth character's disabled Auto state")
 	var battle_coordinate := restored_surprise.view().party_coordinate
 	var blocked_during_battle := restored_surprise.submit_intent(PlayerIntent.move(Vector2i.LEFT))
 	assert_equal(blocked_during_battle.error_code, &"battle_in_progress", "active combat rejects exploration intents at the session boundary")
@@ -456,16 +461,18 @@ func _test_special_dungeon_bits(source_content: RealmzContent) -> void:
 			assert_true(_has_event(moved, expected_event), "%s publishes its topology-owned discovery event" % dungeon_case["id"])
 
 
-func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> void:
+func _begin_fixture_adventure(session: GameSession, content: RealmzContent, party_size: int = 1) -> void:
 	var races := content.race_definitions()
 	var castes := content.caste_definitions()
-	assert_false(races.is_empty() or castes.is_empty(), "playable exploration fixture provides one race and class")
+	assert_false(races.is_empty() or castes.is_empty(), "playable exploration fixture provides one race and caste")
 	if races.is_empty() or castes.is_empty():
 		return
-	var character := CharacterState.new("fixture.party.member", "Fixture Hero", 10, 10)
-	character.race_id = races[0].id
-	character.caste_id = castes[0].id
-	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
+	for character_index: int in range(clampi(party_size, 1, 6)):
+		var character_id := "fixture.party.member" if party_size == 1 else "fixture.party.member.%d" % (character_index + 1)
+		var character := CharacterState.new(character_id, "Fixture Hero %d" % (character_index + 1), 10, 10)
+		character.race_id = races[0].id
+		character.caste_id = castes[0].id
+		assert_equal(session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "fixture party import does not consume gameplay RNG")
 	var started := session.submit_intent(PlayerIntent.begin_adventure())
 	if content.scenario.application_hook_program_id(ScenarioApplicationHooks.START_GAME).is_empty():
 		assert_equal(started.state, SessionStep.State.COMPLETED, "exploration content without a Start Game hook leaves party setup synchronously")

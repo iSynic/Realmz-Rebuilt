@@ -108,12 +108,49 @@ func probe_step(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefi
 	return _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, direction, movement_available, 0)
 
 
-func _probe_step_with_cost_floor(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, direction: Vector2i, movement_available: int, cost_floor: int) -> BattlefieldStepResult:
+func probe_path_step_toward_actors(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, target_ids: Array[String], movement_available: int) -> BattlefieldStepResult:
+	if battlefield == null or terrain_set == null or not battlefield.has_actor(actor_id):
+		return BattlefieldStepResult.blocked(&"invalid_actor")
+	var valid_targets: Array[String] = []
+	for target_id: String in target_ids:
+		if target_id != actor_id and battlefield.has_actor(target_id) and not valid_targets.has(target_id):
+			valid_targets.append(target_id)
+	if valid_targets.is_empty():
+		return BattlefieldStepResult.blocked(&"invalid_actor")
+	var origin := battlefield.actor_position(actor_id)
+	for target_id: String in valid_targets:
+		if _footprints_are_adjacent(battlefield.actor_footprint(actor_id), battlefield.actor_footprint(target_id)):
+			return BattlefieldStepResult.blocked(&"already_adjacent", origin)
+	var frontier: Array[Vector2i] = [origin]
+	var visited: Dictionary = {origin: true}
+	var first_steps: Dictionary = {}
+	var cursor := 0
+	while cursor < frontier.size():
+		var anchor := frontier[cursor]
+		cursor += 1
+		for direction: Vector2i in DIRECTIONS:
+			# Only the immediate step must respect current actors. Later route cells
+			# are a wall-following forecast: mobile combatants may vacate them before
+			# this actor reaches them, while terrain remains authoritative.
+			var probe := _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, direction, 0x7fff_ffff, 0, anchor, anchor != origin)
+			if not probe.allowed or visited.has(probe.destination):
+				continue
+			visited[probe.destination] = true
+			var first_step: Vector2i = probe.destination if anchor == origin else first_steps[anchor]
+			first_steps[probe.destination] = first_step
+			for target_id: String in valid_targets:
+				if _footprints_are_adjacent(battlefield.actor_footprint_at(actor_id, probe.destination), battlefield.actor_footprint(target_id)):
+					return _probe_step_with_cost_floor(battlefield, terrain_set, actor_id, first_step - origin, movement_available, 0)
+			frontier.append(probe.destination)
+	return BattlefieldStepResult.blocked(&"path_not_found", origin)
+
+
+func _probe_step_with_cost_floor(battlefield: BattlefieldState, terrain_set: BattleTerrainSetDefinition, actor_id: String, direction: Vector2i, movement_available: int, cost_floor: int, anchor_override: Vector2i = Vector2i(-1, -1), ignore_occupants: bool = false) -> BattlefieldStepResult:
 	if battlefield == null or terrain_set == null or not battlefield.has_actor(actor_id):
 		return BattlefieldStepResult.blocked(&"invalid_actor")
 	if direction == Vector2i.ZERO or absi(direction.x) > 1 or absi(direction.y) > 1:
 		return BattlefieldStepResult.blocked(&"invalid_direction")
-	var destination := battlefield.actor_position(actor_id) + direction
+	var destination := (battlefield.actor_position(actor_id) if anchor_override.x < 0 else anchor_override) + direction
 	var footprint := battlefield.actor_footprint_at(actor_id, destination)
 	if footprint.is_empty():
 		return BattlefieldStepResult.blocked(&"invalid_actor", destination)
@@ -122,7 +159,7 @@ func _probe_step_with_cost_floor(battlefield: BattlefieldState, terrain_set: Bat
 		if not BattlefieldState.contains(coordinate):
 			return _blocked_with_cost(&"outside_battlefield", destination, maximum_cost)
 		var occupant := battlefield.actor_at(coordinate, actor_id)
-		if not occupant.is_empty():
+		if not ignore_occupants and not occupant.is_empty():
 			return _blocked_with_cost(&"occupied", destination, maximum_cost, occupant)
 		var terrain := terrain_set.tile_by_id(battlefield.terrain_at(coordinate))
 		if terrain == null:

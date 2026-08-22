@@ -138,12 +138,8 @@ func _test_public_monster_turn_matrix() -> void:
 	assert_equal(attack_events.size(), 2, "the public monster turn executes every authored attack row")
 	assert_equal(attack_events.map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), [target.id, target.id], "monster attack rows retain their selected target")
 
-	var spell := _combat_spell("spell.monster-public", 1, 4)
-	var caster_definition := _monster_spell_definition("monster.public-caster", spell.id, 100)
-	var spell_caster := MonsterState.new("monster.public-caster.instance", caster_definition.id, caster_definition.name, 30, 30, 4, 1, 0, 0, 10)
-	var spell_target := _character("character.public-spell-target")
-	var spell_state := _state(spell_target, spell_caster, "battle.public-monster-spell")
-	var spell_content := _content([caster_definition], [], [], [], [spell])
+	var spell := _combat_spell("spell.monster-public", 1, 4); var caster_definition := _monster_spell_definition("monster.public-caster", spell.id, 100); var spell_caster := MonsterState.new("monster.public-caster.instance", caster_definition.id, caster_definition.name, 30, 30, 4, 1, 0, 0, 10)
+	var spell_target := _character("character.public-spell-target"); var spell_state := _state(spell_target, spell_caster, "battle.public-monster-spell"); var spell_content := _content([caster_definition], [], [], [], [spell])
 	var spell_result := rules.combat_flow.submit_action(spell_state, spell_content, spell_target.id, &"finish", "", _zeros(16))
 	assert_true(spell_result.ok, "a public finish command reaches the source-backed monster cast branch")
 	var cast_events := spell_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster")
@@ -151,6 +147,11 @@ func _test_public_monster_turn_matrix() -> void:
 	if not cast_events.is_empty():
 		assert_equal([cast_events[0].payload.get("targetId"), cast_events[0].payload.get("power"), cast_events[0].payload.get("rangePower")], [spell_target.id, 1, 1], "public monster casting preserves target and affordability/range power")
 	assert_equal([spell_target.current_health, spell_caster.spell_points], [26, 8], "the public monster cast spends lowered power cost and applies its damage")
+	var monster_heal := _combat_spell("spell.monster-heal", 1, 6); monster_heal.special = 57; monster_heal.spell_class = 8; monster_heal.damage_type = 8; monster_heal.cannot = 4; monster_heal.duration_min = 0; monster_heal.duration_max = 0
+	var healer_definition := _monster_spell_definition("monster.public-healer", monster_heal.id, 40); var monster_healer := MonsterState.new("monster.public-healer.instance", healer_definition.id, healer_definition.name, 30, 30, 4, 1, 0, 0, 10); var hurt_ally := MonsterState.new("monster.public-hurt-ally", healer_definition.id, "Hurt Ally", 5, 30, 4)
+	var monster_heal_state := _state(_character("character.public-heal-opponent"), monster_healer, "battle.public-monster-heal"); monster_heal_state.combat.add_monster(hurt_ally); monster_heal_state.combat.battlefield.place_monster(hurt_ally.id, Vector2i(47, 45), 0); monster_heal_state.combat.set_turn_order([monster_heal_state.party.characters()[0].id, monster_healer.id, hurt_ally.id])
+	var monster_healed := rules.combat_flow.submit_action(monster_heal_state, _content([healer_definition], [], [], [], [monster_heal]), monster_heal_state.party.characters()[0].id, &"finish", "", _zeros(24))
+	assert_true(monster_healed.ok and monster_healed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == hurt_ally.id and int(event.payload.get("healing", 0)) > 0), "scored monster AI heals its critically wounded ally instead of taking an adjacent physical action")
 
 	var retry_definition := _monster_spell_definition("monster.public-retry", spell.id, 50)
 	retry_definition.movement_max = 12
@@ -161,7 +162,7 @@ func _test_public_monster_turn_matrix() -> void:
 	var retry_rng := ScriptedRng.new([32_767, 32_767, 0, 0, 0, 0, 0, 0])
 	var retry_result := rules.combat_flow.submit_action(retry_state, _content([retry_definition], [], [], [], [spell]), retry_target.id, &"finish", "", retry_rng)
 	assert_true(retry_result.ok, "the public monster movement boundary reaches its bounded post-movement cast retry")
-	assert_equal(retry_rng.trace().filter(func(entry: Dictionary) -> bool: return entry.get("tag") == "monster.ai.cast").size(), 1, "the post-movement retry reuses the first cast decision instead of consuming a second cast-percent draw")
+	assert_equal(retry_rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).begins_with("monster.ai.")).size(), 0, "scored monster action selection does not spend random preference draws before its post-movement cast")
 	assert_true(retry_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster"), "the public retry path commits the later ordinary cast")
 
 
@@ -285,12 +286,23 @@ func _test_public_command_automation_matrix() -> void:
 	assert_true(turned.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_turn_undead_resolved"), "Turn Undead publishes its source-owned result event")
 	assert_true(undead_state.combat.has_used_turn_undead(turner.id), "Turn Undead records its once-per-battle use")
 
+	var healing_spell := _combat_spell("spell.auto-heal", 1, 4); healing_spell.special = 57; healing_spell.spell_class = 8; healing_spell.damage_type = 8; healing_spell.cannot = 4; healing_spell.duration_min = 0; healing_spell.duration_max = 0
+	var auto_healer := _character("character.auto-healer"); auto_healer.set_known_spells([healing_spell.id]); auto_healer.maximum_spell_attacks = 2; auto_healer.spell_points = 20
+	var wounded := _character("character.auto-wounded"); wounded.current_health = 5
+	var healing_state := _state(auto_healer, MonsterState.new("monster.auto-healing.instance", definition.id, definition.name, 100, 100, 1), "battle.auto-healing")
+	healing_state.party.add_character(wounded); healing_state.combat.battlefield.place_character(wounded.id, Vector2i(44, 45)); healing_state.combat.set_turn_order([auto_healer.id, wounded.id, healing_state.combat.monsters()[0].id])
+	var healed := rules.combat_flow.submit_action(healing_state, _content([definition], [], [], [], [healing_spell]), auto_healer.id, &"auto", "", _zeros(96))
+	assert_true(healed.ok and healed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == wounded.id and int(event.payload.get("healing", 0)) > 0), "scored Auto heals a critically wounded ally before taking an adjacent attack")
+
 	var auto_actor := _character("character.auto")
 	var auto_monster := MonsterState.new("monster.auto.instance", definition.id, definition.name, 1000, 1000, 1)
 	var auto_state := _state(auto_actor, auto_monster, "battle.auto")
-	var auto_result := rules.combat_flow.submit_action(auto_state, _content([definition]), auto_actor.id, &"auto", "", RealmzRng.new(17))
+	var auto_traffic := _character("character.auto-traffic"); auto_state.party.add_character(auto_traffic); auto_state.combat.battlefield.place_character(auto_traffic.id, Vector2i(47, 44)); auto_state.combat.set_turn_order([auto_actor.id, auto_traffic.id, auto_monster.id]); auto_state.combat.battlefield.move_actor(auto_monster.id, Vector2i(49, 45)); auto_state.combat.battlefield.set_terrain(Vector2i(46, 45), 2); auto_state.combat.battlefield.set_terrain(Vector2i(44, 44), 2)
+	var auto_rng := _zeros(256); var auto_result := rules.combat_flow.submit_action(auto_state, _content([definition]), auto_actor.id, &"auto", "", auto_rng)
 	assert_true(auto_result.ok, "Auto Turn resolves through the public command boundary")
 	assert_equal(auto_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_auto_started").size(), 1, "Auto Turn starts exactly one bounded activation")
+	var auto_moves := auto_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved")
+	assert_true(auto_moves.map(func(event: DomainEvent) -> Variant: return event.payload.get("to")).has([46, 44]) and not auto_rng.trace().any(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).contains(".shift.")), "Auto takes the deterministic legal detour before spending bounded shifted retries")
 	assert_true(auto_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("source") == "classic-combat-auto-button"), "the public Auto command retains its button feedback")
 	var bounded_actor := _character("character.auto-bounded")
 	bounded_actor.current_health = 32_767
@@ -298,12 +310,10 @@ func _test_public_command_automation_matrix() -> void:
 	var bounded_monster := MonsterState.new("monster.auto-bounded.instance", definition.id, definition.name, 32_767, 32_767, 1)
 	var bounded_state := _state(bounded_actor, bounded_monster, "battle.auto-bounded")
 	assert_true(bounded_state.set_combat_auto(bounded_actor.id, true), "persistent Auto can be enabled through save-owned state")
-	var bounded_before := JSON.stringify(bounded_state.to_data())
 	var bounded_rng := RealmzRng.new(17)
-	var bounded_rng_before := bounded_rng.snapshot().to_data()
 	var bounded_result := rules.combat_flow.submit_action(bounded_state, _content([definition]), bounded_actor.id, &"auto", "", bounded_rng)
-	assert_equal(bounded_result.error_code, &"combat_auto_operation_limit", "the public Auto command reports its bounded activation limit without masking rollback failure")
-	assert_equal([JSON.stringify(bounded_state.to_data()), bounded_rng.snapshot().to_data()], [bounded_before, bounded_rng_before], "the bounded persistent-Auto chain restores complete state and RNG")
+	assert_true(bounded_result.ok, "persistent Auto commits one bounded activation")
+	assert_equal([bounded_state.combat.round_number, bounded_state.combat.active_actor_id(), bounded_monster.current_health, bounded_rng.snapshot().draw_count], [2, bounded_actor.id, 32_766, 6], "persistent Auto yields after one activation so the host can interrupt before continuing")
 
 	var undo_actor := _character("character.undo")
 	var undo_monster := MonsterState.new("monster.undo.instance", definition.id, definition.name, 100, 100, 1)
@@ -318,13 +328,8 @@ func _test_public_command_automation_matrix() -> void:
 
 func _character(character_id: String) -> CharacterState:
 	var result := CharacterState.new(character_id, "Combat Test Hero", 30, 30)
-	result.race_id = "race.test"
-	result.caste_id = "caste.test"
-	result.luck = 1
-	result.hand_to_hand = 1
-	result.normal_attacks = 2
-	result.maximum_movement = 12
-	result.movement = 12
+	result.race_id = "race.test"; result.caste_id = "caste.test"; result.luck = 1; result.hand_to_hand = 1
+	result.normal_attacks = 2; result.maximum_movement = 12; result.movement = 12
 	return result
 
 
@@ -335,10 +340,7 @@ func _monster_definition(definition_id: String, attacks: Array[MonsterAttackDefi
 func _monster_spell_definition(definition_id: String, spell_id: String, cast_percent: int) -> MonsterDefinition:
 	var slots: Array[String] = [spell_id, "", "", "", "", "", "", "", "", ""]
 	var result := MonsterDefinition.new(definition_id, 9, "Combat Test Caster", 4, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), slots, [], [])
-	result.magic_attack_count = 1
-	result.cast_percent = cast_percent
-	result.missile_percent = 0
-	result.movement_max = 0
+	result.magic_attack_count = 1; result.cast_percent = cast_percent; result.missile_percent = 0; result.movement_max = 0
 	return result
 
 
@@ -395,7 +397,7 @@ func _battle_world() -> WorldDefinition:
 			cells.append(MapCell.new("map.test:cell:%d,%d" % [x, y], coordinate, "classic.terrain.1", true, 1, false, true, false, false, false, false, false, 0, 1, "", empty_ids, empty_ids, {}, empty_features))
 	var terrain_tiles: Array[BattleTerrainTileDefinition] = []
 	for tile: int in 401:
-		terrain_tiles.append(BattleTerrainTileDefinition.new(tile, 0, 0, 0, false, 0, false, false, false, 0, [[tile, tile, tile], [tile, tile, tile], [tile, tile, tile]]))
+		terrain_tiles.append(BattleTerrainTileDefinition.new(tile, 0, 0, 1 if tile == 2 else 0, false, 0, false, false, false, 0, [[tile, tile, tile], [tile, tile, tile], [tile, tile, tile]]))
 	var terrain_set := BattleTerrainSetDefinition.new("terrain.test", 1, 1, terrain_tiles)
 	var map := MapDefinition.new("map.test", "Combat Test Map", &"land", 0, MapTopology.new(90, 90, cells), false, false, 1, [], terrain_set.id)
 	_cached_battle_world = WorldDefinition.new([map], [], [terrain_set])

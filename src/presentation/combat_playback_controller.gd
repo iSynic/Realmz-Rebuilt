@@ -148,6 +148,8 @@ func _finish() -> void:
 
 func _has_playback_event(events: Array[DomainEvent]) -> bool:
 	for event: DomainEvent in events:
+		if event.kind == &"sound_requested" and event.payload.get("source") == "classic-combat-auto-toggle":
+			continue
 		if event.kind in PLAYBACK_EVENT_KINDS:
 			return true
 	return false

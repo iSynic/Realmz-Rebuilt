@@ -73,6 +73,7 @@ func _on_step_committed(step: SessionStep) -> void:
 		set_process(true)
 		return
 	_present_committed_step(step, game_view, true)
+	playback_step_settled.emit(step)
 
 
 static func _has_event(events: Array[DomainEvent], kind: StringName) -> bool:

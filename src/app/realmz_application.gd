@@ -41,6 +41,7 @@ var _character_library_media: MediaSource
 var _character_creation_host: CharacterCreationHostController
 var _session_close_waits_for_playback: bool = false
 var _held_movement: HeldMovementControllerScript
+var _queued_combat_auto_changes: Dictionary = {}
 
 
 func _ready() -> void:
@@ -249,6 +250,7 @@ func _complete_package_install(prepared: PreparedPackage, initial_seed: int) -> 
 		_status_label.text = "Session start failed • %s" % step.error_message
 		_shell_presenter.set_status(_status_label.text, true)
 		return step
+	_queued_combat_auto_changes.clear()
 	_active_content = prepared.content
 	_package_host.promote(prepared)
 	presentation_coordinator.set_package_media(prepared.media)
@@ -267,13 +269,20 @@ func _input(event: InputEvent) -> void:
 	var released_direction := UiInputActions.released_movement_direction(event)
 	if released_direction != Vector2i.ZERO and _held_movement != null and _held_movement.active_direction() == released_direction:
 		_held_movement.stop(&"keyboard")
+	var key_event := event as InputEventKey
 	if presentation_coordinator != null and presentation_coordinator.is_combat_playback_active():
-		if event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo and (event as InputEventKey).keycode == KEY_SPACE:
+		if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _abort_full_party_auto(true):
+			get_viewport().set_input_as_handled()
+			return
+		if key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_SPACE:
 			presentation_coordinator.skip_combat_playback()
-		get_viewport().set_input_as_handled()
+			get_viewport().set_input_as_handled()
 		return
 	var pending := session_controller.view().active_interaction_request()
 	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
+	if combat_pending and key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _abort_full_party_auto(false):
+		get_viewport().set_input_as_handled()
+		return
 	if combat_pending and event.is_action_pressed(&"realmz_inspect_movement"):
 		_battlefield_presenter.set_movement_costs_visible(true)
 		get_viewport().set_input_as_handled()
@@ -440,6 +449,13 @@ func _submit_intent(intent: PlayerIntent) -> SessionStep:
 		var creator_step: SessionStep = _character_creation_host.submit(intent)
 		_present_standalone_character_step(creator_step)
 		return creator_step
+	var queued_auto := combat_auto_change_to_queue(intent, presentation_coordinator != null and presentation_coordinator.is_combat_playback_active())
+	if not queued_auto.is_empty():
+		_queued_combat_auto_changes[String(queued_auto["characterId"])] = bool(queued_auto["enabled"])
+		_shell_presenter.set_status("Manual control queued after this Auto activation." if not bool(queued_auto["enabled"]) else "Auto queued after this activation.")
+		if not bool(queued_auto["enabled"]):
+			presentation_coordinator.skip_combat_playback()
+		return SessionStep.completed(session_controller.view().revision)
 	if intent != null and intent.kind == PlayerIntent.Kind.IMPORT_VAULT_CHARACTER:
 		var vault_import := intent.payload as PlayerIntent.VaultImportPayload
 		var import_intent := _vault_host.import_intent(vault_import.character_id, vault_import.revision_hash)
@@ -519,6 +535,50 @@ static func direct_combat_intent(body: InteractionResponse.CombatBody) -> Player
 	return PlayerIntent.combat_action(body.action, body.actor_id, body.target_id)
 
 
+static func combat_auto_change_to_queue(intent: PlayerIntent, playback_active: bool) -> Dictionary:
+	if not playback_active or intent == null or intent.kind != PlayerIntent.Kind.SET_COMBAT_AUTO or not intent.payload is PlayerIntent.CombatAutoPayload:
+		return {}
+	var payload := intent.payload as PlayerIntent.CombatAutoPayload
+	return {"characterId": payload.character_id, "enabled": payload.enabled}
+
+
+static func combat_auto_abort_ids(view: GameView, queued_changes: Dictionary = {}) -> Array[String]:
+	var result: Array[String] = []
+	if view != null and view.combat_view != null:
+		result.assign(view.combat_view.auto_character_ids)
+	for character_id: Variant in queued_changes:
+		if bool(queued_changes[character_id]) and not result.has(String(character_id)):
+			result.append(String(character_id))
+	result.sort()
+	return result
+
+
+func _abort_full_party_auto(skip_playback: bool) -> bool:
+	var character_ids := combat_auto_abort_ids(session_controller.view(), _queued_combat_auto_changes)
+	if character_ids.is_empty():
+		return false
+	for character_id: String in character_ids:
+		_queued_combat_auto_changes[character_id] = false
+	_shell_presenter.set_status("Full-party Auto cancelled. Manual control resumes at the next activation.")
+	if skip_playback:
+		presentation_coordinator.skip_combat_playback()
+	else:
+		_flush_queued_combat_auto_changes()
+	return true
+
+
+static func persistent_auto_response(view: GameView) -> InteractionResponse:
+	if view == null or view.combat_view == null or view.combat_view.outcome != &"active":
+		return null
+	var actor_id := view.combat_view.active_actor_id
+	if actor_id.is_empty() or not view.combat_view.auto_character_ids.has(actor_id):
+		return null
+	var request := view.active_interaction_request()
+	if request == null or request.kind != InteractionRequest.COMBAT:
+		return null
+	return InteractionResponse.new(request.request_id, request.kind, InteractionResponse.CombatBody.new(&"auto", actor_id))
+
+
 func _respond_host_interaction(response: InteractionResponse) -> void:
 	var action := ApplicationLifecycleScript.response_action(_host_interaction, response)
 	if action.is_empty():
@@ -594,6 +654,7 @@ func _quit_application() -> void:
 
 func _complete_closed_session() -> void:
 	_session_close_waits_for_playback = false
+	_queued_combat_auto_changes.clear()
 	_host_interaction = null
 	_active_content = null
 	presentation_coordinator.set_package_media(_character_library_media)
@@ -608,6 +669,29 @@ func _complete_closed_session() -> void:
 func _on_playback_step_settled(step: SessionStep) -> void:
 	if _session_close_waits_for_playback and step_ends_session(step):
 		_complete_closed_session()
+		return
+	_flush_queued_combat_auto_changes()
+	call_deferred("_continue_persistent_auto_after_playback")
+
+
+func _flush_queued_combat_auto_changes() -> void:
+	if _queued_combat_auto_changes.is_empty():
+		return
+	var changes := _queued_combat_auto_changes.duplicate()
+	_queued_combat_auto_changes.clear()
+	var character_ids: Array[String] = []
+	character_ids.assign(changes.keys())
+	character_ids.sort()
+	for character_id: String in character_ids:
+		_submit_intent(PlayerIntent.set_combat_auto(character_id, bool(changes[character_id])))
+
+
+func _continue_persistent_auto_after_playback() -> void:
+	if presentation_coordinator == null or presentation_coordinator.is_combat_playback_active() or not _queued_combat_auto_changes.is_empty() or _host_interaction != null:
+		return
+	var response := persistent_auto_response(session_controller.view())
+	if response != null:
+		_on_interaction_response_submitted(response)
 
 
 static func should_defer_session_close(step: SessionStep, playback_active: bool) -> bool:
@@ -826,6 +910,8 @@ func _load_session_record(slot_id: String, backup: bool) -> SessionStep:
 		_shell_presenter.set_status(_status_label.text, true)
 		return SessionStep.failed(session_controller.view().revision, "save_load_failed", _save_host.last_error())
 	var step := session_controller.restore(_active_content, envelope)
+	if step.state != SessionStep.State.FAILED:
+		_queued_combat_auto_changes.clear()
 	_status_label.text = "Loaded %s %s" % ["backup" if backup else "save", slot_id] if step.state != SessionStep.State.FAILED else "Load failed • %s" % step.error_message
 	_shell_presenter.set_status(_status_label.text, step.state == SessionStep.State.FAILED)
 	return step

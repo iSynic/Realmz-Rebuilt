@@ -20,6 +20,7 @@ func run() -> void:
 	_test_public_interaction_matrix(content)
 	_test_public_thief_encounter(content)
 	_test_public_session_resume(content)
+	_test_public_vm_combat_auto(content)
 	_test_public_continuation_matrix(content)
 	_test_public_limits_and_errors(content)
 	_test_public_application_transitions(content)
@@ -221,6 +222,30 @@ func _test_public_session_resume(content: RealmzContent) -> void:
 	assert_equal(textbox_restored.snapshot().continuation, null, "completed VM work clears the session continuation exactly once")
 
 
+func _test_public_vm_combat_auto(content: RealmzContent) -> void:
+	var battle := content.battle_by_id("classic.battle.0")
+	assert_not_null(battle, "VM Auto fixture provides a Classic battle")
+	if battle == null:
+		return
+	var original_scenario := content.scenario
+	var battle_action := ClassicActionDefinition.new(0, 48, 48, battle.classic_id, false, [battle.classic_id, 0, 0, 0, 0])
+	var program := ScenarioProgramDefinition.new("fixture.vm-combat-auto", &"application-hook", "start-game", [battle_action])
+	content.scenario = ScenarioDefinition.new([program], [], ScenarioApplicationHooks.new(program.id, "", "", "", ""))
+	var sixth_id := "fixture.vm-auto.6"
+	var inactive_session := _vm_combat_auto_session(content, 1)
+	var active_session := _vm_combat_auto_session(content, 12)
+	assert_true(inactive_session != null and active_session != null, "public VM combat fixture provides inactive and active sixth-member turns")
+	if inactive_session == null or active_session == null:
+		content.scenario = original_scenario
+		return
+	assert_equal([inactive_session.view().combat_view.active_actor_id == sixth_id, active_session.view().combat_view.active_actor_id == sixth_id], [false, true], "fixed fixture seeds cover inactive and active sixth-member turns")
+	for member: CharacterView in active_session.view().party_members:
+		if member.id != sixth_id: active_session.submit_intent(PlayerIntent.set_combat_auto(member.id, true))
+	_assert_vm_combat_auto_round_trip(content, inactive_session, sixth_id, "inactive")
+	_assert_vm_combat_auto_round_trip(content, active_session, sixth_id, "active")
+	content.scenario = original_scenario
+
+
 func _test_public_continuation_matrix(content: RealmzContent) -> void:
 	var age_source := GameSession.new()
 	age_source.start(content, 1)
@@ -402,6 +427,40 @@ func _begin_fixture_adventure(session: GameSession, content: RealmzContent) -> v
 	else:
 		assert_equal(started.state, SessionStep.State.WAITING_FOR_INTERACTION, "fixture reaches the Start Game interaction")
 		assert_equal(session.respond(InteractionResponse.acknowledge(started.interaction)).state, SessionStep.State.COMPLETED, "fixture completes its Start Game interaction")
+
+
+func _vm_combat_auto_session(content: RealmzContent, seed: int) -> GameSession:
+	var races := content.race_definitions(); var castes := content.caste_definitions()
+	if races.is_empty() or castes.is_empty(): return null
+	var session := GameSession.new(); session.start(content, seed)
+	for character_index: int in 6:
+		var character := CharacterState.new("fixture.vm-auto.%d" % (character_index + 1), "VM Auto Hero %d" % (character_index + 1), 100, 100); character.race_id = races[0].id; character.caste_id = castes[0].id
+		var imported := session.submit_intent(PlayerIntent.import_vault_character(character.id, "1".repeat(64), character, "fixture", content.package_hash))
+		if imported.state != SessionStep.State.COMPLETED: return null
+	var entered := session.submit_intent(PlayerIntent.begin_adventure())
+	if entered.state != SessionStep.State.WAITING_FOR_INTERACTION or entered.interaction == null or entered.interaction.kind != InteractionRequest.COMBAT:
+		return null
+	if session.view().party_members.size() != 6 or session.view().combat_view == null:
+		return null
+	return session
+
+
+func _assert_vm_combat_auto_round_trip(content: RealmzContent, session: GameSession, character_id: String, phase: String) -> void:
+	var enabled := session.submit_intent(PlayerIntent.set_combat_auto(character_id, true))
+	assert_equal([enabled.state, enabled.error_code, enabled.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, &"", InteractionRequest.COMBAT], "the %s sixth member enables persistent Auto through VM combat" % phase)
+	assert_true(_event_has(enabled.events, &"combat_auto_changed"), "%s VM Auto publishes the committed change" % phase)
+	var body := enabled.interaction.body as InteractionRequest.CombatRequestBody
+	assert_true(body != null and body.auto_character_ids.has(character_id) and (phase != "active" or body.auto_character_ids.size() == 6), "the next %s VM combat request projects sixth-member Auto after one activation" % phase)
+	var saved := save_round_trip(session.snapshot())
+	assert_not_null(saved, "%s sixth-member Auto crosses the save envelope" % phase)
+	if saved == null:
+		return
+	var restored := GameSession.new()
+	assert_equal(restored.restore(content, saved).state, SessionStep.State.COMPLETED, "%s sixth-member Auto restores with its VM continuation" % phase)
+	assert_true(restored.view().combat_view.auto_character_ids.has(character_id), "restored %s VM combat retains sixth-member Auto" % phase)
+	var disabled_id := restored.view().combat_view.active_actor_id if phase == "active" else character_id
+	var disabled := restored.submit_intent(PlayerIntent.set_combat_auto(disabled_id, false))
+	assert_equal([disabled.state, disabled.error_code, disabled.interaction.kind, restored.view().combat_view.auto_character_ids.has(disabled_id)], [SessionStep.State.WAITING_FOR_INTERACTION, &"", InteractionRequest.COMBAT, false], "restored %s VM combat disables Auto at the next activation boundary" % phase)
 
 
 func _restore_fixture_position(session: GameSession, content: RealmzContent, map_id: String, coordinate: Vector2i) -> void:

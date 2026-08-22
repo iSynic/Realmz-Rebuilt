@@ -1005,7 +1005,7 @@ func _test_combat_playback_controller() -> void:
 	var kinds: Array[StringName] = []
 	for frame: CombatPlaybackFrame in frames:
 		kinds.append(frame.kind)
-	assert_true(kinds.has(&"move_start") and kinds.has(&"melee_attack") and frames[0].duration_seconds < 0.08 and frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"move_start" and frame.automatic and InteractionPresenter.playback_status_text(frame).begins_with("Auto Turn")), "automatic movement and physical results retain distinct accelerated frames and an explicit presentation status")
+	assert_true(kinds.has(&"move_start") and kinds.has(&"melee_attack") and frames[0].duration_seconds < 0.08 and frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"move_start" and frame.automatic and InteractionPresenter.playback_status_text(frame).begins_with("Auto Turn") and InteractionPresenter.playback_status_text(frame).contains("Esc cancels Party Auto")), "automatic movement and physical results retain distinct accelerated frames and expose the full-party safety hatch")
 	assert_equal(kinds.count(&"spell_effect"), 8, "source-backed spell resolution retains its eight-frame family")
 	assert_true(frames.any(func(frame: CombatPlaybackFrame) -> bool: return frame.kind == &"result" and frame.display_text == "8"), "damage is shown once over the target")
 	assert_equal(controller.base_view, previous, "playback retains the previous battlefield until visuals settle")
@@ -1013,22 +1013,17 @@ func _test_combat_playback_controller() -> void:
 	assert_true(reduced.begin(previous, events, final, true), "reduced motion keeps the same presentation boundary")
 	while reduced.is_active(): reduced.advance(1.0, false)
 	assert_false(reduced.is_active(), "reduced motion settles without a simulation mutation")
+	var toggle_events: Array[DomainEvent] = [DomainEvent.new(&"sound_requested", {"soundId": 139, "source": "classic-combat-auto-toggle"}), DomainEvent.new(&"combat_auto_changed", {"characterId": "hero", "enabled": false})]
+	assert_false(CombatPlaybackController.new().begin(previous, toggle_events, final, false), "an Auto toggle sound does not open another playback mask")
 func _combat_playback_view(monster_health: int, hero_position: Vector2i, monster_position: Vector2i, outcome: StringName) -> GameView:
-	var tiles: Array[int] = []
-	tiles.resize(BattlefieldState.CELL_COUNT)
-	tiles.fill(232)
+	var tiles: Array[int] = []; tiles.resize(BattlefieldState.CELL_COUNT); tiles.fill(232)
 	var battlefield := BattlefieldState.new("land:0", tiles)
 	assert_true(battlefield.place_character("hero", hero_position), "playback fixture places the party actor")
-	var monster := MonsterState.new("monster", "classic.monster.1", "Goblin", monster_health, 20)
-	monster.icon_id = 384
+	var monster := MonsterState.new("monster", "classic.monster.1", "Goblin", monster_health, 20); monster.icon_id = 384
 	assert_true(battlefield.place_monster(monster.id, monster_position, 0), "playback fixture places the target")
-	var combat := CombatState.new("classic.battle.playback", [monster], 0, battlefield)
-	combat.set_turn_order(["hero", "monster"])
-	combat.outcome = outcome
+	var combat := CombatState.new("classic.battle.playback", [monster], 0, battlefield); combat.set_turn_order(["hero", "monster"]); combat.outcome = outcome
 	var character := CharacterState.new("hero", "Hero", 10, 10)
-	var view := GameView.new(1, true, null)
-	view.party_members = [CharacterView.new(character)]
-	view.combat_view = CombatView.new(combat, [character])
+	var view := GameView.new(1, true, null); view.party_members = [CharacterView.new(character)]; view.combat_view = CombatView.new(combat, [character])
 	return view
 
 
@@ -1245,6 +1240,10 @@ func _test_automatic_workflow_routes() -> void:
 	assert_equal(view.active_interaction_request(), view.combat_action_request, "direct combat exposes its detached command request without fabricating a pending VM interaction")
 	var move_body := InteractionResponse.CombatBody.new(&"move", "character.route"); move_body.destination = Vector2i(4, 7); move_body.has_destination = true; move_body.auto_switch_to_melee = true
 	var move_intent := RealmzApplication.direct_combat_intent(move_body); assert_equal([move_intent.kind, move_intent.payload.actor_id, move_intent.payload.destination, move_intent.payload.auto_switch_to_melee], [PlayerIntent.Kind.COMBAT_MOVE, "character.route", Vector2i(4, 7), true], "the direct command deck submits the same typed combat-move intent and host preference as battlefield input")
+	var queued_off := RealmzApplication.combat_auto_change_to_queue(PlayerIntent.set_combat_auto("hero", false), true)
+	var auto_view := _combat_playback_view(20, Vector2i(45, 45), Vector2i(47, 45), &"active"); auto_view.combat_view.auto_character_ids = ["hero"]; auto_view.combat_action_request = ClassicUiFixtureGallery.request_for(InteractionRequest.COMBAT)
+	var persistent_response := RealmzApplication.persistent_auto_response(auto_view)
+	assert_true(queued_off == {"characterId": "hero", "enabled": false} and RealmzApplication.combat_auto_change_to_queue(PlayerIntent.set_combat_auto("hero", false), false).is_empty() and RealmzApplication.combat_auto_abort_ids(auto_view, {"queued": true}) == ["hero", "queued"] and persistent_response != null and (persistent_response.body as InteractionResponse.CombatBody).actor_id == "hero", "the host queues individual manual control, can enumerate a full-party Escape abort, and prepares only the next Auto activation")
 	assert_equal([ClassicApplicationShell.automatic_workflow_route(&"exploration", view), ClassicApplicationShell.automatic_workflow_route(&"inventory", view)], [&"combat", &"combat"], "battle setup replaces exploration or browsing with the tactical workspace")
 	view.pending_interaction = ClassicUiFixtureGallery.request_for(InteractionRequest.ALLY_SELECTION)
 	assert_equal(ClassicApplicationShell.route_change_reason(view), "Resolve the current interaction first.", "a mandatory post-battle response disables misleading route changes such as Adventure Explore")

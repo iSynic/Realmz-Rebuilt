@@ -1,0 +1,304 @@
+class_name CombatAiScoring
+extends RefCounted
+
+const ContextType = preload("res://src/core/rules/combat_flow_context.gd")
+
+var _flow_ref: WeakRef
+var _rules: ContextType
+
+
+func _init(flow: RefCounted, rules: ContextType) -> void:
+	_flow_ref = weakref(flow)
+	_rules = rules
+
+
+func _flow() -> RefCounted:
+	return _flow_ref.get_ref() if _flow_ref != null else null
+
+
+func best_party_choice(state: GameState, content: RealmzContent, actor: CharacterState) -> Dictionary:
+	var best := {"action": &"defend", "score": 0}
+	if _flow().probe_bandage(state, actor.id).allowed:
+		for target_id: String in _flow().bandage_candidate_ids(state):
+			var target := state.party.character_by_id(target_id)
+			best = _prefer(best, {"action": &"bandage", "targetId": target_id, "score": 1100 - (target.current_health if target != null else 0)})
+	if _flow().probe_turn_undead(state, content, actor.id).allowed:
+		best = _prefer(best, {"action": &"turn_undead", "score": 760})
+	best = _prefer(best, _best_party_spell(state, content, actor))
+	var adjacent_ids := _hostile_adjacent_ids(state, actor.id)
+	if not adjacent_ids.is_empty():
+		if state.combat.character_weapon_mode(actor.id) == &"missile":
+			best = _prefer(best, {"action": &"switch_weapon", "score": 640})
+		else:
+			for target_id: String in adjacent_ids:
+				best = _prefer(best, {"action": &"attack", "targetId": target_id, "score": 520 + _lethal_pressure(state, target_id)})
+	else:
+		best = _prefer(best, _best_projectile(state, content, actor))
+		best = _prefer(best, {"action": &"move", "score": 100})
+	return best
+
+
+func best_monster_action(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, allow_missile: bool = true) -> StringName:
+	if monster.conditions.is_active(ConditionRules.RUNS_AWAY):
+		return &"retreat"
+	var adjacent := not _hostile_adjacent_ids_for_monster(state, monster).is_empty()
+	var action: StringName = &"advance"
+	var best_score := 560 if adjacent else 100
+	var spell_plan := best_monster_spell_plan(state, content, monster, definition)
+	var cast_score := int(spell_plan.get("score", -1)) + definition.cast_percent
+	if not spell_plan.is_empty() and cast_score > best_score:
+		action = &"cast"
+		best_score = cast_score
+	if allow_missile and not adjacent and not definition.item_id_at(1).is_empty():
+		var missile_score := 250 + definition.missile_percent * 2
+		if missile_score > best_score:
+			action = &"missile"
+	return action
+
+
+func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition) -> Dictionary:
+	if state.monster_spellcasting_blocked or state.combat.was_attacked(monster.id) or definition.magic_attack_count <= 0:
+		return {}
+	for condition: int in [ConditionRules.STUPID, ConditionRules.CONFUSED, ConditionRules.SILENCED, ConditionRules.HELPLESS]:
+		if monster.conditions.is_active(condition):
+			return {}
+	var best: Dictionary = {}
+	for slot: int in 10:
+		var spell := content.spell_by_id(definition.spell_id_at(slot))
+		if spell == null or not _flow()._monster_spell_unavailable_reason(spell).is_empty():
+			continue
+		var maximum_power := mini(7, monster.spell_points / maxi(1, spell.cost))
+		for power: int in range(1, maximum_power + 1):
+			var plan := _monster_spell_power_plan(state, content, monster, spell, slot, power)
+			best = _prefer(best, plan)
+	return best
+
+
+func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
+	var friendly := spell.cannot == 4
+	var candidates: Array[String] = []
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and (character.traitor == monster.traitor) == friendly and not _target_reflects(state, character.id) and (friendly or not _target_hard_immune(state, content, character.id, spell)) and state.combat.battlefield.has_actor(character.id) and _flow()._spell_actor_target_is_valid(state, content, monster.id, character.id, spell, power):
+			candidates.append(character.id)
+	for candidate: MonsterState in state.combat.monsters():
+		if candidate.current_health > 0 and (candidate.traitor == monster.traitor) == friendly and not _target_reflects(state, candidate.id) and (friendly or not _target_hard_immune(state, content, candidate.id, spell)) and state.combat.battlefield.has_actor(candidate.id) and content.monster_by_id(candidate.definition_id) != null and _flow()._spell_actor_target_is_valid(state, content, monster.id, candidate.id, spell, power):
+			candidates.append(candidate.id)
+	if candidates.is_empty():
+		return {}
+	var healing: bool = _flow()._is_source_backed_combat_healing_spell(spell)
+	candidates.sort_custom(func(left: String, right: String) -> bool: return _monster_target_score(state, left, spell, power, healing) > _monster_target_score(state, right, spell, power, healing) or (_monster_target_score(state, left, spell, power, healing) == _monster_target_score(state, right, spell, power, healing) and left < right))
+	var selected: Array[String] = []
+	for target_id: String in candidates:
+		if selected.size() >= (power if spell.target_type == 0 else 1):
+			break
+		if not healing or _target_missing_health(state, target_id) > 0:
+			selected.append(target_id)
+	if selected.is_empty():
+		return {}
+	var score := 0
+	for target_id: String in selected:
+		score += _monster_target_score(state, target_id, spell, power, healing)
+	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": selected, "score": score - spell.cost * power * 3}
+
+
+func _monster_target_score(state: GameState, target_id: String, spell: SpellDefinition, power: int, healing: bool) -> int:
+	var expected := expected_spell_effect(spell, power)
+	if healing:
+		var missing := _target_missing_health(state, target_id)
+		var health_percent := 100 * _target_health(state, target_id) / maxi(1, _target_maximum_health(state, target_id))
+		return (950 if health_percent <= 35 else 650 if health_percent <= 65 else 180) + mini(missing, expected) * 5
+	return 340 + expected * 5 + _lethal_bonus(state, target_id, expected)
+
+
+static func _prefer(current: Dictionary, candidate: Dictionary) -> Dictionary:
+	return candidate if not candidate.is_empty() and int(candidate.get("score", -1)) > int(current.get("score", -1)) else current
+
+
+func _best_party_spell(state: GameState, content: RealmzContent, actor: CharacterState) -> Dictionary:
+	var best: Dictionary = {}
+	for option: CombatSpellOptionView in _flow().character_spell_options(state, content, actor.id):
+		var spell := content.spell_by_id(option.spell_id)
+		if spell == null:
+			continue
+		if _flow()._is_source_backed_combat_healing_spell(spell):
+			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
+		elif spell.target_type in [0, 1, 3, 4, 10]:
+			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option))
+	return best
+
+
+func _best_heal(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
+	var best: Dictionary = {}
+	for target: CharacterState in state.party.characters():
+		if target.current_health <= 0 or target.traitor != actor.traitor or target.current_health >= target.maximum_health:
+			continue
+		if not _flow().probe_character_spell_cast(state, content, actor.id, target.id, spell.id, power).allowed:
+			continue
+		var health_percent := 100 * target.current_health / maxi(1, target.maximum_health)
+		if health_percent > 65:
+			continue
+		var urgency := 980 if health_percent <= 35 else 680
+		var score := urgency + 100 - health_percent - absi(spell.cost * power) * 3
+		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": target.id, "score": score})
+	return best
+
+
+func _best_damage_spell(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView) -> Dictionary:
+	var expected := expected_spell_effect(spell, option.power)
+	if expected <= 0:
+		return {}
+	if spell.target_type in [3, 4]:
+		return _best_area(state, content, actor, spell, option, expected)
+	var targets := _hostile_spell_targets(state, content, actor, spell, option.power)
+	if targets.is_empty():
+		return {}
+	var cost_penalty := absi(spell.cost * option.power) * 3
+	if spell.target_type == 10:
+		return {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "score": 360 + targets.size() * expected * 6 - cost_penalty}
+	if spell.target_type == 0:
+		var selected: Array[String] = []
+		for target_id: String in targets:
+			if selected.size() >= option.power:
+				break
+			selected.append(target_id)
+		return {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "targetIds": selected, "score": 350 + selected.size() * expected * 5 - cost_penalty}
+	var best: Dictionary = {}
+	for target_id: String in targets:
+		var score := 350 + expected * 5 + _lethal_bonus(state, target_id, expected) - cost_penalty
+		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "targetId": target_id, "score": score})
+	return best
+
+
+func _best_area(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, option: CombatSpellOptionView, expected: int) -> Dictionary:
+	var best: Dictionary = {}
+	for center: Vector2i in _flow()._legal_area_spell_target_coordinates(state, content, actor.id, spell, option.power, option.area_shape):
+		var hostile_ids: Dictionary = {}
+		var harms_friend := false
+		for offset: Vector2i in option.area_offsets:
+			var target_id := state.combat.battlefield.actor_at(center + offset)
+			if target_id.is_empty():
+				continue
+			if _actor_is_friendly(state, actor, target_id):
+				harms_friend = true
+			elif not _target_hard_immune(state, content, target_id, spell):
+				hostile_ids[target_id] = true
+		if harms_friend or hostile_ids.is_empty():
+			continue
+		var score := 370 + hostile_ids.size() * expected * 7 - option.cost * 3
+		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "coordinate": center, "score": score})
+	return best
+
+
+func _hostile_spell_targets(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Array[String]:
+	var result: Array[String] = []
+	for target_id: String in _opposed_actor_ids(state, actor):
+		var target_character := state.party.character_by_id(target_id)
+		var target_monster := state.combat.monster_by_id(target_id)
+		if _target_hard_immune(state, content, target_id, spell) or (target_character != null and target_character.conditions.is_active(ConditionRules.REFLECTING_SPELLS)) or (target_monster != null and target_monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS)):
+			continue
+		if _flow().probe_character_spell_cast(state, content, actor.id, target_id, spell.id, power).allowed:
+			result.append(target_id)
+	result.sort_custom(func(left: String, right: String) -> bool: return _target_health(state, left) < _target_health(state, right) or (_target_health(state, left) == _target_health(state, right) and left < right))
+	return result
+
+
+func _best_projectile(state: GameState, content: RealmzContent, actor: CharacterState) -> Dictionary:
+	if state.combat.character_weapon_mode(actor.id) != &"missile":
+		return {}
+	var profile = _flow().character_projectile_profile(actor, content, _rules.inventory.combat_equipment(actor, content.item_definitions()))
+	if profile == null or not profile.available:
+		return {"action": &"switch_weapon", "score": 110}
+	var best: Dictionary = {}
+	for target_id: String in _opposed_actor_ids(state, actor):
+		if _flow().projectile_target_is_valid(state.combat, content, actor.id, target_id, profile.maximum_range, profile.spell.range_min + profile.spell.range_max > 0):
+			best = _prefer(best, {"action": &"attack", "targetId": target_id, "score": 330 + _lethal_pressure(state, target_id)})
+	return best if not best.is_empty() else {"action": &"switch_weapon", "score": 110}
+
+
+func _opposed_actor_ids(state: GameState, actor: CharacterState) -> Array[String]:
+	var result: Array[String] = []
+	for character: CharacterState in state.party.characters():
+		if character.id != actor.id and character.current_health > 0 and character.traitor != actor.traitor and state.combat.battlefield.has_actor(character.id):
+			result.append(character.id)
+	for monster: MonsterState in state.combat.monsters():
+		if monster.current_health > 0 and monster.traitor != actor.traitor and state.combat.battlefield.has_actor(monster.id):
+			result.append(monster.id)
+	return result
+
+
+func _hostile_adjacent_ids(state: GameState, actor_id: String) -> Array[String]:
+	var actor := state.party.character_by_id(actor_id)
+	var result: Array[String] = []
+	if actor == null:
+		return result
+	for target_id: String in _rules.battlefield.adjacent_actor_ids(state.combat.battlefield, actor_id):
+		if not _actor_is_friendly(state, actor, target_id):
+			result.append(target_id)
+	return result
+
+
+func _hostile_adjacent_ids_for_monster(state: GameState, monster: MonsterState) -> Array[String]:
+	var result: Array[String] = []
+	for target_id: String in _rules.battlefield.adjacent_actor_ids(state.combat.battlefield, monster.id):
+		var character := state.party.character_by_id(target_id)
+		var target_monster := state.combat.monster_by_id(target_id)
+		if (character != null and character.current_health > 0 and character.traitor != monster.traitor) or (target_monster != null and target_monster.current_health > 0 and target_monster.traitor != monster.traitor):
+			result.append(target_id)
+	return result
+
+
+static func expected_spell_effect(spell: SpellDefinition, power: int) -> int:
+	return int((spell.damage_min + spell.damage_max) / 2.0 + (spell.power_damage_min + spell.power_damage_max) * power / 2.0)
+
+
+static func _actor_is_friendly(state: GameState, actor: CharacterState, target_id: String) -> bool:
+	var character := state.party.character_by_id(target_id)
+	if character != null:
+		return character.traitor == actor.traitor
+	var monster := state.combat.monster_by_id(target_id)
+	return monster != null and monster.traitor == actor.traitor
+
+
+static func _target_health(state: GameState, target_id: String) -> int:
+	var character := state.party.character_by_id(target_id)
+	if character != null:
+		return character.current_health
+	var monster := state.combat.monster_by_id(target_id)
+	return monster.current_health if monster != null else 0x7fff_ffff
+
+
+static func _target_maximum_health(state: GameState, target_id: String) -> int:
+	var character := state.party.character_by_id(target_id)
+	if character != null:
+		return character.maximum_health
+	var monster := state.combat.monster_by_id(target_id)
+	return monster.maximum_health if monster != null else 1
+
+
+static func _target_missing_health(state: GameState, target_id: String) -> int:
+	return maxi(0, _target_maximum_health(state, target_id) - _target_health(state, target_id))
+
+
+static func _target_hard_immune(state: GameState, content: RealmzContent, target_id: String, spell: SpellDefinition) -> bool:
+	var character := state.party.character_by_id(target_id)
+	if character != null:
+		return character.magic_resistance > 100
+	var monster := state.combat.monster_by_id(target_id)
+	var definition := content.monster_by_id(monster.definition_id) if monster != null else null
+	return monster != null and (monster.magic_resistance > 100 or definition != null and definition.spell_immune(spell.spell_class))
+
+
+static func _target_reflects(state: GameState, target_id: String) -> bool:
+	var character := state.party.character_by_id(target_id)
+	if character != null:
+		return character.conditions.is_active(ConditionRules.REFLECTING_SPELLS)
+	var monster := state.combat.monster_by_id(target_id)
+	return monster != null and monster.conditions.is_active(ConditionRules.REFLECTING_SPELLS)
+
+
+static func _lethal_bonus(state: GameState, target_id: String, expected: int) -> int:
+	return 180 if _target_health(state, target_id) <= expected else 0
+
+
+static func _lethal_pressure(state: GameState, target_id: String) -> int:
+	return maxi(0, 100 - mini(100, _target_health(state, target_id)))

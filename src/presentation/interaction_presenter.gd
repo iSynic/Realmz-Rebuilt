@@ -143,7 +143,8 @@ static func playback_status_text(frame: CombatPlaybackFrame) -> String:
 	var action := frame.display_text
 	if action.is_empty():
 		action = String(frame.kind).replace("_", " ").capitalize()
-	return "%s%s  •  Space skips visual playback" % ["Auto Turn • " if frame.automatic else "", action]
+	var controls := "Esc cancels Party Auto  •  Space skips visual playback" if frame.automatic else "Space skips visual playback"
+	return "%s%s  •  %s" % ["Auto Turn • " if frame.automatic else "", action, controls]
 
 
 func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Rect2 = Rect2()) -> void:
