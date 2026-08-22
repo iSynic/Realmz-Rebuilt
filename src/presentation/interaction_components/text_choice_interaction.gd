@@ -17,7 +17,7 @@ func build(request: InteractionRequest) -> void:
 		&"encounter_choice", &"scenario_choice":
 			var body := request.body as InteractionRequest.ChoiceRequestBody
 			if body == null: return
-			var grid := _choice_grid(2 if body.options.size() > 1 else 1)
+			var grid := _choice_grid(2 if body.options.size() > 1 else 1, true)
 			for index: int in body.options.size():
 				var option := body.options[index]
 				var label := option.label if not option.label.is_empty() else "Option %d" % (index + 1)
@@ -27,7 +27,7 @@ func build(request: InteractionRequest) -> void:
 		&"yes_no":
 			var body := request.body as InteractionRequest.YesNoRequestBody
 			if body == null: return
-			var grid := _choice_grid(2)
+			var grid := _choice_grid(2, true)
 			_add_choice(grid, body.yes_label, InteractionResponse.YesNoBody.new(true), "ChoiceYes")
 			_add_choice(grid, body.no_label, InteractionResponse.YesNoBody.new(false), "ChoiceNo")
 		&"acknowledge":
@@ -70,7 +70,7 @@ func _choice_grid(columns: int, content_width: bool = false) -> GridContainer:
 	var pane := PanelContainer.new()
 	pane.name = "ChoicePane"
 	pane.theme_type_variation = &"ClassicInset"
-	pane.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN if content_width else Control.SIZE_EXPAND_FILL
+	pane.size_flags_horizontal = Control.SIZE_SHRINK_END if content_width else Control.SIZE_EXPAND_FILL
 	add_child(pane)
 	var grid := GridContainer.new()
 	grid.name = "ChoiceGrid"
@@ -85,6 +85,6 @@ func _choice_grid(columns: int, content_width: bool = false) -> GridContainer:
 func _add_choice(parent: Container, label: String, body: InteractionResponse.Body, node_name: String) -> void:
 	var button := add_response_to(parent, label, body)
 	button.name = node_name
-	button.custom_minimum_size = Vector2(180.0, 38.0)
+	button.custom_minimum_size = Vector2(140.0, 38.0)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.theme_type_variation = &"ClassicChoiceButton"

@@ -730,8 +730,8 @@ func _add_mode_back_button(panel: Container, overview: Control, panels: Array[Co
 	back.name = "BattleModeBack"
 	back.text = "Back to battle"
 	back.theme_type_variation = &"BattleCommandButton"
-	back.custom_minimum_size.y = COMMAND_HEIGHT
-	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	back.custom_minimum_size = Vector2(180.0, COMMAND_HEIGHT)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(func() -> void:
 		if _targeting_active:
 			combat_targeting_cancel_requested.emit()

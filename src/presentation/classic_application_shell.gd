@@ -299,7 +299,7 @@ func apply_settings(settings: PresentationSettings) -> void:
 	_presentation_settings = settings
 	var base_theme := load("res://src/presentation/classic_ui_theme.tres") as Theme
 	theme = ClassicTypography.themed_copy(base_theme, settings)
-	_narrative.add_theme_font_size_override("normal_font_size", int(round(18.0 * settings.text_scale)))
+	_narrative.add_theme_font_size_override("normal_font_size", int(round(17.0 * settings.text_scale)))
 	_router.set_presentation_settings(settings)
 	if _music_dialog != null and _music_dialog.visible:
 		_music_dialog.open(settings, _music_playlist_id, _music_title, _music_playing)

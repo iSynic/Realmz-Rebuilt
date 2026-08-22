@@ -69,7 +69,7 @@ func present(view: GameView, selected_character_id: String = "") -> void:
 
 func present_combat_spellbook(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
 	_ensure_controls()
-	_party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	_party_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_combat_spellbook_active = true
 	_spellbook_options.assign(options)
 	_spellbook_actor_id = actor_id
@@ -116,6 +116,7 @@ func _build_spellbook() -> void:
 	var selector := HBoxContainer.new()
 	selector.name = "CombatSpellbookSelector"
 	selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	selector.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	selector.add_theme_constant_override("separation", 4)
 	_party_list.add_child(selector)
 	selector.add_child(_build_spell_level_rail(available_levels))
@@ -139,7 +140,7 @@ func _build_spellbook() -> void:
 	_spellbook_details = PanelContainer.new()
 	_spellbook_details.name = "CombatSpellDetails"
 	_spellbook_details.theme_type_variation = &"ClassicInset"
-	_spellbook_details.custom_minimum_size.y = 136.0
+	_spellbook_details.custom_minimum_size.y = 120.0
 	_spellbook_detail_column = VBoxContainer.new()
 	_spellbook_detail_column.add_theme_constant_override("separation", 3)
 	_spellbook_details.add_child(_spellbook_detail_column)
@@ -346,7 +347,7 @@ func _present_spellbook_details(option: InteractionRequestValue.CastOption, targ
 		description_well.theme_type_variation = &"ClassicTextWell"
 		var description_label := _spellbook_label(description, Color("eee9db"), 15)
 		description_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		description_label.max_lines_visible = 3
+		description_label.max_lines_visible = 2
 		description_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		description_well.add_child(description_label)
 		_spellbook_detail_column.add_child(description_well)

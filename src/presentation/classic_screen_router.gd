@@ -245,7 +245,10 @@ static func campaign_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, 
 
 
 static func spell_workspace_rect_for(profile: UiLayoutProfile, viewport_size: Vector2, origin: Vector2 = Vector2.ZERO) -> Rect2:
-	return Rect2(origin + Vector2(viewport_size.x - profile.party_width, profile.menu_height), Vector2(profile.party_width, maxf(220.0, viewport_size.y - profile.menu_height)))
+	var desired_width := (288.0 if profile.id == UiLayoutProfile.COMPACT else 420.0) * profile.ui_scale
+	var minimum_stage_width := 480.0 * profile.ui_scale
+	var workspace_width := minf(desired_width, maxf(profile.party_width, viewport_size.x - minimum_stage_width))
+	return Rect2(origin + Vector2(viewport_size.x - workspace_width, profile.menu_height), Vector2(workspace_width, maxf(220.0, viewport_size.y - profile.menu_height)))
 
 
 func _apply_modal_layouts() -> void:

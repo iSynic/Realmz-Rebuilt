@@ -46,8 +46,14 @@ func bind(session_controller: GameSessionController, map_presenter: ClassicMapPr
 	_session_controller.step_committed.connect(_on_step_committed)
 	_shell_presenter.play_stage_visibility_changed.connect(set_play_stage_visible)
 	_shell_presenter.presentation_sound_requested.connect(_on_presentation_sound_requested)
-	_interaction_presenter.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void: _shell_presenter.present_combat_spellbook(actor_id, options))
-	_interaction_presenter.combat_spellbook_closed.connect(func() -> void: _shell_presenter.close_combat_spellbook())
+	_interaction_presenter.combat_spellbook_requested.connect(func(actor_id: String, options: Array[InteractionRequestValue.CastOption]) -> void:
+		_interaction_presenter.set_combat_spellbook_open(true)
+		_shell_presenter.present_combat_spellbook(actor_id, options)
+	)
+	_interaction_presenter.combat_spellbook_closed.connect(func() -> void:
+		_interaction_presenter.set_combat_spellbook_open(false)
+		_shell_presenter.close_combat_spellbook()
+	)
 	_shell_presenter.combat_spell_cast_requested.connect(func(option: InteractionRequestValue.CastOption) -> void: _interaction_presenter.cast_combat_spell(option))
 	_shell_presenter.combat_spellbook_back_requested.connect(func() -> void: _interaction_presenter.close_combat_spellbook())
 	set_package_media(null)

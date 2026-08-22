@@ -15,7 +15,6 @@ const MUTED := Color("9aa0a8")
 const SECTIONS: Array[StringName] = [&"known", &"fast", &"scrolls"]
 
 var _view: GameView
-var _media: ClassicMediaCatalog
 var _text_scale: float = 1.0
 var _selected_character_id: String = ""
 var _selected_spell_id: String = ""
@@ -41,7 +40,6 @@ func present(parent: VBoxContainer, view: GameView, media: ClassicMediaCatalog, 
 	if parent == null or view == null:
 		return
 	_view = view
-	_media = media
 	_text_scale = maxf(0.1, text_scale)
 	if view.party_members.is_empty():
 		_add_empty_state(parent, "No spellbooks", "The party has no characters.")
@@ -105,7 +103,7 @@ func _add_section_tabs(parent: VBoxContainer) -> void:
 		picker.theme_type_variation = &"ClassicTheldrowOptionButton"
 		picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		for section_id: StringName in SECTIONS:
-			picker.add_item({&"known": "Known spells", &"fast": "Fast spells", &"scrolls": "Scroll case"}[section_id])
+			picker.add_item({&"known": "Known Spells", &"fast": "Fast Slots", &"scrolls": "Scroll Case"}[section_id])
 			picker.set_item_metadata(picker.item_count - 1, section_id)
 			if section_id == _section_id:
 				picker.select(picker.item_count - 1)
@@ -117,7 +115,8 @@ func _add_section_tabs(parent: VBoxContainer) -> void:
 	row.add_theme_constant_override("separation", 5)
 	for section_id: StringName in SECTIONS:
 		var button := Button.new()
-		button.text = {&"known": "Known", &"fast": "Fast", &"scrolls": "Scrolls"}[section_id]
+		button.text = {&"known": "Known Spells", &"fast": "Fast Slots", &"scrolls": "Scroll Case"}[section_id]
+		button.tooltip_text = {&"known": "Browse every spell this character knows.", &"fast": "Assign the ten Classic number-key quick-cast bindings.", &"scrolls": "Use one of the five Classic scroll slots."}[section_id]
 		button.toggle_mode = true
 		button.button_pressed = section_id == _section_id
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -203,9 +202,10 @@ func _build_spell_list(character: CharacterView, selected: SpellView) -> PanelCo
 	var panel := PanelContainer.new()
 	panel.name = "KnownSpellList"
 	panel.theme_type_variation = &"ClassicInset"
-	panel.custom_minimum_size.y = 92.0
+	panel.custom_minimum_size.y = 180.0
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = 0.8
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.size_flags_stretch_ratio = 2.0
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 2)
 	panel.add_child(column)
@@ -253,23 +253,20 @@ func _spell_detail(character: CharacterView, spell: SpellView) -> Control:
 	panel.name = "SelectedSpellRecord"
 	panel.custom_minimum_size.x = 0.0
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.size_flags_stretch_ratio = 1.2
+	panel.size_flags_vertical = Control.SIZE_FILL
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 4)
 	panel.add_child(column)
 	var identity: BoxContainer = VBoxContainer.new() if _compact else HBoxContainer.new()
 	identity.add_theme_constant_override("separation", 10)
-	if not _compact:
-		identity.add_child(_content_icon(spell.icon_resource_type, spell.icon_id))
 	var title_box := VBoxContainer.new()
 	title_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_add_label(title_box, spell.name, Color("e7d078"), 18)
 	_add_label(title_box, "Level %d  •  SP %d/%d" % [_spell_level(spell), character.spell_points, character.maximum_spell_points], MUTED, 13)
 	identity.add_child(title_box)
 	column.add_child(identity)
-	var description := _add_label(column, spell.description, TEXT, 14)
-	description.max_lines_visible = 8
+	var description := _add_label(column, spell.description, TEXT, 13)
+	description.max_lines_visible = 3
 	description.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var target_row: BoxContainer = VBoxContainer.new() if _compact else HBoxContainer.new()
 	target_row.add_theme_constant_override("separation", 10)
@@ -288,9 +285,6 @@ func _spell_detail(character: CharacterView, spell: SpellView) -> Control:
 	target_row.add_child(facts)
 	column.add_child(target_row)
 	column.add_child(_build_power_rail(spell))
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	column.add_child(spacer)
 	column.add_child(_build_spell_action_dock(character, spell))
 	return panel
 
@@ -495,7 +489,9 @@ func _bitmap_action(node_name: String, asset_id: StringName, tooltip: String, av
 
 
 func _add_fast_spells(parent: VBoxContainer, character: CharacterView) -> void:
-	_add_section_heading(parent, "%s's Fast Spells" % character.name, "Top-row 1–0")
+	_add_section_heading(parent, "%s's Fast Spell bindings" % character.name, "Top-row 1–0")
+	var explanation := _add_label(parent, "Classic quick-cast slots: press a number to inspect it, or Command/Control-number to cast it.", MUTED, 13)
+	explanation.max_lines_visible = 2
 	if character.fast_spells.is_empty():
 		_add_empty_state(parent, "No Fast Spell slots", "This character has no Fast Spell bindings.")
 	else:
@@ -636,36 +632,6 @@ func _add_button(parent: Container, label: String, availability: ActionAvailabil
 		button.pressed.connect(callback)
 	parent.add_child(button)
 	return button
-
-
-func _content_icon(resource_type: String, resource_id: int) -> Control:
-	var frame := PanelContainer.new()
-	frame.custom_minimum_size = Vector2(52.0, 52.0)
-	var asset: MediaAsset = _media.asset_by_resource(resource_type, resource_id) if _media != null and resource_id != 0 else null
-	if asset != null:
-		var image := Image.new()
-		var bytes := _media.read_bytes(asset)
-		var error := ERR_UNAVAILABLE
-		match asset.path.get_extension().to_lower():
-			"png": error = image.load_png_from_buffer(bytes)
-			"jpg", "jpeg": error = image.load_jpg_from_buffer(bytes)
-			"webp": error = image.load_webp_from_buffer(bytes)
-		if error == OK:
-			var texture := TextureRect.new()
-			texture.texture = ImageTexture.create_from_image(image)
-			texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			texture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			texture.tooltip_text = asset.label
-			frame.add_child(texture)
-			return frame
-	var fallback := Label.new()
-	fallback.text = "◈\n%d" % resource_id if resource_id != 0 else "◈"
-	fallback.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	fallback.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	fallback.add_theme_color_override("font_color", MUTED)
-	frame.add_child(fallback)
-	return frame
 
 
 func _add_section_heading(parent: Container, title: String, detail: String = "") -> void:

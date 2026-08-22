@@ -41,6 +41,7 @@ var _treasure_recipient_id: String = ""
 var _side_workspace_panel: PanelContainer
 var _modal_shield: ColorRect
 var _nested_modal: Control
+var _combat_spellbook_open: bool = false
 
 
 func _notification(what: int) -> void:
@@ -284,6 +285,13 @@ func close_combat_spellbook() -> void:
 		(_component as BattleInteraction).close_spellbook()
 
 
+func set_combat_spellbook_open(open: bool) -> void:
+	if _combat_spellbook_open == open:
+		return
+	_combat_spellbook_open = open
+	_apply_classic_region()
+
+
 func set_text_scale(value: float) -> void:
 	_heading.add_theme_font_size_override("font_size", int(round(18.0 * value)))
 	_prompt.add_theme_font_size_override("font_size", int(round(20.0 * value)))
@@ -417,6 +425,7 @@ static func response_for(request: InteractionRequest, body: InteractionResponse.
 
 
 func _clear_options() -> void:
+	_combat_spellbook_open = false
 	combat_spellbook_closed.emit()
 	_close_side_workspace()
 	_close_nested_modal()
@@ -439,6 +448,8 @@ func _apply_classic_region() -> void:
 	elif uses_textbox_region(_request, _passive_text):
 		theme_type_variation = &"ClassicOpenRight"
 		var region := interaction_region(_request, _textbox_rect, _stage_rect, _combat_rect)
+		if _combat_spellbook_open and _request != null and _request.kind == InteractionRequest.COMBAT:
+			region.size.x = minf(region.size.x, maxf(0.0, _side_workspace_rect.position.x - region.position.x))
 		position = region.position
 		size = region.size
 	elif uses_full_stage_region(_request):
@@ -595,7 +606,7 @@ func _apply_side_workspace_layout() -> void:
 
 
 func _apply_content_layout() -> void:
-	var split_textbox := uses_textbox_region(_request, _passive_text) and (_request == null or _request.kind not in [InteractionRequest.ACKNOWLEDGE, InteractionRequest.COMBAT])
+	var split_textbox := uses_textbox_region(_request, _passive_text) and _request != null and _request.kind == InteractionRequest.CHARACTER_SELECTION
 	_content.vertical = not split_textbox
 	if split_textbox:
 		var available_width := _textbox_rect.size.x
