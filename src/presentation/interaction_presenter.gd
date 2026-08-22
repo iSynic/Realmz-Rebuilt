@@ -352,9 +352,9 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 		return
 	_close_side_workspace()
 	var response := InteractionPresenter.response_for(_request, body)
-	var preserve_for_transfer := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action == &"assign"
+	var preserve_treasure_workspace := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action in [&"assign", &"done"]
 	_request = null
-	if not preserve_for_transfer:
+	if not preserve_treasure_workspace:
 		visible = false
 	response_submitted.emit(response)
 
@@ -485,10 +485,10 @@ func _close_modal_shield() -> void:
 
 
 func _can_present_nested_treasure_confirmation(request: InteractionRequest) -> bool:
-	if request == null or request.kind != InteractionRequest.TREASURE_DISTRIBUTION or _request == null or _request.kind != InteractionRequest.TREASURE_DISTRIBUTION:
+	if request == null or request.kind != InteractionRequest.TREASURE_DISTRIBUTION or not _component is TreasureDistributionInteraction:
 		return false
 	var body := request.body as InteractionRequest.TreasureRequestBody
-	return body != null and body.mode == &"completion-confirmation" and _component is TreasureDistributionInteraction
+	return body != null and body.mode == &"completion-confirmation"
 
 
 func _present_nested_treasure_confirmation(request: InteractionRequest, game_view: GameView, media: ClassicMediaCatalog) -> void:

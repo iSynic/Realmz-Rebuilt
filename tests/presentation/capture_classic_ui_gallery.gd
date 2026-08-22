@@ -288,7 +288,7 @@ func _capture_gallery() -> void:
 	await _resize(Vector2i(1280, 720))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION), "", gallery_view, gallery_media)
 	await _settle()
-	await _capture("wide-treasure-distribution-1280x720"); var treasure_completion := InteractionRequest.from_payload("gallery.treasure.completion", InteractionRequest.TREASURE_DISTRIBUTION, {"mode": "completion-confirmation", "summary": "One item remains unclaimed. Leave it behind?"}); _interaction.present(treasure_completion, "", gallery_view, gallery_media); await _settle(); await _capture("wide-treasure-completion-modal-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-treasure-completion-modal-800x600"); await _resize(Vector2i(1280, 720))
+	await _capture("wide-treasure-distribution-1280x720"); _interaction.set_block_signals(true); (_interaction.find_child("TreasureDone", true, false) as Button).pressed.emit(); _interaction.set_block_signals(false); var treasure_completion := InteractionRequest.from_payload("gallery.treasure.completion", InteractionRequest.TREASURE_DISTRIBUTION, {"mode": "completion-confirmation", "summary": "One item remains unclaimed. Leave it behind?"}); _interaction.present(treasure_completion, "", gallery_view, gallery_media); await _settle(); await _capture("wide-treasure-completion-modal-1280x720"); await _resize(Vector2i(800, 600)); await _capture("classic-treasure-completion-modal-800x600"); await _resize(Vector2i(1280, 720))
 	_interaction.present(ClassicUiFixtureGallery.request_for(InteractionRequest.TREASURE_DISTRIBUTION, &"unidentified"), "", gallery_view, gallery_media)
 	await _settle()
 	await _capture("wide-treasure-unidentified-1280x720")
