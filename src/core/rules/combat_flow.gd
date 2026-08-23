@@ -347,6 +347,10 @@ func _spell_target_selection(state: GameState, content: RealmzContent, target_id
 	return _magic._spell_target_selection(state, content, target_id)
 
 
+func ray_spell_actor_ids(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition) -> Array[String]:
+	return _magic.ray_spell_actor_ids(state, content, caster_id, target_id, spell)
+
+
 func _group_spell_target_label(target_type: int) -> String:
 	return _magic._group_spell_target_label(target_type)
 

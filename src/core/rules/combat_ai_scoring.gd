@@ -82,6 +82,8 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 
 
 func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
+	if spell.target_type == 6:
+		return _monster_ray_spell_power_plan(state, content, monster, spell, slot, power)
 	var cure_index := MagicRules.condition_cure_index(spell) if MagicRules.is_condition_cure_spell(spell) else -1
 	var friendly := spell.cannot == 4 or cure_index >= 0
 	var candidates: Array[String] = []
@@ -110,6 +112,24 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	for target_id: String in selected:
 		score += _monster_target_score(state, target_id, spell, power, healing, cure_index)
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": selected, "score": score - spell.cost * power * 3}
+
+
+func _monster_ray_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
+	var expected := expected_spell_effect(spell, power)
+	if expected <= 0:
+		return {}
+	var best: Dictionary = {}
+	for endpoint_id: String in _opposed_actor_ids_for_monster(state, monster):
+		if not _flow()._spell_actor_target_is_valid(state, content, monster.id, endpoint_id, spell, power):
+			continue
+		var ray_ids: Array[String] = _flow().ray_spell_actor_ids(state, content, monster.id, endpoint_id, spell)
+		if ray_ids.is_empty() or ray_ids.any(func(target_id: String) -> bool: return _actor_is_friendly_to_monster(state, monster, target_id) or _target_hard_immune(state, content, target_id, spell)):
+			continue
+		var score := 340 + ray_ids.size() * expected * 6 - spell.cost * power * 3
+		for target_id: String in ray_ids:
+			score += _lethal_bonus(state, target_id, expected)
+		best = _prefer(best, {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": [endpoint_id], "score": score})
+	return best
 
 
 func _monster_target_score(state: GameState, target_id: String, spell: SpellDefinition, power: int, healing: bool, cure_index: int = -1) -> int:
@@ -187,7 +207,7 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power))
 		elif _flow()._is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
-		elif spell.target_type in [0, 1, 3, 4, 10]:
+		elif spell.target_type in [0, 1, 3, 4, 6, 10]:
 			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache))
 	return best
 
@@ -279,6 +299,8 @@ func _best_damage_spell(state: GameState, content: RealmzContent, actor: Charact
 		return {}
 	if spell.target_type in [3, 4]:
 		return _best_area(state, content, actor, spell, option, expected, actors_by_cell, area_placement_cache)
+	if spell.target_type == 6:
+		return _best_party_ray(state, content, actor, spell, option.power, expected)
 	var targets := _hostile_spell_targets(state, content, actor, spell, option.power)
 	if targets.is_empty():
 		return {}
@@ -296,6 +318,21 @@ func _best_damage_spell(state: GameState, content: RealmzContent, actor: Charact
 	for target_id: String in targets:
 		var score := 350 + expected * 5 + _lethal_bonus(state, target_id, expected) - cost_penalty
 		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "targetId": target_id, "score": score})
+	return best
+
+
+func _best_party_ray(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int, expected: int) -> Dictionary:
+	var best: Dictionary = {}
+	for endpoint_id: String in _opposed_actor_ids(state, actor):
+		if not _flow().probe_character_spell_cast(state, content, actor.id, endpoint_id, spell.id, power).allowed:
+			continue
+		var ray_ids: Array[String] = _flow().ray_spell_actor_ids(state, content, actor.id, endpoint_id, spell)
+		if ray_ids.is_empty() or ray_ids.any(func(target_id: String) -> bool: return _actor_is_friendly(state, actor, target_id) or _target_hard_immune(state, content, target_id, spell)):
+			continue
+		var score := 350 + ray_ids.size() * expected * 6 - absi(spell.cost * power) * 3
+		for target_id: String in ray_ids:
+			score += _lethal_bonus(state, target_id, expected)
+		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": endpoint_id, "score": score})
 	return best
 
 
@@ -414,11 +451,30 @@ func _hostile_adjacent_ids_for_monster(state: GameState, monster: MonsterState) 
 	return result
 
 
+func _opposed_actor_ids_for_monster(state: GameState, monster: MonsterState) -> Array[String]:
+	var result: Array[String] = []
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and character.traitor != monster.traitor and state.combat.battlefield.has_actor(character.id):
+			result.append(character.id)
+	for candidate: MonsterState in state.combat.monsters():
+		if candidate.id != monster.id and candidate.current_health > 0 and candidate.traitor != monster.traitor and state.combat.battlefield.has_actor(candidate.id):
+			result.append(candidate.id)
+	return result
+
+
 static func expected_spell_effect(spell: SpellDefinition, power: int) -> int:
 	return int((spell.damage_min + spell.damage_max) / 2.0 + (spell.power_damage_min + spell.power_damage_max) * power / 2.0)
 
 
 static func _actor_is_friendly(state: GameState, actor: CharacterState, target_id: String) -> bool:
+	var character := state.party.character_by_id(target_id)
+	if character != null:
+		return character.traitor == actor.traitor
+	var monster := state.combat.monster_by_id(target_id)
+	return monster != null and monster.traitor == actor.traitor
+
+
+static func _actor_is_friendly_to_monster(state: GameState, actor: MonsterState, target_id: String) -> bool:
 	var character := state.party.character_by_id(target_id)
 	if character != null:
 		return character.traitor == actor.traitor

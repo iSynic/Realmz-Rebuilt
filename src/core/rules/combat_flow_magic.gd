@@ -261,16 +261,21 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 
 func _ray_spell_selections(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition) -> Array[SpellTargetSelection]:
 	var result: Array[SpellTargetSelection] = []
+	for actor_id: String in ray_spell_actor_ids(state, content, caster_id, target_id, spell):
+		var selection := _spell_target_selection(state, content, actor_id)
+		if selection != null:
+			result.append(selection)
+	return result
+
+
+func ray_spell_actor_ids(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell: SpellDefinition) -> Array[String]:
+	var result: Array[String] = []
 	var map := content.world.map_by_id(state.combat.battlefield.map_id)
 	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
 	if terrain_set == null or not state.combat.battlefield.has_actor(target_id):
 		return result
 	var stop_at_blocker := spell.range_min + spell.range_max > 0
-	for actor_id: String in _rules.battlefield.ray_actor_ids(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actor_position(target_id), stop_at_blocker):
-		var selection := _spell_target_selection(state, content, actor_id)
-		if selection != null:
-			result.append(selection)
-	return result
+	return _rules.battlefield.ray_actor_ids(state.combat.battlefield, terrain_set, caster_id, state.combat.battlefield.actor_position(target_id), stop_at_blocker)
 
 
 func probe_character_scroll_cast(state: GameState, content: RealmzContent, caster_id: String, scroll_slot: int, target_id: String = "", target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:

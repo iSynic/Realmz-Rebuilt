@@ -150,7 +150,7 @@ static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0 or spell.target_type not in [0, 1] or spell.target_type == 0 and spell.size != 0 or spell.cost <= 0:
+	if spell.queue_icon != 0 or spell.target_type not in [0, 1, 6] or spell.target_type == 0 and spell.size != 0 or spell.cost <= 0:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) else DISPOSITION_PENDING
 

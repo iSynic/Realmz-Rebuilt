@@ -296,7 +296,12 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		var range_power := int(plan["power"])
 		var cost_power := range_power
 		var selected_targets: Array[SpellTargetSelection] = []
+		var planned_target_ids: Array[String] = []
 		for target_id: String in plan["targetIds"]:
+			planned_target_ids.append(target_id)
+		if spell.target_type == 6:
+			planned_target_ids = _flow().ray_spell_actor_ids(state, content, monster.id, planned_target_ids[0], spell)
+		for target_id: String in planned_target_ids:
 			var selection := _monster_spell_target_selection(state, content, target_id)
 			if selection != null:
 				selected_targets.append(selection)
@@ -315,6 +320,8 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		var resolutions: GroupSpellResolution
 		if spell.target_type == 0:
 			resolutions = _rules.magic.resolve_monster_repeated_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
+		elif spell.target_type == 6:
+			resolutions = _rules.magic.resolve_monster_ray_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
 		else:
 			resolutions = _rules.magic.resolve_monster_targeted_spell(monster, definition, selected_targets[0], spell, cost_power, cast_level, rng)
 		if resolutions == null or not resolutions.cast:

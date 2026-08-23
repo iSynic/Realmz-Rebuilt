@@ -241,6 +241,16 @@ func resolve_monster_targeted_spell(caster: MonsterState, caster_definition: Mon
 func resolve_monster_repeated_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RepeatedSpellResolution:
 	if caster == null or caster_definition == null or spell == null or rng == null or power_level < 1 or selections.is_empty() or selections.size() > power_level:
 		return null
+	return _resolve_monster_selection_sequence(caster, caster_definition, selections, spell, power_level, cast_level, rng, true, &"magic.monster-repeated")
+
+
+func resolve_monster_ray_spell(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng) -> RepeatedSpellResolution:
+	if caster == null or caster_definition == null or spell == null or rng == null or power_level < 1 or selections.is_empty():
+		return null
+	return _resolve_monster_selection_sequence(caster, caster_definition, selections, spell, power_level, cast_level, rng, false, &"magic.monster-ray")
+
+
+func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition: MonsterDefinition, selections: Array[SpellTargetSelection], spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, allow_reflection: bool, rng_tag: StringName) -> RepeatedSpellResolution:
 	for selection: SpellTargetSelection in selections:
 		if not _selection_is_valid(selection):
 			return null
@@ -250,13 +260,15 @@ func resolve_monster_repeated_spell(caster: MonsterState, caster_definition: Mon
 	caster.spell_points -= spell_cost
 	var result := RepeatedSpellResolution.new(true, spell_cost, selections.size())
 	for index: int in selections.size():
-		var selection := selections[index] if is_condition_cure_spell(spell) else _reflect_to_monster_caster(caster, caster_definition, selections[index], rng, StringName("magic.monster-repeated.reflect.%d" % index))
-		var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, StringName("magic.monster-repeated.duration.%d" % index))
-		var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, StringName("magic.monster-repeated.damage.%d" % index))
+		var selection := selections[index]
+		if allow_reflection and not is_condition_cure_spell(spell):
+			selection = _reflect_to_monster_caster(caster, caster_definition, selection, rng, StringName("%s.reflect.%d" % [rng_tag, index]))
+		var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, StringName("%s.duration.%d" % [rng_tag, index]))
+		var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, StringName("%s.damage.%d" % [rng_tag, index]))
 		if not selection.reflected and selection.kind == &"monster" and selection.monster.magic_resistance > 100:
 			result.exclude_target(selection.original_target_id)
 			continue
-		var save_tag := StringName("magic.monster-repeated.damage-save.%d" % index)
+		var save_tag := StringName("%s.damage-save.%d" % [rng_tag, index])
 		var resolution := _resolve_monster_selection(caster, selection, spell, power_level, cast_level, damage, duration, 0, rng, save_tag)
 		result.append_target(selection.id, selection.kind, resolution, selection.original_target_id, selection.reflected)
 	return result
