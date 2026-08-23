@@ -140,13 +140,13 @@ func _test_public_monster_turn_matrix() -> void:
 
 	var spell := _combat_spell("spell.monster-public", 1, 4); var caster_definition := _monster_spell_definition("monster.public-caster", spell.id, 100); var spell_caster := MonsterState.new("monster.public-caster.instance", caster_definition.id, caster_definition.name, 30, 30, 4, 1, 0, 0, 10)
 	var spell_target := _character("character.public-spell-target"); var spell_state := _state(spell_target, spell_caster, "battle.public-monster-spell"); var spell_content := _content([caster_definition], [], [], [], [spell])
-	var spell_result := rules.combat_flow.submit_action(spell_state, spell_content, spell_target.id, &"finish", "", _zeros(16))
+	var spell_rng := _zeros(20); var spell_result := rules.combat_flow.submit_action(spell_state, spell_content, spell_target.id, &"finish", "", spell_rng)
 	assert_true(spell_result.ok, "a public finish command reaches the source-backed monster cast branch")
 	var cast_events := spell_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster")
 	assert_equal(cast_events.size(), 1, "public monster casting publishes one typed resolution")
 	if not cast_events.is_empty():
 		assert_equal([cast_events[0].payload.get("targetId"), cast_events[0].payload.get("power"), cast_events[0].payload.get("rangePower")], [spell_target.id, 1, 1], "public monster casting preserves target and affordability/range power")
-	assert_equal([spell_target.current_health, spell_caster.spell_points], [26, 8], "the public monster cast spends lowered power cost and applies its damage")
+	assert_equal([spell_target.current_health, spell_caster.spell_points], [26, 8], "the public monster cast spends lowered power cost and applies its damage"); assert_true(not spell_rng.trace().is_empty() and spell_rng.trace()[0].get("tag") == "combat.monster.%s.action-choice" % spell_caster.id, "monster AI spends its first draw on the weighted action categories")
 	var monster_heal := _combat_spell("spell.monster-heal", 1, 6); monster_heal.special = 57; monster_heal.spell_class = 8; monster_heal.damage_type = 8; monster_heal.cannot = 4; monster_heal.duration_min = 0; monster_heal.duration_max = 0
 	var healer_definition := _monster_spell_definition("monster.public-healer", monster_heal.id, 40); var monster_healer := MonsterState.new("monster.public-healer.instance", healer_definition.id, healer_definition.name, 30, 30, 4, 1, 0, 0, 10); var hurt_ally := MonsterState.new("monster.public-hurt-ally", healer_definition.id, "Hurt Ally", 5, 30, 4)
 	var monster_heal_state := _state(_character("character.public-heal-opponent"), monster_healer, "battle.public-monster-heal"); monster_heal_state.combat.add_monster(hurt_ally); monster_heal_state.combat.battlefield.place_monster(hurt_ally.id, Vector2i(47, 45), 0); monster_heal_state.combat.set_turn_order([monster_heal_state.party.characters()[0].id, monster_healer.id, hurt_ally.id])
@@ -159,10 +159,9 @@ func _test_public_monster_turn_matrix() -> void:
 	var retry_target := _character("character.public-retry-target")
 	var retry_state := _state(retry_target, retry_caster, "battle.public-retry")
 	retry_state.combat.battlefield.move_actor(retry_caster.id, Vector2i(47, 45))
-	var retry_rng := ScriptedRng.new([32_767, 32_767, 0, 0, 0, 0, 0, 0])
-	var retry_result := rules.combat_flow.submit_action(retry_state, _content([retry_definition], [], [], [], [spell]), retry_target.id, &"finish", "", retry_rng)
+	var retry_rng := ScriptedRng.new([32_767, 32_767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]); var retry_result := rules.combat_flow.submit_action(retry_state, _content([retry_definition], [], [], [], [spell]), retry_target.id, &"finish", "", retry_rng)
 	assert_true(retry_result.ok, "the public monster movement boundary reaches its bounded post-movement cast retry")
-	assert_equal(retry_rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).begins_with("monster.ai.")).size(), 0, "scored monster action selection does not spend random preference draws before its post-movement cast")
+	var retry_action_trace := retry_rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")) == "combat.monster.%s.action-choice" % retry_caster.id); assert_equal(retry_action_trace.size(), 1, "monster action weighting consumes one choice draw and retains that action for the activation"); assert_true(not retry_action_trace.is_empty() and retry_action_trace[0].get("result") == retry_action_trace[0].get("range"), "the low-weight advance category remains possible instead of always choosing the higher cast score")
 	assert_true(retry_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster"), "the public retry path commits the later ordinary cast")
 
 
@@ -291,8 +290,9 @@ func _test_public_command_automation_matrix() -> void:
 	var wounded := _character("character.auto-wounded"); wounded.current_health = 5
 	var healing_state := _state(auto_healer, MonsterState.new("monster.auto-healing.instance", definition.id, definition.name, 100, 100, 1), "battle.auto-healing")
 	healing_state.party.add_character(wounded); healing_state.combat.battlefield.place_character(wounded.id, Vector2i(44, 45)); healing_state.combat.set_turn_order([auto_healer.id, wounded.id, healing_state.combat.monsters()[0].id])
-	var healed := rules.combat_flow.submit_action(healing_state, _content([definition], [], [], [], [healing_spell, auto_area]), auto_healer.id, &"auto", "", _zeros(96))
+	var weighted_high_state := GameState.from_data(healing_state.to_data()); var healing_content := _content([definition], [], [], [], [healing_spell, auto_area]); var healed := rules.combat_flow.submit_action(healing_state, healing_content, auto_healer.id, &"auto", "", _zeros(96))
 	assert_true(healed.ok and healed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == wounded.id and int(event.payload.get("healing", 0)) > 0), "scored Auto heals a critically wounded ally before taking an adjacent attack")
+	var high_values := _ints(96); high_values[0] = 32_767; var weighted_high := rules.combat_flow.submit_action(weighted_high_state, healing_content, auto_healer.id, &"auto", "", ScriptedRng.new(high_values)); var high_actions := weighted_high.events.filter(func(event: DomainEvent) -> bool: return event.payload.get("actorId") == auto_healer.id and event.kind in [&"combat_spell_resolved", &"combat_attack_resolved"]); assert_true(weighted_high.ok and not high_actions.is_empty() and high_actions[0].kind == &"combat_attack_resolved", "the lower-weight melee category remains possible instead of always choosing the stronger healing score")
 
 	var auto_actor := _character("character.auto")
 	var auto_monster := MonsterState.new("monster.auto.instance", definition.id, definition.name, 1000, 1000, 1)

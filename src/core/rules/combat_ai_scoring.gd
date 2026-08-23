@@ -2,6 +2,7 @@ class_name CombatAiScoring
 extends RefCounted
 
 const ContextType = preload("res://src/core/rules/combat_flow_context.gd")
+const MAX_WEIGHTED_DRAW: int = 32_767
 
 var _flow_ref: WeakRef
 var _rules: ContextType
@@ -16,44 +17,48 @@ func _flow() -> RefCounted:
 	return _flow_ref.get_ref() if _flow_ref != null else null
 
 
-func best_party_choice(state: GameState, content: RealmzContent, actor: CharacterState) -> Dictionary:
-	var best := {"action": &"defend", "score": 0}
+func choose_party_action(state: GameState, content: RealmzContent, actor: CharacterState, rng: RealmzRng) -> Dictionary:
+	var choices: Array[Dictionary] = []
 	if _flow().probe_bandage(state, actor.id).allowed:
+		var bandage: Dictionary = {}
 		for target_id: String in _flow().bandage_candidate_ids(state):
 			var target := state.party.character_by_id(target_id)
-			best = _prefer(best, {"action": &"bandage", "targetId": target_id, "score": 1100 - (target.current_health if target != null else 0)})
+			bandage = _prefer(bandage, {"action": &"bandage", "targetId": target_id, "score": 1100 - (target.current_health if target != null else 0)})
+		_append_positive_choice(choices, bandage)
 	if _flow().probe_turn_undead(state, content, actor.id).allowed:
-		best = _prefer(best, {"action": &"turn_undead", "score": 760})
-	best = _prefer(best, _best_party_spell(state, content, actor))
+		choices.append({"action": &"turn_undead", "score": 760})
+	_append_positive_choice(choices, _best_party_spell(state, content, actor))
 	var adjacent_ids := _hostile_adjacent_ids(state, actor.id)
 	if not adjacent_ids.is_empty():
 		if state.combat.character_weapon_mode(actor.id) == &"missile":
-			best = _prefer(best, {"action": &"switch_weapon", "score": 640})
+			choices.append({"action": &"switch_weapon", "score": 640})
 		else:
+			var melee: Dictionary = {}
 			for target_id: String in adjacent_ids:
-				best = _prefer(best, {"action": &"attack", "targetId": target_id, "score": 520 + _lethal_pressure(state, target_id)})
+				melee = _prefer(melee, {"action": &"attack", "targetId": target_id, "score": 520 + _lethal_pressure(state, target_id)})
+			_append_positive_choice(choices, melee)
 	else:
-		best = _prefer(best, _best_projectile(state, content, actor))
-		best = _prefer(best, {"action": &"move", "score": 100})
-	return best
+		_append_positive_choice(choices, _best_projectile(state, content, actor))
+		choices.append({"action": &"move", "score": 100})
+	var selected := _weighted_choice(choices, rng, StringName("combat.auto.%s.action-choice" % actor.id))
+	return {"action": &"defend", "score": 0} if selected.is_empty() else selected
 
 
-func best_monster_action(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, allow_missile: bool = true) -> StringName:
+func choose_monster_action(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, rng: RealmzRng, allow_missile: bool = true) -> StringName:
 	if monster.conditions.is_active(ConditionRules.RUNS_AWAY):
 		return &"retreat"
 	var adjacent := not _hostile_adjacent_ids_for_monster(state, monster).is_empty()
-	var action: StringName = &"advance"
-	var best_score := 560 if adjacent else 100
+	var choices: Array[Dictionary] = [{"action": &"advance", "score": 560 if adjacent else 100}]
 	var spell_plan := best_monster_spell_plan(state, content, monster, definition)
 	var cast_score := int(spell_plan.get("score", -1)) + definition.cast_percent
-	if not spell_plan.is_empty() and cast_score > best_score:
-		action = &"cast"
-		best_score = cast_score
+	if not spell_plan.is_empty() and cast_score > 0:
+		choices.append({"action": &"cast", "score": cast_score})
 	if allow_missile and not adjacent and not definition.item_id_at(1).is_empty():
 		var missile_score := 250 + definition.missile_percent * 2
-		if missile_score > best_score:
-			action = &"missile"
-	return action
+		if missile_score > 0:
+			choices.append({"action": &"missile", "score": missile_score})
+	var selected := _weighted_choice(choices, rng, StringName("combat.monster.%s.action-choice" % monster.id))
+	return StringName(selected.get("action", &"advance"))
 
 
 func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition) -> Dictionary:
@@ -115,6 +120,51 @@ func _monster_target_score(state: GameState, target_id: String, spell: SpellDefi
 
 static func _prefer(current: Dictionary, candidate: Dictionary) -> Dictionary:
 	return candidate if not candidate.is_empty() and int(candidate.get("score", -1)) > int(current.get("score", -1)) else current
+
+
+static func _append_positive_choice(choices: Array[Dictionary], candidate: Dictionary) -> void:
+	if not candidate.is_empty() and int(candidate.get("score", 0)) > 0:
+		choices.append(candidate)
+
+
+static func _weighted_choice(candidates: Array[Dictionary], rng: RealmzRng, semantic_tag: StringName) -> Dictionary:
+	var choices: Array[Dictionary] = []
+	for candidate: Dictionary in candidates:
+		if not candidate.is_empty() and int(candidate.get("score", 0)) > 0:
+			choices.append(candidate)
+	if choices.is_empty():
+		return {}
+	choices.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		var left_score := int(left.get("score", 0))
+		var right_score := int(right.get("score", 0))
+		return left_score > right_score or (left_score == right_score and _choice_key(left) < _choice_key(right))
+	)
+	if choices.size() == 1:
+		return choices[0]
+	var weights: Array[int] = []
+	var total_weight := 0
+	for choice: Dictionary in choices:
+		var weight := maxi(1, int(choice.get("score", 0)))
+		weights.append(weight)
+		total_weight += weight
+	while total_weight > MAX_WEIGHTED_DRAW:
+		var divisor := (total_weight + MAX_WEIGHTED_DRAW - 1) / MAX_WEIGHTED_DRAW
+		total_weight = 0
+		for index: int in weights.size():
+			weights[index] = maxi(1, weights[index] / divisor)
+			total_weight += weights[index]
+	var roll := rng.draw(total_weight, semantic_tag)
+	var threshold := 0
+	for index: int in choices.size():
+		threshold += weights[index]
+		if roll <= threshold:
+			return choices[index]
+	return choices.back()
+
+
+static func _choice_key(choice: Dictionary) -> String:
+	var target_ids: Array = choice.get("targetIds", [])
+	return "%s|%s|%s|%s|%s" % [String(choice.get("action", "")), String(choice.get("spellId", "")), String(choice.get("targetId", "")), ",".join(target_ids), str(choice.get("coordinate", Vector2i(-1, -1)))]
 
 
 func _best_party_spell(state: GameState, content: RealmzContent, actor: CharacterState) -> Dictionary:

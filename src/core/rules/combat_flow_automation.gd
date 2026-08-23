@@ -71,7 +71,7 @@ func _run_auto_turn_unchecked(state: GameState, content: RealmzContent, actor_id
 	_flow().set_processing_auto(true)
 	while operation_count < MAX_AUTO_OPERATIONS and state.combat != null and not state.combat.completed and state.combat.active_actor_id() == actor_id and state.combat.round_number == starting_round:
 		operation_count += 1
-		var result := _execute_auto_choice(state, content, actor, _ai_scoring.best_party_choice(state, content, actor), rng)
+		var result := _execute_auto_choice(state, content, actor, _ai_scoring.choose_party_action(state, content, actor, rng), rng)
 		if result == null or not result.ok:
 			result = _flow().submit_action(state, content, actor.id, &"defend", "", rng)
 		if result == null or not result.ok:
@@ -227,7 +227,7 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 		if active_turn.target_id.is_empty() and active_turn.attack_index == 0:
 			active_turn.target_id = monster.target_id
 		if active_turn.action.is_empty():
-			active_turn.action = _ai_scoring.best_monster_action(state, content, monster, definition)
+			active_turn.action = _ai_scoring.choose_monster_action(state, content, monster, definition, rng)
 		var attack_result := MONSTER_ATTACK_COMPLETED
 		if active_turn.action == &"advance":
 			if monster.conditions.is_active(ConditionRules.SPEEDY):
@@ -243,7 +243,7 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 		elif active_turn.action == &"missile":
 			attack_result = _process_monster_projectile(state, content, monster, definition, active_turn, rng, events)
 			if attack_result == MONSTER_ATTACK_FALLBACK:
-				active_turn.action = _ai_scoring.best_monster_action(state, content, monster, definition, false)
+				active_turn.action = _ai_scoring.choose_monster_action(state, content, monster, definition, rng, false)
 				if active_turn.action == &"cast":
 					attack_result = _process_monster_cast(state, content, monster, definition, active_turn, rng, events)
 					if attack_result == MONSTER_ATTACK_FALLBACK:
