@@ -2,7 +2,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$SourceOgvPath,
 
-    [string]$ExpectedSha256 = "f78a04d978b0de0b306598a201e5cccaa7e930b947b1bfab59d81437b4c8cf75"
+    [string]$ExpectedSha256 = "2b30c6bca4a8d6ba6ee524c28630c4706944f327b5d8d304ce0253050fb53f40"
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,7 +16,7 @@ $sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $sourcePath).Hash.ToL
 if ($sourceHash -ne $ExpectedSha256.ToLowerInvariant()) {
     throw "Realmz Rebuilt intro OGV hash does not match the approved source"
 }
-if ((Get-Item -LiteralPath $sourcePath).Length -ne 1110117) {
+if ((Get-Item -LiteralPath $sourcePath).Length -ne 1097782) {
     throw "Realmz Rebuilt intro OGV byte length changed"
 }
 
@@ -41,14 +41,14 @@ try {
         source_sha256 = $sourceHash
         license = "Project-Owner-Supplied"
         path = "res://src/presentation/assets/ui/intro/$assetName"
-        bytes = 1110117
+        bytes = 1097782
         width = 832
         height = 480
         frames_per_second = 24
         duration_ms = 5167
         video_codec = "theora"
         audio_codec = "vorbis"
-        audio_sample_rate = 32000
+        audio_sample_rate = 48000
         audio_channels = 2
         loop = $true
     }
