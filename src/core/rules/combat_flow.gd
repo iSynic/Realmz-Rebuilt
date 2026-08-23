@@ -294,6 +294,10 @@ func _append_spell_presentation(payload: Dictionary, spell: SpellDefinition, seq
 	_magic._append_spell_presentation(payload, spell, sequence_index, sequence_count, target_defeated)
 
 
+func _queue_persistent_field(combat: CombatState, caster_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int, shape: int) -> RefCounted:
+	return _magic._queue_persistent_field(combat, caster_id, spell, power_level, cast_level, rng, center, rotation, shape)
+
+
 func probe_character_spell_cast(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatSpellCastProbe:
 	return _magic.probe_character_spell_cast(state, content, caster_id, target_id, spell_id, power_level, target_coordinate, rotation, target_ids, target_coordinates)
 

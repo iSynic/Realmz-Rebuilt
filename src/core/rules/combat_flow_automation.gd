@@ -299,15 +299,24 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		var range_power := int(plan["power"])
 		var cost_power := range_power
 		var selected_targets: Array[SpellTargetSelection] = []
-		var planned_target_ids: Array[String] = []
-		for target_id: String in plan["targetIds"]:
-			planned_target_ids.append(target_id)
-		if spell.target_type == 6:
-			planned_target_ids = _flow().ray_spell_actor_ids(state, content, monster.id, planned_target_ids[0], spell)
-		for target_id: String in planned_target_ids:
-			var selection := _monster_spell_target_selection(state, content, target_id)
-			if selection != null:
-				selected_targets.append(selection)
+		var area_center := INVALID_COORDINATE
+		var area_rotation := 0
+		var area_shape := 0
+		if spell.target_type in [3, 4]:
+			area_center = plan.get("coordinate", INVALID_COORDINATE)
+			area_rotation = int(plan.get("rotation", 0))
+			area_shape = _rules.spell_areas.shape_for(spell, cost_power, area_rotation)
+			selected_targets = _monster_area_spell_selections(state, content, area_center, area_shape)
+		else:
+			var planned_target_ids: Array[String] = []
+			for target_id: String in plan["targetIds"]:
+				planned_target_ids.append(target_id)
+			if spell.target_type == 6:
+				planned_target_ids = _flow().ray_spell_actor_ids(state, content, monster.id, planned_target_ids[0], spell)
+			for target_id: String in planned_target_ids:
+				var selection := _monster_spell_target_selection(state, content, target_id)
+				if selection != null:
+					selected_targets.append(selection)
 		if selected_targets.is_empty():
 			if did_cast:
 				break
@@ -321,7 +330,14 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 		state.combat.set_guarding(monster.id, false)
 		active_turn.movement_remaining = 0
 		var resolutions: GroupSpellResolution
-		if spell.target_type == 0:
+		var persistent_field: RefCounted = null
+		if spell.target_type in [3, 4]:
+			persistent_field = _flow()._queue_persistent_field(state.combat, monster.id, spell, cost_power, cast_level, rng, area_center, area_rotation, area_shape)
+			if spell.queue_icon != 0 and persistent_field == null:
+				events.append(DomainEvent.new(&"combat_monster_action_unavailable", {"actorId": monster.id, "action": "cast", "spellId": spell.id, "reason": "persistent-field-queue-limit"}))
+				return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
+			resolutions = _rules.magic.resolve_monster_group_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng, true)
+		elif spell.target_type == 0:
 			resolutions = _rules.magic.resolve_monster_repeated_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
 		elif spell.target_type == 6:
 			resolutions = _rules.magic.resolve_monster_ray_spell(monster, definition, selected_targets, spell, cost_power, cast_level, rng)
@@ -333,8 +349,10 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			return MONSTER_ATTACK_FALLBACK
 		active_turn.spell_cast_count += 1
 		did_cast = true
+		if persistent_field != null:
+			events.append(DomainEvent.new(&"combat_persistent_field_created", {"slot": persistent_field.slot, "spellId": persistent_field.spell_id, "casterId": persistent_field.caster_id, "center": [persistent_field.center.x, persistent_field.center.y], "rotation": persistent_field.rotation, "shape": persistent_field.shape, "queueIcon": persistent_field.queue_icon, "power": persistent_field.power_level, "classicTier": persistent_field.cast_level, "duration": persistent_field.remaining_duration, "phaseTurnIndex": persistent_field.phase_turn_index, "source": "classic-monster"}))
 		_flow()._append_spell_sound(events, spell.sound_start, "classic-monster-spell-start")
-		_flow()._append_spell_cast_event(events, monster.id, spell, resolutions, INVALID_COORDINATE, 0, "classic-monster")
+		_flow()._append_spell_cast_event(events, monster.id, spell, resolutions, area_center, area_shape, "classic-monster")
 		for index: int in resolutions.resolutions.size():
 			var resolution := resolutions.resolutions[index]
 			var resolved_target_id := resolutions.target_ids[index]
@@ -348,6 +366,11 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			var payload := {"actorId": monster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster"}
 			if resolution.cleared_condition >= 0:
 				payload["clearedCondition"] = resolution.cleared_condition
+			if resolution.applied_condition >= 0:
+				payload["appliedCondition"] = resolution.applied_condition
+			if area_shape > 0:
+				payload["areaCenter"] = [area_center.x, area_center.y]
+				payload["areaShape"] = area_shape
 			_flow()._append_spell_presentation(payload, spell, index, resolutions.resolutions.size(), resolution.target_defeated)
 			events.append(DomainEvent.new(&"combat_spell_resolved", payload))
 			if not resolution.target_defeated:
@@ -372,6 +395,25 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 	if monster.current_health <= 0:
 		_remove_defeated_position(state.combat, monster.id, true)
 	return MONSTER_ATTACK_COMPLETED if did_cast else MONSTER_ATTACK_FALLBACK
+
+
+func _monster_area_spell_selections(state: GameState, content: RealmzContent, center: Vector2i, shape: int) -> Array[SpellTargetSelection]:
+	var selected_ids: Dictionary = {}
+	for offset: Vector2i in _rules.spell_areas.pattern(shape):
+		var actor_id := state.combat.battlefield.actor_at(center + offset)
+		if not actor_id.is_empty():
+			selected_ids[actor_id] = true
+	var result: Array[SpellTargetSelection] = []
+	for character: CharacterState in state.party.characters():
+		if selected_ids.has(character.id) and character.current_health > 0 and state.combat.battlefield.has_actor(character.id):
+			result.append(SpellTargetSelection.for_character(character))
+	for monster: MonsterState in state.combat.monsters():
+		if not selected_ids.has(monster.id) or monster.current_health <= 0 or not state.combat.battlefield.has_actor(monster.id) or monster.magic_resistance > 100:
+			continue
+		var definition := content.monster_by_id(monster.definition_id)
+		if definition != null:
+			result.append(SpellTargetSelection.for_monster(monster, definition))
+	return result
 
 
 static func _monster_spell_target_selection(state: GameState, content: RealmzContent, target_id: String) -> SpellTargetSelection:

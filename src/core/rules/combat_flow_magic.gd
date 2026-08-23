@@ -118,7 +118,7 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 	var result: CombatFlowResult
 	if spell.target_type in [3, 4]:
 		var shape := _rules.spell_areas.shape_for(spell, power_level, rotation)
-		var persistent_field := _queue_persistent_field(state.combat, caster, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
+		var persistent_field := _queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
 		var selected_ids: Dictionary = {}
 		for offset: Vector2i in _rules.spell_areas.pattern(shape):
 			var actor_id := state.combat.battlefield.actor_at(target_coordinate + offset)
@@ -423,7 +423,7 @@ func use_combat_scroll(state: GameState, content: RealmzContent, caster_id: Stri
 		state.combat.invalidate_undo()
 	if not _flow()._is_summon_spell(spell) and spell.target_type in [3, 4]:
 		var shape := _rules.spell_areas.shape_for(spell, power_level, rotation)
-		var persistent_field := _queue_persistent_field(state.combat, caster, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
+		var persistent_field := _queue_persistent_field(state.combat, caster.id, spell, power_level, cast_level, rng, target_coordinate, rotation, shape)
 		var selected_ids: Dictionary = {}
 		for offset: Vector2i in _rules.spell_areas.pattern(shape):
 			var actor_id := state.combat.battlefield.actor_at(target_coordinate + offset)
@@ -565,7 +565,7 @@ func _cast_character_group_spell(state: GameState, content: RealmzContent, caste
 func _cast_character_area_spell(state: GameState, content: RealmzContent, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int) -> CombatFlowResult:
 	var combat := state.combat
 	var shape := _rules.spell_areas.shape_for(spell, power_level, rotation)
-	var persistent_field := _queue_persistent_field(combat, caster, spell, power_level, cast_level, rng, center, rotation, shape)
+	var persistent_field := _queue_persistent_field(combat, caster.id, spell, power_level, cast_level, rng, center, rotation, shape)
 	var selected_ids: Dictionary = {}
 	for offset: Vector2i in _rules.spell_areas.pattern(shape):
 		var actor_id := combat.battlefield.actor_at(center + offset)
@@ -655,13 +655,13 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
 
-func _queue_persistent_field(combat: CombatState, caster: CharacterState, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int, shape: int) -> RefCounted:
-	if combat == null or caster == null or not ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) or not combat.can_queue_persistent_field():
+func _queue_persistent_field(combat: CombatState, caster_id: String, spell: SpellDefinition, power_level: int, cast_level: int, rng: RealmzRng, center: Vector2i, rotation: int, shape: int) -> RefCounted:
+	if combat == null or caster_id.is_empty() or not ClassicSpellCapabilityCatalog.is_combat_persistent_field_spell(spell) or not combat.can_queue_persistent_field():
 		return null
 	var duration := _rules.magic.roll_persistent_field_duration(spell, power_level, rng, StringName("combat.field.%s.duration" % spell.id))
 	if duration <= 0:
 		return null
-	return combat.queue_persistent_field(spell.id, caster.id, center, rotation if spell.can_rotate else 0, shape, spell.queue_icon, power_level, cast_level, duration)
+	return combat.queue_persistent_field(spell.id, caster_id, center, rotation if spell.can_rotate else 0, shape, spell.queue_icon, power_level, cast_level, duration)
 
 
 static func _append_spell_sound(events: Array[DomainEvent], authored_sound_id: int, source: String) -> void:

@@ -37,23 +37,34 @@ func resolve_actor_collisions(state: GameState, content: RealmzContent, actor_id
 		if retain_turn_collisions and combat.has_persistent_field_collision(field.slot):
 			continue
 		var spell := content.spell_by_id(field.spell_id)
-		var caster := state.party.character_by_id(field.caster_id)
-		if spell == null or caster == null:
+		var character_caster := state.party.character_by_id(field.caster_id)
+		var monster_caster := combat.monster_by_id(field.caster_id)
+		if spell == null or character_caster == null and monster_caster == null:
 			return COLLISION_INVALID
 		if not _field_intersects_footprint(field, footprint):
 			continue
 		var character_targets: Array[CharacterState] = []
 		var monster_targets: Array[MonsterState] = []
 		var monster_definitions: Array[MonsterDefinition] = []
+		var selections: Array[SpellTargetSelection] = []
 		if character != null:
 			character_targets.append(character)
+			selections.append(SpellTargetSelection.for_character(character))
 		else:
 			var definition := content.monster_by_id(monster.definition_id)
 			if definition == null:
 				return COLLISION_INVALID
 			monster_targets.append(monster)
 			monster_definitions.append(definition)
-		var group := _rules.magic.resolve_character_group_spell(caster, character_targets, monster_targets, monster_definitions, spell, field.power_level, field.cast_level, rng, false, false)
+			selections.append(SpellTargetSelection.for_monster(monster, definition))
+		var group: GroupSpellResolution
+		if character_caster != null:
+			group = _rules.magic.resolve_character_group_spell(character_caster, character_targets, monster_targets, monster_definitions, spell, field.power_level, field.cast_level, rng, false, false)
+		else:
+			var caster_definition := content.monster_by_id(monster_caster.definition_id)
+			if caster_definition == null:
+				return COLLISION_INVALID
+			group = _rules.magic.resolve_monster_group_spell(monster_caster, caster_definition, selections, spell, field.power_level, field.cast_level, rng, false, false)
 		if group == null or not group.cast or group.resolutions.size() != 1:
 			return COLLISION_INVALID
 		var resolution: SpellResolution = group.resolutions[0]

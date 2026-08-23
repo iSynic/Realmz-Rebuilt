@@ -70,18 +70,22 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 		if monster.conditions.is_active(condition):
 			return {}
 	var best: Dictionary = {}
+	var actors_by_cell := _actors_by_cell(state.combat.battlefield)
+	var area_placement_cache: Dictionary = {}
 	for slot: int in 10:
 		var spell := content.spell_by_id(definition.spell_id_at(slot))
 		if spell == null or not _flow()._monster_spell_unavailable_reason(spell).is_empty():
 			continue
 		var maximum_power := mini(7, monster.spell_points / maxi(1, spell.cost))
 		for power: int in range(1, maximum_power + 1):
-			var plan := _monster_spell_power_plan(state, content, monster, spell, slot, power)
+			var plan := _monster_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache)
 			best = _prefer(best, plan)
 	return best
 
 
-func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
+func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, slot: int, power: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary) -> Dictionary:
+	if spell.target_type in [3, 4]:
+		return _monster_area_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache)
 	if spell.target_type == 6:
 		return _monster_ray_spell_power_plan(state, content, monster, spell, slot, power)
 	var cure_index := MagicRules.condition_cure_index(spell) if MagicRules.is_condition_cure_spell(spell) else -1
@@ -112,6 +116,66 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	for target_id: String in selected:
 		score += _monster_target_score(state, target_id, spell, power, healing, cure_index)
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": selected, "score": score - spell.cost * power * 3}
+
+
+func _monster_area_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, spell: SpellDefinition, slot: int, power: int, actors_by_cell: Dictionary, area_placement_cache: Dictionary) -> Dictionary:
+	if spell.queue_icon != 0 and not state.combat.can_queue_persistent_field():
+		return {}
+	var expected := expected_spell_effect(spell, power)
+	if expected <= 0 and absi(spell.special) != 2:
+		return {}
+	var maximum_range := absi(spell.range_min + spell.range_max * power) + (1 if definition.size != 0 else 0) + (1 if definition.size == 3 else 0)
+	var rotations: Array = _rules.spell_areas.rotation_patterns(spell, power)
+	var best: Dictionary = {}
+	for rotation: int in rotations.size():
+		var offsets: Array[Vector2i] = []
+		offsets.assign(rotations[rotation])
+		var shape := _rules.spell_areas.shape_for(spell, power, rotation)
+		var cache_key := "%s:%d:%d:%d:%d" % [spell.id, shape, maximum_range, 1 if spell.range_min + spell.range_max > 0 else 0, spell.spell_class]
+		if not area_placement_cache.has(cache_key):
+			var placements: Array[Dictionary] = []
+			for center: Vector2i in _monster_area_candidate_centers(state, content, monster, spell, shape, offsets, maximum_range):
+				var hostile_ids: Dictionary = {}
+				var harms_friend := false
+				for offset: Vector2i in offsets:
+					var target_id := String(actors_by_cell.get(center + offset, ""))
+					if target_id.is_empty():
+						continue
+					if _actor_is_friendly_to_monster(state, monster, target_id):
+						harms_friend = true
+					elif _target_reflects(state, target_id):
+						harms_friend = true
+					elif not _target_hard_immune(state, content, target_id, spell):
+						hostile_ids[target_id] = true
+				if not harms_friend and not hostile_ids.is_empty():
+					placements.append({"center": center, "hostileCount": hostile_ids.size()})
+			area_placement_cache[cache_key] = placements
+		for placement: Dictionary in area_placement_cache[cache_key]:
+			var score := 370 + int(placement["hostileCount"]) * maxi(1, expected) * 7 - spell.cost * power * 3
+			best = _prefer(best, {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": [], "coordinate": placement["center"], "rotation": rotation, "score": score})
+	return best
+
+
+func _monster_area_candidate_centers(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, shape: int, offsets: Array[Vector2i], maximum_range: int) -> Array[Vector2i]:
+	var unique: Dictionary = {}
+	for target_id: String in _opposed_actor_ids_for_monster(state, monster):
+		if _target_hard_immune(state, content, target_id, spell) or _target_reflects(state, target_id):
+			continue
+		for target_cell: Vector2i in state.combat.battlefield.actor_footprint(target_id):
+			for offset: Vector2i in offsets:
+				unique[target_cell - offset] = true
+	var map := content.world.map_by_id(state.combat.battlefield.map_id)
+	var terrain_set := content.world.battle_terrain_set_by_id(map.battle_terrain_set_id) if map != null else null
+	if terrain_set == null:
+		return []
+	var require_line_of_sight := spell.range_min + spell.range_max > 0
+	var result: Array[Vector2i] = []
+	for value: Variant in unique:
+		var center: Vector2i = value
+		if _rules.spell_areas.pattern_fits(center, shape) and _rules.battlefield.coordinate_target_is_valid(state.combat.battlefield, terrain_set, monster.id, center, maximum_range, require_line_of_sight):
+			result.append(center)
+	result.sort_custom(func(left: Vector2i, right: Vector2i) -> bool: return left.y < right.y or (left.y == right.y and left.x < right.x))
+	return result
 
 
 func _monster_ray_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
@@ -356,7 +420,9 @@ func _best_area(state: GameState, content: RealmzContent, actor: CharacterState,
 						continue
 					if _actor_is_friendly(state, actor, target_id):
 						harms_friend = true
-					elif not _target_hard_immune(state, content, target_id, spell) and not _target_reflects(state, target_id):
+					elif _target_reflects(state, target_id):
+						harms_friend = true
+					elif not _target_hard_immune(state, content, target_id, spell):
 						hostile_ids[target_id] = true
 				if not harms_friend and not hostile_ids.is_empty():
 					placements.append({"center": center, "hostileCount": hostile_ids.size()})
