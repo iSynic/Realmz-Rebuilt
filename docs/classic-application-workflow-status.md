@@ -13,17 +13,18 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM item and scroll magic completion** (`aogm-item-scroll-completion`)
+**AOGM terminal combat and reward certification** (`aogm-terminal-reward-certification`)
 
-The closed persistent-field batch leaves four connected Classic item-magic branches explicit: fixed-power repeated combat targets, random-power combat staging, scroll-case discard, and scroll-case transfer. This three-workflow batch routes those branches through the shared deterministic spell-source transactions, preserves exact-once item and slot accounting across target and save boundaries, and uses ordinary AOGM Treasure play to certify that Detect Magic and Identify remain independent actions.
+The closed item-and-scroll batch leaves AOGM's terminal combat and reward sequence as the only generated AOGM-priority gap. This four-workflow batch accepts the corrected battle command and terminal-return surface, exercises ordinary defeat or retreat and an actual level-up, and certifies treasure completion, level continuation, and post-battle ally handling without opening the unexposed mode-10 branch.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.inventory.use-item` | implementation | aogm-major-partial | - | GAP-INV-003 |
-| `classic.spellcasting.field-camp-cast` | implementation | aogm-major-partial | - | GAP-SPELL-002 |
-| `classic.rewards.detect-identify-loot` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.combat.resolve-outcome` | implementation | aogm-major-partial | - | GAP-COMBAT-006 |
+| `classic.rewards.treasure-distribution` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.rewards.post-battle-allies` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
@@ -31,8 +32,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
 | classic | partial | 15 | 15 | 0 |
-| classic | functional | 51 | 50 | -1 |
-| classic | certified | 3 | 4 | +1 |
+| classic | functional | 50 | 50 | 0 |
+| classic | certified | 4 | 4 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 6 | 6 | 0 |
