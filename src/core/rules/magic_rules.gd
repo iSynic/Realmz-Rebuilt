@@ -240,7 +240,7 @@ func resolve_monster_targeted_spell(caster: MonsterState, caster_definition: Mon
 	if caster == null or caster_definition == null or not _selection_is_valid(selection) or spell == null or rng == null or power_level < 1:
 		return null
 	var spell_cost := spell.cost * power_level
-	if spell_cost <= 0 or caster.spell_points < spell_cost:
+	if spell_cost < 0 or caster.spell_points < spell_cost:
 		return GroupSpellResolution.new(false, maxi(0, spell_cost), 0, 0)
 	caster.spell_points -= spell_cost
 	var effective := selection if is_condition_cure_spell(spell) else _reflect_to_monster_caster(caster, caster_definition, selection, rng, &"magic.monster-spell.reflect")
@@ -261,7 +261,7 @@ func resolve_monster_group_spell(caster: MonsterState, caster_definition: Monste
 		if not _selection_is_valid(selection):
 			return null
 	var spell_cost := spell.cost * power_level
-	if spell_cost <= 0 or spend_spell_points and caster.spell_points < spell_cost:
+	if spell_cost < 0 or spend_spell_points and caster.spell_points < spell_cost:
 		return GroupSpellResolution.new(false, maxi(0, spell_cost), 0, 0)
 	if spend_spell_points:
 		caster.spell_points -= spell_cost
@@ -295,7 +295,7 @@ func _resolve_monster_selection_sequence(caster: MonsterState, caster_definition
 		if not _selection_is_valid(selection):
 			return null
 	var spell_cost := spell.cost * power_level
-	if spell_cost <= 0 or caster.spell_points < spell_cost:
+	if spell_cost < 0 or caster.spell_points < spell_cost:
 		return RepeatedSpellResolution.new(false, maxi(0, spell_cost), selections.size())
 	caster.spell_points -= spell_cost
 	var result := RepeatedSpellResolution.new(true, spell_cost, selections.size())

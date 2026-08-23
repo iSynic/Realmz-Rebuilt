@@ -162,7 +162,7 @@ static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if spell.queue_icon != 0:
 		return DISPOSITION_EXECUTABLE if spell.cost > 0 and _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
-	if spell.target_type not in [0, 1, 3, 4, 6, 10] or spell.target_type == 0 and spell.size != 0 or spell.cost <= 0:
+	if spell.target_type not in [0, 1, 3, 4, 6, 10] or spell.target_type == 0 and spell.size != 0 or spell.cost < 0:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) else DISPOSITION_PENDING
 

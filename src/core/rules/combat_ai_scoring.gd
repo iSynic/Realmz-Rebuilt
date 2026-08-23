@@ -76,7 +76,7 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 		var spell := content.spell_by_id(definition.spell_id_at(slot))
 		if spell == null or not _flow()._monster_spell_unavailable_reason(spell).is_empty():
 			continue
-		var maximum_power := mini(7, monster.spell_points / maxi(1, spell.cost))
+		var maximum_power := 7 if spell.cost == 0 else mini(7, monster.spell_points / spell.cost)
 		for power: int in range(1, maximum_power + 1):
 			var plan := _monster_spell_power_plan(state, content, monster, definition, spell, slot, power, actors_by_cell, area_placement_cache)
 			best = _prefer(best, plan)

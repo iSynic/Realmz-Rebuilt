@@ -23,7 +23,7 @@ An executable disposition proves an owned handler boundary, not complete branch,
 - Character combat: 80 executable, 219 pending
 - Scroll combat: 82 executable, 217 pending
 - Item combat: 64 executable, 235 pending
-- Monster combat: 60 executable, 239 pending
+- Monster combat: 68 executable, 231 pending
 - Character field/camp: 127 executable, 17 pending
 
 The 252 player records are the stock player-spell parity target. The 105 application effect records cover application-owned monster, item, projectile, and special effects and require their own legal-context proof. The 63 reserved records are denominator entries, not missing player spells. Scenario-corpus custom spells are collected only in local untracked sidecars until their normalized signatures can be committed without commercial content.
