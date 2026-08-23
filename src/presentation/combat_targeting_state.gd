@@ -60,6 +60,15 @@ func select_coordinate(coordinate: Vector2i) -> bool:
 	return true
 
 
+func cycle_candidate() -> bool:
+	if mode not in [&"combatant", &"sequence"] or candidate_ids.is_empty():
+		return false
+	var current_index := candidate_ids.find(selected_ids[-1]) if not selected_ids.is_empty() else -1
+	selected_ids.assign([candidate_ids[(current_index + 1) % candidate_ids.size()]])
+	status_text = "Target selected. Press Space to commit the action."
+	return true
+
+
 func can_confirm() -> bool:
 	match mode:
 		&"combatant", &"sequence":

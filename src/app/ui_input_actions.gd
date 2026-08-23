@@ -15,6 +15,8 @@ const DEFINITIONS: Array[Dictionary] = [
 	{"id": &"realmz_rest", "keys": [KEY_R]},
 	{"id": &"realmz_heal", "keys": [KEY_H]},
 	{"id": &"realmz_inspect_movement", "keys": [KEY_SHIFT]},
+	{"id": &"realmz_cycle_target", "keys": [KEY_T]},
+	{"id": &"realmz_confirm_target", "keys": [KEY_SPACE]},
 	{"id": &"realmz_back", "keys": [KEY_ESCAPE]},
 	{"id": &"ui_screen_explore", "keys": [KEY_1], "alt": true},
 	{"id": &"ui_screen_characters", "keys": [KEY_2], "alt": true},

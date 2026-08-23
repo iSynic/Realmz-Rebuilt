@@ -338,6 +338,12 @@ func _input(event: InputEvent) -> void:
 		return
 	if pending != null:
 		if pending.kind == InteractionRequest.COMBAT:
+			if _battlefield_presenter.targeting_active() and event.is_action_pressed(&"realmz_cycle_target") and _battlefield_presenter.cycle_targeting_candidate():
+				get_viewport().set_input_as_handled()
+				return
+			if _battlefield_presenter.targeting_active() and event.is_action_pressed(&"realmz_confirm_target") and _battlefield_presenter.confirm_targeting():
+				get_viewport().set_input_as_handled()
+				return
 			var combat_fast_spell := UiInputActions.fast_spell_slot(event, true)
 			var use_fast_spell := UiInputActions.combat_fast_spell_use_requested(event)
 			if combat_fast_spell >= 0 and (_interaction_presenter.activate_fast_spell_from_dock(combat_fast_spell) if use_fast_spell and key_event.alt_pressed else _interaction_presenter.handle_fast_spell(combat_fast_spell, use_fast_spell)):

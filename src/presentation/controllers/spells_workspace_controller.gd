@@ -464,7 +464,7 @@ func _bitmap_action(node_name: String, asset_id: StringName, tooltip: String, av
 
 func _add_fast_spells(parent: VBoxContainer, character: CharacterView) -> void:
 	_add_section_heading(parent, "%s's Fast Spell bindings" % character.name, "Top-row 1–0")
-	var explanation := _add_label(parent, "Classic quick-cast slots: press a number to inspect it, or Command/Control-number to cast it.", MUTED, 13)
+	var explanation := _add_label(parent, "Choosing a spell assigns it immediately. Clear removes it; Back keeps every assigned slot.", MUTED, 13)
 	explanation.max_lines_visible = 2
 	if character.fast_spells.is_empty():
 		_add_empty_state(parent, "No Fast Spell slots", "This character has no Fast Spell bindings.")
@@ -494,10 +494,12 @@ func _add_fast_spell_row(parent: Container, character: CharacterView, binding: F
 	var label := _add_label(row, "Slot %s" % binding.shortcut_label, GOLD, 13)
 	label.custom_minimum_size.x = 0.0 if _compact else 52.0
 	var picker := OptionButton.new()
+	picker.name = "FastSpellPicker%d" % binding.slot_index
 	picker.theme_type_variation = &"ClassicTheldrowOptionButton"
 	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	picker.add_item("Undefined Spell")
-	picker.set_item_metadata(0, {"spellId": "", "power": 0})
+	picker.fit_to_longest_item = false
+	picker.add_item("Choose a spell")
+	picker.set_item_metadata(0, {})
 	for known_spell: SpellView in character.spells:
 		var powers: Array[int] = []
 		powers.assign([1] if known_spell.cost < 0 else [1, 2, 3, 4, 5, 6, 7])
@@ -506,11 +508,12 @@ func _add_fast_spell_row(parent: Container, character: CharacterView, binding: F
 			picker.set_item_metadata(picker.item_count - 1, {"spellId": known_spell.id, "power": power})
 			if known_spell.id == binding.spell_id and power == binding.power:
 				picker.select(picker.item_count - 1)
+	picker.item_selected.connect(func(index: int) -> void: _assign_fast_spell(character.id, binding.slot_index, picker.get_item_metadata(index)))
 	row.add_child(picker)
 	var availability := _view.availability(&"set_fast_spell")
-	_add_button(row, "Set", availability, _set_fast_spell.bind(character.id, binding.slot_index, picker))
 	var clear_availability := availability if not binding.spell_id.is_empty() else ActionAvailabilityView.new(&"set_fast_spell", false, "This slot is already empty.")
-	_add_button(row, "Clear", clear_availability, _clear_fast_spell.bind(character.id, binding.slot_index))
+	var clear := _add_button(row, "Clear", clear_availability, _clear_fast_spell.bind(character.id, binding.slot_index))
+	clear.custom_minimum_size.x = 56.0
 	parent.add_child(panel)
 
 
@@ -579,9 +582,8 @@ func _select_power(power: int) -> void:
 	refresh_requested.emit()
 
 
-func _set_fast_spell(character_id: String, slot_index: int, picker: OptionButton) -> void:
-	var selected: Variant = picker.get_selected_metadata()
-	if not selected is Dictionary:
+func _assign_fast_spell(character_id: String, slot_index: int, selected: Variant) -> void:
+	if not selected is Dictionary or selected.is_empty():
 		return
 	sound_requested.emit(144, false, false)
 	intent_submitted.emit(PlayerIntent.set_fast_spell(character_id, slot_index, String(selected.get("spellId", "")), int(selected.get("power", 0))))

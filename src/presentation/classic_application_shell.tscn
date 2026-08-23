@@ -384,7 +384,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-z_index = 16
+z_index = 30
 script = ExtResource("2_router")
 
 [node name="WorkspaceHost" type="Control" parent="ScreenRouter"]

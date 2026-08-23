@@ -16,7 +16,7 @@ var _previews: Array[TextureRect] = []
 var _frames_by_entry: Array = []
 var _frame_index := 0
 var _frame_elapsed := 0.0
-var _has_castable_binding := false
+var _has_assigned_binding := false
 
 
 func _init() -> void:
@@ -34,12 +34,12 @@ func _init() -> void:
 
 func configure(bindings: Array[InteractionRequestValue.FastSpell], animation_frames: Dictionary) -> void:
 	_clear_entries()
-	_has_castable_binding = false
+	_has_assigned_binding = false
 	for slot_index: int in mini(10, bindings.size()):
 		var binding := bindings[slot_index]
 		if binding.spell_id.is_empty():
 			continue
-		_has_castable_binding = _has_castable_binding or binding.enabled
+		_has_assigned_binding = true
 		_add_binding(slot_index, binding, animation_frames.get(binding.spell_id, []) as Array)
 	_apply_layout()
 
@@ -50,15 +50,15 @@ func set_stage_rect(stage_rect: Rect2) -> void:
 
 
 func set_held(held: bool) -> bool:
-	visible = held and _has_castable_binding and not _buttons.is_empty()
+	visible = held and _has_assigned_binding and not _buttons.is_empty()
 	set_process(visible)
 	if visible:
 		_frame_elapsed = 0.0
-	return _has_castable_binding
+	return _has_assigned_binding
 
 
-func has_castable_binding() -> bool:
-	return _has_castable_binding
+func has_assigned_binding() -> bool:
+	return _has_assigned_binding
 
 
 func _process(delta: float) -> void:

@@ -318,6 +318,14 @@ func targeting_active() -> bool:
 	return _targeting != null
 
 
+func cycle_targeting_candidate() -> bool:
+	if _targeting == null or not _targeting.cycle_candidate():
+		return false
+	targeting_changed.emit(_targeting)
+	queue_redraw()
+	return true
+
+
 func _handle_targeting_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		_targeting.hovered_coordinate = _coordinate_at_local_position((event as InputEventMouseMotion).position)

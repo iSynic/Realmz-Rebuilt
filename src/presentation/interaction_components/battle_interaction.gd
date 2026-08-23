@@ -18,6 +18,8 @@ var _targeting_confirm_button: Button
 var _targeting_controls: VBoxContainer
 var _targeting_active: bool = false
 var _targeting_setup_controls: Array[Control] = []
+var _targeting_parent: Control
+var _targeting_parent_was_visible: bool = false
 var _spell_casts: Array[InteractionRequestValue.CastOption] = []
 var _fast_spells: Array[InteractionRequestValue.FastSpell] = []
 var _spell_panel: VBoxContainer
@@ -40,6 +42,7 @@ func build(request: InteractionRequest) -> void:
 	_targeting_confirm_button = null
 	_targeting_controls = null
 	_targeting_active = false
+	_targeting_parent = null
 	_read_combatants(body.combatants)
 	var action_ids: Array[String] = body.actions
 	var weapon_mode := String(body.weapon_mode)
@@ -242,8 +245,13 @@ func update_battlefield_targeting(selection: CombatTargetingState) -> void:
 
 
 func battlefield_targeting_cancelled() -> void:
+	var return_to_overview := _targeting_parent != null and not _targeting_parent_was_visible
+	var target_parent := _targeting_parent
 	_targeting_active = false
 	_restore_targeting_setup()
+	if return_to_overview and target_parent != null:
+		target_parent.visible = false
+		_overview.visible = true
 
 
 func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.CastOption], selected: InteractionRequestValue.CastOption, response_body: InteractionResponse.CombatBody) -> CombatTargetingRequest:
@@ -280,7 +288,13 @@ func _add_targeting_button(parent: Container, text: String, configuration: Comba
 
 func _start_targeting(configuration: CombatTargetingRequest, parent: Container) -> void:
 	_restore_targeting_setup()
+	_targeting_parent = parent
+	_targeting_parent_was_visible = parent.visible
 	_targeting_active = true
+	if _mode_panels.has(parent):
+		for panel: Control in _mode_panels:
+			panel.visible = panel == parent
+		_overview.visible = false
 	for child: Node in parent.get_children():
 		if child is Control and child.name not in ["BattleModeBack", "BattleTargetingControls"]:
 			(child as Control).visible = false
@@ -290,7 +304,7 @@ func _start_targeting(configuration: CombatTargetingRequest, parent: Container) 
 	_targeting_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_targeting_controls.add_theme_constant_override("separation", 3)
 	parent.add_child(_targeting_controls)
-	_targeting_status_label = _add_hint_to(_targeting_controls, "Targeting • Choose a target on the battlefield.")
+	_targeting_status_label = _add_hint_to(_targeting_controls, "Targeting • Click a target, or press T to cycle; Space confirms.")
 	_targeting_status_label.add_theme_font_size_override("font_size", 12)
 	_targeting_status_label.max_lines_visible = 1
 	_targeting_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -299,7 +313,8 @@ func _start_targeting(configuration: CombatTargetingRequest, parent: Container) 
 	target_actions.add_theme_constant_override("separation", 3)
 	_targeting_confirm_button = Button.new()
 	_targeting_confirm_button.name = "ConfirmBattleTarget"
-	_targeting_confirm_button.text = "Confirm target"
+	_targeting_confirm_button.text = "Cast spell" if configuration.response_body.action == &"cast_spell" else "Confirm target"
+	_targeting_confirm_button.tooltip_text = "Press Space to confirm the selected target."
 	_targeting_confirm_button.disabled = true
 	_targeting_confirm_button.theme_type_variation = &"BattleCommandButton"
 	_targeting_confirm_button.custom_minimum_size.y = COMMAND_HEIGHT
@@ -329,6 +344,8 @@ func _restore_targeting_setup() -> void:
 	_targeting_controls = null
 	_targeting_status_label = null
 	_targeting_confirm_button = null
+	_targeting_parent = null
+	_targeting_parent_was_visible = false
 
 
 func inspect_combatant(combatant_id: String) -> void:
