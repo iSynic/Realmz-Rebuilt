@@ -318,9 +318,11 @@ func targeting_active() -> bool:
 	return _targeting != null
 
 
-func cycle_targeting_candidate() -> bool:
-	if _targeting == null or not _targeting.cycle_candidate():
+func target_with_keyboard() -> bool:
+	if _targeting == null or not _targeting.target_with_keyboard():
 		return false
+	if not _targeting.selected_ids.is_empty():
+		_camera_focus_id = _targeting.selected_ids[-1]
 	targeting_changed.emit(_targeting)
 	queue_redraw()
 	return true

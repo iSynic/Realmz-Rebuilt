@@ -60,13 +60,22 @@ func select_coordinate(coordinate: Vector2i) -> bool:
 	return true
 
 
-func cycle_candidate() -> bool:
-	if mode not in [&"combatant", &"sequence"] or candidate_ids.is_empty():
+func target_with_keyboard() -> bool:
+	if mode in [&"combatant", &"sequence"]:
+		if candidate_ids.is_empty():
+			return false
+		var current_index := candidate_ids.find(selected_ids[-1]) if not selected_ids.is_empty() else -1
+		selected_ids.assign([candidate_ids[(current_index + 1) % candidate_ids.size()]])
+		status_text = "Target selected. Press Space to commit the action."
+		return true
+	if mode != &"area":
 		return false
-	var current_index := candidate_ids.find(selected_ids[-1]) if not selected_ids.is_empty() else -1
-	selected_ids.assign([candidate_ids[(current_index + 1) % candidate_ids.size()]])
-	status_text = "Target selected. Press Space to commit the action."
-	return true
+	var coordinate := hovered_coordinate
+	if not validation_deferred and not legal_coordinates.has(coordinate):
+		coordinate = legal_coordinates[0] if not legal_coordinates.is_empty() else Vector2i(-1, -1)
+	if coordinate.x < 0 or coordinate.y < 0:
+		return false
+	return select_coordinate(coordinate)
 
 
 func can_confirm() -> bool:

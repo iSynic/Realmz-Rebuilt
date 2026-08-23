@@ -685,7 +685,7 @@ func _test_fast_spell_input() -> void:
 	assert_equal(UiInputActions.fast_spell_slot(keypad), -1, "numeric keypad movement never aliases a top-row Fast Spell")
 	var released := InputEventKey.new(); released.physical_keycode = KEY_2
 	assert_equal(UiInputActions.fast_spell_slot(released), -1, "a key release cannot display or activate a Fast Spell a second time")
-	var route_binding: Dictionary = UiInputActions.DEFINITIONS.filter(func(definition: Dictionary) -> bool: return definition["id"] == &"ui_screen_explore")[0]; assert_true(bool(route_binding.get("alt", false)) and UiInputActions.DEFINITIONS.any(func(definition: Dictionary) -> bool: return definition["id"] == &"realmz_cycle_target" and KEY_T in definition["keys"]) and UiInputActions.DEFINITIONS.any(func(definition: Dictionary) -> bool: return definition["id"] == &"realmz_confirm_target" and KEY_SPACE in definition["keys"]), "route shortcuts remain behind Alt-number while T and Space own Classic combat targeting and confirmation")
+	var route_binding: Dictionary = UiInputActions.DEFINITIONS.filter(func(definition: Dictionary) -> bool: return definition["id"] == &"ui_screen_explore")[0]; assert_true(bool(route_binding.get("alt", false)) and UiInputActions.DEFINITIONS.any(func(definition: Dictionary) -> bool: return definition["id"] == &"realmz_target" and KEY_T in definition["keys"]) and UiInputActions.DEFINITIONS.any(func(definition: Dictionary) -> bool: return definition["id"] == &"realmz_confirm_target" and KEY_SPACE in definition["keys"]), "route shortcuts remain behind Alt-number while T and Space own Classic combat targeting and confirmation")
 	var keypad_bindings: Dictionary = {}
 	for definition: Dictionary in UiInputActions.DEFINITIONS:
 		keypad_bindings[definition["id"]] = definition["keys"]
@@ -976,9 +976,9 @@ func _test_combat_targeting_state() -> void:
 	body.spell_id = "spell.darts"
 	var request := CombatTargetingRequest.new(&"sequence", body); request.candidate_ids.assign(["monster.one", "ally.one"]); request.maximum_targets = 1
 	var state := CombatTargetingState.new(request)
-	assert_equal([state.select_combatant("ally.one"), state.select_combatant("monster.one"), state.committed_body().target_ids, state.cycle_candidate(), state.selected_ids], [true, false, ["ally.one"], true, ["monster.one"]], "typed sequence targeting enforces its maximum while T cycles the supplied legal target identities")
+	assert_equal([state.select_combatant("ally.one"), state.select_combatant("monster.one"), state.committed_body().target_ids, state.target_with_keyboard(), state.selected_ids], [true, false, ["ally.one"], true, ["monster.one"]], "typed sequence targeting enforces its maximum while T cycles the supplied legal target identities")
 	var area_request := CombatTargetingRequest.new(&"area", body); area_request.validation_deferred = true; area_request.default_target_coordinate = Vector2i(45, 45)
-	var area_state := CombatTargetingState.new(area_request); assert_equal([area_state.hovered_coordinate, area_state.selected_coordinate, area_state.can_confirm()], [Vector2i(45, 45), Vector2i(-1, -1), false], "an area spell previews its default center without committing it before the player clicks")
+	var area_state := CombatTargetingState.new(area_request); assert_equal([area_state.hovered_coordinate, area_state.selected_coordinate, area_state.can_confirm(), area_state.target_with_keyboard(), area_state.selected_coordinate, area_state.can_confirm()], [Vector2i(45, 45), Vector2i(-1, -1), false, true, Vector2i(45, 45), true], "an area spell previews its default center and T marks that center for Space confirmation")
 	assert_true(area_state.select_coordinate(Vector2i(44, 45)) and area_state.can_confirm(), "staged area targeting accepts a battlefield center without precomputing every legal center")
 	assert_equal(area_state.committed_body().target_coordinate, Vector2i(44, 45), "deferred targeting preserves the selected center for authoritative submit-time validation")
 func _test_combat_playback_controller() -> void:

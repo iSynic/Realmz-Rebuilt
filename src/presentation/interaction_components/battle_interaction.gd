@@ -304,7 +304,7 @@ func _start_targeting(configuration: CombatTargetingRequest, parent: Container) 
 	_targeting_controls.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_targeting_controls.add_theme_constant_override("separation", 3)
 	parent.add_child(_targeting_controls)
-	_targeting_status_label = _add_hint_to(_targeting_controls, "Targeting • Click a target, or press T to cycle; Space confirms.")
+	_targeting_status_label = _add_hint_to(_targeting_controls, "Targeting • Aim with the pointer; T marks or cycles a target; Space casts.")
 	_targeting_status_label.add_theme_font_size_override("font_size", 12)
 	_targeting_status_label.max_lines_visible = 1
 	_targeting_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

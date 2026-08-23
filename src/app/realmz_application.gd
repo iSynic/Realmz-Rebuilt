@@ -338,7 +338,7 @@ func _input(event: InputEvent) -> void:
 		return
 	if pending != null:
 		if pending.kind == InteractionRequest.COMBAT:
-			if _battlefield_presenter.targeting_active() and event.is_action_pressed(&"realmz_cycle_target") and _battlefield_presenter.cycle_targeting_candidate():
+			if _battlefield_presenter.targeting_active() and event.is_action_pressed(&"realmz_target") and _battlefield_presenter.target_with_keyboard():
 				get_viewport().set_input_as_handled()
 				return
 			if _battlefield_presenter.targeting_active() and event.is_action_pressed(&"realmz_confirm_target") and _battlefield_presenter.confirm_targeting():
