@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 15 | 53 | 1 |
+| classic | 69 | 0 | 15 | 51 | 3 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -32,8 +32,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
 | classic | partial | 15 | 15 | 0 |
-| classic | functional | 53 | 53 | 0 |
-| classic | certified | 1 | 1 | 0 |
+| classic | functional | 53 | 51 | -2 |
+| classic | certified | 1 | 3 | +2 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 6 | 6 | 0 |
@@ -50,7 +50,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Inventory and equipment | 9 | 0 | 2 | 7 | 0 |
 | Spellcasting | 3 | 0 | 2 | 1 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
-| Combat | 14 | 0 | 2 | 11 | 1 |
+| Combat | 14 | 0 | 2 | 9 | 3 |
 | Rewards and progression | 5 | 0 | 0 | 5 | 0 |
 | Maps and journal | 3 | 0 | 2 | 1 | 0 |
 | Save and system | 5 | 0 | 3 | 2 | 0 |
@@ -98,8 +98,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | absent | 0 |
 | fixture-shell | 1 |
-| functional | 67 |
-| accepted | 1 |
+| functional | 65 |
+| accepted | 3 |
 
 ### Host
 
@@ -137,7 +137,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: | ---: |
 | synthetic | 69 | 7 |
 | route-harness | 40 | 2 |
-| aogm-ordinary | 41 | 3 |
+| aogm-ordinary | 44 | 3 |
 | other-ordinary | 0 | 0 |
 | cross-platform | 0 | 0 |
 
@@ -155,7 +155,7 @@ Blockers: **1**. Major gaps: **13**.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
 - **major** `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete. Next: Route the trap spell through the source-backed application spell effect, then run a controlled Castle comparison and ordinary campaign UI acceptance.
-- **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, summoning, multi-actor ray, rotated-area, and persistent-field resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities. Next: Certify the rotatable persistent-field picker and cast path in fresh ordinary AOGM play, then implement the next AOGM-reachable special-effect family.
+- **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, summoning, multi-actor ray, rotated-area, and persistent-field resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities. Next: Implement the next AOGM-reachable special-effect family while keeping every unavailable family explicit.
 - **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption. Field-character casting now has a catalog disposition for every application spell and keeps each pending family visible with an exact reason; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Implement discard, case-transfer, allied-target, and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
 - **major** `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1â€“3 music remain unresolved. Next: Add an explicit Providence base-scale field and normalized scenario music resources, then certify Indoor and Custom 1â€“3 through ordinary packages without inferring either from landlook.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
