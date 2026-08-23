@@ -13,9 +13,9 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM rotatable area spells** (`aogm-rotatable-area-spells`)
+**AOGM rotatable persistent fields** (`aogm-rotatable-area-spells`)
 
-The application report exposes eight stock player spells sharing Classic target type 3, authored size 10, and four source-selected adjacent Data AD orientations. The pinned Castle target flow proves that orientation adds zero through three to the authored mask, Return cycles the manual orientation, and monster AI rolls one of four orientations. This four-workflow batch carries the orientation through learned spells, fixed-power scrolls and charged items, battlefield preview/input, Party Auto, and monster AI while preserving ally-safe automatic selection. Persistent fields and unrelated special effects remain separate transactions; persistent character Auto is the bounded ordinary-play certification surface.
+Feature-report v2 and the current AOGM package distinguish eight stock player spells that combine Classic target type 3, authored size 10, four source-selected adjacent Data AD orientations, and nonzero queue icons. The pinned Castle target flow proves that orientation adds zero through three to the authored mask, Return cycles the manual orientation, and the resulting queued field owns later collision and expiry behavior. This four-workflow batch carries orientation and the persistent-field lifecycle through learned spells, fixed-power scrolls and charged items, battlefield preview/input, Party Auto, and monster AI while preserving ally-safe automatic selection. Persistent character Auto remains the bounded ordinary-play certification surface.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
@@ -157,7 +157,7 @@ Blockers: **1**. Major gaps: **13**.
 - **major** `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete. Next: Route the trap spell through the source-backed application spell effect, then run a controlled Castle comparison and ordinary campaign UI acceptance.
 - **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting now share source-backed condition-cure, summoning, and multi-actor ray resolution. Every application spell has one mechanical-family and per-source disposition; persistent fields, rotated areas, and other special-effect families remain explicit pending capabilities. Next: Implement the eight stock rotatable target-type-3 area spells as one deterministic orientation transaction, then certify their picker and cast path in fresh ordinary play.
 - **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption. Field-character casting now has a catalog disposition for every application spell and keeps each pending family visible with an exact reason; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Implement discard, case-transfer, allied-target, and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
-- **major** `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1–3 music remain unresolved. Next: Add an explicit Providence base-scale field and normalized scenario music resources, then certify Indoor and Custom 1–3 through ordinary packages without inferring either from landlook.
+- **major** `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1Ã¢â‚¬â€œ3 music remain unresolved. Next: Add an explicit Providence base-scale field and normalized scenario music resources, then certify Indoor and Custom 1Ã¢â‚¬â€œ3 through ordinary packages without inferring either from landlook.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
 ## Oracle-required unknowns
@@ -179,7 +179,7 @@ Blockers: **1**. Major gaps: **13**.
 
 ### other-campaign
 
-- `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1–3 music remain unresolved.
+- `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1Ã¢â‚¬â€œ3 music remain unresolved.
 - `classic.character.age-update` - Age updates have no ordinary-campaign observation because the trigger is rare.
 - `classic.exploration.travel` - Dungeon and boat variants lack ordinary campaign certification.
 - `classic.maps.authored-journal` - Authored journal discovery and browsing have synthetic proof only.
