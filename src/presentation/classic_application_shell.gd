@@ -482,6 +482,7 @@ func _apply_layout() -> void:
 	_activity_indicator.position = stage_rect.position + Vector2(10.0, 10.0)
 	_activity_indicator.size = Vector2(40.0, 40.0)
 	var roster_width := combat_spellbook_roster_width(viewport_size.x, _profile.party_width, _profile.ui_scale, _party_roster.combat_spellbook_active())
+	var footer_width := exploration_footer_width(viewport_size, _profile, _router.current_screen())
 	_party_roster.position = origin + Vector2(viewport_size.x - roster_width, _profile.menu_height)
 	_party_roster.size = Vector2(roster_width, party_roster_height(viewport_size.y, _profile.menu_height, stage_height, _party_roster.combat_spellbook_active()))
 	_party_roster.z_index = party_roster_z_index(_party_roster.combat_spellbook_active())
@@ -494,18 +495,19 @@ func _apply_layout() -> void:
 	_world_command_panel.custom_minimum_size.x = minf(240.0, viewport_size.x * 0.2) if _world_command_panel.visible else 0.0
 	_world_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_BEGIN
 	_world_command_panel.size_flags_stretch_ratio = 0.85
+	_command_panel.visible = _router.current_screen() != &"spells"
 	_command_panel.custom_minimum_size.x = maxf(300.0, command_width) if _world_command_panel.visible else command_width
 	_command_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _world_command_panel.visible else Control.SIZE_SHRINK_END
 	_command_panel.size_flags_stretch_ratio = 1.15
 	_command_panel.custom_minimum_size.y = 0.0
-	_narrative_well.custom_minimum_size.x = 620.0 if _world_command_panel.visible else maxf(360.0, viewport_size.x - command_width - 12.0)
+	_narrative_well.custom_minimum_size.x = minf(620.0, maxf(360.0, footer_width - _world_command_panel.custom_minimum_size.x - 12.0)) if _world_command_panel.visible else maxf(360.0, footer_width - (command_width if _command_panel.visible else 0.0) - 12.0)
 	_narrative_well.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if _world_command_panel.visible else Control.SIZE_EXPAND_FILL
 	_world_command_grid.columns = 4
 	_command_grid.columns = 4 if _world_command_panel.visible else maxi(2, floori(command_width / (108.0 if _profile.bitmap_scale == 2 else 58.0)))
 	# Orientation and child minima must settle before shrinking the outer panel;
 	# otherwise Control retains the previous wider profile's minimum-clamped size.
 	_bottom_region.position = origin + Vector2(0.0, viewport_size.y - _profile.bottom_height)
-	_bottom_region.size = Vector2(viewport_size.x, _profile.bottom_height)
+	_bottom_region.size = Vector2(footer_width, _profile.bottom_height)
 	var picture_size := Vector2(minf(560.0 * _profile.ui_scale, stage_rect.size.x - 48.0), minf(360.0 * _profile.ui_scale, stage_rect.size.y - 48.0))
 	_picture_stage.position = stage_rect.position + (stage_rect.size - picture_size) * 0.5
 	_picture_stage.size = picture_size
@@ -529,6 +531,10 @@ static func combat_spellbook_roster_width(viewport_width: float, party_width: fl
 
 static func combat_spellbook_stage_width(stage_width: float, viewport_width: float, roster_width: float) -> float:
 	return minf(stage_width, viewport_width - roster_width)
+
+
+static func exploration_footer_width(viewport_size: Vector2, profile: UiLayoutProfile, route_id: StringName) -> float:
+	return ClassicScreenRouter.spell_workspace_rect_for(profile, viewport_size).position.x if route_id == &"spells" else viewport_size.x
 
 
 func _apply_exploration_mode() -> void:
