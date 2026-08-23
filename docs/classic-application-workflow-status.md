@@ -13,18 +13,17 @@ Delivery state is derived. Missing means required content, simulation, or presen
 
 ## Current parity-convergence batch
 
-**AOGM rotatable persistent fields** (`aogm-rotatable-area-spells`)
+**AOGM item and scroll magic completion** (`aogm-item-scroll-completion`)
 
-Feature-report v2 and the current AOGM package distinguish eight stock player spells that combine Classic target type 3, authored size 10, four source-selected adjacent Data AD orientations, and nonzero queue icons. The pinned Castle target flow proves that orientation adds zero through three to the authored mask, Return cycles the manual orientation, and the resulting queued field owns later collision and expiry behavior. This four-workflow batch carries orientation and the persistent-field lifecycle through learned spells, fixed-power scrolls and charged items, battlefield preview/input, Party Auto, and monster AI while preserving ally-safe automatic selection. Persistent character Auto remains the bounded ordinary-play certification surface.
+The closed persistent-field batch leaves four connected Classic item-magic branches explicit: fixed-power repeated combat targets, random-power combat staging, scroll-case discard, and scroll-case transfer. This three-workflow batch routes those branches through the shared deterministic spell-source transactions, preserves exact-once item and slot accounting across target and save boundaries, and uses ordinary AOGM Treasure play to certify that Detect Magic and Identify remain independent actions.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.spellcasting.combat-cast` | implementation | aogm-major-partial | - | GAP-SPELL-003 |
 | `classic.inventory.use-item` | implementation | aogm-major-partial | - | GAP-INV-003 |
-| `classic.combat.auto-turn` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.combat.auto-character` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.spellcasting.field-camp-cast` | implementation | aogm-major-partial | - | GAP-SPELL-002 |
+| `classic.rewards.detect-identify-loot` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
@@ -32,8 +31,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
 | classic | partial | 15 | 15 | 0 |
-| classic | functional | 53 | 51 | -2 |
-| classic | certified | 1 | 3 | +2 |
+| classic | functional | 51 | 51 | 0 |
+| classic | certified | 3 | 3 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 6 | 6 | 0 |
