@@ -320,12 +320,14 @@ static func _item_used_event(caster_id: String, instance_id: String, item: ItemD
 
 
 func cast_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, spell_id: String, power_level: int, rng: RealmzRng, target_coordinate: Vector2i = Vector2i(-100_000, -100_000), rotation: int = 0, target_ids: Array[String] = [], target_coordinates: Array[Vector2i] = []) -> CombatFlowResult:
-	var probe := probe_character_spell_cast(state, content, caster_id, target_id, spell_id, power_level, target_coordinate, rotation, target_ids, target_coordinates)
+	var spell := content.spell_by_id(spell_id) if content != null else null
+	var effective_target_id := caster_id if spell != null and spell.target_type == 5 else target_id
+	var probe := probe_character_spell_cast(state, content, caster_id, effective_target_id, spell_id, power_level, target_coordinate, rotation, target_ids, target_coordinates)
 	if not probe.allowed:
 		return CombatFlowResult.failed(probe.reason, probe.reason_text)
 	var combat := state.combat
 	var caster := state.party.character_by_id(caster_id)
-	var spell := content.spell_by_id(spell_id)
+	spell = content.spell_by_id(spell_id)
 	var cast_level := spell.classic_tier()
 	if _flow()._is_summon_spell(spell):
 		return _flow()._cast_character_summon(state, content, caster, spell, power_level, rng, target_coordinates)
@@ -359,7 +361,7 @@ func cast_spell(state: GameState, content: RealmzContent, caster_id: String, tar
 		if ray == null or not ray.cast:
 			return CombatFlowResult.failed(&"spell_cast_failed", "The ray spell could not be cast with the available spell points.")
 		return _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, ray, rng)
-	var selection := _spell_target_selection(state, content, target_id)
+	var selection := _spell_target_selection(state, content, effective_target_id)
 	if selection == null:
 		return CombatFlowResult.failed(&"spell_target_unavailable", "The selected combatant is unavailable.")
 	var targeted := _rules.magic.resolve_character_targeted_spell(caster, selection, spell, power_level, cast_level, rng)
@@ -687,6 +689,8 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		_append_spell_projectile_event(events, caster.id, resolved_target_id, spell, event_source)
 		_append_spell_sound(events, spell.sound_end, "classic-combat-spell-result")
 		var payload := {"actorId": caster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": event_source}
+		if resolution.spell_point_delta != 0 or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell):
+			payload["spellPointDelta"] = resolution.spell_point_delta
 		if resolution.cleared_condition >= 0:
 			payload["clearedCondition"] = resolution.cleared_condition
 		if resolution.applied_condition >= 0:
@@ -855,9 +859,10 @@ func probe_character_spell_cast(state: GameState, content: RealmzContent, caster
 		if terrain_set == null or not _rules.battlefield.coordinate_target_is_valid(combat.battlefield, terrain_set, caster.id, target_coordinate, maximum_range, spell.range_min + spell.range_max > 0):
 			return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "The area center is outside the Classic spell range or line of sight.")
 	elif not group_target:
-		if _spell_target_selection(state, content, target_id) == null:
+		var effective_target_id := caster_id if spell.target_type == 5 else target_id
+		if _spell_target_selection(state, content, effective_target_id) == null:
 			return CombatSpellCastProbe.blocked(&"invalid_spell_target", "The spell target is unavailable.")
-		if not _spell_actor_target_is_valid(state, content, caster.id, target_id, spell, power_level):
+		if not _spell_actor_target_is_valid(state, content, caster.id, effective_target_id, spell, power_level):
 			return CombatSpellCastProbe.blocked(&"spell_target_unavailable", "The target is outside the Classic spell range or line of sight.")
 	return CombatSpellCastProbe.permitted()
 
@@ -889,6 +894,9 @@ func character_spell_options(state: GameState, content: RealmzContent, caster_id
 				var shape := _rules.spell_areas.shape_for(spell, power_level)
 				var offsets := _rules.spell_areas.pattern(shape)
 				result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), offsets, 1, [], [], _rules.spell_areas.rotation_patterns(spell, power_level)))
+				continue
+			if spell.target_type == 5:
+				result.append(CombatSpellOptionView.new(spell, power_level, _spell_target_view(state, content, caster_id), "Self", &"automatic"))
 				continue
 			result.append(CombatSpellOptionView.new(spell, power_level, null, "Choose combatant"))
 	return result

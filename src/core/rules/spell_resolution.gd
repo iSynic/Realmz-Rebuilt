@@ -11,6 +11,7 @@ var target_defeated: bool
 var aging: CharacterAgingResult
 var cleared_condition: int = -1
 var applied_condition: int = -1
+var spell_point_delta: int = 0
 var unequipped_item_ids: Array[String] = []
 
 

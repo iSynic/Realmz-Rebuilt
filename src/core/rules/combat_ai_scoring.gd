@@ -92,13 +92,14 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 		return _monster_hostile_group_spell_power_plan(state, content, monster, spell, slot, power)
 	var cure_index := MagicRules.condition_cure_index(spell) if MagicRules.is_condition_cure_spell(spell) else -1
 	var effect_index := ClassicSpellCapabilityCatalog.combat_condition_effect_index(spell)
-	var friendly := spell.cannot == 4 or cure_index >= 0
+	var spell_point_restore := ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell)
+	var friendly := spell.cannot == 4 or cure_index >= 0 or spell_point_restore
 	var candidates: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and (character.traitor == monster.traitor) == friendly and (cure_index < 0 or character.conditions.is_active(cure_index)) and (effect_index < 0 or character.conditions.value(effect_index) == 0) and (cure_index >= 0 or character.id == monster.id or not _target_reflects(state, character.id)) and (friendly or not _target_hard_immune(state, content, character.id, spell)) and state.combat.battlefield.has_actor(character.id) and _flow()._spell_actor_target_is_valid(state, content, monster.id, character.id, spell, power):
+		if character.current_health > 0 and (character.traitor == monster.traitor) == friendly and (spell.target_type != 5 or character.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, character.id) > 0) and (cure_index < 0 or character.conditions.is_active(cure_index)) and (effect_index < 0 or character.conditions.value(effect_index) == 0) and (cure_index >= 0 or character.id == monster.id or not _target_reflects(state, character.id)) and (friendly or not _target_hard_immune(state, content, character.id, spell)) and state.combat.battlefield.has_actor(character.id) and _flow()._spell_actor_target_is_valid(state, content, monster.id, character.id, spell, power):
 			candidates.append(character.id)
 	for candidate: MonsterState in state.combat.monsters():
-		if candidate.current_health > 0 and (candidate.traitor == monster.traitor) == friendly and (cure_index < 0 or candidate.conditions.is_active(cure_index)) and (effect_index < 0 or candidate.conditions.value(effect_index) == 0) and (cure_index >= 0 or candidate.id == monster.id or not _target_reflects(state, candidate.id)) and (friendly or not _target_hard_immune(state, content, candidate.id, spell)) and state.combat.battlefield.has_actor(candidate.id) and content.monster_by_id(candidate.definition_id) != null and _flow()._spell_actor_target_is_valid(state, content, monster.id, candidate.id, spell, power):
+		if candidate.current_health > 0 and (candidate.traitor == monster.traitor) == friendly and (spell.target_type != 5 or candidate.id == monster.id) and (not spell_point_restore or _target_missing_spell_points(state, candidate.id) > 0) and (cure_index < 0 or candidate.conditions.is_active(cure_index)) and (effect_index < 0 or candidate.conditions.value(effect_index) == 0) and (cure_index >= 0 or candidate.id == monster.id or not _target_reflects(state, candidate.id)) and (friendly or not _target_hard_immune(state, content, candidate.id, spell)) and state.combat.battlefield.has_actor(candidate.id) and content.monster_by_id(candidate.definition_id) != null and _flow()._spell_actor_target_is_valid(state, content, monster.id, candidate.id, spell, power):
 			candidates.append(candidate.id)
 	if candidates.is_empty():
 		return {}
@@ -111,7 +112,7 @@ func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster
 	for target_id: String in candidates:
 		if selected.size() >= (power if spell.target_type == 0 else 1):
 			break
-		if cure_index >= 0 or not healing or _target_missing_health(state, target_id) > 0:
+		if cure_index >= 0 or spell_point_restore or not healing or _target_missing_health(state, target_id) > 0:
 			selected.append(target_id)
 	if selected.is_empty():
 		return {}
@@ -214,6 +215,8 @@ func _monster_ray_spell_power_plan(state: GameState, content: RealmzContent, mon
 
 func _monster_target_score(state: GameState, target_id: String, spell: SpellDefinition, power: int, healing: bool, cure_index: int = -1, effect_index: int = -1) -> int:
 	var expected := expected_spell_effect(spell, power)
+	if ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell):
+		return 620 + mini(_target_missing_spell_points(state, target_id), expected) * 5 + _target_missing_spell_points(state, target_id)
 	if cure_index >= 0:
 		return _condition_cure_score(state, target_id, cure_index)
 	if effect_index >= 0:
@@ -291,6 +294,8 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_condition_effect(state, content, actor, spell, option.power))
 		elif _flow()._is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
+		elif ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell):
+			best = _prefer(best, _best_spell_point_restore(state, content, actor, spell, option.power))
 		elif spell.target_type in [0, 1, 3, 4, 6, 9, 10, 12]:
 			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache))
 	return best
@@ -394,6 +399,18 @@ func _best_heal(state: GameState, content: RealmzContent, actor: CharacterState,
 		var urgency := 980 if health_percent <= 35 else 680
 		var score := urgency + 100 - health_percent - absi(spell.cost * power) * 3
 		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": target.id, "score": score})
+	return best
+
+
+func _best_spell_point_restore(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
+	var best: Dictionary = {}
+	for target_id: String in _friendly_actor_ids(state, actor):
+		if spell.target_type == 5 and target_id != actor.id or _target_missing_spell_points(state, target_id) <= 0 or target_id != actor.id and _target_reflects(state, target_id):
+			continue
+		if not _flow().probe_character_spell_cast(state, content, actor.id, target_id, spell.id, power).allowed:
+			continue
+		var score := 620 + mini(_target_missing_spell_points(state, target_id), expected_spell_effect(spell, power)) * 5 + _target_missing_spell_points(state, target_id) - absi(spell.cost * power) * 3
+		best = _prefer(best, {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": target_id, "score": score})
 	return best
 
 
@@ -623,6 +640,14 @@ static func _target_maximum_health(state: GameState, target_id: String) -> int:
 
 static func _target_missing_health(state: GameState, target_id: String) -> int:
 	return maxi(0, _target_maximum_health(state, target_id) - _target_health(state, target_id))
+
+
+static func _target_missing_spell_points(state: GameState, target_id: String) -> int:
+	var character := state.party.character_by_id(target_id)
+	if character != null:
+		return maxi(0, character.maximum_spell_points - character.spell_points)
+	var monster := state.combat.monster_by_id(target_id)
+	return maxi(0, monster.maximum_spell_points - monster.spell_points) if monster != null else 0
 
 
 static func _target_hard_immune(state: GameState, content: RealmzContent, target_id: String, spell: SpellDefinition) -> bool:

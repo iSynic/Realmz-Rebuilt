@@ -366,6 +366,8 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			_flow()._append_spell_projectile_event(events, monster.id, resolved_target_id, spell, "classic-monster")
 			_flow()._append_spell_sound(events, spell.sound_end, "classic-monster-spell-result")
 			var payload := {"actorId": monster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster"}
+			if resolution.spell_point_delta != 0 or ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell):
+				payload["spellPointDelta"] = resolution.spell_point_delta
 			if resolution.cleared_condition >= 0:
 				payload["clearedCondition"] = resolution.cleared_condition
 			if resolution.applied_condition >= 0:
@@ -437,7 +439,8 @@ static func _monster_spell_unavailable_reason(spell: SpellDefinition) -> String:
 	var healing_spell := ClassicSpellCapabilityCatalog.is_combat_healing_spell(spell)
 	var condition_cure := ClassicSpellCapabilityCatalog.is_combat_condition_cure_spell(spell)
 	var condition_effect := ClassicSpellCapabilityCatalog.is_combat_condition_effect_spell(spell)
-	if spell.cannot == 4 and not healing_spell and not condition_cure and not condition_effect:
+	var spell_point_restore := ClassicSpellCapabilityCatalog.is_combat_spell_point_restore_spell(spell)
+	if spell.cannot == 4 and not healing_spell and not condition_cure and not condition_effect and not spell_point_restore:
 		return "monster-spell-friendly-target-unresolved"
 	return ""
 

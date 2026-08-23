@@ -130,6 +130,8 @@ func _resolve_character_spell_monster_target(caster_level: int, target: MonsterS
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
 	if absi(spell.special) == 49:
 		damage = 10 + target.current_health
+	if absi(spell.special) == 59:
+		return _restore_monster_spell_points(target, damage, duration, spell_cost, saved)
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, true)
@@ -162,6 +164,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 			damage /= 2
 	if absi(spell.special) == 49:
 		damage = 10 + target.current_health
+	if absi(spell.special) == 59:
+		return _restore_character_spell_points(target, damage, duration, 0, saved)
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
@@ -353,6 +357,8 @@ func _resolve_monster_spell_character_target(caster_level: int, target: Characte
 			damage /= 2
 	if absi(spell.special) == 49:
 		damage = 10 + target.current_health
+	if absi(spell.special) == 59:
+		return _restore_character_spell_points(target, damage, duration, spell_cost, saved)
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
@@ -388,6 +394,8 @@ func _resolve_monster_spell_monster_target(caster_level: int, target: MonsterSta
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
 	if absi(spell.special) == 49:
 		damage = 10 + target.current_health
+	if absi(spell.special) == 59:
+		return _restore_monster_spell_points(target, damage, duration, spell_cost, saved)
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, true)
@@ -413,6 +421,22 @@ func _heal_monster(target: MonsterState, amount: int, duration: int, spell_cost:
 	var healed := maxi(0, amount)
 	target.current_health = _arithmetic.signed_16(target.current_health + healed)
 	return SpellResolution.new(true, false, false, spell_cost, -healed, duration)
+
+
+static func _restore_character_spell_points(target: CharacterState, amount: int, duration: int, spell_cost: int, saved: bool) -> SpellResolution:
+	var before := target.spell_points
+	target.spell_points = mini(target.maximum_spell_points, target.spell_points + maxi(0, amount))
+	var result := SpellResolution.new(true, false, saved, spell_cost, 0, duration)
+	result.spell_point_delta = target.spell_points - before
+	return result
+
+
+static func _restore_monster_spell_points(target: MonsterState, amount: int, duration: int, spell_cost: int, saved: bool) -> SpellResolution:
+	var before := target.spell_points
+	target.spell_points = mini(target.maximum_spell_points, target.spell_points + maxi(0, amount))
+	var result := SpellResolution.new(true, false, saved, spell_cost, 0, duration)
+	result.spell_point_delta = target.spell_points - before
+	return result
 
 
 static func condition_cure_index(spell: SpellDefinition) -> int:
