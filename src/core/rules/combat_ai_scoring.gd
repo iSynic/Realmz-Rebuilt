@@ -1,6 +1,8 @@
 class_name CombatAiScoring
 extends RefCounted
 
+const INVALID_COORDINATE := Vector2i(-100_000, -100_000)
+
 const ContextType = preload("res://src/core/rules/combat_flow_context.gd")
 const MAX_WEIGHTED_DRAW: int = 32_767
 
@@ -80,37 +82,40 @@ func best_monster_spell_plan(state: GameState, content: RealmzContent, monster: 
 
 
 func _monster_spell_power_plan(state: GameState, content: RealmzContent, monster: MonsterState, spell: SpellDefinition, slot: int, power: int) -> Dictionary:
-	var friendly := spell.cannot == 4
+	var cure_index := MagicRules.condition_cure_index(spell) if MagicRules.is_condition_cure_spell(spell) else -1
+	var friendly := spell.cannot == 4 or cure_index >= 0
 	var candidates: Array[String] = []
 	for character: CharacterState in state.party.characters():
-		if character.current_health > 0 and (character.traitor == monster.traitor) == friendly and not _target_reflects(state, character.id) and (friendly or not _target_hard_immune(state, content, character.id, spell)) and state.combat.battlefield.has_actor(character.id) and _flow()._spell_actor_target_is_valid(state, content, monster.id, character.id, spell, power):
+		if character.current_health > 0 and (character.traitor == monster.traitor) == friendly and (cure_index < 0 or character.conditions.is_active(cure_index)) and (cure_index >= 0 or not _target_reflects(state, character.id)) and (friendly or not _target_hard_immune(state, content, character.id, spell)) and state.combat.battlefield.has_actor(character.id) and _flow()._spell_actor_target_is_valid(state, content, monster.id, character.id, spell, power):
 			candidates.append(character.id)
 	for candidate: MonsterState in state.combat.monsters():
-		if candidate.current_health > 0 and (candidate.traitor == monster.traitor) == friendly and not _target_reflects(state, candidate.id) and (friendly or not _target_hard_immune(state, content, candidate.id, spell)) and state.combat.battlefield.has_actor(candidate.id) and content.monster_by_id(candidate.definition_id) != null and _flow()._spell_actor_target_is_valid(state, content, monster.id, candidate.id, spell, power):
+		if candidate.current_health > 0 and (candidate.traitor == monster.traitor) == friendly and (cure_index < 0 or candidate.conditions.is_active(cure_index)) and (cure_index >= 0 or not _target_reflects(state, candidate.id)) and (friendly or not _target_hard_immune(state, content, candidate.id, spell)) and state.combat.battlefield.has_actor(candidate.id) and content.monster_by_id(candidate.definition_id) != null and _flow()._spell_actor_target_is_valid(state, content, monster.id, candidate.id, spell, power):
 			candidates.append(candidate.id)
 	if candidates.is_empty():
 		return {}
 	var healing: bool = _flow()._is_source_backed_combat_healing_spell(spell)
 	var target_scores: Dictionary = {}
 	for target_id: String in candidates:
-		target_scores[target_id] = _monster_target_score(state, target_id, spell, power, healing)
+		target_scores[target_id] = _monster_target_score(state, target_id, spell, power, healing, cure_index)
 	candidates.sort_custom(func(left: String, right: String) -> bool: return int(target_scores[left]) > int(target_scores[right]) or (target_scores[left] == target_scores[right] and left < right))
 	var selected: Array[String] = []
 	for target_id: String in candidates:
 		if selected.size() >= (power if spell.target_type == 0 else 1):
 			break
-		if not healing or _target_missing_health(state, target_id) > 0:
+		if cure_index >= 0 or not healing or _target_missing_health(state, target_id) > 0:
 			selected.append(target_id)
 	if selected.is_empty():
 		return {}
 	var score := 0
 	for target_id: String in selected:
-		score += _monster_target_score(state, target_id, spell, power, healing)
+		score += _monster_target_score(state, target_id, spell, power, healing, cure_index)
 	return {"spellId": spell.id, "spellSlot": slot, "power": power, "targetIds": selected, "score": score - spell.cost * power * 3}
 
 
-func _monster_target_score(state: GameState, target_id: String, spell: SpellDefinition, power: int, healing: bool) -> int:
+func _monster_target_score(state: GameState, target_id: String, spell: SpellDefinition, power: int, healing: bool, cure_index: int = -1) -> int:
 	var expected := expected_spell_effect(spell, power)
+	if cure_index >= 0:
+		return _condition_cure_score(state, target_id, cure_index)
 	if healing:
 		var missing := _target_missing_health(state, target_id)
 		var health_percent := 100 * _target_health(state, target_id) / maxi(1, _target_maximum_health(state, target_id))
@@ -175,11 +180,54 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 		var spell := content.spell_by_id(option.spell_id)
 		if spell == null:
 			continue
-		if _flow()._is_source_backed_combat_healing_spell(spell):
+		if MagicRules.is_condition_cure_spell(spell):
+			best = _prefer(best, _best_condition_cure(state, content, actor, spell, option.power))
+		elif _flow()._is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
 		elif spell.target_type in [0, 1, 3, 4, 10]:
 			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache))
 	return best
+
+
+func _best_condition_cure(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:
+	var condition_index := MagicRules.condition_cure_index(spell)
+	var candidates: Array[String] = []
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and character.traitor == actor.traitor and character.conditions.is_active(condition_index) and state.combat.battlefield.has_actor(character.id):
+			candidates.append(character.id)
+	for monster: MonsterState in state.combat.monsters():
+		if monster.current_health > 0 and monster.traitor == actor.traitor and monster.conditions.is_active(condition_index) and state.combat.battlefield.has_actor(monster.id):
+			candidates.append(monster.id)
+	candidates.sort_custom(func(left: String, right: String) -> bool: return _condition_cure_score(state, left, condition_index) > _condition_cure_score(state, right, condition_index) or (_condition_cure_score(state, left, condition_index) == _condition_cure_score(state, right, condition_index) and left < right))
+	if spell.target_type == 5:
+		return {"action": &"cast_spell", "spellId": spell.id, "power": power, "targetId": actor.id, "score": _condition_cure_score(state, actor.id, condition_index) - absi(spell.cost * power) * 3} if candidates.has(actor.id) and _flow().probe_character_spell_cast(state, content, actor.id, actor.id, spell.id, power).allowed else {}
+	var selected: Array[String] = []
+	for target_id: String in candidates:
+		if selected.size() >= (power if spell.target_type == 0 else 1):
+			break
+		var target_ids: Array[String] = []
+		if spell.target_type == 0:
+			target_ids.append(target_id)
+		if _flow().probe_character_spell_cast(state, content, actor.id, target_id, spell.id, power, INVALID_COORDINATE, 0, target_ids).allowed:
+			selected.append(target_id)
+	if selected.is_empty():
+		return {}
+	var score := 0
+	for target_id: String in selected:
+		score += _condition_cure_score(state, target_id, condition_index)
+	var result := {"action": &"cast_spell", "spellId": spell.id, "power": power, "score": score - absi(spell.cost * power) * 3}
+	if spell.target_type == 0:
+		result["targetIds"] = selected
+	else:
+		result["targetId"] = selected[0]
+	return result
+
+
+static func _condition_cure_score(state: GameState, target_id: String, condition_index: int) -> int:
+	var character := state.party.character_by_id(target_id)
+	var condition_value := character.conditions.value(condition_index) if character != null else state.combat.monster_by_id(target_id).conditions.value(condition_index)
+	var urgency := 900 if condition_index in [ConditionRules.POISONED, ConditionRules.DISEASED] else 720
+	return urgency + mini(200, absi(condition_value) * 10)
 
 
 func _best_heal(state: GameState, content: RealmzContent, actor: CharacterState, spell: SpellDefinition, power: int) -> Dictionary:

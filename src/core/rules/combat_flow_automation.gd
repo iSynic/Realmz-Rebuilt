@@ -334,6 +334,8 @@ func _process_monster_cast(state: GameState, content: RealmzContent, monster: Mo
 			_flow()._append_spell_projectile_event(events, monster.id, resolved_target_id, spell, "classic-monster")
 			_flow()._append_spell_sound(events, spell.sound_end, "classic-monster-spell-result")
 			var payload := {"actorId": monster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": cost_power, "rangePower": range_power, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": "classic-monster"}
+			if resolution.cleared_condition >= 0:
+				payload["clearedCondition"] = resolution.cleared_condition
 			_flow()._append_spell_presentation(payload, spell, index, resolutions.resolutions.size(), resolution.target_defeated)
 			events.append(DomainEvent.new(&"combat_spell_resolved", payload))
 			if not resolution.target_defeated:
@@ -383,15 +385,16 @@ static func _monster_spell_unavailable_reason(spell: SpellDefinition) -> String:
 	if spell.target_type not in [0, 1]:
 		return "monster-spell-target-shape-unresolved"
 	var healing_spell := _is_source_backed_combat_healing_spell(spell)
-	if spell.special != 0 and not healing_spell:
+	var condition_cure := MagicRules.is_condition_cure_spell(spell)
+	if spell.special != 0 and not healing_spell and not condition_cure:
 		return "monster-spell-special-unresolved"
-	if not healing_spell and (absi(spell.damage_type) < 1 or absi(spell.damage_type) > 6 or absi(spell.spell_class) == 9):
+	if not healing_spell and not condition_cure and (absi(spell.damage_type) < 1 or absi(spell.damage_type) > 6 or absi(spell.spell_class) == 9):
 		return "monster-spell-damage-class-unresolved"
-	if not healing_spell and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0:
+	if not healing_spell and not condition_cure and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0:
 		return "monster-spell-zero-damage-effect-unresolved"
 	if spell.cost <= 0:
 		return "monster-spell-nonpositive-cost-anomaly"
-	if spell.cannot == 4 and not healing_spell:
+	if spell.cannot == 4 and not healing_spell and not condition_cure:
 		return "monster-spell-friendly-target-unresolved"
 	return ""
 

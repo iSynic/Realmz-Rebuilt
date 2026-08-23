@@ -659,6 +659,8 @@ static func _append_field_spell_events(context: SessionWorkflowContext, events: 
 	for index: int in resolution.resolutions.size():
 		var target_resolution := resolution.resolutions[index]
 		var payload := {"characterId": character.id, "targetId": resolution.target_ids[index], "spellId": spell.id, "power": power, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}
+		if target_resolution.cleared_condition >= 0:
+			payload["clearedCondition"] = target_resolution.cleared_condition
 		payload.merge(event_context, true)
 		events.append(DomainEvent.new(event_kind, payload))
 		if target_resolution.aging != null and target_resolution.aging.changed_group():

@@ -279,8 +279,9 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 	if actor_target and _spell_target_selection(state, content, effective_target_id) == null:
 		return CombatSpellCastProbe.blocked(&"invalid_scroll_target", "The selected combatant is unavailable.")
 	var healing_spell = _flow()._is_source_backed_combat_healing_spell(spell)
+	var condition_cure := MagicRules.is_condition_cure_spell(spell)
 	var ordinary_spell := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9
-	if spell.target_type not in [0, 1, 2, 3, 4, 5, 9, 10, 12] or (not ordinary_spell and not healing_spell):
+	if spell.target_type not in [0, 1, 2, 3, 4, 5, 9, 10, 12] or (not ordinary_spell and not healing_spell and not condition_cure):
 		return CombatSpellCastProbe.blocked(&"unsupported_combat_scroll", "This scroll's Classic combat effect is not implemented yet.")
 	if repeated_target and spell.size != 0:
 		return CombatSpellCastProbe.blocked(&"repeated_open_space_spell_unresolved", "Classic target type 0 with nonzero size selects open-space footprints for summoning or special behavior, not ordinary actors.")
@@ -290,7 +291,7 @@ func probe_character_scroll_cast(state: GameState, content: RealmzContent, caste
 		return CombatSpellCastProbe.blocked(&"rotatable_area_spell_unresolved", "Classic rotatable area masks require a separate orientation-selection contract.")
 	if area_target and rotation != 0:
 		return CombatSpellCastProbe.blocked(&"invalid_area_rotation", "This non-rotating Classic area spell requires rotation zero.")
-	if not healing_spell and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0:
+	if not healing_spell and not condition_cure and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0:
 		return CombatSpellCastProbe.blocked(&"unsupported_combat_scroll", "A zero-damage scroll requires its source-backed special-effect path.")
 	var cast_level := spell.classic_tier()
 	if cast_level < 0 or cast_level > 6:
@@ -529,6 +530,8 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 		_append_spell_projectile_event(events, caster.id, resolved_target_id, spell, event_source)
 		_append_spell_sound(events, spell.sound_end, "classic-combat-spell-result")
 		var payload := {"actorId": caster.id, "targetId": resolved_target_id, "selectedTargetId": selected_target_id, "targetKind": String(target_kind), "spellId": spell.id, "targetType": spell.target_type, "power": power_level, "classicTier": cast_level, "reflected": reflected, "resisted": resolution.resisted, "saved": resolution.saved, "damage": resolution.damage, "healing": maxi(0, -resolution.damage), "duration": resolution.duration, "defeated": resolution.target_defeated, "source": event_source}
+		if resolution.cleared_condition >= 0:
+			payload["clearedCondition"] = resolution.cleared_condition
 		_append_spell_presentation(payload, spell, index, group.resolutions.size(), resolution.target_defeated)
 		if not item_instance_id.is_empty():
 			payload["itemInstanceId"] = item_instance_id
@@ -623,16 +626,17 @@ func probe_character_spell_choice(state: GameState, content: RealmzContent, cast
 	if not spell.in_combat:
 		return CombatSpellCastProbe.blocked(&"spell_not_available_in_combat", "The selected spell is not available in combat.")
 	var healing_spell = _flow()._is_source_backed_combat_healing_spell(spell)
+	var condition_cure := MagicRules.is_condition_cure_spell(spell)
 	var ordinary_spell := spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and absi(spell.spell_class) != 9
-	if spell.target_type not in [0, 1, 3, 4, 9, 10, 12] or (not ordinary_spell and not healing_spell):
-		return CombatSpellCastProbe.blocked(&"unsupported_combat_spell", "This pass supports source-backed ordinary combat spells and the strict special-57 single-target healing form.")
+	if spell.target_type not in [0, 1, 3, 4, 9, 10, 12] or (not ordinary_spell and not healing_spell and not condition_cure):
+		return CombatSpellCastProbe.blocked(&"unsupported_combat_spell", "This spell's Classic combat effect is not implemented yet.")
 	if repeated_target and spell.size != 0:
 		return CombatSpellCastProbe.blocked(&"repeated_open_space_spell_unresolved", "Classic target type 0 with nonzero size selects open-space footprints for summoning or special behavior, not ordinary actors.")
 	if spell.queue_icon != 0:
 		return CombatSpellCastProbe.blocked(&"queued_spell_field_unresolved", "This spell creates a persistent Classic battlefield field whose collision lifecycle is not implemented.")
 	if area_target and spell.can_rotate:
 		return CombatSpellCastProbe.blocked(&"rotatable_area_spell_unresolved", "Classic rotatable area masks require a separate orientation-selection contract.")
-	if not healing_spell and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0:
+	if not healing_spell and not condition_cure and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0:
 		return CombatSpellCastProbe.blocked(&"unsupported_combat_spell", "A zero-damage spell requires its source-backed special-effect path.")
 	if spell.cost < 0 and power_level != 1:
 		return CombatSpellCastProbe.blocked(&"fixed_power_spell", "Castle fixes negative-cost spells at power one.")

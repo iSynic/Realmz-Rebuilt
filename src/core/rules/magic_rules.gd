@@ -20,7 +20,7 @@ func resolve_character_targeted_spell(caster: CharacterState, selection: SpellTa
 		caster.spell_points -= spell_cost
 	else:
 		spell_cost = 0
-	var effective := _reflect_to_character_caster(caster, selection, rng, &"magic.reflect")
+	var effective := selection if is_condition_cure_spell(spell) else _reflect_to_character_caster(caster, selection, rng, &"magic.reflect")
 	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"magic.duration")
 	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"magic.damage")
 	var result := GroupSpellResolution.new(true, spell_cost, duration, damage)
@@ -74,7 +74,7 @@ func resolve_character_repeated_spell(caster: CharacterState, selections: Array[
 		spell_cost = 0
 	var result := RepeatedSpellResolution.new(true, spell_cost, selections.size())
 	for index: int in selections.size():
-		var selection := _reflect_to_character_caster(caster, selections[index], rng, StringName("magic.repeated.reflect.%d" % index))
+		var selection := selections[index] if is_condition_cure_spell(spell) else _reflect_to_character_caster(caster, selections[index], rng, StringName("magic.repeated.reflect.%d" % index))
 		var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, StringName("magic.repeated.duration.%d" % index))
 		var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, StringName("magic.repeated.damage.%d" % index))
 		if not selection.reflected and selection.kind == &"monster" and selection.monster.magic_resistance > 100:
@@ -92,6 +92,9 @@ func _resolve_character_spell_monster_target(caster_level: int, target: MonsterS
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
 	if absi(spell.special) == 57:
 		return _heal_monster(target, damage, duration, spell_cost)
+	var cured_condition := condition_cure_index(spell)
+	if cured_condition >= 0:
+		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type <= 6:
@@ -118,6 +121,9 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 		return SpellResolution.new(true, true, false, 0, 0, duration)
 	if absi(spell.special) == 57:
 		return _heal_character(target, damage, duration, 0)
+	var cured_condition := condition_cure_index(spell)
+	if cured_condition >= 0:
+		return _clear_condition(target.conditions, cured_condition, 0, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type <= 6:
@@ -209,7 +215,7 @@ func resolve_monster_targeted_spell(caster: MonsterState, caster_definition: Mon
 	if spell_cost <= 0 or caster.spell_points < spell_cost:
 		return GroupSpellResolution.new(false, maxi(0, spell_cost), 0, 0)
 	caster.spell_points -= spell_cost
-	var effective := _reflect_to_monster_caster(caster, caster_definition, selection, rng, &"magic.monster-spell.reflect")
+	var effective := selection if is_condition_cure_spell(spell) else _reflect_to_monster_caster(caster, caster_definition, selection, rng, &"magic.monster-spell.reflect")
 	var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, &"magic.monster-spell.duration")
 	var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, &"magic.monster-spell.damage")
 	var result := GroupSpellResolution.new(true, spell_cost, duration, damage)
@@ -232,7 +238,7 @@ func resolve_monster_repeated_spell(caster: MonsterState, caster_definition: Mon
 	caster.spell_points -= spell_cost
 	var result := RepeatedSpellResolution.new(true, spell_cost, selections.size())
 	for index: int in selections.size():
-		var selection := _reflect_to_monster_caster(caster, caster_definition, selections[index], rng, StringName("magic.monster-repeated.reflect.%d" % index))
+		var selection := selections[index] if is_condition_cure_spell(spell) else _reflect_to_monster_caster(caster, caster_definition, selections[index], rng, StringName("magic.monster-repeated.reflect.%d" % index))
 		var duration := _scaled_roll(spell.duration_min, spell.duration_max, spell.power_duration_min, spell.power_duration_max, power_level, rng, StringName("magic.monster-repeated.duration.%d" % index))
 		var damage := _scaled_roll(spell.damage_min, spell.damage_max, spell.power_damage_min, spell.power_damage_max, power_level, rng, StringName("magic.monster-repeated.damage.%d" % index))
 		if not selection.reflected and selection.kind == &"monster" and selection.monster.magic_resistance > 100:
@@ -263,6 +269,9 @@ func _resolve_monster_spell_character_target(caster_level: int, target: Characte
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
 	if absi(spell.special) == 57:
 		return _heal_character(target, damage, duration, spell_cost)
+	var cured_condition := condition_cure_index(spell)
+	if cured_condition >= 0:
+		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type <= 6:
@@ -285,6 +294,9 @@ func _resolve_monster_spell_monster_target(caster_level: int, target: MonsterSta
 		return SpellResolution.new(true, true, false, spell_cost, 0, duration)
 	if absi(spell.special) == 57:
 		return _heal_monster(target, damage, duration, spell_cost)
+	var cured_condition := condition_cure_index(spell)
+	if cured_condition >= 0:
+		return _clear_condition(target.conditions, cured_condition, spell_cost, duration)
 	var saved := false
 	var damage_type := absi(spell.damage_type)
 	if damage_type > 0 and damage_type <= 6:
@@ -319,6 +331,24 @@ func _heal_monster(target: MonsterState, amount: int, duration: int, spell_cost:
 	var healed := maxi(0, amount)
 	target.current_health = _arithmetic.signed_16(target.current_health + healed)
 	return SpellResolution.new(true, false, false, spell_cost, -healed, duration)
+
+
+static func condition_cure_index(spell: SpellDefinition) -> int:
+	if spell == null:
+		return -1
+	var index := absi(spell.special) - 101
+	return index if index >= 0 and index < ConditionSet.CHARACTER_COUNT else -1
+
+
+static func is_condition_cure_spell(spell: SpellDefinition) -> bool:
+	return spell != null and spell.in_combat and spell.queue_icon == 0 and spell.size == 0 and spell.target_type in [0, 1, 5] and absi(spell.spell_class) == 8 and absi(spell.damage_type) == 8 and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0 and spell.duration_min == 0 and spell.duration_max == 0 and spell.power_duration_min == 0 and spell.power_duration_max == 0 and condition_cure_index(spell) >= 0
+
+
+static func _clear_condition(conditions: ConditionSet, condition_index: int, spell_cost: int, duration: int) -> SpellResolution:
+	conditions.set_value(condition_index, 0)
+	var result := SpellResolution.new(true, false, false, spell_cost, 0, duration)
+	result.cleared_condition = condition_index
+	return result
 
 
 static func _selection_reflects(selection: SpellTargetSelection, rng: RealmzRng, tag: StringName) -> bool:
@@ -397,7 +427,9 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 		if current_condition > -1 and current_condition + duration < 100:
 			target.conditions.add(condition_index, duration)
 	elif special > 99:
-		target.conditions.set_value(special - 101, 0)
+		var cured_condition := condition_cure_index(spell)
+		if cured_condition >= 0:
+			target.conditions.set_value(cured_condition, 0)
 	match special:
 		2:
 			target.movement = 0
@@ -455,6 +487,7 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 	elif damage > 0 and target.current_health >= 0 and target.current_health > -10:
 		target.current_health -= damage
 	var result := SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= -10)
+	result.cleared_condition = condition_cure_index(spell) if special > 99 else -1
 	result.aging = aging
 	return result
 

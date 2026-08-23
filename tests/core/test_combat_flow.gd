@@ -102,22 +102,19 @@ func _test_public_magic_matrix() -> void:
 	var group_ally := _character("character.group-ally")
 	var group_first := MonsterState.new("monster.group-first", definition.id, definition.name, 20, 20, 1)
 	var group_second := MonsterState.new("monster.group-second", definition.id, definition.name, 20, 20, 1)
-	var group_field := _blank_battlefield()
-	group_field.place_character(group_caster.id, Vector2i(45, 45))
-	group_field.place_character(group_ally.id, Vector2i(44, 45))
-	group_field.place_monster(group_first.id, Vector2i(46, 45), 0)
-	group_field.place_monster(group_second.id, Vector2i(47, 45), 0)
-	var group_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [group_caster, group_ally]), RealmzClock.new())
-	group_state.combat = CombatState.new("battle.group", [group_first, group_second], 0, group_field)
-	group_state.combat.set_turn_order([group_caster.id, group_ally.id, group_first.id, group_second.id])
-	var group_content := _content([definition], [], [], [], [group])
-	var host_state := GameState.from_data(JSON.parse_string(JSON.stringify(group_state.to_data())))
-	var group_options := rules.combat_flow.character_spell_options(group_state, group_content, group_caster.id)
-	assert_true(group_options.any(func(option: CombatSpellOptionView) -> bool: return option.spell_id == group.id and option.target_name == "Everybody"), "the public picker exposes targetless automatic group casting")
-	var group_cast := rules.combat_flow.cast_spell(group_state, group_content, group_caster.id, "", group.id, 1, _zeros(8))
-	var group_events := group_cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")
-	assert_equal(group_events.map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), [group_caster.id, group_ally.id, group_first.id, group_second.id], "automatic group targets preserve party-before-monster order")
-	assert_equal(group_caster.spell_points, 18, "an automatic group spell charges its caster once")
+	var group_field := _blank_battlefield(); group_field.place_character(group_caster.id, Vector2i(45, 45)); group_field.place_character(group_ally.id, Vector2i(44, 45)); group_field.place_monster(group_first.id, Vector2i(46, 45), 0); group_field.place_monster(group_second.id, Vector2i(47, 45), 0)
+	var group_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [group_caster, group_ally]), RealmzClock.new()); group_state.combat = CombatState.new("battle.group", [group_first, group_second], 0, group_field); group_state.combat.set_turn_order([group_caster.id, group_ally.id, group_first.id, group_second.id]); var group_content := _content([definition], [], [], [], [group]); var host_state := GameState.from_data(JSON.parse_string(JSON.stringify(group_state.to_data())))
+	var group_options := rules.combat_flow.character_spell_options(group_state, group_content, group_caster.id); assert_true(group_options.any(func(option: CombatSpellOptionView) -> bool: return option.spell_id == group.id and option.target_name == "Everybody"), "the public picker exposes targetless automatic group casting")
+	var group_cast := rules.combat_flow.cast_spell(group_state, group_content, group_caster.id, "", group.id, 1, _zeros(8)); var group_events := group_cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")
+	assert_equal(group_events.map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), [group_caster.id, group_ally.id, group_first.id, group_second.id], "automatic group targets preserve party-before-monster order"); assert_equal(group_caster.spell_points, 18, "an automatic group spell charges its caster once")
+	var cure := _condition_cure_spell("spell.heal-poison", 2206, 110); var cure_caster := _character("character.cure-caster"); cure_caster.set_known_spells([cure.id]); cure_caster.maximum_spell_attacks = 2; cure_caster.spell_points = 60; var cure_ally := _character("character.cure-ally"); cure_ally.conditions.set_value(ConditionRules.POISONED, 6); cure_ally.conditions.set_value(ConditionRules.REFLECTING_SPELLS, -1); var cure_monster := MonsterState.new("monster.cure-target", definition.id, definition.name, 20, 20, 1); cure_monster.conditions.set_value(ConditionRules.POISONED, 4)
+	var cure_field := _blank_battlefield(); cure_field.place_character(cure_caster.id, Vector2i(45, 45)); cure_field.place_character(cure_ally.id, Vector2i(44, 45)); cure_field.place_monster(cure_monster.id, Vector2i(46, 45), 0); var cure_state := GameState.new(PartyState.new("map.test", Vector2i.ZERO, [cure_caster, cure_ally]), RealmzClock.new()); cure_state.combat = CombatState.new("battle.cure", [cure_monster], 0, cure_field); cure_state.combat.set_turn_order([cure_caster.id, cure_ally.id, cure_monster.id]); var cure_content := _content([definition], [], [], [], [cure])
+	assert_true(rules.combat_flow.character_spell_options(cure_state, cure_content, cure_caster.id).any(func(option: CombatSpellOptionView) -> bool: return option.spell_id == cure.id), "the public combat picker admits the strict Classic condition-cure signature"); var cure_rng := _zeros(8); var cure_result := rules.combat_flow.cast_spell(cure_state, cure_content, cure_caster.id, "", cure.id, 2, cure_rng, CombatFlow.INVALID_COORDINATE, 0, [cure_ally.id, cure_monster.id]); var cure_events := cure_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")
+	assert_equal([cure_result.ok, cure_ally.conditions.value(ConditionRules.POISONED), cure_monster.conditions.value(ConditionRules.POISONED), cure_caster.spell_points], [true, 0, 0, 20], "a repeated Heal Poison clears both selected actor kinds and pays once"); assert_true(cure_events.all(func(event: DomainEvent) -> bool: return event.payload.get("clearedCondition") == ConditionRules.POISONED and event.payload.get("reflected") == false), "condition-cure events identify the cleared slot and bypass spell reflection"); assert_false(cure_rng.trace().any(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).contains("reflect")), "condition curing consumes no reflection draw")
+	var cured_save := GameState.from_data(JSON.parse_string(JSON.stringify(cure_state.to_data()))); assert_equal([cured_save.party.character_by_id(cure_ally.id).conditions.value(ConditionRules.POISONED), cured_save.combat.monster_by_id(cure_monster.id).conditions.value(ConditionRules.POISONED)], [0, 0], "cleared character and monster conditions survive combat save restoration")
+	var scroll_case := ItemDefinition.new("item.cure-scroll-case", 800, "Scroll Case"); scroll_case.item_type = 13; var scroll_caster := _character("character.cure-scroll"); scroll_caster.spell_points = 7; scroll_caster.set_inventory([ItemInstance.new("instance.cure-scroll-case", scroll_case.id, 0, true, true)]); assert_true(scroll_caster.write_scroll(0, cure.id, 1), "the combat scroll fixture records Heal Poison"); var scroll_target := _character("character.cure-scroll-target"); scroll_target.conditions.set_value(ConditionRules.POISONED, 3)
+	var scroll_state := _state(scroll_caster, MonsterState.new("monster.cure-scroll-opponent", definition.id, definition.name, 20, 20, 1), "battle.cure-scroll"); scroll_state.party.add_character(scroll_target); scroll_state.combat.battlefield.place_character(scroll_target.id, Vector2i(44, 45)); scroll_state.combat.set_turn_order([scroll_caster.id, scroll_target.id, scroll_state.combat.monsters()[0].id]); var scroll_used := rules.combat_flow.use_combat_scroll(scroll_state, _content([definition], [scroll_case], [], [], [cure]), scroll_caster.id, 0, "", _zeros(8), CombatFlow.INVALID_COORDINATE, 0, [scroll_target.id])
+	assert_equal([scroll_used.ok, scroll_target.conditions.value(ConditionRules.POISONED), scroll_caster.spell_points, scroll_caster.scroll_at(0).is_empty()], [true, 0, 7, true], "a combat scroll cures its target, spends no spell points, and commits the slot once")
 	assert_not_null(host_state, "the public host-boundary fixture restores before a typed combat response")
 	if host_state != null:
 		var host_api := RealmzRuntimeApi.new(group_content, host_state, _zeros(8), ScenarioActionState.new())
@@ -127,16 +124,9 @@ func _test_public_magic_matrix() -> void:
 
 
 func _test_public_monster_turn_matrix() -> void:
-	var rules := RealmzRules.new()
-	var attack_definition := _monster_definition("monster.public-attack", [MonsterAttackDefinition.new(1, 1), MonsterAttackDefinition.new(2, 2)])
-	var target := _character("character.public-monster-target")
-	var attacker := MonsterState.new("monster.public-attacker", attack_definition.id, attack_definition.name, 30, 30, 4)
-	var attack_state := _state(target, attacker, "battle.public-monster-attack")
-	var attack_result := rules.combat_flow.submit_action(attack_state, _content([attack_definition]), target.id, &"finish", "", _zeros(24))
-	assert_true(attack_result.ok, "a public character command dispatches the private monster turn internally")
-	var attack_events := attack_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == attacker.id)
-	assert_equal(attack_events.size(), 2, "the public monster turn executes every authored attack row")
-	assert_equal(attack_events.map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), [target.id, target.id], "monster attack rows retain their selected target")
+	var rules := RealmzRules.new(); var attack_definition := _monster_definition("monster.public-attack", [MonsterAttackDefinition.new(1, 1), MonsterAttackDefinition.new(2, 2)]); var target := _character("character.public-monster-target"); var attacker := MonsterState.new("monster.public-attacker", attack_definition.id, attack_definition.name, 30, 30, 4)
+	var attack_state := _state(target, attacker, "battle.public-monster-attack"); var attack_result := rules.combat_flow.submit_action(attack_state, _content([attack_definition]), target.id, &"finish", "", _zeros(24)); assert_true(attack_result.ok, "a public character command dispatches the private monster turn internally")
+	var attack_events := attack_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_attack_resolved" and event.payload.get("actorId") == attacker.id); assert_equal(attack_events.size(), 2, "the public monster turn executes every authored attack row"); assert_equal(attack_events.map(func(event: DomainEvent) -> String: return String(event.payload.get("targetId"))), [target.id, target.id], "monster attack rows retain their selected target")
 
 	var spell := _combat_spell("spell.monster-public", 1, 4); var caster_definition := _monster_spell_definition("monster.public-caster", spell.id, 100); var spell_caster := MonsterState.new("monster.public-caster.instance", caster_definition.id, caster_definition.name, 30, 30, 4, 1, 0, 0, 10)
 	var spell_target := _character("character.public-spell-target"); var spell_state := _state(spell_target, spell_caster, "battle.public-monster-spell"); var spell_content := _content([caster_definition], [], [], [], [spell])
@@ -152,17 +142,14 @@ func _test_public_monster_turn_matrix() -> void:
 	var monster_heal_state := _state(_character("character.public-heal-opponent"), monster_healer, "battle.public-monster-heal"); monster_heal_state.combat.add_monster(hurt_ally); monster_heal_state.combat.battlefield.place_monster(hurt_ally.id, Vector2i(47, 45), 0); monster_heal_state.combat.set_turn_order([monster_heal_state.party.characters()[0].id, monster_healer.id, hurt_ally.id])
 	var monster_healed := rules.combat_flow.submit_action(monster_heal_state, _content([healer_definition], [], [], [], [monster_heal]), monster_heal_state.party.characters()[0].id, &"finish", "", _zeros(24))
 	assert_true(monster_healed.ok and monster_healed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == hurt_ally.id and int(event.payload.get("healing", 0)) > 0), "scored monster AI heals its critically wounded ally instead of taking an adjacent physical action")
+	var monster_cure := _condition_cure_spell("spell.monster-cure", 2206, 110); var cure_definition := _monster_spell_definition("monster.public-cure", monster_cure.id, 40); var monster_curer := MonsterState.new("monster.public-curer.instance", cure_definition.id, cure_definition.name, 30, 30, 4, 1, 0, 0, 40); var poisoned_ally := MonsterState.new("monster.public-poisoned-ally", cure_definition.id, "Poisoned Ally", 30, 30, 4); poisoned_ally.conditions.set_value(ConditionRules.POISONED, 6); poisoned_ally.conditions.set_value(ConditionRules.REFLECTING_SPELLS, -1)
+	var monster_cure_state := _state(_character("character.public-cure-opponent"), monster_curer, "battle.public-monster-cure"); monster_cure_state.combat.add_monster(poisoned_ally); monster_cure_state.combat.battlefield.place_monster(poisoned_ally.id, Vector2i(47, 45), 0); monster_cure_state.combat.set_turn_order([monster_cure_state.party.characters()[0].id, monster_curer.id, poisoned_ally.id]); var monster_cured := rules.combat_flow.submit_action(monster_cure_state, _content([cure_definition], [], [], [], [monster_cure]), monster_cure_state.party.characters()[0].id, &"finish", "", _zeros(24))
+	assert_true(monster_cured.ok and monster_cured.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == poisoned_ally.id and event.payload.get("clearedCondition") == ConditionRules.POISONED), "scored monster AI cures an afflicted reflecting ally instead of treating it as a hostile damage target"); assert_equal(poisoned_ally.conditions.value(ConditionRules.POISONED), 0, "monster condition curing commits to authoritative combat state")
 
-	var retry_definition := _monster_spell_definition("monster.public-retry", spell.id, 50)
-	retry_definition.movement_max = 12
-	var retry_caster := MonsterState.new("monster.public-retry.instance", retry_definition.id, retry_definition.name, 30, 30, 4, 1, 0, 0, 10)
-	var retry_target := _character("character.public-retry-target")
-	var retry_state := _state(retry_target, retry_caster, "battle.public-retry")
-	retry_state.combat.battlefield.move_actor(retry_caster.id, Vector2i(47, 45))
+	var retry_definition := _monster_spell_definition("monster.public-retry", spell.id, 50); retry_definition.movement_max = 12; var retry_caster := MonsterState.new("monster.public-retry.instance", retry_definition.id, retry_definition.name, 30, 30, 4, 1, 0, 0, 10); var retry_target := _character("character.public-retry-target")
+	var retry_state := _state(retry_target, retry_caster, "battle.public-retry"); retry_state.combat.battlefield.move_actor(retry_caster.id, Vector2i(47, 45))
 	var retry_rng := ScriptedRng.new([32_767, 32_767, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]); var retry_result := rules.combat_flow.submit_action(retry_state, _content([retry_definition], [], [], [], [spell]), retry_target.id, &"finish", "", retry_rng)
-	assert_true(retry_result.ok, "the public monster movement boundary reaches its bounded post-movement cast retry")
-	var retry_action_trace := retry_rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")) == "combat.monster.%s.action-choice" % retry_caster.id); assert_equal(retry_action_trace.size(), 1, "monster action weighting consumes one choice draw and retains that action for the activation"); assert_true(not retry_action_trace.is_empty() and retry_action_trace[0].get("result") == retry_action_trace[0].get("range"), "the low-weight advance category remains possible instead of always choosing the higher cast score")
-	assert_true(retry_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster"), "the public retry path commits the later ordinary cast")
+	assert_true(retry_result.ok, "the public monster movement boundary reaches its bounded post-movement cast retry"); var retry_action_trace := retry_rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")) == "combat.monster.%s.action-choice" % retry_caster.id); assert_equal(retry_action_trace.size(), 1, "monster action weighting consumes one choice draw and retains that action for the activation"); assert_true(not retry_action_trace.is_empty() and retry_action_trace[0].get("result") == retry_action_trace[0].get("range"), "the low-weight advance category remains possible instead of always choosing the higher cast score"); assert_true(retry_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster"), "the public retry path commits the later ordinary cast")
 
 
 func _test_public_continuation_fumble_terminal_matrix() -> void:
@@ -293,26 +280,16 @@ func _test_public_command_automation_matrix() -> void:
 	var weighted_high_state := GameState.from_data(healing_state.to_data()); var healing_content := _content([definition], [], [], [], [healing_spell, auto_area]); var healed := rules.combat_flow.submit_action(healing_state, healing_content, auto_healer.id, &"auto", "", _zeros(96))
 	assert_true(healed.ok and healed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == wounded.id and int(event.payload.get("healing", 0)) > 0), "scored Auto heals a critically wounded ally before taking an adjacent attack")
 	var high_values := _ints(96); high_values[0] = 32_767; var weighted_high := rules.combat_flow.submit_action(weighted_high_state, healing_content, auto_healer.id, &"auto", "", ScriptedRng.new(high_values)); var high_actions := weighted_high.events.filter(func(event: DomainEvent) -> bool: return event.payload.get("actorId") == auto_healer.id and event.kind in [&"combat_spell_resolved", &"combat_attack_resolved"]); assert_true(weighted_high.ok and not high_actions.is_empty() and high_actions[0].kind == &"combat_attack_resolved", "the lower-weight melee category remains possible instead of always choosing the stronger healing score")
+	var auto_cure := _condition_cure_spell("spell.auto-cure", 2206, 110); var auto_curer := _character("character.auto-curer"); auto_curer.set_known_spells([auto_cure.id]); auto_curer.maximum_spell_attacks = 2; auto_curer.spell_points = 40; var auto_poisoned := _character("character.auto-poisoned"); auto_poisoned.conditions.set_value(ConditionRules.POISONED, 7); auto_poisoned.conditions.set_value(ConditionRules.REFLECTING_SPELLS, -1)
+	var auto_cure_state := _state(auto_curer, MonsterState.new("monster.auto-cure-opponent", definition.id, definition.name, 100, 100, 1), "battle.auto-cure"); auto_cure_state.party.add_character(auto_poisoned); auto_cure_state.combat.battlefield.place_character(auto_poisoned.id, Vector2i(44, 45)); auto_cure_state.combat.set_turn_order([auto_curer.id, auto_poisoned.id, auto_cure_state.combat.monsters()[0].id]); var auto_cured := rules.combat_flow.submit_action(auto_cure_state, _content([definition], [], [], [], [auto_cure]), auto_curer.id, &"auto", "", _zeros(96))
+	assert_true(auto_cured.ok and auto_cured.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("targetId") == auto_poisoned.id and event.payload.get("clearedCondition") == ConditionRules.POISONED), "Party Auto scores and casts a legal cure for an afflicted ally"); assert_equal(auto_poisoned.conditions.value(ConditionRules.POISONED), 0, "Party Auto condition curing commits to authoritative state")
 
-	var auto_actor := _character("character.auto")
-	var auto_monster := MonsterState.new("monster.auto.instance", definition.id, definition.name, 1000, 1000, 1)
-	var auto_state := _state(auto_actor, auto_monster, "battle.auto")
+	var auto_actor := _character("character.auto"); var auto_monster := MonsterState.new("monster.auto.instance", definition.id, definition.name, 1000, 1000, 1); var auto_state := _state(auto_actor, auto_monster, "battle.auto")
 	var auto_traffic := _character("character.auto-traffic"); auto_state.party.add_character(auto_traffic); auto_state.combat.battlefield.place_character(auto_traffic.id, Vector2i(47, 44)); auto_state.combat.set_turn_order([auto_actor.id, auto_traffic.id, auto_monster.id]); auto_state.combat.battlefield.move_actor(auto_monster.id, Vector2i(49, 45)); auto_state.combat.battlefield.set_terrain(Vector2i(46, 45), 2); auto_state.combat.battlefield.set_terrain(Vector2i(44, 44), 2)
-	var auto_rng := _zeros(256); var auto_result := rules.combat_flow.submit_action(auto_state, _content([definition]), auto_actor.id, &"auto", "", auto_rng)
-	assert_true(auto_result.ok, "Auto Turn resolves through the public command boundary")
-	assert_equal(auto_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_auto_started").size(), 1, "Auto Turn starts exactly one bounded activation")
-	var auto_moves := auto_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved")
-	assert_true(auto_moves.map(func(event: DomainEvent) -> Variant: return event.payload.get("to")).has([46, 44]) and not auto_rng.trace().any(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).contains(".shift.")), "Auto takes the deterministic legal detour before spending bounded shifted retries")
-	assert_true(auto_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("source") == "classic-combat-auto-button"), "the public Auto command retains its button feedback")
-	var bounded_actor := _character("character.auto-bounded")
-	bounded_actor.current_health = 32_767
-	bounded_actor.maximum_health = 32_767
-	var bounded_monster := MonsterState.new("monster.auto-bounded.instance", definition.id, definition.name, 32_767, 32_767, 1)
-	var bounded_state := _state(bounded_actor, bounded_monster, "battle.auto-bounded")
-	assert_true(bounded_state.set_combat_auto(bounded_actor.id, true), "persistent Auto can be enabled through save-owned state")
-	var bounded_rng := RealmzRng.new(17)
-	var bounded_result := rules.combat_flow.submit_action(bounded_state, _content([definition]), bounded_actor.id, &"auto", "", bounded_rng)
-	assert_true(bounded_result.ok, "persistent Auto commits one bounded activation")
+	var auto_rng := _zeros(256); var auto_result := rules.combat_flow.submit_action(auto_state, _content([definition]), auto_actor.id, &"auto", "", auto_rng); assert_true(auto_result.ok, "Auto Turn resolves through the public command boundary"); assert_equal(auto_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_auto_started").size(), 1, "Auto Turn starts exactly one bounded activation")
+	var auto_moves := auto_result.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combatant_moved"); assert_true(auto_moves.map(func(event: DomainEvent) -> Variant: return event.payload.get("to")).has([46, 44]) and not auto_rng.trace().any(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).contains(".shift.")), "Auto takes the deterministic legal detour before spending bounded shifted retries"); assert_true(auto_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("source") == "classic-combat-auto-button"), "the public Auto command retains its button feedback")
+	var bounded_actor := _character("character.auto-bounded"); bounded_actor.current_health = 32_767; bounded_actor.maximum_health = 32_767; var bounded_monster := MonsterState.new("monster.auto-bounded.instance", definition.id, definition.name, 32_767, 32_767, 1); var bounded_state := _state(bounded_actor, bounded_monster, "battle.auto-bounded"); assert_true(bounded_state.set_combat_auto(bounded_actor.id, true), "persistent Auto can be enabled through save-owned state")
+	var bounded_rng := RealmzRng.new(17); var bounded_result := rules.combat_flow.submit_action(bounded_state, _content([definition]), bounded_actor.id, &"auto", "", bounded_rng); assert_true(bounded_result.ok, "persistent Auto commits one bounded activation")
 	assert_equal([bounded_state.combat.round_number, bounded_state.combat.active_actor_id(), bounded_monster.current_health, bounded_rng.snapshot().draw_count], [2, bounded_actor.id, 32_766, 6], "persistent Auto yields after one activation so the host can interrupt before continuing")
 
 	var undo_actor := _character("character.undo")
@@ -357,6 +334,12 @@ func _combat_spell(spell_id: String, target_type: int, damage: int) -> SpellDefi
 	result.duration_max = 1
 	result.damage_min = damage
 	result.damage_max = damage
+	return result
+
+
+func _condition_cure_spell(spell_id: String, classic_id: int, special: int) -> SpellDefinition:
+	var result := SpellDefinition.new(spell_id, classic_id, "Condition Cure")
+	result.in_combat = true; result.target_type = 0; result.spell_class = 8; result.damage_type = 8; result.cannot = 3; result.cost = 20; result.range_min = 15; result.special = special
 	return result
 
 

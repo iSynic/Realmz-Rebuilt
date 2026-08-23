@@ -31,7 +31,7 @@ func run() -> void:
 	var active_target := session._state.party.character_by_id(target.id)
 	active_caster.spell_points = 50
 	active_caster.maximum_spell_points = 50
-	active_caster.set_known_spells(["classic.spell.field-bolt", "classic.spell.field-fixed", "classic.spell.field-light", "classic.spell.field-rest"])
+	active_caster.set_known_spells(["classic.spell.field-bolt", "classic.spell.field-fixed", "classic.spell.field-light", "classic.spell.field-rest", "classic.spell.heal-poison"])
 	active_target.current_health = 20
 	active_target.maximum_health = 20
 	active_target.magic_resistance = 120
@@ -92,6 +92,11 @@ func run() -> void:
 	assert_false(restored.rng_trace().any(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).contains("resistance")), "Castle field casting ignores magic resistance")
 	assert_true(completed.events.any(func(event: DomainEvent) -> bool: return event.kind == &"sound_requested" and event.payload.get("waitForCompletion") == true), "field casting requests Castle's synchronous opening spell sound")
 
+	var restored_caster := restored._state.party.character_by_id(active_caster.id); var restored_target := restored._state.party.character_by_id(active_target.id); restored_caster.spell_points = 50; restored_target.conditions.set_value(ConditionRules.POISONED, 5); var cure_requested := restored.submit_intent(PlayerIntent.cast_spell("classic.spell.heal-poison", restored_caster.id, "", 1)); assert_equal([cure_requested.state, cure_requested.interaction.kind], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.CHARACTER_SELECTION], "a field condition cure uses the same typed target boundary")
+	var cure_restored := GameSession.new(); assert_equal(cure_restored.restore(content, save_round_trip(restored.snapshot())).state, SessionStep.State.COMPLETED, "pending field cure targeting restores transactionally"); var cure_pending := cure_restored.view().pending_interaction; var cured := cure_restored.respond(InteractionResponse.from_data(cure_pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [restored_target.id]}))
+	assert_equal([cured.state, cure_restored._state.party.character_by_id(restored_target.id).conditions.value(ConditionRules.POISONED), cure_restored._state.party.character_by_id(restored_caster.id).spell_points], [SessionStep.State.COMPLETED, 0, 30], "Heal Poison clears only its indexed condition and spends its stock cost after valid targeting"); assert_true(cured.events.any(func(event: DomainEvent) -> bool: return event.kind == &"field_spell_resolved" and event.payload.get("clearedCondition") == ConditionRules.POISONED), "the public field event identifies the cleared condition")
+	assert_equal(cure_restored.respond(InteractionResponse.from_data(cure_pending.request_id, InteractionRequest.CHARACTER_SELECTION, {"characterIds": [restored_target.id]})).state, SessionStep.State.FAILED, "the restored field cure response commits exactly once"); restored = cure_restored
+
 	restored._rng = ScriptedRng.new([0, 0])
 	var light := restored.submit_intent(PlayerIntent.cast_spell("classic.spell.field-light", active_caster.id, "", 1))
 	assert_equal(light.state, SessionStep.State.COMPLETED, "party-state field magic commits without a character picker")
@@ -140,10 +145,12 @@ func _field_content(source: RealmzContent) -> RealmzContent:
 	rest.special = 68
 	rest.target_type = 11
 	rest.in_camp = true
+	var cure := SpellDefinition.new("classic.spell.heal-poison", 2206, "Heal Poison")
+	cure.cost = 20; cure.special = 110; cure.spell_class = 8; cure.damage_type = 8; cure.target_type = 0; cure.range_min = 1; cure.in_camp = true; cure.in_combat = true
 	var races: Array[RaceDefinition] = [race]
 	var castes: Array[CasteDefinition] = [caste]
 	var items: Array[ItemDefinition] = []
-	var spells: Array[SpellDefinition] = [bolt, fixed, light, rest]
+	var spells: Array[SpellDefinition] = [bolt, fixed, light, rest, cure]
 	return RealmzContent.new("field-spell-workflow", source.package_hash, "field-spell-content", source.rules_version, source.start_map_id, source.start_coordinate, source.world, ScenarioDefinition.new([], []), [], [], [], races, castes, items, spells)
 
 

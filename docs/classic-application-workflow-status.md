@@ -6,32 +6,32 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 15 | 53 | 1 |
+| classic | 69 | 0 | 16 | 52 | 1 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**AOGM combat rewards and terminal continuation** (`aogm-combat-reward-certification`)
+**AOGM condition cures across field, combat, and Auto** (`aogm-condition-cure-spells`)
 
-The current AOGM feature report exposes a reachable opcode-2 experience-only battle, while terminal reward acceptance still needs an ordinary level-up. This three-workflow batch closes the source-backed mode-5 and incidental-drop semantics without pulling the scenario-unobserved mode-10 restart or summon-instance distinction into the AOGM critical path.
+AOGM exposes the stock Heal Blindness, Heal Disease, and Heal Poison behavior family in its immutable application library, while field casting, combat casting, and Auto remain partial or ordinary-play uncertified. This three-workflow batch implements one shared source-backed condition-cure family through manual, scroll, Party Auto, and monster paths without pulling summons, persistent fields, or unrelated special effects into the same change.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.combat.resolve-outcome` | implementation | aogm-certification | - | GAP-COMBAT-007 |
-| `classic.rewards.treasure-distribution` | implementation | aogm-certification | - | GAP-REWARD-001 |
-| `classic.rewards.experience-level-up` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.spellcasting.field-camp-cast` | implementation | aogm-major-partial | - | GAP-SPELL-002 |
+| `classic.spellcasting.combat-cast` | implementation | aogm-major-partial | - | GAP-SPELL-003 |
+| `classic.combat.auto-turn` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 15 | 15 | 0 |
-| classic | functional | 53 | 53 | 0 |
+| classic | partial | 15 | 16 | +1 |
+| classic | functional | 53 | 52 | -1 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -47,7 +47,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Scenario interaction | 6 | 0 | 1 | 5 | 0 |
 | Character management | 5 | 0 | 2 | 3 | 0 |
 | Inventory and equipment | 9 | 0 | 2 | 7 | 0 |
-| Spellcasting | 3 | 0 | 1 | 2 | 0 |
+| Spellcasting | 3 | 0 | 2 | 1 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 2 | 11 | 1 |
 | Rewards and progression | 5 | 0 | 1 | 4 | 0 |
@@ -83,8 +83,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
-| partial | 8 |
-| complete | 58 |
+| partial | 9 |
+| complete | 57 |
 
 | persistence | Count |
 | --- | ---: |
@@ -142,7 +142,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **12**.
+Blockers: **1**. Major gaps: **13**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster. Next: Correct Providence schema v3 and Rebuilt decoding to preserve every menu-visible monster, its description, and not-on-menu flag, then add the Bestiary route without inventing discovery state.
@@ -154,7 +154,8 @@ Blockers: **1**. Major gaps: **12**.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
 - **major** `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete. Next: Route the trap spell through the source-backed application spell effect, then run a controlled Castle comparison and ordinary campaign UI acceptance.
-- **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption; invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Implement discard, case-transfer, allied-target, and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
+- **major** `classic.spellcasting.combat-cast` - Manual combat, fixed-power combat scrolls, Party Auto, and monster AI now share source-backed status-cure resolution for strict specials above 99, but summons, persistent fields, and other special-effect families remain unresolved. Next: Implement the next AOGM-reachable spell signature family from the package feature report, keeping summons and persistent fields in separate owned transactions with their own spatial and save contracts.
+- **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption; public-session proof now also covers a save-restored Heal Poison target and explicit cleared-condition event. Invalid-field discard, case transfer, allied targets, and map effects remain explicit. Next: Implement discard, case-transfer, allied-target, and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
 - **major** `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1–3 music remain unresolved. Next: Add an explicit Providence base-scale field and normalized scenario music resources, then certify Indoor and Custom 1–3 through ordinary packages without inferring either from landlook.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
@@ -198,7 +199,8 @@ Blockers: **1**. Major gaps: **12**.
 - `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view.
 - `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle.
 - `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete.
-- `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption; invalid-field discard, case transfer, allied targets, and map effects remain explicit.
+- `classic.spellcasting.combat-cast` - Manual combat, fixed-power combat scrolls, Party Auto, and monster AI now share source-backed status-cure resolution for strict specials above 99, but summons, persistent fields, and other special-effect families remain unresolved.
+- `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption; public-session proof now also covers a save-restored Heal Poison target and explicit cleared-condition event. Invalid-field discard, case transfer, allied targets, and map effects remain explicit.
 - `classic.character.view-sheet` - Several nonzero Classic ability slots lack verified display names.
 - `classic.maps.authored-journal` - Castle's PRFN default and the authored-journal rendering boundary remain outside the verified subset.
 - `classic.maps.location-notes` - Castle's two dialog exit labels and exact cancellation semantics are not established by source alone.
