@@ -436,7 +436,8 @@ static func _monster_spell_unavailable_reason(spell: SpellDefinition) -> String:
 		return ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"combat-monster")
 	var healing_spell := ClassicSpellCapabilityCatalog.is_combat_healing_spell(spell)
 	var condition_cure := ClassicSpellCapabilityCatalog.is_combat_condition_cure_spell(spell)
-	if spell.cannot == 4 and not healing_spell and not condition_cure:
+	var condition_effect := ClassicSpellCapabilityCatalog.is_combat_condition_effect_spell(spell)
+	if spell.cannot == 4 and not healing_spell and not condition_cure and not condition_effect:
 		return "monster-spell-friendly-target-unresolved"
 	return ""
 
