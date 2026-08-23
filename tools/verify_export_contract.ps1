@@ -5,6 +5,8 @@ $projectPath = Join-Path $repoRoot "project.godot"
 $addonConfigPath = Join-Path $repoRoot "addons\godot_mcp\plugin.cfg"
 $schemaPath = Join-Path $repoRoot "contracts\realmz2\realmz2-package.schema.json"
 $schemaHashPath = Join-Path $repoRoot "contracts\realmz2\realmz2-package.schema.sha256"
+$featureSchemaPath = Join-Path $repoRoot "contracts\realmz2\realmz2-feature-report.schema.json"
+$featureSchemaHashPath = Join-Path $repoRoot "contracts\realmz2\realmz2-feature-report.schema.sha256"
 $fixtureRoot = Join-Path $repoRoot "tests\fixtures\packages"
 $fixtureManifestPath = Join-Path $fixtureRoot "fixture-provenance.json"
 $noticePath = Join-Path $repoRoot "THIRD_PARTY_NOTICES.txt"
@@ -81,6 +83,18 @@ if ($actualSchemaHash -ne $expectedSchemaHash) {
     throw "Realmz 2.0 schema mirror drift: expected $expectedSchemaHash, found $actualSchemaHash."
 }
 Write-Host "Realmz 2.0 schema mirror hash verified."
+
+if (-not (Test-Path -LiteralPath $featureSchemaPath) -or -not (Test-Path -LiteralPath $featureSchemaHashPath)) {
+    throw "The mirrored Realmz 2.0 feature-report schema and expected hash are required."
+}
+$expectedFeatureSchemaHash = (Get-Content -Raw -LiteralPath $featureSchemaHashPath).Trim().ToLowerInvariant()
+$actualFeatureSchemaHash = (Get-FileHash -LiteralPath $featureSchemaPath -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($actualFeatureSchemaHash -ne $expectedFeatureSchemaHash) {
+    throw "Realmz 2.0 feature-report schema mirror drift: expected $expectedFeatureSchemaHash, found $actualFeatureSchemaHash."
+}
+Write-Host "Realmz 2.0 feature-report schema mirror hash verified."
+
+& "$PSScriptRoot\analyze_gameplay_feature_reports.ps1" -SelfTest
 
 if (-not (Test-Path -LiteralPath $fixtureManifestPath)) {
     throw "The synthetic package fixture provenance record is required."

@@ -3,6 +3,9 @@ extends SceneTree
 const APPLICATION_PACKAGE_PATH := "res://src/infrastructure/characters/realmz-classic-character-library.realmz2"
 const APPLICATION_PACKAGE_ID := "realmz-classic-character-library"
 const APPLICATION_PACKAGE_HASH := "d134c8f552d4e5893dcf82ea25bd21504c45a1e0cffb84bf4061a1b83ec00b49"
+const FEATURE_REPORT_FORMAT_VERSION := 1
+const FEATURE_REPORT_PROVIDENCE_COMMIT := "353a579d41dc95969a69dc6b6b6f27d6e09ff551"
+const FEATURE_REPORT_SCHEMA_HASH := "ecef0ad8e62e54e4e1790c669dbcf17b78b44a3d777e0994be06dc2fd3fa76a0"
 const INVENTORY_PATH := "res://tests/fixtures/oracle/classic-gameplay-parity-inventory.json"
 const REPORT_PATH := "res://docs/classic-gameplay-parity-status.md"
 const SpellCapabilities = preload("res://src/core/rules/classic_spell_capability_catalog.gd")
@@ -97,7 +100,13 @@ func _build_inventory(content: RealmzContent) -> Dictionary:
 		"applicationPackage": {"campaignId": APPLICATION_PACKAGE_ID, "packageHash": APPLICATION_PACKAGE_HASH},
 		"corpusSpells": [],
 		"evidenceAxes": ["discovered", "compilerPreserved", "runtimeTested", "routeProven", "ordinaryPlayCertified"],
-		"formatVersion": 1,
+		"featureReportContract": {
+			"analyzer": "tools/analyze_gameplay_feature_reports.ps1",
+			"formatVersion": FEATURE_REPORT_FORMAT_VERSION,
+			"providenceCommit": FEATURE_REPORT_PROVIDENCE_COMMIT,
+			"schemaHash": FEATURE_REPORT_SCHEMA_HASH,
+		},
+		"formatVersion": 2,
 		"opcodeSummary": {
 			"classicReserved": opcode_counts["classic-reserved"],
 			"executable": opcode_counts["executable"],
@@ -138,6 +147,9 @@ func _inventory_errors(inventory: Dictionary) -> Array[String]:
 		errors.append("application spell catalog contains unowned definitions")
 	if spell_summary["behaviorSignatures"] <= 0 or spell_summary["behaviorSignatures"] > spell_summary["totalDefinitions"]:
 		errors.append("application spell behavior signatures are malformed")
+	var feature_report_contract: Dictionary = inventory["featureReportContract"]
+	if feature_report_contract["formatVersion"] != FEATURE_REPORT_FORMAT_VERSION or feature_report_contract["providenceCommit"] != FEATURE_REPORT_PROVIDENCE_COMMIT or feature_report_contract["schemaHash"] != FEATURE_REPORT_SCHEMA_HASH:
+		errors.append("Providence feature-report contract metadata is stale")
 	return errors
 
 
@@ -194,12 +206,22 @@ An executable disposition proves an owned handler boundary, not complete branch,
 
 The 252 player records are the stock player-spell parity target. The 105 application effect records cover application-owned monster, item, projectile, and special effects and require their own legal-context proof. The 63 reserved records are denominator entries, not missing player spells. Scenario-corpus custom spells are collected only in local untracked sidecars until their normalized signatures can be committed without commercial content.
 
+## Providence feature reports
+
+- Report format: `realmz2.feature-report` version %d
+- Authoritative Providence commit: `%s`
+- Mirrored schema SHA-256: `%s`
+- Local analyzer and coverage ranking: `tools/analyze_gameplay_feature_reports.ps1`
+
+The sidecar binds its exact package hash and reports normalized feature signatures without scenario names, text, coordinates, record identities, or machine-local paths. Commercial reports remain local and untracked. Coverage ranking is recomputed against already certified reports after each scenario rather than establishing a fixed campaign order.
+
 ## Evidence policy
 
 Every entry tracks discovery, compiler preservation, semantic public-runtime testing, deterministic route proof, and ordinary-play certification independently. Package decoding and handler registration never count as semantic spell or opcode parity.
 """ % [
 		opcode_summary["total"], opcode_summary["executable"], opcode_summary["classicReserved"], opcode_summary["pending"], ", ".join(pending),
 		spell_summary["stockPlayer"], spell_summary["applicationEffects"], spell_summary["reservedStandardSlots"], spell_summary["totalDefinitions"], spell_summary["behaviorSignatures"],
+		FEATURE_REPORT_FORMAT_VERSION, FEATURE_REPORT_PROVIDENCE_COMMIT, FEATURE_REPORT_SCHEMA_HASH,
 	]
 
 

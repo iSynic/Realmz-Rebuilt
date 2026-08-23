@@ -71,6 +71,8 @@ if ($LASTEXITCODE -ne 0) { throw "Application workflow inventory verification fa
 & "$PSScriptRoot\verify_gameplay_parity_inventory.ps1" -GodotPath $GodotPath
 if ($LASTEXITCODE -ne 0) { throw "Gameplay parity inventory verification failed." }
 
+& "$PSScriptRoot\analyze_gameplay_feature_reports.ps1" -SelfTest
+
 git -C $repoRoot diff --check
 if ($LASTEXITCODE -ne 0) { throw "git diff --check failed." }
 
