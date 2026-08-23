@@ -154,7 +154,7 @@ static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
-	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) else DISPOSITION_PENDING
+	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _zero_cost_elemental_projectile_item_spell(spell) or _combat_healing_spell(spell) else DISPOSITION_PENDING
 
 
 static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
@@ -186,6 +186,10 @@ static func _ordinary_combat_spell(spell: SpellDefinition) -> bool:
 	var projectile_spell := absi(spell.spell_class) == 9
 	var source_defined_projectile_spell := projectile_spell and spell.cost > 0 and absi(spell.damage_type) != 9
 	return spell.special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and (not projectile_spell or source_defined_projectile_spell) and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+
+
+static func _zero_cost_elemental_projectile_item_spell(spell: SpellDefinition) -> bool:
+	return spell.special == 0 and spell.cost == 0 and absi(spell.spell_class) == 9 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) <= 6 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
 
 
 static func _combat_summon_spell(spell: SpellDefinition) -> bool:
