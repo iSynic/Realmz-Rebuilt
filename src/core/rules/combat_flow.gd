@@ -207,12 +207,12 @@ func cause_active_fumble(state: GameState, content: RealmzContent, actor_id: Str
 	return _actions.cause_active_fumble(state, content, actor_id)
 
 
-func probe_character_item_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String) -> CombatSpellCastProbe:
-	return _magic.probe_character_item_spell(state, content, caster_id, target_id, instance_id)
+func probe_character_item_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0) -> CombatSpellCastProbe:
+	return _magic.probe_character_item_spell(state, content, caster_id, target_id, instance_id, target_coordinate, rotation)
 
 
-func use_spell_item(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, rng: RealmzRng) -> CombatFlowResult:
-	return _magic.use_spell_item(state, content, caster_id, target_id, instance_id, rng)
+func use_spell_item(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, rng: RealmzRng, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0) -> CombatFlowResult:
+	return _magic.use_spell_item(state, content, caster_id, target_id, instance_id, rng, target_coordinate, rotation)
 
 
 func character_item_spell_options(state: GameState, content: RealmzContent, caster_id: String) -> Array[CombatItemOptionView]:

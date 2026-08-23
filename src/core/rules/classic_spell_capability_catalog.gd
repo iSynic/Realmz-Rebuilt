@@ -116,7 +116,7 @@ static func unsupported_reason(spell: SpellDefinition, context_name: StringName)
 		return "This spell is not available in Classic combat."
 	if spell.queue_icon != 0:
 		return "This persistent battlefield-field spell is waiting for its collision and expiry lifecycle."
-	if spell.can_rotate and spell.target_type in [3, 4] and context_name != &"combat-character":
+	if spell.can_rotate and spell.target_type in [3, 4] and context_name not in [&"combat-character", &"combat-scroll", &"combat-item"]:
 		return "This casting source is waiting for the Classic rotatable-area orientation contract."
 	var family := String(mechanical_family(spell)).replace("-", " ")
 	var context_label := String(context_name).replace("-", " ")
@@ -134,7 +134,7 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0 or spell.can_rotate and spell.target_type in [3, 4] or spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
+	if spell.queue_icon != 0 or spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
@@ -142,7 +142,7 @@ static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0 or spell.target_type not in [1, 2, 5, 6, 9, 10, 12]:
+	if spell.queue_icon != 0 or spell.target_type not in [1, 2, 3, 4, 5, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) else DISPOSITION_PENDING
 

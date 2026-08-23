@@ -608,7 +608,14 @@ func _combat_request(request_id: String) -> InteractionRequest:
 			fast_spells.append({"slot": index, "spellId": binding.spell_id if binding != null else "", "spellName": bound_spell.name if bound_spell != null else "Undefined Spell", "power": binding.power if binding != null else 0, "enabled": binding_enabled, "reason": "" if binding_enabled else binding_reason})
 	var item_casts: Array[Dictionary] = []
 	for option: CombatItemOptionView in _rules.combat_flow.character_item_spell_options(_game_state, _content, combat_view.active_actor_id):
-		item_casts.append({"itemInstanceId": option.item_instance_id, "itemId": option.item_definition_id, "itemName": option.item_name, "charges": option.charges, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)})
+		var item_cast := {"itemInstanceId": option.item_instance_id, "itemId": option.item_definition_id, "itemName": option.item_name, "charges": option.charges, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
+		if option.target_mode == &"area":
+			item_cast["areaShape"] = option.area_shape
+			item_cast["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]
+			item_cast["areaOffsets"] = option.area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
+			item_cast["areaRotationOffsets"] = option.area_rotation_offsets.map(func(offsets: Array) -> Array: return offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y]))
+			item_cast["legalTargetCoordinates"] = option.legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
+		item_casts.append(item_cast)
 	if not item_casts.is_empty():
 		actions.append("use_item")
 	var item_cast_reason := _rules.combat_flow.character_item_spell_unavailable_reason(_game_state, _content, combat_view.active_actor_id)
@@ -626,6 +633,7 @@ func _combat_request(request_id: String) -> InteractionRequest:
 			scroll_cast["areaShape"] = option.area_shape
 			scroll_cast["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]
 			scroll_cast["areaOffsets"] = option.area_offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y])
+			scroll_cast["areaRotationOffsets"] = option.area_rotation_offsets.map(func(offsets: Array) -> Array: return offsets.map(func(offset: Vector2i) -> Array[int]: return [offset.x, offset.y]))
 			scroll_cast["legalTargetCoordinates"] = option.legal_target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y])
 		scroll_casts.append(scroll_cast)
 	if not scroll_casts.is_empty():
