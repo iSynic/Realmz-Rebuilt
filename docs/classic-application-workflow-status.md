@@ -6,24 +6,24 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 15 | 48 | 6 |
+| classic | 69 | 0 | 15 | 49 | 5 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**AOGM shared spell capability completion** (`aogm-shared-spell-capabilities`)
+**AOGM spell and surviving-ally presentation repair** (`aogm-spell-and-ally-presentation`)
 
-The closed terminal-reward batch leaves no generated AOGM workflow gap, while the application spell denominator still contains large explicit capability deficits across character, scroll, item, and monster contexts. This four-workflow batch identifies and implements the next AOGM-reachable unsupported mechanical signatures through the shared deterministic resolver, then certifies ordinary Fast Spell configuration and activation without deepening unexposed spell families.
+Fresh ordinary AOGM play certified the shared Fast Spell workflow and then exposed three bounded presentation defects in adjacent certified routes: combat power seven is clipped, the field spellbook loses layer priority to the narrative footer, and surviving allies lack their exact combat icon preview. This batch repairs those visible boundaries without changing spell legality, combat resolution, rewards, or save state. The already-certified Fast Spell route remains the ordinary-play target so these adjacent layout repairs cannot regress its Alt-dock targeting path.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.spellcasting.combat-cast` | implementation | aogm-major-partial | - | GAP-SPELL-003 |
-| `classic.spellcasting.field-camp-cast` | implementation | aogm-major-partial | - | GAP-SPELL-002 |
-| `classic.inventory.use-item` | implementation | aogm-major-partial | - | GAP-INV-003 |
+| `classic.spellcasting.combat-cast` | implementation | aogm-major-partial | - | GAP-SPELL-004 |
+| `classic.spellcasting.field-camp-cast` | implementation | aogm-major-partial | - | GAP-SPELL-005 |
+| `classic.rewards.post-battle-allies` | certification | aogm-certification | aogm-ordinary | GAP-REWARD-001 |
 | `classic.exploration.fast-spell` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
@@ -32,8 +32,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
 | classic | partial | 15 | 15 | 0 |
-| classic | functional | 48 | 48 | 0 |
-| classic | certified | 6 | 6 | 0 |
+| classic | functional | 48 | 49 | +1 |
+| classic | certified | 6 | 5 | -1 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 6 | 6 | 0 |
@@ -51,7 +51,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Spellcasting | 3 | 0 | 2 | 1 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 2 | 9 | 3 |
-| Rewards and progression | 5 | 0 | 0 | 2 | 3 |
+| Rewards and progression | 5 | 0 | 0 | 3 | 2 |
 | Maps and journal | 3 | 0 | 2 | 1 | 0 |
 | Save and system | 5 | 0 | 3 | 2 | 0 |
 
@@ -98,8 +98,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | absent | 0 |
 | fixture-shell | 1 |
-| functional | 61 |
-| accepted | 7 |
+| functional | 62 |
+| accepted | 6 |
 
 ### Host
 
@@ -143,7 +143,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **12**.
+Blockers: **1**. Major gaps: **14**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster. Next: Correct Providence schema v3 and Rebuilt decoding to preserve every menu-visible monster, its description, and not-on-menu flag, then add the Bestiary route without inventing discovery state.
@@ -155,7 +155,9 @@ Blockers: **1**. Major gaps: **12**.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
 - **major** `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete. Next: Route the trap spell through the source-backed application spell effect, then run a controlled Castle comparison and ordinary campaign UI acceptance.
 - **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly condition-effect, summoning, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, and zero-cost breath resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities. Next: Implement the next AOGM-reachable unresolved special-effect family while keeping every unavailable family explicit.
+- **major** `classic.spellcasting.combat-cast` - At the canonical 1280x720 combat composition, the full-height spellbook clips the seventh legal power choice beyond the right edge. Next: Compact the request-owned power rail so all seven legal choices and fixed Cast/Abort actions remain visible without scrolling.
 - **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption. Field-character casting has a catalog disposition for every application spell and now executes source-backed Remove Item curse clearing and forced cursed-item unequip; allied targets and map effects remain explicit. Next: Implement allied-target and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
+- **major** `classic.spellcasting.field-camp-cast` - The persistent field spellbook is composited beneath the exploration narrative footer where their rectangles overlap. Next: Give the active field spell workspace explicit top-layer ownership over the exploration footer for its complete lifetime.
 - **major** `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1â€“3 music remain unresolved. Next: Add an explicit Providence base-scale field and normalized scenario music resources, then certify Indoor and Custom 1â€“3 through ordinary packages without inferring either from landlook.
 - **major** `host.settings.accessibility` - Control customization and complete multi-scale layout acceptance remain unfinished. Next: Finish keyboard/mouse control help and run layout acceptance at every locked resolution and text scale.
 
@@ -174,7 +176,9 @@ Blockers: **1**. Major gaps: **12**.
 
 ### aogm
 
-- None.
+- `classic.spellcasting.combat-cast` - At the canonical 1280x720 combat composition, the full-height spellbook clips the seventh legal power choice beyond the right edge.
+- `classic.spellcasting.field-camp-cast` - The persistent field spellbook is composited beneath the exploration narrative footer where their rectangles overlap.
+- `classic.rewards.post-battle-allies` - Surviving-ally candidate rows show name and health but omit the exact combat icon already present in the detached completed CombatView.
 
 ### other-campaign
 
