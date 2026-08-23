@@ -6,25 +6,24 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 15 | 48 | 6 |
+| classic | 69 | 0 | 15 | 49 | 5 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
 
 ## Current parity-convergence batch
 
-**AOGM spell and surviving-ally presentation repair** (`aogm-spell-and-ally-presentation`)
+**AOGM progression and exchange workspaces** (`aogm-progression-exchange-workspaces`)
 
-Fresh ordinary AOGM play certified the shared Fast Spell workflow and then exposed three bounded presentation defects in adjacent certified routes: combat power seven is clipped, the field spellbook loses layer priority to the narrative footer, and surviving allies lack their exact combat icon preview. This batch repairs those visible boundaries without changing spell legality, combat resolution, rewards, or save state. The already-certified Fast Spell route remains the ordinary-play target so these adjacent layout repairs cannot regress its Alt-dock targeting path.
+Fresh ordinary AOGM play exposed one progression guard defect and two adjacent Castle-shaped exchange workspace gaps. Learn Spells permits an impossible over-budget temporary selection before authoritative rejection; Trade hides the destination inventory behind a recipient form; and Shop separates stock from the active character's carried inventory and omits the source category controls. This three-workflow certification batch keeps the existing typed mutations authoritative while making every unaffordable spell and every item transfer legible before submission. The ordinary-play targets are one level spell choice below budget, one bidirectional item trade, and one filtered buy/sell lifecycle.
 
 Planning target: **60%** ordinary-play acceptance and presentation, **25%** missing or partial workflow implementation, and **15%** discrepancy-triggered archaeology. These percentages guide batch selection; they are not inferred from commits or test counts.
 
 | Workflow | Mode | Priority | Expected evidence | Owned gaps |
 | --- | --- | --- | --- | --- |
-| `classic.spellcasting.combat-cast` | implementation | aogm-major-partial | - |  |
-| `classic.spellcasting.field-camp-cast` | implementation | aogm-major-partial | - |  |
-| `classic.rewards.post-battle-allies` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.exploration.fast-spell` | certification | aogm-certification | aogm-ordinary |  |
+| `classic.rewards.experience-level-up` | certification | aogm-major-partial | aogm-ordinary | GAP-REWARD-002 |
+| `classic.inventory.trade-item` | certification | aogm-major-partial | aogm-ordinary | GAP-INV-004 |
+| `classic.services.shop` | implementation | aogm-major-partial | - | GAP-SVC-009 |
 
 ### Batch count delta
 
@@ -32,8 +31,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
 | classic | partial | 15 | 15 | 0 |
-| classic | functional | 48 | 48 | 0 |
-| classic | certified | 6 | 6 | 0 |
+| classic | functional | 48 | 49 | +1 |
+| classic | certified | 6 | 5 | -1 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
 | host | functional | 6 | 6 | 0 |
@@ -51,7 +50,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Spellcasting | 3 | 0 | 2 | 1 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 2 | 9 | 3 |
-| Rewards and progression | 5 | 0 | 0 | 3 | 2 |
+| Rewards and progression | 5 | 0 | 0 | 4 | 1 |
 | Maps and journal | 3 | 0 | 2 | 1 | 0 |
 | Save and system | 5 | 0 | 3 | 2 | 0 |
 
@@ -98,8 +97,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | absent | 0 |
 | fixture-shell | 1 |
-| functional | 61 |
-| accepted | 7 |
+| functional | 62 |
+| accepted | 6 |
 
 ### Host
 
@@ -143,17 +142,20 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 
 ## Release blockers and major gaps
 
-Blockers: **1**. Major gaps: **12**.
+Blockers: **1**. Major gaps: **15**.
 
 - **blocker** `host.release.platform-certification` - There is no cross-platform release certification and no accepted release candidate. Next: After Classic blockers close, produce clean exports and run the same Safe package on Windows, macOS, and Linux.
 - **major** `classic.character.allies-bestiary` - Current held-over allies now have a functional read-only workspace, but the Bestiary cannot be reconstructed from the package because menu visibility and normalized descriptions are not preserved per monster. Next: Correct Providence schema v3 and Rebuilt decoding to preserve every menu-visible monster, its description, and not-on-menu flag, then add the Bestiary route without inventing discovery state.
 - **major** `classic.character.view-sheet` - Castle's lifetime combat record and prestige cannot yet be calculated accurately. Next: Add source-backed lifetime counters and update every owning combat and magic mutation path before enabling the visible Lifetime Record tab.
 - **major** `classic.combat.resolve-outcome` - Battle reward mode 10 remains unresolved end to end. Next: Implement the mode-10 restore-and-restart continuation when a certified scenario exposes it or during post-corpus synthetic saturation, without changing schema v2 unless controlled evidence disproves positional preservation.
 - **major** `classic.combat.undo` - Movement-only Undo, result invalidation, condition gates, occupied-cell safety, presentation, and save restoration are implemented; repeated Undo and initiative-edge re-entry remain runtime-unobserved. Next: Run the synthetic Castle fixtures for repeated Undo and first/last-slot or round-boundary re-entry before expanding the bounded implementation.
+- **major** `classic.inventory.trade-item` - Trade replaces the selected-item record with a recipient form instead of showing both characters' carried-item tables and one explicit transfer boundary. Next: Render source and destination white item ledgers side by side with a divider, character switching, pointer transfer in either direction, and a click-confirm alternative that submits the existing exact-instance Trade intent.
 - **major** `classic.inventory.use-item` - Ordinary AOGM play proves fixed-power party-state items and saveable field scroll consumption. Combat items and scrolls include source-backed fixed or random power plus actor, ordered repeated actor, group, ray, rotatable persistent-area, and zero-cost elemental projectile targets; door/XAP items and broader specials remain explicit. Next: Characterize door/XAP items and broader specials only when parity or a reachable campaign requires them.
 - **major** `classic.maps.location-notes` - Historical notes are readable in source order but do not yet recreate Castle's temporary map recentering and saved darkness view. Next: Add a mutation-free note browser derived from authoritative topology and the saved darkness value, then verify land and dungeon records through MCP.
 - **major** `classic.maps.view-acquired` - Exact dungeon player-map composition is not yet proven against Castle. Next: Capture one synthetic Castle dungeon player map and compare wall, door, secret, and party-marker pixels before declaring exact presentation parity.
+- **major** `classic.rewards.experience-level-up` - Learn Spells allows temporary selections beyond the detached Classic point budget and only rejects them after Confirm. Next: Keep selected spells removable, disable every unselected spell whose cost exceeds the remaining budget, disable Confirm with an explicit over-budget warning if an invalid state is restored, and allow confirmation with unspent points.
 - **major** `classic.scenario.complex-interaction` - The dedicated thief menu and timed Pick Lock flow are source-shaped; trap spell resolution and controlled Castle/UI acceptance remain incomplete. Next: Route the trap spell through the source-backed application spell effect, then run a controlled Castle comparison and ordinary campaign UI acceptance.
+- **major** `classic.services.shop` - Shop does not present the shop stock and active character inventory as paired item ledgers and omits Castle's stock-category filter strip. Next: Use one shared two-ledger exchange composition with stock filters, active-character portrait switching, detached price/load facts, and existing typed buy, sell, identify, and leave responses.
 - **major** `classic.spellcasting.combat-cast` - Manual, fixed-power scroll, charged-item, Party Auto, and monster casting share source-backed condition-cure, single-target friendly condition-effect, summoning, multi-actor ray, rotated-area, persistent-field, hostile-group, Flame Missile, and zero-cost breath resolution. Every application spell has one mechanical-family and per-source disposition; only the remaining special-effect families stay explicit pending capabilities. Next: Implement the next AOGM-reachable unresolved special-effect family while keeping every unavailable family explicit.
 - **major** `classic.spellcasting.field-camp-cast` - Ordinary AOGM camp play proves power-selected scribing, five-slot persistence, saveable party targeting, no-SP scroll use, and exact-slot consumption. Field-character casting has a catalog disposition for every application spell and now executes source-backed Remove Item curse clearing and forced cursed-item unequip; allied targets and map effects remain explicit. Next: Implement allied-target and map-effect branches only from bounded differential evidence when parity or a reachable campaign requires them.
 - **major** `classic.system.music-playlists` - Indoor automatic selection and scenario Custom 1â€“3 music remain unresolved. Next: Add an explicit Providence base-scale field and normalized scenario music resources, then certify Indoor and Custom 1â€“3 through ordinary packages without inferring either from landlook.
@@ -174,7 +176,9 @@ Blockers: **1**. Major gaps: **12**.
 
 ### aogm
 
-- None.
+- `classic.inventory.trade-item` - Trade replaces the selected-item record with a recipient form instead of showing both characters' carried-item tables and one explicit transfer boundary.
+- `classic.rewards.experience-level-up` - Learn Spells allows temporary selections beyond the detached Classic point budget and only rejects them after Confirm.
+- `classic.services.shop` - Shop does not present the shop stock and active character inventory as paired item ledgers and omits Castle's stock-category filter strip.
 
 ### other-campaign
 
