@@ -152,7 +152,7 @@ static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_NOT_APPLICABLE
 	if spell.queue_icon != 0:
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
-	if spell.target_type not in [1, 2, 3, 4, 5, 6, 9, 10, 12]:
+	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) else DISPOSITION_PENDING
 

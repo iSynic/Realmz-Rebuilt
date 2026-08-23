@@ -22,7 +22,7 @@ An executable disposition proves an owned handler boundary, not complete branch,
 - Mechanical families: battlefield-field=40, condition-cure=8, healing=12, ordinary=115, reserved=63, special-effect=170, summoning=12
 - Character combat: 79 executable, 220 pending
 - Scroll combat: 81 executable, 218 pending
-- Item combat: 60 executable, 239 pending
+- Item combat: 63 executable, 236 pending
 - Monster combat: 53 executable, 246 pending
 - Character field/camp: 127 executable, 17 pending
 

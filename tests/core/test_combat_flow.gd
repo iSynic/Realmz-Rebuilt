@@ -4,6 +4,7 @@ var _cached_battle_world: WorldDefinition
 
 func run() -> void:
 	_test_public_tactical_reaction_matrix(); _test_public_magic_matrix()
+	_test_public_repeated_combat_item()
 	_test_public_monster_turn_matrix(); _test_public_continuation_fumble_terminal_matrix()
 	_test_public_command_automation_matrix()
 
@@ -313,11 +314,26 @@ func _test_public_command_automation_matrix() -> void:
 	assert_equal([undo_state.combat.battlefield.actor_position(undo_actor.id), rules.combat_flow.probe_undo(undo_state, undo_actor.id).allowed], [Vector2i(45, 45), false], "Undo restores the captured start cell and disables replay")
 
 
+func _test_public_repeated_combat_item() -> void:
+	var rules := RealmzRules.new(); var spell := _combat_spell("spell.repeated-item", 0, 4); var item := ItemDefinition.new("item.repeated-wand", 901, "Forked Wand"); item.item_type = 21; item.initial_charges = 2; item.item_category_mask_low = 1; item.special_1 = 2; item.special_2 = spell.classic_id
+	var race := RaceDefinition.new("race.test", 1, "Test Race", [], [], [], [], [], [], []); race.item_category_mask_low = 1; var caste := CasteDefinition.new("caste.test", 1, "Test Caste", [], [], [], [], Vector2i.ONE, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO); caste.caste_class = 1; caste.item_category_mask_low = 1
+	var caster := _character("character.repeated-item"); caster.spell_points = 17; caster.set_inventory([ItemInstance.new("instance.repeated-wand", item.id, 2, false, true)]); var ally := _character("character.repeated-item-ally"); var definition := _monster_definition("monster.repeated-item", []); var monster := MonsterState.new("monster.repeated-item.instance", definition.id, definition.name, 20, 20, 1)
+	var state := _state(caster, monster, "battle.repeated-item"); state.party.add_character(ally); state.combat.battlefield.place_character(ally.id, Vector2i(44, 45)); state.combat.set_turn_order([caster.id, ally.id, monster.id]); var content := _content([definition], [item], [race], [caste], [spell]); var options := rules.combat_flow.character_item_spell_options(state, content, caster.id)
+	assert_equal(options.size(), 1, "a fixed-power repeated charged item appears once in the public combat picker")
+	if options.is_empty(): return
+	var option := options[0]
+	assert_equal([option.target_mode, option.maximum_targets, option.target_candidates.map(func(target: CombatSpellTargetView) -> String: return target.id)], [&"sequence", 2, [caster.id, ally.id, monster.id]], "the item picker exposes one ordered sequence with rules-owned candidates and the authored power limit")
+	var rejected_before := state.to_data(); var rejected_rng := _zeros(8); var rejected := rules.combat_flow.use_spell_item(state, content, caster.id, "", "instance.repeated-wand", rejected_rng, CombatFlow.INVALID_COORDINATE, 0, [monster.id, monster.id])
+	assert_equal([rejected.error_code, state.to_data(), rejected_rng.snapshot().draw_count], [&"invalid_repeated_item_targets", rejected_before, 0], "duplicate repeated-item targets fail before charge, combat, or RNG mutation")
+	var cast_rng := _zeros(24); var cast := rules.combat_flow.use_spell_item(state, content, caster.id, "", "instance.repeated-wand", cast_rng, CombatFlow.INVALID_COORDINATE, 0, [monster.id, ally.id]); var resolved := cast.events.filter(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved")
+	assert_true(cast.ok, "the public charged-item path commits an ordered repeated cast")
+	assert_equal([resolved.map(func(event: DomainEvent) -> String: return String(event.payload.get("selectedTargetId"))), monster.current_health, ally.current_health, caster.spell_points, caster.inventory()[0].charges, state.combat.active_turn.spell_cast_count], [[monster.id, ally.id], 16, 26, 17, 1, 0], "the item resolves each selected actor in order, spends one charge and no spell points, and does not count as a memorized cast")
+	assert_equal(cast_rng.trace().filter(func(entry: Dictionary) -> bool: return String(entry.get("tag", "")).begins_with("magic.repeated.damage.")).map(func(entry: Dictionary) -> String: return String(entry["tag"])), ["magic.repeated.damage.0", "magic.repeated.damage.1"], "each repeated-item target receives its own source-ordered damage roll")
+
+
 func _character(character_id: String) -> CharacterState:
-	var result := CharacterState.new(character_id, "Combat Test Hero", 30, 30)
-	result.race_id = "race.test"; result.caste_id = "caste.test"; result.luck = 1; result.hand_to_hand = 1
-	result.normal_attacks = 4 if character_id in ["character.persistent-wall", "character.wall-scroll", "character.wall-item", "character.binding-wall"] else 2; result.maximum_movement = 12; result.movement = 12
-	return result
+	var result := CharacterState.new(character_id, "Combat Test Hero", 30, 30); result.race_id = "race.test"; result.caste_id = "caste.test"; result.luck = 1; result.hand_to_hand = 1
+	result.normal_attacks = 4 if character_id in ["character.persistent-wall", "character.wall-scroll", "character.wall-item", "character.binding-wall"] else 2; result.maximum_movement = 12; result.movement = 12; return result
 
 
 func _monster_definition(definition_id: String, attacks: Array[MonsterAttackDefinition]) -> MonsterDefinition:

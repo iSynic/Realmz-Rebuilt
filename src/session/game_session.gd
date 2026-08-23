@@ -388,7 +388,7 @@ func _use_item(intent: PlayerIntent) -> SessionStep:
 	if character == null or instance == null or item == null:
 		return SessionStep.failed(_view_revision, &"unknown_item_instance", "The selected character does not carry that item instance.")
 	if _state.combat != null and not _state.combat.completed:
-		var combat_result := _rules.combat_flow.use_spell_item(_state, _content, character.id, target_id, instance.id, _rng, target_coordinate, rotation)
+		var combat_result := _rules.combat_flow.use_spell_item(_state, _content, character.id, target_id, instance.id, _rng, target_coordinate, rotation, target_ids)
 		if not combat_result.ok:
 			return SessionStep.failed(_view_revision, combat_result.error_code, combat_result.error_message)
 		if not CharacterAgingResult.update_payloads(combat_result.events).is_empty():

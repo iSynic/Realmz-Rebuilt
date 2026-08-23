@@ -205,7 +205,8 @@ func _resume_battle(continuation: ScenarioRuntimeContinuation, response: Interac
 	elif body.action == &"use_item":
 		if body.item_instance_id.is_empty():
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat item use requires an itemInstanceId string.")
-		result = _rules.combat_flow.use_spell_item(_game_state, _content, body.actor_id, body.target_id, body.item_instance_id, _rng)
+		var item_target_coordinate := body.target_coordinate if body.has_target_coordinate else CombatFlow.INVALID_COORDINATE
+		result = _rules.combat_flow.use_spell_item(_game_state, _content, body.actor_id, body.target_id, body.item_instance_id, _rng, item_target_coordinate, body.rotation, body.target_ids)
 	elif body.action == &"use_scroll":
 		if body.scroll_slot < 0:
 			return ScenarioRuntimeOperationResult.failed(&"invalid_interaction_response", "Combat scroll use requires an integer scrollSlot.")
@@ -609,6 +610,12 @@ func _combat_request(request_id: String) -> InteractionRequest:
 	var item_casts: Array[Dictionary] = []
 	for option: CombatItemOptionView in _rules.combat_flow.character_item_spell_options(_game_state, _content, combat_view.active_actor_id):
 		var item_cast := {"itemInstanceId": option.item_instance_id, "itemId": option.item_definition_id, "itemName": option.item_name, "charges": option.charges, "spellId": option.spell_id, "spellName": option.spell_name, "power": option.power, "targetId": option.target_id, "targetName": option.target_name, "targetCurrentHealth": option.target_current_health, "targetMaximumHealth": option.target_maximum_health, "targetMode": String(option.target_mode)}
+		if option.target_mode == &"sequence":
+			item_cast["maximumTargets"] = option.maximum_targets
+			var candidates: Array[Dictionary] = []
+			for candidate: CombatSpellTargetView in option.target_candidates:
+				candidates.append({"id": candidate.id, "kind": String(candidate.kind), "name": candidate.name, "currentHealth": candidate.current_health, "maximumHealth": candidate.maximum_health})
+			item_cast["targetCandidates"] = candidates
 		if option.target_mode == &"area":
 			item_cast["areaShape"] = option.area_shape
 			item_cast["defaultTargetCoordinate"] = [option.default_target_coordinate.x, option.default_target_coordinate.y]

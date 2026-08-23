@@ -39,7 +39,7 @@ func _init(flow: RefCounted, rules: ContextType) -> void:
 func _flow() -> RefCounted:
 	return _flow_ref.get_ref() if _flow_ref != null else null
 
-func probe_character_item_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0) -> CombatSpellCastProbe:
+func probe_character_item_spell(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = []) -> CombatSpellCastProbe:
 	if state == null or content == null:
 		return CombatSpellCastProbe.blocked(&"invalid_item_turn", "Item use requires an active game session.")
 	var combat := state.combat
@@ -59,6 +59,23 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 		return CombatSpellCastProbe.blocked(&"random_item_power_requires_staging", "A random-power item requires a source-backed staged targeting continuation.")
 	if ClassicSpellCapabilityCatalog.combat_item_disposition(spell) != ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE:
 		return CombatSpellCastProbe.blocked(&"unsupported_combat_item_effect", ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"combat-item"))
+	if spell.target_type == 0:
+		if spell.size != 0:
+			return CombatSpellCastProbe.blocked(&"repeated_open_space_spell_unresolved", "Classic target type 0 with nonzero size selects open-space footprints for summoning or special behavior, not ordinary actors.")
+		if target_ids.size() > power_level:
+			return CombatSpellCastProbe.blocked(&"too_many_item_targets", "A repeated item spell may select at most one distinct actor per power level.")
+		var seen: Dictionary = {}
+		for selected_id: String in target_ids:
+			if selected_id.is_empty() or seen.has(selected_id):
+				return CombatSpellCastProbe.blocked(&"invalid_repeated_item_targets", "Repeated item targets must be nonempty and distinct.")
+			seen[selected_id] = true
+			if _spell_target_selection(state, content, selected_id) == null:
+				return CombatSpellCastProbe.blocked(&"invalid_item_target", "A selected repeated-item actor is unavailable.")
+			if not _spell_actor_target_is_valid(state, content, caster.id, selected_id, spell, power_level):
+				return CombatSpellCastProbe.blocked(&"item_target_unavailable", "A selected repeated-item actor is outside the Classic spell range or line of sight.")
+		if target_ids.is_empty() and _character_actor_spell_candidates(state, content, caster, spell, power_level).is_empty():
+			return CombatSpellCastProbe.blocked(&"item_target_unavailable", "No actor is available within this repeated item's Classic range and line of sight.")
+		return CombatSpellCastProbe.permitted()
 	if spell.target_type in [3, 4]:
 		if _invalid_area_rotation(spell, rotation):
 			return CombatSpellCastProbe.blocked(&"invalid_area_rotation", "This Classic area spell does not support the selected orientation.")
@@ -97,8 +114,8 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 	return CombatSpellCastProbe.permitted()
 
 
-func use_spell_item(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, rng: RealmzRng, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0) -> CombatFlowResult:
-	var probe := probe_character_item_spell(state, content, caster_id, target_id, instance_id, target_coordinate, rotation)
+func use_spell_item(state: GameState, content: RealmzContent, caster_id: String, target_id: String, instance_id: String, rng: RealmzRng, target_coordinate: Vector2i = INVALID_COORDINATE, rotation: int = 0, target_ids: Array[String] = []) -> CombatFlowResult:
+	var probe := probe_character_item_spell(state, content, caster_id, target_id, instance_id, target_coordinate, rotation, target_ids)
 	if not probe.allowed:
 		return CombatFlowResult.failed(probe.reason, probe.reason_text)
 	var caster := state.party.character_by_id(caster_id)
@@ -108,6 +125,8 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 	var power_level := absi(item.special_1)
 	if spell.target_type in [3, 4] and target_coordinate == INVALID_COORDINATE:
 		return CombatFlowResult.failed(&"item_area_target_required", "Choose a battlefield center for this area item.")
+	if spell.target_type == 0 and target_ids.is_empty():
+		return CombatFlowResult.failed(&"item_target_required", "Choose at least one actor for this repeated item spell.")
 	var state_checkpoint := state.to_data()
 	var rng_checkpoint := rng.checkpoint()
 	if not _rules.inventory.use_charge(caster, instance.id, item):
@@ -131,6 +150,17 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		if area == null or not area.cast:
 			return _rollback_combat_item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The area item spell could not be resolved.")
 		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, area, rng, target_coordinate, shape, "classic-item", instance_id, false, persistent_field)
+	elif spell.target_type == 0:
+		var selections: Array[SpellTargetSelection] = []
+		for selected_id: String in target_ids:
+			var repeated_selection := _spell_target_selection(state, content, selected_id)
+			if repeated_selection == null:
+				return _rollback_combat_item(state, rng, state_checkpoint, rng_checkpoint, &"item_target_unavailable", "A repeated-item target became unavailable.")
+			selections.append(repeated_selection)
+		var repeated := _rules.magic.resolve_character_repeated_spell(caster, selections, spell, power_level, cast_level, rng, false)
+		if repeated == null or not repeated.cast:
+			return _rollback_combat_item(state, rng, state_checkpoint, rng_checkpoint, &"item_spell_failed", "The repeated item spell could not be resolved.")
+		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, repeated, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false)
 	elif spell.target_type == 6:
 		var ray_selections := _ray_spell_selections(state, content, caster.id, target_id, spell)
 		var ray := _rules.magic.resolve_character_ray_spell(caster, ray_selections, spell, power_level, cast_level, rng, false)
@@ -185,6 +215,12 @@ func character_item_spell_options(state: GameState, content: RealmzContent, cast
 		var item := content.item_by_id(instance.definition_id)
 		var spell := content.spell_by_classic_id(item.special_2) if item != null else null
 		if item == null or spell == null or absi(item.special_1) == 8:
+			continue
+		if spell.target_type == 0:
+			var power_level := absi(item.special_1)
+			if probe_character_item_spell(state, content, caster_id, "", instance.id).allowed:
+				var candidates := _character_actor_spell_candidates(state, content, caster, spell, power_level)
+				result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], [], [], power_level, candidates))
 			continue
 		if spell.target_type in [3, 4]:
 			var power_level := absi(item.special_1)
