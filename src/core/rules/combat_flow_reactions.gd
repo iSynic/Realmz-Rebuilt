@@ -4,6 +4,7 @@ extends RefCounted
 const ContextType = preload("res://src/core/rules/combat_flow_context.gd")
 const CombatRetreatProbeType = preload("res://src/core/rules/combat_retreat_probe.gd")
 const CombatCommandProbeType = preload("res://src/core/rules/combat_command_probe.gd")
+const FieldsType = preload("res://src/core/rules/combat_flow_fields.gd")
 const CombatScrollOptionViewType = preload("res://src/core/view/combat_scroll_option_view.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
@@ -141,7 +142,7 @@ func retreat_character(state: GameState, content: RealmzContent, actor_id: Strin
 	if not _flow()._has_loyal_battlefield_character(state):
 		_flow()._complete_battle(state, content, &"retreated", events)
 		return CombatFlowResult.succeeded(events, true)
-	_flow()._advance_turn(state, rng, events)
+	_flow()._advance_turn(state, content, rng, events)
 	_flow()._process_monster_turns(state, content, rng, events)
 	return CombatFlowResult.succeeded(events, state.combat.completed)
 
@@ -187,7 +188,7 @@ func move_character(state: GameState, content: RealmzContent, actor_id: String, 
 	var reaction_result := _continue_pending_reaction(state, content, rng, events)
 	if reaction_result == REACTION_MOVER_DEFEATED:
 		if combat.active_actor_id() == actor.id:
-			_flow()._advance_turn(state, rng, events)
+			_flow()._advance_turn(state, content, rng, events)
 		if _flow()._finish_if_resolved(state, content, events):
 			return CombatFlowResult.succeeded(events, true)
 		_flow()._process_monster_turns(state, content, rng, events)
@@ -245,13 +246,17 @@ func _continue_pending_reaction(state: GameState, content: RealmzContent, rng: R
 					reaction.auto_switch_to_melee = false
 					reaction.set_phase(CombatReactionState.WITHDRAWAL, _withdrawal_hostiles(state, reaction))
 				else:
-					if not _commit_reaction_move(state, content, reaction, events):
-						combat.pending_reaction = null
-						return REACTION_MOVER_DEFEATED
+					var move_result := _commit_reaction_move(state, content, reaction, rng, events)
+					if move_result != REACTION_COMPLETED:
+						if move_result == REACTION_MOVER_DEFEATED:
+							combat.pending_reaction = null
+						return move_result
 			CombatReactionState.WITHDRAWAL:
-				if not _commit_reaction_move(state, content, reaction, events):
-					combat.pending_reaction = null
-					return REACTION_MOVER_DEFEATED
+				var move_result := _commit_reaction_move(state, content, reaction, rng, events)
+				if move_result != REACTION_COMPLETED:
+					if move_result == REACTION_MOVER_DEFEATED:
+						combat.pending_reaction = null
+					return move_result
 			CombatReactionState.GUARD_AFTER:
 				combat.pending_reaction = null
 				return REACTION_COMPLETED
@@ -263,19 +268,19 @@ func _continue_pending_reaction(state: GameState, content: RealmzContent, rng: R
 	return REACTION_COMPLETED
 
 
-func _commit_reaction_move(state: GameState, content: RealmzContent, reaction: CombatReactionState, events: Array[DomainEvent]) -> bool:
+func _commit_reaction_move(state: GameState, content: RealmzContent, reaction: CombatReactionState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
 	var combat := state.combat
 	if combat == null or combat.battlefield == null or not _combatant_is_alive(state, reaction.mover_id) or combat.battlefield.actor_position(reaction.mover_id) != reaction.origin:
-		return false
+		return REACTION_MOVER_DEFEATED
 	var movement_remaining := 0
 	if reaction.kind == CombatReactionState.CHARACTER_MOVE:
 		if state.party.character_by_id(reaction.mover_id) == null:
-			return false
+			return REACTION_MOVER_DEFEATED
 	else:
 		if combat.active_turn == null or combat.active_turn.actor_id != reaction.mover_id:
-			return false
+			return REACTION_MOVER_DEFEATED
 	if not combat.battlefield.move_actor(reaction.mover_id, reaction.destination):
-		return false
+		return REACTION_MOVER_DEFEATED
 	if reaction.kind == CombatReactionState.CHARACTER_MOVE:
 		var character := state.party.character_by_id(reaction.mover_id)
 		character.movement = maxi(0, character.movement - reaction.movement_cost)
@@ -295,11 +300,18 @@ func _commit_reaction_move(state: GameState, content: RealmzContent, reaction: C
 	var terrain: BattleTerrainTileDefinition = terrain_set.tile_by_id(combat.battlefield.terrain_at(reaction.destination)) if terrain_set != null else null
 	if terrain != null and terrain.sound != 0:
 		events.append(DomainEvent.new(&"sound_requested", {"soundId": terrain.sound, "waitForCompletion": terrain.sound < 0, "source": "classic-battle-movement"}))
+	var collision_result: int = _flow()._resolve_persistent_field_collisions(state, content, reaction.mover_id, rng, events)
+	if collision_result == FieldsType.COLLISION_DEATH_MACRO:
+		return REACTION_DEATH_MACRO
+	if collision_result == FieldsType.COLLISION_INVALID:
+		events.append(DomainEvent.new(&"combat_persistent_field_collision_failed", {"actorId": reaction.mover_id, "reason": "invalid-runtime-state"}))
+	if collision_result == FieldsType.COLLISION_DEFEATED:
+		return REACTION_MOVER_DEFEATED
 	if reaction.kind == CombatReactionState.MONSTER_RETREAT and _flow()._retreating_monster_reached_edge(state, content, reaction.mover_id, reaction.destination, events):
 		reaction.set_phase(CombatReactionState.GUARD_AFTER, [])
-		return true
+		return REACTION_COMPLETED
 	reaction.set_phase(CombatReactionState.GUARD_AFTER, _guarding_hostiles(state, reaction.mover_id))
-	return true
+	return REACTION_COMPLETED
 
 
 func _resolve_reaction_attack(state: GameState, content: RealmzContent, attacker_id: String, reaction: CombatReactionState, rng: RealmzRng, events: Array[DomainEvent]) -> int:

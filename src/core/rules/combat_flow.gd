@@ -8,6 +8,7 @@ const LifecycleType = preload("res://src/core/rules/combat_flow_lifecycle.gd")
 const ActionsType = preload("res://src/core/rules/combat_flow_actions.gd")
 const ReactionsType = preload("res://src/core/rules/combat_flow_reactions.gd")
 const MagicType = preload("res://src/core/rules/combat_flow_magic.gd")
+const FieldsType = preload("res://src/core/rules/combat_flow_fields.gd")
 const SummoningType = preload("res://src/core/rules/combat_flow_summoning.gd")
 const AutomationType = preload("res://src/core/rules/combat_flow_automation.gd")
 
@@ -26,6 +27,7 @@ var _lifecycle: RefCounted
 var _actions: RefCounted
 var _reactions: RefCounted
 var _magic: RefCounted
+var _fields: RefCounted
 var _summoning: RefCounted
 var _automation: RefCounted
 
@@ -36,6 +38,7 @@ func _init(rules: RealmzRules) -> void:
 	_actions = ActionsType.new(self, _rules)
 	_reactions = ReactionsType.new(self, _rules)
 	_magic = MagicType.new(self, _rules)
+	_fields = FieldsType.new(self, _rules)
 	_summoning = SummoningType.new(self, _rules)
 	_automation = AutomationType.new(self, _rules)
 
@@ -95,8 +98,16 @@ func _mark_character_bleeding(state: GameState, character: CharacterState, defea
 	_actions._mark_character_bleeding(state, character, defeated)
 
 
-func _advance_turn(state: GameState, rng: RealmzRng, events: Array[DomainEvent]) -> void:
-	_lifecycle._advance_turn(state, rng, events)
+func _advance_turn(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> void:
+	_lifecycle._advance_turn(state, content, rng, events)
+
+
+func _resolve_persistent_field_collisions(state: GameState, content: RealmzContent, actor_id: String, rng: RealmzRng, events: Array[DomainEvent], retain_turn_collisions: bool = true, begin_death_macros: bool = true) -> int:
+	return _fields.resolve_actor_collisions(state, content, actor_id, rng, events, retain_turn_collisions, begin_death_macros)
+
+
+func _begin_persistent_field_death_macros(combat: CombatState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
+	return _fields.begin_pending_death_macros(combat, content, events)
 
 
 func _process_bleeding_round(state: GameState, rng: RealmzRng, events: Array[DomainEvent]) -> void:
@@ -159,8 +170,8 @@ func _continue_pending_reaction(state: GameState, content: RealmzContent, rng: R
 	return _reactions._continue_pending_reaction(state, content, rng, events)
 
 
-func _commit_reaction_move(state: GameState, content: RealmzContent, reaction: CombatReactionState, events: Array[DomainEvent]) -> bool:
-	return _reactions._commit_reaction_move(state, content, reaction, events)
+func _commit_reaction_move(state: GameState, content: RealmzContent, reaction: CombatReactionState, rng: RealmzRng, events: Array[DomainEvent]) -> int:
+	return _reactions._commit_reaction_move(state, content, reaction, rng, events)
 
 
 func _resolve_reaction_attack(state: GameState, content: RealmzContent, attacker_id: String, reaction: CombatReactionState, rng: RealmzRng, events: Array[DomainEvent]) -> int:

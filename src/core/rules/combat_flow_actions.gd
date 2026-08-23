@@ -75,7 +75,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 			combat.set_guarding(actor.id, true)
 			events.append(DomainEvent.new(&"sound_requested", {"soundId": guard_sound, "waitForCompletion": false, "source": "classic-combat-guard"}))
 			events.append(DomainEvent.new(&"combatant_guarded", {"actorId": actor.id, "roll": guard_roll, "soundId": guard_sound, "source": "classic"}))
-			_flow()._advance_turn(state, rng, events)
+			_flow()._advance_turn(state, content, rng, events)
 		&"delay":
 			var delay_probe := probe_delay(state, actor.id)
 			if not delay_probe.allowed:
@@ -101,7 +101,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 				var bandage_sound := 10121 if bandage_roll < 50 else 10123
 				events.append(DomainEvent.new(&"sound_requested", {"soundId": bandage_sound, "waitForCompletion": false, "source": "classic-combat-auto-bandage"}))
 			events.append(DomainEvent.new(&"combatant_bandaged", {"actorId": actor.id, "targetId": target_id, "source": "classic-corrected", "fidelityDecision": "FD-COMBAT-013"}))
-			_flow()._advance_turn(state, rng, events)
+			_flow()._advance_turn(state, content, rng, events)
 		&"turn_undead":
 			var turn_result := _turn_undead(state, content, actor, rng)
 			if not turn_result.ok:
@@ -136,7 +136,7 @@ func submit_action(state: GameState, content: RealmzContent, actor_id: String, a
 			actor.movement = 0
 			combat.set_guarding(actor.id, false)
 			events.append(DomainEvent.new(&"combat_turn_passed", {"actorId": actor.id, "action": String(action)}))
-			_flow()._advance_turn(state, rng, events)
+			_flow()._advance_turn(state, content, rng, events)
 		&"retreat":
 			return _flow().retreat_character(state, content, actor_id, &"explicit", Vector2i(-100_000, -100_000), rng)
 		_:
@@ -185,7 +185,7 @@ func _submit_character_attack(state: GameState, content: RealmzContent, actor: C
 		_mark_character_bleeding(state, character_target, resolution.killed)
 		_flow()._remove_defeated_position(combat, character_target.id, resolution.killed)
 	_consume_character_attack(actor)
-	if not _character_can_continue(actor): _flow()._advance_turn(state, rng, events)
+	if not _character_can_continue(actor): _flow()._advance_turn(state, content, rng, events)
 	return CombatFlowResult.succeeded(events)
 
 
@@ -336,7 +336,7 @@ func _turn_undead(state: GameState, content: RealmzContent, actor: CharacterStat
 			return CombatFlowResult.failed(&"invalid_turn_undead_macro_queue", "Turn Undead could not begin its source-ordered death-macro continuation.")
 		return CombatFlowResult.succeeded(events)
 	if advances_turn:
-		_flow()._advance_turn(state, rng, events)
+		_flow()._advance_turn(state, content, rng, events)
 	return CombatFlowResult.succeeded(events)
 
 
@@ -426,7 +426,7 @@ func _fire_character_projectile(state: GameState, content: RealmzContent, actor:
 	var death_macro_requested := resolution.target_defeated and _request_monster_death_macro(target, definition, events)
 	_flow()._remove_defeated_position(combat, target.id, resolution.target_defeated and not death_macro_requested)
 	if not _character_can_continue(actor):
-		_flow()._advance_turn(state, rng, events)
+		_flow()._advance_turn(state, content, rng, events)
 	if death_macro_requested:
 		return CombatFlowResult.succeeded(events)
 	if _flow()._finish_if_resolved(state, content, events):

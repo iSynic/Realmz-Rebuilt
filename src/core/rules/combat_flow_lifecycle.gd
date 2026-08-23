@@ -5,6 +5,7 @@ const ContextType = preload("res://src/core/rules/combat_flow_context.gd")
 const CombatRetreatProbeType = preload("res://src/core/rules/combat_retreat_probe.gd")
 const CombatCommandProbeType = preload("res://src/core/rules/combat_command_probe.gd")
 const CombatScrollOptionViewType = preload("res://src/core/view/combat_scroll_option_view.gd")
+const FieldsType = preload("res://src/core/rules/combat_flow_fields.gd")
 
 const MONSTER_ATTACK_COMPLETED := 0
 const MONSTER_ATTACK_WAITING := 1
@@ -164,14 +165,34 @@ func _battle_setup_failure(state: GameState, instance_checkpoint: int, rng: Real
 	return CombatFlowResult.failed(code, message)
 
 
-func _advance_turn(state: GameState, rng: RealmzRng, events: Array[DomainEvent]) -> void:
+func _advance_turn(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> void:
 	if state == null or state.combat == null:
 		return
 	var round_advanced := state.combat.advance_turn()
 	for field: RefCounted in state.combat.decay_persistent_fields_for_phase(state.combat.turn_index):
 		events.append(DomainEvent.new(&"combat_persistent_field_expired", {"slot": field.slot, "spellId": field.spell_id, "center": [field.center.x, field.center.y], "shape": field.shape, "queueIcon": field.queue_icon, "source": "classic"}))
 	if round_advanced:
+		_process_persistent_field_round_collisions(state, content, rng, events)
 		_process_bleeding_round(state, rng, events)
+
+
+func _process_persistent_field_round_collisions(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> void:
+	var combat := state.combat
+	if combat == null or combat.battlefield == null or combat.persistent_fields().is_empty():
+		return
+	var actor_ids: Array[String] = []
+	for character: CharacterState in state.party.characters():
+		if character.current_health > 0 and combat.battlefield.has_actor(character.id):
+			actor_ids.append(character.id)
+	for monster: MonsterState in combat.monsters():
+		if monster.current_health > 0 and combat.battlefield.has_actor(monster.id):
+			actor_ids.append(monster.id)
+	for actor_id: String in actor_ids:
+		var result: int = _flow()._resolve_persistent_field_collisions(state, content, actor_id, rng, events, false, false)
+		if result == FieldsType.COLLISION_INVALID:
+			events.append(DomainEvent.new(&"combat_persistent_field_collision_failed", {"actorId": actor_id, "reason": "invalid-runtime-state"}))
+	if not combat.pending_spell_death_macro_id().is_empty() and not _flow()._begin_persistent_field_death_macros(combat, content, events):
+		events.append(DomainEvent.new(&"combat_persistent_field_collision_failed", {"actorId": combat.active_actor_id(), "reason": "invalid-death-macro-queue"}))
 
 
 func _process_bleeding_round(state: GameState, rng: RealmzRng, events: Array[DomainEvent]) -> void:
@@ -230,7 +251,7 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 				return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The active caster changed before the queued spell action completed.")
 		state.combat.clear_spell_death_macro_sequence()
 		if advances_turn:
-			_advance_turn(state, rng, events)
+			_advance_turn(state, content, rng, events)
 	_flow()._remove_all_defeated_positions(state)
 	if state.combat.pending_reaction != null:
 		var reaction := state.combat.pending_reaction
@@ -246,7 +267,7 @@ func continue_after_monster_death_macro(state: GameState, content: RealmzContent
 		else:
 			state.combat.pending_reaction = null
 		if state.combat.active_actor_id() == mover_id:
-			_advance_turn(state, rng, events)
+			_advance_turn(state, content, rng, events)
 	if state.combat.completed or _finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	_flow()._process_monster_turns(state, content, rng, events)
@@ -295,7 +316,7 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 			return CombatFlowResult.succeeded(events)
 		if reaction_result == REACTION_MOVER_DEFEATED:
 			if combat.active_actor_id() == mover_id:
-				_advance_turn(state, rng, events)
+				_advance_turn(state, content, rng, events)
 			if _finish_if_resolved(state, content, events):
 				return CombatFlowResult.succeeded(events, true)
 			_flow()._process_monster_turns(state, content, rng, events)
@@ -309,7 +330,7 @@ func continue_after_age_update(state: GameState, content: RealmzContent, rng: Re
 	var monster := combat.monster_by_id(pending.actor_id)
 	var definition := content.monster_by_id(monster.definition_id) if monster != null else null
 	if combat.active_turn == null or combat.active_turn.actor_id != pending.actor_id or pending.action != &"advance" or definition == null or combat.active_turn.attack_index >= _flow()._monster_attack_limit(definition):
-		_advance_turn(state, rng, events)
+		_advance_turn(state, content, rng, events)
 	elif defeated:
 		combat.active_turn.target_id = ""
 	_flow()._process_monster_turns(state, content, rng, events)
@@ -511,6 +532,8 @@ func apply_fumble_recovery(state: GameState, content: RealmzContent, action: Str
 func _finish_if_resolved(state: GameState, content: RealmzContent, events: Array[DomainEvent]) -> bool:
 	state.prune_combat_auto_characters()
 	var combat := state.combat
+	if not combat.pending_spell_death_macro_id().is_empty() or not combat.spell_macro_actor_id().is_empty():
+		return false
 	var enemies_alive := false
 	for character: CharacterState in state.party.characters():
 		if character.current_health > 0 and character.traitor and combat.battlefield != null and combat.battlefield.has_actor(character.id):

@@ -119,7 +119,7 @@ func cast_character_summon(state: GameState, content: RealmzContent, caster: Cha
 	events.insert(1, DomainEvent.new(&"combat_spell_cast", {"actorId": caster.id, "targetId": summoned_ids[0] if not summoned_ids.is_empty() else "", "targetIds": summoned_ids, "targetCoordinates": target_coordinates.map(func(coordinate: Vector2i) -> Array[int]: return [coordinate.x, coordinate.y]), "spellId": spell.id, "classicEffectResourceId": 11_992 + spell.look_start * 8, "source": event_source}))
 	var advances_turn: bool = not _flow()._character_can_continue(caster)
 	if advances_turn:
-		_flow()._advance_turn(state, rng, events)
+		_flow()._advance_turn(state, content, rng, events)
 	if _flow()._finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	_flow()._process_monster_turns(state, content, rng, events)

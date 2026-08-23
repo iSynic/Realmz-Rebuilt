@@ -648,7 +648,7 @@ func _commit_character_multi_spell(state: GameState, content: RealmzContent, cas
 			return CombatFlowResult.failed(&"invalid_spell_death_macro_queue", "The multi-target spell death-macro queue could not retain its caster and source order.")
 		return CombatFlowResult.succeeded(events)
 	if advances_turn:
-		_flow()._advance_turn(state, rng, events)
+		_flow()._advance_turn(state, content, rng, events)
 	if _flow()._finish_if_resolved(state, content, events):
 		return CombatFlowResult.succeeded(events, true)
 	_flow()._process_monster_turns(state, content, rng, events)

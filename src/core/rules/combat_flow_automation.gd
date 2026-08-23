@@ -184,14 +184,17 @@ static func _events_include(events: Array[DomainEvent], kind: StringName) -> boo
 
 func _process_monster_turns(state: GameState, content: RealmzContent, rng: RealmzRng, events: Array[DomainEvent]) -> void:
 	var combat := state.combat
+	if combat == null or not combat.pending_spell_death_macro_id().is_empty():
+		return
 	var guard := combat.turn_order().size()
 	while guard > 0 and not combat.completed:
+		if not combat.pending_spell_death_macro_id().is_empty(): return
 		var actor_id := combat.active_actor_id()
 		var monster := combat.monster_by_id(actor_id)
 		if monster == null:
 			var charmed_actor := state.party.character_by_id(actor_id)
 			if charmed_actor != null and (combat.battlefield == null or not combat.battlefield.has_actor(charmed_actor.id)):
-				_flow()._advance_turn(state, rng, events)
+				_flow()._advance_turn(state, content, rng, events)
 				guard -= 1
 				continue
 			if charmed_actor == null or not charmed_actor.traitor:
@@ -199,28 +202,28 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 					_flow()._prepare_character_turn(combat, charmed_actor)
 				break
 			if charmed_actor.current_health > 0 and _process_charmed_character_turn(state, content, charmed_actor, rng, events):
-				_flow()._advance_turn(state, rng, events)
+				_flow()._advance_turn(state, content, rng, events)
 				return
-			_flow()._advance_turn(state, rng, events)
+			_flow()._advance_turn(state, content, rng, events)
 			if _flow()._finish_if_resolved(state, content, events):
 				break
 			guard -= 1
 			continue
 		if monster.current_health <= 0:
-			_flow()._advance_turn(state, rng, events)
+			_flow()._advance_turn(state, content, rng, events)
 			guard -= 1
 			continue
 		if combat.active_turn == null:
 			combat.set_guarding(monster.id, true)
 		if monster.conditions.is_active(ConditionRules.HELPLESS):
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": "incapacitated"}))
-			_flow()._advance_turn(state, rng, events)
+			_flow()._advance_turn(state, content, rng, events)
 			guard -= 1
 			continue
 		var definition := content.monster_by_id(monster.definition_id)
 		if definition == null:
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": "unavailable_definition"}))
-			_flow()._advance_turn(state, rng, events)
+			_flow()._advance_turn(state, content, rng, events)
 			guard -= 1
 			continue
 		var active_turn := combat.begin_active_turn()
@@ -274,7 +277,7 @@ func _process_monster_turns(state: GameState, content: RealmzContent, rng: Realm
 				return
 		else:
 			events.append(DomainEvent.new(&"combat_monster_action", {"actorId": monster.id, "action": String(active_turn.action)}))
-		_flow()._advance_turn(state, rng, events)
+		_flow()._advance_turn(state, content, rng, events)
 		if _flow()._finish_if_resolved(state, content, events):
 			break
 		guard -= 1
@@ -675,7 +678,7 @@ func _resolve_monster_attack_row(state: GameState, content: RealmzContent, monst
 		_remove_defeated_position(combat, monster_target.id, not death_macro_requested)
 		if death_macro_requested:
 			if active_turn.attack_index >= _monster_attack_limit(definition):
-				_flow()._advance_turn(state, rng, events)
+				_flow()._advance_turn(state, content, rng, events)
 			return MONSTER_ATTACK_DEATH_MACRO
 	return MONSTER_ATTACK_COMPLETED
 
