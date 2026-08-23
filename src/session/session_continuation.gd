@@ -79,6 +79,8 @@ class TargetingBody:
 	func _payload_data(kind: StringName) -> Dictionary:
 		if kind == &"drop-item-confirmation":
 			return {"kind": String(kind), "characterId": character_id, "instanceId": instance_id}
+		if kind == &"scroll-discard-confirmation":
+			return {"kind": String(kind), "characterId": character_id, "spellId": spell_id, "power": power, "scrollSlot": scroll_slot}
 		var data := {"kind": String(kind), "characterId": character_id, "spellId": spell_id, "power": power, "targetCount": target_count}
 		if kind == &"item-use-target-selection":
 			data["instanceId"] = instance_id
@@ -196,7 +198,7 @@ static func character_vault_publication(character_id: String) -> SessionContinua
 
 
 static func targeting_selection(continuation_kind: StringName, targeting_body: TargetingBody) -> SessionContinuation:
-	assert(continuation_kind in [&"item-use-target-selection", &"field-spell-target-selection", &"scroll-target-selection", &"drop-item-confirmation"])
+	assert(continuation_kind in [&"item-use-target-selection", &"field-spell-target-selection", &"scroll-target-selection", &"scroll-discard-confirmation", &"drop-item-confirmation"])
 	return SessionContinuation.new(continuation_kind, targeting_body)
 
 
@@ -310,7 +312,7 @@ static func _from_wire_payload(continuation_kind: StringName, data: Dictionary) 
 			return character_spell_confirmation(data["characterId"], remaining) if _has_exact_fields(data, ["characterId", "remaining"]) and data.get("characterId") is String and not data["characterId"].is_empty() and remaining >= 1 else null
 		&"character-vault-publication":
 			return character_vault_publication(data["characterId"]) if _has_exact_fields(data, ["characterId"]) and data.get("characterId") is String and not data["characterId"].is_empty() else null
-		&"item-use-target-selection", &"field-spell-target-selection", &"scroll-target-selection", &"drop-item-confirmation":
+		&"item-use-target-selection", &"field-spell-target-selection", &"scroll-target-selection", &"scroll-discard-confirmation", &"drop-item-confirmation":
 			return _decode_targeting(continuation_kind, data)
 		&"service-interaction":
 			if not _has_exact_fields(data, ["serviceId", "runtimeContinuation"]) or not data.get("serviceId") is String or data["serviceId"].is_empty():
@@ -401,6 +403,17 @@ static func _decode_targeting(continuation_kind: StringName, data: Dictionary) -
 		drop.character_id = data["characterId"]
 		drop.instance_id = data["instanceId"]
 		return targeting_selection(continuation_kind, drop)
+	if continuation_kind == &"scroll-discard-confirmation":
+		var discard_power := _integer(data.get("power"))
+		var discard_slot := _integer(data.get("scrollSlot"))
+		if not _has_exact_fields(data, ["characterId", "spellId", "power", "scrollSlot"]) or not _nonempty_strings(data, ["characterId", "spellId"]) or discard_power < 1 or discard_power > 7 or discard_slot < 0 or discard_slot >= 5:
+			return null
+		var discard := TargetingBody.new()
+		discard.character_id = data["characterId"]
+		discard.spell_id = data["spellId"]
+		discard.power = discard_power
+		discard.scroll_slot = discard_slot
+		return targeting_selection(continuation_kind, discard)
 	var fields: Array[String] = ["characterId", "spellId", "power", "targetCount"]
 	match continuation_kind:
 		&"item-use-target-selection": fields.append_array(["instanceId", "startingCharges"])

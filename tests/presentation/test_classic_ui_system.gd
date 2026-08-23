@@ -84,6 +84,7 @@ func run() -> void:
 	_test_character_creator_workflow()
 	_test_character_vault_workspace()
 	_test_field_spell_workspace()
+	_test_scroll_case_workspace()
 	_test_inventory_workspace()
 	_test_party_order_workspace()
 	_test_character_sheet_workspace()
@@ -1080,6 +1081,13 @@ func _test_field_spell_workspace() -> void:
 	var cast_payload := submitted[0].payload as PlayerIntent.SpellPayload
 	assert_equal([cast_payload.operation, cast_payload.caster_id, cast_payload.spell_id, cast_payload.power], [&"cast", "caster", "classic.spell.field", 1], "compact spell action preserves the selected caster, spell, and power"); _buttons_in(body).filter(func(button: Button) -> bool: return button.text == "Fast Spells (1–0)")[0].pressed.emit(); for child: Node in body.get_children(): child.free(); controller.present(body, view, null, 1.0, fixed_actions)
 	var fast_picker := body.find_child("FastSpellPicker0", true, false) as OptionButton; fast_picker.select(2); fast_picker.item_selected.emit(2); var fast_payload := submitted[1].payload as PlayerIntent.SpellPayload; assert_true(not fast_picker.fit_to_longest_item and not _buttons_in(body).any(func(button: Button) -> bool: return button.text == "Set") and [submitted[1].kind, fast_payload.spell_id, fast_payload.power] == [PlayerIntent.Kind.SET_FAST_SPELL, definition.id, 2], "choosing a Fast Spell immediately emits its binding without a per-row Set action or a width-expanding longest-item minimum"); _buttons_in(body).filter(func(button: Button) -> bool: return button.text == "Clear")[0].pressed.emit(); assert_true((submitted[2].payload as PlayerIntent.SpellPayload).spell_id.is_empty(), "Clear immediately removes the assigned Fast Spell while Back remains navigation only"); body.free(); fixed_actions.free()
+
+
+func _test_scroll_case_workspace() -> void:
+	var body := VBoxContainer.new(); var controller := SpellsWorkspaceController.new(); var view := GameView.new(5, true, null); var definition := SpellDefinition.new("classic.spell.scroll", 1112, "Battle Scroll", "A combat-only scroll.")
+	var character_view := CharacterView.new(CharacterState.new("caster", "Aster", 12, 12)); var scroll_view := SpellScrollView.new(0, SpellScrollState.new(definition.id, 1), definition); scroll_view.discard = ActionAvailabilityView.new(&"cast_spell", true); character_view.scrolls = [scroll_view]; view.party_members = [character_view]
+	var submitted: Array[PlayerIntent] = []; controller.intent_submitted.connect(func(intent: PlayerIntent) -> void: submitted.append(intent)); controller.present(body, view, null, 1.0); _buttons_in(body).filter(func(button: Button) -> bool: return button.text == "Scroll Case")[0].pressed.emit(); for child: Node in body.get_children(): child.free(); controller.present(body, view, null, 1.0)
+	var discard := body.find_child("DiscardScroll0", true, false) as Button; assert_true(discard != null and not discard.disabled and body.find_child("UseScroll0", true, false) != null, "the five-slot case keeps separate Use and source-backed Discard actions"); discard.pressed.emit(); assert_equal([(submitted[0].payload as PlayerIntent.SpellPayload).operation, (submitted[0].payload as PlayerIntent.SpellPayload).scroll_slot], [&"use-scroll", 0], "Discard enters the same typed scroll transaction that owns its confirmation"); body.free()
 func _test_inventory_workspace() -> void:
 	var definition := ItemDefinition.new("classic.item.inventory-ui", 10, "Longsword", "Sword", "A balanced sword."); definition.icon_id = 20; definition.vs_small = 10
 	var source := CharacterState.new("source", "Alis", 10, 10); var destination := CharacterState.new("destination", "Borin", 12, 12)

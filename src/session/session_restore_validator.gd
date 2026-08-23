@@ -309,7 +309,7 @@ static func _valid_session_continuation(content: RealmzContent, state: GameState
 				&"classic-banking":
 					return service.service_id == "realmz.service.bank" and state.bank_available and session_interaction.kind == InteractionRequest.BANK
 			return false
-		&"drop-item-confirmation", &"item-use-target-selection", &"field-spell-target-selection", &"scroll-target-selection":
+		&"drop-item-confirmation", &"item-use-target-selection", &"field-spell-target-selection", &"scroll-target-selection", &"scroll-discard-confirmation":
 			return _valid_targeting_continuation(content, state, continuation, vm_interaction, session_interaction)
 		&"character-spell-confirmation":
 			var application := continuation.application()
@@ -419,6 +419,18 @@ static func _valid_targeting_continuation(content: RealmzContent, state: GameSta
 	if targeting == null or vm_interaction != null or session_interaction == null:
 		return false
 	var character := state.party.character_by_id(targeting.character_id)
+	if continuation.kind == &"scroll-discard-confirmation":
+		var scroll := character.scroll_at(targeting.scroll_slot) if character != null else null
+		var discard_spell := content.spell_by_id(targeting.spell_id)
+		if scroll == null or discard_spell == null or scroll.spell_id != discard_spell.id or scroll.power != targeting.power or discard_spell.in_camp or character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
+			return false
+		var equipped_case := false
+		for carried: ItemInstance in character.inventory():
+			var carried_definition := content.item_by_id(carried.definition_id)
+			if carried.equipped and carried_definition != null and absi(carried_definition.item_type) == 13:
+				equipped_case = true
+				break
+		return equipped_case and session_interaction.to_data() == InventoryMagicServicesWorkflow.scroll_discard_request(session_interaction.request_id, discard_spell.name).to_data()
 	if continuation.kind == &"drop-item-confirmation":
 		var instance := _item_instance_for_state(character, targeting.instance_id)
 		var definition: ItemDefinition = null if instance == null else content.item_by_id(instance.definition_id)

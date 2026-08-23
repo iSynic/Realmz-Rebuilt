@@ -31,6 +31,8 @@ func _respond_session_interaction(response: InteractionResponse) -> SessionCoord
 			return _respond_field_spell_target(response)
 		&"scroll-target-selection":
 			return _respond_scroll_target(response)
+		&"scroll-discard-confirmation":
+			return _respond_scroll_discard(response)
 		&"character-spell-confirmation":
 			return _respond_character_spell_confirmation(response)
 		&"character-vault-publication":
@@ -244,6 +246,19 @@ func _respond_scroll_target(response: InteractionResponse) -> SessionCoordinator
 		_context.set_continuation(saved_continuation)
 		_context.session_interaction = saved_interaction
 	return completed
+
+
+func _respond_scroll_discard(response: InteractionResponse) -> SessionCoordinatorResult:
+	var body = response.body as InteractionResponse.YesNoBody
+	if response.kind != InteractionRequest.YES_NO or body == null:
+		return _context.failed(&"invalid_interaction_response", "Discarding a scroll requires a yes/no response.")
+	var targeting = _context.session_continuation.targeting()
+	var result := InventoryMagicServicesWorkflow.discard_field_scroll(_context.workflow_context(), targeting, body.accepted)
+	if not result.ok:
+		return _context.failed(result.error_code, result.error_message, result.events)
+	_context.session_interaction = null
+	_context.session_continuation.clear()
+	return _context.completed(result.events)
 
 
 func _begin_runtime_service(service_id: String, operation: ScenarioRuntimeOperationResult) -> SessionCoordinatorResult:

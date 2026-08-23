@@ -537,7 +537,10 @@ func _add_scrolls(parent: VBoxContainer, character: CharacterView) -> void:
 		var label := _add_label(row, text, MUTED if scroll.power == 0 else Color("e0e2e5"), 14)
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		_add_intent_action(row, "Use", scroll.use, PlayerIntent.use_scroll(character.id, scroll.slot_index))
+		var use := _add_intent_action(row, "Use", scroll.use, PlayerIntent.use_scroll(character.id, scroll.slot_index))
+		use.name = "UseScroll%d" % scroll.slot_index
+		var discard := _add_intent_action(row, "Discard", scroll.discard, PlayerIntent.use_scroll(character.id, scroll.slot_index))
+		discard.name = "DiscardScroll%d" % scroll.slot_index
 		case_column.add_child(panel)
 	if character.scrolls.is_empty():
 		_add_label(case_column, "This character has no Classic scroll slots.", MUTED)

@@ -120,10 +120,46 @@ static func trade_item(context: SessionWorkflowContext, payload: PlayerIntent.It
 	var definition: ItemDefinition = null if instance == null else context.content.item_by_id(instance.definition_id)
 	if source == null or destination == null or instance == null or definition == null:
 		return SessionWorkflowResult.failed(&"invalid_item_trade", "Trade requires a carried item and two current party members.")
-	var probe := context.rules.inventory.trade_classic(source, destination, instance, definition)
+	var probe := trade_item_probe(context, source, destination, instance, definition)
 	if not probe.allowed:
 		return SessionWorkflowResult.failed(&"item_cannot_trade", probe.reason)
-	return SessionWorkflowResult.completed([DomainEvent.new(&"item_traded", {"fromCharacterId": source.id, "toCharacterId": destination.id, "instanceId": instance.id, "itemId": definition.id})])
+	var transferred_scrolls: Array[SpellScrollState] = []
+	var destination_scrolls: Array[SpellScrollState] = []
+	var source_equipped := instance.equipped
+	if absi(definition.item_type) == 13:
+		for scroll: SpellScrollState in source.scroll_case():
+			transferred_scrolls.append(SpellScrollState.from_data(scroll.to_data()))
+		for scroll: SpellScrollState in destination.scroll_case():
+			destination_scrolls.append(SpellScrollState.from_data(scroll.to_data()))
+	probe = context.rules.inventory.trade_classic(source, destination, instance, definition)
+	if not probe.allowed:
+		return SessionWorkflowResult.failed(&"item_cannot_trade", probe.reason)
+	if not transferred_scrolls.is_empty():
+		var empty_scrolls: Array[SpellScrollState] = []
+		for _index: int in 5:
+			empty_scrolls.append(SpellScrollState.new())
+		if not destination.set_scroll_case(transferred_scrolls) or not source.set_scroll_case(empty_scrolls):
+			var returned := context.rules.inventory.remove_item(destination, instance.id, definition)
+			if returned != null and context.rules.inventory.restore_item(source, returned, definition):
+				returned.equipped = source_equipped
+			source.set_scroll_case(transferred_scrolls)
+			destination.set_scroll_case(destination_scrolls)
+			return SessionWorkflowResult.failed(&"scroll_case_transfer_failed", "The scroll case records could not be transferred.")
+	return SessionWorkflowResult.completed([DomainEvent.new(&"item_traded", {"fromCharacterId": source.id, "toCharacterId": destination.id, "instanceId": instance.id, "itemId": definition.id, "scrollsTransferred": transferred_scrolls.size()})])
+
+
+static func trade_item_probe(context: SessionWorkflowContext, source: CharacterState, destination: CharacterState, instance: ItemInstance, definition: ItemDefinition) -> InventoryActionProbe:
+	var probe := context.rules.inventory.classic_trade_probe(source, destination, instance, definition)
+	if not probe.allowed or definition == null or absi(definition.item_type) != 13:
+		return probe
+	for carried: ItemInstance in destination.inventory():
+		var carried_definition := context.content.item_by_id(carried.definition_id)
+		if carried_definition != null and absi(carried_definition.item_type) == 13:
+			return InventoryActionProbe.block("%s already carries a scroll case." % destination.name)
+	for scroll: SpellScrollState in destination.scroll_case():
+		if not scroll.is_empty():
+			return InventoryActionProbe.block("%s already has scrolls assigned to a case." % destination.name)
+	return probe
 
 
 static func split_item(context: SessionWorkflowContext, payload: PlayerIntent.ItemActionPayload) -> SessionWorkflowResult:
@@ -410,15 +446,9 @@ static func make_scroll_probe(context: SessionWorkflowContext, character: Charac
 
 
 static func scroll_use_probe(context: SessionWorkflowContext, character: CharacterState, slot_index: int, spell: SpellDefinition) -> InventoryActionProbe:
-	if character == null or slot_index < 0 or slot_index >= 5:
-		return InventoryActionProbe.block("The scroll slot is unavailable.")
-	var scroll := character.scroll_at(slot_index)
-	if scroll == null or scroll.is_empty() or spell == null or spell.id != scroll.spell_id or scroll.power < 1 or scroll.power > 7:
-		return InventoryActionProbe.block("This scroll slot is empty or invalid.")
-	if character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
-		return InventoryActionProbe.block("The selected character cannot use a scroll.")
-	if not _has_equipped_scroll_case(context, character):
-		return InventoryActionProbe.block("Equip the scroll case before using its spells.")
+	var base_probe := scroll_slot_probe(context, character, slot_index, spell)
+	if not base_probe.allowed:
+		return base_probe
 	if not spell.in_camp:
 		return InventoryActionProbe.block("This scroll cannot be used outside battle; Classic offers to discard it.")
 	if spell.target_type < 0 or spell.target_type > 12:
@@ -430,10 +460,35 @@ static func scroll_use_probe(context: SessionWorkflowContext, character: Charact
 	return InventoryActionProbe.permit()
 
 
+static func scroll_slot_probe(context: SessionWorkflowContext, character: CharacterState, slot_index: int, spell: SpellDefinition) -> InventoryActionProbe:
+	if character == null or slot_index < 0 or slot_index >= 5:
+		return InventoryActionProbe.block("The scroll slot is unavailable.")
+	var scroll := character.scroll_at(slot_index)
+	if scroll == null or scroll.is_empty() or spell == null or spell.id != scroll.spell_id or scroll.power < 1 or scroll.power > 7:
+		return InventoryActionProbe.block("This scroll slot is empty or invalid.")
+	if character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
+		return InventoryActionProbe.block("The selected character cannot use a scroll.")
+	if not _has_equipped_scroll_case(context, character):
+		return InventoryActionProbe.block("Equip the scroll case before using its spells.")
+	return InventoryActionProbe.permit()
+
+
 static func begin_field_scroll(context: SessionWorkflowContext, payload: PlayerIntent.SpellPayload, request_revision: int) -> MagicTransitionResult:
 	var character := context.state.party.character_by_id(payload.caster_id)
 	var scroll := character.scroll_at(payload.scroll_slot) if character != null else null
 	var spell := context.content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
+	var slot_probe := scroll_slot_probe(context, character, payload.scroll_slot, spell)
+	if not slot_probe.allowed:
+		return MagicTransitionResult.failed(&"scroll_unavailable", slot_probe.reason)
+	if not spell.in_camp:
+		var discard := SessionContinuation.TargetingBody.new()
+		discard.character_id = character.id
+		discard.scroll_slot = payload.scroll_slot
+		discard.spell_id = spell.id
+		discard.power = scroll.power
+		var continuation := SessionContinuation.targeting_selection(&"scroll-discard-confirmation", discard)
+		var interaction := scroll_discard_request("session.scroll-discard:%s:%d:%d" % [character.id, payload.scroll_slot, request_revision], spell.name)
+		return MagicTransitionResult.waiting(continuation, interaction, [DomainEvent.new(&"scroll_discard_requested", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "source": "classic"})])
 	var probe := scroll_use_probe(context, character, payload.scroll_slot, spell)
 	if not probe.allowed:
 		return MagicTransitionResult.failed(&"scroll_unavailable", probe.reason)
@@ -452,6 +507,26 @@ static func begin_field_scroll(context: SessionWorkflowContext, payload: PlayerI
 	var continuation := SessionContinuation.targeting_selection(&"scroll-target-selection", targeting)
 	var interaction := scroll_target_request("session.scroll:%s:%d:%d" % [character.id, payload.scroll_slot, request_revision], character, payload.scroll_slot, spell, scroll.power, required_count, context.state.party.characters())
 	return MagicTransitionResult.waiting(continuation, interaction, [DomainEvent.new(&"scroll_target_requested", {"characterId": character.id, "slot": payload.scroll_slot, "spellId": spell.id, "power": scroll.power, "targetCount": required_count, "source": "classic"})])
+
+
+static func discard_field_scroll(context: SessionWorkflowContext, targeting: SessionContinuation.TargetingBody, accepted: bool) -> SessionWorkflowResult:
+	if targeting == null:
+		return SessionWorkflowResult.failed(&"invalid_session_continuation", "The scroll awaiting discard confirmation is unavailable.")
+	var character := context.state.party.character_by_id(targeting.character_id)
+	var scroll := character.scroll_at(targeting.scroll_slot) if character != null else null
+	var spell := context.content.spell_by_id(targeting.spell_id)
+	var probe := scroll_slot_probe(context, character, targeting.scroll_slot, spell)
+	if not probe.allowed or scroll.spell_id != targeting.spell_id or scroll.power != targeting.power or spell.in_camp:
+		return SessionWorkflowResult.failed(&"invalid_session_continuation", "The scroll awaiting discard confirmation no longer matches its committed state.")
+	if not accepted:
+		return SessionWorkflowResult.completed([DomainEvent.new(&"scroll_discard_declined", {"characterId": character.id, "slot": targeting.scroll_slot, "spellId": spell.id, "power": scroll.power, "source": "classic"})])
+	if not character.clear_scroll(targeting.scroll_slot):
+		return SessionWorkflowResult.failed(&"scroll_discard_failed", "The selected scroll could not be discarded.")
+	return SessionWorkflowResult.completed([DomainEvent.new(&"scroll_discarded", {"characterId": character.id, "slot": targeting.scroll_slot, "spellId": spell.id, "power": targeting.power, "source": "classic"})])
+
+
+static func scroll_discard_request(request_id: String, spell_name: String) -> InteractionRequest:
+	return InteractionRequest.yes_no(request_id, "%s cannot be cast outside battle. Discard this scroll?" % spell_name, "Discard", "Keep")
 
 
 static func resume_field_scroll(context: SessionWorkflowContext, targeting: SessionContinuation.TargetingBody, target_ids: Array[String]) -> MagicTransitionResult:

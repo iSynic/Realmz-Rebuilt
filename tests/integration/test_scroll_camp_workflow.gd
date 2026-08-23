@@ -27,6 +27,7 @@ func run() -> void:
 	if not loaded.is_ok():
 		return
 	var content := _scroll_content(loaded.content)
+	_test_scroll_case_management(content)
 	var session := GameSession.new()
 	assert_equal(session.start(content, 117).state, SessionStep.State.COMPLETED, "scroll/camp session starts")
 	var caster := _character("scroll.caster", "Cora", content)
@@ -316,43 +317,40 @@ func run() -> void:
 	assert_equal([pending_restored.view().realmz_hour, pending_restored.view().realmz_minute], [pending_restored._state.clock.hour(), pending_restored._state.clock.minute()], "the detached clock remains exact after camp departure")
 
 
+func _test_scroll_case_management(content: RealmzContent) -> void:
+	var source := _character("scroll.case-source", "Cora", content); var destination := _character("scroll.case-destination", "Dain", content); var occupied := _character("scroll.case-occupied", "Eryn", content)
+	var case_definition := content.item_by_id("classic.item.scroll-case"); var source_case := ItemInstance.new("scroll.case.transfer", case_definition.id, 0, true, true); var occupied_case := ItemInstance.new("scroll.case.occupied", case_definition.id, 0, true, true)
+	source.set_inventory([source_case]); source.carried_load = case_definition.instance_weight(0); occupied.set_inventory([occupied_case]); occupied.carried_load = case_definition.instance_weight(0)
+	var scrolls: Array[SpellScrollState] = [SpellScrollState.new("classic.spell.scroll-fixed", 1), SpellScrollState.new("classic.spell.scroll-heal", 2), SpellScrollState.new(), SpellScrollState.new("classic.spell.scroll-fixed", 4), SpellScrollState.new("classic.spell.scroll-heal", 7)]
+	assert_true(source.set_scroll_case(scrolls), "the case-management fixture starts with five source-shaped slots"); var session := GameSession.new(); assert_equal(session.start(content, 719).state, SessionStep.State.COMPLETED, "scroll-case management session starts")
+	assert_equal(session.submit_intent(PlayerIntent.import_vault_character(source.id, "4".repeat(64), source, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "the case owner enters party setup"); assert_equal(session.submit_intent(PlayerIntent.import_vault_character(destination.id, "5".repeat(64), destination, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "the empty recipient enters party setup"); assert_equal(session.submit_intent(PlayerIntent.import_vault_character(occupied.id, "6".repeat(64), occupied, "fixture", content.package_hash)).state, SessionStep.State.COMPLETED, "the recipient with a case enters party setup"); assert_equal(session.submit_intent(PlayerIntent.begin_adventure()).state, SessionStep.State.COMPLETED, "the scroll-case management fixture begins")
+	var active_source := session._state.party.character_by_id(source.id); assert_false(session.view().party_members[0].scrolls[0].use.enabled, "a combat-only scroll is not presented as field-castable"); assert_true(session.view().party_members[0].scrolls[0].discard.enabled, "the detached scroll slot exposes Castle's field-invalid discard branch")
+	var before_discard := [active_source.spell_points, session._state.clock.total_minutes(), session._rng.snapshot().draw_count]; var discard_request := session.submit_intent(PlayerIntent.use_scroll(source.id, 0)); assert_equal([discard_request.state, discard_request.interaction.kind, discard_request.interaction.body.to_data().get("yesLabel")], [SessionStep.State.WAITING_FOR_INTERACTION, InteractionRequest.YES_NO, "Discard"], "using a combat-only field scroll opens the typed discard choice")
+	var discard_restored := GameSession.new(); assert_equal(discard_restored.restore(content, save_round_trip(session.snapshot())).state, SessionStep.State.COMPLETED, "the pending scroll discard choice restores transactionally"); var declined := discard_restored.respond(InteractionResponse.yes_no(discard_restored.view().pending_interaction, false)); assert_equal([declined.state, discard_restored._state.party.character_by_id(source.id).scroll_at(0).spell_id], [SessionStep.State.COMPLETED, "classic.spell.scroll-fixed"], "declining discard keeps the exact scroll")
+	var repeated := discard_restored.submit_intent(PlayerIntent.use_scroll(source.id, 0)); var discarded := discard_restored.respond(InteractionResponse.yes_no(repeated.interaction, true)); active_source = discard_restored._state.party.character_by_id(source.id); assert_equal([discarded.state, active_source.scroll_at(0).is_empty()], [SessionStep.State.COMPLETED, true], "accepting discard clears only the selected slot")
+	assert_equal([active_source.scroll_at(1).spell_id, active_source.scroll_at(3).power, active_source.scroll_at(4).power], ["classic.spell.scroll-heal", 4, 7], "discard preserves every other fixed case slot"); assert_equal([active_source.spell_points, discard_restored._state.clock.total_minutes(), discard_restored._rng.snapshot().draw_count], before_discard, "discard consumes no spell points, time, or RNG"); assert_true(active_source.set_scroll_case(scrolls), "the transfer fixture restores the exact five-slot source pattern")
+	var active_destination := discard_restored._state.party.character_by_id(destination.id); var active_occupied := discard_restored._state.party.character_by_id(occupied.id); var item_actions := discard_restored.view().party_members[0].items[0].actions; var empty_target: ItemTransferTargetView = item_actions.trade_targets.filter(func(target: ItemTransferTargetView) -> bool: return target.character_id == destination.id)[0]; var occupied_target: ItemTransferTargetView = item_actions.trade_targets.filter(func(target: ItemTransferTargetView) -> bool: return target.character_id == occupied.id)[0]
+	assert_true(empty_target.enabled, "an empty recipient can receive the type-13 case and its records"); assert_equal([occupied_target.enabled, occupied_target.reason], [false, "Eryn already carries a scroll case."], "a recipient with a case is disabled before it can overwrite five records"); var rejected := discard_restored.submit_intent(PlayerIntent.trade_item(source_case.id, source.id, occupied.id)); assert_equal([rejected.error_code, _scroll_data(active_source), active_occupied.inventory().size()], [&"item_cannot_trade", _scroll_data(source), 1], "a forged second-case transfer rejects without mutating either character")
+	var before_transfer := [discard_restored._state.clock.total_minutes(), discard_restored._rng.snapshot().draw_count]; var traded := discard_restored.submit_intent(PlayerIntent.trade_item(source_case.id, source.id, destination.id)); assert_equal([traded.state, active_source.inventory().size(), active_destination.inventory().size(), active_destination.inventory()[0].equipped], [SessionStep.State.COMPLETED, 0, 1, false], "case transfer moves one exact item and unequips it on the recipient")
+	assert_equal([_scroll_data(active_source), _scroll_data(active_destination)], [[{"spellId": "", "power": 0}, {"spellId": "", "power": 0}, {"spellId": "", "power": 0}, {"spellId": "", "power": 0}, {"spellId": "", "power": 0}], _scroll_data(source)], "case transfer clears the source and preserves all five ordered records"); assert_equal([active_source.carried_load, active_destination.carried_load, discard_restored._state.clock.total_minutes(), discard_restored._rng.snapshot().draw_count], [0, case_definition.instance_weight(0), before_transfer[0], before_transfer[1]], "case transfer commits exact load without time or RNG")
+	var transfer_restored := GameSession.new(); assert_equal(transfer_restored.restore(content, save_round_trip(discard_restored.snapshot())).state, SessionStep.State.COMPLETED, "the transferred case and all five records restore transactionally"); assert_equal(_scroll_data(transfer_restored._state.party.character_by_id(destination.id)), _scroll_data(source), "save/restore retains the recipient's exact scroll order and powers")
+
+
+func _scroll_data(character: CharacterState) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []; for scroll: SpellScrollState in character.scroll_case(): result.append(scroll.to_data())
+	return result
+
+
 func _scroll_content(source: RealmzContent) -> RealmzContent:
-	var empty_ints: Array[int] = []
-	var empty_ranges: Array[Vector2i] = []
-	var age_changes: Array[PackedInt32Array] = []
-	for _index: int in 5:
-		age_changes.append(PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
+	var empty_ints: Array[int] = []; var empty_ranges: Array[Vector2i] = []; var age_changes: Array[PackedInt32Array] = []
+	for _index: int in 5: age_changes.append(PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]))
 	var race := RaceDefinition.new("classic.race.scroll", 1, "Human", empty_ints, empty_ints, empty_ints, empty_ints, empty_ints, empty_ranges, age_changes, 0, false, 10, 0, 0, 0, 1, 1, false, 0, 0, 0)
 	var caste := CasteDefinition.new("classic.caste.scroll", 1, "Sorcerer", empty_ints, empty_ints, empty_ints, empty_ints, Vector2i(8, 8), Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO, Vector2i.ZERO)
-	var scroll_case := ItemDefinition.new("classic.item.scroll-case", 800, "Scroll Case")
-	scroll_case.item_type = 13
-	scroll_case.weight = 2
-	var parchment := ItemDefinition.new("classic.item.parchment", 806, "Parchment")
-	parchment.weight = 0
-	parchment.initial_charges = 3
-	parchment.weight_per_charge = 1
-	parchment.drop_on_empty = true
-	var rations := ItemDefinition.new("classic.item.iron-rations", 877, "Iron Rations")
-	rations.weight = 1
-	rations.initial_charges = 4
-	rations.weight_per_charge = 1
-	rations.drop_on_empty = true
-	var healing := SpellDefinition.new("classic.spell.scroll-heal", 1101, "Mending")
-	healing.cost = 2
-	healing.damage_min = 3
-	healing.damage_max = 3
-	healing.special = 57
-	healing.cannot = 4
-	healing.target_type = 1
-	healing.sound_start = 49
-	healing.in_camp = true
-	var fixed := SpellDefinition.new("classic.spell.scroll-fixed", 1102, "Fixed Ward")
-	fixed.cost = -5
-	fixed.duration_min = 2
-	fixed.duration_max = 2
-	fixed.special = 8
-	fixed.target_type = 1
-	fixed.in_camp = true
+	var scroll_case := ItemDefinition.new("classic.item.scroll-case", 800, "Scroll Case"); scroll_case.item_type = 13; scroll_case.weight = 2
+	var parchment := ItemDefinition.new("classic.item.parchment", 806, "Parchment"); parchment.weight = 0; parchment.initial_charges = 3; parchment.weight_per_charge = 1; parchment.drop_on_empty = true
+	var rations := ItemDefinition.new("classic.item.iron-rations", 877, "Iron Rations"); rations.weight = 1; rations.initial_charges = 4; rations.weight_per_charge = 1; rations.drop_on_empty = true
+	var healing := SpellDefinition.new("classic.spell.scroll-heal", 1101, "Mending"); healing.cost = 2; healing.damage_min = 3; healing.damage_max = 3; healing.special = 57; healing.cannot = 4; healing.target_type = 1; healing.sound_start = 49; healing.in_camp = true
+	var fixed := SpellDefinition.new("classic.spell.scroll-fixed", 1102, "Fixed Ward"); fixed.cost = -5; fixed.duration_min = 2; fixed.duration_max = 2; fixed.special = 8; fixed.target_type = 1; fixed.in_combat = true
 	var races: Array[RaceDefinition] = [race]
 	var castes: Array[CasteDefinition] = [caste]
 	var items: Array[ItemDefinition] = []

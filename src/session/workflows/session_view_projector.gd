@@ -460,6 +460,7 @@ static func _populate_spell_actions(context: SessionWorkflowContext, result: Gam
 		for scroll_view: SpellScrollView in member_view.scrolls:
 			if not blocked_reason.is_empty():
 				scroll_view.use = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
+				scroll_view.discard = ActionAvailabilityView.new(&"cast_spell", false, blocked_reason)
 				continue
 			if battle_active:
 				var combat_scroll := character.scroll_at(scroll_view.slot_index)
@@ -472,6 +473,8 @@ static func _populate_spell_actions(context: SessionWorkflowContext, result: Gam
 			var scroll_spell := content.spell_by_id(scroll.spell_id) if scroll != null and not scroll.is_empty() else null
 			var scroll_probe := _scroll_use_probe(context, character, scroll_view.slot_index, scroll_spell)
 			scroll_view.use = ActionAvailabilityView.new(&"cast_spell", scroll_probe.allowed, scroll_probe.reason)
+			var discard_probe := _scroll_discard_probe(context, character, scroll_view.slot_index, scroll_spell)
+			scroll_view.discard = ActionAvailabilityView.new(&"cast_spell", discard_probe.allowed, discard_probe.reason)
 		for fast_spell: FastSpellBindingView in member_view.fast_spells:
 			if fast_spell.spell_id.is_empty():
 				continue
@@ -540,7 +543,7 @@ static func _populate_inventory_item_actions(context: SessionWorkflowContext, re
 			for destination: CharacterState in party:
 				if destination == character:
 					continue
-				var trade_probe := rules.inventory.classic_trade_probe(character, destination, instance, definition)
+				var trade_probe := InventoryMagicServicesWorkflow.trade_item_probe(context, character, destination, instance, definition)
 				actions.trade_targets.append(ItemTransferTargetView.new(destination.id, destination.name, trade_probe.allowed, trade_probe.reason, destination.carried_load, destination.carried_load + item_view.weight, destination.maximum_load))
 			var enabled_targets := actions.trade_targets.filter(func(target: ItemTransferTargetView) -> bool: return target.enabled)
 			var trade_reason := "Choose another party member." if actions.trade_targets.is_empty() else actions.trade_targets[0].reason if enabled_targets.is_empty() else ""
@@ -634,6 +637,19 @@ static func _scroll_use_probe(context: SessionWorkflowContext, character: Charac
 		return InventoryActionProbe.block("This scroll also targets allied creatures; that Classic field branch is not implemented yet.")
 	if not _field_spell_effect_supported(spell):
 		return InventoryActionProbe.block("This scroll's Classic field effect is not implemented yet.")
+	return InventoryActionProbe.permit()
+
+
+static func _scroll_discard_probe(context: SessionWorkflowContext, character: CharacterState, slot_index: int, spell: SpellDefinition) -> InventoryActionProbe:
+	if spell == null or spell.in_camp:
+		return InventoryActionProbe.block("This scroll has a valid field use.")
+	var scroll := character.scroll_at(slot_index) if character != null else null
+	if scroll == null or scroll.is_empty() or scroll.spell_id != spell.id or scroll.power < 1 or scroll.power > 7:
+		return InventoryActionProbe.block("This scroll slot is empty or invalid.")
+	if character.current_health < 1 or character.conditions.is_active(ConditionRules.ANIMATED):
+		return InventoryActionProbe.block("The selected character cannot use a scroll.")
+	if not _has_equipped_scroll_case(context, character):
+		return InventoryActionProbe.block("Equip the scroll case before managing its spells.")
 	return InventoryActionProbe.permit()
 
 
