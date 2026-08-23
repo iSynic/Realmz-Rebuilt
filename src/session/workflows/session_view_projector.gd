@@ -679,14 +679,7 @@ static func _field_spell_probe(context: SessionWorkflowContext, character: Chara
 
 
 static func _field_spell_effect_supported(spell: SpellDefinition) -> bool:
-	var special := absi(spell.special)
-	if spell.target_type == 7:
-		return special == 50 or special >= 1 and special < ConditionSet.PARTY_COUNT
-	if special == 68:
-		return true
-	if special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or special > 99:
-		return true
-	return special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+	return ClassicSpellCapabilityCatalog.field_character_disposition(spell) == ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE
 
 
 static func _has_equipped_scroll_case(context: SessionWorkflowContext, character: CharacterState) -> bool:

@@ -355,7 +355,7 @@ static func commit_field_spell_item(context: SessionWorkflowContext, character_i
 		castes.append(context.content.caste_by_id(target.caste_id))
 		races.append(context.content.race_by_id(target.race_id))
 	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
-	var resolution := context.rules.magic.resolve_field_spell(character, targets, spell, power, context.rng, castes, races, false, allow_empty)
+	var resolution := context.rules.magic.resolve_field_spell(character, targets, spell, power, context.rng, castes, races, false, allow_empty, context.content.item_definitions())
 	if resolution == null or not resolution.cast:
 		return SessionWorkflowResult.failed(&"item_spell_failed", "The item spell could not be resolved.")
 	var charges_remaining := -1
@@ -560,7 +560,7 @@ static func commit_field_scroll(context: SessionWorkflowContext, character_id: S
 		castes.append(context.content.caste_by_id(target.caste_id))
 		races.append(context.content.race_by_id(target.race_id))
 	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
-	var resolution := context.rules.magic.resolve_field_spell(character, targets, spell, power, context.rng, castes, races, false, allow_empty)
+	var resolution := context.rules.magic.resolve_field_spell(character, targets, spell, power, context.rng, castes, races, false, allow_empty, context.content.item_definitions())
 	if resolution == null or not resolution.cast:
 		return SessionWorkflowResult.failed(&"scroll_spell_failed", "The scroll spell could not be resolved.")
 	if not character.clear_scroll(slot_index):
@@ -675,7 +675,7 @@ static func commit_field_spell(context: SessionWorkflowContext, character_id: St
 		castes.append(context.content.caste_by_id(target.caste_id))
 		races.append(context.content.race_by_id(target.race_id))
 	var allow_empty := spell.target_type == 7 or absi(spell.special) == 68
-	var resolution := context.rules.magic.resolve_field_spell(character, targets, spell, power, context.rng, castes, races, true, allow_empty)
+	var resolution := context.rules.magic.resolve_field_spell(character, targets, spell, power, context.rng, castes, races, true, allow_empty, context.content.item_definitions())
 	if resolution == null or not resolution.cast:
 		return SessionWorkflowResult.failed(&"field_spell_failed", "The field spell could not be resolved.")
 	var events: Array[DomainEvent] = [DomainEvent.new(&"field_spell_cast", {"characterId": character.id, "spellId": spell.id, "power": power, "cost": resolution.cost, "source": "classic"})]
@@ -729,6 +729,8 @@ static func _append_field_spell_events(context: SessionWorkflowContext, events: 
 		var payload := {"characterId": character.id, "targetId": resolution.target_ids[index], "spellId": spell.id, "power": power, "saved": target_resolution.saved, "damage": target_resolution.damage, "healing": maxi(0, -target_resolution.damage), "duration": target_resolution.duration, "source": "classic"}
 		if target_resolution.cleared_condition >= 0:
 			payload["clearedCondition"] = target_resolution.cleared_condition
+		if not target_resolution.unequipped_item_ids.is_empty():
+			payload["unequippedItemIds"] = target_resolution.unequipped_item_ids.duplicate()
 		payload.merge(event_context, true)
 		events.append(DomainEvent.new(event_kind, payload))
 		if target_resolution.aging != null and target_resolution.aging.changed_group():

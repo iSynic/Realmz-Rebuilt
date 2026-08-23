@@ -471,8 +471,7 @@ static func _valid_targeting_continuation(content: RealmzContent, state: GameSta
 				break
 		if not has_case:
 			return false
-	var special := absi(spell.special)
-	var supported := special == 68 or special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or special > 99 or special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+	var supported := ClassicSpellCapabilityCatalog.field_character_disposition(spell) == ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE
 	var expected_count := mini(targeting.power, state.party.characters().size()) if spell.target_type == 0 else 1
 	if targeting.target_count != expected_count or spell.target_type < 0 or spell.target_type > 2 or not supported:
 		return false

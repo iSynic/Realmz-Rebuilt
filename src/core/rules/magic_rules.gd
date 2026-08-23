@@ -452,7 +452,7 @@ static func _reflect_to_monster_caster(caster: MonsterState, caster_definition: 
 	return SpellTargetSelection.for_monster(caster, caster_definition, selection.original_target_id, true)
 
 
-func resolve_field_spell(caster: CharacterState, targets: Array[CharacterState], spell: SpellDefinition, power_level: int, rng: RealmzRng, castes: Array[CasteDefinition] = [], races: Array[RaceDefinition] = [], spend_spell_points: bool = true, allow_empty: bool = false) -> GroupSpellResolution:
+func resolve_field_spell(caster: CharacterState, targets: Array[CharacterState], spell: SpellDefinition, power_level: int, rng: RealmzRng, castes: Array[CasteDefinition] = [], races: Array[RaceDefinition] = [], spend_spell_points: bool = true, allow_empty: bool = false, item_definitions: Array[ItemDefinition] = []) -> GroupSpellResolution:
 	if caster == null or spell == null or rng == null or power_level < 1 or not allow_empty and targets.is_empty():
 		return null
 	if not castes.is_empty() and castes.size() != targets.size() or not races.is_empty() and races.size() != targets.size():
@@ -475,7 +475,7 @@ func resolve_field_spell(caster: CharacterState, targets: Array[CharacterState],
 		var target := targets[index]
 		var caste: CasteDefinition = null if castes.is_empty() else castes[index]
 		var race: RaceDefinition = null if races.is_empty() else races[index]
-		var resolution := _resolve_noncombat_character_effect(target, spell, power_level, 0, false, rng, caste, race, duration, damage, "%s.%s" % [tag_prefix, target.id])
+		var resolution := _resolve_noncombat_character_effect(target, spell, power_level, 0, false, rng, caste, race, duration, damage, "%s.%s" % [tag_prefix, target.id], item_definitions)
 		result.append_target(target.id, &"character", resolution)
 	return result
 
@@ -489,7 +489,7 @@ func resolve_scenario_spell(target: CharacterState, spell: SpellDefinition, powe
 	return _resolve_noncombat_character_effect(target, spell, power_level, extra_save_adjust, force_affect, rng, caste, race, duration, damage, tag_prefix)
 
 
-func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition, race: RaceDefinition, duration: int, damage: int, tag_prefix: String) -> SpellResolution:
+func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDefinition, power_level: int, extra_save_adjust: int, force_affect: bool, rng: RealmzRng, caste: CasteDefinition, race: RaceDefinition, duration: int, damage: int, tag_prefix: String, item_definitions: Array[ItemDefinition] = []) -> SpellResolution:
 	var special := absi(spell.special)
 	var damage_type := absi(spell.damage_type)
 	var saved := false
@@ -572,6 +572,15 @@ func _resolve_noncombat_character_effect(target: CharacterState, spell: SpellDef
 	var result := SpellResolution.new(true, false, saved, 0, damage, duration, target.current_health <= -10)
 	result.cleared_condition = condition_cure_index(spell) if special > 99 else -1
 	result.aging = aging
+	if special == 62:
+		var definitions: Dictionary = {}
+		for definition: ItemDefinition in item_definitions:
+			definitions[definition.id] = definition
+		for instance: ItemInstance in target.inventory():
+			var definition: ItemDefinition = definitions.get(instance.definition_id)
+			if instance.equipped and definition != null and not definition.cursed_item_id.is_empty():
+				instance.equipped = false
+				result.unequipped_item_ids.append(instance.id)
 	return result
 
 

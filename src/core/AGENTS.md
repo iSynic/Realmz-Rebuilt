@@ -130,7 +130,7 @@ Own the pure Realmz model, fixed Classic rules, topology, game clock, randomness
 - `ItemView` resolves Castle-visible Describe facts before crossing the session boundary. Unworn cursed records use their native `iscurse` decoy definition for text and statistics while retaining the original icon; wearing reveals the original record. Presentation must not infer this link or receive the hidden original identity through visible fields.
 - Prefer small domain modules behind a fixed `RealmzRules` facade; do not add registries or profile selectors.
 - Keep character, condition/time, inventory/economy, combat, magic, and monster behavior in their owned rule modules. Opcode handlers adapt Classic records to these rules instead of duplicating formulas.
-- `ClassicSpellCapabilityCatalog` is the application-owned mechanical-family and current-context disposition authority for every stock spell definition. Casting sources may add tactical legality after consulting it; they must not invent parallel special-ID capability lists.
+- `ClassicSpellCapabilityCatalog` is the application-owned mechanical-family and current-context disposition authority for every stock spell definition. Casting sources may add tactical legality after consulting it; they must not invent parallel special-ID capability lists. Field special 62 clears Cursed and force-unequips only equipped cursed definitions in inventory order; learned, scroll, and charged-item sources share the resolution and publish the exact affected item-instance IDs.
 - Preserve 16-bit and 32-bit arithmetic semantics explicitly where Castle behavior depends on them.
 - Keep serialized IDs stable strings and use `StringName` only as an internal lookup optimization.
 

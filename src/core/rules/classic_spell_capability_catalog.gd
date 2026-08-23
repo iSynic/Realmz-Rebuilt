@@ -175,7 +175,7 @@ static func _field_character_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if special == 50 or special >= 1 and special < ConditionSet.PARTY_COUNT else DISPOSITION_PENDING
 	if special == 68:
 		return DISPOSITION_EXECUTABLE
-	if special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or special > 99:
+	if special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 62, 64, 66, 91, 92] or special > 99:
 		return DISPOSITION_EXECUTABLE
 	if special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0):
 		return DISPOSITION_EXECUTABLE

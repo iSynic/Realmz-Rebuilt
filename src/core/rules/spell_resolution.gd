@@ -11,6 +11,7 @@ var target_defeated: bool
 var aging: CharacterAgingResult
 var cleared_condition: int = -1
 var applied_condition: int = -1
+var unequipped_item_ids: Array[String] = []
 
 
 func _init(was_cast: bool, was_resisted: bool, did_save: bool, spell_cost: int, dealt_damage: int, effect_duration: int, defeated: bool = false) -> void:
