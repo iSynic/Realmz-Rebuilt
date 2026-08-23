@@ -2,6 +2,7 @@ param(
     [string[]]$ReportPath = @(),
     [string[]]$BaselineReportPath = @(),
     [string]$CandidateMetadataPath = "",
+    [string]$ApplicationInventoryPath = "",
     [string]$OutputPath = "",
     [switch]$SelfTest
 )
@@ -152,6 +153,102 @@ function Read-CandidateMetadata {
     return $metadata
 }
 
+function Read-ApplicationInventory {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
+    $resolved = (Resolve-Path -LiteralPath $Path).Path
+    $inventory = Get-Content -Raw -LiteralPath $resolved | ConvertFrom-Json
+    Assert-Condition ($inventory.formatVersion -eq 2) "$resolved has an unsupported gameplay-parity inventory version."
+    Assert-Condition ($inventory.featureReportContract.schemaHash -ceq $expectedFeatureSchemaHash) "$resolved does not target the mirrored feature-report schema."
+    Assert-Condition ($inventory.spellSummary.totalDefinitions -eq @($inventory.spells).Count) "$resolved has inconsistent spell-definition counts."
+    Assert-Condition ($inventory.spellSummary.behaviorSignatures -eq @($inventory.spellSignatures).Count) "$resolved has inconsistent spell-signature counts."
+    return $inventory
+}
+
+function Get-Sha256Prefix {
+    param([string]$Text, [int]$Length)
+    $algorithm = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+        return ([System.BitConverter]::ToString($algorithm.ComputeHash($bytes))).Replace("-", "").ToLowerInvariant().Substring(0, $Length)
+    } finally {
+        $algorithm.Dispose()
+    }
+}
+
+function Get-ApplicationBehaviorSignatureId {
+    param($Behavior)
+    $normalized = [ordered]@{
+        canRotate = $Behavior.canRotate
+        cannot = $Behavior.cannot
+        cost = $Behavior.cost
+        damage = [ordered]@{
+            maximum = $Behavior.damageMax
+            minimum = $Behavior.damageMin
+            powerMaximum = $Behavior.powerDamageMax
+            powerMinimum = $Behavior.powerDamageMin
+            type = $Behavior.damageType
+        }
+        duration = [ordered]@{
+            maximum = $Behavior.durationMax
+            minimum = $Behavior.durationMin
+            powerMaximum = $Behavior.powerDurationMax
+            powerMinimum = $Behavior.powerDurationMin
+        }
+        fixedTargetCount = $Behavior.fixedTargetCount
+        inCamp = $Behavior.inCamp
+        inCombat = $Behavior.inCombat
+        range = [ordered]@{ maximum = $Behavior.rangeMax; minimum = $Behavior.rangeMin }
+        resistanceAdjust = $Behavior.resistanceAdjust
+        saveAdjust = $Behavior.saveAdjust
+        saveBonus = $Behavior.saveBonus
+        size = $Behavior.size
+        special = $Behavior.special
+        spellClass = $Behavior.spellClass
+        targetType = $Behavior.targetType
+        toHitBonus = $Behavior.toHitBonus
+    }
+    return Get-Sha256Prefix ($normalized | ConvertTo-Json -Compress -Depth 8) 16
+}
+
+function Get-CapabilityAudit {
+    param($Report, $Inventory, [string]$Context)
+    if ($null -eq $Inventory) { return $null }
+
+    Assert-Condition ($Report.spells.applicationDefinitions -eq $Inventory.spellSummary.totalDefinitions) "$Context application spell-definition count does not match the pinned runtime inventory."
+    $reportedSignatureIds = @(
+        $Report.spells.behaviorSignatures |
+            Where-Object { @($_.origins) -ccontains "application" } |
+            ForEach-Object { Get-ApplicationBehaviorSignatureId $_.behavior } |
+            Sort-Object -Unique
+    )
+    $inventorySignatureIds = @($Inventory.spellSignatures.signatureId | Sort-Object -Unique)
+    $missingSignatures = @($inventorySignatureIds | Where-Object { $_ -cnotin $reportedSignatureIds })
+    $unexpectedSignatures = @($reportedSignatureIds | Where-Object { $_ -cnotin $inventorySignatureIds })
+    Assert-Condition ($missingSignatures.Count -eq 0 -and $unexpectedSignatures.Count -eq 0) "$Context application spell signatures do not match the pinned runtime inventory."
+
+    $opcodeDispositions = @{}
+    foreach ($opcode in @($Inventory.opcodes)) { $opcodeDispositions[[string]$opcode.opcode] = [string]$opcode.disposition }
+    $nonExecutableOpcodes = @(
+        $Report.opcodes.identities |
+            Where-Object { $opcodeDispositions[[string]$_.opcode] -cne "executable" } |
+            ForEach-Object { [long]$_.opcode } |
+            Sort-Object -Unique
+    )
+    Assert-Condition ($nonExecutableOpcodes.Count -eq 0) "$Context contains opcode identities without executable runtime dispositions."
+
+    return [pscustomobject][ordered]@{
+        applicationDefinitions = [long]$Report.spells.applicationDefinitions
+        applicationSignatureCount = $reportedSignatureIds.Count
+        inventorySignatureCount = $inventorySignatureIds.Count
+        missingApplicationSignatures = 0
+        unexpectedApplicationSignatures = 0
+        opcodeIdentityCount = [long]$Report.opcodes.identityCount
+        opcodeVariantCount = [long]$Report.opcodes.variantCount
+        nonExecutableOpcodes = @()
+    }
+}
+
 function Add-Hashes {
     param([System.Collections.Generic.HashSet[string]]$Target, [object[]]$Records, [string]$Field)
     foreach ($record in @($Records)) { [void]$Target.Add([string]$record.$Field) }
@@ -197,7 +294,7 @@ function Count-NewFeatures {
 }
 
 function Rank-FeatureReports {
-    param([object[]]$Candidates, [object[]]$Baselines, [hashtable]$CandidateMetadata = @{})
+    param([object[]]$Candidates, [object[]]$Baselines, [hashtable]$CandidateMetadata = @{}, $ApplicationInventory = $null)
     $baselineSets = Merge-FeatureSets $Baselines
     $weights = [ordered]@{
         opcodeVariants = 10; spellSignatures = 8; interactionSignatures = 7; combatMacros = 8
@@ -224,6 +321,7 @@ function Rank-FeatureReports {
             compilerLossDiagnostics = [long]$candidate.Report.compiler.unresolvedCompilerLossCount
             playerPriority = $playerPriority
             reliableCompletionRoute = $reliableCompletionRoute
+            capabilityAudit = Get-CapabilityAudit $candidate.Report $ApplicationInventory $candidate.Path
             newFeatures = [pscustomobject]$gain
         }
     }
@@ -235,7 +333,14 @@ function New-SyntheticReport {
     $featureSchemaHash = (Get-Content -Raw -LiteralPath $featureSchemaHashPath).Trim().ToLowerInvariant()
     $packageSchemaHash = (Get-Content -Raw -LiteralPath $packageSchemaHashPath).Trim().ToLowerInvariant()
     $opcodeVariants = @($OpcodeHashes | ForEach-Object { [pscustomobject]@{ signatureHash=$_; opcode=1; rawOpcodeClass="positive"; gosub=$false; operandShape="positive"; extraCodeShape=@(); parameterHash=("e" * 64); ownerKinds=@("trigger"); count=1 } })
-    $spellSignatures = @($SpellHashes | ForEach-Object { [pscustomobject]@{ signatureHash=$_; count=1; origins=@("application"); behavior=[pscustomobject]@{} } })
+    $behavior = [pscustomobject]@{
+        canRotate=$false; cannot=$false; cost=1; damageMax=0; damageMin=0; damageType=0
+        durationMax=0; durationMin=0; fixedTargetCount=1; inCamp=$true; inCombat=$true
+        powerDamageMax=0; powerDamageMin=0; powerDurationMax=0; powerDurationMin=0
+        rangeMax=1; rangeMin=0; resistanceAdjust=0; saveAdjust=0; saveBonus=0; size=0
+        special=0; spellClass=1; targetType=1; toHitBonus=0
+    }
+    $spellSignatures = @($SpellHashes | ForEach-Object { [pscustomobject]@{ signatureHash=$_; count=1; origins=@("application"); behavior=$behavior } })
     return [pscustomobject]@{
         kind="realmz2.feature-report"; formatVersion=1; schemaHash=$featureSchemaHash
         package=[pscustomobject]@{ format="realmz2"; formatVersion=2; schemaVersion=3; schemaHash=$packageSchemaHash; packageHash=("f" * 64); campaignIdentityHash=$CampaignHash }
@@ -280,6 +385,25 @@ if ($SelfTest) {
         ("e" * 64) = [pscustomobject]@{ playerPriority=1; reliableCompletionRoute=$true }
     }
     Assert-Condition ($routeFirst[0].campaignIdentityHash -ceq ("e" * 64)) "Reliable-route tie-break self-test failed."
+
+    $capabilityReport = New-SyntheticReport ("f" * 64) @(("a" * 64)) @(("b" * 64))
+    $capabilitySignatureId = Get-ApplicationBehaviorSignatureId $capabilityReport.spells.behaviorSignatures[0].behavior
+    $capabilityInventory = [pscustomobject]@{
+        spellSummary = [pscustomobject]@{ totalDefinitions=1; behaviorSignatures=1 }
+        spellSignatures = @([pscustomobject]@{ signatureId=$capabilitySignatureId })
+        opcodes = @([pscustomobject]@{ opcode=1; disposition="executable" })
+    }
+    $capabilityAudit = Get-CapabilityAudit $capabilityReport $capabilityInventory "synthetic capability report"
+    Assert-Condition ($capabilityAudit.applicationSignatureCount -eq 1 -and $capabilityAudit.opcodeIdentityCount -eq 1) "Capability-audit self-test failed."
+
+    $capabilityInventory.opcodes[0].disposition = "unsupported-pending"
+    $rejectedNonExecutableOpcode = $false
+    try {
+        [void](Get-CapabilityAudit $capabilityReport $capabilityInventory "synthetic non-executable opcode report")
+    } catch {
+        $rejectedNonExecutableOpcode = $_.Exception.Message -like "*without executable runtime dispositions*"
+    }
+    Assert-Condition $rejectedNonExecutableOpcode "Non-executable opcode rejection self-test failed."
     Write-Host "Gameplay feature-report validation and coverage ranking self-test passed."
 }
 
@@ -287,7 +411,8 @@ if ($ReportPath.Count -gt 0) {
     $candidates = @($ReportPath | ForEach-Object { Read-FeatureReport $_ })
     $baselines = @($BaselineReportPath | ForEach-Object { (Read-FeatureReport $_).Report })
     $candidateMetadata = Read-CandidateMetadata $CandidateMetadataPath
-    $ranking = Rank-FeatureReports $candidates $baselines $candidateMetadata
+    $applicationInventory = Read-ApplicationInventory $ApplicationInventoryPath
+    $ranking = Rank-FeatureReports $candidates $baselines $candidateMetadata $applicationInventory
     $result = [ordered]@{
         formatVersion = 1
         featureReportSchemaHash = $expectedFeatureSchemaHash
