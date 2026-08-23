@@ -250,6 +250,35 @@
       "source_resource_id": 128
     },
     {
+      "id": "command.encounter_original",
+      "path": "res://src/presentation/assets/classic-controls/commands/encounter-original.png",
+      "source_repository": "Realmz Castle Realmz",
+      "source_commit": "491816ad60037394f92c428e99c004494d3c28b3",
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "native_width": 50,
+      "native_height": 50,
+      "sha256": "3c7619d65a58844ad765a95f2daefc51b8f036e8b2a53d1bebc9e74c5295f91e",
+      "classification": "classic-resource-extract",
+      "classic_evidence": {
+        "status": "source-control-flow",
+        "path": "src/realmz_orig/updatecontrols.c:86",
+        "note": "Castle updatecontrols draws exact application PICT 180 in the ordinary exploration Encounter slot. Rebuilt samples only its yin-yang disc and recomposes the live Encounter caption on application slate.",
+        "repository": "Realmz Castle Realmz",
+        "commit": "491816ad60037394f92c428e99c004494d3c28b3"
+      },
+      "rendering": {
+        "filter": "nearest",
+        "allowed_scales": [
+          1,
+          2
+        ],
+        "source_pixels_modified": false
+      },
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "source_resource_type": "PICT",
+      "source_resource_id": 180
+    },
+    {
       "id": "effects.search_animation",
       "path": "res://src/presentation/assets/classic-controls/effects/search-animation-atlas.png",
       "source_repository": "Realmz Remake Dungeon UI",

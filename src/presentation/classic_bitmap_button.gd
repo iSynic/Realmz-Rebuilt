@@ -17,7 +17,7 @@ var _art_scale: int = 1
 var _art_texture: Texture2D
 var _pressed_art_texture: Texture2D
 var _label: String = ""
-var _symbol: StringName = &""
+var _icon_caption_layout: bool = false
 var _physical_pressed: bool = false
 var _visual_pressed: bool = false
 
@@ -39,17 +39,23 @@ func configure(definition: Dictionary, art_scale: int = 1) -> void:
 	command_id = StringName(definition.get("id", &""))
 	var asset_id := StringName(definition.get("asset_id", &""))
 	var pressed_asset_id := StringName(definition.get("pressed_asset_id", &""))
-	_art_texture = ClassicUiAssetCatalog.texture(asset_id)
-	_pressed_art_texture = ClassicUiAssetCatalog.texture(pressed_asset_id)
+	var direct_path := String(definition.get("asset_path", ""))
+	var source_texture := load(direct_path) as Texture2D if not direct_path.is_empty() else ClassicUiAssetCatalog.texture(asset_id)
+	var source_pressed_texture := ClassicUiAssetCatalog.texture(pressed_asset_id)
+	var art_region: Array = definition.get("art_region", [])
+	var art_clear_regions: Array = definition.get("art_clear_regions", [])
+	var art_mask := StringName(definition.get("art_mask", &""))
+	_art_texture = _prepare_art_texture(source_texture, art_region, art_clear_regions, art_mask)
+	_pressed_art_texture = _prepare_art_texture(source_pressed_texture, art_region, art_clear_regions, art_mask)
 	texture_normal = null
-	_native_size = ClassicUiAssetCatalog.native_size(asset_id)
-	var pressed_native_size := ClassicUiAssetCatalog.native_size(pressed_asset_id)
+	_native_size = Vector2i(_art_texture.get_size()) if _art_texture != null else Vector2i.ZERO
+	var pressed_native_size := Vector2i(_pressed_art_texture.get_size()) if _pressed_art_texture != null else Vector2i.ZERO
 	_native_size = Vector2i(maxi(_native_size.x, pressed_native_size.x), maxi(_native_size.y, pressed_native_size.y))
 	if _native_size.x <= 0 or _native_size.y <= 0:
 		_native_size = Vector2i(50, 50)
 	tooltip_text = String(definition.get("tooltip", ""))
 	_label = String(definition.get("label", "Command"))
-	_symbol = StringName(definition.get("symbol", &""))
+	_icon_caption_layout = not StringName(definition.get("group", &"")).is_empty()
 	toggle_mode = bool(definition.get("toggle_mode", false))
 	var accelerator := String(definition.get("accelerator", ""))
 	if not accelerator.is_empty():
@@ -59,7 +65,7 @@ func configure(definition: Dictionary, art_scale: int = 1) -> void:
 
 func set_art_scale(value: int) -> void:
 	_art_scale = 2 if value >= 2 else 1
-	custom_minimum_size = Vector2(maxi(_native_size.x * _art_scale + 6, 62), _native_size.y * _art_scale + 6) if _art_texture != null else Vector2(62.0, 56.0)
+	custom_minimum_size = Vector2(62.0, 70.0) if _icon_caption_layout else Vector2(maxi(_native_size.x * _art_scale + 6, 62), _native_size.y * _art_scale + 6) if _art_texture != null else Vector2(62.0, 56.0)
 	queue_redraw()
 
 
@@ -94,15 +100,17 @@ func _draw() -> void:
 	var font_size := maxi(11, get_theme_font_size("font_size", "Button") - 2)
 	var displayed_texture := _pressed_art_texture if pressed and _pressed_art_texture != null else _art_texture
 	if displayed_texture != null:
-		var art_size := Vector2(_native_size * _art_scale)
-		var art_rect := Rect2(Vector2(floorf((size.x - art_size.x) * 0.5), floorf((size.y - art_size.y) * 0.5)) + pressed_offset, art_size)
+		var icon_stage := Rect2(Vector2(4.0, 3.0), Vector2(size.x - 8.0, 43.0)) if _icon_caption_layout else Rect2(Vector2.ZERO, size)
+		var effective_scale := maxi(1, mini(_art_scale, mini(floori(icon_stage.size.x / float(_native_size.x)), floori(icon_stage.size.y / float(_native_size.y))))) if _icon_caption_layout else _art_scale
+		var art_size := Vector2(_native_size * effective_scale)
+		var art_rect := Rect2(Vector2(floorf(icon_stage.position.x + (icon_stage.size.x - art_size.x) * 0.5), floorf(icon_stage.position.y + (icon_stage.size.y - art_size.y) * 0.5)) + pressed_offset, art_size)
 		draw_texture_rect(displayed_texture, art_rect, false)
-	elif _symbol == &"yin_yang":
-		_draw_yin_yang(Vector2(size.x * 0.5, 19.0) + pressed_offset, 12.0)
+	if _icon_caption_layout:
+		draw_line(Vector2(5.0, size.y - 20.0), Vector2(size.x - 5.0, size.y - 20.0), Color(0.04, 0.05, 0.055, 0.9), 1.0)
 		var caption_width := size.x - 8.0
 		var caption_size := fitted_caption_font_size(font, _label, caption_width, font_size)
-		draw_string(font, Vector2(4.0, size.y - 7.0) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, caption_width, caption_size, CAPTION_COLOR)
-	else:
+		draw_string(font, Vector2(4.0, size.y - 6.0) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, caption_width, caption_size, CAPTION_COLOR)
+	elif displayed_texture == null:
 		draw_string(font, Vector2(4.0, size.y * 0.5 + font_size * 0.35) + pressed_offset, _label, HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, font_size, CAPTION_COLOR)
 	if disabled:
 		draw_rect(rect, DISABLED_OVERLAY, true)
@@ -121,16 +129,34 @@ static func fitted_caption_font_size(font: Font, caption: String, available_widt
 	return candidate
 
 
-func _draw_yin_yang(center: Vector2, radius: float) -> void:
-	draw_circle(center, radius, Color("e9e4d2"))
-	var dark := Color("141619")
-	var half: PackedVector2Array = [center]
-	for index: int in 17:
-		var angle := PI * 0.5 + PI * float(index) / 16.0
-		half.append(center + Vector2(cos(angle), sin(angle)) * radius)
-	draw_colored_polygon(half, dark)
-	draw_circle(center + Vector2(0.0, -radius * 0.5), radius * 0.5, dark)
-	draw_circle(center + Vector2(0.0, radius * 0.5), radius * 0.5, Color("e9e4d2"))
-	draw_circle(center + Vector2(0.0, -radius * 0.5), radius * 0.12, Color("e9e4d2"))
-	draw_circle(center + Vector2(0.0, radius * 0.5), radius * 0.12, dark)
-	draw_arc(center, radius, 0.0, TAU, 32, CAPTION_COLOR, 1.0, true)
+func _prepare_art_texture(texture: Texture2D, region_data: Array, clear_regions: Array, mask: StringName) -> Texture2D:
+	if texture == null:
+		return null
+	var image := texture.get_image()
+	if image == null or image.is_empty():
+		return texture
+	image.convert(Image.FORMAT_RGBA8)
+	if region_data.size() == 4:
+		var requested := Rect2i(int(region_data[0]), int(region_data[1]), int(region_data[2]), int(region_data[3]))
+		var bounded := requested.intersection(Rect2i(Vector2i.ZERO, image.get_size()))
+		if bounded.size.x > 0 and bounded.size.y > 0:
+			image = image.get_region(bounded)
+	for clear_data: Variant in clear_regions:
+		if clear_data is not Array or (clear_data as Array).size() != 4:
+			continue
+		var clear_array := clear_data as Array
+		var requested_clear := Rect2i(int(clear_array[0]), int(clear_array[1]), int(clear_array[2]), int(clear_array[3]))
+		var bounded_clear := requested_clear.intersection(Rect2i(Vector2i.ZERO, image.get_size()))
+		for y: int in range(bounded_clear.position.y, bounded_clear.end.y):
+			for x: int in range(bounded_clear.position.x, bounded_clear.end.x):
+				var color := image.get_pixel(x, y)
+				image.set_pixel(x, y, Color(color.r, color.g, color.b, 0.0))
+	if mask == &"circle":
+		var center := (Vector2(image.get_size()) - Vector2.ONE) * 0.5
+		var radius := float(mini(image.get_width(), image.get_height())) * 0.5
+		for y: int in image.get_height():
+			for x: int in image.get_width():
+				if Vector2(x, y).distance_squared_to(center) > radius * radius:
+					var color := image.get_pixel(x, y)
+					image.set_pixel(x, y, Color(color.r, color.g, color.b, 0.0))
+	return ImageTexture.create_from_image(image)

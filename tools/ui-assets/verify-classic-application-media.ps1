@@ -120,7 +120,7 @@ if (-not (Test-Path -LiteralPath $chromeManifestPath -PathType Leaf)) {
     throw "SpriteCook chrome manifest is missing"
 }
 $chromeManifest = Get-Content -Raw -LiteralPath $chromeManifestPath | ConvertFrom-Json
-if ($chromeManifest.schema_version -ne 6 -or [string]::IsNullOrWhiteSpace($chromeManifest.selected_asset.asset_id)) {
+if ($chromeManifest.schema_version -ne 7 -or [string]::IsNullOrWhiteSpace($chromeManifest.selected_asset.asset_id)) {
     throw "SpriteCook chrome manifest contract is unsupported"
 }
 $chromeFiles = @($chromeManifest.files)
@@ -135,6 +135,12 @@ foreach ($statusAsset in @($chromeManifest.status_assets)) {
         throw "SpriteCook status asset provenance is incomplete"
     }
     $chromeFiles += $statusAsset.file
+}
+foreach ($commandAsset in @($chromeManifest.command_assets)) {
+    if ([string]::IsNullOrWhiteSpace($commandAsset.asset_id) -or [string]::IsNullOrWhiteSpace($commandAsset.generation_job_id) -or [string]::IsNullOrWhiteSpace($commandAsset.source_sha256) -or [string]::IsNullOrWhiteSpace($commandAsset.derivation)) {
+        throw "SpriteCook command asset provenance is incomplete"
+    }
+    $chromeFiles += $commandAsset.file
 }
 foreach ($file in $chromeFiles) {
     if (-not $file.path.StartsWith("res://")) {

@@ -1,5 +1,5 @@
 {
-  "schema_version": 6,
+  "schema_version": 7,
   "selected_asset": {
     "asset_id": "3f355030-0f8c-4d4e-b079-26ba8d3dbc32",
     "label": "Realmz 2 Classic-wide charcoal slate",
@@ -82,6 +82,26 @@
         "width": 20,
         "height": 20,
         "sha256": "e5639679999fd8f76b95e4d9035a75b98c0072e0516a470e3366a3c209df1ef5"
+      }
+    }
+  ],
+  "command_assets": [
+    {
+      "asset_id": "97f8af87-5396-45a1-a911-ba252dab7865",
+      "label": "Realmz Rebuilt Heal command glyph",
+      "source_sha256": "b8a5c1d96c7e93191c2dafe03ca3485f8c2c389f6c11475894223d6f1d14312f",
+      "source_sha256_prefix": "b8a5c1d96c7e",
+      "source_width": 24,
+      "source_height": 24,
+      "generation_job_id": "2abbc8fa-8d5f-4c46-be03-b18050c2977f",
+      "model": "gemini-3.1-flash-image",
+      "mode": "ui",
+      "derivation": "direct SpriteCook pixel output without post-processing",
+      "file": {
+        "path": "res://src/presentation/assets/ui/commands/heal.png",
+        "width": 24,
+        "height": 24,
+        "sha256": "b8a5c1d96c7e93191c2dafe03ca3485f8c2c389f6c11475894223d6f1d14312f"
       }
     }
   ],

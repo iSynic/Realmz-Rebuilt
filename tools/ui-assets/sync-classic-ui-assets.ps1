@@ -2,7 +2,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$SourceRepository,
     [string]$CastleRepository = "",
-    [string]$UiDonorRepository = ""
+    [string]$UiDonorRepository = "",
+    [string]$PictDecoderPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,13 +12,15 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $toolRoot)
 $catalogPath = Join-Path $toolRoot "catalog.json"
 $catalog = Get-Content -Raw -LiteralPath $catalogPath | ConvertFrom-Json
 $sourceRoot = (Resolve-Path -LiteralPath $SourceRepository).Path
-$classicEntries = @($catalog.assets | Where-Object { $_.source_kind -eq "classic-cicn" })
+$classicEntries = @($catalog.assets | Where-Object { $_.source_kind -in @("classic-cicn", "classic-pict") })
+$classicPictEntries = @($classicEntries | Where-Object { $_.source_kind -eq "classic-pict" })
 $uiDonorEntries = @($catalog.assets | Where-Object { $_.source_kind -eq "licensed-ui-donor" })
 $castleRoot = ""
 $uiDonorRoot = ""
 $destinationRoot = Join-Path $repoRoot "src/presentation/assets/classic-controls"
 $manifestPath = Join-Path $repoRoot "src/presentation/assets/classic-ui-assets.json"
 $cicnExporterPath = Join-Path $toolRoot "export-classic-cicn.ps1"
+$pictExporterPath = Join-Path $toolRoot "export-classic-pict.ps1"
 
 $resolvedCommit = (& git -C $sourceRoot rev-parse "$($catalog.source_commit)^{commit}").Trim()
 if ($LASTEXITCODE -ne 0 -or $resolvedCommit -ne $catalog.source_commit) {
@@ -35,6 +38,9 @@ if ($classicEntries.Count -gt 0) {
     $resolvedCastleCommit = (& git -C $castleRoot rev-parse "$($castleCommits[0])^{commit}").Trim()
     if ($LASTEXITCODE -ne 0 -or $resolvedCastleCommit -ne $castleCommits[0]) {
         throw "The requested Castle source commit is unavailable: $($castleCommits[0])"
+    }
+    if ($classicPictEntries.Count -gt 0 -and -not $PictDecoderPath) {
+        throw "PictDecoderPath is required for cataloged Classic PICT assets"
     }
 }
 if ($uiDonorEntries.Count -gt 0) {
@@ -62,7 +68,7 @@ $sidecarRoot = Join-Path $stagingRoot "sidecars"
 New-Item -ItemType Directory -Path $extractRoot, $castleExtractRoot, $uiDonorExtractRoot, $outputRoot, $sidecarRoot | Out-Null
 
 try {
-    $sourcePaths = @($catalog.assets | Where-Object { $_.source_kind -ne "classic-cicn" -and $_.source_kind -ne "licensed-ui-donor" } | ForEach-Object { $_.source_path } | Sort-Object -Unique)
+    $sourcePaths = @($catalog.assets | Where-Object { $_.source_kind -notin @("classic-cicn", "classic-pict", "licensed-ui-donor") } | ForEach-Object { $_.source_path } | Sort-Object -Unique)
     & git -C $sourceRoot archive --format=zip --output=$archivePath $catalog.source_commit -- @sourcePaths
     if ($LASTEXITCODE -ne 0) {
         throw "git archive failed"
@@ -92,8 +98,9 @@ try {
     $records = @()
     foreach ($entry in $catalog.assets) {
         $isClassicCicn = $entry.source_kind -eq "classic-cicn"
+        $isClassicPict = $entry.source_kind -eq "classic-pict"
         $isLicensedUiDonor = $entry.source_kind -eq "licensed-ui-donor"
-        $entryExtractRoot = if ($isClassicCicn) {
+        $entryExtractRoot = if ($isClassicCicn -or $isClassicPict) {
             $castleExtractRoot
         }
         elseif ($isLicensedUiDonor) {
@@ -117,6 +124,9 @@ try {
         if ($isClassicCicn) {
             & $cicnExporterPath -ResourceForkPath $sourcePath -ResourceId $entry.resource_id -OutputPath $targetPath
         }
+        elseif ($isClassicPict) {
+            & $pictExporterPath -ResourceForkPath $sourcePath -ResourceId $entry.resource_id -PictDecoderPath $PictDecoderPath -OutputPath $targetPath
+        }
         else {
             [IO.File]::WriteAllBytes($targetPath, [IO.File]::ReadAllBytes($sourcePath))
         }
@@ -138,7 +148,7 @@ try {
         $evidenceNote = if ($entry.PSObject.Properties.Name -contains "evidence_note") { $entry.evidence_note } else { "Semantic use is proven by the tracked Remake scene; direct extraction from a Classic resource fork is not claimed." }
         $evidence = [ordered]@{
             status = $evidenceStatus
-            path = $catalog.contexts.($entry.context)
+            path = if ($entry.PSObject.Properties.Name -contains "evidence_path") { $entry.evidence_path } else { $catalog.contexts.($entry.context) }
             note = $evidenceNote
         }
         if ($entry.PSObject.Properties.Name -contains "evidence_repository") {
@@ -164,7 +174,7 @@ try {
                 source_pixels_modified = $false
             }
         }
-        if ($isClassicCicn) {
+        if ($isClassicCicn -or $isClassicPict) {
             $record["source_file_sha256"] = $entry.source_file_sha256
             $record["source_resource_type"] = $entry.resource_type
             $record["source_resource_id"] = $entry.resource_id

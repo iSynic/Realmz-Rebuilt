@@ -6,7 +6,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 
 ## Ownership
 
-- The exact-commit Remake bitmap-control and Castle resource-fork map-marker catalog and importer.
+- The exact-commit Remake bitmap-control and Castle resource-fork PICT/CICN catalog and importer.
 - The complete app-owned Classic `snd ` catalog, shared Data ID item `cicn` set and unidentified substitutes, plus selected source-backed battle `cicn` families decoded from the pinned Castle `The Family Jewels` resource fork.
 - Deterministic selected-surface preservation, seamless runtime tile derivation, tiled nine-patch derivation, and alpha-cropped exploration-rail reduction.
 - Deterministic typography import and reference rendering, including exact Mac resource-fork `FONT` 1601 decoding into a Godot BMFont descriptor/atlas, pinned Castle/Open Font License font-byte synchronization, Samuel-outline/Castle-advance reference TTF generation, approved Pencil-contour/Castle-advance/Grenze-utility runtime TTF generation, and reproducible transparent Theldrow design sheets.
@@ -16,10 +16,11 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 
 ## Local Contracts
 
-- Import only entries listed in `catalog.json`, from the recorded commit, through Git object data rather than a source checkout's working files. Remake controls copy exact PNG bytes. Castle CICNs are decoded from the pinned owning resource fork by resource type and ID, with both resource-fork and output hashes validated. Each entry may override its semantic evidence label, repository, commit, path, note, and classification without weakening byte provenance.
+- Import only entries listed in `catalog.json`, from the recorded commit, through Git object data rather than a source checkout's working files. Remake controls copy exact PNG bytes. Castle CICNs are decoded internally; Castle PICTs are decoded through the caller-supplied pinned decoder path. Both source-fork and output hashes are validated by resource type and ID. Each entry may override its semantic evidence label, repository, commit, path, note, and classification without weakening byte provenance.
 - The source checkout is read-only and supplied explicitly by the caller; never commit a machine-specific source path.
 - Preserve imported pixels byte-for-byte. Derived slate surfaces must identify their source asset and algorithm.
 - Search keeps exact built-in CICN 128 as inactive control-state evidence and imports the licensed eight-frame Searching row from its exact donor commit for runtime matte-keyed composition. Area Search keeps generic built-in CICN 129/130 as pressed/released control-state evidence and uses the licensed non-commercial Realmz eye/label bitmap from its exact tracked donor commit. Catalog records must preserve those distinctions and the license boundary.
+- Ordinary Encounter imports exact application PICT 180 from the pinned Family Jewels fork. The committed source image remains intact; presentation isolates its yin-yang while recomposing the command on Rebuilt chrome. The source-proven blank Heal CNTL is not fabricated into an exact asset; its separately generated app-owned glyph remains SpriteCook-manifested.
 - The exact ordinary party marker catalog contains Castle CICN 175 west, 186 east, and 178 camp from the pinned owning resource fork; importer output must retain their native 32×32 pixels and semantic identities.
 - Integrated media keeps exact Classic `(resource type, ID)` identity and provenance. The runtime resolves scenario package media before these application fallbacks, matching Castle's resource-chain precedence.
 - Preserve existing Godot `.import` and `.uid` sidecars for retained catalog assets so exact-byte regeneration does not churn stable resource UIDs; newly added assets receive their sidecars from the ordinary Godot import pass.
@@ -43,7 +44,7 @@ Own deterministic import and derivation of Realmz Rebuilt application chrome and
 - `sync-classic-ui-assets.ps1` verifies source commits, source hashes, decoded CICN identity, PNG bytes, dimensions, and manifest output.
 - `build-classic-surfaces.ps1` verifies every generated PNG, records deterministic SHA-256 values, produces a tile with exact matching opposite edges, and records the opaque-bevel algorithm version.
 - `build-exploration-rail.ps1` reports the source crop plus source/output SHA-256 values; the committed manifest records those values and production dimensions.
-- `verify-classic-application-media.ps1` verifies unique IDs/resource keys, the expected integrated sound, item-CIcon, and combat-CIcon counts, generated-chrome and SpriteCook status-glyph provenance/paths/dimensions, and every committed byte count and SHA-256 without requiring an external Castle checkout.
+- `verify-classic-application-media.ps1` verifies unique IDs/resource keys, the expected integrated sound, item-CIcon, and combat-CIcon counts, generated-chrome plus SpriteCook status/command-glyph provenance, paths, dimensions, and every committed byte count and SHA-256 without requiring an external Castle checkout.
 - `verify-classic-application-media.ps1` also verifies the complete font manifest, source/commit/license fields, required Classic roles, committed paths, and byte hashes.
 - `verify-classic-application-music.ps1` verifies all eleven stock playlist IDs, twenty-slot manifest contract, source provenance, durations, committed Ogg signatures, byte counts, and output hashes without requiring Castle, OpenMPT, or FFmpeg.
 - `sync-classic-application-text.ps1` verifies the pinned Castle commit and exact Family Jewels resource-fork hash, decodes MacRoman deterministically, emits all 252 class-one-through-three player-spell descriptions keyed by packed Classic ID, and reproduces identical bytes across supported PowerShell hosts.

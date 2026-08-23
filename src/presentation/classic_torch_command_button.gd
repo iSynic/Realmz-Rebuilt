@@ -11,6 +11,7 @@ const BODY_ASSET_ID: StringName = &"torch.frame.154"
 const FRAME_INTERVAL := 1.0 / 6.0
 const FOCUS_COLOR := Color("f8e36f")
 const HOVER_COLOR := Color("80d6e7")
+const CAPTION_COLOR := Color("e7c756")
 const SURFACE_COLOR := Color("171a1d")
 const SURFACE_DARK := Color("080a0c")
 const EDGE_LIGHT := Color("686b68")
@@ -67,16 +68,30 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var rect := Rect2(Vector2.ONE, size - Vector2(2.0, 2.0))
-	draw_rect(rect, SURFACE_COLOR, true)
-	draw_line(rect.position, Vector2(rect.end.x, rect.position.y), EDGE_LIGHT, 2.0)
-	draw_line(rect.position, Vector2(rect.position.x, rect.end.y), EDGE_LIGHT, 2.0)
-	draw_line(Vector2(rect.position.x, rect.end.y), rect.end, SURFACE_DARK, 2.0)
-	draw_line(Vector2(rect.end.x, rect.position.y), rect.end, SURFACE_DARK, 2.0)
+	var pressed := is_pressed()
+	var surface_name := &"disabled" if disabled else &"pressed" if pressed else &"hover" if is_hovered() else &"normal"
+	var surface := get_theme_stylebox(surface_name, &"Button")
+	if surface != null:
+		draw_style_box(surface, rect)
+	else:
+		draw_rect(rect, SURFACE_COLOR, true)
+		var leading_edge := SURFACE_DARK if pressed else EDGE_LIGHT
+		var trailing_edge := EDGE_LIGHT if pressed else SURFACE_DARK
+		draw_line(rect.position, Vector2(rect.end.x, rect.position.y), leading_edge, 2.0)
+		draw_line(rect.position, Vector2(rect.position.x, rect.end.y), leading_edge, 2.0)
+		draw_line(Vector2(rect.position.x, rect.end.y), rect.end, trailing_edge, 2.0)
+		draw_line(Vector2(rect.end.x, rect.position.y), rect.end, trailing_edge, 2.0)
+	var pressed_offset := Vector2.ONE if pressed else Vector2.ZERO
 	if _has_torch:
-		_draw_torch_art(Vector2.ONE if button_pressed else Vector2.ZERO)
+		_draw_torch_art(pressed_offset)
+	var font := get_theme_font("font", "Button")
+	var font_size := maxi(11, get_theme_font_size("font_size", "Button") - 2)
+	draw_line(Vector2(5.0, size.y - 20.0), Vector2(size.x - 5.0, size.y - 20.0), Color(0.04, 0.05, 0.055, 0.9), 1.0)
+	var caption_size := ClassicBitmapButton.fitted_caption_font_size(font, "Torch", size.x - 8.0, font_size)
+	draw_string(font, Vector2(4.0, size.y - 6.0) + pressed_offset, "Torch", HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, caption_size, CAPTION_COLOR)
 	if disabled:
 		draw_rect(rect, DISABLED_OVERLAY, true)
-	elif button_pressed:
+	elif pressed:
 		draw_rect(rect.grow(-1.0), Color(0.95, 0.76, 0.24, 0.14), true)
 	if has_focus():
 		draw_rect(rect, FOCUS_COLOR, false, 2.0)
@@ -90,7 +105,7 @@ func _draw_torch_art(offset: Vector2) -> void:
 	var segments := _fuel_segment_count()
 	var body_size := _body_texture.get_size()
 	var center_x := floorf((size.x - body_size.x) * 0.5)
-	var base_y := size.y - 5.0
+	var base_y := 45.0
 	for segment_index: int in segments:
 		draw_texture(_body_texture, Vector2(center_x, base_y - float(segment_index + 1) * 7.0) + offset)
 	if _light_remaining <= 0 or _flame_frames.is_empty():
@@ -99,7 +114,7 @@ func _draw_torch_art(offset: Vector2) -> void:
 	if flame == null:
 		return
 	var flame_x := floorf((size.x - flame.get_width()) * 0.5)
-	var flame_y := clampf(size.y - 36.0 - floorf(float(_light_remaining) / 4.0), 3.0, size.y - flame.get_height() - 3.0)
+	var flame_y := clampf(18.0 - floorf(float(_light_remaining) / 16.0), 3.0, 45.0 - flame.get_height())
 	draw_texture(flame, Vector2(flame_x, flame_y) + offset)
 
 

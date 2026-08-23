@@ -779,11 +779,14 @@ func _presentation_command_definition(definition: Dictionary) -> Dictionary:
 	result["label"] = service.title
 	result["tooltip"] = "Enter %s" % service.title
 	result["availability"] = &"service_action"
-	result["symbol"] = &""
 	if service.service_kind == &"temple":
 		result["asset_id"] = &"command.temple"
+		result["art_region"] = [9, 2, 37, 34]
+		result.erase("art_mask")
 	else:
 		result["asset_id"] = &""
+		result.erase("art_region")
+		result.erase("art_mask")
 	return result
 
 

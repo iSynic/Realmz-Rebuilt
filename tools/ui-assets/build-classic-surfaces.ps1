@@ -15,10 +15,18 @@ $committedManifestPath = Join-Path $outputRoot "spritecook-assets.json"
 $stagingRoot = Join-Path ([IO.Path]::GetTempPath()) ("realmz2-ui-surfaces-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $stagingRoot | Out-Null
 $decorativeAssets = @()
+$statusAssets = @()
+$commandAssets = @()
 if (Test-Path -LiteralPath $committedManifestPath) {
     $committedManifest = Get-Content -Raw -LiteralPath $committedManifestPath | ConvertFrom-Json
     if ($null -ne $committedManifest.decorative_assets) {
         $decorativeAssets = @($committedManifest.decorative_assets)
+    }
+    if ($null -ne $committedManifest.status_assets) {
+        $statusAssets = @($committedManifest.status_assets)
+    }
+    if ($null -ne $committedManifest.command_assets) {
+        $commandAssets = @($committedManifest.command_assets)
     }
 }
 
@@ -194,9 +202,11 @@ try {
         finally { $bitmap.Dispose() }
     }
     $manifest = [ordered]@{
-        schema_version = 5
+        schema_version = 7
         selected_asset = $selectedAsset
         decorative_assets = $decorativeAssets
+        status_assets = $statusAssets
+        command_assets = $commandAssets
         derivation = [ordered]@{
             generator = "tools/ui-assets/build-classic-surfaces.ps1"
             algorithm = "system-drawing-bicubic-512-plus-cosine-feathered-512-tile-and-opaque-528px-bevel-v3"

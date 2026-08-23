@@ -63,22 +63,32 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var rect := Rect2(Vector2.ONE, size - Vector2(2.0, 2.0))
-	draw_rect(rect, SURFACE_COLOR, true)
-	draw_line(rect.position, Vector2(rect.end.x, rect.position.y), EDGE_LIGHT, 2.0)
-	draw_line(rect.position, Vector2(rect.position.x, rect.end.y), EDGE_LIGHT, 2.0)
-	draw_line(Vector2(rect.position.x, rect.end.y), rect.end, SURFACE_DARK, 2.0)
-	draw_line(Vector2(rect.end.x, rect.position.y), rect.end, SURFACE_DARK, 2.0)
-	var pressed_offset := Vector2.ONE if button_pressed else Vector2.ZERO
+	var pressed := is_pressed()
+	var surface_name := &"disabled" if disabled else &"pressed" if pressed else &"hover" if is_hovered() else &"normal"
+	var surface := get_theme_stylebox(surface_name, &"Button")
+	if surface != null:
+		draw_style_box(surface, rect)
+	else:
+		draw_rect(rect, SURFACE_COLOR, true)
+		var leading_edge := SURFACE_DARK if pressed else EDGE_LIGHT
+		var trailing_edge := EDGE_LIGHT if pressed else SURFACE_DARK
+		draw_line(rect.position, Vector2(rect.end.x, rect.position.y), leading_edge, 2.0)
+		draw_line(rect.position, Vector2(rect.position.x, rect.end.y), leading_edge, 2.0)
+		draw_line(Vector2(rect.position.x, rect.end.y), rect.end, trailing_edge, 2.0)
+		draw_line(Vector2(rect.end.x, rect.position.y), rect.end, trailing_edge, 2.0)
+	var pressed_offset := Vector2.ONE if pressed else Vector2.ZERO
 	if _atlas != null:
 		var frame_rect := Rect2(Vector2(float(_frame_index) * FRAME_SIZE.x, FRAME_ROW_Y), FRAME_SIZE)
 		var destination := Rect2(Vector2(floorf((size.x - FRAME_SIZE.x) * 0.5), 4.0) + pressed_offset, FRAME_SIZE)
 		draw_texture_rect_region(_atlas, destination, frame_rect)
 	var font := get_theme_font("font", "Button")
 	var font_size := maxi(11, get_theme_font_size("font_size", "Button") - 2)
-	draw_string(font, Vector2(4.0, size.y - 8.0) + pressed_offset, "Search", HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, font_size, CAPTION_COLOR)
+	draw_line(Vector2(5.0, size.y - 20.0), Vector2(size.x - 5.0, size.y - 20.0), Color(0.04, 0.05, 0.055, 0.9), 1.0)
+	var caption_size := ClassicBitmapButton.fitted_caption_font_size(font, "Search", size.x - 8.0, font_size)
+	draw_string(font, Vector2(4.0, size.y - 6.0) + pressed_offset, "Search", HORIZONTAL_ALIGNMENT_CENTER, size.x - 8.0, caption_size, CAPTION_COLOR)
 	if disabled:
 		draw_rect(rect, DISABLED_OVERLAY, true)
-	elif button_pressed:
+	elif pressed:
 		draw_rect(rect.grow(-1.0), Color(0.95, 0.76, 0.24, 0.14), true)
 	if has_focus():
 		draw_rect(rect, FOCUS_COLOR, false, 2.0)
