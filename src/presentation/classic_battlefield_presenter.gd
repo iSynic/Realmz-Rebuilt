@@ -1,6 +1,8 @@
 class_name ClassicBattlefieldPresenter
 extends Control
 
+const PersistentCombatFieldViewType := preload("res://src/core/view/persistent_combat_field_view.gd")
+
 signal combat_body_submitted(body: InteractionResponse.CombatBody)
 signal combatant_inspected(combatant_id: String)
 signal targeting_changed(selection: CombatTargetingState)
@@ -133,6 +135,7 @@ func _draw() -> void:
 			var coordinate := camera + Vector2i(x, y)
 			var rect := Rect2(draw_origin + Vector2(x, y) * NATIVE_CELL_SIZE, Vector2.ONE * NATIVE_CELL_SIZE)
 			_draw_terrain_cell(battlefield.terrain_at(coordinate), rect)
+	_draw_persistent_fields(combat, camera, visible_cells, draw_origin)
 	_draw_revealed_relationships(combat, camera, visible_cells, draw_origin)
 	_draw_movement_options(combat, camera, visible_cells, draw_origin)
 	_draw_targeting_preview(combat, camera, visible_cells, draw_origin)
@@ -328,6 +331,14 @@ func target_with_keyboard() -> bool:
 	return true
 
 
+func rotate_targeting() -> bool:
+	if _targeting == null or not _targeting.rotate_area():
+		return false
+	targeting_changed.emit(_targeting)
+	queue_redraw()
+	return true
+
+
 func _handle_targeting_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		_targeting.hovered_coordinate = _coordinate_at_local_position((event as InputEventMouseMotion).position)
@@ -422,6 +433,25 @@ func _draw_characters(combat: CombatView, camera: Vector2i, visible_cells: Vecto
 		var rect := _playback_actor_rect(character.id, coordinate, camera, draw_origin)
 		var asset := _media.asset_by_id(character.combat_icon_id) if _media != null else null
 		_draw_actor(rect, _texture_for(asset), character.name, _actor_is_highlighted(character.id, combat.active_actor_id), target_ids.has(character.id), character.traitor)
+
+
+func _draw_persistent_fields(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:
+	for field: PersistentCombatFieldViewType in combat.persistent_fields:
+		var tile_id := persistent_field_tile_id(field.queue_icon)
+		var region := Rect2i() if _atlas_asset == null else _atlas_asset.region_for(tile_id)
+		for coordinate: Vector2i in field.affected_coordinates:
+			if not coordinate_is_visible(coordinate, camera, visible_cells):
+				continue
+			var rect := cell_rect(coordinate, camera, draw_origin)
+			if _atlas_texture != null and region.has_area():
+				draw_texture_rect_region(_atlas_texture, rect, Rect2(region))
+			else:
+				draw_rect(rect.grow(-3.0), Color(0.48, 0.22, 0.62, 0.48), true)
+				draw_rect(rect.grow(-3.0), Color(0.86, 0.66, 0.98, 0.86), false, 1.0)
+
+
+static func persistent_field_tile_id(queue_icon: int) -> int:
+	return 200 + queue_icon
 
 
 func _draw_revealed_relationships(combat: CombatView, camera: Vector2i, visible_cells: Vector2i, draw_origin: Vector2) -> void:

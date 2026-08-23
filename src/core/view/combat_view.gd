@@ -1,6 +1,8 @@
 class_name CombatView
 extends RefCounted
 
+const PersistentCombatFieldViewType := preload("res://src/core/view/persistent_combat_field_view.gd")
+
 var battle_id: String
 var round_number: int
 var active_actor_id: String
@@ -28,6 +30,7 @@ var character_targets: Array[CharacterView] = []
 var movement_options: Array[CombatMoveOptionView] = []
 var monsters: Array[MonsterView] = []
 var battlefield: BattlefieldView
+var persistent_fields: Array[PersistentCombatFieldViewType] = []
 var auto_turn: ActionAvailabilityView = ActionAvailabilityView.new(&"auto", false, "Auto Turn is unavailable.")
 var delay: ActionAvailabilityView = ActionAvailabilityView.new(&"delay", false, "Delay is unavailable.")
 var bandage: ActionAvailabilityView = ActionAvailabilityView.new(&"bandage", false, "Bandage is unavailable.")
@@ -46,11 +49,25 @@ func _init(combat: CombatState, characters: Array[CharacterState] = [], content:
 	turn_order = combat.turn_order()
 	if combat.battlefield != null:
 		var upper_tileset_id := ""
+		var terrain_set: BattleTerrainSetDefinition
 		if content != null:
 			var source_map := content.world.map_by_id(combat.battlefield.map_id)
 			if source_map != null and source_map.level_type == &"land" and source_map.landlook >= 0:
 				upper_tileset_id = "landlook-%d" % source_map.landlook
+			terrain_set = content.world.battle_terrain_set_by_id(source_map.battle_terrain_set_id) if source_map != null else null
 		battlefield = BattlefieldView.new(combat.battlefield, upper_tileset_id)
+		var area_rules := SpellAreaRules.new()
+		for field: PersistentCombatField in combat.persistent_fields():
+			var coordinates: Array[Vector2i] = []
+			for offset: Vector2i in area_rules.pattern(field.shape):
+				var coordinate := field.center + offset
+				if not BattlefieldState.contains(coordinate):
+					continue
+				var terrain := terrain_set.tile_by_id(combat.battlefield.terrain_at(coordinate)) if terrain_set != null else null
+				if terrain == null or terrain.solid == 0:
+					coordinates.append(coordinate)
+			var spell := content.spell_by_id(field.spell_id) if content != null else null
+			persistent_fields.append(PersistentCombatFieldViewType.new(field, spell.name if spell != null else field.spell_id, coordinates))
 	var adjacent_ids: Array[String] = []
 	if combat.battlefield != null and battlefield_rules != null and not active_actor_id.is_empty():
 		adjacent_ids = battlefield_rules.adjacent_actor_ids(combat.battlefield, active_actor_id)

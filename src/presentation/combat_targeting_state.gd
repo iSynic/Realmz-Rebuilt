@@ -5,6 +5,8 @@ var mode: StringName
 var response_body: InteractionResponse.CombatBody
 var candidate_ids: Array[String] = []
 var area_offsets: Array[Vector2i] = []
+var area_rotation_offsets: Array = []
+var rotation: int = 0
 var legal_coordinates: Array[Vector2i] = []
 var maximum_targets: int = 1
 var validation_deferred: bool = false
@@ -20,6 +22,11 @@ func _init(request: CombatTargetingRequest) -> void:
 	response_body = request.response_body.duplicate_body()
 	candidate_ids = request.candidate_ids.duplicate()
 	area_offsets = request.area_offsets.duplicate()
+	for offsets: Variant in request.area_rotation_offsets:
+		if offsets is Array:
+			area_rotation_offsets.append((offsets as Array).duplicate())
+	if area_rotation_offsets.is_empty() and not area_offsets.is_empty():
+		area_rotation_offsets.append(area_offsets.duplicate())
 	legal_coordinates = request.legal_coordinates.duplicate()
 	maximum_targets = request.maximum_targets
 	validation_deferred = request.validation_deferred
@@ -98,6 +105,15 @@ func target_with_keyboard() -> bool:
 	return select_coordinate(coordinate)
 
 
+func rotate_area() -> bool:
+	if mode != &"area" or area_rotation_offsets.size() < 2:
+		return false
+	rotation = (rotation + 1) % area_rotation_offsets.size()
+	area_offsets.assign(area_rotation_offsets[rotation])
+	status_text = "Area rotated to orientation %d of %d." % [rotation + 1, area_rotation_offsets.size()]
+	return true
+
+
 func can_confirm() -> bool:
 	match mode:
 		&"combatant", &"sequence":
@@ -123,7 +139,7 @@ func committed_body() -> InteractionResponse.CombatBody:
 			result.target_id = ""
 			result.target_coordinate = selected_coordinate
 			result.has_target_coordinate = true
-			result.rotation = 0
+			result.rotation = rotation
 		&"coordinate_sequence":
 			result.target_id = ""
 			result.target_coordinates = selected_coordinates.duplicate()

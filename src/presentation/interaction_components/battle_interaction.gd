@@ -123,6 +123,7 @@ func build(request: InteractionRequest) -> void:
 			item_picker.set_item_metadata(item_picker.item_count - 1, option)
 		item_row.add_child(item_picker)
 		var use_button := Button.new()
+		use_button.name = "ChooseItemTarget"
 		use_button.text = "Use selected item"
 		use_button.disabled = item_picker.item_count == 0
 		use_button.pressed.connect(func() -> void:
@@ -133,12 +134,7 @@ func build(request: InteractionRequest) -> void:
 			if option.target_mode == &"automatic":
 				response_body_submitted.emit(response_body)
 				return
-			var candidate_ids: Array[String] = []
-			for candidate: InteractionRequestValue.CastOption in body.item_casts:
-				if candidate.item_instance_id == option.item_instance_id and not candidate.target_id.is_empty(): candidate_ids.append(candidate.target_id)
-			var targeting := CombatTargetingRequest.new(&"combatant", response_body)
-			targeting.candidate_ids = candidate_ids
-			_start_targeting(targeting, item_panel)
+			_start_targeting(_spell_targeting_configuration(body.item_casts, option, response_body), item_panel)
 		)
 		item_row.add_child(use_button)
 	elif not body.item_cast_reason.is_empty():
@@ -270,9 +266,10 @@ func _spell_targeting_configuration(spell_casts: Array[InteractionRequestValue.C
 	result.candidate_ids = candidate_ids
 	result.maximum_targets = selected.maximum_targets
 	result.area_offsets = selected.area_offsets.duplicate()
+	result.area_rotation_offsets = selected.area_rotation_offsets.duplicate(true)
 	result.default_target_coordinate = selected.default_target_coordinate
 	result.legal_coordinates = selected.legal_target_coordinates.duplicate()
-	result.validation_deferred = response_body.action == &"cast_spell" and (mode in [&"combatant", &"sequence", &"coordinate_sequence"] or mode == &"area" and result.legal_coordinates.is_empty())
+	result.validation_deferred = response_body.action == &"cast_spell" and mode in [&"combatant", &"sequence", &"coordinate_sequence"] or mode == &"area" and (result.legal_coordinates.is_empty() or result.supports_rotation())
 	return result
 
 
@@ -321,6 +318,16 @@ func _start_targeting(configuration: CombatTargetingRequest, parent: Container) 
 	_targeting_confirm_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_targeting_confirm_button.pressed.connect(func() -> void: combat_targeting_confirm_requested.emit())
 	target_actions.add_child(_targeting_confirm_button)
+	if configuration.supports_rotation():
+		var rotate := Button.new()
+		rotate.name = "RotateBattleTarget"
+		rotate.text = "Rotate area"
+		rotate.tooltip_text = "Cycle the source-authored area orientations."
+		rotate.theme_type_variation = &"BattleCommandButton"
+		rotate.custom_minimum_size.y = COMMAND_HEIGHT
+		rotate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rotate.pressed.connect(func() -> void: combat_targeting_rotate_requested.emit())
+		target_actions.add_child(rotate)
 	var cancel := Button.new()
 	cancel.name = "CancelBattleTarget"
 	cancel.text = "Cancel targeting"

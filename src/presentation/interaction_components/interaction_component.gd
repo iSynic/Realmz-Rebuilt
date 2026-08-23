@@ -9,6 +9,8 @@ signal combat_targeting_confirm_requested
 @warning_ignore("unused_signal")
 signal combat_targeting_cancel_requested
 @warning_ignore("unused_signal")
+signal combat_targeting_rotate_requested
+@warning_ignore("unused_signal")
 signal combatant_focus_requested(combatant_id: String, play_sound: bool)
 @warning_ignore("unused_signal")
 signal reveal_friends_requested

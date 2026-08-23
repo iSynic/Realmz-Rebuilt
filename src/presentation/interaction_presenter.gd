@@ -11,6 +11,7 @@ signal response_submitted(response: InteractionResponse)
 signal combat_targeting_requested(request: CombatTargetingRequest)
 signal combat_targeting_confirm_requested
 signal combat_targeting_cancel_requested
+signal combat_targeting_rotate_requested
 signal combatant_focus_requested(combatant_id: String, play_sound: bool)
 signal reveal_friends_requested
 signal presentation_sound_requested(sound_id: int)
@@ -140,6 +141,7 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_component.combat_targeting_requested.connect(func(targeting_request: CombatTargetingRequest) -> void: combat_targeting_requested.emit(targeting_request))
 	_component.combat_targeting_confirm_requested.connect(func() -> void: combat_targeting_confirm_requested.emit())
 	_component.combat_targeting_cancel_requested.connect(func() -> void: combat_targeting_cancel_requested.emit())
+	_component.combat_targeting_rotate_requested.connect(func() -> void: combat_targeting_rotate_requested.emit())
 	_component.combatant_focus_requested.connect(func(combatant_id: String, play_sound: bool) -> void: combatant_focus_requested.emit(combatant_id, play_sound))
 	_component.reveal_friends_requested.connect(func() -> void: reveal_friends_requested.emit())
 	_component.presentation_sound_requested.connect(func(sound_id: int) -> void: presentation_sound_requested.emit(sound_id))
