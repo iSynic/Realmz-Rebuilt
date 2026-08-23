@@ -60,11 +60,19 @@ func _build_inventory(content: RealmzContent) -> Dictionary:
 		String(SpellCapabilities.ROLE_STOCK_PLAYER): 0,
 		String(SpellCapabilities.ROLE_UNKNOWN): 0,
 	}
+	var family_counts: Dictionary = {}
+	var context_counts: Dictionary = {}
 	for spell: SpellDefinition in content.spell_definitions():
 		var role := String(SpellCapabilities.application_role(spell))
 		var behavior_signature: Dictionary = SpellCapabilities.behavior_signature(spell)
+		var mechanical_family := String(SpellCapabilities.mechanical_family(spell))
+		var runtime_contexts: Dictionary = SpellCapabilities.runtime_contexts(spell)
 		var signature_id := CanonicalJson.encode(behavior_signature).sha256_text().substr(0, 16)
 		role_counts[role] = int(role_counts.get(role, 0)) + 1
+		family_counts[mechanical_family] = int(family_counts.get(mechanical_family, 0)) + 1
+		for context_name: String in runtime_contexts:
+			var context_disposition := "%s:%s" % [context_name, runtime_contexts[context_name]]
+			context_counts[context_disposition] = int(context_counts.get(context_disposition, 0)) + 1
 		var group: Array = signature_groups.get(signature_id, [])
 		group.append(spell.classic_id)
 		signature_groups[signature_id] = group
@@ -73,6 +81,7 @@ func _build_inventory(content: RealmzContent) -> Dictionary:
 			"classicId": spell.classic_id,
 			"evidence": _spell_evidence(role),
 			"id": spell.id,
+			"mechanicalFamily": mechanical_family,
 			"name": spell.name,
 			"packedFamily": SpellCapabilities.packed_family(spell),
 			"packedLevel": SpellCapabilities.packed_level(spell),
@@ -85,6 +94,7 @@ func _build_inventory(content: RealmzContent) -> Dictionary:
 				"soundStart": spell.sound_start,
 			},
 			"role": role,
+			"runtimeContexts": runtime_contexts,
 			"signatureId": signature_id,
 		})
 	var signatures: Array[Dictionary] = []
@@ -129,6 +139,8 @@ func _build_inventory(content: RealmzContent) -> Dictionary:
 			"stockPlayer": role_counts[String(SpellCapabilities.ROLE_STOCK_PLAYER)],
 			"totalDefinitions": spells.size(),
 			"unknown": role_counts[String(SpellCapabilities.ROLE_UNKNOWN)],
+			"mechanicalFamilies": family_counts,
+			"runtimeContexts": context_counts,
 		},
 		"spells": spells,
 		"spellSignatures": signatures,
@@ -147,6 +159,17 @@ func _inventory_errors(inventory: Dictionary) -> Array[String]:
 		errors.append("application spell catalog contains unowned definitions")
 	if spell_summary["behaviorSignatures"] <= 0 or spell_summary["behaviorSignatures"] > spell_summary["totalDefinitions"]:
 		errors.append("application spell behavior signatures are malformed")
+	var family_total := 0
+	for count: int in spell_summary["mechanicalFamilies"].values():
+		family_total += count
+	if family_total != spell_summary["totalDefinitions"]:
+		errors.append("application spell capability-family counts are inconsistent")
+	for context_name: String in ["combatCharacter", "combatItem", "combatMonster", "combatScroll", "fieldCharacter"]:
+		var context_total := 0
+		for disposition: String in ["executable", "unsupported-pending", "not-applicable"]:
+			context_total += int(spell_summary["runtimeContexts"].get("%s:%s" % [context_name, disposition], 0))
+		if context_total != spell_summary["totalDefinitions"]:
+			errors.append("application spell %s capability counts are inconsistent" % context_name)
 	var feature_report_contract: Dictionary = inventory["featureReportContract"]
 	if feature_report_contract["formatVersion"] != FEATURE_REPORT_FORMAT_VERSION or feature_report_contract["providenceCommit"] != FEATURE_REPORT_PROVIDENCE_COMMIT or feature_report_contract["schemaHash"] != FEATURE_REPORT_SCHEMA_HASH:
 		errors.append("Providence feature-report contract metadata is stale")
@@ -203,6 +226,12 @@ An executable disposition proves an owned handler boundary, not complete branch,
 - Reserved standard slots: %d
 - Total definitions: %d
 - Unique mechanical behavior signatures: %d
+- Mechanical families: %s
+- Character combat: %d executable, %d pending
+- Scroll combat: %d executable, %d pending
+- Item combat: %d executable, %d pending
+- Monster combat: %d executable, %d pending
+- Character field/camp: %d executable, %d pending
 
 The 252 player records are the stock player-spell parity target. The 105 application effect records cover application-owned monster, item, projectile, and special effects and require their own legal-context proof. The 63 reserved records are denominator entries, not missing player spells. Scenario-corpus custom spells are collected only in local untracked sidecars until their normalized signatures can be committed without commercial content.
 
@@ -221,8 +250,27 @@ Every entry tracks discovery, compiler preservation, semantic public-runtime tes
 """ % [
 		opcode_summary["total"], opcode_summary["executable"], opcode_summary["classicReserved"], opcode_summary["pending"], ", ".join(pending),
 		spell_summary["stockPlayer"], spell_summary["applicationEffects"], spell_summary["reservedStandardSlots"], spell_summary["totalDefinitions"], spell_summary["behaviorSignatures"],
+		_format_counts(spell_summary["mechanicalFamilies"]),
+		_context_count(spell_summary, "combatCharacter", "executable"), _context_count(spell_summary, "combatCharacter", "unsupported-pending"),
+		_context_count(spell_summary, "combatScroll", "executable"), _context_count(spell_summary, "combatScroll", "unsupported-pending"),
+		_context_count(spell_summary, "combatItem", "executable"), _context_count(spell_summary, "combatItem", "unsupported-pending"),
+		_context_count(spell_summary, "combatMonster", "executable"), _context_count(spell_summary, "combatMonster", "unsupported-pending"),
+		_context_count(spell_summary, "fieldCharacter", "executable"), _context_count(spell_summary, "fieldCharacter", "unsupported-pending"),
 		FEATURE_REPORT_FORMAT_VERSION, FEATURE_REPORT_PROVIDENCE_COMMIT, FEATURE_REPORT_SCHEMA_HASH,
 	]
+
+
+static func _context_count(spell_summary: Dictionary, context_name: String, disposition: String) -> int:
+	return int(spell_summary["runtimeContexts"].get("%s:%s" % [context_name, disposition], 0))
+
+
+static func _format_counts(counts: Dictionary) -> String:
+	var keys: Array = counts.keys()
+	keys.sort()
+	var values: Array[String] = []
+	for key: String in keys:
+		values.append("%s=%d" % [key, counts[key]])
+	return ", ".join(values)
 
 
 func _write_or_check(path: String, expected: String) -> bool:
