@@ -68,6 +68,9 @@ if ($LASTEXITCODE -ne 0) { throw "Differential evidence verification failed." }
 & "$PSScriptRoot\verify_application_workflow_inventory.ps1" -Check @referenceArguments
 if ($LASTEXITCODE -ne 0) { throw "Application workflow inventory verification failed." }
 
+& "$PSScriptRoot\verify_gameplay_parity_inventory.ps1" -GodotPath $GodotPath
+if ($LASTEXITCODE -ne 0) { throw "Gameplay parity inventory verification failed." }
+
 git -C $repoRoot diff --check
 if ($LASTEXITCODE -ne 0) { throw "git diff --check failed." }
 

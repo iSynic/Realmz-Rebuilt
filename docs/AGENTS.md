@@ -40,6 +40,7 @@ Own current architecture, ADRs, package/save contracts, fidelity decisions, orac
 - `classic-functional-differential.md` owns the current human-readable Remake-versus-2.0 comparison status and links each rolling slice to its machine-readable evidence case.
 - `fidelity-ledger.md` owns named corrections such as the bounded Delay and Bandage decisions; each entry links a source-observation fixture and chosen-result tests without upgrading source flow into a runtime claim.
 - `classic-application-workflow-status.md` is generated from the authoritative workflow inventory and owns the current batch, count deltas, Classic and host completeness totals, domain heatmap, blockers, oracle unknowns, and prioritized queues. Never edit it independently of the inventory and generator.
+- `classic-gameplay-parity-status.md` is generated from the complete opcode registry and pinned application spell catalog. It summarizes the committed parity denominator and evidence boundaries; never edit it independently of `tools/gameplay_parity_inventory.gd`.
 - `scenario-vm-evidence.md` owns Classic control-flow, nested macro, and host-boundary evidence.
 - `codemap/AGENTS.md` owns the generated source-intelligence encyclopedia, embedded source snapshot, machine graph, retrieval chunks, and evidence boundaries.
 - `ui-strategy.md` owns the canonical visual language, responsive profiles, route/screen matrix, scaling, input, accessibility, media, and fidelity boundaries.

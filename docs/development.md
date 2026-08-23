@@ -88,6 +88,16 @@ Stop once complete source flow establishes the ordinary behavior and focused tes
 
 At batch start, update `currentBatch` in the authoritative workflow inventory and regenerate its status report. At batch closeout, update workflow evidence and gaps, regenerate the report, and state both the functional and certified count deltas. If a prerequisite changes the selected batch, record the new rationale and baseline rather than silently drifting into another domain.
 
+### Scenario and gameplay parity program
+
+Parity delivery certifies AOGM first, War in the Sword Lands second, and each remaining legally available scenario in recomputed coverage-gain order. Coverage scoring counts newly exposed opcode/operand variants, spell behavior signatures, battle and monster macros, pending-response types, and world, inventory, economy, ally, and reward structures; high-risk boundaries, suspected compiler loss, player priority, and reliable completion routes break ties.
+
+The committed gameplay parity inventory owns the full `0-127`, `-14`, and `-23` opcode denominator plus every definition in the pinned application spell library. Providence feature reports and commercial-corpus additions remain local and untracked unless their schemas, normalized signatures, or synthetic fixtures contain no scenario payload. Discovery, compiler preservation, semantic runtime testing, deterministic route proof, and ordinary-play certification are separate evidence axes. Handler presence and successful package decoding cannot upgrade semantic parity.
+
+A scenario is certified only when its current Providence package has deterministic compiler/report proof, each used opcode and spell signature has public-runtime branch evidence, typed pending states round-trip through save/restore, a deterministic completion route and selected optional routes pass, and a fresh ordinary party completes the supplied manual-play checklist without stale saves or debug warps. Agent gameplay remains a bounded MCP inspection; longer ordinary play is handed to the user with exact steps.
+
+After every available scenario is certified, synthetic fixtures close signatures and workflows that the corpus never uses. Saturation requires every opcode to be executable, source-reserved, or explicitly malformed and rejected; every stock and discovered custom spell signature to have a legal-context disposition; and every gameplay-semantic workflow to be complete. Pure visual refinements may remain in the visual audit only when they do not block or alter play.
+
 ## Source intelligence
 
 The repository also maintains an offline source-intelligence snapshot under docs/codemap/. It embeds exact local source and documentation text, source spans, DOX ownership, tests, flows, retrieval chunks, and conservative resolved/unknown relationships. Open docs/codemap/codemap.html directly for the browser encyclopedia, or consume intelligence.json and chunks.jsonl from an agent. Use ./tools/source-intelligence/validate.ps1 for the read-only artifact check. The aggregate gate regenerates it automatically; local verification leaves regenerated files for review and CI fails if the committed snapshot is stale.

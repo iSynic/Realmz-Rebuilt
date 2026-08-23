@@ -1,6 +1,11 @@
 class_name ClassicOpcodeCatalog
 extends RefCounted
 
+const DISPOSITION_EXECUTABLE: StringName = &"executable"
+const DISPOSITION_CLASSIC_RESERVED: StringName = &"classic-reserved"
+const DISPOSITION_PENDING: StringName = &"unsupported-pending"
+const DISPOSITION_UNKNOWN: StringName = &"unknown"
+
 const AOGM_ACTIVE_OPCODES: Array[int] = [
 	-23, -14,
 	1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
@@ -34,6 +39,16 @@ const OWNER_BY_OPCODE: Dictionary = {
 	108: &"character", 111: &"vm-control-flow", 112: &"vm-control-flow", 119: &"combat-rewards",
 	120: &"combat-rewards", 121: &"combat-rewards", 122: &"combat-rewards", 123: &"combat-rewards",
 	124: &"combat-rewards", 126: &"combat-rewards", 127: &"combat-rewards",
+	0: &"classic-reserved", 41: &"encounters", 44: &"encounters", 53: &"character",
+	55: &"character", 57: &"world-time", 58: &"control-flow", 59: &"world-time",
+	67: &"inventory-economy", 68: &"world-time", 70: &"world-time", 71: &"presentation",
+	72: &"control-flow", 74: &"character", 75: &"character", 78: &"world-time",
+	79: &"classic-reserved", 80: &"classic-reserved", 81: &"character", 84: &"classic-reserved",
+	85: &"control-flow", 92: &"world-time", 93: &"presentation", 94: &"presentation",
+	95: &"presentation", 96: &"presentation", 97: &"presentation", 100: &"combat-rewards",
+	109: &"classic-reserved", 110: &"classic-reserved", 113: &"classic-reserved", 114: &"classic-reserved",
+	115: &"classic-reserved", 116: &"classic-reserved", 117: &"classic-reserved", 118: &"classic-reserved",
+	125: &"combat-rewards",
 }
 
 const VM_CONTROL_FLOW_OPCODES: Array[int] = [39, 111, 112]
@@ -46,13 +61,22 @@ const EXECUTABLE_OPCODES: Array[int] = [
 	50, 60, 61, 62, 63, 64, 65, 66, 69, 73, 76, 77, 82, 83, 86, 87, 90, 91, 101, 102, 103, 105, 106, 108, 111, 112, 119, 120, 121, 122, 123, 124, 126, 127,
 ]
 
+const CLASSIC_RESERVED_OPCODES: Array[int] = [
+	0, 79, 80, 84, 109, 110, 113, 114, 115, 116, 117, 118,
+]
+
+const PENDING_OPCODES: Array[int] = [
+	41, 44, 53, 55, 57, 58, 59, 67, 68, 70, 71, 72, 74, 75, 78, 81, 85,
+	92, 93, 94, 95, 96, 97, 100, 125,
+]
+
 
 static func normalize(raw_opcode: int) -> int:
 	return -raw_opcode if raw_opcode < 0 and raw_opcode not in [-14, -23] else raw_opcode
 
 
 static func owner(opcode: int) -> StringName:
-	return OWNER_BY_OPCODE.get(opcode, &"") as StringName
+	return OWNER_BY_OPCODE.get(normalize(opcode), &"") as StringName
 
 
 static func is_owned(opcode: int) -> bool:
@@ -60,7 +84,55 @@ static func is_owned(opcode: int) -> bool:
 
 
 static func is_executable(opcode: int) -> bool:
-	return EXECUTABLE_OPCODES.has(opcode)
+	return EXECUTABLE_OPCODES.has(normalize(opcode))
+
+
+static func disposition(raw_opcode: int) -> StringName:
+	var opcode := normalize(raw_opcode)
+	if EXECUTABLE_OPCODES.has(opcode):
+		return DISPOSITION_EXECUTABLE
+	if CLASSIC_RESERVED_OPCODES.has(opcode):
+		return DISPOSITION_CLASSIC_RESERVED
+	if PENDING_OPCODES.has(opcode):
+		return DISPOSITION_PENDING
+	return DISPOSITION_UNKNOWN
+
+
+static func has_final_disposition(raw_opcode: int) -> bool:
+	return disposition(raw_opcode) in [DISPOSITION_EXECUTABLE, DISPOSITION_CLASSIC_RESERVED]
+
+
+static func evidence_reference(raw_opcode: int) -> String:
+	var opcode := normalize(raw_opcode)
+	match disposition(opcode):
+		DISPOSITION_EXECUTABLE:
+			return "runtime-handler:%s" % owner(opcode)
+		DISPOSITION_CLASSIC_RESERVED:
+			return "divinity-manual:empty" if opcode == 0 else "divinity-manual:not-used"
+		DISPOSITION_PENDING:
+			return "pending-source-adjudication"
+	return ""
+
+
+static func classic_opcode_identities() -> Array[int]:
+	var result: Array[int] = [-23, -14]
+	for opcode: int in range(128):
+		result.append(opcode)
+	return result
+
+
+static func parity_summary() -> Dictionary:
+	var result := {"classicReserved": 0, "executable": 0, "missingEvidence": 0, "pending": 0, "total": 0, "unowned": 0, "unknown": 0}
+	for opcode: int in classic_opcode_identities():
+		result["total"] += 1
+		result["unowned"] += 1 if owner(opcode).is_empty() else 0
+		result["missingEvidence"] += 1 if evidence_reference(opcode).is_empty() else 0
+		match disposition(opcode):
+			DISPOSITION_EXECUTABLE: result["executable"] += 1
+			DISPOSITION_CLASSIC_RESERVED: result["classicReserved"] += 1
+			DISPOSITION_PENDING: result["pending"] += 1
+			_: result["unknown"] += 1
+	return result
 
 
 static func runtime_handler_opcodes() -> Array[int]:
