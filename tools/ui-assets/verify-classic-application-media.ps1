@@ -48,8 +48,13 @@ foreach ($asset in $manifest.assets) {
 $soundCount = @($manifest.assets | Where-Object { $_.resource_type -eq "snd " }).Count
 $combatIconCount = @($manifest.assets | Where-Object { $_.path -like "*/combat-icons/*" }).Count
 $itemIconCount = @($manifest.assets | Where-Object { $_.path -like "*/item-icons/*" }).Count
-if ($soundCount -ne 142 -or $combatIconCount -ne 145 -or $itemIconCount -ne 260) {
-    throw "Expected 142 built-in sounds, 145 source-backed combat icons, and 260 shared item icons; found $soundCount sounds, $combatIconCount combat icons, and $itemIconCount item icons"
+if ($soundCount -ne 142 -or $combatIconCount -ne 145 -or $itemIconCount -ne 270) {
+    throw "Expected 142 built-in sounds, 145 source-backed combat icons, and 270 shared or stock-supply item icons; found $soundCount sounds, $combatIconCount combat icons, and $itemIconCount item icons"
+}
+foreach ($requiredSupplyIcon in @(142, 601, 602, 603, 604, 605, 607, 608, 2011, 2013)) {
+    if (-not $keys.ContainsKey("cicn:$requiredSupplyIcon")) {
+        throw "Required application-owned stock supply icon is missing: cicn:$requiredSupplyIcon"
+    }
 }
 
 $fontManifestPath = Join-Path $repoRoot "src/presentation/assets/fonts/font-assets.json"

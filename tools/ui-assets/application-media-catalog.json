@@ -49,6 +49,16 @@
       "classification": "classic-application-resource",
       "evidence_path": "src/realmz_orig/lookupicon.c:4-40; src/realmz_orig/ploticon.c:42-59; src/realmz_orig/booty.c:480-505",
       "evidence_note": "Castle substitutes these application-owned generic item images for unidentified authored icon ranges. They are required even though no shared Data ID record directly names them."
+    },
+    {
+      "source_path": "base/Realmz/Data Files/The Family Jewels.rsrc",
+      "source_file_sha256": "8dbae6c6a418c82250dca93937c5958dacea9874d654c62da4e4dafa184dc85c",
+      "resource_type": "cicn",
+      "resource_ids": [142, 601, 602, 603, 604, 605, 607, 608, 2011, 2013],
+      "target_directory": "item-icons",
+      "classification": "classic-application-resource",
+      "evidence_path": "src/realmz_orig/main.c:949-954; src/realmz_orig/misc.c:1769-1779; src/realmz_orig/loaditem.c:4-33; src/realmz_orig/ploticon.c:42-59",
+      "evidence_note": "Castle loads the active scenario's supply records separately from shared Data ID, then resolves each authored supply icon through the open resource chain. These application-owned keys cover the ordinary AOGM supply references that are not present in the shared Data ID icon set; scenario resources with an exact matching key remain later overrides."
     }
   ]
 }

@@ -307,17 +307,28 @@ try {
     $stagedManifest = Join-Path $stagingRoot "classic-application-media.json"
     [IO.File]::WriteAllText($stagedManifest, $manifestText, [Text.UTF8Encoding]::new($false))
 
-    if (Test-Path -LiteralPath $destinationRoot) {
-        foreach ($sidecar in Get-ChildItem -LiteralPath $destinationRoot -Recurse -File -Filter "*.import") {
-            $relativePath = [IO.Path]::GetRelativePath($destinationRoot, $sidecar.FullName)
-            $stagedSidecar = Join-Path $sidecarRoot $relativePath
-            New-Item -ItemType Directory -Path (Split-Path -Parent $stagedSidecar) -Force | Out-Null
-            Copy-Item -LiteralPath $sidecar.FullName -Destination $stagedSidecar
+    New-Item -ItemType Directory -Path $destinationRoot -Force | Out-Null
+    $resolvedDestinationRoot = [IO.Path]::GetFullPath($destinationRoot).TrimEnd([IO.Path]::DirectorySeparatorChar) + [IO.Path]::DirectorySeparatorChar
+    $ownedDirectories = @($catalog.resource_sets | ForEach-Object { $_.target_directory } | Sort-Object -Unique)
+    foreach ($ownedDirectory in $ownedDirectories) {
+        $destinationDirectory = [IO.Path]::GetFullPath((Join-Path $destinationRoot $ownedDirectory))
+        if (-not $destinationDirectory.StartsWith($resolvedDestinationRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Catalog target directory escapes the Classic media root: $ownedDirectory"
         }
-        Remove-Item -LiteralPath $destinationRoot -Recurse -Force
+        if (Test-Path -LiteralPath $destinationDirectory) {
+            foreach ($sidecar in Get-ChildItem -LiteralPath $destinationDirectory -Recurse -File -Filter "*.import") {
+                $relativePath = [IO.Path]::GetRelativePath($destinationRoot, $sidecar.FullName)
+                $stagedSidecar = Join-Path $sidecarRoot $relativePath
+                New-Item -ItemType Directory -Path (Split-Path -Parent $stagedSidecar) -Force | Out-Null
+                Copy-Item -LiteralPath $sidecar.FullName -Destination $stagedSidecar
+            }
+            Remove-Item -LiteralPath $destinationDirectory -Recurse -Force
+        }
+        $stagedDirectory = Join-Path $outputRoot $ownedDirectory
+        if (Test-Path -LiteralPath $stagedDirectory) {
+            Copy-Item -LiteralPath $stagedDirectory -Destination $destinationRoot -Recurse -Force
+        }
     }
-    New-Item -ItemType Directory -Path $destinationRoot | Out-Null
-    Copy-Item -Path (Join-Path $outputRoot "*") -Destination $destinationRoot -Recurse -Force
     foreach ($sidecar in Get-ChildItem -LiteralPath $sidecarRoot -Recurse -File -Filter "*.import") {
         $relativePath = [IO.Path]::GetRelativePath($sidecarRoot, $sidecar.FullName)
         $sourceAssetRelativePath = $relativePath.Substring(0, $relativePath.Length - ".import".Length)
