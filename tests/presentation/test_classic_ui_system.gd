@@ -5,6 +5,7 @@ const PackageOperationStatusScript := preload("res://src/app/package_operation_v
 const ApplicationLifecycleScript := preload("res://src/app/application_lifecycle.gd")
 const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
 const HeldMovementControllerScript := preload("res://src/presentation/held_movement_controller.gd")
+const FastSpellDockScript := preload("res://src/presentation/interaction_components/fast_spell_dock.gd")
 const FIXTURE_PATH: String = "res://tests/fixtures/packages/realmz2-synthetic-fixture.realmz2"
 
 
@@ -676,25 +677,15 @@ func _test_movement_input() -> void:
 
 
 func _test_fast_spell_input() -> void:
-	var one := InputEventKey.new()
-	one.physical_keycode = KEY_1
-	one.pressed = true
-	assert_equal(UiInputActions.fast_spell_slot(one), 0, "top-row 1 selects Castle Fast Spell slot one")
-	var zero := InputEventKey.new()
-	zero.physical_keycode = KEY_0
-	zero.pressed = true
-	assert_equal(UiInputActions.fast_spell_slot(zero), 9, "top-row 0 selects Castle Fast Spell slot ten")
-	zero.ctrl_pressed = true
-	assert_true(UiInputActions.fast_spell_use_requested(zero), "Ctrl-number is the Windows equivalent of Castle Command-number activation")
-	var keypad := InputEventKey.new()
-	keypad.physical_keycode = KEY_KP_1
-	keypad.pressed = true
+	var one := InputEventKey.new(); one.physical_keycode = KEY_1; one.pressed = true; assert_equal(UiInputActions.fast_spell_slot(one), 0, "top-row 1 selects Castle Fast Spell slot one")
+	var zero := InputEventKey.new(); zero.physical_keycode = KEY_0; zero.pressed = true; assert_equal(UiInputActions.fast_spell_slot(zero), 9, "top-row 0 selects Castle Fast Spell slot ten")
+	zero.ctrl_pressed = true; assert_true(UiInputActions.fast_spell_use_requested(zero), "Ctrl-number is the Windows equivalent of Castle Command-number activation")
+	var alt_one := InputEventKey.new(); alt_one.physical_keycode = KEY_1; alt_one.pressed = true; alt_one.alt_pressed = true; assert_equal([UiInputActions.fast_spell_slot(alt_one), UiInputActions.fast_spell_slot(alt_one, true), UiInputActions.combat_fast_spell_use_requested(alt_one)], [-1, 0, true], "Alt-number remains route-owned outside battle and activates the matching battle Fast Spell while the dock modifier is held")
+	var keypad := InputEventKey.new(); keypad.physical_keycode = KEY_KP_1; keypad.pressed = true
 	assert_equal(UiInputActions.fast_spell_slot(keypad), -1, "numeric keypad movement never aliases a top-row Fast Spell")
-	var released := InputEventKey.new()
-	released.physical_keycode = KEY_2
+	var released := InputEventKey.new(); released.physical_keycode = KEY_2
 	assert_equal(UiInputActions.fast_spell_slot(released), -1, "a key release cannot display or activate a Fast Spell a second time")
-	var route_binding: Dictionary = UiInputActions.DEFINITIONS.filter(func(definition: Dictionary) -> bool: return definition["id"] == &"ui_screen_explore")[0]
-	assert_true(bool(route_binding.get("alt", false)), "Rebuilt route shortcuts move behind Alt-number so Classic Fast Spells own bare 1–0")
+	var route_binding: Dictionary = UiInputActions.DEFINITIONS.filter(func(definition: Dictionary) -> bool: return definition["id"] == &"ui_screen_explore")[0]; assert_true(bool(route_binding.get("alt", false)), "Rebuilt route shortcuts move behind Alt-number so Classic Fast Spells own bare 1–0")
 	var keypad_bindings: Dictionary = {}
 	for definition: Dictionary in UiInputActions.DEFINITIONS:
 		keypad_bindings[definition["id"]] = definition["keys"]
@@ -702,6 +693,15 @@ func _test_fast_spell_input() -> void:
 	assert_true(KEY_KP_9 in keypad_bindings[&"realmz_move_up_right"], "keypad 9 owns northeast land movement")
 	assert_true(KEY_KP_1 in keypad_bindings[&"realmz_move_down_left"], "keypad 1 owns southwest land movement")
 	assert_true(KEY_KP_3 in keypad_bindings[&"realmz_move_down_right"], "keypad 3 owns southeast land movement")
+	var spell_definition := SpellDefinition.new("classic.spell.1101", 1101, "Discover Magic", "Reveals magic."); assert_equal(SpellView.new(spell_definition).animation_resource_ids, [12032, 12033, 12034, 12035, 12036, 12037, 12038, 12039], "ordinary spell views expose Castle's exact eight-frame effect identity for transient Fast Spell previews")
+	var bindings: Array[InteractionRequestValue.FastSpell] = [InteractionRequestValue.fast_spell({"slot": 0, "spellId": "classic.spell.1101", "spellName": "Discover Magic", "power": 1, "enabled": true, "reason": ""}), InteractionRequestValue.fast_spell({"slot": 1, "spellId": "classic.spell.1102", "spellName": "Flame Hands", "power": 2, "enabled": false, "reason": "Not enough spell points."})]
+	var image := Image.create_empty(2, 2, false, Image.FORMAT_RGBA8); image.fill(Color.WHITE); var preview_frames: Array[Texture2D] = []; for _frame: int in 8: preview_frames.append(ImageTexture.create_from_image(image))
+	var dock := FastSpellDockScript.new(); dock.configure(bindings, {"classic.spell.1101": preview_frames}); var stage := Rect2(8.0, 28.0, 984.0, 502.0); dock.set_stage_rect(stage); var activated_slots: Array[int] = []; dock.slot_activated.connect(func(slot_index: int) -> void: activated_slots.append(slot_index))
+	assert_true(dock.set_held(true) and dock.visible and dock.position.y >= stage.end.y - 84.0 and dock.position.x >= stage.position.x and dock.position.x + dock.size.x <= stage.end.x, "holding Alt opens one bounded Fast Spell dock over the bottom of the battle canvas")
+	var dock_buttons := _buttons_in(dock)
+	assert_true(dock_buttons.size() == 2 and not dock_buttons[0].disabled and dock_buttons[1].disabled and dock_buttons[1].tooltip_text.contains("Not enough spell points"), "the dock keeps assigned slot order and visibly preserves authoritative per-cast availability")
+	dock_buttons[0].pressed.emit(); assert_equal(activated_slots, [0], "clicking an enabled animation preview activates its ordinary Fast Spell slot")
+	dock.set_held(false); assert_false(dock.visible, "releasing Alt removes the transient battle-canvas overlay"); dock.free()
 
 
 func _test_safe_item_display() -> void:

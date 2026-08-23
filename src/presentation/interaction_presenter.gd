@@ -5,6 +5,7 @@ const PickLockInteractionScript := preload("res://src/presentation/interaction_c
 const ThiefEncounterInteractionScript := preload("res://src/presentation/interaction_components/thief_encounter_interaction.gd")
 
 const LifecycleInteractionScript := preload("res://src/presentation/interaction_components/lifecycle_interaction.gd")
+const FastSpellDockScript := preload("res://src/presentation/interaction_components/fast_spell_dock.gd")
 
 signal response_submitted(response: InteractionResponse)
 signal combat_targeting_requested(request: CombatTargetingRequest)
@@ -43,6 +44,7 @@ var _modal_shield: ColorRect
 var _nested_modal: Control
 var _combat_spellbook_open: bool = false
 var _floating_choice_layer: Control
+var _fast_spell_dock: Control
 
 
 func _notification(what: int) -> void:
@@ -72,6 +74,7 @@ func _exit_tree() -> void:
 	_close_side_workspace()
 	_close_modal_shield()
 	_close_floating_choice_modal()
+	_close_fast_spell_dock()
 
 
 func present(request: InteractionRequest, classic_text_context: String = "", game_view: GameView = null, media: ClassicMediaCatalog = null) -> void:
@@ -151,6 +154,8 @@ func present(request: InteractionRequest, classic_text_context: String = "", gam
 	_options.add_child(_component)
 	_options.visible = true
 	_component.build(request)
+	if request.kind == InteractionRequest.COMBAT:
+		_mount_fast_spell_dock(request.body as InteractionRequest.CombatRequestBody, game_view, media)
 	if uses_floating_choice_modal(request):
 		_mount_floating_choice_modal()
 	_apply_classic_region()
@@ -205,6 +210,7 @@ func set_classic_regions(stage_rect: Rect2, textbox_rect: Rect2, combat_rect: Re
 		maxf(stage_rect.end.y, _combat_rect.end.y) - application_top
 	)
 	_apply_classic_region()
+	_apply_fast_spell_dock_layout()
 
 
 func dismiss_passive_text() -> bool:
@@ -262,6 +268,18 @@ func accepts_combat_spatial_input() -> bool:
 
 func handle_fast_spell(slot_index: int, use_spell: bool) -> bool:
 	return not _playback_masked and _request != null and _request.kind == InteractionRequest.COMBAT and _component is BattleInteraction and (_component as BattleInteraction).handle_fast_spell(slot_index, use_spell)
+
+
+func set_fast_spell_dock_held(held: bool) -> bool:
+	if _playback_masked or _request == null or _request.kind != InteractionRequest.COMBAT or _fast_spell_dock == null:
+		return false
+	return _fast_spell_dock.set_held(held)
+
+
+func activate_fast_spell_from_dock(slot_index: int) -> bool:
+	if _fast_spell_dock != null:
+		_fast_spell_dock.set_held(false)
+	return handle_fast_spell(slot_index, true)
 
 
 func inspect_combatant(combatant_id: String) -> void:
@@ -377,6 +395,56 @@ func _combatant_icon_textures(game_view: GameView, media: ClassicMediaCatalog) -
 	return result
 
 
+func _spell_animation_frames(game_view: GameView, media: ClassicMediaCatalog, bindings: Array[InteractionRequestValue.FastSpell]) -> Dictionary:
+	var result: Dictionary = {}
+	if game_view == null or media == null:
+		return result
+	var requested_spell_ids: Dictionary = {}
+	for binding: InteractionRequestValue.FastSpell in bindings:
+		if not binding.spell_id.is_empty():
+			requested_spell_ids[binding.spell_id] = true
+	for character: CharacterView in game_view.party_members:
+		for spell: SpellView in character.spells:
+			if not requested_spell_ids.has(spell.id) or result.has(spell.id):
+				continue
+			var frames: Array[Texture2D] = []
+			for resource_id: int in spell.animation_resource_ids:
+				var texture := media.image_texture(media.asset_by_resource(spell.animation_resource_type, resource_id))
+				if texture == null:
+					frames.clear()
+					break
+				frames.append(texture)
+			if frames.size() == spell.animation_resource_ids.size() and not frames.is_empty():
+				result[spell.id] = frames
+	return result
+
+
+func _mount_fast_spell_dock(body: InteractionRequest.CombatRequestBody, game_view: GameView, media: ClassicMediaCatalog) -> void:
+	_close_fast_spell_dock()
+	if body == null:
+		return
+	_fast_spell_dock = FastSpellDockScript.new()
+	_fast_spell_dock.configure(body.fast_spells, _spell_animation_frames(game_view, media, body.fast_spells))
+	_fast_spell_dock.slot_activated.connect(func(slot_index: int) -> void: activate_fast_spell_from_dock(slot_index))
+	get_parent().add_child(_fast_spell_dock)
+	_apply_fast_spell_dock_layout()
+
+
+func _close_fast_spell_dock() -> void:
+	if _fast_spell_dock == null:
+		return
+	var dock_parent: Node = _fast_spell_dock.get_parent()
+	if dock_parent != null:
+		dock_parent.remove_child(_fast_spell_dock)
+	_fast_spell_dock.queue_free()
+	_fast_spell_dock = null
+
+
+func _apply_fast_spell_dock_layout() -> void:
+	if _fast_spell_dock != null:
+		_fast_spell_dock.set_stage_rect(_stage_rect)
+
+
 func _submit_body(body: InteractionResponse.Body) -> void:
 	if _request == null:
 		return
@@ -385,6 +453,7 @@ func _submit_body(body: InteractionResponse.Body) -> void:
 	var response := InteractionPresenter.response_for(_request, body)
 	var preserve_treasure_workspace := _component is TreasureDistributionInteraction and body is InteractionResponse.TreasureBody and (body as InteractionResponse.TreasureBody).action in [&"assign", &"done"]
 	_request = null
+	_close_fast_spell_dock()
 	if not preserve_treasure_workspace:
 		visible = false
 	response_submitted.emit(response)
@@ -435,6 +504,7 @@ func _clear_options() -> void:
 	_close_side_workspace()
 	_close_nested_modal()
 	_close_floating_choice_modal()
+	_close_fast_spell_dock()
 	_component = null
 	_playback_status_label = null
 	_options.visible = false

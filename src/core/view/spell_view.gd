@@ -30,6 +30,8 @@ var castable_in_combat: bool
 var castable_in_camp: bool
 var icon_id: int
 var icon_resource_type: String = "cicn"
+var animation_resource_type: String = "cicn"
+var animation_resource_ids: Array[int] = []
 var field_cast: ActionAvailabilityView = ActionAvailabilityView.new(&"cast_spell", false, "Field casting is unavailable.")
 var power_levels: Array[int] = []
 var make_scroll: ActionAvailabilityView = ActionAvailabilityView.new(&"cast_spell", false, "Scroll scribing is unavailable.")
@@ -65,3 +67,6 @@ func _init(definition: SpellDefinition) -> void:
 	castable_in_combat = definition.in_combat
 	castable_in_camp = definition.in_camp
 	icon_id = definition.queue_icon
+	var first_animation_resource_id := 12_032 if definition.look_end == 0 else 11_992 + definition.look_end * 8
+	for frame_offset: int in 8:
+		animation_resource_ids.append(first_animation_resource_id + frame_offset)

@@ -182,8 +182,11 @@ func _on_smoke_action_pressed() -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and _held_movement != null:
-		_held_movement.stop()
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		if _held_movement != null:
+			_held_movement.stop()
+		if _interaction_presenter != null:
+			_interaction_presenter.set_fast_spell_dock_held(false)
 	if what == NOTIFICATION_WM_CLOSE_REQUEST:
 		_on_quit_requested()
 
@@ -293,6 +296,11 @@ func _input(event: InputEvent) -> void:
 		return
 	var pending := session_controller.view().active_interaction_request()
 	var combat_pending := pending != null and pending.kind == InteractionRequest.COMBAT
+	if combat_pending and key_event != null and not key_event.echo and (key_event.keycode == KEY_ALT or key_event.physical_keycode == KEY_ALT):
+		var dock_available := _interaction_presenter.set_fast_spell_dock_held(key_event.pressed)
+		if dock_available or not key_event.pressed:
+			get_viewport().set_input_as_handled()
+		return
 	if combat_pending and key_event != null and key_event.pressed and not key_event.echo and key_event.keycode == KEY_ESCAPE and _abort_full_party_auto(false):
 		get_viewport().set_input_as_handled()
 		return
@@ -330,8 +338,9 @@ func _input(event: InputEvent) -> void:
 		return
 	if pending != null:
 		if pending.kind == InteractionRequest.COMBAT:
-			var combat_fast_spell := UiInputActions.fast_spell_slot(event)
-			if combat_fast_spell >= 0 and _interaction_presenter.handle_fast_spell(combat_fast_spell, UiInputActions.fast_spell_use_requested(event)):
+			var combat_fast_spell := UiInputActions.fast_spell_slot(event, true)
+			var use_fast_spell := UiInputActions.combat_fast_spell_use_requested(event)
+			if combat_fast_spell >= 0 and (_interaction_presenter.activate_fast_spell_from_dock(combat_fast_spell) if use_fast_spell and key_event.alt_pressed else _interaction_presenter.handle_fast_spell(combat_fast_spell, use_fast_spell)):
 				get_viewport().set_input_as_handled()
 				return
 			var combat_direction := UiInputActions.movement_direction(event)

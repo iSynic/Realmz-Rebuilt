@@ -42,17 +42,21 @@ static func ensure_defaults() -> void:
 			InputMap.action_add_event(action_id, event)
 
 
-static func fast_spell_slot(event: InputEvent) -> int:
+static func fast_spell_slot(event: InputEvent, allow_alt: bool = false) -> int:
 	if not event is InputEventKey:
 		return -1
 	var key_event := event as InputEventKey
-	if not key_event.pressed or key_event.echo or key_event.alt_pressed or key_event.physical_keycode < KEY_0 or key_event.physical_keycode > KEY_9:
+	if not key_event.pressed or key_event.echo or (key_event.alt_pressed and not allow_alt) or key_event.physical_keycode < KEY_0 or key_event.physical_keycode > KEY_9:
 		return -1
 	return 9 if key_event.physical_keycode == KEY_0 else int(key_event.physical_keycode - KEY_1)
 
 
 static func fast_spell_use_requested(event: InputEvent) -> bool:
 	return event is InputEventKey and ((event as InputEventKey).ctrl_pressed or (event as InputEventKey).meta_pressed)
+
+
+static func combat_fast_spell_use_requested(event: InputEvent) -> bool:
+	return event is InputEventKey and ((event as InputEventKey).alt_pressed or fast_spell_use_requested(event))
 
 
 static func movement_direction(event: InputEvent) -> Vector2i:
