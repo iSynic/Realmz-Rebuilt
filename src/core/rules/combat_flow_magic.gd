@@ -54,11 +54,17 @@ func probe_character_item_spell(state: GameState, content: RealmzContent, caster
 	var use_probe := _rules.inventory.classic_spell_item_probe(caster, instance, item, spell, content.race_by_id(caster.race_id) if caster != null else null, content.caste_by_id(caster.caste_id) if caster != null else null, true)
 	if not use_probe.allowed:
 		return CombatSpellCastProbe.blocked(_item_use_reason_code(instance, item, spell), use_probe.reason)
-	var power_level := absi(item.special_1)
-	if power_level == 8:
-		return CombatSpellCastProbe.blocked(&"random_item_power_requires_staging", "A random-power item requires a source-backed staged targeting continuation.")
 	if ClassicSpellCapabilityCatalog.combat_item_disposition(spell) != ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE:
 		return CombatSpellCastProbe.blocked(&"unsupported_combat_item_effect", ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"combat-item"))
+	var staged_instance_id := combat.staged_random_item_instance_id()
+	if not staged_instance_id.is_empty() and staged_instance_id != instance.id:
+		return CombatSpellCastProbe.blocked(&"random_item_target_pending", "Finish targeting the random-power item already staged for this activation.")
+	var authored_power := absi(item.special_1)
+	var power_level := combat.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
+	if authored_power == 8 and power_level == 0:
+		if not target_id.is_empty() or not target_ids.is_empty() or target_coordinate != INVALID_COORDINATE or rotation != 0:
+			return CombatSpellCastProbe.blocked(&"random_item_power_not_staged", "Roll this item's power before choosing its combat target.")
+		return CombatSpellCastProbe.permitted()
 	if spell.target_type == 0:
 		if spell.size != 0:
 			return CombatSpellCastProbe.blocked(&"repeated_open_space_spell_unresolved", "Classic target type 0 with nonzero size selects open-space footprints for summoning or special behavior, not ordinary actors.")
@@ -122,7 +128,16 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 	var instance := _inventory_instance(caster, instance_id)
 	var item := content.item_by_id(instance.definition_id)
 	var spell := content.spell_by_classic_id(item.special_2)
-	var power_level := absi(item.special_1)
+	var authored_power := absi(item.special_1)
+	var power_level := state.combat.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
+	if authored_power == 8 and power_level == 0:
+		var stage_state_checkpoint := state.to_data()
+		var stage_rng_checkpoint := rng.checkpoint()
+		_flow()._prepare_character_turn(state.combat, caster)
+		power_level = rng.draw(7, StringName("combat.item.power.%s" % instance.id))
+		if not state.combat.stage_random_item_power(caster.id, instance.id, power_level):
+			return _rollback_combat_item(state, rng, stage_state_checkpoint, stage_rng_checkpoint, &"item_power_stage_failed", "The random item power could not be staged for targeting.")
+		return CombatFlowResult.succeeded([DomainEvent.new(&"combat_item_power_staged", {"actorId": caster.id, "instanceId": instance.id, "itemId": item.id, "spellId": spell.id, "power": power_level, "source": "classic-item"})])
 	if spell.target_type in [3, 4] and target_coordinate == INVALID_COORDINATE:
 		return CombatFlowResult.failed(&"item_area_target_required", "Choose a battlefield center for this area item.")
 	if spell.target_type == 0 and target_ids.is_empty():
@@ -195,6 +210,7 @@ func use_spell_item(state: GameState, content: RealmzContent, caster_id: String,
 		result = _commit_character_multi_spell(state, content, caster, spell, power_level, cast_level, targeted, rng, INVALID_COORDINATE, 0, "classic-item", instance_id, false)
 	if not result.ok:
 		return _rollback_combat_item(state, rng, state_checkpoint, rng_checkpoint, result.error_code, result.error_message)
+	state.combat.clear_staged_random_item_power()
 	var events: Array[DomainEvent] = [_item_used_event(caster_id, instance_id, item, spell, power_level, caster)]
 	var native_sound_id := item.sound_id + 600
 	if item.sound_id != 0:
@@ -211,34 +227,47 @@ func character_item_spell_options(state: GameState, content: RealmzContent, cast
 	var caster := state.party.character_by_id(caster_id)
 	if caster == null:
 		return result
+	var staged_instance_id := state.combat.staged_random_item_instance_id()
 	for instance: ItemInstance in caster.inventory():
 		var item := content.item_by_id(instance.definition_id)
 		var spell := content.spell_by_classic_id(item.special_2) if item != null else null
-		if item == null or spell == null or absi(item.special_1) == 8:
+		if item == null or spell == null or not staged_instance_id.is_empty() and staged_instance_id != instance.id:
 			continue
-		if spell.target_type == 0:
-			var power_level := absi(item.special_1)
+		var authored_power := absi(item.special_1)
+		var power_level := state.combat.staged_random_item_power(caster_id, instance.id) if authored_power == 8 else authored_power
+		if authored_power == 8 and power_level == 0:
 			if probe_character_item_spell(state, content, caster_id, "", instance.id).allowed:
-				var candidates := _character_actor_spell_candidates(state, content, caster, spell, power_level)
-				result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], [], [], power_level, candidates))
+				result.append(CombatItemOptionView.new(instance, item, spell, 0, null, "Roll power before targeting", &"random_power"))
 			continue
-		if spell.target_type in [3, 4]:
-			var power_level := absi(item.special_1)
-			if probe_character_item_spell(state, content, caster_id, "", instance.id).allowed:
-				var shape := _rules.spell_areas.shape_for(spell, power_level)
-				result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster_id), _rules.spell_areas.pattern(shape), _legal_area_spell_target_coordinates(state, content, caster_id, spell, power_level, shape), _rules.spell_areas.rotation_patterns(spell, power_level)))
-			continue
-		if spell.target_type in [9, 10, 12]:
-			if probe_character_item_spell(state, content, caster_id, "", instance.id).allowed:
-				result.append(CombatItemOptionView.new(instance, item, spell, absi(item.special_1), null, _group_spell_target_label(spell.target_type), &"automatic"))
-			continue
-		if spell.target_type == 5:
-			if probe_character_item_spell(state, content, caster_id, caster_id, instance.id).allowed:
-				result.append(CombatItemOptionView.new(instance, item, spell, absi(item.special_1), _spell_target_view(state, content, caster_id)))
-			continue
-		for target: CombatSpellTargetView in _character_actor_spell_candidates(state, content, caster, spell, absi(item.special_1)):
-			if probe_character_item_spell(state, content, caster_id, target.id, instance.id).allowed:
-				result.append(CombatItemOptionView.new(instance, item, spell, absi(item.special_1), target))
+		var power_options := _character_item_spell_options_for_power(state, content, caster, instance, item, spell, power_level)
+		for option: CombatItemOptionView in power_options:
+			option.power_staged = authored_power == 8
+		result.append_array(power_options)
+	return result
+
+
+func _character_item_spell_options_for_power(state: GameState, content: RealmzContent, caster: CharacterState, instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int) -> Array[CombatItemOptionView]:
+	var result: Array[CombatItemOptionView] = []
+	if spell.target_type == 0:
+		if probe_character_item_spell(state, content, caster.id, "", instance.id).allowed:
+			result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose up to %d actors" % power_level, &"sequence", 0, INVALID_COORDINATE, [], [], [], power_level, _character_actor_spell_candidates(state, content, caster, spell, power_level)))
+		return result
+	if spell.target_type in [3, 4]:
+		if probe_character_item_spell(state, content, caster.id, "", instance.id).allowed:
+			var shape := _rules.spell_areas.shape_for(spell, power_level)
+			result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, "Choose battlefield point", &"area", shape, state.combat.battlefield.actor_position(caster.id), _rules.spell_areas.pattern(shape), _legal_area_spell_target_coordinates(state, content, caster.id, spell, power_level, shape), _rules.spell_areas.rotation_patterns(spell, power_level)))
+		return result
+	if spell.target_type in [9, 10, 12]:
+		if probe_character_item_spell(state, content, caster.id, "", instance.id).allowed:
+			result.append(CombatItemOptionView.new(instance, item, spell, power_level, null, _group_spell_target_label(spell.target_type), &"automatic"))
+		return result
+	if spell.target_type == 5:
+		if probe_character_item_spell(state, content, caster.id, caster.id, instance.id).allowed:
+			result.append(CombatItemOptionView.new(instance, item, spell, power_level, _spell_target_view(state, content, caster.id)))
+		return result
+	for target: CombatSpellTargetView in _character_actor_spell_candidates(state, content, caster, spell, power_level):
+		if probe_character_item_spell(state, content, caster.id, target.id, instance.id).allowed:
+			result.append(CombatItemOptionView.new(instance, item, spell, power_level, target))
 	return result
 
 

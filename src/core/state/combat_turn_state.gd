@@ -9,6 +9,8 @@ var physical_action_committed: bool = false
 var movement_remaining: int = -1
 var spell_cast_count: int = 0
 var monster_cast_attempt_count: int = 0
+var staged_item_instance_id: String = ""
+var staged_item_power: int = 0
 
 
 func _init(source_actor_id: String) -> void:
@@ -25,11 +27,13 @@ func to_data() -> Dictionary:
 		"movementRemaining": movement_remaining,
 		"spellCastCount": spell_cast_count,
 		"monsterCastAttemptCount": monster_cast_attempt_count,
+		"stagedItemInstanceId": staged_item_instance_id,
+		"stagedItemPower": staged_item_power,
 	}
 
 
 static func from_data(data: Variant) -> CombatTurnState:
-	if not data is Dictionary or data.size() not in [4, 5, 6, 7, 8]:
+	if not data is Dictionary or data.size() not in [4, 5, 6, 7, 8, 10]:
 		return null
 	for field: String in ["actorId", "action", "attackIndex", "targetId"]:
 		if not data.has(field):
@@ -44,6 +48,8 @@ static func from_data(data: Variant) -> CombatTurnState:
 		return null
 	if data.has("monsterCastAttemptCount") and _integer(data["monsterCastAttemptCount"]) < 0:
 		return null
+	if data.has("stagedItemInstanceId") != data.has("stagedItemPower") or data.has("stagedItemInstanceId") and (not data["stagedItemInstanceId"] is String or data["stagedItemInstanceId"].is_empty() != (_integer(data["stagedItemPower"]) == 0) or _integer(data["stagedItemPower"]) < 0 or _integer(data["stagedItemPower"]) > 7):
+		return null
 	var loaded_attack_index := _integer(data["attackIndex"])
 	if loaded_attack_index < 0 or data["action"] not in ["", "advance", "missile", "cast", "retreat"]:
 		return null
@@ -55,6 +61,8 @@ static func from_data(data: Variant) -> CombatTurnState:
 	result.movement_remaining = _integer(data.get("movementRemaining", -1))
 	result.spell_cast_count = _integer(data.get("spellCastCount", 0))
 	result.monster_cast_attempt_count = _integer(data.get("monsterCastAttemptCount", 0))
+	result.staged_item_instance_id = String(data.get("stagedItemInstanceId", ""))
+	result.staged_item_power = _integer(data.get("stagedItemPower", 0))
 	return result
 
 

@@ -229,6 +229,7 @@ class CastOption:
 	var item_id: String
 	var item_name: String
 	var charges: int
+	var power_staged: bool
 	var scroll_slot: int = -1
 
 	func to_data() -> Dictionary:
@@ -239,6 +240,7 @@ class CastOption:
 			data["itemId"] = item_id
 			data["itemName"] = item_name
 			data["charges"] = charges
+			data["powerStaged"] = power_staged
 		if source_kind == &"scroll": data["scrollSlot"] = scroll_slot
 		if target_mode in [&"sequence", &"coordinate_sequence"]:
 			data["maximumTargets"] = maximum_targets
@@ -632,7 +634,7 @@ static func cast_option(data: Variant, source_kind: StringName) -> CastOption:
 	var common := ["spellId", "spellName", "power", "targetId", "targetName", "targetCurrentHealth", "targetMaximumHealth", "targetMode", "maximumTargets", "targetCandidates", "areaShape", "defaultTargetCoordinate", "areaOffsets", "areaRotationOffsets", "legalTargetCoordinates"]
 	var allowed := common.duplicate()
 	if source_kind == &"spell": allowed.append("cost")
-	if source_kind == &"item": allowed.append_array(["itemInstanceId", "itemId", "itemName", "charges"])
+	if source_kind == &"item": allowed.append_array(["itemInstanceId", "itemId", "itemName", "charges", "powerStaged"])
 	if source_kind == &"scroll": allowed.append("scrollSlot")
 	if not _exact(data, allowed, ["spellId", "spellName", "power", "targetId", "targetName", "targetCurrentHealth", "targetMaximumHealth", "targetMode"]): return null
 	if not _strings(data, ["spellId", "spellName", "targetId", "targetName", "targetMode"]) or not _ints(data, ["power", "targetCurrentHealth", "targetMaximumHealth"]): return null
@@ -641,8 +643,8 @@ static func cast_option(data: Variant, source_kind: StringName) -> CastOption:
 		if not _whole(data.get("cost")): return null
 		result.cost = int(data["cost"])
 	elif source_kind == &"item":
-		if not _strings(data, ["itemInstanceId", "itemId", "itemName"]) or not _ints(data, ["charges"]): return null
-		result.item_instance_id = data["itemInstanceId"]; result.item_id = data["itemId"]; result.item_name = data["itemName"]; result.charges = int(data["charges"])
+		if not _strings(data, ["itemInstanceId", "itemId", "itemName"]) or not _ints(data, ["charges"]) or not data.get("powerStaged", false) is bool: return null
+		result.item_instance_id = data["itemInstanceId"]; result.item_id = data["itemId"]; result.item_name = data["itemName"]; result.charges = int(data["charges"]); result.power_staged = bool(data.get("powerStaged", false))
 	elif source_kind == &"scroll":
 		if not _whole(data.get("scrollSlot")): return null
 		result.scroll_slot = int(data["scrollSlot"])

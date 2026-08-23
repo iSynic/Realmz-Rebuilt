@@ -159,6 +159,31 @@ func begin_active_turn() -> CombatTurnState:
 	return active_turn
 
 
+func stage_random_item_power(actor_id: String, instance_id: String, power: int) -> bool:
+	if active_turn == null or active_turn.actor_id != actor_id or actor_id != active_actor_id() or monster_by_id(actor_id) != null or instance_id.is_empty() or power < 1 or power > 7 or not active_turn.staged_item_instance_id.is_empty():
+		return false
+	active_turn.staged_item_instance_id = instance_id
+	active_turn.staged_item_power = power
+	return true
+
+
+func staged_random_item_power(actor_id: String, instance_id: String) -> int:
+	if active_turn == null or active_turn.actor_id != actor_id or actor_id != active_actor_id() or active_turn.staged_item_instance_id != instance_id:
+		return 0
+	return active_turn.staged_item_power
+
+
+func staged_random_item_instance_id() -> String:
+	return "" if active_turn == null else active_turn.staged_item_instance_id
+
+
+func clear_staged_random_item_power() -> void:
+	if active_turn == null:
+		return
+	active_turn.staged_item_instance_id = ""
+	active_turn.staged_item_power = 0
+
+
 func begin_character_undo(actor_id: String) -> bool:
 	if active_turn == null or active_turn.actor_id != actor_id or active_actor_id() != actor_id or battlefield == null or not battlefield.has_actor(actor_id) or monster_by_id(actor_id) != null:
 		return false
@@ -565,6 +590,7 @@ static func _restore_pending_state(result: CombatState, data: Dictionary) -> boo
 static func _loaded_state_is_consistent(result: CombatState) -> bool:
 	if (result._turn_order.is_empty() and result.turn_index != 0) or (not result._turn_order.is_empty() and result.turn_index >= result._turn_order.size()): return false
 	if result.active_turn != null and (result.completed or result.active_turn.actor_id != result.active_actor_id()): return false
+	if result.active_turn != null and not result.active_turn.staged_item_instance_id.is_empty() and result.monster_by_id(result.active_turn.actor_id) != null: return false
 	if result.undo_state != null and (result.completed or result.active_turn == null or result.battlefield == null or result.undo_state.actor_id != result.active_actor_id() or result.undo_state.actor_id != result.active_turn.actor_id or result.undo_state.round_number != result.round_number or result.undo_state.turn_index != result.turn_index or not result.battlefield.has_actor(result.undo_state.actor_id)): return false
 	if result._spell_death_macro_queue.is_empty() != result._spell_macro_actor_id.is_empty() or (not result._spell_macro_actor_id.is_empty() and (result.completed or result.active_actor_id() != result._spell_macro_actor_id)): return false
 	if result._spell_death_macro_queue.is_empty() and result._spell_macro_advances_turn: return false

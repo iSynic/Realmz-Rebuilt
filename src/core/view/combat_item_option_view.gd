@@ -20,9 +20,10 @@ var area_rotation_offsets: Array = []
 var legal_target_coordinates: Array[Vector2i] = []
 var maximum_targets: int = 1
 var target_candidates: Array[CombatSpellTargetView] = []
+var power_staged: bool = false
 
 
-func _init(instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int, target: CombatSpellTargetView = null, automatic_target_label: String = "", targeting_mode: StringName = &"combatant", shape: int = 0, default_coordinate: Vector2i = Vector2i(-100_000, -100_000), offsets: Array[Vector2i] = [], legal_coordinates: Array[Vector2i] = [], rotation_offsets: Array = [], maximum_target_count: int = 1, candidates: Array[CombatSpellTargetView] = []) -> void:
+func _init(instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition, power_level: int, target: CombatSpellTargetView = null, automatic_target_label: String = "", targeting_mode: StringName = &"combatant", shape: int = 0, default_coordinate: Vector2i = Vector2i(-100_000, -100_000), offsets: Array[Vector2i] = [], legal_coordinates: Array[Vector2i] = [], rotation_offsets: Array = [], maximum_target_count: int = 1, candidates: Array[CombatSpellTargetView] = [], staged: bool = false) -> void:
 	item_instance_id = instance.id
 	item_definition_id = item.id
 	item_name = item.name if instance.identified else item.unidentified_name
@@ -44,3 +45,4 @@ func _init(instance: ItemInstance, item: ItemDefinition, spell: SpellDefinition,
 			area_rotation_offsets.append((rotation as Array).duplicate())
 	maximum_targets = maximum_target_count
 	target_candidates = candidates.duplicate()
+	power_staged = staged

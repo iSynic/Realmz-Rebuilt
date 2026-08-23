@@ -117,7 +117,8 @@ func build(request: InteractionRequest) -> void:
 		item_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		for option: InteractionRequestValue.CastOption in body.item_casts:
 			var charge_label := "∞" if option.charges < 0 else str(option.charges)
-			var label := "%s (%s) • %s P%d → %s" % [option.item_name, charge_label, option.spell_name, option.power, option.target_name]
+			var power_label := "Random power" if option.target_mode == &"random_power" else "Rolled P%d" % option.power if option.power_staged else "P%d" % option.power
+			var label := "%s (%s) • %s %s → %s" % [option.item_name, charge_label, option.spell_name, power_label, option.target_name]
 			if option.target_current_health >= 0: label += " (%d/%d HP)" % [option.target_current_health, option.target_maximum_health]
 			item_picker.add_item(label)
 			item_picker.set_item_metadata(item_picker.item_count - 1, option)
@@ -131,12 +132,17 @@ func build(request: InteractionRequest) -> void:
 			if option == null: return
 			var response_body := InteractionResponse.CombatBody.new(&"use_item", actor_id)
 			response_body.item_instance_id = option.item_instance_id
-			if option.target_mode == &"automatic":
+			if option.target_mode in [&"automatic", &"random_power"]:
 				response_body_submitted.emit(response_body)
 				return
 			_start_targeting(_spell_targeting_configuration(body.item_casts, option, response_body), item_panel)
 		)
 		item_row.add_child(use_button)
+		var refresh_item_button := func(_index: int) -> void:
+			var option := item_picker.get_selected_metadata() as InteractionRequestValue.CastOption
+			use_button.text = "Roll item power" if option != null and option.target_mode == &"random_power" else "Choose item target" if option != null and option.target_mode != &"automatic" else "Use selected item"
+		item_picker.item_selected.connect(refresh_item_button)
+		refresh_item_button.call(item_picker.selected)
 	elif not body.item_cast_reason.is_empty():
 		add_response_to(item_panel, "Use item unavailable", InteractionResponse.CombatBody.new(&"use_item", actor_id), false, body.item_cast_reason)
 

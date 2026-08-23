@@ -36,6 +36,8 @@ static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> Sessi
 	_normalize_age_groups(replacement_state, content, replacement_rules)
 	if not _party_inventory_is_valid(content, replacement_state, replacement_rules):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved party inventory or carried load is invalid for this package.")
+	if not _combat_staged_item_is_valid(content, replacement_state, replacement_rules):
+		return SessionRestoreResult.failed(&"invalid_game_state", "The saved combat item staging state is invalid for this package.")
 	if not _party_fast_spells_are_valid(content, replacement_state):
 		return SessionRestoreResult.failed(&"invalid_game_state", "The saved Fast Spell bindings reference unavailable package content.")
 	if not _party_appearance_is_valid(content, replacement_state):
@@ -62,6 +64,8 @@ static func validate(content: RealmzContent, snapshot: SessionSnapshot) -> Sessi
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM player-map continuation is invalid.")
 	if not _valid_thief_vm_continuation(content, replacement_state, replacement_rng.snapshot(), replacement_vm):
 		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved Scenario VM Thief Encounter continuation is invalid.")
+	if not _valid_combat_vm_request(content, replacement_state, replacement_rng, replacement_rules, replacement_action_state, replacement_vm.pending_request()):
+		return SessionRestoreResult.failed(&"invalid_vm_state", "The saved combat request does not match authoritative combat state.")
 	var replacement_continuation := SessionContinuation.new() if snapshot.continuation == null else SessionContinuation.from_data(snapshot.continuation.to_data())
 	if replacement_continuation == null:
 		return SessionRestoreResult.failed(&"invalid_session_continuation", "The saved session continuation is invalid.")
@@ -115,6 +119,38 @@ static func _party_inventory_is_valid(content: RealmzContent, state: GameState, 
 			if not scroll.is_empty() and content.spell_by_id(scroll.spell_id) == null:
 				return false
 	return true
+
+
+static func _combat_staged_item_is_valid(content: RealmzContent, state: GameState, rules: RealmzRules) -> bool:
+	if state.combat == null or state.combat.staged_random_item_instance_id().is_empty():
+		return true
+	var actor_id := state.combat.active_actor_id()
+	var character := state.party.character_by_id(actor_id)
+	var instance_id := state.combat.staged_random_item_instance_id()
+	if character == null or state.combat.completed or state.combat.staged_random_item_power(actor_id, instance_id) not in range(1, 8):
+		return false
+	var instance: ItemInstance = null
+	for candidate: ItemInstance in character.inventory():
+		if candidate.id == instance_id:
+			instance = candidate
+			break
+	var item := content.item_by_id(instance.definition_id) if instance != null else null
+	var spell := content.spell_by_classic_id(item.special_2) if item != null else null
+	if item == null or spell == null or absi(item.special_1) != 8:
+		return false
+	var use_probe := rules.inventory.classic_spell_item_probe(character, instance, item, spell, content.race_by_id(character.race_id), content.caste_by_id(character.caste_id), true)
+	if not use_probe.allowed or ClassicSpellCapabilityCatalog.combat_item_disposition(spell) != ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE:
+		return false
+	return true
+
+
+static func _valid_combat_vm_request(content: RealmzContent, state: GameState, rng: RealmzRng, rules: RealmzRules, action_state: ScenarioActionState, request: InteractionRequest) -> bool:
+	if request == null or request.kind != InteractionRequest.COMBAT:
+		return true
+	if state.combat == null or state.combat.completed:
+		return false
+	var expected := RealmzRuntimeApi.new(content, state, rng, action_state, rules).active_combat_request(request.request_id)
+	return expected != null and expected.to_data() == request.to_data()
 
 
 static func _party_fast_spells_are_valid(content: RealmzContent, state: GameState) -> bool:
