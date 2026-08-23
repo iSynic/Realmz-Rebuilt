@@ -291,7 +291,7 @@ func _best_party_spell(state: GameState, content: RealmzContent, actor: Characte
 			best = _prefer(best, _best_condition_effect(state, content, actor, spell, option.power))
 		elif _flow()._is_source_backed_combat_healing_spell(spell):
 			best = _prefer(best, _best_heal(state, content, actor, spell, option.power))
-		elif spell.target_type in [0, 1, 3, 4, 6, 10]:
+		elif spell.target_type in [0, 1, 3, 4, 6, 9, 10, 12]:
 			best = _prefer(best, _best_damage_spell(state, content, actor, spell, option, actors_by_cell, area_placement_cache))
 	return best
 
@@ -409,7 +409,7 @@ func _best_damage_spell(state: GameState, content: RealmzContent, actor: Charact
 	if targets.is_empty():
 		return {}
 	var cost_penalty := absi(spell.cost * option.power) * 3
-	if spell.target_type == 10:
+	if spell.target_type in [9, 10, 12]:
 		return {"action": &"cast_spell", "spellId": spell.id, "power": option.power, "score": 360 + targets.size() * expected * 6 - cost_penalty}
 	if spell.target_type == 0:
 		var selected: Array[String] = []
@@ -584,6 +584,8 @@ func _opposed_actor_ids_for_monster(state: GameState, monster: MonsterState) -> 
 
 
 static func expected_spell_effect(spell: SpellDefinition, power: int) -> int:
+	if ClassicSpellCapabilityCatalog.is_combat_death_spell(spell):
+		return 128
 	return int((spell.damage_min + spell.damage_max) / 2.0 + (spell.power_damage_min + spell.power_damage_max) * power / 2.0)
 
 

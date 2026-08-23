@@ -16,6 +16,12 @@ func _test_war_immediate_spell_matrix() -> void:
 	assert_true(cast.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("damage") == 6), "damage type seven publishes its resolved amount through the ordinary combat event")
 	var monster_spell := _combat_spell("spell.war-monster-damage-type-seven", 1, 5); monster_spell.damage_type = 7; var caster_definition := _monster_spell_definition("monster.war-damage-type-seven-caster", monster_spell.id, 100); var monster_caster := MonsterState.new("monster.war-damage-type-seven-caster.instance", caster_definition.id, caster_definition.name, 20, 20, 4, 1, 0, 0, 20); var party_target := _character("character.war-damage-type-seven-target"); var monster_state := _state(party_target, monster_caster, "battle.war-monster-damage-type-seven"); var monster_result := rules.combat_flow.submit_action(monster_state, _content([caster_definition], [], [], [], [monster_spell]), party_target.id, &"finish", "", _zeros(64))
 	assert_true(monster_result.ok and monster_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("source") == "classic-monster" and event.payload.get("damage") == 5), "monster AI recognizes and resolves the same War damage type seven capability")
+	var death_spell := _combat_spell("spell.war-death-magic", 1, 0); death_spell.damage_type = 7; death_spell.special = 49; death_spell.cannot = 0; var death_caster := _character("character.war-death-magic"); death_caster.set_known_spells([death_spell.id]); death_caster.maximum_spell_attacks = 1; death_caster.spell_points = 20; var death_target := MonsterState.new("monster.war-death-magic.instance", target_definition.id, target_definition.name, 20, 20, 1); var death_state := _state(death_caster, death_target, "battle.war-death-magic"); var death_result := rules.combat_flow.cast_spell(death_state, _content([target_definition], [], [], [], [death_spell]), death_caster.id, death_target.id, death_spell.id, 1, _zeros(24))
+	assert_true(death_result.ok and death_target.current_health == -10 and death_state.combat.completed and death_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("defeated") == true and event.payload.get("damage") == 30), "War death magic follows its ordinary defenses, defeats at minus ten, and reaches the public terminal combat path")
+	var saved_caster := _character("character.war-death-magic-saved"); saved_caster.set_known_spells([death_spell.id]); saved_caster.maximum_spell_attacks = 1; saved_caster.spell_points = 20; var saved_target := MonsterState.new("monster.war-death-magic-saved.instance", target_definition.id, target_definition.name, 20, 20, 1); saved_target.set_save_value(6, 100); var saved_state := _state(saved_caster, saved_target, "battle.war-death-magic-saved"); var saved_result := rules.combat_flow.cast_spell(saved_state, _content([target_definition], [], [], [], [death_spell]), saved_caster.id, saved_target.id, death_spell.id, 1, _zeros(24))
+	assert_true(saved_result.ok and saved_target.current_health == 20 and saved_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("saved") == true and event.payload.get("damage") == 0), "a successful damage save prevents zero-base death magic before its special replaces damage")
+	var auto_death_caster := _character("character.war-auto-death-magic"); auto_death_caster.set_known_spells([death_spell.id]); auto_death_caster.maximum_spell_attacks = 1; auto_death_caster.spell_points = 20; var auto_death_target := MonsterState.new("monster.war-auto-death-magic.instance", target_definition.id, target_definition.name, 20, 20, 1); var auto_death_state := _state(auto_death_caster, auto_death_target, "battle.war-auto-death-magic"); var auto_death_result := rules.combat_flow.submit_action(auto_death_state, _content([target_definition], [], [], [], [death_spell]), auto_death_caster.id, &"auto", "", _zeros(64))
+	assert_true(auto_death_result.ok and auto_death_target.current_health == -10 and auto_death_result.events.any(func(event: DomainEvent) -> bool: return event.kind == &"combat_spell_resolved" and event.payload.get("actorId") == auto_death_caster.id), "Party Auto scores War death magic as a lethal spell while retaining weighted action selection")
 
 
 func _test_public_tactical_reaction_matrix() -> void:
@@ -353,17 +359,11 @@ func _monster_definition(definition_id: String, attacks: Array[MonsterAttackDefi
 
 
 func _monster_spell_definition(definition_id: String, spell_id: String, cast_percent: int) -> MonsterDefinition:
-	var slots: Array[String] = [spell_id, "", "", "", "", "", "", "", "", ""]
-	var result := MonsterDefinition.new(definition_id, 9, "Combat Test Caster", 4, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), slots, [], [])
-	result.magic_attack_count = 1; result.cast_percent = cast_percent; result.missile_percent = 0; result.movement_max = 0
-	return result
+	var slots: Array[String] = [spell_id, "", "", "", "", "", "", "", "", ""]; var result := MonsterDefinition.new(definition_id, 9, "Combat Test Caster", 4, 0, 1, 0, 0, _ints(8), _ints(8), _ints(6), _ints(3), slots, [], []); result.magic_attack_count = 1; result.cast_percent = cast_percent; result.missile_percent = 0; result.movement_max = 0; return result
 
 
 func _combat_spell(spell_id: String, target_type: int, damage: int) -> SpellDefinition:
-	var result := SpellDefinition.new(spell_id, 1306, "Combat Test Spell")
-	result.in_combat = true; result.target_type = target_type; result.spell_class = 1; result.damage_type = 1; result.cannot = 3; result.cost = 2; result.range_min = 15
-	result.duration_min = 1; result.duration_max = 1; result.damage_min = damage; result.damage_max = damage
-	return result
+	var result := SpellDefinition.new(spell_id, 1306, "Combat Test Spell"); result.in_combat = true; result.target_type = target_type; result.spell_class = 1; result.damage_type = 1; result.cannot = 3; result.cost = 2; result.range_min = 15; result.duration_min = 1; result.duration_max = 1; result.damage_min = damage; result.damage_max = damage; return result
 
 
 func _condition_cure_spell(spell_id: String, classic_id: int, special: int) -> SpellDefinition:

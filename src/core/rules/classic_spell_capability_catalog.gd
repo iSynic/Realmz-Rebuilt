@@ -113,6 +113,10 @@ static func is_combat_summon_spell(spell: SpellDefinition) -> bool:
 	return _combat_summon_spell(spell)
 
 
+static func is_combat_death_spell(spell: SpellDefinition) -> bool:
+	return _combat_death_spell(spell)
+
+
 static func is_combat_persistent_field_spell(spell: SpellDefinition) -> bool:
 	return _combat_persistent_field_spell(spell)
 
@@ -142,7 +146,7 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
-	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
+	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
 
 static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
@@ -152,7 +156,7 @@ static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
-	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
+	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
 
 static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
@@ -162,7 +166,7 @@ static func _combat_item_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 2, 3, 4, 5, 6, 9, 10, 12]:
 		return DISPOSITION_PENDING
-	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _zero_cost_elemental_projectile_item_spell(spell) or _combat_healing_spell(spell) or _combat_condition_effect_spell(spell) else DISPOSITION_PENDING
+	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _zero_cost_elemental_projectile_item_spell(spell) or _combat_healing_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) else DISPOSITION_PENDING
 
 
 static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
@@ -172,7 +176,7 @@ static func _combat_monster_disposition(spell: SpellDefinition) -> StringName:
 		return DISPOSITION_EXECUTABLE if spell.cost > 0 and _combat_persistent_field_spell(spell) else DISPOSITION_PENDING
 	if spell.target_type not in [0, 1, 3, 4, 6, 10] or spell.target_type == 0 and spell.size != 0 or spell.cost < 0:
 		return DISPOSITION_PENDING
-	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) else DISPOSITION_PENDING
+	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_condition_effect_spell(spell) or _combat_death_spell(spell) else DISPOSITION_PENDING
 
 
 static func _field_character_disposition(spell: SpellDefinition) -> StringName:
@@ -202,6 +206,10 @@ static func _zero_cost_elemental_projectile_item_spell(spell: SpellDefinition) -
 
 static func _combat_summon_spell(spell: SpellDefinition) -> bool:
 	return spell != null and absi(spell.special) == 58 and spell.target_type == 0 and spell.queue_icon == 0
+
+
+static func _combat_death_spell(spell: SpellDefinition) -> bool:
+	return spell != null and spell.in_combat and spell.queue_icon == 0 and absi(spell.special) == 49
 
 
 static func _combat_persistent_field_spell(spell: SpellDefinition) -> bool:

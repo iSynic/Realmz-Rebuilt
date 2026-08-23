@@ -128,6 +128,8 @@ func _resolve_character_spell_monster_target(caster_level: int, target: MonsterS
 	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
+	if absi(spell.special) == 49:
+		damage = 10 + target.current_health
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, true)
@@ -158,6 +160,8 @@ func _resolve_character_spell_character_target(caster: CharacterState, target: C
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 			damage /= 2
+	if absi(spell.special) == 49:
+		damage = 10 + target.current_health
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
@@ -341,10 +345,14 @@ func _resolve_monster_spell_character_target(caster_level: int, target: Characte
 	if damage_type > 0 and damage_type < 8:
 		var save_roll := rng.draw(100, save_tag)
 		saved = spell.cannot <= 1 and save_roll <= target.save_value(damage_type - 1)
+		if saved and rolled_damage == 0:
+			return SpellResolution.new(true, false, true, spell_cost, 0, duration)
 		if saved:
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
 			damage /= 2
+	if absi(spell.special) == 49:
+		damage = 10 + target.current_health
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, false)
@@ -369,6 +377,8 @@ func _resolve_monster_spell_monster_target(caster_level: int, target: MonsterSta
 	if damage_type > 0 and damage_type < 8:
 		var save_roll := rng.draw(100, save_tag)
 		saved = spell.cannot <= 1 and save_roll <= (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1))
+		if saved and rolled_damage == 0:
+			return SpellResolution.new(true, false, true, spell_cost, 0, duration)
 		if saved:
 			damage /= 2
 		if damage > 0 and target.conditions.is_active(ConditionRules.FIRE_PROTECTION + damage_type - 1):
@@ -376,6 +386,8 @@ func _resolve_monster_spell_monster_target(caster_level: int, target: MonsterSta
 	var save_modifier := (target.save_value(damage_type - 1) if target.has_runtime_saves() else target_definition.save_value(damage_type - 1)) if damage_type > 0 and damage_type < 8 else 0
 	if save_modifier < 0:
 		damage = int(float(damage) * (1.0 + float(absi(save_modifier)) / 100.0))
+	if absi(spell.special) == 49:
+		damage = 10 + target.current_health
 	if rolled_damage != 0 and damage == 0:
 		damage = 1
 	var applied_condition := _apply_combat_condition(target.conditions, spell, duration, true)
