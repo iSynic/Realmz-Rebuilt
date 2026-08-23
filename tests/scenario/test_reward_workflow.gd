@@ -17,16 +17,13 @@ func run() -> void:
 	_test_ordinary_distribution_and_restore(loaded.content)
 	_test_experience_level_and_spell_restore(loaded.content)
 	_test_terminal_battle_rewards_once(loaded.content)
+	_test_battle_mode_five_and_incidental_rewards(loaded.content)
 	_test_opcode_48_bonus_reward_chain(loaded.content)
 	_test_corrupt_reward_boundaries(loaded.content)
 
 
 func _test_ordinary_distribution_and_restore(content: RealmzContent) -> void:
-	var blocked := _character(content, "reward.blocked", "Blocked", 0, -100_000)
-	var caster := _character(content, "reward.caster", "Caster", 500, -100_000, 6)
-	caster.spell_points = 30
-	caster.maximum_spell_points = 30
-	caster.set_known_spells([_spell_by_special(content, 63).id, _spell_by_special(content, 48).id])
+	var blocked := _character(content, "reward.blocked", "Blocked", 0, -100_000); var caster := _character(content, "reward.caster", "Caster", 500, -100_000, 6); caster.spell_points = 30; caster.maximum_spell_points = 30; caster.set_known_spells([_spell_by_special(content, 63).id, _spell_by_special(content, 48).id])
 	blocked.money.gold = 5
 	var treasure := content.treasure_by_id("classic.treasure.0")
 	var treasure_item := content.item_by_id(treasure.item_ids()[0])
@@ -143,11 +140,7 @@ func _test_experience_level_and_spell_restore(content: RealmzContent) -> void:
 
 
 func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
-	var battle: BattleDefinition = content.battle_by_id("classic.battle.0")
-	var character := _character(content, "reward.victor", "Victor", 5_000, -10_000_000)
-	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
-	var rng := RealmzRng.new(31)
-	var rules := RealmzRules.new()
+	var battle: BattleDefinition = content.battle_by_id("classic.battle.0"); var character := _character(content, "reward.victor", "Victor", 5_000, -10_000_000); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new()); var rng := RealmzRng.new(31); var rules := RealmzRules.new()
 	var setup := rules.combat_flow.start_battle(state, content, battle, rng)
 	assert_true(setup.ok, "terminal reward fixture starts a source-backed battle")
 	if not setup.ok:
@@ -251,15 +244,29 @@ func _test_terminal_battle_rewards_once(content: RealmzContent) -> void:
 		assert_equal([partial_reward.state, partial_state.combat], [ScenarioRuntimeOperationResult.State.COMPLETED, null], "partial retreat completes one ordinary reward return for the characters who stayed")
 
 
+func _test_battle_mode_five_and_incidental_rewards(content: RealmzContent) -> void:
+	var source_battle := content.battle_by_id("classic.battle.0"); var opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.mode-five-opening", "Opening", 5_000, -100_000)]), RealmzClock.new()); var opening := RealmzRuntimeApi.new(content, opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new()).execute_classic(ClassicActionDefinition.new(0, 2, 2, source_battle.classic_id, false, [source_battle.classic_id, 0, 0, 0, 5]), "battle.mode-five.open"); var opening_body := opening.continuation.body as ScenarioRuntimeContinuation.CombatBody if opening.continuation != null else null; assert_equal(opening_body.caller.mode if opening_body != null else -1, 5, "opcode 2 preserves AOGM's fifth Extra Code word as the public battle caller mode")
+	var loot := content.treasure_by_classic_id(0).item_ids()[0]; var flags: Array[int] = [1, 0, 0, 0, 0, 0, 0, 0]; var definition := MonsterDefinition.new("reward.incidental.monster", 9_001, "Incidental", 2, 0, 10, 0, 0, flags, [], [], [9, 8, 7], [], [loot], [], []); definition.can_summon = 0; definition.experience = 25; definition.traitor = true; definition.size = 0
+	var battle := BattleDefinition.new("reward.incidental.battle", 9_001, [], 0, 0, 0, 0); var reward_content := RealmzContent.new(content.campaign_id, content.package_hash, content.content_id, content.rules_version, content.start_map_id, content.start_coordinate, content.world, content.scenario, [], [], [], content.race_definitions(), content.caste_definitions(), content.item_definitions(), content.spell_definitions(), [definition], [battle], [content.treasure_by_classic_id(0)], [], [], [], [], [], content.campaign_definition()); var results: Dictionary = {}
+	for mode: int in [0, 5]:
+		var character := _character(reward_content, "reward.mode-%d" % mode, "Mode %d" % mode, 5_000, -10_000_000); var party := PartyState.new(content.start_map_id, content.start_coordinate, [character]); var state := GameState.new(party, RealmzClock.new()); var tiles: Array[int] = []; tiles.resize(BattlefieldState.CELL_COUNT); tiles.fill(0); var field := BattlefieldState.new(content.start_map_id, tiles); assert_true(field.place_character(character.id, Vector2i(45, 45)), "mode %d reward fixture places its experience recipient" % mode)
+		var monster := MonsterState.new("reward.mode-%d.monster" % mode, definition.id, definition.name, 0, 10, definition.hit_dice, definition.agility, definition.armor, definition.magic_resistance, 0, true); assert_true(field.place_monster(monster.id, Vector2i(47, 45), 0), "mode %d reward fixture places its defeated monster" % mode); state.combat = CombatState.new(battle.id, [monster], 0, field); state.combat.completed = true; state.combat.outcome = &"victory"; state.last_battle_outcome = &"victory"
+		var rng := ScriptedRng.new([32_767, 32_767, 32_767, 0, 0]); var api := RealmzRuntimeApi.new(reward_content, state, rng, ScenarioActionState.new(), RealmzRules.new()); var reward := api.begin_completed_battle_reward("battle.mode-%d" % mode, ScenarioBattleCaller.classic(2, false, mode, 0)); var payload := reward.interaction.body.to_data(); var item_ids: Array = payload["items"].map(func(row: Dictionary) -> String: return row["definitionId"]); results[mode] = {"experience": payload["experienceShare"], "itemIds": item_ids, "wealth": party.pooled_wealth.to_data(), "tags": rng.trace().map(func(row: Dictionary) -> String: return row["tag"])}
+		if mode == 5:
+			var restored_state := GameState.from_data(JSON.parse_string(JSON.stringify(state.to_data()))); var restored_continuation := ScenarioRuntimeContinuation.from_data(JSON.parse_string(JSON.stringify(reward.continuation.to_data()))); var restored_rng := RealmzRng.new(1); assert_true(restored_rng.restore(rng.snapshot()), "mode 5 reward restores its exact post-construction RNG boundary"); var restored_api := RealmzRuntimeApi.new(reward_content, restored_state, restored_rng, ScenarioActionState.new(), RealmzRules.new()); var guard := 10
+			while reward.state == ScenarioRuntimeOperationResult.State.WAITING and guard > 0:
+				reward = restored_api.resume_classic(restored_continuation, _reward_response(reward.interaction), reward.interaction.request_id + ".next"); restored_continuation = reward.continuation; guard -= 1
+			assert_equal([reward.state, restored_state.combat, guard > 0], [ScenarioRuntimeOperationResult.State.COMPLETED, null, true], "mode 5 incidental treasure and experience survive canonical save/restore and return once")
+	assert_equal([results[0]["wealth"], results[5]["wealth"]], [{"gold": 9, "gems": 8, "jewelry": 7}, {"gold": 0, "gems": 0, "jewelry": 0}], "mode 5 consumes the three source money draws but discards their values")
+	assert_true(results[0]["itemIds"].has(loot) and not results[5]["itemIds"].has(loot), "mode 5 discards authored monster loot while the ordinary battle retains it"); assert_equal([results[0]["itemIds"].count("classic.item.806"), results[0]["itemIds"].count("classic.item.877"), results[5]["itemIds"].count("classic.item.806"), results[5]["itemIds"].count("classic.item.877")], [1, 1, 1, 1], "source-eligible parchment and ration checks remain active in ordinary and experience-only booty")
+	assert_equal([results[0]["experience"], results[5]["experience"]], [results[0]["experience"], results[0]["experience"]], "mode 5 awards the same battle experience as ordinary victory"); assert_equal(results[5]["tags"], ["battle.reward.reward.mode-5.monster.money.0", "battle.reward.reward.mode-5.monster.money.1", "battle.reward.reward.mode-5.monster.money.2", "battle.reward.reward.mode-5.monster.parchment", "battle.reward.reward.mode-5.monster.rations"], "mode 5 preserves Castle's money-then-incidental deterministic draw order")
+
+
 func _test_opcode_48_bonus_reward_chain(content: RealmzContent) -> void:
 	var source_battle := content.battle_by_id("classic.battle.0")
 	if source_battle == null:
 		return
-	var bonus_content := _content_with_bonus_treasure(content, source_battle)
-	var battle := bonus_content.battle_by_id(source_battle.id)
-	var bonus_treasure := bonus_content.treasure_by_classic_id(1)
-	var opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.opcode-48-opening", "Opening", 5_000, -100_000)]), RealmzClock.new())
-	var opening_api := RealmzRuntimeApi.new(bonus_content, opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new())
+	var bonus_content := _content_with_bonus_treasure(content, source_battle); var battle := bonus_content.battle_by_id(source_battle.id); var bonus_treasure := bonus_content.treasure_by_classic_id(1); var opening_state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [_character(content, "reward.opcode-48-opening", "Opening", 5_000, -100_000)]), RealmzClock.new()); var opening_api := RealmzRuntimeApi.new(bonus_content, opening_state, RealmzRng.new(47), ScenarioActionState.new(), RealmzRules.new())
 	var action := ClassicActionDefinition.new(0, 48, 48, battle.classic_id, false, [battle.classic_id, 0, 0, 0, bonus_treasure.classic_id])
 	var opened := opening_api.execute_classic(action, "battle.opcode-48.open")
 	var combat_body := opened.continuation.body as ScenarioRuntimeContinuation.CombatBody if opened.continuation != null else null
@@ -337,12 +344,8 @@ func _content_with_bonus_treasure(content: RealmzContent, battle: BattleDefiniti
 
 
 func _test_corrupt_reward_boundaries(content: RealmzContent) -> void:
-	var character := _character(content, "reward.corrupt", "Corrupt", 500, -100_000)
-	var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new())
-	var rng := RealmzRng.new(41)
-	var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new(), RealmzRules.new())
-	var opened := api.execute_safe("core.economy.grant-treasure", {"treasureId": "classic.treasure.0"}, "reward.corrupt.open")
-	var pooled_before := state.party.pooled_wealth.to_data()
+	var character := _character(content, "reward.corrupt", "Corrupt", 500, -100_000); var state := GameState.new(PartyState.new(content.start_map_id, content.start_coordinate, [character]), RealmzClock.new()); var rng := RealmzRng.new(41); var api := RealmzRuntimeApi.new(content, state, rng, ScenarioActionState.new(), RealmzRules.new())
+	var opened := api.execute_safe("core.economy.grant-treasure", {"treasureId": "classic.treasure.0"}, "reward.corrupt.open"); var pooled_before := state.party.pooled_wealth.to_data()
 	var fractional_transfer := api.resume_safe(opened.continuation, InteractionResponse.from_data(opened.interaction.request_id, opened.interaction.kind, {"action": "transfer", "direction": "to-character", "kind": "gold", "amount": 5.5, "characterId": character.id}), "reward.corrupt.transfer")
 	assert_equal(fractional_transfer.error_code, &"invalid_interaction_response", "a non-integral transfer amount is rejected without coercion")
 	assert_equal(state.party.pooled_wealth.to_data(), pooled_before, "a corrupt transfer leaves pooled wealth unchanged")

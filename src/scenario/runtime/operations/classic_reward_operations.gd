@@ -84,7 +84,9 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 	var bonus_treasure_id := caller.mode if combat.outcome == &"victory" and caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 48 else 0
 	if bonus_treasure_id != 0 and _content.treasure_by_classic_id(absi(bonus_treasure_id)) == null:
 		return ScenarioRuntimeOperationResult.failed(&"unknown_treasure", "Classic opcode 48 references unavailable bonus treasure %d." % bonus_treasure_id)
+	var experience_only := combat.outcome == &"victory" and caller != null and caller.kind == ScenarioBattleCaller.CLASSIC and caller.opcode == 2 and caller.mode == 5
 	var defeated_monsters: Array[Dictionary] = []
+	var reward_monsters: Array[Dictionary] = []
 	var recovered_fumbles: Array[ItemInstance] = []
 	for fumbled: ItemInstance in combat.fumbled_items():
 		var definition := _content.item_by_id(fumbled.definition_id)
@@ -104,6 +106,17 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 			var definition := _content.monster_by_id(monster.definition_id)
 			if definition == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Battle reward references unavailable monster content.")
+			var parchment_eligible := definition.can_summon != -1 and definition.type_flag(0) and not definition.type_flag(7)
+			var rations_eligible := definition.can_summon != -1 and not definition.type_flag(7) and not definition.type_flag(1)
+			for incidental_classic_id: int in [806 if parchment_eligible else 0, 877 if rations_eligible else 0]:
+				if incidental_classic_id == 0:
+					continue
+				if _content.item_by_classic_id(incidental_classic_id) == null:
+					return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Battle reward can generate unavailable Classic item %d." % incidental_classic_id)
+				pending_item_count += 1
+				if pending_item_count > ClassicRewardState.MAX_PENDING_ITEMS:
+					return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The battle reward exceeds the supported Classic reward bounds.")
+			reward_monsters.append({"monster": monster, "definition": definition, "parchmentEligible": parchment_eligible, "rationsEligible": rations_eligible})
 			if not monster.traitor or monster.current_health >= 1:
 				continue
 			var loot := monster.loot_item_ids()
@@ -111,14 +124,15 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 				loot = definition.item_ids()
 				if not loot.is_empty() and definition.random_weapon_table > 0:
 					loot[0] = monster.weapon_id
-			for item_id: String in loot:
-				if item_id.is_empty():
-					continue
-				if _content.item_by_id(item_id) == null:
-					return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Battle reward references unavailable item '%s'." % item_id)
-				pending_item_count += 1
-				if pending_item_count > ClassicRewardState.MAX_PENDING_ITEMS:
-					return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The battle reward exceeds the supported Classic reward bounds.")
+			if not experience_only:
+				for item_id: String in loot:
+					if item_id.is_empty():
+						continue
+					if _content.item_by_id(item_id) == null:
+						return ScenarioRuntimeOperationResult.failed(&"unknown_item", "Battle reward references unavailable item '%s'." % item_id)
+					pending_item_count += 1
+					if pending_item_count > ClassicRewardState.MAX_PENDING_ITEMS:
+						return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The battle reward exceeds the supported Classic reward bounds.")
 			defeated_monsters.append({"monster": monster, "definition": definition, "loot": loot})
 	# Validate the whole source-owned reward before consuming RNG or claiming its
 	# one-shot battle continuation. A malformed package therefore remains retryable.
@@ -139,12 +153,21 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 				# Castle calls randrange for all three denominations even when the
 				# authored maximum is zero. The zero-result draw still advances the
 				# gameplay stream and therefore affects later scenario randomness.
-				wealth.add(kind, _rng.draw_between(0, maximum, StringName("battle.reward.%s.money.%d" % [monster.id, kind])))
+				var amount := _rng.draw_between(0, maximum, StringName("battle.reward.%s.money.%d" % [monster.id, kind]))
+				if not experience_only:
+					wealth.add(kind, amount)
 			experience += _monster_reward_experience(monster, definition)
-			for item_id: String in row["loot"]:
-				if not item_id.is_empty():
-					item_ids.append(item_id)
-		events.append(DomainEvent.new(&"battle_reward_constructed", {"battleId": combat.battle_id, "experience": experience, "wealth": wealth.to_data(), "itemCount": recovered_fumbles.size() + item_ids.size()}))
+			if not experience_only:
+				for item_id: String in row["loot"]:
+					if not item_id.is_empty():
+						item_ids.append(item_id)
+		for row: Dictionary in reward_monsters:
+			var monster: MonsterState = row["monster"]
+			if row["parchmentEligible"] and _rng.draw_classic(100, StringName("battle.reward.%s.parchment" % monster.id)) < 10:
+				item_ids.append(_content.item_by_classic_id(806).id)
+			if row["rationsEligible"] and _rng.draw_classic(100, StringName("battle.reward.%s.rations" % monster.id)) < 10:
+				item_ids.append(_content.item_by_classic_id(877).id)
+		events.append(DomainEvent.new(&"battle_reward_constructed", {"battleId": combat.battle_id, "experience": experience, "experienceOnly": experience_only, "wealth": wealth.to_data(), "itemCount": recovered_fumbles.size() + item_ids.size()}))
 	var operation := _begin_reward(&"battle", combat.battle_id, experience, wealth, item_ids, request_id, ClassicRewardState.ORDINARY_BATTLE_STAGE, absi(bonus_treasure_id), recovered_fumbles)
 	if operation.state == ScenarioRuntimeOperationResult.State.FAILED:
 		return _rollback_failed_reward(operation, state_checkpoint, rng_checkpoint)
