@@ -230,6 +230,10 @@ func _selected_ids() -> Array[String]:
 func _ally_icon(ally_id: String) -> Texture2D:
 	if _game_view == null or _media == null:
 		return null
+	if _game_view.combat_view != null:
+		for ally: MonsterView in _game_view.combat_view.monsters:
+			if ally.id == ally_id and ally.icon_id > 0:
+				return _media.image_texture(_media.asset_by_resource(ally.icon_resource_type, ally.icon_id))
 	for ally: MonsterView in _game_view.party_allies:
 		if ally.id == ally_id and ally.icon_id > 0:
 			return _media.image_texture(_media.asset_by_resource(ally.icon_resource_type, ally.icon_id))
