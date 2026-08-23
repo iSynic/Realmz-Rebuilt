@@ -6,7 +6,7 @@ Generated deterministically from `tests/fixtures/oracle/classic-application-work
 
 | Scope | Total | Missing | Partial | Functional | Certified |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| classic | 69 | 0 | 16 | 52 | 1 |
+| classic | 69 | 0 | 15 | 53 | 1 |
 | host | 8 | 1 | 1 | 6 | 0 |
 
 Delivery state is derived. Missing means required content, simulation, or presentation is absent. Partial includes partial axes, shell-only presentation, unverified persistence, unresolved variants, oracle-required ambiguity, or blockers. Functional requires complete content/simulation, verified or inapplicable persistence, functional presentation, accounted variants, and no blocker. Certified additionally requires accepted presentation and ordinary-play or cross-platform evidence.
@@ -23,15 +23,15 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | --- | --- | --- | --- |
 | `classic.spellcasting.combat-cast` | implementation | aogm-major-partial | - | GAP-SPELL-003 |
 | `classic.combat.auto-turn` | certification | aogm-certification | aogm-ordinary |  |
-| `classic.rewards.treasure-distribution` | implementation | aogm-major-partial | - | GAP-REWARD-001 |
+| `classic.rewards.treasure-distribution` | certification | aogm-certification | aogm-ordinary |  |
 
 ### Batch count delta
 
 | Scope | State | Baseline | Current | Delta |
 | --- | --- | ---: | ---: | ---: |
 | classic | missing | 0 | 0 | 0 |
-| classic | partial | 16 | 16 | 0 |
-| classic | functional | 52 | 52 | 0 |
+| classic | partial | 16 | 15 | -1 |
+| classic | functional | 52 | 53 | +1 |
 | classic | certified | 1 | 1 | 0 |
 | host | missing | 1 | 1 | 0 |
 | host | partial | 1 | 1 | 0 |
@@ -50,7 +50,7 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | Spellcasting | 3 | 0 | 2 | 1 | 0 |
 | Services and economy | 5 | 0 | 1 | 4 | 0 |
 | Combat | 14 | 0 | 2 | 11 | 1 |
-| Rewards and progression | 5 | 0 | 1 | 4 | 0 |
+| Rewards and progression | 5 | 0 | 0 | 5 | 0 |
 | Maps and journal | 3 | 0 | 2 | 1 | 0 |
 | Save and system | 5 | 0 | 3 | 2 | 0 |
 
@@ -83,8 +83,8 @@ Planning target: **60%** ordinary-play acceptance and presentation, **25%** miss
 | --- | ---: |
 | not-applicable | 3 |
 | absent | 0 |
-| partial | 9 |
-| complete | 57 |
+| partial | 8 |
+| complete | 58 |
 
 | persistence | Count |
 | --- | ---: |
@@ -206,7 +206,6 @@ Blockers: **1**. Major gaps: **13**.
 - `classic.maps.location-notes` - Castle's two dialog exit labels and exact cancellation semantics are not established by source alone.
 - `classic.maps.view-acquired` - Classic scrolling TEXT encoding and style resources remain only partially represented.
 - `classic.maps.view-acquired` - Malformed crop starts and authored picture rectangles lack boundary observations.
-- `classic.rewards.treasure-distribution` - Summoned monster instances cannot yet suppress incidental drops independently of their definition.
 - `classic.services.shop` - Normalized shop stock omits native empty-slot provenance.
 - `classic.system.preferences` - Classic's editable stock spell/race/caste names are not represented and may conflict with immutable package content.
 

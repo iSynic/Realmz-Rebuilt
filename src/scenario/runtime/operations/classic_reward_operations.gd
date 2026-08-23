@@ -103,6 +103,8 @@ func begin_completed_battle_reward(request_id: String, caller: ScenarioBattleCal
 		return ScenarioRuntimeOperationResult.failed(&"invalid_reward", "The battle reward exceeds the supported Classic reward bounds.")
 	if combat.outcome == &"victory":
 		for monster: MonsterState in combat.monsters():
+			if monster.summoned:
+				continue
 			var definition := _content.monster_by_id(monster.definition_id)
 			if definition == null:
 				return ScenarioRuntimeOperationResult.failed(&"unknown_monster", "Battle reward references unavailable monster content.")
