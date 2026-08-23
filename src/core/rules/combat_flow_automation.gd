@@ -378,39 +378,17 @@ static func _monster_can_retry_cast(state: GameState, monster: MonsterState, def
 
 
 static func _monster_spell_unavailable_reason(spell: SpellDefinition) -> String:
-	if spell.queue_icon != 0:
-		return "monster-queued-spell-field-unresolved"
-	if spell.target_type in [9, 10, 12]:
-		return "monster-group-spell-power-resource-anomaly"
-	if spell.target_type == 0 and spell.size != 0:
-		return "monster-repeated-open-space-spell-unresolved"
-	if spell.target_type not in [0, 1]:
-		return "monster-spell-target-shape-unresolved"
-	var healing_spell := _is_source_backed_combat_healing_spell(spell)
-	var condition_cure := MagicRules.is_condition_cure_spell(spell)
-	if spell.special != 0 and not healing_spell and not condition_cure:
-		return "monster-spell-special-unresolved"
-	if not healing_spell and not condition_cure and (absi(spell.damage_type) < 1 or absi(spell.damage_type) > 6 or absi(spell.spell_class) == 9):
-		return "monster-spell-damage-class-unresolved"
-	if not healing_spell and not condition_cure and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0:
-		return "monster-spell-zero-damage-effect-unresolved"
-	if spell.cost <= 0:
-		return "monster-spell-nonpositive-cost-anomaly"
+	if ClassicSpellCapabilityCatalog.combat_monster_disposition(spell) != ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE:
+		return ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"combat-monster")
+	var healing_spell := ClassicSpellCapabilityCatalog.is_combat_healing_spell(spell)
+	var condition_cure := ClassicSpellCapabilityCatalog.is_combat_condition_cure_spell(spell)
 	if spell.cannot == 4 and not healing_spell and not condition_cure:
 		return "monster-spell-friendly-target-unresolved"
 	return ""
 
 
 static func _is_source_backed_combat_healing_spell(spell: SpellDefinition) -> bool:
-	if spell == null or absi(spell.special) != 57 or not spell.in_combat or spell.queue_icon != 0 or spell.target_type != 1 or spell.cannot != 4 or spell.cost <= 0:
-		return false
-	if absi(spell.spell_class) != 8 or absi(spell.damage_type) != 8:
-		return false
-	if spell.duration_min != 0 or spell.duration_max != 0 or spell.power_duration_min != 0 or spell.power_duration_max != 0:
-		return false
-	if spell.damage_min < 0 or spell.damage_max < 0 or spell.power_damage_min < 0 or spell.power_damage_max < 0:
-		return false
-	return spell.damage_min > 0 or spell.damage_max > 0 or spell.power_damage_min > 0 or spell.power_damage_max > 0
+	return ClassicSpellCapabilityCatalog.is_combat_healing_spell(spell)
 
 
 func _process_monster_advance(state: GameState, content: RealmzContent, monster: MonsterState, definition: MonsterDefinition, active_turn: CombatTurnState, rng: RealmzRng, events: Array[DomainEvent]) -> int:

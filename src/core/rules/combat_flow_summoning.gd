@@ -20,7 +20,7 @@ func _flow() -> RefCounted:
 
 
 static func is_summon_spell(spell: SpellDefinition) -> bool:
-	return spell != null and absi(spell.special) == 58 and spell.target_type == 0 and spell.queue_icon == 0
+	return ClassicSpellCapabilityCatalog.is_combat_summon_spell(spell)
 
 
 func probe_choice(state: GameState, content: RealmzContent, caster_id: String, spell: SpellDefinition, power_level: int) -> CombatSpellCastProbe:

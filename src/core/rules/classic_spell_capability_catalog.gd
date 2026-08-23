@@ -89,10 +89,44 @@ static func field_character_disposition(spell: SpellDefinition) -> StringName:
 	return _field_character_disposition(spell)
 
 
+static func is_ordinary_combat_spell(spell: SpellDefinition) -> bool:
+	return _ordinary_combat_spell(spell)
+
+
+static func is_combat_healing_spell(spell: SpellDefinition) -> bool:
+	return _combat_healing_spell(spell)
+
+
+static func is_combat_condition_cure_spell(spell: SpellDefinition) -> bool:
+	return _combat_condition_cure_spell(spell)
+
+
+static func is_combat_summon_spell(spell: SpellDefinition) -> bool:
+	return _combat_summon_spell(spell)
+
+
+static func unsupported_reason(spell: SpellDefinition, context_name: StringName) -> String:
+	if spell == null:
+		return "The spell definition is unavailable."
+	if application_role(spell) == ROLE_RESERVED_STANDARD:
+		return "This is a reserved Classic spell slot, not an executable spell."
+	if String(context_name).begins_with("field-") and not spell.in_camp:
+		return "This spell is not available in the Classic field/camp context."
+	if context_name != &"field-character" and not spell.in_combat:
+		return "This spell is not available in Classic combat."
+	if spell.queue_icon != 0:
+		return "This persistent battlefield-field spell is waiting for its collision and expiry lifecycle."
+	if spell.can_rotate and spell.target_type in [3, 4]:
+		return "This rotatable area spell is waiting for its orientation-selection contract."
+	var family := String(mechanical_family(spell)).replace("-", " ")
+	var context_label := String(context_name).replace("-", " ")
+	return "This Classic %s family is not executable for %s yet (special %d, target type %d)." % [family, context_label, absi(spell.special), spell.target_type]
+
+
 static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0 or spell.can_rotate or spell.target_type not in [0, 1, 3, 4, 9, 10, 12]:
+	if spell.queue_icon != 0 or spell.can_rotate and spell.target_type in [3, 4] or spell.target_type not in [0, 1, 3, 4, 9, 10, 12]:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
@@ -100,7 +134,7 @@ static func _combat_character_disposition(spell: SpellDefinition) -> StringName:
 static func _combat_scroll_disposition(spell: SpellDefinition) -> StringName:
 	if spell == null or not spell.in_combat or application_role(spell) == ROLE_RESERVED_STANDARD:
 		return DISPOSITION_NOT_APPLICABLE
-	if spell.queue_icon != 0 or spell.can_rotate or spell.target_type not in [0, 1, 2, 3, 4, 5, 9, 10, 12]:
+	if spell.queue_icon != 0 or spell.can_rotate and spell.target_type in [3, 4] or spell.target_type not in [0, 1, 2, 3, 4, 5, 9, 10, 12]:
 		return DISPOSITION_PENDING
 	return DISPOSITION_EXECUTABLE if _ordinary_combat_spell(spell) or _combat_healing_spell(spell) or _combat_condition_cure_spell(spell) or _combat_summon_spell(spell) else DISPOSITION_PENDING
 
@@ -128,6 +162,8 @@ static func _field_character_disposition(spell: SpellDefinition) -> StringName:
 	if spell.target_type == 7:
 		return DISPOSITION_EXECUTABLE if special == 50 or special >= 1 and special < ConditionSet.PARTY_COUNT else DISPOSITION_PENDING
 	if special == 68:
+		return DISPOSITION_EXECUTABLE
+	if special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or special > 99:
 		return DISPOSITION_EXECUTABLE
 	if special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0):
 		return DISPOSITION_EXECUTABLE

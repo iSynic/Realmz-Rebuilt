@@ -213,7 +213,7 @@ static func field_spell_item_probe(context: SessionWorkflowContext, character: C
 	if not probe.allowed:
 		return probe
 	if not field_spell_effect_supported(spell):
-		return InventoryActionProbe.block("This item's Classic field spell effect is not implemented yet.")
+		return InventoryActionProbe.block(ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"field-item"))
 	if spell.target_type < 0 or spell.target_type > 12:
 		return InventoryActionProbe.block("This item's Classic field target type is invalid.")
 	if spell.target_type in [3, 9] and not context.state.party.allies().is_empty():
@@ -426,7 +426,7 @@ static func scroll_use_probe(context: SessionWorkflowContext, character: Charact
 	if spell.target_type in [3, 7, 9] and not context.state.party.allies().is_empty():
 		return InventoryActionProbe.block("This scroll also targets allied creatures; that Classic field branch is not implemented yet.")
 	if not field_spell_effect_supported(spell):
-		return InventoryActionProbe.block("This scroll's Classic field effect is not implemented yet.")
+		return InventoryActionProbe.block(ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"field-scroll"))
 	return InventoryActionProbe.permit()
 
 
@@ -516,19 +516,12 @@ static func field_spell_probe(context: SessionWorkflowContext, character: Charac
 	if spell.target_type in [3, 7, 9] and not context.state.party.allies().is_empty():
 		return InventoryActionProbe.block("This spell also targets allied creatures; that Classic field branch is not implemented yet.")
 	if not field_spell_effect_supported(spell):
-		return InventoryActionProbe.block("This spell's Classic field effect is not implemented yet.")
+		return InventoryActionProbe.block(ClassicSpellCapabilityCatalog.unsupported_reason(spell, &"field-character"))
 	return InventoryActionProbe.permit()
 
 
 static func field_spell_effect_supported(spell: SpellDefinition) -> bool:
-	var special := absi(spell.special)
-	if spell.target_type == 7:
-		return special == 50 or special >= 1 and special < ConditionSet.PARTY_COUNT
-	if special == 68:
-		return true
-	if special > 0 and special < 41 or special in [48, 57, 59, 60, 61, 64, 66, 91, 92] or special > 99:
-		return true
-	return special == 0 and absi(spell.damage_type) >= 1 and absi(spell.damage_type) < 8 and (spell.damage_min != 0 or spell.damage_max != 0 or spell.power_damage_min != 0 or spell.power_damage_max != 0)
+	return ClassicSpellCapabilityCatalog.field_character_disposition(spell) == ClassicSpellCapabilityCatalog.DISPOSITION_EXECUTABLE
 
 
 static func field_spell_target_ids(context: SessionWorkflowContext, character: CharacterState, spell: SpellDefinition, requested_targets: Array[String], requested_target: String) -> Array[String]:

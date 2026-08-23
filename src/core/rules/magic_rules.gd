@@ -341,7 +341,7 @@ static func condition_cure_index(spell: SpellDefinition) -> int:
 
 
 static func is_condition_cure_spell(spell: SpellDefinition) -> bool:
-	return spell != null and spell.in_combat and spell.queue_icon == 0 and spell.size == 0 and spell.target_type in [0, 1, 5] and absi(spell.spell_class) == 8 and absi(spell.damage_type) == 8 and spell.damage_min == 0 and spell.damage_max == 0 and spell.power_damage_min == 0 and spell.power_damage_max == 0 and spell.duration_min == 0 and spell.duration_max == 0 and spell.power_duration_min == 0 and spell.power_duration_max == 0 and condition_cure_index(spell) >= 0
+	return ClassicSpellCapabilityCatalog.is_combat_condition_cure_spell(spell)
 
 
 static func _clear_condition(conditions: ConditionSet, condition_index: int, spell_cost: int, duration: int) -> SpellResolution:
